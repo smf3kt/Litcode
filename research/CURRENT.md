@@ -14,7 +14,7 @@
 | --- | --- | --- | --- |
 | 1 / W01 | 网关边界与基线；并行执行agents | verified；A01、A06 | 已满足；[W01证据](ports/W01.md)，当前全量1003/1003，实际Magpie仍待验 |
 | 2 / W02 | 可信源码与搬运试点；并行执行agents | verified；历史ports待审 | [W02](ports/W02.md)：独立verifier、索引摘要校验、首份准确rewrite台账及内容/构建身份已验收 |
-| 3 / W03 | Magpie启动/恢复适配；管理端owner待定位 | blocked；已定位安装app0.1.1109及3425监听，源码仓库未定位；A02 | 静态候选含gateway route/agents CLI/caller-keys，接口参数及启动/轮换授权仍缺；真实管理链待验 |
+| 3 / W03 | Magpie启动/恢复适配；管理端owner待定位 | Partial；真实现有route任务/恢复verified | [真实验收](ports/W03-live.md)：deepseek/deepseek-flash两次200，实际写入/配对/恢复/凭证排除；管理启动/route切换/凭证轮换仍待验 |
 | 4 / W04 | 执行与恢复完整包；执行agents | verified有限进程崩溃链 | [持久恢复](ports/W04-crash-recovery.md)：checkpoint8切点+实际CLI，workflow未知效果显式重试/完成复用；原算法未证明，明确rewrite |
 | 5 / W05 | MCP生命周期剩余包；执行agents | verified本地启动/慢恢复包，功能族Partial | [启动](ports/W05-startup.md)、[URI/GET](ports/W05-recovery.md)；完整MCP扩展与订阅持久化另保留缺口 |
 | 6 / W06 | 扩展与交互包；执行agents | verified已使用技能/Hook消费者包，功能族Partial | [消费者验收](ports/W06-skills-hooks.md)：两源码CLI各9请求+38回归；原shellAST/once完整来源仍待审 |
@@ -29,7 +29,7 @@
 | ID | 优先级 / 问题 | 状态 / 证据等级 | 下一步 / 关闭依据 |
 | --- | --- | --- | --- |
 | A01 | P1 网关header被SDK环境覆盖 | resolved / confirmed | [W01](ports/W01.md)：原生SDK污染复现，两auth的stream/count_tokens及CLI新建/恢复通过 |
-| A02 | P1 Magpie管理适配未闭环 | open / reported，管理端未定位 | W03：定位接口、接启动配置与轮换恢复；loopback不能关闭此项 |
+| A02 | P1 Magpie管理适配未闭环 | Partial / real task+resume confirmed | W03-live真实任务已验证；管理启动、route切换、凭证发行/轮换、实际账单仍缺，保持open |
 | A03 | P1 缺逐模块搬运台账 | open / confirmed，首份准确台账已建立 | [技能参数台账](ports/skill-argument-expansion.md)；历史实现逐包核对，不编造搬运比例 |
 | A04 | P1 索引未校验模块摘要 | resolved / confirmed | [W02](ports/W02.md)：全部records预检摘要、坐标、生成身份；篡改中止；新索引独立核验 |
 | A05 | P1 提取缺独立可复现校验入口 | resolved / confirmed | [W02](ports/W02.md)：原样本/manifest/raw/解码/落盘/index一致性实测2609项 |
