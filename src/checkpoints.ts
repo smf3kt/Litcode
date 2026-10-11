@@ -1,0 +1,425 @@
+// File snapshots/restores; the coordinator may commit history under the restore lock.
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { z } from "zod";
+import type { ToolContext, ToolDefinition } from "./tools.js";
+
+const FILE_CAP = 2 * 1024 * 1024;
+const TOTAL_CAP = 32 * 1024 * 1024;
+const ENTRY_CAP = 2000;
+const MANIFEST_CAP = 2 * 1024 * 1024;
+const RESERVED = new Set([".agent", ".git", "node_modules", ".harness-worktrees"]);
+const HASH = /^[a-f0-9]{64}$/;
+const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+const nameSchema = z.string().regex(NAME, "Use 1-64 ASCII letters, digits, underscores or hyphens.");
+const pageSchema = { offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(200).default(100) };
+const entrySchema = z.discriminatedUnion("kind", [
+  z.object({ path: z.string(), kind: z.literal("file"), mode: z.number().int().min(0).max(0o7777), size: z.number().int().min(0).max(FILE_CAP), sha256: z.string().regex(HASH) }).strict(),
+  z.object({ path: z.string(), kind: z.literal("directory"), mode: z.number().int().min(0).max(0o7777) }).strict(),
+  z.object({ path: z.string(), kind: z.literal("symlink"), target: z.string().max(4096) }).strict(),
+]);
+type Entry = z.infer<typeof entrySchema>;
+type FileEntry = Extract<Entry, { kind: "file" }>;
+const manifestSchema = z.object({ version: z.literal(1), name: nameSchema, created_at: z.string().datetime(), workspace: z.string(), digest: z.string().regex(HASH), entries: z.array(entrySchema).max(ENTRY_CAP) }).strict();
+type Manifest = z.infer<typeof manifestSchema>;
+type Snapshot = { entries: Entry[]; digest: string; contents: Map<string, Buffer> };
+export type Change = { path: string; status: "added" | "deleted" | "modified"; before?: Entry; current?: Entry };
+
+function aborted(context: ToolContext): void {
+  if (context.signal.aborted) {
+    const error = new Error("Checkpoint operation aborted before filesystem effects.");
+    error.name = "AbortError";
+    throw error;
+  }
+}
+function hash(bytes: Buffer | string): string { return crypto.createHash("sha256").update(bytes).digest("hex"); }
+function fingerprint(entries: Entry[]): string { return hash(JSON.stringify(entries)); }
+function exists(target: string): fs.Stats | undefined {
+  try { return fs.lstatSync(target); } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+function relativePath(value: string): string {
+  const parts = value.split("/");
+  if (!value || value.length > 1024 || path.isAbsolute(value) || value.includes("\\") || /[\x00-\x1f\x7f:]/.test(value) || parts.some(part => !part || part === "." || part === ".." || RESERVED.has(part.toLowerCase()))) {
+    throw new Error(`Invalid or reserved checkpoint path: ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+function rootFor(context: ToolContext): string {
+  aborted(context);
+  const root = fs.realpathSync(path.resolve(context.workspace));
+  if (!fs.statSync(root).isDirectory()) throw new Error("Workspace must be a directory.");
+  return root;
+}
+// Every existing component must be a real directory; links are never followed.
+function targetFor(root: string, relative: string, allowLeafLink = false): string {
+  const parts = relative.split("/");
+  let current = root;
+  for (let i = 0; i < parts.length; i++) {
+    current = path.join(current, parts[i]!);
+    const stat = exists(current);
+    if (!stat) continue;
+    if (stat.isSymbolicLink() && !(allowLeafLink && i === parts.length - 1)) throw new Error(`Symlink checkpoint path: ${relative}`);
+    if (i < parts.length - 1 && !stat.isDirectory()) throw new Error(`Checkpoint ancestor is not a directory: ${relative}`);
+  }
+  return current;
+}
+function directory(target: string, create = false): void {
+  let stat = exists(target);
+  if (!stat && create) {
+    fs.mkdirSync(target, { mode: 0o700 });
+    stat = fs.lstatSync(target);
+  }
+  if (!stat || !stat.isDirectory() || stat.isSymbolicLink() || fs.realpathSync(target) !== target) throw new Error(`Invalid checkpoint metadata directory: ${target}`);
+}
+function storeFor(root: string, create = false): string {
+  const agent = path.join(root, ".agent");
+  const store = path.join(agent, "checkpoints");
+  directory(agent, create);
+  directory(store, create);
+  directory(path.join(store, "objects"), create);
+  directory(path.join(store, "manifests"), create);
+  return store;
+}
+function readBounded(target: string, cap: number, context: ToolContext): Buffer {
+  aborted(context);
+  const before = fs.lstatSync(target);
+  if (!before.isFile() || before.isSymbolicLink() || before.size > cap) throw new Error(`Checkpoint file exceeds cap or is not regular: ${target}`);
+  const fd = fs.openSync(target, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+  try {
+    const initial = fs.fstatSync(fd);
+    if (!initial.isFile() || initial.dev !== before.dev || initial.ino !== before.ino || initial.size > cap) throw new Error(`Checkpoint file changed during read: ${target}`);
+    const bytes = Buffer.alloc(initial.size);
+    let offset = 0;
+    while (offset < bytes.length) {
+      aborted(context);
+      const count = fs.readSync(fd, bytes, offset, Math.min(64 * 1024, bytes.length - offset), offset);
+      if (!count) throw new Error(`Checkpoint file changed during read: ${target}`);
+      offset += count;
+    }
+    const extra = Buffer.alloc(1);
+    const after = fs.fstatSync(fd);
+    if (fs.readSync(fd, extra, 0, 1, offset) || after.size !== initial.size || after.mtimeMs !== initial.mtimeMs || after.ctimeMs !== initial.ctimeMs || fs.lstatSync(target).ino !== initial.ino) throw new Error(`Checkpoint file changed during read: ${target}`);
+    return bytes;
+  } finally { fs.closeSync(fd); }
+}
+function snapshot(root: string, context: ToolContext): Snapshot {
+  const entries: Entry[] = [];
+  const contents = new Map<string, Buffer>();
+  const paths = new Set<string>();
+  let total = 0;
+  function visit(relative: string): void {
+    aborted(context);
+    const target = relative ? targetFor(root, relative) : root;
+    for (const name of fs.readdirSync(target).sort()) {
+      if (RESERVED.has(name.toLowerCase())) continue;
+      const rel = relativePath(relative ? `${relative}/${name}` : name);
+      if (paths.has(rel.toLowerCase())) throw new Error(`Checkpoint path has a case alias: ${rel}`);
+      paths.add(rel.toLowerCase());
+      const full = targetFor(root, rel, true);
+      const stat = fs.lstatSync(full);
+      if (entries.length >= ENTRY_CAP) throw new Error(`Checkpoint entry count exceeds cap (${ENTRY_CAP}).`);
+      if (stat.isSymbolicLink()) {
+        const link = fs.readlinkSync(full);
+        if (link.length > 4096) throw new Error(`Checkpoint symlink metadata exceeds cap: ${rel}`);
+        entries.push({ path: rel, kind: "symlink", target: link });
+      } else if (stat.isDirectory()) {
+        entries.push({ path: rel, kind: "directory", mode: stat.mode & 0o7777 });
+        visit(rel);
+      } else if (stat.isFile()) {
+        if (stat.size > FILE_CAP || total + stat.size > TOTAL_CAP) throw new Error(`Checkpoint snapshot exceeds byte cap: ${rel}`);
+        const bytes = readBounded(full, FILE_CAP, context);
+        total += bytes.length;
+        if (total > TOTAL_CAP) throw new Error("Checkpoint snapshot exceeds total byte cap.");
+        const digest = hash(bytes);
+        entries.push({ path: rel, kind: "file", mode: fs.lstatSync(full).mode & 0o7777, size: bytes.length, sha256: digest });
+        contents.set(digest, bytes);
+      } else throw new Error(`Unsupported checkpoint filesystem entry: ${rel}`);
+    }
+  }
+  visit("");
+  entries.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  return { entries, digest: fingerprint(entries), contents };
+}
+function syncDir(target: string): void {
+  const fd = fs.openSync(target, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+}
+function atomicWrite(target: string, bytes: Buffer, mode: number, verify?: () => void, committed?: () => void): void {
+  const temporary = path.join(path.dirname(target), `.checkpoint-${crypto.randomUUID()}.tmp`);
+  let fd: number | undefined;
+  try {
+    fd = fs.openSync(temporary, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
+    fs.writeFileSync(fd, bytes);
+    fs.fchmodSync(fd, mode);
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = undefined;
+    verify?.();
+    fs.renameSync(temporary, target);
+    committed?.();
+    syncDir(path.dirname(target));
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+    if (exists(temporary)) fs.unlinkSync(temporary);
+  }
+}
+function lock<T>(store: string, operation: () => T): T {
+  const target = path.join(store, "lock");
+  const fd = fs.openSync(target, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
+  try {
+    fs.writeFileSync(fd, `${process.pid}\n`);
+    fs.fsyncSync(fd);
+    return operation();
+  } finally { fs.closeSync(fd); fs.unlinkSync(target); }
+}
+function manifestFor(root: string, name: string, context: ToolContext): { store: string; manifest: Manifest; contents: Map<string, Buffer> } {
+  const store = storeFor(root);
+  const manifest = manifestSchema.parse(JSON.parse(readBounded(path.join(store, "manifests", `${name}.json`), MANIFEST_CAP, context).toString("utf8")));
+  if (manifest.workspace !== root || manifest.name !== name || manifest.digest !== fingerprint(manifest.entries)) throw new Error("Checkpoint manifest identity or digest mismatch.");
+  const seen = new Map<string, Entry>();
+  let total = 0;
+  const contents = new Map<string, Buffer>();
+  let previous = "";
+  for (const entry of manifest.entries) {
+    relativePath(entry.path);
+    if (entry.path <= previous || seen.has(entry.path.toLowerCase())) throw new Error("Checkpoint manifest contains duplicate or unsorted paths.");
+    previous = entry.path;
+    const parent = path.posix.dirname(entry.path);
+    if (parent !== "." && seen.get(parent.toLowerCase())?.kind !== "directory") throw new Error("Checkpoint manifest has a missing or invalid parent directory.");
+    seen.set(entry.path.toLowerCase(), entry);
+    if (entry.kind === "file") {
+      total += entry.size;
+      if (total > TOTAL_CAP) throw new Error("Checkpoint manifest exceeds total byte cap.");
+      const bytes = contents.get(entry.sha256) ?? readBounded(path.join(store, "objects", entry.sha256), FILE_CAP, context);
+      if (bytes.length !== entry.size || hash(bytes) !== entry.sha256) throw new Error(`Checkpoint content digest mismatch: ${entry.path}`);
+      contents.set(entry.sha256, bytes);
+    }
+  }
+  aborted(context);
+  return { store, manifest, contents };
+}
+function changes(before: Entry[], current: Entry[]): Change[] {
+  const left = new Map(before.map(entry => [entry.path, entry]));
+  const right = new Map(current.map(entry => [entry.path, entry]));
+  return [...new Set([...left.keys(), ...right.keys()])].sort().flatMap(name => {
+    const old = left.get(name);
+    const now = right.get(name);
+    if (JSON.stringify(old) === JSON.stringify(now)) return [];
+    return [{ path: name, status: !old ? "added" as const : !now ? "deleted" as const : "modified" as const, before: old, current: now }];
+  });
+}
+function output(value: Record<string, unknown>, context: ToolContext): string {
+  const raw = JSON.stringify(value, null, 2);
+  const cap = Number.isFinite(context.maxOutputBytes) && context.maxOutputBytes > 0 ? Math.floor(context.maxOutputBytes) : 100_000;
+  if (Buffer.byteLength(raw) <= cap) return raw;
+  // Keep machine-readable JSON and confirmation digests even when pages are capped.
+  const compact: Record<string, unknown> = { ...value, truncated: true };
+  for (const key of ["checkpoints", "changes", "operations"] as const) {
+    const items = compact[key];
+    if (Array.isArray(items)) {
+      const kept = [...items];
+      compact[key] = kept;
+      do {
+        compact["returned"] = kept.length;
+        compact["next_offset"] = Number(value["offset"] ?? 0) + kept.length;
+        if (Buffer.byteLength(JSON.stringify(compact)) <= cap || kept.length === 0) break;
+        kept.pop();
+      } while (true);
+    }
+  }
+  let text = JSON.stringify(compact);
+  if (Buffer.byteLength(text) > cap) text = JSON.stringify({ truncated: true, current_digest: value["current_digest"], checkpoint_digest: value["checkpoint_digest"] });
+  return Buffer.byteLength(text) <= cap ? text : cap >= 2 ? "{}" : "";
+}
+function schema(properties: Record<string, unknown>, required: string[]): ToolDefinition["schema"]["input_schema"] {
+  return { type: "object", properties, required, additionalProperties: false };
+}
+const nameProperty = { type: "string", pattern: NAME.source, description: "Checkpoint name (1-64 ASCII letters, digits, underscores or hyphens)." };
+const pageProperties = { offset: { type: "integer", minimum: 0 }, limit: { type: "integer", minimum: 1, maximum: 200 } };
+
+export function restoreCheckpoint(input: unknown, context: ToolContext, commit?: () => void): string {
+  const args = z.object({ name: nameSchema, expected_current_digest: z.string().regex(HASH), paths: z.array(z.string()).min(commit ? 0 : 1).max(ENTRY_CAP).optional(), remove_new: z.boolean().default(false), dry_run: z.boolean().default(true) }).strict().parse(input);
+  const root = rootFor(context);
+  const { store, manifest, contents } = manifestFor(root, args.name, context);
+  const current = snapshot(root, context);
+  if (current.digest !== args.expected_current_digest) throw new Error("Checkpoint conflict: workspace changed since diff; run checkpoint_diff again.");
+  if (args.remove_new && !args.paths) throw new Error("remove_new requires explicitly enumerated paths from checkpoint_diff.");
+  const baseline = new Map(manifest.entries.map(entry => [entry.path, entry]));
+  const now = new Map(current.entries.map(entry => [entry.path, entry]));
+  const selected = args.paths ?? manifest.entries.filter(entry => entry.kind === "file").map(entry => entry.path);
+  const unique = new Set<string>();
+  const operations: { path: string; action: "write" | "remove"; entry?: FileEntry }[] = [];
+  for (const relative of selected) {
+    relativePath(relative);
+    if (unique.has(relative.toLowerCase())) throw new Error("Duplicate selected checkpoint path.");
+    unique.add(relative.toLowerCase());
+    const original = baseline.get(relative);
+    const present = now.get(relative);
+    targetFor(root, relative);
+    if (original && original.kind !== "file") throw new Error(`Only regular file checkpoint paths can be restored: ${relative}`);
+    if (present && present.kind !== "file") throw new Error(`Restore target must be a regular file or absent: ${relative}`);
+    if (original?.kind === "file") {
+      if (JSON.stringify(original) !== JSON.stringify(present)) operations.push({ path: relative, action: "write", entry: original });
+    } else if (args.remove_new && present?.kind === "file") operations.push({ path: relative, action: "remove" });
+    else throw new Error(`Selected path is absent from checkpoint: ${relative}`);
+  }
+  aborted(context);
+  const result = { name: args.name, behavior: "filesystem_rewind", dry_run: args.dry_run, checkpoint_digest: manifest.digest, current_digest: current.digest, operations: operations.map(({ path: relative, action }) => ({ path: relative, action })) };
+  if (args.dry_run) return output(result, context);
+  return lock(store, () => {
+    storeFor(root);
+    aborted(context);
+    if (snapshot(root, context).digest !== current.digest) throw new Error("Checkpoint conflict: workspace changed before restore.");
+    // Capture every rollback byte before effects, including explicitly selected new files.
+    const backups = new Map<string, { bytes: Buffer; mode: number }>();
+    for (const operation of operations) {
+      const old = now.get(operation.path);
+      if (old?.kind === "file") backups.set(operation.path, { bytes: current.contents.get(old.sha256)!, mode: old.mode });
+    }
+    aborted(context);
+    const applied: typeof operations = [];
+    const createdDirectories: string[] = [];
+    function ensureParents(relative: string): void {
+      const parts = relative.split("/").slice(0, -1);
+      for (let i = 1; i <= parts.length; i++) {
+        const rel = parts.slice(0, i).join("/");
+        const target = targetFor(root, rel);
+        if (!exists(target)) {
+          const entry = baseline.get(rel);
+          fs.mkdirSync(target, { mode: entry?.kind === "directory" ? entry.mode : 0o755 });
+          createdDirectories.push(target);
+          if (entry?.kind === "directory") fs.chmodSync(target, entry.mode);
+        }
+      }
+    }
+    try {
+      for (const operation of operations) {
+        aborted(context);
+        ensureParents(operation.path);
+        const target = targetFor(root, operation.path);
+        const old = now.get(operation.path);
+        const verify = (): void => {
+          targetFor(root, operation.path);
+          const stat = exists(target);
+          if (!old ? !!stat : !stat?.isFile() || (stat.mode & 0o7777) !== (old as FileEntry).mode || hash(readBounded(target, FILE_CAP, context)) !== (old as FileEntry).sha256) throw new Error(`Checkpoint conflict during restore: ${operation.path}`);
+        };
+        verify();
+        // Track committed effects even when the subsequent directory fsync fails.
+        if (operation.action === "remove") {
+          fs.unlinkSync(target);
+          applied.push(operation);
+          syncDir(path.dirname(target));
+        } else atomicWrite(target, contents.get(operation.entry!.sha256)!, operation.entry!.mode, verify, () => applied.push(operation));
+      }
+      commit?.();
+    } catch (error) {
+      const failures: string[] = [];
+      for (const operation of applied.reverse()) {
+        try {
+          const target = targetFor(root, operation.path);
+          const stat = exists(target);
+          if (operation.action === "remove" ? !!stat : !stat?.isFile() || (stat.mode & 0o7777) !== operation.entry!.mode || hash(readBounded(target, FILE_CAP, { ...context, signal: new AbortController().signal })) !== operation.entry!.sha256) {
+            throw new Error(`Checkpoint target changed before rollback: ${operation.path}`);
+          }
+          const backup = backups.get(operation.path);
+          if (backup) atomicWrite(target, backup.bytes, backup.mode);
+          else if (stat) { fs.unlinkSync(target); syncDir(path.dirname(target)); }
+        } catch { failures.push(operation.path); }
+      }
+      for (const target of createdDirectories.reverse()) {
+        try { fs.rmdirSync(target); } catch { failures.push(path.relative(root, target)); }
+      }
+      if (failures.length) throw new Error(`Checkpoint restore failed; rollback incomplete for ${failures.join(", ")}. Original error: ${String(error)}`);
+      throw error;
+    }
+    return output({ ...result, restored: true }, context);
+  });
+}
+
+export function captureCheckpoint(name: string, context: ToolContext) {
+  nameSchema.parse(name);
+  const root = rootFor(context);
+  const captured = snapshot(root, context);
+  aborted(context);
+  const store = storeFor(root, true);
+  return lock(store, () => {
+    const target = path.join(store, "manifests", `${name}.json`);
+    if (exists(target)) throw new Error(`Checkpoint already exists: ${name}`);
+    const manifest: Manifest = { version: 1, name, created_at: new Date().toISOString(), workspace: root, digest: captured.digest, entries: captured.entries };
+    const encoded = Buffer.from(JSON.stringify(manifest));
+    if (encoded.length > MANIFEST_CAP) throw new Error("Checkpoint manifest exceeds byte cap.");
+    for (const [digest, bytes] of captured.contents) {
+      aborted(context);
+      storeFor(root);
+      const object = path.join(store, "objects", digest);
+      if (exists(object)) {
+        if (hash(readBounded(object, FILE_CAP, context)) !== digest) throw new Error("Checkpoint existing content digest mismatch.");
+      } else atomicWrite(object, bytes, 0o600);
+    }
+    aborted(context);
+    storeFor(root);
+    if (snapshot(root, context).digest !== captured.digest) throw new Error("Checkpoint conflict: workspace changed during snapshot.");
+    atomicWrite(target, encoded, 0o600);
+    return { name, behavior: "filesystem_rewind", checkpoint_digest: captured.digest, entries: captured.entries.length,
+      files: captured.entries.filter(entry => entry.kind === "file").length, created_at: manifest.created_at };
+  });
+}
+
+export function previewCheckpoint(name: string, context: ToolContext) {
+  nameSchema.parse(name);
+  const root = rootFor(context);
+  const { manifest } = manifestFor(root, name, context);
+  const current = snapshot(root, context);
+  return { name, checkpoint_digest: manifest.digest, current_digest: current.digest, changes: changes(manifest.entries, current.entries) };
+}
+
+export function createCheckpointTools(): ToolDefinition[] {
+  return [
+    {
+      readOnly: false,
+      schema: { name: "checkpoint_create", description: "Snapshot bounded workspace regular files and symlink metadata into .agent/checkpoints. Excludes .agent, .git, node_modules and .harness-worktrees; includes .harness/memory and hidden files. Filesystem checkpoint only; conversation history is unchanged. Caps: 2 MiB/file, 32 MiB total, 2000 filesystem entries.", input_schema: schema({ name: nameProperty }, ["name"]) },
+      async execute(input, context) {
+        const { name } = z.object({ name: nameSchema }).strict().parse(input);
+        return output(captureCheckpoint(name, context), context);
+      },
+    },
+    {
+      readOnly: true,
+      schema: { name: "checkpoint_list", description: "List persisted filesystem checkpoints with validated manifests and content digests. Returns a bounded page; does not rewrite session history.", input_schema: schema(pageProperties, []) },
+      async execute(input, context) {
+        const { offset, limit } = z.object(pageSchema).strict().parse(input);
+        const root = rootFor(context);
+        const agent = path.join(root, ".agent");
+        if (!exists(agent)) return output({ checkpoints: [], total: 0, offset }, context);
+        directory(agent);
+        if (!exists(path.join(agent, "checkpoints"))) return output({ checkpoints: [], total: 0, offset }, context);
+        const store = storeFor(root);
+        const names = fs.readdirSync(path.join(store, "manifests")).sort();
+        if (names.length > ENTRY_CAP) throw new Error("Checkpoint inventory exceeds entry cap.");
+        const checkpoints = names.map(file => {
+          if (!file.endsWith(".json") || !NAME.test(file.slice(0, -5))) throw new Error("Invalid checkpoint manifest name.");
+          const { manifest } = manifestFor(root, file.slice(0, -5), context);
+          return { name: manifest.name, created_at: manifest.created_at, checkpoint_digest: manifest.digest, entries: manifest.entries.length };
+        });
+        return output({ checkpoints: checkpoints.slice(offset, offset + limit), total: checkpoints.length, offset, next_offset: offset + limit < checkpoints.length ? offset + limit : null }, context);
+      },
+    },
+    {
+      readOnly: true,
+      schema: { name: "checkpoint_diff", description: "Compare the full workspace fingerprint with a checkpoint. Returns added/deleted/modified paths, counts and current_digest for checkpoint_restore. Symlinks are metadata only. Re-run after any workspace edit.", input_schema: schema({ name: nameProperty, ...pageProperties }, ["name"]) },
+      async execute(input, context) {
+        const { name, offset, limit } = z.object({ name: nameSchema, ...pageSchema }).strict().parse(input);
+        const root = rootFor(context);
+        const { manifest } = manifestFor(root, name, context);
+        const current = snapshot(root, context);
+        const delta = changes(manifest.entries, current.entries);
+        return output({ name, behavior: "filesystem_rewind", checkpoint_digest: manifest.digest, current_digest: current.digest, equal: delta.length === 0, total: delta.length, counts: { added: delta.filter(item => item.status === "added").length, deleted: delta.filter(item => item.status === "deleted").length, modified: delta.filter(item => item.status === "modified").length }, offset, changes: delta.slice(offset, offset + limit), next_offset: offset + limit < delta.length ? offset + limit : null }, context);
+      },
+    },
+    { readOnly: false, schema: { name: "checkpoint_restore", description: "Filesystem rewind of checkpoint regular files. Requires expected_current_digest from checkpoint_diff; defaults to dry_run=true and all checkpoint regular files. Set dry_run=false to apply. Newly added files are kept unless remove_new=true with explicitly enumerated paths from diff. Symlinks and directory targets are rejected. Full manifest/content validation precedes writes; failed writes roll back. Session history is unchanged.", input_schema: schema({ name: nameProperty, expected_current_digest: { type: "string", pattern: HASH.source }, paths: { type: "array", items: { type: "string" }, minItems: 1, maxItems: ENTRY_CAP }, remove_new: { type: "boolean", default: false }, dry_run: { type: "boolean", default: true } }, ["name", "expected_current_digest"]) }, execute: async (input, context) => restoreCheckpoint(input, context) },
+  ];
+}
