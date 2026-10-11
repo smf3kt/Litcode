@@ -538,6 +538,10 @@ W04 realSIGKILL checkpoint/workflow chains, W05 startup degradation/slow retry, 
 
 Explicit command-start after ECONNREFUSED, shared root/model deadline, owned process-group cleanup, signal cancellation and pinned equal-form resume validation passed actualCLI smoke three groups. Existing launcher compiledoffline handoff and realMagpie0.1.1109 healthy-start suppression passed,0new modelcalls. macOS app cold-start and route/credential mutation remain unverified. Exact targets/receipts are ports/W03-cold-start-evidence.json; contract and usage are ports/W03-launcher.md.
 
+## Installed gateway launcher distribution (2026-10-11)
+
+litcode-magpie now ships in private57file runtime and production-only offline installation. Installed help/discovery/pinnedresume/compileddemo/coldstart/cancellation passed owneddrivers; deadstarter descendants reaped,0modelcalls. Fresh178files source offlineinstall/check/build matches50modules. Prior archives retained as prior identities; latest persistent inventory is ports/W03-installed-launcher-evidence.json, artifacts release/launcher-runtime and release/litcode-source-launcher. Actualapplicationcoldstart/route/rotation andpublicationdecisions remain pending.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

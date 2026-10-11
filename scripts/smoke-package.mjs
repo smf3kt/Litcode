@@ -17,6 +17,7 @@ try {
   assert.ok(packed.files.some(file => file.path === "dist/cli.js"));
   assert.ok(packed.files.some(file => file.path === "bin/personal-harness.mjs"));
   assert.ok(packed.files.some(file => file.path === "bin/litcode.mjs"));
+  assert.ok(packed.files.some(file => file.path === "bin/litcode-magpie.mjs"));
   assert.ok(packed.files.some(file => file.path === "NOTICE.md"));
   assert.ok(packed.files.some(file => file.path === "THIRD_PARTY_NOTICES.txt"));
   assert.equal(packed.files.some(file => /^(?:extracted[^/]*|research|test|scripts|\.agent|\.harness|src)\//.test(file.path)), false);
@@ -38,6 +39,22 @@ try {
   assert.equal(fs.readdirSync(path.join(directory, ".agent")).some(name => name.endsWith(".lock")), false);
   fs.rmSync(directory, { recursive: true, force: true });
   assert.equal(fs.existsSync(path.join(install, "node_modules/tsx")), false);
+  const launcher = path.join(install, "node_modules/.bin/litcode-magpie");
+  const launcherHelp = run(launcher, ["--help"], install);
+  assert.match(launcherHelp, /^Usage: litcode-magpie\b/);
+  for (const flag of ["--check", "--base-url", "--model", "--start-app", "--start-command", "--startup-timeout-ms", "--workspace", "--resume"]) {
+    assert.ok(launcherHelp.includes(flag), `launcher help missing ${flag}`);
+  }
+  assert.equal(launcherHelp.includes("scripts/launch-magpie.mjs"), false);
+  // Each external driver owns its fixture server while this process waits synchronously.
+  for (const [driver, key] of [["smoke-magpie-launcher.mjs", "launcher"], ["smoke-magpie-startup.mjs", "startup"]]) {
+    const output = run(process.execPath, [path.join(root, "scripts", driver), "--launcher", launcher], install);
+    const result = JSON.parse(output.trim());
+    assert.equal(result[key], "passed");
+    assert.equal(result.modelCalls, 0);
+    assert.equal(result.noSecretOutput, true);
+  }
   console.log(JSON.stringify({ package: "passed", compiledCLI: true, binHelp: true, offlineInstall: true,
-    packagedDemo: true, devRuntimeAbsent: true, extractedSamplesExcluded: true, files: packed.files.length, upstreamRequests: 0 }));
+    packagedDemo: true, installedLauncherHelp: true, installedLauncherFixtures: true, installedStartupFixtures: true,
+    devRuntimeAbsent: true, extractedSamplesExcluded: true, files: packed.files.length, upstreamRequests: 0 }));
 } finally { fs.rmSync(temporary, { recursive: true, force: true }); }

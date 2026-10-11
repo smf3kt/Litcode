@@ -78,11 +78,11 @@ npm run agent -- --workspace /absolute/path/to/project "检查测试失败的原
 
 模型 ID 也可通过 `--model` 指定，地址可用 `--base-url` 覆盖。模型由用户显式选择，不设置厂商专属默认值。
 
-已有本机 Magpie 时可用启动适配器检查模型与凭证引用：
+安装后可用`litcode-magpie`检查模型与凭证引用，源码目录对应`node bin/litcode-magpie.mjs`：
 
 ```sh
-node scripts/launch-magpie.mjs --check --model deepseek/deepseek-flash
-node scripts/launch-magpie.mjs --model MODEL --start-app /Applications/magpie.app -- --workspace PROJECT --interactive
+litcode-magpie --check --model deepseek/deepseek-flash
+litcode-magpie --model MODEL --start-app /Applications/magpie.app -- --workspace PROJECT --interactive
 ```
 
 `--start-app`只在连接被拒绝时启动应用，默认仅检查现有服务；`--start-command JSON_ARGV`可用于自有网关命令，退出时回收该命令。启动等待默认15秒，可用`--startup-timeout-ms`设置100..120000毫秒。恢复会话从journal读取固定模型与地址；路由与凭证保持。真实任务会使用所配置上游，调用预算另行约定。

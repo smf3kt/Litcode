@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
@@ -7,8 +8,12 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const launcher = path.join(root, 'scripts/launch-magpie.mjs');
-const tmp = fs.mkdtempSync(path.join(root, '.magpie-startup-'));
+const args = process.argv.slice(2);
+assert.ok(args.length === 0 || (args.length === 2 && args[0] === '--launcher' && path.isAbsolute(args[1])),
+  'Usage: node scripts/smoke-magpie-startup.mjs [--launcher ABSOLUTE_PATH]');
+const launcher = args[1] ?? path.join(root, 'scripts/launch-magpie.mjs');
+const cwd = path.resolve(path.dirname(fs.realpathSync(launcher)), '..');
+const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'litcode-startup-')));
 const fixture = path.join(tmp, 'server.mjs');
 const secret = 'owned-startup-fixture-credential';
 const model = 'fixture/model';
@@ -23,9 +28,16 @@ let serial = 0;
 fs.writeFileSync(fixture, `
 import fs from 'node:fs';
 import http from 'node:http';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 const [mode, port, marker] = process.argv.slice(2);
 fs.writeFileSync(marker, String(process.pid));
-if (mode === 'stall') {
+if (mode === 'dead-command') {
+  const child = spawn(process.execPath, [fileURLToPath(import.meta.url), 'stall', port, marker + '.descendant.pid'], { stdio: 'ignore' });
+  child.once('spawn', () => setInterval(() => {
+    if (fs.existsSync(marker + '.descendant.pid')) process.exit(0);
+  }, 10));
+} else if (mode === 'stall') {
   setInterval(() => {}, 1000);
 } else {
   const server = http.createServer((req, res) => {
@@ -134,7 +146,7 @@ function commandArgs(base, marker, mode = 'ready') {
 
 function launch(base, args = [], env = controlledEnv(base)) {
   const child = spawn(process.execPath, [launcher, '--check', '--base-url', base, '--model', model, ...args], {
-    cwd: root,
+    cwd,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -220,6 +232,15 @@ async function commandOwnership() {
   const missing = await launch(missingBase, ['--startup-timeout-ms', '3000', ...commandArgs(missingBase, missingMarker, 'missing-model')]).done;
   assert.notEqual(missing.code, 0, 'cold startup passed before selected-model readiness');
   await assertReaped(missingMarker);
+
+  const deadBase = await unusedBase();
+  const deadMarker = markerFor('dead-command');
+  const descendantMarker = deadMarker + '.descendant.pid';
+  const dead = await launch(deadBase, ['--startup-timeout-ms', '3000', ...commandArgs(deadBase, deadMarker, 'dead-command')]).done;
+  assert.notEqual(dead.code, 0, 'exited start command passed readiness');
+  await waitUntil(() => fs.existsSync(descendantMarker), 'start command never recorded its descendant');
+  await assertReaped(deadMarker);
+  await assertReaped(descendantMarker);
   passed.push('command-ownership');
 }
 
@@ -256,7 +277,8 @@ try {
   await cancellation();
   console.log(JSON.stringify({ startup: 'passed', groups: passed, coldDiscovery: true, modelReadiness: true,
     exactCredentialOrigin: true, defaultNoSpawn: true, healthyNoStarter: true, invalidIdentityNoStarter: true,
-    deadlinesMs: [100, 300], signalCancellation: true, ownedChildrenReaped: true, noSecretOutput: true, modelCalls: 0 }));
+    deadlinesMs: [100, 300], signalCancellation: true, ownedChildrenReaped: true, deadCommandGroupReaped: true,
+    noSecretOutput: true, modelCalls: 0 }));
 } catch (error) {
   console.error(clean(error.stack ?? String(error)));
   process.exitCode = 1;
