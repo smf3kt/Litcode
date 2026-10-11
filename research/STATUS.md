@@ -534,6 +534,10 @@ Opt-in pinned mcpRecovery now restores acknowledged URI state on candidate trans
 
 W04 realSIGKILL checkpoint/workflow chains, W05 startup degradation/slow retry, W06 used skills/once consumers and W07 private LiTcode coding/source delivery accepted under finite contracts. Current1021/1021, MCP141/141, check/build and compiledCLI chains passed; private56file package and independently rebuilt50module source identical. Source differences, residual ownership windows and external Magpie/license/remote requirements are in ports/W04-crash-recovery.md, ports/W05-startup.md, ports/W06-skills-hooks.md and ports/W07-local-delivery.md; shared persistent identity is ports/local-completion-evidence.json. Git/worktree initialized by explicit user request; no external publication.
 
+## Magpie bounded cold-start launcher (2026-10-11)
+
+Explicit command-start after ECONNREFUSED, shared root/model deadline, owned process-group cleanup, signal cancellation and pinned equal-form resume validation passed actualCLI smoke three groups. Existing launcher compiledoffline handoff and realMagpie0.1.1109 healthy-start suppression passed,0new modelcalls. macOS app cold-start and route/credential mutation remain unverified. Exact targets/receipts are ports/W03-cold-start-evidence.json; contract and usage are ports/W03-launcher.md.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md
