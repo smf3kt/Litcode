@@ -14,7 +14,7 @@
 | --- | --- | --- | --- |
 | 1 / W01 | 网关边界与基线；并行执行agents | verified；A01、A06 | 已满足；[W01证据](ports/W01.md)，当前全量1003/1003，实际Magpie仍待验 |
 | 2 / W02 | 可信源码与搬运试点；并行执行agents | verified；历史ports待审 | [W02](ports/W02.md)：独立verifier、索引摘要校验、首份准确rewrite台账及内容/构建身份已验收 |
-| 3 / W03 | Magpie启动/恢复适配；管理端owner待定位 | Partial；真实现有route任务/恢复verified | [真实验收](ports/W03-live.md)：deepseek/deepseek-flash两次200，实际写入/配对/恢复/凭证排除；管理启动/route切换/凭证轮换仍待验 |
+| 3 / W03 | Magpie启动/恢复适配；管理端owner待定位 | Partial；现有网关launcher及真实任务/恢复verified | [启动适配](ports/W03-launcher.md)、[真实验收](ports/W03-live.md)：发现/模型/凭证handoff/pinnedresume及两次真实200；应用启动/route切换/凭证轮换仍待验 |
 | 4 / W04 | 执行与恢复完整包；执行agents | verified有限进程崩溃链 | [持久恢复](ports/W04-crash-recovery.md)：checkpoint8切点+实际CLI，workflow未知效果显式重试/完成复用；原算法未证明，明确rewrite |
 | 5 / W05 | MCP生命周期剩余包；执行agents | verified本地启动/慢恢复包，功能族Partial | [启动](ports/W05-startup.md)、[URI/GET](ports/W05-recovery.md)；完整MCP扩展与订阅持久化另保留缺口 |
 | 6 / W06 | 扩展与交互包；执行agents | verified已使用技能/Hook消费者包，功能族Partial | [消费者验收](ports/W06-skills-hooks.md)：两源码CLI各9请求+38回归；原shellAST/once完整来源仍待审 |
