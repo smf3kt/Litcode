@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'litcode-launcher-')));
+const requests = [];
+let invalid = false;
+const server = http.createServer((req, res) => {
+  requests.push(req.url); res.setHeader('Content-Type', 'application/json');
+  if (req.url === '/') res.end(JSON.stringify({ name: invalid ? 'other' : 'magpie', version: 'fixture', apis: ['/v1/messages'] }));
+  else if (req.url === '/v1/models') res.end(JSON.stringify({ data: [{ id: 'fixture/model', native_endpoints: ['/v1/messages'] }] }));
+  else { res.writeHead(500); res.end('{}'); }
+});
+await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const base = `http://127.0.0.1:${server.address().port}`;
+const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('LLM_') && !key.startsWith('ANTHROPIC_')));
+env.ANTHROPIC_AUTH_TOKEN = 'owned-launcher-fixture'; env.ANTHROPIC_BASE_URL = base;
+async function run(args) {
+  const child = spawn(process.execPath, [path.join(root, 'scripts/launch-magpie.mjs'), ...args], { cwd: root, env });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', b => stdout += b); child.stderr.on('data', b => stderr += b);
+  const timer = setTimeout(() => child.kill('SIGKILL'), 20000);
+  const code = await new Promise((resolve, reject) => { child.on('error', reject); child.on('close', resolve); });
+  clearTimeout(timer); assert.equal((stdout + stderr).includes(env.ANTHROPIC_AUTH_TOKEN), false);
+  return { code, stdout, stderr };
+}
+try {
+  const check = await run(['--check', '--base-url', base, '--model', 'fixture/model']);
+  assert.equal(check.code, 0); assert.equal(JSON.parse(check.stdout).credentialPresent, true);
+  const demo = await run(['--base-url', base, '--model', 'fixture/model', '--', '--demo']);
+  assert.equal(demo.code, 0, demo.stderr); assert.match(demo.stdout, /Offline demo passed/);
+  const demoPath = /^workspace: (.+)$/m.exec(demo.stderr)?.[1]; assert.ok(demoPath);
+  const id = '11111111-1111-4111-8111-111111111111';
+  fs.mkdirSync(path.join(tmp, '.agent'));
+  fs.writeFileSync(path.join(tmp, '.agent', `${id}.jsonl`), JSON.stringify({ kind: 'metadata', config: { model: 'fixture/model', gateway: { baseURL: base } } }) + '\n');
+  const pinned = await run(['--check', '--model', 'wrong/model', '--', '--workspace', tmp, '--resume', id]);
+  assert.equal(pinned.code, 0); assert.equal(JSON.parse(pinned.stdout).resumePinned, true);
+  assert.equal(JSON.parse(pinned.stdout).model, 'fixture/model');
+  env.ANTHROPIC_BASE_URL = 'http://127.0.0.1:1';
+  const absent = await run(['--check', '--base-url', base, '--model', 'fixture/model']);
+  assert.equal(JSON.parse(absent.stdout).credentialPresent, false);
+  const missing = await run(['--check', '--base-url', base, '--model', 'missing']);
+  assert.notEqual(missing.code, 0); assert.match(missing.stderr, /absent/);
+  invalid = true;
+  const other = await run(['--check', '--base-url', base, '--model', 'fixture/model']);
+  assert.notEqual(other.code, 0); assert.match(other.stderr, /advertise/);
+  assert.equal(requests.every(p => p === '/' || p === '/v1/models'), true);
+  fs.rmSync(demoPath, { recursive: true, force: true });
+  console.log(JSON.stringify({ launcher: 'passed', discovery: true, modelValidation: true, pinnedResume: true,
+    exactCredentialOrigin: true, compiledDemo: true, noSecretOutput: true, modelCalls: 0 }));
+} finally { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); fs.rmSync(tmp, { recursive: true, force: true }); }
