@@ -42,6 +42,18 @@ try {
   assert.equal(pinned.code, 0); assert.equal(JSON.parse(pinned.stdout).resumePinned, true);
   assert.equal(JSON.parse(pinned.stdout).model, 'fixture/model');
   env.ANTHROPIC_BASE_URL = 'http://127.0.0.1:1';
+  const equalPinned = await run(['--check', '--model', 'wrong/model', '--', `--workspace=${tmp}`, `--resume=${id}`]);
+  assert.equal(equalPinned.code, 0); assert.equal(JSON.parse(equalPinned.stdout).model, 'fixture/model');
+  const malformedId = await run(['--check', '--base-url', base, '--model', 'fixture/model', '--', '--resume', '11111111-1111-4111-8111-xxxxxxxxxxxx']);
+  assert.notEqual(malformedId.code, 0); assert.match(malformedId.stderr, /UUID/);
+  const linked = path.join(tmp, 'linked'); fs.mkdirSync(linked);
+  fs.symlinkSync(path.join(tmp, '.agent'), path.join(linked, '.agent'));
+  const linkResume = await run(['--check', '--', '--workspace', linked, '--resume', id]);
+  assert.notEqual(linkResume.code, 0); assert.match(linkResume.stderr, /real directory/);
+  const duplicate = await run(['--check', '--base-url', base, '--model', 'fixture/model', '--', '--workspace', tmp, '--resume', id, `--resume=${id}`]);
+  assert.notEqual(duplicate.code, 0); assert.match(duplicate.stderr, /duplicate/);
+  const offOrigin = await run(['--check', '--base-url', 'https://example.test', '--model', 'fixture/model']);
+  assert.notEqual(offOrigin.code, 0); assert.match(offOrigin.stderr, /loopback/);
   const absent = await run(['--check', '--base-url', base, '--model', 'fixture/model']);
   assert.equal(JSON.parse(absent.stdout).credentialPresent, false);
   const missing = await run(['--check', '--base-url', base, '--model', 'missing']);
