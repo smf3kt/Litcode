@@ -12,6 +12,7 @@ import { permissionPolicySchema } from './permissions.js';
 import { forkSession, listSessions } from './sessions.js';
 import { parseAttachmentCommand } from './media.js';
 import { checkpointConversation, previewRewind, applyRewind, type RewindPreview } from './rewind.js';
+import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
 import { validateElicitationResult, type McpClientRequests, type McpElicitationResult } from './mcp-client-requests.js';
 import { captureClipboardImage } from './clipboard.js';
@@ -51,6 +52,7 @@ export const COMMAND_HELP = `/help       Show commands
 /fork       Fork completed history into a new session
 /rewind N   Branch conversation at completed turn N (files stay as they are)
 /checkpoint NAME  Associate a file snapshot with the current completed turn
+/checkpoint-recover  Resolve a proven interrupted restore; changed files stay preserved
 /rewind N --files  Preview files and history together (N=0 means initial history)
 /rewind N --files --apply TOKEN  Apply the exact preview and start a new session
 /cwd DIR    Relocate completed conversation into an existing workspace
@@ -575,6 +577,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           }
           await agent().emitHook('CwdChanged', { cwd: target }, options.signal);
           await agent().emitHook('DirectoryAdded', { directory_path: target, source: 'cwd_relocation' }, options.signal);
+          continue;
+        }
+        if (prompt === '/checkpoint-recover') {
+          if (session.config.features?.checkpoints === false) throw new Error('Checkpoints are disabled in this session');
+          output.write(JSON.stringify(await withTurn(signal => Promise.resolve(recoverCheckpoint({ workspace: session.config.workspace,
+            signal, allowShell: false, maxOutputBytes: session.config.maxOutputBytes }))), null, 2) + '\n');
+          rewindPreview = undefined;
           continue;
         }
         if (/^\/checkpoint(?:\s|$)/.test(prompt)) {

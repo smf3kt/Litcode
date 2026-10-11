@@ -196,7 +196,7 @@ export class WorkflowRegistry {
             'A running task after a crash has unknown effects and requires retry_interrupted: true.',
             'Pending tasks have no committed launch; failed, cancelled and skipped tasks rerun.',
             'Reuse requires the full DAG and pinned settings digest; stored snapshots are bounded and retained until explicitly archived.',
-            'Recovery-guard crashes require inspecting the guard PID and explicitly removing owner.lock.recovery after exit.',
+            'Dead recovery guards are reclaimed by identity; a crash during guard reclamation retains its token claim for explicit inspection.',
           ] } } : {}) },
       tasks, controller: new AbortController(), children: new Set(), definition, settingsDigest,
     };

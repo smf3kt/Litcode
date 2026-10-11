@@ -4,9 +4,9 @@
 
 ## 当前结论
 
-本地harness可运行，功能族整体为Partial。W02来源链2609项与新索引已验收，历史全项目搬运仍待审。本轮W05已完成opt-in精确URI恢复及HTTP GET重开，源码/编译版实际CLI各12请求通过；当前全量1015/1015、零失败。MCP启动降级、慢恢复、进程重启订阅持久化和stdio致命故障URI保留仍待迁移。
+本地工作包W04恢复链、W05启动/慢恢复、W06已使用技能消费者及W07本地交付已完成有限验收；功能族整体仍为Partial。当前全量1021/1021、零失败；真实SIGKILL与源码/编译CLI通过，源码包独立重建50模块字节一致。历史全产品来源审计、完整TUI/MCP扩展、跨进程订阅持久化仍是功能族缺口，不以本轮有限包验收代替。
 
-当前基线与内容身份见[W05恢复证据](ports/W05-recovery-evidence.json)。W01鉴权与目录基线、W02来源校验继续保留各自验收身份；历史1000/997/3、948/948及W01的1003/1003保持原版本作用域。真实Magpie管理链待验，限定搜索未定位管理端。
+当前身份与17项验证记录见[本地交付证据](ports/local-completion-evidence.json)。W01/W02及历史基线保持原版本作用域。Git已按用户要求初始化，main初始05d1162，工作位于work/complete-runtime-work；无remote。真实Magpie管理链待验，限定搜索未定位管理端。
 
 ## 优先工作包
 
@@ -14,11 +14,11 @@
 | --- | --- | --- | --- |
 | 1 / W01 | 网关边界与基线；并行执行agents | verified；A01、A06 | 已满足；[W01证据](ports/W01.md)，当前全量1003/1003，实际Magpie仍待验 |
 | 2 / W02 | 可信源码与搬运试点；并行执行agents | verified；历史ports待审 | [W02](ports/W02.md)：独立verifier、索引摘要校验、首份准确rewrite台账及内容/构建身份已验收 |
-| 3 / W03 | Magpie启动/恢复适配；执行agent，管理端owner待定位 | blocked；限定相邻项目/已装CLI搜索未定位管理端；A02 | 缺管理仓库、启动/路由变更/凭证发行API；已有Messages端点和CLI新建/恢复入口，真实管理链待验 |
-| 4 / W04 | 执行与恢复完整包；执行agent | W02来源基础；原实现依赖按包收齐 | checkpoint/技能前置效果/工作流中选一条完整恢复链，保留未知效果不自动重放 |
-| 5 / W05 | MCP生命周期剩余包；并行执行agents | Partial；GET/URI恢复slice verified | [恢复证据](ports/W05-recovery.md)；下一包启动降级/慢重试，完整目录变化另保留缺口 |
-| 6 / W06 | 扩展与交互包；执行agent | W02、按实际使用优先 | skills/hooks来源与消费者、headless/TUI/媒体按完整子系统交付；主动设计差异先核对 |
-| 7 / W07 | 编码任务验收与交付；执行agent，发布决定由用户 | W01-W03及必要运行包 | 实际代码任务与恢复证据；LiTcode命名/源码获取/可复现构建/许可证与notice齐备，再进入发布步骤 |
+| 3 / W03 | Magpie启动/恢复适配；管理端owner待定位 | blocked；已定位安装app0.1.1109及3425监听，源码仓库未定位；A02 | 静态候选含gateway route/agents CLI/caller-keys，接口参数及启动/轮换授权仍缺；真实管理链待验 |
+| 4 / W04 | 执行与恢复完整包；执行agents | verified有限进程崩溃链 | [持久恢复](ports/W04-crash-recovery.md)：checkpoint8切点+实际CLI，workflow未知效果显式重试/完成复用；原算法未证明，明确rewrite |
+| 5 / W05 | MCP生命周期剩余包；执行agents | verified本地启动/慢恢复包，功能族Partial | [启动](ports/W05-startup.md)、[URI/GET](ports/W05-recovery.md)；完整MCP扩展与订阅持久化另保留缺口 |
+| 6 / W06 | 扩展与交互包；执行agents | verified已使用技能/Hook消费者包，功能族Partial | [消费者验收](ports/W06-skills-hooks.md)：两源码CLI各9请求+38回归；原shellAST/once完整来源仍待审 |
+| 7 / W07 | 编码任务验收与交付；执行agent，发布决定由用户 | local verified；publication blocked | [本地交付](ports/W07-local-delivery.md)：litcode命令、源码173文件重建一致、notice与private包；Magpie、项目license/remote及来源权利尚缺 |
 
 选择规则：从最上方ready项开始。W03缺管理端信息时继续W02/W04等独立本地工作，同时把所缺信息写在本行；没有预算时真实模型验收保持待验。W04-W06具体子系统由已定位源码、依赖成熟度和实际使用价值决定，不为旧报告的每个措辞创建任务。
 
@@ -36,7 +36,7 @@
 | A06 | P2 三处工具总数断言漂移 | resolved / confirmed | [W01](ports/W01.md)：名称/能力核验5/5，当前全量1003/1003 |
 | A07 | P2 验证缺内容/构建身份与持久绑定 | resolved / confirmed，历史记录维持原证据等级 | 共享identity入口与[W01](ports/W01-evidence.json)/[W02证据](ports/W02-evidence.json)持久绑定；历史不追填猜测 |
 | A08 | P2 当前缺口与历史混杂 | open / confirmed，本轮已建CURRENT作为处置入口 | 按相关子系统逐项resolved/superseded并指向新结论；流程建立不等于全部内容已核对 |
-| A09 | P2 开源交付准备 | open / reported，当前包private且入口仍personal-harness | W07：命名/源码仓库/分发/来源与notice逐项准备；本轮不初始化Git或发布 |
+| A09 | P2 开源交付准备 | partial / 本地交付verified | 命名/Git/worktree/源码重建/依赖notice已验收；项目license/remote及来源权利待定，public发布保留blocked |
 
 ## 溯源和历史使用规则
 
@@ -49,4 +49,4 @@
 
 ## 本轮流程交付
 
-本轮继续并行完成W05的GET/URI恢复完整链：当前全量1015/1015、MCP138/138、check/build和源码/编译CLI各12请求通过；精确来源差异与内容身份绑定ports记录。W03管理端未定位、付费上游待验；W04与W05剩余运行恢复按依赖继续。
+本轮已提交前完成1021/1021全量、check/build、真实崩溃与编译CLI、private包56文件及源码重建一致。收齐本地验收记录后提交工作分支；外部Magpie与项目license/remote待输入，禁止把待验声明成完成。

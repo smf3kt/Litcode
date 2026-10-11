@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
-import { createCheckpointTools } from "../src/checkpoints.js";
+import { createCheckpointTools, recoverCheckpoint } from "../src/checkpoints.js";
 import type { ToolContext } from "../src/tools.js";
 
 const tools = new Map(createCheckpointTools().map(tool => [tool.schema.name, tool]));
@@ -333,6 +333,7 @@ test("mid-restore cancellation rolls back committed bytes and explicit removals"
 });
 
 test("a target edit during atomic staging survives the conflict and earlier effects roll back", async () => {
+  for (const external of ["concurrent Z", "Z"]) {
   const root = workspace();
   write(root, "a", "A");
   write(root, "z", "Z");
@@ -341,18 +342,65 @@ test("a target edit during atomic staging survives the conflict and earlier effe
   write(root, "z", "changed Z");
   const current = await diff(root);
   const sync = fs.fsyncSync;
-  let calls = 0;
+  let injected = false;
   fs.fsyncSync = ((fd: number) => {
     sync(fd);
-    // Lock sync, first staged file, its directory, then the second staged file.
-    if (++calls === 4) write(root, "z", "concurrent Z");
+    // Target the staged Z bytes, independent of journal/lock fsync counts.
+    const stat = fs.fstatSync(fd);
+    if (!injected && stat.isFile() && stat.size === 1 && read(root, "a") === "A") {
+      injected = true;
+      write(root, "z", external);
+    }
   }) as typeof fs.fsyncSync;
   try {
-    await assert.rejects(run("checkpoint_restore", { name: "base", expected_current_digest: current.current_digest, dry_run: false }, root), /conflict during restore/);
+    await assert.rejects(run("checkpoint_restore", { name: "base", expected_current_digest: current.current_digest, dry_run: false }, root), /conflict/);
   } finally { fs.fsyncSync = sync; }
   assert.equal(read(root, "a"), "changed A");
-  assert.equal(read(root, "z"), "concurrent Z");
+  assert.equal(injected, true);
+  assert.equal(read(root, "z"), external);
+  assert.equal(fs.existsSync(path.join(root, ".agent/checkpoints/transaction.json")), true);
+  if (external !== "Z") assert.throws(() => recoverCheckpoint(context(root)), /conflict/);
+  assert.equal(read(root, "a"), "changed A");
   assert.equal(fs.readdirSync(root).some(file => file.endsWith(".tmp")), false);
+  }
+});
+
+test("recovery preserves active and invalid lock owners and validates legacy PID locks", async () => {
+  const root = workspace(); write(root, "a", "A");
+  await run("checkpoint_create", { name: "base" }, root);
+  const target = path.join(root, ".agent/checkpoints/lock");
+  const active = JSON.stringify({ pid: process.pid, token: crypto.randomUUID() });
+  fs.writeFileSync(target, active);
+  assert.throws(() => recoverCheckpoint(context(root)), /owner is active/);
+  assert.equal(read(root, ".agent/checkpoints/lock"), active);
+  fs.writeFileSync(target, `${process.pid}\n`);
+  assert.throws(() => recoverCheckpoint(context(root)), /owner is active/);
+  assert.equal(read(root, ".agent/checkpoints/lock"), `${process.pid}\n`);
+  fs.writeFileSync(target, "partial JSON {");
+  assert.throws(() => recoverCheckpoint(context(root)), /owner is invalid/);
+  assert.equal(read(root, ".agent/checkpoints/lock"), "partial JSON {");
+  assert.equal(fs.existsSync(`${target}.recovery`), false);
+});
+
+test("mkdir before inode publication preserves an explicit ownership residual", async () => {
+  const root = workspace(); write(root, "a", "A"); write(root, "nested/b", "B");
+  await run("checkpoint_create", { name: "base" }, root);
+  write(root, "a", "changed A"); fs.rmSync(path.join(root, "nested"), { recursive: true });
+  const current = await diff(root), mkdir = fs.mkdirSync;
+  fs.mkdirSync = ((target: fs.PathLike, ...args: any[]) => {
+    const result = (mkdir as any)(target, ...args);
+    if (String(target) === path.join(root, "nested")) throw new Error("injected after mkdir");
+    return result;
+  }) as typeof fs.mkdirSync;
+  try { await assert.rejects(run("checkpoint_restore", { name: "base", expected_current_digest: current.current_digest, dry_run: false }, root), /ownership is unknown/); }
+  finally { fs.mkdirSync = mkdir; }
+  const pending = path.join(root, ".agent/checkpoints/transaction.json");
+  const bytes = fs.readFileSync(pending);
+  assert.equal(JSON.parse(bytes.toString()).directories[0].inode, null);
+  assert.throws(() => recoverCheckpoint(context(root)), /ownership is unknown/);
+  assert.deepEqual(fs.readFileSync(pending), bytes);
+  assert.equal(read(root, "a"), "A");
+  assert.deepEqual(fs.readdirSync(path.join(root, "nested")), []);
 });
 
 test("diff/list outputs paginate and cap JSON while retaining digest confirmation", async () => {

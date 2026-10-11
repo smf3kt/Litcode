@@ -8,3 +8,4 @@ extracted*/
 .env.*
 *.log
 *.tgz
+release/

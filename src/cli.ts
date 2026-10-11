@@ -28,7 +28,7 @@ import {
   type Runtime,
 } from './runtime.js';
 
-const help = `Personal harness
+const help = `LiTcode
 
   npm run agent -- --workspace DIR "task"
   npm run agent -- --workspace DIR --resume UUID "next task"

@@ -6,6 +6,7 @@ import { test } from "node:test";
 import { defaultConfig } from "../src/agent.js";
 import { Session } from "../src/session.js";
 import { checkpointConversation, previewRewind, applyRewind, automaticCheckpoint } from "../src/rewind.js";
+import { recoverCheckpoint } from "../src/checkpoints.js";
 
 const signal = new AbortController().signal;
 function setup() {
@@ -71,6 +72,50 @@ test("branch commit failure rolls files back and removes the uncommitted branch"
     assert.equal(fs.readdirSync(path.join(f.workspace, ".agent")).filter(name => name.endsWith(".jsonl")).length, 1);
     assert.equal(fs.existsSync(path.join(f.workspace, ".agent/checkpoints/lock")), false);
   } finally { Session.prototype.append = append; f.close(); }
+});
+
+test("durable branch proof preserves committed files through marker and cleanup failures", () => {
+  for (const failure of ["marker", "cleanup"] as const) {
+  const f = setup(); const rename = fs.renameSync;
+  const unlink = fs.unlinkSync, sync = fs.fsyncSync;
+  let removed = false;
+  let reopened: Session | undefined;
+  try {
+    f.write("edit.txt", "base"); checkpointConversation(f.session, "initial", signal);
+    f.write("edit.txt", "changed"); f.write("added.txt", "new");
+    const preview = previewRewind(f.session, 0, signal);
+    fs.renameSync = ((from: fs.PathLike, to: fs.PathLike) => {
+      if (failure === "marker" && String(to) === path.join(f.workspace, ".agent/checkpoints/transaction.json") && JSON.parse(fs.readFileSync(from, "utf8")).state === "committed") {
+        throw new Error("injected committed marker failure");
+      }
+      return rename(from, to);
+    }) as typeof fs.renameSync;
+    fs.unlinkSync = ((target: fs.PathLike) => {
+      const result = unlink(target);
+      if (failure === "cleanup" && String(target) === path.join(f.workspace, ".agent/checkpoints/transaction.json")) removed = true;
+      return result;
+    }) as typeof fs.unlinkSync;
+    fs.fsyncSync = ((fd: number) => {
+      sync(fd);
+      if (removed) { removed = false; throw new Error("injected cleanup fsync failure"); }
+    }) as typeof fs.fsyncSync;
+    assert.throws(() => applyRewind(f.session, preview, preview.token, signal), failure === "marker" ? /history committed/ : /cleanup fsync failure/);
+    fs.renameSync = rename;
+    fs.unlinkSync = unlink; fs.fsyncSync = sync;
+    assert.equal(fs.readFileSync(path.join(f.workspace, "edit.txt"), "utf8"), "base");
+    assert.equal(fs.existsSync(path.join(f.workspace, "added.txt")), false);
+    const pending = path.join(f.workspace, ".agent/checkpoints/transaction.json");
+    const transaction = failure === "marker" ? JSON.parse(fs.readFileSync(pending, "utf8")) : undefined;
+    if (transaction) assert.equal(transaction.state, "pending");
+    const ctx = { workspace: f.workspace, signal, allowShell: false, maxOutputBytes: 24000 };
+    assert.deepEqual(recoverCheckpoint(ctx), { recovery: failure === "marker" ? "committed" : "none" });
+    assert.deepEqual(recoverCheckpoint(ctx), { recovery: "none" });
+    const branchId = transaction?.branch.id ?? fs.readdirSync(path.join(f.workspace, ".agent")).find(name => name.endsWith(".jsonl") && name !== `${f.session.id}.jsonl`)!.slice(0, -6);
+    reopened = Session.open(f.workspace, { id: branchId });
+    assert.ok(reopened.events.some(event => event.kind === "branch" && event.reason === "rewind"));
+    assert.equal(previewRewind(reopened, 0, signal).operations.length, 0);
+  } finally { fs.renameSync = rename; fs.unlinkSync = unlink; fs.fsyncSync = sync; reopened?.close(); f.close(); }
+  }
 });
 
 test("automatic main checkpoints deduplicate persisted boundaries and skip child snapshots", () => {

@@ -87,8 +87,16 @@ test("dead PID locks recover, live owners exclude writers, interrupted effects r
     fs.writeFileSync(file, JSON.stringify(raw));
     const dead = Number(spawnSync("/bin/sh", ["-c", "printf %s $$"], { encoding: "utf8" }).stdout);
     assert.ok(dead > 0); fs.writeFileSync(path.join(directory, "owner.lock"), JSON.stringify({ pid: dead, token: randomUUID() }));
+    const recovery = path.join(directory, "owner.lock.recovery");
+    fs.writeFileSync(recovery, JSON.stringify({ pid: process.pid, token: randomUUID() }));
+    const guardProbe = new WorkflowStore(f.workspace, f.owner);
+    assert.throws(() => guardProbe.load(original.id), /recovery is active/);
+    guardProbe.close();
+    fs.writeFileSync(recovery, JSON.stringify({ pid: dead, token: randomUUID() }));
     let calls = 0; const next = f.make(async () => { calls++; return response("retried"); });
     assert.equal((await next.workflows.get(original.id)).tasks[0]?.status, "running");
+    assert.equal(fs.existsSync(recovery), false);
+    assert.equal(fs.readdirSync(directory).some(name => name.endsWith(".claim")), false);
     await assert.rejects(next.workflows.run({ tasks: [{ id: "a", prompt: "work" }], resume_from: original.id }), /retry_interrupted: true/);
     assert.equal(calls, 0);
     const resumed = await next.workflows.run({ tasks: [{ id: "a", prompt: "work" }], resume_from: original.id, retry_interrupted: true });

@@ -131,10 +131,29 @@ export class WorkflowStore {
       let recoveryFd: number;
       try { recoveryFd = fs.openSync(recovery, "wx", 0o600); }
       catch (claim) {
-        if ((claim as NodeJS.ErrnoException).code === "EEXIST") {
-          throw new Error("Workflow lock recovery is in progress; retry. After a recovery-process crash, inspect owner.lock.recovery PID and remove that guard explicitly.");
+        if ((claim as NodeJS.ErrnoException).code !== "EEXIST") throw claim;
+        const observed = this.readFile(recovery, 4096);
+        const stale = z.object({ pid: z.number().int().positive(), token: uuid }).strict().parse(observed.value);
+        try { process.kill(stale.pid, 0); throw new Error(`Workflow lock recovery is active in process ${stale.pid}`); }
+        catch (probe) { if ((probe as NodeJS.ErrnoException).code !== "ESRCH") throw probe; }
+        // One claim per dead token bounds double-crash recovery without unlink races.
+        const tokenClaim = `${recovery}.${stale.token}.claim`;
+        let claimFd: number;
+        try { claimFd = fs.openSync(tokenClaim, "wx", 0o600); }
+        catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new Error("Workflow guard reclamation is in progress; inspect a stale token claim before removing it");
+          throw error;
         }
-        throw claim;
+        try {
+          fs.writeFileSync(claimFd, JSON.stringify({ pid: process.pid, token: this.token })); fs.fsyncSync(claimFd);
+          const current = this.readFile(recovery, 4096);
+          if (current.stat.ino !== observed.stat.ino || current.stat.dev !== observed.stat.dev || current.stat.mtimeMs !== observed.stat.mtimeMs ||
+              current.stat.size !== observed.stat.size || JSON.stringify(current.value) !== JSON.stringify(observed.value)) throw new Error("Workflow recovery guard changed; retry");
+          try { process.kill(stale.pid, 0); throw new Error(`Workflow lock recovery is active in process ${stale.pid}`); }
+          catch (probe) { if ((probe as NodeJS.ErrnoException).code !== "ESRCH") throw probe; }
+          fs.unlinkSync(recovery);
+          recoveryFd = fs.openSync(recovery, "wx", 0o600);
+        } finally { fs.closeSync(claimFd); fs.unlinkSync(tokenClaim); this.syncDirectory(); }
       }
       try {
         fs.writeFileSync(recoveryFd, JSON.stringify({ pid: process.pid, token: this.token })); fs.fsyncSync(recoveryFd);
@@ -148,7 +167,14 @@ export class WorkflowStore {
         }
         fs.unlinkSync(this.lock);
         fd = fs.openSync(this.lock, "wx", 0o600);
-      } finally { fs.closeSync(recoveryFd); fs.unlinkSync(recovery); }
+      } finally {
+        const owned = fs.fstatSync(recoveryFd);
+        try {
+          const current = fs.lstatSync(recovery);
+          if (current.ino !== owned.ino || current.dev !== owned.dev) throw new Error("Workflow recovery guard ownership changed");
+          fs.unlinkSync(recovery);
+        } finally { fs.closeSync(recoveryFd); this.syncDirectory(); }
+      }
     }
     try {
       fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, token: this.token }));
