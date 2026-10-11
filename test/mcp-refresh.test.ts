@@ -3,21 +3,23 @@ import { createServer, type ServerResponse } from "node:http";
 import { test } from "node:test";
 import { connectMcpServers, MCP_MAX_TOTAL_TOOLS, type McpConnection, type McpConnectOptions } from "../src/mcp.js";
 import type { ToolContext } from "../src/tools.js";
+import { mcpReconnectDelay } from "../src/mcp-retry.js";
 
 const ctx = (): ToolContext => ({ workspace: process.cwd(), signal: new AbortController().signal, maxOutputBytes: 100_000, allowShell: false });
 const info = (name: string, readOnly = false) => ({ name, description: `${name} description`, inputSchema: { type: "object", properties: { text: { type: "string" } } }, annotations: { readOnlyHint: readOnly } });
-type State = { tools: unknown[]; lists: number; calls: string[]; fail: boolean; notify: boolean; closed: number; result?: unknown; initializeChanged?: boolean; afterInitial?: unknown[] };
+type State = { tools: unknown[]; initializes: number; lists: number; calls: string[]; fail: boolean; notify: boolean; closed: number; result?: unknown; initializeChanged?: boolean; afterInitial?: unknown[] };
 function json(res: ServerResponse, id: unknown, result: unknown): void {
   res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ jsonrpc: "2.0", id, result }));
 }
 async function fixture(fn: (url: string, state: State) => Promise<void>): Promise<void> {
-  const state: State = { tools: [info("original", true)], lists: 0, calls: [], fail: false, notify: false, closed: 0 };
+  const state: State = { tools: [info("original", true)], initializes: 0, lists: 0, calls: [], fail: false, notify: false, closed: 0 };
   const server = createServer((req, res) => {
     void (async () => {
       let text = ""; for await (const chunk of req) text += chunk;
       if (req.method === "DELETE") { state.closed++; res.writeHead(204); res.end(); return; }
       const msg = JSON.parse(text);
       if (msg.method === "initialize") {
+        state.initializes++;
         res.setHeader("Mcp-Session-Id", "session");
         const result = { protocolVersion: "2025-06-18", capabilities: { tools: { listChanged: true } } };
         if (state.initializeChanged) {
@@ -51,6 +53,13 @@ async function fixture(fn: (url: string, state: State) => Promise<void>): Promis
 const tool = (c: McpConnection, name: string) => { const t = c.tools.find((t) => t.schema.name === name); assert.ok(t, name); return t; };
 const connect = (url: string, options: McpConnectOptions = { dynamic: true }) => connectMcpServers({ srv: { type: "http", url } }, ctx(), options);
 const search = async (c: McpConnection, query = "", extra = {}) => JSON.parse(await tool(c, "mcp_tool_search").execute({ query, ...extra }, ctx()));
+const until = async (predicate: () => boolean) => {
+  const deadline = Date.now() + 3000;
+  while (!predicate()) {
+    assert.ok(Date.now() < deadline, "MCP fixture condition expired");
+    await new Promise(resolve => setTimeout(resolve, 5));
+  }
+};
 
 test("default MCP schemas remain exact and dynamic helpers require configured servers", async () => {
   await fixture(async (url) => {
@@ -255,4 +264,192 @@ test("stdio list_changed refreshes private tools without spawning replacement cl
     assert.equal(after.tools[0].tool, "new");
     assert.match(after.tools[0].description, new RegExp(`pid ${pid} lists 2`));
   } finally { await c.close(); }
+});
+
+test("recovery startup retains peers, validates candidates, discovers tools and closes in-flight replacements", async () => {
+  let failing = true, initializes = 0, calls = 0, invalid = false, hold = false;
+  const deleted: string[] = [];
+  let held: ServerResponse | undefined;
+  const server = createServer((req, res) => {
+    void (async () => {
+      if (req.method === "DELETE") { deleted.push(String(req.headers["mcp-session-id"])); res.writeHead(204).end(); return; }
+      let text = ""; for await (const chunk of req) text += chunk;
+      const msg = JSON.parse(text);
+      if (req.url === "/down" && failing) { res.writeHead(503).end(); return; }
+      if (msg.method === "initialize") { initializes++; res.setHeader("Mcp-Session-Id", "startup-" + initializes); json(res, msg.id, { protocolVersion: "2025-06-18", capabilities: { tools: {} } }); }
+      else if (msg.method === "tools/list") {
+        if (req.url === "/down" && hold) { held = res; return; }
+        json(res, msg.id, { tools: invalid && req.url === "/down" ? [info("a.b"), info("a_b")] : [info("ready", true)] });
+      }
+      else if (msg.method === "tools/call") { calls++; json(res, msg.id, { content: [{ type: "text", text: req.url }] }); }
+      else res.writeHead(202).end();
+    })().catch(() => res.destroy());
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address(); assert.ok(address && typeof address !== "string");
+  const base = `http://127.0.0.1:${address.port}`;
+  const config = { peer: { type: "http" as const, url: base + "/peer" }, down: { type: "http" as const, url: base + "/down" } };
+  let c: McpConnection | undefined;
+  try {
+    for (const recovery of [undefined, false]) await assert.rejects(connectMcpServers(config, ctx(), { recovery }), /503/);
+    c = await connectMcpServers(config, ctx(), { recovery: true, dynamic: true });
+    const schemas = JSON.stringify(c.tools.map(item => item.schema));
+    assert.equal(c.servers!().down!.state, "disconnected");
+    assert.equal(c.servers!().down!.generation, 0);
+    assert.equal(await tool(c, "mcp__peer__ready").execute({}, ctx()), "/peer");
+    assert.equal((await search(c, "", { server: "down" })).tools.length, 0);
+    await until(() => c!.servers!().down!.automaticAttempts === 1 && c!.servers!().down!.state === "disconnected");
+    const peer = c.servers!().peer;
+    const before = initializes;
+    failing = false;
+    invalid = true;
+    await assert.rejects(c.reconnect!("down", ctx().signal), /collision/);
+    assert.ok(deleted.includes("startup-" + (before + 1)));
+    assert.equal(c.servers!().down!.generation, 0);
+    invalid = false;
+    await c.reconnect!("down", ctx().signal);
+    assert.equal(c.servers!().down!.generation, 1);
+    assert.equal((await search(c, "", { server: "down" })).tools[0].tool, "ready");
+    assert.equal(await tool(c, "mcp_tool_call").execute({ server: "down", tool: "ready" }, ctx()), "/down");
+    assert.equal(initializes, before + 2);
+    assert.equal(JSON.stringify(c.tools.map(item => item.schema)), schemas);
+    invalid = true;
+    await assert.rejects(c.reconnect!("down", ctx().signal), /collision/);
+    assert.equal(c.servers!().down!.generation, 1);
+    assert.equal(await tool(c, "mcp__peer__ready").execute({}, ctx()), "/peer");
+    assert.deepEqual(c.servers!().peer, peer);
+    invalid = false; hold = true;
+    const replacement = c.reconnect!("down", ctx().signal);
+    const rejected = assert.rejects(replacement, { name: "AbortError" });
+    await until(() => held !== undefined);
+    await c.close(); await rejected;
+    held!.end();
+    assert.equal(c.servers!().down!.generation, 1);
+    assert.equal(c.servers!().down!.state, "closed");
+    assert.ok(deleted.includes("startup-" + initializes));
+    assert.equal(initializes, before + 4);
+    assert.equal(calls, 3);
+  } finally { await c?.close(); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
+test("startup recovery keeps configuration, auth, protocol, catalog, stdio and cancellation failures fatal", async () => {
+  await fixture(async (url, state) => {
+    await assert.rejects(connectMcpServers({ good: { type: "http", url }, bad: { command: "" } }, ctx(), { recovery: true }));
+    await assert.rejects(connectMcpServers({ good: { type: "http", url }, bad: { command: process.execPath, args: ["x\0"] } }, ctx(), { recovery: true }));
+    await assert.rejects(connectMcpServers({ good: { type: "http", url }, bad: { command: process.execPath, env: { "x=y": "z" } } }, ctx(), { recovery: true }));
+    await assert.rejects(connectMcpServers({ good: { type: "http", url }, bad: { command: process.execPath, env: { x: "z\0" } } }, ctx(), { recovery: true }));
+    await assert.rejects(connectMcpServers({ good: { type: "http", url }, bad: { type: "http", url: "bad-url" } }, ctx(), { recovery: true }));
+    await assert.rejects(connectMcpServers({ good: { type: "http", url }, bad: { type: "http", url, headersEnv: { Host: "PATH" } } }, ctx(), { recovery: true }));
+    const envName = "MCP_STARTUP_TEST_AUTH", original = process.env[envName];
+    try {
+      delete process.env[envName];
+      await assert.rejects(connectMcpServers({ good: { type: "http", url }, bad: { type: "http", url, headersEnv: { Authorization: envName } } }, ctx(), { recovery: true }), /missing/);
+      process.env[envName] = "bad\nheader";
+      await assert.rejects(connectMcpServers({ good: { type: "http", url }, bad: { type: "http", url, headersEnv: { Authorization: envName } } }, ctx(), { recovery: true }), /invalid/);
+    } finally { if (original === undefined) delete process.env[envName]; else process.env[envName] = original; }
+    assert.equal(state.initializes, 0);
+    assert.equal(state.lists, 0);
+  });
+  for (const mode of ["401", "403", "400", "404", "429", "protocol", "catalog", "collision", "cancel"]) {
+    let requests = 0, initializes = 0;
+    const server = createServer((req, res) => {
+      requests++;
+      if (mode === "cancel") return;
+      if (/^\d+$/.test(mode)) { res.writeHead(Number(mode)).end(); return; }
+      void (async () => {
+        let text = ""; for await (const chunk of req) text += chunk; const msg = JSON.parse(text);
+        if (msg.method === "initialize") { initializes++; json(res, msg.id, { protocolVersion: mode === "protocol" ? "wrong" : "2025-06-18", capabilities: { tools: {} } }); }
+        else if (msg.method === "tools/list") json(res, msg.id, { tools: mode === "catalog" ? [{ name: "" }] : [info("a.b"), info("a_b")] });
+        else res.writeHead(202).end();
+      })().catch(() => res.destroy());
+    });
+    await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address(); assert.ok(address && typeof address !== "string");
+    const controller = new AbortController();
+    const pending = connectMcpServers({ srv: { type: "http", url: `http://127.0.0.1:${address.port}` } }, { ...ctx(), signal: controller.signal }, { recovery: true });
+    if (mode === "cancel") setTimeout(() => controller.abort(), 10);
+    await assert.rejects(pending);
+    assert.equal(requests, mode === "catalog" || mode === "collision" ? 3 : 1);
+    assert.ok(initializes <= 1);
+    server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+  await assert.rejects(connectMcpServers({ local: { command: process.execPath, args: ["-e", "process.exit(1)"] } }, ctx(), { recovery: true }));
+  await fixture(async (url, state) => {
+    state.tools = Array.from({ length: MCP_MAX_TOTAL_TOOLS + 1 }, (_, i) => ({ name: `t${i}` }));
+    await assert.rejects(connectMcpServers({ srv: { type: "http", url } }, ctx(), { recovery: true }), /exceeds/);
+    assert.equal(state.closed, 1);
+  });
+});
+
+test("accelerated lifecycle runs five fast plus eight slow retries and honors manual/close cancellation", async t => {
+  assert.deepEqual(Array.from({ length: 5 }, (_, n) => mcpReconnectDelay(n, false)), [0, 1000, 2000, 4000, 8000]);
+  assert.equal(mcpReconnectDelay(5, false), undefined);
+  const low = Array.from({ length: 8 }, (_, n) => mcpReconnectDelay(n + 5, true, () => 0));
+  const high = Array.from({ length: 8 }, (_, n) => mcpReconnectDelay(n + 5, true, () => 1));
+  assert.deepEqual(low, Array(8).fill(15000));
+  assert.deepEqual(high, [30000, 60000, 120000, 240000, 300000, 300000, 300000, 300000]);
+  assert.equal(mcpReconnectDelay(13, true), undefined);
+  assert.throws(() => mcpReconnectDelay(5, true, () => Number.NaN));
+  const delays: number[] = [];
+  const nativeTimeout = globalThis.setTimeout;
+  t.mock.method(Math, "random", () => 0.5);
+  t.mock.method(globalThis, "setTimeout", (callback: (...args: any[]) => void, delay?: number, ...args: any[]) => {
+    // Advance reconnect waits only; transport deadlines and polling stay real.
+    if (callback.toString().includes("automaticAttempts")) {
+      delays.push(delay!); return nativeTimeout(callback, 2, ...args);
+    }
+    return nativeTimeout(callback, delay, ...args);
+  });
+  let mode = "fail", initializes = 0, calls = 0;
+  let held: ServerResponse | undefined;
+  const server = createServer((req, res) => {
+    void (async () => {
+      if (req.method === "DELETE") { res.writeHead(204).end(); return; }
+      let text = ""; for await (const chunk of req) text += chunk; const msg = JSON.parse(text);
+      if (msg.method === "initialize") {
+        initializes++;
+        if (mode === "fail") { res.writeHead(503).end(); return; }
+        if (mode === "hold") { held = res; return; }
+        res.setHeader("Mcp-Session-Id", "timers-" + initializes);
+        json(res, msg.id, { protocolVersion: "2025-06-18", capabilities: { tools: {} } });
+      } else if (msg.method === "tools/list") json(res, msg.id, { tools: [info("ready")] });
+      else if (msg.method === "tools/call") { calls++; res.writeHead(404).end(); }
+      else res.writeHead(202).end();
+    })().catch(() => res.destroy());
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address(); assert.ok(address && typeof address !== "string");
+  const config = { srv: { type: "http" as const, url: `http://127.0.0.1:${address.port}` } };
+  let c: McpConnection | undefined;
+  try {
+    c = await connectMcpServers(config, ctx(), { recovery: true, deferred: true, requestTimeoutMs: 501 });
+    await until(() => c!.servers!().srv!.retryPhase === "exhausted");
+    assert.equal(initializes, 14); assert.equal(c.servers!().srv!.automaticAttempts, 13);
+    assert.equal(c.servers!().srv!.generation, 0);
+    assert.deepEqual(delays, [0, 1000, 2000, 4000, 8000, 22500, 37500, 67500, 127500, 157500, 157500, 157500, 157500]);
+    mode = "ok"; await c.reconnect!("srv", ctx().signal);
+    assert.equal(c.servers!().srv!.generation, 1); assert.equal(c.servers!().srv!.retryPhase, undefined);
+    assert.equal((await search(c)).tools[0].tool, "ready");
+    mode = "hold";
+    await assert.rejects(tool(c, "mcp_tool_call").execute({ server: "srv", tool: "ready" }, ctx()), /404/);
+    await until(() => held !== undefined);
+    mode = "ok"; await c.reconnect!("srv", ctx().signal);
+    assert.equal(c.servers!().srv!.generation, 2); assert.equal(c.servers!().srv!.retryPhase, undefined);
+    held!.end(); held = undefined;
+    mode = "hold";
+    await assert.rejects(tool(c, "mcp_tool_call").execute({ server: "srv", tool: "ready" }, ctx()), /404/);
+    await until(() => held !== undefined);
+    await c.close(); held!.end(); held = undefined;
+    assert.equal(c.servers!().srv!.generation, 2);
+    const closedInitializes = initializes;
+    await new Promise(resolve => nativeTimeout(resolve, 20));
+    assert.equal(initializes, closedInitializes);
+    mode = "ok"; delays.length = 0;
+    c = await connectMcpServers(config, ctx(), { recovery: false, requestTimeoutMs: 501 });
+    mode = "fail"; const before = initializes;
+    await assert.rejects(tool(c, "mcp__srv__ready").execute({}, ctx()), /404/);
+    await until(() => c!.servers!().srv!.retryPhase === "exhausted");
+    assert.equal(initializes, before + 5); assert.deepEqual(delays, [0, 1000, 2000, 4000, 8000]);
+    await c.close(); assert.equal(calls, 3);
+  } finally { await c?.close(); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); t.mock.restoreAll(); }
 });

@@ -835,7 +835,7 @@ export async function createRuntime(
       },
       limits: [...mcp.limits, 'Jobs and schedules are session-only; clear/fork cancels the old session resources.',
         config.features?.mcpRecovery === true
-          ? 'MCP lifecycle: single-server replacement restores acknowledged exact URI subscriptions before commit; failed restoration retains the prior connection. HTTP expiry or three transport failures use five fast attempts; opted-in GET streams reopen up to five times per client lifetime after transient loss; no tool/event replay, durable URI persistence or slow retry phase.'
+          ? 'MCP lifecycle: transient HTTP startup failures retain healthy peers and recover in the background. Replacement restores acknowledged exact URI subscriptions before commit; failed restoration retains the prior connection. Five fast attempts precede up to eight bounded slow rounds; GET streams reopen up to five times per client lifetime. No tool/event replay or durable URI persistence.'
           : 'MCP lifecycle: single-server replacement retains other resources; HTTP session expiry or three transport failures trigger up to five attempts (immediate, 1/2/4/8s); authentication/protocol failures end retries; no tool replay or slow retry phase.',
         'Child agents omit background and scheduler tools. Optional cron jitter uses the harness timing algorithm; jobs remain session-only.'], close,
     };

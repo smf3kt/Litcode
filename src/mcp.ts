@@ -8,8 +8,9 @@ import { spawn, type ChildProcess } from "node:child_process";
 import type { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
 
-import { McpHttpClient, McpHttpStatusError, MCP_HTTP_LIMITS, validateMcpHttpUrl, validateMcpHeadersEnv } from "./mcp-http.js";
+import { McpHttpClient, MCP_HTTP_LIMITS, validateMcpHttpUrl, validateMcpHeadersEnv } from "./mcp-http.js";
 import type { ToolContext, ToolDefinition } from "./tools.js";
+import { mcpReconnectDelay, isTransientMcpFailure } from "./mcp-retry.js";
 import { McpClientRequestHandler, MCP_CLIENT_REQUEST_LIMITS, type McpClientRequests } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions, MCP_SUBSCRIPTION_LIMITS, MCP_MAX_RESOURCE_URI_BYTES, MCP_MAX_RESOURCE_NOTIFICATIONS, validateMcpResourceUri } from "./mcp-subscriptions.js";
 import { McpLogging, MCP_LOGGING_LIMITS, MCP_LOG_LEVELS, MCP_MAX_LOG_NOTIFICATIONS, validateMcpLogLevel } from "./mcp-logging.js";
@@ -117,7 +118,7 @@ export type McpConnectOptions = {
   deferred?: boolean;
   /** Connection-owned URI subscriptions; opt-in independently of resource catalogs. */
   subscriptions?: boolean;
-  /** Restore acknowledged URI subscriptions when replacing a transport; opt-in. */
+  /** Restore URI subscriptions, degrade transient HTTP startup failures and extend retries; opt-in. */
   recovery?: boolean;
   /** Connection-owned log collection; absent by default. */
   logging?: boolean;
@@ -144,6 +145,7 @@ export type McpServerStatus = {
   attempts: number;
   automaticAttempts?: number;
   lastError?: string;
+  retryPhase?: "fast" | "slow" | "exhausted" | "stopped";
 };
 
 export type McpNotificationStreamStatus = {
@@ -1198,6 +1200,8 @@ class ManagedMcpClient implements McpClient {
   private closing: Promise<void> | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private retryEpoch = 0;
+  private automaticReady = false;
+  private automaticDial: AbortController | undefined;
 
   constructor(private factory: () => McpClient, private context: McpConnectContext, private automatic: boolean,
     private validate: (listed: McpToolInfo[]) => void, private settings: McpConnectSettings) {
@@ -1212,9 +1216,21 @@ class ManagedMcpClient implements McpClient {
       if (this.current !== client || this.status.state === "closed") return;
       if (this.status.state === "disconnected") return;
       this.status.state = "disconnected";
-      if (this.automatic && !this.replacing) this.scheduleRetry(0, ++this.retryEpoch);
+      if (this.automatic && this.automaticReady && !this.replacing) this.scheduleRetry(0, ++this.retryEpoch);
     });
     if (unsubscribe) this.unbind.push(unsubscribe);
+  }
+  startAutomatic(): void {
+    this.automaticReady = true;
+    if (this.automatic && this.status.state === "disconnected") this.scheduleRetry(0, ++this.retryEpoch);
+  }
+  async degradeStartup(): Promise<void> {
+    this.status = { state: "disconnected", generation: 0, attempts: 0,
+      lastError: "MCP startup transport unavailable; background recovery pending" };
+    this.inventory = [];
+    for (const unsubscribe of this.unbind) unsubscribe();
+    this.unbind = [];
+    await this.current.close();
   }
   view(): McpServerStatus { return { ...this.status }; }
   listed(): McpToolInfo[] { return this.inventory; }
@@ -1227,6 +1243,7 @@ class ManagedMcpClient implements McpClient {
     this.status.state = "connected";
   }
   async listTools(signal: AbortSignal): Promise<McpToolInfo[]> {
+    if (this.status.state === "disconnected") return this.inventory;
     const client = this.current;
     const listed = await client.listTools(signal);
     if (this.current !== client) throw new Error("MCP connection changed during discovery; retry discovery");
@@ -1257,26 +1274,39 @@ class ManagedMcpClient implements McpClient {
     this.retryEpoch++;
     if (this.retryTimer) clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
+    this.automaticDial?.abort();
   }
   private scheduleRetry(attempt: number, epoch: number): void {
     if (epoch !== this.retryEpoch || this.status.state === "closed" || this.context.signal.aborted) return;
-    if (attempt >= 5) { this.status.lastError = "Automatic reconnect exhausted after 5 attempts; reconnect explicitly"; return; }
-    const delay = attempt === 0 ? 0 : 1000 * 2 ** (attempt - 1);
+    const delay = mcpReconnectDelay(attempt, this.settings.recovery);
+    if (delay === undefined) {
+      this.status.retryPhase = "exhausted";
+      this.status.lastError = `Automatic reconnect exhausted after ${this.settings.recovery ? 13 : 5} attempts; reconnect explicitly`;
+      return;
+    }
+    this.status.retryPhase = attempt < 5 ? "fast" : "slow";
     this.retryTimer = setTimeout(() => {
       this.retryTimer = undefined;
-      if (epoch !== this.retryEpoch || this.status.state === "closed") return;
+      if (epoch !== this.retryEpoch || this.status.state === "closed" || this.context.signal.aborted) return;
       this.status.automaticAttempts = attempt + 1;
-      void this.replace(this.context.signal).catch(error => {
-        const retryable = error instanceof McpHttpStatusError ? [500, 502, 503, 504].includes(error.status)
-          : error instanceof Error && /transport request failed|timed out after/.test(error.message);
-        if (epoch === this.retryEpoch && retryable) this.scheduleRetry(attempt + 1, epoch);
-      });
+      const dial = new AbortController();
+      this.automaticDial = dial;
+      void this.replace(AbortSignal.any([this.context.signal, dial.signal])).catch(error => {
+        if (epoch !== this.retryEpoch || this.status.state === "closed" || this.context.signal.aborted) return;
+        if (isTransientMcpFailure(error)) this.scheduleRetry(attempt + 1, epoch);
+        else this.status.retryPhase = "stopped";
+      }).finally(() => { if (this.automaticDial === dial) this.automaticDial = undefined; });
     }, delay);
     this.retryTimer.unref();
   }
   reconnect(signal: AbortSignal): Promise<McpServerStatus> {
     signal.throwIfAborted();
+    const automatic = this.automaticDial ? this.replacing : undefined;
     this.cancelRetry();
+    if (automatic) return automatic.catch(() => undefined).then(() => {
+      signal.throwIfAborted();
+      return this.replace(signal);
+    });
     return this.replace(signal);
   }
   private replace(signal: AbortSignal): Promise<McpServerStatus> {
@@ -1382,6 +1412,26 @@ export async function connectMcpServers(
   // Deferred publication requires the stable generic discovery/call adapters.
   if (settings.deferred) settings.dynamic = true;
 
+  // Validate all definitions before any owned child or HTTP request.
+  for (const [name, value] of Object.entries(config)) {
+    if (!name) throw new Error("connectMcpServers: MCP server names must be non-empty");
+    if (!isRecord(value)) throw new Error("MCP requires server configuration objects");
+    if (value.type !== undefined && value.type !== "stdio" && value.type !== "http") throw new Error("Invalid MCP transport type");
+    if (value.type === "http") {
+      validateMcpHttpUrl(value.url as string);
+      validateMcpHeadersEnv(value.headersEnv as Record<string, string> | undefined);
+      for (const envName of Object.values(value.headersEnv ?? {})) {
+        const header = process.env[envName];
+        if (!header) throw new Error("MCP HTTP authentication environment value is missing");
+        if (/[^\x20-\x7e]/.test(header)) throw new Error("MCP HTTP authentication environment value is invalid");
+      }
+    } else {
+      if (typeof value.command !== "string" || !value.command || value.command.includes("\0")) throw new Error(`MCP server "${name}" requires a non-empty command without NUL`);
+      if (value.args !== undefined && (!Array.isArray(value.args) || value.args.some(arg => typeof arg !== "string" || arg.includes("\0")))) throw new Error("Invalid MCP stdio arguments");
+      if (value.env !== undefined && (!isRecord(value.env) || Object.entries(value.env).some(([key, item]) => !key || /[=\0]/.test(key) || typeof item !== "string" || item.includes("\0")))) throw new Error("Invalid MCP stdio environment");
+    }
+  }
+
   const clients: McpClient[] = [];
   const namedClients = new Map<string, McpClient>();
   const inventories = new Map<string, McpToolInfo[]>();
@@ -1427,8 +1477,15 @@ export async function connectMcpServers(
       clients.push(client);
       namedClients.set(serverName, client);
       if (settings.dynamic) initialUnsubscribe.push(client.onToolsChanged(() => initialDirty.add(serverName)));
-      await client.initialize(context.signal);
-      const listed = await client.listTools(context.signal);
+      let listed: McpToolInfo[];
+      try {
+        await client.initialize(context.signal);
+        listed = await client.listTools(context.signal);
+      } catch (error) {
+        if (!settings.recovery || !http || context.signal.aborted || !isTransientMcpFailure(error)) throw error;
+        await client.degradeStartup();
+        listed = [];
+      }
       inventories.set(serverName, listed);
       if ([...inventories.values()].reduce((sum, infos) => sum + infos.length, 0) > MCP_MAX_TOTAL_TOOLS) throw new Error(`MCP tool catalog exceeds ${MCP_MAX_TOTAL_TOOLS} tools`);
       if ([...inventories.values()].reduce((sum, infos) => sum + Buffer.byteLength(JSON.stringify(infos)), 0) > MCP_MAX_TOOL_CATALOG_BYTES) throw new Error("MCP tool catalog exceeds byte limit");
@@ -1465,6 +1522,7 @@ export async function connectMcpServers(
   if (settings.catalog) tools.push(...makeCatalogTools(namedClients, context));
   if (settings.subscriptions) tools.push(...makeSubscriptionTools(namedClients, context));
   if (settings.logging) tools.push(...makeLoggingTools(namedClients, context));
+  for (const client of namedClients.values()) (client as ManagedMcpClient).startAutomatic();
   const transportLimits = hasHttp
     ? (hasStdio ? [...MCP_PROTOCOL_LIMITS, ...MCP_HTTP_LIMITS] : MCP_HTTP_LIMITS)
     : MCP_PROTOCOL_LIMITS;
@@ -1496,6 +1554,9 @@ export async function connectMcpServers(
       "HTTP GET dispatch: logging/resource updates/tools list changes/cancellation notifications only; server requests and RPC responses ignored; incremental bounds 1MiB/event, 64KiB/line, 8MiB/read chunk without whole-stream accumulation or total event limit; close aborts reader and awaits at most 1000ms"]
     : finalLimits;
   let closed = false;
+  const lifecycleLimits = settings.recovery ? [...streamLimits,
+    "MCP startup recovery: transient HTTP failures retain healthy peers and empty disconnected inventories; background dialing starts after catalog setup. Configuration/authentication/protocol/catalog failures remain fatal. Automatic replacement uses five fast attempts plus eight slow full-jitter rounds (30s base, 300s cap, 15s floor); manual reconnect supersedes timers; no tool replay.",
+  ] : streamLimits;
   return {
     tools,
     servers: () => Object.fromEntries([...namedClients].map(([name, client]) => [name, (client as ManagedMcpClient).view()])),
@@ -1507,7 +1568,7 @@ export async function connectMcpServers(
       inventories.set(server, client.listed());
       return result;
     },
-    limits: settings.dynamic ? [...streamLimits, ...MCP_DYNAMIC_LIMITS.map((entry) => settings.notificationStream && hasHttp ? entry.replace("no background HTTP GET stream", "owned HTTP GET SSE stream enabled") : entry), ...(settings.deferred ? ["deferred tools: namespaced schemas are omitted; input schema metadata is returned by mcp_tool_search"] : [])] : streamLimits,
+    limits: settings.dynamic ? [...lifecycleLimits, ...MCP_DYNAMIC_LIMITS.map((entry) => settings.notificationStream && hasHttp ? entry.replace("no background HTTP GET stream", "owned HTTP GET SSE stream enabled") : entry), ...(settings.deferred ? ["deferred tools: namespaced schemas are omitted; input schema metadata is returned by mcp_tool_search"] : [])] : lifecycleLimits,
     ...(settings.notificationStream && hasHttp ? { notificationStreams: () => Object.fromEntries([...namedClients].filter(([, client]) => client.notificationStreamStatus !== undefined).map(([name, client]) => [name, { ...client.notificationStreamStatus! }])) } : {}),
     async close(): Promise<void> {
       if (closed) return;

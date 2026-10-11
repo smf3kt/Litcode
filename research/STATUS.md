@@ -530,6 +530,10 @@ Parallel verifier/index work accepted the complete2609-record source chain and g
 
 Opt-in pinned mcpRecovery now restores acknowledged URI state on candidate transports before atomic adoption and reopens transient same-session GET notifications under a finite lifetime budget. Source/compiled actualCLI each passed12 owned requests,5generations,7GET; peer/journal/cleanup/no-effect-replay verified. MCP138/138 and full1015/1015 passed; check/build and52file offline package passed. Exact source differences, temporary diagnostics, remaining startup/slow/persistence boundaries and durable identity are consolidated in [ports/W05-recovery.md](ports/W05-recovery.md). Real Magpie management source remains unlocated in bounded search and upstream remains not_run.
 
+## Local recovery and delivery checkpoint (2026-10-11)
+
+W04 realSIGKILL checkpoint/workflow chains, W05 startup degradation/slow retry, W06 used skills/once consumers and W07 private LiTcode coding/source delivery accepted under finite contracts. Current1021/1021, MCP141/141, check/build and compiledCLI chains passed; private56file package and independently rebuilt50module source identical. Source differences, residual ownership windows and external Magpie/license/remote requirements are in ports/W04-crash-recovery.md, ports/W05-startup.md, ports/W06-skills-hooks.md and ports/W07-local-delivery.md; shared persistent identity is ports/local-completion-evidence.json. Git/worktree initialized by explicit user request; no external publication.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

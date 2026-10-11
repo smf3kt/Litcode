@@ -1,4 +1,4 @@
-# Personal Harness
+# LiTcode
 
 这是个人 coding harness：优先移植已有源码中的有用实现，集中替换宿主依赖并接入自己的运行层。按完整子系统迁移，进度和行为差异记录在 `research/FEATURES.md`。模型路由和协议转换交给 Magpie，本项目使用 Messages 协议作为网关接口。
 
@@ -25,9 +25,9 @@ npm run agent -- --demo
 
 ```sh
 npm run build
-node bin/personal-harness.mjs --help
-node bin/personal-harness.mjs --demo
-node bin/personal-harness.mjs --workspace /absolute/path/to/project --interactive
+node bin/litcode.mjs --help
+node bin/litcode.mjs --demo
+node bin/litcode.mjs --workspace /absolute/path/to/project --interactive
 ```
 
 本地打包安装示例（npm缓存需已有生产依赖供离线安装）：
@@ -37,12 +37,12 @@ PACKAGE_TMP=$(mktemp -d)
 npm run build
 npm pack --ignore-scripts --pack-destination "$PACKAGE_TMP"
 npm install --prefix "$PACKAGE_TMP/install" --offline --omit=dev --ignore-scripts \
-  "$PACKAGE_TMP/personal-agent-research-0.1.0.tgz"
-"$PACKAGE_TMP/install/node_modules/.bin/personal-harness" --help
-"$PACKAGE_TMP/install/node_modules/.bin/personal-harness" --demo
+  "$PACKAGE_TMP/litcode-0.1.0.tgz"
+"$PACKAGE_TMP/install/node_modules/.bin/litcode" --help
+"$PACKAGE_TMP/install/node_modules/.bin/litcode" --demo
 ```
 
-`bin/personal-harness.mjs`导入distCLI，构建仅编译src；package白名单bin/dist/README（含npm自身metadata），排除test/scripts/src、extracted/research及.agent/.harness数据。保持private:true，未发布或全局安装。`npm run smoke:package`实际临时pack→offline production install→installedbin help/demo通过，51文件，tsx缺席，demo三次脚本调用验证写hello/读取/配对/锁释放并清理自有临时目录，上游请求0；日志`/private/tmp/cc-reverse-package-cli.log`。TypeScript通过，`/private/tmp/cc-reverse-package-check.log`；初次仅demo输出断言位置错误，最终修正后通过。
+`bin/litcode.mjs`导入distCLI；旧`personal-harness`命令保留兼容。构建仅编译src，运行包包含bin/dist/README和依赖notice，排除提取样本、研究目录及会话数据。保持private:true、UNLICENSED，项目发布许可证由owner决定。`npm run smoke:package`验证离线生产安装、两个命令help一致、demo及锁清理。
 
 来源与构建身份检查：
 
@@ -57,7 +57,7 @@ npm run identity -- --output /absolute/path/to/new-identity.json
 
 网关鉴权按`LLM_AUTH`和`LLM_API_KEY`显式配置，隔离SDK继承的自定义header，保留Messages协议默认头。新会话、恢复换凭证、bearer/api-key均有实际loopback验收；真实Magpie管理端验收单独记录。
 
-通过环境变量配置 Magpie：
+MCP恢复：
 MCP恢复可在工作区`.harness/settings.json`显式开启，并固定到会话：
 
 ```json
@@ -66,9 +66,9 @@ MCP恢复可在工作区`.harness/settings.json`显式开启，并固定到会�
 
 成功确认的精确URI在手工或HTTP自动替换连接时先向候选连接恢复，再提交新generation；恢复失败保留旧连接。GET通知流遇到EOF、传输失败或idle deadline后在同一session内最多重开5次，间隔1/2/4/8/8秒；关闭会清理计时器。资源正文仍由显式读取工具获取，缺失通知维持缺失。旧会话缺少此开关时沿用原合同，HTTP既有自动快恢复保持。
 
-实际CLI验收入口：`npm run smoke:mcp-recovery-cli -- --compiled`（先`npm run build`）。来源及有限差异见[W05恢复记录](research/ports/W05-recovery.md)。启动降级、慢重试和进程重启后的订阅持久化仍待迁移。
+实际CLI验收入口：`npm run smoke:mcp-recovery-cli -- --compiled`和`npm run smoke:mcp-startup-cli -- --compiled`（先构建）。开启mcpRecovery还启用临时HTTP启动失败降级及五次快恢复后的八轮慢恢复，健康服务保持；来源与有限差异见[启动记录](research/ports/W05-startup.md)。进程重启后的订阅持久化仍待迁移。
 
-
+通过环境变量配置 Magpie：
 ```sh
 export LLM_API_KEY='[YOUR_GATEWAY_KEY]'
 export LLM_BASE_URL='http://127.0.0.1:3425'
@@ -95,6 +95,16 @@ npm run agent -- --workspace /absolute/path/to/project "检查测试失败的原
 本地 estimate 模式以请求内容的 UTF-8 字节长度加固定余量作为保守输入预算，没有使用真实模型 tokenizer，可能提前压缩，也不代表计费 token。API 模式才返回服务端计数。
 
 固定的 `@anthropic-ai/sdk 0.133.0` 仅负责网关 Messages 的流式传输和解析；模型转换由 Magpie 实现。SDK 的 vendor key/base URL 环境变量不会覆盖显式传入的 harness 配置。真实执行会请求所配置网关，包括任务响应、摘要及可选 token counting；本项目目前没有进行付费模型验证。
+
+本地源码交付：
+
+```sh
+npm run notices:check
+npm run source:bundle -- /absolute/path/to/new-litcode-source
+```
+
+源码目录包含src、锁定依赖、构建配置、scripts、test和notice，附逐文件摘要manifest。进入交付目录执行`npm ci --ignore-scripts`、`npm run check`、`npm run build`即可重建；本地缓存齐备时可增加`--offline`。源码包排除原始样本、提取目录、研究索引及私人运行数据。缺失的上游license文本在`research/ports/dependency-notices.json`明确列出，当前交付保持private。
+
 
 Shell 工具需要显式开启：
 
@@ -136,7 +146,7 @@ Rules目录现有界递归加载Markdown至depth3（root为0），遍历entries�
 
 `/mcp-reconnect SERVER` 使用固定配置替换单个连接，保留当前会话、其他server及后台资源；模型也可调用 `mcp_reconnect` 工具，沿用常规权限与工具日志。新连接完成握手和目录校验后才提交，失败保留旧连接。`/mcp` 展示状态、generation、尝试次数和重连错误。HTTP session过期或连续3次transport错误触发最多5次自动拨号，间隔为立即、1/2/4/8秒；认证与协议错误结束重试，stdio崩溃使用显式恢复。调用效果始终只执行一次，重连后的日志/订阅队列从空开始。发布schema保持固定，发生变化时旧工具报错；启用动态目录后可重新发现，或使用整体重连接入新的发布schema。
 
-不带名称的 `/mcp-reconnect` 保留整体重建入口：成功刷新工具schema并分支新会话，失败保留旧runtime。整体切换结束旧owner后台资源；修改磁盘配置使用 `/reload`。慢重试阶段、启动失败降级、事件重放及订阅重建仍有差距。实际单server源码/编译CLI各14次本地请求通过，整体入口另有4次请求验证。
+不带名称的 `/mcp-reconnect` 保留整体重建入口：成功刷新工具schema并分支新会话，失败保留旧runtime。整体切换结束旧owner后台资源；修改磁盘配置使用 `/reload`。当前mcpRecovery开启启动降级、慢重试和已确认URI重建；事件重放、跨进程订阅持久化与完整原版refetch/park策略仍保留差异。旧14/4请求记录维持各自版本作用域。
 
 `--managed-settings FILE` 指定独立的本地策略JSON，只接受 `allowShell`、`permissions`、`features`、`mcpClient`。已写出的字段最终覆盖项目设置与CLI：`permissions` 整体替换（数组不拼接），feature/MCP布尔值按字段覆盖，其余字段沿用普通配置。策略与文件路径保存到会话；`/permissions`、`/plan` 在策略指定permissions时保持原值。`--watch-config` 观察外部策略文件，完整重载成功后创建新会话快照；错误或缺失文件保留旧runtime。恢复直接使用已存策略，策略源随后删除也可打开；恢复时新增 `--managed-settings` 参数会报错。它是自有harness配置合同，尚无OS级managed配置发现、远端策略签名或凭证管理。
 
@@ -221,6 +231,8 @@ Hook JSON 可返回 `terminalSequence`：最多4096 UTF-8字节，接受 BEL 及
 ```
 
 `/checkpoint NAME` 保存当前文件状态并关联当前已完成回合；尚无回合时关联 N=0。预览列出恢复/删除的普通文件和保留的目录/symlink 变更，只有完整预览符合输出预算才给出 apply token。应用时重新校验文件、历史和 checkpoint 摘要；预览后的变更会使 token 失效。关闭旧会话的后台资源后恢复文件，并提交新 UUID 会话；原日志保持完整。新日志提交报错时回滚文件并删除未提交分支。原 `/rewind N` 仍只分支会话。
+进程中断后的文件恢复可显式执行`/checkpoint-recover`。恢复仅处理持久事务中能证明归属的文件状态；遇到外部改动保留事务和文件，等待核对。已完整提交的新分支保留；未知工作流效果须显式选择`retry_interrupted:true`才会重试，完成任务继续复用。
+
 
 恢复沿用 checkpoint 限制：2 MiB/文件、32 MiB 总量、2000 entries，排除 `.agent`、`.git`、`node_modules` 和 `.harness-worktrees`。新增普通文件会按预览删除；目录/symlink 保留，恢复缺失文件时可重建父目录。该入口覆盖运行中的失败回滚，进程强杀/断电后的跨文件与日志事务自动恢复仍待实现。`features.checkpoints: false` 关闭这两个新入口。
 

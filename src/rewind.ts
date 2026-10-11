@@ -65,6 +65,7 @@ export function applyRewind(session: Session, preview: RewindPreview, token: str
   preview = fresh;
   const next = Session.open(session.config.workspace, { config: structuredClone(session.config) });
   const identity = fs.lstatSync(next.file);
+
   try {
     for (const event of session.events.slice(1, preview.boundary + 1)) {
       if (event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === "instruction_watch") next.append(event);
@@ -75,6 +76,7 @@ export function applyRewind(session: Session, preview: RewindPreview, token: str
       const boundary = turns ? next.events.flatMap((item, index) => item.kind === "turn_end" ? [index] : [])[turns - 1]! : 0;
       next.append({ ...event, boundary });
     }
+    const prefix = fs.readFileSync(next.file);
     restoreCheckpoint({ name: preview.checkpoint, expected_current_digest: preview.current_digest,
       paths: preview.operations.map(operation => operation.path), remove_new: true, dry_run: false },
     context(session, signal), () => {
@@ -82,12 +84,18 @@ export function applyRewind(session: Session, preview: RewindPreview, token: str
       next.append({ kind: "rewind", source: session.id, boundary: preview.boundary,
         checkpoint: preview.checkpoint, digest: preview.checkpoint_digest });
       next.append({ kind: "branch", source: session.id, workspace: session.config.workspace, boundary: preview.boundary, reason: "rewind" });
-    });
+    }, { id: next.id, source: session.id, boundary: preview.boundary, checkpoint: preview.checkpoint, digest: preview.checkpoint_digest,
+      inode: identity.ino, device: identity.dev, prefixBytes: prefix.length, prefixSha256: crypto.createHash("sha256").update(prefix).digest("hex") });
     return next;
   } catch (error) {
     next.close();
-    const present = fs.lstatSync(next.file);
-    if (present.isFile() && !present.isSymbolicLink() && present.ino === identity.ino && present.dev === identity.dev) fs.unlinkSync(next.file);
+    const pending = `${session.config.workspace}/.agent/checkpoints/transaction.json`;
+    const committed = next.events.some(event => event.kind === "branch" && event.reason === "rewind" && event.source === session.id && event.boundary === preview.boundary);
+    // Recovery retains branch history until its durable commit proof is resolved.
+    if (!committed && !fs.existsSync(pending) && fs.existsSync(next.file)) {
+      const present = fs.lstatSync(next.file);
+      if (present.isFile() && !present.isSymbolicLink() && present.ino === identity.ino && present.dev === identity.dev) fs.unlinkSync(next.file);
+    }
     throw error;
   }
 }

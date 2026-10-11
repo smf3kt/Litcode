@@ -25,6 +25,19 @@ const manifestSchema = z.object({ version: z.literal(1), name: nameSchema, creat
 type Manifest = z.infer<typeof manifestSchema>;
 type Snapshot = { entries: Entry[]; digest: string; contents: Map<string, Buffer> };
 export type Change = { path: string; status: "added" | "deleted" | "modified"; before?: Entry; current?: Entry };
+const fileStateSchema = z.object({ mode: z.number().int().min(0).max(0o7777), size: z.number().int().min(0).max(FILE_CAP), sha256: z.string().regex(HASH) }).strict();
+const branchSchema = z.object({ id: z.string().uuid(), source: z.string().uuid(), boundary: z.number().int().min(0), checkpoint: nameSchema,
+  digest: z.string().regex(HASH), inode: z.number().int().nonnegative(), device: z.number().int().nonnegative(),
+  prefixBytes: z.number().int().min(0).max(64 * 1024 * 1024), prefixSha256: z.string().regex(HASH) }).strict();
+export type CheckpointCommit = z.infer<typeof branchSchema>;
+const transactionSchema = z.object({ version: z.literal(1), id: z.string().uuid(), workspace: z.string(), state: z.enum(["pending", "committed"]),
+  operations: z.array(z.object({ path: z.string(), before: fileStateSchema.nullable(), after: fileStateSchema.nullable() }).strict()).max(ENTRY_CAP),
+  directories: z.array(z.object({ path: z.string(), mode: z.number().int().min(0).max(0o7777), inode: z.number().int().nonnegative().nullable(), device: z.number().int().nonnegative().nullable() }).strict()).max(ENTRY_CAP),
+  branch: branchSchema.optional() }).strict();
+type Transaction = z.infer<typeof transactionSchema>;
+type FileState = z.infer<typeof fileStateSchema> | null;
+const lockSchema = z.object({ pid: z.number().int().positive(), token: z.string().uuid() }).strict();
+const transactionPath = (store: string) => path.join(store, "transaction.json");
 
 function aborted(context: ToolContext): void {
   if (context.signal.aborted) {
@@ -169,12 +182,183 @@ function atomicWrite(target: string, bytes: Buffer, mode: number, verify?: () =>
 }
 function lock<T>(store: string, operation: () => T): T {
   const target = path.join(store, "lock");
-  const fd = fs.openSync(target, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
+  const token = crypto.randomUUID();
+  const fd = acquireLock(target, token);
   try {
-    fs.writeFileSync(fd, `${process.pid}\n`);
-    fs.fsyncSync(fd);
     return operation();
-  } finally { fs.closeSync(fd); fs.unlinkSync(target); }
+  } finally {
+    fs.closeSync(fd);
+    const owner = readLock(target);
+    if (owner.token !== token) throw new Error("Checkpoint lock ownership changed.");
+    fs.unlinkSync(target); syncDir(store);
+  }
+}
+function alive(pid: number): boolean {
+  try { process.kill(pid, 0); return true; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ESRCH") return false; throw error; }
+}
+function readLock(target: string): { pid: number; token?: string } {
+  const bytes = readBounded(target, 4096, { signal: new AbortController().signal } as ToolContext).toString("utf8");
+  // Older checkpoint locks contain only their owner PID.
+  if (/^[1-9][0-9]*\n?$/.test(bytes)) {
+    const pid = Number(bytes.trim());
+    if (!Number.isSafeInteger(pid)) throw new Error("Invalid checkpoint lock owner.");
+    return { pid };
+  }
+  return lockSchema.parse(JSON.parse(bytes));
+}
+function reclaimDeadLock(target: string): void {
+  const before = fs.lstatSync(target);
+  let owner: ReturnType<typeof readLock>;
+  try { owner = readLock(target); } catch { throw new Error("EEXIST: Checkpoint lock owner is invalid; retain for inspection."); }
+  if (alive(owner.pid)) throw new Error(`Checkpoint owner is active in process ${owner.pid}.`);
+  const current = fs.lstatSync(target);
+  if (before.ino !== current.ino || before.dev !== current.dev || before.mtimeMs !== current.mtimeMs || before.ctimeMs !== current.ctimeMs) throw new Error("Checkpoint lock changed during recovery.");
+  fs.unlinkSync(target); syncDir(path.dirname(target));
+}
+function acquireLock(target: string, token: string): number {
+  const create = (file: string): number => {
+    const fd = fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
+    try { fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, token })); fs.fsyncSync(fd); syncDir(path.dirname(file)); return fd; }
+    catch (error) { fs.closeSync(fd); throw error; }
+  };
+  try { return create(target); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
+  const guard = `${target}.recovery`;
+  let fd: number;
+  try { fd = create(guard); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    // Reclamation is bounded. Competing recoverers still compete through wx;
+    // inode/timestamp checks prevent removing a replaced live guard.
+    reclaimDeadLock(guard);
+    fd = create(guard);
+  }
+  try { if (exists(target)) reclaimDeadLock(target); return create(target); }
+  finally {
+    fs.closeSync(fd);
+    if (readLock(guard).token !== token) throw new Error("Checkpoint recovery guard ownership changed.");
+    fs.unlinkSync(guard); syncDir(path.dirname(guard));
+  }
+}
+function fileState(root: string, relative: string, context: ToolContext): FileState {
+  relativePath(relative);
+  const target = targetFor(root, relative), stat = exists(target);
+  if (!stat) return null;
+  if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`Checkpoint recovery target is not regular: ${relative}`);
+  const bytes = readBounded(target, FILE_CAP, context);
+  return { mode: stat.mode & 0o7777, size: bytes.length, sha256: hash(bytes) };
+}
+function equalState(left: FileState, right: FileState): boolean { return JSON.stringify(left) === JSON.stringify(right); }
+function saveTransaction(store: string, transaction: Transaction): void {
+  const bytes = Buffer.from(JSON.stringify(transaction));
+  if (bytes.length > MANIFEST_CAP) throw new Error("Checkpoint transaction exceeds metadata cap.");
+  atomicWrite(transactionPath(store), bytes, 0o600);
+}
+function saveObject(store: string, bytes: Buffer, context: ToolContext): void {
+  const digest = hash(bytes), target = path.join(store, "objects", digest);
+  if (exists(target)) { if (hash(readBounded(target, FILE_CAP, context)) !== digest) throw new Error("Checkpoint rollback object digest mismatch."); }
+  else atomicWrite(target, bytes, 0o600);
+}
+function branchProof(root: string, branch: CheckpointCommit, context: ToolContext): { committed: boolean; file?: string; stat?: fs.Stats } {
+  const file = path.join(root, ".agent", `${branch.id}.jsonl`), stat = exists(file);
+  if (!stat) return { committed: false };
+  if (stat.ino !== branch.inode || stat.dev !== branch.device) throw new Error("Checkpoint recovery branch identity changed.");
+  const bytes = readBounded(file, 64 * 1024 * 1024, context);
+  if (bytes.length < branch.prefixBytes || hash(bytes.subarray(0, branch.prefixBytes)) !== branch.prefixSha256) throw new Error("Checkpoint recovery branch prefix changed.");
+  const tail = bytes.subarray(branch.prefixBytes).toString("utf8");
+  const expected = [
+    { kind: "rewind", source: branch.source, boundary: branch.boundary, checkpoint: branch.checkpoint, digest: branch.digest },
+    { kind: "branch", source: branch.source, workspace: root, boundary: branch.boundary, reason: "rewind" },
+  ].map(event => JSON.stringify(event) + "\n").join("");
+  if (tail === expected) return { committed: true, file, stat };
+  if (!expected.startsWith(tail)) throw new Error("Checkpoint recovery branch has unrelated history; retained for inspection.");
+  return { committed: false, file, stat };
+}
+function recoverTransaction(root: string, store: string, context: ToolContext, forceRollback = false, ownBranch = false, applied?: ReadonlySet<string>): "none" | "rolled_back" | "committed" {
+  const target = transactionPath(store);
+  if (!exists(target)) return "none";
+  const transaction = transactionSchema.parse(JSON.parse(readBounded(target, MANIFEST_CAP, context).toString("utf8")));
+  if (transaction.workspace !== root) throw new Error("Checkpoint transaction workspace mismatch.");
+  const seen = new Set<string>(), buffers = new Map<string, Buffer>();
+  let beforeTotal = 0, afterTotal = 0;
+  for (const operation of transaction.operations) {
+    relativePath(operation.path);
+    if (seen.has(operation.path.toLowerCase()) || !operation.before && !operation.after) throw new Error("Invalid checkpoint transaction operations.");
+    seen.add(operation.path.toLowerCase());
+    for (const [kind, state] of [["before", operation.before], ["after", operation.after]] as const) if (state) {
+      if (kind === "before") beforeTotal += state.size; else afterTotal += state.size;
+      const bytes = buffers.get(state.sha256) ?? readBounded(path.join(store, "objects", state.sha256), FILE_CAP, context);
+      if (bytes.length !== state.size || hash(bytes) !== state.sha256) throw new Error("Checkpoint transaction object mismatch.");
+      buffers.set(state.sha256, bytes);
+    }
+  }
+  if (beforeTotal > TOTAL_CAP || afterTotal > TOTAL_CAP) throw new Error("Checkpoint transaction exceeds total byte cap.");
+  const branch = transaction.branch ? branchProof(root, transaction.branch, context) : undefined;
+  // History proof remains authoritative when publishing the commit marker fails.
+  const committed = branch?.committed === true || (!forceRollback && transaction.state === "committed");
+  if (committed && branch && !branch.committed) throw new Error("Checkpoint commit marker lacks its history proof; transaction retained.");
+  const conflicts: string[] = [];
+  const branchLock = branch?.file ? `${branch.file}.lock` : undefined;
+  if (!forceRollback && !ownBranch && branchLock && exists(branchLock)) {
+    const owner = readLock(branchLock);
+    if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner.");
+  }
+  for (const saved of transaction.directories) {
+    relativePath(saved.path);
+    const stat = exists(targetFor(root, saved.path));
+    if (stat && (saved.inode === null || saved.device === null || !stat.isDirectory() || stat.ino !== saved.inode || stat.dev !== saved.device || (stat.mode & 0o7777) !== saved.mode)) {
+      throw new Error(`Checkpoint recovery directory ownership is unknown: ${saved.path}; transaction retained.`);
+    }
+  }
+  // Check every target before any rollback. Outside edits preserve the entire
+  // transaction, including already-restored targets, for explicit reconciliation.
+  for (const operation of transaction.operations) {
+    const current = fileState(root, operation.path, context);
+    const untouched = applied !== undefined && !applied.has(operation.path);
+    if (committed ? !equalState(current, operation.after) : !equalState(current, operation.before) && (untouched || !equalState(current, operation.after))) {
+      if (!forceRollback || committed) throw new Error(`Checkpoint recovery conflict: ${operation.path}; transaction retained.`);
+      conflicts.push(operation.path);
+    }
+  }
+  if (!committed) {
+    for (const operation of [...transaction.operations].reverse()) {
+      if (conflicts.includes(operation.path) || (applied !== undefined && !applied.has(operation.path))) continue;
+      const current = fileState(root, operation.path, context);
+      if (equalState(current, operation.before)) continue;
+      const target = targetFor(root, operation.path);
+      const verify = () => { if (!equalState(fileState(root, operation.path, context), operation.after)) throw new Error(`Checkpoint recovery conflict during rollback: ${operation.path}`); };
+      if (operation.before) atomicWrite(target, buffers.get(operation.before.sha256)!, operation.before.mode, verify);
+      else { verify(); fs.unlinkSync(target); syncDir(path.dirname(target)); }
+    }
+    if (conflicts.length) throw new Error(`Checkpoint recovery conflict: ${conflicts.join(", ")}; transaction retained.`);
+    for (const saved of [...transaction.directories].reverse()) {
+      relativePath(saved.path);
+      const directory = targetFor(root, saved.path), stat = exists(directory);
+      if (!stat) continue;
+      if (!stat.isDirectory() || stat.ino !== saved.inode || stat.dev !== saved.device || (stat.mode & 0o7777) !== saved.mode || fs.readdirSync(directory).length) throw new Error(`Checkpoint recovery directory changed: ${saved.path}; transaction retained.`);
+      fs.rmdirSync(directory); syncDir(path.dirname(directory));
+    }
+    if (!forceRollback && branch?.file && branch.stat) {
+      const current = fs.lstatSync(branch.file);
+      if (current.ino !== branch.stat.ino || current.dev !== branch.stat.dev || current.mtimeMs !== branch.stat.mtimeMs || current.ctimeMs !== branch.stat.ctimeMs) throw new Error("Checkpoint recovery branch changed before cleanup.");
+      const branchLock = `${branch.file}.lock`;
+      if (exists(branchLock)) { const owner = readLock(branchLock); if (alive(owner.pid)) throw new Error("Checkpoint recovery branch has an active owner."); reclaimDeadLock(branchLock); }
+      fs.unlinkSync(branch.file); syncDir(path.dirname(branch.file));
+    }
+  }
+  if (committed && branchLock && exists(branchLock)) {
+    const owner = readLock(branchLock);
+    if (!alive(owner.pid)) reclaimDeadLock(branchLock);
+  }
+  fs.unlinkSync(target); syncDir(store);
+  return committed ? "committed" : "rolled_back";
+}
+export function recoverCheckpoint(context: ToolContext): { recovery: "none" | "rolled_back" | "committed" } {
+  const root = rootFor(context), agent = path.join(root, ".agent"), store = path.join(agent, "checkpoints");
+  if (!exists(agent) || !exists(store)) return { recovery: "none" };
+  storeFor(root);
+  return lock(store, () => ({ recovery: recoverTransaction(root, store, context) }));
 }
 function manifestFor(root: string, name: string, context: ToolContext): { store: string; manifest: Manifest; contents: Map<string, Buffer> } {
   const store = storeFor(root);
@@ -241,10 +425,12 @@ function schema(properties: Record<string, unknown>, required: string[]): ToolDe
 const nameProperty = { type: "string", pattern: NAME.source, description: "Checkpoint name (1-64 ASCII letters, digits, underscores or hyphens)." };
 const pageProperties = { offset: { type: "integer", minimum: 0 }, limit: { type: "integer", minimum: 1, maximum: 200 } };
 
-export function restoreCheckpoint(input: unknown, context: ToolContext, commit?: () => void): string {
+export function restoreCheckpoint(input: unknown, context: ToolContext, commit?: () => void, branch?: CheckpointCommit): string {
   const args = z.object({ name: nameSchema, expected_current_digest: z.string().regex(HASH), paths: z.array(z.string()).min(commit ? 0 : 1).max(ENTRY_CAP).optional(), remove_new: z.boolean().default(false), dry_run: z.boolean().default(true) }).strict().parse(input);
   const root = rootFor(context);
+  if (!args.dry_run) recoverCheckpoint(context);
   const { store, manifest, contents } = manifestFor(root, args.name, context);
+  if (exists(transactionPath(store))) throw new Error("Checkpoint transaction requires explicit recovery before preview.");
   const current = snapshot(root, context);
   if (current.digest !== args.expected_current_digest) throw new Error("Checkpoint conflict: workspace changed since diff; run checkpoint_diff again.");
   if (args.remove_new && !args.paths) throw new Error("remove_new requires explicitly enumerated paths from checkpoint_diff.");
@@ -274,15 +460,19 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
     storeFor(root);
     aborted(context);
     if (snapshot(root, context).digest !== current.digest) throw new Error("Checkpoint conflict: workspace changed before restore.");
-    // Capture every rollback byte before effects, including explicitly selected new files.
-    const backups = new Map<string, { bytes: Buffer; mode: number }>();
+    const state = (entry: FileEntry | undefined): FileState => entry ? { mode: entry.mode, size: entry.size, sha256: entry.sha256 } : null;
+    const transaction: Transaction = { version: 1, id: crypto.randomUUID(), workspace: root, state: "pending",
+      operations: operations.map(operation => ({ path: operation.path, before: state(now.get(operation.path) as FileEntry | undefined), after: state(operation.entry) })),
+      directories: [], ...(branch ? { branch: branchSchema.parse(branch) } : {}) };
     for (const operation of operations) {
       const old = now.get(operation.path);
-      if (old?.kind === "file") backups.set(operation.path, { bytes: current.contents.get(old.sha256)!, mode: old.mode });
+      if (old?.kind === "file") saveObject(store, current.contents.get(old.sha256)!, context);
     }
     aborted(context);
-    const applied: typeof operations = [];
-    const createdDirectories: string[] = [];
+    saveTransaction(store, transaction);
+
+    // Matching bytes on an unexecuted path can belong to another actor.
+    const applied = new Set<string>();
     function ensureParents(relative: string): void {
       const parts = relative.split("/").slice(0, -1);
       for (let i = 1; i <= parts.length; i++) {
@@ -290,9 +480,16 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
         const target = targetFor(root, rel);
         if (!exists(target)) {
           const entry = baseline.get(rel);
+          const saved = { path: rel, mode: entry?.kind === "directory" ? entry.mode : 0o755, inode: null as number | null, device: null as number | null };
+          transaction.directories.push(saved);
+          saveTransaction(store, transaction);
           fs.mkdirSync(target, { mode: entry?.kind === "directory" ? entry.mode : 0o755 });
-          createdDirectories.push(target);
+
           if (entry?.kind === "directory") fs.chmodSync(target, entry.mode);
+          syncDir(path.dirname(target));
+          const stat = fs.lstatSync(target);
+          saved.inode = stat.ino; saved.device = stat.dev;
+          saveTransaction(store, transaction);
         }
       }
     }
@@ -308,34 +505,24 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
           if (!old ? !!stat : !stat?.isFile() || (stat.mode & 0o7777) !== (old as FileEntry).mode || hash(readBounded(target, FILE_CAP, context)) !== (old as FileEntry).sha256) throw new Error(`Checkpoint conflict during restore: ${operation.path}`);
         };
         verify();
-        // Track committed effects even when the subsequent directory fsync fails.
         if (operation.action === "remove") {
           fs.unlinkSync(target);
-          applied.push(operation);
+          applied.add(operation.path);
           syncDir(path.dirname(target));
-        } else atomicWrite(target, contents.get(operation.entry!.sha256)!, operation.entry!.mode, verify, () => applied.push(operation));
+        } else atomicWrite(target, contents.get(operation.entry!.sha256)!, operation.entry!.mode, verify, () => applied.add(operation.path));
       }
       commit?.();
+      transaction.state = "committed";
+      saveTransaction(store, transaction);
     } catch (error) {
-      const failures: string[] = [];
-      for (const operation of applied.reverse()) {
-        try {
-          const target = targetFor(root, operation.path);
-          const stat = exists(target);
-          if (operation.action === "remove" ? !!stat : !stat?.isFile() || (stat.mode & 0o7777) !== operation.entry!.mode || hash(readBounded(target, FILE_CAP, { ...context, signal: new AbortController().signal })) !== operation.entry!.sha256) {
-            throw new Error(`Checkpoint target changed before rollback: ${operation.path}`);
-          }
-          const backup = backups.get(operation.path);
-          if (backup) atomicWrite(target, backup.bytes, backup.mode);
-          else if (stat) { fs.unlinkSync(target); syncDir(path.dirname(target)); }
-        } catch { failures.push(operation.path); }
+      if (branch && branchProof(root, branch, { ...context, signal: new AbortController().signal }).committed) {
+        throw new Error(`Checkpoint history committed; transaction retained for recovery. ${String(error)}`);
       }
-      for (const target of createdDirectories.reverse()) {
-        try { fs.rmdirSync(target); } catch { failures.push(path.relative(root, target)); }
-      }
-      if (failures.length) throw new Error(`Checkpoint restore failed; rollback incomplete for ${failures.join(", ")}. Original error: ${String(error)}`);
+      try { recoverTransaction(root, store, { ...context, signal: new AbortController().signal }, true, false, applied); }
+      catch (rollback) { throw new Error(`Checkpoint restore failed; rollback incomplete. ${String(rollback)} Original error: ${String(error)}`); }
       throw error;
     }
+    recoverTransaction(root, store, context, false, true);
     return output({ ...result, restored: true }, context);
   });
 }
@@ -343,11 +530,13 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
 export function captureCheckpoint(name: string, context: ToolContext) {
   nameSchema.parse(name);
   const root = rootFor(context);
+  recoverCheckpoint(context);
   const captured = snapshot(root, context);
   aborted(context);
   const store = storeFor(root, true);
   return lock(store, () => {
     const target = path.join(store, "manifests", `${name}.json`);
+    if (exists(transactionPath(store))) throw new Error("Checkpoint transaction requires explicit recovery before capture.");
     if (exists(target)) throw new Error(`Checkpoint already exists: ${name}`);
     const manifest: Manifest = { version: 1, name, created_at: new Date().toISOString(), workspace: root, digest: captured.digest, entries: captured.entries };
     const encoded = Buffer.from(JSON.stringify(manifest));
@@ -372,7 +561,8 @@ export function captureCheckpoint(name: string, context: ToolContext) {
 export function previewCheckpoint(name: string, context: ToolContext) {
   nameSchema.parse(name);
   const root = rootFor(context);
-  const { manifest } = manifestFor(root, name, context);
+  const { store, manifest } = manifestFor(root, name, context);
+  if (exists(transactionPath(store))) throw new Error("Checkpoint transaction requires explicit recovery before preview.");
   const current = snapshot(root, context);
   return { name, checkpoint_digest: manifest.digest, current_digest: current.digest, changes: changes(manifest.entries, current.entries) };
 }
@@ -398,6 +588,7 @@ export function createCheckpointTools(): ToolDefinition[] {
         directory(agent);
         if (!exists(path.join(agent, "checkpoints"))) return output({ checkpoints: [], total: 0, offset }, context);
         const store = storeFor(root);
+        if (exists(transactionPath(store))) throw new Error("Checkpoint transaction requires explicit recovery before listing.");
         const names = fs.readdirSync(path.join(store, "manifests")).sort();
         if (names.length > ENTRY_CAP) throw new Error("Checkpoint inventory exceeds entry cap.");
         const checkpoints = names.map(file => {
@@ -414,7 +605,8 @@ export function createCheckpointTools(): ToolDefinition[] {
       async execute(input, context) {
         const { name, offset, limit } = z.object({ name: nameSchema, ...pageSchema }).strict().parse(input);
         const root = rootFor(context);
-        const { manifest } = manifestFor(root, name, context);
+        const { store, manifest } = manifestFor(root, name, context);
+        if (exists(transactionPath(store))) throw new Error("Checkpoint transaction requires explicit recovery before diff.");
         const current = snapshot(root, context);
         const delta = changes(manifest.entries, current.entries);
         return output({ name, behavior: "filesystem_rewind", checkpoint_digest: manifest.digest, current_digest: current.digest, equal: delta.length === 0, total: delta.length, counts: { added: delta.filter(item => item.status === "added").length, deleted: delta.filter(item => item.status === "deleted").length, modified: delta.filter(item => item.status === "modified").length }, offset, changes: delta.slice(offset, offset + limit), next_offset: offset + limit < delta.length ? offset + limit : null }, context);

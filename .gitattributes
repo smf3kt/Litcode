@@ -1,0 +1,2 @@
+# Preserve exact upstream license text, including original CRLF and whitespace.
+THIRD_PARTY_NOTICES.txt -text whitespace=-trailing-space,-blank-at-eof
