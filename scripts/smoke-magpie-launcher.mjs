@@ -7,6 +7,11 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
+const args = process.argv.slice(2);
+assert.ok(args.length === 0 || (args.length === 2 && args[0] === '--launcher' && path.isAbsolute(args[1])),
+  'Usage: node scripts/smoke-magpie-launcher.mjs [--launcher ABSOLUTE_PATH]');
+const launcher = args[1] ?? path.join(root, 'scripts/launch-magpie.mjs');
+const cwd = path.resolve(path.dirname(fs.realpathSync(launcher)), '..');
 const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'litcode-launcher-')));
 const requests = [];
 let invalid = false;
@@ -21,7 +26,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('LLM_') && !key.startsWith('ANTHROPIC_')));
 env.ANTHROPIC_AUTH_TOKEN = 'owned-launcher-fixture'; env.ANTHROPIC_BASE_URL = base;
 async function run(args) {
-  const child = spawn(process.execPath, [path.join(root, 'scripts/launch-magpie.mjs'), ...args], { cwd: root, env });
+  const child = spawn(process.execPath, [launcher, ...args], { cwd, env });
   let stdout = '', stderr = '';
   child.stdout.on('data', b => stdout += b); child.stderr.on('data', b => stderr += b);
   const timer = setTimeout(() => child.kill('SIGKILL'), 20000);

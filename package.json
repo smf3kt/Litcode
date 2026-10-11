@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "license": "UNLICENSED",
-  "bin": { "litcode": "bin/litcode.mjs", "personal-harness": "bin/personal-harness.mjs" },
+  "bin": { "litcode": "bin/litcode.mjs", "litcode-magpie": "bin/litcode-magpie.mjs", "personal-harness": "bin/personal-harness.mjs" },
   "files": ["bin/", "dist/", "README.md", "NOTICE.md", "THIRD_PARTY_NOTICES.txt"],
   "engines": { "node": ">=22" },
   "scripts": {
