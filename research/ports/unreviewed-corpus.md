@@ -507,9 +507,68 @@ The band is dominated by things this runtime already owns: twenty-three modules 
 
 
 
-## Residual and next pass
+## Slice thirteen: uncited modules ranked 321 to 370
 
-The twelve slices read three hundred and twenty-five modules between them, in twelve contiguous bands of the uncited list, and the next pass continues at rank 321; from slice twelve each band is 50 ranks wide. The honest remainder is **2217 uncited modules with no marker**, and 2267 uncited modules in all: readable source whose subsystem this pass did not determine. Recording a module in this file changes nothing - it is not a citation source for the ledger - but naming one in CURRENT or STATUS does move it out of the uncited set and into the prose count without adding port evidence, and slices six and seven did that to three modules (`chunk-2kdsvp3x.js`, `chunk-bt8cr7rw.js` and `chunk-patq2z05.js`), which is why the uncited figure reads 2267 rather than 2270; slices eight and nine avoided it by naming modules here only. A package that actually ports a module adds port evidence, and this review has fed two of them: [W09](W09-path-chain.md) ported `chunk-gyf58rwf.js` and [W10](W10-include-link-vetting.md) ported the candidate this file recorded in slice five, `chunk-pn44qc66.js`. The ledger now reads 33 backed / 65 mentioned only in prose / 2267 uncited / 2217 without a marker. Slices six through eleven added no candidate of their own: slice six's two reusable rule sets guard surfaces this runtime does not have, slice seven's most interesting module is the source of the ancestry switches W09 already declined, slice eight is largely this runtime's own subject matter seen from the inside, slice nine's one reusable rule refuses an impersonating marketplace name in a product that has no marketplace, and slices ten and eleven are thin on new ground entirely. Removing the uncited number requires reading modules, not more rules, so the next pass should repeat what produced the tables above for the next slice by size (extract distinctive literals per module, then classify against CURRENT's scope rules), and any module a future package actually reads should be cited from that package's port record so the ledger's port-backed count grows with real evidence. One method note for the next pass: the literal extraction has to skip the build banner, whose dependency list is otherwise the first thing every module appears to say. A second note, recorded as an owned method decision from slice twelve on: the band widens from 25 to 50 ranks, because eleven bands have now shown that the per-module work is the same at either width and the remaining set is large enough that halving the number of passes matters more than keeping the band size uniform with the earlier slices.
+Ranks 321-370 of the uncited list (940,949 bytes, 50 modules, 19,629 bytes down to 17,899), continuing directly below slice twelve's 19,670-byte boundary. Nine modules carry no literal of eighteen characters or more; one carries the `API beta headers` marker.
+
+| Module | Bytes | What the literals show | Disposition |
+| --- | --- | --- | --- |
+| `chunk-nemnpd8g.js` | 19629 | `lstat`, `open`, `realpath`, `rmdir`, `posix`, `lastErrorCode` | path and filesystem helper; this runtime has its own |
+| `chunk-9s3y7e6f.js` | 19607 | `path:${GC(e.slice(5))}` | small path formatting helper |
+| `chunk-h4pewgmp.js` | 19580 | `http://www.w3.org/2000/svg`, `http://www.w3.org/1998/Math/MathML` | vendored HTML sanitizer namespace handling |
+| `chunk-va8dv9d8.js` | 19543 | `(file not specified)`, a tree node render | recovered file tree |
+| `chunk-qv3y1kty.js` | 19520 | `^<${PD}\\s+source=`, a `lastIndexOf` slice after a tag | tag and attribute parsing helper |
+| `chunk-mwa27yr7.js` | 19444 | `schemeId:`, `,signingProperties:{name:` | vendored AWS SDK auth scheme provider, second copy |
+| `chunk-3xq2qhex.js` | 19429 | `removeMcpTaskMetadata failed`, `mcp-task-result-${Date.now()}-${Math.random()...}` | MCP task metadata cleanup; this runtime names its own |
+| `chunk-wfncfsk3.js` | 19359 | no literal of eighteen characters or more | pure code leaf, undetermined |
+| `chunk-appb2dtz.js` | 19328 | `toLocaleString(`, `includeYear`, `timeZone`, a `,? at ` cleanup | date formatting; this runtime formats its own |
+| `chunk-tvdq3hrk.js` | 19328 | `join(be(),` then a `kind` dispatch | path and configuration helper |
+| `chunk-qxp7vvz1.js` | 19228 | `[...,r.fingerprint])).update(` then `digest(` | fingerprint hashing helper |
+| `chunk-8sascw73.js` | 19222 | `Claude wants to upload a file to this artifact.`, `Claude wants to copy files from another artifact into this one.` | artifact permission prompts, external |
+| `chunk-msy0wfrd.js` | 19219 | `Stored deep link terminal preference: ${h}`, `report the issue at https://github.com/anthropics/claude-code/issues` | deep-link preference with an issue link, a product surface without a local counterpart |
+| `chunk-5bc3870c.js` | 19199 | `constants`, `promisify`, `{windowsHide:!0}`, a stdout parse | subprocess helper; this runtime runs its own |
+| `chunk-7y72610j.js` | 19124 | an `isNonInteractiveSession` option, event-type checks, an `AbortController` | event gating and abort helper |
+| `chunk-hh5gp14z.js` | 19081 | `createWriteStream`, `rm`, `dirname` | file write helper |
+| `chunk-zqyjdv9s.js` | 19068 | `removeEventListener` and `addEventListener` pairs | listener swap helper |
+| `chunk-2zhybd9r.js` | 19043 | `typeof performance.now`, `process.emitWarning` | vendored timing and warning polyfill |
+| `chunk-grj7dp0e.js` | 19043 | `Validating session`, `Fetching session logs`, `Getting branch info` | cloud session setup steps, external |
+| `chunk-frj2b06g.js` | 19037 | a reservoir sorted for percentiles, `[keybindings] Chord timeout - cancelling` | keybinding chord handling with statistics; this runtime has its own keybindings |
+| `chunk-3jqfmt54.js` | 19020 | no literal of eighteen characters or more | pure code leaf, undetermined |
+| `chunk-8q85xryy.js` | 19007 | `keep browser tools off`, `Browser actions still go through Claude` | browser tool settings, external |
+| `chunk-mk7bp7a5.js` | 18984 | the same `removeMcpTaskMetadata failed` and `mcp-task-result-` literals as the module above | near-duplicate of the MCP task metadata cleanup |
+| `chunk-fkrgh0sv.js` | 18964 | a status prop rendered into a component | recovered UI component |
+| `chunk-q148m20m.js` | 18909 | no literal of eighteen characters or more | pure code leaf, undetermined |
+| `chunk-sjkwe6cx.js` | 18899 | no literal of eighteen characters or more | pure code leaf, undetermined |
+| `chunk-yspgct4b.js` | 18896 | no literal of eighteen characters or more | pure code leaf, undetermined |
+| `chunk-gea15kzp.js` | 18879 | no literal of eighteen characters or more | pure code leaf, undetermined |
+| `chunk-52aw3vkn.js` | 18876 | markers `API beta headers`; `typeof e===`, `String(e.message).includes(` | error classification helper |
+| `chunk-w93df3n3.js` | 18785 | `${os(i)} no longer contains the correct repository. Select another pat` | repository selection error; this runtime verifies its own repository |
+| `chunk-3066sf0r.js` | 18746 | a zod refine over finite numbers, an ISO timestamp pattern, `T=64,W=16,G=256,H=32,F=64` | bounded schema; this runtime validates its own |
+| `chunk-dcbjzzq8.js` | 18667 | `[liveReplica] held saves pushed before logout`, `final divergence report before logout` | live replication before logout, external |
+| `chunk-c0aaqg7t.js` | 18561 | `the eager argv scan sees a --sdk-url value commander did not bind` | CLI argv scan; this runtime parses its own |
+| `chunk-szsp20sx.js` | 18536 | no literal of eighteen characters or more | pure code leaf, undetermined |
+| `chunk-c7jc8962.js` | 18535 | `the last message ends on a direct question or explicit request for the `, `which do you prefer?`, `needs input: …` | the needs-input heuristic; this runtime decides its own |
+| `chunk-qdewyn2k.js` | 18470 | `inputSchema:{...r.input_schema,type:`, `${r.name} is one of ${e}`, `session-channel MCP tool called without being routed to its machine` | MCP tool schema and routing checks; this runtime routes its own |
+| `chunk-wy25wgx2.js` | 18414 | no literal of eighteen characters or more | pure code leaf, undetermined |
+| `chunk-vks3711y.js` | 18407 | `s folder is in the container, not on the person`, `--plugin-dir <mod folder>`, `CLAUDE_CODE_PLUGIN_DIRS` | container plugin directories, external |
+| `chunk-desqk94p.js` | 18262 | `t verify your git remote host (remote is ` | git remote host verification, a recovered dialog |
+| `chunk-r4m2wntw.js` | 18262 | `[account memory text not recorded]`, `<${e.length} chars; not recorded>`, `<not recorded: ${e}>` | memory text withheld from a record; this runtime records its own memory text |
+| `chunk-x7wez8gv.js` | 18257 | an outcome compared after an awaited call | recovered UI flow |
+| `chunk-hs9jkxkf.js` | 18218 | a promise result rendered into a component | recovered UI component |
+| `chunk-rddyv0j7.js` | 18209 | `Failed to start pro trial: ${l(g)}`, `Your Pro plan includes ${x} days of Claude Code.` | billing and trial UI, external |
+| `chunk-qxtf5fmk.js` | 18120 | no literal of eighteen characters or more | pure code leaf, undetermined |
+| `chunk-kdpfa1zf.js` | 18078 | a decision gate with `take()` and a title | consent dialog, recovered UI |
+| `chunk-c489a4nk.js` | 18068 | `URL must be parseable`, `URL cannot use javascript:, data:, or vbscript: scheme`, an error class with `errorCode` | a URL scheme allowlist; no tool in this runtime takes a URL from the model, so the rule guards a surface that does not exist here |
+| `chunk-xr9ttztq.js` | 18029 | `${JWe}/${rJ} is reserved`, `syncDir must be absolute` | reserved sync directory rules; this runtime reserves its own paths |
+| `chunk-ypbkhaky.js` | 18006 | `the signed-in account changed while probing`, `artifactKind`, `livePaths` | artifact probing tied to an account, external |
+| `chunk-6wx3ne7e.js` | 17955 | a count joined with a plural helper | formatting helper |
+| `chunk-yrmd1p0k.js` | 17899 | `observer marker read-back failed`, `${e.agentType}@${o.observedEnvelopeName}`, `subagentName`, `invocationKind` | subagent observation envelope; this runtime has its own subagent records |
+
+The band is again mostly the runtime's own plumbing: twenty-five modules with local counterparts, nine pure code leaves, seven hosted surfaces (artifact permission prompts, cloud session setup, browser tools, live replication, container plugin directories, billing and artifact probing), four recovered UI components, three vendored or polyfill modules (an HTML sanitizer, a second copy of the AWS auth scheme provider and a timing polyfill), one product surface without a local counterpart (deep-link preference with an issue link) and one rule that guards a surface this runtime does not have: a URL scheme allowlist refusing `javascript:`, `data:` and `vbscript:`, which would matter here only if a tool ever took a URL from the model. That is the closest thing to a candidate in the band and it is not one, because no such tool exists. No candidate is recorded.
+
+
+
+The thirteen slices read three hundred and seventy-five modules between them, in thirteen contiguous bands of the uncited list, and the next pass continues at rank 371; from slice twelve each band is 50 ranks wide. The honest remainder is **2217 uncited modules with no marker**, and 2267 uncited modules in all: readable source whose subsystem this pass did not determine. Recording a module in this file changes nothing - it is not a citation source for the ledger - but naming one in CURRENT or STATUS does move it out of the uncited set and into the prose count without adding port evidence, and slices six and seven did that to three modules (`chunk-2kdsvp3x.js`, `chunk-bt8cr7rw.js` and `chunk-patq2z05.js`), which is why the uncited figure reads 2267 rather than 2270; slices eight and nine avoided it by naming modules here only. A package that actually ports a module adds port evidence, and this review has fed two of them: [W09](W09-path-chain.md) ported `chunk-gyf58rwf.js` and [W10](W10-include-link-vetting.md) ported the candidate this file recorded in slice five, `chunk-pn44qc66.js`. The ledger now reads 33 backed / 65 mentioned only in prose / 2267 uncited / 2217 without a marker. Slices six through eleven added no candidate of their own: slice six's two reusable rule sets guard surfaces this runtime does not have, slice seven's most interesting module is the source of the ancestry switches W09 already declined, slice eight is largely this runtime's own subject matter seen from the inside, slice nine's one reusable rule refuses an impersonating marketplace name in a product that has no marketplace, and slices ten and eleven are thin on new ground entirely. Removing the uncited number requires reading modules, not more rules, so the next pass should repeat what produced the tables above for the next slice by size (extract distinctive literals per module, then classify against CURRENT's scope rules), and any module a future package actually reads should be cited from that package's port record so the ledger's port-backed count grows with real evidence. One method note for the next pass: the literal extraction has to skip the build banner, whose dependency list is otherwise the first thing every module appears to say. A second note, recorded as an owned method decision from slice twelve on: the band widens from 25 to 50 ranks, because eleven bands have now shown that the per-module work is the same at either width and the remaining set is large enough that halving the number of passes matters more than keeping the band size uniform with the earlier slices.
 
 Regenerate everything here with:
 

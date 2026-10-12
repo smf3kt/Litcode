@@ -17,16 +17,16 @@
     "modules": 33,
     "bytes": 7816386,
     "narrativeOnly": {
-      "modules": 65,
-      "bytes": 7358658
+      "modules": 67,
+      "bytes": 7397071
     },
     "unreviewed": {
-      "modules": 2267,
-      "bytes": 31663093
+      "modules": 2265,
+      "bytes": 31624680
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2217,
-    "uncitedBuiltinLeafOnly": 2251,
+    "uncitedWithoutMarker": 2215,
+    "uncitedBuiltinLeafOnly": 2249,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
@@ -5456,7 +5456,9 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -23709,7 +23711,9 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },

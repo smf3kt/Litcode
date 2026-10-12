@@ -575,6 +575,33 @@
     ],
     "reading": "the first 50-rank band: twenty-three modules with local counterparts, eleven pure code leaves, seven product surfaces without a local counterpart, five hosted surfaces, the AWS SDK auth scheme provider and ajv, and two modules excluded with credentials"
   },
+  "sliceThirteen": {
+    "scope": "uncited modules ranked 321 to 370 by size",
+    "bytes": 940949,
+    "rows": 50,
+    "byteRange": [
+      17899,
+      19629
+    ],
+    "composition": {
+      "localCounterparts": 25,
+      "pureCodeLeaves": 9,
+      "hostedOrExternalSurfaces": 7,
+      "recoveredUi": 4,
+      "vendoredOrPolyfill": 3,
+      "productWithoutLocalCounterpart": 1,
+      "ruleWithoutLocalSurface": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-c489a4nk.js is a URL scheme allowlist refusing javascript:, data: and vbscript:; no tool in this runtime takes a URL from the model, so the rule guards a surface that does not exist here",
+      "chunk-c7jc8962.js states the needs-input heuristic in the recovered client's own words, which this runtime decides for itself",
+      "chunk-mk7bp7a5.js repeats the MCP task metadata literals of chunk-3xq2qhex.js, one of several near-duplicate pairs in the corpus",
+      "nine modules carry no literal of eighteen characters or more and are recorded as undetermined"
+    ],
+    "reading": "the runtime's own plumbing again: twenty-five modules with local counterparts, nine pure code leaves, seven hosted surfaces, four recovered UI components, an HTML sanitizer, a second AWS auth scheme copy and a timing polyfill, one product surface without a local counterpart, and one URL scheme rule with no local surface"
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
