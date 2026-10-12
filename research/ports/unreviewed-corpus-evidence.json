@@ -342,6 +342,78 @@
       "nextPackage": "the link-chain resolver; the credential table is recorded as a second, unscheduled candidate"
     }
   },
+  "sliceFourCandidatesDisposed": {
+    "note": "Slice four's three in-scope candidates, each read on 2026-10-12. All three readings differ from the slice-four label. Named only in this file and in unreviewed-corpus.md, both excluded from the ledger's citation scan, so the counts do not move.",
+    "chunk-fmjcnmvh.js": {
+      "sha256": "0dfc46c5f3c0822f45053671401c3f2a32bac207794ac05f3bb8fe49908c8d48",
+      "bytes": 61459,
+      "sliceFourReading": "auto-mode environment gathering and its own classifier",
+      "correctedReading": "the auto-mode environment pre-gather plus the rule report it hands the classifier",
+      "gatherSide": {
+        "skipList": ["node_modules", ".oh-my-zsh", ".rustup", ".cargo", ".local", ".cache", "onedrive", "dropbox", "google drive", "appdata", "application data", "library"],
+        "budgets": ["visit-budget", "repo-cap"],
+        "homeVerdicts": ["home-unreadable", "network-home"],
+        "remoteRedaction": "(unparseable remote URL redacted)",
+        "gitInspection": ["gitdir-outside-home", "commondir", "gitdir: ", "get-url", "origin", "no-remote", "refused", "allowed"],
+        "githubProbes": ["Repo visibility & branch protection (via gh)", "not queryable here (nonessential traffic disabled or policy-restricted)", "not queryable here (org/repo not derivable from origin remote)", "not queryable here (origin remote is not github.com)"],
+        "environmentScrub": "GH_TOKEN and GITHUB_TOKEN dropped, GH_HOST pinned",
+        "featureSwitch": "allow_auto_mode_sibling_docs"
+      },
+      "classifierSide": {
+        "dispatchSymbol": "Ut",
+        "dispatch": "Ut(toolName, ruleContent) -> POSIX rule | PowerShell rule | credential-path pattern, by shell kind",
+        "posixRules": ["rm with a recursive flag", "chmod/chown/chgrp recursive", "git push --force excluding --force-with-lease", "dd", "fdisk", "parted", "shutdown", "reboot", "halt", "poweroff", "wipefs", "blkdiscard", "mkfs.*"],
+        "cloudDeleteRules": ["kubectl/gcloud/az delete", "aws s3 rm|rb and delete-*/terminate-*", "gsutil rm", "terraform destroy", "helm uninstall|delete"],
+        "windowsRules": ["remove-item", "ri", "rm", "del", "erase", "rd", "rmdir", "format-volume", "format.com", "clear-disk", "initialize-disk", "stop-computer", "restart-computer"],
+        "credentialPathPattern": "\\.ssh\\b|id_rsa|id_ed25519|id_ecdsa|\\.aws/creden...",
+        "consumerCallSite": 34414,
+        "consumer": "reads the project's permissions.allow list out of the auto-mode configuration, splits it by this classifier, and counts updated/refused-by-policy/failed rules before slicing samples for the classifier - a report to the classifier, not a permission decision"
+      },
+      "disposition": "reclassified: ruleWithoutLocalSurface",
+      "basis": {
+        "localSurfaceAbsent": "no auto mode, no classifier, no environment pre-gather and no surface that reports this runtime's own permission rules; src/ has no match for auto.?mode|classifier|pregather and the permission path decides from declared patterns only (src/permissions.ts)",
+        "familiesAlreadyOpen": ["a command's destructive meaning is the shell allow rules' dangerous-prefix notion slice twenty-seven recorded as belonging to W01's family", "a credential-shaped name is W14's and W19's family"]
+      }
+    },
+    "chunk-zha4hbcb.js": {
+      "sha256": "3ba752424798802776b4c74c8c0fa08f6dd274c98b4e0c784cae44dbe73289ff",
+      "bytes": 58238,
+      "sliceFourReading": "foreign agent-config import and translation",
+      "correctedReading": "the foreign-agent configuration importer: commands, skills, agents, themes, monitors and workflows copied out of .codex/, .cursor/ or .gemini/ into this client's own config tree",
+      "importRules": {
+        "idempotenceMarker": "<!-- imported-from: ... -->",
+        "alreadyImported": "already imported (marker present; not re-synced)",
+        "dryRunPreviews": ["would append ... -> ...", "would copy ... -> ..."],
+        "symlinkRefusals": ["target is (or is under) a symlink - refusing project-scope write", "source is (or is under) a symlink - refusing project-scope read"],
+        "linkChainHopCap": 40,
+        "skillChecks": ["SKILL.md is a symlink", "SKILL.md over the size this client skips", "same after a utf-8 re-encoding", "case-colliding second skill.md", "reserved skills directory name that would never load", "target already exists"],
+        "shellBlockRefusals": ["a ! marker beside argument placeholders", "a backtick in typed arguments that could re-pair a marker into executing text the block never consented to", "the {{args}} placeholder escaped by another product"]
+      },
+      "disposition": "reclassified: ruleWithoutLocalSurface",
+      "basis": {
+        "localSurfaceAbsent": "this runtime has no foreign configuration to import; its config tree is its own",
+        "familiesAlreadyOpen": ["the bounded link-chain walk with identity is W09's and W10's family", "shell-block marker and argument-substitution safety is W06's family"]
+      }
+    },
+    "chunk-9nek920x.js": {
+      "sha256": "f294a7a15282c98480ad1ca8a320fa5ab892abd1a45745e614f24179ca6ca155",
+      "bytes": 49511,
+      "sliceFourReading": "plugin marketplace CLI; this runtime has plugins but no marketplace client",
+      "correctedReading": "the plugin and marketplace command line: plugin init, validate and tag, plus marketplace add and update",
+      "commands": {
+        "pluginInit": ["name and component validation against a fixed component list", "scaffold path checked not to climb out of the skills root", "author and email collection", "target-exists refusal"],
+        "pluginValidate": ["manifest plus components", "strict mode", "JSON output", "success/warning split"],
+        "pluginTag": ["tag preparation", "marketplace entry version", "push with remote, force and dry-run"],
+        "marketplacePolicy": ["cli_marketplace_add_blocked_by_policy", "command_source_refused", "declaredInSettings on a command source", "No marketplaces were updated"]
+      },
+      "disposition": "reclassified: ruleWithoutLocalSurface",
+      "basis": {
+        "localSurfaceAbsent": "plugins exist locally (src/plugins.ts) but there is no plugin command line and no marketplace client - the same absence the slice-nineteen plugin-tier candidate was reclassified for",
+        "manifestHalfAlreadyStronger": "a plugin manifest is refused at load time by a strict schema with its own limits (src/plugins.ts), where the recovered command reports warnings and can be asked to be strict",
+        "familiesAlreadyOpen": ["the scaffold-path check belongs to the open path-containment family (W09/W10)", "the policy refusal belongs to the managed-settings family"]
+      }
+    }
+  },
   "sliceFive": {
     "scope": "uncited modules ranked 96 to 120 by size",
     "bytes": 1119349,
