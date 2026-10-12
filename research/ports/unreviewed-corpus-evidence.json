@@ -663,6 +663,37 @@
     ],
     "reading": "the import-list trend deepens - 62.5% of the band is import text and eighteen modules have no literal of their own - over sixteen modules with local counterparts, twelve hosted surfaces (remote-session-only command, browser extension tool set and enablement, subscription quota auto-resume, bridge tool-host helper, cloud queued notifications, send-file hand-off, session tunnel, artifact database tool, org-policy usage attribution, artifact file reads), one product surface without a local counterpart (end-conversation tool), one recovered welcome screen, one module excluded with credentials, and one candidate in Git-directory vetting"
   },
+  "sliceSixteen": {
+    "scope": "uncited modules ranked 471 to 520 by size",
+    "bytes": 749472,
+    "rows": 50,
+    "byteRange": [
+      15467,
+      14608
+    ],
+    "importSharePercent": 77.2,
+    "modulesAtEightyFivePlusPercentImports": 39,
+    "composition": {
+      "localCounterparts": 8,
+      "pureCodeLeaves": 34,
+      "hostedOrExternalSurfaces": 4,
+      "productWithoutLocalCounterpart": 1,
+      "vendoredOrPolyfill": 1,
+      "excludedWithCredentials": 1,
+      "inScopeCandidate": 1
+    },
+    "inScopeCandidates": [
+      "chunk-kxgzv2t8.js reaches a contradiction verdict between a remembered fact and an instruction file ('contradicts CLAUDE.md - verify which is current') and runs a consolidation pass over the memory store that skips a newer record (record_newer) and an unreadable item (items_unreadable) by name. This runtime's memory tools already merge duplicate facts on write, carry a hash-conflict read-again path and state that current user instructions take precedence over remembered preferences, so the precedence half is covered locally while the contradiction verdict and the consolidation pass are not"
+    ],
+    "notedButNotCandidates": [
+      "chunk-5kma9zk6.js seeds settings across the config layers with a settingsPrime seed-absence record, adjacent to the layer mechanism W08 ported",
+      "chunk-efek3snh.js labels managed-settings sources (managed settings only, managed settings remote, organization policy) beside an IDE installer; the labelling half is a surface this runtime has, the installer half is external",
+      "chunk-hh4k8r73.js states that the context beside a deny is dropped, which this runtime's own permission decisions express differently",
+      "chunk-57v1bkyr.js guards a subtask command by coordinator session and first turn, which this runtime's own subagent surface constrains its own way",
+      "thirty-four modules are 85% or more import statements and carry no characterising literal of their own, so they are recorded as dependency aggregators rather than as undetermined"
+    ],
+    "reading": "the thinnest band so far - 77.2% import text, 39 modules at 85% or more and 34 with no literal at all - over eight modules with local counterparts, four hosted surfaces (preview tunnel, Remote Control bridge, artifact reads, cloud review), one product surface without a local counterpart (fast mode gating), one vendored AWS SDK SSO copy, one module excluded with credentials, and one candidate in the memory store"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
