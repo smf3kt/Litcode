@@ -1238,6 +1238,28 @@
     ],
     "reading": "the bottom of the corpus by size at 35.6% import text, where every module is below 800 bytes and the band's whole byte mass is smaller than one module of slice four: hosted routine, remote-tool and upload surfaces, memory and web-fetch admissions, and state-name constants - ninety-two modules with no characterising literal of their own, four hosted surfaces, three with local counterparts, one product surface without a local counterpart, and no candidate"
   },
+  "sliceThirtyFour": {
+    "scope": "the remainder of the uncited list, ranks 2221 to 2267 by size - the last band",
+    "bytes": 2241,
+    "rows": 47,
+    "rowsWithContent": 4,
+    "byteRange": [697, 615],
+    "importSharePercent": 21.3,
+    "composition": {
+      "noCharacterisingLiteral": 44,
+      "localCounterparts": 3,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-prwr1nzt.js checks whether the native binary is installed, the installation state this runtime checks for its own",
+      "chunk-1qfa3hek.js reports an unsupported control request subtype, and chunk-ds0vnb6d.js reports a sandbox required but unavailable, both surfaces this runtime already owns",
+      "seven modules have a zero-byte body - chunk-6e4pv9ys.js, chunk-9fm17gv5.js, chunk-d1aahbgc.js, chunk-eamkhb9v.js, chunk-g1t9r9y0.js, chunk-p9frg3mj.js and chunk-xhar08fd.js - so their recorded byte size is a banner and one re-export rather than content, and byte size stops being a proxy for anything at this depth",
+      "forty-three of the forty-seven modules carry no literal of their own"
+    ],
+    "completesThePass": "with this band the review has read the uncited set end to end: every one of the 2267 uncited modules named in the ledger has been read once, in thirty-four contiguous bands of a hundred ranks, from the largest module down to the seven that are nothing but a re-export. No unread module remains, so there is no next band; what remains is the candidate list, which is work for port packages rather than for this pass",
+    "reading": "the noise floor at 21.3% import text: three readable lines about installation, control-protocol and sandbox state - forty-four modules with no characterising literal of their own, three with local counterparts, no candidate, and the end of the reading pass"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
@@ -1255,7 +1277,7 @@
     "asOf": "regenerated after slice seven; the movement since slice five is W10 porting chunk-pn44qc66.js into port evidence plus CURRENT and STATUS naming three reviewed modules of slices six and seven (chunk-2kdsvp3x.js, chunk-bt8cr7rw.js, chunk-patq2z05.js), which moves them from uncited to prose without adding port evidence; regenerated again after slice fourteen with unchanged digests and totals, because that slice named its modules and its candidate only inside this corpus pair, which the scan excludes",
     "totals": { "portBacked": 33, "narrativeOnly": 65, "uncited": 2267, "uncitedWithoutMarker": 2217 }
   },
-  "residual": "2217 uncited modules carry no marker; naming a reviewed module in CURRENT or STATUS moves it out of the uncited set and into prose without adding port evidence, which is what happened to three modules across slices six and seven; removing the number needs per-module reading, not more rules",
+  "residual": "2217 uncited modules carry no marker; naming a reviewed module in CURRENT or STATUS moves it out of the uncited set and into prose without adding port evidence, which is what happened to three modules across slices six and seven. The reading pass is now complete - all 2267 uncited modules have been read once in thirty-four bands - but reading changes nothing in the ledger, because this file is not a citation source: the uncited number moves only when a port package cites the module it actually reads, which is how chunk-gyf58rwf.js and chunk-pn44qc66.js left the set",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
   "paidCalls": 0
 }
