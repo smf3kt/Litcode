@@ -633,6 +633,36 @@
     ],
     "reading": "the deepest band so far and the first where size stops tracking substance: sixteen dependency aggregators whose mass is the import list, sixteen modules with local counterparts, ten hosted surfaces (device MCP consent, desktop entry, artifact authorship notes, remote frame tunnel, managed remote mounts, hosted privacy settings, durable artifact triggers, Remote Control policy gates, telemetry intake, turn relay), four product surfaces without a local counterpart (feedback drafts, issue drafting, HTML preview, recap), one recovered UI panel, one vendored AWS auth scheme copy, one module excluded with credentials, and one candidate in the file write path"
   },
+  "sliceFifteen": {
+    "scope": "uncited modules ranked 421 to 470 by size",
+    "bytes": 803148,
+    "rows": 50,
+    "byteRange": [
+      16542,
+      15478
+    ],
+    "importSharePercent": 62.5,
+    "composition": {
+      "localCounterparts": 16,
+      "pureCodeLeaves": 18,
+      "hostedOrExternalSurfaces": 12,
+      "productWithoutLocalCounterpart": 1,
+      "recoveredUi": 1,
+      "excludedWithCredentials": 1,
+      "inScopeCandidate": 1
+    },
+    "inScopeCandidates": [
+      "chunk-ekrtrxy7.js vets a Git directory entry by entry before trusting it: an unknown .git entry, a symlinked or hardlinked .git/index, a .git with no config or HEAD, and a symlinked or oversized .git/objects entry are each refused. This runtime's src/worktrees.ts verifies the registration identity of the worktrees it created (device and inode of the worktree directory, the resolved Git directory and its backlink, the common directory) and never inspects the entries of a Git directory, so the identity half is covered locally and the structure half is not"
+    ],
+    "notedButNotCandidates": [
+      "chunk-g0qz7p20.js applies the path and link vetting family a third time, to plugin eval paths, with macOS automounter, network-reachability and unexaminable-component refusals; it corroborates the family W09 and W10 ported and adds no new rule",
+      "chunk-m7864yc0.js derives a messaging key name from a socket path, adjacent to this runtime's own cross-session addressing, but its storage-backed publication has no local counterpart",
+      "chunk-yn0pfn70.js pairs cost display with a bounded file range reader (readRange, readTail, maxBytes), the reader half overlapping the bounds this runtime already applies",
+      "chunk-01dkdjqy.js carries cross-session idle notices with revocation and subscription-after-exit states, which this runtime expresses in its own messaging semantics",
+      "eighteen modules are 85% or more import statements and carry no characterising literal of their own, so they are recorded as dependency aggregators rather than as undetermined"
+    ],
+    "reading": "the import-list trend deepens - 62.5% of the band is import text and eighteen modules have no literal of their own - over sixteen modules with local counterparts, twelve hosted surfaces (remote-session-only command, browser extension tool set and enablement, subscription quota auto-resume, bridge tool-host helper, cloud queued notifications, send-file hand-off, session tunnel, artifact database tool, org-policy usage attribution, artifact file reads), one product surface without a local counterpart (end-conversation tool), one recovered welcome screen, one module excluded with credentials, and one candidate in Git-directory vetting"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
