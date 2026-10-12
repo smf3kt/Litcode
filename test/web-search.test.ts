@@ -201,3 +201,28 @@ test("timeout and mid-body cancellation close connections and release listeners"
     });
   }
 });
+
+test("a provider-shaped credential this session was never configured with is also kept out", async () => {
+  // The known-secret path can only remove strings this session was given. A
+  // result carrying a token of a recognized shape is removed for the same
+  // reason, and a citation URL carrying one is dropped like the known-secret
+  // case above.
+  const shaped = `ghp_${"a".repeat(36)}`;
+  const slack = "xoxb-1234567890-1234567890-abcdef";
+  await fixture((_request, response) => {
+    json(response, { data: { hits: [
+      { link: { href: "https://example.test/one" }, heading: "key", abstract: `use ${shaped} and ${slack} here` },
+      { link: { href: `https://example.test/${shaped}` }, heading: "shape URL" },
+      { link: { href: "https://example.test/three" }, heading: "plain", abstract: "nothing to remove" },
+    ] } });
+  }, async (base) => {
+    const search = tool(base, { method: "POST", queryParam: "search", limitParam: "count", fields: { results: "data.hits", url: "link.href", title: "heading", snippet: "abstract" } });
+    const result = JSON.parse(await search.execute({ query: `query with ${shaped}` }, context()));
+    assert.equal(JSON.stringify(result).includes(shaped), false);
+    assert.equal(JSON.stringify(result).includes(slack), false);
+    assert.equal(result.query, "query with [redacted]");
+    assert.deepEqual(result.citations[0], { url: "https://example.test/one", title: "key", snippet: "use [redacted] and [redacted] here" });
+    assert.deepEqual(result.citations[1], { url: "https://example.test/three", title: "plain", snippet: "nothing to remove" });
+    assert.equal(result.returned, 2);
+  });
+});

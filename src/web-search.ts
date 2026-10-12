@@ -1,6 +1,7 @@
 // Search through one explicitly configured HTTP JSON endpoint. Provider data is
 // inert; URLs returned by search are citations and are never fetched here.
 import { z } from "zod";
+import { redactCredentialShapes } from "./credential-shapes.js";
 import type { ToolContext, ToolDefinition } from "./tools.js";
 
 export const WEB_SEARCH_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
@@ -60,7 +61,10 @@ function redact(value: string, secrets: string[]): string {
   for (const secret of secrets) {
     for (const representation of new Set([secret, encodeURIComponent(secret)])) result = result.split(representation).join("[redacted]");
   }
-  return result;
+  // A string this session was never configured with still has a shape: a
+  // provider token that arrives in a result is removed for the same reason a
+  // configured one is.
+  return redactCredentialShapes(result);
 }
 function render(result: WebSearchResult, context: ToolContext): string {
   const raw = Math.floor(context.maxOutputBytes);

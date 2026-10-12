@@ -12,7 +12,7 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 44,
+  "recordCount": 45,
   "summary": {
     "modules": 43,
     "bytes": 9335146,
@@ -809,14 +809,17 @@
       "citedBy": [
         "research/CURRENT.md",
         "research/ports/W09-path-chain.md",
+        "research/ports/W19-credential-shapes.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/W09-path-chain.md"
+        "research/ports/W09-path-chain.md",
+        "research/ports/W19-credential-shapes.md"
       ],
       "reviewed": true,
       "declared": [
-        "rewrite of the chain walk onto this runtime's own path model, with its bounded refusal and its identity kept. This runtime already confined file tools by resolv"
+        "rewrite of the chain walk onto this runtime's own path model, with its bounded refusal and its identity kept. This runtime already confined file tools by resolv",
+        "copy of the precise half of the recovered table, and of the substitution, onto the redaction helper this runtime already runs over text it re-emits. The table i"
       ]
     },
     {
@@ -20380,10 +20383,12 @@
       "citedBy": [
         "research/CURRENT.md",
         "research/ports/W09-path-chain.md",
+        "research/ports/W19-credential-shapes.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/W09-path-chain.md"
+        "research/ports/W09-path-chain.md",
+        "research/ports/W19-credential-shapes.md"
       ],
       "reviewed": true
     },
