@@ -542,6 +542,10 @@ Explicit command-start after ECONNREFUSED, shared root/model deadline, owned pro
 
 litcode-magpie now ships in private57file runtime and production-only offline installation. Installed help/discovery/pinnedresume/compileddemo/coldstart/cancellation passed owneddrivers; deadstarter descendants reaped,0modelcalls. Fresh178files source offlineinstall/check/build matches50modules. Prior archives retained as prior identities; latest persistent inventory is ports/W03-installed-launcher-evidence.json, artifacts release/launcher-runtime and release/litcode-source-launcher. Actualapplicationcoldstart/route/rotation andpublicationdecisions remain pending.
 
+## MCP durable subscription checkpoint (2026-10-12)
+
+Opt-in session journal subscription binding passed compiled process restart/SIGKILL, pinned resume, cancellation/fork isolation and restore failure acceptance:3groups,37owned local requests. Final1027/1027, check/build and58file production installation passed. Remote-ack journal failure poisons replay; pending-close cleanup and direct-owner guards have regressions. Current identity, rewrite provenance and finite durability limits are consolidated in [ports/W05-persistence.md](ports/W05-persistence.md); prior records retain their version scopes.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

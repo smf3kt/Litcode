@@ -241,6 +241,7 @@ function newConfig(
       ...(settings.features?.mcpLogging === undefined ? {} : { mcpLogging: settings.features.mcpLogging }),
       ...(settings.features?.mcpNotificationStream === undefined ? {} : { mcpNotificationStream: settings.features.mcpNotificationStream }),
       ...(settings.features?.mcpRecovery === undefined ? {} : { mcpRecovery: settings.features.mcpRecovery }),
+      ...(settings.features?.mcpPersistence === undefined ? {} : { mcpPersistence: settings.features.mcpPersistence }),
       mcpCatalog: settings.features?.mcpCatalog ?? true,
       mcpDynamic: settings.features?.mcpDynamic ?? Boolean(settings.mcpServers && Object.keys(settings.mcpServers).length),
       mcpDeferred: settings.features?.mcpDeferred ?? false,
@@ -401,8 +402,9 @@ async function main(): Promise<void> {
       session = Session.open(workspace, { config });
     }
     const currentSession = session;
+    if (!currentSession || !runtime) throw new Error('Runtime failed to initialize');
+    runtime = await runtime.bindSession?.(currentSession) ?? runtime;
     const currentRuntime = runtime;
-    if (!currentSession || !currentRuntime) throw new Error('Runtime failed to initialize');
     process.stderr.write(`session: ${currentSession.id}\nworkspace: ${workspace}\n`);
     if (values.interactive) {
       await new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {

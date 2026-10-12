@@ -43,7 +43,8 @@ import { WorktreeManager, createWorktreeTools } from './worktrees.js';
 import { permissionPolicySchema, type PermissionPolicy, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
 import { configSchema, fingerprint as sessionFingerprint } from './session.js';
-import type { SessionConfig } from './session.js';
+import type { Session, SessionConfig } from './session.js';
+import { mcpSubscriptionState, commitMcpSubscription } from './mcp-session-subscriptions.js';
 import { createSubagentTool, type ChildEnvironmentFactory } from './subagents.js';
 import { createTaskTools } from './tasks.js';
 import { createTools, type ToolDefinition } from './tools.js';
@@ -93,7 +94,7 @@ export type ParsedRuntimeSettings = {
   plugins?: PluginConfig;
   agentTypes?: AgentTypeInfo[];
   features?: { tasks?: boolean; subagents?: boolean; notebooks?: boolean; background?: boolean; scheduler?: boolean;
-    workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean;
+    workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean; mcpPersistence?: boolean;
     taskProjections?: boolean;
     schedulerJitter?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; pluginSkillNamespaces?: boolean;
     agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean };
@@ -109,7 +110,7 @@ const permissionsSchema = permissionPolicySchema;
 
 const featuresSchema = z
   .object({ tasks: z.boolean().optional(), subagents: z.boolean().optional(), notebooks: z.boolean().optional(), background: z.boolean().optional(), scheduler: z.boolean().optional(),
-    workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(),
+    workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(),
     taskProjections: z.boolean().optional(),
     schedulerJitter: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
     agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional() })
@@ -361,6 +362,8 @@ export type Runtime = {
     requestPermission?: (tool: ToolDefinition, input: unknown, decision: PermissionDecision) => Promise<PermissionDecision>,
     conversation?: readonly Anthropic.MessageParam[]): Promise<string>;
   reconfigure?(config: SessionConfig): Promise<Runtime>;
+  /** Bind durable MCP subscriptions to one journal; a new owner may return a fresh runtime. */
+  bindSession?(session: Session): Promise<Runtime>;
   hookOptions?(config: SessionConfig, owner: string): HookRunOptions;
   /** Close connections, timers and process groups. Idempotent. */
   close(): Promise<void>;
@@ -383,7 +386,22 @@ export async function createRuntime(
   signal: AbortSignal,
   options: RuntimeOptions = {},
 ): Promise<Runtime> {
+  const persistsSubscriptions = (current: SessionConfig): boolean => current.features?.mcpPersistence === true &&
+    current.features.mcpRecovery === true && current.features.mcpSubscriptions === true;
+  const persistence = persistsSubscriptions(config);
+  // Tool schemas are pinned after construction; connected and host settings must still match.
+  const connectionConfigDigest = (current: SessionConfig): string => {
+    const { tools: _tools, ...settings } = current;
+    return sessionFingerprint({ ...settings, tools: [] });
+  };
+  const initialConfigDigest = connectionConfigDigest(config);
   const base = createTools();
+  const journalOwnedMcp = new Set(['mcp_resource_subscribe', 'mcp_resource_unsubscribe', 'mcp_resource_notifications']);
+  const scopedMcpTool = (tool: ToolDefinition): ToolDefinition => persistence && journalOwnedMcp.has(tool.schema.name) ? {
+    ...tool, forChild: () => ({ readOnly: tool.readOnly, schema: tool.schema, async execute() {
+      throw new Error('MCP subscription state belongs to the bound parent journal; child operations require an independent connection');
+    } }),
+  } : tool;
   const taskToolsByWorkspace = new Map<string, ToolDefinition[]>();
   const tasksFor = (workspace: string, reciprocal = false): ToolDefinition[] => {
     const key = JSON.stringify([workspace, reciprocal]);
@@ -425,6 +443,7 @@ export async function createRuntime(
     logging: config.features?.mcpLogging === true,
     notificationStream: config.features?.mcpNotificationStream === true,
     recovery: config.features?.mcpRecovery === true,
+    persistence,
     deferred: config.features?.mcpDeferred === true,
     ...(clientRequests ? { clientRequests } : {}) });
 
@@ -442,6 +461,11 @@ export async function createRuntime(
   const listeners = new Set<(owner: string) => void>();
   let closed = false;
   let closing: Promise<void> | undefined;
+  let boundSession: Session | undefined;
+  let alreadyBound = false;
+  let bindPromise: Promise<unknown> = Promise.resolve();
+  const bindingController = new AbortController();
+  const lifetimeController = new AbortController();
   const notify = (owner: string) => {
     for (const listener of listeners) { try { listener(owner); } catch { /* observers own their errors */ } }
   };
@@ -564,7 +588,8 @@ export async function createRuntime(
       tools.push(...createWorktreeTools(lazyResource(() => resources().worktrees ??=
         new WorktreeManager({ workspace: current.workspace, signal, maxOutputBytes: current.maxOutputBytes }))));
     }
-    const childTools = [...tools, ...mcp.tools];
+    const mcpTools = mcp.tools.map(scopedMcpTool);
+    const childTools = [...tools, ...mcpTools];
     let worktreeOperation: Promise<unknown> = Promise.resolve();
     const serializeWorktree = <T>(action: () => Promise<T>): Promise<T> => {
       const pending = worktreeOperation.then(action, action);
@@ -661,10 +686,14 @@ export async function createRuntime(
         },
       });
     }
-    tools.push(...mcp.tools);
+    tools.push(...mcpTools);
     const mcpNames = Object.keys(current.mcpServers ?? {});
     if (mcpNames.length && mcp.reconnect) tools.push({
       readOnly: false,
+      ...(persistence ? { forChild: (): ToolDefinition => ({ readOnly: false, schema: { name: 'mcp_reconnect',
+        description: 'Reconnect requires the owning session connection.', input_schema: { type: 'object',
+          properties: { server: { type: 'string', enum: mcpNames } }, required: ['server'], additionalProperties: false } },
+        async execute() { throw new Error('MCP reconnect requires an independently owned child connection'); } }) } : {}),
       schema: { name: 'mcp_reconnect', description: 'Reconnect one configured MCP server using pinned settings. Other connections and jobs remain active. Tool effects are never replayed; changed schemas require fresh discovery or a catalog rebuild.',
         input_schema: { type: 'object', properties: { server: { type: 'string', enum: mcpNames } }, required: ['server'], additionalProperties: false } },
       async execute(input, context) {
@@ -688,16 +717,24 @@ export async function createRuntime(
       }));
     }
     const bind = (tool: ToolDefinition): ToolDefinition => {
+      const checkJournalOwner = (): void => {
+        if (!persistence || (!journalOwnedMcp.has(tool.schema.name) && tool.schema.name !== 'mcp_reconnect')) return;
+        bindingController.signal.throwIfAborted();
+        if (!alreadyBound || boundSession?.id !== owner || boundSession.config.workspace !== current.workspace ||
+          connectionConfigDigest(current) !== initialConfigDigest) throw new Error('MCP operation requires the bound session journal owner');
+      };
       let child: ToolDefinition | undefined;
       return { ...tool,
         async execute(input, context) {
           context.signal.throwIfAborted();
           checkScope(owner, scope);
+          checkJournalOwner();
           return tool.execute(input, context);
         },
         ...(tool.executeBlocks ? { async executeBlocks(input: unknown, context: import('./tools.js').ToolContext) {
           context.signal.throwIfAborted();
           checkScope(owner, scope);
+          checkJournalOwner();
           return tool.executeBlocks!(input, context);
         } } : {}),
         ...(tool.forChild ? { forChild() { checkScope(owner, scope); return child ??= bind(tool.forChild!()); } } : {}),
@@ -720,6 +757,7 @@ export async function createRuntime(
     return selected;
   };
   const releaseSession = async (owner: string): Promise<void> => {
+    if (boundSession?.id === owner) bindingController.abort();
     if (elicitation?.owner === owner) { elicitation.controller.abort(); elicitation = undefined; }
     const resources = owners.get(owner);
     owners.delete(owner);
@@ -737,7 +775,7 @@ export async function createRuntime(
   };
   const close = (): Promise<void> => {
     if (closing) return closing;
-    closed = true; signal.removeEventListener('abort', onAbort);
+    closed = true; lifetimeController.abort(); bindingController.abort(); signal.removeEventListener('abort', onAbort);
     listeners.clear();
     closing = (async () => {
       try { await Promise.all([...ownerScopes.keys()].map(releaseSession)); }
@@ -748,8 +786,62 @@ export async function createRuntime(
   const onAbort = () => { void close(); };
   signal.addEventListener('abort', onAbort, { once: true });
   try {
-    return {
+    const runtime: Runtime = {
       tools: buildTools(config), buildTools, releaseSession,
+      bindSession(session) {
+        const bind = async (): Promise<Runtime> => {
+          if (closed || signal.aborted) throw new Error('Runtime is closed');
+          if (!persistence && !persistsSubscriptions(session.config)) return runtime;
+          if (alreadyBound && boundSession?.id === session.id && boundSession.file === session.file) {
+            if (connectionConfigDigest(session.config) !== initialConfigDigest) throw new Error('Runtime session configuration differs from its connected settings');
+            bindingController.signal.throwIfAborted();
+            boundSession = session; config = session.config;
+            return runtime;
+          }
+          if (alreadyBound || !persistence) {
+            const pendingController = new AbortController();
+            const abortPending = () => pendingController.abort();
+            lifetimeController.signal.addEventListener('abort', abortPending, { once: true });
+            // File rewind has already released the old owner before requesting a replacement.
+            if (!bindingController.signal.aborted) bindingController.signal.addEventListener('abort', abortPending, { once: true });
+            if (lifetimeController.signal.aborted) abortPending();
+            let fresh: Runtime | undefined;
+            try {
+              const pendingSignal = AbortSignal.any([signal, pendingController.signal]);
+              fresh = await createRuntime(session.config, provider, pendingSignal, options);
+              pendingSignal.throwIfAborted();
+              if (closed) throw new Error('Runtime closed while binding a new session');
+              const bound = await fresh.bindSession!(session);
+              pendingSignal.throwIfAborted();
+              if (closed) throw new Error('Runtime closed while binding a new session');
+              // Accepted replacements outlive the old owner; only pending setup follows its release.
+              return bound;
+            } catch (error) { await fresh?.close(); throw error; }
+            finally {
+              lifetimeController.signal.removeEventListener('abort', abortPending);
+              bindingController.signal.removeEventListener('abort', abortPending);
+            }
+          }
+          try {
+            if (connectionConfigDigest(session.config) !== initialConfigDigest) throw new Error('Runtime session configuration differs from its connected settings');
+            if (!mcp.bindSubscriptions) throw new Error('MCP subscription persistence binding is unavailable');
+            const state = mcpSubscriptionState(session);
+            const scope = scopeFor(session.id);
+            boundSession = session;
+            await mcp.bindSubscriptions(state, (server, method, uri) => {
+              checkScope(session.id, scope);
+              bindingController.signal.throwIfAborted();
+              commitMcpSubscription(boundSession!, server, method, uri);
+            }, AbortSignal.any([signal, bindingController.signal]));
+            signal.throwIfAborted(); bindingController.signal.throwIfAborted();
+            config = session.config; alreadyBound = true;
+            return runtime;
+          } catch (error) { await close(); throw error; }
+        };
+        const pending = bindPromise.then(bind, bind);
+        bindPromise = pending.catch(() => undefined);
+        return pending;
+      },
       ...(mcp.servers ? { mcpServers: () => mcp.servers!() } : {}),
       ...(mcp.reconnect ? { reconnectMcp: (server: string, requestSignal: AbortSignal) => mcp.reconnect!(server, requestSignal) } : {}),
       ...(mcp.notificationStreams ? { notificationStreams: () => mcp.notificationStreams!() } : {}),
@@ -835,9 +927,11 @@ export async function createRuntime(
       },
       limits: [...mcp.limits, 'Jobs and schedules are session-only; clear/fork cancels the old session resources.',
         config.features?.mcpRecovery === true
-          ? 'MCP lifecycle: transient HTTP startup failures retain healthy peers and recover in the background. Replacement restores acknowledged exact URI subscriptions before commit; failed restoration retains the prior connection. Five fast attempts precede up to eight bounded slow rounds; GET streams reopen up to five times per client lifetime. No tool/event replay or durable URI persistence.'
+          ? 'MCP lifecycle: transient HTTP startup failures retain healthy peers and recover in the background. Replacement restores acknowledged exact URI subscriptions before commit; failed restoration retains the prior connection. Five fast attempts precede up to eight bounded slow rounds; GET streams reopen up to five times per client lifetime. No tool/event replay. ' +
+            (persistence ? 'Acknowledged URI subscriptions persist after binding to the owning session journal; new sessions start with their own subscription events.' : 'URI subscriptions remain connection-local.')
           : 'MCP lifecycle: single-server replacement retains other resources; HTTP session expiry or three transport failures trigger up to five attempts (immediate, 1/2/4/8s); authentication/protocol failures end retries; no tool replay or slow retry phase.',
         'Child agents omit background and scheduler tools. Optional cron jitter uses the harness timing algorithm; jobs remain session-only.'], close,
     };
+    return runtime;
   } catch (error) { await close(); throw error; }
 }

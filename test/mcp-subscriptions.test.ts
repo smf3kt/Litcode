@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { test } from "node:test";
 import { connectMcpServers, type McpConnection } from "../src/mcp.js";
 import { McpResourceSubscriptions, MCP_MAX_RESOURCE_NOTIFICATION_BYTES, validateMcpResourceUri } from "../src/mcp-subscriptions.js";
@@ -163,6 +166,7 @@ test("HTTP subscription opt-in and exact capabilities preserve defaults, observe
 type RecoveryFixture = {
   next: number;
   capability: boolean;
+  startupFailures?: number;
   invalidTools?: boolean;
   expire: string | undefined;
   deleted: string[];
@@ -184,6 +188,7 @@ async function recoveryFixture(run: (url: string, state: RecoveryFixture) => Pro
       const msg = JSON.parse(text);
       const reply = (result: unknown) => { res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ jsonrpc: "2.0", id: msg.id, result })); };
       if (msg.method === "initialize") {
+        if (state.startupFailures) { state.startupFailures--; res.writeHead(503).end(); return; }
         res.setHeader("Mcp-Session-Id", `session-${++state.next}`);
         reply({ protocolVersion: "2025-06-18", capabilities: { tools: {}, resources: { subscribe: state.capability } } }); return;
       }
@@ -316,4 +321,176 @@ test("replacement freezes mutations, rejects in-flight snapshots and prevents la
       await assert.rejects(call(c, "mcp_resource_notifications", { server: "srv" }), /closed/);
     } finally { await c.close(); }
   });
+});
+
+test("persistence acknowledgement validates before synchronous commit and poisons replay after fsync EIO", async t => {
+  const root = fs.mkdtempSync(path.join(tmpdir(), "mcp-journal-eio-"));
+  const journal = path.join(root, "journal.jsonl");
+  const fd = fs.openSync(journal, "a");
+  t.after(() => { fs.closeSync(fd); fs.rmSync(root, { recursive: true, force: true }); });
+  let malformed = false, failCommit = false;
+  let requests = 0;
+  const commits: string[] = [];
+  const s = new McpResourceSubscriptions(async (method, params, _signal, acknowledge) => {
+    requests++;
+    s.updated(params);
+    acknowledge(malformed ? null : {});
+    s.updated(params);
+    return {};
+  }, () => true);
+  s.setAcknowledgement((method, uri) => {
+    assert.equal(s.snapshot().includes(uri), method === "resources/unsubscribe");
+    fs.writeSync(fd, JSON.stringify({ method, uri }) + "\n");
+    if (failCommit) {
+      t.mock.method(fs, "fsyncSync", () => { throw Object.assign(new Error("EIO: fixture fsync failed"), { code: "EIO", syscall: "fsync" }); });
+      try { fs.fsyncSync(fd); }
+      finally { t.mock.restoreAll(); }
+    }
+    fs.fsyncSync(fd);
+    commits.push(`${method}:${uri}`);
+  });
+  malformed = true;
+  await assert.rejects(s.change("resources/subscribe", "fixture://a", signal()), /invalid result/);
+  assert.deepEqual(commits, []);
+  malformed = false;
+  await s.change("resources/subscribe", "fixture://a", signal());
+  assert.deepEqual(JSON.parse(s.poll("srv", 128, 100_000, signal())).notifications, [{ uri: "fixture://a" }]);
+  failCommit = true;
+  await assert.rejects(s.change("resources/unsubscribe", "fixture://a", signal()), error => {
+    assert.ok(error instanceof Error);
+    assert.equal(error.name, "McpSubscriptionPersistenceError");
+    assert.match(error.message, /acknowledged but not recorded/);
+    assert.equal((error.cause as NodeJS.ErrnoException).code, "EIO");
+    assert.equal((error.cause as NodeJS.ErrnoException).syscall, "fsync");
+    return true;
+  });
+  const acknowledgedRequests = requests;
+  await assert.rejects(s.change("resources/subscribe", "fixture://b", signal()), /acknowledged but not recorded/);
+  await assert.rejects(s.restore(["fixture://a"], signal()), /acknowledged but not recorded/);
+  assert.throws(() => s.prepareReplacement(), /acknowledged but not recorded/);
+  assert.equal(requests, acknowledgedRequests);
+  assert.deepEqual(s.snapshot(), []);
+  s.updated({ uri: "fixture://a" });
+  assert.equal(JSON.parse(s.poll("srv", 128, 100_000, signal())).subscriptions, 0);
+  assert.equal(commits.length, 1);
+  // Written bytes are observable; failed fsync leaves their crash durability unknown.
+  assert.deepEqual(fs.readFileSync(journal, "utf8").trim().split("\n").map(line => JSON.parse(line)), [
+    { method: "resources/subscribe", uri: "fixture://a" }, { method: "resources/unsubscribe", uri: "fixture://a" },
+  ]);
+  s.close();
+  assert.deepEqual(s.snapshot(), []);
+});
+
+test("session persistence validates ownership, restores stable snapshots and retains disconnected startup intent", async () => {
+  await recoveryFixture(async (url, state) => {
+    const config = { srv: { type: "http" as const, url } };
+    for (const options of [{ persistence: true }, { persistence: true, recovery: true }, { persistence: true, subscriptions: true }]) {
+      const baseline = await connectMcpServers(config, context(), options);
+      assert.equal(baseline.bindSubscriptions, undefined); await baseline.close();
+    }
+    const options = { persistence: true, recovery: true, subscriptions: true, requestTimeoutMs: 1000 };
+    const c = await connectMcpServers(config, context(), options);
+    const commits: string[] = [];
+    let fail = false;
+    const commit = (server: string, method: string, uri: string) => {
+      if (fail) throw new Error("journal full");
+      commits.push(`${server}:${method}:${uri}`);
+    };
+    try {
+      const invalidStates: Record<string, readonly string[]>[] = [{ missing: [] }, { srv: ["fixture://a", "fixture://a"] }, { srv: ["bad uri"] }, { srv: Array.from({ length: 33 }, (_, i) => `fixture://${i}`) }];
+      for (const initial of invalidStates) {
+        await assert.rejects(c.bindSubscriptions!(initial, commit, signal()));
+      }
+      const desired = ["fixture://exact%2f"], entered = deferred<void>(), release = deferred<unknown>();
+      state.subscribe = async () => { entered.resolve(); return release.promise; };
+      const binding = c.bindSubscriptions!({ srv: desired }, commit, signal());
+      await entered.promise; desired.push("fixture://second");
+      await assert.rejects(call(c, "mcp_resource_subscribe", { server: "srv", uri: "fixture://second" }), /blocked during transport replacement/);
+      release.resolve({}); await binding; state.subscribe = undefined;
+      const first = `session-${state.next}`;
+      assert.deepEqual(subscribed(state, first), ["fixture://exact%2f"]);
+      assert.deepEqual(commits, []);
+      await assert.rejects(c.bindSubscriptions!({}, commit, signal()), /owner changes require a fresh connection/);
+      await call(c, "mcp_resource_subscribe", { server: "srv", uri: "fixture://second" });
+      state.subscribe = async () => null;
+      await assert.rejects(c.reconnect!("srv", signal()), /invalid result/);
+      assert.equal(c.servers!().srv!.generation, 1);
+      assert.equal((await call(c, "mcp_resource_notifications", { server: "srv" })).subscriptions, 2);
+      state.subscribe = undefined;
+      await c.reconnect!("srv", signal());
+      assert.deepEqual(subscribed(state, `session-${state.next}`), ["fixture://exact%2f", "fixture://second"]);
+      fail = true;
+      await assert.rejects(call(c, "mcp_resource_unsubscribe", { server: "srv", uri: "fixture://second" }), /acknowledged but not recorded/);
+      assert.equal((await call(c, "mcp_resource_notifications", { server: "srv" })).subscriptions, 1);
+      const acknowledgedRequests = state.requests.length, acknowledgedSessions = state.next;
+      await assert.rejects(c.reconnect!("srv", signal()), /acknowledged but not recorded/);
+      for (const name of ["mcp_resource_subscribe", "mcp_resource_unsubscribe"]) {
+        await assert.rejects(call(c, name, { server: "srv", uri: "fixture://second" }), /acknowledged but not recorded/);
+      }
+      assert.equal(state.requests.length, acknowledgedRequests);
+      assert.equal(state.next, acknowledgedSessions);
+      assert.equal(c.servers!().srv!.retryPhase, "stopped");
+      assert.equal(commits.length, 1);
+    } finally { await c.close(); }
+    for (const mode of ["malformed", "capability", "cancel"] as const) {
+      state.capability = mode !== "capability";
+      state.subscribe = async () => mode === "malformed" ? null : {};
+      const failed = await connectMcpServers(config, context(), options);
+      const controller = new AbortController();
+      if (mode === "cancel") controller.abort();
+      try { await assert.rejects(failed.bindSubscriptions!({ srv: ["fixture://exact%2f"] }, commit, controller.signal), /invalid result|advertise|aborted/i); }
+      finally { await failed.close(); }
+    }
+    state.capability = true; state.subscribe = undefined; state.startupFailures = 1;
+    const disconnected = await connectMcpServers(config, context(), options);
+    try {
+      assert.equal(disconnected.servers!().srv!.state, "disconnected");
+      const schemas = JSON.stringify(disconnected.tools.map(item => item.schema));
+      await disconnected.bindSubscriptions!({ srv: ["fixture://exact%2f"] }, commit, signal());
+      const deadline = Date.now() + 2000;
+      while (disconnected.servers!().srv!.state !== "connected" && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 10));
+      assert.equal(disconnected.servers!().srv!.state, "connected");
+      assert.deepEqual(subscribed(state, `session-${state.next}`), ["fixture://exact%2f"]);
+      assert.equal((await call(disconnected, "mcp_resource_notifications", { server: "srv" })).subscriptions, 1);
+      assert.equal(JSON.stringify(disconnected.tools.map(item => item.schema)), schemas);
+      assert.equal(commits.length, 1);
+    } finally { await disconnected.close(); }
+  });
+});
+
+test("persisted desired subscriptions survive fatal stdio and manual restart without duplicate journal acknowledgements", async () => {
+  const script = `
+    let buffer = "";
+    const send = message => process.stdout.write(JSON.stringify({ jsonrpc: "2.0", ...message }) + "\\n");
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", chunk => {
+      buffer += chunk; let n;
+      while ((n = buffer.indexOf("\\n")) >= 0) {
+        const msg = JSON.parse(buffer.slice(0, n)); buffer = buffer.slice(n + 1);
+        if (msg.method === "initialize") send({ id: msg.id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {}, resources: { subscribe: true } } } });
+        else if (msg.method === "tools/list") send({ id: msg.id, result: { tools: [{ name: "crash", inputSchema: { type: "object" } }] } });
+        else if (msg.method === "resources/subscribe" || msg.method === "resources/unsubscribe") {
+          process.stdout.write([{ method: "notifications/resources/updated", params: msg.params },
+            { id: msg.id, result: {} }, { method: "notifications/resources/updated", params: msg.params }]
+            .map(message => JSON.stringify({ jsonrpc: "2.0", ...message }) + "\\n").join(""));
+        } else if (msg.method === "tools/call") process.exit(7);
+      }
+    });
+  `;
+  const c = await connectMcpServers({ local: { command: process.execPath, args: ["-e", script] } }, context(), { subscriptions: true, recovery: true, persistence: true });
+  const commits: string[] = [];
+  try {
+    await c.bindSubscriptions!({ local: ["fixture://exact%2f"] }, (_server, method, uri) => commits.push(`${method}:${uri}`), signal());
+    assert.equal((await call(c, "mcp_resource_notifications", { server: "local" })).notifications.length, 1);
+    await call(c, "mcp_resource_subscribe", { server: "local", uri: "fixture://second" });
+    await assert.rejects(tool(c, "mcp__local__crash").execute({}, context()), /exited/);
+    assert.equal(c.servers!().local!.state, "disconnected");
+    await c.reconnect!("local", signal());
+    const restored = await call(c, "mcp_resource_notifications", { server: "local" });
+    assert.equal(restored.subscriptions, 2);
+    assert.deepEqual(restored.notifications, [{ uri: "fixture://exact%2f" }, { uri: "fixture://second" }]);
+    assert.deepEqual(commits, ["resources/subscribe:fixture://second"]);
+    await call(c, "mcp_resource_unsubscribe", { server: "local", uri: "fixture://second" });
+    assert.equal(commits.length, 2);
+  } finally { await c.close(); }
 });

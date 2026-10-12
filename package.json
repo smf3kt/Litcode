@@ -42,6 +42,7 @@
     "smoke:mcp-notification": "node scripts/smoke-mcp-notification-stream.mjs",
     "smoke:mcp-reconnect-cli": "node scripts/smoke-mcp-reconnect-cli.mjs",
     "smoke:mcp-recovery-cli": "node scripts/smoke-mcp-recovery-cli.mjs",
+    "smoke:mcp-persistence-cli": "node scripts/smoke-mcp-persistence-cli.mjs",
     "smoke:mcp-logging": "node scripts/smoke-mcp-logging.mjs",
     "smoke:child-callbacks": "node scripts/smoke-child-callbacks.mjs",
     "smoke:hook-terminal-cli": "node scripts/smoke-hook-terminal-cli.mjs",

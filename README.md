@@ -61,12 +61,12 @@ MCP恢复：
 MCP恢复可在工作区`.harness/settings.json`显式开启，并固定到会话：
 
 ```json
-{ "features": { "mcpSubscriptions": true, "mcpNotificationStream": true, "mcpRecovery": true } }
+{ "features": { "mcpSubscriptions": true, "mcpNotificationStream": true, "mcpRecovery": true, "mcpPersistence": true } }
 ```
 
 成功确认的精确URI在手工或HTTP自动替换连接时先向候选连接恢复，再提交新generation；恢复失败保留旧连接。GET通知流遇到EOF、传输失败或idle deadline后在同一session内最多重开5次，间隔1/2/4/8/8秒；关闭会清理计时器。资源正文仍由显式读取工具获取，缺失通知维持缺失。旧会话缺少此开关时沿用原合同，HTTP既有自动快恢复保持。
 
-实际CLI验收入口：`npm run smoke:mcp-recovery-cli -- --compiled`和`npm run smoke:mcp-startup-cli -- --compiled`（先构建）。开启mcpRecovery还启用临时HTTP启动失败降级及五次快恢复后的八轮慢恢复，健康服务保持；来源与有限差异见[启动记录](research/ports/W05-startup.md)。进程重启后的订阅持久化仍待迁移。
+实际CLI验收入口：`npm run smoke:mcp-recovery-cli -- --compiled`和`npm run smoke:mcp-startup-cli -- --compiled`（先构建）。开启mcpRecovery还启用临时HTTP启动失败降级及五次快恢复后的八轮慢恢复，健康服务保持；来源与有限差异见[启动记录](research/ports/W05-startup.md)。同时开启mcpPersistence、mcpRecovery和mcpSubscriptions后，精确URI的subscribe/unsubscribe确认写入当前会话journal；恢复使用固定server配置摘要，并在任务开始前恢复仍有效的订阅。新会话、fork、clear和配置分支使用独立连接与空订阅记录。省略/false保留连接内恢复合同。journal提交失败会明确报告远端已确认、持久化失败，并阻断当前绑定的修改与重连；fsync失败可能已经写入日志字节，重启前须核对journal，禁止把内存状态当成持久成功。实际跨进程验收：`npm run smoke:mcp-persistence-cli -- --compiled --sigkill`；合同与证据见[持久化记录](research/ports/W05-persistence.md)。
 
 通过环境变量配置 Magpie：
 ```sh
@@ -155,7 +155,7 @@ Rules目录现有界递归加载Markdown至depth3（root为0），遍历entries�
 
 `/mcp-reconnect SERVER` 使用固定配置替换单个连接，保留当前会话、其他server及后台资源；模型也可调用 `mcp_reconnect` 工具，沿用常规权限与工具日志。新连接完成握手和目录校验后才提交，失败保留旧连接。`/mcp` 展示状态、generation、尝试次数和重连错误。HTTP session过期或连续3次transport错误触发最多5次自动拨号，间隔为立即、1/2/4/8秒；认证与协议错误结束重试，stdio崩溃使用显式恢复。调用效果始终只执行一次，重连后的日志/订阅队列从空开始。发布schema保持固定，发生变化时旧工具报错；启用动态目录后可重新发现，或使用整体重连接入新的发布schema。
 
-不带名称的 `/mcp-reconnect` 保留整体重建入口：成功刷新工具schema并分支新会话，失败保留旧runtime。整体切换结束旧owner后台资源；修改磁盘配置使用 `/reload`。当前mcpRecovery开启启动降级、慢重试和已确认URI重建；事件重放、跨进程订阅持久化与完整原版refetch/park策略仍保留差异。旧14/4请求记录维持各自版本作用域。
+不带名称的 `/mcp-reconnect` 保留整体重建入口：成功刷新工具schema并分支新会话，失败保留旧runtime。整体切换结束旧owner后台资源；修改磁盘配置使用 `/reload`。当前mcpRecovery开启启动降级、慢重试和已确认URI重建；跨进程URI持久化另由mcpPersistence显式开启；事件重放与完整原版refetch/park策略仍保留差异。旧14/4请求记录维持各自版本作用域。
 
 `--managed-settings FILE` 指定独立的本地策略JSON，只接受 `allowShell`、`permissions`、`features`、`mcpClient`。已写出的字段最终覆盖项目设置与CLI：`permissions` 整体替换（数组不拼接），feature/MCP布尔值按字段覆盖，其余字段沿用普通配置。策略与文件路径保存到会话；`/permissions`、`/plan` 在策略指定permissions时保持原值。`--watch-config` 观察外部策略文件，完整重载成功后创建新会话快照；错误或缺失文件保留旧runtime。恢复直接使用已存策略，策略源随后删除也可打开；恢复时新增 `--managed-settings` 参数会报错。它是自有harness配置合同，尚无OS级managed配置发现、远端策略签名或凭证管理。
 
@@ -194,7 +194,7 @@ Hooks 的 event 列表支持旧平铺定义与 `{ "matcher": "...", "hooks": [..
 
 MCP client 能力由可选配置 `"mcpClient": { "roots": true, "sampling": true, "elicitation": true }` 或 CLI `--mcp-roots` / `--mcp-sampling` / `--mcp-elicitation` 显式开启；默认字段省略，恢复使用固定快照并禁止追加这些配置参数。Roots 返回规范工作区的 `file:` URI。Sampling 使用固定 model/共享 provider 预算，输入低于 compactAt、maxTokens 限于配置值，文本输出限于 min(maxOutputBytes, 64 KiB)；server 内容作为任务数据，主会话 system/history/tools 均省略。可信程序可用 `RuntimeOptions.mcpClientRequests(config)` 提供回调，隔离及 relocation 重新绑定。每个 host factory 最多 16 个实际阶段，取消返回后占槽至底层结束。`--mcp-elicitation` 要求 `--interactive`：活动用户回合显示 form schema，接收 JSON 对象、`:decline` 或 `:cancel`，最多三次校验尝试；startup、idle 事件、headless 及没有活动表单回调时返回 cancel。Elicitation/ElicitationResult hooks 已接线，URL elicitation 与 OAuth 保持排除。
 
-`features.mcpSubscriptions`默认false，显式开启且server声明resources.subscribe:true才提供subscribe/unsubscribe/notifications。Poll消耗本连接URI队列并报告丢弃，读取仍显式；32URI、128条/32KiB队列、4096字节URI。Stdio接推送；HTTP默认活跃POST SSE，额外mcpNotificationStream开关才启用ownedGET（见后文）。省略重连/重放/自动refetch。
+`features.mcpSubscriptions`默认false，显式开启且server声明resources.subscribe:true才提供subscribe/unsubscribe/notifications。Poll消耗本连接URI队列并报告丢弃，读取仍显式；32URI、128条/32KiB队列、4096字节URI。Stdio接推送；HTTP默认活跃POST SSE，额外mcpNotificationStream开关才启用ownedGET（见后文）。mcpRecovery开启连接替换恢复，mcpPersistence进一步开启会话journal恢复；省略事件重放与自动refetch。
 
 ```sh
 npm run agent -- --workspace /absolute/path/to/project --interactive

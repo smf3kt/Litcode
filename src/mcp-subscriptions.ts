@@ -14,6 +14,13 @@ export const MCP_SUBSCRIPTION_LIMITS: readonly string[] = [
 export type McpSubscriptionMethod = "resources/subscribe" | "resources/unsubscribe";
 type Request = (method: McpSubscriptionMethod, params: { uri: string }, signal: AbortSignal, onResult: (result: unknown) => void) => Promise<unknown>;
 
+export class McpSubscriptionPersistenceError extends Error {
+  constructor(method: McpSubscriptionMethod, cause: unknown) {
+    super(`MCP ${method} acknowledged but not recorded: session journal commit failed`, { cause });
+    this.name = "McpSubscriptionPersistenceError";
+  }
+}
+
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -33,10 +40,22 @@ export class McpResourceSubscriptions {
   private changing = false;
   private closed = false;
   private replacement: object | undefined;
+  private acknowledgement: ((method: McpSubscriptionMethod, uri: string) => void) | undefined;
+  private persistenceFailure: McpSubscriptionPersistenceError | undefined;
 
   constructor(private readonly request: Request, private readonly advertised: () => boolean) {}
 
   supports(): boolean { return !this.closed && this.advertised(); }
+
+  snapshot(): readonly string[] { return Object.freeze([...this.uris]); }
+
+  setAcknowledgement(callback: ((method: McpSubscriptionMethod, uri: string) => void) | undefined): void {
+    this.acknowledgement = callback;
+  }
+
+  poisonPersistence(error: McpSubscriptionPersistenceError): void {
+    this.persistenceFailure ??= error;
+  }
 
   private active(signal: AbortSignal): void {
     if (this.closed) throw new Error("MCP resource subscription connection closed");
@@ -45,10 +64,21 @@ export class McpResourceSubscriptions {
   }
 
   async change(method: McpSubscriptionMethod, uri: unknown, signal: AbortSignal): Promise<{ uri: string; subscribed: boolean }> {
+    return this.mutate(method, uri, signal, false);
+  }
+
+  /** Replay only desired subscriptions; the caller owns the mutation freeze. */
+  async restore(uris: readonly string[], signal: AbortSignal): Promise<void> {
+    if (this.persistenceFailure) throw this.persistenceFailure;
+    for (const uri of uris) await this.mutate("resources/subscribe", uri, signal, true);
+  }
+
+  private async mutate(method: McpSubscriptionMethod, uri: unknown, signal: AbortSignal, restoring: boolean): Promise<{ uri: string; subscribed: boolean }> {
     this.active(signal);
+    if (this.persistenceFailure) throw this.persistenceFailure;
     validateMcpResourceUri(uri);
+    if (this.replacement && !restoring) throw new Error("MCP resource subscription mutation blocked during transport replacement; retry after reconnect completes");
     if (this.changing) throw new Error("MCP resource subscription mutation already in flight");
-    if (this.replacement) throw new Error("MCP resource subscription mutation blocked during transport replacement; retry after reconnect completes");
     const subscribe = method === "resources/subscribe";
     if (subscribe && !this.uris.has(uri) && this.uris.size >= MCP_MAX_RESOURCE_SUBSCRIPTIONS) throw new Error("MCP resource subscription limit reached (32)");
     this.changing = true;
@@ -57,6 +87,17 @@ export class McpResourceSubscriptions {
         this.active(signal);
         if (!record(result)) throw new Error("MCP resource subscription returned an invalid result");
         // Commit while dispatching the reply, before the next frame in its chunk.
+        if (!restoring && this.acknowledgement) {
+          try { this.acknowledgement(method, uri); }
+          catch (cause) {
+            // The remote effect is acknowledged even when its journal write fails.
+            if (subscribe) this.uris.add(uri);
+            else this.uris.delete(uri);
+            const error = cause instanceof McpSubscriptionPersistenceError ? cause : new McpSubscriptionPersistenceError(method, cause);
+            this.poisonPersistence(error);
+            throw error;
+          }
+        }
         if (subscribe) this.uris.add(uri);
         else this.uris.delete(uri);
       });
@@ -66,12 +107,13 @@ export class McpResourceSubscriptions {
 
   /** Freeze mutations before taking the acknowledged desired-state snapshot. */
   prepareReplacement(): { uris: readonly string[]; release(): void } {
+    if (this.persistenceFailure) throw this.persistenceFailure;
     if (this.changing) throw new Error("MCP transport replacement blocked: resource subscription mutation already in flight");
     if (this.replacement) throw new Error("MCP resource subscription transport replacement already in flight");
     const token = {};
     this.replacement = token;
     return {
-      uris: Object.freeze([...this.uris]),
+      uris: this.snapshot(),
       release: () => {
         if (this.replacement === token) this.replacement = undefined;
       },
@@ -107,6 +149,7 @@ export class McpResourceSubscriptions {
 
   close(): void {
     this.closed = true;
+    this.acknowledgement = undefined;
     this.replacement = undefined;
     this.uris.clear(); this.updates.length = 0; this.bytes = 2; this.dropped = 0;
   }
