@@ -554,6 +554,10 @@ Explicit pinned/managed samplingImages now reuses owned media header validation 
 
 Adapted recovered driveMcpTask and integrated pinned/managed mcpTasks with HTTP/stdio, existing roots/form input callbacks, bounded polling/retries, cached answers and independent cancellation. Source/compiled actual task chains passed completion/malformed/unsupported/abort/close/legacy/resume,3owned CLI model requests. Check/build and59file installed package passed. Final suite and precise source/dependency coordinates reside in [ports/W05-tasks.md](ports/W05-tasks.md). Standard tasks/result, background reattachment and real remote task service equivalence remain separate.
 
+## Sampling mixed block arrays (2026-10-12)
+
+Opt-in pinned/managed samplingArrays accepts bounded nonempty text/image arrays through stdio and HTTP, with original block order and image attachment indices. Single-block host behavior remains; text results/shared budget/abort contracts reused. Actual compiled mixed CLI7local requests passed pin/resume/legacy/managed/budget; three regressions added. Source mapping, final baseline/package/source delivery and intermediate fixture failures consolidated in [ports/W05-sampling-arrays.md](ports/W05-sampling-arrays.md).
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

@@ -51,7 +51,7 @@ async function readBody(request: http.IncomingMessage): Promise<any> {
   return text ? JSON.parse(text) : {};
 }
 
-async function fixture(t: TestContext, reverseMethods: string[] = [], image = false) {
+async function fixture(t: TestContext, reverseMethods: string[] = [], image = false, arrays = false) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cli-mcp-requests-')));
   const workspace = path.join(root, 'workspace space');
   const user = path.join(root, 'user');
@@ -68,7 +68,8 @@ async function fixture(t: TestContext, reverseMethods: string[] = [], image = fa
   let serial = 0;
   const waiting = new Map<string, () => void>();
   const samplingParams = {
-    messages: [{ role: 'user', content: image ? { type: 'image', data: IMAGE, mimeType: 'image/png' } : { type: 'text', text: 'SERVER_TASK_MARKER' } }],
+    messages: [{ role: 'user', content: arrays ? [{ type: 'text', text: 'SERVER_TASK_MARKER' }, { type: 'image', data: IMAGE, mimeType: 'image/png' }, { type: 'text', text: 'AFTER_IMAGE' }]
+      : image ? { type: 'image', data: IMAGE, mimeType: 'image/png' } : { type: 'text', text: 'SERVER_TASK_MARKER' } }],
     systemPrompt: 'SERVER_SYSTEM_DATA_MARKER', includeContext: 'allServers', maxTokens: 500,
     modelPreferences: { hints: [{ name: 'gateway/ignored-server-model' }] },
   };
@@ -261,6 +262,45 @@ test('CLI image sampling preserves bytes, pinned resume, shared budget and absen
     compiledCLI: process.env.HARNESS_SMOKE_COMPILED === '1', gatewayRequests: fx.messages.length,
     pinnedResume: true, budget: true, legacyGate: true, managedGate: true, bytePreserving: true, locksReleased: true,
     imageSha256: createHash('sha256').update(Buffer.from(IMAGE, 'base64')).digest('hex') }));
+});
+
+test('CLI array sampling restores pinned mixed blocks and enforces managed and legacy gates', { timeout: 40_000 }, async t => {
+  const fx = await fixture(t, ['sampling/createMessage'], true, true);
+  const client = { sampling: true, samplingImages: true, samplingArrays: true };
+  fx.settings({ mcpClient: client }); fx.put('HARNESS.md', HOST_CONTEXT);
+  const first = success(await fx.run(['--max-model-calls', '2']));
+  assert.equal(journal(fx.workspace, first.session_id).metadata.config.mcpClient.samplingArrays, true);
+  fx.put('.harness/settings.json', '{ ignored current config');
+  const resumed = success(await fx.run([], { resume: first.session_id, key: ROTATED_KEY }));
+  assert.equal(resumed.session_id, first.session_id); assert.equal(resumed.model_calls, 2);
+  for (const index of [0, 2]) {
+    const body = fx.messages[index]!.body;
+    assert.equal(body.model, MODEL); assert.deepEqual(body.tool_choice, { type: 'none' });
+    assert.equal(body.tools, undefined);
+    const native = body.messages[0].content;
+    assert.deepEqual(native[1], { type: 'image', source: { type: 'base64', media_type: 'image/png', data: IMAGE } });
+    const quoted = JSON.parse(native[0].text.split('\n')[1]);
+    assert.deepEqual(quoted.messages[0].content, [
+      { type: 'text', text: 'SERVER_TASK_MARKER' }, { type: 'image', mimeType: 'image/png', attachment: 1 },
+      { type: 'text', text: 'AFTER_IMAGE' },
+    ]);
+    assert.doesNotMatch(JSON.stringify(body), new RegExp(`${HOST_CONTEXT}|${HOST_HISTORY}|${KEY}|${ROTATED_KEY}`));
+  }
+  fx.settings({ mcpClient: client }); const limited = await fx.run(['--max-model-calls', '1']);
+  assert.equal(limited.code, 2); assert.equal(JSON.parse(limited.stdout).model_calls, 1);
+  const before = fx.messages.length; fx.settings({ mcpClient: { sampling: true, samplingImages: true } });
+  success(await fx.run()); assert.equal(fx.messages.length, before + 1); assert.equal(fx.replies.at(-1)!.error.code, -32603);
+  fx.settings({ mcpClient: client }); fx.put('managed.json', JSON.stringify({ mcpClient: { samplingArrays: false } }));
+  const managed = success(await fx.run(['--managed-settings', path.join(fx.workspace, 'managed.json')]));
+  assert.equal(journal(fx.workspace, managed.session_id).metadata.config.mcpClient.samplingArrays, false);
+  assert.equal(fx.replies.at(-1)!.error.code, -32603);
+  assert.equal(journal(fx.workspace, first.session_id).text.includes(IMAGE), false);
+  assert.doesNotMatch(journal(fx.workspace, first.session_id).text, new RegExp(`${KEY}|${ROTATED_KEY}`));
+  assert.equal(fs.readdirSync(path.join(fx.workspace, '.agent')).some(name => name.endsWith('.lock')), false);
+  assert.deepEqual(fx.failures, []);
+  if (process.env.HARNESS_SMOKE_RECEIPT === '1') console.log(JSON.stringify({ samplingArrays: 'passed',
+    compiledCLI: process.env.HARNESS_SMOKE_COMPILED === '1', gatewayRequests: fx.messages.length,
+    ordering: true, bytePreserving: true, pinnedResume: true, managedGate: true, legacyGate: true, budget: true, locksReleased: true }));
 });
 
 test('CLI roots flag overrides false settings and exposes exactly the current workspace URI', { timeout: 30_000 }, async t => {

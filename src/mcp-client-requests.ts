@@ -7,7 +7,7 @@ export type McpElicitationParams = { message: string; mode?: "form"; requestedSc
 export type McpElicitationResult = { action: "accept" | "decline" | "cancel"; content?: { [key: string]: string | number | boolean } };
 export type McpSamplingContent = { type: "text"; text: string } | { type: "image" | "audio"; data: string; mimeType: string };
 export type McpSamplingParams = {
-  messages: { role: "user" | "assistant"; content: McpSamplingContent }[];
+  messages: { role: "user" | "assistant"; content: McpSamplingContent | McpSamplingContent[] }[];
   maxTokens: number;
   modelPreferences?: { hints?: { name?: string }[]; costPriority?: number; speedPriority?: number; intelligencePriority?: number };
   systemPrompt?: string;
@@ -26,6 +26,7 @@ export type McpClientRequests = {
   timeoutMs?: number;
 };
 export const MCP_CLIENT_REQUEST_MAX_INPUT_BYTES = 32 * 1024;
+export const MCP_SAMPLING_MAX_BLOCKS = 128;
 export const MCP_CLIENT_REQUEST_MAX_RESULT_BYTES = 1024 * 1024;
 export const MCP_CLIENT_REQUEST_MAX_PENDING = 16;
 export const MCP_CLIENT_REQUEST_CLEANUP_MS = 1000;
@@ -158,7 +159,14 @@ function samplingContent(value: unknown): void {
 function samplingParams(params: Record<string, any>): McpSamplingParams {
   requireShape(params, ["messages", "maxTokens", "modelPreferences", "systemPrompt", "includeContext", "temperature", "stopSequences", "metadata", "_meta"], ["messages", "maxTokens"]);
   if (!Array.isArray(params.messages) || !params.messages.length || !Number.isSafeInteger(params.maxTokens) || params.maxTokens < 1) throw new Error("sampling");
-  for (const message of params.messages) { requireShape(message, ["role", "content"], ["role", "content"]); if (!["user", "assistant"].includes(message.role)) throw new Error("role"); samplingContent(message.content); }
+  let blocks = 0;
+  for (const message of params.messages) {
+    requireShape(message, ["role", "content"], ["role", "content"]);
+    if (!["user", "assistant"].includes(message.role)) throw new Error("role");
+    const content = Array.isArray(message.content) ? message.content : [message.content];
+    if (!content.length || (blocks += content.length) > MCP_SAMPLING_MAX_BLOCKS) throw new Error("blocks");
+    for (const block of content) samplingContent(block);
+  }
   if (params.systemPrompt !== undefined) text(params.systemPrompt);
   if (params.includeContext !== undefined && !["none", "thisServer", "allServers"].includes(params.includeContext)) throw new Error("context");
   if (params.temperature !== undefined) { finite(params.temperature); if (params.temperature < 0) throw new Error("temperature"); }

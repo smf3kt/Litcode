@@ -258,7 +258,7 @@ async function cancellation() {
   const base = await unusedBase();
   const marker = markerFor('signal');
   const running = launch(base, ['--startup-timeout-ms', '5000', ...commandArgs(base, marker, 'root-stall')]);
-  await waitUntil(() => fs.existsSync(marker), 'startup child never wrote its PID marker');
+  await waitUntil(() => fs.existsSync(marker) && fs.statSync(marker).size > 0, 'startup child never wrote its PID marker');
   const pid = readPid(marker);
   assert.equal(alive(pid), true, 'startup child exited before SIGTERM');
   await delay(100);

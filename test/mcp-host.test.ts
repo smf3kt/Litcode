@@ -195,6 +195,47 @@ test('image sampling pins byte-preserving native content, validates before effec
   assert.equal(result.content.type, 'text'); assert.equal(approvals, 1);
 });
 
+test('sampling arrays preserve order and attachment mapping with independent gates and aggregate bounds', async () => {
+  const data = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==';
+  const image = { type: 'image' as const, data, mimeType: 'image/png' };
+  const text = { type: 'text' as const, text: 'ARRAY_TEXT' };
+  const params: McpSamplingParams = { ...input(), messages: [
+    { role: 'assistant', content: [text, image, { ...text, text: 'BETWEEN' }, image] },
+    { role: 'user', content: [image, text] },
+  ] };
+  const provider = new ScriptProvider(); let approvals = 0;
+  const callbacks = createMcpHostRequests({ config: { ...config(), mcpClient: { samplingArrays: true, samplingImages: true } },
+    provider, approveSampling: async snapshot => { approvals++; snapshot.messages.length = 0; return true; } });
+  for (const messages of [
+    [{ role: 'user', content: [] }], [{ role: 'user', content: [[text]] }],
+    [{ role: 'user', content: Array(129).fill(text) }],
+    [{ role: 'user', content: Array(128).fill(text) }, { role: 'user', content: text }],
+    [{ role: 'user', content: [text, { ...image, data: 'AAAA' }] }],
+    [{ role: 'user', content: [text, { type: 'audio', data, mimeType: 'audio/wav' }] }],
+  ]) await assert.rejects(async () => callbacks.sampling!({ ...params, messages } as McpSamplingParams, signal(), context), /Invalid or unsupported/);
+  assert.equal(approvals, 0); assert.equal(provider.counts.length, 0);
+  const legacy = createMcpHostRequests({ config: { ...config(), mcpClient: { samplingImages: true } }, provider, approveSampling: approve });
+  await assert.rejects(async () => legacy.sampling!(params, signal(), context), /Invalid or unsupported/);
+  const textOnly = createMcpHostRequests({ config: { ...config(), mcpClient: { samplingArrays: true } }, provider, approveSampling: approve });
+  await assert.rejects(async () => textOnly.sampling!(params, signal(), context), /text messages only/);
+  await callbacks.sampling!(params, signal(), context);
+  const native = provider.completions[0]!.messages[0]!.content as any[];
+  const quoted = JSON.parse(native[0].text.split('\n')[1]);
+  assert.deepEqual(quoted.messages, [
+    { role: 'assistant', content: [text, { type: 'image', mimeType: 'image/png', attachment: 1 },
+      { ...text, text: 'BETWEEN' }, { type: 'image', mimeType: 'image/png', attachment: 2 }] },
+    { role: 'user', content: [{ type: 'image', mimeType: 'image/png', attachment: 3 }, text] },
+  ]);
+  assert.equal(native.length, 4);
+  for (const block of native.slice(1)) assert.deepEqual(block, { type: 'image', source: { type: 'base64', media_type: 'image/png', data } });
+  assert.deepEqual(provider.counts[0], provider.completions[0]);
+  await textOnly.sampling!({ ...input(), messages: [{ role: 'user', content: Array(128).fill(text) }] }, signal(), context);
+  assert.equal(typeof provider.completions[1]!.messages[0]!.content, 'string');
+  const aborted = new AbortController(); aborted.abort();
+  await assert.rejects(async () => callbacks.sampling!(params, aborted.signal, context), { name: 'AbortError' });
+  assert.equal(approvals, 1);
+});
+
 test('unsupported and malformed input fails before approval or provider calls', async () => {
   const provider = new ScriptProvider(); let approvals = 0;
   const callbacks = createMcpHostRequests({ config: config(), provider, approveSampling: async () => { approvals++; return true; } });

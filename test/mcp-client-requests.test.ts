@@ -9,6 +9,24 @@ import { MCP_HTTP_LIMITS } from "../src/mcp-http.js";
 import { McpClientRequestHandler, MCP_CLIENT_REQUEST_MAX_INPUT_BYTES, MCP_CLIENT_REQUEST_MAX_RESULT_BYTES } from "../src/mcp-client-requests.js";
 import type { ToolContext } from "../src/tools.js";
 
+test('sampling block arrays traverse both transports and reject invalid arrays before callbacks', async () => {
+  for (const transport of ['stdio', 'http'] as const) {
+    let called = 0;
+    const blocks = [{ type: 'text', text: 'one' }, { type: 'image', data: 'AAAA', mimeType: 'image/png' }];
+    await fixture(transport, { clientRequests: { sampling: params => {
+      called++; assert.deepEqual(JSON.parse(JSON.stringify(params.messages[0]!.content)), blocks); return sampled;
+    } } }, async f => {
+      await f.run([request('array', 'sampling/createMessage', { ...sampling, messages: [{ role: 'user', content: blocks }] })]);
+      assert.deepEqual(replies(f).at(-1).result, sampled);
+      for (const content of [[], [blocks], Array(129).fill(blocks[0])]) {
+        await f.run([request('invalid-' + content.length, 'sampling/createMessage', { ...sampling, messages: [{ role: 'user', content }] })]);
+        assert.equal(replies(f).at(-1).error.code, -32602);
+      }
+      assert.equal(called, 1);
+    });
+  }
+});
+
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 async function until(check: () => boolean): Promise<void> {
   const end = Date.now() + 3000;
