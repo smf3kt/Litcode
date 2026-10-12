@@ -834,6 +834,39 @@
     ],
     "reading": "the session-plumbing band at 48.4% import text: cross-session messages and their holds, session naming and titles, subagent forks, connector-registry tools and the managed-settings gates that switch features off - twenty-three modules with local counterparts, fifty with no literal of their own, eighteen hosted surfaces, four vendored packages, two modules excluded with OAuth, one shipped skill text, one product surface without a local counterpart, one recovered UI module, and no candidate of its own"
   },
+  "sliceTwentyOne": {
+    "scope": "uncited modules ranked 921 to 1020 by size, the fifth 100-rank band",
+    "bytes": 509866,
+    "rows": 100,
+    "rowsWithContent": 61,
+    "byteRange": [
+      6309,
+      5236
+    ],
+    "importSharePercent": 50.6,
+    "composition": {
+      "localCounterparts": 35,
+      "noCharacterisingLiteral": 43,
+      "hostedOrExternalSurfaces": 16,
+      "vendoredOrPolyfill": 2,
+      "productWithoutLocalCounterpart": 2,
+      "excludedWithCredentials": 1,
+      "inScopeCandidate": 1
+    },
+    "inScopeCandidates": [
+      "chunk-zygdtz20.js refuses bypass permissions under root or sudo privileges outright and records that a bypass consent accepted in the moment does not hold when user settings do not persist it. Verified locally before recording: src/cli.ts accepts --permission-mode bypass and src/interactive.ts documents /permissions MODE, src/permissions.ts returns allow for every call in that mode, and no privileged-uid check exists anywhere in src/ - so neither half of the recovered rule is implemented on a surface this runtime owns"
+    ],
+    "notedButNotCandidates": [
+      "chunk-v6b7qas5.js refuses a skill bundle file whose path escapes its extraction directory, the containment family W09 and W10 ported",
+      "chunk-khadjt3k.js requires worktree and repository state to be verified before use and marks submodules explicitly unverifiable; chunk-crw1fpdp.js warns when a git step in a command can move the working tree; both extend the Git family the slice fifteen candidate opened",
+      "chunk-4xejdmzw.js requires an approval to come from a person and to still describe what the call would do; this runtime asks per call, so the property holds structurally",
+      "chunk-1h28m7y3.js, chunk-tf9zceev.js, chunk-vvz1khq0.js and chunk-68g5e6vr.js are the scheduled-wakeup tool, the ultracode flag, the goal command and the loop keepalive budget - mechanisms this session itself runs",
+      "chunk-rdkad6sh.js guards a prototype key during serialization, a rule this runtime's own serialization already covers",
+      "two near-duplicate pairs appear in the band (an MCP capability message and a vendored error family), continuing the pattern earlier slices recorded",
+      "forty-three modules carry no characterising literal of their own: thirty-nine with nothing at all and four with state-name markers only"
+    ],
+    "reading": "command and tool surface work in the smallest band yet, at 50.6% import text: the keybinding, brief, focus and goal commands, the scheduled-wakeup and loop tools, permission prompts and their wording, and the bridge and teleport paths - thirty-five modules with local counterparts, forty-three with no literal of their own, sixteen hosted surfaces, two vendored packages, two product surfaces without a local counterpart, one module excluded with credentials, and one candidate in the bypass-permission guard"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
