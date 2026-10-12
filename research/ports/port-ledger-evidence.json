@@ -19,21 +19,21 @@
   "outputs": {
     "ledger": {
       "path": "research/ports/port-ledger.json",
-      "sha256": "580fd11e88213d25dcfefe5137e8b37e45c1d0227492a05c51dc783060ca23b9",
-      "bytes": 916047
+      "sha256": "f7405fdf183813efc8a468fd38672599e9e3a4d496bfbcc317f8a7b6b8cf8243",
+      "bytes": 917681
     },
     "summary": {
       "path": "research/ports/port-ledger.md",
-      "sha256": "1366efe308617e255ada58734516a460f3de914e1ced76d94bd16bc01c40fd44",
-      "bytes": 14483
+      "sha256": "219bd6167e9fbef5ac5487f0e82e2cdc21e5b08c3188fdcda17b9b527ce202c1",
+      "bytes": 15151
     }
   },
   "summary": {
-    "modules": 29,
-    "bytes": 7481532,
+    "modules": 30,
+    "bytes": 7575061,
     "narrativeOnly": {
-      "modules": 61,
-      "bytes": 7283747
+      "modules": 60,
+      "bytes": 7190218
     },
     "unreviewed": {
       "modules": 2275,
@@ -205,6 +205,7 @@
       "path": "chunk-m00pavz3.js",
       "bytes": 11563,
       "portRecords": [
+        "research/ports/W01-permission-readings.md",
         "research/ports/W06-skill-inline-fenced.md",
         "research/ports/skill-argument-expansion.md"
       ]
@@ -241,6 +242,7 @@
       "path": "chunk-sfn1dbxq.js",
       "bytes": 4762583,
       "portRecords": [
+        "research/ports/W01-permission-readings.md",
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md",
@@ -267,6 +269,13 @@
       "portRecords": [
         "research/ports/W05-startup.md",
         "research/ports/W05-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-zjewzgfh.js",
+      "bytes": 93529,
+      "portRecords": [
+        "research/ports/W01-permission-readings.md"
       ]
     }
   ],
@@ -326,7 +335,7 @@
   ],
   "paidCalls": 0,
   "remaining": [
-    "2275 uncited modules (32.1 MB) and 61 narrative-only modules remain unreviewed and are named in the ledger",
+    "2275 uncited modules (32.1 MB) and 60 narrative-only modules remain unreviewed and are named in the ledger",
     "per-OS managed settings policy helpers and remote-consent state (chunk-x0dc37w9.js) carried in CURRENT as the next candidate package",
     "the permission-facing shell-reading analyser (chunk-zjewzgfh.js) has no counterpart in src/",
     "the recovered same-model refusal retry, fallback chain and turn retraction are not ported"
@@ -341,8 +350,8 @@
       "uncited": 2283
     },
     "after": {
-      "portBacked": 29,
-      "narrativeOnly": 61,
+      "portBacked": 30,
+      "narrativeOnly": 60,
       "uncited": 2275
     }
   }

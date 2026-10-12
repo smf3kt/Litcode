@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { ToolDefinition } from './tools.js';
+import { shellReadings } from './shell-readings.js';
 
 const patternSchema = z.string().max(4096);
 export const permissionPolicySchema = z.object({
@@ -75,7 +76,58 @@ const EDIT_TOOLS = new Set([
 ]);
 const SHELL_TOOLS = new Set(['run_command', 'run_background', 'bash', 'Bash']);
 
+/** The `command` string of a shell invocation, or undefined when there is none. */
+function commandInput(tool: ToolDefinition, input: unknown): string | undefined {
+  const object = typeof input === 'object' && input !== null && !Array.isArray(input) ? input : undefined;
+  if (!object) return undefined;
+  const value = Object.getOwnPropertyDescriptor(object, 'command')?.value;
+  if (typeof value !== 'string') return undefined;
+  return SHELL_TOOLS.has(tool.schema.name) || tool.schema.name === 'monitor' ? value : undefined;
+}
+
+/** A copy of the tool input whose `command` field carries one reading. */
+function withCommand(input: unknown, command: string): unknown {
+  return { ...(typeof input === 'object' && input !== null && !Array.isArray(input) ? input : {}), command };
+}
+
+/**
+ * The recovered client checks every reading of a shell command against the
+ * permission rules and takes any denial, and it will not let an incomplete
+ * reading set pass on the strength of a single reading. That invariant is
+ * applied here on top of the plain decision, and only when a rule actually
+ * constrains the command text: rules that name a tool alone cannot depend on
+ * how the shell reads the line, so behaviour without a `command` rule is
+ * unchanged. A denial is never softened, and `bypass` keeps its meaning rather
+ * than turning into an approval prompt.
+ */
+function applyShellReadings(policy: PermissionPolicy, tool: ToolDefinition, input: unknown, baseline: PermissionDecision): PermissionDecision {
+  if (baseline.decision === 'deny') return baseline;
+  const command = commandInput(tool, input);
+  if (command === undefined) return baseline;
+  if (!(policy.inputRules ?? []).some(rule => rule.command !== undefined && matches(rule.tool, tool.schema.name))) return baseline;
+  const { readings, exhaustive } = shellReadings(command);
+  let sawAsk = false;
+  for (const reading of readings) {
+    if (reading === command) continue;
+    const decision = decideOnce(policy, tool, withCommand(input, reading));
+    if (decision.decision === 'deny') {
+      return { decision: 'deny', reason: `Permission to run this command was denied for an alternate reading: ${tool.schema.name}` };
+    }
+    if (decision.decision === 'ask') sawAsk = true;
+  }
+  if (baseline.decision === 'allow' && policy.mode !== 'bypass' && (!exhaustive || sawAsk)) {
+    return { decision: 'ask', reason: `This command has readings that cannot all be checked: ${tool.schema.name}` };
+  }
+  return baseline;
+}
+
 export function permissionDecision(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown): PermissionDecision {
+  const baseline = decideOnce(policy, tool, input);
+  if (!policy) return baseline;
+  return applyShellReadings(policy, tool, input, baseline);
+}
+
+function decideOnce(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown): PermissionDecision {
   if (!policy) return { decision: 'allow' };
   if (policy.mode === 'default' && policy.ask === undefined && policy.inputRules === undefined) {
     const reason = permissionError(policy, tool);

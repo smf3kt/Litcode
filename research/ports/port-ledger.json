@@ -12,13 +12,13 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 35,
+  "recordCount": 36,
   "summary": {
-    "modules": 29,
-    "bytes": 7481532,
+    "modules": 30,
+    "bytes": 7575061,
     "narrativeOnly": {
-      "modules": 61,
-      "bytes": 7283747
+      "modules": 60,
+      "bytes": 7190218
     },
     "unreviewed": {
       "modules": 2275,
@@ -701,15 +701,18 @@
       "citedBy": [
         "research/CURRENT.md",
         "research/ports/skill-argument-expansion.md",
+        "research/ports/W01-permission-readings.md",
         "research/ports/W06-skill-inline-fenced.md",
         "research/STATUS.md"
       ],
       "portRecords": [
         "research/ports/skill-argument-expansion.md",
+        "research/ports/W01-permission-readings.md",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true,
       "declared": [
+        "adapt of the invariant, not a copy of the analyser. The recovered reading set is built from a bash parse tree that reports ambiguous *names* and *operands*; thi",
         "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio"
       ]
     },
@@ -867,6 +870,7 @@
         "research/HOOKS.md",
         "research/INTERACTIVE.md",
         "research/ports/skill-argument-expansion.md",
+        "research/ports/W01-permission-readings.md",
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md",
@@ -874,12 +878,14 @@
       ],
       "portRecords": [
         "research/ports/skill-argument-expansion.md",
+        "research/ports/W01-permission-readings.md",
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true,
       "declared": [
+        "adapt of the invariant, not a copy of the analyser. The recovered reading set is built from a bash parse tree that reports ambiguous *names* and *operands*; thi",
         "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own ",
         "copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c",
         "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio"
@@ -955,6 +961,31 @@
       "reviewed": true,
       "declared": [
         "adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive"
+      ]
+    },
+    {
+      "path": "chunk-zjewzgfh.js",
+      "bytes": 93529,
+      "sha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "os"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W01-permission-readings.md",
+        "research/STATUS.md"
+      ],
+      "portRecords": [
+        "research/ports/W01-permission-readings.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "adapt of the invariant, not a copy of the analyser. The recovered reading set is built from a bash parse tree that reports ambiguous *names* and *operands*; thi"
       ]
     }
   ],
@@ -23044,11 +23075,13 @@
       "citedBy": [
         "research/CURRENT.md",
         "research/ports/skill-argument-expansion.md",
+        "research/ports/W01-permission-readings.md",
         "research/ports/W06-skill-inline-fenced.md",
         "research/STATUS.md"
       ],
       "portRecords": [
         "research/ports/skill-argument-expansion.md",
+        "research/ports/W01-permission-readings.md",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true
@@ -29492,6 +29525,7 @@
         "research/HOOKS.md",
         "research/INTERACTIVE.md",
         "research/ports/skill-argument-expansion.md",
+        "research/ports/W01-permission-readings.md",
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md",
@@ -29499,6 +29533,7 @@
       ],
       "portRecords": [
         "research/ports/skill-argument-expansion.md",
+        "research/ports/W01-permission-readings.md",
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md"
@@ -36015,10 +36050,13 @@
       "markers": {},
       "citedBy": [
         "research/CURRENT.md",
+        "research/ports/W01-permission-readings.md",
         "research/STATUS.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W01-permission-readings.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-zjy9mte9.js",

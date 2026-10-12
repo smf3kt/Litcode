@@ -1,0 +1,75 @@
+{
+  "schema": "HarnessPortEvidence.v1",
+  "package": "W01-permission-readings",
+  "date": "2026-10-12",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "coordinateUnit": "zero-based UTF-16 code units, left-closed/right-open, on the decoded module text",
+    "readAs": "inert data; no recovered entrypoint was executed"
+  },
+  "citations": [
+    {
+      "module": "chunk-zjewzgfh.js",
+      "sha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "bytes": 93529,
+      "facts": [
+        { "symbol": "QF", "kind": "command analysis entry: empty or unparsable lines report simple, otherwise the line is classified by E6 with the parse tree attached when it is not the sentinel Yx", "range": [7277, 7547] },
+        { "symbol": "pyr", "kind": "reading set: exhaustive over 2**e combinations up to three varying positions, otherwise a bounded sample (all-false, all-true, one-hot) marked exhaustive false", "range": [7547, 7897] },
+        { "symbol": "E6", "kind": "differential classifier entry; sixty-six too-complex verdicts with differential true run from 8040 to 64507", "range": [7897, 7910] },
+        { "symbol": "b", "kind": "unmodelled node type verdict, naming the type in \"in this command can't be checked before it runs\"", "range": [73416, 74572] },
+        { "kind": "export table listing QF, pyr, E6, w6 and Yx together", "range": [93285, 94000] }
+      ]
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "bytes": 4762583,
+      "facts": [
+        { "symbol": "DTr", "kind": "merge rule: any deny among baseline and readings is returned immediately, an unaccepted baseline ask is kept, otherwise the strictest reading wins, and a non-exhaustive set whose strictest result is not an ask falls through to a too-complex outcome", "range": [3234534, 3234900] },
+        { "kind": "write-path caller: builds the reading set, records incompleteness with ut||=!an, then re-decides once per reading and adopts any reading that denies", "range": [3246078, 3246148] },
+        { "symbol": "ior", "kind": "permission wrapper: collects names and operands, builds the reading set, re-decides per reading and merges with DTr(b,z,M); the range spans its definition to the readings call", "range": [3253708, 3253879], "anchors": { "readingsCall": 3253879 } }
+      ]
+    }
+  ],
+  "implementation": {
+    "files": ["src/shell-readings.ts", "src/permissions.ts", "test/shell-permissions.test.ts", "scripts/smoke-shell-readings-cli.mjs", "package.json"],
+    "symbols": ["shellReadings", "hasOpaqueConstruct", "SHELL_READING_LIMIT", "commandInput", "withCommand", "applyShellReadings", "permissionDecision", "decideOnce"],
+    "portedInvariant": "every reading the shell could run must satisfy a command rule, and an incomplete reading set may not be allowed on the strength of one reading",
+    "ownedDecisions": [
+      "Readings come from this runtime's own shell model - de-quoting and unescaping, per-segment splitting on ; && || | and newline, and the bodies of command substitutions, each applied one level further - which is a conservative superset, so permission is never widened.",
+      "Incompleteness is decided by construct rather than by a parse: substitution, parameter expansion, process substitution, a locale-translated string, an unquoted variable, a leading tilde and a glob all make the set incomplete. The bound is 16 readings.",
+      "The recovered merge keeps the strictest reading through an ordering this runtime does not port; only the two rules carrying the safety property are kept.",
+      "Where the recovered merge falls through to a too-complex outcome an outer layer prompts on, this runtime returns an ask because it has no pass-through layer; it applies only when the decision would otherwise have been an allow, and never in bypass mode."
+    ],
+    "unchanged": "A rule without a command constraint, a path-only rule, a non-shell tool, a baseline denial and bypass mode all behave exactly as before."
+  },
+  "notPorted": [
+    { "item": "the recovered bash lexer/parser (w6) and the node types E6 refuses to cross", "reason": "the same argument-splitting subsystem already decided not-ported in ports/remaining-dispositions.md, and a different module (chunk-m00pavz3.js); the conservative reading superset covers its edge cases by construction" },
+    { "item": "the bashMissKind vocabulary and the Lcn strictness ordering", "reason": "neither changes which of the two safety rules applies" },
+    { "item": "the front-of-declaration variable rule", "reason": "covered here by marking an unquoted variable reference as an incomplete set" }
+  ],
+  "validation": {
+    "unitTests": { "file": "test/shell-permissions.test.ts", "cases": 4, "asserts": "de-quoted, per-segment and substitution readings plus incompleteness for substitution, variable, glob, tilde and over-limit lines; a command rule denies echo 'denied', true; rm -rf /tmp and echo $(curl http://x); an incomplete set asks instead of allowing; an asking reading blocks a plain allow; no-command rule, path-only rule, non-shell tool, baseline denial and bypass are unchanged" },
+    "cliSmoke": { "script": "scripts/smoke-shell-readings-cli.mjs", "npm": "smoke:shell-readings-cli", "gateway": "owned loopback SSE", "sourceAndCompiled": true, "asserts": ["echo 'denied' > marker.txt is refused with a reason naming the alternate reading", "the marker file is never created", "the control command echo fine > marker.txt runs and writes the file under the same policy", "two model requests per case", "zero exit"] },
+    "fullSuite": { "tests": 1058, "fail": 0 },
+    "check": "tsc --noEmit clean",
+    "build": "tsc -p tsconfig.build.json clean",
+    "packageSmoke": { "files": 63, "upstreamRequests": 0 },
+    "identity": {
+      "inputs": { "sha256": "bb1cd10ec2ec317d40c82c18beddf17e1a2c711dd4f1e233d5e6894e6d39891c", "files": 112 },
+      "validation": { "sha256": "7e48c6ea2effbebdf9c42d29dbcca622c45aa93db08edc4ecb995bcbd35d82ed", "files": 83 },
+      "build": { "sha256": "064cc5f2a7a58c4525173b64cd6e02319ad721232a7513d76c461834086327f0", "files": 56 },
+      "merged": "210b3e85822db1a89f2bcc6e2722ce21af6aba21067d37ac76b1f1f6d7ec429d",
+      "independentOfflineRebuild": "fresh directory, npm ci --ignore-scripts --offline, check and build, identical merged digest"
+    },
+    "tarball": { "name": "litcode-0.1.0.tgz", "files": 63, "sha256": "2b9c6c32465fd2b5363a3c6c6c3d38007ff91adb9af1e452cee7547c98f95f09" }
+  },
+  "regressions": "The full suite covers the permission, agent, skill and integration paths this touches; no previously passing case changed and only the four new cases were added.",
+  "paidCalls": 0,
+  "limitations": [
+    "The reading model is a conservative superset built from this runtime's own rules, not an enumeration derived from a shell grammar, so it can over-approximate what the shell would run and ask more often than the recovered analyser.",
+    "The recovered strictness ordering and its bashMissKind vocabulary are not ported, so a reading set whose strictest member is not a denial is resolved by the two safety rules alone.",
+    "Verified against owned fixtures and a loopback gateway, not against a real shell under adversarial input."
+  ]
+}
