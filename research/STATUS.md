@@ -1175,7 +1175,9 @@ and the file no longer carries a key-shaped string.
 
 Suite 1130/1130; package 73 files with 0 upstream requests, one more than before
 because npm packs `LICENSE` automatically; identity 125 input / 92 validation /
-65 build, merged `690b5d53…`. Detail: ports/W32-licence-and-publication-evidence.json.
+65 build, merged `0774755c…`. Published at https://github.com/smf3kt/litcode
+(public, MIT detected, main, snapshot commit a1c5107). Detail and coordinates:
+ports/W32-licence-and-publication-evidence.json.
 
 ## API references
 
