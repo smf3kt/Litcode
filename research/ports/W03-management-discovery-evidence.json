@@ -98,6 +98,28 @@
   ],
   "recordedWithoutValues": "both quota responses carry an account address and per-window values; none of those values appears in this file or anywhere in the evidence set",
   "paidCalls": 0,
+  "reverified": {
+    "date": "2026-10-12",
+    "reason": "the contracts above were written into three status lines after this file was recorded, so they were re-observed against the live gateway to bind those corrections to a current reading rather than to a remembered one",
+    "discoveryDocument": {
+      "name": "magpie",
+      "version": "0.1.1109",
+      "models": 11,
+      "window": true,
+      "apis": "the same thirteen paths, including the three management routes"
+    },
+    "reproduced": [
+      { "probe": "GET /v1/magpie/route", "result": "400, 'name the session: ?session=<id> or the X-Magpie-Session header'" },
+      { "probe": "GET /v1/magpie/route?session=<synthetic id>", "result": "200, {\"route\":null,\"seq\":0,\"session\":\"<the id echoed back>\"}" },
+      { "probe": "POST /v1/magpie/route with {}", "result": "404, the not_found message naming the model routes" },
+      { "probe": "GET /v1/magpie/credentials", "result": "404, the same message" },
+      { "probe": "GET /v1/magpie/rotate", "result": "404, the same message" },
+      { "probe": "GET /v1/magpie/quotas", "result": "200, 535 bytes; values not recorded" }
+    ],
+    "instance": "the same serving process holds exactly one LISTEN socket, 127.0.0.1:3425; the other rows for it are ESTABLISHED connections on that socket, not further listeners",
+    "paidCalls": 0,
+    "mutation": "none; every probe was a read or an empty-bodied method probe that could not name a target"
+  },
   "residual": [
     "route switching is not a management write: the gateway path serves GET only, so what remains for A02 on the routing side is observing a live session's route and the model-selection path that sets it",
     "credential issuance and revocation exist in the application's own management API (caller keys) rather than on the gateway, and reaching them means opening the application's window, which is the user's action",
