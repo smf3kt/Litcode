@@ -21,7 +21,9 @@ const SAMPLES: Record<string, string> = {
   "anthropic-api-key": `sk-ant-api03-${"A".repeat(93)}AA`,
   "anthropic-admin-api-key": `sk-ant-admin01-${"B".repeat(93)}AA`,
   "anthropic-oauth-token": "sk-ant-oat01-abcdefghijklmnopqrst",
-  "openai-api-key": "sk-abcdefghT3BlbkFJabcdefgh",
+  // Assembled rather than written out: the marker is what the pattern matches on, and a
+  // literal that looks like a live key trips secret scanners on a public checkout.
+  "openai-api-key": ["sk-", "abcdefgh", "T3Blbk", "FJ", "abcdefgh"].join(""),
   "openai-legacy-api-key": `sk-${"a".repeat(48)}`,
   "huggingface-access-token": `hf_${"a".repeat(34)}`,
   "supabase-secret-key": "sb_secret_abcdefghijklmnopqrst",
