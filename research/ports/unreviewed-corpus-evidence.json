@@ -1068,6 +1068,41 @@
     ],
     "reading": "the under-two-kilobyte tail at 35.4% import text, where the aggregator share climbs back as the prose runs out: MCP dialling and tool discovery, GitHub CLI and plugin directory handling, shell allow rules, usage-limit reporting, and the hosted connector, tunnel, voice and device surfaces - sixty-three modules with no characterising literal of their own, sixteen with local counterparts, thirteen hosted surfaces, two vendored packages, two excluded with credentials or OAuth, two pure code leaves, one product surface without a local counterpart, one rule guarding a surface this runtime does not have, and no candidate"
   },
+  "sliceTwentyEight": {
+    "scope": "uncited modules ranked 1621 to 1720 by size, the twelfth 100-rank band",
+    "bytes": 92032,
+    "rows": 100,
+    "rowsWithContent": 40,
+    "byteRange": [1647, 1425],
+    "importSharePercent": 30.3,
+    "composition": {
+      "noCharacterisingLiteral": 70,
+      "hostedOrExternalSurfaces": 15,
+      "localCounterparts": 9,
+      "productWithoutLocalCounterpart": 2,
+      "ruleWithoutLocalSurface": 2,
+      "vendoredOrPolyfill": 1,
+      "inScopeCandidate": 1
+    },
+    "inScopeCandidates": [
+      {
+        "module": "chunk-w87rxh9c.js",
+        "recovered": "servers declared in a project .mcp.json are held as awaiting approval and are not connected until the user approves them",
+        "localHalf": "src/config.ts:913-936 reads the settings layers including the workspace's own .harness/settings.json and settings.local.json before merging, and the schema-parsed mcpServers reaches connectMcpServers(config.mcpServers ?? {}) at src/runtime.ts:443",
+        "uncovered": "no approval step exists before a declaration from a workspace-controlled layer is connected; the local source has no awaiting-approval state, no per-server project admission and no consent record for it",
+        "authorityVerified": "local source read only; no module was executed"
+      }
+    ],
+    "notedButNotCandidates": [
+      "chunk-btevcxdf.js and chunk-jx0gn306.js gate unattended serving of tool calls on consent that organization or user settings can force off, carrying accepted, declined and not-saved states; this runtime has no unattended-serving surface, so this completes the attestation family slice twenty-seven named without a local half",
+      "chunk-4yt2mg41.js records a goal restored on resume and a stop hook added, belonging to the goal surface this runtime does not have",
+      "chunk-9jcxa30s.js carries background job actions including stopping the job from its own session, adjacent to the background work this runtime owns",
+      "chunk-8f7kvc01.js resolves a marketplace that is a folder whose catalog could not be read, the plugin marketplace resolution this runtime does for its own sources",
+      "chunk-xds8k7aa.js classifies a connection refused before it reached the service and names a CDN edge among the causes, the network error classification this runtime applies to its own calls",
+      "forty modules carry content and ten of them only through state-name markers; sixty carry nothing of their own and most of those are seventy percent or more import statements"
+    ],
+    "reading": "the under-1.7-kilobyte remainder at 30.3% import text: hosted artifact, design and connector surfaces, browser and device tool naming, agent and subagent reporting, and the tail of the MCP, plugin and background-job plumbing - seventy modules with no characterising literal of their own, fifteen hosted surfaces, nine with local counterparts, two product surfaces without a local counterpart, two rules guarding surfaces this runtime does not have, one vendored package, and one candidate: a project-declared MCP server held until the user approves it, where this runtime connects a server declared by a workspace-controlled settings layer with no approval step"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
