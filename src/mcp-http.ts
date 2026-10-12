@@ -13,6 +13,7 @@ import {
   type McpNotificationStreamStatus,
 } from "./mcp.js";
 import { boundToolContent } from './tool-output.js';
+import { MCP_PROGRESS_LIMITS, McpProgressRegistry, type McpProgressUpdate } from "./mcp-progress.js";
 import { McpClientRequestHandler } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions } from "./mcp-subscriptions.js";
 import { McpLogging } from "./mcp-logging.js";
@@ -26,6 +27,11 @@ export const MCP_HTTP_MAX_BODY_BYTES = 8 * 1024 * 1024;
 export const MCP_HTTP_MAX_SSE_LINE_BYTES = 64 * 1024;
 export const MCP_HTTP_MAX_SSE_EVENTS = 1000;
 export const MCP_HTTP_CLEANUP_TIMEOUT_MS = 1000;
+
+/** A caller-supplied millisecond limit, or undefined when it is not a positive finite number. */
+function positiveLimit(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : undefined;
+}
 export class McpHttpStatusError extends Error {
   constructor(method: string, readonly status: number) { super(`MCP HTTP request "${method}" failed with status ${status}`); }
 }
@@ -43,6 +49,7 @@ export const MCP_HTTP_LIMITS: readonly string[] = [
   "init-result protocol version: 2025-03-26 and 2025-06-18 only; stdio retains 2024-11-05",
   `HTTP responses: ${MCP_HTTP_MAX_FRAME_BYTES} bytes per JSON message/SSE event, ${MCP_HTTP_MAX_BODY_BYTES} bytes per response, ${MCP_HTTP_MAX_SSE_LINE_BYTES} bytes per SSE line, ${MCP_HTTP_MAX_SSE_EVENTS} SSE events per response`,
   "requests: bounded deadlines and abort; cancellation notifications and session DELETE are best effort and independently bounded",
+  ...MCP_PROGRESS_LIMITS,
 ];
 
 const reservedHeaders = new Set([
@@ -186,6 +193,7 @@ export class McpHttpClient implements McpClient {
   private readonly headersEnv: Record<string, string>;
   private readonly settings: McpConnectSettings;
   private readonly clientRequests: McpClientRequestHandler;
+  private readonly progress = new McpProgressRegistry("litcode-progress-");
   private readonly taskJournal: McpConnectOptions["taskJournal"];
   private nextId = 1;
   private version = MCP_HTTP_PROTOCOL_VERSION;
@@ -217,8 +225,13 @@ export class McpHttpClient implements McpClient {
     validateMcpHeadersEnv(config.headersEnv);
     this.headersEnv = { ...config.headersEnv };
     const timeout = options.requestTimeoutMs;
+    // This transport builds its own settings, so every option the HTTP path honours is listed here;
+    // a field missing from this literal is silently dropped even when the caller set it.
+    const idleTimeout = options.toolIdleTimeoutMs;
     this.settings = {
       requestTimeoutMs: typeof timeout === "number" && Number.isFinite(timeout) && timeout >= 1 ? Math.floor(timeout) : 30_000,
+      ...(idleTimeout === undefined ? {} : { toolIdleTimeoutMs: positiveLimit(idleTimeout) }),
+      ...(options.onProgress === undefined ? {} : { onProgress: options.onProgress }),
       clientName: options.clientName ?? "personal-agent-harness",
       clientVersion: options.clientVersion ?? "0.1.0",
       catalog: options.catalog ?? false,
@@ -258,6 +271,10 @@ export class McpHttpClient implements McpClient {
   private async bounded<T>(
     method: string, signal: AbortSignal | undefined, timeoutMs: number,
     fn: (signal: AbortSignal) => Promise<T>, allowClosed = false,
+    /** Receives this call's idle-deadline reset while the bounded operation is running. */
+    onDeadline?: (reset: () => void) => void,
+    /** Ceiling the idle deadline may be moved to; equal to the idle deadline when unset. */
+    totalMs = timeoutMs,
   ): Promise<T> {
     if (this.closed && !allowClosed) throw new Error(`MCP server "${this.name}" connection closed`);
     if (signal?.aborted) throw aborted();
@@ -268,7 +285,11 @@ export class McpHttpClient implements McpClient {
     let timedOut = false;
     const onAbort = () => controller.abort();
     signal?.addEventListener("abort", onAbort, { once: true });
-    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    const idle = () => { timedOut = true; controller.abort(); };
+    let timer = setTimeout(idle, timeoutMs);
+    // A call that reports progress moves its idle deadline forward; nothing here extends a total one.
+    onDeadline?.(() => { if (!timedOut) { clearTimeout(timer); timer = setTimeout(idle, timeoutMs); } });
+    const totalTimer = totalMs === timeoutMs ? undefined : setTimeout(idle, totalMs);
     try {
       return await fn(controller.signal);
     } catch (error) {
@@ -277,6 +298,7 @@ export class McpHttpClient implements McpClient {
       throw error;
     } finally {
       clearTimeout(timer);
+      if (totalTimer !== undefined) clearTimeout(totalTimer);
       signal?.removeEventListener("abort", onAbort);
       this.operations.delete(op);
       op.finish();
@@ -318,6 +340,7 @@ export class McpHttpClient implements McpClient {
     if (this.closed || Object.hasOwn(msg, "id")) return;
     if (msg.method === "notifications/tools/list_changed") for (const listener of this.toolsChangedListeners) listener();
     if (msg.method === "notifications/cancelled") this.clientRequests.cancelled(msg.params);
+    if (msg.method === "notifications/progress") this.progress.dispatch(msg.params);
     if (msg.method === "notifications/elicitation/complete") this.clientRequests.elicitationComplete(msg.params);
     if (msg.method === "notifications/resources/updated") this.resourceSubscriptions?.updated(msg.params);
     if (msg.method === "notifications/message") this.logging?.message(msg.params);
@@ -525,8 +548,15 @@ export class McpHttpClient implements McpClient {
   private async request(method: string, params: unknown, signal: AbortSignal, onResult?: (result: unknown) => void, taskId?: string): Promise<unknown> {
     if (signal.aborted) throw aborted();
     const id = this.nextId++;
+    // A tool call carries a progress token so the server can report liveness; progress moves the
+    // idle deadline of this call, never a total one.
+    const progressToken = method === "tools/call" && record(params) ? this.progress.reserve() : undefined;
+    if (progressToken !== undefined && record(params)) params._meta = { ...(record(params._meta) ? params._meta : {}), progressToken };
     try {
-      return await this.bounded(method, signal, this.settings.requestTimeoutMs, async (activeSignal) => {
+      // Only a call that may report progress has a movable deadline of its own.
+      return await this.bounded(method, signal,
+        progressToken === undefined ? this.settings.requestTimeoutMs : (this.settings.toolIdleTimeoutMs ?? this.settings.requestTimeoutMs),
+        async (activeSignal) => {
         const response = await this.fetchMessage("POST", { jsonrpc: "2.0", id, method, params }, activeSignal, taskId);
         if (method === "initialize") {
           const session = response.headers.get("mcp-session-id");
@@ -539,7 +569,10 @@ export class McpHttpClient implements McpClient {
           }
         }
         return this.responseResult(response, id, method, activeSignal, onResult);
-      });
+      }, false, progressToken === undefined ? undefined : (reset) => this.progress.arm(progressToken, (update) => {
+        reset();
+        try { this.settings.onProgress?.({ server: this.name, ...update }); } catch { /* the host owns its observer */ }
+      }), progressToken === undefined ? undefined : this.settings.requestTimeoutMs);
     } catch (error) {
       if (!this.closed && method !== "initialize" &&
           ((error instanceof Error && error.name === "AbortError") || (error instanceof Error && error.message.includes("timed out after")))) {
@@ -547,6 +580,8 @@ export class McpHttpClient implements McpClient {
           (activeSignal) => this.accepted({ jsonrpc: "2.0", method: "notifications/cancelled", params: { requestId: id, reason: signal.aborted ? "client aborted" : "timeout" } }, activeSignal)).catch(() => undefined);
       }
       throw error;
+    } finally {
+      this.progress.settle(progressToken);
     }
   }
 

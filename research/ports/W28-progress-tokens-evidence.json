@@ -1,0 +1,79 @@
+{
+  "schema": "ProgressTokenPort.v1",
+  "date": "2026-10-12",
+  "package": "W28",
+  "sample": {
+    "path": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "coordinateUnit": "zero-based UTF-16, left-closed/end-exclusive"
+  },
+  "recovered": [
+    {
+      "module": "chunk-2rxk8n7w.js",
+      "sha256": "251b9444642e923022862625925ee3fe6c749f7fbdd79f7524fcea361f0a275a",
+      "bytes": 332939,
+      "fragments": [
+        { "what": "token union (string or integer)", "text": "br=Ue([o(),v().int()])", "range": [1506, 1528] },
+        { "what": "request-envelope _meta schema", "text": "zr=_t({progressToken:br.optional(),…)})", "range": [1583, 1640] },
+        { "what": "progress notification params and method", "text": "Is=u({progress:v(),total:Ii(v()),message:Ii(o())});Os=u({...$e.shape,...Is.shape,progressToken:br});Ir=Ee.extend({method:C(\"notifications/progress\"),params:Os})", "range": [4202, 4362] },
+        { "what": "idle timeout, progress reset and total ceiling", "text": "_setupTimeout(e,t,r,s,a=!1){this._timeoutInfo.set(e,{timeoutId:setTimeout(s,t),startTime:Date.now(),timeout:t,maxTotalTimeout:r,resetTimeoutOnProgress:a,onTimeout:s})}_resetTimeout(e){…if(t.maxTotalTimeout&&r>=t.maxTotalTimeout)throw…new Ms(As.RequestTimeout,\"Maximum total timeout exceeded\",…);return clearTimeout(t.timeoutId),t.timeoutId=setTimeout(t.onTimeout,t.timeout),!0}_cleanupTimeout(e){…}", "range": [99525, 100162] },
+        { "what": "inbound progress dispatch: unknown token is an error, then the reset precedes the handler", "text": "_onprogress(e){let{progressToken:t,...r}=e.params,s=Number(t),a=this._progressHandlers.get(s);if(!a){this._onerror(Error(\"Received a progress notification for an unknown token: …\"));return}…if(i&&n&&i.resetTimeoutOnProgress)try{this._resetTimeout(s)}…a(r)}", "range": [104895, 105342] },
+        { "what": "settling retires the call's token and timeout", "text": "_onresponse(e){…this._responseHandlers.delete(t),this._cleanupTimeout(t),this._progressHandlers.delete(t),…}", "range": [105342, 105691] },
+        { "what": "token minted only for a call that passes a progress handler, and equal to its request id", "text": "b=this._requestMessageId++;m=b;let p={...t,jsonrpc:\"2.0\",id:b};if(s?.onprogress)this._progressHandlers.set(b,s.onprogress),p.params={...t.params,_meta:{...t.params?._meta,progressToken:b}}", "range": [107335, 107522] }
+      ]
+    },
+    {
+      "module": "chunk-wa0p9jsy.js",
+      "sha256": "bd98636ce7f5a80ff10498e87c2591308d5a85502a634a9acbdde35c4c1294c9",
+      "bytes": 3812,
+      "fragments": [
+        { "what": "ingress _meta validation accepts a string or a number token and drops the message otherwise", "text": "function o(e){let t=e._meta;…let{progressToken:i}=t;if(i!==void 0&&typeof i!==\"string\"&&typeof i!==\"number\")return!1;…}", "range": [3248, 3505] }
+      ]
+    },
+    {
+      "module": "chunk-qtksmp3x.js",
+      "sha256": "3f6f874b3563c30d289f53ada3f36a86ef29ae0b85c44a7cdca4f87df021c491",
+      "bytes": 61379,
+      "fragments": [
+        { "what": "tool-call relay opts in, clears the caller's own token, sets the idle deadline, the total ceiling and the progress reset", "text": "S={result:await Yro(b,{method:e,params:L(h)?{...r,_meta:{...h,progressToken:void 0}}:r},a?{signal:s,timeout:d.getMcpToolIdleTimeoutMs(b.config)||M,maxTotalTimeout:M,resetTimeoutOnProgress:!0,onprogress:function(){}}:{signal:s,timeout:$a()})}", "range": [38215, 38456] },
+        { "what": "host side: a caller token is the destination for streamed output, and its absence is a refusal", "text": "async function Do(e,r,n){…let g=n.reportProgress;if(g===void 0)throw Error(\"RunMonitorCommand was not run: the call sent no progress token, so the command's output would have nowhere to go. Call again with _meta.progressToken set.\");…}", "range": [47466, 47748] }
+      ]
+    },
+    {
+      "module": "chunk-5vztnqym.js",
+      "sha256": "5548bf5b0067da3532d136c37be2f0d1c473df382c6438a00a9180456d701cc3",
+      "bytes": 12637,
+      "fragments": [
+        { "what": "host-side progress emitter: non-decreasing progress and a 30-second heartbeat on the caller's token", "text": "var ye=30000;function Y(S,O,k=ye){…let L=(n,N)=>(R=n>R?n:R+0.001,O({method:\"notifications/progress\",params:{progressToken:S,progress:R,message:N}})),E=setInterval(()=>{U+=1;let n=U*k/1000;L(n,`Running for ${n}s`)…},k)…}", "range": [2244, 2670] }
+      ]
+    }
+  ],
+  "ported": [
+    { "surface": "toolIdleTimeoutMs", "what": "per-call idle deadline, default the request deadline", "targets": ["src/mcp.ts", "src/mcp-http.ts", "src/runtime.ts"] },
+    { "surface": "onProgress", "what": "bounded progress update reported to a host-owned observer", "targets": ["src/mcp.ts", "src/mcp-http.ts", "src/runtime.ts"] },
+    { "surface": "notifications/progress routing", "what": "token registry dispatch on both transports", "targets": ["src/mcp-progress.ts", "src/mcp.ts", "src/mcp-http.ts"] },
+    { "surface": "total deadline", "what": "progress moves the idle deadline and never the total one", "targets": ["src/mcp.ts", "src/mcp-http.ts"] }
+  ],
+  "notPorted": [
+    {
+      "what": "a caller-supplied _meta.progressToken as the destination for a command's streamed output",
+      "reason": "noLocalSurface",
+      "detail": "this runtime's monitor streams stdout into its own bounded notification queue read with read_notifications, so no local call can be refused for lacking an output destination"
+    }
+  ],
+  "rewrites": [
+    "tokens are strings minted by this runtime instead of the SDK's numeric request id; the ingress rule still accepts a string or a number, but only a string can name one of our calls",
+    "the observer receives the update; the recovered host passes an inert onprogress in this path",
+    "a notification naming an unknown or stale token is dropped, not raised as a transport error that could disconnect a healthy server",
+    "token 128 bytes and message 4096 bytes are bounded before dispatch"
+  ],
+  "validation": {
+    "tsc": "clean",
+    "build": "clean",
+    "tests": { "file": "test/mcp-progress.test.ts", "passed": 8, "failed": 0 },
+    "suite": { "passed": 1127, "failed": 0, "beforePackage": 1119 },
+    "smokePackage": { "files": 71, "upstreamRequests": 0 },
+    "identity": "068753af6eaab1a8301353bee18bc53827984ee499cc10cd8daabf5c04a3a4ce",
+    "notices": { "installed": 28, "sha256": "6d025e66ae53c22228d4e4ddde35c1ec1d0cd45a1d40af6d00add122372c42f2" }
+  }
+}

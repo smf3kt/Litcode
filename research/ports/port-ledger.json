@@ -12,13 +12,13 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 46,
+  "recordCount": 47,
   "summary": {
-    "modules": 48,
-    "bytes": 10128780,
+    "modules": 52,
+    "bytes": 10539547,
     "narrativeOnly": {
-      "modules": 66,
-      "bytes": 6074270
+      "modules": 62,
+      "bytes": 5663503
     },
     "unreviewed": {
       "modules": 2251,
@@ -183,6 +183,37 @@
       "reviewed": true,
       "declared": [
         "adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive"
+      ]
+    },
+    {
+      "path": "chunk-2rxk8n7w.js",
+      "bytes": 332939,
+      "sha256": "251b9444642e923022862625925ee3fe6c749f7fbdd79f7524fcea361f0a275a",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [
+        "ajv",
+        "ajv-formats"
+      ],
+      "chunks": 0,
+      "markers": {
+        "MCP protocol surface": {
+          "literal": "resources/templates/list",
+          "at": 5222
+        }
+      },
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W28-progress-tokens.md",
+        "research/STATUS.md"
+      ],
+      "portRecords": [
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the recovered per-call progress contract onto transports this runtime already"
       ]
     },
     {
@@ -427,6 +458,28 @@
       "reviewed": true,
       "declared": [
         "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own "
+      ]
+    },
+    {
+      "path": "chunk-5vztnqym.js",
+      "bytes": 12637,
+      "sha256": "5548bf5b0067da3532d136c37be2f0d1c473df382c6438a00a9180456d701cc3",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "portRecords": [
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the recovered per-call progress contract onto transports this runtime already"
       ]
     },
     {
@@ -1062,6 +1115,35 @@
       ]
     },
     {
+      "path": "chunk-qtksmp3x.js",
+      "bytes": 61379,
+      "sha256": "3f6f874b3563c30d289f53ada3f36a86ef29ae0b85c44a7cdca4f87df021c491",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "crypto",
+        "fs",
+        "os",
+        "path",
+        "util",
+        "zlib"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "portRecords": [
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the recovered per-call progress contract onto transports this runtime already"
+      ]
+    },
+    {
       "path": "chunk-r2vtj1kh.js",
       "bytes": 664290,
       "sha256": "2b13302b83beea3fe54e83316b9d855c43e2298af6d0041b009cec563bbc1515",
@@ -1319,6 +1401,27 @@
       "reviewed": true,
       "declared": [
         "copy of the decision model, rewritten onto this runtime's storage and answering surface. The recovered product keeps the answers as two name lists inside the me"
+      ]
+    },
+    {
+      "path": "chunk-wa0p9jsy.js",
+      "bytes": 3812,
+      "sha256": "bd98636ce7f5a80ff10498e87c2591308d5a85502a634a9acbdde35c4c1294c9",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "portRecords": [
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the recovered per-call progress contract onto transports this runtime already"
       ]
     },
     {
@@ -4675,10 +4778,13 @@
       },
       "citedBy": [
         "research/CURRENT.md",
+        "research/ports/W28-progress-tokens.md",
         "research/STATUS.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-2st18191.js",
@@ -8229,10 +8335,13 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/CURRENT.md"
+        "research/CURRENT.md",
+        "research/ports/W28-progress-tokens.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-5wc3wh5m.js",
@@ -28088,10 +28197,13 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/CURRENT.md"
+        "research/CURRENT.md",
+        "research/ports/W28-progress-tokens.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-qtx23wx7.js",
@@ -33013,10 +33125,12 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/CURRENT.md"
+        "research/ports/W28-progress-tokens.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W28-progress-tokens.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-wa84971e.js",
