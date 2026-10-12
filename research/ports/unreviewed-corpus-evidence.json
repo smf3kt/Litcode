@@ -815,8 +815,18 @@
       "pureCodeLeaves": 1,
       "inScopeCandidate": 1
     },
-    "inScopeCandidates": [
-      "chunk-cx7rxhps.js seats a plugin outermost only when a managed settings source lists or enables it on this machine, refuses to seat one that managed prependPlugins does not list, and treats a managed settings source that was not read whole (a load error) as not vouching. Verified locally before recording: src/config.ts reads a single managed settings file and takes only allowShell, permissions, features and mcpClient from it, then admits plugins from settings.plugins by schema and discovery, with no rule that a managed source must vouch for a plugin and no treatment of a partially read managed source as unable to vouch"
+    "inScopeCandidates": [],
+    "reclassified": [
+      {
+        "module": "chunk-cx7rxhps.js",
+        "wasCandidate": "plugin admission under managed settings",
+        "disposition": "ruleWithoutLocalSurface",
+        "reclassifiedOn": "2026-10-12",
+        "finding": "Reading the module whole shows it is not an admission gate but a tier-seating pass. For every plugin the managed settings enable it decides whether that plugin's hooks load in the organization's tier or the user's, and it withholds the organization's tier - with a warning naming which condition failed - when the plugin does not load in place from a local folder its marketplace is registered from, when the source it is registered from is named only by a managed settings source the session does not vouch for (remote managed settings the server has not confirmed this session, or a document the user account can write), and when no managed source names that source at all. The generalisable half is stated outright: a managed settings source on this machine was not read whole (a load error, or a plugin key it could not apply), so what it says of plugins is not known.",
+        "localCheck": "The not-read-whole half is already enforced here more strongly: src/config.ts:938-944 reads the one managed settings file as required and rejects any key outside allowShell, permissions, features and mcpClient, and readSettingsLayer (src/config.ts:414) throws on a missing required file, an oversize file, invalid JSON and a non-object, so a managed source that cannot be read whole aborts configuration instead of being treated as having spoken. The seating half has nothing to land on: no plugin tier, no marketplace registration, no enabledPlugins list and no remote managed settings source exist here, and src/plugins.ts plugins are inert local directory snapshots discovered from a store index by digest with pluginConfigSchema a single enabled switch plus size limits, so nothing carries an organization identity to seat or withhold. The principle underneath - a source the governed party can write must not count as the governing party's policy - is already enforced where it applies: a project layer cannot approve its own MCP servers (src/config.ts:962-968, W12), and the managed file is named by the caller rather than discovered.",
+        "whyNotPorted": "Porting the seating rule would mean building a plugin tier, a marketplace registration model and a remote managed settings source first. That is new product scope rather than a rule landing on a surface this runtime already owns, so it is recorded as a rule without a local surface rather than as a pending port.",
+        "ledgerEffect": "none; the module stays uncited because nothing in the product cites it"
+      }
     ],
     "notedButNotCandidates": [
       "chunk-b5qrs9dw.js reports a repository git config that could not be read in full, one carrying a conditional include (includeIf), and one whose setting belongs in the global config; chunk-gk1qp4f7.js classifies Git directory entries (alternates, a linked worktree, a handler that leads nowhere, a win32 handle); both extend the Git family the slice fifteen candidate opened",
@@ -826,7 +836,7 @@
       "chunk-7tgm5mkw.js and chunk-w98nk8wq.js are a notification tool and feedback drafting, product surfaces without a local counterpart",
       "thirty-two modules carry no literal of their own: nineteen with nothing at all and thirteen with state-name markers only"
     ],
-    "reading": "the plugin, daemon, bridge and swarm plumbing band at 35.4% import text: thirty modules with local counterparts, thirty-two with no literal of their own, eighteen hosted surfaces, five recovered UI components, four vendored packages, three external surfaces, two modules excluded with OAuth, two product surfaces without a local counterpart, two shipped skill texts, one pure code leaf, and one candidate in plugin admission under managed settings"
+    "reading": "the plugin, daemon, bridge and swarm plumbing band at 35.4% import text: thirty modules with local counterparts, thirty-two with no literal of their own, eighteen hosted surfaces, five recovered UI components, four vendored packages, three external surfaces, two modules excluded with OAuth, two product surfaces without a local counterpart, two shipped skill texts, one pure code leaf, and one candidate in plugin admission under managed settings Reclassified on 2026-10-12 after reading the module whole for a port attempt: see reclassified."
   },
   "sliceTwenty": {
     "scope": "uncited modules ranked 821 to 920 by size, the fourth 100-rank band",
