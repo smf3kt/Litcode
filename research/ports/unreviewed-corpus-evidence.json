@@ -867,6 +867,39 @@
     ],
     "reading": "command and tool surface work in the smallest band yet, at 50.6% import text: the keybinding, brief, focus and goal commands, the scheduled-wakeup and loop tools, permission prompts and their wording, and the bridge and teleport paths - thirty-five modules with local counterparts, forty-three with no literal of their own, sixteen hosted surfaces, two vendored packages, two product surfaces without a local counterpart, one module excluded with credentials, and one candidate in the bypass-permission guard"
   },
+  "sliceTwentyTwo": {
+    "scope": "uncited modules ranked 1021 to 1120 by size, the sixth 100-rank band",
+    "bytes": 437757,
+    "rows": 100,
+    "rowsWithContent": 46,
+    "byteRange": [
+      5231,
+      4767
+    ],
+    "importSharePercent": 57.7,
+    "composition": {
+      "localCounterparts": 16,
+      "noCharacterisingLiteral": 60,
+      "hostedOrExternalSurfaces": 14,
+      "excludedWithCredentialsOrOauth": 3,
+      "vendoredOrPolyfill": 2,
+      "productWithoutLocalCounterpart": 2,
+      "pureCodeLeaves": 2,
+      "ruleWithoutLocalSurface": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-7ah5c51p.js judges deny rules by the effect a command accomplishes rather than its spelling (python -c, sed -i, cat > and heredocs writing a file), the family the permission-readings package vetted",
+      "chunk-hrkpf32h.js refuses a deep-link cwd with parent-directory segments or with invisible and bidirectional characters, the W09/W10 vetting family, guarding a surface this runtime does not have",
+      "chunk-e17cxwnz.js reports a published home file whose source was exchanged underneath it or is no longer a regular file, the identity family W09 ported",
+      "chunk-cyvb4eds.js confines a peer file transfer to its spool and refuses a transfer path outside it, containment again",
+      "chunk-30ght5hf.js refuses a forked-skill sidecar write in a diskless session, adjacent to the skill provenance writes this runtime keeps",
+      "chunk-ha254rj6.js requires a live human for a local file that could not be examined, the adverse-on-doubt shape this runtime applies in its own readings",
+      "sixty modules carry no characterising literal of their own: fifty-four with nothing at all and six with state-name markers only"
+    ],
+    "reading": "the small helper and hosted-adjacent layer at 57.7% import text: session and rename bookkeeping, plugin cache refresh, deep links, cloud containers and vitals, and the vendored AWS credential providers - sixteen modules with local counterparts, sixty with no literal of their own, fourteen hosted surfaces, three modules excluded with credentials or OAuth, two vendored packages, two product surfaces without a local counterpart, two pure code leaves, one rule guarding a surface this runtime lacks, and no candidate of its own"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
