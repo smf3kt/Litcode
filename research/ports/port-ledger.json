@@ -17,16 +17,16 @@
     "modules": 48,
     "bytes": 10128780,
     "narrativeOnly": {
-      "modules": 63,
-      "bytes": 5996442
+      "modules": 66,
+      "bytes": 6074270
     },
     "unreviewed": {
-      "modules": 2254,
-      "bytes": 30712915
+      "modules": 2251,
+      "bytes": 30635087
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2205,
-    "uncitedBuiltinLeafOnly": 2239,
+    "uncitedWithoutMarker": 2202,
+    "uncitedBuiltinLeafOnly": 2236,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
@@ -8228,7 +8228,9 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/CURRENT.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -28085,7 +28087,9 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/CURRENT.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -33008,7 +33012,9 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/CURRENT.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
