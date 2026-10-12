@@ -36,11 +36,14 @@ this closes real task+resume acceptance only and does not close A02 in full.
 
 Management surface, located 2026-10-12 (read-only): the gateway's own discovery
 document advertises three management routes beside its model routes -
-`/v1/magpie/quotas`, `/v1/magpie/quotas/history` and `/v1/magpie/route` - and
-all three were read with plain GET requests, no model call and no mutation.
-Reading a route requires naming a session (`?session=<id>` or `X-Magpie-Session`);
-an unknown session is answered with `{"route":null,"seq":0,"session":"<id>"}`, so a
-route is a versioned per-session value rather than a gateway-wide setting. What
-is still missing is the write half - how a route is set, and whether any
-credential rotation exists - and both change a gateway the user is running, so
-neither was attempted. Detail: [W03-management-discovery-evidence.json](W03-management-discovery-evidence.json).
+`/v1/magpie/quotas`, `/v1/magpie/quotas/history` and `/v1/magpie/route`. Reading
+a route requires naming a session (`?session=<id>` or `X-Magpie-Session`); an
+unknown session is answered with `{"route":null,"seq":0,"session":"<id>"}`, so a
+route is a versioned per-session value rather than a gateway-wide setting. The
+route path serves **GET only** - POST, PUT and PATCH all receive the gateway's
+not-found message naming the model routes - so route switching is not a
+management write at all: what remains on the routing side is observing a session's
+route and the model-selection path that sets it. Credential issuance or rotation
+has no advertised route and remains unverified. Every probe was a read or an
+empty-bodied method probe that could not name a target, so nothing on the running
+gateway was changed. Detail: [W03-management-discovery-evidence.json](W03-management-discovery-evidence.json).

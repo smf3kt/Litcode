@@ -1,13 +1,13 @@
 {
   "schema": "MagpieManagementSurfaceDiscovery.v1",
   "date": "2026-10-12",
-  "item": "W03/A02 recorded that the Magpie management surface was not located; this narrows it to a named, read-verified contract",
+  "item": "W03/A02 recorded that the Magpie management surface was not located and that route switching and credential rotation were unverified; this locates the surface and settles what it does and does not serve",
   "gateway": {
     "base": "http://127.0.0.1:3425",
     "name": "magpie",
     "version": "0.1.1109",
     "models": 11,
-    "probe": "read-only GET requests against the loopback gateway that the launcher already discovers; no model call, no mutation"
+    "probe": "read-only GETs plus method probes carrying an empty body and no session, against the loopback gateway the launcher already discovers; no model call, no mutation, and every probe was incapable of naming a target"
   },
   "advertisedApis": [
     "/v1/chat/completions",
@@ -27,11 +27,12 @@
   "managementSurface": {
     "route": {
       "endpoint": "/v1/magpie/route",
+      "servedMethods": ["GET"],
       "withoutASession": {
         "method": "GET",
         "status": 400,
         "body": { "error": { "message": "name the session: ?session=<id> or the X-Magpie-Session header", "type": "invalid_request_error" } },
-        "reading": "the route is per session and is addressed either by the session query parameter or by the X-Magpie-Session header"
+        "reading": "the route is per session, addressed by the session query parameter or by the X-Magpie-Session header"
       },
       "withAnUnknownSession": {
         "method": "GET",
@@ -40,33 +41,41 @@
         "body": { "route": null, "seq": 0, "session": "<the id echoed back>" },
         "reading": "an unknown session is answered rather than refused: the current route is null and carries a sequence number, so a route is a versioned per-session value"
       },
+      "methodProbe": {
+        "methods": ["POST", "PUT", "PATCH"],
+        "body": "{}",
+        "session": "none named",
+        "status": 404,
+        "message": "magpie serves /v1/chat/completions, /v1/responses, /v1/messages, /v1/systemone, /v1/images/generations, /v1/images/edits, /v1/videos, /v1/embeddings, /v1/rerank and /v1beta/models/*",
+        "reading": "the route path serves GET only. No write method is served, so route switching is not a management write at all - the route is an observed per-session value, and whatever sets it is the model-serving path the client already uses. Nothing was mutated, and no method on this path could have mutated anything."
+      },
       "notEstablished": [
-        "whether a route is set by PUT or POST on the same path, and what a valid route payload looks like",
-        "what the sequence number does on a write"
+        "what sets a session's route, and what the sequence number advances on",
+        "whether any other management path accepts a route write; none is advertised"
       ]
     },
     "quotas": {
       "endpoints": ["/v1/magpie/quotas", "/v1/magpie/quotas/history"],
       "method": "GET",
       "status": 200,
-      "shape": "an object list whose entries carry a provider, a kind (subscription or balance), optional plan and windows with used/remaining/reset values, a read time and a last-served time; the per-account values are deliberately not recorded here",
-      "reading": "the gateway exposes its own quota view read-only; it is a management read, not a model call"
+      "shape": "the live view is an object list whose entries carry a provider, a kind (subscription or balance), optional plan and windows with used/remaining/reset values, a read time and a last-served time; the history view is an object list of per-provider series whose points carry a timestamp, a remaining value, a window start and a reset time. The per-account values - an account address, plan names and balances - are deliberately not recorded here or anywhere in the evidence set",
+      "reading": "the gateway exposes its own quota view and its history read-only; both are management reads, not model calls"
     },
     "notListedByOptions": {
       "probe": "OPTIONS /v1/magpie/route",
       "status": 404,
-      "message": "magpie serves /v1/chat/completions, /v1/responses, /v1/messages, /v1/systemone, /v1/images/generations, /v1/images/edits, /v1/videos, /v1/embeddings, /v1/rerank and /v1beta/models/*",
-      "reading": "the gateway's own refusal message names the model routes only, so the management routes are a separate surface that discovery advertises and this refusal does not"
+      "reading": "the same not_found message names the model routes only, which is what an unsupported method on a management path receives here"
     }
   },
   "notAttempted": [
-    "setting a route for any session, including a synthetic one: it would change routing on a gateway the user is running",
-    "credential rotation: no rotation route is advertised, and any write against the live gateway is consequential"
+    "credential rotation: no rotation route is advertised, and any such write would change a gateway the user is running",
+    "starting or restarting the management service: out of scope for a read-only discovery"
   ],
-  "recordedWithoutValues": "the quota response carries an account address, plan names and balances; none of those values are recorded in this file or anywhere in the evidence set",
+  "recordedWithoutValues": "both quota responses carry an account address and per-window values; none of those values appears in this file or anywhere in the evidence set",
   "paidCalls": 0,
   "residual": [
-    "the write half of route management and any credential-rotation surface remain unverified and require the user's go-ahead, because both change the running gateway",
-    "the read contract above was observed once against version 0.1.1109; it is a point observation, not a versioned guarantee"
+    "route switching is not a management write: the surface serves GET only, so what remains for A02 on the routing side is observing a live session's route and the model-selection path that sets it",
+    "credential issuance or rotation remains unverified and has no advertised route",
+    "the contract above was observed once against version 0.1.1109; it is a point observation, not a versioned guarantee"
   ]
 }
