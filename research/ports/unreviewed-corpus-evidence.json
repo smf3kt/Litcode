@@ -399,6 +399,29 @@
       "localGap": "src/config.ts resolves @file.md instruction imports and de-duplicates by realpath; it does not bound a link chain, does not refuse a link body that leaves the directory the import walked into, and does not check the body's encoding before treating it as instructions"
     }
   },
+  "sliceSix": {
+    "scope": "uncited modules ranked 121 to 145 by size",
+    "bytes": 962864,
+    "rows": 25,
+    "byteRange": [
+      36019,
+      40582
+    ],
+    "composition": {
+      "hostedOrExternalSurfaces": 15,
+      "vendoredLibraries": 3,
+      "recoveredUi": 1,
+      "localCounterparts": 5,
+      "noLocalCache": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-2kdsvp3x.js MCPB entry validation (zip-slip, declared-size and compression-ratio rules) guards a bundle ingestion path this runtime does not have",
+      "chunk-bt8cr7rw.js unix-domain peer messaging with launch-ancestry verification guards a peer surface this runtime does not expose"
+    ],
+    "reading": "the control-protocol and product-UI band: the browser-extension bridge, the MCPB installer, the plugin CLI, artifact comments, connector import, URL-credential policy, Remote Control notices, cloud routines, page publishing, the model switch, the artifact database, git credential brokering, Ultrareview, Remote Control servers and unix-domain peer messaging, plus vendored msgpack, commander and confusable tables, one recovered dialog, and five modules whose surfaces this runtime already owns (the tool-host schema and error layer, the interactive action registry, the image cache, slug and frontmatter helpers, and the permission glob compiler)"
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
