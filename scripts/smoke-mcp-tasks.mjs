@@ -9,6 +9,10 @@ import { captureIdentity } from './identity.mjs';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const compiled = process.argv.includes('--compiled');
 const standard = process.argv.includes('--standard');
+const getInputs = process.argv.includes('--get');
+if (getInputs && !standard) throw new Error('--get requires --standard');
+let getStream, gets = 0, getClosed = 0;
+
 const related = 'io.modelcontextprotocol/related-task';
 const taskState = (taskId, status = 'working') => ({ taskId, status, ttl: 30000, createdAt: '2026-10-12T00:00:00Z', lastUpdatedAt: '2026-10-12T00:00:00Z', pollInterval: 250 });
 let inputStream;
@@ -22,6 +26,11 @@ const tasks = new Map(); let seq = 0, deletes = 0;
 const send = (res, id, result) => { res.writeHead(200, { 'content-type': 'application/json', 'mcp-session-id': 'owned-task-fixture' }); res.end(JSON.stringify({ jsonrpc: '2.0', id, result })); };
 const server = http.createServer((req, res) => {
   void (async () => {
+    if (req.method === 'GET') {
+      gets++; getStream = res;
+      res.on('close', () => { getClosed++; if (getStream === res) getStream = undefined; });
+      res.writeHead(200, { 'content-type': 'text/event-stream' }); res.flushHeaders(); return;
+    }
     if (req.method === 'DELETE') { deletes++; res.writeHead(204).end(); return; }
     const chunks = []; let size = 0; for await (const c of req) { size += c.length; assert.ok(size < 2 ** 20); chunks.push(c); }
     const body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
@@ -57,7 +66,12 @@ const server = http.createServer((req, res) => {
       const taskId = body.params.taskId, task = tasks.get(taskId);
       if (['form', 'complete'].includes(task.mode)) {
         inputStream = { res, id: body.id, taskId }; res.writeHead(200, { 'content-type': 'text/event-stream' });
-        res.write(`data: ${JSON.stringify({ jsonrpc: '2.0', id: 'standard-form', method: task.mode === 'form' ? 'elicitation/create' : 'roots/list', params: { ...(task.mode === 'form' ? { message: 'owned form', requestedSchema: { type: 'object', properties: { label: { type: 'string' } }, required: ['label'] } } : {}), _meta: { [related]: { taskId } } } })}\n\n`);
+        if (getInputs) {
+          const deadline = Date.now() + 2000;
+          while (!getStream && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 5));
+          assert.ok(getStream, 'GET input stream ready');
+        }
+        (getInputs ? getStream : res).write(`data: ${JSON.stringify({ jsonrpc: '2.0', id: 'standard-form', method: task.mode === 'form' ? 'elicitation/create' : 'roots/list', params: { ...(task.mode === 'form' ? { message: 'owned form', requestedSchema: { type: 'object', properties: { label: { type: 'string' } }, required: ['label'] } } : {}), _meta: { [related]: { taskId } } } })}\n\n`);
       } else send(res, body.id, { content: [{ type: 'text', text: 'OWNED_TASK_RESULT' }], isError: task.mode === 'failed', _meta: { [related]: { taskId: task.mode === 'unsupported' ? 'foreign' : taskId } } });
     } else if (standard && body.id === 'standard-form') {
       assert.equal(body.result._meta[related].taskId, inputStream.taskId);
@@ -75,7 +89,7 @@ const config = { srv: { type: 'http', url: url + '/mcp' } };
 const context = { workspace, signal: new AbortController().signal, maxOutputBytes: 24000 };
 const invoke = async (connection, mode, signal = context.signal) => connection.tools.find(t => t.schema.name === 'mcp__srv__run').execute({ mode }, { ...context, signal });
 try {
-  const connection = await connectMcpServers(config, context, { ...(standard ? { standardTasks: true } : { tasks: true }), clientRequests: { roots: () => [{ uri: new URL('file://' + workspace).href }], elicitation: () => ({ action: 'accept', content: { label: 'owned' } }) } });
+  const connection = await connectMcpServers(config, context, { ...(standard ? { standardTasks: true, notificationStream: getInputs } : { tasks: true }), clientRequests: { roots: () => [{ uri: new URL('file://' + workspace).href }], elicitation: () => ({ action: 'accept', content: { label: 'owned' } }) } });
   try {
     assert.match(await invoke(connection, 'complete'), /OWNED_TASK_RESULT/);
     assert.match(await invoke(connection, 'form'), /OWNED_TASK_RESULT/);
@@ -103,11 +117,11 @@ else if(m.method==='tasks/result')reply(m.id,{content:[{type:'text',text:'STDIO_
 `);
   const local = await connectMcpServers({ srv: { command: process.execPath, args: [stdio] } }, context, standard ? { standardTasks: true, clientRequests: { roots: () => [{ uri: 'file:///owned-adjacent' }] } } : { tasks: true });
   try { assert.match(await invoke(local, 'complete'), /STDIO_TASK_RESULT/); } finally { await local.close(); }
-  const lifetime = await connectMcpServers(config, context, standard ? { standardTasks: true } : { tasks: true });
+  const lifetime = await connectMcpServers(config, context, standard ? { standardTasks: true, notificationStream: getInputs } : { tasks: true });
   const outstanding = invoke(lifetime, 'cancel'); const checked = assert.rejects(outstanding, /cancel/i);
   await new Promise(resolve => setTimeout(resolve, 25)); await lifetime.close(); await checked;
   fs.mkdirSync(path.join(workspace, '.harness')); fs.mkdirSync(path.join(workspace, 'user'));
-  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true } : { mcpTasks: true }), mcpDynamic: false } }));
+  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true, mcpNotificationStream: getInputs } : { mcpTasks: true }), mcpDynamic: false } }));
   const run = async resume => {
     const env = { ...process.env }; for (const name of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(name)) delete env[name];
     Object.assign(env, { LLM_API_KEY: 'OWNED_TASK_KEY', LLM_MODEL: 'fixture/task', LLM_BASE_URL: url, LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false' });
@@ -126,5 +140,6 @@ else if(m.method==='tasks/result')reply(m.id,{content:[{type:'text',text:'STDIO_
   const resumed = await run(first.session_id); assert.equal(resumed.session_id, first.session_id);
   assert.equal(calls.filter(c => c.body.method === 'tools/call').length, callsBefore);
   assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(n => n.endsWith('.lock')), false); assert.deepEqual(failures, []);
-  console.log(JSON.stringify({ tasks: 'passed', standard, compiledCLI: compiled, modelRequests: model.length, cancelled: standard ? 2 : 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
+  if (getInputs) { assert.equal(gets, 4); assert.equal(getClosed, gets); }
+  console.log(JSON.stringify({ tasks: 'passed', standard, ...(getInputs ? { getInputs: true, gets, getClosed } : {}), compiledCLI: compiled, modelRequests: model.length, cancelled: standard ? 2 : 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
 } finally { for (const child of children) child.kill('SIGKILL'); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); fs.rmSync(workspace, { recursive: true, force: true }); unregister?.(); }

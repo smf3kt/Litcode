@@ -54,3 +54,72 @@ test('related task reverse RPCs require active ownership and return correlated m
     await slow.close();
   } finally {await handler.close();}
 });
+
+
+test('GET task inputs enforce ownership, keep cancellation flowing and release callbacks on close', async () => {
+  const { createServer } = await import('node:http');
+  const { connectMcpServers } = await import('../src/mcp.js');
+  let stream: import('node:http').ServerResponse | undefined;
+  let resultPost: { res: import('node:http').ServerResponse; id: number } | undefined;
+  const replies: any[] = [], failures: unknown[] = [], signals: AbortSignal[] = [];
+  let roots = 0, forms = 0, samples = 0;
+  const until = async (check: () => boolean) => {
+    const end = Date.now() + 2000;
+    while (!check() && Date.now() < end) await new Promise(resolve => setTimeout(resolve, 5));
+    assert.ok(check(), 'GET task fixture deadline');
+  };
+  const send = (message: unknown) => stream!.write('data: ' + JSON.stringify(message) + '\n\n');
+  const input = (id: string, taskId = 'owned', method = 'roots/list', extra = {}) => send({ jsonrpc: '2.0', id, method,
+    params: { ...extra, _meta: { [MCP_RELATED_TASK]: { taskId } } } });
+  const server = createServer((req, res) => {
+    void (async () => {
+      if (req.method === 'GET') { stream = res; res.writeHead(200, { 'content-type': 'text/event-stream' }); res.flushHeaders(); return; }
+      if (req.method === 'DELETE') { res.writeHead(204).end(); return; }
+      let text = ''; for await (const chunk of req) text += chunk;
+      const m = JSON.parse(text);
+      const reply = (value: unknown) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: value })); };
+      if (m.method === 'initialize') { res.setHeader('mcp-session-id', 'owned-get'); reply({ protocolVersion: MCP_TASK_PROTOCOL_VERSION, capabilities: { tools: {}, tasks: { requests: { tools: { call: {} } }, cancel: {} } } }); }
+      else if (m.method === 'tools/list') reply({ tools: [{ name: 'run', inputSchema: { type: 'object' }, execution: { taskSupport: 'required' } }] });
+      else if (m.method === 'tools/call') reply({ task: state() });
+      else if (m.method === 'tasks/get') reply(state('input_required'));
+      else if (m.method === 'tasks/result') { resultPost = { res, id: m.id }; res.writeHead(200, { 'content-type': 'text/event-stream' }); res.flushHeaders(); }
+      else if (m.method === 'tasks/cancel') reply(state('cancelled'));
+      else { if (m.id) replies.push(m); res.writeHead(202).end(); }
+    })().catch(error => { failures.push(error); res.destroy(); });
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address(); assert.ok(address && typeof address !== 'string');
+  const context = { workspace: process.cwd(), signal: new AbortController().signal, maxOutputBytes: 24000, allowShell: false };
+  const connection = await connectMcpServers({ srv: { type: 'http', url: 'http://127.0.0.1:' + address.port + '/mcp' } }, context,
+    { standardTasks: true, notificationStream: true, recovery: true, requestTimeoutMs: 4000,
+      clientRequests: { roots: (_context, signal) => { roots++; assert.ok(signal); signals.push(signal); return new Promise(() => {}); },
+        elicitation: () => { forms++; return { action: 'accept', content: { label: 'owned' } }; },
+        sampling: () => { samples++; throw new Error('unexpected sampling'); } } });
+  const run = () => connection.tools.find(tool => tool.schema.name === 'mcp__srv__run')!.execute({}, context);
+  try {
+    await until(() => connection.notificationStreams!().srv?.state === 'active');
+    input('absent'); await until(() => replies.some(m => m.id === 'absent'));
+    assert.equal(replies.at(-1).error.code, -32602); assert.equal(roots, 0);
+    const pending = run(); await until(() => resultPost !== undefined);
+    input('foreign', 'foreign'); input('invalid', 'owned', 'elicitation/create', { message: 'bad', requestedSchema: [] });
+    send({ jsonrpc: '2.0', id: 'unrelated', method: 'roots/list', params: {} });
+    input('sampling', 'owned', 'sampling/createMessage');
+    input('form', 'owned', 'elicitation/create', { message: 'owned form', requestedSchema: { type: 'object', properties: { label: { type: 'string' } }, required: ['label'] } });
+    input('slow'); await until(() => roots === 1 && replies.some(m => m.id === 'form'));
+    send({ jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: 'slow' } });
+    await until(() => replies.some(m => m.id === 'slow'));
+    assert.equal(signals[0]!.aborted, true); assert.equal(forms, 1); assert.equal(samples, 0);
+    assert.equal(replies.find(m => m.id === 'foreign').error.code, -32602);
+    assert.equal(replies.find(m => m.id === 'invalid').error.code, -32602);
+    assert.equal(replies.find(m => m.id === 'form').result._meta[MCP_RELATED_TASK].taskId, 'owned');
+    assert.equal(replies.find(m => m.id === 'slow')._meta[MCP_RELATED_TASK].taskId, 'owned');
+    assert.ok(!replies.some(m => ['unrelated', 'sampling'].includes(m.id)));
+    resultPost!.res.end('data: ' + JSON.stringify({ jsonrpc: '2.0', id: resultPost!.id, result }) + '\n\n');
+    assert.equal(await pending, 'owned result'); resultPost = undefined;
+    input('late'); await until(() => replies.some(m => m.id === 'late')); assert.equal(roots, 1);
+    const closing = run(); const checked = assert.rejects(async () => await closing, /cancel|closed/i);
+    await until(() => resultPost !== undefined); input('closing'); await until(() => roots === 2);
+    await connection.close(); await checked; assert.equal(signals[1]!.aborted, true);
+    assert.equal(connection.notificationStreams!().srv?.state, 'closed'); assert.deepEqual(failures, []);
+  } finally { await connection.close(); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
+});
