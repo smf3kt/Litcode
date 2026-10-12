@@ -12,26 +12,26 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 42,
+  "recordCount": 43,
   "summary": {
-    "modules": 39,
-    "bytes": 8560995,
+    "modules": 42,
+    "bytes": 9320538,
     "narrativeOnly": {
       "modules": 64,
       "bytes": 6660732
     },
     "unreviewed": {
-      "modules": 2262,
-      "bytes": 31616410
+      "modules": 2259,
+      "bytes": 30856867
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2212,
-    "uncitedBuiltinLeafOnly": 2246,
+    "uncitedWithoutMarker": 2210,
+    "uncitedBuiltinLeafOnly": 2244,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
         "name": "async_hooks",
-        "modules": 9
+        "modules": 8
       },
       {
         "name": "ws",
@@ -53,8 +53,8 @@
     "families": [
       {
         "family": "API beta headers",
-        "modules": 19,
-        "bytes": 2777985
+        "modules": 18,
+        "bytes": 2033375
       },
       {
         "family": "cloud identity client",
@@ -72,31 +72,6 @@
         "bytes": 1336593
       },
       {
-        "family": "self-hosted release surface",
-        "modules": 10,
-        "bytes": 1220276
-      },
-      {
-        "family": "plugin eval tooling",
-        "modules": 2,
-        "bytes": 1061861
-      },
-      {
-        "family": "org memory surface",
-        "modules": 3,
-        "bytes": 1037975
-      },
-      {
-        "family": "background-agent UI",
-        "modules": 3,
-        "bytes": 1036352
-      },
-      {
-        "family": "artifact capability surface",
-        "modules": 2,
-        "bytes": 977755
-      },
-      {
         "family": "protobuf runtime",
         "modules": 1,
         "bytes": 943361
@@ -105,6 +80,11 @@
         "family": "syntax grammars",
         "modules": 3,
         "bytes": 608622
+      },
+      {
+        "family": "self-hosted release surface",
+        "modules": 9,
+        "bytes": 475666
       },
       {
         "family": "DOM/HTML parser",
@@ -117,6 +97,21 @@
         "bytes": 360288
       },
       {
+        "family": "plugin eval tooling",
+        "modules": 1,
+        "bytes": 317251
+      },
+      {
+        "family": "org memory surface",
+        "modules": 2,
+        "bytes": 293365
+      },
+      {
+        "family": "background-agent UI",
+        "modules": 2,
+        "bytes": 291742
+      },
+      {
         "family": "otel otlp protobuf",
         "modules": 1,
         "bytes": 267269
@@ -125,6 +120,11 @@
         "family": "plugin marketplace UI",
         "modules": 1,
         "bytes": 247454
+      },
+      {
+        "family": "artifact capability surface",
+        "modules": 1,
+        "bytes": 233145
       },
       {
         "family": "MCP protocol surface",
@@ -480,6 +480,37 @@
       ]
     },
     {
+      "path": "chunk-9rz2kgpd.js",
+      "bytes": 9091,
+      "sha256": "cf758c9dbb4d9967606378bfe4c71d6f29d175c4c7fd2940c4ed967054a9d53d",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "buffer",
+        "child_process",
+        "fs",
+        "os",
+        "path",
+        "process",
+        "url",
+        "util"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "portRecords": [
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "adapt of the guard onto this runtime's own permission resolution, narrower than the recovered module. The recovered `g` both decides and exits; here the decisio"
+      ]
+    },
+    {
       "path": "chunk-ax7r0qj7.js",
       "bytes": 7300,
       "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
@@ -522,6 +553,70 @@
       "reviewed": true,
       "declared": [
         "copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c"
+      ]
+    },
+    {
+      "path": "chunk-bk5ct2gw.js",
+      "bytes": 744610,
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "child_process",
+        "crypto",
+        "dns",
+        "fs",
+        "http",
+        "https",
+        "net",
+        "os",
+        "path",
+        "stream",
+        "timers",
+        "tls",
+        "util",
+        "zlib"
+      ],
+      "packages": [
+        "async_hooks"
+      ],
+      "chunks": 0,
+      "markers": {
+        "self-hosted release surface": {
+          "literal": "self_hosted_",
+          "at": 221808
+        },
+        "artifact capability surface": {
+          "literal": "artifact_capability_section",
+          "at": 213070
+        },
+        "org memory surface": {
+          "literal": "org_memory_",
+          "at": 230592
+        },
+        "background-agent UI": {
+          "literal": "fleet_view_",
+          "at": 224361
+        },
+        "plugin eval tooling": {
+          "literal": "cli_plugin_eval",
+          "at": 221382
+        },
+        "API beta headers": {
+          "literal": "anthropic-beta",
+          "at": 113069
+        }
+      },
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "portRecords": [
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "adapt of the guard onto this runtime's own permission resolution, narrower than the recovered module. The recovered `g` both decides and exits; here the decisio"
       ]
     },
     {
@@ -1237,6 +1332,28 @@
       "declared": [
         "adapt of the invariant, not a copy of the analyser. The recovered reading set is built from a bash parse tree that reports ambiguous *names* and *operands*; thi"
       ]
+    },
+    {
+      "path": "chunk-zygdtz20.js",
+      "bytes": 5842,
+      "sha256": "e71f5d58cb820aed4afb2f8f044e1315afd0b23a494345609179b253bbd2e1a8",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "portRecords": [
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "adapt of the guard onto this runtime's own permission resolution, narrower than the recovered module. The recovered `g` both decides and exits; here the decisio"
+      ]
     }
   ],
   "unreviewedTop": [
@@ -1247,10 +1364,6 @@
     {
       "path": "chunk-qxmpnv25.js",
       "bytes": 943361
-    },
-    {
-      "path": "chunk-bk5ct2gw.js",
-      "bytes": 744610
     },
     {
       "path": "chunk-95gcr8xw.js",
@@ -1339,6 +1452,10 @@
     {
       "path": "chunk-qx79s5zs.js",
       "bytes": 153987
+    },
+    {
+      "path": "chunk-z0td7hqb.js",
+      "bytes": 141182
     }
   ],
   "modules": [
@@ -12514,9 +12631,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "portRecords": [
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-9s3y7e6f.js",
@@ -14399,9 +14521,14 @@
           "at": 113069
         }
       },
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "portRecords": [
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-bk7nkd6x.js",
@@ -36932,9 +37059,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "portRecords": [
+        "research/ports/W15-bypass-guard.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-zyrmp4wz.js",

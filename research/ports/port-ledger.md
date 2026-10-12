@@ -7,9 +7,9 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 ## Summary
 
 - Modules on disk: **2365** (46838137 bytes).
-- Backed by a record under `research/ports/`: **39** (8560995 bytes).
+- Backed by a record under `research/ports/`: **42** (9320538 bytes).
 - Mentioned only by narrative records: **64** (6660732 bytes).
-- Not cited by any record: **2262** (31616410 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
+- Not cited by any record: **2259** (30856867 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
 
 ## Modules with port evidence
 
@@ -27,8 +27,10 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 | `chunk-8s56nf7t.js` | 7117 | `7fc34a2aa307` | research/ports/W05-image-limits.md | copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c |
 | `chunk-8sj9gbsq.js` | 15229 | `86e5e1c62a45` | research/ports/W05-persistence.md, research/ports/W05-recovery.md | rewrite. No recovered durable resource-subscription journal algorithm was established. Source observation is bounded lifecycle/listener metadata, already digest / rewrite of finite local recovery behavior, using existing connection manager; no original URI replay algorithm is claimed. |
 | `chunk-9cmjz7j9.js` | 90493 | `b53bbec49850` | research/ports/W05-tasks.md | adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
+| `chunk-9rz2kgpd.js` | 9091 | `cf758c9dbb4d` | research/ports/W15-bypass-guard.md | adapt of the guard onto this runtime's own permission resolution, narrower than the recovered module. The recovered `g` both decides and exits; here the decisio |
 | `chunk-ax7r0qj7.js` | 7300 | `8e782f9b216f` | research/ports/skill-argument-expansion.md | - |
 | `chunk-bf3z2ftn.js` | 98088 | `1c4ed6b761e5` | research/ports/W05-image-limits.md | copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c |
+| `chunk-bk5ct2gw.js` | 744610 | `efbc2d987608` | research/ports/W15-bypass-guard.md | adapt of the guard onto this runtime's own permission resolution, narrower than the recovered module. The recovered `g` both decides and exits; here the decisio |
 | `chunk-bmffdtcn.js` | 8541 | `a0ec7de2b097` | research/ports/W05-startup.md | - |
 | `chunk-dt139v0s.js` | 8232 | `117ba6c8aea1` | research/ports/W05-get-dispatch.md, research/ports/W05-get-resume.md, research/ports/W05-get-task-inputs.md | transport behavior copy. The recovered SSE handler parses each event, records that a request was seen, forces the replay message id when one is supplied, and ha / transport behavior copy. The recovered transport stores the last event id per stream, reports it through its resumption callback, re-sends it as last-event-id o / adapt dispatch/reply behavior to existing owned SSE/parser/host handler. Original generic dispatch includes all RPC families and task queues; this adaptation ac |
 | `chunk-e0gkzwq9.js` | 1032 | `57b301aedba5` | research/ports/W05-tasks.md | adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
@@ -54,6 +56,7 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 | `chunk-yjc18bey.js` | 2347 | `e53a75c48188` | research/ports/W05-startup.md, research/ports/W05-tasks.md | adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
 | `chunk-ywpww1r2.js` | 6692 | `7fdd97ccec2a` | research/ports/W12-mcp-server-approval.md | copy of the decision model, rewritten onto this runtime's storage and answering surface. The recovered product keeps the answers as two name lists inside the me |
 | `chunk-zjewzgfh.js` | 93529 | `83180bcc6260` | research/ports/W01-permission-readings.md | adapt of the invariant, not a copy of the analyser. The recovered reading set is built from a bash parse tree that reports ambiguous *names* and *operands*; thi |
+| `chunk-zygdtz20.js` | 5842 | `e71f5d58cb82` | research/ports/W15-bypass-guard.md | adapt of the guard onto this runtime's own permission resolution, narrower than the recovered module. The recovered `g` both decides and exits; here the decisio |
 
 ## Marker families inside the uncited set
 
@@ -61,24 +64,24 @@ A marker records that the module's bytes contain that literal; it characterises 
 
 | Family | Literal | Modules | Bytes |
 | --- | --- | --- | --- |
-| API beta headers | `anthropic-beta` | 19 | 2777985 |
+| API beta headers | `anthropic-beta` | 18 | 2033375 |
 | cloud identity client | `login.microsoftonline.com` | 4 | 1907554 |
 | validation-library messages | `invalid_union` | 4 | 1572631 |
 | protobuf descriptors | `EDITION_2023` | 2 | 1336593 |
-| self-hosted release surface | `self_hosted_` | 10 | 1220276 |
-| plugin eval tooling | `cli_plugin_eval` | 2 | 1061861 |
-| org memory surface | `org_memory_` | 3 | 1037975 |
-| background-agent UI | `fleet_view_` | 3 | 1036352 |
-| artifact capability surface | `artifact_capability_section` | 2 | 977755 |
 | protobuf runtime | `google.protobuf.Struct` | 1 | 943361 |
 | syntax grammars | `title.class` | 3 | 608622 |
+| self-hosted release surface | `self_hosted_` | 9 | 475666 |
 | DOM/HTML parser | `annotation-xml` | 3 | 438255 |
 | terminal UI library | `ink-virtual-text` | 1 | 360288 |
+| plugin eval tooling | `cli_plugin_eval` | 1 | 317251 |
+| org memory surface | `org_memory_` | 2 | 293365 |
+| background-agent UI | `fleet_view_` | 2 | 291742 |
 | otel otlp protobuf | `timeUnixNano` | 1 | 267269 |
 | plugin marketplace UI | `manage-marketplaces` | 1 | 247454 |
+| artifact capability surface | `artifact_capability_section` | 1 | 233145 |
 | MCP protocol surface | `resources/templates/list` | 1 | 10785 |
 
-Modules in the uncited set carrying no marker: **2212**. Binary payloads among them: **0**.
+Modules in the uncited set carrying no marker: **2210**. Binary payloads among them: **0**.
 
 ## Largest modules without a citation
 
@@ -88,7 +91,6 @@ Unreviewed, listed so the largest gaps stay visible rather than implied covered.
 | --- | --- |
 | `chunk-yhar7r1q.js` | 1458514 |
 | `chunk-qxmpnv25.js` | 943361 |
-| `chunk-bk5ct2gw.js` | 744610 |
 | `chunk-95gcr8xw.js` | 670136 |
 | `chunk-vgrqk0ky.js` | 589973 |
 | `chunk-1pwmtn16.js` | 393232 |
@@ -111,3 +113,4 @@ Unreviewed, listed so the largest gaps stay visible rather than implied covered.
 | `chunk-b1maf7av.js` | 159827 |
 | `chunk-es07s2ha.js` | 156084 |
 | `chunk-qx79s5zs.js` | 153987 |
+| `chunk-z0td7hqb.js` | 141182 |

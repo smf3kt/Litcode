@@ -874,8 +874,13 @@
       "excludedWithCredentials": 1,
       "inScopeCandidate": 1
     },
-    "inScopeCandidates": [
-      "chunk-zygdtz20.js refuses bypass permissions under root or sudo privileges outright and records that a bypass consent accepted in the moment does not hold when user settings do not persist it. Verified locally before recording: src/cli.ts accepts --permission-mode bypass and src/interactive.ts documents /permissions MODE, src/permissions.ts returns allow for every call in that mode, and no privileged-uid check exists anywhere in src/ - so neither half of the recovered rule is implemented on a surface this runtime owns"
+    "inScopeCandidates": [],
+    "ported": [
+      {
+        "port": "ports/W15-bypass-guard.md",
+        "shippedOn": "2026-10-12",
+        "note": "Ported the guard half onto this runtime's own permission resolution: the mode that skips every check is refused before anything runs when the process is root outside a deliberate sandbox, reported as a value rather than exiting inside the rule, with the sandbox signals reproduced as the container marker files Docker and Podman leave plus one explicit environment opt-in. The candidate's second half did not land: the consent dialog and its persist-after-consent check guard a surface this runtime does not have (the mode is chosen by flag or settings layer and takes effect, with no bypass consent step), and the recovered policy gate needs a policy source these settings layers do not carry - both recorded under notPorted with reasons."
+      }
     ],
     "notedButNotCandidates": [
       "chunk-v6b7qas5.js refuses a skill bundle file whose path escapes its extraction directory, the containment family W09 and W10 ported",
@@ -886,7 +891,7 @@
       "two near-duplicate pairs appear in the band (an MCP capability message and a vendored error family), continuing the pattern earlier slices recorded",
       "forty-three modules carry no characterising literal of their own: thirty-nine with nothing at all and four with state-name markers only"
     ],
-    "reading": "command and tool surface work in the smallest band yet, at 50.6% import text: the keybinding, brief, focus and goal commands, the scheduled-wakeup and loop tools, permission prompts and their wording, and the bridge and teleport paths - thirty-five modules with local counterparts, forty-three with no literal of their own, sixteen hosted surfaces, two vendored packages, two product surfaces without a local counterpart, one module excluded with credentials, and one candidate in the bypass-permission guard"
+    "reading": "command and tool surface work in the smallest band yet, at 50.6% import text: the keybinding, brief, focus and goal commands, the scheduled-wakeup and loop tools, permission prompts and their wording, and the bridge and teleport paths - thirty-five modules with local counterparts, forty-three with no literal of their own, sixteen hosted surfaces, two vendored packages, two product surfaces without a local counterpart, one module excluded with credentials, and one candidate in the bypass-permission guard Ported on 2026-10-12: see ported."
   },
   "sliceTwentyTwo": {
     "scope": "uncited modules ranked 1021 to 1120 by size, the sixth 100-rank band",
@@ -1014,13 +1019,12 @@
       "productWithoutLocalCounterpart": 1,
       "inScopeCandidate": 1
     },
-    "inScopeCandidates": [
+    "inScopeCandidates": [],
+    "ported": [
       {
-        "module": "chunk-x3et6ayt.js",
-        "recovered": "an attachment path is refused when its name is credential-shaped and when it has more than one hard link, alongside the too_large and not_regular refusals",
-        "localHalf": "src/media.ts:98-125 confines the path inside the workspace, opens with O_NOFOLLOW, refuses anything that is not a regular file, caps the size at MEDIA_MAX_BYTES and re-verifies device and inode before returning bytes",
-        "uncovered": "no credential-shaped-name refusal and no hard-link refusal appear anywhere in the local source; the searches for a credential filename pattern and for an nlink check both returned nothing",
-        "authorityVerified": "local source read only; no module was executed"
+        "port": "ports/W14-attachment-refusals.md",
+        "shippedOn": "2026-10-12",
+        "note": "Ported onto the media read path this runtime already owns: a credential-shaped name or folder is refused by category before anything is opened, and a file reachable by a second hard link is refused because the validated path is not the only way to its bytes. Both halves of this candidate's uncovered side landed; the recorded port also found the recovered surface to be larger than this row recorded (the refusal is a named category rather than a message, a checked-in sample exemption, and the upload-side spelling of the same rule)."
       }
     ],
     "notedButNotCandidates": [
@@ -1031,7 +1035,7 @@
       "chunk-nbvdgwj8.js confirms repository trust and distinguishes a trusted repository from no repository and from a declined trust, the trust gate this runtime owns",
       "sixty-seven modules carry content and twenty-one of them only through state-name markers; thirty-three carry nothing of their own and most of those are half or more import statements"
     ],
-    "reading": "the sub-three-kilobyte layer at 22.2% import text: request parameters and tool input validation, repository trust and permission mode plumbing, transcript and session bookkeeping, plugin fetch and prompt overrides, and the hosted bridge, device, vitals and workshop surfaces - fifty-four modules with no characterising literal of their own, twenty-two with local counterparts, sixteen hosted surfaces, four excluded with credentials or OAuth, one vendored package, one pure code leaf, one product surface without a local counterpart, and one candidate: an attachment refused for a credential-shaped name or more than one hard link over a read path this runtime already owns"
+    "reading": "the sub-three-kilobyte layer at 22.2% import text: request parameters and tool input validation, repository trust and permission mode plumbing, transcript and session bookkeeping, plugin fetch and prompt overrides, and the hosted bridge, device, vitals and workshop surfaces - fifty-four modules with no characterising literal of their own, twenty-two with local counterparts, sixteen hosted surfaces, four excluded with credentials or OAuth, one vendored package, one pure code leaf, one product surface without a local counterpart, and one candidate: an attachment refused for a credential-shaped name or more than one hard link over a read path this runtime already owns Ported on 2026-10-12: see ported."
   },
   "sliceTwentySix": {
     "scope": "uncited modules ranked 1421 to 1520 by size, the tenth 100-rank band",
