@@ -1179,6 +1179,33 @@ because npm packs `LICENSE` automatically; identity 125 input / 92 validation /
 (public, MIT detected, main, snapshot commit a1c5107). Detail and coordinates:
 ports/W32-licence-and-publication-evidence.json.
 
+## W33 - bare invocation, version and install
+
+A fresh installation could not be driven the way a harness normally is: the shipped
+bin needed a task or an explicit `--interactive`, there was no `--version`, and a bare
+invocation without a terminal printed the usage and exited 1 as an argument error.
+
+Now the bare invocation decides by terminal instead of by a flag. With a terminal it
+starts the interactive session; without one it prints the usage and exits 0. The options
+that already name a command - `--demo`, `--continue`, `--resume`, `--list-sessions`, the
+two MCP approval flags and a positional task - are never read as an empty call, and the
+two flags that need interaction (`--mcp-elicitation`, `--watch-config`) accept the implied
+one while still refusing when no terminal is attached. `--version`/`-v` report the package
+version from the manifest beside the compiled entry, before any credential check. A
+missing credential now names `LLM_API_KEY` and points at `--demo`.
+
+Verified by installing the packed tarball globally: `litcode`, `litcode-magpie` and
+`personal-harness` all resolve on PATH, `litcode --version` prints 0.1.0, a bare `litcode`
+on a real terminal prints the session id, the workspace and the prompt line and exits on
+`/exit` without spending a model call, and `litcode --demo` completes offline. The terminal
+test needs a PTY, and macOS `script` refuses to start when its own stdin is a socket - the
+shape Node gives a spawned child - so the case runs behind a shell pipeline and skips where
+no PTY can be had.
+
+Suite 1133/1133 (three new cases); package 73 files, 0 upstream requests; identity 125 input
+/ 92 validation / 65 build, merged `b9210f58...`. The interactive banner still reads
+`Personal harness.`, which is the legacy name the session prompt carries; renaming it is a
+separate change. Detail: ports/W33-bare-invocation.md.
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md
