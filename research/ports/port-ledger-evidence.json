@@ -13,35 +13,42 @@
   },
   "generator": {
     "path": "scripts/port-ledger.mjs",
-    "sha256": "006dfaf876156f9f51c02c0fd6511a6e692a112a9e9d02fd15ed59f1ba21445f",
+    "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878",
     "command": "node scripts/port-ledger.mjs --extracted <extracted-sample> --output research/ports/port-ledger.json --markdown research/ports/port-ledger.md"
   },
   "outputs": {
     "ledger": {
       "path": "research/ports/port-ledger.json",
-      "sha256": "fccd3329aa44f27b1ac8adf90cd4378b08f1e3c6030d4efc03b89f55f17e3749",
-      "bytes": 563170
+      "sha256": "580fd11e88213d25dcfefe5137e8b37e45c1d0227492a05c51dc783060ca23b9",
+      "bytes": 916047
     },
     "summary": {
       "path": "research/ports/port-ledger.md",
-      "sha256": "72ffdb2b0785da010f47cc7cbbb13d24237c1b91440362e2dbc8e1d9002d2bb6",
-      "bytes": 13154
+      "sha256": "1366efe308617e255ada58734516a460f3de914e1ced76d94bd16bc01c40fd44",
+      "bytes": 14483
     }
   },
   "summary": {
-    "modules": 25,
-    "bytes": 6731710,
+    "modules": 29,
+    "bytes": 7481532,
     "narrativeOnly": {
-      "modules": 57,
-      "bytes": 6659501
+      "modules": 61,
+      "bytes": 7283747
     },
     "unreviewed": {
-      "modules": 2283,
-      "bytes": 33446926
+      "modules": 2275,
+      "bytes": 32072858
     }
   },
   "recordCount": 57,
   "portBacked": [
+    {
+      "path": "chunk-14rnebpd.js",
+      "bytes": 320347,
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ]
+    },
     {
       "path": "chunk-1x8a5y5q.js",
       "bytes": 917,
@@ -53,7 +60,6 @@
       "path": "chunk-3cynezh1.js",
       "bytes": 434204,
       "portRecords": [
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ]
     },
@@ -61,15 +67,10 @@
       "path": "chunk-3d69zma1.js",
       "bytes": 13458,
       "portRecords": [
-        "research/ports/W05-sampling-arrays-evidence.json",
         "research/ports/W05-sampling-arrays.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-sampling-blocks-evidence.json",
         "research/ports/W05-sampling-blocks.md",
-        "research/ports/W05-sampling-images-evidence.json",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ]
     },
@@ -81,14 +82,18 @@
       ]
     },
     {
+      "path": "chunk-40cepjpq.js",
+      "bytes": 148871,
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ]
+    },
+    {
       "path": "chunk-4vr415ka.js",
       "bytes": 156824,
       "portRecords": [
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ]
     },
@@ -96,19 +101,22 @@
       "path": "chunk-5aypb49d.js",
       "bytes": 29384,
       "portRecords": [
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-5b2hxy2e.js",
+      "bytes": 199470,
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
       ]
     },
     {
       "path": "chunk-8s56nf7t.js",
       "bytes": 7117,
       "portRecords": [
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ]
     },
@@ -138,7 +146,6 @@
       "path": "chunk-bf3z2ftn.js",
       "bytes": 98088,
       "portRecords": [
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ]
     },
@@ -153,11 +160,8 @@
       "path": "chunk-dt139v0s.js",
       "bytes": 8232,
       "portRecords": [
-        "research/ports/W05-get-dispatch-evidence.json",
         "research/ports/W05-get-dispatch.md",
-        "research/ports/W05-get-resume-evidence.json",
         "research/ports/W05-get-resume.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md"
       ]
     },
@@ -169,11 +173,17 @@
       ]
     },
     {
+      "path": "chunk-er0mj94r.js",
+      "bytes": 81134,
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ]
+    },
+    {
       "path": "chunk-f79f00pg.js",
       "bytes": 7582,
       "portRecords": [
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-tasks-evidence.json",
         "research/ports/W05-tasks.md"
       ]
     },
@@ -188,7 +198,6 @@
       "path": "chunk-htgmc2p1.js",
       "bytes": 44823,
       "portRecords": [
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ]
     },
@@ -196,16 +205,14 @@
       "path": "chunk-m00pavz3.js",
       "bytes": 11563,
       "portRecords": [
-        "research/ports/skill-argument-expansion.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/skill-argument-expansion.md"
       ]
     },
     {
       "path": "chunk-rr5rbabs.js",
       "bytes": 59923,
       "portRecords": [
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ]
     },
@@ -213,7 +220,7 @@
       "path": "chunk-rx2nah4x.js",
       "bytes": 691306,
       "portRecords": [
-        "research/ports/W05-list-changed-refetch-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-list-changed-refetch.md"
       ]
     },
@@ -221,14 +228,11 @@
       "path": "chunk-sb190ksj.js",
       "bytes": 198048,
       "portRecords": [
-        "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-stdio-redial-evidence.json",
         "research/ports/W05-stdio-redial.md",
         "research/ports/W05-tasks.md"
       ]
@@ -237,18 +241,16 @@
       "path": "chunk-sfn1dbxq.js",
       "bytes": 4762583,
       "portRecords": [
-        "research/ports/skill-argument-expansion.md",
-        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/skill-argument-expansion.md"
       ]
     },
     {
       "path": "chunk-v96accjb.js",
       "bytes": 20997,
       "portRecords": [
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ]
     },
@@ -256,7 +258,6 @@
       "path": "chunk-x1hnhzq0.js",
       "bytes": 53492,
       "portRecords": [
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ]
     },
@@ -291,11 +292,12 @@
     },
     "log": "ledger-package.log"
   },
-  "suiteNotRerun": "no product source, test or build input changed in this package, so the 1052/1052 suite was not re-run",
+  "suiteNotRerun": "the ledger package changed no product source, test or build input, so the suite was not re-run for it; the later refusal package did run it, at 1054/1054 with 0 failures, and the regenerated ledger here reflects that package's citations",
   "excludedFromScan": [
     "research/ports/port-ledger.json",
     "research/ports/port-ledger.md",
-    "any file named port-ledger.md or port-ledger.json"
+    "any file named port-ledger.md, port-ledger.json, unreviewed-corpus.md or unreviewed-corpus.json",
+    "every generated *-evidence.json, which enumerates module names without being a port record"
   ],
   "limitations": [
     "Record layout is validated for this sample, not all Bun versions.",
@@ -305,7 +307,8 @@
   "rejected": [
     "assigning a ported share to uncited modules",
     "counting narrative mentions as port evidence",
-    "citing the ledger itself as evidence (excluded by path and by basename)"
+    "citing the ledger itself as evidence (excluded by path and by basename)",
+    "letting a package's generated evidence file cite the modules that package ported, which made the reviewed count a function of the ledger's own previous output"
   ],
   "logs": [
     {
@@ -323,10 +326,24 @@
   ],
   "paidCalls": 0,
   "remaining": [
-    "2283 uncited modules (33.4 MB) and 57 narrative-only modules remain unreviewed and are named in the ledger",
-    "next-turn MCP background redial policy",
-    "parked list_changed refetch via subscriptions/listen",
-    "recovered shell-AST argument splitting",
-    "mcp serve server and server-side task receiver"
-  ]
+    "2275 uncited modules (32.1 MB) and 61 narrative-only modules remain unreviewed and are named in the ledger",
+    "per-OS managed settings policy helpers and remote-consent state (chunk-x0dc37w9.js) carried in CURRENT as the next candidate package",
+    "the permission-facing shell-reading analyser (chunk-zjewzgfh.js) has no counterpart in src/",
+    "the recovered same-model refusal retry, fallback chain and turn retraction are not ported"
+  ],
+  "correction": {
+    "what": "the citation scan treated every *.md/*.json under research/ as a citing record, including derived evidence files",
+    "effect": "a package's own -evidence.json enumerates the modules that package ported, so those modules were counted as port-backed because of the file describing them; the reviewed figure was partly the ledger's previous output",
+    "fix": "the generator now also skips files matching -evidence.json and the remaining-dispositions pair",
+    "before": {
+      "portBacked": 25,
+      "narrativeOnly": 57,
+      "uncited": 2283
+    },
+    "after": {
+      "portBacked": 29,
+      "narrativeOnly": 61,
+      "uncited": 2275
+    }
+  }
 }

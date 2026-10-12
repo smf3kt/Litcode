@@ -96,10 +96,14 @@ const walk = directory => {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) walk(absolute);
-    // Inventory records (this ledger and the corpus characterisation) list module
-    // names without being port evidence, so they are never scanned as records.
+    // Inventory and evidence artifacts (this ledger, the corpus characterisation
+    // and every generated `-evidence.json`) list module names without being port
+    // evidence, so they are never scanned as records. Without this, an evidence
+    // file that enumerates the modules its own package ported would cite them and
+    // the reviewed count would be derived from the ledger's previous output.
     else if (/\.(md|json)$/.test(entry.name) && !excluded.has(path.resolve(absolute)) &&
-      !/^(port-ledger|unreviewed-corpus)\.(md|json)$/.test(entry.name)) records.push(absolute);
+      !/^(port-ledger|unreviewed-corpus|remaining-dispositions)\.(md|json)$/.test(entry.name) &&
+      !/-evidence\.json$/.test(entry.name)) records.push(absolute);
   }
 };
 walk(path.join(root, "research"));

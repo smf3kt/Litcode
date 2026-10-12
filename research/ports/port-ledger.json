@@ -12,21 +12,21 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 60,
+  "recordCount": 35,
   "summary": {
-    "modules": 25,
-    "bytes": 6731710,
+    "modules": 29,
+    "bytes": 7481532,
     "narrativeOnly": {
-      "modules": 57,
-      "bytes": 6659501
+      "modules": 61,
+      "bytes": 7283747
     },
     "unreviewed": {
-      "modules": 2283,
-      "bytes": 33446926
+      "modules": 2275,
+      "bytes": 32072858
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2231,
-    "uncitedBuiltinLeafOnly": 2265,
+    "uncitedWithoutMarker": 2225,
+    "uncitedBuiltinLeafOnly": 2258,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
@@ -34,16 +34,12 @@
         "modules": 10
       },
       {
-        "name": "ajv",
-        "modules": 3
-      },
-      {
         "name": "ws",
         "modules": 3
       },
       {
-        "name": "ajv-formats",
-        "modules": 1
+        "name": "ajv",
+        "modules": 2
       },
       {
         "name": "inspector",
@@ -57,8 +53,8 @@
     "families": [
       {
         "family": "API beta headers",
-        "modules": 20,
-        "bytes": 3098332
+        "modules": 19,
+        "bytes": 2777985
       },
       {
         "family": "cloud identity client",
@@ -121,11 +117,6 @@
         "bytes": 360288
       },
       {
-        "family": "MCP protocol surface",
-        "modules": 2,
-        "bytes": 343724
-      },
-      {
         "family": "otel otlp protobuf",
         "modules": 1,
         "bytes": 267269
@@ -134,10 +125,45 @@
         "family": "plugin marketplace UI",
         "modules": 1,
         "bytes": 247454
+      },
+      {
+        "family": "MCP protocol surface",
+        "modules": 1,
+        "bytes": 10785
       }
     ]
   },
   "reviewed": [
+    {
+      "path": "chunk-14rnebpd.js",
+      "bytes": 320347,
+      "sha256": "d1ba8228f324b01eb984c0a09eed1095d0bb0e6ace7c295b0c0fdb03a17be810",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "crypto",
+        "util",
+        "zlib"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {
+        "API beta headers": {
+          "literal": "anthropic-beta",
+          "at": 47979
+        }
+      },
+      "citedBy": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own "
+      ]
+    },
     {
       "path": "chunk-1x8a5y5q.js",
       "bytes": 917,
@@ -149,11 +175,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
@@ -185,13 +209,9 @@
       },
       "citedBy": [
         "research/FEATURES.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true,
@@ -215,29 +235,17 @@
         }
       },
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-sampling-arrays-evidence.json",
         "research/ports/W05-sampling-arrays.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-sampling-blocks-evidence.json",
         "research/ports/W05-sampling-blocks.md",
-        "research/ports/W05-sampling-images-evidence.json",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-sampling-arrays-evidence.json",
         "research/ports/W05-sampling-arrays.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-sampling-blocks-evidence.json",
         "research/ports/W05-sampling-blocks.md",
-        "research/ports/W05-sampling-images-evidence.json",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "reviewed": true,
@@ -259,16 +267,40 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
       "declared": [
         "adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive"
+      ]
+    },
+    {
+      "path": "chunk-40cepjpq.js",
+      "bytes": 148871,
+      "sha256": "473c9dfb84c9defcb7ca5bd5e6f598cd951274dc2c1334a67c8b9d25b451a8b2",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "crypto",
+        "fs",
+        "path"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/ports/W01-refusal-notice.md",
+        "research/STATUS.md"
+      ],
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own "
       ]
     },
     {
@@ -294,21 +326,13 @@
       },
       "citedBy": [
         "research/FEATURES.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "reviewed": true,
@@ -331,21 +355,13 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "reviewed": true,
@@ -353,6 +369,33 @@
         "rewrite local durable journal/recovery ownership because original durable backend/client journal contract is unproven; reuse/adapt already ported standard get/r",
         "adapt dispatch/reply behavior to existing owned SSE/parser/host handler. Original generic dispatch includes all RPC families and task queues; this adaptation ac",
         "adapt finite SDK requestStream and tool task metadata behavior, with owned transport/error/timers replacing SDK class graph. Not a wholesale original SDK copy: "
+      ]
+    },
+    {
+      "path": "chunk-5b2hxy2e.js",
+      "bytes": 199470,
+      "sha256": "46d7f73a2b28fd9493ecf37d85abc89acd020f6de7e2bdb83efe621811f12656",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "crypto",
+        "os",
+        "util"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/HOOKS.md",
+        "research/ports/W01-refusal-notice.md",
+        "research/STATUS.md"
+      ],
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own "
       ]
     },
     {
@@ -370,13 +413,9 @@
       "markers": {},
       "citedBy": [
         "research/INTERACTIVE.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "reviewed": true,
@@ -395,13 +434,11 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md"
       ],
@@ -427,11 +464,9 @@
         }
       },
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
@@ -450,11 +485,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/skill-argument-expansion.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/skill-argument-expansion.md"
       ],
       "reviewed": true,
@@ -476,13 +509,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "reviewed": true,
@@ -504,11 +533,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md"
       ],
       "reviewed": true,
@@ -525,21 +552,13 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-get-dispatch-evidence.json",
         "research/ports/W05-get-dispatch.md",
-        "research/ports/W05-get-resume-evidence.json",
         "research/ports/W05-get-resume.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-get-dispatch-evidence.json",
         "research/ports/W05-get-dispatch.md",
-        "research/ports/W05-get-resume-evidence.json",
         "research/ports/W05-get-resume.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md"
       ],
       "reviewed": true,
@@ -560,16 +579,45 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
       "declared": [
         "adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive"
+      ]
+    },
+    {
+      "path": "chunk-er0mj94r.js",
+      "bytes": 81134,
+      "sha256": "c8fcb0632b09084aa2553f8044eefb074b1ddd580cf7f0409fa10bd2a1b42e2d",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "crypto",
+        "fs",
+        "path"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {
+        "API beta headers": {
+          "literal": "anthropic-beta",
+          "at": 33951
+        }
+      },
+      "citedBy": [
+        "research/INTERACTIVE.md",
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own "
       ]
     },
     {
@@ -583,15 +631,11 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-tasks-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-tasks-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
@@ -611,11 +655,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
@@ -636,13 +678,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true,
@@ -662,17 +700,12 @@
       "markers": {},
       "citedBy": [
         "research/CURRENT.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true,
@@ -691,13 +724,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "reviewed": true,
@@ -725,19 +754,16 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
-        "research/ports/W05-list-changed-refetch-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-list-changed-refetch.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
-        "research/ports/W05-list-changed-refetch-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-list-changed-refetch.md"
       ],
       "reviewed": true,
       "declared": [
+        "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own ",
         "adapt of the notification-driven refetch, with owned placement. The recovered client refetches inside the notification handler it installs on the transport; thi"
       ]
     },
@@ -764,31 +790,21 @@
       },
       "citedBy": [
         "research/FEATURES.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
-        "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-stdio-redial-evidence.json",
         "research/ports/W05-stdio-redial.md",
         "research/ports/W05-tasks.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
-        "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-stdio-redial-evidence.json",
         "research/ports/W05-stdio-redial.md",
         "research/ports/W05-tasks.md"
       ],
@@ -850,26 +866,21 @@
         "research/FEATURES.md",
         "research/HOOKS.md",
         "research/INTERACTIVE.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
-        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
-        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true,
       "declared": [
+        "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own ",
         "copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c",
         "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio"
       ]
@@ -885,13 +896,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "reviewed": true,
@@ -917,13 +924,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true,
@@ -942,12 +945,10 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md",
         "research/ports/W05-tasks.md"
       ],
@@ -987,16 +988,8 @@
       "bytes": 360288
     },
     {
-      "path": "chunk-2rxk8n7w.js",
-      "bytes": 332939
-    },
-    {
       "path": "chunk-dg43zpqr.js",
       "bytes": 332758
-    },
-    {
-      "path": "chunk-14rnebpd.js",
-      "bytes": 320347
     },
     {
       "path": "chunk-b96hm1m2.js",
@@ -1057,6 +1050,14 @@
     {
       "path": "chunk-b1maf7av.js",
       "bytes": 159827
+    },
+    {
+      "path": "chunk-es07s2ha.js",
+      "bytes": 156084
+    },
+    {
+      "path": "chunk-qx79s5zs.js",
+      "bytes": 153987
     }
   ],
   "modules": [
@@ -2416,9 +2417,13 @@
           "at": 47979
         }
       },
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-15nhwk6k.js",
@@ -3220,11 +3225,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -4104,7 +4107,10 @@
           "at": 5222
         }
       },
-      "citedBy": [],
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -4801,13 +4807,9 @@
       },
       "citedBy": [
         "research/FEATURES.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true
@@ -4842,29 +4844,17 @@
         }
       },
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-sampling-arrays-evidence.json",
         "research/ports/W05-sampling-arrays.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-sampling-blocks-evidence.json",
         "research/ports/W05-sampling-blocks.md",
-        "research/ports/W05-sampling-images-evidence.json",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-sampling-arrays-evidence.json",
         "research/ports/W05-sampling-arrays.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-sampling-blocks-evidence.json",
         "research/ports/W05-sampling-blocks.md",
-        "research/ports/W05-sampling-images-evidence.json",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "reviewed": true
@@ -5373,11 +5363,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -5452,9 +5440,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/ports/W01-refusal-notice.md",
+        "research/STATUS.md"
+      ],
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-41052r85.js",
@@ -5816,7 +5809,9 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -6428,21 +6423,13 @@
       },
       "citedBy": [
         "research/FEATURES.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "reviewed": true
@@ -6963,21 +6950,13 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md",
-        "research/ports/W05-standard-tasks-evidence.json",
         "research/ports/W05-standard-tasks.md"
       ],
       "reviewed": true
@@ -7019,10 +6998,13 @@
       "markers": {},
       "citedBy": [
         "research/HOOKS.md",
+        "research/ports/W01-refusal-notice.md",
         "research/STATUS.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-5b5m6pwc.js",
@@ -10886,7 +10868,9 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -11135,13 +11119,9 @@
       "markers": {},
       "citedBy": [
         "research/INTERACTIVE.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "reviewed": true
@@ -11187,13 +11167,11 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md"
       ],
@@ -11811,11 +11789,9 @@
         }
       },
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -13353,11 +13329,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/skill-argument-expansion.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/skill-argument-expansion.md"
       ],
       "reviewed": true
@@ -13892,13 +13866,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "reviewed": true
@@ -14185,11 +14155,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md"
       ],
       "reviewed": true
@@ -16362,21 +16330,13 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-get-dispatch-evidence.json",
         "research/ports/W05-get-dispatch.md",
-        "research/ports/W05-get-resume-evidence.json",
         "research/ports/W05-get-resume.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-get-dispatch-evidence.json",
         "research/ports/W05-get-dispatch.md",
-        "research/ports/W05-get-resume-evidence.json",
         "research/ports/W05-get-resume.md",
-        "research/ports/W05-get-task-inputs-evidence.json",
         "research/ports/W05-get-task-inputs.md"
       ],
       "reviewed": true
@@ -16657,11 +16617,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -17465,10 +17423,13 @@
         }
       },
       "citedBy": [
-        "research/INTERACTIVE.md"
+        "research/INTERACTIVE.md",
+        "research/ports/W01-refusal-notice.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W01-refusal-notice.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-er6dw119.js",
@@ -17972,15 +17933,11 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-tasks-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-tasks-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -18255,11 +18212,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -20761,13 +20716,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true
@@ -23092,17 +23043,12 @@
       "markers": {},
       "citedBy": [
         "research/CURRENT.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true
@@ -25314,7 +25260,10 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -28693,13 +28642,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "reviewed": true
@@ -28839,15 +28784,11 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
-        "research/ports/W05-list-changed-refetch-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-list-changed-refetch.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
-        "research/ports/W05-list-changed-refetch-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-list-changed-refetch.md"
       ],
       "reviewed": true
@@ -29424,31 +29365,21 @@
       },
       "citedBy": [
         "research/FEATURES.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
-        "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-stdio-redial-evidence.json",
         "research/ports/W05-stdio-redial.md",
         "research/ports/W05-tasks.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
-        "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md",
-        "research/ports/W05-sampling-audio-evidence.json",
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-stdio-redial-evidence.json",
         "research/ports/W05-stdio-redial.md",
         "research/ports/W05-tasks.md"
       ],
@@ -29560,22 +29491,16 @@
         "research/FEATURES.md",
         "research/HOOKS.md",
         "research/INTERACTIVE.md",
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
-        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
-        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true
@@ -31279,13 +31204,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "reviewed": true
@@ -33096,7 +33017,10 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -33146,13 +33070,9 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
-        "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "reviewed": true
@@ -34869,12 +34789,10 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
-        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md",
         "research/ports/W05-tasks.md"
       ],
@@ -36095,7 +36013,10 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },

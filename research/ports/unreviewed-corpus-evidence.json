@@ -18,36 +18,32 @@
     "imports": "well-formed specifier grammar over from/require occurrences; builtin, sibling chunk or external package"
   },
   "findings": {
-    "modules": 25,
-    "portBacked": 25,
+    "modules": 29,
+    "portBacked": 29,
     "narrativeOnly": {
-      "modules": 57,
-      "bytes": 6659501
+      "modules": 61,
+      "bytes": 7283747
     },
     "uncited": {
-      "modules": 2283,
-      "bytes": 33446926
+      "modules": 2275,
+      "bytes": 32072858
     },
-    "uncitedLeafOnly": 2265,
+    "uncitedLeafOnly": 2258,
     "uncitedImportingSiblingChunks": 0,
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2231,
+    "uncitedWithoutMarker": 2225,
     "externalPackages": [
       {
         "name": "async_hooks",
         "modules": 10
       },
       {
-        "name": "ajv",
-        "modules": 3
-      },
-      {
         "name": "ws",
         "modules": 3
       },
       {
-        "name": "ajv-formats",
-        "modules": 1
+        "name": "ajv",
+        "modules": 2
       },
       {
         "name": "inspector",
@@ -62,8 +58,8 @@
   "families": [
     {
       "family": "API beta headers",
-      "modules": 20,
-      "bytes": 3098332
+      "modules": 19,
+      "bytes": 2777985
     },
     {
       "family": "cloud identity client",
@@ -126,11 +122,6 @@
       "bytes": 360288
     },
     {
-      "family": "MCP protocol surface",
-      "modules": 2,
-      "bytes": 343724
-    },
-    {
       "family": "otel otlp protobuf",
       "modules": 1,
       "bytes": 267269
@@ -139,6 +130,11 @@
       "family": "plugin marketplace UI",
       "modules": 1,
       "bytes": 247454
+    },
+    {
+      "family": "MCP protocol surface",
+      "modules": 1,
+      "bytes": 10785
     }
   ],
   "topTwentyDispositions": "research/ports/unreviewed-corpus.md",
@@ -255,13 +251,13 @@
   },
   "generator": {
     "path": "scripts/port-ledger.mjs",
-    "sha256": "4618563a6c1f41eaf062d7190bc80408012a6ef0580253711107e068efcaa5f1"
+    "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
   },
   "outputs": {
-    "ledgerSha256": "8180a52780984db972ce66b62921624c522233d4dd1eae3682d196c44c54e4a0",
-    "summarySha256": "dc1dd3eac2e3d1c5f15862075b7db60fb1bcac86358231f37bdaa6a592d77b8a"
+    "ledgerSha256": "580fd11e88213d25dcfefe5137e8b37e45c1d0227492a05c51dc783060ca23b9",
+    "summarySha256": "1366efe308617e255ada58734516a460f3de914e1ced76d94bd16bc01c40fd44"
   },
-  "residual": "2231 uncited modules carry no marker; removing that number needs per-module reading, not more rules",
+  "residual": "2225 uncited modules carry no marker; removing that number needs per-module reading, not more rules",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
   "paidCalls": 0
 }
