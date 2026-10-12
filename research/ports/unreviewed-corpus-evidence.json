@@ -471,6 +471,28 @@
     ],
     "reading": "this runtime's own subject matter seen from the inside: thirteen modules whose surfaces already exist here (context accounting, MCP call transport, environment detection, terminal capability detection, the ask-the-user contract, cache thresholds, permission modes, Windows-shaped path classification, MCP identity changes, a string scanner, thinking status, a bundled research workflow, hosted git-URL validation), three recovered UI panels, two rendering and data tables, and seven hosted or server-dependent surfaces"
   },
+  "sliceNine": {
+    "scope": "uncited modules ranked 196 to 220 by size",
+    "bytes": 660212,
+    "rows": 25,
+    "byteRange": [
+      24699,
+      28085
+    ],
+    "composition": {
+      "hostedOrExternalSurfaces": 11,
+      "localCounterparts": 11,
+      "vendoredLibraries": 1,
+      "productSurfacesWithoutLocalCounterpart": 2,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-hwtkjv40.js refuses a marketplace name that looks like one of Anthropic's, which is the one reusable rule in the band; this runtime has no marketplace whose name could impersonate anything",
+      "chunk-zn2yy8vq.js is the coordinator-and-member relay message format with its escaping rules, one layer out from this runtime's own teammate messaging"
+    ],
+    "reading": "the permission, plugin and session-lifecycle band: unix-domain late binding, browser and IDE capability flags, the teleport and device-enrollment dialog registry, a connectivity probe, brief image scaling, credential setup, browser automation, cloud review, a gh scope probe, organization plugin search and Bedrock credential setup; against eleven modules whose surfaces this runtime already owns, one vendored Markdown and HTML renderer, and two recovered product surfaces with no local counterpart"
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
