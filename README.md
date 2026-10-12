@@ -286,7 +286,7 @@ Skill可用frontmatter `context: fork` 与 `agent: TYPE`（名称最多128字符
 
 技能参数支持原始 `$ARGUMENTS`、零基 `$ARGUMENTS[n]` 及原有一基 `$1`–`$9`。例如 `/review alpha beta` 中 `$ARGUMENTS[0]` 为 `alpha`，`$ARGUMENTS[1]` 为 `beta`。缺失索引保留完整 token，缺失 `$1`–`$9` 位置仍为空；参数文本仅替换一次，其中的 `$1` 保持字面量。默认按空白分词，引号保持普通字符。可设置 `"features": { "skillQuotedArguments": true }`，启用单双引号分组、相邻片段拼接、空引号和转义处理；例如 `"alpha beta" gamma` 的索引0为 `alpha beta`。未闭合引号或末尾转义回退原空白拆分，原始 `$ARGUMENTS` 始终保留输入文本；解析器只处理文本，参数中的变量/命令表达式保持字面量。开关固定入会话并支持 reload/managed 覆盖；完整原版 shell AST 行为仍有差距。主会话、foreground/background/worktree skill、内联命令和模型调用 `skill` 共用这些规则。
 
-可显式设置 `"features": { "skillInlineCommands": true }`，执行技能原始正文中的 `!` 后接反引号命令；无需额外 `shell`/`command` frontmatter，默认使用 `/bin/sh`。此开关默认省略/false，旧会话保持正文原样；设置固定入会话并支持 reload/managed 覆盖。命令仍要求 `allowShell` 和当前权限/grants；先校验整组命令再执行，沿用30秒默认期限、120秒最大期限和 maxOutputBytes。参数替换及命令输出中的新指令标记保持字面量，用户 slash 与模型 `skill` 共用入口。已有 shell/command 元数据继续使用既有显式执行行为。
+可显式设置 `"features": { "skillInlineCommands": true }`，执行技能原始正文中的 `!` 后接反引号命令，以及围栏 ```` ```! ```` 代码块；两者都在参数替换前从原始正文提取，按出现顺序逐条预检后执行，原始片段被命令输出替换，块内已有的行内标记不再二次执行，命令文本先做去空格与 CRLF 归一。无需额外 `shell`/`command` frontmatter，默认使用 `/bin/sh`。验收：`npm run smoke:skill-fenced-cli`（源码与编译）。此开关默认省略/false，旧会话保持正文原样；设置固定入会话并支持 reload/managed 覆盖。命令仍要求 `allowShell` 和当前权限/grants；先校验整组命令再执行，沿用30秒默认期限、120秒最大期限和 maxOutputBytes。参数替换及命令输出中的新指令标记保持字面量，用户 slash 与模型 `skill` 共用入口。已有 shell/command 元数据继续使用既有显式执行行为。
 
 自动快照重试使用会话 UUID 加随机后缀命名，捕获成功但日志关联失败时，下一次会重新捕获当前文件状态；遗留快照保持原字节，避免把较早文件状态误关联到新边界。孤立快照清理和跨文件/日志事务恢复仍待实现。
 

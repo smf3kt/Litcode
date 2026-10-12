@@ -343,6 +343,34 @@ test('inline shell remains literal unless invocation metadata opts into expansio
   });
 });
 
+test('fenced shell blocks run once and skip spans they already contain', async () => {
+  await fixture(async options => {
+    options.config.allowShell = true;
+    const defaultPermissions = options.config.permissions;
+    options.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+    options.config.features = { tasks: true, subagents: true, skillInlineCommands: true };
+    const marker = path.join(options.config.workspace, 'marker');
+    const fenced = `Before\n\`\`\`!\nprintf A\n\`\`\`\nAfter`;
+    assert.equal(skillRequiresExecution(skill({ body: fenced }), options.config), true);
+    assert.equal(await executeSkill(skill({ shell: '/bin/sh', body: fenced }), '', options), 'Before\nA\nAfter');
+    // An inline span inside a block belongs to the block and never runs twice.
+    const nested = `\`\`\`!\nprintf '!\`touch ${marker}\`'\n\`\`\``;
+    assert.equal(await executeSkill(skill({ shell: '/bin/sh', body: nested }), '', options), `!\`touch ${marker}\``);
+    assert.equal(fs.existsSync(marker), false);
+    // A span without surrounding whitespace still runs, as this runtime always did.
+    const attached = `Task!\`printf B\``;
+    assert.equal(skillRequiresExecution(skill({ body: attached }), options.config), true);
+    assert.equal(await executeSkill(skill({ shell: '/bin/sh', body: attached }), '', options), 'TaskB');
+    // Preflight still denies a later fenced command before the earlier one runs.
+    options.config.permissions = defaultPermissions;
+    const denied = `\`\`\`!\ntouch ${marker}\n\`\`\`\n\`\`\`!\necho denied\n\`\`\``;
+    await assert.rejects(executeSkill(skill({ shell: '/bin/sh', body: denied }), '', { ...options,
+      requestPermission: async (_tool, input) => ({ decision: (input as { command: string }).command === 'echo denied' ? 'deny' : 'allow' }),
+    }), /permission deny/);
+    assert.equal(fs.existsSync(marker), false);
+  });
+});
+
 test('inline shell asks without a policy and substitutes once with bounded output', async () => {
   await fixture(async options => {
     options.config.allowShell = true;

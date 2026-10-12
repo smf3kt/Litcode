@@ -807,7 +807,7 @@ function loadSkill(skillDir: string, skillManifest: string, into: Map<string, Sk
   }
   const limitations = [...frontmatter.limitations];
   // Invocation-time inline shell expansion requires permission-aware machinery.
-  if (/!`/.test(frontmatter.body)) limitations.push("inline shell expansion is unresolved; commands remain literal text");
+  if (/!`|```!/.test(frontmatter.body)) limitations.push("inline shell expansion is unresolved; commands remain literal text");
   if (skill.command !== undefined || skill.shell !== undefined) limitations.push("command/shell invocation metadata is inert in the configuration loader");
   if (limitations.length) skill.limitations = limitations;
   if (namespace !== undefined) {
