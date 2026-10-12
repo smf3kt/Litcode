@@ -8,6 +8,26 @@
 
 当前版本支持文件/Notebook/媒体、会话恢复与分支、摘要压缩、配置与技能执行、任务依赖、MCP stdio/HTTP、本地后台代理与消息、声明式 Workflow、LSP、WebFetch、memory、checkpoint、Git worktree、后台 Shell、Monitor、cron 和动态唤醒。连续迁移已接入 Workflow 持久恢复、任务双向投影、插件组件、MCP form/订阅/logging、剪贴板、主worktree、规则/快捷键重载、有限会话picker/lineage、skill类型路由与编译包。Hook接线见HOOKS。工具目录随能力开关、后端和旧会话快照变化，按工具名称与行为验收。当前基线和审核状态见`research/CURRENT.md`；948/948为历史记录，尚未完成全部产品迁移。
 
+## 安装
+
+全局安装后，直接输入 `litcode` 即进入当前目录的交互会话：
+
+```sh
+npm run build
+npm install -g .          # 或 npm link，开发时改动即时生效
+litcode                   # 在终端里等价于 litcode --interactive
+```
+
+首次运行需要网关凭证与模型 ID，缺少凭证时给出提示而不启动会话：
+
+```sh
+export LLM_API_KEY=...
+export LLM_MODEL=MODEL
+litcode
+```
+
+`litcode` 不带参数时按终端决定行为：在终端中打开交互会话（等同 `--interactive`），管道或无终端时打印用法并以 0 退出（`litcode --help`、`litcode --version` 同样如此）。`--demo`、`--continue`、`--resume`、`--list-sessions` 以及 `--mcp-elicitation`/`--watch-config` 不会被当作空调用。`litcode-magpie` 与旧名 `personal-harness` 一并安装。
+
 ## 运行
 
 开发与打包实测为macOS、Node.js v26.10.0；package engines声明Node>=22，其他Node/平台尚未实测。文件与Shell按POSIX实现，Windows尚未验证。ripgrep提供搜索，文件列表缺少ripgrep时有fallback。
@@ -28,6 +48,7 @@ npm run build
 node bin/litcode.mjs --help
 node bin/litcode.mjs --demo
 node bin/litcode.mjs --workspace /absolute/path/to/project --interactive
+node bin/litcode.mjs            # 终端中的空调用即上面的交互会话
 ```
 
 本地打包安装示例（npm缓存需已有生产依赖供离线安装）：

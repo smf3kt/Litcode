@@ -33,10 +33,13 @@ import {
 
 const help = `LiTcode
 
-  npm run agent -- --workspace DIR "task"
-  npm run agent -- --workspace DIR --resume UUID "next task"
-  npm run agent -- --workspace DIR --resume UUID --continue
-  npm run agent -- --demo
+  litcode                          Interactive session in the current directory
+  litcode --workspace DIR          Interactive session in DIR
+  litcode "task"                   One-shot task in the current directory
+  litcode --workspace DIR "task"   One-shot task in DIR
+  litcode --resume UUID "task"     Continue a stored session with a new task
+  litcode --resume UUID --continue Continue a turn interrupted before completion
+  litcode --demo                   Offline demonstration, no model call
 
 Options (flags override LLM_* environment values for new sessions):
   --workspace DIR        Existing workspace (default current directory)
@@ -71,7 +74,8 @@ Options (flags override LLM_* environment values for new sessions):
   --resume UUID          Open a session with its original settings
   --continue            Continue a turn interrupted before completion
   --recover-lock        Remove a lock only if its owner process has exited
-  --interactive         Read tasks and slash commands until /exit
+  --interactive         Read tasks and slash commands until /exit (the default
+                        when no task is given and input is a terminal)
   --attach PATH         Attach one workspace image/PDF to a one-shot task
   --pages RANGE         Select PDF pages for --attach, such as 2-4,8
   --output-format MODE  text, json or stream-json (one-shot; default text)
@@ -82,6 +86,7 @@ Options (flags override LLM_* environment values for new sessions):
   --max-total-tokens N  Actual combined token budget for this invocation
   --list-sessions       List workspace sessions without a model call
   --demo                Offline demonstration in a temporary workspace
+  --version             Show the version
   --help                Show this text
 
 LLM_API_KEY supplies the credential. Magpie translates the Messages protocol
@@ -308,8 +313,24 @@ function newConfig(
   return config;
 }
 
-async function main(): Promise<void> {
-  const { values, positionals } = parseArgs({ allowPositionals: true, options: {
+/** The version the installed package reports, falling back to the source tree's own value. */
+function cliVersion(): string {
+  const candidates = [
+    path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'package.json'),
+    path.join(process.cwd(), 'package.json'),
+  ];
+  for (const candidate of candidates) {
+    try {
+      const parsed: unknown = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+      if (typeof parsed === 'object' && parsed !== null && typeof (parsed as { version?: unknown }).version === 'string') {
+        return (parsed as { version: string }).version;
+      }
+    } catch { /* try the next candidate */ }
+  }
+  return 'unknown';
+}
+
+async function main(): Promise<void> {  const { values, positionals } = parseArgs({ allowPositionals: true, options: {
     help: { type: 'boolean' }, demo: { type: 'boolean' }, workspace: { type: 'string' },
     interactive: { type: 'boolean' }, 'list-sessions': { type: 'boolean' },
     attach: { type: 'string' }, pages: { type: 'string' },
@@ -331,10 +352,19 @@ async function main(): Promise<void> {
     'max-model-calls': { type: 'string' }, 'max-input-tokens': { type: 'string' },
     'max-output-tokens': { type: 'string' }, 'max-total-tokens': { type: 'string' },
     resume: { type: 'string' }, continue: { type: 'boolean' }, 'recover-lock': { type: 'boolean' },
+    version: { type: 'boolean' }, v: { type: 'boolean' },
   } });
   if (values.help) { process.stdout.write(help); return; }
-  if (values['mcp-elicitation'] && !values.interactive) throw new Error('--mcp-elicitation requires --interactive');
-  if (values['watch-config'] && !values.interactive) throw new Error('--watch-config requires --interactive');
+  if (values.version || values.v) { process.stdout.write(`${cliVersion()}\n`); return; }
+  // A bare invocation at a terminal is the interactive session, the way a person expects a CLI to
+  // behave; anywhere else there is no way to read a task, so the help is the answer. Options that
+  // belong to another complete action (demo, resume, session listing, an MCP answer) are left to
+  // their own branches rather than being read as a request for a session.
+  const impliedInteractive = !values.demo && !values.continue && !values.interactive
+    && !values.resume && !values['list-sessions'] && positionals.length === 0
+    && Boolean(process.stdin.isTTY);
+  if (values['mcp-elicitation'] && !values.interactive && !impliedInteractive) throw new Error('--mcp-elicitation requires --interactive');
+  if (values['watch-config'] && !values.interactive && !impliedInteractive) throw new Error('--watch-config requires --interactive');
   if (values.pages !== undefined && values.attach === undefined) throw new Error('--pages requires --attach');
   if (values.attach !== undefined && (values.interactive || values.continue || values.demo || values['list-sessions'])) {
     throw new Error('--attach requires a one-shot new task; interactive sessions use /attach');
@@ -404,10 +434,20 @@ async function main(): Promise<void> {
     process.stdout.write(`Project MCP server(s) ${summary}\n`);
     return;
   }
-  // Approval is a complete action on its own; every other path needs work to do.
-  if (!values.demo && !values.continue && !values.interactive && !positionals.length) throw new Error('Supply a task, --interactive, --continue or --demo');
+  // Approval is a complete action on its own; every other path needs work to do. A bare invocation
+  // with no terminal still has no way to read a task, so the help is the answer there.
+  if (impliedInteractive) values.interactive = true;
+  else if (!values.demo && !values.continue && !values.interactive && !values.resume
+    && !values['list-sessions'] && positionals.length === 0
+    && values['approve-mcp-server'] === undefined && values['reject-mcp-server'] === undefined) {
+    process.stdout.write(help);
+    return;
+  }
   const apiKey = process.env.LLM_API_KEY;
-  if (!demo && !apiKey) throw new Error('Set LLM_API_KEY in your environment before a live run');
+  if (!demo && !apiKey) {
+    throw new Error('Set LLM_API_KEY in your environment before a live run (export LLM_API_KEY=…), '
+      + 'or run `litcode --demo` for an offline demonstration');
+  }
 
   const controller = new AbortController();
   const onInterrupt = () => controller.abort(new Error('Interrupted'));

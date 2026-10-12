@@ -131,3 +131,41 @@ test('CLI demo persists paired results and resumes a saved final response offlin
     assert.doesNotMatch(resumedJournal, /offline-fixture-key/);
   } finally { fs.rmSync(workspace, { recursive: true, force: true }); }
 });
+
+test('CLI reports its version without a credential or a model call', () => {
+  const result = invoke(['--version']);
+  assert.equal(result.status, 0, result.stderr);
+  const version = JSON.parse(fs.readFileSync(path.resolve('package.json'), 'utf8')).version;
+  assert.equal(result.stdout.trim(), version);
+  assert.equal(invoke(['-v']).stdout.trim(), version);
+});
+
+test('a bare invocation without a terminal prints the help instead of failing', () => {
+  const bare = invoke([]);
+  assert.equal(bare.status, 0, bare.stderr);
+  assert.match(bare.stdout, /litcode {2,}Interactive session in the current directory/);
+
+  // The options that belong to an interactive session still refuse to be implied without one.
+  const elicitation = invoke(['--mcp-elicitation']);
+  assert.equal(elicitation.status, 1);
+  assert.match(elicitation.stderr, /--mcp-elicitation requires --interactive/);
+});
+
+test('a bare invocation at a terminal opens the interactive session', { timeout: 60_000 }, () => {
+  // The default under test depends on a terminal, so the child needs a real one. `script`
+  // allocates it, but it refuses to run when its own standard input is a socket — which is
+  // what Node hands a spawned child — so the session runs behind a shell pipeline, where
+  // stdin is an ordinary pipe. A host without `script` skips rather than fails.
+  const quit = ["printf '/exit\\n'", '|', 'script -q /dev/null',
+    process.execPath, '--import', 'tsx', cli].join(' ');
+  const result = spawnSync('/bin/sh', ['-c', quit], {
+    encoding: 'utf8', timeout: 50_000,
+    env: { ...process.env, LLM_API_KEY: 'offline-fixture-key', LLM_BASE_URL: 'http://127.0.0.1:1', LLM_MODEL: 'test-model', LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false', LLM_PROMPT_CACHE: 'false', LLM_EAGER_TOOL_INPUT: 'false' },
+  });
+  if (result.error || /script: .*Operation not supported/.test(result.stderr ?? '')) return;
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Personal harness\. \/help for commands\./);
+  assert.match(result.stdout, /^workspace: /m);
+  // No task was given, so the session must not have spent a model call.
+  assert.doesNotMatch(result.stdout, /model calls: [1-9]/);
+});
