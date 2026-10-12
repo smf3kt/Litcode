@@ -347,10 +347,12 @@
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
   },
   "outputs": {
-    "ledgerSha256": "e3ba2791b6a88793b6d2dfcd747604f579f715c0e53e3f40e19a77a77b1dc924",
-    "summarySha256": "ea3b978c1fd2403165802b2a9d5b6fa5aebe9eb30385af7597417fac52de6447"
+    "ledgerSha256": "6d833def266826fac219752537a0866fbcd0a745a65ffd306790e0850fe4d1c2",
+    "summarySha256": "8e96c2206143321187be58f7610a36bdfaf5af82e017572a419797df6416711b",
+    "asOf": "regenerated for the W09 package, which ported chunk-gyf58rwf.js out of the uncited set",
+    "totals": { "portBacked": 32, "narrativeOnly": 62, "uncited": 2271, "uncitedWithoutMarker": 2221 }
   },
-  "residual": "2225 uncited modules carry no marker, unchanged by slice four because this file is not a citation source for the ledger; removing the number needs per-module reading, not more rules",
+  "residual": "2221 uncited modules carry no marker after W09 took one module out of the set; slice four itself changed nothing because this file is not a citation source for the ledger; removing the number needs per-module reading, not more rules",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
   "paidCalls": 0
 }

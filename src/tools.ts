@@ -17,6 +17,7 @@ import path from "node:path";
 import type { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { InteractionCallbacks } from "./interaction-tools.js";
+import { PathResolutionError, resolveChain, verifyIdentity, type ResolvedPath } from "./path-identity.js";
 
 export type ToolContext = {
   workspace: string;
@@ -129,7 +130,7 @@ function rejectAgentSegment(root: string, target: string): void {
  * but every existing ancestor symlink is still resolved and checked so a
  * symlinked directory cannot be used to write outside the workspace.
  */
-function confine(root: string, userPath: string, mustExist: boolean): string {
+function confineResolved(root: string, userPath: string, mustExist: boolean): ResolvedPath {
   if (path.isAbsolute(userPath)) {
     throw new Error(`path escapes the workspace (absolute paths are not allowed): ${userPath}`);
   }
@@ -142,44 +143,59 @@ function confine(root: string, userPath: string, mustExist: boolean): string {
     if (mustExist && !fs.existsSync(abs)) {
       throw new Error(`path does not exist: ${userPath}`);
     }
-    return root;
+    return { path: root, hops: [] };
   }
-  const segments = rel.split(path.sep);
-  let current = root;
-  for (const seg of segments) {
-    if (seg === AGENT_DIR) {
-      throw new Error(`path is inside the reserved "${AGENT_DIR}" directory: ${userPath}`);
-    }
-    const next = path.join(current, seg);
-    let stat: fs.Stats | null = null;
-    try {
-      stat = fs.lstatSync(next);
-    } catch {
-      stat = null;
-    }
-    if (stat && stat.isSymbolicLink()) {
-      let linkReal: string;
-      try {
-        linkReal = fs.realpathSync(next);
-      } catch {
-        throw new Error(`path escapes the workspace through a dangling symlink: ${userPath}`);
-      }
-      if (!isWithin(root, linkReal)) {
-        throw new Error(`path escapes the workspace through a symlink: ${userPath}`);
-      }
-      // A symlink that aliases the reserved directory is rejected even though
-      // it does not leave the workspace.
-      rejectAgentSegment(root, linkReal);
-      current = linkReal;
-    } else {
-      if (!stat && mustExist) {
-        throw new Error(`path does not exist: ${userPath}`);
-      }
-      current = next;
-    }
+  // The reserved directory is refused before any link is followed, so the
+  // lexical form is checked first and the resolved form again below.
+  if (rel.split(path.sep).includes(AGENT_DIR)) {
+    throw new Error(`path is inside the reserved "${AGENT_DIR}" directory: ${userPath}`);
   }
-  rejectAgentSegment(root, current);
-  return current;
+  // Resolve the whole chain in one bounded walk rather than following each
+  // segment with a separate realpath call: the bound, the loop refusal, the
+  // unreadable-ancestor refusal and the network-landing refusal all live in the
+  // resolver, and it returns the hops and the identity for the caller to use.
+  let resolved: ResolvedPath;
+  try {
+    resolved = resolveChain(root, userPath);
+  } catch (error) {
+    if (error instanceof PathResolutionError) {
+      throw new Error(`path cannot be resolved: ${userPath} (${error.message})`);
+    }
+    throw error;
+  }
+  if (!isWithin(root, resolved.path)) {
+    throw new Error(`path escapes the workspace through a symlink: ${userPath}`);
+  }
+  // A chain that ends on nothing is a dangling link, which is refused here even
+  // when the caller would otherwise be allowed to create the target.
+  if (resolved.identity === undefined && resolved.hops.length > 0) {
+    throw new Error(`path escapes the workspace through a dangling symlink: ${userPath}`);
+  }
+  rejectAgentSegment(root, resolved.path);
+  if (resolved.identity === undefined && mustExist) {
+    throw new Error(`path does not exist: ${userPath}`);
+  }
+  return resolved;
+}
+
+function confine(root: string, userPath: string, mustExist: boolean): string {
+  return confineResolved(root, userPath, mustExist).path;
+}
+
+/**
+ * Refuse a write when the path is no longer the file that was resolved for it.
+ * A tool that resolves a path and then writes through it would otherwise land
+ * on whatever took its place in between.
+ */
+function verifyUnchanged(resolved: ResolvedPath, tool: string, userPath: string): void {
+  try {
+    verifyIdentity(resolved);
+  } catch (error) {
+    if (error instanceof PathResolutionError) {
+      throw new Error(`${tool}: path changed after it was resolved: ${userPath}`);
+    }
+    throw error;
+  }
 }
 
 function workspaceReal(workspace: string): string {
@@ -469,7 +485,8 @@ async function fallbackListFiles(
  * content is truncated and noted.
  */
 async function readFileLines(
-  real: string,
+  resolved: ResolvedPath,
+  userPath: string,
   offset: number,
   limit: number,
   maxBytes: number,
@@ -483,11 +500,29 @@ async function readFileLines(
   let capped = false;
   let finished = false;
 
-  const stream = fs.createReadStream(real, {
-    encoding: "utf8",
-    highWaterMark: READ_STREAM_HIGH_WATER,
-  });
+  // Open the resolved path without following a link on its last component, then
+  // check the handle against the identity the resolver recorded. The stream
+  // reads from that handle, so the bytes come from the file that was checked
+  // rather than from whatever the path names when the read starts.
+  const fd = fs.openSync(resolved.path, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  let stream: fs.ReadStream | undefined;
   try {
+    if (resolved.identity !== undefined) {
+      const opened = fs.fstatSync(fd, { bigint: true });
+      if (
+        String(opened.dev) !== resolved.identity.dev ||
+        String(opened.ino) !== resolved.identity.ino ||
+        String(opened.ctimeMs) !== resolved.identity.ctimeMs ||
+        Number(opened.size) !== resolved.identity.size
+      ) {
+        throw new Error(`read_file: path changed after it was resolved: ${userPath}`);
+      }
+    }
+    stream = fs.createReadStream("", {
+      fd,
+      encoding: "utf8",
+      highWaterMark: READ_STREAM_HIGH_WATER,
+    });
     for await (const raw of stream as AsyncIterable<Buffer | string>) {
       if (signal.aborted) throw abortError();
       const chunk = typeof raw === "string" ? raw : raw.toString("utf8");
@@ -527,7 +562,10 @@ async function readFileLines(
       lines.push(current);
     }
   } finally {
-    stream.destroy();
+    // The stream owns the descriptor once it is built; only the path where the
+    // identity check threw before that leaves it to be closed here.
+    if (stream !== undefined) stream.destroy();
+    else fs.closeSync(fd);
   }
 
   const joined = lines.join("\n");
@@ -761,12 +799,12 @@ function readFileTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, offset = 1, limit = READ_DEFAULT_LIMIT } = readFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const real = confine(root, userPath, true);
-      const stat = await fsp.stat(real);
+      const resolved = confineResolved(root, userPath, true);
+      const stat = await fsp.stat(resolved.path);
       if (!stat.isFile()) {
         throw new Error(`read_file: not a regular file: ${userPath}`);
       }
-      return readFileLines(real, offset, limit, maxBytesFor(context), context.signal);
+      return readFileLines(resolved, userPath, offset, limit, maxBytesFor(context), context.signal);
     },
   };
 }
@@ -965,7 +1003,8 @@ function writeFileTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, content, overwrite = false } = writeFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const real = confine(root, userPath, false);
+      const resolved = confineResolved(root, userPath, false);
+      const real = resolved.path;
       const existed = fs.existsSync(real);
       if (existed) {
         const stat = fs.statSync(real);
@@ -975,6 +1014,7 @@ function writeFileTool(): ToolDefinition {
         if (!overwrite) {
           throw new Error(`write_file: file already exists (pass overwrite: true): ${userPath}`);
         }
+        verifyUnchanged(resolved, "write_file", userPath);
         atomicWrite(real, content, stat.mode & 0o7777);
       } else {
         atomicWrite(real, content);
@@ -1015,7 +1055,8 @@ function editFileTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, old_string, new_string, replace_all = false } = editFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const real = confine(root, userPath, true);
+      const resolved = confineResolved(root, userPath, true);
+      const real = resolved.path;
       const stat = await fsp.stat(real);
       if (!stat.isFile()) {
         throw new Error(`edit_file: not a regular file: ${userPath}`);
@@ -1037,6 +1078,7 @@ function editFileTool(): ToolDefinition {
       const updated = replace_all
         ? original.split(old_string).join(new_string)
         : original.replace(old_string, () => new_string);
+      verifyUnchanged(resolved, "edit_file", userPath);
       atomicWrite(real, updated, stat.mode & 0o7777);
       const count = replace_all ? occurrences : 1;
       const rel = path.relative(root, real) || userPath;

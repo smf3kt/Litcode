@@ -56,6 +56,7 @@
     "smoke:refusal-cli": "node scripts/smoke-refusal-cli.mjs",
     "smoke:shell-readings-cli": "node scripts/smoke-shell-readings-cli.mjs",
     "smoke:policy-helper-cli": "node scripts/smoke-policy-helper-cli.mjs",
+    "smoke:path-chain-cli": "node scripts/smoke-path-chain-cli.mjs",
     "smoke:skill-agent-cli": "node scripts/smoke-skill-agent-cli.mjs",
     "smoke:skill-inline-cli": "node scripts/smoke-skill-inline-cli.mjs",
     "smoke:skill-fenced-cli": "node scripts/smoke-skill-inline-cli.mjs --fenced",

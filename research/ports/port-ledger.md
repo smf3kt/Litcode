@@ -7,9 +7,9 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 ## Summary
 
 - Modules on disk: **2365** (46838137 bytes).
-- Backed by a record under `research/ports/`: **31** (7688472 bytes).
-- Mentioned only by narrative records: **59** (7076807 bytes).
-- Not cited by any record: **2275** (32072858 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
+- Backed by a record under `research/ports/`: **32** (7771308 bytes).
+- Mentioned only by narrative records: **62** (7246015 bytes).
+- Not cited by any record: **2271** (31820814 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
 
 ## Modules with port evidence
 
@@ -35,6 +35,7 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 | `chunk-er0mj94r.js` | 81134 | `c8fcb0632b09` | research/ports/W01-refusal-notice.md | copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own  |
 | `chunk-f79f00pg.js` | 7582 | `73d50b557ed4` | research/ports/W05-sampling-images.md, research/ports/W05-tasks.md | rewrite of provider conversion; direct recovered provider-image conversion was not established in the bounded read. The existing owned media.ts imageInfo detect / adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
 | `chunk-fdwn5gdv.js` | 981 | `bdd8f0094eb4` | research/ports/W05-tasks.md | adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
+| `chunk-gyf58rwf.js` | 82836 | `7a6a01732760` | research/ports/W09-path-chain.md | rewrite of the chain walk onto this runtime's own path model, with its bounded refusal and its identity kept. This runtime already confined file tools by resolv |
 | `chunk-htgmc2p1.js` | 44823 | `fa11fb18ab03` | research/ports/W06-skill-inline-fenced.md | copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio |
 | `chunk-m00pavz3.js` | 11563 | `e4dcdda42fdf` | research/ports/skill-argument-expansion.md, research/ports/W01-permission-readings.md, research/ports/W06-skill-inline-fenced.md | adapt of the invariant, not a copy of the analyser. The recovered reading set is built from a bash parse tree that reports ambiguous *names* and *operands*; thi / copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio |
 | `chunk-rr5rbabs.js` | 59923 | `e07994571011` | research/ports/W05-image-limits.md | copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c |
@@ -70,7 +71,7 @@ A marker records that the module's bytes contain that literal; it characterises 
 | plugin marketplace UI | `manage-marketplaces` | 1 | 247454 |
 | MCP protocol surface | `resources/templates/list` | 1 | 10785 |
 
-Modules in the uncited set carrying no marker: **2225**. Binary payloads among them: **0**.
+Modules in the uncited set carrying no marker: **2221**. Binary payloads among them: **0**.
 
 ## Largest modules without a citation
 

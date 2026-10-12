@@ -19,25 +19,25 @@
   "outputs": {
     "ledger": {
       "path": "research/ports/port-ledger.json",
-      "sha256": "28b689886252933380cde3c66431c5bf44932999d7441b16d52224cc9cf943f6",
-      "bytes": 918976
+      "sha256": "6d833def266826fac219752537a0866fbcd0a745a65ffd306790e0850fe4d1c2",
+      "bytes": 920164
     },
     "summary": {
       "path": "research/ports/port-ledger.md",
-      "sha256": "72272a61fdcfb34c1c9cb1f1063a622ff374c507df7dee2b36b0da9055b735c2",
-      "bytes": 15602
+      "sha256": "fb2b00222ad7b018aec6afbd3d72d3e27b87fbac80b2ea36adcc47d78163447f",
+      "bytes": 15849
     }
   },
   "summary": {
-    "modules": 31,
-    "bytes": 7688472,
+    "modules": 32,
+    "bytes": 7771308,
     "narrativeOnly": {
-      "modules": 59,
-      "bytes": 7076807
+      "modules": 62,
+      "bytes": 7246015
     },
     "unreviewed": {
-      "modules": 2275,
-      "bytes": 32072858
+      "modules": 2271,
+      "bytes": 31820814
     }
   },
   "recordCount": 57,
@@ -196,6 +196,13 @@
       ]
     },
     {
+      "path": "chunk-gyf58rwf.js",
+      "bytes": 82836,
+      "portRecords": [
+        "research/ports/W09-path-chain.md"
+      ]
+    },
+    {
       "path": "chunk-htgmc2p1.js",
       "bytes": 44823,
       "portRecords": [
@@ -343,9 +350,10 @@
   ],
   "paidCalls": 0,
   "remaining": [
-    "2275 uncited modules (32.1 MB) and 59 narrative-only modules remain unreviewed and are named in the ledger",
-    "per-OS managed settings policy helpers and remote-consent state (chunk-x0dc37w9.js) carried in CURRENT as the next candidate package",
-    "the permission-facing shell-reading analyser (chunk-zjewzgfh.js) has no counterpart in src/",
+    "2271 uncited modules (31.8 MB) and 62 narrative-only modules remain unreviewed and are named in the ledger",
+    "per-OS managed settings policy helpers and remote-consent state (chunk-x0dc37w9.js): closed by W08 for the file mechanism; the plist and hklm mechanisms and the remote-consent path stay External",
+    "the permission-facing shell-reading analyser (chunk-zjewzgfh.js): closed by W01-permission-readings, which covers its boundary with this runtime's own conservative reading superset",
+    "the path link-chain resolver in chunk-gyf58rwf.js: closed by W09; the credential-pattern table in the same module stays an unscheduled candidate",
     "the recovered same-model refusal retry, fallback chain and turn retraction are not ported"
   ],
   "correction": {
