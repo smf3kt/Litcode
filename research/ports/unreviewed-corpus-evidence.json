@@ -936,6 +936,37 @@
     ],
     "reading": "the interaction and runtime-plumbing layer at 36.1% import text, the lowest share since slice fourteen: permission and dialog plumbing, skill and plugin surfaces, session and bridge bookkeeping, and the vendored AWS and smithy clients - thirty-two modules with local counterparts, forty-three with no characterising literal of its own, fifteen hosted surfaces, four product surfaces without a local counterpart, three vendored packages, one pure code leaf, one rule guarding a surface this runtime lacks, and one candidate: external instruction-file imports behind a forward-scoped consent dialog against this runtime's ConfigError refusal"
   },
+  "sliceTwentyFour": {
+    "scope": "uncited modules ranked 1221 to 1320 by size, the eighth 100-rank band",
+    "bytes": 293424,
+    "rows": 100,
+    "rowsWithContent": 80,
+    "byteRange": [3982, 3180],
+    "importSharePercent": 18.2,
+    "composition": {
+      "localCounterparts": 32,
+      "noCharacterisingLiteral": 32,
+      "hostedOrExternalSurfaces": 25,
+      "pureCodeLeaves": 4,
+      "vendoredOrPolyfill": 3,
+      "productWithoutLocalCounterpart": 2,
+      "excludedWithCredentialsOrOauth": 2,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "falseLeadCorrected": [
+      "chunk-6wbt5907.js requires a worktree registration path to be an absolute local path, refusing the \\\\server\\share, //server/share and /net/host forms and any NUL character; this runtime already refuses a NUL byte or replacement character in path text (src/path-identity.ts:115) and rejects a network filesystem by its statfs type (src/path-identity.ts:196), so the rule is covered rather than missing",
+      "chunk-1852h2m2.js records an approval against an input digest and a mismatch invalidates it; this runtime decides permissions statelessly per call with no approval store to compare against, and the module's own text is one state-name marker, so it is too thin to make a rule"
+    ],
+    "notedButNotCandidates": [
+      "chunk-wgtnthwq.js reports a server-managed or user settings source that was not read as not read rather than assumed default, extending the managed-settings family recorded in slices nineteen and twenty",
+      "chunk-8f8e39h5.js validates a directory for the workspace and reports expandPath and stat errno failures, the W09 path family rather than new ground",
+      "chunk-0hm793yn.js refuses a directory, a device, FIFO or socket, and a file over maxBytes in one read path, the shape this runtime applies to its own bounded reads",
+      "chunk-23rpm06c.js ignores an invalid settings value and names /config and the file key as the two ways to fix it, the settings-value reporting this runtime does for its own keys",
+      "eighty modules carry content and twelve of them only through state-name markers; twenty carry nothing of their own and most of those are eighty percent or more import statements"
+    ],
+    "reading": "the smallest-module and most product-shaped layer so far at 18.2% import text, the lowest share since slice eighteen: settings validation and provenance, keybindings and interactive session plumbing, MCP elicitation, plugin tips, and the hosted bridge, fleet and device surfaces - thirty-two modules with local counterparts, thirty-two with no characterising literal of its own, twenty-five hosted surfaces, four pure code leaves, three vendored packages, two product surfaces without a local counterpart, two modules excluded with credentials or OAuth, and no candidate of its own after two apparent rules closed out as already covered or too thin"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
