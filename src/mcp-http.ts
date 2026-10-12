@@ -14,6 +14,7 @@ import {
 } from "./mcp.js";
 import { boundToolContent } from './tool-output.js';
 import { MCP_PROGRESS_LIMITS, McpProgressRegistry, type McpProgressUpdate } from "./mcp-progress.js";
+import { JSON_SCHEMA_LIMITS } from "./json-schema.js";
 import { McpClientRequestHandler } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions } from "./mcp-subscriptions.js";
 import { McpLogging } from "./mcp-logging.js";
@@ -49,6 +50,8 @@ export const MCP_HTTP_LIMITS: readonly string[] = [
   "init-result protocol version: 2025-03-26 and 2025-06-18 only; stdio retains 2024-11-05",
   `HTTP responses: ${MCP_HTTP_MAX_FRAME_BYTES} bytes per JSON message/SSE event, ${MCP_HTTP_MAX_BODY_BYTES} bytes per response, ${MCP_HTTP_MAX_SSE_LINE_BYTES} bytes per SSE line, ${MCP_HTTP_MAX_SSE_EVENTS} SSE events per response`,
   "requests: bounded deadlines and abort; cancellation notifications and session DELETE are best effort and independently bounded",
+  "tool results: a tool whose server declared an output schema must answer successfully with structured content that satisfies it, otherwise the call fails with the JSON-RPC code the recovered client raises (-32600 when no structured content is returned, -32602 when it does not match); an error result is passed through unchecked because the server reports its own failures there",
+  ...JSON_SCHEMA_LIMITS,
   ...MCP_PROGRESS_LIMITS,
 ];
 
@@ -201,6 +204,10 @@ export class McpHttpClient implements McpClient {
   private initialized = false;
   private capabilities: Record<string, unknown> = {};
   private taskTools = new Map<string, McpToolInfo>();
+  /** The result contract the server declared for one tool, when it declared one. */
+  private declaredOutput(toolName: string | undefined): unknown {
+    return toolName === undefined ? undefined : this.taskTools.get(toolName)?.outputSchema;
+  }
   private readonly toolsChangedListeners = new Set<() => void>();
   private readonly disconnectListeners = new Set<() => void>();
   private transportFailures = 0;
@@ -603,7 +610,7 @@ export class McpHttpClient implements McpClient {
     if (this.settings.notificationStream && !this.closed) this.startNotificationStream();
   }
 
-  async resumeTask(task: import('./mcp-standard-task.js').StandardMcpTask, signal: AbortSignal): Promise<McpToolResult> {
+  async resumeTask(task: import('./mcp-standard-task.js').StandardMcpTask, signal: AbortSignal, toolName?: string): Promise<McpToolResult> {
     if (!this.initialized || !this.settings.standardTasks || this.version !== MCP_TASK_PROTOCOL_VERSION) throw new Error('Standard task recovery requires negotiated2025-11-25');
     const release = this.clientRequests.ownTask(task.taskId);
     try {
@@ -614,7 +621,7 @@ export class McpHttpClient implements McpClient {
       };
       const result = await driveStandardMcpTask(task, read,
         AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]), false);
-      return parseMcpToolResult(result, this.name);
+      return parseMcpToolResult(result, this.name, this.declaredOutput(toolName), toolName);
     } finally { release(); }
   }
 
@@ -644,7 +651,7 @@ export class McpHttpClient implements McpClient {
         const resultTask = result;
         result = await driveStandardMcpTask(parseStandardTask(result), this.request.bind(this),
           AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]), record(this.capabilities.tasks) && record(this.capabilities.tasks.cancel));
-        const parsed = parseMcpToolResult(result, this.name);
+        const parsed = parseMcpToolResult(result, this.name, this.declaredOutput(toolName), toolName);
         // Mark resolution only after the original payload has passed tool-result validation.
         this.taskJournal?.(this.name, toolName, parseStandardTask(resultTask), true, boundToolContent(JSON.stringify(parsed), 24000) as string, parsed.isError);
         return parsed;
@@ -656,7 +663,7 @@ export class McpHttpClient implements McpClient {
       request: (method, params, requestSignal) => this.request(method, params, requestSignal, undefined, task.taskId),
       resolveInputRequest: (key, input, requestSignal) => this.clientRequests.resolveTaskInput(key, input, requestSignal),
     });
-    return parseMcpToolResult(result, this.name);
+    return parseMcpToolResult(result, this.name, this.declaredOutput(toolName), toolName);
   }
 
   supportsCatalog(family: "resources" | "prompts"): boolean {

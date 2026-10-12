@@ -1093,6 +1093,34 @@ No product source, test, or build input changed, so the suite and package
 identity above still hold. Detail and coordinates: ports/remaining-dispositions.md
 items 7 and 8.
 
+## MCP tool output contracts (2026-10-12)
+
+A tool whose server declared an output schema is now held to it. A successful
+result must carry structured content that satisfies the declared contract, or the
+call fails with the code the recovered client raises for the same failure:
+-32600 when the tool declares a schema and answers successfully with no
+structured content, -32602 when the content does not match, with the first
+violation appended. An error result is passed through, because a server reports
+its own failures there, and a tool with no declared contract is unchecked.
+
+The validator is bounded and dependency-free: type, enum, const, allOf, anyOf,
+oneOf, not, a local $ref, properties, required, additionalProperties, items,
+minItems, maxItems, uniqueItems, minimum, maximum, exclusive bounds, multipleOf,
+minLength, maxLength and pattern, to depth 32. Any other keyword is ignored, which
+is what the specification asks of a validator that does not know it, so a
+contract written only in the rest is accepted rather than guessed at; the
+connection's limits name the enforced list and the depth.
+
+The declared contract is also part of what a pinned tool must still match after a
+catalog refresh, so a server cannot swap a tool's result contract under a call the
+model already chose. The standard-task resume path had to learn which tool it is
+resuming, which it takes from its own journal entry rather than from the task
+handle, which does not name one.
+
+Suite 1130/1130; package 72 files with 0 upstream requests; identity 125 input /
+92 validation / 65 build, merged `f8dab819…`. Detail and coordinates:
+ports/W30-output-schema.md.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

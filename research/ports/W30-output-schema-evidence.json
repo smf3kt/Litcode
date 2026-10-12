@@ -1,0 +1,68 @@
+{
+  "schema": "ToolOutputContractPort.v1",
+  "date": "2026-10-12",
+  "package": "W30",
+  "sample": {
+    "path": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "coordinateUnit": "zero-based UTF-16, left-closed/end-exclusive"
+  },
+  "recovered": [
+    {
+      "module": "chunk-2rxk8n7w.js",
+      "sha256": "251b9444642e923022862625925ee3fe6c749f7fbdd79f7524fcea361f0a275a",
+      "bytes": 332939,
+      "fragments": [
+        { "what": "legacy tool declaration carries the contract", "text": "outputSchema:_t({$schema:o().optional()}).optional()", "range": [7558, 7611] },
+        { "what": "modern tool declaration carries the contract", "text": "outputSchema:u({type:C(\"object\"),properties:ue(o(),e).optional(),required:A(o()).optional()}).catchall(oe()).optional()", "range": [28185, 28305] },
+        { "what": "predicate that a tool declared one", "text": "function Ln(e){return Qo(e)&&Qo(e.outputSchema)&&Qn(e.outputSchema)}", "range": [43020, 43089] }
+      ]
+    },
+    {
+      "module": "chunk-4vr415ka.js",
+      "sha256": "01c2a556237e9a957f29cd7de89b228439e6621ea982a0b5b0bd10be4cd20580",
+      "bytes": 156824,
+      "fragments": [
+        { "what": "callTool applies the contract with two codes and two messages", "text": "let s=await this.request({method:\"tools/call\",params:e},r,n),h=this.getToolOutputValidator(e.name);if(h){if(!s.structuredContent&&!s.isError)throw new ei(fi.InvalidRequest,`Tool ${e.name} has an output schema but did not return structured content`);if(s.structuredContent)try{let y=h(s.structuredContent);if(!y.valid)throw new ei(fi.InvalidParams,`Structured content does not match the tool's output schema: ${y.errorMessage}`)}catch(y){if(y instanceof ei)throw y;throw new ei(fi.InvalidParams,`Failed to validate structured content: …`)}}return s", "range": [28392, 28980] },
+        { "what": "the streaming variant applies the same two rules as error events", "text": "C=s.getToolOutputValidator(e.name);…if(!M.structuredContent&&!M.isError){yield{type:\"error\",error:new ei(fi.InvalidRequest,`Tool ${e.name} has an output schema but did not return structured content`)};return}…", "range": [18978, 19661] },
+        { "what": "validator compiled once per catalog and cached by tool name", "text": "cacheToolMetadata(e){…if(r.outputSchema){let s=this._jsonSchemaValidator.getValidator(r.outputSchema);this._cachedToolOutputValidators.set(r.name,s)}…}", "range": [29169, 29612] },
+        { "what": "lookup by tool name", "text": "getToolOutputValidator(e){return this._cachedToolOutputValidators.get(e)}", "range": [29612, 29682] }
+      ]
+    },
+    {
+      "module": "chunk-sb190ksj.js",
+      "sha256": "0a1c2aa1424babd95eeec371f67c875b6382db0c891b3b3e90f710f2102b16df",
+      "bytes": 198048,
+      "fragments": [
+        { "what": "the recovered tool call goes through the validating callTool, so the contract is product behaviour", "text": "ut=await Je.callTool({name:n,arguments:r,_meta:it},{…,signal:h,timeout:ot,onprogress:(Ct)=>{…}})", "range": [179345, 179435] }
+      ]
+    }
+  ],
+  "ported": [
+    { "surface": "tool declaration", "what": "outputSchema kept on the tool metadata and included in the pinned-metadata comparison", "targets": ["src/mcp.ts"] },
+    { "surface": "result check", "what": "-32600 without structured content, -32602 on a violation, error results and undeclared tools unchecked", "targets": ["src/mcp.ts", "src/mcp-http.ts"] },
+    { "surface": "standard-task resume", "what": "the journaled tool name reaches the check", "targets": ["src/mcp.ts", "src/mcp-http.ts", "src/runtime.ts"] },
+    { "surface": "validator", "what": "bounded dependency-free JSON Schema subset with a documented enforced list", "targets": ["src/json-schema.ts"] }
+  ],
+  "notPorted": [
+    {
+      "what": "the full JSON Schema engine the recovered client plugs in",
+      "reason": "boundedImplementation",
+      "detail": "the enforced keyword list, the depth bound and the ignore-the-rest rule are stated in the connection limits"
+    }
+  ],
+  "rewrites": [
+    "one failure message instead of two: the bounded validator never throws outward, so a validator fault is reported inside the mismatch message",
+    "the tool name is passed by the call site, and the standard-task resume path takes it from the journal because the task handle does not name its tool",
+    "a changed output schema now fails the pinned-metadata check beside the input schema"
+  ],
+  "validation": {
+    "tsc": "clean",
+    "build": "clean",
+    "tests": { "file": "test/mcp-output-schema.test.ts", "passed": 3, "failed": 0 },
+    "suite": { "passed": 1130, "failed": 0, "beforePackage": 1127 },
+    "smokePackage": { "files": 72, "upstreamRequests": 0 },
+    "identity": "f8dab8197b7d67f5bac099742e81eb76a8d2333a65ad30a97b0f1ff6948dbe94",
+    "notices": { "installed": 28, "sha256": "6d025e66ae53c22228d4e4ddde35c1ec1d0cd45a1d40af6d00add122372c42f2" }
+  }
+}

@@ -12,7 +12,7 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 47,
+  "recordCount": 48,
   "summary": {
     "modules": 52,
     "bytes": 10539547,
@@ -206,14 +206,17 @@
       "citedBy": [
         "research/CURRENT.md",
         "research/ports/W28-progress-tokens.md",
+        "research/ports/W30-output-schema.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/W28-progress-tokens.md"
+        "research/ports/W28-progress-tokens.md",
+        "research/ports/W30-output-schema.md"
       ],
       "reviewed": true,
       "declared": [
-        "copy of the recovered per-call progress contract onto transports this runtime already"
+        "copy of the recovered per-call progress contract onto transports this runtime already",
+        "copy of the recovered result contract onto this runtime's own transports and its own"
       ]
     },
     {
@@ -387,21 +390,25 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-standard-tasks.md"
+        "research/ports/W05-standard-tasks.md",
+        "research/ports/W30-output-schema.md"
       ],
       "portRecords": [
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-standard-tasks.md"
+        "research/ports/W05-standard-tasks.md",
+        "research/ports/W30-output-schema.md"
       ],
       "reviewed": true,
       "declared": [
         "rewrite local durable journal/recovery ownership because original durable backend/client journal contract is unproven; reuse/adapt already ported standard get/r",
         "adapt of the recovered wire shape with an owned host conversion rewrite. The recovered branch decodes canonical base64 and passes the caller-declared MIME strai",
-        "adapt finite SDK requestStream and tool task metadata behavior, with owned transport/error/timers replacing SDK class graph. Not a wholesale original SDK copy: "
+        "adapt finite SDK requestStream and tool task metadata behavior, with owned transport/error/timers replacing SDK class graph. Not a wholesale original SDK copy: ",
+        "copy of the recovered result contract onto this runtime's own transports and its own"
       ]
     },
     {
@@ -1263,6 +1270,7 @@
         "research/ports/W05-sampling-images.md",
         "research/ports/W05-stdio-redial.md",
         "research/ports/W05-tasks.md",
+        "research/ports/W30-output-schema.md",
         "research/STATUS.md"
       ],
       "portRecords": [
@@ -1272,7 +1280,8 @@
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-images.md",
         "research/ports/W05-stdio-redial.md",
-        "research/ports/W05-tasks.md"
+        "research/ports/W05-tasks.md",
+        "research/ports/W30-output-schema.md"
       ],
       "reviewed": true,
       "declared": [
@@ -1282,7 +1291,8 @@
         "adapt of the recovered wire shape with an owned host conversion rewrite. The recovered branch decodes canonical base64 and passes the caller-declared MIME strai",
         "rewrite of provider conversion; direct recovered provider-image conversion was not established in the bounded read. The existing owned media.ts imageInfo detect",
         "copy of the lifecycle shape with an owned placement. The recovered client re-dials unconditionally on next use; this harness keeps one owner for transport repla",
-        "adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive"
+        "adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive",
+        "copy of the recovered result contract onto this runtime's own transports and its own"
       ]
     },
     {
@@ -4780,10 +4790,12 @@
       "citedBy": [
         "research/CURRENT.md",
         "research/ports/W28-progress-tokens.md",
+        "research/ports/W30-output-schema.md",
         "research/STATUS.md"
       ],
       "portRecords": [
-        "research/ports/W28-progress-tokens.md"
+        "research/ports/W28-progress-tokens.md",
+        "research/ports/W30-output-schema.md"
       ],
       "reviewed": true
     },
@@ -7107,15 +7119,18 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-standard-tasks.md"
+        "research/ports/W05-standard-tasks.md",
+        "research/ports/W30-output-schema.md"
       ],
       "portRecords": [
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-sampling-audio.md",
-        "research/ports/W05-standard-tasks.md"
+        "research/ports/W05-standard-tasks.md",
+        "research/ports/W30-output-schema.md"
       ],
       "reviewed": true
     },
@@ -30141,6 +30156,7 @@
         "research/ports/W05-sampling-images.md",
         "research/ports/W05-stdio-redial.md",
         "research/ports/W05-tasks.md",
+        "research/ports/W30-output-schema.md",
         "research/STATUS.md"
       ],
       "portRecords": [
@@ -30150,7 +30166,8 @@
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-images.md",
         "research/ports/W05-stdio-redial.md",
-        "research/ports/W05-tasks.md"
+        "research/ports/W05-tasks.md",
+        "research/ports/W30-output-schema.md"
       ],
       "reviewed": true
     },
