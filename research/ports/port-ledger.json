@@ -12,13 +12,13 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 38,
+  "recordCount": 39,
   "summary": {
-    "modules": 32,
-    "bytes": 7771308,
+    "modules": 33,
+    "bytes": 7816386,
     "narrativeOnly": {
-      "modules": 63,
-      "bytes": 7291093
+      "modules": 62,
+      "bytes": 7246015
     },
     "unreviewed": {
       "modules": 2270,
@@ -746,6 +746,32 @@
       "declared": [
         "adapt of the invariant, not a copy of the analyser. The recovered reading set is built from a bash parse tree that reports ambiguous *names* and *operands*; thi",
         "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio"
+      ]
+    },
+    {
+      "path": "chunk-pn44qc66.js",
+      "bytes": 45078,
+      "sha256": "f6c745a0cf4f3370d0e13487c15727a69bdbf2256a30c59080c571274064a77f",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "fs",
+        "path"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W10-include-link-vetting.md",
+        "research/STATUS.md"
+      ],
+      "portRecords": [
+        "research/ports/W10-include-link-vetting.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "rewrite of the three text-level rules onto this runtime's instruction loader. This runtime already refused an import that escapes the workspace, but it did so b"
       ]
     },
     {
@@ -26403,10 +26429,13 @@
       "markers": {},
       "citedBy": [
         "research/CURRENT.md",
+        "research/ports/W10-include-link-vetting.md",
         "research/STATUS.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W10-include-link-vetting.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-pnen8h1k.js",

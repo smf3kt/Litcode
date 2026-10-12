@@ -30,6 +30,7 @@ import { hooksSchema, type HooksConfig } from "./hooks.js";
 import { discoverInstalledPluginComponents, pluginConfigSchema, type PluginConfig } from "./plugins.js";
 import { mcpServersSchema } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
+import { LinkVetError, vetLinkChain } from "./link-vetting.js";
 import { managedPolicySchema } from "./session.js";
 
 // ---------------------------------------------------------------------------
@@ -164,6 +165,22 @@ function tryRealpath(target: string): string | undefined {
     return fs.realpathSync(target);
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Vet an instruction file's link chain before its contents are treated as
+ * instructions. A file reached through a link is not the file the path named,
+ * so a body that is not a path at all, a body that climbs back out of a
+ * directory it entered, a loop, or a chain past the bound are refused here
+ * rather than silently read.
+ */
+function vetInstructionPath(file: string): void {
+  try {
+    vetLinkChain(file);
+  } catch (error) {
+    if (error instanceof LinkVetError) throw new ConfigError(error.message, file, { cause: error });
+    throw error;
   }
 }
 
@@ -957,6 +974,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     const pinned: InstructionFile[] = [];
     const seen = new Set<string>([tryRealpath(rootFile)!]);
     function visit(file: string, depth: number): void {
+      vetInstructionPath(file);
       const real = tryRealpath(file);
       if (real === undefined || !isRegularFile(file)) throw new ConfigError("instruction import file not found", file);
       if (seen.has(real)) return;
@@ -970,6 +988,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     return pinned;
   }
   function appendInstruction(file: string, depth: number, rule = false): void {
+    vetInstructionPath(file);
     const real = tryRealpath(file);
     if (real === undefined || !isRegularFile(file)) throw new ConfigError("instruction import file not found", file);
     if (instructionSeen.has(real)) return;
@@ -1110,6 +1129,7 @@ export function loadPathInstructions(workspace: string, target: string, candidat
   const seen = new Set<string>();
   const watchPaths: string[] = [];
   function visit(file: string, depth: number): void {
+    vetInstructionPath(file);
     const real = tryRealpath(file);
     if (!real || !isRegularFile(file)) throw new ConfigError("nested instruction import file missing", file);
     const rel = path.relative(root, real);

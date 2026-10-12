@@ -364,6 +364,22 @@
     "inScopeCandidates": [
       "chunk-pn44qc66.js (link vetting on the settings and instruction handoff)"
     ],
+    "candidatesDisposed": {
+      "module": "chunk-pn44qc66.js",
+      "bytes": 45078,
+      "portRecord": "research/ports/W10-include-link-vetting.md",
+      "portedInvariant": "a body that is not valid UTF-8, a body that enters a directory and climbs back out, a repeated state and a chain past 32 hops are each refused before an instruction import is read",
+      "notPorted": "the true/false send verdict of On and the counters its caller fills from it (symlink_not_sent, too_many_links), plus home_unvettable and outside_root",
+      "coordinates": {
+        "bound": "var Cn=/~\\d/,Un=32 [11281, ...)",
+        "walk": "async function On(e) [11287, ...)",
+        "climbsOutPredicate": "function $n(e) [12206, ...)",
+        "notUtf8": "link body is not valid UTF-8 [11462, ...)",
+        "climbsOut": "link body climbs out of a directory it entered [11603, ...)",
+        "tooLong": "link chain too long to vet [11808, ...)",
+        "separatorSet": "Tn [9802, ...)"
+      }
+    },
     "candidateDetail": {
       "module": "chunk-pn44qc66.js",
       "bytes": 45078,
@@ -388,12 +404,12 @@
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
   },
   "outputs": {
-    "ledgerSha256": "4100b4cb1e70bc99fd18f284ec557d057f801b351d660d0e534b7d98f389a4d3",
-    "summarySha256": "e06276ca1050b61c52a6a812b9ff276c27848c69c426e9a1809f4b15139c9128",
-    "asOf": "regenerated after slice five; the movement since slice four is W09 porting chunk-gyf58rwf.js out of the uncited set plus CURRENT and STATUS naming the slice-four and slice-five candidates",
-    "totals": { "portBacked": 32, "narrativeOnly": 63, "uncited": 2270, "uncitedWithoutMarker": 2220 }
+    "ledgerSha256": "bdcea042a64f17c4e67ced9667dafd238b14b04574abff04d83d4985f69afdcb",
+    "summarySha256": "592ac381ff5e361d1d5407c0c74a33141af52578363cefcfc7ef62f001b72b26",
+    "asOf": "regenerated after W10; the movement since slice five is W10 porting chunk-pn44qc66.js out of the prose set and into port evidence",
+    "totals": { "portBacked": 33, "narrativeOnly": 62, "uncited": 2270, "uncitedWithoutMarker": 2220 }
   },
-  "residual": "2220 uncited modules carry no marker after W09 took one module out of the set; slices four and five changed nothing themselves because this file is not a citation source; removing the number needs per-module reading, not more rules",
+  "residual": "2220 uncited modules carry no marker; the uncited total stays at 2270 because W10's module was recorded here as a candidate, which does not move it, and only its port record did - and it left the prose set rather than the uncited one; removing the number needs per-module reading, not more rules",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
   "paidCalls": 0
 }
