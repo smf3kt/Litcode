@@ -18,11 +18,11 @@
     "imports": "well-formed specifier grammar over from/require occurrences; builtin, sibling chunk or external package"
   },
   "findings": {
-    "modules": 30,
-    "portBacked": 30,
+    "modules": 31,
+    "portBacked": 31,
     "narrativeOnly": {
-      "modules": 60,
-      "bytes": 7190218
+      "modules": 59,
+      "bytes": 7076807
     },
     "uncited": {
       "modules": 2275,
@@ -254,8 +254,8 @@
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
   },
   "outputs": {
-    "ledgerSha256": "f7405fdf183813efc8a468fd38672599e9e3a4d496bfbcc317f8a7b6b8cf8243",
-    "summarySha256": "219bd6167e9fbef5ac5487f0e82e2cdc21e5b08c3188fdcda17b9b527ce202c1"
+    "ledgerSha256": "28b689886252933380cde3c66431c5bf44932999d7441b16d52224cc9cf943f6",
+    "summarySha256": "72272a61fdcfb34c1c9cb1f1063a622ff374c507df7dee2b36b0da9055b735c2"
   },
   "residual": "2225 uncited modules carry no marker; removing that number needs per-module reading, not more rules",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
