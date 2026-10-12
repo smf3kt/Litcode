@@ -1,0 +1,90 @@
+{
+  "schema": "RecoveredModulePortEvidence.v1",
+  "date": "2026-10-12",
+  "item": "W10 instruction imports: link vetting before an import is read",
+  "status": "verified",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
+  },
+  "module": {
+    "path": "chunk-pn44qc66.js",
+    "sha256": "f6c745a0cf4f3370d0e13487c15727a69bdbf2256a30c59080c571274064a77f",
+    "bytes": 45078
+  },
+  "coordinateUnit": "zero-based UTF-16, left-closed/end-exclusive, over the decoded module text",
+  "readAs": "inert data; no recovered entrypoint was executed",
+  "facts": [
+    { "name": "hop bound", "symbol": "var Cn=/~\\d/,Un=32", "range": [11281, null] },
+    { "name": "vetting walk", "symbol": "async function On(e)", "range": [11287, null], "note": "for(let o=0;o<Un;o+=1); visited Set; a repeated state returns false" },
+    { "name": "not-UTF-8 refusal", "text": "link body is not valid UTF-8", "range": [11462, null] },
+    { "name": "climbs-out refusal", "text": "link body climbs out of a directory it entered", "range": [11603, null] },
+    { "name": "too-long refusal", "text": "link chain too long to vet", "range": [11808, null] },
+    { "name": "climbs-out predicate", "symbol": "function $n(e)", "range": [12206, null] },
+    { "name": "separator set", "symbol": "Tn", "range": [9802, null], "note": "j===ge.sep?/[\\\\/]+/:\\/\\/+ - both separators only on the backslash platform" },
+    { "name": "not ported: symlink verdict counter", "symbol": "symlinksNotSent: Y(n,\"symlink_not_sent\")", "range": [14739, null] },
+    { "name": "not ported: link-count verdict", "symbol": "too_many_links", "range": [13174, null] },
+    { "name": "not ported: home state", "symbol": "home_unvettable", "range": [36833, null] },
+    { "name": "not ported: root state", "symbol": "outside_root", "range": [3795, null] }
+  ],
+  "portedInvariant": "An instruction file that is reached through a link is vetted before it is read as instructions: a body that is not valid UTF-8 is refused, a body that enters a directory and climbs back out is refused, a repeated state is refused as a cycle, and a chain past 32 hops is refused by name.",
+  "implementation": {
+    "new": ["src/link-vetting.ts"],
+    "changed": ["src/config.ts"],
+    "wiring": {
+      "symbol": "vetInstructionPath",
+      "range": [178, 185],
+      "callSites": [977, 991, 1132],
+      "note": "first statement of the nested-import reader, the root-file reader and loadPathInstructions' visit, so a refused link is refused for every reader that would have taken the file"
+    },
+    "digests": {
+      "src/link-vetting.ts": "ddde8a6b6a7b1bcecd7315698ebdd4a8be958b859f8531e818842a5c83719fd3",
+      "test/link-vetting.test.ts": "ffeaa6aaa0c22569947278501de8ed077206c96948a1bcc6099d1901c2a121f4",
+      "scripts/smoke-link-vetting-cli.mjs": "7b14ba88ed32420362b48823de67cf38eee96a3967566017c3eafc6e7bf29393"
+    }
+  },
+  "ownedDecisions": [
+    "The bound is kept at 32 hops, the recovered local, rather than reusing the file-tool resolver's 64.",
+    "The not-UTF-8 rule is a fatal decode of the raw link bytes rather than a replacement-character test on the decoded text.",
+    "A repeated state is refused by name as a cycle; the recovered walk returns false so its cloud-session caller can count a chain it will not send.",
+    "Both separators count on every platform, so docs\\..\\other.md is refused on a POSIX host; the recovered set makes that platform-dependent.",
+    "The refusal is a LinkVetError carrying its reason, wrapped by config.ts into a ConfigError naming the file, so it arrives on the tool call that triggered instruction loading."
+  ],
+  "notPorted": [
+    "The true/false result of On and the counters its caller fills from it (symlink_not_sent, too_many_links): verdicts about what a cloud session may receive.",
+    "The home_unvettable and outside_root states of the same module, which belong to the same handoff.",
+    "The platform-dependent separator set."
+  ],
+  "cases": {
+    "unit": { "file": "test/link-vetting.test.ts", "count": 5, "fail": 0 },
+    "cliSmoke": {
+      "script": "scripts/smoke-link-vetting-cli.mjs",
+      "command": "npm run smoke:link-vetting-cli",
+      "modes": ["source", "compiled"],
+      "gateway": "owned loopback SSE fixture",
+      "asserts": [
+        "control: the import reached through a link inside its own directory reaches the second request",
+        "refused: the same import through a link that enters docs and climbs back out fails the read with 'climbs out of a directory it entered'",
+        "the refused import never reaches a request"
+      ]
+    }
+  },
+  "check": { "command": "npm run check", "exit": 0 },
+  "build": { "command": "npm run build", "exit": 0 },
+  "fullSuite": { "pass": 1075, "fail": 0 },
+  "packageSmoke": { "command": "npm run smoke:package", "files": 66, "upstreamRequests": 0 },
+  "identity": {
+    "inputs": { "sha256": "28cd011c99bf3789f2203c756a26e7bd8d1354e7c7f0a75c75ca2c7b78818c4d", "files": 118 },
+    "validation": { "sha256": "46a2b9f37a2c8cd70ef4c1e30dc7d52491a8b1244a37721ca2c9dc5a100ff4b1", "files": 86 },
+    "build": { "sha256": "37ff35480fc7afa5b46442d45334a8eb5fc5061bfe7798c2390f7101c24da734", "files": 59 },
+    "merged": "e4b6b8eb551c606233da55bf5a4f42485ce628286e21728404e06acb298a7733",
+    "independentOfflineRebuild": "fresh directory, source bundle of 208 files, npm ci --ignore-scripts --offline, check and build, identical merged digest"
+  },
+  "tarball": { "name": "litcode-0.1.0.tgz", "files": 66, "bytes": 318811, "sha256": "db2eddc92e8c211816d9380df0e7e4b666554636ca5f0bdd0a48a8f9612ef7af" },
+  "regressions": "None. The first version of the integration case built the climbing link body with path.join, which normalizes the `..` segments away and produced a link that did not climb; the body is now written verbatim.",
+  "limitations": [
+    "Vetting covers links on the instruction-import path only; a link on the path of a file a tool reads is resolved by the W09 resolver, whose rules are its own.",
+    "No real network mount, Windows host or chain past either bound was observed."
+  ],
+  "paidCalls": 0
+}
