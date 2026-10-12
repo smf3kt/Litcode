@@ -733,6 +733,39 @@
     "why": "slice sixteen showed that most of a 50-module band is mechanical to dispose - the aggregator check is one import-share measurement and one literal scan per module - while the readable modules are as deep as before, so doubling the band keeps the same depth of reading at half the number of passes",
     "unchanged": "every module in a band is still checked individually for import share and literals, modules with content still get their own row, aggregators are recorded as a group with the reason stated, and bands stay contiguous"
   },
+  "sliceEighteen": {
+    "scope": "uncited modules ranked 621 to 720 by size, the second 100-rank band",
+    "bytes": 1027709,
+    "rows": 100,
+    "rowsWithContent": 93,
+    "byteRange": [
+      12645,
+      9254
+    ],
+    "importSharePercent": 21.0,
+    "composition": {
+      "localCounterparts": 48,
+      "hostedOrExternalSurfaces": 23,
+      "vendoredOrPolyfill": 8,
+      "excludedWithCredentialsOrOauth": 6,
+      "shippedSkillOrProductText": 3,
+      "productWithoutLocalCounterpart": 3,
+      "recoveredUi": 1,
+      "noCharacterisingLiteral": 8,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-1t033v1j.js refuses an in-place plugin copy write when the target has another name (a hard link), detects a source swapped for a non-regular file mid-copy and restores the original target; it extends the write-path candidate slice fourteen recorded",
+      "chunk-8pet3bvp.js re-checks a file's identity after its path was checked (replaced or changed, a link above or at the spelled name, tempdir_owner_mismatch), the family W09 ported",
+      "chunk-ba5tgr3e.js states permission rule bounds (behavior one of allow/deny/ask, at most 10000 characters per rule, 1 to 100 rules) and chunk-521p4r0c.js fails closed when deny rules cannot be checked and when a managed allowlist cannot be consulted, the family W01 vetted",
+      "chunk-aesdaxt1.js treats a throwing read-only check on a served shell line as not read-only, the adverse-on-doubt shape this runtime's own conservative readings use",
+      "chunk-k9bc38yt.js, chunk-ar9xtx80.js and chunk-ryyp81k6.js are shipped skill texts (an audit subcommand, a chat-channel skill and the loop skill's own prompt bundle), the kind of embedded text this project ports as skill content rather than runtime logic",
+      "chunk-p55rpzef.js, chunk-790w8tcz.js and chunk-nvcqkjfn.js are the goal proposal, the /goal command text and the subagent hand-back text, mechanisms this session itself runs",
+      "eight modules carry no characterising literal: three mostly import text, four pure logic, one marker-only"
+    ],
+    "reading": "the shape reverses at the same width - 21.0% import text and 93 modules with content against 60 aggregators in slice seventeen, so the aggregator share is a property of a band rather than a trend - over 48 modules with local counterparts, 23 hosted surfaces, 8 vendored packages, 6 modules excluded with credentials or OAuth, 3 shipped skill texts, 3 product surfaces without a local counterpart, 1 recovered UI module, and no candidate of its own"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
