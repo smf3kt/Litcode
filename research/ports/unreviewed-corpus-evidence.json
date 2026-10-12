@@ -967,6 +967,42 @@
     ],
     "reading": "the smallest-module and most product-shaped layer so far at 18.2% import text, the lowest share since slice eighteen: settings validation and provenance, keybindings and interactive session plumbing, MCP elicitation, plugin tips, and the hosted bridge, fleet and device surfaces - thirty-two modules with local counterparts, thirty-two with no characterising literal of its own, twenty-five hosted surfaces, four pure code leaves, three vendored packages, two product surfaces without a local counterpart, two modules excluded with credentials or OAuth, and no candidate of its own after two apparent rules closed out as already covered or too thin"
   },
+  "sliceTwentyFive": {
+    "scope": "uncited modules ranked 1321 to 1420 by size, the ninth 100-rank band",
+    "bytes": 213929,
+    "rows": 100,
+    "rowsWithContent": 67,
+    "byteRange": [3176, 2451],
+    "importSharePercent": 22.2,
+    "composition": {
+      "noCharacterisingLiteral": 54,
+      "localCounterparts": 22,
+      "hostedOrExternalSurfaces": 16,
+      "excludedWithCredentialsOrOauth": 4,
+      "vendoredOrPolyfill": 1,
+      "pureCodeLeaves": 1,
+      "productWithoutLocalCounterpart": 1,
+      "inScopeCandidate": 1
+    },
+    "inScopeCandidates": [
+      {
+        "module": "chunk-x3et6ayt.js",
+        "recovered": "an attachment path is refused when its name is credential-shaped and when it has more than one hard link, alongside the too_large and not_regular refusals",
+        "localHalf": "src/media.ts:98-125 confines the path inside the workspace, opens with O_NOFOLLOW, refuses anything that is not a regular file, caps the size at MEDIA_MAX_BYTES and re-verifies device and inode before returning bytes",
+        "uncovered": "no credential-shaped-name refusal and no hard-link refusal appear anywhere in the local source; the searches for a credential filename pattern and for an nlink check both returned nothing",
+        "authorityVerified": "local source read only; no module was executed"
+      }
+    ],
+    "notedButNotCandidates": [
+      "chunk-6emtyxxw.js refuses to reuse an approval stored for different arguments and reports that an approval stored without the call's arguments could not be tied to it; this runtime decides every call statelessly with permissionDecision(policy, tool, input) and keeps no approval store, so there is no persisted grant to bind and no local half to complete",
+      "chunk-55rwxm3c.js requires a plugin fetch to resolve to the public CDN and names an allowlist of hosts; this runtime's plugin sources are caller-configured marketplaces rather than one vendor CDN, so there is no fixed expected host to pin",
+      "chunk-xr99wkvg.js waits for remote managed settings before deciding MCP policy and reports a timeout, extending the managed-settings family recorded in slices nineteen, twenty and twenty-three",
+      "chunk-95s6vqpk.js carries a secret-matching pattern set and its redaction expression, the redaction shape this runtime applies to its own text",
+      "chunk-nbvdgwj8.js confirms repository trust and distinguishes a trusted repository from no repository and from a declined trust, the trust gate this runtime owns",
+      "sixty-seven modules carry content and twenty-one of them only through state-name markers; thirty-three carry nothing of their own and most of those are half or more import statements"
+    ],
+    "reading": "the sub-three-kilobyte layer at 22.2% import text: request parameters and tool input validation, repository trust and permission mode plumbing, transcript and session bookkeeping, plugin fetch and prompt overrides, and the hosted bridge, device, vitals and workshop surfaces - fifty-four modules with no characterising literal of their own, twenty-two with local counterparts, sixteen hosted surfaces, four excluded with credentials or OAuth, one vendored package, one pure code leaf, one product surface without a local counterpart, and one candidate: an attachment refused for a credential-shaped name or more than one hard link over a read path this runtime already owns"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
