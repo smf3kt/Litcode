@@ -112,7 +112,8 @@ class SseParser {
   private afterCr = false;
   private first = true;
 
-  constructor(private readonly onData: (text: string) => Promise<boolean>, private readonly continuous = false) {}
+  constructor(private readonly onData: (text: string) => Promise<boolean>, private readonly continuous = false,
+    private readonly onField?: (field: "id" | "retry", value: string) => void) {}
 
   async feed(text: string): Promise<boolean> {
     for (const char of text) {
@@ -155,6 +156,7 @@ class SseParser {
     let value = colon < 0 ? "" : line.slice(colon + 1);
     if (value.startsWith(" ")) value = value.slice(1);
     if (field === "data") this.data.push(value);
+    else if (field === "id" || field === "retry") this.onField?.(field, value);
     return false;
   }
 
@@ -166,9 +168,15 @@ class SseParser {
 export class McpHttpClient implements McpClient {
   private streamStatus: McpNotificationStreamStatus | undefined;
   get notificationStreamStatus(): McpNotificationStreamStatus | undefined {
-    return this.streamStatus ? { ...this.streamStatus, ...(this.settings.recovery ? { reopenAttempts: this.streamReopenAttempts } : {}) } : undefined;
+    return this.streamStatus ? { ...this.streamStatus, ...(this.settings.recovery ? { reopenAttempts: this.streamReopenAttempts,
+      ...(this.streamLastEventId === undefined ? {} : { lastEventId: this.streamLastEventId }) } : {}) } : undefined;
   }
   private streamReopenAttempts = 0;
+  /** Last SSE event id from the owned GET stream; replayed as last-event-id on reopen. */
+  private streamLastEventId: string | undefined;
+  /** Server-supplied SSE retry delay, which wins over the local backoff table. */
+  private serverRetryMs: number | undefined;
+  private readonly answeredGetRequests = new Map<string | number, string>();
   private streamRetryTimer: NodeJS.Timeout | undefined;
   private streamController: AbortController | undefined;
   private streamDone: Promise<void> | undefined;
@@ -280,7 +288,10 @@ export class McpHttpClient implements McpClient {
     if (body !== undefined && Buffer.byteLength(body) > MCP_HTTP_MAX_FRAME_BYTES) throw new Error("MCP HTTP outbound message exceeds byte limit");
     const headers = this.headers();
     if (taskId !== undefined) headers.set('Mcp-Name', taskId);
-    if (method === "GET") { headers.set("Accept", "text/event-stream"); headers.delete("Content-Type"); }
+    if (method === "GET") {
+      headers.set("Accept", "text/event-stream"); headers.delete("Content-Type");
+      if (this.streamLastEventId !== undefined) headers.set("last-event-id", this.streamLastEventId);
+    }
     let response: Response;
     try { response = await fetch(this.url, { method, headers, body, signal, redirect: "manual" }); }
     catch (error) {
@@ -323,7 +334,7 @@ export class McpHttpClient implements McpClient {
     if (this.closed || !this.settings.recovery || !this.settings.notificationStream || this.streamRetryTimer) return;
     // Finite local adaptation: five GET-only reopens per client lifetime, with
     // 1/2/4/8/8s backoff. An active stream never resets this budget; no replay.
-    const delay = notificationReopenDelays[this.streamReopenAttempts];
+    const delay = this.serverRetryMs ?? notificationReopenDelays[this.streamReopenAttempts];
     if (delay === undefined) {
       this.streamStatus = { state: "failed", reason: "notification stream reopen exhausted after 5 attempts" };
       return;
@@ -342,6 +353,8 @@ export class McpHttpClient implements McpClient {
     let reopen = false;
     // A stream that carried a client request is not reopened: its reply may still be in flight.
     let carriedRequest = false;
+    // SSE resumption state: the last event id seen and a server-supplied retry delay.
+    let sawEventId = false, resumeToken: string | undefined, retryMs: number | undefined;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     let idle = false;
     const arm = () => {
@@ -378,7 +391,12 @@ export class McpHttpClient implements McpClient {
             replySignal => this.accepted(reply, replySignal))).catch(() => undefined);
         }
         return false;
-      }, true);
+      }, true, (field, value) => {
+        if (field === "id") { sawEventId = true; resumeToken = value === "" ? undefined : value; return; }
+        if (!/^\d+$/.test(value)) return;
+        const parsed = Number(value);
+        if (Number.isSafeInteger(parsed)) retryMs = Math.min(Math.max(parsed, 0), 30_000);
+      });
       const decoder = new TextDecoder("utf-8", { fatal: true });
       reader = response.body.getReader();
       for (;;) {
@@ -414,6 +432,9 @@ export class McpHttpClient implements McpClient {
       controller.abort();
       if (reader) { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
       if (this.streamController === controller) this.streamController = undefined;
+      // A bare SSE id field clears the token, so the next stream starts fresh.
+      if (sawEventId) this.streamLastEventId = resumeToken;
+      if (retryMs !== undefined) this.serverRetryMs = retryMs;
       if (reopen && !carriedRequest) this.scheduleNotificationReopen();
     }
   }
