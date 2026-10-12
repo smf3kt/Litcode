@@ -1038,6 +1038,36 @@ Suite 1119/1119; package 70 files with 0 upstream requests; identity 123 input /
 90 validation / 63 build, merged `06d67404…`. Detail and coordinates:
 ports/W27-url-elicitation.md.
 
+## Progress tokens and the tool-call idle deadline (2026-10-12)
+
+A tool call that asks for progress now carries one minted token in its `_meta`,
+and each `notifications/progress` naming that token is routed back to the call
+that owns it: it moves that call's idle deadline and is reported to a host
+observer, while the call's total deadline keeps running and ends it regardless.
+The idle deadline defaults to the request deadline, so nothing changes for a
+host that sets no `toolIdleTimeoutMs`. A notification naming an unknown, absent
+or malformed token is dropped rather than raised, because a late report must not
+count towards this runtime's transport-failure threshold, and a token over 128
+bytes or a message over 4096 bytes is inert before it reaches any handler.
+
+The recovered host asks the bundled client for exactly this
+(`resetTimeoutOnProgress:!0` with an idle timeout and a `maxTotalTimeout`, and an
+inert `onprogress`), and the client mints the token only for a call that passed a
+progress handler. This runtime's own transports had neither the token nor the
+per-call deadline, so both were ported; the port keeps the update instead of
+discarding it, so a host can render it. The recovered host's other half - a
+caller's `_meta.progressToken` as the destination for a streamed command, with a
+30-second heartbeat emitter - has no local surface and is recorded as such: this
+runtime's `monitor` streams its lines into a bounded queue read with
+`read_notifications`, so no call can be refused for lacking an output
+destination. Landing the package also exposed a defect it had to fix: the HTTP
+transport rebuilds its settings from a fixed field list, so a new option that is
+not written into that list is silently dropped.
+
+Suite 1127/1127; package 71 files with 0 upstream requests; identity 124 input /
+91 validation / 64 build, merged `068753af…`. Detail and coordinates:
+ports/W28-progress-tokens.md.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

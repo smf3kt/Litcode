@@ -11,6 +11,7 @@ import { z } from "zod";
 import { McpHttpClient, MCP_HTTP_LIMITS, validateMcpHttpUrl, validateMcpHeadersEnv } from "./mcp-http.js";
 import type { ToolContext, ToolDefinition } from "./tools.js";
 import { mcpReconnectDelay, isTransientMcpFailure } from "./mcp-retry.js";
+import { MCP_PROGRESS_LIMITS, McpProgressRegistry, type McpProgressUpdate } from "./mcp-progress.js";
 import { McpClientRequestHandler, MCP_CLIENT_REQUEST_LIMITS, type McpClientRequests } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions, McpSubscriptionPersistenceError, MCP_SUBSCRIPTION_LIMITS, MCP_MAX_RESOURCE_SUBSCRIPTIONS, MCP_MAX_RESOURCE_URI_BYTES, MCP_MAX_RESOURCE_NOTIFICATIONS, validateMcpResourceUri, type McpSubscriptionMethod } from "./mcp-subscriptions.js";
 import { driveMcpTask, parseTaskHandle } from './mcp-task.js';
@@ -64,6 +65,7 @@ export const MCP_PROTOCOL_LIMITS: readonly string[] = [
   "server features: tools only (resources, prompts, sampling, roots and logging are not implemented)",
   "server-initiated requests: refused with a JSON-RPC method-not-found error",
   `stdio init-result protocol version: only ${MCP_PROTOCOL_VERSION} is accepted; a missing or different version is rejected before notifications/initialized`,
+  ...MCP_PROGRESS_LIMITS,
 ];
 
 // ---------------------------------------------------------------------------
@@ -113,6 +115,14 @@ export type McpConnectContext = {
 
 export type McpConnectOptions = {
   requestTimeoutMs?: number;
+  /**
+   * Idle deadline for one tool call, reset by each progress notification that call reports; the
+   * total deadline stays requestTimeoutMs. Absent means the idle deadline equals the total, which
+   * is the recovered default (`getIdleTimeoutMs(config) || maxTotalTimeout`).
+   */
+  toolIdleTimeoutMs?: number;
+  /** Observation of an accepted progress notification; absent means progress is routed but not reported. */
+  onProgress?: (event: McpProgressUpdate & { server: string }) => void;
   clientName?: string;
   clientVersion?: string;
   catalog?: boolean;
@@ -135,7 +145,7 @@ export type McpConnectOptions = {
   /** Trusted in-memory host callbacks; absent by default and excluded from persisted config. */
   clientRequests?: McpClientRequests;
 };
-export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal">> & Pick<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal">;
+export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal" | "toolIdleTimeoutMs" | "onProgress">> & Pick<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal" | "toolIdleTimeoutMs" | "onProgress">;
 
 export type McpConnection = {
   tools: ToolDefinition[];
@@ -248,6 +258,10 @@ type PendingRequest = {
   timer: NodeJS.Timeout;
   signal?: AbortSignal;
   onAbort?: () => void;
+  /** Progress token this call minted, when it is one the client reports progress for. */
+  progressToken?: string;
+  /** Ceiling on a call whose idle deadline progress may move; absent when it cannot move. */
+  totalTimer?: NodeJS.Timeout;
 };
 
 // ---------------------------------------------------------------------------
@@ -395,6 +409,7 @@ class McpStdioClient implements McpClient {
   private readonly child: ChildProcess;
   private readonly pending = new Map<number, PendingRequest>();
   private readonly clientRequests: McpClientRequestHandler;
+  private readonly progress = new McpProgressRegistry("litcode-progress-");
   private nextId = 1;
   private stdoutBuffer: Buffer = Buffer.alloc(0);
   private stderrTail: Buffer = Buffer.alloc(0);
@@ -586,15 +601,28 @@ class McpStdioClient implements McpClient {
     }
     const id = this.nextId;
     this.nextId += 1;
+    // A tool call carries a progress token so the server can report liveness; progress moves the
+    // idle deadline of this call, never a total one.
+    const progressToken = method === "tools/call" && isRecord(params) ? this.progress.reserve() : undefined;
+    if (progressToken !== undefined && isRecord(params)) params._meta = { ...(isRecord(params._meta) ? params._meta : {}), progressToken };
     return new Promise<unknown>((resolve, reject) => {
       const pending: PendingRequest = {
         method,
         onResult,
         resolve,
         reject,
-        timer: setTimeout(() => this.expire(id, pending), this.settings.requestTimeoutMs),
+        // Only a call that may report progress has a movable deadline of its own; every other
+        // request keeps the connection's single deadline.
+        timer: setTimeout(() => this.expire(id, pending, this.deadlineFor(progressToken)),
+          this.deadlineFor(progressToken)),
         signal,
+        ...(progressToken === undefined ? {} : { progressToken }),
       };
+      if (progressToken !== undefined) {
+        this.progress.arm(progressToken, (update) => this.reportProgress(id, pending, update));
+        // Progress may move the idle deadline, so the call needs its own ceiling.
+        pending.totalTimer = setTimeout(() => this.expire(id, pending), this.settings.requestTimeoutMs);
+      }
       if (signal) {
         pending.onAbort = () => this.abortRequest(id, pending);
         if (signal.aborted) {
@@ -615,14 +643,36 @@ class McpStdioClient implements McpClient {
     });
   }
 
+  /** Idle deadline for a call: progress moves it, and it defaults to the total deadline. */
+  private idleTimeoutMs(): number {
+    return this.settings.toolIdleTimeoutMs ?? this.settings.requestTimeoutMs;
+  }
+
+  /** Only a call that carries a progress token gets a movable deadline of its own. */
+  private deadlineFor(progressToken: string | undefined): number {
+    return progressToken === undefined ? this.settings.requestTimeoutMs : this.idleTimeoutMs();
+  }
+
+  /**
+   * One accepted progress notification: the call is alive, so its idle deadline moves forward and
+   * the update is reported. The call's own total deadline is untouched.
+   */
+  private reportProgress(id: number, pending: PendingRequest, update: McpProgressUpdate): void {
+    clearTimeout(pending.timer);
+    pending.timer = setTimeout(() => this.expire(id, pending, this.idleTimeoutMs()), this.idleTimeoutMs());
+    try { this.settings.onProgress?.({ server: this.name, ...update }); } catch { /* the host owns its observer */ }
+  }
+
   private finishPending(pending: PendingRequest): void {
     clearTimeout(pending.timer);
+    if (pending.totalTimer !== undefined) clearTimeout(pending.totalTimer);
+    this.progress.settle(pending.progressToken);
     if (pending.signal && pending.onAbort) {
       pending.signal.removeEventListener("abort", pending.onAbort);
     }
   }
 
-  private expire(id: number, pending: PendingRequest): void {
+  private expire(id: number, pending: PendingRequest, limitMs = this.settings.requestTimeoutMs): void {
     if (!this.pending.delete(id)) return;
     this.finishPending(pending);
     this.trySend({
@@ -632,7 +682,7 @@ class McpStdioClient implements McpClient {
     });
     pending.reject(
       new Error(
-        `MCP request "${pending.method}" on server "${this.name}" timed out after ${this.settings.requestTimeoutMs}ms`,
+        `MCP request "${pending.method}" on server "${this.name}" timed out after ${limitMs}ms`,
       ),
     );
   }
@@ -728,6 +778,7 @@ class McpStdioClient implements McpClient {
       if (!Object.hasOwn(message, "id") && method === "notifications/cancelled") {
         this.clientRequests.cancelled(message.params);
       }
+      if (!Object.hasOwn(message, "id") && method === "notifications/progress") this.progress.dispatch(message.params);
       if (!Object.hasOwn(message, "id") && method === "notifications/elicitation/complete") this.clientRequests.elicitationComplete(message.params);
       if (!Object.hasOwn(message, "id") && method === "notifications/resources/updated") this.resourceSubscriptions?.updated(message.params);
       if (!Object.hasOwn(message, "id") && method === "notifications/message") this.logging?.message(message.params);
@@ -1546,6 +1597,8 @@ export async function connectMcpServers(
   }
   const settings: McpConnectSettings = {
     requestTimeoutMs: positiveLimit(options.requestTimeoutMs) ?? MCP_REQUEST_TIMEOUT_MS,
+    ...(options.toolIdleTimeoutMs === undefined ? {} : { toolIdleTimeoutMs: positiveLimit(options.toolIdleTimeoutMs) }),
+    ...(options.onProgress === undefined ? {} : { onProgress: options.onProgress }),
     clientName: options.clientName ?? MCP_CLIENT_NAME,
     clientVersion: options.clientVersion ?? MCP_CLIENT_VERSION,
     catalog: options.catalog ?? false,

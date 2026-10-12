@@ -26,6 +26,7 @@ import { hooksSettingsSchema, type HooksConfig, type HookRunOptions } from './ho
 import { AsyncHookRegistry } from './async-hooks.js';
 import { validateHookTerminalSequence } from './hook-terminal.js';
 import { connectMcpServers, mcpServersSchema, type McpClientRequests, type McpConnection, type McpServerConfig } from './mcp.js';
+import type { McpProgressUpdate } from './mcp-progress.js';
 import { commitMcpTask, savedMcpTasks, persistsMcpTasks } from './mcp-session-tasks.js';
 import { boundToolContent } from './tool-output.js';
 import { createMcpHostRequests } from './mcp-host.js';
@@ -344,6 +345,8 @@ export type RuntimeOptions = {
   scheduler?: Pick<LocalSchedulerOptions, 'now' | 'timer' | 'tickIntervalMs'>;
   /** Rebuild trusted callbacks for each workspace; callbacks are never journaled. */
   mcpClientRequests?: (config: SessionConfig) => McpClientRequests;
+  /** Host-owned observer for progress reported by a server during its own tool call. */
+  mcpProgress?: (config: SessionConfig) => (event: McpProgressUpdate & { server: string }) => void;
 };
 
 export type Runtime = {
@@ -460,6 +463,7 @@ export async function createRuntime(
       catch { taskJournalFailed = true; throw new Error('MCP task acknowledgement journal commit failed; reconcile journal before continuing'); }
     } } : {}),
     deferred: config.features?.mcpDeferred === true,
+    ...(options.mcpProgress ? { onProgress: options.mcpProgress(structuredClone(config)) } : {}),
     ...(clientRequests ? { clientRequests } : {}) });
 
   type Resources = { background?: BackgroundRegistry; scheduler?: LocalScheduler; agents?: AgentRegistry; workflows?: WorkflowRegistry; hooks?: AsyncHookRegistry;
