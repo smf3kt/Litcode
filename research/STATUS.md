@@ -1068,6 +1068,31 @@ Suite 1127/1127; package 71 files with 0 upstream requests; identity 124 input /
 91 validation / 64 build, merged `068753af…`. Detail and coordinates:
 ports/W28-progress-tokens.md.
 
+## Lost-event replay and subscription reconciliation, disposed (2026-10-12)
+
+The one named behavioural gap left without a recorded decision was lost-event
+replay for resource subscriptions. It now has one. A resource update in the
+recovered protocol is a bare notification carrying a URI and nothing else, and
+the recovered client's answer to a dropped stream is to re-listen: the re-listen
+response is a change report (three list-changed flags plus the server's own
+subscription set) and the client re-runs the refetch for each list the server
+reports as changed. Nothing in the sample buffers, re-sends, or asks a server to
+re-announce a single update, and the specification defines no such request.
+
+So an update lost while the stream is down is stale-known in this runtime, and
+the resume paths it does ship are the recovered equivalents it can honour: the
+event-id GET stream, a catalog refresh before a replacement is adopted, and the
+immediate refetch on the notification itself. The second half of the same
+response - a server declaring which URIs it considers subscribed - is disposed
+as no transport basis, and deliberately not followed even where it could be: a
+journaled restart makes the client's own acknowledged desire authoritative and
+requires a candidate transport to satisfy it before adoption, so a server cannot
+widen or shrink the set by asserting it.
+
+No product source, test, or build input changed, so the suite and package
+identity above still hold. Detail and coordinates: ports/remaining-dispositions.md
+items 7 and 8.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

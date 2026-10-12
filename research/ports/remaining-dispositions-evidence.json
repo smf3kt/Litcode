@@ -88,6 +88,36 @@
             50368,
             50405
           ]
+        },
+        {
+          "module": "chunk-sb190ksj.js",
+          "sha256": "0a1c2aa1424babd95eeec371f67c875b6382db0c891b3b3e90f710f2102b16df",
+          "symbol": "reopen policy message",
+          "kind": "the stream re-listens after a remote drop",
+          "range": [
+            50247,
+            50310
+          ]
+        },
+        {
+          "module": "chunk-2rxk8n7w.js",
+          "sha256": "251b9444642e923022862625925ee3fe6c749f7fbdd79f7524fcea361f0a275a",
+          "symbol": "jr",
+          "kind": "re-listen change report: three list-changed flags plus the server-declared resourceSubscriptions set",
+          "range": [
+            5632,
+            5815
+          ]
+        },
+        {
+          "module": "chunk-2rxk8n7w.js",
+          "sha256": "251b9444642e923022862625925ee3fe6c749f7fbdd79f7524fcea361f0a275a",
+          "symbol": "Bs / Ws / Ys",
+          "kind": "subscriptions/listen request, its echo and notifications/subscriptions/acknowledged",
+          "range": [
+            5815,
+            5983
+          ]
         }
       ],
       "shipped": "replacement refreshes the private catalog before adoption, and an immediate coalesced background refetch runs on the notification itself (ports/W05-list-changed-refetch.md)",
@@ -175,6 +205,62 @@
       ],
       "shipped": "reproducible ledger generation, never an estimated share",
       "reason": "reviewing the uncited set is unbounded work rather than an item with a definition of done"
+    },
+    {
+      "item": "lost resource-update replay",
+      "decision": "no protocol or source basis",
+      "evidence": [
+        {
+          "module": "chunk-2rxk8n7w.js",
+          "sha256": "251b9444642e923022862625925ee3fe6c749f7fbdd79f7524fcea361f0a275a",
+          "symbol": "ea",
+          "kind": "a resource update is a bare notification carrying only a uri, with no id or sequence to resume from",
+          "range": [
+            6059,
+            6126
+          ]
+        },
+        {
+          "module": "chunk-sb190ksj.js",
+          "sha256": "0a1c2aa1424babd95eeec371f67c875b6382db0c891b3b3e90f710f2102b16df",
+          "symbol": "ka",
+          "kind": "the re-listen answer reports list-level change flags, not the updates that were missed",
+          "range": [
+            48170,
+            48515
+          ]
+        }
+      ],
+      "shipped": "the opted-in GET stream resumes from the last observed event id with the server retry value (ports/W05-get-resume.md), a replacement refreshes the private catalog before adoption, and list_changed refetches immediately and marks the server dirty (ports/W05-list-changed-refetch.md); a resource whose update was lost is reported stale-known, never current",
+      "reason": "the specification defines no request that re-announces an individual resource update, and the recovered client does not buffer or re-send one either"
+    },
+    {
+      "item": "server-reported subscription reconciliation",
+      "decision": "no transport basis",
+      "evidence": [
+        {
+          "module": "chunk-2rxk8n7w.js",
+          "sha256": "251b9444642e923022862625925ee3fe6c749f7fbdd79f7524fcea361f0a275a",
+          "symbol": "jr.resourceSubscriptions",
+          "kind": "the server declares which URIs it considers subscribed",
+          "range": [
+            5632,
+            5815
+          ]
+        },
+        {
+          "module": "chunk-sb190ksj.js",
+          "sha256": "0a1c2aa1424babd95eeec371f67c875b6382db0c891b3b3e90f710f2102b16df",
+          "symbol": "re-listen caller",
+          "kind": "the loop adopts the server-declared set",
+          "range": [
+            50368,
+            50440
+          ]
+        }
+      ],
+      "shipped": "a journaled restart resyncs from the client own acknowledged desire and a candidate transport must satisfy it before adoption, so a server cannot widen or shrink the set by asserting it (ports/W05-persistence.md)",
+      "reason": "this runtime implements the GET and POST-carried notification streams, not subscriptions/listen, so no server reports a subscription set to it"
     }
   ],
   "logs": [

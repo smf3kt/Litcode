@@ -1254,6 +1254,7 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
@@ -30131,6 +30132,7 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
