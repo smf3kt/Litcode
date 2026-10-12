@@ -249,15 +249,108 @@
     },
     "residualAfterThreeSlices": 2181
   },
+  "sliceFour": {
+    "scope": "uncited modules ranked 71 to 95 by size",
+    "bytes": 1376177,
+    "rows": 25,
+    "byteRange": [
+      49498,
+      61473
+    ],
+    "rankingNote": "taken against the uncited list, not all 2365 modules; an earlier attempt ranked all modules and re-covered 20 of slice three's rows",
+    "composition": {
+      "vendoredLibraries": 6,
+      "hostedOrExternalSurfaces": 7,
+      "oauthClientsExcludedByRule": 2,
+      "backgroundOrDaemonFamily": 2,
+      "recoveredUi": 2,
+      "inScopeCandidates": 3,
+      "adaptedOrTooling": 3
+    },
+    "inScopeCandidates": [
+      "chunk-fmjcnmvh.js (auto-mode environment gathering and its own classifier)",
+      "chunk-zha4hbcb.js (foreign agent-config import and translation)",
+      "chunk-9nek920x.js (plugin marketplace CLI; this runtime has plugins but no marketplace client)"
+    ]
+  },
+  "sliceThreeCandidatesDisposed": {
+    "chunk-nvrxq9nn.js": {
+      "sha256": "c3ac807c5931807f85455223fccc717deac2148575bc8de9e73e039a6ec4ae8b",
+      "bytes": 87530,
+      "reading": "ccr-agent-proxy cloud-sandbox egress proxy",
+      "disposition": "external, with the cloud product backend",
+      "basis": {
+        "cloudIssuedCredentials": [
+          "AGENT_PROXY_URL",
+          "AGENT_PROXY_AUTH_TOKEN"
+        ],
+        "containerSessionToken": "/run/ccr/session_token",
+        "relayStatusRoute": "${port}/__agentproxy/status",
+        "localProxyTransport": "none; the only src/ matches for proxy are new Proxy in src/runtime.ts and a header-name filter in src/mcp-http.ts",
+        "mechanismSet": [
+          "plist",
+          "hklm",
+          "file"
+        ],
+        "noProxyTablesHaveNoLocalConsumer": true
+      }
+    },
+    "chunk-gyf58rwf.js": {
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "bytes": 82836,
+      "sliceThreeReading": "redaction and markdown link rewriting",
+      "correctedReading": "credential-pattern table plus a path link-chain resolver; two subsystems in one module",
+      "credentialSide": {
+        "providerNameLiterals": 55,
+        "literalSpan": [
+          24284,
+          79325
+        ],
+        "severities": [
+          "low",
+          "high"
+        ],
+        "categories": [
+          "masked-value-rest",
+          "sensitive-assign-escaped",
+          "sensitive-assign"
+        ],
+        "sampleOffsets": {
+          "anthropic-api-key": 26093,
+          "github-pat": 26940,
+          "SendGrid": 47460
+        },
+        "gap": "src/ has no content credential scan; the sixteen files matching secret or credential are about settings and MCP headers"
+      },
+      "resolverSide": {
+        "chainWalkSync": 63574,
+        "chainWalkAsync": 63768,
+        "realpathFallback": 68463,
+        "launchAncestryCommonRoot": 68107,
+        "eloopFactory": 61668,
+        "networkPathErrorName": 68860,
+        "nonCanonicalTextReject": 61366,
+        "unreadableAncestryVerdict": 61780,
+        "syncEntry": 68898,
+        "asyncEntry": 69060,
+        "sentinels": {
+          "unverified-ancestry": "Lh",
+          "opaque-link-text": "C8e"
+        },
+        "gap": "src/ checks a resolved path once (src/media.ts), rejects symlinks (src/plugins.ts) and rejects a symlinked session directory (src/sessions.ts); none caps chain length, refuses a chain that surfaces a network path, or verifies the identity of the file it then reads"
+      },
+      "nextPackage": "the link-chain resolver; the credential table is recorded as a second, unscheduled candidate"
+    }
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
   },
   "outputs": {
-    "ledgerSha256": "28b689886252933380cde3c66431c5bf44932999d7441b16d52224cc9cf943f6",
-    "summarySha256": "72272a61fdcfb34c1c9cb1f1063a622ff374c507df7dee2b36b0da9055b735c2"
+    "ledgerSha256": "e3ba2791b6a88793b6d2dfcd747604f579f715c0e53e3f40e19a77a77b1dc924",
+    "summarySha256": "ea3b978c1fd2403165802b2a9d5b6fa5aebe9eb30385af7597417fac52de6447"
   },
-  "residual": "2225 uncited modules carry no marker; removing that number needs per-module reading, not more rules",
+  "residual": "2225 uncited modules carry no marker, unchanged by slice four because this file is not a citation source for the ledger; removing the number needs per-module reading, not more rules",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
   "paidCalls": 0
 }
