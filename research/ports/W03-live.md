@@ -44,6 +44,10 @@ route path serves **GET only** - POST, PUT and PATCH all receive the gateway's
 not-found message naming the model routes - so route switching is not a
 management write at all: what remains on the routing side is observing a session's
 route and the model-selection path that sets it. Credential issuance or rotation
-has no advertised route and remains unverified. Every probe was a read or an
-empty-bodied method probe that could not name a target, so nothing on the running
-gateway was changed. Detail: [W03-management-discovery-evidence.json](W03-management-discovery-evidence.json).
+is settled by a bounded negative search rather than left open: eight plausible
+management paths all answer 404 with the message that names the model routes, and
+the advertised list holds exactly three management routes, none of which issues or
+rotates a credential - so this gateway serves no credential surface at all, and
+rotation is outside the gateway rather than an unvisited corner of it. Every probe
+was a read or an empty-bodied method probe that could not name a target, so nothing
+on the running gateway was changed. Detail: [W03-management-discovery-evidence.json](W03-management-discovery-evidence.json).
