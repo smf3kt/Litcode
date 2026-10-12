@@ -227,7 +227,30 @@
       "chunk-9hhsx4g6.js (turn handoff context carrying)",
       "chunk-78w3rfp3.js (worktree/fleet surface)"
     ],
-    "alreadyDecidedWithCoordinate": "chunk-zjewzgfh.js shell complexity gate (too-complex over heredoc_redirect and other node types)",
+    "shellReadingAnalyser": {
+      "module": "chunk-zjewzgfh.js",
+      "sha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "bytes": 93529,
+      "ranges": {
+        "readingsBuilderPyr": [
+          7547,
+          7897
+        ],
+        "classifierE6Entry": [
+          7897,
+          7910
+        ],
+        "firstDifferentialVerdict": 8040,
+        "lastDifferentialVerdict": 64507,
+        "differentialVerdicts": 66,
+        "unmodelledNodeVerdictB": [
+          73416,
+          74572
+        ]
+      },
+      "notTheSameAs": "chunk-m00pavz3.js (e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62), the argument splitter already decided not ported",
+      "gap": "no shell-reading enumeration or ambiguous-command refusal exists in src/"
+    },
     "residualAfterThreeSlices": 2181
   },
   "generator": {

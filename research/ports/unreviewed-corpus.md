@@ -114,7 +114,7 @@ The same method on ranks 46-70 of the uncited list (2,052,421 bytes). Twenty of 
 | Module | Bytes | What the literals show | Disposition |
 | --- | --- | --- | --- |
 | `chunk-8f5kkssn.js` | 93995 | `Prompt is too long`, build constants | build metadata |
-| `chunk-zjewzgfh.js` | 93529 | `too-complex",reason:`, `nodeType:"heredoc_redirect"` | **in scope, already decided**: the shell-complexity gate of the recovered bash parser, not ported per `remaining-dispositions.md`; this slice supplies the verified coordinate |
+| `chunk-zjewzgfh.js` | 93529 | `too-complex",reason:`, `nodeType:"heredoc_redirect"`, `readings:s,exhaustive:` | **in scope**: the shell-reading analyser behind permission matching (see below), a different module from the argument splitter in `chunk-m00pavz3.js` |
 | `chunk-qh0w98pn.js` | 93183 | build constants | build metadata |
 | `chunk-78w3rfp3.js` | 91598 | `,what:"Worktree not removed."`, `tengu_bg_respawn_no_transcript` | product worktree/fleet surface, candidate |
 | `chunk-0gtwhfja.js` | 91257 | `artifact_live_subscribe`, `stop_latched` | hosted artifact surface, external |
@@ -139,7 +139,15 @@ The same method on ranks 46-70 of the uncited list (2,052,421 bytes). Twenty of 
 | `chunk-fwvv1b55.js` | 68187 | `tengu_setup_github_actions_failed`, `confirm:yes` | CI setup flow and recovered UI |
 | `chunk-pr56pwvs.js` | 67480 | `LinkedMap got modified during iteration.` | vendored library |
 
-Slice three's one new in-scope candidate is the cloud metadata-address table in `chunk-nvrxq9nn.js`, and it also pins the exact coordinate of the shell-complexity gate this ledger had decided not to port. The remainder after three slices is **2181** uncited modules with no marker.
+Slice three's most significant row is `chunk-zjewzgfh.js` (93,529 bytes, SHA-256 `83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3`). It is not the argument splitter this ledger already decided not to port - that lives in `chunk-m00pavz3.js` - and the two are easy to confuse because both are shell-grammar code. This module is the shell-reading analyser behind permission matching:
+
+- `function pyr(e,t)` [7547, 7897) builds the set of readings: every one of the `2**e` combinations when at most three positions vary, marked `exhaustive:!0`, and otherwise a bounded set (all-false, all-true, then one-hot readings up to eight) marked `exhaustive:!1`. A permission check that matches one literal reading is unsound when the shell could read the same text another way, so this is the part that enumerates the alternatives.
+- `function E6(e,t,{plainUnquotedHeredocs:r=!1,declarationPrefix:s}={})`, entering at [7897, 7910), classifies a command before that comparison as `{kind:"too-complex",reason,differential:!0}` for a lone surrogate [7988, ...), control characters, Unicode whitespace, backslash-escaped whitespace, zsh `~[` dynamic directory syntax, zsh `=cmd` equals expansion and zsh `<N-M>` numeric-range globs. Sixty-six `differential:!0` verdicts appear between 8040 and 64507, so the rule machinery, not just a preamble, is what fills this module.
+- `function b(e)` [73416, 74572) returns the same kind for a shell node it does not model, naming the node type in `` `${t} in this command can't be checked before it runs` ``, and for a `${` followed by non-ASCII text it says that the text can't be checked before it runs.
+
+Nothing in `src/` enumerates shell readings or refuses an ambiguous command, so this is an in-scope gap rather than a decided item, and CURRENT carries it as the next candidate work package.
+
+Slice three's other new in-scope candidate is the cloud metadata-address table in `chunk-nvrxq9nn.js`. The remainder after three slices is **2181** uncited modules with no marker.
 
 ## Residual and next pass
 
