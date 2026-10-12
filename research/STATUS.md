@@ -566,6 +566,10 @@ Explicit pinned/managed standard task mode negotiates2025-11-25, checks server c
 
 Standard task plus notification-stream gates now dispatch correlated roots/form requests from GET through existing ownership/validation/deadlines and bounded POST replies. One combined ownership/cancellation/close regression and actual compiled CLI exercise cover the finite chain; provenance and final results in [ports/W05-get-task-inputs.md](ports/W05-get-task-inputs.md). Historical notification-only and standard-task distribution records retain their original scopes.
 
+## Durable HTTP task recovery (2026-10-12)
+
+Pinned persistence/recovery/standard-task gates record creation and bounded result under an owned session journal. Explicit local handle retrieval opens a fresh authenticated HTTP session without replay, cached results survive crashes; missing/expired handles remain unresolved, retrieval abort preserves remote work. Compiled SIGKILL/continue/retrieve/cache chain and three regression groups cover the finite contract. Source rewrite rationale and final identity in [ports/W05-durable-tasks.md](ports/W05-durable-tasks.md).
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

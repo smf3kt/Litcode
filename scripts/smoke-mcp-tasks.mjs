@@ -10,6 +10,9 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const compiled = process.argv.includes('--compiled');
 const standard = process.argv.includes('--standard');
 const getInputs = process.argv.includes('--get');
+const durable = process.argv.includes('--durable');
+if (durable && !standard) throw new Error('--durable requires --standard');
+let savedTaskId;
 if (getInputs && !standard) throw new Error('--get requires --standard');
 let getStream, gets = 0, getClosed = 0;
 
@@ -36,13 +39,16 @@ const server = http.createServer((req, res) => {
     const body = JSON.parse(Buffer.concat(chunks).toString() || '{}');
     if (req.url === '/v1/messages') {
       model.push(body); const tool = model.filter(item => item.messages[0]?.content === 'run owned task').length === 1 && !body.messages.some(m => Array.isArray(m.content) && m.content.some(c => c.type === 'tool_result'));
-      const block = tool ? { type: 'tool_use', id: 'task-call', name: 'mcp__srv__run', input: { mode: 'complete' } } : { type: 'text', text: 'task done' };
+      const recovering = body.messages.some(m => typeof m.content === 'string' && m.content.includes('recover owned task'));
+      const recoveryTool = recovering && body.messages.at(-1)?.role === 'user' && typeof body.messages.at(-1)?.content === 'string';
+      const block = recoveryTool ? { type: 'tool_use', id: 'recover-call', name: 'mcp_task_recover', input: { server: 'srv', taskId: savedTaskId } }
+        : tool ? { type: 'tool_use', id: 'task-call', name: 'mcp__srv__run', input: { mode: durable ? 'cancel' : 'complete' } } : { type: 'text', text: 'task done' };
       const events = [
         { type: 'message_start', message: { id: 'owned', type: 'message', role: 'assistant', model: body.model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 1, output_tokens: 0 } } },
         { type: 'content_block_start', index: 0, content_block: block.type === 'text' ? { type: 'text', text: '' } : block },
         { type: 'content_block_delta', index: 0, delta: block.type === 'text' ? { type: 'text_delta', text: block.text } : { type: 'input_json_delta', partial_json: JSON.stringify(block.input) } },
         { type: 'content_block_stop', index: 0 },
-        { type: 'message_delta', delta: { stop_reason: tool ? 'tool_use' : 'end_turn', stop_sequence: null }, usage: { output_tokens: 1 } }, { type: 'message_stop' } ];
+        { type: 'message_delta', delta: { stop_reason: block.type === 'tool_use' ? 'tool_use' : 'end_turn', stop_sequence: null }, usage: { output_tokens: 1 } }, { type: 'message_stop' } ];
       res.writeHead(200, { 'content-type': 'text/event-stream' }); res.end(events.map(e => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`).join('')); return;
     }
     calls.push({ body, taskHeader: req.headers['mcp-name'] });
@@ -121,25 +127,46 @@ else if(m.method==='tasks/result')reply(m.id,{content:[{type:'text',text:'STDIO_
   const outstanding = invoke(lifetime, 'cancel'); const checked = assert.rejects(outstanding, /cancel/i);
   await new Promise(resolve => setTimeout(resolve, 25)); await lifetime.close(); await checked;
   fs.mkdirSync(path.join(workspace, '.harness')); fs.mkdirSync(path.join(workspace, 'user'));
-  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true, mcpNotificationStream: getInputs } : { mcpTasks: true }), mcpDynamic: false } }));
-  const run = async resume => {
+  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true, mcpNotificationStream: getInputs, ...(durable ? { mcpPersistence: true, mcpRecovery: true } : {}) } : { mcpTasks: true }), mcpDynamic: false } }));
+  const run = async (resume, continuing = false) => {
     const env = { ...process.env }; for (const name of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(name)) delete env[name];
     Object.assign(env, { LLM_API_KEY: 'OWNED_TASK_KEY', LLM_MODEL: 'fixture/task', LLM_BASE_URL: url, LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false' });
-    const args = ['--workspace', workspace, ...(resume ? ['--resume', resume] : ['--user-dir', path.join(workspace, 'user')]), '--output-format', 'json', resume ? 'continue owned task' : 'run owned task'];
+    const args = ['--workspace', workspace, ...(resume ? ['--resume', resume, ...(durable ? ['--recover-lock'] : [])] : ['--user-dir', path.join(workspace, 'user')]), '--output-format', 'json', ...(continuing ? ['--continue'] : [resume ? (durable ? 'recover owned task' : 'continue owned task') : 'run owned task'])];
     const child = spawn(process.execPath, [...(compiled ? ['dist/cli.js'] : ['--import', 'tsx', 'src/cli.ts']), ...args], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] }); children.add(child);
     let out = '', err = ''; child.stdout.on('data', c => { out += c; assert.ok(out.length < 100000); }); child.stderr.on('data', c => { err = (err + c).slice(-100000); });
+    let killedSession;
+    const watcher = durable && !resume ? setInterval(() => {
+      const directory = path.join(workspace, '.agent');
+      if (!fs.existsSync(directory)) return;
+      for (const name of fs.readdirSync(directory).filter(n => n.endsWith('.jsonl'))) {
+        const events = fs.readFileSync(path.join(directory, name), 'utf8').trim().split('\n').flatMap(row => { try { return [JSON.parse(row)]; } catch { return []; } });
+        const saved = events.find(e => e.kind === 'mcp_task' && !e.resolved);
+        if (saved) { savedTaskId = saved.taskId; killedSession = name.slice(0, -6); child.kill('SIGKILL'); break; }
+      }
+    }, 5) : undefined;
     const timer = setTimeout(() => child.kill('SIGKILL'), 15000);
-    try { const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); }); assert.equal(code, 0, err); return JSON.parse(out); } finally { clearTimeout(timer); children.delete(child); }
+    try { const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); }); if (killedSession) return { session_id: killedSession, reason: 'killed' }; assert.equal(code, 0, err); return JSON.parse(out); } finally { clearTimeout(timer); if (watcher) clearInterval(watcher); children.delete(child); }
   };
-  const first = await run(); assert.equal(first.reason, 'end_turn');
+  const first = await run(); assert.equal(first.reason, durable ? 'killed' : 'end_turn');
+  if (durable) { assert.ok(savedTaskId); tasks.get(savedTaskId).mode = 'complete'; }
   const journalPath = path.join(workspace, '.agent', first.session_id + '.jsonl'); const journal = fs.readFileSync(journalPath, 'utf8');
-  assert.match(journal, /OWNED_TASK_RESULT/); assert.doesNotMatch(journal, /OWNED_TASK_KEY/);
+  if (!durable) assert.match(journal, /OWNED_TASK_RESULT/); else assert.match(journal, /mcp_task/); assert.doesNotMatch(journal, /OWNED_TASK_KEY/);
   assert.equal(JSON.parse(journal.split('\n')[0]).config.features[standard ? 'mcpStandardTasks' : 'mcpTasks'], true);
   const callsBefore = calls.filter(c => c.body.method === 'tools/call').length;
   fs.writeFileSync(path.join(workspace, '.harness/settings.json'), '{ malformed current settings');
+  if (durable) { const continued = await run(first.session_id, true); assert.equal(continued.reason, 'end_turn'); }
   const resumed = await run(first.session_id); assert.equal(resumed.session_id, first.session_id);
   assert.equal(calls.filter(c => c.body.method === 'tools/call').length, callsBefore);
   assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(n => n.endsWith('.lock')), false); assert.deepEqual(failures, []);
-  if (getInputs) { assert.equal(gets, 4); assert.equal(getClosed, gets); }
-  console.log(JSON.stringify({ tasks: 'passed', standard, ...(getInputs ? { getInputs: true, gets, getClosed } : {}), compiledCLI: compiled, modelRequests: model.length, cancelled: standard ? 2 : 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
+  if (durable) {
+    const recovered = fs.readFileSync(journalPath, 'utf8');
+    assert.match(recovered, /OWNED_TASK_RESULT/); assert.match(recovered, /"resolved":true/);
+    assert.doesNotMatch(recovered, /OWNED_TASK_KEY/);
+    const remoteBefore = calls.filter(c => ['tasks/get', 'tasks/result'].includes(c.body.method)).length;
+    const cached = await run(first.session_id); assert.equal(cached.reason, 'end_turn');
+    assert.equal(calls.filter(c => ['tasks/get', 'tasks/result'].includes(c.body.method)).length, remoteBefore);
+    assert.equal(calls.filter(c => c.body.method === 'tools/call').length, callsBefore);
+  }
+  if (getInputs) { assert.equal(gets, durable ? 6 : 4); assert.equal(getClosed, gets); }
+  console.log(JSON.stringify({ tasks: 'passed', standard, ...(durable ? { durable: true, sigkill: true, cachedResult: true } : {}), ...(getInputs ? { getInputs: true, gets, getClosed } : {}), compiledCLI: compiled, modelRequests: model.length, cancelled: standard ? 2 : 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
 } finally { for (const child of children) child.kill('SIGKILL'); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); fs.rmSync(workspace, { recursive: true, force: true }); unregister?.(); }

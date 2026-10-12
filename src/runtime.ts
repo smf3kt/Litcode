@@ -26,6 +26,8 @@ import { hooksSettingsSchema, type HooksConfig, type HookRunOptions } from './ho
 import { AsyncHookRegistry } from './async-hooks.js';
 import { validateHookTerminalSequence } from './hook-terminal.js';
 import { connectMcpServers, mcpServersSchema, type McpClientRequests, type McpConnection, type McpServerConfig } from './mcp.js';
+import { commitMcpTask, savedMcpTasks, persistsMcpTasks } from './mcp-session-tasks.js';
+import { boundToolContent } from './tool-output.js';
 import { createMcpHostRequests } from './mcp-host.js';
 import { createLspTools, lspConfigSchema, type LspConfig } from './lsp.js';
 import { createWebTools } from './web.js';
@@ -388,7 +390,11 @@ export async function createRuntime(
 ): Promise<Runtime> {
   const persistsSubscriptions = (current: SessionConfig): boolean => current.features?.mcpPersistence === true &&
     current.features.mcpRecovery === true && current.features.mcpSubscriptions === true;
-  const persistence = persistsSubscriptions(config);
+  const subscriptionPersistence = persistsSubscriptions(config);
+  const taskPersistence = persistsMcpTasks({ config });
+  const persistence = subscriptionPersistence || taskPersistence;
+  let taskJournalFailed = false;
+  const recoveringTasks = new Set<string>();
   // Tool schemas are pinned after construction; connected and host settings must still match.
   const connectionConfigDigest = (current: SessionConfig): string => {
     const { tools: _tools, ...settings } = current;
@@ -396,8 +402,8 @@ export async function createRuntime(
   };
   const initialConfigDigest = connectionConfigDigest(config);
   const base = createTools();
-  const journalOwnedMcp = new Set(['mcp_resource_subscribe', 'mcp_resource_unsubscribe', 'mcp_resource_notifications']);
-  const scopedMcpTool = (tool: ToolDefinition): ToolDefinition => persistence && journalOwnedMcp.has(tool.schema.name) ? {
+  const journalOwnedMcp = new Set(['mcp_resource_subscribe', 'mcp_resource_unsubscribe', 'mcp_resource_notifications', 'mcp_task_recover']);
+  const scopedMcpTool = (tool: ToolDefinition): ToolDefinition => persistence && (journalOwnedMcp.has(tool.schema.name) || taskPersistence) ? {
     ...tool, forChild: () => ({ readOnly: tool.readOnly, schema: tool.schema, async execute() {
       throw new Error('MCP subscription state belongs to the bound parent journal; child operations require an independent connection');
     } }),
@@ -443,7 +449,13 @@ export async function createRuntime(
     logging: config.features?.mcpLogging === true,
     notificationStream: config.features?.mcpNotificationStream === true,
     recovery: config.features?.mcpRecovery === true,
-    persistence, tasks: config.features?.mcpTasks === true, standardTasks: config.features?.mcpStandardTasks === true,
+    persistence: subscriptionPersistence, tasks: config.features?.mcpTasks === true, standardTasks: config.features?.mcpStandardTasks === true,
+    ...(taskPersistence ? { taskJournal: (server, tool, task, resolved, result, isError) => {
+      bindingController.signal.throwIfAborted();
+      if (!alreadyBound || !boundSession || taskJournalFailed) throw new Error('MCP task requires a healthy owning journal');
+      try { commitMcpTask(boundSession, server, tool, task, resolved, result, isError); }
+      catch { taskJournalFailed = true; throw new Error('MCP task acknowledgement journal commit failed; reconcile journal before continuing'); }
+    } } : {}),
     deferred: config.features?.mcpDeferred === true,
     ...(clientRequests ? { clientRequests } : {}) });
 
@@ -687,6 +699,42 @@ export async function createRuntime(
       });
     }
     tools.push(...mcpTools);
+    if (persistsMcpTasks({ config: current })) tools.push({
+      readOnly: false,
+      schema: { name: 'mcp_task_recover', description: 'List saved standard HTTP tasks in this session or explicitly retrieve a saved task without repeating its original tool call. Remote retention and access may have expired. Recovery cancellation stops waiting, preserving the remote task.',
+        input_schema: { type: 'object', properties: { server: { type: 'string' }, taskId: { type: 'string' } }, additionalProperties: false } },
+      forChild: () => ({ readOnly: false, schema: { name: 'mcp_task_recover', description: 'Requires an independently owned session journal.', input_schema: { type: 'object' } }, async execute() { throw new Error('MCP task recovery requires an independently owned child journal'); } }),
+      async execute(input, context) {
+        const args = z.object({ server: z.string().optional(), taskId: z.string().optional() }).strict().parse(input);
+        if (Boolean(args.server) !== Boolean(args.taskId)) throw new Error('MCP recovery requires both server and taskId or neither');
+        const saved = savedMcpTasks(boundSession!);
+        if (!args.taskId) return boundToolContent(JSON.stringify({ tasks: saved.map(({ server, taskId, tool, createdAt, ttl, resolved }) => ({ server, taskId, tool, createdAt, ttl, resolved })) }), context.maxOutputBytes) as string;
+        const task = saved.find(item => item.server === args.server && item.taskId === args.taskId);
+        if (!task) throw new Error('MCP recovery requires a saved task in this session journal');
+        if (task.resolved) {
+          const text = boundToolContent(task.result!, context.maxOutputBytes) as string;
+          if (task.isError === true) throw new Error(text);
+          return text;
+        }
+        if (!mcp.resumeTask) throw new Error('MCP task recovery transport is unavailable');
+        const handle = { taskId: task.taskId, status: 'working' as const, createdAt: task.createdAt, lastUpdatedAt: task.createdAt, ttl: task.ttl };
+        const key = JSON.stringify([task.server, task.taskId]);
+        if (recoveringTasks.has(key)) throw new Error('MCP task recovery already active');
+        recoveringTasks.add(key);
+        try {
+          const result = await mcp.resumeTask(task.server, handle, context.signal);
+          bindingController.signal.throwIfAborted();
+          checkScope(owner, scope);
+          if (boundSession?.id !== owner || taskJournalFailed) throw new Error('MCP task recovery lost journal ownership');
+          const text = boundToolContent(JSON.stringify(result), Math.min(24000, context.maxOutputBytes)) as string;
+          // Save the bounded result before resolving, so a crash before tool_result retains it.
+          try { commitMcpTask(boundSession!, task.server, task.tool, handle, true, text, result.isError); }
+          catch { taskJournalFailed = true; throw new Error('MCP task result journal commit failed; reconcile journal before continuing'); }
+          if (result.isError) throw new Error(text);
+          return boundToolContent(text, context.maxOutputBytes) as string;
+        } finally { recoveringTasks.delete(key); }
+      },
+    });
     const mcpNames = Object.keys(current.mcpServers ?? {});
     if (mcpNames.length && mcp.reconnect) tools.push({
       readOnly: false,
@@ -718,10 +766,12 @@ export async function createRuntime(
     }
     const bind = (tool: ToolDefinition): ToolDefinition => {
       const checkJournalOwner = (): void => {
-        if (!persistence || (!journalOwnedMcp.has(tool.schema.name) && tool.schema.name !== 'mcp_reconnect')) return;
+        if (!persistence || (!(taskPersistence && tool.schema.name.startsWith('mcp_')) && !journalOwnedMcp.has(tool.schema.name) && tool.schema.name !== 'mcp_reconnect')) return;
         bindingController.signal.throwIfAborted();
+        if (taskJournalFailed) throw new Error('MCP task journal requires reconciliation');
         if (!alreadyBound || boundSession?.id !== owner || boundSession.config.workspace !== current.workspace ||
           connectionConfigDigest(current) !== initialConfigDigest) throw new Error('MCP operation requires the bound session journal owner');
+        if (taskPersistence && (tool.schema.name.startsWith('mcp__') || tool.schema.name === 'mcp_tool_call') && savedMcpTasks(boundSession).length >= 128) throw new Error('Persistent MCP task journal limit reached before tool execution');
       };
       let child: ToolDefinition | undefined;
       return { ...tool,
@@ -791,7 +841,7 @@ export async function createRuntime(
       bindSession(session) {
         const bind = async (): Promise<Runtime> => {
           if (closed || signal.aborted) throw new Error('Runtime is closed');
-          if (!persistence && !persistsSubscriptions(session.config)) return runtime;
+          if (!persistence && !persistsSubscriptions(session.config) && !persistsMcpTasks(session)) return runtime;
           if (alreadyBound && boundSession?.id === session.id && boundSession.file === session.file) {
             if (connectionConfigDigest(session.config) !== initialConfigDigest) throw new Error('Runtime session configuration differs from its connected settings');
             bindingController.signal.throwIfAborted();
@@ -824,11 +874,12 @@ export async function createRuntime(
           }
           try {
             if (connectionConfigDigest(session.config) !== initialConfigDigest) throw new Error('Runtime session configuration differs from its connected settings');
-            if (!mcp.bindSubscriptions) throw new Error('MCP subscription persistence binding is unavailable');
+            if (subscriptionPersistence && !mcp.bindSubscriptions) throw new Error('MCP subscription persistence binding is unavailable');
+            if (taskPersistence) savedMcpTasks(session);
             const state = mcpSubscriptionState(session);
             const scope = scopeFor(session.id);
             boundSession = session;
-            await mcp.bindSubscriptions(state, (server, method, uri) => {
+            if (subscriptionPersistence) await mcp.bindSubscriptions!(state, (server, method, uri) => {
               checkScope(session.id, scope);
               bindingController.signal.throwIfAborted();
               commitMcpSubscription(boundSession!, server, method, uri);

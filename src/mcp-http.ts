@@ -12,10 +12,11 @@ import {
   type McpToolResult,
   type McpNotificationStreamStatus,
 } from "./mcp.js";
+import { boundToolContent } from './tool-output.js';
 import { McpClientRequestHandler } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions } from "./mcp-subscriptions.js";
 import { McpLogging } from "./mcp-logging.js";
-import { driveMcpTask, parseTaskHandle } from './mcp-task.js';
+import { McpTaskError, driveMcpTask, parseTaskHandle } from './mcp-task.js';
 import { MCP_RELATED_TASK, MCP_TASK_PROTOCOL_VERSION, standardTaskSupport, canAugmentTask, parseStandardTask, driveStandardMcpTask } from './mcp-standard-task.js';
 
 export const MCP_HTTP_PROTOCOL_VERSION = "2025-06-18";
@@ -177,6 +178,7 @@ export class McpHttpClient implements McpClient {
   private readonly headersEnv: Record<string, string>;
   private readonly settings: McpConnectSettings;
   private readonly clientRequests: McpClientRequestHandler;
+  private readonly taskJournal: McpConnectOptions["taskJournal"];
   private nextId = 1;
   private version = MCP_HTTP_PROTOCOL_VERSION;
   private sessionId: string | undefined;
@@ -223,6 +225,7 @@ export class McpHttpClient implements McpClient {
       tasks: options.tasks ?? false,
       standardTasks: options.standardTasks ?? false,
     };
+    this.taskJournal = options.taskJournal;
     this.clientRequests = new McpClientRequestHandler(name, options.clientRequests);
     if (this.settings.subscriptions) this.resourceSubscriptions = new McpResourceSubscriptions(this.request.bind(this), () => record(this.capabilities.resources) && this.capabilities.resources.subscribe === true);
     if (this.settings.logging) this.logging = new McpLogging(this.request.bind(this), () => record(this.capabilities.logging));
@@ -540,6 +543,21 @@ export class McpHttpClient implements McpClient {
     if (this.settings.notificationStream && !this.closed) this.startNotificationStream();
   }
 
+  async resumeTask(task: import('./mcp-standard-task.js').StandardMcpTask, signal: AbortSignal): Promise<McpToolResult> {
+    if (!this.initialized || !this.settings.standardTasks || this.version !== MCP_TASK_PROTOCOL_VERSION) throw new Error('Standard task recovery requires negotiated2025-11-25');
+    const release = this.clientRequests.ownTask(task.taskId);
+    try {
+      const read = async (method: string, params: unknown, requestSignal: AbortSignal) => {
+        const value = await this.request(method, params, requestSignal);
+        if (method === 'tasks/get' && (!record(value) || value.createdAt !== task.createdAt)) throw new McpTaskError('malformed');
+        return value;
+      };
+      const result = await driveStandardMcpTask(task, read,
+        AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]), false);
+      return parseMcpToolResult(result, this.name);
+    } finally { release(); }
+  }
+
   async listTools(signal: AbortSignal): Promise<McpToolInfo[]> {
     if (!this.initialized) throw new Error("MCP HTTP session is not initialized");
     if ((this.settings.catalog || this.settings.subscriptions || this.settings.logging) && !record(this.capabilities.tools)) return [];
@@ -557,11 +575,19 @@ export class McpHttpClient implements McpClient {
     let result: unknown;
     try {
       result = await this.request("tools/call", { name: toolName, arguments: args, ...(augment ? { task: { ttl: this.settings.requestTimeoutMs } } : {}) }, signal,
-        augment ? value => { release = this.clientRequests.ownTask(parseStandardTask(value).taskId); } : undefined);
+        augment ? value => {
+          const task = parseStandardTask(value);
+          release = this.clientRequests.ownTask(task.taskId);
+          this.taskJournal?.(this.name, toolName, task, false);
+        } : undefined);
       if (augment) {
+        const resultTask = result;
         result = await driveStandardMcpTask(parseStandardTask(result), this.request.bind(this),
           AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]), record(this.capabilities.tasks) && record(this.capabilities.tasks.cancel));
-        return parseMcpToolResult(result, this.name);
+        const parsed = parseMcpToolResult(result, this.name);
+        // Mark resolution only after the original payload has passed tool-result validation.
+        this.taskJournal?.(this.name, toolName, parseStandardTask(resultTask), true, boundToolContent(JSON.stringify(parsed), 24000) as string, parsed.isError);
+        return parsed;
       }
     } finally { release?.(); }
     const task = this.settings.tasks ? parseTaskHandle(result) : undefined;

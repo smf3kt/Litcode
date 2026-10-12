@@ -14,7 +14,7 @@ import { mcpReconnectDelay, isTransientMcpFailure } from "./mcp-retry.js";
 import { McpClientRequestHandler, MCP_CLIENT_REQUEST_LIMITS, type McpClientRequests } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions, McpSubscriptionPersistenceError, MCP_SUBSCRIPTION_LIMITS, MCP_MAX_RESOURCE_SUBSCRIPTIONS, MCP_MAX_RESOURCE_URI_BYTES, MCP_MAX_RESOURCE_NOTIFICATIONS, validateMcpResourceUri, type McpSubscriptionMethod } from "./mcp-subscriptions.js";
 import { driveMcpTask, parseTaskHandle } from './mcp-task.js';
-import { MCP_TASK_PROTOCOL_VERSION, standardTaskSupport, canAugmentTask, parseStandardTask, driveStandardMcpTask } from './mcp-standard-task.js';
+import { type StandardMcpTask, MCP_TASK_PROTOCOL_VERSION, standardTaskSupport, canAugmentTask, parseStandardTask, driveStandardMcpTask } from './mcp-standard-task.js';
 import { McpLogging, MCP_LOGGING_LIMITS, MCP_LOG_LEVELS, MCP_MAX_LOG_NOTIFICATIONS, validateMcpLogLevel } from "./mcp-logging.js";
 export { MCP_LOGGING_LIMITS, MCP_LOG_LEVELS, MCP_MAX_LOG_NOTIFICATIONS, MCP_MAX_LOG_QUEUE_BYTES, MCP_MAX_LOG_MESSAGE_BYTES, MCP_MAX_LOG_METADATA_BYTES, MCP_MAX_LOG_LOGGER_BYTES, MCP_MAX_LOG_JSON_DEPTH, MCP_MAX_LOG_JSON_NODES } from "./mcp-logging.js";
 export { MCP_SUBSCRIPTION_LIMITS, MCP_MAX_RESOURCE_SUBSCRIPTIONS, MCP_MAX_RESOURCE_URI_BYTES, MCP_MAX_RESOURCE_NOTIFICATIONS, MCP_MAX_RESOURCE_NOTIFICATION_BYTES } from "./mcp-subscriptions.js";
@@ -127,6 +127,7 @@ export type McpConnectOptions = {
   /** Foreground resultType/task extension; no background replay. */
   tasks?: boolean;
   standardTasks?: boolean;
+  taskJournal?: (server: string, tool: string, task: StandardMcpTask, resolved: boolean, result?: string, isError?: boolean) => void;
   /** Connection-owned log collection; absent by default. */
   logging?: boolean;
   /** Own one HTTP GET SSE notification stream; stdio ignores this option. */
@@ -134,7 +135,7 @@ export type McpConnectOptions = {
   /** Trusted in-memory host callbacks; absent by default and excluded from persisted config. */
   clientRequests?: McpClientRequests;
 };
-export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks">> & Pick<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks">;
+export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal">> & Pick<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal">;
 
 export type McpConnection = {
   tools: ToolDefinition[];
@@ -142,6 +143,7 @@ export type McpConnection = {
   limits: readonly string[];
   servers?: () => Record<string, McpServerStatus>;
   reconnect?: (server: string, signal: AbortSignal) => Promise<McpServerStatus>;
+  resumeTask?: (server: string, task: StandardMcpTask, signal: AbortSignal) => Promise<McpToolResult>;
   bindSubscriptions?: (state: Record<string, readonly string[]>, commit: (server: string, method: McpSubscriptionMethod, uri: string) => void, signal: AbortSignal) => Promise<void>;
   /** Fresh per-server transport state, present only for opted-in HTTP streams. */
   notificationStreams?: () => Record<string, McpNotificationStreamStatus>;
@@ -186,6 +188,7 @@ export interface McpClient {
   initialize(signal: AbortSignal): Promise<void>;
   listTools(signal: AbortSignal): Promise<McpToolInfo[]>;
   callTool(toolName: string, args: unknown, signal: AbortSignal, pinned?: McpToolInfo): Promise<McpToolResult>;
+  resumeTask?(task: StandardMcpTask, signal: AbortSignal): Promise<McpToolResult>;
   supportsCatalog(family: "resources" | "prompts"): boolean;
   onToolsChanged(listener: () => void): () => void;
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown>;
@@ -1339,6 +1342,11 @@ class ManagedMcpClient implements McpClient {
     if (pinned) this.assertPinned(pinned);
     return this.current.callTool(tool, args, signal, pinned);
   }
+  resumeTask(task: StandardMcpTask, signal: AbortSignal): Promise<McpToolResult> {
+    signal.throwIfAborted();
+    if (this.status.state !== 'connected' || !this.current.resumeTask) return Promise.reject(new Error('MCP task recovery requires a connected HTTP server'));
+    return this.current.resumeTask(task, signal);
+  }
   supportsCatalog(family: "resources" | "prompts") { return this.current.supportsCatalog(family); }
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal) {
     if (this.status.state === "closed") return Promise.reject(new Error("MCP connection closed"));
@@ -1500,6 +1508,7 @@ export async function connectMcpServers(
     persistence: options.persistence ?? false,
     tasks: options.tasks ?? false,
     standardTasks: options.standardTasks ?? false,
+    taskJournal: options.taskJournal,
     logging: options.logging ?? false,
     notificationStream: options.notificationStream ?? false,
     clientRequests: options.clientRequests,
@@ -1658,6 +1667,11 @@ export async function connectMcpServers(
   ] : streamLimits;
   return {
     tools,
+    ...(settings.standardTasks ? { resumeTask: async (server: string, task: StandardMcpTask, signal: AbortSignal) => {
+      const client = namedClients.get(server);
+      if (!client?.resumeTask) throw new Error('MCP task recovery requires a configured HTTP server');
+      return client.resumeTask(task, signal);
+    } } : {}),
     ...(persistentSubscriptions ? { bindSubscriptions: async (state: Record<string, readonly string[]>, commit: (server: string, method: McpSubscriptionMethod, uri: string) => void, signal: AbortSignal): Promise<void> => {
       if (closed) throw new Error("MCP connections closed");
       if (subscriptionsBound) throw new Error("MCP subscriptions already bound; session owner changes require a fresh connection");
