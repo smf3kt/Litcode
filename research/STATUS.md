@@ -562,6 +562,10 @@ Opt-in pinned/managed samplingArrays accepts bounded nonempty text/image arrays 
 
 Explicit pinned/managed standard task mode negotiates2025-11-25, checks server capability+tool taskSupport, reads get/result with correlated roots/form POST stream callbacks and ends pending task-owned callbacks on release. Source/compiled standard and legacy extension chains passed; full1036/1036, check/build and60file install passed. Provenance, review refinements, finite requestor coverage and final identity are consolidated in [ports/W05-standard-tasks.md](ports/W05-standard-tasks.md). GET-only input delivery/task receivers/list/background reattachment remain separate.
 
+## GET related task inputs (2026-10-12)
+
+Standard task plus notification-stream gates now dispatch correlated roots/form requests from GET through existing ownership/validation/deadlines and bounded POST replies. One combined ownership/cancellation/close regression and actual compiled CLI exercise cover the finite chain; provenance and final results in [ports/W05-get-task-inputs.md](ports/W05-get-task-inputs.md). Historical notification-only and standard-task distribution records retain their original scopes.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

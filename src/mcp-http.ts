@@ -16,7 +16,7 @@ import { McpClientRequestHandler } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions } from "./mcp-subscriptions.js";
 import { McpLogging } from "./mcp-logging.js";
 import { driveMcpTask, parseTaskHandle } from './mcp-task.js';
-import { MCP_TASK_PROTOCOL_VERSION, standardTaskSupport, canAugmentTask, parseStandardTask, driveStandardMcpTask } from './mcp-standard-task.js';
+import { MCP_RELATED_TASK, MCP_TASK_PROTOCOL_VERSION, standardTaskSupport, canAugmentTask, parseStandardTask, driveStandardMcpTask } from './mcp-standard-task.js';
 
 export const MCP_HTTP_PROTOCOL_VERSION = "2025-06-18";
 export const MCP_HTTP_SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = ["2025-03-26", "2025-06-18"];
@@ -358,14 +358,19 @@ export class McpHttpClient implements McpClient {
       const parser = new SseParser(async (text) => {
         const msg = parseJson(text);
         if (!record(msg) || msg.jsonrpc !== "2.0") throw new Error("MCP GET malformed JSON-RPC message");
-        // This stream never invokes server callbacks or tools, even when their
-        // methods are supported on request-scoped POST responses.
         if (this.settings.recovery && ((Object.hasOwn(msg, "method") && (typeof msg.method !== "string" || Object.hasOwn(msg, "result") || Object.hasOwn(msg, "error"))) ||
             (Object.hasOwn(msg, "params") && !record(msg.params)) ||
             (Object.hasOwn(msg, "id") && msg.id !== null && typeof msg.id !== "string" && (typeof msg.id !== "number" || !Number.isFinite(msg.id))) ||
             (!Object.hasOwn(msg, "method") && (!Object.hasOwn(msg, "id") || Object.hasOwn(msg, "result") === Object.hasOwn(msg, "error")))))
           throw new Error("MCP GET malformed JSON-RPC message type");
         this.notification(msg);
+        if (this.settings.standardTasks && this.version === MCP_TASK_PROTOCOL_VERSION && Object.hasOwn(msg, "id") &&
+            ["roots/list", "elicitation/create"].includes(String(msg.method)) && record(msg.params) &&
+            record(msg.params._meta) && Object.hasOwn(msg.params._meta, MCP_RELATED_TASK)) {
+          // Keep reading so cancellation notifications can interrupt a pending callback.
+          void this.clientRequests.handle(msg, reply => this.bounded("client response", undefined, MCP_HTTP_CLEANUP_TIMEOUT_MS,
+            replySignal => this.accepted(reply, replySignal))).catch(() => undefined);
+        }
         return false;
       }, true);
       const decoder = new TextDecoder("utf-8", { fatal: true });
