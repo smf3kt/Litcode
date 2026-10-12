@@ -12,21 +12,21 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 39,
+  "recordCount": 40,
   "summary": {
-    "modules": 33,
-    "bytes": 7816386,
+    "modules": 36,
+    "bytes": 7843801,
     "narrativeOnly": {
       "modules": 65,
       "bytes": 7358658
     },
     "unreviewed": {
-      "modules": 2267,
-      "bytes": 31663093
+      "modules": 2264,
+      "bytes": 31635678
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2217,
-    "uncitedBuiltinLeafOnly": 2251,
+    "uncitedWithoutMarker": 2214,
+    "uncitedBuiltinLeafOnly": 2248,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
@@ -749,6 +749,31 @@
       ]
     },
     {
+      "path": "chunk-msy0wfrd.js",
+      "bytes": 19219,
+      "sha256": "f489401ba9fbd8586a1009a984b6701a0286372a2a84a6a78f46ecac546e9bf8",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "fs",
+        "os"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "portRecords": [
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the decision model, rewritten onto this runtime's storage and answering surface. The recovered product keeps the answers as two name lists inside the me"
+      ]
+    },
+    {
       "path": "chunk-pn44qc66.js",
       "bytes": 45078,
       "sha256": "f6c745a0cf4f3370d0e13487c15727a69bdbf2256a30c59080c571274064a77f",
@@ -924,6 +949,7 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
         "research/HOOKS.md",
         "research/INTERACTIVE.md",
@@ -932,6 +958,7 @@
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/W12-mcp-server-approval.md",
         "research/STATUS.md"
       ],
       "portRecords": [
@@ -939,14 +966,16 @@
         "research/ports/W01-permission-readings.md",
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/W12-mcp-server-approval.md"
       ],
       "reviewed": true,
       "declared": [
         "adapt of the invariant, not a copy of the analyser. The recovered reading set is built from a bash parse tree that reports ambiguous *names* and *operands*; thi",
         "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own ",
         "copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c",
-        "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio"
+        "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio",
+        "copy of the decision model, rewritten onto this runtime's storage and answering surface. The recovered product keeps the answers as two name lists inside the me"
       ]
     },
     {
@@ -968,6 +997,28 @@
       "reviewed": true,
       "declared": [
         "copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c"
+      ]
+    },
+    {
+      "path": "chunk-w87rxh9c.js",
+      "bytes": 1504,
+      "sha256": "1bbdf095686c9a63381040bc8959feba0340dccfe06730bf8add78aaaea846aa",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "portRecords": [
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the decision model, rewritten onto this runtime's storage and answering surface. The recovered product keeps the answers as two name lists inside the me"
       ]
     },
     {
@@ -1046,6 +1097,28 @@
       "reviewed": true,
       "declared": [
         "adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive"
+      ]
+    },
+    {
+      "path": "chunk-ywpww1r2.js",
+      "bytes": 6692,
+      "sha256": "7fdd97ccec2a307d855cf917ce83cb692356c522e48ecb1a2264b208f0be1c25",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "portRecords": [
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the decision model, rewritten onto this runtime's storage and answering surface. The recovered product keeps the answers as two name lists inside the me"
       ]
     },
     {
@@ -23958,9 +24031,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "portRecords": [
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-mtw0aefh.js",
@@ -29635,6 +29713,7 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
         "research/HOOKS.md",
         "research/INTERACTIVE.md",
@@ -29643,6 +29722,7 @@
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/W12-mcp-server-approval.md",
         "research/STATUS.md"
       ],
       "portRecords": [
@@ -29650,7 +29730,8 @@
         "research/ports/W01-permission-readings.md",
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/W12-mcp-server-approval.md"
       ],
       "reviewed": true
     },
@@ -32394,9 +32475,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "portRecords": [
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-w8j4b6wb.js",
@@ -35474,9 +35560,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "portRecords": [
+        "research/ports/W12-mcp-server-approval.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-ywt9ek0j.js",

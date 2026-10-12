@@ -1,0 +1,214 @@
+{
+  "schema": "RecoveredModulePortEvidence.v1",
+  "date": "2026-10-12",
+  "item": "W12 project-declared MCP servers: admission, not configuration",
+  "status": "verified",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
+  },
+  "module": {
+    "path": "chunk-sfn1dbxq.js",
+    "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+    "bytes": 4762583
+  },
+  "coordinateUnit": "zero-based UTF-16, left-closed/end-exclusive, over the decoded module text",
+  "readAs": "inert data; no recovered entrypoint was executed",
+  "facts": [
+    {
+      "name": "the decision",
+      "symbol": "function JKe(e)",
+      "range": [2206789, 2207072],
+      "note": "approved, rejected and pending from one function; the two automatic routes are gated on cn(\"projectSettings\")"
+    },
+    {
+      "name": "status accessor",
+      "symbol": "function mne(e){return JKe(e).status}",
+      "range": [2206752, 2206789]
+    },
+    {
+      "name": "the stored answer",
+      "symbol": "function xtt(e)",
+      "range": [2206380, 2206752],
+      "note": "disabledMcpjsonServers -> rejected first; then the workspace-trust gate; then enabledMcpjsonServers or enableAllProjectMcpServers -> approved; else pending"
+    },
+    {
+      "name": "stored answer, untrusted-workspace variant",
+      "symbol": "function G8t(e)",
+      "range": [2206019, 2206380],
+      "note": "a session-scoped answer for this workspace, else each scope in Lo() that the projectSettings and localSettings gates allow, testing enableAllProjectMcpServers (2206278) and enabledMcpjsonServers"
+    },
+    {
+      "name": "blanket switch inside the decision",
+      "text": "n?.enableAllProjectMcpServers",
+      "range": [2206571, null],
+      "note": "read off the user settings object Qn() inside xtt"
+    },
+    {
+      "name": "startup step",
+      "symbol": "function rHo(o,l)",
+      "range": [4700, 5319],
+      "module": "chunk-msy0wfrd.js",
+      "note": "nothing pending returns null; unreadable settings skip admission with a notice instead of admitting"
+    },
+    {
+      "name": "settings-error skip notice",
+      "text": "skipping .mcp.json server approval (settings errors",
+      "range": [4971, null],
+      "module": "chunk-msy0wfrd.js"
+    },
+    {
+      "name": "post-choice reporter",
+      "symbol": "function xe(o)",
+      "range": [5319, 6065],
+      "module": "chunk-msy0wfrd.js"
+    },
+    {
+      "name": "persist-failed notice",
+      "text": "one or more of your MCP server choices could not be saved",
+      "range": [5464, null],
+      "module": "chunk-msy0wfrd.js"
+    },
+    {
+      "name": "trust-gated persistence notice",
+      "text": "your MCP server choices apply to this session only (workspace not explicitly trusted",
+      "range": [5816, null],
+      "module": "chunk-msy0wfrd.js"
+    },
+    {
+      "name": "enabled list named by the notice",
+      "text": "enabledMcpjsonServers in ~/.claude/settings.json",
+      "range": [5969, null],
+      "module": "chunk-msy0wfrd.js"
+    },
+    {
+      "name": "collector",
+      "symbol": "function Xcn(t)",
+      "range": [5102, 5634],
+      "module": "chunk-ywpww1r2.js",
+      "note": "pendingServers is serverNames filtered by mne(c) === \"pending\""
+    },
+    {
+      "name": "dialog dispatch",
+      "symbol": "function tNo({pendingServers,pluginServerNames},l,o)",
+      "range": [5634, 5965],
+      "module": "chunk-ywpww1r2.js",
+      "note": "one server -> single-server dialog, several -> list; while open the attached job is moved to blocked"
+    },
+    {
+      "name": "waiting text",
+      "text": ".mcp.json servers are awaiting approval",
+      "range": [614, null],
+      "module": "chunk-w87rxh9c.js",
+      "note": "appended to the no-such-server error by Din so a mistyped held name explains itself"
+    }
+  ],
+  "portedInvariant": "A server a project-owned settings file declares is a decision, not a setting: pending until answered, connected when approved, never asked about again when rejected, and the answer covers the exact declaration and the exact workspace it was made in.",
+  "implementation": {
+    "new": [
+      "src/mcp-approval.ts"
+    ],
+    "changed": [
+      "src/config.ts",
+      "src/cli.ts",
+      "src/session.ts",
+      "test/cli-mcp-requests.test.ts",
+      "package.json"
+    ],
+    "wiring": {
+      "symbol": "resolveMcpServers",
+      "definition": "src/mcp-approval.ts:192",
+      "callSites": ["src/cli.ts:272"],
+      "note": "the hold runs where the session configuration is built, so a held or declined name is removed from the map the runtime dials before connectMcpServers sees it"
+    },
+    "digests": {
+      "src/mcp-approval.ts": "2e659787f33e7edf93fbce52dd0bb34aedaeca9026c838e6f21ff6e9eb3a2eca",
+      "test/mcp-approval.test.ts": "31cabd744517bc96bac8b9f720f11bb62fdcf910547a009ad9f6360e4c369e7f",
+      "scripts/smoke-mcp-approval-cli.mjs": "e1779934bac3c29fe08a7a2cef27067b5e6514c1a42d37922b3832be38f43f5d",
+      "src/cli.ts": "4664c5404c08e458ec94fa72cdd13a8dc866755874ee9b85a40d258800e9752b",
+      "src/config.ts": "fa1c5b18e8a51e1b9abcb700afcba7f17928a609918339515485e48d7508f90d",
+      "src/session.ts": "7b0cc5c148c681992a3450c29424cf523c93b530d4f77d3595c078611e4e9d17"
+    }
+  },
+  "ownedDecisions": [
+    "The answer is a fingerprint of the canonical declaration, not the name alone: the recovered lists match on name (OHt(r,e)), so an edited command keeps its approval, and a checkout can rewrite its own settings between runs.",
+    "Answers are keyed by the real path of the workspace, because the recovered answers were settings and therefore naturally per-scope, while one store file is not.",
+    "The store is a user-directory file written 0o700/0o600 through a renamed temporary file, instead of the recovered .claude/settings.local.json inside the workspace.",
+    "approveAllProjectMcpServers is refused with a ConfigError when a project layer sets it, rather than ignored, because the switch is the person's.",
+    "A failed save prints the recovered 'could not be saved ... you will be asked again' notice and sets a non-zero exit instead of throwing, and only when nothing was written.",
+    "Rejection outranks the blanket switch, matching the recovered order in xtt where disabledMcpjsonServers is tested before enableAllProjectMcpServers."
+  ],
+  "notPorted": [
+    "The interactive dialog (Kcn/Ycn) and the background-job blocking in tNo, x and _: this runtime has no dialog subsystem and no attachable job records, so the question is asked on stderr with the two command lines that answer it.",
+    "The automatic approval routes for bypass and non-interactive sessions: both are gated on cn(\"projectSettings\"), which this runtime does not have, and the nearest local equivalent - the permission mode - is settable by a project's own settings file.",
+    "The plugin-contributed half of NMr, which enumerates servers contributed by installed plugins: a separate surface this package does not touch.",
+    "The name-suggestion machinery Din wraps (wse with maxEditDistance 2), which this runtime already has."
+  ],
+  "cases": {
+    "unit": {
+      "file": "test/mcp-approval.test.ts",
+      "count": 16,
+      "fail": 0
+    },
+    "cliSmoke": {
+      "script": "scripts/smoke-mcp-approval-cli.mjs",
+      "command": "npm run smoke:mcp-approval-cli",
+      "modes": ["source"],
+      "gateway": "owned loopback fixture serving both the MCP peer and the SSE model",
+      "asserts": [
+        "declared and unanswered: absent from /mcp connections, zero peer requests, no store written, hold printed with both command lines",
+        "--approve-mcp-server team: exit 0, summary printed, nothing connected, one workspace-keyed approved record with a 64-hex fingerprint at mode 0o600",
+        "an unknown name and a name given to both commands are refused",
+        "the approved declaration connects with initialize, notifications/initialized, tools/list and no notice",
+        "editing the URL holds it again as changed since approval and does not dial it",
+        "--reject-mcp-server team declines it; the next run reports declined: team with no hold and no dial",
+        "with approveAllProjectMcpServers set, an answered declaration stays declined while a re-edited one connects, and the store is byte-identical afterwards"
+      ]
+    }
+  },
+  "check": {
+    "command": "npm run check",
+    "exit": 0
+  },
+  "build": {
+    "command": "npm run build",
+    "exit": 0
+  },
+  "fullSuite": {
+    "pass": 1091,
+    "fail": 0
+  },
+  "packageSmoke": {
+    "command": "npm run smoke:package",
+    "files": 67,
+    "upstreamRequests": 0
+  },
+  "identity": {
+    "inputs": {
+      "sha256": "e7fc1abe0133e05998fe8c8d713e244b9819225c962f1386f195b306c714bc43",
+      "files": 120
+    },
+    "validation": {
+      "sha256": "e6fb88faf1b4f69cfd3267297da7f02f463f2f9093e42aec20553b658cab8371",
+      "files": 87
+    },
+    "build": {
+      "sha256": "b7e0a925b376e4ab297c39871d2df9d60d754fb2c13afb3a09254a39ff17309b",
+      "files": 60
+    },
+    "merged": "ccab07f3a5a30d292da8df32a96320d897de4fb69b88067052f9347f2d036edb"
+  },
+  "tarball": {
+    "name": "litcode-0.1.0.tgz",
+    "files": 67,
+    "bytes": 323192,
+    "sha256": "bbae0688107fdca2ef4e5a8394fbf76e092478757046529cec5117010c854435"
+  },
+  "regressions": "One fixture change, no product regression. test/cli-mcp-requests.test.ts declared its own fixture server in .harness/settings.json, which is now a project layer and is correctly held, so the shared fixture declares it in the user layer and resets the project layer to {} on each write; three cases in that file deliberately leave a malformed project settings file behind to prove a resume ignores it, and without the reset the following non-resume run reads it and fails. No expectation was weakened.",
+  "limitations": [
+    "The hold is decided when the session configuration is built, so a settings file edited while a session is running takes effect at the next start, as the recovered startup step does.",
+    "The workspace key is the real path of the workspace; a checkout reached through two different real paths is two workspaces, and a workspace that is moved is asked again.",
+    "No real interactive dialog, attached background job or plugin-contributed server was observed."
+  ],
+  "paidCalls": 0
+}
