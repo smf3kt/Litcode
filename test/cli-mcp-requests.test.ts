@@ -52,7 +52,7 @@ async function readBody(request: http.IncomingMessage): Promise<any> {
   return text ? JSON.parse(text) : {};
 }
 
-async function fixture(t: TestContext, reverseMethods: string[] = [], image = false, arrays = false, audio = false) {
+async function fixture(t: TestContext, reverseMethods: string[] = [], image = false, arrays = false, audio = false, metadata = false) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cli-mcp-requests-')));
   const workspace = path.join(root, 'workspace space');
   const user = path.join(root, 'user');
@@ -68,10 +68,15 @@ async function fixture(t: TestContext, reverseMethods: string[] = [], image = fa
   };
   let serial = 0;
   const waiting = new Map<string, () => void>();
+  // Server block/message metadata rides the same wire request when the fixture enables it.
+  const block = (value: object) => metadata ? { ...value, annotations: { audience: ['user', 'assistant'], priority: 0.5,
+    lastModified: '2026-01-02T03:04:05Z' }, _meta: { trace: 'SERVER_BLOCK_META' } } : value;
   const samplingParams = {
-    messages: [{ role: 'user', content: arrays ? [{ type: 'text', text: 'SERVER_TASK_MARKER' }, { type: 'image', data: IMAGE, mimeType: 'image/png' }, { type: 'text', text: 'AFTER_IMAGE' }]
-      : image ? { type: 'image', data: IMAGE, mimeType: 'image/png' }
-      : audio ? { type: 'audio', data: AUDIO, mimeType: 'audio/wav' } : { type: 'text', text: 'SERVER_TASK_MARKER' } }],
+    messages: [{ role: 'user', ...(metadata ? { _meta: { trace: 'SERVER_MESSAGE_META' } } : {}),
+      content: arrays ? [block({ type: 'text', text: 'SERVER_TASK_MARKER' }), block({ type: 'image', data: IMAGE, mimeType: 'image/png' }),
+        block({ type: 'text', text: 'AFTER_IMAGE' })]
+      : image ? block({ type: 'image', data: IMAGE, mimeType: 'image/png' })
+      : audio ? block({ type: 'audio', data: AUDIO, mimeType: 'audio/wav' }) : block({ type: 'text', text: 'SERVER_TASK_MARKER' }) }],
     systemPrompt: 'SERVER_SYSTEM_DATA_MARKER', includeContext: 'allServers', maxTokens: 500,
     modelPreferences: { hints: [{ name: 'gateway/ignored-server-model' }] },
   };
@@ -303,6 +308,29 @@ test('CLI array sampling restores pinned mixed blocks and enforces managed and l
   if (process.env.HARNESS_SMOKE_RECEIPT === '1') console.log(JSON.stringify({ samplingArrays: 'passed',
     compiledCLI: process.env.HARNESS_SMOKE_COMPILED === '1', gatewayRequests: fx.messages.length,
     ordering: true, bytePreserving: true, pinnedResume: true, managedGate: true, legacyGate: true, budget: true, locksReleased: true }));
+});
+
+test('CLI annotated sampling metadata stays inert across the reverse and quoted task data', { timeout: 30_000 }, async t => {
+  const fx = await fixture(t, ['sampling/createMessage'], false, false, false, true);
+  fx.settings({ mcpClient: { sampling: true } }); fx.put('HARNESS.md', HOST_CONTEXT);
+  const result = success(await fx.run(['--max-model-calls', '2']));
+  assert.equal(result.model_calls, 2);
+  const body = fx.messages[0]!.body;
+  assert.deepEqual(body.tool_choice, { type: 'none' }); assert.equal(body.tools, undefined);
+  assert.deepEqual(JSON.parse((body.messages[0].content as string).split('\n')[1]), { systemPrompt: 'SERVER_SYSTEM_DATA_MARKER',
+    messages: [{ role: 'user', content: { type: 'text', text: 'SERVER_TASK_MARKER' } }] });
+  assert.doesNotMatch(JSON.stringify(body), /SERVER_BLOCK_META|SERVER_MESSAGE_META|annotations|lastModified/);
+  assert.equal(fx.replies.at(-1)!.result.content.text, SAMPLE_TEXT);
+  assert.doesNotMatch(journal(fx.workspace, result.session_id).text, new RegExp(`${KEY}|${ROTATED_KEY}|SERVER_BLOCK_META|SERVER_MESSAGE_META`));
+  const before = fx.messages.length;
+  fx.settings({ mcpClient: {} }); success(await fx.run());
+  assert.equal(fx.replies.at(-1)!.error.code, -32601);
+  assert.equal(fx.messages.length, before + 1);
+  assert.equal(fs.readdirSync(path.join(fx.workspace, '.agent')).some(name => name.endsWith('.lock')), false);
+  assert.deepEqual(fx.failures, []);
+  if (process.env.HARNESS_SMOKE_RECEIPT === '1') console.log(JSON.stringify({ samplingMetadata: 'passed',
+    compiledCLI: process.env.HARNESS_SMOKE_COMPILED === '1', gatewayRequests: fx.messages.length,
+    inertMetadata: true, quotedTaskData: true, legacyGate: true, locksReleased: true }));
 });
 
 test('CLI roots flag overrides false settings and exposes exactly the current workspace URI', { timeout: 30_000 }, async t => {

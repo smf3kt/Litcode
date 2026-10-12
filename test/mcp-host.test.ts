@@ -136,6 +136,31 @@ test('sampling pins the model and budgets, quotes server data, excludes host his
   assert.equal(Object.hasOwn(result, 'usage'), false);
 });
 
+test('annotated sampling metadata reaches no provider request while tool blocks stay refused', async () => {
+  const provider = new ScriptProvider();
+  const messages = [{ role: 'user' as const, _meta: { trace: 'PRIVATE_MESSAGE_META' },
+    content: [{ type: 'text' as const, text: 'Annotated task',
+      annotations: { audience: ['user' as const], priority: 1, lastModified: '2026-01-02T03:04:05Z' }, _meta: { trace: 'PRIVATE_BLOCK_META' } }] }];
+  const params: McpSamplingParams = { messages, maxTokens: 100 };
+  const callbacks = createMcpHostRequests({ config: { ...config(), mcpClient: { sampling: true, samplingArrays: true } },
+    provider, approveSampling: approve });
+  const result = await callbacks.sampling!(params, signal(), context);
+  assert.deepEqual(result, { role: 'assistant', content: { type: 'text', text: 'Sample answer' },
+    model: 'fixture/actual-model', stopReason: 'endTurn' });
+  const request = provider.completions[0]!;
+  const content = request.messages[0]!.content as string;
+  assert.deepEqual(JSON.parse(content.slice(content.indexOf('\n') + 1)), { systemPrompt: null,
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'Annotated task' }] }] });
+  assert.doesNotMatch(JSON.stringify(request), /PRIVATE_MESSAGE_META|PRIVATE_BLOCK_META|annotations|lastModified/);
+  const toolBlocks = [{ type: 'tool_use', name: 'tool', id: 'call', input: {} },
+    { type: 'tool_result', toolUseId: 'call', content: [] }];
+  for (const content of toolBlocks) {
+    await assert.rejects(async () => callbacks.sampling!({ ...params, messages: [{ role: 'user', content }] } as unknown as McpSamplingParams,
+      signal(), context), /Invalid or unsupported MCP sampling input/);
+  }
+  assert.equal(provider.completions.length, 1);
+});
+
 test('request maxTokens and optional effort remain truthful', async () => {
   const provider = new ScriptProvider(); const settings = config(); delete settings.effort;
   await host(provider, settings).sampling!(input(), signal(), context);

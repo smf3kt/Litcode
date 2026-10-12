@@ -5,9 +5,10 @@ export type McpRoot = { uri: string; name?: string };
 export type McpClientRequestContext = { serverName: string; requestId: string | number; _meta?: { [key: string]: McpJson } };
 export type McpElicitationParams = { message: string; mode?: "form"; requestedSchema: { type: "object"; properties: { [key: string]: McpJson }; required?: string[] }; _meta?: { [key: string]: McpJson } };
 export type McpElicitationResult = { action: "accept" | "decline" | "cancel"; content?: { [key: string]: string | number | boolean } };
-export type McpSamplingContent = { type: "text"; text: string } | { type: "image" | "audio"; data: string; mimeType: string };
+export type McpContentMetadata = { annotations?: { audience?: ("user" | "assistant")[]; priority?: number; lastModified?: string }; _meta?: { [key: string]: McpJson } };
+export type McpSamplingContent = ({ type: "text"; text: string } | { type: "image" | "audio"; data: string; mimeType: string }) & McpContentMetadata;
 export type McpSamplingParams = {
-  messages: { role: "user" | "assistant"; content: McpSamplingContent | McpSamplingContent[] }[];
+  messages: { role: "user" | "assistant"; content: McpSamplingContent | McpSamplingContent[]; _meta?: { [key: string]: McpJson } }[];
   maxTokens: number;
   modelPreferences?: { hints?: { name?: string }[]; costPriority?: number; speedPriority?: number; intelligencePriority?: number };
   systemPrompt?: string;
@@ -31,7 +32,7 @@ export const MCP_CLIENT_REQUEST_MAX_RESULT_BYTES = 1024 * 1024;
 export const MCP_CLIENT_REQUEST_MAX_PENDING = 16;
 export const MCP_CLIENT_REQUEST_CLEANUP_MS = 1000;
 export const MCP_CLIENT_REQUEST_LIMITS: readonly string[] = [
-  "client requests: explicit trusted runtime callbacks for roots/list, form elicitation/create and base sampling/createMessage; no URL elicitation, OAuth, model SDK calls, sampling tools, tasks or subscriptions",
+  "client requests: explicit trusted runtime callbacks for roots/list, form elicitation/create and base sampling/createMessage; single or array text/image/audio sampling blocks may carry annotations (audience, priority, offset ISO lastModified) and _meta, and messages may carry _meta, which are validated as inert data and never forwarded to the provider; sampling tool declarations, toolChoice modes and tool_use/tool_result blocks stay unsupported because the recovered sampling result cannot express tool use; no URL elicitation, OAuth, model SDK calls, tasks or subscriptions",
   "client request lifetime: independent AbortSignal and deadline; notifications/cancelled and connection close abort callbacks; late callback completion is ignored",
   "client request bounds: 32 KiB input, 1 MiB result/frame, 16 live RPC/host callbacks per connection; expired callback slots and ids stay reserved until host work settles; inert JSON only; callback errors use fixed messages",
   "client request protocol: stdio keeps its 2024-11-05 handshake; explicitly configured form elicitation is an opt-in extension; HTTP keeps its negotiated versions",
@@ -147,22 +148,41 @@ export function validateElicitationResult(value: unknown, params: McpElicitation
   if (value.action === "accept" && params.requestedSchema.required?.some((key) => !value.content || !own(value.content, key))) throw new Error("required");
   return value as McpElicitationResult;
 }
+// Block and message metadata is inert: it is validated, bounded and never forwarded to the provider.
+function contentMetadata(value: Record<string, any>): void {
+  if (value.annotations !== undefined) {
+    requireShape(value.annotations, ["audience", "priority", "lastModified"]);
+    if (value.annotations.audience !== undefined) {
+      if (!Array.isArray(value.annotations.audience) || !value.annotations.audience.length ||
+          value.annotations.audience.some((entry: unknown) => !["user", "assistant"].includes(entry as string))) throw new Error("audience");
+    }
+    if (value.annotations.priority !== undefined) { finite(value.annotations.priority); if (value.annotations.priority < 0 || value.annotations.priority > 1) throw new Error("priority"); }
+    // The recovered annotation schema is a date with offset, so the wire form must be an offset ISO timestamp.
+    if (value.annotations.lastModified !== undefined) {
+      text(value.annotations.lastModified);
+      if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value.annotations.lastModified)) throw new Error("lastModified");
+    }
+  }
+  if (value._meta !== undefined && !record(value._meta)) throw new Error("meta");
+}
 function samplingContent(value: unknown): void {
   if (!record(value)) throw new Error("content");
-  if (value.type === "text") { requireShape(value, ["type", "text"], ["type", "text"]); text(value.text); }
+  if (value.type === "text") { requireShape(value, ["type", "text", "annotations", "_meta"], ["type", "text"]); text(value.text); }
   else if (value.type === "image" || value.type === "audio") {
-    requireShape(value, ["type", "data", "mimeType"], ["type", "data", "mimeType"]);
+    requireShape(value, ["type", "data", "mimeType", "annotations", "_meta"], ["type", "data", "mimeType"]);
     text(value.data); text(value.mimeType, true);
     if (!/^[A-Za-z0-9+/]*={0,2}$/.test(value.data) || value.data.length % 4 !== 0 || !/^[\w.+-]+\/[\w.+-]+$/.test(value.mimeType)) throw new Error("media");
   } else throw new Error("content");
+  contentMetadata(value);
 }
 function samplingParams(params: Record<string, any>): McpSamplingParams {
   requireShape(params, ["messages", "maxTokens", "modelPreferences", "systemPrompt", "includeContext", "temperature", "stopSequences", "metadata", "_meta"], ["messages", "maxTokens"]);
   if (!Array.isArray(params.messages) || !params.messages.length || !Number.isSafeInteger(params.maxTokens) || params.maxTokens < 1) throw new Error("sampling");
   let blocks = 0;
   for (const message of params.messages) {
-    requireShape(message, ["role", "content"], ["role", "content"]);
+    requireShape(message, ["role", "content", "_meta"], ["role", "content"]);
     if (!["user", "assistant"].includes(message.role)) throw new Error("role");
+    if (message._meta !== undefined && !record(message._meta)) throw new Error("meta");
     const content = Array.isArray(message.content) ? message.content : [message.content];
     if (!content.length || (blocks += content.length) > MCP_SAMPLING_MAX_BLOCKS) throw new Error("blocks");
     for (const block of content) samplingContent(block);
