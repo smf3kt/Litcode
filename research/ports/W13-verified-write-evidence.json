@@ -1,0 +1,195 @@
+{
+  "schema": "RecoveredModulePortEvidence.v1",
+  "date": "2026-10-12",
+  "item": "W13 a write verifies what it wrote",
+  "status": "verified",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
+  },
+  "module": {
+    "path": "chunk-f606a53w.js",
+    "sha256": "dd0a1dc61be769e7ea2ec7f4345b3b4f88996150d4d219b8ada90f03e89dd033",
+    "bytes": 16665
+  },
+  "coordinateUnit": "zero-based UTF-16, left-closed/end-exclusive, over the decoded module text",
+  "readAs": "inert data; no recovered entrypoint was executed",
+  "facts": [
+    {
+      "name": "post-write verification",
+      "symbol": "Buffer.byteLength(u,r), … if(o.size!==i)throw",
+      "range": [7258, 7418],
+      "note": "the file just written is stat-ed and its size compared with the bytes handed in; the result is Math.floor(o.mtimeMs), read back from the filesystem rather than assumed"
+    },
+    {
+      "name": "verification label",
+      "text": "writeTextContent: on-disk size mismatch after write",
+      "range": [7418, 7469]
+    },
+    {
+      "name": "caller after the writer",
+      "symbol": "function _Os(e)",
+      "range": [7501, 7516]
+    },
+    {
+      "name": "staging identity re-check",
+      "symbol": "function hMt(e)",
+      "range": [2400, 2571],
+      "note": "re-opens the recorded directory with O_RDONLY|O_DIRECTORY|O_NOFOLLOW and compares dev/ino"
+    },
+    {
+      "name": "unopenable staging refusal",
+      "text": "was established for a sandboxed command but is now unopenable",
+      "range": [2400, 2452]
+    },
+    {
+      "name": "identity-changed refusal",
+      "text": "Staging dir ${e} identity changed (expected ${n.dev}/${n.ino}, found ${s.dev}/${s.ino}) — refusing atomic write",
+      "range": [2536, 2640]
+    },
+    {
+      "name": "identity bookkeeping",
+      "symbol": "class ne … function gOs(e,n,r,s) … function X(e){return j(e)}",
+      "range": [614, 2400]
+    },
+    {
+      "name": "unsupported fsync notice",
+      "text": "fsync unsupported on this filesystem",
+      "range": [10971, 11012]
+    },
+    {
+      "name": "close-after-error notice",
+      "text": "closeSync also failed after temp write error",
+      "range": [11027, 11058]
+    },
+    {
+      "name": "step log: temp written",
+      "text": "Temp file written successfully, size:",
+      "range": [11059, 11096]
+    },
+    {
+      "name": "step log: renaming",
+      "text": "Renaming ${h} to ${i}",
+      "range": [11150, 11171]
+    },
+    {
+      "name": "step log: committed",
+      "text": "File ${i} written atomically",
+      "range": [11221, 11239]
+    },
+    {
+      "name": "step log: failed",
+      "text": "Failed to write file atomically:",
+      "range": [11254, 11286]
+    },
+    {
+      "name": "not ported: sandbox staging path chooser",
+      "symbol": "function ARr(e,n,r,s)",
+      "range": [2571, 3238],
+      "note": "picks a staging path that may sit outside the target's directory, and refuses a non-directory parent at 3058 and a sibling fallback under a link or non-directory parent at 3238"
+    }
+  ],
+  "portedInvariant": "A write is not finished until the bytes it produced have been measured, the directory it is about to publish into has been confirmed unchanged, and any content that could not be published has been kept rather than discarded.",
+  "implementation": {
+    "new": [
+      "src/atomic-write.ts"
+    ],
+    "changed": [
+      "src/tools.ts",
+      "src/notebooks.ts",
+      "test/tools.test.ts"
+    ],
+    "wiring": {
+      "symbol": "atomicWriteFile",
+      "definition": "src/atomic-write.ts:83",
+      "callSites": ["src/tools.ts:233", "src/notebooks.ts:145"],
+      "note": "the two writers of workspace file content delegate; src/checkpoints.ts and src/tasks.ts keep their own writers, which write harness-owned state under a lock with their own transaction semantics"
+    },
+    "digests": {
+      "src/atomic-write.ts": "d7d8bddee01138a13574aad58901799936be5fd968eb4c19aff8edd492efadc0",
+      "test/atomic-write.test.ts": "b03e44930ee28d8647cbdc4c68da53595bc85d08047d413859af820328017acc",
+      "src/tools.ts": "fa4bfd042253a60523f3e8f729bb9ccc0a18182dc903b6db740790e6e7e3068d",
+      "src/notebooks.ts": "56b6559e6c951dff21a95b1e6b65b8eb079d69e24cdbe2956d2c435e23fe9c94"
+    }
+  },
+  "ownedDecisions": [
+    "The measurement is taken with fstatSync on the descriptor rather than stat on the path, so the number belongs to the file that was written and cannot be swapped between the write and the check.",
+    "The identity checked is the target directory's, identified before the temporary file is created and re-checked immediately before the rename; the recovered check compares a sandbox staging directory that this writer never uses.",
+    "The unsupported-flush tolerance is restricted to ENOTSUP, EINVAL, ENOSYS and EOPNOTSUPP; the recovered code notices the failure and carries on, which would also hide a flush that failed with EIO.",
+    "The kept file's path is appended to the refusal, because this runtime has no writer-facing step log and the error is where a caller looks.",
+    "The verified mtime is not returned to the caller: the local edit path re-verifies the target's identity rather than comparing timestamps."
+  ],
+  "notPorted": [
+    "The sandbox staging-path chooser ARr and its sibling-fallback refusals: this runtime stages beside the target, so there is no second location and no second identity.",
+    "The per-host identity registry (class ne, gOs, X, reset) and its descriptor closing: the identity is a value held for the duration of one write here.",
+    "The recovered mtime return value, which has no consumer in this runtime.",
+    "The step-by-step writer log (temp written, renaming, committed, failed), which has no channel here; the kept-content refusal carries the one fact a caller needs."
+  ],
+  "cases": {
+    "unit": {
+      "file": "test/atomic-write.test.ts",
+      "count": 9,
+      "fail": 0
+    },
+    "integration": {
+      "file": "test/tools.test.ts",
+      "count": 1,
+      "fail": 0,
+      "asserts": [
+        "a multibyte write_file lands the exact bytes and the exact byte count on disk",
+        "an edit_file that shortens a file leaves no tail of the longer content",
+        "a non-regular target is refused before any write is attempted, which is why the kept-content refusal is covered at the writer",
+        "no temporary file is left in the workspace"
+      ]
+    },
+    "cliSmoke": {
+      "added": false,
+      "reason": "test/tools.test.ts already drives write_file end to end and asserts the no-leftovers property; the two changed behaviours are only observable from inside the write, and a driver would repeat a passing check without reaching anything new."
+    }
+  },
+  "check": {
+    "command": "npm run check",
+    "exit": 0
+  },
+  "build": {
+    "command": "npm run build",
+    "exit": 0
+  },
+  "fullSuite": {
+    "pass": 1101,
+    "fail": 0
+  },
+  "packageSmoke": {
+    "command": "npm run smoke:package",
+    "files": 68,
+    "upstreamRequests": 0
+  },
+  "identity": {
+    "inputs": {
+      "sha256": "d056f197195bc911f955bffcca30c32a571ecb59389be7b181e2f10543de0e4b",
+      "files": 121
+    },
+    "validation": {
+      "sha256": "ff6c83de76d829f05b14b0d39e5c2c142f8834fadb0d68eec175309ba49125fa",
+      "files": 88
+    },
+    "build": {
+      "sha256": "3d291e64cadf2f27ca9ce55c95b4d593fbbe1042c6e964fdbb6e0a6697466b62",
+      "files": 61
+    },
+    "merged": "b11dbf3b0c4a0847df2838c1b3168b2e1c28d288560db34bb09e01619ef6851a"
+  },
+  "tarball": {
+    "name": "litcode-0.1.0.tgz",
+    "files": 68,
+    "bytes": 324364,
+    "sha256": "0777b5e907fbb9cb69533909ba13b26b3223c9a735b2bc3c0209ad3fbd07ee5c"
+  },
+  "regressions": "None. The tool layer already refused a non-regular target before the writer was reached, so the first version of the integration case asserted a path write_file never takes; it now asserts the byte-level property the tool does guarantee and records why the kept-content refusal lives at the writer.",
+  "limitations": [
+    "The unsupported-flush tolerance is not directly exercised: no filesystem in this environment refuses fsync, and the error-code branch is covered by reading rather than by a case.",
+    "A short write cannot be provoked on a local filesystem, so the size refusal is verified by the identity guard's shared shape and by reading, not by a case that produces a truncated file.",
+    "checkpoints.ts and tasks.ts keep their own writers and so do not verify content bytes; they write harness-owned state, not content handed in by a caller."
+  ],
+  "paidCalls": 0
+}

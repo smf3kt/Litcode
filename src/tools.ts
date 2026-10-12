@@ -16,6 +16,7 @@ import path from "node:path";
 
 import type { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { atomicWriteFile } from "./atomic-write.js";
 import type { InteractionCallbacks } from "./interaction-tools.js";
 import { PathResolutionError, resolveChain, verifyIdentity, type ResolvedPath } from "./path-identity.js";
 
@@ -230,35 +231,10 @@ function truncateHead(text: string, maxBytes: number, label: string): string {
 // ---------------------------------------------------------------------------
 
 function atomicWrite(real: string, content: string, mode?: number): void {
-  const dir = path.dirname(real);
-  fs.mkdirSync(dir, { recursive: true });
-  const tmp = path.join(
-    dir,
-    `.${path.basename(real)}.${crypto.randomBytes(6).toString("hex")}.tmp`,
-  );
-  let fd: number | undefined;
-  try {
-    fd = fs.openSync(tmp, "wx", mode ?? 0o644);
-    fs.writeFileSync(fd, content, "utf8");
-    fs.fsyncSync(fd);
-    fs.closeSync(fd);
-    fd = undefined;
-    fs.renameSync(tmp, real);
-  } catch (error) {
-    if (fd !== undefined) {
-      try {
-        fs.closeSync(fd);
-      } catch {
-        /* ignore */
-      }
-    }
-    try {
-      fs.rmSync(tmp, { force: true });
-    } catch {
-      /* ignore */
-    }
-    throw error;
-  }
+  // Delegated: the shared writer verifies the bytes it wrote and the directory
+  // it wrote them in, and keeps the content rather than discarding it when the
+  // rename cannot happen.
+  atomicWriteFile(real, content, mode === undefined ? {} : { mode });
 }
 
 // ---------------------------------------------------------------------------
