@@ -519,6 +519,37 @@
     ],
     "reading": "the thinnest band so far: ten modules whose surfaces this runtime already owns, three vendored or utility modules, four recovered UI components, two prompt texts, two without a local counterpart, two excluded with authentication and two pure code leaves"
   },
+  "sliceEleven": {
+    "scope": "uncited modules ranked 246 to 270 by size",
+    "bytes": 556327,
+    "rows": 25,
+    "byteRange": [
+      21646,
+      23195
+    ],
+    "composition": {
+      "localCounterparts": 13,
+      "vendoredLibraries": 2,
+      "hostedOrExternalSurfaces": 3,
+      "excludedWithAuthentication": 2,
+      "noLocalCounterpart": 2,
+      "undetermined": 3,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-62rej6c1.js is the recovered workflow-authoring guidance, prompt text rather than a mechanism this runtime lacks",
+      "chunk-17g9rbbr.js is the auto-updater's state file, a product surface this runtime does not have",
+      "chunk-zs5kb20m.js carries settings field names including includeCoAuthoredBy, which this runtime already honours by its own explicit instruction"
+    ],
+    "reading": "plumbing and copies of what this runtime already does: a CLI runner, resume, the interactive exit flow, settings fields, settings validation, plugin entry paths, message preprocessing, a debug logger, attachment rendering, id routing, skill loading, a value helper, a message-list panel, graceful-fs and the AWS SDK STS client, hosted remote environments, billing and the desktop download, session credential state and secure storage, the updater's state file and the workflow-authoring guidance, and three pure code leaves"
+  },
+  "methodChange": {
+    "from": "slice twelve",
+    "what": "band width widens from 25 to 50 ranks",
+    "why": "eleven bands have shown the per-module work is the same at either width, and the remaining set is large enough that halving the number of passes matters more than keeping the width uniform with the earlier slices",
+    "unchanged": "every module in a band still gets its own literal evidence and disposition, and bands stay contiguous"
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
