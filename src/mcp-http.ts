@@ -215,6 +215,7 @@ export class McpHttpClient implements McpClient {
       notificationStream: options.notificationStream ?? false,
       clientRequests: options.clientRequests,
       recovery: options.recovery ?? false,
+      persistence: options.persistence ?? false,
     };
     this.clientRequests = new McpClientRequestHandler(name, options.clientRequests);
     if (this.settings.subscriptions) this.resourceSubscriptions = new McpResourceSubscriptions(this.request.bind(this), () => record(this.capabilities.resources) && this.capabilities.resources.subscribe === true);

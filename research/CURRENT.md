@@ -1,10 +1,10 @@
 # 当前项目工作清单
 
-更新：2026-10-11。执行规则见 [WORKFLOW](../WORKFLOW.md)。这是当前排程与审核处置的唯一入口；历史报告保持原记录。
+更新：2026-10-12。执行规则见 [WORKFLOW](../WORKFLOW.md)。这是当前排程与审核处置的唯一入口；历史报告保持原记录。
 
 ## 当前结论
 
-本地工作包W04恢复链、W05启动/慢恢复、W06已使用技能消费者及W07本地交付已完成有限验收；功能族整体仍为Partial。当前全量1021/1021、零失败；真实SIGKILL与源码/编译CLI通过，源码包独立重建50模块字节一致。历史全产品来源审计、完整TUI/MCP扩展、跨进程订阅持久化仍是功能族缺口，不以本轮有限包验收代替。
+本地工作包W04恢复链、W05启动/慢恢复、W06已使用技能消费者及W07本地交付已完成有限验收；功能族整体仍为Partial。当前全量1027/1027、零失败；跨进程MCP订阅包完成编译CLI真实SIGKILL、固定配置、fork隔离、取消/失败恢复，58文件离线安装通过，见[W05持久化](ports/W05-persistence.md)。历史全产品来源审计、完整TUI/MCP扩展与事件重放仍是功能族缺口，不以有限包验收代替。
 
 当前身份与17项验证记录见[本地交付证据](ports/local-completion-evidence.json)。W01/W02及历史基线保持原版本作用域。Git已按用户要求初始化，main初始05d1162，工作位于work/complete-runtime-work；无remote。真实Magpie管理链待验，限定搜索未定位管理端。
 
@@ -16,9 +16,9 @@
 | 2 / W02 | 可信源码与搬运试点；并行执行agents | verified；历史ports待审 | [W02](ports/W02.md)：独立verifier、索引摘要校验、首份准确rewrite台账及内容/构建身份已验收 |
 | 3 / W03 | Magpie启动/恢复适配；管理端owner待定位 | Partial；安装bin/command冷启动/真实任务verified | [安装验收](ports/W03-installed-launcher-evidence.json)、[启动合同](ports/W03-launcher.md)：生产安装可用/冷启动清理/恢复；[真实验收](ports/W03-live.md)两次200；app冷启、route切换/凭证轮换仍待验 |
 | 4 / W04 | 执行与恢复完整包；执行agents | verified有限进程崩溃链 | [持久恢复](ports/W04-crash-recovery.md)：checkpoint8切点+实际CLI，workflow未知效果显式重试/完成复用；原算法未证明，明确rewrite |
-| 5 / W05 | MCP生命周期剩余包；执行agents | verified本地启动/慢恢复包，功能族Partial | [启动](ports/W05-startup.md)、[URI/GET](ports/W05-recovery.md)；完整MCP扩展与订阅持久化另保留缺口 |
+| 5 / W05 | MCP生命周期剩余包；执行agents | verified启动/慢恢复/订阅持久化有限包，功能族Partial | [持久化](ports/W05-persistence.md)、[启动](ports/W05-startup.md)、[URI/GET](ports/W05-recovery.md)；MCP tasks/media、park/refetch及事件重放保留缺口 |
 | 6 / W06 | 扩展与交互包；执行agents | verified已使用技能/Hook消费者包，功能族Partial | [消费者验收](ports/W06-skills-hooks.md)：两源码CLI各9请求+38回归；原shellAST/once完整来源仍待审 |
-| 7 / W07 | 编码任务验收与交付；执行agent，发布决定由用户 | local verified；publication blocked | 最新private57file包含litcode-magpie，源码178files重建50modules一致；[安装证据](ports/W03-installed-launcher-evidence.json)，原交付保留scope；项目license/remote及来源权利尚缺 |
+| 7 / W07 | 编码任务验收与交付；执行agent，发布决定由用户 | local verified；publication blocked | 最新private58file包含litcode-magpie和订阅持久化；本轮源码/运行包位于release/persistence-runtime与release/litcode-source-persistence，[持久化证据](ports/W05-persistence-evidence.json)，原交付保留scope；项目license/remote及来源权利尚缺 |
 
 选择规则：从最上方ready项开始。W03缺管理端信息时继续W02/W04等独立本地工作，同时把所缺信息写在本行；没有预算时真实模型验收保持待验。W04-W06具体子系统由已定位源码、依赖成熟度和实际使用价值决定，不为旧报告的每个措辞创建任务。
 
@@ -49,4 +49,4 @@
 
 ## 本轮流程交付
 
-本轮已提交前完成1021/1021全量、check/build、真实崩溃与编译CLI、private包56文件及源码重建一致。收齐本地验收记录后提交工作分支；外部Magpie与项目license/remote待输入，禁止把待验声明成完成。
+W05持久化已完成1027/1027全量、check/build、编译CLI真实SIGKILL及58文件private安装；收齐源码重建与身份后提交work/complete-runtime-work。下一独立本地包按已定位来源核对MCP剩余扩展；外部Magpie与项目license/remote保留待验。

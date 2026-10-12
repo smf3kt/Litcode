@@ -238,7 +238,35 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await agent().startSession(source, options.signal);
   };
   const announce = () => options.status.write(`session: ${session.id}\n`);
+  const bindNext = async (candidate: Runtime, next: Session): Promise<Runtime> => {
+    try { return await candidate.bindSession?.(next) ?? candidate; }
+    catch (error) {
+      if (candidate !== activeRuntime) {
+        try { await candidate.close(); } catch (cleanupError) { options.status.write(`New runtime cleanup error: ${String(cleanupError)}\n`); }
+      }
+      if (next !== session) next.close();
+      throw error;
+    }
+  };
+  const acceptNext = async (next: Session, nextRuntime: Runtime): Promise<void> => {
+    unsubscribe?.();
+    try {
+      if (nextRuntime !== activeRuntime) await activeRuntime.close();
+      else await activeRuntime.releaseSession?.(session.id);
+    } catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
+    session.close(); session = next; activeRuntime = nextRuntime; activeAgent = undefined; rewindPreview = undefined;
+    bindConfigWatch();
+    for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
+    unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
+  };
   try {
+    const bound = await bindNext(activeRuntime, session);
+    if (bound !== activeRuntime) {
+      unsubscribe?.();
+      try { await activeRuntime.close(); } catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
+      activeRuntime = bound;
+      unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
+    }
     options.status.write('Personal harness. /help for commands.\n');
     announce();
     bindConfigWatch();
@@ -343,16 +371,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           let nextRuntime: Runtime;
           try {
             if (JSON.stringify(next.config.gateway) !== JSON.stringify(session.config.gateway)) throw new Error('Session gateway differs; restart with --resume UUID to recreate the provider');
-            nextRuntime = await activeRuntime.reconfigure(next.config);
+            nextRuntime = await bindNext(await activeRuntime.reconfigure(next.config), next);
           } catch (error) { next.close(); throw error; }
           try { await agent().endSession('session_switch'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
-          unsubscribe?.();
-          try { await activeRuntime.close(); } catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
-          session.close(); session = next; activeRuntime = nextRuntime; activeAgent = undefined; rewindPreview = undefined;
-          bindConfigWatch();
-          for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
-          unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
+          await acceptNext(next, nextRuntime);
           announce(); await agent().startSession('resume', options.signal);
           options.status.write(session.awaitingResponse ? 'Session has an unfinished turn; use /continue.\n' : 'Session resumed.\n');
           continue;
@@ -411,7 +434,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const config = reconnect ? structuredClone(session.config) : reloadConfig(session.config);
           const decision = await agent().emitHook('ConfigChange', { source: reconnect ? 'mcp_reconnect' : 'reload' }, options.signal);
           if (decision.blocked || decision.stopRequested) throw new Error(decision.reason ?? 'ConfigChange hook blocked reload');
-          const nextRuntime = await activeRuntime.reconfigure(config);
+          let nextRuntime = await activeRuntime.reconfigure(config);
           let next: Session | undefined;
           try {
             config.tools = nextRuntime.buildTools(config, 'reload').map(tool => ({ ...structuredClone(tool.schema), eager_input_streaming: true }));
@@ -437,17 +460,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               if (event.kind === 'title' || event.kind === "instruction_watch") next.append(event);
             }
             next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'reload' });
+            nextRuntime = await bindNext(nextRuntime, next);
           } catch (error) { next?.close(); await nextRuntime.close(); throw error; }
           try { await agent().endSession('config_reload'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
-          unsubscribe?.();
-          try { await activeRuntime.close(); }
-          catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
-          session.close();
-          session = next; activeRuntime = nextRuntime; activeAgent = undefined; rewindPreview = undefined;
-          bindConfigWatch();
-          for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
-          unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
+          await acceptNext(next, nextRuntime);
           announce(); await agent().startSession('resume', options.signal);
           options.status.write(reconnect ? 'MCP servers reconnected; pinned settings retained and tool schemas refreshed.\n' : 'Local configuration reloaded; model, gateway and invocation budgets retained.\n');
           continue;
@@ -525,10 +542,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             }
             next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'configuration' });
           } catch (error) { next.close(); throw error; }
+          const nextRuntime = await bindNext(activeRuntime, next);
           try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
-          await activeRuntime.releaseSession?.(session.id); session.close(); session = next; activeAgent = undefined;
-          bindConfigWatch();
-          for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
+          await acceptNext(next, nextRuntime);
           announce(); await agent().startSession('resume', options.signal);
           await agent().emitHook(switchingModel ? 'PostModelSwitch' : 'ConfigChange', { model: config.model, permission_mode: config.permissions?.mode }, options.signal);
           continue;
@@ -556,18 +572,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const nextConfig = { ...structuredClone(session.config), workspace: target };
           if (worktreeReturn === null) delete nextConfig.worktreeReturn;
           else if (worktreeReturn !== undefined) nextConfig.worktreeReturn = worktreeReturn;
-          const nextRuntime = await activeRuntime.reconfigure(nextConfig);
-          let next: Session;
-          try { next = relocateSession(session, target, config => nextRuntime.buildTools(config, 'relocation'),
-            worktreeReturn === undefined ? undefined : { worktreeReturn }); }
-          catch (error) { await nextRuntime.close(); throw error; }
+          let nextRuntime = await activeRuntime.reconfigure(nextConfig);
+          let next: Session | undefined;
+          try {
+            next = relocateSession(session, target, config => nextRuntime.buildTools(config, 'relocation'),
+              worktreeReturn === undefined ? undefined : { worktreeReturn });
+            nextRuntime = await bindNext(nextRuntime, next);
+          } catch (error) { next?.close(); await nextRuntime.close(); throw error; }
           try { await agent().endSession('cwd_changed'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
-          unsubscribe?.(); await activeRuntime.close(); session.close();
-          activeRuntime = nextRuntime; session = next; activeAgent = undefined;
-          bindConfigWatch();
-          unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
-          for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
+          await acceptNext(next, nextRuntime);
           announce(); await agent().startSession('resume', options.signal);
           if (removal) {
             try {
@@ -619,9 +633,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           await activeRuntime.releaseSession?.(session.id);
           activeAgent = undefined;
           const next = await withTurn(signal => Promise.resolve(applyRewind(session, preview, match[2]!, signal)));
-          for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
-          session.close(); session = next; activeAgent = undefined; rewindPreview = undefined;
-          bindConfigWatch();
+          const nextRuntime = await bindNext(activeRuntime, next);
+          await acceptNext(next, nextRuntime);
           announce(); await startAgentSession('fork');
           output.write(`Rewound files and conversation to turn ${turn}; restored ${preview.operations.length} file operations; preserved ${preview.preserved.length} directory/symlink changes.\n`);
           continue;
@@ -637,12 +650,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (boundary === undefined) throw new Error('Completed turn number does not exist');
           }
           const next = prompt === '/clear' ? Session.open(session.config.workspace, { config: structuredClone(session.config) }) : forkSession(session, boundary);
+          const nextRuntime = await bindNext(activeRuntime, next);
           try { await agent().endSession(prompt === '/clear' ? 'clear' : 'fork'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
-          await activeRuntime.releaseSession?.(session.id);
-          for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
-          session.close(); session = next; activeAgent = undefined; announce();
-          bindConfigWatch();
+          await acceptNext(next, nextRuntime); announce();
           await startAgentSession(prompt === '/clear' ? 'clear' : 'fork');
           continue;
         }
