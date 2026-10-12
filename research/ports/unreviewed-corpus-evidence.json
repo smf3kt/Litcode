@@ -802,6 +802,38 @@
     ],
     "reading": "the plugin, daemon, bridge and swarm plumbing band at 35.4% import text: thirty modules with local counterparts, thirty-two with no literal of their own, eighteen hosted surfaces, five recovered UI components, four vendored packages, three external surfaces, two modules excluded with OAuth, two product surfaces without a local counterpart, two shipped skill texts, one pure code leaf, and one candidate in plugin admission under managed settings"
   },
+  "sliceTwenty": {
+    "scope": "uncited modules ranked 821 to 920 by size, the fourth 100-rank band",
+    "bytes": 618698,
+    "rows": 100,
+    "rowsWithContent": 62,
+    "byteRange": [
+      7391,
+      6379
+    ],
+    "importSharePercent": 48.4,
+    "composition": {
+      "localCounterparts": 23,
+      "noCharacterisingLiteral": 50,
+      "hostedOrExternalSurfaces": 18,
+      "vendoredOrPolyfill": 4,
+      "excludedWithOauth": 2,
+      "shippedSkillText": 1,
+      "productWithoutLocalCounterpart": 1,
+      "recoveredUi": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-vw2b9ke9.js switches code review off when this machine's managed settings could not be read, and chunk-ecfjn15r.js ignores a tips file named by remote managed settings when it is a network path; both corroborate the unreadable-managed-source rule the slice nineteen candidate records, from a different subsystem",
+      "chunk-hemf8mv9.js states that a peer session's message was not typed by the user, the same data-not-instructions boundary this runtime states in its own words",
+      "chunk-9pfx07qm.js holds cross-session messages with release, expiry and duplicate states, which this runtime expresses in its own held-message semantics",
+      "chunk-9dhv0d4w.js caps the depth of a forked skill and detects a live duplicate fork",
+      "two modules are near-duplicates of their neighbours (an identity-provider login pair and a vendored fetch error pair), continuing the near-duplicate pattern earlier slices recorded",
+      "fifty modules carry no characterising literal of their own: thirty-eight with nothing at all and twelve with state-name markers only"
+    ],
+    "reading": "the session-plumbing band at 48.4% import text: cross-session messages and their holds, session naming and titles, subagent forks, connector-registry tools and the managed-settings gates that switch features off - twenty-three modules with local counterparts, fifty with no literal of their own, eighteen hosted surfaces, four vendored packages, two modules excluded with OAuth, one shipped skill text, one product surface without a local counterpart, one recovered UI module, and no candidate of its own"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
