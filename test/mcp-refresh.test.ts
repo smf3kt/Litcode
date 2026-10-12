@@ -7,14 +7,19 @@ import { mcpReconnectDelay } from "../src/mcp-retry.js";
 
 const ctx = (): ToolContext => ({ workspace: process.cwd(), signal: new AbortController().signal, maxOutputBytes: 100_000, allowShell: false });
 const info = (name: string, readOnly = false) => ({ name, description: `${name} description`, inputSchema: { type: "object", properties: { text: { type: "string" } } }, annotations: { readOnlyHint: readOnly } });
-type State = { tools: unknown[]; initializes: number; lists: number; calls: string[]; fail: boolean; notify: boolean; closed: number; result?: unknown; initializeChanged?: boolean; afterInitial?: unknown[] };
+type State = { tools: unknown[]; initializes: number; lists: number; calls: string[]; fail: boolean; notify: boolean; closed: number; holdMs: number; streams: ServerResponse[]; push: (message: unknown) => void; result?: unknown; initializeChanged?: boolean; afterInitial?: unknown[] };
 function json(res: ServerResponse, id: unknown, result: unknown): void {
   res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ jsonrpc: "2.0", id, result }));
 }
 async function fixture(fn: (url: string, state: State) => Promise<void>): Promise<void> {
-  const state: State = { tools: [info("original", true)], initializes: 0, lists: 0, calls: [], fail: false, notify: false, closed: 0 };
+  const state: State = { tools: [info("original", true)], initializes: 0, lists: 0, calls: [], fail: false, notify: false, closed: 0, holdMs: 0, streams: [], push: () => {} };
+  state.push = (message) => { for (const stream of state.streams) stream.write(`data: ${JSON.stringify(message)}\n\n`); };
   const server = createServer((req, res) => {
     void (async () => {
+      if (req.method === "GET") {
+        res.writeHead(200, { "Content-Type": "text/event-stream" }); res.flushHeaders();
+        state.streams.push(res); return;
+      }
       let text = ""; for await (const chunk of req) text += chunk;
       if (req.method === "DELETE") { state.closed++; res.writeHead(204); res.end(); return; }
       const msg = JSON.parse(text);
@@ -29,6 +34,7 @@ async function fixture(fn: (url: string, state: State) => Promise<void>): Promis
       }
       else if (msg.method === "tools/list") {
         state.lists++;
+        if (state.holdMs) await new Promise((resolve) => setTimeout(resolve, state.holdMs));
         if (state.fail) { res.writeHead(500); res.end(); }
         else {
           json(res, msg.id, { tools: state.tools });
@@ -139,13 +145,13 @@ test("deferred mode exposes generic discovery/call schemas and bounded valid JSO
   });
 });
 
-test("HTTP list_changed marks dirty and next search/call refreshes once", async () => {
+test("HTTP list_changed refetches private tools at once with no discovery call", async () => {
   await fixture(async (url, state) => {
     const c = await connect(url, { dynamic: true, deferred: true });
     try {
       state.tools = [info("new")]; state.notify = true;
       assert.equal(await tool(c, "mcp_tool_call").execute({ server: "srv", tool: "original" }, ctx()), "original:");
-      assert.equal(state.lists, 1);
+      await until(() => state.lists === 2);
       assert.equal((await search(c)).tools[0].tool, "new");
       assert.equal(state.lists, 2);
       await search(c); assert.equal(state.lists, 2);
@@ -154,15 +160,53 @@ test("HTTP list_changed marks dirty and next search/call refreshes once", async 
   });
 });
 
-test("notifications received during initialize remain dirty until discovery", async () => {
+test("notifications received during initialize refetch right after startup", async () => {
   await fixture(async (url, state) => {
     state.initializeChanged = true;
     state.afterInitial = [info("after")];
     const c = await connect(url, { deferred: true });
     try {
       assert.equal(state.lists, 1);
+      await until(() => state.lists === 2);
       assert.equal((await search(c)).tools[0].tool, "after");
       assert.equal(state.lists, 2);
+    } finally { await c.close(); }
+  });
+});
+
+test("a GET stream list_changed burst coalesces into one follow-up refetch", async () => {
+  await fixture(async (url, state) => {
+    const c = await connect(url, { dynamic: true, deferred: true, notificationStream: true, requestTimeoutMs: 2000 });
+    try {
+      await until(() => c.notificationStreams!().srv.state === "active");
+      state.tools = [info("latest")];
+      state.holdMs = 60;
+      state.push({ jsonrpc: "2.0", method: "notifications/tools/list_changed" });
+      await until(() => state.lists === 2);
+      state.push({ jsonrpc: "2.0", method: "notifications/tools/list_changed" });
+      state.push({ jsonrpc: "2.0", method: "notifications/tools/list_changed" });
+      await until(() => state.lists === 3);
+      assert.equal((await search(c)).tools[0].tool, "latest");
+      assert.equal(state.lists, 3);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      assert.equal(state.lists, 3);
+    } finally { await c.close(); }
+  });
+});
+
+test("a failed background refetch stays dirty without failing the connection", async () => {
+  await fixture(async (url, state) => {
+    const c = await connect(url, { dynamic: true, deferred: true, notificationStream: true, requestTimeoutMs: 2000 });
+    try {
+      await until(() => c.notificationStreams!().srv.state === "active");
+      state.tools = [info("recovered")];
+      state.fail = true;
+      state.push({ jsonrpc: "2.0", method: "notifications/tools/list_changed" });
+      await until(() => state.lists === 2);
+      state.fail = false;
+      assert.equal((await search(c)).tools[0].tool, "recovered");
+      assert.equal(state.lists, 3);
+      await search(c); assert.equal(state.lists, 3);
     } finally { await c.close(); }
   });
 });
