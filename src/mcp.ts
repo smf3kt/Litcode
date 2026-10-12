@@ -967,7 +967,7 @@ function makeCatalogTools(clients: Map<string, McpClient>, context: McpConnectCo
 export const MCP_DYNAMIC_LIMITS: readonly string[] = [
   "dynamic tools: private catalogs refresh atomically; published schemas remain pinned to their initial snapshot",
   "dynamic permissions: generic mcp_tool_call is always mutable; permission matching uses its generic name, not the remote tool name",
-  "dynamic notifications: tools/list_changed observed on stdio or active HTTP POST streams marks a server dirty; no background HTTP GET stream",
+  "dynamic notifications: tools/list_changed observed on stdio, a POST-carried stream or an opted-in GET stream marks a server dirty and refetches it in the background at once; passes are serialized with explicit refreshes and coalesced per server, a failed pass leaves the server dirty for the next call, and no GET stream is opened for this purpose",
   `dynamic discovery: at most ${MCP_MAX_TOTAL_TOOLS} tools, ${MCP_MAX_LIST_PAGES} pages per server and ${MCP_MAX_TOOL_CATALOG_BYTES} bytes of catalog metadata`,
 ];
 
@@ -1059,16 +1059,22 @@ class DynamicMcpCatalog {
   private readonly revisions = new Map<string, number>();
   private readonly dirty = new Set<string>();
   private readonly unsubscribe: (() => void)[] = [];
+  private readonly refetching = new Set<string>();
   private queue: Promise<void> = Promise.resolve();
   private closed = false;
 
-  constructor(private readonly clients: Map<string, McpClient>, initial: Map<string, McpToolInfo[]>) {
+  constructor(
+    private readonly clients: Map<string, McpClient>,
+    initial: Map<string, McpToolInfo[]>,
+    private readonly signal: AbortSignal,
+  ) {
     this.inventories = initial;
     for (const [name, client] of clients) {
       this.revisions.set(name, 0);
       this.unsubscribe.push(client.onToolsChanged(() => {
         this.revisions.set(name, (this.revisions.get(name) ?? 0) + 1);
         this.dirty.add(name);
+        this.refetchInBackground(name);
       }));
     }
     this.validate(initial);
@@ -1127,6 +1133,32 @@ class DynamicMcpCatalog {
     }
   }
 
+  // A list_changed notification refetches the affected server at once instead
+  // of waiting for the next discovery call: the recovered client registers its
+  // own zero-debounce refetch on notifications/tools/list_changed, so the
+  // change is already adopted when a call arrives. Passes are serialized with
+  // explicit refreshes through the shared queue and coalesced per server; a
+  // change that lands during a pass schedules exactly one follow-up, while a
+  // failed pass only leaves the server dirty for the next explicit use rather
+  // than retrying in the background.
+  private refetchInBackground(server: string): void {
+    if (this.closed || this.signal.aborted || this.refetching.has(server)) return;
+    this.refetching.add(server);
+    const observed = this.revisions.get(server) ?? 0;
+    void this.queue
+      .then(async () => {
+        if (this.closed || this.signal.aborted) return;
+        await this.refresh(server, this.signal, true);
+      })
+      .then(() => {
+        this.refetching.delete(server);
+        if ((this.revisions.get(server) ?? 0) !== observed) this.refetchInBackground(server);
+      })
+      .catch(() => {
+        this.refetching.delete(server);
+      });
+  }
+
   find(server: string, tool: string): McpToolInfo {
     const found = this.inventories.get(server)?.find((info) => info.name === tool);
     if (!found) throw new Error("MCP tool is absent from the current catalog");
@@ -1144,6 +1176,7 @@ class DynamicMcpCatalog {
   markDirty(server: string): void {
     this.revisions.set(server, (this.revisions.get(server) ?? 0) + 1);
     this.dirty.add(server);
+    this.refetchInBackground(server);
   }
 
   close(): void {
@@ -1625,7 +1658,7 @@ export async function connectMcpServers(
       }
     }
     if (settings.dynamic && namedClients.size > 0) {
-      dynamicCatalog = new DynamicMcpCatalog(namedClients, inventories);
+      dynamicCatalog = new DynamicMcpCatalog(namedClients, inventories, context.signal);
       for (const server of initialDirty) dynamicCatalog.markDirty(server);
       tools.push(...dynamicCatalog.tools(context));
     }

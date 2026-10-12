@@ -48,6 +48,7 @@
     "smoke:mcp-sampling-metadata": "node scripts/smoke-mcp-sampling-images.mjs --metadata",
     "smoke:mcp-tasks": "node scripts/smoke-mcp-tasks.mjs",
     "smoke:mcp-stdio-redial": "node scripts/smoke-mcp-stdio-redial.mjs",
+    "smoke:mcp-list-changed-cli": "node scripts/smoke-mcp-list-changed-cli.mjs",
     "smoke:mcp-logging": "node scripts/smoke-mcp-logging.mjs",
     "smoke:child-callbacks": "node scripts/smoke-child-callbacks.mjs",
     "smoke:hook-terminal-cli": "node scripts/smoke-hook-terminal-cli.mjs",
