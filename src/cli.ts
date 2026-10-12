@@ -11,7 +11,8 @@ import { interactiveLoop } from './interactive.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { listSessions } from './sessions.js';
-import { loadProjectConfig, type LoadedConfig } from './config.js';
+import { loadProjectConfig, defaultUserDir, type LoadedConfig } from './config.js';
+import { heldMcpServerNotice, mcpServerFingerprint, readMcpApprovals, recordMcpApprovals, resolveMcpServers, workspaceApprovalKey } from './mcp-approval.js';
 import { loadKeybindings } from './keybindings.js';
 import { compileJsonSchema, createHeadlessOutput, UsageBudget, UsageBudgetExceeded, withUsageBudget,
   type HeadlessOutput, type OutputFormat } from './structured-output.js';
@@ -266,6 +267,20 @@ function newConfig(
     if (settings.webSearch) config.webSearch = settings.webSearch;
     if (settings.hooks) config.hooks = settings.hooks;
     if (settings.mcpServers) config.mcpServers = settings.mcpServers;
+    const approvalUserDir = path.resolve((values['user-dir'] as string | undefined) ?? defaultUserDir());
+    const approvals = readMcpApprovals(approvalUserDir, workspaceApprovalKey(workspace));
+    const admission = resolveMcpServers(loaded.projectMcpServers ?? {}, approvals,
+      { approveAll: loaded.approveAllProjectMcpServers === true });
+    if (admission.pending.length || admission.declined.length) {
+      // A held or declined server is never connected: the name is removed from
+      // the configuration the runtime dials, and kept aside with its reason.
+      for (const name of [...admission.pending.map(item => item.name), ...admission.declined]) {
+        if (config.mcpServers) delete config.mcpServers[name];
+      }
+      if (admission.pending.length) config.heldMcpServers = admission.pending;
+      const notice = heldMcpServerNotice(admission.pending, admission.declined, approvals.state);
+      if (notice) process.stderr.write(`${notice}\n`);
+    }
     config.permissions = resolvePermissions(settings.permissions, values);
     config.configSources!.overrides = {
       ...(values['auto-memory'] === undefined ? {} : { autoMemory: values['auto-memory'] as boolean }),
@@ -299,6 +314,8 @@ async function main(): Promise<void> {
     tasks: { type: 'boolean' }, subagents: { type: 'boolean' },
     'auto-memory': { type: 'boolean' },
     'watch-config': { type: 'boolean' },
+    'approve-mcp-server': { type: 'string', multiple: true },
+    'reject-mcp-server': { type: 'string', multiple: true },
     'mcp-roots': { type: 'boolean' }, 'mcp-sampling': { type: 'boolean' },
     'mcp-elicitation': { type: 'boolean' },
     'output-format': { type: 'string' }, 'json-schema': { type: 'string' },
@@ -330,11 +347,10 @@ async function main(): Promise<void> {
   if (values.interactive && (values.demo || values.continue || positionals.length)) throw new Error('Interactive mode takes no initial task, demo or continue option');
   if (values.demo && (values.resume || values.continue || positionals.length)) throw new Error('Demo takes no task or resume options');
   if (values.continue && (!values.resume || positionals.length)) throw new Error('--continue requires --resume and no new task');
-  if (!values.demo && !values.continue && !values.interactive && !positionals.length) throw new Error('Supply a task, --interactive, --continue or --demo');
   if (values.thinking && values['no-thinking']) throw new Error('Choose --thinking or --no-thinking');
   const resumeLocked = ['model', 'effort', 'base-url', 'auth', 'token-counting', 'thinking', 'no-thinking', 'prompt-cache',
     'eager-tool-input', 'allow-shell', 'max-turns', 'context-tokens', 'compact-at', 'max-tokens',
-    'settings', 'managed-settings', 'user-dir', 'permission-mode', 'allow-tool', 'deny-tool', 'tasks', 'subagents', 'mcp-roots', 'mcp-sampling', 'mcp-elicitation', 'auto-memory', 'watch-config'];
+    'settings', 'managed-settings', 'user-dir', 'permission-mode', 'allow-tool', 'deny-tool', 'tasks', 'subagents', 'mcp-roots', 'mcp-sampling', 'mcp-elicitation', 'auto-memory', 'watch-config', 'approve-mcp-server', 'reject-mcp-server'];
   if (values.resume && resumeLocked.some(key => key in values)) throw new Error('Resume uses stored settings; start a new session to change them');
 
   const demo = values.demo === true;
@@ -348,6 +364,39 @@ async function main(): Promise<void> {
     ? loadProjectConfig(workspace, { userDir: values['user-dir'], settingsFile: values.settings, managedSettingsFile: values['managed-settings'], paths: [] })
     : undefined;
   const settings = loaded ? parseSettings(loaded.settings) : {};
+  const userDir = path.resolve((values['user-dir'] as string | undefined) ?? defaultUserDir());
+  // Answering for a project-declared server is its own action: it records the
+  // declaration the person answered for and starts nothing.
+  const approve = (values['approve-mcp-server'] as string[] | undefined) ?? [];
+  const reject = (values['reject-mcp-server'] as string[] | undefined) ?? [];
+  if (approve.length || reject.length) {
+    if (!loaded) throw new Error('--approve-mcp-server and --reject-mcp-server need a project configuration; they are unavailable with --resume or --demo');
+    const declared = loaded.projectMcpServers ?? {};
+    const both = approve.filter(name => reject.includes(name));
+    if (both.length) throw new Error(`a project MCP server cannot be both approved and declined: ${both.join(', ')}`);
+    const unknown = [...approve, ...reject].filter(name => declared[name] === undefined);
+    if (unknown.length) throw new Error(`no project-declared MCP server named ${unknown.join(', ')}`);
+    const entries = [
+      ...approve.map(name => ({ name, fingerprint: mcpServerFingerprint(declared[name]!), decision: 'approved' as const })),
+      ...reject.map(name => ({ name, fingerprint: mcpServerFingerprint(declared[name]!), decision: 'rejected' as const })),
+    ];
+    try {
+      recordMcpApprovals(userDir, workspaceApprovalKey(workspace), entries);
+    } catch (error) {
+      // Nothing was written, so the question genuinely comes back.
+      process.stderr.write(`mcp: your MCP server choices could not be saved (${(error as Error).message}); you will be asked again next startup\n`);
+      process.exitCode = 1;
+      return;
+    }
+    const summary = [
+      approve.length ? `approved ${approve.join(', ')}` : '',
+      reject.length ? `declined ${reject.join(', ')}` : '',
+    ].filter(Boolean).join('; ');
+    process.stdout.write(`Project MCP server(s) ${summary}\n`);
+    return;
+  }
+  // Approval is a complete action on its own; every other path needs work to do.
+  if (!values.demo && !values.continue && !values.interactive && !positionals.length) throw new Error('Supply a task, --interactive, --continue or --demo');
   const apiKey = process.env.LLM_API_KEY;
   if (!demo && !apiKey) throw new Error('Set LLM_API_KEY in your environment before a live run');
 

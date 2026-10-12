@@ -44,6 +44,12 @@ export type SessionConfig = {
   plugins?: PluginConfig;
   agentTypes?: AgentTypeInfo[];
   mcpServers?: Record<string, McpServerConfig>;
+  /**
+   * Project-declared MCP servers held for approval. They are never connected
+   * while held, and each entry records why: never approved, or approved and
+   * then edited.
+   */
+  heldMcpServers?: { name: string; fingerprint: string; reason: 'unapproved' | 'declaration-changed' }[];
   mcpClient?: { roots?: boolean; sampling?: boolean; samplingImages?: boolean; samplingArrays?: boolean; samplingAudio?: boolean; elicitation?: boolean };
   autoMemory?: boolean;
   dynamicInstructions?: boolean;
@@ -137,6 +143,8 @@ export const configSchema = z.object({
     imports: z.array(z.object({ path: z.string(), content: z.string() }).strict()).optional(),
   }).strict()).optional(),
   mcpServers: mcpServersSchema.optional(),
+  heldMcpServers: z.array(z.object({ name: z.string().min(1).max(256), fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    reason: z.enum(['unapproved', 'declaration-changed']) }).strict()).optional(),
   mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), samplingArrays: z.boolean().optional(), samplingAudio: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional(),
   autoMemory: z.boolean().optional(),
   dynamicInstructions: z.boolean().optional(),

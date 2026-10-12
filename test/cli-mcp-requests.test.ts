@@ -137,10 +137,22 @@ async function fixture(t: TestContext, reverseMethods: string[] = [], image = fa
     const file = path.join(workspace, relative);
     fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text);
   };
-  const settings = (extra: object = {}) => put('.harness/settings.json', JSON.stringify({
-    mcpServers: { fixture: { type: 'http', url: `${url}/mcp` } },
-    features: { mcpDynamic: false }, ...extra,
-  }));
+  const putUser = (relative: string, text: string) => {
+    const file = path.join(user, relative);
+    fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, text);
+  };
+  // The fixture server is the caller's own, so it is declared in the user
+  // layer: a server named by the checkout itself is held for approval, and
+  // these cases are about sampling, not about admission. The project layer is
+  // reset to valid as well, because some cases deliberately leave a malformed
+  // `.harness/settings.json` behind to prove a resume ignores it.
+  const settings = (extra: object = {}) => {
+    putUser('settings.json', JSON.stringify({
+      mcpServers: { fixture: { type: 'http', url: `${url}/mcp` } },
+      features: { mcpDynamic: false }, ...extra,
+    }));
+    put('.harness/settings.json', '{}\n');
+  };
   const run = (extra: string[] = [], options: { resume?: string; key?: string; prompt?: string } = {}) =>
     new Promise<CliResult>((resolve, reject) => {
       const env = { ...process.env };

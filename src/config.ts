@@ -28,7 +28,7 @@ import path from "node:path";
 import { isMap, isSeq, parseDocument } from "yaml";
 import { hooksSchema, type HooksConfig } from "./hooks.js";
 import { discoverInstalledPluginComponents, pluginConfigSchema, type PluginConfig } from "./plugins.js";
-import { mcpServersSchema } from "./mcp.js";
+import { mcpServersSchema, type McpServerConfig } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
 import { LinkVetError, vetLinkChain } from "./link-vetting.js";
 import { managedPolicySchema } from "./session.js";
@@ -97,6 +97,18 @@ export interface LoadedConfig {
   agentTypes?: AgentTypeInfo[];
   /** Validation and precedence diagnostics for the agent catalogs that exist. */
   agentTypeReports?: AgentTypeLoadReport[];
+  /**
+   * MCP servers declared by a project-owned settings file. A checkout can ship
+   * `.harness/settings.json`, so these names carry the declaration the project
+   * asked for and the caller decides whether to connect them.
+   */
+  projectMcpServers?: Record<string, McpServerConfig>;
+  /**
+   * The user's own switch to admit every project-declared MCP server in this
+   * workspace without answering for each one. Only the user layer (or an
+   * explicitly named settings file) may set it.
+   */
+  approveAllProjectMcpServers?: boolean;
 }
 
 export interface LoadProjectOptions {
@@ -932,13 +944,36 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     managedSettings = managedPolicySchema.parse(cloneSafe(parsed));
   }
   const pluginExplicitLayers: Record<string, unknown>[] = [];
-  for (const layer of layers) {
+  // The project-owned layers are `settings.json` and `settings.local.json`
+  // inside the workspace. A server named there comes from the checkout, not
+  // from the person running the session, so its declaration is kept aside for
+  // the caller to hold until that person approves it. The user layer and an
+  // explicitly named settings file are the caller's own.
+  const projectMcpServers: Record<string, McpServerConfig> = {};
+  // The one switch that admits a checkout's declarations wholesale lives in the
+  // user layer for the same reason the answers do: a project must not be able
+  // to grant itself admission by editing its own settings.
+  let approveAllProjectMcpServers = false;
+  for (const [index, layer] of layers.entries()) {
     const parsed = readSettingsLayer(layer.file, layer.required);
     if (parsed !== null) {
       pluginExplicitLayers.push(parsed);
       mergeInto(settings, parsed);
+      if (parsed.approveAllProjectMcpServers !== undefined) {
+        if (typeof parsed.approveAllProjectMcpServers !== "boolean") {
+          throw new ConfigError("approveAllProjectMcpServers must be true or false", layer.file);
+        }
+        if (index === 1 || index === 2) {
+          throw new ConfigError("approveAllProjectMcpServers is a user setting; a checkout cannot approve its own MCP servers", layer.file);
+        }
+        approveAllProjectMcpServers = parsed.approveAllProjectMcpServers;
+      }
+      if (index > 0 && index < 3 && parsed.mcpServers !== undefined) {
+        Object.assign(projectMcpServers, mcpServersSchema.parse(parsed.mcpServers));
+      }
     }
   }
+  delete settings.approveAllProjectMcpServers;
   if (managedSettings) {
     for (const key of ["allowShell", "permissions"] as const) if (Object.hasOwn(managedSettings, key)) settings[key] = cloneSafe(managedSettings[key]);
     for (const key of ["features", "mcpClient"] as const) if (Object.hasOwn(managedSettings, key)) {
@@ -1112,6 +1147,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   if (conditionalRules.length) result.conditionalRules = conditionalRules;
   if (agentCatalog.agentTypes.length) result.agentTypes = agentCatalog.agentTypes;
   if (agentCatalog.reports.length) result.agentTypeReports = agentCatalog.reports;
+  if (Object.keys(projectMcpServers).length) result.projectMcpServers = projectMcpServers;
+  if (approveAllProjectMcpServers) result.approveAllProjectMcpServers = true;
   return result;
 }
 

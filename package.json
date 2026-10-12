@@ -39,6 +39,7 @@
     "smoke:coding-task": "node scripts/smoke-coding-task.mjs",
     "smoke:checkpoint-crash": "node scripts/smoke-checkpoint-crash.mjs",
     "smoke:mcp-startup-cli": "node scripts/smoke-mcp-startup-cli.mjs",
+    "smoke:mcp-approval-cli": "node scripts/smoke-mcp-approval-cli.mjs",
     "smoke:mcp-notification": "node scripts/smoke-mcp-notification-stream.mjs",
     "smoke:mcp-reconnect-cli": "node scripts/smoke-mcp-reconnect-cli.mjs",
     "smoke:mcp-recovery-cli": "node scripts/smoke-mcp-recovery-cli.mjs",
