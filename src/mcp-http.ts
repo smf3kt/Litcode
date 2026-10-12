@@ -340,7 +340,8 @@ export class McpHttpClient implements McpClient {
   private async readNotificationStream(controller: AbortController): Promise<void> {
     let timer: NodeJS.Timeout | undefined;
     let reopen = false;
-
+    // A stream that carried a client request is not reopened: its reply may still be in flight.
+    let carriedRequest = false;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     let idle = false;
     const arm = () => {
@@ -367,10 +368,12 @@ export class McpHttpClient implements McpClient {
             (!Object.hasOwn(msg, "method") && (!Object.hasOwn(msg, "id") || Object.hasOwn(msg, "result") === Object.hasOwn(msg, "error")))))
           throw new Error("MCP GET malformed JSON-RPC message type");
         this.notification(msg);
-        if (this.settings.standardTasks && this.version === MCP_TASK_PROTOCOL_VERSION && Object.hasOwn(msg, "id") &&
-            ["roots/list", "elicitation/create"].includes(String(msg.method)) && record(msg.params) &&
-            record(msg.params._meta) && Object.hasOwn(msg.params._meta, MCP_RELATED_TASK)) {
-          // Keep reading so cancellation notifications can interrupt a pending callback.
+        if (typeof msg.method === "string" && Object.hasOwn(msg, "id")) {
+          // Every client request on this stream uses the POST contract: the
+          // runtime callback gate decides support, unsupported methods get a
+          // bounded error reply, and reading continues so cancellation
+          // notifications and parallel requests still progress.
+          carriedRequest = true;
           void this.clientRequests.handle(msg, reply => this.bounded("client response", undefined, MCP_HTTP_CLEANUP_TIMEOUT_MS,
             replySignal => this.accepted(reply, replySignal))).catch(() => undefined);
         }
@@ -411,7 +414,7 @@ export class McpHttpClient implements McpClient {
       controller.abort();
       if (reader) { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
       if (this.streamController === controller) this.streamController = undefined;
-      if (reopen) this.scheduleNotificationReopen();
+      if (reopen && !carriedRequest) this.scheduleNotificationReopen();
     }
   }
 

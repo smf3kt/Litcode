@@ -13,8 +13,8 @@ const getInputs = process.argv.includes('--get');
 const durable = process.argv.includes('--durable');
 if (durable && !standard) throw new Error('--durable requires --standard');
 let savedTaskId;
-if (getInputs && !standard) throw new Error('--get requires --standard');
-let getStream, gets = 0, getClosed = 0;
+// --get without --standard exercises unrelated GET client requests on a legacy-task connection.
+let getStream, gets = 0, getClosed = 0, getRoots = false;
 
 const related = 'io.modelcontextprotocol/related-task';
 const taskState = (taskId, status = 'working') => ({ taskId, status, ttl: 30000, createdAt: '2026-10-12T00:00:00Z', lastUpdatedAt: '2026-10-12T00:00:00Z', pollInterval: 250 });
@@ -32,7 +32,9 @@ const server = http.createServer((req, res) => {
     if (req.method === 'GET') {
       gets++; getStream = res;
       res.on('close', () => { getClosed++; if (getStream === res) getStream = undefined; });
-      res.writeHead(200, { 'content-type': 'text/event-stream' }); res.flushHeaders(); return;
+      res.writeHead(200, { 'content-type': 'text/event-stream' }); res.flushHeaders();
+      if (getInputs && !standard) res.write(`data: ${JSON.stringify({ jsonrpc: '2.0', id: 'unrelated-roots', method: 'roots/list', params: {} })}\n\n`);
+      return;
     }
     if (req.method === 'DELETE') { deletes++; res.writeHead(204).end(); return; }
     const chunks = []; let size = 0; for await (const c of req) { size += c.length; assert.ok(size < 2 ** 20); chunks.push(c); }
@@ -83,7 +85,9 @@ const server = http.createServer((req, res) => {
       assert.equal(body.result._meta[related].taskId, inputStream.taskId);
       if (tasks.get(inputStream.taskId).mode === 'form') assert.deepEqual(body.result.content, { label: 'owned' });
       else assert.ok(body.result.roots[0].uri.startsWith('file:'));
+      if (getInputs) getStream.write(`data: ${JSON.stringify({ jsonrpc: '2.0', id: 'unrelated-roots', method: 'roots/list', params: {} })}\n\n`);
       res.writeHead(202).end(); inputStream.res.end(`data: ${JSON.stringify({ jsonrpc: '2.0', id: inputStream.id, result: { content: [{ type: 'text', text: 'OWNED_TASK_RESULT' }], _meta: { [related]: { taskId: inputStream.taskId } } } })}\n\n`);
+    } else if (body.id === 'unrelated-roots') { assert.ok(body.result.roots[0].uri.startsWith('file:')); getRoots = true; res.writeHead(202).end();
     } else if (body.method === 'tasks/update') { const task = tasks.get(body.params.taskId); if (task.mode === 'form') assert.deepEqual(body.params.inputResponses.root, { action: 'accept', content: { label: 'owned' } }); else assert.ok(body.params.inputResponses.root.roots[0].uri.startsWith('file:')); task.answered = true; send(res, body.id, {}); }
     else if (body.method === 'tasks/cancel') { tasks.get(body.params.taskId).cancelled = true; send(res, body.id, { taskId: body.params.taskId, status: 'cancelled' }); }
     else res.writeHead(202).end();
@@ -127,7 +131,7 @@ else if(m.method==='tasks/result')reply(m.id,{content:[{type:'text',text:'STDIO_
   const outstanding = invoke(lifetime, 'cancel'); const checked = assert.rejects(outstanding, /cancel/i);
   await new Promise(resolve => setTimeout(resolve, 25)); await lifetime.close(); await checked;
   fs.mkdirSync(path.join(workspace, '.harness')); fs.mkdirSync(path.join(workspace, 'user'));
-  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true, mcpNotificationStream: getInputs, ...(durable ? { mcpPersistence: true, mcpRecovery: true } : {}) } : { mcpTasks: true }), mcpDynamic: false } }));
+  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true, mcpNotificationStream: getInputs, ...(durable ? { mcpPersistence: true, mcpRecovery: true } : {}) } : { mcpTasks: true, ...(getInputs ? { mcpNotificationStream: true } : {}) }), mcpDynamic: false } }));
   const run = async (resume, continuing = false) => {
     const env = { ...process.env }; for (const name of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(name)) delete env[name];
     Object.assign(env, { LLM_API_KEY: 'OWNED_TASK_KEY', LLM_MODEL: 'fixture/task', LLM_BASE_URL: url, LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false' });
@@ -167,6 +171,6 @@ else if(m.method==='tasks/result')reply(m.id,{content:[{type:'text',text:'STDIO_
     assert.equal(calls.filter(c => ['tasks/get', 'tasks/result'].includes(c.body.method)).length, remoteBefore);
     assert.equal(calls.filter(c => c.body.method === 'tools/call').length, callsBefore);
   }
-  if (getInputs) { assert.equal(gets, durable ? 6 : 4); assert.equal(getClosed, gets); }
-  console.log(JSON.stringify({ tasks: 'passed', standard, ...(durable ? { durable: true, sigkill: true, cachedResult: true } : {}), ...(getInputs ? { getInputs: true, gets, getClosed } : {}), compiledCLI: compiled, modelRequests: model.length, cancelled: standard ? 2 : 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
+  if (getInputs) { assert.ok(getRoots, 'unrelated GET roots served'); assert.ok(gets >= 1); if (standard) assert.equal(gets, durable ? 6 : 4); assert.equal(getClosed, gets); }
+  console.log(JSON.stringify({ tasks: 'passed', standard, ...(durable ? { durable: true, sigkill: true, cachedResult: true } : {}), ...(getInputs ? { getInputs: true, gets, getClosed, getRoots } : {}), compiledCLI: compiled, modelRequests: model.length, cancelled: standard ? 2 : 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
 } finally { for (const child of children) child.kill('SIGKILL'); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); fs.rmSync(workspace, { recursive: true, force: true }); unregister?.(); }
