@@ -766,6 +766,42 @@
     ],
     "reading": "the shape reverses at the same width - 21.0% import text and 93 modules with content against 60 aggregators in slice seventeen, so the aggregator share is a property of a band rather than a trend - over 48 modules with local counterparts, 23 hosted surfaces, 8 vendored packages, 6 modules excluded with credentials or OAuth, 3 shipped skill texts, 3 product surfaces without a local counterpart, 1 recovered UI module, and no candidate of its own"
   },
+  "sliceNineteen": {
+    "scope": "uncited modules ranked 721 to 820 by size, the third 100-rank band",
+    "bytes": 772295,
+    "rows": 100,
+    "rowsWithContent": 81,
+    "byteRange": [
+      9249,
+      7411
+    ],
+    "importSharePercent": 35.4,
+    "composition": {
+      "localCounterparts": 30,
+      "noCharacterisingLiteral": 32,
+      "hostedOrExternalSurfaces": 18,
+      "recoveredUi": 5,
+      "vendoredOrPolyfill": 4,
+      "externalNonHosted": 3,
+      "excludedWithOauth": 2,
+      "productWithoutLocalCounterpart": 2,
+      "shippedSkillText": 2,
+      "pureCodeLeaves": 1,
+      "inScopeCandidate": 1
+    },
+    "inScopeCandidates": [
+      "chunk-cx7rxhps.js seats a plugin outermost only when a managed settings source lists or enables it on this machine, refuses to seat one that managed prependPlugins does not list, and treats a managed settings source that was not read whole (a load error) as not vouching. Verified locally before recording: src/config.ts reads a single managed settings file and takes only allowShell, permissions, features and mcpClient from it, then admits plugins from settings.plugins by schema and discovery, with no rule that a managed source must vouch for a plugin and no treatment of a partially read managed source as unable to vouch"
+    ],
+    "notedButNotCandidates": [
+      "chunk-b5qrs9dw.js reports a repository git config that could not be read in full, one carrying a conditional include (includeIf), and one whose setting belongs in the global config; chunk-gk1qp4f7.js classifies Git directory entries (alternates, a linked worktree, a handler that leads nowhere, a win32 handle); both extend the Git family the slice fifteen candidate opened",
+      "chunk-fy7za2r0.js refuses to use the daemon socket when the pipe nonce is invalid or the process runs in a user namespace, and chunk-pc717mjq.js locks with pid-recycling and boot-time checks; this runtime guards and locks its own daemon state",
+      "chunk-1w9hc2bp.js carries a fail-open decision for an unreadable tokens file in the background pty host; the direction of that gate is the opposite of the fail-closed reading this runtime applies elsewhere",
+      "chunk-3857kmpe.js and chunk-061ctddf.js are shipped skill texts (the loop sentinels and a run skill), the kind of embedded text this project ports as skill content rather than runtime logic",
+      "chunk-7tgm5mkw.js and chunk-w98nk8wq.js are a notification tool and feedback drafting, product surfaces without a local counterpart",
+      "thirty-two modules carry no literal of their own: nineteen with nothing at all and thirteen with state-name markers only"
+    ],
+    "reading": "the plugin, daemon, bridge and swarm plumbing band at 35.4% import text: thirty modules with local counterparts, thirty-two with no literal of their own, eighteen hosted surfaces, five recovered UI components, four vendored packages, three external surfaces, two modules excluded with OAuth, two product surfaces without a local counterpart, two shipped skill texts, one pure code leaf, and one candidate in plugin admission under managed settings"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
