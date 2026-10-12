@@ -67,6 +67,13 @@
       "reading": "the same not_found message names the model routes only, which is what an unsupported method on a management path receives here"
     }
   },
+  "credentialSurface": {
+    "probe": "bounded read-only GET search over the plausible management names, plus the advertised API list",
+    "pathsTried": ["/v1/magpie", "/v1/magpie/credentials", "/v1/magpie/keys", "/v1/magpie/rotate", "/v1/magpie/config", "/v1/magpie/status", "/v1/magpie/sessions", "/v1/magpie/models"],
+    "result": "every path answered 404 with the gateway's not-found message that names the model routes, and the discovery document advertises exactly three management routes - /v1/magpie/route, /v1/magpie/quotas and /v1/magpie/quotas/history - none of which issues or rotates a credential",
+    "verdict": "this gateway serves no credential-issuance or credential-rotation surface. Credential rotation is therefore not a verification this project can perform against it: it is outside the gateway's advertised surface rather than an unvisited corner of it",
+    "bound": "a bounded negative search over plausible names and the authoritative advertised list; it does not prove that no such surface exists anywhere, only that this gateway advertises and serves none"
+  },
   "runningInstance": {
     "probe": "read-only process and listening-socket inspection",
     "servingProcess": "/Applications/magpie.app/Contents/MacOS/magpie",
