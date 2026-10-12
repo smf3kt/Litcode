@@ -1,0 +1,658 @@
+{
+  "schema": "HistoricalPortProvenanceReview.v1",
+  "date": "2026-10-12",
+  "item": "W02's recorded caveat that the earlier whole-project ports remain unreviewed",
+  "whyAnEvidenceFile": "scripts/port-ledger.mjs counts every module named by a record under research/ports/ as port-backed, and skips *-evidence.json for exactly that reason. This review binds identities rather than ports, so recording it as a research/ports/*.md record would promote fifteen narrative-only modules to port-backed without a new port. It is therefore recorded here, and its narration lives in CURRENT and STATUS.",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "manifestModules": 2366
+  },
+  "indexAuthority": {
+    "path": "research-module-index-v4.json",
+    "schema": "StaticModuleIndex.v3",
+    "generation": {
+      "extractor": {
+        "sha256": "439008efcf877f4fe9688a7d9e8494ac7cd64195e24f2d237cc000d8985427c6"
+      },
+      "preflight": {
+        "verifiedModules": 2609
+      }
+    }
+  },
+  "coordinateUnit": "the source ranges are quoted from research/FEATURES.md and are zero-based UTF-16 indices over the decoded module text; this review verifies the module identities those ranges rest on and does not re-derive or re-check the ranges themselves",
+  "readAs": "inert data; no recovered entrypoint was executed and no product file was modified",
+  "method": [
+    "the object names, source modules and ranges are taken from research/FEATURES.md's Registered tool source inventory, unmodified",
+    "every source module is resolved against research-module-index-v4.json and its digest is recorded from that index",
+    "every local counterpart is located by its declared tool name in src/ and the file's digest is recomputed from disk",
+    "a row is bound only when both sides resolve; where no local tool declares the recovered object's role, the row says so instead of guessing a correspondence"
+  ],
+  "rows": [
+    {
+      "objects": [
+        "Agent (alias Task)"
+      ],
+      "sources": [
+        {
+          "module": "chunk-wj6fycw8.js",
+          "sha256": "ce38912bf9ddb32271235f9639bd42afb9c42c11ce66ee1d4471362d4a99d8ae",
+          "range": "[45446,50724)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/subagents.ts",
+          "line": 199,
+          "tool": "agent",
+          "fileSha256": "153638e4ff8a737ffff7656ee162e64059ccfbf7c5d93ee8ac0f48359e0d42d8"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "Bash"
+      ],
+      "sources": [
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "range": "[4332430,4347621)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/tools.ts",
+          "line": 1070,
+          "tool": "run_command",
+          "fileSha256": "fa4bfd042253a60523f3e8f729bb9ccc0a18182dc903b6db740790e6e7e3068d"
+        },
+        {
+          "file": "src/background.ts",
+          "line": 1057,
+          "tool": "run_background",
+          "fileSha256": "d2d035c75343b1ddcb7c6e490efc4fd54474b199e9b250a3da8f76013f7a55fa"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "Read",
+        "Write",
+        "Edit"
+      ],
+      "sources": [
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "range": "[3540945,3546499); [734335,739598); [4160010,4167187)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/tools.ts",
+          "line": 749,
+          "tool": "read_file",
+          "fileSha256": "fa4bfd042253a60523f3e8f729bb9ccc0a18182dc903b6db740790e6e7e3068d"
+        },
+        {
+          "file": "src/tools.ts",
+          "line": 957,
+          "tool": "write_file",
+          "fileSha256": "fa4bfd042253a60523f3e8f729bb9ccc0a18182dc903b6db740790e6e7e3068d"
+        },
+        {
+          "file": "src/tools.ts",
+          "line": 1008,
+          "tool": "edit_file",
+          "fileSha256": "fa4bfd042253a60523f3e8f729bb9ccc0a18182dc903b6db740790e6e7e3068d"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "Glob",
+        "Grep",
+        "NotebookEdit"
+      ],
+      "sources": [
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "range": "[762754,764863); [768979,771863); [4175159,4181927)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/tools.ts",
+          "line": 792,
+          "tool": "list_files",
+          "fileSha256": "fa4bfd042253a60523f3e8f729bb9ccc0a18182dc903b6db740790e6e7e3068d"
+        },
+        {
+          "file": "src/tools.ts",
+          "line": 877,
+          "tool": "search",
+          "fileSha256": "fa4bfd042253a60523f3e8f729bb9ccc0a18182dc903b6db740790e6e7e3068d"
+        },
+        {
+          "file": "src/notebooks.ts",
+          "line": 358,
+          "tool": "notebook_edit",
+          "fileSha256": "56b6559e6c951dff21a95b1e6b65b8eb079d69e24cdbe2956d2c435e23fe9c94"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "WebFetch",
+        "ToolSearch",
+        "WaitForMcpServers"
+      ],
+      "sources": [
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "range": "[1945945,1961135); [938057,944890); [2637794,2641104)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/web.ts",
+          "line": 330,
+          "tool": "web_fetch",
+          "fileSha256": "b1c946442990382402d348d164b59909ebe61310e87c321600286dde71b9c913"
+        },
+        {
+          "file": "src/mcp.ts",
+          "line": 1199,
+          "tool": "mcp_tool_search",
+          "fileSha256": "29c423367453e477ac9855a0787bc2917322f459346f6980ebca6be07ea15f12"
+        },
+        {
+          "file": "src/mcp.ts",
+          "line": 1246,
+          "tool": "mcp_refresh",
+          "fileSha256": "29c423367453e477ac9855a0787bc2917322f459346f6980ebca6be07ea15f12"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "EnterPlanMode",
+        "Skill"
+      ],
+      "sources": [
+        {
+          "module": "chunk-ax9zepsq.js",
+          "sha256": "727d62fe0eb130072a9eb930f8a0047b01cd1ee1e516313ec304b479b884f548",
+          "range": "[7013,8595); [21063,28239)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/interaction-tools.ts",
+          "line": 266,
+          "tool": "submit_plan",
+          "fileSha256": "057273edfe6367b0b05558c9f368d6597bdebe21951a6307eccb9300e34294a6"
+        },
+        {
+          "note": "skills are invoked by name as /commands and declare no tool object; the runtime is src/skill-runtime.ts"
+        }
+      ],
+      "binding": "partial; 1 object(s) recorded beside it as a local surface without a tool object"
+    },
+    {
+      "objects": [
+        "ExitPlanMode"
+      ],
+      "sources": [
+        {
+          "module": "chunk-x2c03s1m.js",
+          "sha256": "974fd6d1a3671185eceed36bb6ec0aa9dbf1de14ce7cc8aa58ef9f07d203d38a",
+          "range": "[6225,11236)"
+        }
+      ],
+      "local": [
+        {
+          "note": "plan mode is a mode switch here (--permission-mode plan plus submit_plan), not a separate tool object"
+        }
+      ],
+      "binding": "no tool object here; the local surface is recorded beside it"
+    },
+    {
+      "objects": [
+        "AskUserQuestion"
+      ],
+      "sources": [
+        {
+          "module": "chunk-ktr9sak2.js",
+          "sha256": "485ac7186fe7255d928c3985b94b2e97d5f12674f228026e9f68e1f9deb67755",
+          "range": "[12900,19623)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/interaction-tools.ts",
+          "line": 225,
+          "tool": "ask_user_question",
+          "fileSha256": "057273edfe6367b0b05558c9f368d6597bdebe21951a6307eccb9300e34294a6"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "TaskStop",
+        "conditional GetTask",
+        "TodoWrite"
+      ],
+      "sources": [
+        {
+          "module": "chunk-tar639dc.js",
+          "sha256": "c8f74100741e1b26457915d3a67a41b9a9ae9ef5bab44e7c334f18c8fbb6f2fc",
+          "range": "[38033,40166); [92097,94248); [72481,73347)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/background.ts",
+          "line": 1256,
+          "tool": "task_stop",
+          "fileSha256": "d2d035c75343b1ddcb7c6e490efc4fd54474b199e9b250a3da8f76013f7a55fa"
+        },
+        {
+          "file": "src/background.ts",
+          "line": 1218,
+          "tool": "get_background_task",
+          "fileSha256": "d2d035c75343b1ddcb7c6e490efc4fd54474b199e9b250a3da8f76013f7a55fa"
+        },
+        null
+      ],
+      "binding": "partial: no local counterpart identified for TodoWrite"
+    },
+    {
+      "objects": [
+        "TaskCreate",
+        "TaskGet",
+        "TaskUpdate",
+        "TaskList"
+      ],
+      "sources": [
+        {
+          "module": "chunk-tar639dc.js",
+          "sha256": "c8f74100741e1b26457915d3a67a41b9a9ae9ef5bab44e7c334f18c8fbb6f2fc",
+          "range": "[140219,141451); [142427,143540); [146739,149723); [151588,152665)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/tasks.ts",
+          "line": 487,
+          "tool": "task_create",
+          "fileSha256": "aafd2fe5363f545680d66f42288f39d1b5d2749812b27fb18cf0b8ad4ba0ff0a"
+        },
+        {
+          "file": "src/tasks.ts",
+          "line": 538,
+          "tool": "task_get",
+          "fileSha256": "aafd2fe5363f545680d66f42288f39d1b5d2749812b27fb18cf0b8ad4ba0ff0a"
+        },
+        {
+          "file": "src/tasks.ts",
+          "line": 608,
+          "tool": "task_update",
+          "fileSha256": "aafd2fe5363f545680d66f42288f39d1b5d2749812b27fb18cf0b8ad4ba0ff0a"
+        },
+        {
+          "file": "src/tasks.ts",
+          "line": 568,
+          "tool": "task_list",
+          "fileSha256": "aafd2fe5363f545680d66f42288f39d1b5d2749812b27fb18cf0b8ad4ba0ff0a"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "LSP",
+        "ReportFindings"
+      ],
+      "sources": [
+        {
+          "module": "chunk-tar639dc.js",
+          "sha256": "c8f74100741e1b26457915d3a67a41b9a9ae9ef5bab44e7c334f18c8fbb6f2fc",
+          "range": "[106687,110674); [61636,62418)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/lsp.ts",
+          "line": 562,
+          "tool": "lsp",
+          "fileSha256": "687c0e9a855ea67d8f6801b20c4616dae4be721614f9fecae2e2037141b122cf"
+        },
+        {
+          "file": "src/interaction-tools.ts",
+          "line": 290,
+          "tool": "report_findings",
+          "fileSha256": "057273edfe6367b0b05558c9f368d6597bdebe21951a6307eccb9300e34294a6"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "EnterWorktree",
+        "ExitWorktree"
+      ],
+      "sources": [
+        {
+          "module": "chunk-tar639dc.js",
+          "sha256": "c8f74100741e1b26457915d3a67a41b9a9ae9ef5bab44e7c334f18c8fbb6f2fc",
+          "range": "[122455,127587); [132573,137336)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/worktrees.ts",
+          "line": 492,
+          "tool": "worktree_create",
+          "fileSha256": "3506b6bf29a93208baf431f73c3aab312a0369f2a98faabd29b3e6f5dd9e417b"
+        },
+        {
+          "file": "src/worktrees.ts",
+          "line": 509,
+          "tool": "worktree_remove",
+          "fileSha256": "3506b6bf29a93208baf431f73c3aab312a0369f2a98faabd29b3e6f5dd9e417b"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "SendMessage"
+      ],
+      "sources": [
+        {
+          "module": "chunk-1fr2177j.js",
+          "sha256": "426b0409ea13b070deeb49641fcc7775a3e6079c262f2fc314ddbb33b01c8da9",
+          "range": "[51077,92301)"
+        }
+      ],
+      "local": [
+        null
+      ],
+      "binding": "no local counterpart identified"
+    },
+    {
+      "objects": [
+        "ListAgents (alias ListPeers)"
+      ],
+      "sources": [
+        {
+          "module": "chunk-w520ws9s.js",
+          "sha256": "f4ff3c58e14dcc09ab69d486c0364f58739de522bd0da742a853accf48689805",
+          "range": "[6380,7381)"
+        }
+      ],
+      "local": [
+        {
+          "note": "src/agent-registry.ts holds the registry, but no tool object lists agents"
+        }
+      ],
+      "binding": "no tool object here; the local surface is recorded beside it"
+    },
+    {
+      "objects": [
+        "Monitor"
+      ],
+      "sources": [
+        {
+          "module": "chunk-znqf6yae.js",
+          "sha256": "220165fe021b26cce4c32ff7e726af7f7d27a15d1acb6b3a67d46b5b5b3da757",
+          "range": "[15021,16052)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/background.ts",
+          "line": 1106,
+          "tool": "monitor",
+          "fileSha256": "d2d035c75343b1ddcb7c6e490efc4fd54474b199e9b250a3da8f76013f7a55fa"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "CronCreate",
+        "CronDelete",
+        "CronList"
+      ],
+      "sources": [
+        {
+          "module": "chunk-0vpbck7s.js",
+          "sha256": "988f0155a37f92868d7c0867c68822b460ccf916684212b0d265cdc1f3a752ed",
+          "range": "[6462,8371)"
+        },
+        {
+          "module": "chunk-21k2kjg1.js",
+          "sha256": "769c0c17b7ef3833add016ce415be08af7fb126b29651f949e0d5a0921339c03",
+          "range": "[5852,6713)"
+        },
+        {
+          "module": "chunk-bws04yaw.js",
+          "sha256": "cbbb48cc67e6a0ccd7bb171e02f0d3272ae62944c54d62d1f69a660080017cea",
+          "range": "[5910,6814)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/scheduler.ts",
+          "line": 687,
+          "tool": "cron_create",
+          "fileSha256": "cda8717e78cdb9f0831b468e4814f1a1f8d5106cd41b44f9dc4275df06df02f4"
+        },
+        {
+          "file": "src/scheduler.ts",
+          "line": 739,
+          "tool": "cron_delete",
+          "fileSha256": "cda8717e78cdb9f0831b468e4814f1a1f8d5106cd41b44f9dc4275df06df02f4"
+        },
+        {
+          "file": "src/scheduler.ts",
+          "line": 762,
+          "tool": "cron_list",
+          "fileSha256": "cda8717e78cdb9f0831b468e4814f1a1f8d5106cd41b44f9dc4275df06df02f4"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "ScheduleWakeup",
+        "ReadNotifications",
+        "RefreshMcpTools"
+      ],
+      "sources": [
+        {
+          "module": "chunk-tar639dc.js",
+          "sha256": "c8f74100741e1b26457915d3a67a41b9a9ae9ef5bab44e7c334f18c8fbb6f2fc",
+          "range": "[46244,50040); [27801,28974); [115609,118029)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/scheduler.ts",
+          "line": 789,
+          "tool": "schedule_wakeup",
+          "fileSha256": "cda8717e78cdb9f0831b468e4814f1a1f8d5106cd41b44f9dc4275df06df02f4"
+        },
+        {
+          "file": "src/background.ts",
+          "line": 1282,
+          "tool": "read_notifications",
+          "fileSha256": "d2d035c75343b1ddcb7c6e490efc4fd54474b199e9b250a3da8f76013f7a55fa"
+        },
+        {
+          "file": "src/mcp.ts",
+          "line": 1246,
+          "tool": "mcp_refresh",
+          "fileSha256": "29c423367453e477ac9855a0787bc2917322f459346f6980ebca6be07ea15f12"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "objects": [
+        "Workflow",
+        "Poll",
+        "RemoteTrigger"
+      ],
+      "sources": [
+        {
+          "module": "chunk-a7gk0710.js",
+          "sha256": "b22f4ce25d6aed1f8c496fd45f7004edabf22a0ff6fb6dfd78dfccaed37e69af",
+          "range": "[63465,73653)"
+        },
+        {
+          "module": "chunk-2bbcfc1x.js",
+          "sha256": "80b93d4259fec26c0229cee22669f290338f6e8471b2d9fd66fa77ce641d36d5",
+          "range": "[14875,16249)"
+        },
+        {
+          "module": "chunk-ypd5z6ez.js",
+          "sha256": "28d914347777011d7064dea235e3e6a11da33c66c85782c317d343f977f9a939",
+          "range": "[16434,19952)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/workflow.ts",
+          "line": 380,
+          "tool": "workflow_run",
+          "fileSha256": "bfb48298027f958432e41c2bc00eeb642ead351bc65b0f4eafe1d116079c670a"
+        },
+        null,
+        null
+      ],
+      "binding": "partial: no local counterpart identified for Poll, RemoteTrigger"
+    },
+    {
+      "objects": [
+        "memory_list",
+        "memory_read",
+        "memory_write"
+      ],
+      "sources": [
+        {
+          "module": "chunk-tar639dc.js",
+          "sha256": "c8f74100741e1b26457915d3a67a41b9a9ae9ef5bab44e7c334f18c8fbb6f2fc",
+          "range": "[75169,78076)"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "range": "[780498,782649)"
+        },
+        {
+          "module": "chunk-cpad95rg.js",
+          "sha256": "745a7d3775a5d1bd30e65de614c2a3527e2bea19bcbea5b29f69de96d6f18885",
+          "range": "[49105,53088)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/memory.ts",
+          "line": 251,
+          "tool": "memory_list",
+          "fileSha256": "01fdfd8f88ba7c6fcf606fb2910814c8cff2dfeccf986da54c93112445a68fe5"
+        },
+        {
+          "file": "src/memory.ts",
+          "line": 281,
+          "tool": "memory_read",
+          "fileSha256": "01fdfd8f88ba7c6fcf606fb2910814c8cff2dfeccf986da54c93112445a68fe5"
+        },
+        {
+          "file": "src/memory.ts",
+          "line": 300,
+          "tool": "memory_write",
+          "fileSha256": "01fdfd8f88ba7c6fcf606fb2910814c8cff2dfeccf986da54c93112445a68fe5"
+        }
+      ],
+      "binding": "bound on both sides"
+    }
+  ],
+  "localFiles": [
+    {
+      "file": "src/background.ts",
+      "sha256": "d2d035c75343b1ddcb7c6e490efc4fd54474b199e9b250a3da8f76013f7a55fa"
+    },
+    {
+      "file": "src/interaction-tools.ts",
+      "sha256": "057273edfe6367b0b05558c9f368d6597bdebe21951a6307eccb9300e34294a6"
+    },
+    {
+      "file": "src/lsp.ts",
+      "sha256": "687c0e9a855ea67d8f6801b20c4616dae4be721614f9fecae2e2037141b122cf"
+    },
+    {
+      "file": "src/mcp.ts",
+      "sha256": "29c423367453e477ac9855a0787bc2917322f459346f6980ebca6be07ea15f12"
+    },
+    {
+      "file": "src/memory.ts",
+      "sha256": "01fdfd8f88ba7c6fcf606fb2910814c8cff2dfeccf986da54c93112445a68fe5"
+    },
+    {
+      "file": "src/notebooks.ts",
+      "sha256": "56b6559e6c951dff21a95b1e6b65b8eb079d69e24cdbe2956d2c435e23fe9c94"
+    },
+    {
+      "file": "src/scheduler.ts",
+      "sha256": "cda8717e78cdb9f0831b468e4814f1a1f8d5106cd41b44f9dc4275df06df02f4"
+    },
+    {
+      "file": "src/subagents.ts",
+      "sha256": "153638e4ff8a737ffff7656ee162e64059ccfbf7c5d93ee8ac0f48359e0d42d8"
+    },
+    {
+      "file": "src/tasks.ts",
+      "sha256": "aafd2fe5363f545680d66f42288f39d1b5d2749812b27fb18cf0b8ad4ba0ff0a"
+    },
+    {
+      "file": "src/tools.ts",
+      "sha256": "fa4bfd042253a60523f3e8f729bb9ccc0a18182dc903b6db740790e6e7e3068d"
+    },
+    {
+      "file": "src/web.ts",
+      "sha256": "b1c946442990382402d348d164b59909ebe61310e87c321600286dde71b9c913"
+    },
+    {
+      "file": "src/workflow.ts",
+      "sha256": "bfb48298027f958432e41c2bc00eeb642ead351bc65b0f4eafe1d116079c670a"
+    },
+    {
+      "file": "src/worktrees.ts",
+      "sha256": "3506b6bf29a93208baf431f73c3aab312a0369f2a98faabd29b3e6f5dd9e417b"
+    },
+    {}
+  ],
+  "claims": {
+    "copiedSourcePercentage": "none claimed; this review binds identities (module digest, local file digest) and does not estimate how much of any file was copied",
+    "classification": "unchanged; the historical reports' rewrite and adapt classifications stand as written and are not upgraded or restated by this review"
+  },
+  "boundary": [
+    "covers the registered tool inventory in FEATURES.md, which is a fixed enumerated set; it does not cover the behavioural contracts in that file or the product surface documented only by the per-package records",
+    "the ledger's port-backed set is unchanged by this review, because every source module named here was already cited before it was written",
+    "an object with no local counterpart is recorded as such rather than as a gap to close: the products differ in surface, and this review does not propose ports"
+  ],
+  "paidCalls": 0
+}
