@@ -1,0 +1,72 @@
+{
+  "schema": "MagpieManagementSurfaceDiscovery.v1",
+  "date": "2026-10-12",
+  "item": "W03/A02 recorded that the Magpie management surface was not located; this narrows it to a named, read-verified contract",
+  "gateway": {
+    "base": "http://127.0.0.1:3425",
+    "name": "magpie",
+    "version": "0.1.1109",
+    "models": 11,
+    "probe": "read-only GET requests against the loopback gateway that the launcher already discovers; no model call, no mutation"
+  },
+  "advertisedApis": [
+    "/v1/chat/completions",
+    "/v1/responses",
+    "/v1/messages",
+    "/v1/systemone",
+    "/v1beta/models/{model}:generateContent",
+    "/v1/images/generations",
+    "/v1/images/edits",
+    "/v1/videos",
+    "/v1/embeddings",
+    "/v1/rerank",
+    "/v1/magpie/quotas",
+    "/v1/magpie/quotas/history",
+    "/v1/magpie/route"
+  ],
+  "managementSurface": {
+    "route": {
+      "endpoint": "/v1/magpie/route",
+      "withoutASession": {
+        "method": "GET",
+        "status": 400,
+        "body": { "error": { "message": "name the session: ?session=<id> or the X-Magpie-Session header", "type": "invalid_request_error" } },
+        "reading": "the route is per session and is addressed either by the session query parameter or by the X-Magpie-Session header"
+      },
+      "withAnUnknownSession": {
+        "method": "GET",
+        "request": "/v1/magpie/route?session=<synthetic id>",
+        "status": 200,
+        "body": { "route": null, "seq": 0, "session": "<the id echoed back>" },
+        "reading": "an unknown session is answered rather than refused: the current route is null and carries a sequence number, so a route is a versioned per-session value"
+      },
+      "notEstablished": [
+        "whether a route is set by PUT or POST on the same path, and what a valid route payload looks like",
+        "what the sequence number does on a write"
+      ]
+    },
+    "quotas": {
+      "endpoints": ["/v1/magpie/quotas", "/v1/magpie/quotas/history"],
+      "method": "GET",
+      "status": 200,
+      "shape": "an object list whose entries carry a provider, a kind (subscription or balance), optional plan and windows with used/remaining/reset values, a read time and a last-served time; the per-account values are deliberately not recorded here",
+      "reading": "the gateway exposes its own quota view read-only; it is a management read, not a model call"
+    },
+    "notListedByOptions": {
+      "probe": "OPTIONS /v1/magpie/route",
+      "status": 404,
+      "message": "magpie serves /v1/chat/completions, /v1/responses, /v1/messages, /v1/systemone, /v1/images/generations, /v1/images/edits, /v1/videos, /v1/embeddings, /v1/rerank and /v1beta/models/*",
+      "reading": "the gateway's own refusal message names the model routes only, so the management routes are a separate surface that discovery advertises and this refusal does not"
+    }
+  },
+  "notAttempted": [
+    "setting a route for any session, including a synthetic one: it would change routing on a gateway the user is running",
+    "credential rotation: no rotation route is advertised, and any write against the live gateway is consequential"
+  ],
+  "recordedWithoutValues": "the quota response carries an account address, plan names and balances; none of those values are recorded in this file or anywhere in the evidence set",
+  "paidCalls": 0,
+  "residual": [
+    "the write half of route management and any credential-rotation surface remain unverified and require the user's go-ahead, because both change the running gateway",
+    "the read contract above was observed once against version 0.1.1109; it is a point observation, not a versioned guarantee"
+  ]
+}
