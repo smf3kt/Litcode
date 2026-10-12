@@ -8,7 +8,7 @@ Targets: mcp.ts/mcp-subscriptions.ts/mcp-http.ts, runtime/session/CLI configurat
 Classification: rewrite of finite local recovery behavior, using existing connection manager; no original URI replay algorithm is claimed.
 CLI contract: subscribe -> failed replacement retains old -> successful replacement restores -> expired session auto replacement -> same-session EOF GET reopening -> unsubscribe excluded -> peer and journal retained -> close.
 Checks: a few transport regressions, affected consumers, typecheck/build, source+compiled CLI driver; identity and evidence retained after freeze.
-Remaining: startup partial degradation, slow reconnect rounds, durable subscriptions across process restart, lost-event replay and original hourly park/refetch strategy.
+Remaining: startup partial degradation, slow reconnect rounds, durable subscriptions across process restart, lost-event replay and original hourly park/refetch strategy. Of these, startup degradation and the slow rounds landed with ports/W05-startup.md, durable subscriptions across restart with ports/W05-persistence.md, and the hourly park/refetch strategy is decided in ports/remaining-dispositions.md; lost-event replay remains, and CURRENT.md's W05 row is authoritative.
 
 ## Source evidence and differences
 

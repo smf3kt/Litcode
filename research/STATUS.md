@@ -956,7 +956,7 @@ Nineteen rows cover the inventory. Thirteen resolve on both sides: the read/writ
 
 Two limits are recorded with it: no copied-source percentage is claimed, and no classification in the historical reports is restated or upgraded by this pass. The same treatment covers the four focused behavioural contracts FEATURES records in prose - the original task storage, agent launch, the monitor transport, and the MCP selector that chooses between its two protocol shapes - and all four bind on both sides (durable uuid storage with dependency edges and projections; subagent type, effort and worktree isolation with the fork start kind; command and WebSocket jobs; protocol-version negotiation with the standard-tasks gate). They are written as an evidence file rather than a `research/ports/*.md` record because the ledger counts every module a record there names as port-backed, and this is an identity review rather than a port - so the totals stay at 43 backed / 64 narrative-only / 2258 uncited and the digests `9a5e31b3…` and `6034bd4b…` are unchanged, verified by regenerating the ledger. Detail: [ports/historical-ports-review-evidence.json](ports/historical-ports-review-evidence.json).
 
-## Stale management-surface and ledger-tier wording corrected (2026-10-12)
+## Stale current-state wording corrected (2026-10-12)
 
 Two status lines still said the management surface was unverified after W25 had
 read it: the FEATURES gateway row and the top of W03-live both listed "route
@@ -977,6 +977,18 @@ evidence files nothing linked - `W03-launcher-evidence.json` and
 `remaining-dispositions-evidence.json` - are now linked from their own records,
 so all 39 files under `research/ports/` that end in `-evidence.json` have an
 inbound link.
+
+The same pass reached the W05 family's landing-time gap lists. Five records
+(W05-persistence's closing paragraph and the `Remaining:` line in the recovery,
+tasks, get-task-inputs and durable-tasks records) named items that later W05
+packages went on to close - startup degradation and the slow reconnect rounds,
+the standard task/result protocol, durable reattachment, stdio re-dial, audio
+input, and the parked refetch and automatic next-turn scheduling that
+`remaining-dispositions.md` decides. Each now says which of its own list has
+since landed and leaves the genuinely open part standing: lost-event replay, the
+task receiver/list/progress/outputSchema surface, URL elicitation, external
+receiver retention, real remote service equivalence and the `subscriptions/listen`
+parked refetch. No package's original run record was rewritten.
 
 Documentation only: no product source, test or build input changed, so the suite
 was not re-run and the ledger is byte-identical (`9a5e31b3…` JSON, `6034bd4b…`
