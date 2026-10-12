@@ -1189,6 +1189,32 @@
     ],
     "reading": "the sub-kilobyte layer at 25.0% import text, where every module is a fragment: hosted session and remote-control states, permissions and goals, terminal and deep-link handling, and single constants - eighty-two modules with no characterising literal of their own, eight hosted surfaces, five with local counterparts, two product surfaces without a local counterpart, two pure code leaves, one rule guarding a surface this runtime does not have, and no candidate"
   },
+  "sliceThirtyTwo": {
+    "scope": "uncited modules ranked 2021 to 2120 by size, the sixteenth 100-rank band",
+    "bytes": 21119,
+    "rows": 100,
+    "rowsWithContent": 19,
+    "byteRange": [890, 773],
+    "importSharePercent": 27.6,
+    "composition": {
+      "noCharacterisingLiteral": 92,
+      "localCounterparts": 4,
+      "hostedOrExternalSurfaces": 1,
+      "pureCodeLeaves": 1,
+      "productWithoutLocalCounterpart": 1,
+      "vendoredOrPolyfill": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-np2hxx6s.js reports the bypass permissions mode as disabled by settings, the W01 permission family and the surface the bypass-guard candidate from slice twenty-one concerns",
+      "chunk-nneapzja.js reserves a placeholder that keeps deferred tool loading active, a surface this runtime already has",
+      "chunk-jdr4wxmh.js names a plugin test report, the plugin tooling this runtime has",
+      "chunk-3rzg1srd.js names a theme by its name, the theme handling this runtime has",
+      "eighty-one of the hundred modules are aggregators of two or three imports and a re-export, the highest share in the review; only nineteen carry content and eleven of those only a state name"
+    ],
+    "reading": "the smallest band in the review at 27.6% import text, where 81 of 100 modules are aggregators and only 19 carry content: - ninety-two modules with no characterising literal of their own, four with local counterparts, one hosted surface, one pure code leaf, one product surface without a local counterpart, one vendored package, and no candidate and nothing new"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
