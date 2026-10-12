@@ -12,7 +12,7 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 57,
+  "recordCount": 60,
   "summary": {
     "modules": 25,
     "bytes": 6731710,
@@ -31,9 +31,11 @@
       "bytes": 917,
       "sha256": "f5d347bdcf02b5c8cf85f50b80517b92d3280cfd877c2cf4b8db98b50aa4002e",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
@@ -47,10 +49,12 @@
       "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
       "citedBy": [
         "research/FEATURES.md",
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
@@ -64,6 +68,7 @@
       "bytes": 13458,
       "sha256": "efb80057e2fa0526d212ff27e36f3ca3ff97b8e232a3ca41b4446e5c9dd93bb9",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-arrays-evidence.json",
         "research/ports/W05-sampling-arrays.md",
         "research/ports/W05-sampling-audio-evidence.json",
@@ -76,6 +81,7 @@
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-arrays-evidence.json",
         "research/ports/W05-sampling-arrays.md",
         "research/ports/W05-sampling-audio-evidence.json",
@@ -100,9 +106,11 @@
       "bytes": 7246,
       "sha256": "f73e433ea4b9f71c95e5c77bb108e9549c801fe36bd8c0c6fe8fab00cf53ad14",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
@@ -116,6 +124,7 @@
       "sha256": "01c2a556237e9a957f29cd7de89b228439e6621ea982a0b5b0bd10be4cd20580",
       "citedBy": [
         "research/FEATURES.md",
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-sampling-audio-evidence.json",
@@ -124,6 +133,7 @@
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-sampling-audio-evidence.json",
@@ -143,6 +153,7 @@
       "bytes": 29384,
       "sha256": "949ebffb96a5c4bba3013f2ff2e29524ff06bc8288326f541a68a977946a1e2d",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-get-task-inputs-evidence.json",
@@ -151,6 +162,7 @@
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-get-task-inputs-evidence.json",
@@ -171,10 +183,12 @@
       "sha256": "7fc34a2aa3076cceb825a0094eece20ccf89346ea895c7731bbd2760000c5cc7",
       "citedBy": [
         "research/INTERACTIVE.md",
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
@@ -188,11 +202,13 @@
       "bytes": 15229,
       "sha256": "86e5e1c62a4509d1ead03e93cea5a61bcecd910fc4f06ec218b653528b975704",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md",
         "research/STATUS.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md"
       ],
@@ -207,9 +223,11 @@
       "bytes": 90493,
       "sha256": "b53bbec49850f84dc20d0be70515e2222c6634265e98e1a062324e656d51b5f2",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
@@ -222,9 +240,11 @@
       "bytes": 7300,
       "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/skill-argument-expansion.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/skill-argument-expansion.md"
       ],
       "reviewed": true,
@@ -235,10 +255,12 @@
       "bytes": 98088,
       "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
@@ -252,9 +274,11 @@
       "bytes": 8541,
       "sha256": "a0ec7de2b09788f274420d680111f3a797a20618519f3963efa069574e6b535b",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md"
       ],
       "reviewed": true,
@@ -265,6 +289,7 @@
       "bytes": 8232,
       "sha256": "117ba6c8aea10b37caf2eb4a53724f458445f22c3880aba82a499b53634e4f3f",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-get-dispatch-evidence.json",
         "research/ports/W05-get-dispatch.md",
         "research/ports/W05-get-resume-evidence.json",
@@ -273,6 +298,7 @@
         "research/ports/W05-get-task-inputs.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-get-dispatch-evidence.json",
         "research/ports/W05-get-dispatch.md",
         "research/ports/W05-get-resume-evidence.json",
@@ -292,9 +318,11 @@
       "bytes": 1032,
       "sha256": "57b301aedba5e423b021a519b7f5b9ee843ece7302c80f7869a3748162b13f51",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
@@ -307,11 +335,13 @@
       "bytes": 7582,
       "sha256": "73d50b557ed49b7de0783b46a8f6804d5c45068cd92317c413d821948032b421",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-images.md",
         "research/ports/W05-tasks-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-images.md",
         "research/ports/W05-tasks-evidence.json",
         "research/ports/W05-tasks.md"
@@ -327,9 +357,11 @@
       "bytes": 981,
       "sha256": "bdd8f0094eb4fcd0daa8d9fa47261b47d4a0384894c1701f74ba72b338a9be11",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true,
@@ -342,10 +374,12 @@
       "bytes": 44823,
       "sha256": "fa11fb18ab034759b746d2f6ae456b604470a7c017bc53d3a03c25f799207ba3",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
@@ -360,11 +394,15 @@
       "sha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
       "citedBy": [
         "research/CURRENT.md",
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
@@ -379,10 +417,12 @@
       "bytes": 59923,
       "sha256": "e07994571011fbf05e31e0c44a704802a5b3a7eb127ee903de09d2df4df9daf9",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
@@ -396,10 +436,14 @@
       "bytes": 691306,
       "sha256": "cfb79b3b3d580f450f8184e5873a686eb083e9ea3abd4e0a58268425de6acc51",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md"
       ],
@@ -414,6 +458,8 @@
       "sha256": "0a1c2aa1424babd95eeec371f67c875b6382db0c891b3b3e90f710f2102b16df",
       "citedBy": [
         "research/FEATURES.md",
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
@@ -427,6 +473,8 @@
         "research/STATUS.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
@@ -457,6 +505,8 @@
         "research/FEATURES.md",
         "research/HOOKS.md",
         "research/INTERACTIVE.md",
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md",
@@ -465,6 +515,8 @@
         "research/STATUS.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md",
@@ -482,10 +534,12 @@
       "bytes": 20997,
       "sha256": "254872d392ad7917b0f7d66e55a4fcac638af5a0ec459ce30f108f404021c499",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
@@ -499,10 +553,12 @@
       "bytes": 53492,
       "sha256": "b4c4dd97d03ce3924bdc71ec87f3e8ab42114091cf4e292c532089fef95a2ecf",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
@@ -516,10 +572,12 @@
       "bytes": 2347,
       "sha256": "e53a75c48188dd5f345841ef87e452840622f9d61bc86e97b2edea656866a687",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md",
         "research/ports/W05-tasks.md"
       ],
@@ -1789,9 +1847,11 @@
       "bytes": 917,
       "sha256": "f5d347bdcf02b5c8cf85f50b80517b92d3280cfd877c2cf4b8db98b50aa4002e",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -2635,10 +2695,12 @@
       "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
       "citedBy": [
         "research/FEATURES.md",
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
@@ -2657,6 +2719,7 @@
       "bytes": 13458,
       "sha256": "efb80057e2fa0526d212ff27e36f3ca3ff97b8e232a3ca41b4446e5c9dd93bb9",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-arrays-evidence.json",
         "research/ports/W05-sampling-arrays.md",
         "research/ports/W05-sampling-audio-evidence.json",
@@ -2669,6 +2732,7 @@
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-arrays-evidence.json",
         "research/ports/W05-sampling-arrays.md",
         "research/ports/W05-sampling-audio-evidence.json",
@@ -2951,9 +3015,11 @@
       "bytes": 7246,
       "sha256": "f73e433ea4b9f71c95e5c77bb108e9549c801fe36bd8c0c6fe8fab00cf53ad14",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -3518,6 +3584,7 @@
       "sha256": "01c2a556237e9a957f29cd7de89b228439e6621ea982a0b5b0bd10be4cd20580",
       "citedBy": [
         "research/FEATURES.md",
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-sampling-audio-evidence.json",
@@ -3526,6 +3593,7 @@
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-sampling-audio-evidence.json",
@@ -3812,6 +3880,7 @@
       "bytes": 29384,
       "sha256": "949ebffb96a5c4bba3013f2ff2e29524ff06bc8288326f541a68a977946a1e2d",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-get-task-inputs-evidence.json",
@@ -3820,6 +3889,7 @@
         "research/ports/W05-standard-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-durable-tasks-evidence.json",
         "research/ports/W05-durable-tasks.md",
         "research/ports/W05-get-task-inputs-evidence.json",
@@ -6080,10 +6150,12 @@
       "sha256": "7fc34a2aa3076cceb825a0094eece20ccf89346ea895c7731bbd2760000c5cc7",
       "citedBy": [
         "research/INTERACTIVE.md",
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
@@ -6110,11 +6182,13 @@
       "bytes": 15229,
       "sha256": "86e5e1c62a4509d1ead03e93cea5a61bcecd910fc4f06ec218b653528b975704",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md",
         "research/STATUS.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-persistence.md",
         "research/ports/W05-recovery.md"
       ],
@@ -6437,9 +6511,11 @@
       "bytes": 90493,
       "sha256": "b53bbec49850f84dc20d0be70515e2222c6634265e98e1a062324e656d51b5f2",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -7261,9 +7337,11 @@
       "bytes": 7300,
       "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/skill-argument-expansion.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/skill-argument-expansion.md"
       ],
       "reviewed": true
@@ -7547,10 +7625,12 @@
       "bytes": 98088,
       "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
@@ -7681,9 +7761,11 @@
       "bytes": 8541,
       "sha256": "a0ec7de2b09788f274420d680111f3a797a20618519f3963efa069574e6b535b",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md"
       ],
       "reviewed": true
@@ -8847,6 +8929,7 @@
       "bytes": 8232,
       "sha256": "117ba6c8aea10b37caf2eb4a53724f458445f22c3880aba82a499b53634e4f3f",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-get-dispatch-evidence.json",
         "research/ports/W05-get-dispatch.md",
         "research/ports/W05-get-resume-evidence.json",
@@ -8855,6 +8938,7 @@
         "research/ports/W05-get-task-inputs.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-get-dispatch-evidence.json",
         "research/ports/W05-get-dispatch.md",
         "research/ports/W05-get-resume-evidence.json",
@@ -9015,9 +9099,11 @@
       "bytes": 1032,
       "sha256": "57b301aedba5e423b021a519b7f5b9ee843ece7302c80f7869a3748162b13f51",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -9725,11 +9811,13 @@
       "bytes": 7582,
       "sha256": "73d50b557ed49b7de0783b46a8f6804d5c45068cd92317c413d821948032b421",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-images.md",
         "research/ports/W05-tasks-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-sampling-images.md",
         "research/ports/W05-tasks-evidence.json",
         "research/ports/W05-tasks.md"
@@ -9885,9 +9973,11 @@
       "bytes": 981,
       "sha256": "bdd8f0094eb4fcd0daa8d9fa47261b47d4a0384894c1701f74ba72b338a9be11",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-tasks.md"
       ],
       "reviewed": true
@@ -11241,10 +11331,12 @@
       "bytes": 44823,
       "sha256": "fa11fb18ab034759b746d2f6ae456b604470a7c017bc53d3a03c25f799207ba3",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
@@ -12511,11 +12603,15 @@
       "sha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
       "citedBy": [
         "research/CURRENT.md",
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
@@ -15525,10 +15621,12 @@
       "bytes": 59923,
       "sha256": "e07994571011fbf05e31e0c44a704802a5b3a7eb127ee903de09d2df4df9daf9",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
@@ -15603,10 +15701,14 @@
       "bytes": 691306,
       "sha256": "cfb79b3b3d580f450f8184e5873a686eb083e9ea3abd4e0a58268425de6acc51",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md"
       ],
@@ -15914,6 +16016,8 @@
       "sha256": "0a1c2aa1424babd95eeec371f67c875b6382db0c891b3b3e90f710f2102b16df",
       "citedBy": [
         "research/FEATURES.md",
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
@@ -15927,6 +16031,8 @@
         "research/STATUS.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/W05-list-changed-refetch-evidence.json",
         "research/ports/W05-list-changed-refetch.md",
         "research/ports/W05-persistence.md",
@@ -15980,6 +16086,8 @@
         "research/FEATURES.md",
         "research/HOOKS.md",
         "research/INTERACTIVE.md",
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md",
@@ -15988,6 +16096,8 @@
         "research/STATUS.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
+        "research/ports/remaining-dispositions-evidence.json",
         "research/ports/skill-argument-expansion.md",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md",
@@ -16925,10 +17035,12 @@
       "bytes": 20997,
       "sha256": "254872d392ad7917b0f7d66e55a4fcac638af5a0ec459ce30f108f404021c499",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-image-limits-evidence.json",
         "research/ports/W05-image-limits.md"
       ],
@@ -17937,10 +18049,12 @@
       "bytes": 53492,
       "sha256": "b4c4dd97d03ce3924bdc71ec87f3e8ab42114091cf4e292c532089fef95a2ecf",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W06-skill-inline-fenced-evidence.json",
         "research/ports/W06-skill-inline-fenced.md"
       ],
@@ -18841,10 +18955,12 @@
       "bytes": 2347,
       "sha256": "e53a75c48188dd5f345841ef87e452840622f9d61bc86e97b2edea656866a687",
       "citedBy": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md",
         "research/ports/W05-tasks.md"
       ],
       "portRecords": [
+        "research/ports/port-ledger-evidence.json",
         "research/ports/W05-startup.md",
         "research/ports/W05-tasks.md"
       ],
