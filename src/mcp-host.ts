@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import type { ModelProvider, ModelRequest } from './provider.js';
 import type { SessionConfig } from './session.js';
-import { MCP_CLIENT_REQUEST_MAX_INPUT_BYTES, MCP_CLIENT_REQUEST_MAX_PENDING, type McpClientRequests, type McpClientRequestContext,
+import { MCP_CLIENT_REQUEST_MAX_INPUT_BYTES, MCP_CLIENT_REQUEST_MAX_PENDING, MCP_SAMPLING_MAX_BLOCKS, type McpClientRequests, type McpClientRequestContext,
   type McpSamplingParams, type McpSamplingResult } from './mcp-client-requests.js';
 
 export type McpHostOptions = {
@@ -21,14 +21,15 @@ const HOST_INSTRUCTIONS = 'Handle a standalone MCP sampling task using only the 
   + 'No host conversation, credentials, workspace contents or tools are available.';
 const OUTPUT_LIMIT = 64 * 1024;
 const TRUNCATION_MARKER = '[MCP sampling output truncated]';
+const samplingBlockSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), text: z.string() }).strict(),
+  z.object({ type: z.literal('image'), data: z.string().min(1),
+    mimeType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']) }).strict(),
+]);
 const samplingSchema = z.object({
   messages: z.array(z.object({
     role: z.enum(['user', 'assistant']),
-    content: z.discriminatedUnion('type', [
-      z.object({ type: z.literal('text'), text: z.string() }).strict(),
-      z.object({ type: z.literal('image'), data: z.string().min(1),
-        mimeType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']) }).strict(),
-    ]),
+    content: z.union([samplingBlockSchema, z.array(samplingBlockSchema).min(1).max(MCP_SAMPLING_MAX_BLOCKS)]),
   }).strict()).min(1),
   maxTokens: z.number().int().positive().refine(Number.isSafeInteger),
   systemPrompt: z.string().optional(),
@@ -64,16 +65,22 @@ async function abortable<T>(signal: AbortSignal, work: Promise<T>): Promise<T> {
   } finally { signal.removeEventListener('abort', abort); }
 }
 
-function samplingInput(params: McpSamplingParams, images: boolean): McpSamplingParams {
+function samplingInput(params: McpSamplingParams, images: boolean, arrays: boolean): McpSamplingParams {
   try {
     const snapshot = structuredClone(params);
     if (Buffer.byteLength(JSON.stringify(snapshot), 'utf8') > MCP_CLIENT_REQUEST_MAX_INPUT_BYTES) throw new Error('size');
     const input = samplingSchema.parse(snapshot);
+    let blocks = 0;
     for (const { content } of input.messages) {
-      if (content.type !== 'image') continue;
-      if (!images) throw new Error('disabled');
-      const bytes = Buffer.from(content.data, 'base64');
-      if (bytes.toString('base64') !== content.data || imageInfo(bytes).mediaType !== content.mimeType) throw new Error('image');
+      if (Array.isArray(content) && !arrays) throw new Error('arrays disabled');
+      const items = Array.isArray(content) ? content : [content];
+      if ((blocks += items.length) > MCP_SAMPLING_MAX_BLOCKS) throw new Error('blocks');
+      for (const item of items) {
+        if (item.type !== 'image') continue;
+        if (!images) throw new Error('disabled');
+        const bytes = Buffer.from(item.data, 'base64');
+        if (bytes.toString('base64') !== item.data || imageInfo(bytes).mediaType !== item.mimeType) throw new Error('image');
+      }
     }
     return input as McpSamplingParams;
   } catch { throw new Error(images ? 'Invalid or unsupported MCP sampling input; text or validated images only'
@@ -116,18 +123,21 @@ export function createMcpHostRequests(options: McpHostOptions): McpClientRequest
     () => elicit(params, signal, context), 'MCP elicitation callback failed');
   if (approveSampling) requests.sampling = async (params, signal, context): Promise<McpSamplingResult> => {
     checkAbort(signal);
-    const input = samplingInput(params, config.mcpClient?.samplingImages === true);
+    const input = samplingInput(params, config.mcpClient?.samplingImages === true, config.mcpClient?.samplingArrays === true);
     const approved = await callback(signal, () => approveSampling(structuredClone(input), structuredClone(context), signal),
       'MCP sampling approval failed');
     if (approved !== true) throw new Error('MCP sampling approval denied');
     const images: Anthropic.ImageBlockParam[] = [];
-    const messages = input.messages.map(message => {
-      if (message.content.type !== 'image') return message;
-      const { data, mimeType } = message.content;
+    const convert = (content: import('./mcp-client-requests.js').McpSamplingContent) => {
+      if (content.type !== 'image') return content;
+      const { data, mimeType } = content;
       images.push({ type: 'image', source: { type: 'base64',
         media_type: mimeType as Anthropic.Base64ImageSource['media_type'], data } });
-      return { role: message.role, content: { type: 'image', mimeType, attachment: images.length } };
-    });
+      return { type: 'image', mimeType, attachment: images.length };
+    };
+    const messages = input.messages.map(message => ({ role: message.role,
+      content: Array.isArray(message.content) ? message.content.map(convert) : convert(message.content),
+    }));
     const quoted = 'Quoted MCP server task data (JSON):\n' + JSON.stringify({
       systemPrompt: input.systemPrompt ?? null, messages,
     });
