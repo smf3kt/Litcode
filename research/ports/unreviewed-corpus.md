@@ -1,7 +1,7 @@
 # Unreviewed corpus characterisation
 
 Status: bounded characterisation pass, not a port record. Date: 2026-10-12.
-Purpose: the module ledger counts 2275 uncited modules (32,072,858 bytes; 29 backed by a port record, 61 mentioned only in prose). This pass describes what that remainder is using byte evidence only, so the number stops being an unqualified unknown. The figure moves as packages land, and one correction is recorded here: the ledger used to scan its own generated `-evidence.json` files as citing records, so a package's evidence file could cite the very modules it had ported and inflate the count. The generator now skips those files, and the numbers below are the regenerated ones. Nothing here claims which subsystem owns a module, and naming a module here does not make it port evidence - the ledger counts a module as port-backed only when a record under `research/ports/` that declares a port classification names it.
+Purpose: the module ledger counts 2275 uncited modules (32,072,858 bytes; 30 backed by a port record, 60 mentioned only in prose). This pass describes what that remainder is using byte evidence only, so the number stops being an unqualified unknown. The figure moves as packages land, and one correction is recorded here: the ledger used to scan its own generated `-evidence.json` files as citing records, so a package's evidence file could cite the very modules it had ported and inflate the count. The generator now skips those files, and the numbers below are the regenerated ones. Nothing here claims which subsystem owns a module, and naming a module here does not make it port evidence - the ledger counts a module as port-backed only when a record under `research/ports/` that declares a port classification names it.
 
 ## Method
 
