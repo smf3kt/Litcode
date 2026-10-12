@@ -1,6 +1,8 @@
 import fs from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import type { Anthropic } from '@anthropic-ai/sdk';
-import { imageInfo } from './media.js';
+import { audioAccepts, audioInfo, imageInfo, MCP_AUDIO_MAX_CLIP_BYTES, MCP_AUDIO_MAX_CLIPS } from './media.js';
+import { attachmentPath, checkAttachmentStore, openAttachmentStore, publishAttachment } from './media-store.js';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import type { ModelProvider, ModelRequest } from './provider.js';
@@ -25,6 +27,7 @@ const samplingBlockSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('text'), text: z.string() }).strict(),
   z.object({ type: z.literal('image'), data: z.string().min(1),
     mimeType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']) }).strict(),
+  z.object({ type: z.literal('audio'), data: z.string().min(1), mimeType: z.string().min(1).max(255) }).strict(),
 ]);
 const samplingSchema = z.object({
   messages: z.array(z.object({
@@ -65,25 +68,61 @@ async function abortable<T>(signal: AbortSignal, work: Promise<T>): Promise<T> {
   } finally { signal.removeEventListener('abort', abort); }
 }
 
-function samplingInput(params: McpSamplingParams, images: boolean, arrays: boolean): McpSamplingParams {
+function humanBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KiB', 'MiB', 'GiB'];
+  let value = bytes / 1024, unit = 0;
+  while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++; }
+  return `${value.toFixed(1)} ${units[unit]}`;
+}
+
+/** Bounded label for a server name in references and file names. */
+function serverLabel(name: string): string {
+  const cleaned = name.replace(/[^\w.-]/g, '');
+  return cleaned.slice(0, 32) || 'server';
+}
+
+/** Audio has no native content block: keep the bytes in the private store and reference them. */
+function audioReference(workspace: string, bytes: Buffer, mimeType: string, server: string): string {
+  const size = humanBytes(bytes.length);
+  try {
+    const info = audioInfo(bytes);
+    const store = openAttachmentStore(workspace, 'MCP audio clip');
+    checkAttachmentStore(store.directory, bytes.length, 'MCP audio clip');
+    const name = `mcp-${server}-${randomUUID()}.${info.ext}`;
+    publishAttachment(store, name, bytes, 'MCP audio clip');
+    return `[Audio from ${server}] Binary content (${info.mediaType}, ${size}) saved to ${attachmentPath(name)}`;
+  } catch { return `[Binary content (${mimeType}, ${size}) was not kept: it could not be saved.]`; }
+}
+
+function samplingInput(params: McpSamplingParams, images: boolean, arrays: boolean, audio: boolean): McpSamplingParams {
   try {
     const snapshot = structuredClone(params);
     if (Buffer.byteLength(JSON.stringify(snapshot), 'utf8') > MCP_CLIENT_REQUEST_MAX_INPUT_BYTES) throw new Error('size');
     const input = samplingSchema.parse(snapshot);
-    let blocks = 0;
+    let blocks = 0, clips = 0;
     for (const { content } of input.messages) {
       if (Array.isArray(content) && !arrays) throw new Error('arrays disabled');
       const items = Array.isArray(content) ? content : [content];
       if ((blocks += items.length) > MCP_SAMPLING_MAX_BLOCKS) throw new Error('blocks');
       for (const item of items) {
-        if (item.type !== 'image') continue;
-        if (!images) throw new Error('disabled');
+        if (item.type === 'text') continue;
         const bytes = Buffer.from(item.data, 'base64');
-        if (bytes.toString('base64') !== item.data || imageInfo(bytes).mediaType !== item.mimeType) throw new Error('image');
+        if (bytes.toString('base64') !== item.data) throw new Error('base64');
+        if (item.type === 'image') {
+          if (!images) throw new Error('disabled');
+          if (imageInfo(bytes).mediaType !== item.mimeType) throw new Error('image');
+          continue;
+        }
+        if (!audio) throw new Error('disabled');
+        if (!bytes.length || bytes.length > MCP_AUDIO_MAX_CLIP_BYTES) throw new Error('size');
+        if (!audioAccepts(bytes, item.mimeType)) throw new Error('audio');
+        if (++clips > MCP_AUDIO_MAX_CLIPS) throw new Error('clips');
       }
     }
     return input as McpSamplingParams;
-  } catch { throw new Error(images ? 'Invalid or unsupported MCP sampling input; text or validated images only'
+  } catch { throw new Error(audio ? 'Invalid or unsupported MCP sampling input; text, validated images or supported audio clips only'
+    : images ? 'Invalid or unsupported MCP sampling input; text or validated images only'
     : 'Invalid or unsupported MCP sampling input; text messages only'); }
 }
 
@@ -123,21 +162,27 @@ export function createMcpHostRequests(options: McpHostOptions): McpClientRequest
     () => elicit(params, signal, context), 'MCP elicitation callback failed');
   if (approveSampling) requests.sampling = async (params, signal, context): Promise<McpSamplingResult> => {
     checkAbort(signal);
-    const input = samplingInput(params, config.mcpClient?.samplingImages === true, config.mcpClient?.samplingArrays === true);
+    const input = samplingInput(params, config.mcpClient?.samplingImages === true, config.mcpClient?.samplingArrays === true,
+      config.mcpClient?.samplingAudio === true);
     const approved = await callback(signal, () => approveSampling(structuredClone(input), structuredClone(context), signal),
       'MCP sampling approval failed');
     if (approved !== true) throw new Error('MCP sampling approval denied');
     const images: Anthropic.ImageBlockParam[] = [];
+    const server = serverLabel(context.serverName);
     const convert = (content: import('./mcp-client-requests.js').McpSamplingContent) => {
-      if (content.type !== 'image') return content;
+      if (content.type === 'text') return content;
       const { data, mimeType } = content;
-      images.push({ type: 'image', source: { type: 'base64',
-        media_type: mimeType as Anthropic.Base64ImageSource['media_type'], data } });
-      return { type: 'image', mimeType, attachment: images.length };
+      if (content.type === 'image') {
+        images.push({ type: 'image', source: { type: 'base64',
+          media_type: mimeType as Anthropic.Base64ImageSource['media_type'], data } });
+        return { type: 'image', mimeType, attachment: images.length };
+      }
+      return { type: 'text', text: audioReference(workspace, Buffer.from(data, 'base64'), mimeType, server) };
     };
     const messages = input.messages.map(message => ({ role: message.role,
       content: Array.isArray(message.content) ? message.content.map(convert) : convert(message.content),
     }));
+    checkAbort(signal);
     const quoted = 'Quoted MCP server task data (JSON):\n' + JSON.stringify({
       systemPrompt: input.systemPrompt ?? null, messages,
     });

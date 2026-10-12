@@ -4,10 +4,11 @@ import { randomUUID } from "node:crypto";
 import { spawn, type ChildProcessWithoutNullStreams, type SpawnOptionsWithoutStdio } from "node:child_process";
 
 import { MEDIA_MAX_BYTES, readMedia } from "./media.js";
+import { ATTACHMENT_MAX_FILES, ATTACHMENT_STORE_MAX_BYTES, attachmentPath, checkAttachmentStore, openAttachmentStore, publishAttachment } from "./media-store.js";
 
 export const CLIPBOARD_TIMEOUT_MS = 5000;
-export const CLIPBOARD_MAX_FILES = 128;
-export const CLIPBOARD_STORE_MAX_BYTES = 64 * 1024 * 1024;
+export const CLIPBOARD_MAX_FILES = ATTACHMENT_MAX_FILES;
+export const CLIPBOARD_STORE_MAX_BYTES = ATTACHMENT_STORE_MAX_BYTES;
 export type ClipboardSpawn = (command: string, args: string[], options: SpawnOptionsWithoutStdio) => ChildProcessWithoutNullStreams;
 /** Trusted host/test dependencies, never model-supplied command input. */
 export type ClipboardOptions = { platform?: NodeJS.Platform; env?: NodeJS.ProcessEnv; spawn?: ClipboardSpawn };
@@ -91,46 +92,6 @@ function pngBytes(output: Buffer, hex: boolean): Buffer {
   return bytes;
 }
 
-function storeDirectory(root: string): { directory: string; verify: () => void } {
-  const directories: Array<{ location: string; dev: number; ino: number }> = [];
-  let directory = root;
-  for (const segment of [".harness", "attachments"]) {
-    directory = path.join(directory, segment);
-    try { fs.mkdirSync(directory, { mode: 0o700 }); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error; }
-    const stat = fs.lstatSync(directory);
-    if (!stat.isDirectory() || stat.isSymbolicLink() || fs.realpathSync(directory) !== directory) {
-      throw new Error("Clipboard attachment directory must be a regular directory inside workspace");
-    }
-    directories.push({ location: directory, dev: stat.dev, ino: stat.ino });
-  }
-  const verify = () => {
-    for (const entry of directories) {
-      const stat = fs.lstatSync(entry.location);
-      if (!stat.isDirectory() || stat.isSymbolicLink() || stat.dev !== entry.dev || stat.ino !== entry.ino || fs.realpathSync(entry.location) !== entry.location) {
-        throw new Error("Clipboard attachment directory changed or escapes workspace");
-      }
-    }
-  };
-  verify(); fs.chmodSync(directory, 0o700); verify();
-  return { directory, verify };
-}
-
-function checkStore(directory: string, bytes: number): void {
-  const handle = fs.opendirSync(directory);
-  let count = 0, total = 0;
-  try {
-    let entry;
-    while ((entry = handle.readSync())) {
-      if (++count >= CLIPBOARD_MAX_FILES) throw new Error("Clipboard attachment store exceeds 128 file limit");
-      const stat = fs.lstatSync(path.join(directory, entry.name));
-      if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("Clipboard attachment store contains a nonregular file");
-      total += stat.size;
-      if (total + bytes > CLIPBOARD_STORE_MAX_BYTES) throw new Error("Clipboard attachment store exceeds 64 MiB byte limit");
-    }
-  } finally { handle.closeSync(); }
-}
-
 /** Invoke only in response to an explicit paste-image command. Returns a workspace-relative PNG path. */
 export async function captureClipboardImage(workspace: string, signal: AbortSignal, options: ClipboardOptions = {}): Promise<{ path: string }> {
   checkAbort(signal);
@@ -138,39 +99,21 @@ export async function captureClipboardImage(workspace: string, signal: AbortSign
   const selected = commandFor(options.platform ?? process.platform, options.env ?? process.env);
   const bytes = pngBytes(await collect(selected.command, selected.args, selected.hex, root, signal, options), selected.hex);
   checkAbort(signal);
-  const { directory, verify } = storeDirectory(root);
-  checkStore(directory, bytes.length); verify();
+  const store = openAttachmentStore(root, "Clipboard attachment");
+  checkAttachmentStore(store.directory, bytes.length, "Clipboard attachment");
   const name = `clipboard-${randomUUID()}.png`;
-  const target = path.join(directory, name), temporary = path.join(directory, `.${name}.tmp`);
-  let temporaryOwned = false, targetOwned = false;
-  let identity: fs.Stats | undefined;
+  let published: { path: string; dev: number; ino: number } | undefined;
   try {
-    checkAbort(signal); verify();
-    const fd = fs.openSync(temporary, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
-    temporaryOwned = true;
-    try {
-      identity = fs.fstatSync(fd);
-      if (!identity.isFile()) throw new Error("Clipboard attachment must be a regular file");
-      fs.fchmodSync(fd, 0o600); fs.writeFileSync(fd, bytes); fs.fsyncSync(fd);
-    } finally { fs.closeSync(fd); }
-    verify(); checkAbort(signal);
-    const pending = fs.lstatSync(temporary);
-    if (!pending.isFile() || pending.dev !== identity!.dev || pending.ino !== identity!.ino) throw new Error("Clipboard attachment changed during write");
-    // A hard link publishes the complete file atomically and fails if the target already exists.
-    fs.linkSync(temporary, target); targetOwned = true;
-    fs.unlinkSync(temporary); temporaryOwned = false;
-    const published = fs.lstatSync(target);
-    if (!published.isFile() || published.dev !== identity!.dev || published.ino !== identity!.ino) throw new Error("Clipboard attachment changed during publication");
-    const relative = path.join(".harness", "attachments", name);
+    published = publishAttachment(store, name, bytes, "Clipboard attachment", () => checkAbort(signal));
+    const relative = attachmentPath(name);
     await readMedia(relative, { workspace: root, signal });
-    verify(); checkAbort(signal);
-    const validated = fs.lstatSync(target);
-    if (!validated.isFile() || validated.dev !== identity!.dev || validated.ino !== identity!.ino) throw new Error("Clipboard attachment changed during media validation");
+    store.verify(); checkAbort(signal);
+    const validated = fs.lstatSync(published.path);
+    if (!validated.isFile() || validated.dev !== published.dev || validated.ino !== published.ino) throw new Error("Clipboard attachment changed during media validation");
     return { path: relative };
   } catch (error) {
-    verify();
-    if (targetOwned) fs.unlinkSync(target);
-    if (temporaryOwned) fs.unlinkSync(temporary);
+    store.verify();
+    if (published) fs.unlinkSync(published.path);
     throw error;
   }
 }

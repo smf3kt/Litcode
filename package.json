@@ -44,6 +44,7 @@
     "smoke:mcp-recovery-cli": "node scripts/smoke-mcp-recovery-cli.mjs",
     "smoke:mcp-persistence-cli": "node scripts/smoke-mcp-persistence-cli.mjs",
     "smoke:mcp-sampling-images": "node scripts/smoke-mcp-sampling-images.mjs",
+    "smoke:mcp-sampling-audio": "node scripts/smoke-mcp-sampling-images.mjs --audio",
     "smoke:mcp-tasks": "node scripts/smoke-mcp-tasks.mjs",
     "smoke:mcp-logging": "node scripts/smoke-mcp-logging.mjs",
     "smoke:child-callbacks": "node scripts/smoke-child-callbacks.mjs",

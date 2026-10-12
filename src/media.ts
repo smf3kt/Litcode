@@ -166,6 +166,40 @@ export function imageInfo(bytes: Buffer): ImageInfo {
 }
 
 /** Parse 1-based inclusive ranges, preserving requested order, with a 20-page cap. */
+export const MCP_AUDIO_MAX_CLIP_BYTES = 16 * 1024;
+export const MCP_AUDIO_MAX_CLIPS = 4;
+export type AudioInfo = { mediaType: string; ext: string };
+// Container signatures only; audio bytes are never decoded, resampled or played.
+const AUDIO_CONTAINERS: ReadonlyArray<{ ext: string; mediaTypes: readonly string[]; match: (bytes: Buffer) => boolean }> = [
+  { ext: "wav", mediaTypes: ["audio/wav", "audio/x-wav", "audio/wave"],
+    match: bytes => bytes.length >= 12 && bytes.toString("latin1", 0, 4) === "RIFF" && bytes.toString("latin1", 8, 12) === "WAVE" },
+  { ext: "ogg", mediaTypes: ["audio/ogg"],
+    match: bytes => bytes.length >= 4 && bytes.toString("latin1", 0, 4) === "OggS" },
+  { ext: "flac", mediaTypes: ["audio/flac", "audio/x-flac"],
+    match: bytes => bytes.length >= 4 && bytes.toString("latin1", 0, 4) === "fLaC" },
+  { ext: "webm", mediaTypes: ["audio/webm"],
+    match: bytes => bytes.length >= 4 && bytes.readUInt32BE(0) === 0x1a45dfa3 },
+  { ext: "m4a", mediaTypes: ["audio/mp4", "audio/x-m4a", "audio/m4a"],
+    match: bytes => bytes.length >= 12 && bytes.toString("latin1", 4, 8) === "ftyp" },
+  // ADTS carries a reserved MPEG layer field, which distinguishes it from an MP3 frame sync.
+  { ext: "aac", mediaTypes: ["audio/aac"],
+    match: bytes => bytes.length >= 2 && bytes[0] === 0xff && (bytes[1]! & 0xf6) === 0xf0 },
+  { ext: "mp3", mediaTypes: ["audio/mpeg", "audio/mp3"],
+    match: bytes => bytes.length >= 4 && (bytes.toString("latin1", 0, 3) === "ID3" || (bytes[0] === 0xff && (bytes[1]! & 0xe0) === 0xe0)) },
+];
+
+/** Sniff a supported audio container; unsupported bytes are refused. */
+export function audioInfo(bytes: Buffer): AudioInfo {
+  for (const container of AUDIO_CONTAINERS) if (container.match(bytes)) return { mediaType: container.mediaTypes[0]!, ext: container.ext };
+  throw new Error("Unsupported audio container");
+}
+
+/** A declared MIME type is accepted only when it names the sniffed container. */
+export function audioAccepts(bytes: Buffer, mimeType: string): boolean {
+  const normalized = mimeType.split(";", 1)[0]!.trim().toLowerCase();
+  return AUDIO_CONTAINERS.some(container => container.match(bytes) && container.mediaTypes.includes(normalized));
+}
+
 export function parseMediaPages(pages: string, pageCount: number): number[] {
   if (typeof pages !== "string" || pages.length > 256 || !pages.trim()) throw new Error("PDF pages must be a range such as 1-5,8");
   const selected: number[] = [];
