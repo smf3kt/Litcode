@@ -8,7 +8,7 @@ import type { Anthropic } from "@anthropic-ai/sdk";
 import { PDFDocument } from "pdf-lib";
 
 import { createMediaTools, IMAGE_MAX_BASE64_BYTES, IMAGE_MAX_HEIGHT, IMAGE_MAX_WIDTH, IMAGE_TARGET_RAW_BYTES,
-  MEDIA_MAX_BYTES, parseMediaPages, readMedia, type MediaContext } from "../src/media.js";
+  MEDIA_MAX_BYTES, parseMediaPages, readMedia, credentialShapedSegment, type MediaContext } from "../src/media.js";
 import type { ToolContext } from "../src/tools.js";
 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
@@ -198,4 +198,62 @@ test("pre-aborted reads fail before path access and release no child or timer re
   const pending = readMedia("image.png", { ...f.context, signal: mid.signal });
   mid.abort();
   await assert.rejects(pending, { name: "AbortError" });
+});
+
+test("a credential-shaped name or folder is refused by category", async (t) => {
+  const f = fixture(t);
+  fs.mkdirSync(path.join(f.workspace, ".ssh"));
+  fs.mkdirSync(path.join(f.workspace, ".aws"));
+  const refused = [
+    f.write(".env", "TOKEN=1\n"),
+    f.write(".npmrc", "//registry/:_authToken=x\n"),
+    f.write("deploy.pem", "-----BEGIN PRIVATE KEY-----\n"),
+    f.write("id_rsa", "key material\n"),
+    f.write("host_ed25519", "key material\n"),
+    f.write("kubeconfig", "apiVersion: v1\n"),
+    f.write(path.join(".ssh", "known_hosts"), "host key\n"),
+    f.write(path.join(".aws", "config"), "[default]\n"),
+  ];
+  for (const name of refused) {
+    await assert.rejects(readMedia(name, f.context), /credentials are kept under/, name);
+  }
+  // The refusal names what made it credential-shaped.
+  await assert.rejects(readMedia("deploy.pem", f.context), /"deploy\.pem"/);
+
+  // The rule is about names, not about media: a plain image beside them still reads.
+  f.write("diagram.png", PNG);
+  assert.deepEqual(Buffer.from(base64Block(await readMedia("diagram.png", f.context)), "base64"), PNG);
+  // And a name that merely resembles one is not refused.
+  f.write("environment.png", PNG);
+  assert.deepEqual(Buffer.from(base64Block(await readMedia("environment.png", f.context)), "base64"), PNG);
+});
+
+test("a file with more than one hard link is refused", async (t) => {
+  const f = fixture(t);
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "ccrev-media-outside-"));
+  t.after(() => fs.rmSync(outside, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(outside, "image.png"), PNG);
+  fs.linkSync(path.join(outside, "image.png"), path.join(f.workspace, "linked.png"));
+
+  await assert.rejects(readMedia("linked.png", f.context), /more than one hard link/);
+
+  // A single-link copy of the same bytes is fine.
+  fs.writeFileSync(path.join(f.workspace, "copied.png"), PNG);
+  assert.deepEqual(Buffer.from(base64Block(await readMedia("copied.png", f.context)), "base64"), PNG);
+});
+
+test("credentialShapedSegment reports the segment that matched", async () => {
+  assert.equal(credentialShapedSegment("notes/todo.md"), undefined);
+  assert.equal(credentialShapedSegment("notes/../todo.md"), undefined);
+  assert.equal(credentialShapedSegment(".env"), ".env");
+  assert.equal(credentialShapedSegment("config/.ENV"), ".ENV");
+  assert.equal(credentialShapedSegment(".ssh/id_rsa"), ".ssh");
+  assert.equal(credentialShapedSegment("keys/server.p12"), "server.p12");
+  assert.equal(credentialShapedSegment("secrets.yaml"), "secrets.yaml");
+  assert.equal(credentialShapedSegment("certificates/terraform.tfstate"), undefined);
+  // A checked-in sample is not a store.
+  assert.equal(credentialShapedSegment("example.env"), undefined);
+  assert.equal(credentialShapedSegment("template.secrets.yaml"), undefined);
+  // But the folder rule is not exempted by the basename.
+  assert.equal(credentialShapedSegment(".ssh/example.env"), ".ssh");
 });

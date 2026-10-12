@@ -12,21 +12,21 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 41,
+  "recordCount": 42,
   "summary": {
-    "modules": 37,
-    "bytes": 7860466,
+    "modules": 39,
+    "bytes": 8560995,
     "narrativeOnly": {
-      "modules": 65,
-      "bytes": 7358658
+      "modules": 64,
+      "bytes": 6660732
     },
     "unreviewed": {
-      "modules": 2263,
-      "bytes": 31619013
+      "modules": 2262,
+      "bytes": 31616410
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2213,
-    "uncitedBuiltinLeafOnly": 2247,
+    "uncitedWithoutMarker": 2212,
+    "uncitedBuiltinLeafOnly": 2246,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
@@ -801,6 +801,49 @@
       ]
     },
     {
+      "path": "chunk-n3ykh62m.js",
+      "bytes": 697926,
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "crypto",
+        "fs",
+        "os",
+        "path",
+        "stream",
+        "string_decoder",
+        "util"
+      ],
+      "packages": [
+        "async_hooks"
+      ],
+      "chunks": 0,
+      "markers": {
+        "org memory surface": {
+          "literal": "org_memory_",
+          "at": 90753
+        },
+        "API beta headers": {
+          "literal": "anthropic-beta",
+          "at": 615600
+        }
+      },
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/FEATURES.md",
+        "research/HOOKS.md",
+        "research/ports/W14-attachment-refusals.md"
+      ],
+      "portRecords": [
+        "research/ports/W14-attachment-refusals.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the classifier's categories and of the two refusals this runtime lacked, onto the media read path it already owns. `src/media.ts` already refuses an esc"
+      ]
+    },
+    {
       "path": "chunk-pn44qc66.js",
       "bytes": 45078,
       "sha256": "f6c745a0cf4f3370d0e13487c15727a69bdbf2256a30c59080c571274064a77f",
@@ -1101,6 +1144,28 @@
       "reviewed": true,
       "declared": [
         "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio"
+      ]
+    },
+    {
+      "path": "chunk-x3et6ayt.js",
+      "bytes": 2603,
+      "sha256": "5d0978461ee81ef33137d6ce07af7169a4dbd8cb62607c772ec9f1d5bdefe0ce",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W14-attachment-refusals.md"
+      ],
+      "portRecords": [
+        "research/ports/W14-attachment-refusals.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the classifier's categories and of the two refusals this runtime lacked, onto the media read path it already owns. `src/media.ts` already refuses an esc"
       ]
     },
     {
@@ -24601,11 +24666,15 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
-        "research/HOOKS.md"
+        "research/HOOKS.md",
+        "research/ports/W14-attachment-refusals.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W14-attachment-refusals.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-n6379ww5.js",
@@ -33401,9 +33470,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W14-attachment-refusals.md"
+      ],
+      "portRecords": [
+        "research/ports/W14-attachment-refusals.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-x3hddqaw.js",

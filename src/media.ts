@@ -80,6 +80,74 @@ function within(root: string, target: string): boolean {
 function reserved(root: string, target: string): boolean {
   return path.relative(root, target).split(path.sep).includes(".agent");
 }
+
+// Names and folders that credentials are kept under. A file the agent was told
+// to read is read on the strength of the path it was given, and a path that
+// names a credentials store is not a path a person meant to hand over; the
+// recovered product refuses these the same way, which is why the refusal is a
+// category of its own rather than a general "not allowed".
+//
+// The list is the readable core of the recovered set: its credential stores,
+// package-manager and cloud credential files, shell startup files and history
+// files, plus the key-material extensions. The recovered product also folds in
+// host-specific entries this runtime has no equivalent for (its own settings
+// and state files, a host credentials file named by an environment variable,
+// and the platform keychain directories), and those are recorded as not ported
+// rather than guessed at.
+const CREDENTIAL_FILENAMES: ReadonlySet<string> = new Set([
+  ".env", ".envrc", ".netrc", "_netrc", ".git-credentials", ".gitconfig", ".mcp.json",
+  ".npmrc", ".yarnrc", ".yarnrc.yml", ".pypirc", ".pgpass", ".my.cnf", ".mylogin.cnf",
+  ".terraformrc", "terraform.rc", "credentials.tfrc.json", ".s3cfg", ".boto",
+  "kubeconfig", "kubeconfig.yaml", "kubeconfig.yml", "kubeconfig.json",
+  ".bashrc", ".bash_profile", ".bash_login", ".bash_logout", ".bash_aliases", ".profile",
+  ".zshrc", ".zshenv", ".zprofile", ".zlogin", ".zlogout", "config.fish",
+  ".bash_history", ".zsh_history", "fish_history", "consolehost_history.txt",
+  ".python_history", ".node_repl_history", ".psql_history", ".mysql_history",
+]);
+const CREDENTIAL_FOLDERS: ReadonlySet<string> = new Set([".ssh", ".aws", ".gnupg", ".docker"]);
+const CREDENTIAL_EXTENSIONS = /\.(?:pem|key|p12|pfx|keystore|jks)$/;
+const CREDENTIAL_KEY_MATERIAL = /_(?:rsa|dsa|ecdsa|ed25519)(?:_sk(?:_rk)?)?$/;
+// `id_rsa` and `id_ed25519` have no extension, so the key-material rule is
+// tested against the whole name as well as the part after the last dot.
+const CREDENTIAL_KEY_NAMES = /^(?:id|host)_(?:rsa|dsa|ecdsa|ed25519)$/;
+const CREDENTIAL_SECRETS_FILE = /^secrets?\.(?:ya?ml|json|toml)$/;
+// A checked-in sample is not a store: the recovered product exempts names that
+// announce themselves as examples, and refusing those would refuse the
+// documentation that tells a person how to write the real file.
+const CREDENTIAL_SAMPLE_PREFIXES = ["example", "sample", "template", "dist"];
+
+/** Normalize for comparison: macOS stores names decomposed, and the recovered set is ASCII. */
+function foldName(name: string): string {
+  return name.normalize("NFC").toLowerCase();
+}
+
+function looksLikeSample(name: string): boolean {
+  return CREDENTIAL_SAMPLE_PREFIXES.some(prefix => name.startsWith(prefix));
+}
+
+/**
+ * The workspace-relative segment that makes a path credential-shaped, or
+ * undefined when nothing about the name or its folders says "credentials".
+ *
+ * Every segment counts, not just the basename: `.ssh/id_rsa` is refused for its
+ * folder even though `id_rsa` alone is a key-material name, and `.env` is
+ * refused wherever it sits.
+ */
+export function credentialShapedSegment(userPath: string): string | undefined {
+  const segments = userPath.split(/[\\/]/).filter(segment => segment !== "" && segment !== ".");
+  for (const segment of segments) {
+    const folded = foldName(segment);
+    if (CREDENTIAL_FOLDERS.has(folded)) return segment;
+    if (looksLikeSample(folded)) continue;
+    if (CREDENTIAL_FILENAMES.has(folded)) return segment;
+    if (CREDENTIAL_EXTENSIONS.test(folded) || CREDENTIAL_KEY_MATERIAL.test(folded) ||
+      CREDENTIAL_KEY_NAMES.test(folded) || CREDENTIAL_SECRETS_FILE.test(folded)) {
+      return segment;
+    }
+  }
+  return undefined;
+}
+
 async function confine(root: string, userPath: string): Promise<string> {
   if (typeof userPath !== "string" || !userPath || userPath.length > 4096 || userPath.includes("\0") || path.isAbsolute(userPath)) {
     throw new Error("Media path must be workspace-relative");
@@ -99,12 +167,28 @@ async function readBytes(userPath: string, context: MediaContext): Promise<Buffe
   checkAbort(context.signal);
   const root = await fsp.realpath(context.workspace);
   checkAbort(context.signal);
+  const credential = credentialShapedSegment(userPath);
+  if (credential !== undefined) {
+    throw new Error(
+      `Cannot attach "${userPath}": its name or folder is one that credentials are kept under ` +
+        `("${credential}"), so it is not read on the agent's word alone. ` +
+        "Ask the user to attach it to the chat themselves if they want it sent.",
+    );
+  }
   const file = await confine(root, userPath);
   checkAbort(context.signal);
   const handle = await fsp.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
   try {
     const stat = await handle.stat();
     if (!stat.isFile()) throw new Error("Media path must be a regular file");
+    // A second link can point at a file outside anything this session may read,
+    // so the path that was validated is not the only way to the bytes.
+    if (stat.nlink > 1) {
+      throw new Error(
+        `Cannot attach "${userPath}": the file has more than one hard link, which can point at a file ` +
+          "outside the workspace. Copy the file and attach the copy.",
+      );
+    }
     if (stat.size > MEDIA_MAX_BYTES) throw new Error(`Media exceeds ${MEDIA_MAX_BYTES} byte limit`);
     const real = await confine(root, userPath);
     const current = await fsp.stat(real);
