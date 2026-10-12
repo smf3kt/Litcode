@@ -192,7 +192,7 @@ async function withConnection<T>(
   config: Record<string, McpServerConfig>,
   context: McpConnectContext,
   fn: (connection: McpConnection) => Promise<T>,
-  options?: { requestTimeoutMs?: number },
+  options?: { requestTimeoutMs?: number; recovery?: boolean },
 ): Promise<T> {
   const connection = await connectMcpServers(config, context, options);
   try {
@@ -437,6 +437,53 @@ test("stderr from a crashed server is surfaced as a bounded diagnostic tail", as
     assert.equal(replacement.state, "connected"); assert.equal(replacement.generation, 2);
     assert.equal(replacement.attempts, 1);
   });
+});
+
+test("a failed stdio child is re-dialed once on the next use only when recovery is enabled", async () => {
+  const ws = tmpDir();
+  const notes = path.join(ws, "notes.jsonl");
+  await withConnection({ srv: mockServer("basic", notes) }, connectContext(ws), async (connection) => {
+    const exit = findTool(connection.tools, "mcp__srv__exit");
+    const echo = findTool(connection.tools, "mcp__srv__echo");
+    await assert.rejects(exit.execute({}, makeContext(ws)));
+    await waitFor(() => connection.servers?.().srv?.state === "disconnected");
+    assert.equal(connection.servers?.().srv?.generation, 1);
+    assert.equal(connection.servers?.().srv?.attempts, 0, "stdio keeps no background timer");
+    await assert.rejects(echo.execute({ text: "plain" }, makeContext(ws)), /disconnected/,
+      "without recovery the dead child is not re-dialed");
+  }, { recovery: false });
+  const first = readNotes(notes).filter((note) => typeof note.pid === "number").map((note) => note.pid as number);
+  assert.equal(first.length, 1, "without recovery only the original child was spawned");
+
+  const wsRetry = tmpDir();
+  const retryNotes = path.join(wsRetry, "notes.jsonl");
+  await withConnection({ srv: mockServer("exitcall", retryNotes) }, connectContext(wsRetry), async (connection) => {
+    const echo = findTool(connection.tools, "mcp__srv__echo");
+    await assert.rejects(echo.execute({}, makeContext(wsRetry)), /exited|stderr/);
+    await waitFor(() => connection.servers?.().srv?.state === "disconnected");
+    // The recovered client dials a fresh process on the next use; this fixture exits on every call,
+    // so the redial succeeds while the call itself fails again and nothing loops.
+    await assert.rejects(echo.execute({}, makeContext(wsRetry)), /exited|stderr/);
+    const status = connection.servers!().srv!;
+    assert.equal(status.generation, 2); assert.equal(status.attempts, 1);
+    assert.equal(status.state, "disconnected");
+  }, { recovery: true });
+  const spawned = readNotes(retryNotes).filter((note) => typeof note.pid === "number").map((note) => note.pid as number);
+  assert.equal(new Set(spawned).size, 2, "one lazy re-dial spawned exactly one new process");
+
+  const wsHealthy = tmpDir();
+  const healthyNotes = path.join(wsHealthy, "notes.jsonl");
+  await withConnection({ srv: mockServer("basic", healthyNotes) }, connectContext(wsHealthy), async (connection) => {
+    const exit = findTool(connection.tools, "mcp__srv__exit");
+    const echo = findTool(connection.tools, "mcp__srv__echo");
+    await assert.rejects(exit.execute({}, makeContext(wsHealthy)));
+    await waitFor(() => connection.servers?.().srv?.state === "disconnected");
+    assert.equal(await echo.execute({ text: "recovered" }, makeContext(wsHealthy)), "echo:recovered");
+    const status = connection.servers!().srv!;
+    assert.equal(status.state, "connected"); assert.equal(status.generation, 2); assert.equal(status.attempts, 1);
+  }, { recovery: true });
+  const healthy = readNotes(healthyNotes).filter((note) => typeof note.pid === "number").map((note) => note.pid as number);
+  assert.equal(new Set(healthy).size, 2, "exactly one replacement process served the next call");
 });
 
 // ---------------------------------------------------------------------------
