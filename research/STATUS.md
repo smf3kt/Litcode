@@ -956,6 +956,33 @@ Nineteen rows cover the inventory. Thirteen resolve on both sides: the read/writ
 
 Two limits are recorded with it: no copied-source percentage is claimed, and no classification in the historical reports is restated or upgraded by this pass. The same treatment covers the four focused behavioural contracts FEATURES records in prose - the original task storage, agent launch, the monitor transport, and the MCP selector that chooses between its two protocol shapes - and all four bind on both sides (durable uuid storage with dependency edges and projections; subagent type, effort and worktree isolation with the fork start kind; command and WebSocket jobs; protocol-version negotiation with the standard-tasks gate). They are written as an evidence file rather than a `research/ports/*.md` record because the ledger counts every module a record there names as port-backed, and this is an identity review rather than a port - so the totals stay at 43 backed / 64 narrative-only / 2258 uncited and the digests `9a5e31b3…` and `6034bd4b…` are unchanged, verified by regenerating the ledger. Detail: [ports/historical-ports-review-evidence.json](ports/historical-ports-review-evidence.json).
 
+## Stale management-surface and ledger-tier wording corrected (2026-10-12)
+
+Two status lines still said the management surface was unverified after W25 had
+read it: the FEATURES gateway row and the top of W03-live both listed "route
+mutation" as an unverified thing, and W03-launcher's tail did the same. The
+gateway serves a session's route as a GET-only per-session value, so route
+switching is not a management write there at all, and credential issuance lives
+in the application's own caller-key API rather than on the gateway port. All
+three now say that, and name the two things that really are unexercised - the
+application cold start and credential issuance through the application - as the
+user's action.
+
+Three smaller corrections came with it. W03-launcher's package figures (57 files
+from 178 source, 50-module rebuild) are landing-time values and now say so;
+`remaining-dispositions` carried the ledger's tier counts as present tense
+(25 port-backed / 57 narrative / 2283 uncited at 33.4 MB) and now gives those as
+landing-time figures beside the current 43 / 64 / 2258 at 29.4 MB; and the two
+evidence files nothing linked - `W03-launcher-evidence.json` and
+`remaining-dispositions-evidence.json` - are now linked from their own records,
+so all 39 files under `research/ports/` that end in `-evidence.json` have an
+inbound link.
+
+Documentation only: no product source, test or build input changed, so the suite
+was not re-run and the ledger is byte-identical (`9a5e31b3…` JSON, `6034bd4b…`
+markdown, 43 reviewed of 2365). The 255 local links across `research/` all
+resolve.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

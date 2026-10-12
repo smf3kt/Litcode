@@ -1,7 +1,9 @@
 # W03 real Magpie task acceptance
 
-Date: 2026-10-11. Status: real existing-route task/resume verified; management
-launch, route mutation and credential rotation remain unverified.
+Date: 2026-10-11. Status: real existing-route task/resume verified; the gateway
+management surface is located and read; the application cold start and
+credential issuance through the application's own API remain unexercised, and
+both are the user's action rather than a probe this review can make.
 
 The user explicitly selected deepseek/deepseek-flash and a USD1 budget while
 preserving existing routing and credentials. Read-only /v1/models confirmed
