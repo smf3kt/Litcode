@@ -1036,6 +1036,38 @@
     ],
     "reading": "the last of the two-kilobyte-and-under prose at 22.9% import text: terminal integration and clipboard transports, session colour and teammate bookkeeping, login and subscription surfaces, startup phase ordering, and the hosted bridge, fleet and dev-intent surfaces - fifty-six modules with no characterising literal of their own, twenty-six with local counterparts, twelve hosted surfaces, two rules guarding surfaces this runtime does not have, one excluded with OAuth, one vendored package, one pure code leaf, one product surface without a local counterpart, and no candidate"
   },
+  "sliceTwentySeven": {
+    "scope": "uncited modules ranked 1521 to 1620 by size, the eleventh 100-rank band",
+    "bytes": 119654,
+    "rows": 100,
+    "rowsWithContent": 50,
+    "byteRange": [1968, 1651],
+    "importSharePercent": 35.4,
+    "composition": {
+      "noCharacterisingLiteral": 63,
+      "localCounterparts": 16,
+      "hostedOrExternalSurfaces": 13,
+      "vendoredOrPolyfill": 2,
+      "excludedWithCredentialsOrOauth": 2,
+      "pureCodeLeaves": 2,
+      "productWithoutLocalCounterpart": 1,
+      "ruleWithoutLocalSurface": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "falseLeadCorrected": [
+      "chunk-jr4zt5gv.js gates tool host attestation, counts unattested served calls under repository trust and can raise a configuration exception; the local source has no attestation surface at all, so the rule guards a surface this runtime does not have",
+      "chunk-83mjq7ab.js discards an answer that arrived too quickly after the question to count and asks again; the local answer intake would be a plausible half, but the module carries one literal and the rest is a stream helper, so it is too thin to make a rule"
+    ],
+    "notedButNotCandidates": [
+      "chunk-sve74zfz.js carries shell allow rules with a dangerous-prefix notion and reports rules added at init, the W01 permission family",
+      "chunk-j4tp8n4e.js reports a settings value as set by the organization, the managed-settings family recorded since slice nineteen",
+      "chunk-sw3z2jzf.js names the GitHub Enterprise host a command mentions among the hosts a rule covers, the host-vetting shape this runtime applies to its own rules",
+      "chunk-v94c5hmj.js reports a re-send while the in-session model pick stands, the model selection state this runtime owns",
+      "fifty modules carry content and thirteen of them only through state-name markers; fifty carry nothing of their own and most of those are eighty percent or more import statements"
+    ],
+    "reading": "the under-two-kilobyte tail at 35.4% import text, where the aggregator share climbs back as the prose runs out: MCP dialling and tool discovery, GitHub CLI and plugin directory handling, shell allow rules, usage-limit reporting, and the hosted connector, tunnel, voice and device surfaces - sixty-three modules with no characterising literal of their own, sixteen with local counterparts, thirteen hosted surfaces, two vendored packages, two excluded with credentials or OAuth, two pure code leaves, one product surface without a local counterpart, one rule guarding a surface this runtime does not have, and no candidate"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
