@@ -1121,6 +1121,34 @@ Suite 1130/1130; package 72 files with 0 upstream requests; identity 125 input /
 92 validation / 65 build, merged `f8dab819…`. Detail and coordinates:
 ports/W30-output-schema.md.
 
+## Local backlog closed (2026-10-12)
+
+Every locally executable item on the backlog is now either landed or decided, and
+the two that remain need a person rather than a port.
+
+The uncited-corpus figure is a reviewed remainder, not pending work. Thirty-four
+contiguous bands read all 2267 modules of the uncited list down to the seven that
+are nothing but a re-export; no unread module remains, and the candidate table
+disposes all twelve candidates the pass recorded - eight landed as port packages
+and four reclassified as rules without a local surface - along with the nine
+further "candidate" marks the early slices used. The one place that still read as
+open was slice fifteen's prose, which proposed entry-level Git-directory vetting;
+a later pass read that module whole and found it is a workspace-diff materialiser
+rather than an inspector, so the prose now carries the same disposition as the
+table without naming the module here, which would move it out of the uncited tier
+without adding evidence. What can still move the ledger is a package that ports a module and cites
+it, which is why the corpus review and the dispositions name modules only where
+the ledger excludes them.
+
+The audit table holds no open local item: A01 and A03 to A08 are resolved, A02
+waits on the application's own administrative surface for credential issuance and
+rotation (a window this side cannot open), and A09 waits on the project's licence
+and remote decision. Neither is a port.
+
+No product source, test or build input changed, so the suite and identity in the
+previous package still hold. Detail: ports/unreviewed-corpus.md's candidate table,
+ports/remaining-dispositions.md item 6, and CURRENT's audit rows.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md
