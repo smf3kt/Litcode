@@ -1,0 +1,173 @@
+{
+  "schema": "RecoveredModulePortEvidence.v1",
+  "date": "2026-10-12",
+  "item": "W15 a bypass request from root outside a sandbox is refused",
+  "status": "verified",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
+  },
+  "module": {
+    "path": "chunk-zygdtz20.js",
+    "sha256": "e71f5d58cb820aed4afb2f8f044e1315afd0b23a494345609179b253bbd2e1a8",
+    "bytes": 5842
+  },
+  "supportingModules": [
+    {
+      "path": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+      "bytes": 744610,
+      "note": "the environment probe class holding the sandbox exemption the guard consults: the platform test, the uid source, the IS_SANDBOX and CLAUDE_CODE_BUBBLEWRAP flags"
+    },
+    {
+      "path": "chunk-9rz2kgpd.js",
+      "sha256": "cf758c9dbb4d9967606378bfe4c71d6f29d175c4c7fd2940c4ed967054a9d53d",
+      "bytes": 9091,
+      "note": "the container marker itself: statSync(\"/.dockerenv\") behind the probe class's isDocker()"
+    }
+  ],
+  "coordinateUnit": "zero-based UTF-16, left-closed/end-exclusive, over the decoded module text",
+  "readAs": "inert data; no recovered entrypoint was executed",
+  "facts": [
+    {
+      "name": "the bypass request predicate",
+      "symbol": "function i(s){return s?.permissionMode===\"bypassPermissions\"||s?.allowBypass===!0}",
+      "range": [4733, 4815]
+    },
+    {
+      "name": "the guard, and its refusal text",
+      "symbol": "function g(s){if(!i(s))return;if(jv.isRootOutsideDeliberateSandbox())console.error(\"--dangerously-skip-permissions cannot be used with root/sudo privileges for security reasons\"),process.exit(1)}",
+      "range": [4815, 5010],
+      "note": "a process exit rather than a warning, and the message names the reason only"
+    },
+    {
+      "name": "the policy gate, not ported",
+      "symbol": "function c(s)",
+      "range": [5010, 5201],
+      "note": "strips the mode and reports a policy-sourced notice"
+    },
+    {
+      "name": "the consent dialog and its persist check, not ported",
+      "symbol": "async function b(s,o,r)",
+      "range": [5201, 5748],
+      "text": "bypass consent was accepted but user settings do not show it (the write failed, or the file has an invalid value), so bypass is not passed on"
+    },
+    {
+      "name": "the three exports",
+      "symbol": "export{c as applyBypassPolicyGate,b as ensureAgentsBypassConsent,g as refuseBypassUnderRoot}",
+      "range": [5748, 5842]
+    },
+    {
+      "name": "the sandbox exemption",
+      "symbol": "isRootOutsideDeliberateSandbox(){return this.sources.platform!==\"win32\"&&this.sources.getuid()===0&&!this.sources.isSandboxEnvSet()&&!this.sources.isBubblewrapEnvSet()}",
+      "range": [255561, 255700],
+      "module": "chunk-bk5ct2gw.js",
+      "note": "root outside a deliberate sandbox: not Windows, uid 0, and neither sandbox flag set"
+    },
+    {
+      "name": "the two sandbox flags and the uid source",
+      "symbol": "isBubblewrapEnvSet:()=>a.CLAUDE_CODE_BUBBLEWRAP,isSandboxEnvSet:()=>process.env.IS_SANDBOX===\"1\",getuid:()=>typeof process.getuid===\"function\"?process.getuid():void 0",
+      "range": [256546, 256760],
+      "module": "chunk-bk5ct2gw.js"
+    },
+    {
+      "name": "the container marker",
+      "symbol": "function G(){try{return M.statSync(\"/.dockerenv\"),!0}catch{return!1}}",
+      "range": [1028, 1074],
+      "module": "chunk-9rz2kgpd.js"
+    }
+  ],
+  "portedInvariant": "A request for the permission mode that skips every check is refused before anything runs when the process is root outside a deliberate sandbox, because the tools would then act as the machine's owner rather than as the person who typed the command.",
+  "implementation": {
+    "new": ["src/bypass-guard.ts"],
+    "changed": ["src/cli.ts", "test/bypass-guard.test.ts"],
+    "wiring": {
+      "symbol": "refuseBypassUnderRoot",
+      "definition": "src/bypass-guard.ts:80",
+      "callSites": ["src/cli.ts:289"],
+      "note": "the call sits immediately after resolvePermissions, so the refusal precedes workspace locking, MCP admission, the task-required gate and the first request; the import is at src/cli.ts:15"
+    },
+    "digests": {
+      "src/bypass-guard.ts": "b547a64a94b900bd829908c1b6d6119a32bfeba891430a22f1b878e75391ea9b",
+      "test/bypass-guard.test.ts": "7cf4d5a97ee855c3987344a8d90ceeee6f5a8ff757c2bf2fe1feb53d0802c056",
+      "src/cli.ts": "6d2ac971b68fa642ddd7c323fc6e77fd84f7eb1e125016d5a51becfdde78a98d"
+    },
+    "localModeSpelling": "the resolved mode is 'bypass' (src/permissions.ts:8), the local counterpart of the recovered 'bypassPermissions'"
+  },
+  "ownedDecisions": [
+    "The decision is returned as a value and the CLI turns it into the exit, so the rule is observable by a test and explainable by a wrapper; the recovered function exits on its own.",
+    "Two sandbox signals rather than the recovered two flags: one environment opt-in (HARNESS_SANDBOX=1) plus the two container marker files, because being root under Docker or Podman is the intended arrangement here and there is no bubblewrap wrapper of our own to name.",
+    "Windows needs no platform test: process.getuid does not exist there, so the uid is undefined rather than 0 and nothing is refused.",
+    "A marker path that throws on stat counts as absent, so a permission error cannot be turned into an exemption.",
+    "The refusal names the reason and not a fix: which sandbox to use is the person's choice."
+  ],
+  "notPorted": [
+    "applyBypassPolicyGate: this runtime's settings layers carry no policy source, and stripping the mode after resolving it would silently contradict the flag the person typed.",
+    "ensureAgentsBypassConsent: this runtime has no bypass consent dialog, so the rule guards a surface it does not have.",
+    "The settings-level spelling of the request (allowBypass === true): the local settings schema has no such field, so the mode is the only spelling that reaches the guard; an unreachable true branch in a security guard is left out deliberately.",
+    "The bubblewrap flag as such, covered by the container markers and the single opt-in."
+  ],
+  "cases": {
+    "unit": {
+      "file": "test/bypass-guard.test.ts",
+      "count": 5,
+      "fail": 0,
+      "added": [
+        "only the mode that skips every check counts as a bypass request, over all five local modes plus empty and absent",
+        "root outside a container is refused and a non-root uid or an absent uid is not",
+        "each container marker and the literal opt-in value exempt, a non-literal value does not, and a marker that throws on stat does not",
+        "the refusal fires only for a bypass request made by root, and the real environment refuses nothing",
+        "the CLI refuses the mode before it starts anything: the child preloads process.getuid=()=>0 through a data: module, runs src/cli.ts with --permission-mode bypass, and asserts exit 1 with the message and no connection attempt, while --permission-mode plan under the same uid is not refused"
+      ]
+    },
+    "cliSmoke": {
+      "added": false,
+      "reason": "the refusal is a pure function of the resolved mode and the process uid, and the real-CLI case above already drives the whole path end to end; a separate driver would repeat a passing check without reaching anything new."
+    }
+  },
+  "check": {
+    "command": "npx tsc --noEmit",
+    "exit": 0
+  },
+  "build": {
+    "command": "npm run build",
+    "exit": 0
+  },
+  "fullSuite": {
+    "pass": 1109,
+    "fail": 0
+  },
+  "packageSmoke": {
+    "command": "npm run smoke:package",
+    "files": 69,
+    "upstreamRequests": 0
+  },
+  "identity": {
+    "inputs": {
+      "sha256": "52257805f89080e3cfcc15619c95536e23ac8d5f93f8c6b7f813315b0257940d",
+      "files": 122
+    },
+    "validation": {
+      "sha256": "d758d792da10a4e85b247822f0cd00f5b661381e4fb9d65ec2beef5fbf048d10",
+      "files": 89
+    },
+    "build": {
+      "sha256": "958dd4e63ae3d4a579e6dfc668b44c34741b3a87fed6759c9fcf502192487015",
+      "files": 62
+    },
+    "merged": "9d66bb4078160bd4eb27981c1e6c88cf74502b9ca8b0cba5888656edc7ce47fb"
+  },
+  "tarball": {
+    "name": "litcode-0.1.0.tgz",
+    "files": 69,
+    "bytes": 327616,
+    "sha256": "672aa0ee0e1370bd259988b788d28f7fc57676d8a0bb0c93c0f3b58dfe05f311"
+  },
+  "regressions": "None. The guard fires only for a mode no existing case uses together with a uid no test environment has, and both halves of that pair are needed before it refuses anything.",
+  "limitations": [
+    "No real root session and no real container were used to confirm the exemption: the uid is injected, and the marker tests are the ones a Docker or Podman host would leave behind rather than files read from such a host.",
+    "The port is narrower than the recovered module: the policy gate and the consent dialog are not carried over, and the settings-level spelling of the request has no local producer.",
+    "The bubblewrap flag is not reproduced by name, so a bubblewrap sandbox that leaves neither marker file needs the explicit opt-in here."
+  ],
+  "paidCalls": 0
+}

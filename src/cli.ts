@@ -12,6 +12,7 @@ import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { listSessions } from './sessions.js';
 import { loadProjectConfig, defaultUserDir, type LoadedConfig } from './config.js';
+import { refuseBypassUnderRoot } from './bypass-guard.js';
 import { heldMcpServerNotice, mcpServerFingerprint, readMcpApprovals, recordMcpApprovals, resolveMcpServers, workspaceApprovalKey } from './mcp-approval.js';
 import { loadKeybindings } from './keybindings.js';
 import { compileJsonSchema, createHeadlessOutput, UsageBudget, UsageBudgetExceeded, withUsageBudget,
@@ -282,6 +283,14 @@ function newConfig(
       if (notice) process.stderr.write(`${notice}\n`);
     }
     config.permissions = resolvePermissions(settings.permissions, values);
+    // The mode that skips every check stops meaning "stop asking me" when the
+    // process is root outside a container, so it is refused before anything
+    // runs rather than warned about afterwards.
+    const bypassRefusal = refuseBypassUnderRoot({ mode: config.permissions.mode });
+    if (bypassRefusal.refused) {
+      process.stderr.write(`${bypassRefusal.message}\n`);
+      process.exit(1);
+    }
     config.configSources!.overrides = {
       ...(values['auto-memory'] === undefined ? {} : { autoMemory: values['auto-memory'] as boolean }),
       ...(values['watch-config'] === undefined ? {} : { watchConfig: values['watch-config'] as boolean }),
