@@ -30,12 +30,12 @@
 | --- | --- | --- | --- |
 | A01 | P1 网关header被SDK环境覆盖 | resolved / confirmed | [W01](ports/W01.md)：原生SDK污染复现，两auth的stream/count_tokens及CLI新建/恢复通过 |
 | A02 | P1 Magpie管理适配未闭环 | Partial / real task+resume confirmed | W03-live真实任务已验证；管理启动、route切换、凭证发行/轮换、实际账单仍缺，保持open |
-| A03 | P1 缺逐模块搬运台账 | resolved（有限）/ 全量可复现+语料定性 | [逐模块台账](ports/port-ledger.md)：2365模块全部入账并绑定样本sha256，25个有ports证据/57个仅叙述提及/2283个未引用，未引用者显式列出且不计比例；生成器[port-ledger.mjs](../scripts/port-ledger.mjs)同参重复与不同输出路径两次生成摘要一致，[证据](ports/port-ledger-evidence.json)。历史实现逐包核对保留原表述；[未引用语料定性](ports/unreviewed-corpus.md)以字节证据给出标记族与最大20模块处置，第二轮按尺寸推进到第21-45名（3,271,635字节）并定位三个范围内模块，第三轮到第46-70名（2,052,421字节）新增云元数据地址表候选并钉住已决定不移植的shell复杂度闸门坐标，2231个无标记模块经三轮后余2181个，仍为量化残余 |
+| A03 | P1 缺逐模块搬运台账 | resolved（有限）/ 全量可复现+语料定性 | [逐模块台账](ports/port-ledger.md)：2365模块全部入账并绑定样本sha256，25个有ports证据/57个仅叙述提及/2283个未引用，未引用者显式列出且不计比例；生成器[port-ledger.mjs](../scripts/port-ledger.mjs)同参重复与不同输出路径两次生成摘要一致，[证据](ports/port-ledger-evidence.json)。历史实现逐包核对保留原表述；[未引用语料定性](ports/unreviewed-corpus.md)以字节证据给出标记族与最大20模块处置，第二轮按尺寸推进到第21-45名（3,271,635字节）并定位三个范围内模块，第三轮到第46-70名（2,052,421字节）新增云元数据地址表候选与权限用shell读法分析器（`chunk-zjewzgfh.js`，与已决定不移植的`chunk-m00pavz3.js`参数切分器为不同模块），2231个无标记模块经三轮后余2181个，仍为量化残余 |
 | A04 | P1 索引未校验模块摘要 | resolved / confirmed | [W02](ports/W02.md)：全部records预检摘要、坐标、生成身份；篡改中止；新索引独立核验 |
 | A05 | P1 提取缺独立可复现校验入口 | resolved / confirmed | [W02](ports/W02.md)：原样本/manifest/raw/解码/落盘/index一致性实测2609项 |
 | A06 | P2 三处工具总数断言漂移 | resolved / confirmed | [W01](ports/W01.md)：名称/能力核验5/5，当前全量1003/1003 |
 | A07 | P2 验证缺内容/构建身份与持久绑定 | resolved / confirmed，历史记录维持原证据等级 | 共享identity入口与[W01](ports/W01-evidence.json)/[W02证据](ports/W02-evidence.json)持久绑定；历史不追填猜测 |
-| A08 | P2 当前缺口与历史混杂 | resolved（有限）/ 处置入口与逐项结论齐备 | CURRENT为唯一排程与处置入口；[剩余项处置](ports/remaining-dispositions.md)对W05/W06尾项逐条给出superseded/无传输/不移植/无来源/量化开放五类结论并附已核验坐标，历史报告保持原记录不回填；未引用模块2283个仍为量化开放缺口，其构成见[语料定性](ports/unreviewed-corpus.md)（2265个只引用运行时内建、16个标记族约覆盖50个模块、2231个无标记为残余，三轮切片后余2181个）；该轮同时定位到按OS的托管设置策略助手与远端同意状态（`chunk-x0dc37w9.js`，与FEATURES的OS/remote managed policy缺口对应）为下一个ready在范围内工作包，另在`chunk-nvrxq9nn.js`记录云元数据地址分类候选、在`chunk-zjewzgfh.js`钉住shell复杂度闸门坐标 |
+| A08 | P2 当前缺口与历史混杂 | resolved（有限）/ 处置入口与逐项结论齐备 | CURRENT为唯一排程与处置入口；[剩余项处置](ports/remaining-dispositions.md)对W05/W06尾项逐条给出superseded/无传输/不移植/无来源/量化开放五类结论并附已核验坐标，历史报告保持原记录不回填；未引用模块2283个仍为量化开放缺口，其构成见[语料定性](ports/unreviewed-corpus.md)（2265个只引用运行时内建、16个标记族约覆盖50个模块、2231个无标记为残余，三轮切片后余2181个）；该轮同时定位到按OS的托管设置策略助手与远端同意状态（`chunk-x0dc37w9.js`，与FEATURES的OS/remote managed policy缺口对应）为下一个ready在范围内工作包，另在`chunk-nvrxq9nn.js`记录云元数据地址分类候选，并在`chunk-zjewzgfh.js`定位到权限匹配用的shell读法枚举与歧义拒绝分析器（`pyr` [7547,7897)、`E6` 入口[7897,7910)、66处`differential:!0`判定散布于8040-64507、未建模节点判定`b` [73416,74572)）；该分析器在`src/`无对应实现，作为范围内开放缺口记入候选工作包 |
 | A09 | P2 开源交付准备 | partial / 本地交付verified | 命名/Git/worktree/源码重建/依赖notice已验收；项目license/remote及来源权利待定，public发布保留blocked |
 
 ## 溯源和历史使用规则
