@@ -81,9 +81,10 @@ test("lifetime abort kills owned process groups and close waits under a bounded 
   const lifetime = new AbortController();
   const registry = new AsyncHookRegistry({ workspace: root, signal: lifetime.signal });
   const id = await registry.start(request(root, "sleep 30 & child=$!; printf '%s' $child > child.pid; wait"));
-  for (let i = 0; i < 100 && !fs.existsSync(path.join(root, "child.pid")); i++) await delay(5);
+  for (let i = 0; i < 100 && (!fs.existsSync(path.join(root, "child.pid")) || fs.statSync(path.join(root, "child.pid")).size === 0); i++) await delay(5);
   assert.ok(fs.existsSync(path.join(root, "child.pid")));
   const pid = Number(fs.readFileSync(path.join(root, "child.pid"), "utf8"));
+  assert.ok(Number.isSafeInteger(pid) && pid > 1, "fixture requires a published child PID");
   const started = Date.now();
   lifetime.abort();
   await registry.close();

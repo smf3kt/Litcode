@@ -14,6 +14,7 @@ import { mcpReconnectDelay, isTransientMcpFailure } from "./mcp-retry.js";
 import { McpClientRequestHandler, MCP_CLIENT_REQUEST_LIMITS, type McpClientRequests } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions, McpSubscriptionPersistenceError, MCP_SUBSCRIPTION_LIMITS, MCP_MAX_RESOURCE_SUBSCRIPTIONS, MCP_MAX_RESOURCE_URI_BYTES, MCP_MAX_RESOURCE_NOTIFICATIONS, validateMcpResourceUri, type McpSubscriptionMethod } from "./mcp-subscriptions.js";
 import { driveMcpTask, parseTaskHandle } from './mcp-task.js';
+import { MCP_TASK_PROTOCOL_VERSION, standardTaskSupport, canAugmentTask, parseStandardTask, driveStandardMcpTask } from './mcp-standard-task.js';
 import { McpLogging, MCP_LOGGING_LIMITS, MCP_LOG_LEVELS, MCP_MAX_LOG_NOTIFICATIONS, validateMcpLogLevel } from "./mcp-logging.js";
 export { MCP_LOGGING_LIMITS, MCP_LOG_LEVELS, MCP_MAX_LOG_NOTIFICATIONS, MCP_MAX_LOG_QUEUE_BYTES, MCP_MAX_LOG_MESSAGE_BYTES, MCP_MAX_LOG_METADATA_BYTES, MCP_MAX_LOG_LOGGER_BYTES, MCP_MAX_LOG_JSON_DEPTH, MCP_MAX_LOG_JSON_NODES } from "./mcp-logging.js";
 export { MCP_SUBSCRIPTION_LIMITS, MCP_MAX_RESOURCE_SUBSCRIPTIONS, MCP_MAX_RESOURCE_URI_BYTES, MCP_MAX_RESOURCE_NOTIFICATIONS, MCP_MAX_RESOURCE_NOTIFICATION_BYTES } from "./mcp-subscriptions.js";
@@ -125,6 +126,7 @@ export type McpConnectOptions = {
   persistence?: boolean;
   /** Foreground resultType/task extension; no background replay. */
   tasks?: boolean;
+  standardTasks?: boolean;
   /** Connection-owned log collection; absent by default. */
   logging?: boolean;
   /** Own one HTTP GET SSE notification stream; stdio ignores this option. */
@@ -132,7 +134,7 @@ export type McpConnectOptions = {
   /** Trusted in-memory host callbacks; absent by default and excluded from persisted config. */
   clientRequests?: McpClientRequests;
 };
-export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence" | "tasks">> & Pick<McpConnectOptions, "clientRequests" | "persistence" | "tasks">;
+export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks">> & Pick<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks">;
 
 export type McpConnection = {
   tools: ToolDefinition[];
@@ -165,6 +167,7 @@ export type McpToolInfo = {
   description: string | undefined;
   inputSchema: unknown;
   readOnly: boolean;
+  taskSupport?: 'required' | 'optional' | 'forbidden';
 };
 
 export type McpToolResult = {
@@ -360,6 +363,7 @@ function parseToolInfo(raw: unknown, serverName: string): McpToolInfo {
     description: typeof raw.description === "string" ? raw.description : undefined,
     inputSchema: raw.inputSchema,
     readOnly: annotations?.readOnlyHint === true,
+    ...(isRecord(raw.execution) && raw.execution.taskSupport !== undefined ? { taskSupport: standardTaskSupport(raw.execution) } : {}),
   };
 }
 
@@ -394,6 +398,8 @@ class McpStdioClient implements McpClient {
   private failure: Error | null = null;
   private readonly taskLifetime = new AbortController();
   private capabilities: Record<string, unknown> = {};
+  private version = MCP_PROTOCOL_VERSION;
+  private taskTools = new Map<string, McpToolInfo>();
   private readonly toolsChangedListeners = new Set<() => void>();
   private readonly disconnectListeners = new Set<() => void>();
   onDisconnected(listener: () => void): () => void {
@@ -750,14 +756,15 @@ class McpStdioClient implements McpClient {
     const result = await this.request(
       "initialize",
       {
-        protocolVersion: MCP_PROTOCOL_VERSION,
-        capabilities: this.clientRequests.capabilities,
+        protocolVersion: this.settings.standardTasks ? MCP_TASK_PROTOCOL_VERSION : MCP_PROTOCOL_VERSION,
+        capabilities: this.settings.standardTasks ? { ...this.clientRequests.capabilities, tasks: {} } : this.clientRequests.capabilities,
         clientInfo: { name: this.settings.clientName, version: this.settings.clientVersion },
       },
       signal,
     );
     this.validateInitializeResult(result);
     this.capabilities = isRecord(result) && isRecord(result.capabilities) ? result.capabilities : {};
+    this.version = (result as Record<string, string>).protocolVersion!;
     this.send({ jsonrpc: "2.0", method: "notifications/initialized", params: {} });
   }
 
@@ -774,7 +781,7 @@ class McpStdioClient implements McpClient {
     if (typeof version !== "string" || version.length === 0) {
       throw new Error(`MCP server "${this.name}" did not report a protocolVersion`);
     }
-    if (!MCP_SUPPORTED_PROTOCOL_VERSIONS.includes(version)) {
+    if (!MCP_SUPPORTED_PROTOCOL_VERSIONS.includes(version) && !(this.settings.standardTasks && version === MCP_TASK_PROTOCOL_VERSION)) {
       throw new Error(
         `MCP server "${this.name}" negotiated unsupported protocolVersion "${version}"; ` +
           `this client supports ${MCP_SUPPORTED_PROTOCOL_VERSIONS.join(", ")}`,
@@ -790,11 +797,26 @@ class McpStdioClient implements McpClient {
 
   async listTools(signal: AbortSignal): Promise<McpToolInfo[]> {
     if ((this.settings.catalog || this.settings.subscriptions || this.settings.logging) && !isRecord(this.capabilities.tools)) return [];
-    return listMcpTools(this.name, this.request.bind(this), signal);
+    const tools = await listMcpTools(this.name, this.request.bind(this), signal);
+    this.taskTools = new Map(tools.map(tool => [tool.name, tool]));
+    return tools;
   }
 
   async callTool(toolName: string, args: unknown, signal: AbortSignal): Promise<McpToolResult> {
-    let result = await this.request("tools/call", { name: toolName, arguments: args }, signal);
+    const support = this.taskTools.get(toolName)?.taskSupport;
+    if (!this.settings.standardTasks && support === 'required') throw new Error('MCP tool requires enabled standard task execution');
+    const augment = this.settings.standardTasks && canAugmentTask(this.version, this.capabilities, support);
+    let release: (() => void) | undefined;
+    let result: unknown;
+    try {
+      result = await this.request("tools/call", { name: toolName, arguments: args, ...(augment ? { task: { ttl: this.settings.requestTimeoutMs } } : {}) }, signal,
+        augment ? value => { release = this.clientRequests.ownTask(parseStandardTask(value).taskId); } : undefined);
+      if (augment) {
+        result = await driveStandardMcpTask(parseStandardTask(result), this.request.bind(this),
+          AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]), isRecord(this.capabilities.tasks) && isRecord(this.capabilities.tasks.cancel));
+        return parseMcpToolResult(result, this.name);
+      }
+    } finally { release?.(); }
     const task = this.settings.tasks ? parseTaskHandle(result) : undefined;
     if (task) result = await driveMcpTask({ task,
       signal: AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]),
@@ -1110,7 +1132,7 @@ class DynamicMcpCatalog {
   async assertPinned(server: string, pinned: McpToolInfo, signal: AbortSignal): Promise<void> {
     await this.ensureFresh(server, signal);
     const current = this.find(server, pinned.name);
-    if ((pinned.readOnly && !current.readOnly) || JSON.stringify(normalizeInputSchema(pinned.inputSchema)) !== JSON.stringify(normalizeInputSchema(current.inputSchema))) {
+    if ((pinned.readOnly && !current.readOnly) || pinned.taskSupport !== current.taskSupport || JSON.stringify(normalizeInputSchema(pinned.inputSchema)) !== JSON.stringify(normalizeInputSchema(current.inputSchema))) {
       throw new Error("MCP pinned tool metadata changed; use mcp_tool_search and mcp_tool_call");
     }
   }
@@ -1315,7 +1337,7 @@ class ManagedMcpClient implements McpClient {
     if (this.status.state === "closed") throw new Error("MCP connection closed");
     if (this.status.state === "disconnected") throw new Error("MCP connection disconnected; reconnect before calling tools");
     if (pinned) this.assertPinned(pinned);
-    return this.current.callTool(tool, args, signal);
+    return this.current.callTool(tool, args, signal, pinned);
   }
   supportsCatalog(family: "resources" | "prompts") { return this.current.supportsCatalog(family); }
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal) {
@@ -1326,7 +1348,7 @@ class ManagedMcpClient implements McpClient {
   onToolsChanged(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   assertPinned(info: McpToolInfo): void {
     const current = this.inventory.find(tool => tool.name === info.name);
-    if (!current || (info.readOnly && !current.readOnly) || JSON.stringify(normalizeInputSchema(info.inputSchema)) !== JSON.stringify(normalizeInputSchema(current.inputSchema))) {
+    if (!current || (info.readOnly && !current.readOnly) || info.taskSupport !== current.taskSupport || JSON.stringify(normalizeInputSchema(info.inputSchema)) !== JSON.stringify(normalizeInputSchema(current.inputSchema))) {
       throw new Error("MCP pinned tool metadata changed; rediscover with mcp_tool_search/mcp_tool_call or rebuild published schemas");
     }
   }
@@ -1477,6 +1499,7 @@ export async function connectMcpServers(
     recovery: options.recovery ?? false,
     persistence: options.persistence ?? false,
     tasks: options.tasks ?? false,
+    standardTasks: options.standardTasks ?? false,
     logging: options.logging ?? false,
     notificationStream: options.notificationStream ?? false,
     clientRequests: options.clientRequests,
@@ -1678,7 +1701,7 @@ export async function connectMcpServers(
       inventories.set(server, client.listed());
       return result;
     },
-    limits: settings.tasks ? [...lifecycleLimits,
+    limits: settings.standardTasks ? [...lifecycleLimits, 'MCP standard tasks: opt-in 2025-11-25 requestor; server capability and tool execution.taskSupport gates; foreground get/result, related-task result metadata and bounded cancellation; no receiving task-augmented client requests or background reattachment'] : settings.tasks ? [...lifecycleLimits,
       ...(settings.dynamic ? MCP_DYNAMIC_LIMITS : []),
       ...(settings.deferred ? ['deferred tools: namespaced schemas are omitted; input schema metadata is returned by mcp_tool_search'] : []),
       'MCP tasks: opted-in foreground resultType/task and tasks/get/update/cancel extension with inline terminal content; poll250..30000ms/default2000,5consecutive failures,16input keys with cached answers; only roots/form inputs; whole drive uses requestTimeoutMs and connection lifetime, cancel best-effort5000ms; no standard tasks/result, background persistence or tool replay']

@@ -16,6 +16,7 @@ import { McpClientRequestHandler } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions } from "./mcp-subscriptions.js";
 import { McpLogging } from "./mcp-logging.js";
 import { driveMcpTask, parseTaskHandle } from './mcp-task.js';
+import { MCP_TASK_PROTOCOL_VERSION, standardTaskSupport, canAugmentTask, parseStandardTask, driveStandardMcpTask } from './mcp-standard-task.js';
 
 export const MCP_HTTP_PROTOCOL_VERSION = "2025-06-18";
 export const MCP_HTTP_SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = ["2025-03-26", "2025-06-18"];
@@ -181,6 +182,7 @@ export class McpHttpClient implements McpClient {
   private sessionId: string | undefined;
   private initialized = false;
   private capabilities: Record<string, unknown> = {};
+  private taskTools = new Map<string, McpToolInfo>();
   private readonly toolsChangedListeners = new Set<() => void>();
   private readonly disconnectListeners = new Set<() => void>();
   private transportFailures = 0;
@@ -219,6 +221,7 @@ export class McpHttpClient implements McpClient {
       recovery: options.recovery ?? false,
       persistence: options.persistence ?? false,
       tasks: options.tasks ?? false,
+      standardTasks: options.standardTasks ?? false,
     };
     this.clientRequests = new McpClientRequestHandler(name, options.clientRequests);
     if (this.settings.subscriptions) this.resourceSubscriptions = new McpResourceSubscriptions(this.request.bind(this), () => record(this.capabilities.resources) && this.capabilities.resources.subscribe === true);
@@ -517,11 +520,12 @@ export class McpHttpClient implements McpClient {
   async initialize(signal: AbortSignal): Promise<void> {
     if (this.initialized) throw new Error("MCP HTTP session already initialized");
     const result = await this.request("initialize", {
-      protocolVersion: MCP_HTTP_PROTOCOL_VERSION, capabilities: this.clientRequests.capabilities,
+      protocolVersion: this.settings.standardTasks ? MCP_TASK_PROTOCOL_VERSION : MCP_HTTP_PROTOCOL_VERSION,
+      capabilities: this.settings.standardTasks ? { ...this.clientRequests.capabilities, tasks: {} } : this.clientRequests.capabilities,
       clientInfo: { name: this.settings.clientName, version: this.settings.clientVersion },
     }, signal);
     if (!record(result) || typeof result.protocolVersion !== "string") throw new Error("MCP HTTP initialize did not report a protocolVersion");
-    if (!MCP_HTTP_SUPPORTED_PROTOCOL_VERSIONS.includes(result.protocolVersion)) throw new Error("MCP HTTP negotiated unsupported protocolVersion");
+    if (!MCP_HTTP_SUPPORTED_PROTOCOL_VERSIONS.includes(result.protocolVersion) && !(this.settings.standardTasks && result.protocolVersion === MCP_TASK_PROTOCOL_VERSION)) throw new Error("MCP HTTP negotiated unsupported protocolVersion");
     if ((result.capabilities !== undefined && !record(result.capabilities)) || (result.serverInfo !== undefined && !record(result.serverInfo))) throw new Error("MCP HTTP malformed initialize metadata");
     this.capabilities = record(result.capabilities) ? result.capabilities : {};
     this.version = result.protocolVersion;
@@ -534,12 +538,27 @@ export class McpHttpClient implements McpClient {
   async listTools(signal: AbortSignal): Promise<McpToolInfo[]> {
     if (!this.initialized) throw new Error("MCP HTTP session is not initialized");
     if ((this.settings.catalog || this.settings.subscriptions || this.settings.logging) && !record(this.capabilities.tools)) return [];
-    return listMcpTools(this.name, this.request.bind(this), signal);
+    const tools = await listMcpTools(this.name, this.request.bind(this), signal);
+    this.taskTools = new Map(tools.map(tool => [tool.name, tool]));
+    return tools;
   }
 
   async callTool(toolName: string, args: unknown, signal: AbortSignal): Promise<McpToolResult> {
     if (!this.initialized) throw new Error("MCP HTTP session is not initialized");
-    let result = await this.request("tools/call", { name: toolName, arguments: args }, signal);
+    const support = this.taskTools.get(toolName)?.taskSupport;
+    if (!this.settings.standardTasks && support === 'required') throw new Error('MCP tool requires enabled standard task execution');
+    const augment = this.settings.standardTasks && canAugmentTask(this.version, this.capabilities, support);
+    let release: (() => void) | undefined;
+    let result: unknown;
+    try {
+      result = await this.request("tools/call", { name: toolName, arguments: args, ...(augment ? { task: { ttl: this.settings.requestTimeoutMs } } : {}) }, signal,
+        augment ? value => { release = this.clientRequests.ownTask(parseStandardTask(value).taskId); } : undefined);
+      if (augment) {
+        result = await driveStandardMcpTask(parseStandardTask(result), this.request.bind(this),
+          AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]), record(this.capabilities.tasks) && record(this.capabilities.tasks.cancel));
+        return parseMcpToolResult(result, this.name);
+      }
+    } finally { release?.(); }
     const task = this.settings.tasks ? parseTaskHandle(result) : undefined;
     if (task) result = await driveMcpTask({ task,
       signal: AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]),

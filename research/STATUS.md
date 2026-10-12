@@ -558,6 +558,10 @@ Adapted recovered driveMcpTask and integrated pinned/managed mcpTasks with HTTP/
 
 Opt-in pinned/managed samplingArrays accepts bounded nonempty text/image arrays through stdio and HTTP, with original block order and image attachment indices. Single-block host behavior remains; text results/shared budget/abort contracts reused. Actual compiled mixed CLI7local requests passed pin/resume/legacy/managed/budget; three regressions added. Source mapping, final baseline/package/source delivery and intermediate fixture failures consolidated in [ports/W05-sampling-arrays.md](ports/W05-sampling-arrays.md).
 
+## Standard MCP task requestor (2026-10-12)
+
+Explicit pinned/managed standard task mode negotiates2025-11-25, checks server capability+tool taskSupport, reads get/result with correlated roots/form POST stream callbacks and ends pending task-owned callbacks on release. Source/compiled standard and legacy extension chains passed; full1036/1036, check/build and60file install passed. Provenance, review refinements, finite requestor coverage and final identity are consolidated in [ports/W05-standard-tasks.md](ports/W05-standard-tasks.md). GET-only input delivery/task receivers/list/background reattachment remain separate.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

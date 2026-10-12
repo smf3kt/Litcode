@@ -89,7 +89,7 @@ function retryableCode(code: number): boolean {
   return code === -32603 || code === -32700 || (code >= -32099 && code <= -32000);
 }
 
-function waitForPoll(milliseconds: number, signal: AbortSignal): Promise<void> {
+export function waitForPoll(milliseconds: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) { reject(new McpTaskError("cancelled")); return; }
     const abort = () => {
