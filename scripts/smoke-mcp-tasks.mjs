@@ -8,6 +8,10 @@ import { register } from 'tsx/esm/api';
 import { captureIdentity } from './identity.mjs';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const compiled = process.argv.includes('--compiled');
+const standard = process.argv.includes('--standard');
+const related = 'io.modelcontextprotocol/related-task';
+const taskState = (taskId, status = 'working') => ({ taskId, status, ttl: 30000, createdAt: '2026-10-12T00:00:00Z', lastUpdatedAt: '2026-10-12T00:00:00Z', pollInterval: 250 });
+let inputStream;
 const unregister = compiled ? undefined : register();
 const { connectMcpServers } = await import(compiled ? '../dist/mcp.js' : '../src/mcp.ts');
 const tmp = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : path.join(root, '.agent');
@@ -33,11 +37,15 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'content-type': 'text/event-stream' }); res.end(events.map(e => `event: ${e.type}\ndata: ${JSON.stringify(e)}\n\n`).join('')); return;
     }
     calls.push({ body, taskHeader: req.headers['mcp-name'] });
-    if (body.method === 'initialize') send(res, body.id, { protocolVersion: '2025-06-18', capabilities: { tools: {} } });
-    else if (body.method === 'tools/list') send(res, body.id, { tools: [{ name: 'run', inputSchema: { type: 'object', properties: { mode: { type: 'string' } } } }] });
-    else if (body.method === 'tools/call') { const taskId = `owned-${++seq}`; tasks.set(taskId, { mode: body.params.arguments.mode, polls: 0, answered: false }); send(res, body.id, { resultType: 'task', taskId, status: 'working', pollIntervalMs: 250 }); }
+    if (body.method === 'initialize') send(res, body.id, { protocolVersion: standard && body.params.protocolVersion === '2025-11-25' ? '2025-11-25' : '2025-06-18', capabilities: { tools: {}, ...(standard ? { tasks: { cancel: {}, requests: { tools: { call: {} } } } } : {}) } });
+    else if (body.method === 'tools/list') send(res, body.id, { tools: [{ name: 'run', ...(standard ? { execution: { taskSupport: 'optional' } } : {}), inputSchema: { type: 'object', properties: { mode: { type: 'string' } } } }] });
+    else if (body.method === 'tools/call') { const taskId = `owned-${++seq}`; tasks.set(taskId, { mode: body.params.arguments.mode, polls: 0, answered: false }); if (standard) { if (!body.params.task) { send(res, body.id, { content: [{ type: 'text', text: 'normal legacy result' }] }); return; } assert.deepEqual(body.params.task, { ttl: 30000 }); send(res, body.id, { task: taskState(taskId) }); } else send(res, body.id, { resultType: 'task', taskId, status: 'working', pollIntervalMs: 250 }); }
     else if (body.method === 'tasks/get') {
-      const { taskId } = body.params, task = tasks.get(taskId); assert.ok(task); assert.equal(req.headers['mcp-name'], taskId); task.polls++;
+      const { taskId } = body.params, task = tasks.get(taskId); assert.ok(task); assert.equal(req.headers['mcp-name'], standard ? undefined : taskId); task.polls++;
+      if (standard) {
+        const status = task.mode === 'cancel' ? 'working' : task.mode === 'failed' ? 'failed' : ['form', 'complete'].includes(task.mode) ? 'input_required' : 'completed';
+        send(res, body.id, taskState(task.mode === 'mismatch' ? 'foreign' : taskId, status)); return;
+      }
       if (task.mode === 'mismatch') send(res, body.id, { taskId: 'foreign', status: 'completed', result: {} });
       else if (task.mode === 'unsupported') send(res, body.id, { taskId, status: 'input_required', inputRequests: { key: { method: 'unserved/method', params: {} } } });
       else if (task.mode === 'cancel') send(res, body.id, { taskId, status: 'working', pollIntervalMs: 250 });
@@ -45,6 +53,17 @@ const server = http.createServer((req, res) => {
         ? { method: 'elicitation/create', params: { message: 'owned form', requestedSchema: { type: 'object', properties: { label: { type: 'string' } }, required: ['label'] } } }
         : { method: 'roots/list', params: {} } } });
       else send(res, body.id, { taskId, status: 'completed', result: { content: [{ type: 'text', text: 'OWNED_TASK_RESULT' }] } });
+    } else if (standard && body.method === 'tasks/result') {
+      const taskId = body.params.taskId, task = tasks.get(taskId);
+      if (['form', 'complete'].includes(task.mode)) {
+        inputStream = { res, id: body.id, taskId }; res.writeHead(200, { 'content-type': 'text/event-stream' });
+        res.write(`data: ${JSON.stringify({ jsonrpc: '2.0', id: 'standard-form', method: task.mode === 'form' ? 'elicitation/create' : 'roots/list', params: { ...(task.mode === 'form' ? { message: 'owned form', requestedSchema: { type: 'object', properties: { label: { type: 'string' } }, required: ['label'] } } : {}), _meta: { [related]: { taskId } } } })}\n\n`);
+      } else send(res, body.id, { content: [{ type: 'text', text: 'OWNED_TASK_RESULT' }], isError: task.mode === 'failed', _meta: { [related]: { taskId: task.mode === 'unsupported' ? 'foreign' : taskId } } });
+    } else if (standard && body.id === 'standard-form') {
+      assert.equal(body.result._meta[related].taskId, inputStream.taskId);
+      if (tasks.get(inputStream.taskId).mode === 'form') assert.deepEqual(body.result.content, { label: 'owned' });
+      else assert.ok(body.result.roots[0].uri.startsWith('file:'));
+      res.writeHead(202).end(); inputStream.res.end(`data: ${JSON.stringify({ jsonrpc: '2.0', id: inputStream.id, result: { content: [{ type: 'text', text: 'OWNED_TASK_RESULT' }], _meta: { [related]: { taskId: inputStream.taskId } } } })}\n\n`);
     } else if (body.method === 'tasks/update') { const task = tasks.get(body.params.taskId); if (task.mode === 'form') assert.deepEqual(body.params.inputResponses.root, { action: 'accept', content: { label: 'owned' } }); else assert.ok(body.params.inputResponses.root.roots[0].uri.startsWith('file:')); task.answered = true; send(res, body.id, {}); }
     else if (body.method === 'tasks/cancel') { tasks.get(body.params.taskId).cancelled = true; send(res, body.id, { taskId: body.params.taskId, status: 'cancelled' }); }
     else res.writeHead(202).end();
@@ -56,35 +75,39 @@ const config = { srv: { type: 'http', url: url + '/mcp' } };
 const context = { workspace, signal: new AbortController().signal, maxOutputBytes: 24000 };
 const invoke = async (connection, mode, signal = context.signal) => connection.tools.find(t => t.schema.name === 'mcp__srv__run').execute({ mode }, { ...context, signal });
 try {
-  const connection = await connectMcpServers(config, context, { tasks: true, clientRequests: { roots: () => [{ uri: new URL('file://' + workspace).href }], elicitation: () => ({ action: 'accept', content: { label: 'owned' } }) } });
+  const connection = await connectMcpServers(config, context, { ...(standard ? { standardTasks: true } : { tasks: true }), clientRequests: { roots: () => [{ uri: new URL('file://' + workspace).href }], elicitation: () => ({ action: 'accept', content: { label: 'owned' } }) } });
   try {
     assert.match(await invoke(connection, 'complete'), /OWNED_TASK_RESULT/);
     assert.match(await invoke(connection, 'form'), /OWNED_TASK_RESULT/);
     await assert.rejects(invoke(connection, 'mismatch'), /malformed|Malformed/i);
-    await assert.rejects(invoke(connection, 'unsupported'), /unsupported|input/i);
+    await assert.rejects(invoke(connection, 'unsupported'), standard ? /Malformed/i : /unsupported|input/i);
+    if (standard) await assert.rejects(invoke(connection, 'failed'), /OWNED_TASK_RESULT/);
     const abort = new AbortController(); const pending = invoke(connection, 'cancel', abort.signal);
     const timer = setTimeout(() => abort.abort(), 100);
     try { await assert.rejects(pending, /cancel/i); } finally { clearTimeout(timer); }
-    assert.equal([...tasks.values()].filter(t => t.cancelled).length, 3);
+    assert.equal([...tasks.values()].filter(t => t.cancelled).length, standard ? 2 : 3);
   } finally { await connection.close(); }
   const legacy = await connectMcpServers(config, context);
   try { const before = calls.filter(c => c.body.method === 'tasks/get').length; await invoke(legacy, 'complete'); assert.equal(calls.filter(c => c.body.method === 'tasks/get').length, before); } finally { await legacy.close(); }
   const stdio = path.join(workspace, 'owned-stdio.mjs');
   fs.writeFileSync(stdio, `import readline from 'node:readline';
 const reply=(id,result)=>process.stdout.write(JSON.stringify({jsonrpc:'2.0',id,result})+'\\n');
+let adjacent=false, getId;
 readline.createInterface({input:process.stdin}).on('line',line=>{const m=JSON.parse(line);
-if(m.method==='initialize')reply(m.id,{protocolVersion:'2024-11-05',capabilities:{tools:{}}});
-else if(m.method==='tools/list')reply(m.id,{tools:[{name:'run',inputSchema:{type:'object'}}]});
-else if(m.method==='tools/call')reply(m.id,{resultType:'task',taskId:'stdio-owned',status:'working',pollIntervalMs:250});
-else if(m.method==='tasks/get')reply(m.id,{taskId:'stdio-owned',status:'completed',result:{content:[{type:'text',text:'STDIO_TASK_RESULT'}]}});});
+if(m.id==='adjacent-roots'){if(!m.result?.roots || m.result?._meta?.['io.modelcontextprotocol/related-task']?.taskId!=='stdio-owned')process.exit(13);else{adjacent=true;if(getId!==undefined)reply(getId,${JSON.stringify(taskState('stdio-owned','completed'))});}}
+else if(m.method==='initialize')reply(m.id,{protocolVersion:${JSON.stringify(standard ? '2025-11-25' : '2024-11-05')},capabilities:{tools:{},${standard ? 'tasks:{cancel:{},requests:{tools:{call:{}}}}' : ''}}});
+else if(m.method==='tools/list')reply(m.id,{tools:[{name:'run',inputSchema:{type:'object'},${standard ? "execution:{taskSupport:'required'}" : ''}}]});
+else if(m.method==='tools/call'){${standard ? "process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:m.id,result:" + JSON.stringify({task:taskState('stdio-owned')}) + "})+'\\n'+JSON.stringify({jsonrpc:'2.0',id:'adjacent-roots',method:'roots/list',params:{_meta:{'io.modelcontextprotocol/related-task':{taskId:'stdio-owned'}}}})+'\\n');" : "reply(m.id,{resultType:'task',taskId:'stdio-owned',status:'working',pollIntervalMs:250});"}}
+else if(m.method==='tasks/get'){${standard ? "getId=m.id;if(adjacent)reply(getId,"+JSON.stringify(taskState('stdio-owned','completed'))+");" : "reply(m.id,{taskId:'stdio-owned',status:'completed',result:{content:[{type:'text',text:'STDIO_TASK_RESULT'}]}});"}}
+else if(m.method==='tasks/result')reply(m.id,{content:[{type:'text',text:'STDIO_TASK_RESULT'}],_meta:{'io.modelcontextprotocol/related-task':{taskId:'stdio-owned'}}});});
 `);
-  const local = await connectMcpServers({ srv: { command: process.execPath, args: [stdio] } }, context, { tasks: true });
+  const local = await connectMcpServers({ srv: { command: process.execPath, args: [stdio] } }, context, standard ? { standardTasks: true, clientRequests: { roots: () => [{ uri: 'file:///owned-adjacent' }] } } : { tasks: true });
   try { assert.match(await invoke(local, 'complete'), /STDIO_TASK_RESULT/); } finally { await local.close(); }
-  const lifetime = await connectMcpServers(config, context, { tasks: true });
+  const lifetime = await connectMcpServers(config, context, standard ? { standardTasks: true } : { tasks: true });
   const outstanding = invoke(lifetime, 'cancel'); const checked = assert.rejects(outstanding, /cancel/i);
   await new Promise(resolve => setTimeout(resolve, 25)); await lifetime.close(); await checked;
   fs.mkdirSync(path.join(workspace, '.harness')); fs.mkdirSync(path.join(workspace, 'user'));
-  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { mcpTasks: true, mcpDynamic: false } }));
+  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true } : { mcpTasks: true }), mcpDynamic: false } }));
   const run = async resume => {
     const env = { ...process.env }; for (const name of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(name)) delete env[name];
     Object.assign(env, { LLM_API_KEY: 'OWNED_TASK_KEY', LLM_MODEL: 'fixture/task', LLM_BASE_URL: url, LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false' });
@@ -97,11 +120,11 @@ else if(m.method==='tasks/get')reply(m.id,{taskId:'stdio-owned',status:'complete
   const first = await run(); assert.equal(first.reason, 'end_turn');
   const journalPath = path.join(workspace, '.agent', first.session_id + '.jsonl'); const journal = fs.readFileSync(journalPath, 'utf8');
   assert.match(journal, /OWNED_TASK_RESULT/); assert.doesNotMatch(journal, /OWNED_TASK_KEY/);
-  assert.equal(JSON.parse(journal.split('\n')[0]).config.features.mcpTasks, true);
+  assert.equal(JSON.parse(journal.split('\n')[0]).config.features[standard ? 'mcpStandardTasks' : 'mcpTasks'], true);
   const callsBefore = calls.filter(c => c.body.method === 'tools/call').length;
   fs.writeFileSync(path.join(workspace, '.harness/settings.json'), '{ malformed current settings');
   const resumed = await run(first.session_id); assert.equal(resumed.session_id, first.session_id);
   assert.equal(calls.filter(c => c.body.method === 'tools/call').length, callsBefore);
   assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(n => n.endsWith('.lock')), false); assert.deepEqual(failures, []);
-  console.log(JSON.stringify({ tasks: 'passed', compiledCLI: compiled, modelRequests: model.length, cancelled: 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
+  console.log(JSON.stringify({ tasks: 'passed', standard, compiledCLI: compiled, modelRequests: model.length, cancelled: standard ? 2 : 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
 } finally { for (const child of children) child.kill('SIGKILL'); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); fs.rmSync(workspace, { recursive: true, force: true }); unregister?.(); }

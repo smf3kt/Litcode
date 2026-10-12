@@ -4,9 +4,9 @@
 
 ## 当前结论
 
-本地工作包W04恢复链、W05启动/慢恢复、W06已使用技能消费者及W07本地交付已完成有限验收；功能族整体仍为Partial。当前全量1034/1034、零失败；[混合采样数组](ports/W05-sampling-arrays.md)已完成transport/host/固定恢复链。[MCP前台task扩展](ports/W05-tasks.md)已按来源adapt并完成HTTP/stdio、输入、取消与恢复链。图片采样完成固定配置/managed门控/预算/原字节CLI链，见[W05图片采样](ports/W05-sampling-images.md)。跨进程MCP订阅包完成编译CLI真实SIGKILL、固定配置、fork隔离、取消/失败恢复，58文件离线安装通过，见[W05持久化](ports/W05-persistence.md)。历史全产品来源审计、完整TUI/MCP扩展与事件重放仍是功能族缺口，不以有限包验收代替。
+本地工作包W04恢复链、W05启动/慢恢复、W06已使用技能消费者及W07本地交付已完成有限验收；功能族整体仍为Partial。当前全量1036/1036、零失败；[标准MCP task requestor](ports/W05-standard-tasks.md)完成2025-11-25协商、tasks/get/result、关联roots/form、取消与固定恢复链；[混合采样数组](ports/W05-sampling-arrays.md)已完成transport/host/固定恢复链。[MCP前台task扩展](ports/W05-tasks.md)已按来源adapt并完成HTTP/stdio、输入、取消与恢复链。图片采样完成固定配置/managed门控/预算/原字节CLI链，见[W05图片采样](ports/W05-sampling-images.md)。跨进程MCP订阅包完成编译CLI真实SIGKILL、固定配置、fork隔离、取消/失败恢复，58文件离线安装通过，见[W05持久化](ports/W05-persistence.md)。历史全产品来源审计、完整TUI/MCP扩展与事件重放仍是功能族缺口，不以有限包验收代替。
 
-当前身份与验证记录见[混合采样数组证据](ports/W05-sampling-arrays-evidence.json)；186文件源码重建52文件字节一致，59文件运行包通过安装。[前台task证据](ports/W05-tasks-evidence.json)保留原作用域。[图片采样证据](ports/W05-sampling-images-evidence.json)保留原作用域。[持久化证据](ports/W05-persistence-evidence.json)的源码182文件/51构建文件保持历史作用域。原17项[本地交付证据](ports/local-completion-evidence.json)、W01/W02及历史基线保持原版本作用域。Git已按用户要求初始化，main初始05d1162，工作位于work/complete-runtime-work；无remote。真实Magpie管理链待验，限定搜索未定位管理端。
+当前身份与验证记录见[标准task证据](ports/W05-standard-tasks-evidence.json)；188文件源码重建53文件字节一致，60文件运行包通过安装。[混合采样数组证据](ports/W05-sampling-arrays-evidence.json)保留原作用域。[前台task证据](ports/W05-tasks-evidence.json)保留原作用域。[图片采样证据](ports/W05-sampling-images-evidence.json)保留原作用域。[持久化证据](ports/W05-persistence-evidence.json)的源码182文件/51构建文件保持历史作用域。原17项[本地交付证据](ports/local-completion-evidence.json)、W01/W02及历史基线保持原版本作用域。Git已按用户要求初始化，main初始05d1162，工作位于work/complete-runtime-work；无remote。真实Magpie管理链待验，限定搜索未定位管理端。
 
 ## 优先工作包
 
@@ -16,9 +16,9 @@
 | 2 / W02 | 可信源码与搬运试点；并行执行agents | verified；历史ports待审 | [W02](ports/W02.md)：独立verifier、索引摘要校验、首份准确rewrite台账及内容/构建身份已验收 |
 | 3 / W03 | Magpie启动/恢复适配；管理端owner待定位 | Partial；安装bin/command冷启动/真实任务verified | [安装验收](ports/W03-installed-launcher-evidence.json)、[启动合同](ports/W03-launcher.md)：生产安装可用/冷启动清理/恢复；[真实验收](ports/W03-live.md)两次200；app冷启、route切换/凭证轮换仍待验 |
 | 4 / W04 | 执行与恢复完整包；执行agents | verified有限进程崩溃链 | [持久恢复](ports/W04-crash-recovery.md)：checkpoint8切点+实际CLI，workflow未知效果显式重试/完成复用；原算法未证明，明确rewrite |
-| 5 / W05 | MCP生命周期剩余包；执行agents | verified启动/慢恢复/订阅持久化有限包，功能族Partial | [持久化](ports/W05-persistence.md)、[启动](ports/W05-startup.md)、[URI/GET](ports/W05-recovery.md)；[图片采样](ports/W05-sampling-images.md)已完成；[前台task扩展](ports/W05-tasks.md)已adapt并有限验收；[混合采样数组](ports/W05-sampling-arrays.md)已完成；标准tasks/result、后台重挂、音频、park/refetch及事件重放保留缺口 |
+| 5 / W05 | MCP生命周期剩余包；执行agents | verified启动/慢恢复/订阅持久化有限包，功能族Partial | [持久化](ports/W05-persistence.md)、[启动](ports/W05-startup.md)、[URI/GET](ports/W05-recovery.md)；[图片采样](ports/W05-sampling-images.md)已完成；[前台task扩展](ports/W05-tasks.md)已adapt并有限验收；[混合采样数组](ports/W05-sampling-arrays.md)已完成；[标准tasks/result](ports/W05-standard-tasks.md)前台requestor已完成；GET-only输入投递、任务接收端、后台重挂、音频、park/refetch及事件重放保留缺口 |
 | 6 / W06 | 扩展与交互包；执行agents | verified已使用技能/Hook消费者包，功能族Partial | [消费者验收](ports/W06-skills-hooks.md)：两源码CLI各9请求+38回归；原shellAST/once完整来源仍待审 |
-| 7 / W07 | 编码任务验收与交付；执行agent，发布决定由用户 | local verified；publication blocked | 最新private59file包含litcode-magpie、订阅持久化、图片采样和前台task扩展；本轮186文件源码/运行包位于release/sampling-arrays-runtime与release/litcode-source-sampling-arrays，[数组证据](ports/W05-sampling-arrays-evidence.json)，原交付保留scope；项目license/remote及来源权利尚缺 |
+| 7 / W07 | 编码任务验收与交付；执行agent，发布决定由用户 | local verified；publication blocked | 最新private60file包含litcode-magpie、订阅持久化、混合图片采样、前台task扩展与标准requestor；本轮188文件源码/运行包位于release/standard-tasks-runtime与release/litcode-source-standard-tasks，[标准task证据](ports/W05-standard-tasks-evidence.json)，原交付保留scope；项目license/remote及来源权利尚缺 |
 
 选择规则：从最上方ready项开始。W03缺管理端信息时继续W02/W04等独立本地工作，同时把所缺信息写在本行；没有预算时真实模型验收保持待验。W04-W06具体子系统由已定位源码、依赖成熟度和实际使用价值决定，不为旧报告的每个措辞创建任务。
 
@@ -49,4 +49,4 @@
 
 ## 本轮流程交付
 
-W05混合采样数组完成1034/1034全量、check/build、编译CLI7次本地请求和59文件private安装。下一独立本地工作按来源接标准tasks/result；保持resultType/tasks-update扩展与标准协议的区别，后台重挂尚待研究。外部Magpie与项目license/remote保留待验。
+W05标准task requestor完成1036/1036全量、check/build、最终编译CLI3次本地请求和60文件private安装；188文件源码独立重建53文件字节一致。同步登记owner已修复同块stdio创建/回调竞态。下一独立本地工作优先接通HTTP GET上的关联roots/form输入投递，复用既有stream/owner/取消合同；后台重挂、任务接收端及音频仍保留缺口。外部Magpie与项目license/remote保留待验。

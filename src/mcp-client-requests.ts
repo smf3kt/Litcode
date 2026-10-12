@@ -39,7 +39,7 @@ export const MCP_CLIENT_REQUEST_LIMITS: readonly string[] = [
 ];
 
 type Reply = (message: unknown) => void | Promise<void>;
-type Pending = { controller: AbortController; timer: NodeJS.Timeout; cancel: () => void; done: Promise<void> };
+type Pending = { taskId?: string; controller: AbortController; timer: NodeJS.Timeout; cancel: () => void; done: Promise<void> };
 const own = (value: object, key: string) => Object.hasOwn(value, key);
 function record(value: unknown): value is Record<string, any> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function validId(value: unknown): value is string | number {
@@ -197,6 +197,15 @@ export class McpClientRequestHandler {
   private readonly activeWork = new Set<string | number>();
   private closed = false;
   private taskInputId = 0;
+  private readonly relatedTasks = new Set<string>();
+  ownTask(taskId: string): () => void {
+    if (this.relatedTasks.has(taskId)) throw new Error('MCP task id is already active');
+    this.relatedTasks.add(taskId);
+    return () => {
+      this.relatedTasks.delete(taskId);
+      for (const pending of this.pending.values()) if (pending.taskId === taskId) pending.cancel();
+    };
+  }
   private readonly timeoutMs: number;
   readonly capabilities: Record<string, unknown> = {};
   constructor(private readonly serverName: string, callbacks: McpClientRequests = {}) {
@@ -215,7 +224,9 @@ export class McpClientRequestHandler {
   async handle(message: Record<string, unknown>, reply: Reply): Promise<void> {
     if (this.closed) return;
     const id = validId(message.id) ? message.id : null;
-    const error = async (code: number, text: string) => { if (!this.closed) await reply({ jsonrpc: "2.0", id, error: { code, message: text } }); };
+    let relatedTaskId: string | undefined;
+    const error = async (code: number, text: string) => { if (!this.closed) await reply({ jsonrpc: "2.0", id, error: { code, message: text },
+      ...(relatedTaskId ? { _meta: { 'io.modelcontextprotocol/related-task': { taskId: relatedTaskId } } } : {}) }); };
     if (id === null) return error(-32602, "Invalid client request id");
     if (this.pending.has(id) || this.activeWork.has(id)) return error(-32602, "Duplicate pending client request id");
     const method = message.method;
@@ -230,6 +241,11 @@ export class McpClientRequestHandler {
       params = inert(message.params === undefined ? {} : message.params, MCP_CLIENT_REQUEST_MAX_INPUT_BYTES);
       if (!record(params)) throw new Error("request");
       meta(params);
+      if (params._meta && Object.hasOwn(params._meta, 'io.modelcontextprotocol/related-task')) {
+        const related = params._meta['io.modelcontextprotocol/related-task'];
+        if (!record(related) || typeof related.taskId !== 'string' || !this.relatedTasks.has(related.taskId)) throw new Error('task ownership');
+        relatedTaskId = related.taskId;
+      }
       if (method === "roots/list") requireShape(params, ["_meta"]);
       else if (method === "elicitation/create") formParams(params);
       else samplingParams(params);
@@ -239,7 +255,7 @@ export class McpClientRequestHandler {
     const interrupted = new Promise<{ reason: string }>((resolve) => { interrupt = (reason) => { resolve({ reason }); controller.abort(); }; });
     const context = Object.freeze({ serverName: this.serverName, requestId: id, ...(params._meta === undefined ? {} : { _meta: params._meta }) });
     let finish!: () => void;
-    const pending: Pending = { controller, timer: setTimeout(() => interrupt("deadline"), this.timeoutMs), cancel: () => interrupt("cancelled"), done: new Promise<void>((resolve) => { finish = resolve; }) };
+    const pending: Pending = { ...(relatedTaskId ? { taskId: relatedTaskId } : {}), controller, timer: setTimeout(() => interrupt("deadline"), this.timeoutMs), cancel: () => interrupt("cancelled"), done: new Promise<void>((resolve) => { finish = resolve; }) };
     this.pending.set(id, pending);
     this.activeWork.add(id);
     try {
@@ -260,6 +276,13 @@ export class McpClientRequestHandler {
         result = method === "roots/list" ? rootsResult(value) : method === "elicitation/create" ? validateElicitationResult(value, params as McpElicitationParams) : samplingResult(value);
         inert({ jsonrpc: "2.0", id, result }, MCP_CLIENT_REQUEST_MAX_RESULT_BYTES);
       } catch { return await error(-32603, "Invalid client callback result"); }
+      const related = record(params._meta?.['io.modelcontextprotocol/related-task']) ? params._meta['io.modelcontextprotocol/related-task'] : undefined;
+      if (related !== undefined) {
+        if (typeof related.taskId !== 'string' || !related.taskId.length || Buffer.byteLength(related.taskId) > 128) return await error(-32602, 'Invalid related task metadata');
+        result = { ...(result as object), _meta: { 'io.modelcontextprotocol/related-task': { taskId: related.taskId } } };
+        try { inert({ jsonrpc: '2.0', id, result }, MCP_CLIENT_REQUEST_MAX_RESULT_BYTES); }
+        catch { return await error(-32603, 'Invalid client callback result'); }
+      }
       await reply({ jsonrpc: "2.0", id, result });
     } finally { clearTimeout(pending.timer); this.pending.delete(id); finish(); }
   }
@@ -282,6 +305,7 @@ export class McpClientRequestHandler {
   }
   async close(): Promise<void> {
     this.closed = true;
+    this.relatedTasks.clear();
     const pending = [...this.pending.values()];
     for (const item of pending) { clearTimeout(item.timer); item.cancel(); }
     let timer: NodeJS.Timeout | undefined;

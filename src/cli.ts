@@ -243,6 +243,7 @@ function newConfig(
       ...(settings.features?.mcpRecovery === undefined ? {} : { mcpRecovery: settings.features.mcpRecovery }),
       ...(settings.features?.mcpPersistence === undefined ? {} : { mcpPersistence: settings.features.mcpPersistence }),
       ...(settings.features?.mcpTasks === undefined ? {} : { mcpTasks: settings.features.mcpTasks }),
+      ...(settings.features?.mcpStandardTasks === undefined ? {} : { mcpStandardTasks: settings.features.mcpStandardTasks }),
       mcpCatalog: settings.features?.mcpCatalog ?? true,
       mcpDynamic: settings.features?.mcpDynamic ?? Boolean(settings.mcpServers && Object.keys(settings.mcpServers).length),
       mcpDeferred: settings.features?.mcpDeferred ?? false,
