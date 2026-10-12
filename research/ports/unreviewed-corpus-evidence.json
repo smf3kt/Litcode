@@ -1159,6 +1159,36 @@
     ],
     "reading": "the last of the above-one-kilobyte modules at 27.5% import text: permission message fragments, organization MCP policy, launch ancestry and path text, skills bookkeeping, and the hosted machine-identity, powerup, whiteboard and prompt-bundle surfaces - seventy-nine modules with no characterising literal of their own, eleven with local counterparts, eight hosted surfaces, one product surface without a local counterpart, one vendored package, no candidate, and one reading deliberately left open because an isolated message fragment cannot be given a polarity"
   },
+  "sliceThirtyOne": {
+    "scope": "uncited modules ranked 1921 to 2020 by size, the fifteenth 100-rank band",
+    "bytes": 35171,
+    "rows": 100,
+    "rowsWithContent": 40,
+    "byteRange": [1041, 895],
+    "importSharePercent": 25.0,
+    "composition": {
+      "noCharacterisingLiteral": 82,
+      "hostedOrExternalSurfaces": 8,
+      "localCounterparts": 5,
+      "productWithoutLocalCounterpart": 2,
+      "pureCodeLeaves": 2,
+      "ruleWithoutLocalSurface": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "falseLeadCorrected": [
+      "chunk-zh3cktaw.js reads a machine identity and reports an unsupported platform; the local source reads no machine identity at all, so the rule guards a surface this runtime does not have"
+    ],
+    "notedButNotCandidates": [
+      "chunk-tajfn8hd.js names the narrower command to run instead in two shell dialects (Select-Object -First or -Last, and head, tail or grep), the W01 permission family",
+      "chunk-zwvpggbj.js names the argument the OS protocol handler passes for a deep link, the W09/W10 vetting family",
+      "chunk-0zq39nqh.js reports a shell command failure with the detail withheld on this connection, the shell reporting this runtime does for its own work",
+      "chunk-jrcc2jsw.js names a custom output style on the main thread, the output-style handling this runtime has",
+      "chunk-kn3ntq3p.js tracks terminal integration setup states, the terminal handling this runtime owns",
+      "forty modules carry content and twenty-two of them only through state-name markers; sixty carry nothing of their own and most of those are one or two import statements with a state name"
+    ],
+    "reading": "the sub-kilobyte layer at 25.0% import text, where every module is a fragment: hosted session and remote-control states, permissions and goals, terminal and deep-link handling, and single constants - eighty-two modules with no characterising literal of their own, eight hosted surfaces, five with local counterparts, two product surfaces without a local counterpart, two pure code leaves, one rule guarding a surface this runtime does not have, and no candidate"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
