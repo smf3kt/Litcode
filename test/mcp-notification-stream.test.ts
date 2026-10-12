@@ -67,7 +67,7 @@ async function fixture(mode = "active") {
 function tool(connection: McpConnection, name: string) { const found = connection.tools.find((item) => item.schema.name === name); assert.ok(found, name); return found; }
 const call = async (connection: McpConnection, name: string, input: unknown) => JSON.parse(await tool(connection, name).execute(input, context()));
 
-test("owned GET streams preserve schemas, push bounded logs/resources, refresh tools and cancel POST callbacks without executing GET requests", async () => {
+test("owned GET streams preserve schemas, push bounded logs/resources, refresh tools and cancel POST callbacks and dispatch GET client requests to the runtime callbacks", async () => {
   const remote = await fixture();
   let roots = 0, formSignal: AbortSignal | undefined;
   const options: McpConnectOptions = { logging: true, subscriptions: true, dynamic: true, requestTimeoutMs: 2000,
@@ -109,7 +109,8 @@ test("owned GET streams preserve schemas, push bounded logs/resources, refresh t
     assert.deepEqual(resources.notifications, [{ uri: "fixture://exact%2f" }]);
     const logs = await call(connection, "mcp_logging_notifications", { server: "srv" });
     assert.equal(logs.notifications.length, 128); assert.equal(logs.dropped, 972); assert.equal(logs.notifications.at(-1).data, 1099);
-    assert.equal(roots, 0); assert.ok(!remote.replies.some((msg) => msg.id === "get-request"));
+    await until(() => remote.replies.some((msg) => msg.id === "get-request"));
+    assert.equal(roots, 1); assert.ok(remote.replies.find((msg) => msg.id === "get-request").result.roots.length === 0);
     const search = await call(connection, "mcp_tool_search", { query: "" });
     assert.equal(search.tools[0].tool, "new"); assert.equal(remote.lists(), 4);
     assert.equal(await tool(connection, "mcp_tool_call").execute({ server: "srv", tool: "new" }, context()), "ok");
@@ -182,7 +183,8 @@ test("recovery reopens GET after EOF/transport/idle while keeping POST and sessi
           }
           assert.equal(observed, true);
           assert.equal((await call(connection, "mcp_logging_notifications", { server: "srv" })).notifications[0].data, "fresh");
-          assert.equal(roots, 0);
+          await until(() => remote.replies.some((msg) => msg.id === "ignored"));
+          assert.equal(roots, 1);
           assert.equal(remote.closed(), 1);
         }
         assert.equal(await tool(connection, "mcp__srv__echo").execute({}, context()), "ok");

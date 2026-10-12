@@ -574,6 +574,10 @@ Pinned persistence/recovery/standard-task gates record creation and bounded resu
 
 The recovered sampling branch stores audio bytes and returns a bounded text reference; it never emits a native audio block. The owned host conversion adds signature-checked containers with declared-MIME agreement, 16 KiB per-clip and 4-clip bounds under the shared 32 KiB request cap, and a private attachment store shared with the clipboard path; an unavailable store degrades to text. Compiled CLI chain, focused host suites and the 1042/1042 baseline bind the finite contract. Source adaptation rationale and final identity in [ports/W05-sampling-audio.md](ports/W05-sampling-audio.md).
 
+## GET client request dispatch (2026-10-12)
+
+The recovered SSE handler hands every message to one shared dispatch and suppresses reconnection once a request was seen. This package copies that: an opt-in owned GET stream serves every client request under the existing POST callback, ownership, cancellation and bounded-reply contract, leaves notification-only streams on the finite reopen budget, and keeps unconfigured methods at a bounded -32601. Transport regression, actual CLI chains and the 1043/1043 baseline bind the finite contract. Provenance and final identity in [ports/W05-get-dispatch.md](ports/W05-get-dispatch.md).
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

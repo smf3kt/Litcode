@@ -105,21 +105,73 @@ test('GET task inputs enforce ownership, keep cancellation flowing and release c
     send({ jsonrpc: '2.0', id: 'unrelated', method: 'roots/list', params: {} });
     input('sampling', 'owned', 'sampling/createMessage');
     input('form', 'owned', 'elicitation/create', { message: 'owned form', requestedSchema: { type: 'object', properties: { label: { type: 'string' } }, required: ['label'] } });
-    input('slow'); await until(() => roots === 1 && replies.some(m => m.id === 'form'));
+    input('slow'); await until(() => roots === 2 && replies.some(m => m.id === 'form'));
     send({ jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: 'slow' } });
     await until(() => replies.some(m => m.id === 'slow'));
-    assert.equal(signals[0]!.aborted, true); assert.equal(forms, 1); assert.equal(samples, 0);
+    assert.equal(signals[1]!.aborted, true); assert.equal(forms, 1); assert.equal(samples, 0);
     assert.equal(replies.find(m => m.id === 'foreign').error.code, -32602);
     assert.equal(replies.find(m => m.id === 'invalid').error.code, -32602);
     assert.equal(replies.find(m => m.id === 'form').result._meta[MCP_RELATED_TASK].taskId, 'owned');
     assert.equal(replies.find(m => m.id === 'slow')._meta[MCP_RELATED_TASK].taskId, 'owned');
-    assert.ok(!replies.some(m => ['unrelated', 'sampling'].includes(m.id)));
+    assert.equal(replies.find(m => m.id === 'sampling').error.code, -32602); assert.ok(!replies.some(m => m.id === 'unrelated'), 'unresolved GET roots keeps no reply');
     resultPost!.res.end('data: ' + JSON.stringify({ jsonrpc: '2.0', id: resultPost!.id, result }) + '\n\n');
     assert.equal(await pending, 'owned result'); resultPost = undefined;
-    input('late'); await until(() => replies.some(m => m.id === 'late')); assert.equal(roots, 1);
+    input('late'); await until(() => replies.some(m => m.id === 'late')); assert.equal(roots, 2);
     const closing = run(); const checked = assert.rejects(async () => await closing, /cancel|closed/i);
-    await until(() => resultPost !== undefined); input('closing'); await until(() => roots === 2);
-    await connection.close(); await checked; assert.equal(signals[1]!.aborted, true);
+    await until(() => resultPost !== undefined); input('closing'); await until(() => roots === 3);
+    await connection.close(); await checked; assert.equal(signals[2]!.aborted, true);
     assert.equal(connection.notificationStreams!().srv?.state, 'closed'); assert.deepEqual(failures, []);
   } finally { await connection.close(); server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+test('GET client requests dispatch without standard tasks and stop stream auto-reopen', async () => {
+  const { createServer } = await import('node:http');
+  const { connectMcpServers } = await import('../src/mcp.js');
+  const failures: unknown[] = [], replies: any[] = [];
+  let carry = true, gets = 0;
+  const until = async (check: () => boolean, label: string) => {
+    const end = Date.now() + 4000;
+    while (!check() && Date.now() < end) await new Promise(resolve => setTimeout(resolve, 10));
+    assert.ok(check(), label);
+  };
+  const server = createServer((req, res) => {
+    void (async () => {
+      if (req.method === 'GET') {
+        gets++; res.writeHead(200, { 'content-type': 'text/event-stream' }); res.flushHeaders();
+        // A carried client request followed by EOF must not be replayed, while a
+        // notification-only stream keeps the finite reopen budget.
+        res.write('data: ' + JSON.stringify(carry
+          ? { jsonrpc: '2.0', id: 'carried', method: 'roots/list', params: {} }
+          : { jsonrpc: '2.0', method: 'notifications/message', params: { level: 'info', data: 'tick' } }) + '\n\n');
+        res.end(); return;
+      }
+      if (req.method === 'DELETE') { res.writeHead(204).end(); return; }
+      let text = ''; for await (const chunk of req) text += chunk;
+      const m = JSON.parse(text);
+      const reply = (value: unknown) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: value })); };
+      if (m.method === 'initialize') reply({ protocolVersion: '2025-06-18', capabilities: { tools: {} } });
+      else if (m.method === 'tools/list') reply({ tools: [] });
+      else { replies.push(m); res.writeHead(202).end(); }
+    })().catch(error => { failures.push(error); res.destroy(); });
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address(); assert.ok(address && typeof address !== 'string');
+  const context = { workspace: process.cwd(), signal: new AbortController().signal, maxOutputBytes: 24000, allowShell: false };
+  const options = { notificationStream: true, recovery: true, requestTimeoutMs: 3000,
+    clientRequests: { roots: () => [{ uri: new URL('file://' + process.cwd()).href }] } };
+  const config = { srv: { type: 'http' as const, url: 'http://127.0.0.1:' + address.port + '/mcp' } };
+  try {
+    const first = await connectMcpServers(config, context, options);
+    try {
+      await until(() => replies.some(m => m.id === 'carried'), 'GET roots reply');
+      assert.ok(String(replies.find(m => m.id === 'carried').result.roots[0].uri).startsWith('file:'));
+      await new Promise(resolve => setTimeout(resolve, 1600));
+      assert.equal(gets, 1, 'carried GET stream is not reopened');
+      assert.equal(first.notificationStreams!().srv?.state, 'ended');
+    } finally { await first.close(); }
+    carry = false; const before = gets;
+    const second = await connectMcpServers(config, context, options);
+    try { await until(() => gets > before, 'notification-only GET stream reopens'); }
+    finally { await second.close(); }
+    assert.deepEqual(failures, []);
+  } finally { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); }
 });

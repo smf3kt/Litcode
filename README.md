@@ -355,7 +355,7 @@ Monitor 可选 `command` 或 `ws`，二者互斥。例如：
 
 WebSocket 模式接收文本消息，每条消息作为一个事件保留其中换行；二进制只报告字节数。连接失败和关闭码通过通知与作业状态显示；取消、超时和会话清理会关闭连接。它共用会话作业限额，不依赖 `allowShell`；Shell 模式仍需开启该配置。旧会话恢复时保留原有 command-only schema。与原版的静态行为差异见 `research/MONITOR.md`。
 
-后台作业默认最多 16 个并发、保留 100 个已结束作业；通知有数量/字节限额和丢弃计数。调度与代理目录保持进程内状态。子代理共享工作区和 task store；worktree isolation 创建独立 runtime、父工作区子日志及可续跑 lease，stop/失败/淘汰/父关闭清理，dirty/unmerged checkout 保留并报告 cleanup_error。主会话 worktree 入口见上文，tmux 与跨进程 peers 仍有差距。MCP stdio 保持 2024-11-05 handshake（form 为显式扩展），HTTP 协商 2025-03-26/2025-06-18。回调有独立取消/期限、32 KiB 输入、1 MiB 结果/frame、每连接 16 个实际活跃槽，超时后占槽至结束，close 忽略晚到结果；JavaScript 回调依赖协作取消。MCP tasks、重连与 sampling 扩展仍为 Partial，OAuth 为 Excluded。
+后台作业默认最多 16 个并发、保留 100 个已结束作业；通知有数量/字节限额和丢弃计数。调度与代理目录保持进程内状态。子代理共享工作区和 task store；worktree isolation 创建独立 runtime、父工作区子日志及可续跑 lease，stop/失败/淘汰/父关闭清理，dirty/unmerged checkout 保留并报告 cleanup_error。主会话 worktree 入口见上文，tmux 与跨进程 peers 仍有差距。MCP stdio 保持 2024-11-05 handshake（form 为显式扩展），HTTP 协商 2025-03-26/2025-06-18。开启 `mcpNotificationStream` 后，GET 流上的任意客户端请求按 POST 合同派发（能力门控、关联任务所有权、取消与有界回复），未配置的方法回 -32601；承载过请求的流不再自动重开，仅通知的流保持有限重开预算。回调有独立取消/期限、32 KiB 输入、1 MiB 结果/frame、每连接 16 个实际活跃槽，超时后占槽至结束，close 忽略晚到结果；JavaScript 回调依赖协作取消。MCP tasks、重连与 sampling 扩展仍为 Partial，OAuth 为 Excluded。
 
 后续调度新增可选 `"features": { "schedulerJitter": true }`，设置存在时才固定入新会话，旧字段省略或false维持精确时间。自主 SHA-256(jobUUID:nominal) 算法使 recurring 延后至多 min(下一间隔10%,15分钟)；one-shot名义分钟为00/30时最多提前90秒且晚于创建基准，其他one-shot/wakeup精确。独立52/52回归及TypeScript通过，日志`/private/tmp/cc-reverse-scheduler-tests.log`和`/private/tmp/cc-reverse-scheduler-check.log`。最终`npm run smoke:scheduler-cli`通过固定开关、真实cron工具、scheduled回合、recurring上限、取消/锁清理，6次自有SSE请求（`/private/tmp/cc-reverse-scheduler-cli.log`）。调度保持进程内，自主算法未建立原版等价，持久恢复待实现。
 
