@@ -422,17 +422,43 @@
     ],
     "reading": "the control-protocol and product-UI band: the browser-extension bridge, the MCPB installer, the plugin CLI, artifact comments, connector import, URL-credential policy, Remote Control notices, cloud routines, page publishing, the model switch, the artifact database, git credential brokering, Ultrareview, Remote Control servers and unix-domain peer messaging, plus vendored msgpack, commander and confusable tables, one recovered dialog, and five modules whose surfaces this runtime already owns (the tool-host schema and error layer, the interactive action registry, the image cache, slug and frontmatter helpers, and the permission glob compiler)"
   },
+  "sliceSeven": {
+    "scope": "uncited modules ranked 146 to 170 by size",
+    "bytes": 845223,
+    "rows": 25,
+    "byteRange": [
+      31722,
+      36014
+    ],
+    "composition": {
+      "hostedOrExternalSurfaces": 6,
+      "localCounterparts": 13,
+      "recoveredCliOrCopy": 2,
+      "vendoredLibraries": 1,
+      "generatedData": 1,
+      "undetermined": 1,
+      "ancestryResolverNotPorted": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-patq2z05.js is the ancestry-aware path resolver and the source of the launchAncestry and unreadableAncestry options W09 deliberately did not port; it needs a launch context this runtime does not have",
+      "chunk-54hpyawv.js is the served-image re-encoding W05-image-limits recorded as having no recovered algorithm",
+      "chunk-xewmfw4d.js is a pure code leaf with no literal of eight characters or more in 33,064 characters of body, recorded as undetermined rather than guessed at"
+    ],
+    "reading": "product UI and SDK plumbing: six hosted or server-dependent surfaces (browser-control tool, move-to-cloud, self-hosted release, cloud autofix, unattended cloud responder, and a private config writer excluded as credential-adjacent), thirteen modules whose surfaces this runtime already owns, two recovered CLI and copy surfaces, one vendored INI parser, one generated model catalog, one pure code leaf, and the ancestry-aware resolver behind W09's declined switches"
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
   },
   "outputs": {
-    "ledgerSha256": "bdcea042a64f17c4e67ced9667dafd238b14b04574abff04d83d4985f69afdcb",
-    "summarySha256": "592ac381ff5e361d1d5407c0c74a33141af52578363cefcfc7ef62f001b72b26",
-    "asOf": "regenerated after W10; the movement since slice five is W10 porting chunk-pn44qc66.js out of the prose set and into port evidence",
-    "totals": { "portBacked": 33, "narrativeOnly": 62, "uncited": 2270, "uncitedWithoutMarker": 2220 }
+    "ledgerSha256": "feac2940b9d5cc4aa99174e67d3252548b42c4ed50d024b0bdc6773180a3cb48",
+    "summarySha256": "4dc6ca7521559ced30b6b99090ecd5cf203d8c09c30072e4658c172e0b2174ce",
+    "asOf": "regenerated after slice seven; the movement since slice five is W10 porting chunk-pn44qc66.js into port evidence plus CURRENT and STATUS naming three reviewed modules of slices six and seven (chunk-2kdsvp3x.js, chunk-bt8cr7rw.js, chunk-patq2z05.js), which moves them from uncited to prose without adding port evidence",
+    "totals": { "portBacked": 33, "narrativeOnly": 65, "uncited": 2267, "uncitedWithoutMarker": 2217 }
   },
-  "residual": "2220 uncited modules carry no marker; the uncited total stays at 2270 because W10's module was recorded here as a candidate, which does not move it, and only its port record did - and it left the prose set rather than the uncited one; removing the number needs per-module reading, not more rules",
+  "residual": "2217 uncited modules carry no marker; naming a reviewed module in CURRENT or STATUS moves it out of the uncited set and into prose without adding port evidence, which is what happened to three modules across slices six and seven; removing the number needs per-module reading, not more rules",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
   "paidCalls": 0
 }

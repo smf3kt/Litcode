@@ -17,21 +17,21 @@
     "modules": 33,
     "bytes": 7816386,
     "narrativeOnly": {
-      "modules": 62,
-      "bytes": 7246015
+      "modules": 65,
+      "bytes": 7358658
     },
     "unreviewed": {
-      "modules": 2270,
-      "bytes": 31775736
+      "modules": 2267,
+      "bytes": 31663093
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2220,
-    "uncitedBuiltinLeafOnly": 2253,
+    "uncitedWithoutMarker": 2217,
+    "uncitedBuiltinLeafOnly": 2251,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
         "name": "async_hooks",
-        "modules": 10
+        "modules": 9
       },
       {
         "name": "ws",
@@ -4052,7 +4052,9 @@
       ],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -14448,7 +14450,9 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
@@ -26035,7 +26039,10 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },

@@ -19,12 +19,12 @@
   "outputs": {
     "ledger": {
       "path": "research/ports/port-ledger.json",
-      "sha256": "bdcea042a64f17c4e67ced9667dafd238b14b04574abff04d83d4985f69afdcb",
-      "bytes": 921117
+      "sha256": "feac2940b9d5cc4aa99174e67d3252548b42c4ed50d024b0bdc6773180a3cb48",
+      "bytes": 921255
     },
     "summary": {
       "path": "research/ports/port-ledger.md",
-      "sha256": "592ac381ff5e361d1d5407c0c74a33141af52578363cefcfc7ef62f001b72b26",
+      "sha256": "4dc6ca7521559ced30b6b99090ecd5cf203d8c09c30072e4658c172e0b2174ce",
       "bytes": 16106
     }
   },
@@ -32,12 +32,12 @@
     "modules": 33,
     "bytes": 7816386,
     "narrativeOnly": {
-      "modules": 62,
-      "bytes": 7246015
+      "modules": 65,
+      "bytes": 7358658
     },
     "unreviewed": {
-      "modules": 2270,
-      "bytes": 31775736
+      "modules": 2267,
+      "bytes": 31663093
     }
   },
   "recordCount": 58,
@@ -357,7 +357,7 @@
   ],
   "paidCalls": 0,
   "remaining": [
-    "2270 uncited modules (31.8 MB) and 63 narrative-only modules remain unreviewed and are named in the ledger",
+    "2267 uncited modules (31.7 MB) and 65 narrative-only modules remain unreviewed and are named in the ledger",
     "the link vetting on the settings and instruction handoff (chunk-pn44qc66.js): closed by W10 for the three text-level rules - the 32-hop bound, the climbs-out refusal and the encoding check; the send-or-don't-send verdicts its caller derives (symlink_not_sent, too_many_links) and its home_unvettable and outside_root states stay External",
     "per-OS managed settings policy helpers and remote-consent state (chunk-x0dc37w9.js): closed by W08 for the file mechanism; the plist and hklm mechanisms and the remote-consent path stay External",
     "the permission-facing shell-reading analyser (chunk-zjewzgfh.js): closed by W01-permission-readings, which covers its boundary with this runtime's own conservative reading superset",
