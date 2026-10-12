@@ -1,0 +1,105 @@
+{
+  "schema": "HarnessPortEvidence.v1",
+  "package": "W01-refusal-notice",
+  "date": "2026-10-12",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "coordinateUnit": "zero-based UTF-16 code units, left-closed/right-open, on the decoded module text",
+    "readAs": "inert data; no recovered entrypoint was executed"
+  },
+  "citations": [
+    {
+      "module": "chunk-40cepjpq.js",
+      "sha256": "473c9dfb84c9defcb7ca5bd5e6f598cd951274dc2c1334a67c8b9d25b451a8b2",
+      "bytes": 148871,
+      "facts": [
+        { "symbol": "qo", "kind": "refusal extractor: reads stop_reason refusal plus stop_details from a message, or an already-recorded no-fallback entry", "range": [8064, 8434], "anchors": { "stopReasonRefusal": 8299, "stopDetailsCategory": 8343, "stopDetailsExplanation": 8394 } },
+        { "symbol": "rs", "kind": "turn-complete read of the last refusal from a snapshot, with failure telemetry", "range": [8434, 8614] },
+        { "symbol": "A_n", "kind": "no-fallback record: level warning, content, originalModel, requestId, apiRefusalCategory, apiRefusalExplanation, refusedUserMessageUuid, isMeta false", "range": [37113, 37473] },
+        { "symbol": "k_n", "kind": "fallback record: adds trigger, direction, optional scope, fallbackModel, optional sawCyberRefusal, optional retractedMessageUuids, optional provisional", "range": [36425, 37113] },
+        { "symbol": "C_n", "kind": "related model_fallback record", "range": [37473, 37707] }
+      ]
+    },
+    {
+      "module": "chunk-er0mj94r.js",
+      "sha256": "c8fcb0632b09084aa2553f8044eefb074b1ddd580cf7f0409fa10bd2a1b42e2d",
+      "bytes": 81134,
+      "facts": [
+        { "kind": "serializer mapping the internal fallback record onto an external system event with snake_case fields", "range": [64388, 65039] },
+        { "kind": "serializer mapping the internal no-fallback record the same way, defaulting category and explanation to null", "range": [65039, 65381] }
+      ]
+    },
+    {
+      "module": "chunk-rx2nah4x.js",
+      "sha256": "cfb79b3b3d580f450f8184e5873a686eb083e9ea3abd4e0a58268425de6acc51",
+      "bytes": 691306,
+      "facts": [
+        { "symbol": "ng", "kind": "second wire-side construction of the snake_case model_refusal_fallback record", "range": [307926, 308452] }
+      ]
+    },
+    {
+      "module": "chunk-14rnebpd.js",
+      "sha256": "d1ba8228f324b01eb984c0a09eed1095d0bb0e6ace7c295b0c0fdb03a17be810",
+      "bytes": 320347,
+      "facts": [
+        { "kind": "streaming accumulator: message_delta assigns stop_reason, stop_sequence and stop_details onto the response", "ranges": [[103959, 103979], [156785, 156805]] },
+        { "kind": "thirteen further delta.stop_details reads in chunk-sfn1dbxq.js (4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da), e.g. [2860960,2860978)", "range": [2860960, 2860978] }
+      ]
+    },
+    {
+      "module": "chunk-5b2hxy2e.js",
+      "sha256": "46d7f73a2b28fd9493ecf37d85abc89acd020f6de7e2bdb83efe621811f12656",
+      "bytes": 199470,
+      "facts": [
+        { "symbol": "za", "kind": "retry path: materializes refused tool calls as error results with a toolDenialKind, reads the category, emits telemetry and prints the notice", "range": [89138, 90330], "anchors": { "materializeRefusedCalls": 89441, "categoryRead": 89786, "telemetry": 89828, "notice": [90125, 90184] } },
+        { "kind": "streaming-path stop reason comparison against the refusal value", "range": [171835, 171882], "anchors": { "streamedStopReasonAssignment": [170111, 170139] } },
+        { "symbol": "jn", "kind": "non-streaming comparison gated on isApiErrorMessage, the condition this port relaxes", "range": [89111, 89137] },
+        { "symbol": "Xa", "kind": "classifies a repeat refusal as refused_again rather than api_error", "range": [90489, 90501] }
+      ]
+    }
+  ],
+  "documentationCitation": {
+    "artifact": "SKILL-96f1221c.md.zst",
+    "kind": "shipped documentation of the refusal contract: HTTP 200 with stop_reason refusal and stop_details categories cyber, bio, frontier_llm, reasoning_extraction, general_harms",
+    "note": "matches the installed SDK's RefusalStopDetails.category union; the port treats the category as opaque text"
+  },
+  "implementation": {
+    "files": ["src/agent.ts", "src/session.ts", "test/refusal.test.ts", "scripts/smoke-refusal-cli.mjs", "package.json"],
+    "symbols": ["Agent.recordRefusal", "Agent.run turn loop call site", "SessionEvent 'refusal'", "eventSchema refusal member"],
+    "recordShape": "{ kind: 'refusal', model, category?, explanation?, requestId? }",
+    "ownedDecisions": [
+      "The recovered extractor also requires a message-level isApiErrorMessage flag that a streamed SDK message does not carry here, so the condition is the stop reason alone; broader, and inert unless a provider refuses.",
+      "The explanation is flattened to one line and bounded to 1024 characters because journal records reject control characters and the recovered explanation is free text."
+    ],
+    "noChangeOwed": "Skipping the refused message's tool calls needed no new code: the turn loop already refuses to run tools when the stop reason is not tool_use and writes an error result naming the stop reason, which is what the recovered module reaches by materializing skipped calls with a denial kind."
+  },
+  "notPorted": [
+    { "item": "same-model retry", "reason": "the recovered path re-sends the refused turn once and its notice says it is continuing; this runtime ends the turn, so the notice text is deliberately not reused" },
+    { "item": "fallback chain, consent prompt, arming state and fallback credit", "reason": "a separate subsystem needing its own package and user decision; the corpus review records the per-OS policy and consent surfaces separately" },
+    { "item": "retraction of the refused turn", "reason": "nothing in this runtime edits the transcript in place, so refusedUserMessageUuid and retractedMessageUuids have no counterpart" }
+  ],
+  "validation": {
+    "unitTests": { "file": "test/refusal.test.ts", "cases": 2, "asserts": "one refusal record with all four fields, reason refusal, one provider call, tool never executed, skipped call paired with an error result, journal replay after reopen; a bare refusal records only the model; a wrapped explanation is stored flattened" },
+    "cliSmoke": { "script": "scripts/smoke-refusal-cli.mjs", "npm": "smoke:refusal-cli", "gateway": "owned loopback SSE emitting message_delta with stop_reason refusal and stop_details", "sourceAndCompiled": true, "asserts": ["reason refusal", "exactly one model request", "workspace file never read", "stderr line model refused this request (cyber): Cyber policy category.", "journal one refusal record with category, explanation and requestId", "one error tool result matching Tools skipped because model stopped with refusal", "exit code 2 (the generic non-end_turn code, asserted rather than changed)"] },
+    "fullSuite": { "tests": 1054, "fail": 0 },
+    "check": "tsc --noEmit clean",
+    "build": "tsc -p tsconfig.build.json clean",
+    "packageSmoke": { "files": 62, "upstreamRequests": 0 },
+    "identity": {
+      "inputs": { "sha256": "ac807302b0bf876db696e7fb6999425c5015768e73225da682bf7f3a76b0ac83", "files": 110 },
+      "validation": { "sha256": "2662aead4ced756c0cb8f268c5ed28b1b8c50fb14e4afa13f725996ccd8c790e", "files": 82 },
+      "build": { "sha256": "09ae90fd2e6b42e13688675b470507ec5d0ddb30db4ccb49b24d9d09f78dfc65", "files": 55 },
+      "merged": "7e1f968ae8abb5ed7673093ca7b0535b7f8b5899753b9030a179053342ec1255",
+      "independentOfflineRebuild": "fresh directory, npm ci --ignore-scripts --offline, check and build, identical merged digest",
+      "recomputedBecause": "the digest covers scripts/, and this package also corrected the citation scan in scripts/port-ledger.mjs; the first measurement of this package was taken before that correction"
+    },
+    "tarball": { "name": "litcode-0.1.0.tgz", "files": 62, "sha256": "3e67157aced23f0623afd96cca653f97a76aa33c0f684f1ef01714e7c6bd3b9b" }
+  },
+  "regressions": "The full suite covers the session, CLI and structured-output paths this touches; no previously passing case changed and only the new refusal cases were added.",
+  "paidCalls": 0,
+  "limitations": [
+    "The refusal path is verified against an owned SSE fixture and unit fixtures, not against a real provider refusal.",
+    "The recovered retry, fallback chain and retraction remain unported, so this runtime's behaviour on a refusal is a strict subset of the recovered one."
+  ]
+}

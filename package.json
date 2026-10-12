@@ -53,6 +53,7 @@
     "smoke:child-callbacks": "node scripts/smoke-child-callbacks.mjs",
     "smoke:hook-terminal-cli": "node scripts/smoke-hook-terminal-cli.mjs",
     "smoke:stop-cap-cli": "node scripts/smoke-stop-cap-cli.mjs",
+    "smoke:refusal-cli": "node scripts/smoke-refusal-cli.mjs",
     "smoke:skill-agent-cli": "node scripts/smoke-skill-agent-cli.mjs",
     "smoke:skill-inline-cli": "node scripts/smoke-skill-inline-cli.mjs",
     "smoke:skill-fenced-cli": "node scripts/smoke-skill-inline-cli.mjs --fenced",
