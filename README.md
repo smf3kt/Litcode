@@ -42,7 +42,7 @@ npm install --prefix "$PACKAGE_TMP/install" --offline --omit=dev --ignore-script
 "$PACKAGE_TMP/install/node_modules/.bin/litcode" --demo
 ```
 
-`bin/litcode.mjs`导入distCLI；旧`personal-harness`命令保留兼容。构建仅编译src，运行包包含bin/dist/README和依赖notice，排除提取样本、研究目录及会话数据。保持private:true、UNLICENSED，项目发布许可证由owner决定。`npm run smoke:package`验证离线生产安装、两个命令help一致、demo及锁清理。
+`bin/litcode.mjs`导入distCLI；旧`personal-harness`命令保留兼容。构建仅编译src，运行包包含bin/dist/README和依赖notice，排除提取样本、研究目录及会话数据。项目按MIT发布（见`LICENSE`，公开仓库为github.com/smf3kt/litcode）；`package.json`保留private:true，仅用于防止误发npm。`npm run smoke:package`验证离线生产安装、两个命令help一致、demo及锁清理。
 
 来源与构建身份检查：
 
