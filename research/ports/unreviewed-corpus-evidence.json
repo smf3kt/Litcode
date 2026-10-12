@@ -703,8 +703,13 @@
       "excludedWithCredentials": 1,
       "inScopeCandidate": 1
     },
-    "inScopeCandidates": [
-      "chunk-kxgzv2t8.js reaches a contradiction verdict between a remembered fact and an instruction file ('contradicts CLAUDE.md - verify which is current') and runs a consolidation pass over the memory store that skips a newer record (record_newer) and an unreadable item (items_unreadable) by name. This runtime's memory tools already merge duplicate facts on write, carry a hash-conflict read-again path and state that current user instructions take precedence over remembered preferences, so the precedence half is covered locally while the contradiction verdict and the consolidation pass are not"
+    "inScopeCandidates": [],
+    "ported": [
+      {
+        "port": "ports/W16-memory-contradiction.md",
+        "shippedOn": "2026-10-12",
+        "note": "Ported the reconcile procedure onto the memory-maintenance instructions this runtime already ships: a memory that disagrees with an instruction file reaches one of three verdicts - the memory is stale and goes, the instruction file may be stale and the memory is annotated with a quoted constant and surfaced to the user, or there is no conflict - with the \"a correction is not evidence of recency\" note. The consolidation-pass half did not land: this runtime has no scheduled or background agent run, so the dream runner's gates, lock, forked subagent and settle are recorded under notPorted with reasons. The two memory-item skip states were already covered here on the write path in a different spelling."
+      }
     ],
     "notedButNotCandidates": [
       "chunk-5kma9zk6.js seeds settings across the config layers with a settingsPrime seed-absence record, adjacent to the layer mechanism W08 ported",
@@ -713,7 +718,7 @@
       "chunk-57v1bkyr.js guards a subtask command by coordinator session and first turn, which this runtime's own subagent surface constrains its own way",
       "thirty-four modules are 85% or more import statements and carry no characterising literal of their own, so they are recorded as dependency aggregators rather than as undetermined"
     ],
-    "reading": "the thinnest band so far - 77.2% import text, 39 modules at 85% or more and 34 with no literal at all - over eight modules with local counterparts, four hosted surfaces (preview tunnel, Remote Control bridge, artifact reads, cloud review), one product surface without a local counterpart (fast mode gating), one vendored AWS SDK SSO copy, one module excluded with credentials, and one candidate in the memory store"
+    "reading": "the thinnest band so far - 77.2% import text, 39 modules at 85% or more and 34 with no literal at all - over eight modules with local counterparts, four hosted surfaces (preview tunnel, Remote Control bridge, artifact reads, cloud review), one product surface without a local counterpart (fast mode gating), one vendored AWS SDK SSO copy, one module excluded with credentials, and one candidate in the memory store Ported on 2026-10-12: see ported."
   },
   "sliceSeventeen": {
     "scope": "uncited modules ranked 521 to 620 by size, the first 100-rank band",
