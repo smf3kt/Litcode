@@ -1103,6 +1103,33 @@
     ],
     "reading": "the under-1.7-kilobyte remainder at 30.3% import text: hosted artifact, design and connector surfaces, browser and device tool naming, agent and subagent reporting, and the tail of the MCP, plugin and background-job plumbing - seventy modules with no characterising literal of their own, fifteen hosted surfaces, nine with local counterparts, two product surfaces without a local counterpart, two rules guarding surfaces this runtime does not have, one vendored package, and one candidate: a project-declared MCP server held until the user approves it, where this runtime connects a server declared by a workspace-controlled settings layer with no approval step"
   },
+  "sliceTwentyNine": {
+    "scope": "uncited modules ranked 1721 to 1820 by size, the thirteenth 100-rank band",
+    "bytes": 69906,
+    "rows": 100,
+    "rowsWithContent": 35,
+    "byteRange": [1424, 1209],
+    "importSharePercent": 24.9,
+    "composition": {
+      "noCharacterisingLiteral": 76,
+      "localCounterparts": 12,
+      "hostedOrExternalSurfaces": 9,
+      "pureCodeLeaves": 2,
+      "productWithoutLocalCounterpart": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-kp48t6p5.js requires consent for a first-party design MCP server, corroborating the ninth candidate from the other side: the recovered client asks before connecting an MCP server both for a project declaration and for a first-party server, while this runtime connects every declared server without asking",
+      "chunk-dp4bc9y2.js names the Windows policy registry keys and the in-WSL programme-files path as managed-settings sources, extending the managed-settings family recorded since slice nineteen",
+      "chunk-ngwfw4c8.js reports an organization policy that limits some features and names zero data retention among the reasons, the policy reporting this runtime does for its own features",
+      "chunk-630w4d34.js distinguishes a daemon lease held for good from one refused to this process and tells the user to restart the daemon once mended, the daemon ownership this runtime already has",
+      "chunk-jce4gshh.js reports cross-session messaging as unavailable in this session, the peer messaging this runtime has",
+      "chunk-gxjdapnz.js resolves a Windows command through the system directory and the sysnative shim, the command resolution this runtime applies to its own shell work",
+      "thirty-five modules carry content and eleven of them only through state-name markers; sixty-five carry nothing of their own and most of those are ninety percent or more import statements"
+    ],
+    "reading": "the last of the above-one-kilobyte prose at 24.9% import text: policy and managed-settings reporting, daemon and background bookkeeping, cross-session messaging, Windows command resolution, and single-purpose hosted surfaces - seventy-six modules with no characterising literal of their own, twelve with local counterparts, nine hosted surfaces, two pure code leaves, one product surface without a local counterpart, and no candidate of its own but one corroboration of the ninth"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
