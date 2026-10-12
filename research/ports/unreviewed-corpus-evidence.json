@@ -448,6 +448,29 @@
     ],
     "reading": "product UI and SDK plumbing: six hosted or server-dependent surfaces (browser-control tool, move-to-cloud, self-hosted release, cloud autofix, unattended cloud responder, and a private config writer excluded as credential-adjacent), thirteen modules whose surfaces this runtime already owns, two recovered CLI and copy surfaces, one vendored INI parser, one generated model catalog, one pure code leaf, and the ancestry-aware resolver behind W09's declined switches"
   },
+  "sliceEight": {
+    "scope": "uncited modules ranked 171 to 195 by size",
+    "bytes": 735478,
+    "rows": 25,
+    "byteRange": [
+      28168,
+      31115
+    ],
+    "composition": {
+      "hostedOrExternalSurfaces": 7,
+      "localCounterparts": 13,
+      "recoveredUi": 3,
+      "renderingOrData": 2,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-qajs04tk.js is a bundled research workflow: content that shows what the recovered workflow surface was used for, not how it works",
+      "chunk-8tta3x8h.js is another member of the Windows path-classification family whose kzn rules W09 declined because this host makes them unreachable",
+      "chunk-a49msw72.js validates signed synced-file requests (32-byte hash, byte-count size, NUL in a signed field), which would be worth reusing if this runtime had a sync surface"
+    ],
+    "reading": "this runtime's own subject matter seen from the inside: thirteen modules whose surfaces already exist here (context accounting, MCP call transport, environment detection, terminal capability detection, the ask-the-user contract, cache thresholds, permission modes, Windows-shaped path classification, MCP identity changes, a string scanner, thinking status, a bundled research workflow, hosted git-URL validation), three recovered UI panels, two rendering and data tables, and seven hosted or server-dependent surfaces"
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
