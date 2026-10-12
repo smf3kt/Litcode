@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import type { Anthropic } from '@anthropic-ai/sdk';
+import { imageInfo } from './media.js';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 import type { ModelProvider, ModelRequest } from './provider.js';
@@ -22,7 +24,11 @@ const TRUNCATION_MARKER = '[MCP sampling output truncated]';
 const samplingSchema = z.object({
   messages: z.array(z.object({
     role: z.enum(['user', 'assistant']),
-    content: z.object({ type: z.literal('text'), text: z.string() }).strict(),
+    content: z.discriminatedUnion('type', [
+      z.object({ type: z.literal('text'), text: z.string() }).strict(),
+      z.object({ type: z.literal('image'), data: z.string().min(1),
+        mimeType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']) }).strict(),
+    ]),
   }).strict()).min(1),
   maxTokens: z.number().int().positive().refine(Number.isSafeInteger),
   systemPrompt: z.string().optional(),
@@ -58,13 +64,20 @@ async function abortable<T>(signal: AbortSignal, work: Promise<T>): Promise<T> {
   } finally { signal.removeEventListener('abort', abort); }
 }
 
-function samplingInput(params: McpSamplingParams): McpSamplingParams {
+function samplingInput(params: McpSamplingParams, images: boolean): McpSamplingParams {
   try {
     const snapshot = structuredClone(params);
     if (Buffer.byteLength(JSON.stringify(snapshot), 'utf8') > MCP_CLIENT_REQUEST_MAX_INPUT_BYTES) throw new Error('size');
-    // The host currently accepts text only, even if the transport accepts media.
-    return samplingSchema.parse(snapshot) as McpSamplingParams;
-  } catch { throw new Error('Invalid or unsupported MCP sampling input; text messages only'); }
+    const input = samplingSchema.parse(snapshot);
+    for (const { content } of input.messages) {
+      if (content.type !== 'image') continue;
+      if (!images) throw new Error('disabled');
+      const bytes = Buffer.from(content.data, 'base64');
+      if (bytes.toString('base64') !== content.data || imageInfo(bytes).mediaType !== content.mimeType) throw new Error('image');
+    }
+    return input as McpSamplingParams;
+  } catch { throw new Error(images ? 'Invalid or unsupported MCP sampling input; text or validated images only'
+    : 'Invalid or unsupported MCP sampling input; text messages only'); }
 }
 
 function boundedText(text: string, limit: number): { text: string; truncated: boolean } {
@@ -103,17 +116,26 @@ export function createMcpHostRequests(options: McpHostOptions): McpClientRequest
     () => elicit(params, signal, context), 'MCP elicitation callback failed');
   if (approveSampling) requests.sampling = async (params, signal, context): Promise<McpSamplingResult> => {
     checkAbort(signal);
-    const input = samplingInput(params);
+    const input = samplingInput(params, config.mcpClient?.samplingImages === true);
     const approved = await callback(signal, () => approveSampling(structuredClone(input), structuredClone(context), signal),
       'MCP sampling approval failed');
     if (approved !== true) throw new Error('MCP sampling approval denied');
+    const images: Anthropic.ImageBlockParam[] = [];
+    const messages = input.messages.map(message => {
+      if (message.content.type !== 'image') return message;
+      const { data, mimeType } = message.content;
+      images.push({ type: 'image', source: { type: 'base64',
+        media_type: mimeType as Anthropic.Base64ImageSource['media_type'], data } });
+      return { role: message.role, content: { type: 'image', mimeType, attachment: images.length } };
+    });
+    const quoted = 'Quoted MCP server task data (JSON):\n' + JSON.stringify({
+      systemPrompt: input.systemPrompt ?? null, messages,
+    });
     const request: ModelRequest = {
       model: config.model,
       max_tokens: Math.min(input.maxTokens, config.maxTokens),
       system: HOST_INSTRUCTIONS,
-      messages: [{ role: 'user', content: 'Quoted MCP server task data (JSON):\n' + JSON.stringify({
-        systemPrompt: input.systemPrompt ?? null, messages: input.messages,
-      }) }],
+      messages: [{ role: 'user', content: images.length ? [{ type: 'text', text: quoted }, ...images] : quoted }],
       tool_choice: { type: 'none' },
       thinking: { type: 'disabled' },
       ...(config.effort === undefined ? {} : { output_config: { effort: config.effort } }),
