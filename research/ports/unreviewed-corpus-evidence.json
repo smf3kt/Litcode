@@ -1215,6 +1215,29 @@
     ],
     "reading": "the smallest band in the review at 27.6% import text, where 81 of 100 modules are aggregators and only 19 carry content: - ninety-two modules with no characterising literal of their own, four with local counterparts, one hosted surface, one pure code leaf, one product surface without a local counterpart, one vendored package, and no candidate and nothing new"
   },
+  "sliceThirtyThree": {
+    "scope": "uncited modules ranked 2121 to 2220 by size, the seventeenth 100-rank band",
+    "bytes": 13023,
+    "rows": 100,
+    "rowsWithContent": 18,
+    "byteRange": [773, 699],
+    "importSharePercent": 35.6,
+    "composition": {
+      "noCharacterisingLiteral": 92,
+      "hostedOrExternalSurfaces": 4,
+      "localCounterparts": 3,
+      "productWithoutLocalCounterpart": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-vqejppw5.js reports that some files were skipped and that a settings file was not applied, the settings application reporting this runtime does for its own layers",
+      "chunk-nannv282.js names the memory list, read and write tools, the memory tool surface this runtime owns",
+      "chunk-92efj6xk.js gates web fetch, the fetch admission this runtime applies to its own web tools",
+      "eighty-two of the hundred modules carry no literal of their own: a single import statement or a state-name constant with no body, and every module in the band is below 800 bytes"
+    ],
+    "reading": "the bottom of the corpus by size at 35.6% import text, where every module is below 800 bytes and the band's whole byte mass is smaller than one module of slice four: hosted routine, remote-tool and upload surfaces, memory and web-fetch admissions, and state-name constants - ninety-two modules with no characterising literal of their own, four hosted surfaces, three with local counterparts, one product surface without a local counterpart, and no candidate"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
