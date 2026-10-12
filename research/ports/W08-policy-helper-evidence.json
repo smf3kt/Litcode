@@ -1,0 +1,77 @@
+{
+  "schema": "HarnessPortEvidence.v1",
+  "package": "W08-policy-helper",
+  "date": "2026-10-12",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "coordinateUnit": "zero-based UTF-16 code units, left-closed/right-open, on the decoded module text",
+    "readAs": "inert data; no recovered entrypoint was executed"
+  },
+  "citations": [
+    {
+      "module": "chunk-x0dc37w9.js",
+      "sha256": "0b4db31ad035eb234d6943552606135e83405b719e32a114283cadad4e957d92",
+      "bytes": 113411,
+      "facts": [
+        { "kind": "failed refresh with a static default applies it and reports refresh_fell_back_to_default", "range": [56766, 56900] },
+        { "kind": "failed refresh with no default keeps the last successful output and reports refresh_failed; the recovered notice that a successful helper replaces the static default", "range": [57556, 57620], "anchors": { "servingHelper": 57600 } },
+        { "symbol": "read mechanisms", "kind": "$n=new Set([\"plist\",\"hklm\",\"file\"]); only file is executable on this host", "range": [57936, 57966] },
+        { "symbol": "z0t", "kind": "read entry that resolves a helper result and decides whether a remote refusal is enforced", "range": [57969, 58140] },
+        { "symbol": "Gn", "kind": "logs remote_refuse_not_enforced_no_session when onFailure is refuse but the command starts no session", "range": [58176, 58557], "anchors": { "startsNoSession": 58484 } },
+        { "symbol": "Kn", "kind": "finds a startup-fatal settings error whose path is empty, policyHelpers, or under policyHelpers.", "range": [58702, 58830] },
+        { "symbol": "vEo", "kind": "classifies the structural failure: a policyHelpers.<platform> path is helper_failed, anything else policy_invalid; with no structural error the payload-refusal flag decides", "range": [58830, 59016] },
+        { "symbol": "Bn", "kind": "settings read entry that consults the structural verdict first and logs document_invalid or the platform-specific code once", "range": [59016, 63534] }
+      ]
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "bytes": 434204,
+      "facts": [
+        { "symbol": "LB", "kind": "platform list LB=[\"macos\",\"linux\",\"windows\",\"wsl\"], the names vEo matches a policyHelpers.<name> path against", "range": [201689, 201727] },
+        { "symbol": "KCr", "kind": "refresh bound constant KCr=_u used as the upper clamp for the helper refresh delay", "range": [196135, 196175] }
+      ]
+    }
+  ],
+  "implementation": {
+    "files": ["src/policy-helper.ts", "src/session.ts", "src/cli.ts", "test/policy-helper.test.ts", "scripts/smoke-policy-helper-cli.mjs", "package.json"],
+    "symbols": ["readPolicyHelper", "PolicyHelper", "PolicyHelperConfig.validate", "SessionConfig.policyHelper", "features.policyHelper", "CLI --policy-helper", "CLI --policy-helper-interval"],
+    "portedTiers": "helper output governs while healthy; a failed read applies the static default when one exists and otherwise keeps the last successful output; a structurally invalid document is refused and the governing tier is left alone; recovery is announced once",
+    "ownedDecisions": [
+      "The helper is opt-in and separate from --managed-settings, so that path keeps its once-read fatal semantics and a session without the flag is unchanged.",
+      "The static default payload is the session's own managed policy, the same relationship the recovered defaultFallback has to the static settings payload.",
+      "Warnings are announced once per transition rather than per pass, matching the recovered code, which re-announces only when the failure code changes.",
+      "Structural invalidity is split from read failure at the recovered boundary: unreadable, missing or non-JSON is helper_failed and may be replaced by another tier, while a document that parses but is not a usable managed policy is policy_invalid and is refused."
+    ]
+  },
+  "notPorted": [
+    { "item": "the plist and hklm read mechanisms", "reason": "they address a macOS system domain and the Windows registry, neither of which exists on this host; a helper here reads a file" },
+    { "item": "the platform tiers (LB)", "reason": "the platform list exists to pick a per-platform helper path and this runtime has one mechanism rather than four" },
+    { "item": "remote consent and remote refusal enforcement", "reason": "remote_consent_missing and the Gn / startsNoSession branch require an external service, which CURRENT already classes as External" },
+    { "item": "the recovered failure-cause vocabulary", "reason": "the tier rules do not depend on it" }
+  ],
+  "validation": {
+    "unitTests": { "file": "test/policy-helper.test.ts", "cases": 4, "asserts": "a readable document serves the helper tier; a missing document with a default falls back and warns once, repeats silently, announces recovery, and keeps nothing when no default exists; a validator-rejected document is policy_invalid and leaves the serving tier and its policy untouched rather than substituting the default, while malformed JSON after it is helper_failed and does fall back; readPolicyHelper keeps unreadable, JSON-array and valid-object outcomes distinct" },
+    "cliSmoke": { "script": "scripts/smoke-policy-helper-cli.mjs", "npm": "smoke:policy-helper-cli", "gateway": "owned loopback SSE", "sourceAndCompiled": true, "asserts": ["with no helper document the default tier governs: the write is denied, the file is not created, stderr carries the fallback warning", "with a valid document the helper tier governs: the write succeeds and the file appears", "with a document that parses but misses required policy fields the document is refused, no fallback warning appears and the write stays denied", "two model requests per case", "zero exit"] },
+    "fullSuite": { "tests": 1062, "fail": 0 },
+    "check": "tsc --noEmit clean",
+    "build": "tsc -p tsconfig.build.json clean",
+    "packageSmoke": { "files": 64, "upstreamRequests": 0 },
+    "identity": {
+      "inputs": { "sha256": "709afde2916faa65abf401a209d60fc47d56588c04f92aed3dc78e4f42aa4ee1", "files": 114 },
+      "validation": { "sha256": "79c909f97aad5a064060371cefd846775b6f2b6b3392d6fb699935f72bcf856e", "files": 84 },
+      "build": { "sha256": "7449210797ba310c1be5f977cdb900831e01baae8b98bf3381cd6417bf5dccca", "files": 57 },
+      "merged": "43cd0aeb6f6ba90fcf3eb3b0b463b89a4774147876b08fd7bc3256cbf44e43b9",
+      "independentOfflineRebuild": "fresh directory, npm ci --ignore-scripts --offline, check and build, identical merged digest"
+    },
+    "tarball": { "name": "litcode-0.1.0.tgz", "files": 64, "sha256": "6e4f726b477f2a53d315f0dc5ddd741851d7149379e6715877eb56d9b40ec1d2" }
+  },
+  "regressions": "The full suite covers the session, settings and CLI paths this touches; no previously passing case changed and only the four new cases were added. A session without --policy-helper never constructs the machine.",
+  "paidCalls": 0,
+  "limitations": [
+    "Verified against an owned loopback gateway and local files, not against a real OS managed-settings domain.",
+    "Only the file mechanism is executable here, so the platform tiers and the remote-consent path are out of scope rather than unimplemented.",
+    "The refresh interval is exercised through its configuration path and the timer's unref/abort handling, not by waiting out a real interval in the smoke."
+  ]
+}

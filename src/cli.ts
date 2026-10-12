@@ -5,7 +5,8 @@ import { parseArgs } from 'node:util';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, DEFAULT_SYSTEM, defaultConfig } from './agent.js';
 import { DEFAULT_GATEWAY, GatewayProvider, type ModelProvider } from './provider.js';
-import { Session, applyManagedPolicy, type SessionConfig } from './session.js';
+import { Session, applyManagedPolicy, managedPolicySchema, type SessionConfig } from './session.js';
+import { PolicyHelper } from './policy-helper.js';
 import { interactiveLoop } from './interactive.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
@@ -293,7 +294,7 @@ async function main(): Promise<void> {
     'prompt-cache': { type: 'boolean' }, 'eager-tool-input': { type: 'boolean' },
     'allow-shell': { type: 'boolean' }, 'max-turns': { type: 'string' },
     'context-tokens': { type: 'string' }, 'compact-at': { type: 'string' }, 'max-tokens': { type: 'string' },
-    settings: { type: 'string' }, 'managed-settings': { type: 'string' }, 'user-dir': { type: 'string' }, 'permission-mode': { type: 'string' },
+    settings: { type: 'string' }, 'managed-settings': { type: 'string' }, 'policy-helper': { type: 'string' }, 'policy-helper-interval': { type: 'string' }, 'user-dir': { type: 'string' }, 'permission-mode': { type: 'string' },
     'allow-tool': { type: 'string', multiple: true }, 'deny-tool': { type: 'string', multiple: true },
     tasks: { type: 'boolean' }, subagents: { type: 'boolean' },
     'auto-memory': { type: 'boolean' },
@@ -405,6 +406,34 @@ async function main(): Promise<void> {
     }
     const currentSession = session;
     if (!currentSession || !runtime) throw new Error('Runtime failed to initialize');
+    // Opt-in managed-settings helper: read once before the session runs and then
+    // on its configured interval, applying whichever tier is governing. The
+    // static default payload is whatever managed policy the session already
+    // carries, which is what a failed helper falls back to.
+    const helperPath = (values['policy-helper'] ?? currentSession.config.policyHelper?.path) as string | undefined;
+    if (helperPath !== undefined) {
+      const fallback = currentSession.config.policyHelper?.defaultPolicy ?? currentSession.config.managedPolicy;
+      const interval = values['policy-helper-interval'] === undefined
+        ? currentSession.config.policyHelper?.intervalMs
+        : Number(values['policy-helper-interval']);
+      if (interval !== undefined && (!Number.isInteger(interval) || interval <= 0)) throw new Error('--policy-helper-interval must be a positive number of milliseconds');
+      const machine = new PolicyHelper({ path: path.resolve(workspace, helperPath),
+        ...(fallback === undefined ? {} : { defaultPolicy: fallback }),
+        validate: policy => managedPolicySchema.safeParse(policy).success ? undefined : 'policy does not match the managed policy schema' });
+      const settle = (): void => {
+        const output = machine.refresh();
+        for (const warning of output.warnings) process.stderr.write(`policy helper: ${warning}\n`);
+        if (output.policy !== undefined) applyManagedPolicy(currentSession.config, output.policy as SessionConfig['managedPolicy']);
+      };
+      settle();
+      if (interval !== undefined) {
+        const timer = setInterval(() => {
+          try { settle(); } catch (error) { process.stderr.write(`policy helper: refresh error: ${error instanceof Error ? error.message : String(error)}\n`); }
+        }, interval);
+        timer.unref?.();
+        controller.signal.addEventListener('abort', () => clearInterval(timer), { once: true });
+      }
+    }
     runtime = await runtime.bindSession?.(currentSession) ?? runtime;
     const currentRuntime = runtime;
     process.stderr.write(`session: ${currentSession.id}\nworkspace: ${workspace}\n`);

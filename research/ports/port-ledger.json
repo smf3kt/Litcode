@@ -12,13 +12,13 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 36,
+  "recordCount": 37,
   "summary": {
-    "modules": 30,
-    "bytes": 7575061,
+    "modules": 31,
+    "bytes": 7688472,
     "narrativeOnly": {
-      "modules": 60,
-      "bytes": 7190218
+      "modules": 59,
+      "bytes": 7076807
     },
     "unreviewed": {
       "modules": 2275,
@@ -208,15 +208,19 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/W08-policy-helper.md"
       ],
       "portRecords": [
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/W08-policy-helper.md"
       ],
       "reviewed": true,
       "declared": [
-        "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio"
+        "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio",
+        "adapt of the tier rules onto this runtime's existing managed-policy snapshot. This runtime already reads a managed settings file once (`--managed-settings`), st"
       ]
     },
     {
@@ -910,6 +914,33 @@
       "reviewed": true,
       "declared": [
         "copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c"
+      ]
+    },
+    {
+      "path": "chunk-x0dc37w9.js",
+      "bytes": 113411,
+      "sha256": "0b4db31ad035eb234d6943552606135e83405b719e32a114283cadad4e957d92",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "fs",
+        "os",
+        "path"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W08-policy-helper.md",
+        "research/STATUS.md"
+      ],
+      "portRecords": [
+        "research/ports/W08-policy-helper.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "adapt of the tier rules onto this runtime's existing managed-policy snapshot. This runtime already reads a managed settings file once (`--managed-settings`), st"
       ]
     },
     {
@@ -4837,11 +4868,14 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/W08-policy-helper.md"
       ],
       "portRecords": [
-        "research/ports/W06-skill-inline-fenced.md"
+        "research/ports/W06-skill-inline-fenced.md",
+        "research/ports/W08-policy-helper.md"
       ],
       "reviewed": true
     },
@@ -33054,10 +33088,13 @@
       "markers": {},
       "citedBy": [
         "research/CURRENT.md",
+        "research/ports/W08-policy-helper.md",
         "research/STATUS.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W08-policy-helper.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-x0n9ehk6.js",
