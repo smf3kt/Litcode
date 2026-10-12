@@ -19,12 +19,12 @@
   "outputs": {
     "ledger": {
       "path": "research/ports/port-ledger.json",
-      "sha256": "6d833def266826fac219752537a0866fbcd0a745a65ffd306790e0850fe4d1c2",
-      "bytes": 920164
+      "sha256": "4100b4cb1e70bc99fd18f284ec557d057f801b351d660d0e534b7d98f389a4d3",
+      "bytes": 920231
     },
     "summary": {
       "path": "research/ports/port-ledger.md",
-      "sha256": "fb2b00222ad7b018aec6afbd3d72d3e27b87fbac80b2ea36adcc47d78163447f",
+      "sha256": "baee3701294e57064145daad82e8a3c5f6d88e588acfeabcc283e165618b5c7d",
       "bytes": 15849
     }
   },
@@ -32,12 +32,12 @@
     "modules": 32,
     "bytes": 7771308,
     "narrativeOnly": {
-      "modules": 62,
-      "bytes": 7246015
+      "modules": 63,
+      "bytes": 7291093
     },
     "unreviewed": {
-      "modules": 2271,
-      "bytes": 31820814
+      "modules": 2270,
+      "bytes": 31775736
     }
   },
   "recordCount": 57,
@@ -350,7 +350,8 @@
   ],
   "paidCalls": 0,
   "remaining": [
-    "2271 uncited modules (31.8 MB) and 62 narrative-only modules remain unreviewed and are named in the ledger",
+    "2270 uncited modules (31.8 MB) and 63 narrative-only modules remain unreviewed and are named in the ledger",
+    "the link vetting on the settings and instruction handoff (chunk-pn44qc66.js) carried in CURRENT as W10: this runtime's @file.md import resolution de-duplicates by realpath and does not bound the chain, refuse a link body that leaves the directory the import walked into, or check the body's encoding",
     "per-OS managed settings policy helpers and remote-consent state (chunk-x0dc37w9.js): closed by W08 for the file mechanism; the plist and hklm mechanisms and the remote-consent path stay External",
     "the permission-facing shell-reading analyser (chunk-zjewzgfh.js): closed by W01-permission-readings, which covers its boundary with this runtime's own conservative reading superset",
     "the path link-chain resolver in chunk-gyf58rwf.js: closed by W09; the credential-pattern table in the same module stays an unscheduled candidate",

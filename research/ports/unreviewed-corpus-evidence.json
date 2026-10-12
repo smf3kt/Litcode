@@ -342,17 +342,58 @@
       "nextPackage": "the link-chain resolver; the credential table is recorded as a second, unscheduled candidate"
     }
   },
+  "sliceFive": {
+    "scope": "uncited modules ranked 96 to 120 by size",
+    "bytes": 1119349,
+    "rows": 25,
+    "byteRange": [
+      41435,
+      47719
+    ],
+    "composition": {
+      "hostedOrExternalSurfaces": 11,
+      "recoveredUi": 4,
+      "vendoredLibraries": 2,
+      "productDistributionOrCompliance": 2,
+      "localCounterparts": 2,
+      "mcpToolAnnex": 1,
+      "settingsReview": 1,
+      "worktreeRegistrationVetting": 1,
+      "inScopeCandidate": 1
+    },
+    "inScopeCandidates": [
+      "chunk-pn44qc66.js (link vetting on the settings and instruction handoff)"
+    ],
+    "candidateDetail": {
+      "module": "chunk-pn44qc66.js",
+      "bytes": 45078,
+      "recoveredRules": [
+        "link chain too long to vet",
+        "too_many_links",
+        "link body is not valid UTF-8",
+        "link body climbs out of a directory it entered",
+        "hard_link",
+        "alias_unreadable",
+        "home_unvettable",
+        "outside_root",
+        "not_regular_file",
+        "symlink_not_sent"
+      ],
+      "errorNames": ["EMLINK", "ENAMETOOLONG", "EINVAL", "ENOENT", "ENOTDIR"],
+      "localGap": "src/config.ts resolves @file.md instruction imports and de-duplicates by realpath; it does not bound a link chain, does not refuse a link body that leaves the directory the import walked into, and does not check the body's encoding before treating it as instructions"
+    }
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
   },
   "outputs": {
-    "ledgerSha256": "6d833def266826fac219752537a0866fbcd0a745a65ffd306790e0850fe4d1c2",
-    "summarySha256": "8e96c2206143321187be58f7610a36bdfaf5af82e017572a419797df6416711b",
-    "asOf": "regenerated for the W09 package, which ported chunk-gyf58rwf.js out of the uncited set",
-    "totals": { "portBacked": 32, "narrativeOnly": 62, "uncited": 2271, "uncitedWithoutMarker": 2221 }
+    "ledgerSha256": "4100b4cb1e70bc99fd18f284ec557d057f801b351d660d0e534b7d98f389a4d3",
+    "summarySha256": "e06276ca1050b61c52a6a812b9ff276c27848c69c426e9a1809f4b15139c9128",
+    "asOf": "regenerated after slice five; the movement since slice four is W09 porting chunk-gyf58rwf.js out of the uncited set plus CURRENT and STATUS naming the slice-four and slice-five candidates",
+    "totals": { "portBacked": 32, "narrativeOnly": 63, "uncited": 2270, "uncitedWithoutMarker": 2220 }
   },
-  "residual": "2221 uncited modules carry no marker after W09 took one module out of the set; slice four itself changed nothing because this file is not a citation source for the ledger; removing the number needs per-module reading, not more rules",
+  "residual": "2220 uncited modules carry no marker after W09 took one module out of the set; slices four and five changed nothing themselves because this file is not a citation source; removing the number needs per-module reading, not more rules",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
   "paidCalls": 0
 }

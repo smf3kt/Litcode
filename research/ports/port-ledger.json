@@ -17,16 +17,16 @@
     "modules": 32,
     "bytes": 7771308,
     "narrativeOnly": {
-      "modules": 62,
-      "bytes": 7246015
+      "modules": 63,
+      "bytes": 7291093
     },
     "unreviewed": {
-      "modules": 2271,
-      "bytes": 31820814
+      "modules": 2270,
+      "bytes": 31775736
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2221,
-    "uncitedBuiltinLeafOnly": 2254,
+    "uncitedWithoutMarker": 2220,
+    "uncitedBuiltinLeafOnly": 2253,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
@@ -26401,7 +26401,10 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/STATUS.md"
+      ],
       "portRecords": [],
       "reviewed": false
     },
