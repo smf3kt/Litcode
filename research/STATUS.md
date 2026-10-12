@@ -582,6 +582,10 @@ The recovered SSE handler hands every message to one shared dispatch and suppres
 
 The recovered transport keeps the last SSE event id, replays it as last-event-id on the reconnect request and prefers a server retry value over its own backoff. This package copies that shape under the existing five-reopen budget and the rule that a stream carrying a client request is never reopened. A replay dedupe was implemented and then removed: the recovered transport has none, and it broke the real CLI standard/durable chain that reuses a request id. Provenance and final identity in [ports/W05-get-resume.md](ports/W05-get-resume.md).
 
+## Sampling content metadata (2026-10-12)
+
+The recovered sampling schema puts annotations and _meta on text/image/audio/tool blocks and _meta on messages, widens the request content union with tool_use/tool_result, and offers tools/toolChoice on the params, while its result union stays text/image/audio. This package copies the metadata shape as validated inert data: an offset ISO lastModified, a role-checked audience, a 0..1 priority and record _meta pass the transport and are then dropped when the host rebuilds the quoted provider request, so server metadata never reaches the model or the journal. Because no recovered result shape can carry tool use, tools, toolChoice and tool blocks are refused at the shape check and the limits text says so. The 1047/1047 baseline and the source/compiled CLI chains bind the finite contract. Provenance and final identity in [ports/W05-sampling-blocks.md](ports/W05-sampling-blocks.md).
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

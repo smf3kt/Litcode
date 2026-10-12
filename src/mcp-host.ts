@@ -23,16 +23,27 @@ const HOST_INSTRUCTIONS = 'Handle a standalone MCP sampling task using only the 
   + 'No host conversation, credentials, workspace contents or tools are available.';
 const OUTPUT_LIMIT = 64 * 1024;
 const TRUNCATION_MARKER = '[MCP sampling output truncated]';
+// Server block and message metadata is inert: validated with the transport's bounds, then dropped before the
+// quoted request reaches the provider, so it can never act as host instructions or tool data.
+const samplingMetadata = {
+  annotations: z.object({
+    audience: z.array(z.enum(['user', 'assistant'])).min(1).optional(),
+    priority: z.number().finite().min(0).max(1).optional(),
+    lastModified: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/).optional(),
+  }).strict().optional(),
+  _meta: z.record(z.unknown()).optional(),
+};
 const samplingBlockSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('text'), text: z.string() }).strict(),
+  z.object({ type: z.literal('text'), text: z.string(), ...samplingMetadata }).strict(),
   z.object({ type: z.literal('image'), data: z.string().min(1),
-    mimeType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']) }).strict(),
-  z.object({ type: z.literal('audio'), data: z.string().min(1), mimeType: z.string().min(1).max(255) }).strict(),
+    mimeType: z.enum(['image/png', 'image/jpeg', 'image/gif', 'image/webp']), ...samplingMetadata }).strict(),
+  z.object({ type: z.literal('audio'), data: z.string().min(1), mimeType: z.string().min(1).max(255), ...samplingMetadata }).strict(),
 ]);
 const samplingSchema = z.object({
   messages: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.union([samplingBlockSchema, z.array(samplingBlockSchema).min(1).max(MCP_SAMPLING_MAX_BLOCKS)]),
+    _meta: z.record(z.unknown()).optional(),
   }).strict()).min(1),
   maxTokens: z.number().int().positive().refine(Number.isSafeInteger),
   systemPrompt: z.string().optional(),
@@ -170,7 +181,8 @@ export function createMcpHostRequests(options: McpHostOptions): McpClientRequest
     const images: Anthropic.ImageBlockParam[] = [];
     const server = serverLabel(context.serverName);
     const convert = (content: import('./mcp-client-requests.js').McpSamplingContent) => {
-      if (content.type === 'text') return content;
+      // Rebuild text blocks without annotations/_meta so server metadata stays out of the quoted task data.
+      if (content.type === 'text') return { type: 'text' as const, text: content.text };
       const { data, mimeType } = content;
       if (content.type === 'image') {
         images.push({ type: 'image', source: { type: 'base64',

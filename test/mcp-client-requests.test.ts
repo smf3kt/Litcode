@@ -27,6 +27,38 @@ test('sampling block arrays traverse both transports and reject invalid arrays b
   }
 });
 
+test('sampling metadata traverses both transports as inert data while tool-enabled requests stay rejected', async () => {
+  for (const transport of ['stdio', 'http'] as const) {
+    let called = 0;
+    const annotated = { type: 'text', text: 'annotated', annotations: { audience: ['user', 'assistant'], priority: 0.25,
+      lastModified: '2026-01-02T03:04:05.678+00:00' }, _meta: { trace: 'fixture' } };
+    const message = { role: 'user', content: annotated, _meta: { trace: 'message' } };
+    await fixture(transport, { clientRequests: { sampling: params => {
+      called++; assert.deepEqual(JSON.parse(JSON.stringify(params)), { ...sampling, messages: [message] }); return sampled;
+    } } }, async f => {
+      await f.run([request('annotated', 'sampling/createMessage', { ...sampling, messages: [message] })]);
+      assert.deepEqual(replies(f).at(-1).result, sampled);
+      const rejected = [
+        { ...sampling, messages: [{ role: 'user', content: { type: 'text', text: 'x', annotations: { audience: [] } } }] },
+        { ...sampling, messages: [{ role: 'user', content: { type: 'text', text: 'x', annotations: { audience: ['system'] } } }] },
+        { ...sampling, messages: [{ role: 'user', content: { type: 'text', text: 'x', annotations: { priority: 2 } } }] },
+        { ...sampling, messages: [{ role: 'user', content: { type: 'text', text: 'x', annotations: { lastModified: '2026-01-02' } } }] },
+        { ...sampling, messages: [{ role: 'user', content: { type: 'text', text: 'x', annotations: { unknown: true } } }] },
+        { ...sampling, messages: [{ role: 'user', content: { type: 'text', text: 'x' }, _meta: [] }] },
+        { ...sampling, messages: [{ role: 'user', content: { type: 'text', text: 'x', _meta: [] } }] },
+        { ...sampling, messages: [{ role: 'user', content: { type: 'tool_use', name: 'tool', id: 'call', input: {} } }] },
+        { ...sampling, messages: [{ role: 'user', content: { type: 'tool_result', toolUseId: 'call', content: [] } }] },
+        { ...sampling, tools: [] }, { ...sampling, toolChoice: { mode: 'auto' } },
+      ];
+      for (const params of rejected) {
+        await f.run([request('rejected', 'sampling/createMessage', params)]);
+        assert.equal(replies(f).at(-1).error.code, -32602);
+      }
+      assert.equal(called, 1);
+    });
+  }
+});
+
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 async function until(check: () => boolean): Promise<void> {
   const end = Date.now() + 3000;

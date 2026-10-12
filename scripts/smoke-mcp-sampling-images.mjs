@@ -2,7 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const pattern = process.argv.includes('--arrays') ? 'CLI array sampling'
-  : process.argv.includes('--audio') ? 'CLI audio sampling' : 'CLI image sampling';
+  : process.argv.includes('--audio') ? 'CLI audio sampling'
+  : process.argv.includes('--metadata') ? 'CLI annotated sampling metadata' : 'CLI image sampling';
 const result = spawnSync(process.execPath, ['--import', 'tsx', '--test', '--test-name-pattern=' + pattern,
   'test/cli-mcp-requests.test.ts'], { cwd: root, stdio: 'inherit', env: { ...process.env,
   HARNESS_SMOKE_COMPILED: process.argv.includes('--compiled') ? '1' : '0', HARNESS_SMOKE_RECEIPT: '1' } });
