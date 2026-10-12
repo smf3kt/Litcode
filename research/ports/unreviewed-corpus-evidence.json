@@ -900,6 +900,42 @@
     ],
     "reading": "the small helper and hosted-adjacent layer at 57.7% import text: session and rename bookkeeping, plugin cache refresh, deep links, cloud containers and vitals, and the vendored AWS credential providers - sixteen modules with local counterparts, sixty with no literal of their own, fourteen hosted surfaces, three modules excluded with credentials or OAuth, two vendored packages, two product surfaces without a local counterpart, two pure code leaves, one rule guarding a surface this runtime lacks, and no candidate of its own"
   },
+  "sliceTwentyThree": {
+    "scope": "uncited modules ranked 1121 to 1220 by size, the seventh 100-rank band",
+    "bytes": 383570,
+    "rows": 100,
+    "rowsWithContent": 69,
+    "byteRange": [4765, 3988],
+    "importSharePercent": 36.1,
+    "composition": {
+      "localCounterparts": 32,
+      "noCharacterisingLiteral": 43,
+      "hostedOrExternalSurfaces": 15,
+      "productWithoutLocalCounterpart": 4,
+      "vendoredOrPolyfill": 3,
+      "pureCodeLeaves": 1,
+      "ruleWithoutLocalSurface": 1,
+      "inScopeCandidate": 1
+    },
+    "inScopeCandidates": [
+      {
+        "module": "chunk-bcnhka5p.js",
+        "recovered": "a workspace-external instruction import is resolved only after the user accepts a consent dialog (Allow external CLAUDE.md file imports?), and accepting once covers the imports the project adds later",
+        "localHalf": "src/config.ts:1136 throws ConfigError for any instruction import whose realpath escapes the workspace root, alongside the reserved-tree and import-depth checks in the same visitor",
+        "uncovered": "there is no consent path for a workspace-external import, and no scoping of an earlier acceptance to imports added later",
+        "authorityVerified": "local source read only; no module was executed"
+      }
+    ],
+    "notedButNotCandidates": [
+      "chunk-xne59n03.js sets core.quotePath=false, core.hooksPath=/dev/null and log.showSignature=false on its Git invocations; this runtime already sets six -c options (hooksPath, fsmonitor, maintenance.auto, gc.auto, attributesFile, submodule.recurse) and scrubs GIT_* with GIT_CONFIG_NOSYSTEM and GIT_CONFIG_GLOBAL=/dev/null at src/worktrees.ts:153, and its only output-using commands are rev-parse and status -z, so the two extra options have no local effect surface",
+      "chunk-jr9qmh6g.js reports settings provenance by source including managed settings, the family recorded in slices nineteen and twenty",
+      "chunk-yze9xmwg.js admits an MCP server only when the project approves it and managed policy does not block it, adjacent to the local MCP admission path this runtime owns",
+      "chunk-xx4cahtd.js confirms through the multiple-choice question tool and handles the case where there is no one to ask, the confirmation shape this runtime applies in its own permission flow",
+      "chunk-edprrf6e.js refuses a file input path that names a credential, the same adverse-on-doubt vetting this runtime applies to its own reads",
+      "sixty-nine modules carry content and twelve of them only through state-name markers; thirty-one carry nothing of their own and most of those are ninety percent or more import statements"
+    ],
+    "reading": "the interaction and runtime-plumbing layer at 36.1% import text, the lowest share since slice fourteen: permission and dialog plumbing, skill and plugin surfaces, session and bridge bookkeeping, and the vendored AWS and smithy clients - thirty-two modules with local counterparts, forty-three with no characterising literal of its own, fifteen hosted surfaces, four product surfaces without a local counterpart, three vendored packages, one pure code leaf, one rule guarding a surface this runtime lacks, and one candidate: external instruction-file imports behind a forward-scoped consent dialog against this runtime's ConfigError refusal"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
