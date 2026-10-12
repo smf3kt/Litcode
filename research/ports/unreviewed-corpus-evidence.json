@@ -493,6 +493,32 @@
     ],
     "reading": "the permission, plugin and session-lifecycle band: unix-domain late binding, browser and IDE capability flags, the teleport and device-enrollment dialog registry, a connectivity probe, brief image scaling, credential setup, browser automation, cloud review, a gh scope probe, organization plugin search and Bedrock credential setup; against eleven modules whose surfaces this runtime already owns, one vendored Markdown and HTML renderer, and two recovered product surfaces with no local counterpart"
   },
+  "sliceTen": {
+    "scope": "uncited modules ranked 221 to 245 by size",
+    "bytes": 594435,
+    "rows": 25,
+    "byteRange": [
+      23207,
+      24699
+    ],
+    "composition": {
+      "localCounterparts": 10,
+      "vendoredOrUtility": 3,
+      "recoveredUi": 4,
+      "promptText": 2,
+      "noLocalCounterpart": 2,
+      "excludedWithAuthentication": 2,
+      "undetermined": 2,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-1azky4vr.js resolves sibling chunk files by name in the bundled layout, which is a property of the recoverable artifact rather than of a product surface",
+      "chunk-6zdc3jq1.js checks the peer uid on a daemon control socket, which this runtime has no daemon to serve",
+      "chunk-kezhcy3j.js and chunk-2fdh01xj.js carry no literal of sixteen characters or more and are recorded as undetermined"
+    ],
+    "reading": "the thinnest band so far: ten modules whose surfaces this runtime already owns, three vendored or utility modules, four recovered UI components, two prompt texts, two without a local counterpart, two excluded with authentication and two pure code leaves"
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
