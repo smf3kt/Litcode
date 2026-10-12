@@ -8,8 +8,8 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 
 - Modules on disk: **2365** (46838137 bytes).
 - Backed by a record under `research/ports/`: **48** (10128780 bytes).
-- Mentioned only by narrative records: **63** (5996442 bytes).
-- Not cited by any record: **2254** (30712915 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
+- Mentioned only by narrative records: **66** (6074270 bytes).
+- Not cited by any record: **2251** (30635087 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
 
 ## Modules with port evidence
 
@@ -87,7 +87,7 @@ A marker records that the module's bytes contain that literal; it characterises 
 | artifact capability surface | `artifact_capability_section` | 1 | 233145 |
 | MCP protocol surface | `resources/templates/list` | 1 | 10785 |
 
-Modules in the uncited set carrying no marker: **2205**. Binary payloads among them: **0**.
+Modules in the uncited set carrying no marker: **2202**. Binary payloads among them: **0**.
 
 ## Largest modules without a citation
 
