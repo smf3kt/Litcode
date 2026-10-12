@@ -12,21 +12,21 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 40,
+  "recordCount": 41,
   "summary": {
-    "modules": 36,
-    "bytes": 7843801,
+    "modules": 37,
+    "bytes": 7860466,
     "narrativeOnly": {
       "modules": 65,
       "bytes": 7358658
     },
     "unreviewed": {
-      "modules": 2264,
-      "bytes": 31635678
+      "modules": 2263,
+      "bytes": 31619013
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2214,
-    "uncitedBuiltinLeafOnly": 2248,
+    "uncitedWithoutMarker": 2213,
+    "uncitedBuiltinLeafOnly": 2247,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
@@ -623,6 +623,33 @@
       "reviewed": true,
       "declared": [
         "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own "
+      ]
+    },
+    {
+      "path": "chunk-f606a53w.js",
+      "bytes": 16665,
+      "sha256": "dd0a1dc61be769e7ea2ec7f4345b3b4f88996150d4d219b8ada90f03e89dd033",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "crypto",
+        "fs",
+        "os",
+        "path"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W13-verified-write.md"
+      ],
+      "portRecords": [
+        "research/ports/W13-verified-write.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the verification rule and of the two failure behaviours, placed in one shared writer. The recovered code has the verification inline in its text writer "
       ]
     },
     {
@@ -18074,9 +18101,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W13-verified-write.md"
+      ],
+      "portRecords": [
+        "research/ports/W13-verified-write.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-f62dt0vf.js",

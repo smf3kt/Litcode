@@ -154,6 +154,33 @@ test("write_file is atomic, refuses overwrite by default, and preserves mode", a
   assert.deepEqual(leftovers, []);
 });
 
+test("the write tools land the verified byte count on disk", async () => {
+  const ws = tmpDir();
+  const multibyte = "héllo — 世界\n";
+
+  await run("write_file", { path: "u.txt", content: multibyte }, makeContext(ws));
+  assert.equal(read(ws, "u.txt"), multibyte);
+  assert.equal(fs.statSync(path.join(ws, "u.txt")).size, Buffer.byteLength(multibyte, "utf8"));
+
+  // An edit that shortens a file leaves no tail of the longer content behind.
+  fs.writeFileSync(path.join(ws, "shrink.txt"), "x".repeat(4000));
+  await run("edit_file", { path: "shrink.txt", old_string: "x".repeat(4000), new_string: "two\n" },
+    makeContext(ws));
+  assert.equal(read(ws, "shrink.txt"), "two\n");
+  assert.equal(fs.statSync(path.join(ws, "shrink.txt")).size, 4);
+
+  // The tool refuses a non-regular target before any write is attempted, so the
+  // kept-content refusal belongs to the writer and is covered there.
+  fs.mkdirSync(path.join(ws, "occupied"));
+  await assert.rejects(
+    run("write_file", { path: "occupied", content: "x", overwrite: true }, makeContext(ws)),
+    /not a regular file/,
+  );
+
+  const leftovers = fs.readdirSync(ws).filter((name) => name.includes(".tmp"));
+  assert.deepEqual(leftovers, []);
+});
+
 test("edit_file requires a unique match and supports replace_all", async () => {
   const ws = tmpDir();
   write(ws, "e.txt", "alpha\nbeta\nalpha\n");

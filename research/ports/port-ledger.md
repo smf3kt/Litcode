@@ -7,9 +7,9 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 ## Summary
 
 - Modules on disk: **2365** (46838137 bytes).
-- Backed by a record under `research/ports/`: **36** (7843801 bytes).
+- Backed by a record under `research/ports/`: **37** (7860466 bytes).
 - Mentioned only by narrative records: **65** (7358658 bytes).
-- Not cited by any record: **2264** (31635678 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
+- Not cited by any record: **2263** (31619013 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
 
 ## Modules with port evidence
 
@@ -33,6 +33,7 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 | `chunk-dt139v0s.js` | 8232 | `117ba6c8aea1` | research/ports/W05-get-dispatch.md, research/ports/W05-get-resume.md, research/ports/W05-get-task-inputs.md | transport behavior copy. The recovered SSE handler parses each event, records that a request was seen, forces the replay message id when one is supplied, and ha / transport behavior copy. The recovered transport stores the last event id per stream, reports it through its resumption callback, re-sends it as last-event-id o / adapt dispatch/reply behavior to existing owned SSE/parser/host handler. Original generic dispatch includes all RPC families and task queues; this adaptation ac |
 | `chunk-e0gkzwq9.js` | 1032 | `57b301aedba5` | research/ports/W05-tasks.md | adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
 | `chunk-er0mj94r.js` | 81134 | `c8fcb0632b09` | research/ports/W01-refusal-notice.md | copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own  |
+| `chunk-f606a53w.js` | 16665 | `dd0a1dc61be7` | research/ports/W13-verified-write.md | copy of the verification rule and of the two failure behaviours, placed in one shared writer. The recovered code has the verification inline in its text writer  |
 | `chunk-f79f00pg.js` | 7582 | `73d50b557ed4` | research/ports/W05-sampling-images.md, research/ports/W05-tasks.md | rewrite of provider conversion; direct recovered provider-image conversion was not established in the bounded read. The existing owned media.ts imageInfo detect / adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
 | `chunk-fdwn5gdv.js` | 981 | `bdd8f0094eb4` | research/ports/W05-tasks.md | adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
 | `chunk-gyf58rwf.js` | 82836 | `7a6a01732760` | research/ports/W09-path-chain.md | rewrite of the chain walk onto this runtime's own path model, with its bounded refusal and its identity kept. This runtime already confined file tools by resolv |
@@ -75,7 +76,7 @@ A marker records that the module's bytes contain that literal; it characterises 
 | plugin marketplace UI | `manage-marketplaces` | 1 | 247454 |
 | MCP protocol surface | `resources/templates/list` | 1 | 10785 |
 
-Modules in the uncited set carrying no marker: **2214**. Binary payloads among them: **0**.
+Modules in the uncited set carrying no marker: **2213**. Binary payloads among them: **0**.
 
 ## Largest modules without a citation
 

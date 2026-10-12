@@ -14,6 +14,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
+import { atomicWriteFile } from "./atomic-write.js";
+
 import { z } from "zod";
 
 import type { ToolContext, ToolDefinition } from "./tools.js";
@@ -141,32 +143,9 @@ function workspaceReal(workspace: string): string {
 // ---------------------------------------------------------------------------
 
 function atomicWrite(real: string, content: string, mode?: number): void {
-  const dir = path.dirname(real);
-  fs.mkdirSync(dir, { recursive: true });
-  const tmp = path.join(dir, `.${path.basename(real)}.${crypto.randomBytes(6).toString("hex")}.tmp`);
-  let fd: number | undefined;
-  try {
-    fd = fs.openSync(tmp, "wx", mode ?? 0o644);
-    fs.writeFileSync(fd, content, "utf8");
-    fs.fsyncSync(fd);
-    fs.closeSync(fd);
-    fd = undefined;
-    fs.renameSync(tmp, real);
-  } catch (error) {
-    if (fd !== undefined) {
-      try {
-        fs.closeSync(fd);
-      } catch {
-        /* ignore */
-      }
-    }
-    try {
-      fs.rmSync(tmp, { force: true });
-    } catch {
-      /* ignore */
-    }
-    throw error;
-  }
+  // Delegated to the shared writer, so a notebook write is verified the same
+  // way a text write is.
+  atomicWriteFile(real, content, mode === undefined ? { label: "notebook_edit" } : { mode, label: "notebook_edit" });
 }
 
 // ---------------------------------------------------------------------------
