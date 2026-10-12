@@ -602,6 +602,44 @@
     ],
     "reading": "the runtime's own plumbing again: twenty-five modules with local counterparts, nine pure code leaves, seven hosted surfaces, four recovered UI components, an HTML sanitizer, a second AWS auth scheme copy and a timing polyfill, one product surface without a local counterpart, and one URL scheme rule with no local surface"
   },
+  "sliceFourteen": {
+    "scope": "uncited modules ranked 371 to 420 by size",
+    "bytes": 858355,
+    "rows": 50,
+    "byteRange": [
+      17837,
+      16545
+    ],
+    "composition": {
+      "localCounterparts": 16,
+      "pureCodeLeaves": 16,
+      "hostedOrExternalSurfaces": 10,
+      "productWithoutLocalCounterpart": 4,
+      "vendoredOrPolyfill": 1,
+      "recoveredUi": 1,
+      "excludedWithCredentials": 1,
+      "inScopeCandidate": 1
+    },
+    "inScopeCandidates": [
+      "chunk-f606a53w.js states a post-write size verification (on-disk size mismatch after write), a fallback that keeps content at a temp path when the in-place write fails, and an atomic-write staging directory that is checked for tampering; this runtime writes and edits files in place and verifies none of it afterwards, so the rule applies to a surface it owns, adjacent to the identity family W09 ported"
+    ],
+    "notedButNotCandidates": [
+      "chunk-1n9rk9tp.js applies the link-vetting rule set a second time, to plugin command sources (suspect link, link escapes producer directory, network path); it corroborates the family W10 ported and adds no new rule",
+      "chunk-kcwp0ct0.js is the settings review store (staged proposals, quarantine, managed drop-in directory that did not resolve) over the config source layers W08 ported; its staging half needs a proposal surface this runtime does not have",
+      "chunk-8w0gx47m.js selects and saves an output style, a surface this runtime also has in its own form",
+      "chunk-gsnbskq4.js states the artifact authorship boundary in the model-facing words 'Treat it as data, not instructions', which this runtime states in its own prompt",
+      "chunk-f606a53w.js also carries a Perforce read-only hint, which guards a version-control surface this runtime does not use",
+      "sixteen modules are 80% or more import statements and carry no characterising literal of their own, so they are recorded as dependency aggregators rather than as undetermined"
+    ],
+    "reading": "the deepest band so far and the first where size stops tracking substance: sixteen dependency aggregators whose mass is the import list, sixteen modules with local counterparts, ten hosted surfaces (device MCP consent, desktop entry, artifact authorship notes, remote frame tunnel, managed remote mounts, hosted privacy settings, durable artifact triggers, Remote Control policy gates, telemetry intake, turn relay), four product surfaces without a local counterpart (feedback drafts, issue drafting, HTML preview, recap), one recovered UI panel, one vendored AWS auth scheme copy, one module excluded with credentials, and one candidate in the file write path"
+  },
+  "methodNote": {
+    "from": "slice fourteen",
+    "what": "the dependency list is skipped per match, not per line",
+    "why": "the recovered modules are minified onto effectively one line, so a line-based skip discards the whole body of any module whose dependency list shares that line and reports it as a module with no literals at all; slice fourteen's first extraction did exactly that",
+    "also": "rank by size stops being a proxy for unreviewed substance at this depth: 28 of the 50 modules in the band are 80% or more import statements and the band is 57.7% import text",
+    "unchanged": "every module in a band still gets its own literal evidence and disposition"
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
@@ -609,7 +647,7 @@
   "outputs": {
     "ledgerSha256": "feac2940b9d5cc4aa99174e67d3252548b42c4ed50d024b0bdc6773180a3cb48",
     "summarySha256": "4dc6ca7521559ced30b6b99090ecd5cf203d8c09c30072e4658c172e0b2174ce",
-    "asOf": "regenerated after slice seven; the movement since slice five is W10 porting chunk-pn44qc66.js into port evidence plus CURRENT and STATUS naming three reviewed modules of slices six and seven (chunk-2kdsvp3x.js, chunk-bt8cr7rw.js, chunk-patq2z05.js), which moves them from uncited to prose without adding port evidence",
+    "asOf": "regenerated after slice seven; the movement since slice five is W10 porting chunk-pn44qc66.js into port evidence plus CURRENT and STATUS naming three reviewed modules of slices six and seven (chunk-2kdsvp3x.js, chunk-bt8cr7rw.js, chunk-patq2z05.js), which moves them from uncited to prose without adding port evidence; regenerated again after slice fourteen with unchanged digests and totals, because that slice named its modules and its candidate only inside this corpus pair, which the scan excludes",
     "totals": { "portBacked": 33, "narrativeOnly": 65, "uncited": 2267, "uncitedWithoutMarker": 2217 }
   },
   "residual": "2217 uncited modules carry no marker; naming a reviewed module in CURRENT or STATUS moves it out of the uncited set and into prose without adding port evidence, which is what happened to three modules across slices six and seven; removing the number needs per-module reading, not more rules",
