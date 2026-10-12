@@ -43,14 +43,14 @@ export type SessionConfig = {
   plugins?: PluginConfig;
   agentTypes?: AgentTypeInfo[];
   mcpServers?: Record<string, McpServerConfig>;
-  mcpClient?: { roots?: boolean; sampling?: boolean; elicitation?: boolean };
+  mcpClient?: { roots?: boolean; sampling?: boolean; samplingImages?: boolean; elicitation?: boolean };
   autoMemory?: boolean;
   dynamicInstructions?: boolean;
   watchConfig?: boolean;
   worktreeReturn?: string;
   configSources?: { userDir?: string; settingsFile?: string; managedSettingsFile?: string; overrides?: {
     autoMemory?: boolean; watchConfig?: boolean; allowShell?: boolean; permissions?: PermissionPolicy;
-    mcpClient?: { roots?: boolean; sampling?: boolean; elicitation?: boolean }; tasks?: boolean; subagents?: boolean;
+    mcpClient?: { roots?: boolean; sampling?: boolean; samplingImages?: boolean; elicitation?: boolean }; tasks?: boolean; subagents?: boolean;
   } };
   lspServers?: LspConfig;
   features?: { tasks: boolean; subagents: boolean; notebooks?: boolean; background?: boolean; scheduler?: boolean;
@@ -84,7 +84,7 @@ const policyFeaturesSchema = z.object({ tasks: z.boolean().optional(), subagents
   workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), taskProjections: z.boolean().optional(), schedulerJitter: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
   agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional() }).strict();
 export const managedPolicySchema = z.object({ allowShell: z.boolean().optional(), permissions: permissionPolicySchema.optional(),
-  features: policyFeaturesSchema.optional(), mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional() }).strict();
+  features: policyFeaturesSchema.optional(), mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional() }).strict();
 
 /** Pin only authored fields; permission arrays replace rather than concatenate. */
 export function applyManagedPolicy(config: SessionConfig, policy: SessionConfig['managedPolicy']): void {
@@ -127,14 +127,14 @@ export const configSchema = z.object({
     imports: z.array(z.object({ path: z.string(), content: z.string() }).strict()).optional(),
   }).strict()).optional(),
   mcpServers: mcpServersSchema.optional(),
-  mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional(),
+  mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional(),
   autoMemory: z.boolean().optional(),
   dynamicInstructions: z.boolean().optional(),
   watchConfig: z.boolean().optional(),
   worktreeReturn: z.string().min(1).optional(),
   configSources: z.object({ userDir: z.string().optional(), settingsFile: z.string().optional(), managedSettingsFile: z.string().optional(), overrides: z.object({
     autoMemory: z.boolean().optional(), watchConfig: z.boolean().optional(), allowShell: z.boolean().optional(), permissions: permissionPolicySchema.optional(),
-    mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional(),
+    mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional(),
     tasks: z.boolean().optional(), subagents: z.boolean().optional(),
   }).strict().optional() }).strict().optional(),
   lspServers: lspConfigSchema.optional(),

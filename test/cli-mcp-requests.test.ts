@@ -9,6 +9,8 @@ import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import { assertPaired } from '../src/agent.js';
 import { Session } from '../src/session.js';
+import { createHash } from 'node:crypto';
+const IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MODEL = 'gateway/mcp-cli-fixture';
@@ -49,7 +51,7 @@ async function readBody(request: http.IncomingMessage): Promise<any> {
   return text ? JSON.parse(text) : {};
 }
 
-async function fixture(t: TestContext, reverseMethods: string[] = []) {
+async function fixture(t: TestContext, reverseMethods: string[] = [], image = false) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cli-mcp-requests-')));
   const workspace = path.join(root, 'workspace space');
   const user = path.join(root, 'user');
@@ -66,7 +68,7 @@ async function fixture(t: TestContext, reverseMethods: string[] = []) {
   let serial = 0;
   const waiting = new Map<string, () => void>();
   const samplingParams = {
-    messages: [{ role: 'user', content: { type: 'text', text: 'SERVER_TASK_MARKER' } }],
+    messages: [{ role: 'user', content: image ? { type: 'image', data: IMAGE, mimeType: 'image/png' } : { type: 'text', text: 'SERVER_TASK_MARKER' } }],
     systemPrompt: 'SERVER_SYSTEM_DATA_MARKER', includeContext: 'allServers', maxTokens: 500,
     modelPreferences: { hints: [{ name: 'gateway/ignored-server-model' }] },
   };
@@ -139,7 +141,9 @@ async function fixture(t: TestContext, reverseMethods: string[] = []) {
       const args = ['--workspace', workspace, ...(options.resume ? ['--resume', options.resume]
         : ['--user-dir', user, '--model', MODEL, '--base-url', url]), '--output-format', 'json', ...extra,
       options.prompt ?? HOST_HISTORY];
-      const child = spawn(process.execPath, ['--import', 'tsx', path.join(ROOT, 'src/cli.ts'), ...args], {
+      const entry = process.env.HARNESS_SMOKE_COMPILED === '1' ? [path.join(ROOT, 'dist/cli.js')]
+        : ['--import', 'tsx', path.join(ROOT, 'src/cli.ts')];
+      const child = spawn(process.execPath, [...entry, ...args], {
         cwd: ROOT, env, detached: true, stdio: ['ignore', 'pipe', 'pipe'],
       });
       children.add(child);
@@ -213,6 +217,51 @@ function assertIsolatedSampling(request: WireRequest, samplingParams: object): v
   assert.equal(request.body.modelPreferences, undefined);
   assert.equal((samplingParams as any).includeContext, 'allServers');
 }
+
+test('CLI image sampling preserves bytes, pinned resume, shared budget and absent/managed gates', { timeout: 40_000 }, async t => {
+  const fx = await fixture(t, ['sampling/createMessage'], true);
+  fx.settings({ mcpClient: { sampling: true, samplingImages: true } });
+  fx.put('HARNESS.md', HOST_CONTEXT);
+  const first = success(await fx.run(['--effort', 'low', '--max-tokens', '128', '--max-model-calls', '2']));
+  const before = journal(fx.workspace, first.session_id);
+  assert.equal(before.metadata.config.mcpClient.samplingImages, true);
+  fx.put('.harness/settings.json', '{ malformed settings ignored on resume');
+  const resumed = success(await fx.run([], { resume: first.session_id, key: ROTATED_KEY }));
+  assert.equal(resumed.session_id, first.session_id);
+  assert.equal(resumed.model_calls, 2); assert.equal(resumed.usage.input_tokens, 20);
+  for (const index of [0, 2]) {
+    const body = fx.messages[index]!.body;
+    assert.equal(body.model, MODEL); assert.equal(body.max_tokens, 128);
+    assert.deepEqual(body.tool_choice, { type: 'none' }); assert.equal(body.tools, undefined);
+    assert.deepEqual(body.messages[0].content[1], { type: 'image', source: { type: 'base64', media_type: 'image/png', data: IMAGE } });
+    assert.match(body.messages[0].content[0].text, /SERVER_SYSTEM_DATA_MARKER/);
+    assert.doesNotMatch(JSON.stringify(body), new RegExp(`${HOST_CONTEXT}|${HOST_HISTORY}|${KEY}|${ROTATED_KEY}`));
+  }
+  for (const reply of fx.replies) assert.equal(reply.result.content.text, SAMPLE_TEXT);
+  fx.settings({ mcpClient: { sampling: true, samplingImages: true } });
+  const limited = await fx.run(['--max-model-calls', '1']);
+  assert.equal(limited.code, 2); assert.equal(JSON.parse(limited.stdout).model_calls, 1);
+  const count = fx.messages.length;
+  fx.settings({ mcpClient: { sampling: true } });
+  success(await fx.run()); assert.equal(fx.replies.at(-1)!.error.code, -32603);
+  assert.equal(fx.messages.length, count + 1);
+  fx.settings({ mcpClient: { sampling: true, samplingImages: true } });
+  fx.put('managed.json', JSON.stringify({ mcpClient: { samplingImages: false } }));
+  const managed = success(await fx.run(['--managed-settings', path.join(fx.workspace, 'managed.json')]));
+  assert.equal(fx.replies.at(-1)!.error.code, -32603);
+  assert.equal(journal(fx.workspace, managed.session_id).metadata.config.mcpClient.samplingImages, false);
+  const after = journal(fx.workspace, first.session_id);
+  assert.doesNotMatch(after.text, new RegExp(`${KEY}|${ROTATED_KEY}`));
+  assert.equal(after.text.includes(IMAGE), false);
+  const session = Session.open(fx.workspace, { id: first.session_id });
+  try { assertPaired(session.messages); } finally { session.close(); }
+  assert.equal(fs.readdirSync(path.join(fx.workspace, '.agent')).some(name => name.endsWith('.lock')), false);
+  assert.deepEqual(fx.failures, []);
+  if (process.env.HARNESS_SMOKE_RECEIPT === '1') console.log(JSON.stringify({ samplingImages: 'passed',
+    compiledCLI: process.env.HARNESS_SMOKE_COMPILED === '1', gatewayRequests: fx.messages.length,
+    pinnedResume: true, budget: true, legacyGate: true, managedGate: true, bytePreserving: true, locksReleased: true,
+    imageSha256: createHash('sha256').update(Buffer.from(IMAGE, 'base64')).digest('hex') }));
+});
 
 test('CLI roots flag overrides false settings and exposes exactly the current workspace URI', { timeout: 30_000 }, async t => {
   const fx = await fixture(t, ['roots/list']);

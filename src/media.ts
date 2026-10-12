@@ -115,7 +115,7 @@ async function readBytes(userPath: string, context: MediaContext): Promise<Buffe
 }
 
 type ImageInfo = { mediaType: Anthropic.Base64ImageSource["media_type"]; width: number; height: number };
-function imageInfo(bytes: Buffer): ImageInfo {
+export function imageInfo(bytes: Buffer): ImageInfo {
   let info: ImageInfo | undefined;
   if (bytes.length >= 33 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
     if (bytes.readUInt32BE(8) !== 13 || bytes.toString("ascii", 12, 16) !== "IHDR") throw new Error("Invalid PNG header");

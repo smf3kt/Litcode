@@ -161,6 +161,40 @@ test('approval and counting mutations cannot rewrite the pinned sampling request
   assert.doesNotMatch(provider.completions[0]!.messages[0]!.content as string, /mutation/);
 });
 
+test('image sampling pins byte-preserving native content, validates before effects and keeps legacy text behavior', async () => {
+  const data = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==';
+  const params: McpSamplingParams = { ...input(), systemPrompt: 'SERVER_IMAGE_SYSTEM', messages: [
+    { role: 'assistant', content: { type: 'image', data, mimeType: 'image/png' } },
+    ...input().messages,
+  ] };
+  const provider = new ScriptProvider(); let approvals = 0;
+  const callbacks = createMcpHostRequests({ config: { ...config(), mcpClient: { sampling: true, samplingImages: true } },
+    provider, approveSampling: async snapshot => { approvals++; snapshot.messages.length = 0; return true; } });
+  for (const content of [
+    { type: 'image', data: 'AAAA', mimeType: 'image/png' },
+    { type: 'image', data, mimeType: 'image/jpeg' },
+    { type: 'image', data: data.replace('==', ''), mimeType: 'image/png' },
+    { type: 'audio', data, mimeType: 'audio/wav' },
+  ]) await assert.rejects(async () => callbacks.sampling!({ ...params, messages: [{ role: 'user', content }] } as McpSamplingParams, signal(), context), /validated images only/);
+  assert.equal(approvals, 0); assert.equal(provider.counts.length, 0);
+  await assert.rejects(async () => host(provider).sampling!(params, signal(), context), /text messages only/);
+  const controller = new AbortController(); controller.abort();
+  await assert.rejects(async () => callbacks.sampling!(params, controller.signal, context), { name: 'AbortError' });
+  const result = await callbacks.sampling!(params, signal(), context);
+  const request = provider.completions[0]!;
+  assert.deepEqual(request.messages[0]!.content, [
+    { type: 'text', text: 'Quoted MCP server task data (JSON):\n' + JSON.stringify({
+      systemPrompt: params.systemPrompt, messages: [
+        { role: 'assistant', content: { type: 'image', mimeType: 'image/png', attachment: 1 } }, ...input().messages,
+      ],
+    }) },
+    { type: 'image', source: { type: 'base64', media_type: 'image/png', data } },
+  ]);
+  assert.deepEqual(provider.counts[0], request); assert.equal(request.model, config().model);
+  assert.equal(request.tools, undefined); assert.doesNotMatch(JSON.stringify(request), /PRIVATE_HOST/);
+  assert.equal(result.content.type, 'text'); assert.equal(approvals, 1);
+});
+
 test('unsupported and malformed input fails before approval or provider calls', async () => {
   const provider = new ScriptProvider(); let approvals = 0;
   const callbacks = createMcpHostRequests({ config: config(), provider, approveSampling: async () => { approvals++; return true; } });

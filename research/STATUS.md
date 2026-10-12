@@ -546,6 +546,10 @@ litcode-magpie now ships in private57file runtime and production-only offline in
 
 Opt-in session journal subscription binding passed compiled process restart/SIGKILL, pinned resume, cancellation/fork isolation and restore failure acceptance:3groups,37owned local requests. Final1027/1027, check/build and58file production installation passed. Remote-ack journal failure poisons replay; pending-close cleanup and direct-owner guards have regressions. Current identity, rewrite provenance and finite durability limits are consolidated in [ports/W05-persistence.md](ports/W05-persistence.md); prior records retain their version scopes.
 
+## MCP sampling image input (2026-10-12)
+
+Explicit pinned/managed samplingImages now reuses owned media header validation and constructs native Messages image blocks without altering bytes. Source host/CLI28/28, compiled CLI7local requests, final1029/1029, check/build and58file installed package passed. Only2tests added; existing cancellation/output/budget contracts reused. Source schema evidence, explicit rewrite boundary, identity and residual audio/array/pixel-decoding gaps are in [ports/W05-sampling-images.md](ports/W05-sampling-images.md).
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md
