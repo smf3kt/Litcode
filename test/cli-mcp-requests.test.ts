@@ -11,6 +11,7 @@ import { assertPaired } from '../src/agent.js';
 import { Session } from '../src/session.js';
 import { createHash } from 'node:crypto';
 const IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==';
+const AUDIO = 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MODEL = 'gateway/mcp-cli-fixture';
@@ -51,7 +52,7 @@ async function readBody(request: http.IncomingMessage): Promise<any> {
   return text ? JSON.parse(text) : {};
 }
 
-async function fixture(t: TestContext, reverseMethods: string[] = [], image = false, arrays = false) {
+async function fixture(t: TestContext, reverseMethods: string[] = [], image = false, arrays = false, audio = false) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'cli-mcp-requests-')));
   const workspace = path.join(root, 'workspace space');
   const user = path.join(root, 'user');
@@ -69,7 +70,8 @@ async function fixture(t: TestContext, reverseMethods: string[] = [], image = fa
   const waiting = new Map<string, () => void>();
   const samplingParams = {
     messages: [{ role: 'user', content: arrays ? [{ type: 'text', text: 'SERVER_TASK_MARKER' }, { type: 'image', data: IMAGE, mimeType: 'image/png' }, { type: 'text', text: 'AFTER_IMAGE' }]
-      : image ? { type: 'image', data: IMAGE, mimeType: 'image/png' } : { type: 'text', text: 'SERVER_TASK_MARKER' } }],
+      : image ? { type: 'image', data: IMAGE, mimeType: 'image/png' }
+      : audio ? { type: 'audio', data: AUDIO, mimeType: 'audio/wav' } : { type: 'text', text: 'SERVER_TASK_MARKER' } }],
     systemPrompt: 'SERVER_SYSTEM_DATA_MARKER', includeContext: 'allServers', maxTokens: 500,
     modelPreferences: { hints: [{ name: 'gateway/ignored-server-model' }] },
   };
@@ -399,4 +401,45 @@ test('CLI resume pins MCP capabilities independently of current settings and rot
   }
   assert.equal(fx.messages.length, 4);
   assert.deepEqual(fx.failures, []);
+});
+
+test('CLI audio sampling stores clips, pins the gate and keeps managed and legacy gates', { timeout: 40_000 }, async t => {
+  const fx = await fixture(t, ['sampling/createMessage'], false, false, true);
+  const client = { sampling: true, samplingAudio: true };
+  fx.settings({ mcpClient: client }); fx.put('HARNESS.md', HOST_CONTEXT);
+  const first = success(await fx.run(['--max-model-calls', '2']));
+  assert.equal(journal(fx.workspace, first.session_id).metadata.config.mcpClient.samplingAudio, true);
+  fx.put('.harness/settings.json', '{ ignored current config');
+  const resumed = success(await fx.run([], { resume: first.session_id, key: ROTATED_KEY }));
+  assert.equal(resumed.session_id, first.session_id); assert.equal(resumed.model_calls, 2);
+  const stored: string[] = [];
+  for (const index of [0, 2]) {
+    const body = fx.messages[index]!.body;
+    assert.equal(body.model, MODEL); assert.deepEqual(body.tool_choice, { type: 'none' }); assert.equal(body.tools, undefined);
+    const quoted = body.messages[0].content as string;
+    const reference = JSON.parse(quoted.split('\n')[1]).messages[0].content.text as string;
+    assert.match(reference, /^\[Audio from fixture\] Binary content \(audio\/wav, 44 B\) saved to \.harness\/attachments\/mcp-fixture-[0-9a-f-]{36}\.wav$/);
+    stored.push(path.join(fx.workspace, reference.slice(reference.indexOf('saved to ') + 'saved to '.length)));
+    assert.doesNotMatch(JSON.stringify(body), new RegExp(`${HOST_CONTEXT}|${HOST_HISTORY}|${KEY}|${ROTATED_KEY}`));
+  }
+  assert.equal(new Set(stored).size, 2);
+  for (const file of stored) assert.deepEqual(fs.readFileSync(file), Buffer.from(AUDIO, 'base64'));
+  fx.settings({ mcpClient: client }); const limited = await fx.run(['--max-model-calls', '1']);
+  assert.equal(limited.code, 2); assert.equal(JSON.parse(limited.stdout).model_calls, 1);
+  const before = fx.messages.length; fx.settings({ mcpClient: { sampling: true } });
+  // Only the parent turn reaches the gateway; the rejected sampling never spends a model call.
+  success(await fx.run()); assert.equal(fx.messages.length, before + 1); assert.equal(fx.replies.at(-1)!.error.code, -32603);
+  fx.settings({ mcpClient: client }); fx.put('managed.json', JSON.stringify({ mcpClient: { samplingAudio: false } }));
+  const managed = success(await fx.run(['--managed-settings', path.join(fx.workspace, 'managed.json')]));
+  assert.equal(journal(fx.workspace, managed.session_id).metadata.config.mcpClient.samplingAudio, false);
+  assert.equal(fx.replies.at(-1)!.error.code, -32603);
+  const text = journal(fx.workspace, first.session_id).text;
+  assert.equal(text.includes(AUDIO), false);
+  assert.doesNotMatch(text, new RegExp(`${KEY}|${ROTATED_KEY}`));
+  assert.equal(fs.readdirSync(path.join(fx.workspace, '.agent')).some(name => name.endsWith('.lock')), false);
+  assert.deepEqual(fx.failures, []);
+  if (process.env.HARNESS_SMOKE_RECEIPT === '1') console.log(JSON.stringify({ samplingAudio: 'passed',
+    compiledCLI: process.env.HARNESS_SMOKE_COMPILED === '1', gatewayRequests: fx.messages.length,
+    pinnedResume: true, managedGate: true, legacyGate: true, budget: true, bytePreserving: true, locksReleased: true,
+    audioSha256: createHash('sha256').update(Buffer.from(AUDIO, 'base64')).digest('hex') }));
 });

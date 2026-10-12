@@ -448,3 +448,58 @@ test('invalid host model and budgets fail at construction', () => {
     assert.throws(() => host(new ScriptProvider(), { ...config(), ...changes }), /Invalid MCP host/);
   }
 });
+
+const AUDIO_WAV = 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+
+test('audio sampling stores bounded clips in the private attachment store and keeps legacy rejection', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-host-audio-')));
+  const provider = new ScriptProvider(); let approvals = 0;
+  const settings: SessionConfig = { ...config(), workspace, mcpClient: { sampling: true, samplingAudio: true } };
+  const callbacks = createMcpHostRequests({ config: settings, provider,
+    approveSampling: async snapshot => { approvals++; snapshot.messages.length = 0; return true; } });
+  const audio = { type: 'audio' as const, data: AUDIO_WAV, mimeType: 'audio/wav' };
+  const single = (content: unknown): McpSamplingParams => ({ ...input(), messages: [{ role: 'user', content }] } as McpSamplingParams);
+  const oversize = Buffer.concat([Buffer.from(AUDIO_WAV, 'base64'), Buffer.alloc(16 * 1024)]).toString('base64');
+  try {
+    // Every rejection happens before approval or any provider effect.
+    for (const content of [
+      { ...audio, data: 'AAAA' },
+      { ...audio, mimeType: 'audio/mpeg' },
+      { ...audio, data: oversize },
+      { type: 'image', data: AUDIO_WAV, mimeType: 'image/png' },
+      { type: 'audio', data: Buffer.from('plainly not an audio container').toString('base64'), mimeType: 'audio/mpeg' },
+    ]) await assert.rejects(async () => callbacks.sampling!(single(content), signal(), context), /supported audio clips only/);
+    assert.equal(approvals, 0); assert.equal(provider.counts.length + provider.completions.length, 0);
+    const gated = createMcpHostRequests({ config: { ...settings, mcpClient: { sampling: true } }, provider, approveSampling: approve });
+    await assert.rejects(async () => gated.sampling!(single(audio), signal(), context), /text messages only/);
+    const arrays = createMcpHostRequests({ config: { ...settings, mcpClient: { sampling: true, samplingAudio: true } }, provider,
+      approveSampling: async snapshot => { approvals++; snapshot.messages.length = 0; return true; } });
+    await assert.rejects(async () => arrays.sampling!(single([audio]), signal(), context), /supported audio clips only/);
+
+    await callbacks.sampling!(single(audio), signal(), context);
+    // Audio never becomes a native block, so the whole user message stays the quoted JSON text.
+    const quoted = provider.completions[0]!.messages[0]!.content as string;
+    const reference = JSON.parse(quoted.split('\n')[1]).messages[0].content.text as string;
+    assert.match(reference, /^\[Audio from fixture\] Binary content \(audio\/wav, 44 B\) saved to \.harness\/attachments\/mcp-fixture-[0-9a-f-]{36}\.wav$/);
+    const stored = path.join(workspace, reference.slice(reference.indexOf('saved to ') + 'saved to '.length));
+    assert.deepEqual(fs.readFileSync(stored), Buffer.from(AUDIO_WAV, 'base64'));
+    assert.equal(fs.statSync(stored).mode & 0o777, 0o600);
+    assert.equal(fs.statSync(path.dirname(stored)).mode & 0o777, 0o700);
+    assert.equal(approvals, 1); assert.deepEqual(provider.counts[0], provider.completions[0]);
+    // MIME parameters are tolerated, exactly as the recovered image check tolerates them.
+    await callbacks.sampling!(single({ ...audio, mimeType: 'audio/wav; codecs=1' }), signal(), context);
+    const parameterized = JSON.parse((provider.completions[1]!.messages[0]!.content as string).split('\n')[1]).messages[0].content.text as string;
+    assert.match(parameterized, /\(audio\/wav, 44 B\) saved to \.harness\/attachments\/mcp-fixture-[0-9a-f-]{36}\.wav$/);
+    assert.doesNotMatch(JSON.stringify(provider.completions[0]), /PRIVATE_HOST|AUDIO_WAV/);
+
+    // A store that cannot be trusted degrades to an explicit note instead of writing outside the workspace.
+    const escaped = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-host-audio-escape-')));
+    fs.symlinkSync(os.tmpdir(), path.join(escaped, '.harness'));
+    const other = new ScriptProvider();
+    await createMcpHostRequests({ config: { ...settings, workspace: escaped }, provider: other, approveSampling: approve })
+      .sampling!(single(audio), signal(), context);
+    assert.match(other.completions[0]!.messages[0]!.content as string, /was not kept: it could not be saved\.\]/);
+    assert.equal(fs.existsSync(path.join(os.tmpdir(), 'attachments')), false);
+    fs.rmSync(escaped, { recursive: true, force: true });
+  } finally { fs.rmSync(workspace, { recursive: true, force: true }); }
+});
