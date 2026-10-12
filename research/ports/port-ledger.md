@@ -7,9 +7,9 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 ## Summary
 
 - Modules on disk: **2365** (46838137 bytes).
-- Backed by a record under `research/ports/`: **42** (9320538 bytes).
+- Backed by a record under `research/ports/`: **43** (9335146 bytes).
 - Mentioned only by narrative records: **64** (6660732 bytes).
-- Not cited by any record: **2259** (30856867 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
+- Not cited by any record: **2258** (30842259 bytes). These are recorded as unreviewed, never as ported or unported; no share is estimated.
 
 ## Modules with port evidence
 
@@ -40,6 +40,7 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 | `chunk-fdwn5gdv.js` | 981 | `bdd8f0094eb4` | research/ports/W05-tasks.md | adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
 | `chunk-gyf58rwf.js` | 82836 | `7a6a01732760` | research/ports/W09-path-chain.md | rewrite of the chain walk onto this runtime's own path model, with its bounded refusal and its identity kept. This runtime already confined file tools by resolv |
 | `chunk-htgmc2p1.js` | 44823 | `fa11fb18ab03` | research/ports/W06-skill-inline-fenced.md | copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio |
+| `chunk-kxgzv2t8.js` | 14608 | `b2055cc23785` | research/ports/W16-memory-contradiction.md | copy of the reconcile procedure onto the memory-maintenance instructions this runtime already ships, with every rewrite listed above. Both the judgment (which s |
 | `chunk-m00pavz3.js` | 11563 | `e4dcdda42fdf` | research/ports/skill-argument-expansion.md, research/ports/W01-permission-readings.md, research/ports/W06-skill-inline-fenced.md | adapt of the invariant, not a copy of the analyser. The recovered reading set is built from a bash parse tree that reports ambiguous *names* and *operands*; thi / copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio |
 | `chunk-msy0wfrd.js` | 19219 | `f489401ba9fb` | research/ports/W12-mcp-server-approval.md | copy of the decision model, rewritten onto this runtime's storage and answering surface. The recovered product keeps the answers as two name lists inside the me |
 | `chunk-n3ykh62m.js` | 697926 | `2a0e605d3c58` | research/ports/W14-attachment-refusals.md | copy of the classifier's categories and of the two refusals this runtime lacked, onto the media read path it already owns. `src/media.ts` already refuses an esc |
@@ -81,7 +82,7 @@ A marker records that the module's bytes contain that literal; it characterises 
 | artifact capability surface | `artifact_capability_section` | 1 | 233145 |
 | MCP protocol surface | `resources/templates/list` | 1 | 10785 |
 
-Modules in the uncited set carrying no marker: **2210**. Binary payloads among them: **0**.
+Modules in the uncited set carrying no marker: **2209**. Binary payloads among them: **0**.
 
 ## Largest modules without a citation
 

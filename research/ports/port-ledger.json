@@ -12,21 +12,21 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 43,
+  "recordCount": 44,
   "summary": {
-    "modules": 42,
-    "bytes": 9320538,
+    "modules": 43,
+    "bytes": 9335146,
     "narrativeOnly": {
       "modules": 64,
       "bytes": 6660732
     },
     "unreviewed": {
-      "modules": 2259,
-      "bytes": 30856867
+      "modules": 2258,
+      "bytes": 30842259
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2210,
-    "uncitedBuiltinLeafOnly": 2244,
+    "uncitedWithoutMarker": 2209,
+    "uncitedBuiltinLeafOnly": 2243,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
@@ -840,6 +840,28 @@
       "reviewed": true,
       "declared": [
         "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio"
+      ]
+    },
+    {
+      "path": "chunk-kxgzv2t8.js",
+      "bytes": 14608,
+      "sha256": "b2055cc237853b1b23905a53b3996dcc372bc9a5bc74fc2a5061f79efe620d78",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W16-memory-contradiction.md"
+      ],
+      "portRecords": [
+        "research/ports/W16-memory-contradiction.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the reconcile procedure onto the memory-maintenance instructions this runtime already ships, with every rewrite listed above. Both the judgment (which s"
       ]
     },
     {
@@ -23404,9 +23426,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W16-memory-contradiction.md"
+      ],
+      "portRecords": [
+        "research/ports/W16-memory-contradiction.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-kxkex3we.js",
