@@ -72,8 +72,10 @@ readline.createInterface({ input: process.stdin }).on('line', line => {
   });
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
+  // mcpServers live in the user layer: a checkout-declared server is held as a decision to answer.
+  fs.writeFileSync(path.join(workspace, "user/settings.json"), JSON.stringify({ mcpServers: { owned: { command: process.execPath, args: [serverScript] } } }));
   fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ permissions: { mode: "bypass", allow: [], deny: [] },
-    mcpServers: { owned: { command: process.execPath, args: [serverScript] } }, features: { mcpRecovery: recovery } }));
+    features: { mcpRecovery: recovery } }));
   const env = { ...process.env };
   for (const key of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(key)) delete env[key];
   Object.assign(env, { LLM_API_KEY: "owned-stdio-redial", LLM_MODEL: "fixture/redial", LLM_BASE_URL: url, LLM_AUTH: "bearer",

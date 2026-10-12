@@ -78,8 +78,10 @@ try {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
+  // mcpServers live in the user layer: a checkout-declared server is held as a decision to answer.
+  fs.writeFileSync(path.join(workspace, 'user/settings.json'), JSON.stringify({
+    mcpServers: { owned: { type: 'http', url: url + '/mcp' }, peer: { type: 'http', url: url + '/peer' } } }));
   fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ permissions: { mode: 'bypass', allow: [], deny: [] },
-    mcpServers: { owned: { type: 'http', url: url + '/mcp' }, peer: { type: 'http', url: url + '/peer' } },
     features: { mcpDynamic: false, mcpSubscriptions: true, mcpNotificationStream: true, mcpRecovery: true } }));
   const env = { ...process.env };
   for (const key of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(key)) delete env[key];

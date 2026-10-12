@@ -63,7 +63,9 @@ try {
   });
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
-  fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ mcpServers: { logs: { type: "http", url: url + "/mcp" } },
+  // mcpServers live in the user layer: a checkout-declared server is held as a decision to answer.
+  fs.writeFileSync(path.join(workspace, "user/settings.json"), JSON.stringify({ mcpServers: { logs: { type: "http", url: url + "/mcp" } } }));
+  fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({
     features: { mcpLogging: true, ...(streamMode ? { mcpNotificationStream: true } : {}) }, permissions: { mode: "bypass", allow: [], deny: [] } }));
   child = spawn(process.execPath, [...(compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")]), "--workspace", workspace,
     "--user-dir", path.join(workspace, "user"), "--interactive"], { cwd: root, stdio: ["pipe", "pipe", "pipe"],

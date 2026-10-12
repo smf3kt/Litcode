@@ -728,6 +728,7 @@ class McpStdioClient implements McpClient {
       if (!Object.hasOwn(message, "id") && method === "notifications/cancelled") {
         this.clientRequests.cancelled(message.params);
       }
+      if (!Object.hasOwn(message, "id") && method === "notifications/elicitation/complete") this.clientRequests.elicitationComplete(message.params);
       if (!Object.hasOwn(message, "id") && method === "notifications/resources/updated") this.resourceSubscriptions?.updated(message.params);
       if (!Object.hasOwn(message, "id") && method === "notifications/message") this.logging?.message(message.params);
       if (Object.hasOwn(message, "id")) {

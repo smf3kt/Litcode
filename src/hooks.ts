@@ -304,6 +304,10 @@ export type HookPayload = {
   teammate_name?: string;
   notification_type?: string;
   server_name?: string;
+  /** Elicitation / ElicitationResult: which request form the server used. */
+  mode?: "form" | "url";
+  /** Elicitation: the URL the person is asked to open, present only in URL mode. */
+  url?: string;
   elicitation_id?: string;
   worktree_path?: string;
   file_path?: string;

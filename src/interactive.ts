@@ -83,7 +83,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     let unregister: (() => void) | undefined;
     try {
       unregister = activeRuntime.registerElicitation?.(session.id, (params, requestSignal, context) =>
-        elicit(params, AbortSignal.any([signal, requestSignal]), context));
+        elicit(params, AbortSignal.any([signal, requestSignal]), context),
+        event => options.status.write(`MCP server "${event.serverName}" confirmed elicitation ${event.elicitationId} complete\n`));
       return await action(signal);
     } finally { unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false); }
   };
@@ -206,12 +207,29 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const controller = new AbortController(); formController = controller;
     signal = AbortSignal.any([signal, controller.signal]);
     const payload = { server_name: context.serverName, request_id: context.requestId,
-      prompt: params.message, requested_schema: params.requestedSchema };
+      prompt: params.message, mode: params.mode === 'url' ? 'url' as const : 'form' as const,
+      ...(params.mode === 'url' ? { url: params.url, elicitation_id: params.elicitationId } : { requested_schema: params.requestedSchema }) };
     try {
       const pre = await agent().emitHook('Elicitation', payload, signal);
       let result: McpElicitationResult = { action: 'cancel' };
       if (pre.blocked || pre.stopRequested) result = { action: 'decline' };
-      else {
+      else if (params.mode === 'url') {
+        // The recovered host hands the URL to its window, which opens it. This terminal surface
+        // shows the URL instead and the person opens it, so the answer is only accept/decline/cancel
+        // and no form content is collected.
+        const display = `\nMCP URL from ${context.serverName}:\n${params.message}\n${params.url}\n` +
+          'Open it, then answer :accept, :decline or :cancel: ';
+        if (Buffer.byteLength(display) > session.config.maxOutputBytes) throw new Error('MCP URL request exceeds the display budget');
+        const clean = display.replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const answer = (await readAnswer(clean, signal, true)).trim().toLowerCase();
+          if (answer === ':accept' || answer === ':decline' || answer === ':cancel') {
+            result = { action: answer.slice(1) as 'accept' | 'decline' | 'cancel' };
+            break;
+          }
+          output.write('Answer :accept, :decline or :cancel.\n');
+        }
+      } else {
         const display = `\nMCP form from ${context.serverName}:\n${params.message}\n` +
           JSON.stringify(params.requestedSchema, null, 2) + '\nEnter a JSON object, :decline or :cancel: ';
         if (Buffer.byteLength(display) > session.config.maxOutputBytes) throw new Error('MCP form exceeds the display budget');

@@ -55,7 +55,7 @@ test('factory advertises only explicitly supplied callbacks', async () => {
   const sampling = host(provider);
   assert.deepEqual(new McpClientRequestHandler('fixture', sampling).capabilities, { roots: { listChanged: false }, sampling: {} });
   const elicitation = createMcpHostRequests({ config: config(), provider, elicit: async () => ({ action: 'decline' }) });
-  assert.deepEqual(new McpClientRequestHandler('fixture', elicitation).capabilities, { roots: { listChanged: false }, elicitation: { form: {} } });
+  assert.deepEqual(new McpClientRequestHandler('fixture', elicitation).capabilities, { roots: { listChanged: false }, elicitation: { form: {}, url: {} } });
   assert.equal(provider.counts.length + provider.completions.length, 0);
 });
 

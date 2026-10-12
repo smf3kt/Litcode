@@ -351,7 +351,7 @@ export type Runtime = {
   reconnectMcp?: NonNullable<McpConnection["reconnect"]>;
   notificationStreams?: NonNullable<McpConnection["notificationStreams"]>;
   listWorkflows?(config: SessionConfig, owner: string): import('./workflow.js').WorkflowView[];
-  registerElicitation?(owner: string, callback: NonNullable<McpClientRequests['elicitation']>): () => void;
+  registerElicitation?(owner: string, callback: NonNullable<McpClientRequests['elicitation']>, onComplete?: NonNullable<McpClientRequests['elicitationComplete']>): () => void;
   /** Tools pinned for the initial configuration. */
   readonly tools: ToolDefinition[];
   /** Rebuild the tool set for a configuration (defaults to the initial one). */
@@ -419,7 +419,7 @@ export async function createRuntime(
     return tools;
   };
 
-  let elicitation: { owner: string; controller: AbortController; callback: NonNullable<McpClientRequests['elicitation']> } | undefined;
+  let elicitation: { owner: string; controller: AbortController; callback: NonNullable<McpClientRequests['elicitation']>; onComplete?: NonNullable<McpClientRequests['elicitationComplete']> } | undefined;
   const hookCallbacks = options.hookCallbacks?.(structuredClone(config));
   const callbackHooks = (): HookRunOptions => hookCallbacks ? {
     resolveCallbackHook: async (definition, event, payload, hookSignal) => {
@@ -437,6 +437,9 @@ export async function createRuntime(
         elicitation ? elicitation.callback(params, AbortSignal.any([requestSignal, elicitation.controller.signal]), requestContext)
           : Promise.resolve({ action: 'cancel' as const }) } : {}) });
     if (!config.mcpClient.roots) delete clientRequests.roots;
+    // A completion notice belongs to the turn that owns the elicitation UI, the same way the
+    // callback does; with no owner it is dropped rather than queued.
+    if (config.mcpClient.elicitation) clientRequests.elicitationComplete = event => { elicitation?.onComplete?.(event); };
   }
   // connectMcpServers closes what it spawned before rethrowing, so a failed
   // connect leaves nothing behind for this function to clean up.
@@ -901,10 +904,10 @@ export async function createRuntime(
         const accessor = workflowAccessors.get(owner);
         return accessor ? accessor().list() : [];
       },
-      registerElicitation(owner, callback) {
+      registerElicitation(owner, callback, onComplete) {
         scopeFor(owner);
         if (elicitation) throw new Error('MCP elicitation UI is already owned by an active turn');
-        const entry = { owner, callback, controller: new AbortController() }; elicitation = entry;
+        const entry = { owner, callback, onComplete, controller: new AbortController() }; elicitation = entry;
         return () => { entry.controller.abort(); if (elicitation === entry) elicitation = undefined; };
       },
       reconfigure: current => createRuntime(current, provider, signal, options),

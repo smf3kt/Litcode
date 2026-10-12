@@ -71,6 +71,7 @@ const sampling = { messages: [{ role: "user", content: { type: "text", text: "fi
 const sampled = { role: "assistant" as const, content: { type: "text" as const, text: "fixture response" }, model: "fixture-model", stopReason: "endTurn" };
 function request(id: string | number, method: string, params: unknown = {}): any { return { jsonrpc: "2.0", id, method, params }; }
 function cancelled(id: string | number): any { return { jsonrpc: "2.0", method: "notifications/cancelled", params: { requestId: id, reason: "fixture" } }; }
+function note(method: string, params: unknown): any { return { jsonrpc: "2.0", method, params }; }
 
 // Inline child script and loopback HTTP exercise real transport dispatch/replies.
 const STDIO = String.raw`
@@ -179,7 +180,7 @@ for (const transport of ["stdio", "http"] as const) {
       sampling: (params, signal, ctx) => { assert.equal(params.maxTokens, 64); assert.equal(ctx.serverName, "fixture"); assert.equal(signal.aborted, false); return sampled; },
     };
     await fixture(transport, { clientRequests: callbacks }, async (f) => {
-      assert.deepEqual(f.seen()[0].params.capabilities, { roots: { listChanged: false }, elicitation: { form: {} }, sampling: {} });
+      assert.deepEqual(f.seen()[0].params.capabilities, { roots: { listChanged: false }, elicitation: { form: {}, url: {} }, sampling: {} });
       await f.run([request("r", "roots/list"), ...[1, 2, 3].map((id) => request(`e${id}`, "elicitation/create", { ...form, _meta: { trace: "fixture" } })), request("s", "sampling/createMessage", sampling)]);
       const out = new Map(replies(f).map((item) => [item.id, item.result]));
       assert.deepEqual(out.get("r"), { roots: [{ uri: "file:///tmp/fixture", name: "fixture" }] });
@@ -187,6 +188,33 @@ for (const transport of ["stdio", "http"] as const) {
       assert.deepEqual(out.get("e2"), { action: "decline" }); assert.deepEqual(out.get("e3"), { action: "cancel" });
       assert.deepEqual(out.get("s"), sampled);
       if (transport === "http") assert.ok(replies(f).every((item) => item._path === "/mcp" && item._headers["mcp-session-id"] === "fixture-session"));
+    });
+  });
+
+  test(`${transport}: URL elicitation round-trips, refuses form content and forwards completion notices`, async () => {
+    const seenParams: unknown[] = [];
+    const completions: unknown[] = [];
+    let withContent = false;
+    const callbacks: McpClientRequests = {
+      elicitation: (params) => { seenParams.push(JSON.parse(JSON.stringify(params))); return withContent ? { action: "accept", content: { answer: "x" } } : { action: "accept" }; },
+      elicitationComplete: (event) => { completions.push(event); },
+    };
+    await fixture(transport, { clientRequests: callbacks }, async (f) => {
+      const url = { mode: "url", message: "Open the fixture page", url: "https://example.invalid/start?q=1", elicitationId: "elicit-1" };
+      await f.run([request("u1", "elicitation/create", url), note("notifications/elicitation/complete", { elicitationId: "elicit-1" })]);
+      assert.deepEqual(replies(f)[0].result, { action: "accept" });
+      assert.deepEqual(seenParams, [url]);
+      await until(() => completions.length === 1);
+      assert.deepEqual(completions, [{ serverName: "fixture", elicitationId: "elicit-1" }]);
+      // A notice this client cannot correlate is dropped without disturbing the connection, and URL
+      // mode collects no form data, so a response carrying content is refused.
+      withContent = true;
+      await f.run([note("notifications/elicitation/complete", { elicitationId: "" }),
+        note("notifications/elicitation/complete", { elicitationId: "elicit-2".repeat(40) }),
+        note("notifications/elicitation/complete", {}), request("u2", "elicitation/create", url)]);
+      await delay(25);
+      assert.equal(completions.length, 1);
+      assert.equal(replies(f).at(-1).error.code, -32603);
     });
   });
 
@@ -230,10 +258,10 @@ for (const transport of ["stdio", "http"] as const) {
       sampling: () => { invoked++; throw new Error("secret token password"); },
     };
     await fixture(transport, { clientRequests: callbacks }, async (f) => {
-      const messages = [request("url", "elicitation/create", { mode: "url", url: "https://secret.invalid/", message: "secret" }), request("bad-schema", "elicitation/create", { ...form, requestedSchema: { type: "object", properties: { nested: { type: "object" } } } }), request("bad-sampling", "sampling/createMessage", { ...sampling, maxTokens: -1 }), request("tools", "sampling/createMessage", { ...sampling, tools: [] }), request("input-cap", "sampling/createMessage", { ...sampling, systemPrompt: "x".repeat(MCP_CLIENT_REQUEST_MAX_INPUT_BYTES) }), request("root", "roots/list"), request("form", "elicitation/create", form), request("throw", "sampling/createMessage", sampling)];
+      const messages = [request("url", "elicitation/create", { mode: "url", url: "not-a-url", message: "secret", elicitationId: "secret-id" }), request("url-no-id", "elicitation/create", { mode: "url", url: "https://secret.invalid/", message: "secret" }), request("bad-schema", "elicitation/create", { ...form, requestedSchema: { type: "object", properties: { nested: { type: "object" } } } }), request("bad-sampling", "sampling/createMessage", { ...sampling, maxTokens: -1 }), request("tools", "sampling/createMessage", { ...sampling, tools: [] }), request("input-cap", "sampling/createMessage", { ...sampling, systemPrompt: "x".repeat(MCP_CLIENT_REQUEST_MAX_INPUT_BYTES) }), request("root", "roots/list"), request("form", "elicitation/create", form), request("throw", "sampling/createMessage", sampling)];
       await f.run(messages);
       assert.equal(invoked, 3);
-      assert.deepEqual(replies(f).map((item) => item.error.code).sort(), [-32603, -32603, -32603, -32602, -32602, -32602, -32602, -32602].sort());
+      assert.deepEqual(replies(f).map((item) => item.error.code).sort(), [-32603, -32603, -32603, -32602, -32602, -32602, -32602, -32602, -32602].sort());
       assert.ok(replies(f).every((item) => !JSON.stringify(item.error).includes("secret")));
     });
   });

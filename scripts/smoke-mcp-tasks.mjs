@@ -137,7 +137,9 @@ else if(m.method==='tasks/result')reply(m.id,{content:[{type:'text',text:'STDIO_
   const outstanding = invoke(lifetime, 'cancel'); const checked = assert.rejects(outstanding, /cancel/i);
   await new Promise(resolve => setTimeout(resolve, 25)); await lifetime.close(); await checked;
   fs.mkdirSync(path.join(workspace, '.harness')); fs.mkdirSync(path.join(workspace, 'user'));
-  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true, mcpNotificationStream: getInputs, ...(durable ? { mcpPersistence: true, mcpRecovery: true } : {}) } : { mcpTasks: true, ...(getInputs ? { mcpNotificationStream: true, mcpRecovery: true } : {}) }), mcpDynamic: false } }));
+  // mcpServers live in the user layer: a checkout-declared server is held as a decision to answer.
+  fs.writeFileSync(path.join(workspace, 'user/settings.json'), JSON.stringify({ mcpServers: config }));
+  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true, mcpNotificationStream: getInputs, ...(durable ? { mcpPersistence: true, mcpRecovery: true } : {}) } : { mcpTasks: true, ...(getInputs ? { mcpNotificationStream: true, mcpRecovery: true } : {}) }), mcpDynamic: false } }));
   const run = async (resume, continuing = false) => {
     const env = { ...process.env }; for (const name of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(name)) delete env[name];
     Object.assign(env, { LLM_API_KEY: 'OWNED_TASK_KEY', LLM_MODEL: 'fixture/task', LLM_BASE_URL: url, LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false' });

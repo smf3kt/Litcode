@@ -69,9 +69,12 @@ try {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
+  // mcpServers live in the user layer: a checkout-declared server is held as a decision to answer.
+  fs.writeFileSync(path.join(workspace, 'user/settings.json'), JSON.stringify({
+    mcpServers: { peer: { type: 'http', url: url + '/peer' }, down: { type: 'http', url: url + '/down' } },
+  }));
   fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({
     permissions: { mode: 'bypass', allow: [], deny: [] },
-    mcpServers: { peer: { type: 'http', url: url + '/peer' }, down: { type: 'http', url: url + '/down' } },
     features: { mcpDynamic: true, mcpRecovery: true },
   }));
   const env = { ...process.env };
