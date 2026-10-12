@@ -6,7 +6,7 @@
 
 本地工作包W04恢复链、W05启动/慢恢复、W06已使用技能消费者及W07本地交付已完成有限验收；功能族整体仍为Partial。当前全量1027/1027、零失败；跨进程MCP订阅包完成编译CLI真实SIGKILL、固定配置、fork隔离、取消/失败恢复，58文件离线安装通过，见[W05持久化](ports/W05-persistence.md)。历史全产品来源审计、完整TUI/MCP扩展与事件重放仍是功能族缺口，不以有限包验收代替。
 
-当前身份与17项验证记录见[本地交付证据](ports/local-completion-evidence.json)。W01/W02及历史基线保持原版本作用域。Git已按用户要求初始化，main初始05d1162，工作位于work/complete-runtime-work；无remote。真实Magpie管理链待验，限定搜索未定位管理端。
+当前身份与验证记录见[持久化证据](ports/W05-persistence-evidence.json)，源码182文件离线重建51个构建文件字节一致。原17项[本地交付证据](ports/local-completion-evidence.json)、W01/W02及历史基线保持原版本作用域。Git已按用户要求初始化，main初始05d1162，工作位于work/complete-runtime-work；无remote。真实Magpie管理链待验，限定搜索未定位管理端。
 
 ## 优先工作包
 
