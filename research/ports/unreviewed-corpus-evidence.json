@@ -694,6 +694,45 @@
     ],
     "reading": "the thinnest band so far - 77.2% import text, 39 modules at 85% or more and 34 with no literal at all - over eight modules with local counterparts, four hosted surfaces (preview tunnel, Remote Control bridge, artifact reads, cloud review), one product surface without a local counterpart (fast mode gating), one vendored AWS SDK SSO copy, one module excluded with credentials, and one candidate in the memory store"
   },
+  "sliceSeventeen": {
+    "scope": "uncited modules ranked 521 to 620 by size, the first 100-rank band",
+    "bytes": 1332357,
+    "rows": 100,
+    "rowsWithContent": 40,
+    "byteRange": [
+      14575,
+      12761
+    ],
+    "importSharePercent": 70.1,
+    "modulesAtNinetyFivePlusPercentImports": 58,
+    "composition": {
+      "localCounterparts": 20,
+      "pureCodeLeaves": 1,
+      "dependencyAggregators": 60,
+      "hostedOrExternalSurfaces": 13,
+      "vendoredOrPolyfill": 2,
+      "excludedWithCredentials": 2,
+      "productWithoutLocalCounterpart": 1,
+      "recoveredUi": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-h79w96jw.js inspects Git submodule state with a deadline and unverifiable states (gitdir_outside_modules, nested_repository); it extends the Git-directory candidate slice fifteen recorded rather than opening a second one for the same family",
+      "chunk-73z04srf.js identifies a file by serial with unstable-identity states, the identity family W09 ported",
+      "chunk-fcpmj1yh.js guards git URLs (control characters, %00, a square bracket git could read as the host), the W09/W10 vetting family applied to a URL rather than a path",
+      "chunk-w3s83mfm.js is the AGENTS.md project-instruction loader whose imports W10 vets; the loader itself is this runtime's own",
+      "chunk-jby75btn.js states the data-not-instructions boundary for design-system files, as other modules in this corpus do",
+      "sixty modules are dependency aggregators with no literal of their own, fifty-eight of them 95% or more import statements and two carrying a single one-word marker, so they are recorded as a group"
+    ],
+    "reading": "the first 100-rank band and the same shape as slice sixteen at double width: sixty dependency aggregators, one pure code leaf, twenty modules with local counterparts, thirteen hosted surfaces, two vendored AWS packages, two modules excluded with credentials, one product surface without a local counterpart, one recovered UI component, and no candidate of its own - two of its modules are pointers into the Git-directory candidate slice fifteen opened and the identity family W09 ported"
+  },
+  "methodNoteTwo": {
+    "from": "slice seventeen",
+    "what": "band width widens from 50 to 100 ranks",
+    "why": "slice sixteen showed that most of a 50-module band is mechanical to dispose - the aggregator check is one import-share measurement and one literal scan per module - while the readable modules are as deep as before, so doubling the band keeps the same depth of reading at half the number of passes",
+    "unchanged": "every module in a band is still checked individually for import share and literals, modules with content still get their own row, aggregators are recorded as a group with the reason stated, and bands stay contiguous"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
