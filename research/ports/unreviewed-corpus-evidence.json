@@ -550,6 +550,31 @@
     "why": "eleven bands have shown the per-module work is the same at either width, and the remaining set is large enough that halving the number of passes matters more than keeping the width uniform with the earlier slices",
     "unchanged": "every module in a band still gets its own literal evidence and disposition, and bands stay contiguous"
   },
+  "sliceTwelve": {
+    "scope": "uncited modules ranked 271 to 320 by size (first 50-rank band)",
+    "bytes": 1045813,
+    "rows": 50,
+    "byteRange": [
+      19670,
+      21613
+    ],
+    "composition": {
+      "localCounterparts": 23,
+      "pureCodeLeaves": 11,
+      "productWithoutLocalCounterpart": 7,
+      "hostedOrExternalSurfaces": 5,
+      "vendoredLibraries": 2,
+      "excludedWithCredentials": 2,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "notedButNotCandidates": [
+      "chunk-f0442373.js opens its output directory with O_NOFOLLOW and caps at 8 MiB and 5 GiB, the same family of rules this runtime applies to its own reads, against a different output surface",
+      "chunk-g9hh4c1d.js states what a session is told when something would stay on the machine, which this runtime states in its own words",
+      "eleven modules carry no literal of eighteen characters or more and are recorded as undetermined"
+    ],
+    "reading": "the first 50-rank band: twenty-three modules with local counterparts, eleven pure code leaves, seven product surfaces without a local counterpart, five hosted surfaces, the AWS SDK auth scheme provider and ajv, and two modules excluded with credentials"
+  },
   "generator": {
     "path": "scripts/port-ledger.mjs",
     "sha256": "59e62acaf702a93019b3f22d8979c00de48b71f1c2729a484db1c22529f44878"
