@@ -251,3 +251,69 @@ test("GET recovery has a lifetime attempt budget and close clears backoff withou
     assert.deepEqual(boundedRemote.failures, []);
   } finally { await boundedConnection.close(); await boundedRemote.close(); t.mock.restoreAll(); }
 });
+test("GET resume sends the last event id and honors a server retry", async () => {
+  const { createServer } = await import("node:http");
+  const { connectMcpServers } = await import("../src/mcp.js");
+  const replies: any[] = [], failures: unknown[] = [];
+  let gets = 0, tokens: unknown[] = [], resumes = 0, roots = 0, forms = 0, firstEndedAt = 0, resumeAt = 0, resumeToken: unknown;
+  const until = async (check: () => boolean, label: string) => {
+    const end = Date.now() + 4000;
+    while (!check() && Date.now() < end) await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.ok(check(), label);
+  };
+  const event = (res: import("node:http").ServerResponse, id: string, message: unknown) =>
+    res.write("id: " + id + "\ndata: " + JSON.stringify(message) + "\n\n");
+  const note = (data: string) => ({ jsonrpc: "2.0", method: "notifications/message", params: { level: "info", data } });
+  const form = (id: string) => ({ jsonrpc: "2.0", id, method: "elicitation/create",
+    params: { message: "resumed form", requestedSchema: { type: "object", properties: { label: { type: "string" } }, required: ["label"] } } });
+  const server = createServer((req, res) => {
+    void (async () => {
+      if (req.method === "GET") {
+        res.writeHead(200, { "content-type": "text/event-stream" }); res.flushHeaders();
+        // The stream that carries a resume token answers replayed requests; the
+        // first stream only carries notifications and asks for a 60ms retry.
+        if (req.headers["last-event-id"] === undefined) {
+          event(res, "e1", note("one"));
+          event(res, "e2", note("two"));
+          res.write("retry: 60\n\n");
+          firstEndedAt = Date.now();
+          res.end();
+        } else {
+          resumes++; resumeAt = Date.now(); resumeToken = req.headers["last-event-id"];
+          event(res, "e3", { jsonrpc: "2.0", id: "roots-a", method: "roots/list", params: {} });
+          event(res, "e4", form("form-a"));
+          // A resumed server may replay finished work later; the second copy must not run again.
+          setTimeout(() => { event(res, "e5", form("form-a")); event(res, "e6", { jsonrpc: "2.0", id: "roots-a", method: "roots/list", params: {} }); }, 50);
+        }
+        return;
+      }
+      if (req.method === "DELETE") { res.writeHead(204).end(); return; }
+      let text = ""; for await (const chunk of req) text += chunk;
+      const m = JSON.parse(text);
+      const reply = (value: unknown) => { res.writeHead(200, { "content-type": "application/json" }); res.end(JSON.stringify({ jsonrpc: "2.0", id: m.id, result: value })); };
+      if (m.method === "initialize") reply({ protocolVersion: "2025-06-18", capabilities: { tools: {} } });
+      else if (m.method === "tools/list") reply({ tools: [] });
+      else { replies.push(m); res.writeHead(202).end(); }
+    })().catch((error) => { failures.push(error); res.destroy(); });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address(); assert.ok(address && typeof address !== "string");
+  const context = { workspace: process.cwd(), signal: new AbortController().signal, maxOutputBytes: 24000, allowShell: false };
+  const connection = await connectMcpServers({ srv: { type: "http" as const, url: "http://127.0.0.1:" + address.port + "/mcp" } }, context,
+    { notificationStream: true, recovery: true, requestTimeoutMs: 3000,
+      clientRequests: { roots: () => { roots++; return [{ uri: new URL("file://" + process.cwd()).href }]; },
+        elicitation: () => { forms++; return { action: "accept", content: { label: "owned" } }; } } });
+  try {
+    await until(() => resumes === 1, "GET resume " + JSON.stringify({gets, tokens, ended: !!firstEndedAt, status: connection.notificationStreams!().srv}));
+    assert.equal(resumeToken, "e2");
+    assert.ok(resumeAt - firstEndedAt < 700, "server retry delay is honored");
+    await until(() => replies.filter((m) => m.id === "form-a").length === 2 && roots === 2, "resumed GET work");
+    assert.equal(forms, 2, "a resumed stream may replay a completed request");
+    assert.deepEqual(replies.filter((m) => m.id === "form-a").map((m) => m.result.content.label), ["owned", "owned"]);
+    assert.equal(replies.filter((m) => m.id === "roots-a").length, 2);
+    await until(() => connection.notificationStreams!().srv?.lastEventId === "e6", "resume token advanced");
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    assert.equal(resumes, 1, "a stream that carried a request is not reopened again");
+    assert.deepEqual(failures, []);
+  } finally { await connection.close(); server.closeAllConnections(); await new Promise<void>((resolve) => server.close(() => resolve())); }
+});

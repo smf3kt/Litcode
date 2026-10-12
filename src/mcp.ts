@@ -162,6 +162,7 @@ export type McpNotificationStreamStatus = {
   state: "starting" | "active" | "unavailable" | "ended" | "failed" | "closed";
   reason?: string;
   reopenAttempts?: number;
+  lastEventId?: string;
 };
 
 export type McpToolInfo = {
@@ -1657,8 +1658,8 @@ export async function connectMcpServers(
       .replace("no background HTTP GET stream", "owned HTTP GET SSE stream enabled")
       .replace("HTTP observes only active POST SSE responses, with no GET stream or continuous HTTP push", "HTTP observes POST SSE plus its owned GET SSE notification stream")
       .replace("active HTTP POST SSE responses only; no GET stream or continuous HTTP push", "HTTP POST SSE responses plus its owned GET SSE notification stream")),
-      `HTTP GET notification stream: one owned stream after initialize; same URL/session/protocol/auth headers and redirect restrictions; ${settings.requestTimeoutMs}ms header/read idle deadline; ${settings.recovery ? "recovery enables at most 5 GET-only reopens per transport lifetime after EOF, idle timeout or transport failure at 1/2/4/8/8 seconds; 404/405 unavailable and 204 ended are terminal, as are authentication, redirect, malformed/oversized SSE and other HTTP status failures; no event replay, and a stream that carried a client request is never reopened" : "404/405 unavailable, 204/EOF ended; no retry, reconnect or event replay"}; failures do not disable POST`,
-      `HTTP GET dispatch: logging/resource updates/tools list changes/cancellation notifications; every client request (roots/list, form elicitation/create, sampling/createMessage) is dispatched under the same callback, capability, ownership, cancellation and bounded POST-reply contract as POST SSE, so an unsupported method receives a bounded error reply; RPC responses are ignored; a stream that carried a request is not auto-reopened; incremental bounds 1MiB/event, 64KiB/line, 8MiB/read chunk without whole-stream accumulation or total event limit; close aborts reader and awaits at most 1000ms`]
+      `HTTP GET notification stream: one owned stream after initialize; same URL/session/protocol/auth headers and redirect restrictions; ${settings.requestTimeoutMs}ms header/read idle deadline; ${settings.recovery ? "recovery enables at most 5 GET-only reopens per transport lifetime after EOF, idle timeout or transport failure, delayed by the latest server SSE retry value when present and otherwise by 1/2/4/8/8 seconds; a reopen sends the last observed SSE event id as last-event-id, which a bare id field clears, so the server keeps ownership of payload replay; 404/405 unavailable and 204 ended are terminal, as are authentication, redirect, malformed/oversized SSE and other HTTP status failures; no client-side payload replay, and a stream that carried a client request is never reopened" : "404/405 unavailable, 204/EOF ended; no retry, reconnect or event replay"}; failures do not disable POST`,
+      `HTTP GET dispatch: logging/resource updates/tools list changes/cancellation notifications; every client request (roots/list, form elicitation/create, sampling/createMessage) is dispatched under the same callback, capability, ownership, cancellation and bounded POST-reply contract as POST SSE, so an unsupported method receives a bounded error reply;; a replayed request is served again, so replay dedupe remains the server responsibility RPC responses are ignored; a stream that carried a request is not auto-reopened; incremental bounds 1MiB/event, 64KiB/line, 8MiB/read chunk without whole-stream accumulation or total event limit; close aborts reader and awaits at most 1000ms`]
     : finalLimits;
   let closed = false;
   let subscriptionsBound = false;

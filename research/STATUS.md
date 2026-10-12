@@ -578,6 +578,10 @@ The recovered sampling branch stores audio bytes and returns a bounded text refe
 
 The recovered SSE handler hands every message to one shared dispatch and suppresses reconnection once a request was seen. This package copies that: an opt-in owned GET stream serves every client request under the existing POST callback, ownership, cancellation and bounded-reply contract, leaves notification-only streams on the finite reopen budget, and keeps unconfigured methods at a bounded -32601. Transport regression, actual CLI chains and the 1043/1043 baseline bind the finite contract. Provenance and final identity in [ports/W05-get-dispatch.md](ports/W05-get-dispatch.md).
 
+## GET stream resume (2026-10-12)
+
+The recovered transport keeps the last SSE event id, replays it as last-event-id on the reconnect request and prefers a server retry value over its own backoff. This package copies that shape under the existing five-reopen budget and the rule that a stream carrying a client request is never reopened. A replay dedupe was implemented and then removed: the recovered transport has none, and it broke the real CLI standard/durable chain that reuses a request id. Provenance and final identity in [ports/W05-get-resume.md](ports/W05-get-resume.md).
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

@@ -14,7 +14,7 @@ const durable = process.argv.includes('--durable');
 if (durable && !standard) throw new Error('--durable requires --standard');
 let savedTaskId;
 // --get without --standard exercises unrelated GET client requests on a legacy-task connection.
-let getStream, gets = 0, getClosed = 0, getRoots = false;
+let getStream, gets = 0, getClosed = 0, getRoots = false, getSeq = 0, getResumes = 0;
 
 const related = 'io.modelcontextprotocol/related-task';
 const taskState = (taskId, status = 'working') => ({ taskId, status, ttl: 30000, createdAt: '2026-10-12T00:00:00Z', lastUpdatedAt: '2026-10-12T00:00:00Z', pollInterval: 250 });
@@ -31,9 +31,15 @@ const server = http.createServer((req, res) => {
   void (async () => {
     if (req.method === 'GET') {
       gets++; getStream = res;
+      if (req.headers['last-event-id'] !== undefined) getResumes++;
       res.on('close', () => { getClosed++; if (getStream === res) getStream = undefined; });
       res.writeHead(200, { 'content-type': 'text/event-stream' }); res.flushHeaders();
-      if (getInputs && !standard) res.write(`data: ${JSON.stringify({ jsonrpc: '2.0', id: 'unrelated-roots', method: 'roots/list', params: {} })}\n\n`);
+      // Legacy-task mode: a notification-only GET stream ends so the CLI resumes it with
+      // last-event-id, and the replayed request rides the resumed stream.
+      if (getInputs && !standard) {
+        if (req.headers['last-event-id'] === undefined) { res.write(`id: ${++getSeq}\ndata: ${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/message', params: { level: 'info', data: 'tick' } })}\n\n`); res.write('retry: 50\n\n'); res.end(); }
+        else res.write(`id: ${++getSeq}\ndata: ${JSON.stringify({ jsonrpc: '2.0', id: 'unrelated-roots', method: 'roots/list', params: {} })}\n\n`);
+      }
       return;
     }
     if (req.method === 'DELETE') { deletes++; res.writeHead(204).end(); return; }
@@ -131,7 +137,7 @@ else if(m.method==='tasks/result')reply(m.id,{content:[{type:'text',text:'STDIO_
   const outstanding = invoke(lifetime, 'cancel'); const checked = assert.rejects(outstanding, /cancel/i);
   await new Promise(resolve => setTimeout(resolve, 25)); await lifetime.close(); await checked;
   fs.mkdirSync(path.join(workspace, '.harness')); fs.mkdirSync(path.join(workspace, 'user'));
-  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true, mcpNotificationStream: getInputs, ...(durable ? { mcpPersistence: true, mcpRecovery: true } : {}) } : { mcpTasks: true, ...(getInputs ? { mcpNotificationStream: true } : {}) }), mcpDynamic: false } }));
+  fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ mcpServers: config, mcpClient: { roots: true }, features: { ...(standard ? { mcpStandardTasks: true, mcpNotificationStream: getInputs, ...(durable ? { mcpPersistence: true, mcpRecovery: true } : {}) } : { mcpTasks: true, ...(getInputs ? { mcpNotificationStream: true, mcpRecovery: true } : {}) }), mcpDynamic: false } }));
   const run = async (resume, continuing = false) => {
     const env = { ...process.env }; for (const name of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(name)) delete env[name];
     Object.assign(env, { LLM_API_KEY: 'OWNED_TASK_KEY', LLM_MODEL: 'fixture/task', LLM_BASE_URL: url, LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false' });
@@ -171,6 +177,6 @@ else if(m.method==='tasks/result')reply(m.id,{content:[{type:'text',text:'STDIO_
     assert.equal(calls.filter(c => ['tasks/get', 'tasks/result'].includes(c.body.method)).length, remoteBefore);
     assert.equal(calls.filter(c => c.body.method === 'tools/call').length, callsBefore);
   }
-  if (getInputs) { assert.ok(getRoots, 'unrelated GET roots served'); assert.ok(gets >= 1); if (standard) assert.equal(gets, durable ? 6 : 4); assert.equal(getClosed, gets); }
-  console.log(JSON.stringify({ tasks: 'passed', standard, ...(durable ? { durable: true, sigkill: true, cachedResult: true } : {}), ...(getInputs ? { getInputs: true, gets, getClosed, getRoots } : {}), compiledCLI: compiled, modelRequests: model.length, cancelled: standard ? 2 : 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
+  if (getInputs) { assert.ok(getRoots, 'unrelated GET roots served'); assert.ok(gets >= 1); if (standard) assert.equal(gets, durable ? 6 : 4); else { assert.equal(getResumes, 1, 'standalone GET resumed with the last event id'); } assert.equal(getClosed, gets); }
+  console.log(JSON.stringify({ tasks: 'passed', standard, ...(durable ? { durable: true, sigkill: true, cachedResult: true } : {}), ...(getInputs ? { getInputs: true, gets, getClosed, getRoots, getResumes } : {}), compiledCLI: compiled, modelRequests: model.length, cancelled: standard ? 2 : 3, rootsInput: true, formInput: true, stdio: true, closeCleanup: true, malformed: true, unsupported: true, legacyGate: true, pinnedResume: true, noReplay: true, deletes, identity: captureIdentity().sha256 }));
 } finally { for (const child of children) child.kill('SIGKILL'); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); fs.rmSync(workspace, { recursive: true, force: true }); unregister?.(); }
