@@ -43,11 +43,18 @@ route is a versioned per-session value rather than a gateway-wide setting. The
 route path serves **GET only** - POST, PUT and PATCH all receive the gateway's
 not-found message naming the model routes - so route switching is not a
 management write at all: what remains on the routing side is observing a session's
-route and the model-selection path that sets it. Credential issuance or rotation
-is settled by a bounded negative search rather than left open: eight plausible
-management paths all answer 404 with the message that names the model routes, and
-the advertised list holds exactly three management routes, none of which issues or
-rotates a credential - so this gateway serves no credential surface at all, and
-rotation is outside the gateway rather than an unvisited corner of it. Every probe
-was a read or an empty-bodied method probe that could not name a target, so nothing
-on the running gateway was changed. Detail: [W03-management-discovery-evidence.json](W03-management-discovery-evidence.json).
+route and the model-selection path that sets it. Credential issuance and
+revocation are not on the gateway at all: a bounded negative search shows eight
+plausible management paths answering 404 with the message that names the model
+routes, and the advertised list holds exactly three management routes, none of
+which issues or rotates a credential. Read-only inspection of the installed
+application bundle finds where they do live - its own management API, with
+`/api/caller-keys` and the caller-key prefixes `sk-magpie-key-` and
+`sk-magpie-revoked-` - and finds that the application currently holds one
+listening socket, `127.0.0.1:3425`, so that API travels with its window mode
+rather than with a port. Exercising it is therefore the user's action, like the
+cold start. The same inspection shows the gateway address and port are settings
+(`MAGPIE_ADDR`, a Gateway port field defaulting to 3425), so the address this
+project discovers is a configuration it reads. Every probe was a read or an
+empty-bodied method probe that could not name a target, so nothing on the running
+gateway was changed. Detail: [W03-management-discovery-evidence.json](W03-management-discovery-evidence.json).

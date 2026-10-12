@@ -68,11 +68,22 @@
     }
   },
   "credentialSurface": {
-    "probe": "bounded read-only GET search over the plausible management names, plus the advertised API list",
+    "probe": "bounded read-only GET search over the plausible management names on the gateway, plus the advertised API list",
     "pathsTried": ["/v1/magpie", "/v1/magpie/credentials", "/v1/magpie/keys", "/v1/magpie/rotate", "/v1/magpie/config", "/v1/magpie/status", "/v1/magpie/sessions", "/v1/magpie/models"],
     "result": "every path answered 404 with the gateway's not-found message that names the model routes, and the discovery document advertises exactly three management routes - /v1/magpie/route, /v1/magpie/quotas and /v1/magpie/quotas/history - none of which issues or rotates a credential",
-    "verdict": "this gateway serves no credential-issuance or credential-rotation surface. Credential rotation is therefore not a verification this project can perform against it: it is outside the gateway's advertised surface rather than an unvisited corner of it",
-    "bound": "a bounded negative search over plausible names and the authoritative advertised list; it does not prove that no such surface exists anywhere, only that this gateway advertises and serves none"
+    "verdictScopedToTheGateway": "the gateway on this port issues and rotates no credential. That is a statement about /v1/magpie/* on 127.0.0.1:3425 and not about the product: see appManagementApi below, where the credential surface actually lives",
+    "bound": "a bounded negative search over plausible names and the authoritative advertised list; it does not prove that no such surface exists anywhere"
+  },
+  "appManagementApi": {
+    "howFound": "read-only inspection of the installed application bundle's strings, after the gateway search above showed the credential surface is not on the gateway",
+    "routes": ["POST /api/settings", "GET /api/settings", "GET /api/providers", "GET /api/upstream", "GET /api/caller-keys", "GET /api/import", "GET /api/library/rtk", "GET /api/plugins/npm", "GET /api/login/usage", "GET /api/signin/{id}", "POST /api/agent-fast"],
+    "credentialMaterial": "the bundle carries caller-key prefixes sk-magpie-key- and sk-magpie-revoked-, so issuing and revoking a caller key is an operation this application offers - through its own management API rather than through the gateway",
+    "addressIsConfigurable": "the application's own UI text says MAGPIE_ADDR={addr} sets the gateway address, and its Settings screen carries a Gateway port field defaulting to 3425, so the port this project's launcher discovers is a setting rather than a constant",
+    "notReachableNow": {
+      "probe": "read-only GETs against 127.0.0.1:3430 (/api/settings, /api/providers, /api/upstream, /api/caller-keys) and a listening-socket listing for the serving process",
+      "result": "no connection on 3430 and the magpie process holds one listening socket only, 127.0.0.1:3425; the /api routes belong to the application's window mode and are not bound to a loopback port while it runs without its window",
+      "reading": "the credential surface exists in the product but is reached through the application's UI, so exercising it - like the cold start - is the user's action rather than a probe this review can make"
+    }
   },
   "runningInstance": {
     "probe": "read-only process and listening-socket inspection",
@@ -88,8 +99,9 @@
   "recordedWithoutValues": "both quota responses carry an account address and per-window values; none of those values appears in this file or anywhere in the evidence set",
   "paidCalls": 0,
   "residual": [
-    "route switching is not a management write: the surface serves GET only, so what remains for A02 on the routing side is observing a live session's route and the model-selection path that sets it",
-    "credential issuance or rotation remains unverified and has no advertised route",
-    "the contract above was observed once against version 0.1.1109; it is a point observation, not a versioned guarantee"
+    "route switching is not a management write: the gateway path serves GET only, so what remains for A02 on the routing side is observing a live session's route and the model-selection path that sets it",
+    "credential issuance and revocation exist in the application's own management API (caller keys) rather than on the gateway, and reaching them means opening the application's window, which is the user's action",
+    "the application's gateway address and port are settings (MAGPIE_ADDR, a Gateway port field defaulting to 3425), so the discovered address is a configuration this project reads rather than a constant it may assume",
+    "the contracts above were observed once against version 0.1.1109; they are point observations, not a versioned guarantee"
   ]
 }
