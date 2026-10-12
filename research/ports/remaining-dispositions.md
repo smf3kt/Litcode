@@ -37,6 +37,8 @@ Decision: not portable in this runtime. Decoding every pixel requires a codec th
 
 ## 6. Modules without a port record - open gap, quantified
 
-The ledger (`ports/port-ledger.md`) accounts for all 2365 modules of the sample: 25 carry port evidence in a `research/ports/` record, 57 appear only in narrative records, and 2283 (33.4 MB) are cited by no record at all. The unreviewed set is named and never assigned an estimated share; closing it means reviewing those modules against the product's remaining gaps, which is unbounded work rather than a pending item with a definition of done.
+The ledger (`ports/port-ledger.md`) accounts for all 2365 modules of the sample: at the time of this pass 25 carried port evidence in a `research/ports/` record, 57 appeared only in narrative records, and 2283 (33.4 MB) were cited by no record at all. Every package since has moved modules between those tiers by regenerating the ledger, so those are landing-time figures: the current state is 43 port-backed, 64 narrative-only and 2258 uncited (29.4 MB). The unreviewed set is named and never assigned an estimated share; closing it means reviewing those modules against the product's remaining gaps, which is unbounded work rather than a pending item with a definition of done.
 
 Decision: recorded as an open, quantified gap. Each new work package adds its modules to the ledger by regenerating it (`node scripts/port-ledger.mjs --extracted <sample> --output research/ports/port-ledger.json --markdown research/ports/port-ledger.md`), so the number is always reproducible rather than asserted.
+
+Detail and coordinates: [remaining-dispositions-evidence.json](remaining-dispositions-evidence.json) holds the six dispositions with their coordinates, the two logs, `paidCalls: 0` and the suite-not-rerun reason.
