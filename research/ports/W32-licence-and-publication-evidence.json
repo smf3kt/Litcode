@@ -23,14 +23,14 @@
     "suite": {
       "passed": 1130,
       "failed": 0,
-      "note": "no product source, test or build input changed"
+      "note": "1130/1130 after the fixture change; 5/5 in test/credential-shapes.test.ts"
     },
     "smokePackage": {
       "files": 73,
       "upstreamRequests": 0,
       "note": "npm packs LICENSE automatically, so the package grew by one file"
     },
-    "identity": "690b5d531535f72f1a62c9a57770a9e20350ce6d302b3cb3f1153bc0df32df4f",
+    "identity": "0774755c900fa39dce51e07b907e8af92ce060149304dba9ada7c4a877eeafbb",
     "identityCounts": {
       "inputs": 125,
       "validation": 92,
@@ -64,5 +64,14 @@
       "detail": "GitHub push protection refused the first push because test/credential-shapes.test.ts carried the literal marker the OpenAI key scanner looks for. The sample is padding, not a credential, but a public checkout should not contain a key-shaped literal at all, so the fixture is now joined from its parts: the value the test sees is identical and the file no longer trips a scanner.",
       "verified": "test/credential-shapes.test.ts still passes 5/5"
     }
-  ]
+  ],
+  "publication": {
+    "url": "https://github.com/smf3kt/litcode",
+    "visibility": "public",
+    "licenseDetected": "MIT",
+    "branch": "main",
+    "snapshotCommit": "a1c5107",
+    "history": "one initial commit built from the worktree's tracked tree; the private working history is not published, which is also why no commit in it needs rewriting to drop the earlier trailers",
+    "verifiedAt": "2026-10-12T15:26:19Z"
+  }
 }
