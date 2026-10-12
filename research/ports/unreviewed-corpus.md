@@ -1,7 +1,7 @@
 # Unreviewed corpus characterisation
 
 Status: bounded characterisation pass, not a port record. Date: 2026-10-12.
-Purpose: the module ledger counts 2283 uncited modules (33,446,926 bytes). This pass describes what that remainder is using byte evidence only, so the number stops being an unqualified unknown. Nothing here claims which subsystem owns a module, and naming a module here does not make it port evidence - the ledger counts a module as port-backed only when a record under `research/ports/` that declares a port classification names it.
+Purpose: the module ledger counts 2275 uncited modules (32,072,858 bytes; 29 backed by a port record, 61 mentioned only in prose). This pass describes what that remainder is using byte evidence only, so the number stops being an unqualified unknown. The figure moves as packages land, and one correction is recorded here: the ledger used to scan its own generated `-evidence.json` files as citing records, so a package's evidence file could cite the very modules it had ported and inflate the count. The generator now skips those files, and the numbers below are the regenerated ones. Nothing here claims which subsystem owns a module, and naming a module here does not make it port evidence - the ledger counts a module as port-backed only when a record under `research/ports/` that declares a port classification names it.
 
 ## Method
 
@@ -16,14 +16,14 @@ A note on the false lead this pass corrected: the `// @bun @bytecode` banner app
 
 ## What the uncited remainder is
 
-- Uncited modules: **2283** (33,446,926 bytes).
-- Of those, **2265** import only Node builtins or nothing at all, and **0** import a sibling `chunk-*.js` by name. The bundler inlines sibling chunks, so import structure cannot separate product code from vendored code here; it does show that the uncited set is made of self-contained leaves rather than a graph of small product modules.
-- External package specifiers across the whole uncited set: `ajv` (3 modules), `ws` (3), `ajv-formats` (1), `inspector` (1), `claude-code` (1, the bundle naming itself), plus `async_hooks`, which is a runtime builtin the builtin list was missing.
-- **2231** of the 2283 carry none of the sixteen markers. They are the true remainder: readable recovered source whose subsystem this pass did not determine.
+- Uncited modules: **2275** (32,072,858 bytes).
+- Of those, **2258** import only Node builtins or nothing at all, and **0** import a sibling `chunk-*.js` by name. The bundler inlines sibling chunks, so import structure cannot separate product code from vendored code here; it does show that the uncited set is made of self-contained leaves rather than a graph of small product modules.
+- External package specifiers across the whole uncited set: `async_hooks` (10 modules), `ws` (3), `ajv` (2), `inspector` (1) and `claude-code` (1, the bundle naming itself). `async_hooks` is a runtime builtin that the generator's builtin list still misses, so those ten are filed as an external package; correcting the list would move them into the leaf-only count.
+- **2225** of the 2275 carry none of the sixteen markers. They are the true remainder: readable recovered source whose subsystem this pass did not determine.
 
 ## Marker families inside the uncited set
 
-Counted from the ledger summary; a module may carry several markers. Generously interpreted, these families cover roughly fifty of the 2283 modules, which is why the remainder above is stated separately.
+Counted from the ledger summary; a module may carry several markers. Generously interpreted, these families cover roughly fifty of the 2275 modules, which is why the remainder above is stated separately.
 
 | Family | Literal | Modules | Bytes |
 | --- | --- | --- | --- |
@@ -147,11 +147,13 @@ Slice three's most significant row is `chunk-zjewzgfh.js` (93,529 bytes, SHA-256
 
 Nothing in `src/` enumerates shell readings or refuses an ambiguous command, so this is an in-scope gap rather than a decided item, and CURRENT carries it as the next candidate work package.
 
-Slice three's other new in-scope candidate is the cloud metadata-address table in `chunk-nvrxq9nn.js`. The remainder after three slices is **2181** uncited modules with no marker.
+Slice three's other new in-scope candidate is the cloud metadata-address table in `chunk-nvrxq9nn.js`.
+
+The three slices read fifty modules between them. They were ranked against the uncited list as it stood when each slice was taken, so the counts in the tables and the ledger's current totals do not subtract cleanly; the authoritative number is the regenerated ledger's, which after this package's own citations stands at **2225 uncited modules with no marker**.
 
 ## Residual and next pass
 
-The honest remainder is **2231 uncited modules with no marker**: readable source whose subsystem this pass did not determine. Removing that number requires reading modules, not more rules, so the next pass should repeat what produced the table above for the next slice by size (extract distinctive literals per module, then classify against CURRENT's scope rules), and any module a future package actually reads should be cited from that package's port record so the ledger's port-backed count grows with real evidence.
+The honest remainder is **2225 uncited modules with no marker**: readable source whose subsystem this pass did not determine. Removing that number requires reading modules, not more rules, so the next pass should repeat what produced the tables above for the next slice by size (extract distinctive literals per module, then classify against CURRENT's scope rules), and any module a future package actually reads should be cited from that package's port record so the ledger's port-backed count grows with real evidence.
 
 Regenerate everything here with:
 
