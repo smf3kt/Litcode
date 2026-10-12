@@ -20,9 +20,68 @@ const hash = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 const manifest = JSON.parse(fs.readFileSync(path.join(sampleRoot, "manifest.json"), "utf8"));
 const moduleRoot = path.join(sampleRoot, "modules");
 const names = fs.readdirSync(moduleRoot).filter(name => name.endsWith(".js")).sort();
+
+// Literal markers observed in the recovered text. A marker records that the
+// bytes contain that literal, with its first offset; it is a characterisation
+// hint for the corpus, never a claim about which subsystem owns the module.
+const MARKERS = [
+  ["invalid_union", "validation-library messages"],
+  ["google.protobuf.Struct", "protobuf runtime"],
+  ["EDITION_2023", "protobuf descriptors"],
+  ["timeUnixNano", "otel otlp protobuf"],
+  ["ink-virtual-text", "terminal UI library"],
+  ["login.microsoftonline.com", "cloud identity client"],
+  ["annotation-xml", "DOM/HTML parser"],
+  ["title.class", "syntax grammars"],
+  ["resources/templates/list", "MCP protocol surface"],
+  ["self_hosted_", "self-hosted release surface"],
+  ["artifact_capability_section", "artifact capability surface"],
+  ["org_memory_", "org memory surface"],
+  ["fleet_view_", "background-agent UI"],
+  ["manage-marketplaces", "plugin marketplace UI"],
+  ["cli_plugin_eval", "plugin eval tooling"],
+  ["anthropic-beta", "API beta headers"],
+];
+
+const BUILTINS = new Set(["assert","buffer","child_process","cluster","console","crypto","dgram","dns","events","fs","http","http2","https","module","net","os","path","perf_hooks","process","punycode","querystring","readline","repl","stream","string_decoder","timers","tls","tty","url","util","v8","vm","wasi","worker_threads","zlib","worker_threads"]);
+
 const modules = names.map(name => {
-  const bytes = Buffer.from(fs.readFileSync(path.join(moduleRoot, name), "utf8"), "utf8");
-  return { path: name, bytes: bytes.length, sha256: hash(bytes) };
+  const text = fs.readFileSync(path.join(moduleRoot, name), "utf8");
+  const bytes = Buffer.from(text, "utf8");
+  // The recovered modules share a leading license banner; its exact length is
+  // recorded so later passes can measure the readable payload instead.
+  const lines = text.split("\n");
+  let head = 0;
+  while (head < lines.length && (lines[head].startsWith("//") || lines[head].trim() === "")) head++;
+  const bannerBytes = lines.slice(0, head).join("\n").length;
+  const binary = text.includes("\u0000");
+  // Import specifiers are a structural signal that works for every module: the
+  // recovered bundles name what a module pulls in, so a module that imports only
+  // runtime builtins is a self-contained leaf, while one that imports external
+  // packages or sibling chunks sits inside the product graph.
+  const builtins = new Set();
+  const packages = new Set();
+  let chunks = 0;
+  for (const match of text.matchAll(/(?:from|require\()\s*"([^"]{1,64})"/g)) {
+    const specifier = match[1];
+    // Minified text contains many quoted fragments; only a well-formed module
+    // specifier counts, so package names are never invented from nearby code.
+    if (!/^(?:node:)?(?:@[a-zA-Z0-9._-]+\/)?[a-zA-Z0-9._-]+(?:\/[a-zA-Z0-9._-]+)*$/.test(specifier)) continue;
+    if (specifier.startsWith("./") || specifier.startsWith("../")) {
+      if (/chunk-/.test(specifier)) chunks++;
+      continue;
+    }
+    const bare = specifier.startsWith("node:") ? specifier.slice(5) : specifier;
+    const root = bare.split("/")[0].startsWith("@") ? bare.split("/").slice(0, 2).join("/") : bare.split("/")[0];
+    if (BUILTINS.has(root) || specifier.startsWith("node:")) builtins.add(root);
+    else packages.add(root);
+  }
+  const markers = {};
+  for (const [literal, family] of MARKERS) {
+    const at = text.indexOf(literal);
+    if (at >= 0) markers[family] = { literal, at };
+  }
+  return { path: name, bytes: bytes.length, sha256: hash(bytes), bannerBytes, binary, builtins: [...builtins].sort(), packages: [...packages].sort(), chunks, markers };
 });
 
 // One pass over every research record: which module names does it mention?
@@ -37,8 +96,10 @@ const walk = directory => {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) walk(absolute);
+    // Inventory records (this ledger and the corpus characterisation) list module
+    // names without being port evidence, so they are never scanned as records.
     else if (/\.(md|json)$/.test(entry.name) && !excluded.has(path.resolve(absolute)) &&
-      !/^port-ledger\.(md|json)$/.test(entry.name)) records.push(absolute);
+      !/^(port-ledger|unreviewed-corpus)\.(md|json)$/.test(entry.name)) records.push(absolute);
   }
 };
 walk(path.join(root, "research"));
@@ -66,13 +127,38 @@ const reviewed = ledgers.filter(module => module.reviewed);
 const narrativeOnly = ledgers.filter(module => !module.reviewed && module.citedBy.length > 0);
 const unreviewed = ledgers.filter(module => module.citedBy.length === 0);
 const summarise = list => ({ modules: list.length, bytes: list.reduce((sum, module) => sum + module.bytes, 0) });
+// Which marker families appear in the modules no port record cites, so the
+// unreviewed remainder is characterised instead of merely counted. A module
+// can carry several markers and is counted in each.
+const families = new Map();
+const packageCounts = new Map();
+let unmarked = 0;
+let leafOnly = 0;
+let chunkImporting = 0;
+for (const module of unreviewed) {
+  if (module.packages.length === 0 && module.chunks === 0) leafOnly++;
+  if (module.chunks > 0) chunkImporting++;
+  for (const name of module.packages) packageCounts.set(name, (packageCounts.get(name) ?? 0) + 1);
+  const names = Object.keys(module.markers);
+  if (names.length === 0) unmarked++;
+  for (const family of names) {
+    const entry = families.get(family) ?? { family, modules: 0, bytes: 0 };
+    entry.modules += 1;
+    entry.bytes += module.bytes;
+    families.set(family, entry);
+  }
+}
 const ledger = {
   schema: "RecoveredModulePortLedger.v1",
   date: new Date().toISOString().slice(0, 10),
   sample: { input: manifest.input, sha256: manifest.sha256, manifestModuleCount: manifest.moduleCount, limitations: manifest.limitations },
   coordinateUnit: "per-module UTF-8 text; digests are sha256 of the decoded module text",
   recordCount: records.length,
-  summary: { modules: modules.length, ...summarise(reviewed), narrativeOnly: summarise(narrativeOnly), unreviewed: summarise(unreviewed) },
+  summary: { modules: modules.length, ...summarise(reviewed), narrativeOnly: summarise(narrativeOnly), unreviewed: summarise(unreviewed),
+    uncitedBinary: unreviewed.filter(module => module.binary).length, uncitedWithoutMarker: unmarked,
+    uncitedBuiltinLeafOnly: leafOnly, uncitedImportingChunks: chunkImporting,
+    uncitedPackages: [...packageCounts.entries()].sort((left, right) => right[1] - left[1]).slice(0, 25).map(([name, modules]) => ({ name, modules })),
+    families: [...families.values()].sort((left, right) => right.bytes - left.bytes) },
   reviewed: reviewed.map(module => ({ ...module, declared: module.portRecords.map(record => classifications.get(record)).filter(Boolean) })),
   unreviewedTop: [...unreviewed].sort((a, b) => b.bytes - a.bytes).slice(0, 25).map(module => ({ path: module.path, bytes: module.bytes })),
   modules: ledgers,
@@ -101,6 +187,19 @@ Sample limitations, unchanged: ${manifest.limitations.map(limit => `"${limit}"`)
 | Module | Bytes | SHA-256 | Cited by | Declared classification |
 | --- | --- | --- | --- | --- |
 ${rows.join("\n")}
+
+## Marker families inside the uncited set
+
+A marker records that the module's bytes contain that literal; it characterises the corpus and never claims which subsystem owns a module. Modules may carry several markers and are counted in each.
+
+| Family | Literal | Modules | Bytes |
+| --- | --- | --- | --- |
+${[...families.values()].sort((left, right) => right.bytes - left.bytes).map(entry => {
+    const literal = MARKERS.find(([, family]) => family === entry.family)[0];
+    return `| ${entry.family} | \`${literal}\` | ${entry.modules} | ${entry.bytes} |`;
+  }).join("\n")}
+
+Modules in the uncited set carrying no marker: **${unmarked}**. Binary payloads among them: **${unreviewed.filter(module => module.binary).length}**.
 
 ## Largest modules without a citation
 

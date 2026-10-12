@@ -41,6 +41,31 @@ Sample limitations, unchanged: "Record layout is validated for this sample, not 
 | `chunk-x1hnhzq0.js` | 53492 | `b4c4dd97d03c` | research/ports/port-ledger-evidence.json, research/ports/W06-skill-inline-fenced-evidence.json, research/ports/W06-skill-inline-fenced.md | copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio |
 | `chunk-yjc18bey.js` | 2347 | `e53a75c48188` | research/ports/port-ledger-evidence.json, research/ports/W05-startup.md, research/ports/W05-tasks.md | adapt. Core state machine is ported from recovered ojr with host-bound imports and callbacks replaced. Preserved250..30000ms/default2000 poll clamp,5consecutive |
 
+## Marker families inside the uncited set
+
+A marker records that the module's bytes contain that literal; it characterises the corpus and never claims which subsystem owns a module. Modules may carry several markers and are counted in each.
+
+| Family | Literal | Modules | Bytes |
+| --- | --- | --- | --- |
+| API beta headers | `anthropic-beta` | 20 | 3098332 |
+| cloud identity client | `login.microsoftonline.com` | 4 | 1907554 |
+| validation-library messages | `invalid_union` | 4 | 1572631 |
+| protobuf descriptors | `EDITION_2023` | 2 | 1336593 |
+| self-hosted release surface | `self_hosted_` | 10 | 1220276 |
+| plugin eval tooling | `cli_plugin_eval` | 2 | 1061861 |
+| org memory surface | `org_memory_` | 3 | 1037975 |
+| background-agent UI | `fleet_view_` | 3 | 1036352 |
+| artifact capability surface | `artifact_capability_section` | 2 | 977755 |
+| protobuf runtime | `google.protobuf.Struct` | 1 | 943361 |
+| syntax grammars | `title.class` | 3 | 608622 |
+| DOM/HTML parser | `annotation-xml` | 3 | 438255 |
+| terminal UI library | `ink-virtual-text` | 1 | 360288 |
+| MCP protocol surface | `resources/templates/list` | 2 | 343724 |
+| otel otlp protobuf | `timeUnixNano` | 1 | 267269 |
+| plugin marketplace UI | `manage-marketplaces` | 1 | 247454 |
+
+Modules in the uncited set carrying no marker: **2231**. Binary payloads among them: **0**.
+
 ## Largest modules without a citation
 
 Unreviewed, listed so the largest gaps stay visible rather than implied covered.
