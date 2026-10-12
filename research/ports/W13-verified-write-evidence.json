@@ -83,6 +83,18 @@
       "range": [11254, 11286]
     },
     {
+      "name": "kept content, with its own label",
+      "text": "The new content was preserved at ${h}.",
+      "range": [12224, 12435],
+      "note": "label writeFileSyncAndFlush: in-place fallback write failed; content preserved at temp path; the temporary file is not removed on this path"
+    },
+    {
+      "name": "staging tamper refusal is a named class",
+      "symbol": "class CRr extends Error … function ept(e)",
+      "range": [4500, 4672],
+      "note": "StagingDirTamperedError, recorded as atomic_write_staging_dir_tampered, so the refusal is distinguishable by name rather than by message"
+    },
+    {
       "name": "not ported: sandbox staging path chooser",
       "symbol": "function ARr(e,n,r,s)",
       "range": [2571, 3238],

@@ -395,7 +395,13 @@
         "not_regular_file",
         "symlink_not_sent"
       ],
-      "errorNames": ["EMLINK", "ENAMETOOLONG", "EINVAL", "ENOENT", "ENOTDIR"],
+      "errorNames": [
+        "EMLINK",
+        "ENAMETOOLONG",
+        "EINVAL",
+        "ENOENT",
+        "ENOTDIR"
+      ],
       "localGap": "src/config.ts resolves @file.md instruction imports and de-duplicates by realpath; it does not bound a link chain, does not refuse a link body that leaves the directory the import walked into, and does not check the body's encoding before treating it as instructions"
     }
   },
@@ -620,9 +626,7 @@
       "excludedWithCredentials": 1,
       "inScopeCandidate": 1
     },
-    "inScopeCandidates": [
-      "chunk-f606a53w.js states a post-write size verification (on-disk size mismatch after write), a fallback that keeps content at a temp path when the in-place write fails, and an atomic-write staging directory that is checked for tampering; this runtime writes and edits files in place and verifies none of it afterwards, so the rule applies to a surface it owns, adjacent to the identity family W09 ported"
-    ],
+    "inScopeCandidates": [],
     "notedButNotCandidates": [
       "chunk-1n9rk9tp.js applies the link-vetting rule set a second time, to plugin command sources (suspect link, link escapes producer directory, network path); it corroborates the family W10 ported and adds no new rule",
       "chunk-kcwp0ct0.js is the settings review store (staged proposals, quarantine, managed drop-in directory that did not resolve) over the config source layers W08 ported; its staging half needs a proposal surface this runtime does not have",
@@ -631,7 +635,14 @@
       "chunk-f606a53w.js also carries a Perforce read-only hint, which guards a version-control surface this runtime does not use",
       "sixteen modules are 80% or more import statements and carry no characterising literal of their own, so they are recorded as dependency aggregators rather than as undetermined"
     ],
-    "reading": "the deepest band so far and the first where size stops tracking substance: sixteen dependency aggregators whose mass is the import list, sixteen modules with local counterparts, ten hosted surfaces (device MCP consent, desktop entry, artifact authorship notes, remote frame tunnel, managed remote mounts, hosted privacy settings, durable artifact triggers, Remote Control policy gates, telemetry intake, turn relay), four product surfaces without a local counterpart (feedback drafts, issue drafting, HTML preview, recap), one recovered UI panel, one vendored AWS auth scheme copy, one module excluded with credentials, and one candidate in the file write path"
+    "reading": "the deepest band so far and the first where size stops tracking substance: sixteen dependency aggregators whose mass is the import list, sixteen modules with local counterparts, ten hosted surfaces (device MCP consent, desktop entry, artifact authorship notes, remote frame tunnel, managed remote mounts, hosted privacy settings, durable artifact triggers, Remote Control policy gates, telemetry intake, turn relay), four product surfaces without a local counterpart (feedback drafts, issue drafting, HTML preview, recap), one recovered UI panel, one vendored AWS auth scheme copy, one module excluded with credentials, and one candidate in the file write path Ported on 2026-10-12: see ported.",
+    "ported": [
+      {
+        "port": "ports/W13-verified-write.md",
+        "shippedOn": "2026-10-12",
+        "note": "Ported onto the file-write path as a shared verified writer: content staged beside the target, measured on the descriptor against the bytes handed in, published only after the target directory's identity is re-confirmed before the rename, kept with its path named in the error when it is whole but cannot be published, and an unsupported flush tolerated by errno. The recovered surface was also larger than this row recorded: it carries an unsupported-fsync notice, a stage-by-step log and a sandbox staging-path chooser, each recorded with the port."
+      }
+    ]
   },
   "sliceFifteen": {
     "scope": "uncited modules ranked 421 to 470 by size",
@@ -651,9 +662,7 @@
       "excludedWithCredentials": 1,
       "inScopeCandidate": 1
     },
-    "inScopeCandidates": [
-      "chunk-ekrtrxy7.js vets a Git directory entry by entry before trusting it: an unknown .git entry, a symlinked or hardlinked .git/index, a .git with no config or HEAD, and a symlinked or oversized .git/objects entry are each refused. This runtime's src/worktrees.ts verifies the registration identity of the worktrees it created (device and inode of the worktree directory, the resolved Git directory and its backlink, the common directory) and never inspects the entries of a Git directory, so the identity half is covered locally and the structure half is not"
-    ],
+    "inScopeCandidates": [],
     "notedButNotCandidates": [
       "chunk-g0qz7p20.js applies the path and link vetting family a third time, to plugin eval paths, with macOS automounter, network-reachability and unexaminable-component refusals; it corroborates the family W09 and W10 ported and adds no new rule",
       "chunk-m7864yc0.js derives a messaging key name from a socket path, adjacent to this runtime's own cross-session addressing, but its storage-backed publication has no local counterpart",
@@ -661,7 +670,19 @@
       "chunk-01dkdjqy.js carries cross-session idle notices with revocation and subscription-after-exit states, which this runtime expresses in its own messaging semantics",
       "eighteen modules are 85% or more import statements and carry no characterising literal of their own, so they are recorded as dependency aggregators rather than as undetermined"
     ],
-    "reading": "the import-list trend deepens - 62.5% of the band is import text and eighteen modules have no literal of their own - over sixteen modules with local counterparts, twelve hosted surfaces (remote-session-only command, browser extension tool set and enablement, subscription quota auto-resume, bridge tool-host helper, cloud queued notifications, send-file hand-off, session tunnel, artifact database tool, org-policy usage attribution, artifact file reads), one product surface without a local counterpart (end-conversation tool), one recovered welcome screen, one module excluded with credentials, and one candidate in Git-directory vetting"
+    "reading": "the import-list trend deepens - 62.5% of the band is import text and eighteen modules have no literal of their own - over sixteen modules with local counterparts, twelve hosted surfaces (remote-session-only command, browser extension tool set and enablement, subscription quota auto-resume, bridge tool-host helper, cloud queued notifications, send-file hand-off, session tunnel, artifact database tool, org-policy usage attribution, artifact file reads), one product surface without a local counterpart (end-conversation tool), one recovered welcome screen, one module excluded with credentials, and one candidate in Git-directory vetting Reclassified on 2026-10-12 after reading the module whole for a port attempt: see reclassified.",
+    "reclassified": [
+      {
+        "module": "chunk-ekrtrxy7.js",
+        "wasCandidate": "Git directory entry vetting",
+        "disposition": "ruleWithoutLocalSurface",
+        "reclassifiedOn": "2026-10-12",
+        "finding": "Reading the module whole shows it is not a Git-directory inspector but a workspace-diff materialiser: to diff a discovered repository it copies that repository's .git into a temporary directory so git can read it without touching the original, and the vetting rules are the gates on that copy. Per-entry dispositions (copy / in-place / skip / refuse, with commondir, gitdir and reftable refused outright), a 256-entry cap, refusal of an unknown entry, of an index that is not a regular file or has nlink greater than 1, of an entry whose kind does not match, of a .git with no config or HEAD, of a linked or oversized .git/objects entry, and of .git/objects/info/alternates, plus a config rewritten to an allowlist of keys with core.commitGraph and core.multiPackIndex forced false.",
+        "localCheck": "The runtime has no surface that reads a repository it did not create: rg finds no diff capability anywhere in src/, git is invoked only by src/worktrees.ts for worktree registration, and the remaining .git references read nothing (src/config.ts:468 uses a .git entry merely as an ancestor-traversal bound, and src/checkpoints.ts:12 with src/config.ts:1162 treat .git as reserved). The half of the rule that does have a local counterpart is already covered: src/worktrees.ts:66 checkFile refuses a non-regular file, a symlink and nlink !== 1 for the .git file and the gitdir backlink of a worktree this runtime created.",
+        "whyNotPorted": "Porting the vetting would mean building the workspace-diff capability it guards first. That is new product scope rather than a rule landing on a surface this runtime already owns, so it is recorded as a rule without a local surface rather than as a pending port.",
+        "ledgerEffect": "none; the module stays uncited because nothing in the product cites it"
+      }
+    ]
   },
   "sliceSixteen": {
     "scope": "uncited modules ranked 471 to 520 by size",
@@ -742,7 +763,7 @@
       12645,
       9254
     ],
-    "importSharePercent": 21.0,
+    "importSharePercent": 21,
     "composition": {
       "localCounterparts": 48,
       "hostedOrExternalSurfaces": 23,
@@ -905,7 +926,10 @@
     "bytes": 383570,
     "rows": 100,
     "rowsWithContent": 69,
-    "byteRange": [4765, 3988],
+    "byteRange": [
+      4765,
+      3988
+    ],
     "importSharePercent": 36.1,
     "composition": {
       "localCounterparts": 32,
@@ -941,7 +965,10 @@
     "bytes": 293424,
     "rows": 100,
     "rowsWithContent": 80,
-    "byteRange": [3982, 3180],
+    "byteRange": [
+      3982,
+      3180
+    ],
     "importSharePercent": 18.2,
     "composition": {
       "localCounterparts": 32,
@@ -972,7 +999,10 @@
     "bytes": 213929,
     "rows": 100,
     "rowsWithContent": 67,
-    "byteRange": [3176, 2451],
+    "byteRange": [
+      3176,
+      2451
+    ],
     "importSharePercent": 22.2,
     "composition": {
       "noCharacterisingLiteral": 54,
@@ -1008,7 +1038,10 @@
     "bytes": 157862,
     "rows": 100,
     "rowsWithContent": 65,
-    "byteRange": [2451, 1970],
+    "byteRange": [
+      2451,
+      1970
+    ],
     "importSharePercent": 22.9,
     "composition": {
       "noCharacterisingLiteral": 56,
@@ -1041,7 +1074,10 @@
     "bytes": 119654,
     "rows": 100,
     "rowsWithContent": 50,
-    "byteRange": [1968, 1651],
+    "byteRange": [
+      1968,
+      1651
+    ],
     "importSharePercent": 35.4,
     "composition": {
       "noCharacterisingLiteral": 63,
@@ -1073,7 +1109,10 @@
     "bytes": 92032,
     "rows": 100,
     "rowsWithContent": 40,
-    "byteRange": [1647, 1425],
+    "byteRange": [
+      1647,
+      1425
+    ],
     "importSharePercent": 30.3,
     "composition": {
       "noCharacterisingLiteral": 70,
@@ -1084,15 +1123,7 @@
       "vendoredOrPolyfill": 1,
       "inScopeCandidate": 1
     },
-    "inScopeCandidates": [
-      {
-        "module": "chunk-w87rxh9c.js",
-        "recovered": "servers declared in a project .mcp.json are held as awaiting approval and are not connected until the user approves them",
-        "localHalf": "src/config.ts:913-936 reads the settings layers including the workspace's own .harness/settings.json and settings.local.json before merging, and the schema-parsed mcpServers reaches connectMcpServers(config.mcpServers ?? {}) at src/runtime.ts:443",
-        "uncovered": "no approval step exists before a declaration from a workspace-controlled layer is connected; the local source has no awaiting-approval state, no per-server project admission and no consent record for it",
-        "authorityVerified": "local source read only; no module was executed"
-      }
-    ],
+    "inScopeCandidates": [],
     "notedButNotCandidates": [
       "chunk-btevcxdf.js and chunk-jx0gn306.js gate unattended serving of tool calls on consent that organization or user settings can force off, carrying accepted, declined and not-saved states; this runtime has no unattended-serving surface, so this completes the attestation family slice twenty-seven named without a local half",
       "chunk-4yt2mg41.js records a goal restored on resume and a stop hook added, belonging to the goal surface this runtime does not have",
@@ -1101,14 +1132,24 @@
       "chunk-xds8k7aa.js classifies a connection refused before it reached the service and names a CDN edge among the causes, the network error classification this runtime applies to its own calls",
       "forty modules carry content and ten of them only through state-name markers; sixty carry nothing of their own and most of those are seventy percent or more import statements"
     ],
-    "reading": "the under-1.7-kilobyte remainder at 30.3% import text: hosted artifact, design and connector surfaces, browser and device tool naming, agent and subagent reporting, and the tail of the MCP, plugin and background-job plumbing - seventy modules with no characterising literal of their own, fifteen hosted surfaces, nine with local counterparts, two product surfaces without a local counterpart, two rules guarding surfaces this runtime does not have, one vendored package, and one candidate: a project-declared MCP server held until the user approves it, where this runtime connects a server declared by a workspace-controlled settings layer with no approval step"
+    "reading": "the under-1.7-kilobyte remainder at 30.3% import text: hosted artifact, design and connector surfaces, browser and device tool naming, agent and subagent reporting, and the tail of the MCP, plugin and background-job plumbing - seventy modules with no characterising literal of their own, fifteen hosted surfaces, nine with local counterparts, two product surfaces without a local counterpart, two rules guarding surfaces this runtime does not have, one vendored package, and one candidate: a project-declared MCP server held until the user approves it, where this runtime connects a server declared by a workspace-controlled settings layer with no approval step Ported on 2026-10-12: see ported.",
+    "ported": [
+      {
+        "port": "ports/W12-mcp-server-approval.md",
+        "shippedOn": "2026-10-12",
+        "note": "Ported as project-declared MCP server admission, onto this runtime's own settings layering: a three-state decision (approved / rejected / pending), the answer keyed to the declaration's canonical digest and to the workspace's real path in a user-directory store, the user's own blanket switch accepted from the user layer only, and the recovered skip-rather-than-admit and could-not-be-saved behaviours."
+      }
+    ]
   },
   "sliceTwentyNine": {
     "scope": "uncited modules ranked 1721 to 1820 by size, the thirteenth 100-rank band",
     "bytes": 69906,
     "rows": 100,
     "rowsWithContent": 35,
-    "byteRange": [1424, 1209],
+    "byteRange": [
+      1424,
+      1209
+    ],
     "importSharePercent": 24.9,
     "composition": {
       "noCharacterisingLiteral": 76,
@@ -1135,7 +1176,10 @@
     "bytes": 50996,
     "rows": 100,
     "rowsWithContent": 39,
-    "byteRange": [1209, 1046],
+    "byteRange": [
+      1209,
+      1046
+    ],
     "importSharePercent": 27.5,
     "composition": {
       "noCharacterisingLiteral": 79,
@@ -1164,8 +1208,11 @@
     "bytes": 35171,
     "rows": 100,
     "rowsWithContent": 40,
-    "byteRange": [1041, 895],
-    "importSharePercent": 25.0,
+    "byteRange": [
+      1041,
+      895
+    ],
+    "importSharePercent": 25,
     "composition": {
       "noCharacterisingLiteral": 82,
       "hostedOrExternalSurfaces": 8,
@@ -1194,7 +1241,10 @@
     "bytes": 21119,
     "rows": 100,
     "rowsWithContent": 19,
-    "byteRange": [890, 773],
+    "byteRange": [
+      890,
+      773
+    ],
     "importSharePercent": 27.6,
     "composition": {
       "noCharacterisingLiteral": 92,
@@ -1220,7 +1270,10 @@
     "bytes": 13023,
     "rows": 100,
     "rowsWithContent": 18,
-    "byteRange": [773, 699],
+    "byteRange": [
+      773,
+      699
+    ],
     "importSharePercent": 35.6,
     "composition": {
       "noCharacterisingLiteral": 92,
@@ -1243,7 +1296,10 @@
     "bytes": 2241,
     "rows": 47,
     "rowsWithContent": 4,
-    "byteRange": [697, 615],
+    "byteRange": [
+      697,
+      615
+    ],
     "importSharePercent": 21.3,
     "composition": {
       "noCharacterisingLiteral": 44,
@@ -1275,7 +1331,12 @@
     "ledgerSha256": "feac2940b9d5cc4aa99174e67d3252548b42c4ed50d024b0bdc6773180a3cb48",
     "summarySha256": "4dc6ca7521559ced30b6b99090ecd5cf203d8c09c30072e4658c172e0b2174ce",
     "asOf": "regenerated after slice seven; the movement since slice five is W10 porting chunk-pn44qc66.js into port evidence plus CURRENT and STATUS naming three reviewed modules of slices six and seven (chunk-2kdsvp3x.js, chunk-bt8cr7rw.js, chunk-patq2z05.js), which moves them from uncited to prose without adding port evidence; regenerated again after slice fourteen with unchanged digests and totals, because that slice named its modules and its candidate only inside this corpus pair, which the scan excludes",
-    "totals": { "portBacked": 33, "narrativeOnly": 65, "uncited": 2267, "uncitedWithoutMarker": 2217 }
+    "totals": {
+      "portBacked": 33,
+      "narrativeOnly": 65,
+      "uncited": 2267,
+      "uncitedWithoutMarker": 2217
+    }
   },
   "residual": "2217 uncited modules carry no marker; naming a reviewed module in CURRENT or STATUS moves it out of the uncited set and into prose without adding port evidence, which is what happened to three modules across slices six and seven. The reading pass is now complete - all 2267 uncited modules have been read once in thirty-four bands - but reading changes nothing in the ledger, because this file is not a citation source: the uncited number moves only when a port package cites the module it actually reads, which is how chunk-gyf58rwf.js and chunk-pn44qc66.js left the set",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
