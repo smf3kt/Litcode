@@ -55,6 +55,7 @@
     "smoke:stop-cap-cli": "node scripts/smoke-stop-cap-cli.mjs",
     "smoke:skill-agent-cli": "node scripts/smoke-skill-agent-cli.mjs",
     "smoke:skill-inline-cli": "node scripts/smoke-skill-inline-cli.mjs",
+    "smoke:skill-fenced-cli": "node scripts/smoke-skill-inline-cli.mjs --fenced",
     "smoke:package": "node scripts/smoke-package.mjs",
     "test": "tsx --test --test-concurrency=4 --test-timeout=20000 test/*.test.ts"
   },

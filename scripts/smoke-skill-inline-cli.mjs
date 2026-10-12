@@ -13,6 +13,7 @@ const fallback = process.argv.includes("--fallback");
 const extended = process.argv.includes("--extended");
 const named = process.argv.includes("--named");
 const aliases = process.argv.includes("--aliases");
+const fenced = process.argv.includes("--fenced");
 const launcher = compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")];
 const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "skill-inline-cli-")));
 const requests = [];
@@ -28,6 +29,7 @@ try {
   writeSkill("preflight", "!`touch preflight-marker` !`printf denied`");
   writeSkill("literal", "args=$ARGUMENTS output=!`printf %s '$ARGUMENTS'`");
   writeSkill("fallback", "output=!`printf fixture`");
+  if (fenced) writeSkill("fenced", "before\n```!\nprintf FENCED\n```\nafter");
   const settings = (enabled, extra = {}) => fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { skillInlineCommands: enabled, ...(quoted ? { skillQuotedArguments: true } : {}), ...(fallback ? { skillArgumentFallback: true } : {}), ...(extended ? { skillExtendedArguments: true } : {}) }, ...extra }));
   const run = async (prompt, flags = []) => {
     child = spawn(process.execPath, [...launcher, "--workspace", workspace, ...(flags.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), ...flags, ...(flags.includes("--interactive") ? [] : [prompt])], {
@@ -111,16 +113,24 @@ try {
     assert.ok(messageText().includes("output=fixture\n\n\nARGUMENTS: ; touch fallback-marker"));
     assert.equal(fs.existsSync(path.join(workspace, "fallback-marker")), false);
   }
+  if (fenced) {
+    settings(true);
+    const beforeFenced = requests.length;
+    result = await run("/fenced", shell);
+    assert.equal(result.code, 0, result.errors);
+    assert.ok(messageText().includes("before\nFENCED\nafter"));
+    assert.equal(requests.length, beforeFenced + 1);
+  }
   const policy = path.join(workspace, "policy.json");
   fs.writeFileSync(policy, JSON.stringify({ features: { skillInlineCommands: false } }));
   result = await run("/inline alpha", [...shell, "--managed-settings", policy]);
   assert.equal(result.code, 0, result.errors);
   assert.ok(messageText().includes("!`printf"));
-  assert.equal(requests.length, fallback ? 9 : 8);
+  assert.equal(requests.length, (fallback ? 9 : 8) + (fenced ? 1 : 0));
   assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
   console.log(JSON.stringify({ cli: "passed", inlineWithoutMetadata: true, modelSkillCall: true, pinnedResume: true,
     disabledLiteral: true, shellGate: true, wholeGroupPreflight: true, injectedDirectivesLiteral: true, managedOverride: true, interactive: true,
-    locksReleased: true, ...(aliases ? { interactiveAlias: true, visibleAliases: true } : {}), ...(named ? { namedInlineArguments: true } : {}), ...(extended ? { extendedInlineArguments: true } : {}), ...(fallback ? { argumentFallbackOutsideShell: true } : {}), ...(quoted ? { quotedInlineArguments: true } : {}), ...(compiled ? { compiledCLI: true } : {}), modelRequests: requests.length, gateway: "owned loopback SSE" }));
+    locksReleased: true, ...(aliases ? { interactiveAlias: true, visibleAliases: true } : {}), ...(named ? { namedInlineArguments: true } : {}), ...(extended ? { extendedInlineArguments: true } : {}), ...(fallback ? { argumentFallbackOutsideShell: true } : {}), ...(fenced ? { fencedBlock: true } : {}), ...(quoted ? { quotedInlineArguments: true } : {}), ...(compiled ? { compiledCLI: true } : {}), modelRequests: requests.length, gateway: "owned loopback SSE" }));
 } finally {
   child?.kill("SIGKILL");
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

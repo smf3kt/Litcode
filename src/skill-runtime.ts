@@ -119,6 +119,34 @@ async function shellOutput(command: string, shell: string, options: SkillExecuti
   });
 }
 
+/** The recovered normalization for an extracted command: trim, CRLF to LF. */
+const normalizeCommand = (text: string) => text.trim().replaceAll('\r\n', '\n');
+
+/** One authored shell directive: the raw span to replace and the command to run. */
+type SkillCommand = { raw: string; command: string; at: number };
+
+/**
+ * Recovered: an authored body carries shell in two forms, both extracted from
+ * the authored text before any substitution and both replaced by the command's
+ * output: a fenced ```! block, and an inline `!`cmd`` span. Spans inside an
+ * extracted block belong to that block and are skipped so a block never runs
+ * twice, and both forms are executed in document order. This runtime keeps its
+ * wider inline match (a span also counts mid-word, e.g. `value=!`cmd``), which
+ * is a superset of the recovered line-start-or-whitespace boundary.
+ */
+function skillCommands(body: string): SkillCommand[] {
+  const found: SkillCommand[] = [];
+  for (const match of body.matchAll(/```!\s*\n?([\s\S]*?)\n?```/g)) {
+    found.push({ raw: match[0], command: normalizeCommand(match[1]!), at: match.index! });
+  }
+  for (const match of body.matchAll(/!`([^`]+)`/g)) {
+    const at = match.index!;
+    if (found.some(entry => at >= entry.at && at < entry.at + entry.raw.length)) continue;
+    found.push({ raw: match[0], command: normalizeCommand(match[1]!), at });
+  }
+  return found.sort((left, right) => left.at - right.at);
+}
+
 async function expandedBody(skill: SkillInfo, args: string, options: SkillExecutionOptions): Promise<string> {
   const body = skill.body;
   const expansion = { quotedArguments: options.config.features?.skillQuotedArguments === true,
@@ -129,20 +157,20 @@ async function expandedBody(skill: SkillInfo, args: string, options: SkillExecut
     appendUnusedArguments: options.config.features?.skillArgumentFallback === true });
   // Identify authored directives before substitution; argument/output text never
   // introduces a second command-expansion pass.
-  const commands = [...body.matchAll(/!`([^`]+)`/g)];
+  const commands = skillCommands(body);
   if (!commands.length || (skill.shell === undefined && skill.command === undefined && options.config.features?.skillInlineCommands !== true)) return withArguments;
   const shell = skill.shell ?? '/bin/sh';
   // Preflight every command before any side effect, including later denied commands.
-  for (const match of commands) {
-    const command = expand(match[1]!);
+  for (const entry of commands) {
+    const command = expand(entry.command);
     if (!grant(skill, commandTool, { command })) throw new Error('Skill command is outside allowed-tools');
     await approve(commandTool, { command }, options, true);
   }
   let out = ''; let start = 0;
-  for (const match of commands) {
-    out += expand(body.slice(start, match.index)) + await shellOutput(expand(match[1]!), shell, options);
+  for (const entry of commands) {
+    out += expand(body.slice(start, entry.at)) + await shellOutput(expand(entry.command), shell, options);
     if (Buffer.byteLength(out) > options.config.maxOutputBytes) throw new Error('Expanded skill output byte limit exceeded');
-    start = match.index! + match[0].length;
+    start = entry.at + entry.raw.length;
   }
   out += expand(body.slice(start));
   // Append only to instructions; fallback text must never extend a shell command.
@@ -161,7 +189,7 @@ function overlayHooks(parent: HooksConfig | undefined, extra: HooksConfig | unde
 export function skillRequiresExecution(skill: SkillInfo, config?: SessionConfig): boolean {
   return skill.context === 'fork' || skill.model !== undefined || skill.effort !== undefined || skill.background === true ||
     skill.agent !== undefined || skill.hooks !== undefined || skill.allowedTools !== undefined || skill.command !== undefined || skill.shell !== undefined ||
-    (config?.features?.skillInlineCommands === true && /!`([^`]+)`/.test(skill.body));
+    (config?.features?.skillInlineCommands === true && skillCommands(skill.body).length > 0);
 }
 
 /** Returns inline instruction text, a completed fork summary, or a background descriptor. */
