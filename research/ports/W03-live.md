@@ -33,3 +33,14 @@ input/output rates imply a guarded worst-case estimate ofUSD0.0612288.
 Evidence: W03-live-evidence.json contains exact receipt and content identity.
 No route was changed, credential rotated or management service restarted;
 this closes real task+resume acceptance only and does not close A02 in full.
+
+Management surface, located 2026-10-12 (read-only): the gateway's own discovery
+document advertises three management routes beside its model routes -
+`/v1/magpie/quotas`, `/v1/magpie/quotas/history` and `/v1/magpie/route` - and
+all three were read with plain GET requests, no model call and no mutation.
+Reading a route requires naming a session (`?session=<id>` or `X-Magpie-Session`);
+an unknown session is answered with `{"route":null,"seq":0,"session":"<id>"}`, so a
+route is a versioned per-session value rather than a gateway-wide setting. What
+is still missing is the write half - how a route is set, and whether any
+credential rotation exists - and both change a gateway the user is running, so
+neither was attempted. Detail: [W03-management-discovery-evidence.json](W03-management-discovery-evidence.json).
