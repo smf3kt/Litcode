@@ -1,0 +1,332 @@
+{
+  "schema": "RecoveredModulePortLedgerAcceptance.v1",
+  "date": "2026-10-12",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "manifestModuleCount": 2609,
+    "limitations": [
+      "Record layout is validated for this sample, not all Bun versions.",
+      "Source text is recovered; original source names, types and runtime behavior remain unverified.",
+      "Bytecode and module metadata are validated and indexed, not decoded."
+    ]
+  },
+  "generator": {
+    "path": "scripts/port-ledger.mjs",
+    "sha256": "006dfaf876156f9f51c02c0fd6511a6e692a112a9e9d02fd15ed59f1ba21445f",
+    "command": "node scripts/port-ledger.mjs --extracted <extracted-sample> --output research/ports/port-ledger.json --markdown research/ports/port-ledger.md"
+  },
+  "outputs": {
+    "ledger": {
+      "path": "research/ports/port-ledger.json",
+      "sha256": "fccd3329aa44f27b1ac8adf90cd4378b08f1e3c6030d4efc03b89f55f17e3749",
+      "bytes": 563170
+    },
+    "summary": {
+      "path": "research/ports/port-ledger.md",
+      "sha256": "72ffdb2b0785da010f47cc7cbbb13d24237c1b91440362e2dbc8e1d9002d2bb6",
+      "bytes": 13154
+    }
+  },
+  "summary": {
+    "modules": 25,
+    "bytes": 6731710,
+    "narrativeOnly": {
+      "modules": 57,
+      "bytes": 6659501
+    },
+    "unreviewed": {
+      "modules": 2283,
+      "bytes": 33446926
+    }
+  },
+  "recordCount": 57,
+  "portBacked": [
+    {
+      "path": "chunk-1x8a5y5q.js",
+      "bytes": 917,
+      "portRecords": [
+        "research/ports/W05-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-3cynezh1.js",
+      "bytes": 434204,
+      "portRecords": [
+        "research/ports/W06-skill-inline-fenced-evidence.json",
+        "research/ports/W06-skill-inline-fenced.md"
+      ]
+    },
+    {
+      "path": "chunk-3d69zma1.js",
+      "bytes": 13458,
+      "portRecords": [
+        "research/ports/W05-sampling-arrays-evidence.json",
+        "research/ports/W05-sampling-arrays.md",
+        "research/ports/W05-sampling-audio-evidence.json",
+        "research/ports/W05-sampling-audio.md",
+        "research/ports/W05-sampling-blocks-evidence.json",
+        "research/ports/W05-sampling-blocks.md",
+        "research/ports/W05-sampling-images-evidence.json",
+        "research/ports/W05-sampling-images.md",
+        "research/ports/W05-standard-tasks-evidence.json",
+        "research/ports/W05-standard-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-3y0g37cq.js",
+      "bytes": 7246,
+      "portRecords": [
+        "research/ports/W05-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-4vr415ka.js",
+      "bytes": 156824,
+      "portRecords": [
+        "research/ports/W05-durable-tasks-evidence.json",
+        "research/ports/W05-durable-tasks.md",
+        "research/ports/W05-sampling-audio-evidence.json",
+        "research/ports/W05-sampling-audio.md",
+        "research/ports/W05-standard-tasks-evidence.json",
+        "research/ports/W05-standard-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-5aypb49d.js",
+      "bytes": 29384,
+      "portRecords": [
+        "research/ports/W05-durable-tasks-evidence.json",
+        "research/ports/W05-durable-tasks.md",
+        "research/ports/W05-get-task-inputs-evidence.json",
+        "research/ports/W05-get-task-inputs.md",
+        "research/ports/W05-standard-tasks-evidence.json",
+        "research/ports/W05-standard-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-8s56nf7t.js",
+      "bytes": 7117,
+      "portRecords": [
+        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W05-image-limits.md"
+      ]
+    },
+    {
+      "path": "chunk-8sj9gbsq.js",
+      "bytes": 15229,
+      "portRecords": [
+        "research/ports/W05-persistence.md",
+        "research/ports/W05-recovery.md"
+      ]
+    },
+    {
+      "path": "chunk-9cmjz7j9.js",
+      "bytes": 90493,
+      "portRecords": [
+        "research/ports/W05-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-ax7r0qj7.js",
+      "bytes": 7300,
+      "portRecords": [
+        "research/ports/skill-argument-expansion.md"
+      ]
+    },
+    {
+      "path": "chunk-bf3z2ftn.js",
+      "bytes": 98088,
+      "portRecords": [
+        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W05-image-limits.md"
+      ]
+    },
+    {
+      "path": "chunk-bmffdtcn.js",
+      "bytes": 8541,
+      "portRecords": [
+        "research/ports/W05-startup.md"
+      ]
+    },
+    {
+      "path": "chunk-dt139v0s.js",
+      "bytes": 8232,
+      "portRecords": [
+        "research/ports/W05-get-dispatch-evidence.json",
+        "research/ports/W05-get-dispatch.md",
+        "research/ports/W05-get-resume-evidence.json",
+        "research/ports/W05-get-resume.md",
+        "research/ports/W05-get-task-inputs-evidence.json",
+        "research/ports/W05-get-task-inputs.md"
+      ]
+    },
+    {
+      "path": "chunk-e0gkzwq9.js",
+      "bytes": 1032,
+      "portRecords": [
+        "research/ports/W05-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-f79f00pg.js",
+      "bytes": 7582,
+      "portRecords": [
+        "research/ports/W05-sampling-images.md",
+        "research/ports/W05-tasks-evidence.json",
+        "research/ports/W05-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-fdwn5gdv.js",
+      "bytes": 981,
+      "portRecords": [
+        "research/ports/W05-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-htgmc2p1.js",
+      "bytes": 44823,
+      "portRecords": [
+        "research/ports/W06-skill-inline-fenced-evidence.json",
+        "research/ports/W06-skill-inline-fenced.md"
+      ]
+    },
+    {
+      "path": "chunk-m00pavz3.js",
+      "bytes": 11563,
+      "portRecords": [
+        "research/ports/skill-argument-expansion.md",
+        "research/ports/W06-skill-inline-fenced-evidence.json",
+        "research/ports/W06-skill-inline-fenced.md"
+      ]
+    },
+    {
+      "path": "chunk-rr5rbabs.js",
+      "bytes": 59923,
+      "portRecords": [
+        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W05-image-limits.md"
+      ]
+    },
+    {
+      "path": "chunk-rx2nah4x.js",
+      "bytes": 691306,
+      "portRecords": [
+        "research/ports/W05-list-changed-refetch-evidence.json",
+        "research/ports/W05-list-changed-refetch.md"
+      ]
+    },
+    {
+      "path": "chunk-sb190ksj.js",
+      "bytes": 198048,
+      "portRecords": [
+        "research/ports/W05-list-changed-refetch-evidence.json",
+        "research/ports/W05-list-changed-refetch.md",
+        "research/ports/W05-persistence.md",
+        "research/ports/W05-recovery.md",
+        "research/ports/W05-sampling-audio-evidence.json",
+        "research/ports/W05-sampling-audio.md",
+        "research/ports/W05-sampling-images.md",
+        "research/ports/W05-stdio-redial-evidence.json",
+        "research/ports/W05-stdio-redial.md",
+        "research/ports/W05-tasks.md"
+      ]
+    },
+    {
+      "path": "chunk-sfn1dbxq.js",
+      "bytes": 4762583,
+      "portRecords": [
+        "research/ports/skill-argument-expansion.md",
+        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W05-image-limits.md",
+        "research/ports/W06-skill-inline-fenced-evidence.json",
+        "research/ports/W06-skill-inline-fenced.md"
+      ]
+    },
+    {
+      "path": "chunk-v96accjb.js",
+      "bytes": 20997,
+      "portRecords": [
+        "research/ports/W05-image-limits-evidence.json",
+        "research/ports/W05-image-limits.md"
+      ]
+    },
+    {
+      "path": "chunk-x1hnhzq0.js",
+      "bytes": 53492,
+      "portRecords": [
+        "research/ports/W06-skill-inline-fenced-evidence.json",
+        "research/ports/W06-skill-inline-fenced.md"
+      ]
+    },
+    {
+      "path": "chunk-yjc18bey.js",
+      "bytes": 2347,
+      "portRecords": [
+        "research/ports/W05-startup.md",
+        "research/ports/W05-tasks.md"
+      ]
+    }
+  ],
+  "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
+  "reproducibility": {
+    "command": "generate twice with different output paths and compare digests",
+    "receipt": "ledger-verify.log",
+    "pathIndependentDeterministic": true
+  },
+  "check": {
+    "command": "npm run check",
+    "exit": 0,
+    "log": "ledger-check.log"
+  },
+  "package": {
+    "command": "npm run smoke:package",
+    "receipt": {
+      "package": "passed",
+      "files": 62,
+      "upstreamRequests": 0,
+      "compiledCLI": true,
+      "offlineInstall": true
+    },
+    "log": "ledger-package.log"
+  },
+  "suiteNotRerun": "no product source, test or build input changed in this package, so the 1052/1052 suite was not re-run",
+  "excludedFromScan": [
+    "research/ports/port-ledger.json",
+    "research/ports/port-ledger.md",
+    "any file named port-ledger.md or port-ledger.json"
+  ],
+  "limitations": [
+    "Record layout is validated for this sample, not all Bun versions.",
+    "Source text is recovered; original source names, types and runtime behavior remain unverified.",
+    "Bytecode and module metadata are validated and indexed, not decoded."
+  ],
+  "rejected": [
+    "assigning a ported share to uncited modules",
+    "counting narrative mentions as port evidence",
+    "citing the ledger itself as evidence (excluded by path and by basename)"
+  ],
+  "logs": [
+    {
+      "name": "ledger-verify.log",
+      "sha256": "76394bc08f19307156bf39f5600c1ad983e500cf67f6726fb5cfdc1f675b58b9"
+    },
+    {
+      "name": "ledger-check.log",
+      "sha256": "dd59d119cbe42cd5f0daffc3ae5e0ba58a8e85a3ad0b3533aa548921def1f886"
+    },
+    {
+      "name": "ledger-package.log",
+      "sha256": "391e510753c6ede0abe560a9488dd212116b80a10f95d1b433c0297113fa12a2"
+    }
+  ],
+  "paidCalls": 0,
+  "remaining": [
+    "2283 uncited modules (33.4 MB) and 57 narrative-only modules remain unreviewed and are named in the ledger",
+    "next-turn MCP background redial policy",
+    "parked list_changed refetch via subscriptions/listen",
+    "recovered shell-AST argument splitting",
+    "mcp serve server and server-side task receiver"
+  ]
+}

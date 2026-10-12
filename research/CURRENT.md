@@ -30,7 +30,7 @@
 | --- | --- | --- | --- |
 | A01 | P1 网关header被SDK环境覆盖 | resolved / confirmed | [W01](ports/W01.md)：原生SDK污染复现，两auth的stream/count_tokens及CLI新建/恢复通过 |
 | A02 | P1 Magpie管理适配未闭环 | Partial / real task+resume confirmed | W03-live真实任务已验证；管理启动、route切换、凭证发行/轮换、实际账单仍缺，保持open |
-| A03 | P1 缺逐模块搬运台账 | open / confirmed，首份准确台账已建立 | [技能参数台账](ports/skill-argument-expansion.md)；历史实现逐包核对，不编造搬运比例 |
+| A03 | P1 缺逐模块搬运台账 | resolved（有限）/ 全量可复现 | [逐模块台账](ports/port-ledger.md)：2365模块全部入账并绑定样本sha256，25个有ports证据/57个仅叙述提及/2283个未引用，未引用者显式列出且不计比例；生成器[port-ledger.mjs](../scripts/port-ledger.mjs)同参重复与不同输出路径两次生成摘要一致，[证据](ports/port-ledger-evidence.json)。历史实现逐包核对保留原表述 |
 | A04 | P1 索引未校验模块摘要 | resolved / confirmed | [W02](ports/W02.md)：全部records预检摘要、坐标、生成身份；篡改中止；新索引独立核验 |
 | A05 | P1 提取缺独立可复现校验入口 | resolved / confirmed | [W02](ports/W02.md)：原样本/manifest/raw/解码/落盘/index一致性实测2609项 |
 | A06 | P2 三处工具总数断言漂移 | resolved / confirmed | [W01](ports/W01.md)：名称/能力核验5/5，当前全量1003/1003 |
@@ -57,6 +57,8 @@ W05采样内容元数据完成1047/1047全量、check/build、源码与编译CLI
 W05图片API上限完成1048/1048全量、check/build、真实CLI四段附件链（单张`--attach`、无源恢复、交互PDF页选、超限PNG拒绝且不发请求）；62文件安装、191文件源码/55构建字节一致重建通过，0付费调用。恢复源码的2000x2000与base64 5242880/raw 3932160上限已按边界落地，缩放与重压缩依赖运行时内置Bun.Image，限定搜索确认无可移植编解码器，故不做resize/reencode并保留超target标注。
 
 W05 stdio下次使用重挂完成1049/1049全量、check/build、真实CLI三模式（源码恢复开/关、编译恢复开）对首调即退出的stdio fixture：开恢复为2个进程且第二次调用结果进模型，关恢复仅1个进程且模型收到disconnected错误。恢复源码在致命失败后只关闭并清缓存，下一次使用才dial新进程（sb190ksj `et`/onclose/清除缓存/`no`+`Lt`+`Rt`，连接期探测重启与本运行时单一版本不适用）。
+
+A03 逐模块搬运台账关闭为有限resolved：新生成器对恢复样本2365个模块逐个计算解码文本大小与sha256，扫描research/全部记录得到ports证据（25）、仅叙述提及（57）与未引用（2283，33.4MB）三类，未引用者不推断搬运比例；生成过程排除台账自身的两个输出文件，两次不同输出路径的生成摘要一致（ledger fccd3329…）。本包不改动产品源码/测试/构建输入，故未重跑1052用例；check与62文件安装包通过。
 
 W06 技能围栏shell完成1052/1052全量、check/build、真实CLI新驱动（源码与编译）对围栏```!块的执行与替换，`--fenced`另与quoted/named/fallback/extended组合通过，回归skill-inline与skill-agent通过；193文件源码/55构建字节一致重建、62文件安装、0付费调用。恢复源在替换前用两条规则提取（围栏`gVn`[434795,434965)恒扫、行内`hVn`需正文含"!`"且前置行首或空白），命令经`s5r`去空格与CRLF归一后交给工具，`xxr`[3370821,3370951)按输入schema校验、调用侧`Promise.all`[3368985,3369195)执行；本运行时保留更宽的行内匹配（如`value=!`…``也是指令，属超集）、块内标记跳过、顺序执行与既有预检。hook `once`经核对为超集：恢复端仅在技能hook注册处读取（`qe`[3893,4135)）、仅success后移除、注册表为内存Map（`Bfr`[3020,3120)）；本运行时全hook生效、journal持久化并在开始前认领，故不改动。原版shell AST参数切分（`SE`→`nde`→`DKe`，chunk-m00pavz3.js）保留缺口。
 
