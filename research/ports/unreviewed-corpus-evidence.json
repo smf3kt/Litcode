@@ -1130,6 +1130,35 @@
     ],
     "reading": "the last of the above-one-kilobyte prose at 24.9% import text: policy and managed-settings reporting, daemon and background bookkeeping, cross-session messaging, Windows command resolution, and single-purpose hosted surfaces - seventy-six modules with no characterising literal of their own, twelve with local counterparts, nine hosted surfaces, two pure code leaves, one product surface without a local counterpart, and no candidate of its own but one corroboration of the ninth"
   },
+  "sliceThirty": {
+    "scope": "uncited modules ranked 1821 to 1920 by size, the fourteenth 100-rank band",
+    "bytes": 50996,
+    "rows": 100,
+    "rowsWithContent": 39,
+    "byteRange": [1209, 1046],
+    "importSharePercent": 27.5,
+    "composition": {
+      "noCharacterisingLiteral": 79,
+      "localCounterparts": 11,
+      "hostedOrExternalSurfaces": 8,
+      "productWithoutLocalCounterpart": 1,
+      "vendoredOrPolyfill": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "openReadings": [
+      "chunk-yzah55fq.js carries two message constants, one saying the session cannot write because it is not signed in or the machine is not authorized, and one naming the deny and ask rules; the second is an isolated string fragment whose polarity (rules applied, or rules absent) cannot be established from the fragment or its neighbours, so it is recorded as an open reading rather than turned into a rule"
+    ],
+    "notedButNotCandidates": [
+      "chunk-drb19cer.js reports a tool blocked by the organization's MCP policy, naming an enterprise MCP config and a deniedMcpServers entry, extending the managed-settings family recorded since slice nineteen",
+      "chunk-es5g07ss.js carries permission rule description templates (any Bash command, any Bash command starting with, any use of the), the W01 permission family",
+      "chunk-xmdpqvbv.js tests path segments for characters that cannot appear in a path, and chunk-edc6v4z8.js distinguishes a launch from home from a Windows profile on a mount without a drive, both the W09 path family",
+      "chunk-j4nk8dcv.js distinguishes a local-display-only ask that is not forwarded, the permission forwarding this runtime does for its own asks",
+      "chunk-mq2bx360.js reports an organization policy denial, the policy reporting this runtime does for its own features",
+      "thirty-nine modules carry content and eighteen of them only through state-name markers; sixty-one carry nothing of their own and most of those are seventy-five percent or more import statements"
+    ],
+    "reading": "the last of the above-one-kilobyte modules at 27.5% import text: permission message fragments, organization MCP policy, launch ancestry and path text, skills bookkeeping, and the hosted machine-identity, powerup, whiteboard and prompt-bundle surfaces - seventy-nine modules with no characterising literal of their own, eleven with local counterparts, eight hosted surfaces, one product surface without a local counterpart, one vendored package, no candidate, and one reading deliberately left open because an isolated message fragment cannot be given a polarity"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
