@@ -550,6 +550,10 @@ Opt-in session journal subscription binding passed compiled process restart/SIGK
 
 Explicit pinned/managed samplingImages now reuses owned media header validation and constructs native Messages image blocks without altering bytes. Source host/CLI28/28, compiled CLI7local requests, final1029/1029, check/build and58file installed package passed. Only2tests added; existing cancellation/output/budget contracts reused. Source schema evidence, explicit rewrite boundary, identity and residual audio/array/pixel-decoding gaps are in [ports/W05-sampling-images.md](ports/W05-sampling-images.md).
 
+## Recovered MCP foreground tasks (2026-10-12)
+
+Adapted recovered driveMcpTask and integrated pinned/managed mcpTasks with HTTP/stdio, existing roots/form input callbacks, bounded polling/retries, cached answers and independent cancellation. Source/compiled actual task chains passed completion/malformed/unsupported/abort/close/legacy/resume,3owned CLI model requests. Check/build and59file installed package passed. Final suite and precise source/dependency coordinates reside in [ports/W05-tasks.md](ports/W05-tasks.md). Standard tasks/result, background reattachment and real remote task service equivalence remain separate.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

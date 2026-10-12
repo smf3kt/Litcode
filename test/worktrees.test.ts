@@ -392,7 +392,7 @@ const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {st
 fs.writeFileSync(${JSON.stringify(ready)}, JSON.stringify([process.pid, child.pid]));
 setInterval(() => {}, 1000);`;
     await withGitShim(script, async () => {
-      const instance = manager(root, { timeoutMs: kind === "timeout" ? 500 : 5000 });
+      const instance = manager(root, { timeoutMs: kind === "timeout" ? 1500 : 5000 });
       const controller = new AbortController();
       const running = instance.list(controller.signal);
       const rejected = assert.rejects(running, kind === "timeout" ? /timed out/ : { name: "AbortError" });

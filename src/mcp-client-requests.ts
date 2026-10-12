@@ -188,6 +188,7 @@ export class McpClientRequestHandler {
   // A timed-out host promise still occupies a slot until it actually settles.
   private readonly activeWork = new Set<string | number>();
   private closed = false;
+  private taskInputId = 0;
   private readonly timeoutMs: number;
   readonly capabilities: Record<string, unknown> = {};
   constructor(private readonly serverName: string, callbacks: McpClientRequests = {}) {
@@ -253,6 +254,23 @@ export class McpClientRequestHandler {
       } catch { return await error(-32603, "Invalid client callback result"); }
       await reply({ jsonrpc: "2.0", id, result });
     } finally { clearTimeout(pending.timer); this.pending.delete(id); finish(); }
+  }
+  async resolveTaskInput(key: string, request: { method: string; params?: unknown }, signal: AbortSignal): Promise<unknown> {
+    signal.throwIfAborted();
+    if (this.closed) throw new Error('MCP client request handler closed');
+    if (!['roots/list', 'elicitation/create'].includes(request.method) || !this.supports(request.method)) return undefined;
+    const id = `task-input-${++this.taskInputId}`;
+    let response: any;
+    const cancel = () => this.cancelled({ requestId: id });
+    const pending = this.handle({ jsonrpc: '2.0', id, method: request.method, params: request.params ?? {} },
+      value => { response = value; });
+    signal.addEventListener('abort', cancel, { once: true });
+    if (signal.aborted) cancel();
+    try {
+      await pending; signal.throwIfAborted();
+      if (!response || response.error) throw new Error('MCP task input request failed');
+      return response.result;
+    } finally { signal.removeEventListener('abort', cancel); }
   }
   async close(): Promise<void> {
     this.closed = true;

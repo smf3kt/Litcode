@@ -242,6 +242,7 @@ function newConfig(
       ...(settings.features?.mcpNotificationStream === undefined ? {} : { mcpNotificationStream: settings.features.mcpNotificationStream }),
       ...(settings.features?.mcpRecovery === undefined ? {} : { mcpRecovery: settings.features.mcpRecovery }),
       ...(settings.features?.mcpPersistence === undefined ? {} : { mcpPersistence: settings.features.mcpPersistence }),
+      ...(settings.features?.mcpTasks === undefined ? {} : { mcpTasks: settings.features.mcpTasks }),
       mcpCatalog: settings.features?.mcpCatalog ?? true,
       mcpDynamic: settings.features?.mcpDynamic ?? Boolean(settings.mcpServers && Object.keys(settings.mcpServers).length),
       mcpDeferred: settings.features?.mcpDeferred ?? false,

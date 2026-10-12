@@ -15,6 +15,7 @@ import {
 import { McpClientRequestHandler } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions } from "./mcp-subscriptions.js";
 import { McpLogging } from "./mcp-logging.js";
+import { driveMcpTask, parseTaskHandle } from './mcp-task.js';
 
 export const MCP_HTTP_PROTOCOL_VERSION = "2025-06-18";
 export const MCP_HTTP_SUPPORTED_PROTOCOL_VERSIONS: readonly string[] = ["2025-03-26", "2025-06-18"];
@@ -45,7 +46,7 @@ export const MCP_HTTP_LIMITS: readonly string[] = [
 const reservedHeaders = new Set([
   "accept", "content-type", "content-length", "content-encoding", "host", "connection",
   "keep-alive", "transfer-encoding", "te", "trailer", "upgrade", "expect",
-  "mcp-session-id", "mcp-protocol-version", "origin", "referer", "set-cookie",
+  "mcp-session-id", "mcp-protocol-version", "mcp-name", "origin", "referer", "set-cookie",
 ]);
 
 export function validateMcpHttpUrl(value: string): string {
@@ -195,6 +196,7 @@ export class McpHttpClient implements McpClient {
     return () => { this.disconnectListeners.delete(listener); };
   }
   private closed = false;
+  private readonly taskLifetime = new AbortController();
   private closing: Promise<void> | undefined;
   private readonly operations = new Set<Operation>();
 
@@ -216,6 +218,7 @@ export class McpHttpClient implements McpClient {
       clientRequests: options.clientRequests,
       recovery: options.recovery ?? false,
       persistence: options.persistence ?? false,
+      tasks: options.tasks ?? false,
     };
     this.clientRequests = new McpClientRequestHandler(name, options.clientRequests);
     if (this.settings.subscriptions) this.resourceSubscriptions = new McpResourceSubscriptions(this.request.bind(this), () => record(this.capabilities.resources) && this.capabilities.resources.subscribe === true);
@@ -266,10 +269,11 @@ export class McpHttpClient implements McpClient {
     }
   }
 
-  private async fetchMessage(method: "POST" | "DELETE" | "GET", message: unknown, signal: AbortSignal): Promise<Response> {
+  private async fetchMessage(method: "POST" | "DELETE" | "GET", message: unknown, signal: AbortSignal, taskId?: string): Promise<Response> {
     const body = message === undefined ? undefined : JSON.stringify(message);
     if (body !== undefined && Buffer.byteLength(body) > MCP_HTTP_MAX_FRAME_BYTES) throw new Error("MCP HTTP outbound message exceeds byte limit");
     const headers = this.headers();
+    if (taskId !== undefined) headers.set('Mcp-Name', taskId);
     if (method === "GET") { headers.set("Accept", "text/event-stream"); headers.delete("Content-Type"); }
     let response: Response;
     try { response = await fetch(this.url, { method, headers, body, signal, redirect: "manual" }); }
@@ -444,7 +448,7 @@ export class McpHttpClient implements McpClient {
         if (!record(msg.error) || typeof msg.error.code !== "number" || typeof msg.error.message !== "string") throw new Error("MCP HTTP malformed JSON-RPC error");
         // Remote error text can echo request headers, including an earlier value
         // of an env credential. Report its code without journaling remote text.
-        throw new Error(`MCP request "${method}" on server "${this.name}" failed (code ${msg.error.code})`);
+        throw Object.assign(new Error(`MCP request "${method}" on server "${this.name}" failed (code ${msg.error.code})`), { code: msg.error.code });
       }
       result = msg.result;
       onResult?.(result);
@@ -482,12 +486,12 @@ export class McpHttpClient implements McpClient {
     }
   }
 
-  private async request(method: string, params: unknown, signal: AbortSignal, onResult?: (result: unknown) => void): Promise<unknown> {
+  private async request(method: string, params: unknown, signal: AbortSignal, onResult?: (result: unknown) => void, taskId?: string): Promise<unknown> {
     if (signal.aborted) throw aborted();
     const id = this.nextId++;
     try {
       return await this.bounded(method, signal, this.settings.requestTimeoutMs, async (activeSignal) => {
-        const response = await this.fetchMessage("POST", { jsonrpc: "2.0", id, method, params }, activeSignal);
+        const response = await this.fetchMessage("POST", { jsonrpc: "2.0", id, method, params }, activeSignal, taskId);
         if (method === "initialize") {
           const session = response.headers.get("mcp-session-id");
           if (session !== null) {
@@ -535,7 +539,14 @@ export class McpHttpClient implements McpClient {
 
   async callTool(toolName: string, args: unknown, signal: AbortSignal): Promise<McpToolResult> {
     if (!this.initialized) throw new Error("MCP HTTP session is not initialized");
-    return parseMcpToolResult(await this.request("tools/call", { name: toolName, arguments: args }, signal), this.name);
+    let result = await this.request("tools/call", { name: toolName, arguments: args }, signal);
+    const task = this.settings.tasks ? parseTaskHandle(result) : undefined;
+    if (task) result = await driveMcpTask({ task,
+      signal: AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]),
+      request: (method, params, requestSignal) => this.request(method, params, requestSignal, undefined, task.taskId),
+      resolveInputRequest: (key, input, requestSignal) => this.clientRequests.resolveTaskInput(key, input, requestSignal),
+    });
+    return parseMcpToolResult(result, this.name);
   }
 
   supportsCatalog(family: "resources" | "prompts"): boolean {
@@ -554,6 +565,7 @@ export class McpHttpClient implements McpClient {
 
   close(): Promise<void> {
     if (this.closing) return this.closing;
+    this.taskLifetime.abort();
     this.closed = true;
     this.streamController?.abort();
     if (this.streamStatus) this.streamStatus = { state: "closed" };

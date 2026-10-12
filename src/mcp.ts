@@ -13,6 +13,7 @@ import type { ToolContext, ToolDefinition } from "./tools.js";
 import { mcpReconnectDelay, isTransientMcpFailure } from "./mcp-retry.js";
 import { McpClientRequestHandler, MCP_CLIENT_REQUEST_LIMITS, type McpClientRequests } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions, McpSubscriptionPersistenceError, MCP_SUBSCRIPTION_LIMITS, MCP_MAX_RESOURCE_SUBSCRIPTIONS, MCP_MAX_RESOURCE_URI_BYTES, MCP_MAX_RESOURCE_NOTIFICATIONS, validateMcpResourceUri, type McpSubscriptionMethod } from "./mcp-subscriptions.js";
+import { driveMcpTask, parseTaskHandle } from './mcp-task.js';
 import { McpLogging, MCP_LOGGING_LIMITS, MCP_LOG_LEVELS, MCP_MAX_LOG_NOTIFICATIONS, validateMcpLogLevel } from "./mcp-logging.js";
 export { MCP_LOGGING_LIMITS, MCP_LOG_LEVELS, MCP_MAX_LOG_NOTIFICATIONS, MCP_MAX_LOG_QUEUE_BYTES, MCP_MAX_LOG_MESSAGE_BYTES, MCP_MAX_LOG_METADATA_BYTES, MCP_MAX_LOG_LOGGER_BYTES, MCP_MAX_LOG_JSON_DEPTH, MCP_MAX_LOG_JSON_NODES } from "./mcp-logging.js";
 export { MCP_SUBSCRIPTION_LIMITS, MCP_MAX_RESOURCE_SUBSCRIPTIONS, MCP_MAX_RESOURCE_URI_BYTES, MCP_MAX_RESOURCE_NOTIFICATIONS, MCP_MAX_RESOURCE_NOTIFICATION_BYTES } from "./mcp-subscriptions.js";
@@ -122,6 +123,8 @@ export type McpConnectOptions = {
   recovery?: boolean;
   /** Bind acknowledged URI intent to an owned session journal; requires recovery and subscriptions. */
   persistence?: boolean;
+  /** Foreground resultType/task extension; no background replay. */
+  tasks?: boolean;
   /** Connection-owned log collection; absent by default. */
   logging?: boolean;
   /** Own one HTTP GET SSE notification stream; stdio ignores this option. */
@@ -129,7 +132,7 @@ export type McpConnectOptions = {
   /** Trusted in-memory host callbacks; absent by default and excluded from persisted config. */
   clientRequests?: McpClientRequests;
 };
-export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence">> & Pick<McpConnectOptions, "clientRequests" | "persistence">;
+export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence" | "tasks">> & Pick<McpConnectOptions, "clientRequests" | "persistence" | "tasks">;
 
 export type McpConnection = {
   tools: ToolDefinition[];
@@ -389,6 +392,7 @@ class McpStdioClient implements McpClient {
   private stderrTail: Buffer = Buffer.alloc(0);
   private closed = false;
   private failure: Error | null = null;
+  private readonly taskLifetime = new AbortController();
   private capabilities: Record<string, unknown> = {};
   private readonly toolsChangedListeners = new Set<() => void>();
   private readonly disconnectListeners = new Set<() => void>();
@@ -461,6 +465,7 @@ class McpStdioClient implements McpClient {
   // -- lifecycle ----------------------------------------------------------
 
   async close(): Promise<void> {
+    this.taskLifetime.abort();
     this.closed = true;
     this.resourceSubscriptions?.close();
     this.logging?.close();
@@ -523,6 +528,7 @@ class McpStdioClient implements McpClient {
   }
 
   private fail(error: Error): void {
+    this.taskLifetime.abort();
     if (this.failure) return;
     this.failure = error;
     this.closed = true;
@@ -729,7 +735,9 @@ class McpStdioClient implements McpClient {
       return;
     }
     if (message.error !== undefined) {
-      pending.reject(new Error(rpcErrorMessage(this.name, pending.method, message.error)));
+      const error = new Error(rpcErrorMessage(this.name, pending.method, message.error));
+      if (isRecord(message.error) && Number.isFinite(message.error.code)) Object.assign(error, { code: message.error.code });
+      pending.reject(error);
       return;
     }
     try { pending.onResult?.(message.result); pending.resolve(message.result); }
@@ -786,7 +794,13 @@ class McpStdioClient implements McpClient {
   }
 
   async callTool(toolName: string, args: unknown, signal: AbortSignal): Promise<McpToolResult> {
-    const result = await this.request("tools/call", { name: toolName, arguments: args }, signal);
+    let result = await this.request("tools/call", { name: toolName, arguments: args }, signal);
+    const task = this.settings.tasks ? parseTaskHandle(result) : undefined;
+    if (task) result = await driveMcpTask({ task,
+      signal: AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]),
+      request: (method, params, requestSignal) => this.request(method, params, requestSignal),
+      resolveInputRequest: (key, input, requestSignal) => this.clientRequests.resolveTaskInput(key, input, requestSignal),
+    });
     return parseMcpToolResult(result, this.name);
   }
 
@@ -1462,6 +1476,7 @@ export async function connectMcpServers(
     subscriptions: options.subscriptions ?? false,
     recovery: options.recovery ?? false,
     persistence: options.persistence ?? false,
+    tasks: options.tasks ?? false,
     logging: options.logging ?? false,
     notificationStream: options.notificationStream ?? false,
     clientRequests: options.clientRequests,
@@ -1663,7 +1678,11 @@ export async function connectMcpServers(
       inventories.set(server, client.listed());
       return result;
     },
-    limits: settings.dynamic ? [...lifecycleLimits, ...MCP_DYNAMIC_LIMITS.map((entry) => settings.notificationStream && hasHttp ? entry.replace("no background HTTP GET stream", "owned HTTP GET SSE stream enabled") : entry), ...(settings.deferred ? ["deferred tools: namespaced schemas are omitted; input schema metadata is returned by mcp_tool_search"] : [])] : lifecycleLimits,
+    limits: settings.tasks ? [...lifecycleLimits,
+      ...(settings.dynamic ? MCP_DYNAMIC_LIMITS : []),
+      ...(settings.deferred ? ['deferred tools: namespaced schemas are omitted; input schema metadata is returned by mcp_tool_search'] : []),
+      'MCP tasks: opted-in foreground resultType/task and tasks/get/update/cancel extension with inline terminal content; poll250..30000ms/default2000,5consecutive failures,16input keys with cached answers; only roots/form inputs; whole drive uses requestTimeoutMs and connection lifetime, cancel best-effort5000ms; no standard tasks/result, background persistence or tool replay']
+      : settings.dynamic ? [...lifecycleLimits, ...MCP_DYNAMIC_LIMITS.map((entry) => settings.notificationStream && hasHttp ? entry.replace("no background HTTP GET stream", "owned HTTP GET SSE stream enabled") : entry), ...(settings.deferred ? ["deferred tools: namespaced schemas are omitted; input schema metadata is returned by mcp_tool_search"] : [])] : lifecycleLimits,
     ...(settings.notificationStream && hasHttp ? { notificationStreams: () => Object.fromEntries([...namedClients].filter(([, client]) => client.notificationStreamStatus !== undefined).map(([name, client]) => [name, { ...client.notificationStreamStatus! }])) } : {}),
     async close(): Promise<void> {
       if (closed) return;
