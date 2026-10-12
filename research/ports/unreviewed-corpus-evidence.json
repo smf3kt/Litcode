@@ -1003,6 +1003,39 @@
     ],
     "reading": "the sub-three-kilobyte layer at 22.2% import text: request parameters and tool input validation, repository trust and permission mode plumbing, transcript and session bookkeeping, plugin fetch and prompt overrides, and the hosted bridge, device, vitals and workshop surfaces - fifty-four modules with no characterising literal of their own, twenty-two with local counterparts, sixteen hosted surfaces, four excluded with credentials or OAuth, one vendored package, one pure code leaf, one product surface without a local counterpart, and one candidate: an attachment refused for a credential-shaped name or more than one hard link over a read path this runtime already owns"
   },
+  "sliceTwentySix": {
+    "scope": "uncited modules ranked 1421 to 1520 by size, the tenth 100-rank band",
+    "bytes": 157862,
+    "rows": 100,
+    "rowsWithContent": 65,
+    "byteRange": [2451, 1970],
+    "importSharePercent": 22.9,
+    "composition": {
+      "noCharacterisingLiteral": 56,
+      "localCounterparts": 26,
+      "hostedOrExternalSurfaces": 12,
+      "ruleWithoutLocalSurface": 2,
+      "excludedWithCredentialsOrOauth": 1,
+      "vendoredOrPolyfill": 1,
+      "pureCodeLeaves": 1,
+      "productWithoutLocalCounterpart": 1,
+      "inScopeCandidate": 0
+    },
+    "inScopeCandidates": [],
+    "falseLeadCorrected": [
+      "chunk-a4gns8gb.js refuses a unix control socket whose directory cannot be set up or whose path is not a usable local address; this runtime runs no unix-socket server (the only socket in the local source is the background job's connection object), so there is no local half and the rule guards a surface the runtime does not have",
+      "chunk-93jnxr7z.js skips a settings-sourced NODE_EXTRA_CA_CERTS value while loading CA certificates; the local source never reads a CA certificate configuration, so this too guards a surface the runtime does not have"
+    ],
+    "notedButNotCandidates": [
+      "chunk-55s2xjk4.js sequences startup passes and names the remote managed-settings load among them, extending the managed-settings family recorded in slices nineteen to twenty-five",
+      "chunk-dr9qwf5q.js tells the model to run a narrower command after a refusal and reports the error as replayed from a served result, the W01 permission family",
+      "chunk-76f8dpa7.js carries shell reading patterns (powershell, ipconfig, hostname), the W01 command-reading family",
+      "chunk-1yby7m6m.js reports a session or daemon interface version it cannot read and distinguishes a too-old session from a too-old daemon, the local daemon ownership this runtime already has",
+      "chunk-t0mb9hr8.js asks before using an API key it detected in the environment, the shape this runtime applies to its own credential reading",
+      "sixty-five modules carry content and twenty-one of them only through state-name markers; thirty-five carry nothing of their own and most of those are half or more import statements"
+    ],
+    "reading": "the last of the two-kilobyte-and-under prose at 22.9% import text: terminal integration and clipboard transports, session colour and teammate bookkeeping, login and subscription surfaces, startup phase ordering, and the hosted bridge, fleet and dev-intent surfaces - fifty-six modules with no characterising literal of their own, twenty-six with local counterparts, twelve hosted surfaces, two rules guarding surfaces this runtime does not have, one excluded with OAuth, one vendored package, one pure code leaf, one product surface without a local counterpart, and no candidate"
+  },
   "methodNote": {
     "from": "slice fourteen",
     "what": "the dependency list is skipped per match, not per line",
