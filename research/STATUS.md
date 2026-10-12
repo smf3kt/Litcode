@@ -1004,6 +1004,40 @@ was not re-run and the ledger is byte-identical (`9a5e31b3…` JSON, `6034bd4b�
 markdown, 43 reviewed of 2365). The 255 local links across `research/` all
 resolve.
 
+## URL elicitation and the completion notice (2026-10-12)
+
+The MCP client's own limits said "no URL elicitation", and both FEATURES rows
+listed URL elicitation as a gap. The recovered client serves two request members
+from one `elicitation/create`: the form, and a URL member carrying a message, an
+`elicitationId` and a URL, whose answer collects nothing. Completion is a second
+notification with its own parameter, which the recovered host forwards to the
+session as a notice.
+
+The port keeps the union rather than a mode flag, so reading a form's
+`requestedSchema` now requires narrowing on the mode; the capability object
+becomes `{form:{},url:{}}`; both hook payloads carry `mode`, and URL mode also
+carries `url` and `elicitation_id`. Three rewrites are deliberate and recorded:
+a URL is refused if it holds control characters (this terminal prints the URL
+for the person to open rather than handing it to a window), an `elicitationId`
+must be non-empty (otherwise a later notice cannot be correlated), and URL mode
+accepts no result content (the recovered result schema is mode-independent, but
+this runtime's result is a schema-checked object map with no schema to check
+against).
+
+Running the form smoke to validate the port showed it had stopped exercising
+anything: its fixture server was declared in the checkout's own
+`.harness/settings.json`, which the project-declared-server admission holds
+unconnected until a person answers, so the CLI never contacted it. The
+pre-change driver fails the same way on the previous commit, so nine drivers had
+been inert since that package landed; all nine now declare the fixture server in
+the user layer, which is configuration, leaving permissions, features, hooks and
+`mcpClient` where they were. Every one passes again in source and compiled form,
+and the driver that tests the decision itself is untouched.
+
+Suite 1119/1119; package 70 files with 0 upstream requests; identity 123 input /
+90 validation / 63 build, merged `06d67404…`. Detail and coordinates:
+ports/W27-url-elicitation.md.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

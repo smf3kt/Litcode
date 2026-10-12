@@ -3,7 +3,9 @@ export type McpJson = null | boolean | number | string | McpJson[] | { [key: str
 type MaybePromise<T> = T | Promise<T>;
 export type McpRoot = { uri: string; name?: string };
 export type McpClientRequestContext = { serverName: string; requestId: string | number; _meta?: { [key: string]: McpJson } };
-export type McpElicitationParams = { message: string; mode?: "form"; requestedSchema: { type: "object"; properties: { [key: string]: McpJson }; required?: string[] }; _meta?: { [key: string]: McpJson } };
+export type McpElicitationFormParams = { message: string; mode?: "form"; requestedSchema: { type: "object"; properties: { [key: string]: McpJson }; required?: string[] }; _meta?: { [key: string]: McpJson } };
+export type McpElicitationUrlParams = { message: string; mode: "url"; elicitationId: string; url: string; _meta?: { [key: string]: McpJson } };
+export type McpElicitationParams = McpElicitationFormParams | McpElicitationUrlParams;
 export type McpElicitationResult = { action: "accept" | "decline" | "cancel"; content?: { [key: string]: string | number | boolean } };
 export type McpContentMetadata = { annotations?: { audience?: ("user" | "assistant")[]; priority?: number; lastModified?: string }; _meta?: { [key: string]: McpJson } };
 export type McpSamplingContent = ({ type: "text"; text: string } | { type: "image" | "audio"; data: string; mimeType: string }) & McpContentMetadata;
@@ -23,6 +25,8 @@ export type McpSamplingResult = { role: "user" | "assistant"; content: McpSampli
 export type McpClientRequests = {
   roots?: (context: McpClientRequestContext, signal?: AbortSignal) => MaybePromise<McpRoot[]>;
   elicitation?: (params: McpElicitationParams, signal: AbortSignal, context: McpClientRequestContext) => MaybePromise<McpElicitationResult>;
+  /** Out-of-band completion for a URL elicitation the server started; observation only. */
+  elicitationComplete?: (event: { serverName: string; elicitationId: string }) => void;
   sampling?: (params: McpSamplingParams, signal: AbortSignal, context: McpClientRequestContext) => MaybePromise<McpSamplingResult>;
   timeoutMs?: number;
 };
@@ -32,10 +36,10 @@ export const MCP_CLIENT_REQUEST_MAX_RESULT_BYTES = 1024 * 1024;
 export const MCP_CLIENT_REQUEST_MAX_PENDING = 16;
 export const MCP_CLIENT_REQUEST_CLEANUP_MS = 1000;
 export const MCP_CLIENT_REQUEST_LIMITS: readonly string[] = [
-  "client requests: explicit trusted runtime callbacks for roots/list, form elicitation/create and base sampling/createMessage; single or array text/image/audio sampling blocks may carry annotations (audience, priority, offset ISO lastModified) and _meta, and messages may carry _meta, which are validated as inert data and never forwarded to the provider; sampling tool declarations, toolChoice modes and tool_use/tool_result blocks stay unsupported because the recovered sampling result cannot express tool use; no URL elicitation, OAuth, model SDK calls, tasks or subscriptions",
+  "client requests: explicit trusted runtime callbacks for roots/list, form and URL elicitation/create and base sampling/createMessage; a URL elicitation carries a message, an elicitationId and a URL the person is asked to open, and its response carries no form data; a completion notification for such an elicitation is forwarded to the host as an observation and answers nothing; single or array text/image/audio sampling blocks may carry annotations (audience, priority, offset ISO lastModified) and _meta, and messages may carry _meta, which are validated as inert data and never forwarded to the provider; sampling tool declarations, toolChoice modes and tool_use/tool_result blocks stay unsupported because the recovered sampling result cannot express tool use; no OAuth, model SDK calls, tasks or subscriptions",
   "client request lifetime: independent AbortSignal and deadline; notifications/cancelled and connection close abort callbacks; late callback completion is ignored",
   "client request bounds: 32 KiB input, 1 MiB result/frame, 16 live RPC/host callbacks per connection; expired callback slots and ids stay reserved until host work settles; inert JSON only; callback errors use fixed messages",
-  "client request protocol: stdio keeps its 2024-11-05 handshake; explicitly configured form elicitation is an opt-in extension; HTTP keeps its negotiated versions",
+  "client request protocol: stdio keeps its 2024-11-05 handshake; explicitly configured form and URL elicitation are an opt-in extension; HTTP keeps its negotiated versions",
   "client callbacks: JavaScript hosts own approval, workspace/model policy and cooperative side-effect cancellation; connection close bounds waiting but does not terminate host callback code",
 ];
 
@@ -121,7 +125,26 @@ function formParams(params: Record<string, any>): McpElicitationParams {
     if (property.default !== undefined) formValue(property.default, property);
   }
   if (schema.required !== undefined && (!Array.isArray(schema.required) || schema.required.some((key: unknown) => typeof key !== "string" || !own(schema.properties, key)) || new Set(schema.required).size !== schema.required.length)) throw new Error("required");
-  return params as McpElicitationParams;
+  return params as McpElicitationFormParams;
+}
+/**
+ * URL-mode elicitation. The recovered request schema is `union([form, url])` where the URL member is
+ * `{mode:"url", message, elicitationId, url}` and `url` is a parseable URL; this validates the same
+ * member and refuses control characters so the value can be shown to a person without terminal escapes.
+ */
+function urlParams(params: Record<string, any>): McpElicitationUrlParams {
+  requireShape(params, ["mode", "message", "elicitationId", "url", "_meta"], ["mode", "message", "elicitationId", "url"]);
+  if (params.mode !== "url") throw new Error("mode");
+  text(params.message);
+  text(params.elicitationId, true);
+  text(params.url, true);
+  if (/[\x00-\x1f\x7f-\x9f]/.test(params.url)) throw new Error("url");
+  new URL(params.url);
+  return params as McpElicitationUrlParams;
+}
+/** `mode ?? "form"`, exactly as the recovered dispatcher defaults it. */
+function elicitationParams(params: Record<string, any>): McpElicitationParams {
+  return (params.mode ?? "form") === "url" ? urlParams(params) : formParams(params);
 }
 function formValue(value: unknown, schema: Record<string, any>): void {
   if (schema.type === "integer") { if (typeof value !== "number" || !Number.isSafeInteger(value)) throw new Error("integer"); }
@@ -138,6 +161,13 @@ function formValue(value: unknown, schema: Record<string, any>): void {
 export function validateElicitationResult(value: unknown, params: McpElicitationParams): McpElicitationResult {
   requireShape(value, ["action", "content"], ["action"]);
   if (!["accept", "decline", "cancel"].includes(value.action)) throw new Error("action");
+  // A URL elicitation asks for no form data, so there is no schema to validate content against. The
+  // recovered result schema is mode-independent and would allow scalar or string-array content;
+  // this runtime's result is a schema-checked object map, so URL mode accepts no content at all.
+  if (params.mode === "url") {
+    if (value.content !== undefined) throw new Error("content");
+    return value as McpElicitationResult;
+  }
   if (value.content !== undefined) {
     if (value.action !== "accept" || !record(value.content)) throw new Error("content");
     for (const [key, item] of Object.entries(value.content)) {
@@ -232,7 +262,10 @@ export class McpClientRequestHandler {
     this.callbacks = { ...callbacks };
     this.timeoutMs = typeof callbacks.timeoutMs === "number" && Number.isFinite(callbacks.timeoutMs) && callbacks.timeoutMs >= 1 ? Math.min(Math.floor(callbacks.timeoutMs), 300_000) : 30_000;
     if (typeof callbacks.roots === "function") this.capabilities.roots = { listChanged: false };
-    if (typeof callbacks.elicitation === "function") this.capabilities.elicitation = { form: {} };
+    // Both modes are advertised when an elicitation callback is registered: the callback receives
+    // URL parameters too and may decline them, which is how the recovered host treats an
+    // unsupported request without inventing a second capability gate.
+    if (typeof callbacks.elicitation === "function") this.capabilities.elicitation = { form: {}, url: {} };
     if (typeof callbacks.sampling === "function") this.capabilities.sampling = {};
   }
   supports(method: unknown): boolean {
@@ -240,6 +273,18 @@ export class McpClientRequestHandler {
   }
   cancelled(params: unknown): void {
     if (record(params) && validId(params.requestId)) this.pending.get(params.requestId)?.cancel();
+  }
+  /**
+   * A server confirms an out-of-band URL elicitation. This observes only: the recovered client
+   * forwards the completed id to the session as a notice, answers nothing, and holds no state, so a
+   * malformed or unknown id is discarded rather than reported.
+   */
+  elicitationComplete(params: unknown): void {
+    if (typeof this.callbacks.elicitationComplete !== "function") return;
+    if (!record(params) || typeof params.elicitationId !== "string" || params.elicitationId.length === 0) return;
+    if (Buffer.byteLength(params.elicitationId) > 256 || /[\x00-\x1f\x7f]/.test(params.elicitationId)) return;
+    try { this.callbacks.elicitationComplete({ serverName: this.serverName, elicitationId: params.elicitationId }); }
+    catch { /* the host owns its observer errors */ }
   }
   async handle(message: Record<string, unknown>, reply: Reply): Promise<void> {
     if (this.closed) return;
@@ -267,7 +312,7 @@ export class McpClientRequestHandler {
         relatedTaskId = related.taskId;
       }
       if (method === "roots/list") requireShape(params, ["_meta"]);
-      else if (method === "elicitation/create") formParams(params);
+      else if (method === "elicitation/create") elicitationParams(params);
       else samplingParams(params);
     } catch { return error(-32602, "Invalid client request parameters"); }
     const controller = new AbortController();

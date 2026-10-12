@@ -36,9 +36,12 @@ async function wait(predicate, label, cli) {
 function workspace(name, persistence) {
   const directory = path.join(job, name);
   fs.mkdirSync(directory); fs.mkdirSync(path.join(directory, 'user')); fs.mkdirSync(path.join(directory, '.harness'));
+  // mcpServers live in the user layer: a checkout-declared server is held as a decision to answer.
+  fs.writeFileSync(path.join(directory, 'user/settings.json'), JSON.stringify({
+    mcpServers: { owned: { type: 'http', url: `${url}/mcp`, headersEnv: { Authorization: 'MCP_PERSISTENCE_AUTH' } } },
+  }));
   fs.writeFileSync(path.join(directory, '.harness/settings.json'), JSON.stringify({
     permissions: { mode: 'bypass', allow: [], deny: [] },
-    mcpServers: { owned: { type: 'http', url: `${url}/mcp`, headersEnv: { Authorization: 'MCP_PERSISTENCE_AUTH' } } },
     features: { mcpDynamic: false, mcpRecovery: true, mcpSubscriptions: true, mcpNotificationStream: true,
       ...(persistence === undefined ? {} : { mcpPersistence: persistence }) },
   }));
@@ -206,8 +209,11 @@ try {
   }
   update(cli.transport, uriA); await sleep(60);
   const pinned = records(directory, id)[0]; await exit(cli);
+  fs.writeFileSync(path.join(directory, 'user/settings.json'), JSON.stringify({
+    mcpServers: { owned: { type: 'http', url: `${url}/hostile` } },
+  }));
   fs.writeFileSync(path.join(directory, '.harness/settings.json'), JSON.stringify({
-    permissions: { mode: 'plan' }, mcpServers: { owned: { type: 'http', url: `${url}/hostile` } },
+    permissions: { mode: 'plan' },
     features: { mcpPersistence: false, mcpRecovery: false, mcpSubscriptions: false, mcpNotificationStream: false },
   }));
   cli = launch(directory, id); await ready(cli, id); restored(cli, [uriA]); intent(directory, id, expected);

@@ -12,21 +12,21 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 45,
+  "recordCount": 46,
   "summary": {
-    "modules": 43,
-    "bytes": 9335146,
+    "modules": 48,
+    "bytes": 10128780,
     "narrativeOnly": {
-      "modules": 64,
-      "bytes": 6660732
+      "modules": 63,
+      "bytes": 5996442
     },
     "unreviewed": {
-      "modules": 2258,
-      "bytes": 30842259
+      "modules": 2254,
+      "bytes": 30712915
     },
     "uncitedBinary": 0,
-    "uncitedWithoutMarker": 2209,
-    "uncitedBuiltinLeafOnly": 2243,
+    "uncitedWithoutMarker": 2205,
+    "uncitedBuiltinLeafOnly": 2239,
     "uncitedImportingChunks": 0,
     "uncitedPackages": [
       {
@@ -240,25 +240,51 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/ports/W05-sampling-arrays.md",
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-blocks.md",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-standard-tasks.md"
+        "research/ports/W05-standard-tasks.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "portRecords": [
         "research/ports/W05-sampling-arrays.md",
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-blocks.md",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-standard-tasks.md"
+        "research/ports/W05-standard-tasks.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "reviewed": true,
       "declared": [
         "adapt of the recovered wire shape with an owned host conversion rewrite. The recovered branch decodes canonical base64 and passes the caller-declared MIME strai",
         "copy of the recovered wire shape with an owned host conversion rewrite. The recovered schema accepts `annotations` (audience array over the role enum, priority ",
         "rewrite of provider conversion; direct recovered provider-image conversion was not established in the bounded read. The existing owned media.ts imageInfo detect",
-        "adapt finite SDK requestStream and tool task metadata behavior, with owned transport/error/timers replacing SDK class graph. Not a wholesale original SDK copy: "
+        "adapt finite SDK requestStream and tool task metadata behavior, with owned transport/error/timers replacing SDK class graph. Not a wholesale original SDK copy: ",
+        "copy of the recovered request union, completion notification and hook fields onto the"
+      ]
+    },
+    {
+      "path": "chunk-3sr3513w.js",
+      "bytes": 3243,
+      "sha256": "cf9586ef5de07cc0da728fd04cd1c216e6640f14d8473188919c0c6f16085f1b",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the recovered request union, completion notification and hook fields onto the"
       ]
     },
     {
@@ -896,6 +922,30 @@
       ]
     },
     {
+      "path": "chunk-mkyr1xcw.js",
+      "bytes": 46820,
+      "sha256": "d71fcdeb09513e8ffb3b16fdece0710ff230d774c5fc55940f5ec538d4cd1a22",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "crypto"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the recovered request union, completion notification and hook fields onto the"
+      ]
+    },
+    {
       "path": "chunk-msy0wfrd.js",
       "bytes": 19219,
       "sha256": "f489401ba9fbd8586a1009a984b6701a0286372a2a84a6a78f46ecac546e9bf8",
@@ -964,6 +1014,28 @@
       ]
     },
     {
+      "path": "chunk-nejdhvxk.js",
+      "bytes": 3292,
+      "sha256": "16f3e340a1a75277d62240cfe94b2cdcac4d76b3e77eaacb62907f78a6c93160",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the recovered request union, completion notification and hook fields onto the"
+      ]
+    },
+    {
       "path": "chunk-pn44qc66.js",
       "bytes": 45078,
       "sha256": "f6c745a0cf4f3370d0e13487c15727a69bdbf2256a30c59080c571274064a77f",
@@ -987,6 +1059,37 @@
       "reviewed": true,
       "declared": [
         "rewrite of the three text-level rules onto this runtime's instruction loader. This runtime already refused an import that escapes the workspace, but it did so b"
+      ]
+    },
+    {
+      "path": "chunk-r2vtj1kh.js",
+      "bytes": 664290,
+      "sha256": "2b13302b83beea3fe54e83316b9d855c43e2298af6d0041b009cec563bbc1515",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "crypto"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {
+        "API beta headers": {
+          "literal": "anthropic-beta",
+          "at": 158180
+        }
+      },
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/FEATURES.md",
+        "research/HOOKS.md",
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the recovered request union, completion notification and hook fields onto the"
       ]
     },
     {
@@ -1030,17 +1133,21 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
+        "research/CURRENT.md",
         "research/ports/W01-refusal-notice.md",
-        "research/ports/W05-list-changed-refetch.md"
+        "research/ports/W05-list-changed-refetch.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "portRecords": [
         "research/ports/W01-refusal-notice.md",
-        "research/ports/W05-list-changed-refetch.md"
+        "research/ports/W05-list-changed-refetch.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "reviewed": true,
       "declared": [
         "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own ",
-        "adapt of the notification-driven refetch, with owned placement. The recovered client refetches inside the notification handler it installs on the transport; thi"
+        "adapt of the notification-driven refetch, with owned placement. The recovered client refetches inside the notification handler it installs on the transport; thi",
+        "copy of the recovered request union, completion notification and hook fields onto the"
       ]
     },
     {
@@ -1149,6 +1256,7 @@
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md",
         "research/ports/W12-mcp-server-approval.md",
+        "research/ports/W27-url-elicitation.md",
         "research/STATUS.md"
       ],
       "portRecords": [
@@ -1157,7 +1265,8 @@
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md",
-        "research/ports/W12-mcp-server-approval.md"
+        "research/ports/W12-mcp-server-approval.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "reviewed": true,
       "declared": [
@@ -1165,7 +1274,8 @@
         "copy of the detection and of the no-fallback record shape, placed where this runtime already owns its journal. The extractor is rewritten to this product's own ",
         "copy of the limit data with an owned enforcement rewrite. The recovered client satisfies the API contract by transforming the image; this runtime has no image c",
         "copy of the fenced-block form with an owned placement, and an audit finding for `once`. The catalog form and its replacement semantics are copied; the extractio",
-        "copy of the decision model, rewritten onto this runtime's storage and answering surface. The recovered product keeps the answers as two name lists inside the me"
+        "copy of the decision model, rewritten onto this runtime's storage and answering surface. The recovered product keeps the answers as two name lists inside the me",
+        "copy of the recovered request union, completion notification and hook fields onto the"
       ]
     },
     {
@@ -1286,6 +1396,37 @@
       "reviewed": true,
       "declared": [
         "copy of the classifier's categories and of the two refusals this runtime lacked, onto the media read path it already owns. `src/media.ts` already refuses an esc"
+      ]
+    },
+    {
+      "path": "chunk-xxx7vgzn.js",
+      "bytes": 75989,
+      "sha256": "b6345680b8f748673353d5e22b6d63f2b8ff8dc4bf38a17536fa24a70cacb2be",
+      "bannerBytes": 614,
+      "binary": false,
+      "builtins": [
+        "child_process",
+        "crypto",
+        "fs",
+        "module",
+        "os",
+        "path",
+        "readline",
+        "string_decoder",
+        "url"
+      ],
+      "packages": [],
+      "chunks": 0,
+      "markers": {},
+      "citedBy": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true,
+      "declared": [
+        "copy of the recovered request union, completion notification and hook fields onto the"
       ]
     },
     {
@@ -5273,18 +5414,21 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/ports/W05-sampling-arrays.md",
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-blocks.md",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-standard-tasks.md"
+        "research/ports/W05-standard-tasks.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "portRecords": [
         "research/ports/W05-sampling-arrays.md",
         "research/ports/W05-sampling-audio.md",
         "research/ports/W05-sampling-blocks.md",
         "research/ports/W05-sampling-images.md",
-        "research/ports/W05-standard-tasks.md"
+        "research/ports/W05-standard-tasks.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "reviewed": true
     },
@@ -5649,9 +5793,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-3sxxpa2y.js",
@@ -24128,9 +24277,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-mm2bt8j9.js",
@@ -25087,9 +25241,14 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/CURRENT.md",
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-nekw1rqg.js",
@@ -28315,11 +28474,15 @@
         }
       },
       "citedBy": [
+        "research/CURRENT.md",
         "research/FEATURES.md",
-        "research/HOOKS.md"
+        "research/HOOKS.md",
+        "research/ports/W27-url-elicitation.md"
       ],
-      "portRecords": [],
-      "reviewed": false
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-r3ykg004.js",
@@ -29269,12 +29432,15 @@
       "chunks": 0,
       "markers": {},
       "citedBy": [
+        "research/CURRENT.md",
         "research/ports/W01-refusal-notice.md",
-        "research/ports/W05-list-changed-refetch.md"
+        "research/ports/W05-list-changed-refetch.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "portRecords": [
         "research/ports/W01-refusal-notice.md",
-        "research/ports/W05-list-changed-refetch.md"
+        "research/ports/W05-list-changed-refetch.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "reviewed": true
     },
@@ -29983,6 +30149,7 @@
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md",
         "research/ports/W12-mcp-server-approval.md",
+        "research/ports/W27-url-elicitation.md",
         "research/STATUS.md"
       ],
       "portRecords": [
@@ -29991,7 +30158,8 @@
         "research/ports/W01-refusal-notice.md",
         "research/ports/W05-image-limits.md",
         "research/ports/W06-skill-inline-fenced.md",
-        "research/ports/W12-mcp-server-approval.md"
+        "research/ports/W12-mcp-server-approval.md",
+        "research/ports/W27-url-elicitation.md"
       ],
       "reviewed": true
     },
@@ -34551,9 +34719,13 @@
       "packages": [],
       "chunks": 0,
       "markers": {},
-      "citedBy": [],
-      "portRecords": [],
-      "reviewed": false
+      "citedBy": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "portRecords": [
+        "research/ports/W27-url-elicitation.md"
+      ],
+      "reviewed": true
     },
     {
       "path": "chunk-xxz4a49n.js",

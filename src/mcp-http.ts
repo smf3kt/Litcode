@@ -318,6 +318,7 @@ export class McpHttpClient implements McpClient {
     if (this.closed || Object.hasOwn(msg, "id")) return;
     if (msg.method === "notifications/tools/list_changed") for (const listener of this.toolsChangedListeners) listener();
     if (msg.method === "notifications/cancelled") this.clientRequests.cancelled(msg.params);
+    if (msg.method === "notifications/elicitation/complete") this.clientRequests.elicitationComplete(msg.params);
     if (msg.method === "notifications/resources/updated") this.resourceSubscriptions?.updated(msg.params);
     if (msg.method === "notifications/message") this.logging?.message(msg.params);
   }
