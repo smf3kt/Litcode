@@ -7,7 +7,8 @@ import { test, type TestContext } from "node:test";
 import type { Anthropic } from "@anthropic-ai/sdk";
 import { PDFDocument } from "pdf-lib";
 
-import { createMediaTools, MEDIA_MAX_BYTES, parseMediaPages, readMedia, type MediaContext } from "../src/media.js";
+import { createMediaTools, IMAGE_MAX_BASE64_BYTES, IMAGE_MAX_HEIGHT, IMAGE_MAX_WIDTH, IMAGE_TARGET_RAW_BYTES,
+  MEDIA_MAX_BYTES, parseMediaPages, readMedia, type MediaContext } from "../src/media.js";
 import type { ToolContext } from "../src/tools.js";
 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
@@ -129,17 +130,44 @@ test("corrupt headers, mismatched media type, unsupported types and malformed PD
   assert.equal((await readMedia("zero.pdf", f.context)).metadata.pageCount, 1);
 });
 
-test("media byte cap is measured before base64 encoding and preserves boundary bytes", async (t) => {
+test("media byte caps bound intake and the API base64 image limit is measured before encoding", async (t) => {
   const f = fixture(t);
-  const boundary = Buffer.alloc(MEDIA_MAX_BYTES);
+  // The 2000x2000 downscale target and the 5 MiB base64 cap share one raw budget: 3932160 bytes.
+  const boundary = Buffer.alloc(IMAGE_TARGET_RAW_BYTES);
   PNG.copy(boundary);
   f.write("boundary.png", boundary);
-  assert.equal((await readMedia("boundary.png", f.context)).metadata.bytes, MEDIA_MAX_BYTES);
+  const accepted = await readMedia("boundary.png", f.context);
+  assert.equal(accepted.metadata.bytes, IMAGE_TARGET_RAW_BYTES);
+  assert.equal(accepted.metadata.base64Bytes, IMAGE_MAX_BASE64_BYTES);
+  assert.equal(accepted.metadata.exceedsDownscaleTarget, false);
+  assert.doesNotMatch(accepted.summary, /downscale target/);
+  const overImage = Buffer.alloc(IMAGE_TARGET_RAW_BYTES + 1);
+  PNG.copy(overImage);
+  f.write("over.png", overImage);
+  await assert.rejects(readMedia("over.png", f.context), /base64 API limit/);
   const oversized = Buffer.alloc(MEDIA_MAX_BYTES + 1);
   f.write("large.png", oversized);
   await assert.rejects(readMedia("large.png", f.context), /byte limit/);
   f.write("large.pdf", oversized);
   await assert.rejects(readMedia("large.pdf", f.context), /byte limit/);
+});
+
+test("images over the downscale target are accepted and reported as not downscaled", async (t) => {
+  const f = fixture(t);
+  const header = Buffer.alloc(33);
+  PNG.copy(header, 0, 0, 24);
+  header.writeUInt32BE(IMAGE_MAX_WIDTH + 1, 16);
+  header.writeUInt32BE(IMAGE_MAX_HEIGHT - 1, 20);
+  f.write("wide.png", header);
+  const wide = await readMedia("wide.png", f.context);
+  assert.deepEqual([wide.metadata.width, wide.metadata.height], [IMAGE_MAX_WIDTH + 1, IMAGE_MAX_HEIGHT - 1]);
+  assert.equal(wide.metadata.exceedsDownscaleTarget, true);
+  assert.match(wide.summary, new RegExp(`${IMAGE_MAX_WIDTH}x${IMAGE_MAX_HEIGHT} downscale target this runtime cannot apply`));
+  assert.deepEqual(Buffer.from(base64Block(wide), "base64"), header);
+  header.writeUInt32BE(IMAGE_MAX_WIDTH, 16);
+  header.writeUInt32BE(IMAGE_MAX_HEIGHT, 20);
+  f.write("exact.png", header);
+  assert.equal((await readMedia("exact.png", f.context)).metadata.exceedsDownscaleTarget, false);
 });
 
 test("relative path confinement rejects escapes, reserved aliases and nonfiles", async (t) => {

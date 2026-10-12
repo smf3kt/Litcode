@@ -266,7 +266,7 @@ npm run agent -- --workspace /absolute/path/to/project --attach docs/report.pdf 
 /attach docs/report.pdf --pages 2-4 总结这些页
 ```
 
-提示 hooks 处理文本，媒体读取使用当前回合的取消信号。附件加入前先检查完整请求预算；需要压缩时只摘要此前已完成历史，然后重新检查。过大的新附件在写入消息前报错，保持后续输入可用。默认 estimate 将 base64 的序列化字节计入保守预算，因此实际允许的附件往往低于 10 MiB；网关具备 token counting 时可选择 `--token-counting api`。当前保留图片原始字节，完整像素解码及 resize/reencode 仍待迁移。
+提示 hooks 处理文本，媒体读取使用当前回合的取消信号。附件加入前先检查完整请求预算；需要压缩时只摘要此前已完成历史，然后重新检查。过大的新附件在写入消息前报错，保持后续输入可用。默认 estimate 将 base64 的序列化字节计入保守预算，因此实际允许的附件往往低于 10 MiB；网关具备 token counting 时可选择 `--token-counting api`。当前保留图片原始字节并执行恢复来源的 API 图片上限：base64 载荷不得超过 5242880 字节（原始 3932160 字节，即该上限的 3/4），超出时在生成消息前报错并给出两个字节数与手动缩小建议；头部尺寸超过 2000x2000 的图片不拒绝，而是保留原字节并在摘要与 metadata 中标注 `exceedsDownscaleTarget`（该 2000px 值是恢复客户端通过缩放满足的多图约束，API 单图允许更大尺寸）。恢复客户端的缩放/重压缩依赖 Bun.Image 编解码器，本运行时没有可移植对应实现（限定搜索无结果记录在案），因此不做 resize/reencode。验收：`npm run smoke:media`。
 
 交互 `/paste-image 解释截图中的报错` 显式读取 PNG：macOS 使用 osascript PNGf，Linux 使用 Wayland wl-paste 或 X11 xclip；Windows 图片剪贴板待迁移。读取最多 10 MiB、5 秒，临时文件存入 `.harness/attachments`（目录 0700、文件 0600），store 最多 128 个文件/64 MiB；回合结束清理仍为同一文件的附件，journal 已保存媒体字节。验证使用自有 PNGf provider 和实际 CLI/本地网关 fixture，真实用户剪贴板读取次数为 0。
 
@@ -326,7 +326,7 @@ Skill可用frontmatter `context: fork` 与 `agent: TYPE`（名称最多128字符
 | `agent` | 独立子日志、general/explore/YAML 类型、subagent_type: fork、model/effort 选择、命名、前台/后台和可选 worktree 隔离；fork 继承父 model/effort |
 | `list_agents` / `send_message` / `get_agent` / `stop_agent` | owner 内代理目录、串行邮箱、完成后恢复原日志、等待与取消 |
 | `workflow_run` / `workflow_get` | 有界声明式 DAG、并发/失败跳过、后台状态；workflowPersistence 增加同 owner 的 resume_from/显式 retry_interrupted |
-| `read_media` | 原生 image/document blocks，10 MiB 输入，至多 20 个选定 PDF 页 |
+| `read_media` | 原生 image/document blocks，10 MiB 输入，图片需在 5 MiB base64 API 上限内，至多 20 个选定 PDF 页 |
 | `web_fetch` / 可选 `web_search` | 有界 HTTP(S) 获取和 HTML/文本处理；搜索使用显式配置后端，已通过 759 项基线验证 |
 | `lsp` | 显式配置的 stdio 服务器，懒初始化、诊断、定义/引用/hover/symbols/call hierarchy |
 | `memory_list/read/write/delete` | `.harness/memory` 本地文档与 digest 冲突检查 |

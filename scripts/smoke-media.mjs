@@ -76,9 +76,13 @@ try {
   fs.unlinkSync(path.join(workspace, "screen shot.png"));
   await run(["--resume", sessionId, "Continue discussing the screenshot"]);
   assert.deepEqual(requests[1].messages[0].content, requests[0].messages[0].content);
+  // One byte over the 3932160-byte raw budget that the 5 MiB base64 API limit allows.
+  const huge = Buffer.alloc(3932161); png.copy(huge);
+  fs.writeFileSync(path.join(workspace, "huge.png"), huge);
   const interactive = await run(["--user-dir", path.join(workspace, "user"), "--interactive"],
-    "/attach missing.png inspect\n/attach report.pdf --pages 2 Explain second page\n/status\n/exit\n");
-  assert.match(interactive.stderr, /error:/); assert.match(interactive.stderr, /finished: end_turn/);
+    "/attach missing.png inspect\n/attach huge.png inspect\n/attach report.pdf --pages 2 Explain second page\n/status\n/exit\n");
+  assert.match(interactive.stderr, /error:/); assert.match(interactive.stderr, /base64 API limit/);
+  assert.doesNotMatch(interactive.stderr, /AAAAAAAA/); assert.match(interactive.stderr, /finished: end_turn/);
   assert.match(interactive.stdout, /Media wire accepted/);
   assert.match(interactive.stdout, /\"unfinished\": false/);
   assert.equal(requests.length, 3);
@@ -87,7 +91,7 @@ try {
   assert.equal(selected.getPageCount(), 1); assert.equal(selected.getPage(0).getWidth(), 300);
   assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
   console.log(JSON.stringify({ cli: "passed", oneShotImage: true, resumeWithoutSource: true,
-    interactivePdfSelection: true, errorThenNextTask: true, locksReleased: true,
+    interactivePdfSelection: true, overLimitImageRefused: true, errorThenNextTask: true, locksReleased: true,
     gateway: "owned loopback SSE", modelRequests: requests.length }));
 } finally {
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

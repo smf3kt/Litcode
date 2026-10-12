@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { test, type TestContext } from "node:test";
 
 import { captureClipboardImage, CLIPBOARD_STORE_MAX_BYTES, type ClipboardSpawn } from "../src/clipboard.js";
-import { MEDIA_MAX_BYTES, readMedia } from "../src/media.js";
+import { IMAGE_TARGET_RAW_BYTES, MEDIA_MAX_BYTES, readMedia } from "../src/media.js";
 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
 function fixture(t: TestContext) {
@@ -61,9 +61,13 @@ test("clipboard bounds, strict hex, cancellation, cleanup and directory confinem
   await assert.rejects(captureClipboardImage(f.workspace, f.signal, linux(output(Buffer.from("clipboard text")))), /PNG image/);
   await assert.rejects(captureClipboardImage(f.workspace, f.signal, linux(output(PNG.subarray(0, 8)))), /invalid.*image/i);
   assert.deepEqual(files(f.workspace), []);
-  const boundary = await captureClipboardImage(f.workspace, f.signal, linux(runner(`const bytes = Buffer.alloc(${MEDIA_MAX_BYTES}); Buffer.from(${JSON.stringify(PNG.toString("base64"))}, "base64").copy(bytes); process.stdout.write(bytes)`)));
-  assert.equal(fs.statSync(path.join(f.workspace, boundary.path)).size, MEDIA_MAX_BYTES);
+  const pngAtSize = (size: number) => `const bytes = Buffer.alloc(${size}); Buffer.from(${JSON.stringify(PNG.toString("base64"))}, "base64").copy(bytes); process.stdout.write(bytes)`;
+  const boundary = await captureClipboardImage(f.workspace, f.signal, linux(runner(pngAtSize(IMAGE_TARGET_RAW_BYTES))));
+  assert.equal(fs.statSync(path.join(f.workspace, boundary.path)).size, IMAGE_TARGET_RAW_BYTES);
   fs.unlinkSync(path.join(f.workspace, boundary.path));
+  // The 10 MiB clipboard byte cap is reachable, but media validation refuses what the API cannot take.
+  await assert.rejects(captureClipboardImage(f.workspace, f.signal, linux(runner(pngAtSize(MEDIA_MAX_BYTES)))), /base64 API limit/);
+  assert.deepEqual(files(f.workspace), []);
   await assert.rejects(captureClipboardImage(f.workspace, f.signal, { platform: "darwin", spawn: runner(`process.stdout.write("\\u00abdata PNGf" + "00".repeat(${MEDIA_MAX_BYTES + 1}) + "\\u00bb")`) }), /PNG exceeds 10 MiB/);
   await assert.rejects(captureClipboardImage(f.workspace, f.signal, linux(runner(`process.stdout.write(Buffer.alloc(${MEDIA_MAX_BYTES + 1}))`))), /stdout.*limit/);
   await assert.rejects(captureClipboardImage(f.workspace, f.signal, { platform: "darwin", spawn: runner(`process.stdout.write(Buffer.alloc(${2 * MEDIA_MAX_BYTES + 65}))`) }), /stdout.*limit/);
