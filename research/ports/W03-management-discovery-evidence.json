@@ -67,6 +67,13 @@
       "reading": "the same not_found message names the model routes only, which is what an unsupported method on a management path receives here"
     }
   },
+  "runningInstance": {
+    "probe": "read-only process and listening-socket inspection",
+    "servingProcess": "/Applications/magpie.app/Contents/MacOS/magpie",
+    "listen": "127.0.0.1:3425",
+    "reading": "the instance answering on the loopback port is the installed application, not a command-line gateway, so the app path is the one in service. What remains unexercised for W03 is the cold-start transition - starting the app when it is not running - and that requires quitting a healthy application the user is using, so it is left to them.",
+    "discoveryWindowFlag": "the discovery document reports window:true alongside the version, which is consistent with an application instance being up; it is not evidence about a cold start"
+  },
   "notAttempted": [
     "credential rotation: no rotation route is advertised, and any such write would change a gateway the user is running",
     "starting or restarting the management service: out of scope for a read-only discovery"
