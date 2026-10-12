@@ -12,6 +12,14 @@ import type { ToolDefinition } from "./tools.js";
 
 export const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
 export const MEDIA_MAX_PAGES = 20;
+// Recovered API image limits: maxWidth/maxHeight 2000, a 5 MiB base64 cap and its exact raw
+// equivalent (3932160 bytes = 5 MiB x 3/4). The recovered client downscales and recompresses to that
+// raw budget with Bun.Image; this runtime keeps the hard contract it can enforce without a codec.
+export const IMAGE_MAX_WIDTH = 2000;
+export const IMAGE_MAX_HEIGHT = 2000;
+export const IMAGE_MAX_BASE64_BYTES = 5 * 1024 * 1024;
+export const IMAGE_TARGET_RAW_BYTES = (IMAGE_MAX_BASE64_BYTES / 4) * 3;
+export function base64Length(bytes: number): number { return Math.ceil(bytes / 3) * 4; }
 export type MediaContext = { workspace: string; signal: AbortSignal };
 export type MediaOptions = { pages?: string };
 export const mediaInputSchema = z.object({ path: z.string().min(1).max(4096), pages: z.string().min(1).max(256).optional() }).strict();
@@ -53,6 +61,10 @@ export type MediaResult = {
     bytes: number;
     width?: number;
     height?: number;
+    /** Base64 payload length, the number the API's image limit applies to. */
+    base64Bytes?: number;
+    /** True when the image is over the 2000x2000 target the recovered client would have downscaled to. */
+    exceedsDownscaleTarget?: boolean;
     pageCount?: number;
     selectedPages?: number[];
   };
@@ -265,18 +277,28 @@ export async function readMedia(userPath: string, context: MediaContext, options
   const info = imageInfo(bytes);
   if (info.mediaType !== expected[extension]) throw new Error("Media extension differs from detected image type");
   checkAbort(context.signal);
-  const summary = `Image ${label}: ${info.mediaType}, ${info.width}x${info.height}, ${bytes.length} bytes.`;
+  // The recovered client never sends an image over the API base64 cap because it downscales first.
+  // Without an image codec this runtime refuses instead, before any request can fail server-side.
+  const encoded = base64Length(bytes.length);
+  if (encoded > IMAGE_MAX_BASE64_BYTES) {
+    throw new Error(`Image base64 payload is ${encoded} bytes (${bytes.length} raw), over the ${IMAGE_MAX_BASE64_BYTES} byte base64 API limit; this runtime cannot resize or recompress an image, so resize it manually or use a smaller image`);
+  }
+  const exceedsDownscaleTarget = info.width > IMAGE_MAX_WIDTH || info.height > IMAGE_MAX_HEIGHT;
+  // Only the over-target case adds the encoded size, so ordinary summaries stay unchanged.
+  const summary = `Image ${label}: ${info.mediaType}, ${info.width}x${info.height}, ${bytes.length} bytes`
+    + (exceedsDownscaleTarget ? `, base64 ${encoded}; exceeds the ${IMAGE_MAX_WIDTH}x${IMAGE_MAX_HEIGHT} downscale target this runtime cannot apply` : "") + ".";
   const image: Anthropic.ImageBlockParam = {
     type: "image", source: { type: "base64", media_type: info.mediaType, data: bytes.toString("base64") },
   };
-  return { blocks: [image, { type: "text", text: summary }], summary, metadata: { ...info, bytes: bytes.length } };
+  return { blocks: [image, { type: "text", text: summary }], summary,
+    metadata: { ...info, bytes: bytes.length, base64Bytes: encoded, exceedsDownscaleTarget } };
 }
 
 export function createMediaTools(): ToolDefinition[] {
   return [{
     schema: {
       name: "read_media",
-      description: "Read a workspace-relative PNG/JPEG/GIF/WebP image or PDF as native multimodal content, up to 10 MiB. Images include dimensions and preserve bytes. PDF documents over 10 pages require pages; page selection is 1-based inclusive ranges, at most 20 pages per call. Reserved .agent paths and symlink escapes are rejected.",
+      description: "Read a workspace-relative PNG/JPEG/GIF/WebP image or PDF as native multimodal content, up to 10 MiB. Images include dimensions and preserve bytes, and must stay inside the 5 MiB base64 API image limit because this runtime cannot downscale or recompress them. PDF documents over 10 pages require pages; page selection is 1-based inclusive ranges, at most 20 pages per call. Reserved .agent paths and symlink escapes are rejected.",
       input_schema: {
         type: "object", additionalProperties: false, required: ["path"],
         properties: {
