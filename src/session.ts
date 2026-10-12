@@ -72,6 +72,7 @@ export type SessionEvent =
   | { kind: 'checkpoint'; name: string; digest: string; boundary: number }
   | { kind: 'rewind'; source: string; boundary: number; checkpoint: string; digest: string }
   | { kind: 'title'; title: string }
+  | { kind: 'refusal'; model: string; category?: string; explanation?: string; requestId?: string }
   | { kind: 'branch'; source: string; workspace: string; boundary: number; reason: 'fork' | 'rewind' | 'reload' | 'configuration' | 'relocation' }
   | { kind: 'hook_start'; id: string; event: string; toolUseId?: string }
   | { kind: 'hook_terminal'; id: string; event: string; sequences: string[] }
@@ -158,6 +159,10 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('tool_result'), result: resultSchema }).strict(),
   z.object({ kind: z.literal('tool_output'), result: resultSchema }).strict(),
   z.object({ kind: z.literal('title'), title: z.string().min(1).max(200).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)) }).strict(),
+  z.object({ kind: z.literal('refusal'), model: z.string().min(1).max(256).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)),
+    category: z.string().min(1).max(64).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)).optional(),
+    explanation: z.string().min(1).max(1024).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)).optional(),
+    requestId: z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/).optional() }).strict(),
   z.object({ kind: z.literal('branch'), source: z.string().uuid(), workspace: z.string().min(1), boundary: z.number().int().nonnegative(), reason: z.enum(['fork', 'rewind', 'reload', 'configuration', 'relocation']) }).strict(),
   z.object({ kind: z.literal('checkpoint'), name: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/), digest: z.string().regex(/^[a-f0-9]{64}$/), boundary: z.number().int().nonnegative() }).strict(),
   z.object({ kind: z.literal('rewind'), source: z.string().uuid(), boundary: z.number().int().nonnegative(), checkpoint: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/), digest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),

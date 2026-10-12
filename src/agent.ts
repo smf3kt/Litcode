@@ -446,6 +446,30 @@ export class Agent {
     } finally { this.busy = false; }
   }
 
+  /**
+   * Recovered: a refused response ends the turn with a warning that carries the
+   * original model, the request id and the policy category and explanation from
+   * the provider's stop details. That no-fallback shape is what this runtime
+   * records; the recovered same-model retry, the fallback chain with its consent
+   * prompt and the retraction of the refused turn are not ported, so nothing here
+   * re-sends the request or edits the transcript.
+   */
+  private recordRefusal(response: Anthropic.Message): void {
+    // The SDK fills stop_details from the streaming message_delta; a fixture or a
+    // provider that omits it leaves both fields absent, which is not an error.
+    const details = (response as { stop_details?: { category?: unknown; explanation?: unknown } | null }).stop_details;
+    const category = typeof details?.category === 'string' && details.category !== '' ? details.category : undefined;
+    // Journal records reject control characters, so an explanation that wraps is
+    // flattened to one line before it is bounded.
+    const raw = typeof details?.explanation === 'string' ? details.explanation.replace(/[\x00-\x1f\x7f-\x9f]+/g, ' ').trim() : '';
+    const explanation = raw === '' ? undefined : raw.slice(0, 1024);
+    const requestId = typeof response.id === 'string' && response.id !== '' ? response.id : undefined;
+    const model = typeof response.model === 'string' && response.model !== '' ? response.model.slice(0, 256) : 'unknown';
+    this.session.append({ kind: 'refusal', model,
+      ...(category ? { category } : {}), ...(explanation ? { explanation } : {}), ...(requestId ? { requestId } : {}) });
+    this.events.status?.(`model refused this request${category ? ` (${category})` : ''}${explanation ? `: ${explanation}` : ''}`);
+  }
+
   private async compact(signal: AbortSignal, trigger: 'manual' | 'auto' = 'auto'): Promise<void> {
     const pre = await this.hook('PreCompact', { trigger }, signal);
     if (pre.blocked) throw new Error(pre.reason ?? 'PreCompact hook stopped compaction');
@@ -630,6 +654,7 @@ export class Agent {
         this.session.append({ kind: 'message', message, response });
         await this.hook('MessageDisplay', { message: response.content, model: response.model }, signal);
         text = response.content.filter((block) => block.type === 'text').map((block) => block.text).join('\n');
+        if (response.stop_reason === 'refusal') this.recordRefusal(response);
         if (calls.length) {
           if (this.session.config.stopHookBlockCap !== undefined && this.session.config.stopHookBlockCap > 0) {
             this.session.append({ kind: 'stop_hook_count', count: 0 });
