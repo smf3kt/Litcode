@@ -990,6 +990,15 @@ task receiver/list/progress/outputSchema surface, URL elicitation, external
 receiver retention, real remote service equivalence and the `subscriptions/listen`
 parked refetch. No package's original run record was rewritten.
 
+Two records from the gateway packages carried the same kind of landing-time
+claim about paid upstream. W01's blockers line and its remaining line said real
+Magpie/paid upstream were `not_run`, and W02 said the management/rotation route
+was `not_run`; both are true of those packages but read as current. W01 now
+records that the real gateway path was exercised later, by W03-live's approved
+acceptance with its two paid Messages requests, and W02 records that the
+management and rotation question was settled without a write at all - a GET-only
+per-session route, no credential route on the port.
+
 Documentation only: no product source, test or build input changed, so the suite
 was not re-run and the ledger is byte-identical (`9a5e31b3…` JSON, `6034bd4b…`
 markdown, 43 reviewed of 2365). The 255 local links across `research/` all
