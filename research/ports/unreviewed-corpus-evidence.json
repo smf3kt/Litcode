@@ -961,13 +961,17 @@
       "ruleWithoutLocalSurface": 1,
       "inScopeCandidate": 1
     },
-    "inScopeCandidates": [
+    "inScopeCandidates": [],
+    "reclassified": [
       {
         "module": "chunk-bcnhka5p.js",
-        "recovered": "a workspace-external instruction import is resolved only after the user accepts a consent dialog (Allow external CLAUDE.md file imports?), and accepting once covers the imports the project adds later",
-        "localHalf": "src/config.ts:1136 throws ConfigError for any instruction import whose realpath escapes the workspace root, alongside the reserved-tree and import-depth checks in the same visitor",
-        "uncovered": "there is no consent path for a workspace-external import, and no scoping of an earlier acceptance to imports added later",
-        "authorityVerified": "local source read only; no module was executed"
+        "wasCandidate": "external instruction-file imports behind a forward-scoped consent dialog",
+        "disposition": "ruleWithoutLocalSurface",
+        "reclassifiedOn": "2026-10-12",
+        "finding": "The module is the dialog, not the rule. It renders a warning-titled question - \"Allow external CLAUDE.md file imports?\" with the body \"This project's CLAUDE.md or .claude/rules imports files outside the current working directory. Never allow this for third-party repositories.\" - lists the external imports it found, states that a yes covers \"any this project adds later\", records the answer and latches a refusal so the question is not asked again in the same scope. Everything it gates is a surface this runtime does not have: an instruction import that leaves the working directory is refused, so there is nothing to ask about.",
+        "localCheck": "Both places that would decide it refuse instead of asking. At configuration time the nested-import visitor throws for any import that realpaths outside the root, with the reserved-tree and depth refusals beside it (src/config.ts:1173; W10 ported the link-chain half of the same visitor and recorded this consent as not ported). At tool time an out-of-workspace path is refused outright rather than asked about: \"path escapes the workspace (absolute paths are not allowed)\" (src/tools.ts:136), with the symlink and dangling-symlink spellings at :140, :168 and :173. Nothing in src/ prompts for out-of-workspace file access. The corpus note recorded the containment rule's site as src/config.ts:1136 when the band was read; the throw is at :1173 and the earlier number addresses the installed-plugin index recheck, so the citation is corrected here.",
+        "whyNotPorted": "The reusable half of this candidate is not the dialog but its shape - a capability a checkout asks for, granted only by a person, where one yes stands for what that checkout adds later - and that shape already landed here on the surface this runtime has, as W12's project-declared MCP server approval, which keys the answer to the declaration digest and the workspace real path, refuses to let a checkout answer for itself (src/config.ts:962-968) and takes the one standing switch from the user layer. Porting this module's consent would instead add an interactive, forward-scoped grant whose only effect is to relax the confinement that refuses the import: new product scope in the direction of less confinement, not a rule landing on a surface this runtime owns.",
+        "ledgerEffect": "none; the module stays uncited because nothing in the product cites it"
       }
     ],
     "notedButNotCandidates": [
@@ -978,7 +982,7 @@
       "chunk-edprrf6e.js refuses a file input path that names a credential, the same adverse-on-doubt vetting this runtime applies to its own reads",
       "sixty-nine modules carry content and twelve of them only through state-name markers; thirty-one carry nothing of their own and most of those are ninety percent or more import statements"
     ],
-    "reading": "the interaction and runtime-plumbing layer at 36.1% import text, the lowest share since slice fourteen: permission and dialog plumbing, skill and plugin surfaces, session and bridge bookkeeping, and the vendored AWS and smithy clients - thirty-two modules with local counterparts, forty-three with no characterising literal of its own, fifteen hosted surfaces, four product surfaces without a local counterpart, three vendored packages, one pure code leaf, one rule guarding a surface this runtime lacks, and one candidate: external instruction-file imports behind a forward-scoped consent dialog against this runtime's ConfigError refusal"
+    "reading": "the interaction and runtime-plumbing layer at 36.1% import text, the lowest share since slice fourteen: permission and dialog plumbing, skill and plugin surfaces, session and bridge bookkeeping, and the vendored AWS and smithy clients - thirty-two modules with local counterparts, forty-three with no characterising literal of its own, fifteen hosted surfaces, four product surfaces without a local counterpart, three vendored packages, one pure code leaf, one rule guarding a surface this runtime lacks, and one candidate: external instruction-file imports behind a forward-scoped consent dialog against this runtime's ConfigError refusal Reclassified on 2026-10-12 after reading the module whole for a port attempt: see reclassified."
   },
   "sliceTwentyFour": {
     "scope": "uncited modules ranked 1221 to 1320 by size, the eighth 100-rank band",
