@@ -1433,6 +1433,86 @@
       "uncitedWithoutMarker": 2217
     }
   },
+  "unpromotedCandidateMarks": {
+    "note": "Nine modules carry the word candidate in an early slice's disposition column without ever being named as a candidate in prose - slices one to three used the mark for a module whose surface this runtime appeared to own, or as provenance for a record already written. Each was read on 2026-10-12 and settled so none reads as open. Named only in this file and in unreviewed-corpus.md, both excluded from the ledger's citation scan, so the counts do not move.",
+    "chunk-2rxk8n7w.js": {
+      "bytes": 332939,
+      "reading": "the MCP protocol SDK surface: message schemas, the streamable-HTTP client transport, and its reconnect policy",
+      "flagged": "slice one recorded it as provenance for the next revision of an MCP record",
+      "disposition": "not a candidate; provenance only",
+      "basis": "this runtime implements the protocol itself, and the reconnect policy _h={initialReconnectionDelay:1000,maxReconnectionDelay:30000,reconnectionDelayGrowFactor:1.5,maxRetries:2} is the one the stdio re-dial record replaced with owned bounded rounds"
+    },
+    "chunk-tm17ttjb.js": {
+      "bytes": 129126,
+      "reading": "the plugin install, update and uninstall surface with marketplace scoping and policy blocks",
+      "flagged": "plugin loading surface; this runtime has plugins",
+      "disposition": "reclassified: ruleWithoutLocalSurface",
+      "basis": {
+        "policyBlocks": ["plugin_policy_blocked", "marketplace blocked by organization policy"],
+        "operations": ["install", "update", "uninstall", "scope selection", "--replace"],
+        "localCheck": "src/plugins.ts discovers installed plugins; there is no install, update, uninstall or scope operation and no marketplace, so the slice's claim was true of discovery alone"
+      }
+    },
+    "chunk-6ejn7q9s.js": {
+      "bytes": 123165,
+      "reading": "served-session messaging plus MCP server state wording",
+      "flagged": "task notification queue; this runtime has task projections",
+      "disposition": "not a candidate: W12's family for the approval wording, External for the peer messaging",
+      "basis": "the wording (a server that comes with the repository and waits for approval in /mcp, one that was rejected, one an organization policy does not allow) is the surface W12 ported; the peer messaging needs a served session this runtime does not have"
+    },
+    "chunk-4k0venhb.js": {
+      "bytes": 122612,
+      "reading": "a hosted artifact surface: publish, share, embeds, capabilities, per-document embed limits",
+      "flagged": "permission-decision reasons; this runtime has its own permission contract",
+      "disposition": "not a candidate: External with its service, and two families for the two flagged literals",
+      "basis": "decisionReason:{type:\"safetyCheck\"} is a permission-reason vocabulary this runtime carries in its own spelling (W01's family); db_write_source_changed is the source-and-identity check W13 and W09 own"
+    },
+    "chunk-wvk9709s.js": {
+      "bytes": 111068,
+      "reading": "the PowerShell command validator: a parameter table per cmdlet and the acceptEdits classification of whether a command counts as an edit",
+      "flagged": "OS-specific command permission table",
+      "disposition": "not a candidate: W01's family and a design difference",
+      "basis": {
+        "table": "set-content / add-content carry operationType:\"write\" with pathParams, knownSwitches and knownValueParams",
+        "dialect": "the PowerShell and POSIX dialects were already recorded as extending W01's family (slice twenty-seven, slice thirty-one)",
+        "designDifference": "this runtime grants acceptEdits by tool and never auto-approves a shell command by analysing it, so porting the analyser would relax a behaviour rather than tighten one"
+      }
+    },
+    "chunk-hedqf2m1.js": {
+      "bytes": 95297,
+      "reading": "the workflow script instrumenter and the local file journal behind it",
+      "flagged": "workflow journal/abort surface; this runtime has workflow",
+      "disposition": "not a candidate: covered by this runtime's workflow surface",
+      "basis": "the script restrictions (Date.now(), new Date() and Math.random() unavailable because they break resume) are the same ones this runtime's workflow scripts state, and the driver injects the clock the script may read (src/workflow.ts:93); the journal is the workflow store's own (src/workflow-store.ts). The mechanism differs - the recovered module instruments the source - but the contract does not"
+    },
+    "chunk-78w3rfp3.js": {
+      "bytes": 91598,
+      "reading": "the background daemon and worktree-removal surface",
+      "flagged": "product worktree/fleet surface",
+      "disposition": "not a candidate: an open family and a product surface this runtime lacks",
+      "basis": {
+        "openFamily": "the worktree-state and repository checks were already recorded as extensions of the open Git and containment family (slice twenty-one)",
+        "absentSurface": "installing the background service, the daemon lock and its pid, and a background respawn refused when the fork handoff's transcript never materialized are OS and served-worker surfaces"
+      }
+    },
+    "chunk-81hpx0b5.js": {
+      "bytes": 86363,
+      "reading": "the safety-check classifier's ask reasons for served commands, plus a PowerShell credential-store detection",
+      "flagged": "settings/permission and shell-family selection",
+      "disposition": "reclassified: ruleWithoutLocalSurface for the classifier half",
+      "basis": {
+        "askReasons": ["safety_check_dangerous_removal", "a shell write that could not be resolved", "a shell line whose writes could not all be worked out"],
+        "credentialDetection": "the CredentialManager / SecretManagement pattern is W14's and W19's family"
+      }
+    },
+    "chunk-9hhsx4g6.js": {
+      "bytes": 76969,
+      "reading": "the remote-io link and the carried-Writes capability",
+      "flagged": "turn handoff and context carrying",
+      "disposition": "not a candidate: External, with the checks belonging to the surface it would need",
+      "basis": "it needs a served worker and the remote link (ccrClient, RemoteIO) that this runtime does not have; its bounds (file count, byte size, a path under the home directory, interference from an Edit or NotebookEdit in the same turn) are checks on that surface"
+    }
+  },
   "residual": "2217 uncited modules carry no marker; naming a reviewed module in CURRENT or STATUS moves it out of the uncited set and into prose without adding port evidence, which is what happened to three modules across slices six and seven. The reading pass is now complete - all 2267 uncited modules have been read once in thirty-four bands - but reading changes nothing in the ledger, because this file is not a citation source: the uncited number moves only when a port package cites the module it actually reads, which is how chunk-gyf58rwf.js and chunk-pn44qc66.js left the set",
   "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
   "paidCalls": 0
