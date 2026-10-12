@@ -48,7 +48,7 @@ export async function driveStandardMcpTask(task: StandardMcpTask, request: (meth
       let raw: unknown;
       try { raw = await request('tasks/get', { taskId: task.taskId }, signal); }
       catch (error) {
-        if (signal.aborted) throw error;
+        if (signal.aborted || error instanceof McpTaskError) throw error;
         const code = record(error) && typeof error.code === 'number' ? error.code : undefined;
         if (code !== undefined && code !== -32603 && code !== -32700 && !(code >= -32099 && code <= -32000)) throw new McpTaskError('poll_failed', code);
         if (++failures >= 5) throw new McpTaskError('poll_failed');

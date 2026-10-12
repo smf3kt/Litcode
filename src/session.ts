@@ -64,6 +64,7 @@ export type SessionEvent =
   | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string }
   | { kind: 'message'; message: Anthropic.MessageParam; response?: Anthropic.Message }
   | { kind: 'mcp_subscription'; server: string; configDigest: string; method: 'resources/subscribe' | 'resources/unsubscribe'; uri: string }
+  | { kind: 'mcp_task'; server: string; configDigest: string; taskId: string; tool: string; createdAt: string; ttl: number | null; resolved: boolean; result?: string; isError?: boolean }
   | { kind: 'tool_start'; id: string; name: string }
   | { kind: 'tool_result'; result: ToolResult }
   | { kind: 'tool_output'; result: ToolResult }
@@ -152,6 +153,7 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('message'), message: messageSchema, response: responseSchema.optional() }).strict(),
   z.object({ kind: z.literal('mcp_subscription'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/),
     method: z.enum(['resources/subscribe', 'resources/unsubscribe']), uri: z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096 && !/[\x00-\x20\x7f]/.test(value)) }).strict(),
+  z.object({ kind: z.literal('mcp_task'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/), taskId: z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/), tool: z.string().min(1).max(256), createdAt: z.string().datetime({ offset: true }), ttl: z.number().finite().int().nonnegative().nullable(), resolved: z.boolean(), isError: z.boolean().optional(), result: z.string().refine(value => Buffer.byteLength(value) <= 24000).optional() }).strict(),
   z.object({ kind: z.literal('tool_start'), id: z.string(), name: z.string() }).strict(),
   z.object({ kind: z.literal('tool_result'), result: resultSchema }).strict(),
   z.object({ kind: z.literal('tool_output'), result: resultSchema }).strict(),

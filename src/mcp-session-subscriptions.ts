@@ -9,7 +9,7 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function digest(session: Session, server: string): string {
+export function mcpServerDigest(session: Session, server: string): string {
   const definition = session.config.mcpServers?.[server];
   if (!definition || !Object.hasOwn(session.config.mcpServers!, server)) throw new Error('Persistent MCP server is absent from pinned configuration');
   return crypto.createHash('sha256').update(canonical({ workspace: session.config.workspace, server, definition })).digest('hex');
@@ -26,7 +26,7 @@ export function mcpSubscriptionState(session: Session): Record<string, string[]>
   const sets = new Map<string, Set<string>>();
   for (const event of session.events) {
     if (event.kind !== 'mcp_subscription') continue;
-    if (event.configDigest !== digest(session, event.server)) throw new Error('Persistent MCP subscription configuration digest mismatch');
+    if (event.configDigest !== mcpServerDigest(session, event.server)) throw new Error('Persistent MCP subscription configuration digest mismatch');
     validateMcpResourceUri(event.uri);
     let uris = sets.get(event.server);
     if (!uris) { uris = new Set(); sets.set(event.server, uris); }
@@ -45,5 +45,5 @@ export function commitMcpSubscription(session: Session, server: string, method: 
   const state = mcpSubscriptionState(session);
   const present = state[server] ?? [];
   if (method === 'resources/subscribe' && !present.includes(uri) && present.length >= MCP_MAX_RESOURCE_SUBSCRIPTIONS) throw new Error('Persistent MCP subscription limit exceeded');
-  session.append({ kind: 'mcp_subscription', server, configDigest: digest(session, server), method, uri });
+  session.append({ kind: 'mcp_subscription', server, configDigest: mcpServerDigest(session, server), method, uri });
 }
