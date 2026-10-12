@@ -1149,6 +1149,29 @@ No product source, test or build input changed, so the suite and identity in the
 previous package still hold. Detail: ports/unreviewed-corpus.md's candidate table,
 ports/remaining-dispositions.md item 6, and CURRENT's audit rows.
 
+## Licence and publication (2026-10-12)
+
+The project is MIT and publishes to GitHub, by the user's decision: the standard
+licence text rather than a word-for-word check against the canonical file, and no
+`Co-Authored-By` line in commit messages from here on. `LICENSE` carries the
+standard MIT text under the project's own copyright line, and `package.json`
+moves from `UNLICENSED` to `MIT` while keeping `private: true` so an accidental
+publish to the npm registry stays blocked.
+
+The published tree is this runtime's own source, its tests, its build
+configuration and its provenance records. No recovered artefact is tracked -
+`extracted*/`, `.agent/`, `dist/` and `node_modules/` are all gitignored - so what
+goes out is the implementation and the notes about where its behaviour came from.
+
+The second half of the Magpie management item is closed as not-a-requirement
+rather than as work in progress: gateway compatibility is complete, and rotating
+the credential is an action the application's own administrative surface takes,
+not something this harness implements or needs.
+
+Suite 1130/1130; package 73 files with 0 upstream requests, one more than before
+because npm packs `LICENSE` automatically; identity 125 input / 92 validation /
+65 build, merged `690b5d53…`. Detail: ports/W32-licence-and-publication-evidence.json.
+
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

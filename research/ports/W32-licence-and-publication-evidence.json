@@ -1,0 +1,32 @@
+{
+  "schema": "LicenceAndPublication.v1",
+  "date": "2026-10-12",
+  "package": "W32",
+  "decision": {
+    "licence": "MIT",
+    "publication": "push to GitHub",
+    "commitTrailers": "no Co-Authored-By line",
+    "decidedBy": "user"
+  },
+  "changes": [
+    { "what": "LICENSE added", "detail": "standard MIT text with the project's own copyright line; the user asked for the standard licence rather than a word-for-word check against the canonical text" },
+    { "what": "package.json licence field", "detail": "UNLICENSED -> MIT, with private:true kept so an accidental npm publish stays blocked" }
+  ],
+  "verification": {
+    "tsc": "clean",
+    "suite": { "passed": 1130, "failed": 0, "note": "no product source, test or build input changed" },
+    "smokePackage": { "files": 73, "upstreamRequests": 0, "note": "npm packs LICENSE automatically, so the package grew by one file" },
+    "identity": "690b5d531535f72f1a62c9a57770a9e20350ce6d302b3cb3f1153bc0df32df4f",
+    "identityCounts": { "inputs": 125, "validation": 92, "build": 65 },
+    "notices": { "installed": 28, "sha256": "6d025e66ae53c22228d4e4ddde35c1ec1d0cd45a1d40af6d00add122372c42f2" }
+  },
+  "publicScope": {
+    "included": "the tracked product tree (src, test, scripts, bin, build configuration, THIRD_PARTY_NOTICES.txt) and the tracked research records",
+    "excludedByGitignore": ["node_modules/", "dist/", "extracted*/", ".agent/", ".env", "*.tgz", "release/"],
+    "statement": "no sample bytes are tracked, so the published tree contains this runtime's own source and its provenance notes rather than any recovered artefact"
+  },
+  "a02Resolution": {
+    "question": "why rotate the gateway credential at all, given Magpie compatibility is done",
+    "answer": "Magpie compatibility is complete - configured key or bearer token, header environment references, real task and resume validated - and rotation is an action the application's own administrative surface performs, not a harness feature. The half that was still listed as an item is therefore closed as not-a-requirement rather than as work in progress."
+  }
+}

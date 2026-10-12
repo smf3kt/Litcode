@@ -3,10 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "license": "UNLICENSED",
-  "bin": { "litcode": "bin/litcode.mjs", "litcode-magpie": "bin/litcode-magpie.mjs", "personal-harness": "bin/personal-harness.mjs" },
-  "files": ["bin/", "dist/", "README.md", "NOTICE.md", "THIRD_PARTY_NOTICES.txt"],
-  "engines": { "node": ">=22" },
+  "license": "MIT",
+  "bin": {
+    "litcode": "bin/litcode.mjs",
+    "litcode-magpie": "bin/litcode-magpie.mjs",
+    "personal-harness": "bin/personal-harness.mjs"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "README.md",
+    "NOTICE.md",
+    "THIRD_PARTY_NOTICES.txt"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "extract": "node scripts/extract-bun.mjs",
     "identity": "node scripts/identity.mjs",
