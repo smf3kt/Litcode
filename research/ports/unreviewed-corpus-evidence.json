@@ -1,0 +1,188 @@
+{
+  "schema": "UnreviewedCorpusCharacterisation.v1",
+  "date": "2026-10-12",
+  "sample": {
+    "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
+    "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "manifestModuleCount": 2609,
+    "limitations": [
+      "Record layout is validated for this sample, not all Bun versions.",
+      "Source text is recovered; original source names, types and runtime behavior remain unverified.",
+      "Bytecode and module metadata are validated and indexed, not decoded."
+    ]
+  },
+  "method": {
+    "bannerBytes": "leading // comment block length recorded per module",
+    "binary": "U+0000 present in decoded text",
+    "markers": "16 literal strings with first offset; never an ownership claim",
+    "imports": "well-formed specifier grammar over from/require occurrences; builtin, sibling chunk or external package"
+  },
+  "findings": {
+    "modules": 25,
+    "portBacked": 25,
+    "narrativeOnly": {
+      "modules": 57,
+      "bytes": 6659501
+    },
+    "uncited": {
+      "modules": 2283,
+      "bytes": 33446926
+    },
+    "uncitedLeafOnly": 2265,
+    "uncitedImportingSiblingChunks": 0,
+    "uncitedBinary": 0,
+    "uncitedWithoutMarker": 2231,
+    "externalPackages": [
+      {
+        "name": "async_hooks",
+        "modules": 10
+      },
+      {
+        "name": "ajv",
+        "modules": 3
+      },
+      {
+        "name": "ws",
+        "modules": 3
+      },
+      {
+        "name": "ajv-formats",
+        "modules": 1
+      },
+      {
+        "name": "inspector",
+        "modules": 1
+      },
+      {
+        "name": "claude-code",
+        "modules": 1
+      }
+    ]
+  },
+  "families": [
+    {
+      "family": "API beta headers",
+      "modules": 20,
+      "bytes": 3098332
+    },
+    {
+      "family": "cloud identity client",
+      "modules": 4,
+      "bytes": 1907554
+    },
+    {
+      "family": "validation-library messages",
+      "modules": 4,
+      "bytes": 1572631
+    },
+    {
+      "family": "protobuf descriptors",
+      "modules": 2,
+      "bytes": 1336593
+    },
+    {
+      "family": "self-hosted release surface",
+      "modules": 10,
+      "bytes": 1220276
+    },
+    {
+      "family": "plugin eval tooling",
+      "modules": 2,
+      "bytes": 1061861
+    },
+    {
+      "family": "org memory surface",
+      "modules": 3,
+      "bytes": 1037975
+    },
+    {
+      "family": "background-agent UI",
+      "modules": 3,
+      "bytes": 1036352
+    },
+    {
+      "family": "artifact capability surface",
+      "modules": 2,
+      "bytes": 977755
+    },
+    {
+      "family": "protobuf runtime",
+      "modules": 1,
+      "bytes": 943361
+    },
+    {
+      "family": "syntax grammars",
+      "modules": 3,
+      "bytes": 608622
+    },
+    {
+      "family": "DOM/HTML parser",
+      "modules": 3,
+      "bytes": 438255
+    },
+    {
+      "family": "terminal UI library",
+      "modules": 1,
+      "bytes": 360288
+    },
+    {
+      "family": "MCP protocol surface",
+      "modules": 2,
+      "bytes": 343724
+    },
+    {
+      "family": "otel otlp protobuf",
+      "modules": 1,
+      "bytes": 267269
+    },
+    {
+      "family": "plugin marketplace UI",
+      "modules": 1,
+      "bytes": 247454
+    }
+  ],
+  "topTwentyDispositions": "research/ports/unreviewed-corpus.md",
+  "inScopeCandidate": {
+    "module": "chunk-2rxk8n7w.js",
+    "bytes": 332939,
+    "verifiedRanges": {
+      "notificationsToolsListChanged": [
+        8033,
+        8065
+      ],
+      "subscriptionsListen": [
+        5839,
+        5859
+      ],
+      "samplingCreateMessage": [
+        9367,
+        9389
+      ],
+      "elicitationCreate": [
+        11191,
+        11209
+      ],
+      "tasksGet": [
+        12450,
+        12459
+      ],
+      "sdkReconnectPolicy": [
+        320324,
+        320430
+      ]
+    },
+    "note": "recorded as a candidate for a port record's provenance; no verified record was edited by this pass"
+  },
+  "falseLeadCorrected": "the @bun @bytecode banner marks 2362 of 2365 modules and does not mean undecodable bytecode; the text after it is the readable source every port record quotes",
+  "generator": {
+    "path": "scripts/port-ledger.mjs",
+    "sha256": "4618563a6c1f41eaf062d7190bc80408012a6ef0580253711107e068efcaa5f1"
+  },
+  "outputs": {
+    "ledgerSha256": "8180a52780984db972ce66b62921624c522233d4dd1eae3682d196c44c54e4a0",
+    "summarySha256": "dc1dd3eac2e3d1c5f15862075b7db60fb1bcac86358231f37bdaa6a592d77b8a"
+  },
+  "residual": "2231 uncited modules carry no marker; removing that number needs per-module reading, not more rules",
+  "suiteNotRerun": "research generator and documentation only; no product source, test or build input changed",
+  "paidCalls": 0
+}

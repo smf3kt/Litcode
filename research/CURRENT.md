@@ -30,12 +30,12 @@
 | --- | --- | --- | --- |
 | A01 | P1 网关header被SDK环境覆盖 | resolved / confirmed | [W01](ports/W01.md)：原生SDK污染复现，两auth的stream/count_tokens及CLI新建/恢复通过 |
 | A02 | P1 Magpie管理适配未闭环 | Partial / real task+resume confirmed | W03-live真实任务已验证；管理启动、route切换、凭证发行/轮换、实际账单仍缺，保持open |
-| A03 | P1 缺逐模块搬运台账 | resolved（有限）/ 全量可复现 | [逐模块台账](ports/port-ledger.md)：2365模块全部入账并绑定样本sha256，25个有ports证据/57个仅叙述提及/2283个未引用，未引用者显式列出且不计比例；生成器[port-ledger.mjs](../scripts/port-ledger.mjs)同参重复与不同输出路径两次生成摘要一致，[证据](ports/port-ledger-evidence.json)。历史实现逐包核对保留原表述 |
+| A03 | P1 缺逐模块搬运台账 | resolved（有限）/ 全量可复现+语料定性 | [逐模块台账](ports/port-ledger.md)：2365模块全部入账并绑定样本sha256，25个有ports证据/57个仅叙述提及/2283个未引用，未引用者显式列出且不计比例；生成器[port-ledger.mjs](../scripts/port-ledger.mjs)同参重复与不同输出路径两次生成摘要一致，[证据](ports/port-ledger-evidence.json)。历史实现逐包核对保留原表述；[未引用语料定性](ports/unreviewed-corpus.md)以字节证据给出标记族与最大20模块处置，2231个无标记模块为量化残余 |
 | A04 | P1 索引未校验模块摘要 | resolved / confirmed | [W02](ports/W02.md)：全部records预检摘要、坐标、生成身份；篡改中止；新索引独立核验 |
 | A05 | P1 提取缺独立可复现校验入口 | resolved / confirmed | [W02](ports/W02.md)：原样本/manifest/raw/解码/落盘/index一致性实测2609项 |
 | A06 | P2 三处工具总数断言漂移 | resolved / confirmed | [W01](ports/W01.md)：名称/能力核验5/5，当前全量1003/1003 |
 | A07 | P2 验证缺内容/构建身份与持久绑定 | resolved / confirmed，历史记录维持原证据等级 | 共享identity入口与[W01](ports/W01-evidence.json)/[W02证据](ports/W02-evidence.json)持久绑定；历史不追填猜测 |
-| A08 | P2 当前缺口与历史混杂 | resolved（有限）/ 处置入口与逐项结论齐备 | CURRENT为唯一排程与处置入口；[剩余项处置](ports/remaining-dispositions.md)对W05/W06尾项逐条给出superseded/无传输/不移植/无来源/量化开放五类结论并附已核验坐标，历史报告保持原记录不回填；未引用模块2283个仍为量化开放缺口（见[台账](ports/port-ledger.md)） |
+| A08 | P2 当前缺口与历史混杂 | resolved（有限）/ 处置入口与逐项结论齐备 | CURRENT为唯一排程与处置入口；[剩余项处置](ports/remaining-dispositions.md)对W05/W06尾项逐条给出superseded/无传输/不移植/无来源/量化开放五类结论并附已核验坐标，历史报告保持原记录不回填；未引用模块2283个仍为量化开放缺口，其构成见[语料定性](ports/unreviewed-corpus.md)（2265个只引用运行时内建、16个标记族约覆盖50个模块、2231个无标记为残余） |
 | A09 | P2 开源交付准备 | partial / 本地交付verified | 命名/Git/worktree/源码重建/依赖notice已验收；项目license/remote及来源权利待定，public发布保留blocked |
 
 ## 溯源和历史使用规则
@@ -57,6 +57,8 @@ W05采样内容元数据完成1047/1047全量、check/build、源码与编译CLI
 W05图片API上限完成1048/1048全量、check/build、真实CLI四段附件链（单张`--attach`、无源恢复、交互PDF页选、超限PNG拒绝且不发请求）；62文件安装、191文件源码/55构建字节一致重建通过，0付费调用。恢复源码的2000x2000与base64 5242880/raw 3932160上限已按边界落地，缩放与重压缩依赖运行时内置Bun.Image，限定搜索确认无可移植编解码器，故不做resize/reencode并保留超target标注。
 
 W05 stdio下次使用重挂完成1049/1049全量、check/build、真实CLI三模式（源码恢复开/关、编译恢复开）对首调即退出的stdio fixture：开恢复为2个进程且第二次调用结果进模型，关恢复仅1个进程且模型收到disconnected错误。恢复源码在致命失败后只关闭并清缓存，下一次使用才dial新进程（sb190ksj `et`/onclose/清除缓存/`no`+`Lt`+`Rt`，连接期探测重启与本运行时单一版本不适用）。
+
+未引用语料定性完成：2283个未引用模块（33,446,926字节）按字节证据（头部横幅长度、U+0000二值、16个字面量标记带首偏移、合法import说明符语法）分类，其中2265个只引用运行时内建或无所引用、0个按名引用兄弟chunk、外部包仅ajv/ws/ajv-formats/inspector/claude-code自身；最大20个模块逐一提取特征字面量并处置（vendored校验库、protobuf/OTLP、语法高亮、终端UI库、云身份、DOM解析，以及云端或UI类出界面），其中`chunk-2rxk8n7w.js`记为在范围候选（协议方法名[8033,8065)/[5839,5859)/[9367,9389)/[11191,11209)/[12450,12459)与SDK重连常量`_h={initialReconnectionDelay:1000,…}` [320324,320430)均已核验）。同时纠正误判：`// @bun @bytecode`横幅覆盖2362/2365模块，并不代表不可解码字节码，横幅之后即各记录引用的可读源码。2231个无标记模块为量化残余，需逐模块阅读而非再加规则；台账的port口径仍要求research/ports下带分类的移植记录，本包未改任何已验收记录。check与62文件安装包通过，无产品源码改动故未重跑用例。
 
 剩余项处置完成逐条结案：下一轮重dial（常量[388228,388266)/[388259,388300)/[388374,388505)、调度器`lT`[388505,388870)）判定为被常开有界恢复取代（恢复端默认关闭且依赖连接表行模型turns/heldTurns）；parked refetch（`ka`[48170,48515)由`subscriptions/listen`重监听`w.filter`[50368,50405)驱动）判定为无该传输基础；shell AST参数切分（`SE`[4697,4822)、节点排除[4822,4882)、上限`D0=1e4`[1052,1071)）判定不移植并保留quote-group契约；`mcp serve`/服务端任务接收端判定无来源基础；完整像素解码无编解码器；未引用模块2283个（33.4MB）作为量化开放缺口保留。本包仅文档与处置，未改动产品源码/测试/构建输入，故未重跑用例。
 
