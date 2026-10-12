@@ -590,6 +590,95 @@
       "binding": "bound on both sides"
     }
   ],
+  "contracts": [
+    {
+      "contract": "Original task storage",
+      "sources": [
+        {
+          "module": "chunk-9xs8s13r.js",
+          "sha256": "aa1f9065a132259fbbaed553f68e2d3f71bf265cc5e727299b995945adaf7a8c",
+          "range": "create [9575,10558), update [14221,14515), delete [14515,15077), metadata merge [15846,15955), reciprocal dependencies [15955,16204)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/tasks.ts",
+          "note": "uuid id schema, blockedBy edges, metadata key and the read projections",
+          "fileSha256": "aafd2fe5363f545680d66f42288f39d1b5d2749812b27fb18cf0b8ad4ba0ff0a"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "contract": "Agent launch",
+      "sources": [
+        {
+          "module": "chunk-wj6fycw8.js",
+          "sha256": "ce38912bf9ddb32271235f9639bd42afb9c42c11ce66ee1d4471362d4a99d8ae",
+          "range": "[15899,45438)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/subagents.ts",
+          "note": "subagent_type, effort and worktree isolation",
+          "fileSha256": "153638e4ff8a737ffff7656ee162e64059ccfbf7c5d93ee8ac0f48359e0d42d8"
+        },
+        {
+          "file": "src/agent.ts",
+          "note": "session start kinds including fork",
+          "fileSha256": "743e847fc0bd277f19688a2f37e8384e918124f1f71ce79e8751f0a6cd498544"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "contract": "Monitor transport",
+      "sources": [
+        {
+          "module": "chunk-znqf6yae.js",
+          "sha256": "220165fe021b26cce4c32ff7e726af7f7d27a15d1acb6b3a67d46b5b5b3da757",
+          "range": "the module the registered tool inventory binds to Monitor"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/background.ts",
+          "note": "command and WebSocket job transport, with event boundaries preserved",
+          "fileSha256": "d2d035c75343b1ddcb7c6e490efc4fd54474b199e9b250a3da8f76013f7a55fa"
+        }
+      ],
+      "binding": "bound on both sides"
+    },
+    {
+      "contract": "MCP selector (v2 or v1)",
+      "sources": [
+        {
+          "module": "chunk-dj5t4hnw.js",
+          "sha256": "c91fc98a7db753c155d910e88183390dd17cf52a1acb6be4e646b07e067744a1",
+          "range": "[4838,5343)"
+        },
+        {
+          "module": "chunk-sb190ksj.js",
+          "sha256": "0a1c2aa1424babd95eeec371f67c875b6382db0c891b3b3e90f710f2102b16df",
+          "range": "v2 connect [76848,115208), composition [127220,130322), call [176157,190043)"
+        },
+        {
+          "module": "chunk-4vr415ka.js",
+          "sha256": "01c2a556237e9a957f29cd7de89b228439e6621ea982a0b5b0bd10be4cd20580",
+          "range": "v1 connect [63820,85472), composition [96580,99634), call [141487,149624)"
+        }
+      ],
+      "local": [
+        {
+          "file": "src/mcp.ts",
+          "note": "protocolVersion negotiation and the standardTasks gate",
+          "fileSha256": "29c423367453e477ac9855a0787bc2917322f459346f6980ebca6be07ea15f12"
+        }
+      ],
+      "binding": "bound on both sides"
+    }
+  ],
   "localFiles": [
     {
       "file": "src/background.ts",
@@ -650,7 +739,7 @@
     "classification": "unchanged; the historical reports' rewrite and adapt classifications stand as written and are not upgraded or restated by this review"
   },
   "boundary": [
-    "covers the registered tool inventory in FEATURES.md, which is a fixed enumerated set; it does not cover the behavioural contracts in that file or the product surface documented only by the per-package records",
+    "covers the registered tool inventory and the four focused behavioural contracts in FEATURES.md, both fixed enumerated sets; it does not cover the product surface documented only by the per-package records",
     "the ledger's port-backed set is unchanged by this review, because every source module named here was already cited before it was written",
     "an object with no local counterpart is recorded as such rather than as a gap to close: the products differ in surface, and this review does not propose ports"
   ],
