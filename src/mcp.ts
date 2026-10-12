@@ -12,6 +12,7 @@ import { McpHttpClient, MCP_HTTP_LIMITS, validateMcpHttpUrl, validateMcpHeadersE
 import type { ToolContext, ToolDefinition } from "./tools.js";
 import { mcpReconnectDelay, isTransientMcpFailure } from "./mcp-retry.js";
 import { MCP_PROGRESS_LIMITS, McpProgressRegistry, type McpProgressUpdate } from "./mcp-progress.js";
+import { JSON_SCHEMA_LIMITS, validateJsonSchema } from "./json-schema.js";
 import { McpClientRequestHandler, MCP_CLIENT_REQUEST_LIMITS, type McpClientRequests } from "./mcp-client-requests.js";
 import { McpResourceSubscriptions, McpSubscriptionPersistenceError, MCP_SUBSCRIPTION_LIMITS, MCP_MAX_RESOURCE_SUBSCRIPTIONS, MCP_MAX_RESOURCE_URI_BYTES, MCP_MAX_RESOURCE_NOTIFICATIONS, validateMcpResourceUri, type McpSubscriptionMethod } from "./mcp-subscriptions.js";
 import { driveMcpTask, parseTaskHandle } from './mcp-task.js';
@@ -65,6 +66,8 @@ export const MCP_PROTOCOL_LIMITS: readonly string[] = [
   "server features: tools only (resources, prompts, sampling, roots and logging are not implemented)",
   "server-initiated requests: refused with a JSON-RPC method-not-found error",
   `stdio init-result protocol version: only ${MCP_PROTOCOL_VERSION} is accepted; a missing or different version is rejected before notifications/initialized`,
+  "tool results: a tool whose server declared an output schema must answer successfully with structured content that satisfies it, otherwise the call fails with the JSON-RPC code the recovered client raises (-32600 when no structured content is returned, -32602 when it does not match); an error result is passed through unchecked because the server reports its own failures there",
+  ...JSON_SCHEMA_LIMITS,
   ...MCP_PROGRESS_LIMITS,
 ];
 
@@ -153,7 +156,7 @@ export type McpConnection = {
   limits: readonly string[];
   servers?: () => Record<string, McpServerStatus>;
   reconnect?: (server: string, signal: AbortSignal) => Promise<McpServerStatus>;
-  resumeTask?: (server: string, task: StandardMcpTask, signal: AbortSignal) => Promise<McpToolResult>;
+  resumeTask?: (server: string, task: StandardMcpTask, signal: AbortSignal, toolName?: string) => Promise<McpToolResult>;
   bindSubscriptions?: (state: Record<string, readonly string[]>, commit: (server: string, method: McpSubscriptionMethod, uri: string) => void, signal: AbortSignal) => Promise<void>;
   /** Fresh per-server transport state, present only for opted-in HTTP streams. */
   notificationStreams?: () => Record<string, McpNotificationStreamStatus>;
@@ -179,6 +182,8 @@ export type McpToolInfo = {
   name: string;
   description: string | undefined;
   inputSchema: unknown;
+  /** The server's declared result contract; its presence is what makes a result checked. */
+  outputSchema?: unknown;
   readOnly: boolean;
   taskSupport?: 'required' | 'optional' | 'forbidden';
 };
@@ -199,7 +204,7 @@ export interface McpClient {
   initialize(signal: AbortSignal): Promise<void>;
   listTools(signal: AbortSignal): Promise<McpToolInfo[]>;
   callTool(toolName: string, args: unknown, signal: AbortSignal, pinned?: McpToolInfo): Promise<McpToolResult>;
-  resumeTask?(task: StandardMcpTask, signal: AbortSignal): Promise<McpToolResult>;
+  resumeTask?(task: StandardMcpTask, signal: AbortSignal, toolName?: string): Promise<McpToolResult>;
   supportsCatalog(family: "resources" | "prompts"): boolean;
   onToolsChanged(listener: () => void): () => void;
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown>;
@@ -239,15 +244,44 @@ export async function listMcpTools(
   throw new Error(`MCP server "${serverName}" exceeded ${MCP_MAX_LIST_PAGES} tools/list pages`);
 }
 
-export function parseMcpToolResult(result: unknown, serverName: string): McpToolResult {
+/**
+ * A tool result that failed the contract its own server declared, carrying the JSON-RPC code the
+ * recovered client raises for the same failure: an invalid request when a tool that declares an
+ * output schema answers successfully with no structured content, and invalid params when that
+ * content does not satisfy the schema.
+ */
+export class McpToolOutputError extends Error {
+  constructor(readonly code: -32600 | -32602, message: string) {
+    super(message);
+    this.name = "McpToolOutputError";
+  }
+}
+
+/**
+ * Accept a tools/call result, applying the declared output contract when the server gave one: a
+ * successful result with no structured content is refused, and structured content that does not
+ * satisfy the schema is refused with the first violation. An error result is only shape-checked,
+ * because a server reports its own failures there.
+ */
+export function parseMcpToolResult(result: unknown, serverName: string, outputSchema?: unknown, toolName?: string): McpToolResult {
   if (!isRecord(result)) {
     throw new Error(`MCP server "${serverName}" returned an invalid tools/call result`);
   }
-  return {
+  const parsed: McpToolResult = {
     content: Array.isArray(result.content) ? result.content : [],
     structuredContent: result.structuredContent,
     isError: result.isError === true,
   };
+  const named = toolName === undefined || toolName.length === 0 ? "the called tool" : `"${toolName}"`;
+  if (outputSchema === undefined || parsed.isError) return parsed;
+  if (parsed.structuredContent === undefined) {
+    throw new McpToolOutputError(-32600, `Tool ${named} on MCP server "${serverName}" has an output schema but did not return structured content`);
+  }
+  const checked = validateJsonSchema(outputSchema, parsed.structuredContent);
+  if (!checked.valid) {
+    throw new McpToolOutputError(-32602, `Structured content from tool ${named} on MCP server "${serverName}" does not match the tool's output schema: ${checked.errorMessage}`);
+  }
+  return parsed;
 }
 
 type PendingRequest = {
@@ -380,6 +414,7 @@ function parseToolInfo(raw: unknown, serverName: string): McpToolInfo {
     name: raw.name,
     description: typeof raw.description === "string" ? raw.description : undefined,
     inputSchema: raw.inputSchema,
+    ...(raw.outputSchema === undefined ? {} : { outputSchema: raw.outputSchema }),
     readOnly: annotations?.readOnlyHint === true,
     ...(isRecord(raw.execution) && raw.execution.taskSupport !== undefined ? { taskSupport: standardTaskSupport(raw.execution) } : {}),
   };
@@ -390,6 +425,11 @@ function normalizeInputSchema(value: unknown): Anthropic.Tool["input_schema"] {
   const schema = (isRecord(value) ? { ...value } : {}) as Record<string, unknown>;
   schema.type = "object";
   return schema as unknown as Anthropic.Tool["input_schema"];
+}
+
+/** The declared contract a pinned tool must still match after a catalog refresh. */
+function pinnedMetadata(info: McpToolInfo): string {
+  return JSON.stringify([normalizeInputSchema(info.inputSchema), info.outputSchema ?? null]);
 }
 
 function toArguments(toolName: string, input: unknown): Record<string, unknown> {
@@ -419,6 +459,10 @@ class McpStdioClient implements McpClient {
   private capabilities: Record<string, unknown> = {};
   private version = MCP_PROTOCOL_VERSION;
   private taskTools = new Map<string, McpToolInfo>();
+  /** The result contract the server declared for one tool, when it declared one. */
+  private declaredOutput(toolName: string | undefined): unknown {
+    return toolName === undefined ? undefined : this.taskTools.get(toolName)?.outputSchema;
+  }
   private readonly toolsChangedListeners = new Set<() => void>();
   private readonly disconnectListeners = new Set<() => void>();
   onDisconnected(listener: () => void): () => void {
@@ -870,7 +914,7 @@ class McpStdioClient implements McpClient {
       if (augment) {
         result = await driveStandardMcpTask(parseStandardTask(result), this.request.bind(this),
           AbortSignal.any([signal, this.taskLifetime.signal, AbortSignal.timeout(this.settings.requestTimeoutMs)]), isRecord(this.capabilities.tasks) && isRecord(this.capabilities.tasks.cancel));
-        return parseMcpToolResult(result, this.name);
+        return parseMcpToolResult(result, this.name, this.declaredOutput(toolName), toolName);
       }
     } finally { release?.(); }
     const task = this.settings.tasks ? parseTaskHandle(result) : undefined;
@@ -879,7 +923,7 @@ class McpStdioClient implements McpClient {
       request: (method, params, requestSignal) => this.request(method, params, requestSignal),
       resolveInputRequest: (key, input, requestSignal) => this.clientRequests.resolveTaskInput(key, input, requestSignal),
     });
-    return parseMcpToolResult(result, this.name);
+    return parseMcpToolResult(result, this.name, this.declaredOutput(toolName), toolName);
   }
 
   supportsCatalog(family: "resources" | "prompts"): boolean {
@@ -1220,7 +1264,7 @@ class DynamicMcpCatalog {
   async assertPinned(server: string, pinned: McpToolInfo, signal: AbortSignal): Promise<void> {
     await this.ensureFresh(server, signal);
     const current = this.find(server, pinned.name);
-    if ((pinned.readOnly && !current.readOnly) || pinned.taskSupport !== current.taskSupport || JSON.stringify(normalizeInputSchema(pinned.inputSchema)) !== JSON.stringify(normalizeInputSchema(current.inputSchema))) {
+    if ((pinned.readOnly && !current.readOnly) || pinned.taskSupport !== current.taskSupport || pinnedMetadata(pinned) !== pinnedMetadata(current)) {
       throw new Error("MCP pinned tool metadata changed; use mcp_tool_search and mcp_tool_call");
     }
   }
@@ -1441,10 +1485,10 @@ class ManagedMcpClient implements McpClient {
     if (this.status.state !== "disconnected") { await this.replacing?.catch(() => undefined); return; }
     await this.replace(AbortSignal.any([signal, this.controller.signal]));
   }
-  resumeTask(task: StandardMcpTask, signal: AbortSignal): Promise<McpToolResult> {
+  resumeTask(task: StandardMcpTask, signal: AbortSignal, toolName?: string): Promise<McpToolResult> {
     signal.throwIfAborted();
     if (this.status.state !== 'connected' || !this.current.resumeTask) return Promise.reject(new Error('MCP task recovery requires a connected HTTP server'));
-    return this.current.resumeTask(task, signal);
+    return this.current.resumeTask(task, signal, toolName);
   }
   supportsCatalog(family: "resources" | "prompts") { return this.current.supportsCatalog(family); }
   async catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown> {
@@ -1455,7 +1499,7 @@ class ManagedMcpClient implements McpClient {
   onToolsChanged(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   assertPinned(info: McpToolInfo): void {
     const current = this.inventory.find(tool => tool.name === info.name);
-    if (!current || (info.readOnly && !current.readOnly) || info.taskSupport !== current.taskSupport || JSON.stringify(normalizeInputSchema(info.inputSchema)) !== JSON.stringify(normalizeInputSchema(current.inputSchema))) {
+    if (!current || (info.readOnly && !current.readOnly) || info.taskSupport !== current.taskSupport || pinnedMetadata(info) !== pinnedMetadata(current)) {
       throw new Error("MCP pinned tool metadata changed; rediscover with mcp_tool_search/mcp_tool_call or rebuild published schemas");
     }
   }
@@ -1768,10 +1812,10 @@ export async function connectMcpServers(
   ] : streamLimits;
   return {
     tools,
-    ...(settings.standardTasks ? { resumeTask: async (server: string, task: StandardMcpTask, signal: AbortSignal) => {
+    ...(settings.standardTasks ? { resumeTask: async (server: string, task: StandardMcpTask, signal: AbortSignal, toolName?: string) => {
       const client = namedClients.get(server);
       if (!client?.resumeTask) throw new Error('MCP task recovery requires a configured HTTP server');
-      return client.resumeTask(task, signal);
+      return client.resumeTask(task, signal, toolName);
     } } : {}),
     ...(persistentSubscriptions ? { bindSubscriptions: async (state: Record<string, readonly string[]>, commit: (server: string, method: McpSubscriptionMethod, uri: string) => void, signal: AbortSignal): Promise<void> => {
       if (closed) throw new Error("MCP connections closed");

@@ -729,7 +729,7 @@ export async function createRuntime(
         if (recoveringTasks.has(key)) throw new Error('MCP task recovery already active');
         recoveringTasks.add(key);
         try {
-          const result = await mcp.resumeTask(task.server, handle, context.signal);
+          const result = await mcp.resumeTask(task.server, handle, context.signal, task.tool);
           bindingController.signal.throwIfAborted();
           checkScope(owner, scope);
           if (boundSession?.id !== owner || taskJournalFailed) throw new Error('MCP task recovery lost journal ownership');
