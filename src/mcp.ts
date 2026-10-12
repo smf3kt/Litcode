@@ -59,7 +59,7 @@ const TOOL_NAME_SHAPE = /^[A-Za-z0-9_-]{1,128}$/;
  * report the supported envelope instead of assuming full MCP coverage.
  */
 export const MCP_PROTOCOL_LIMITS: readonly string[] = [
-  "stdio transport: local child process with newline-delimited JSON-RPC",
+  "stdio transport: local child process with newline-delimited JSON-RPC; a failed child is always closed and cleared, and with recovery enabled the next tool call or catalog request dials one fresh process instead of using a background timer, while without recovery the connection stays unavailable until an explicit reconnect; the failed call is never replayed, and a changed tool catalog still fails the pinned-metadata check",
   "stdio authentication: no client authentication flow or credential storage; environment is passed to the child process",
   "server features: tools only (resources, prompts, sampling, roots and logging are not implemented)",
   "server-initiated requests: refused with a JSON-RPC method-not-found error",
@@ -1250,7 +1250,9 @@ class ManagedMcpClient implements McpClient {
   private journalFailure: McpSubscriptionPersistenceError | undefined;
 
   constructor(private factory: () => McpClient, private context: McpConnectContext, private automatic: boolean,
-    private validate: (listed: McpToolInfo[]) => void, private settings: McpConnectSettings) {
+    // The recovered client keeps no background timer for stdio: a failed transport is closed and the
+    // next use dials a fresh process. onDemand marks the transports whose replacement is use-driven.
+    private onDemand: boolean, private validate: (listed: McpToolInfo[]) => void, private settings: McpConnectSettings) {
     this.current = factory();
     this.bind();
   }
@@ -1336,12 +1338,23 @@ class ManagedMcpClient implements McpClient {
     this.inventory = listed;
     return listed;
   }
-  callTool(tool: string, args: unknown, signal: AbortSignal, pinned?: McpToolInfo) {
+  async callTool(tool: string, args: unknown, signal: AbortSignal, pinned?: McpToolInfo): Promise<McpToolResult> {
     signal.throwIfAborted();
     if (this.status.state === "closed") throw new Error("MCP connection closed");
-    if (this.status.state === "disconnected") throw new Error("MCP connection disconnected; reconnect before calling tools");
+    if (this.status.state === "disconnected") await this.redialBeforeUse(signal, "reconnect before calling tools");
     if (pinned) this.assertPinned(pinned);
     return this.current.callTool(tool, args, signal, pinned);
+  }
+  /**
+   * One use-driven replacement attempt on a disconnected transport. The recovered client dials a fresh
+   * process on the next call and re-dials on the call after a failure; the pinned catalog check that
+   * follows keeps a changed server from serving the tool definition the caller already saw.
+   */
+  private async redialBeforeUse(signal: AbortSignal, unavailable: string): Promise<void> {
+    if (!this.onDemand || !this.settings.recovery) throw new Error(`MCP connection disconnected; ${unavailable}`);
+    if (this.status.state === "closed") throw new Error("MCP connection closed");
+    if (this.status.state !== "disconnected") { await this.replacing?.catch(() => undefined); return; }
+    await this.replace(AbortSignal.any([signal, this.controller.signal]));
   }
   resumeTask(task: StandardMcpTask, signal: AbortSignal): Promise<McpToolResult> {
     signal.throwIfAborted();
@@ -1349,9 +1362,9 @@ class ManagedMcpClient implements McpClient {
     return this.current.resumeTask(task, signal);
   }
   supportsCatalog(family: "resources" | "prompts") { return this.current.supportsCatalog(family); }
-  catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal) {
-    if (this.status.state === "closed") return Promise.reject(new Error("MCP connection closed"));
-    if (this.status.state === "disconnected") return Promise.reject(new Error("MCP connection disconnected; reconnect before catalog requests"));
+  async catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown> {
+    if (this.status.state === "closed") throw new Error("MCP connection closed");
+    if (this.status.state === "disconnected") await this.redialBeforeUse(signal, "reconnect before catalog requests");
     return this.current.catalogRequest(method, params, signal);
   }
   onToolsChanged(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
@@ -1564,7 +1577,7 @@ export async function connectMcpServers(
       const factory = (): McpClient => http
         ? new McpHttpClient(serverName, pinned as McpHttpServerConfig, settings)
         : new McpStdioClient(serverName, pinned as McpStdioServerConfig, context, settings);
-      const client = new ManagedMcpClient(factory, context, http, listed => {
+      const client = new ManagedMcpClient(factory, context, http, !http, listed => {
         const next = new Map([...namedClients].map(([name, active]) => [name, (active as ManagedMcpClient).listed()]));
         next.set(serverName, listed);
         let bytes = 0, count = 0;
