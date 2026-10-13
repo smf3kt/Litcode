@@ -29,6 +29,7 @@ import { formatHookTerminalSequence } from './hook-terminal.js';
 import { createKillRing, nextYank, type KillRing } from './kill-ring.js';
 import { TerminalModeController, type MouseTracking } from './tui-modes.js';
 import { Keymap, contextStack, type TuiContext } from './tui-keys.js';
+import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
   createTranscriptState, layoutTranscript, reduceTranscript, transcriptLines,
   type TranscriptEntry, type TranscriptScrollCommand, type TranscriptState,
@@ -244,11 +245,21 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private readonly onData = (chunk: string | Buffer) => {
     if (this.closed) return;
     for (const action of this.decoder.push(chunk)) {
+      if (action.type === 'mouse') { this.handleMouse(action); continue; }
       if (this.handleChordAction(action)) continue;
       if (this.closed) return;
       this.dispatch(action);
     }
   };
+
+  private handleMouse(event: TerminalMouseEvent): void {
+    if (this.options.mouseTracking === 'off' || this.screen === 'search') return;
+    if (event.action !== 'wheelup' && event.action !== 'wheeldown') return;
+    const view = this.viewportSize();
+    if (event.col < 1 || event.col > view.columns || event.row < 1 || event.row > view.rows) return;
+    const outcome = this.keys.push(event.action, ['Scroll', 'Global']);
+    if (outcome.kind === 'match') this.applyAction(outcome.match.action);
+  }
 
   /**
    * Keys arrive already reduced to editor actions, so the chording layer reads

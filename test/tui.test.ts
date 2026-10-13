@@ -16,8 +16,67 @@ import { ENTER_ALT_SCREEN, LEAVE_ALT_SCREEN, MOUSE_OFF, MOUSE_SCROLL, TerminalMo
 import { Keymap, contextStack, expandChord, type TuiContext } from '../src/tui-keys.js';
 import { createTranscriptState, layoutTranscript, reduceTranscript, transcriptLines } from '../src/tui-transcript.js';
 import { TuiTerminal } from '../src/tui.js';
+import { TerminalKeyDecoder } from '../src/terminal.js';
 
 const cli = path.join(import.meta.dirname, '..', 'src', 'cli.ts');
+
+test('mouse reports survive fragmentation and stay outside the input draft', () => {
+  const reports = ['\x1b[<64;12;3M', '\x1b[<65;12;3m', '\x1b[M' + String.fromCharCode(96, 44, 35)];
+  for (const report of reports) {
+    const whole = new TerminalKeyDecoder().push(report);
+    assert.equal(whole.length, 1);
+    assert.equal(whole[0]?.type, 'mouse');
+    for (let split = 1; split < report.length; split++) {
+      const decoder = new TerminalKeyDecoder();
+      assert.deepEqual(decoder.push(report.slice(0, split)), []);
+      assert.deepEqual(decoder.push(report.slice(split)), whole);
+    }
+  }
+  const decoder = new TerminalKeyDecoder();
+  assert.deepEqual(decoder.push('\x1b[<84;2;3M'), [{ type: 'mouse', action: 'wheelup',
+    button: 84, col: 2, row: 3, ctrl: true, meta: false, shift: true }]);
+  assert.equal(decoder.push('\x1b[<35;2;3M')[0]?.type, 'mouse');
+  assert.equal(decoder.push('\x1b[<0;2;3m')[0]?.type, 'mouse');
+  assert.deepEqual(decoder.push('\x1b[<66;2;3M\x1b[M !!!'), [{ type: 'insert', text: '!' }]);
+  assert.deepEqual(decoder.push('\x1b[<' + '9'.repeat(100)), []);
+  assert.deepEqual(decoder.push(';2;3Mdraft'), [{ type: 'insert', text: 'draft' }]);
+  assert.deepEqual(decoder.push('\x1b[<64;2;'), []);
+  decoder.flushEscape();
+  assert.deepEqual(decoder.push('3Mdraft'), [{ type: 'insert', text: 'draft' }]);
+  assert.deepEqual(decoder.push('\x1b[200~\x1b[<64;2;3M\x1b[201~'),
+    [{ type: 'paste', text: '\x1b[<64;2;3M' }]);
+});
+
+test('wheel scrolling unpins the live tail and respects prompt, screen and mode boundaries', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  try {
+    for (let i = 0; i < 20; i++) tui.append({ kind: 'assistant', text: `line ${i}` });
+    key('draft');
+    key('\x1b[<64;2;3M');
+    assert.equal(tui.transcriptState.offset, 12); // Seven visible rows, one up from the tail.
+    tui.append({ kind: 'assistant', text: 'new output' });
+    assert.equal(tui.transcriptState.offset, 12);
+    key('\x1b[M' + String.fromCharCode(97, 34, 35));
+    assert.equal(tui.transcriptState.offset, 13);
+    key('\x1b[<64;2;9M\x1b[<64;0;3M\x1b[<0;2;3M\x1b[<0;2;3m');
+    assert.equal(tui.transcriptState.offset, 13);
+    key('\u0012\x1b[<64;2;3M'); // Search owns its input; wheel does not move the transcript.
+    assert.equal(tui.transcriptState.offset, 13);
+    assert.equal(tui.state.text, 'draft');
+  } finally { tui.close(); }
+  const off = new TuiTerminal({ input, output, mouseTracking: 'off' }).start();
+  try {
+    for (let i = 0; i < 20; i++) off.append({ kind: 'assistant', text: `line ${i}` });
+    const before = off.transcriptState.offset;
+    key('\x1b[<64;2;3M');
+    assert.equal(off.transcriptState.offset, before);
+  } finally { off.close(); }
+});
 
 test('the kill ring coalesces, caps at ten, and cycles yank-pop', () => {
   let state = reduceKillRing(emptyKillRing, { type: 'kill', text: 'one' });
