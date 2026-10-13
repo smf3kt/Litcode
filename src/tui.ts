@@ -31,7 +31,7 @@ import { TerminalModeController, type MouseTracking } from './tui-modes.js';
 import { Keymap, contextStack, type TuiContext } from './tui-keys.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
-  createSelection, highlightSelection, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
+  createSelection, dragSpan, highlightSelection, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
   selectionText, selectionTextFromRows, wordSpan,
   type SelectionAnchor, type SelectionRow, type SelectionState,
 } from './tui-selection.js';
@@ -455,7 +455,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
           at: anchor, low: { line: anchor.line, column: span.low }, high: { line: anchor.line, column: span.high } });
       } else this.selection = reduceSelection(this.selection, { type: 'start', at: anchor });
     } else if (event.action === 'move') {
-      this.selection = reduceSelection(this.selection, { type: 'drag', at: anchor });
+      // While a multi-click span is active the moving end snaps to the word or
+      // row under the pointer, which is what the recovered drag does.
+      this.selection = this.selection.span
+        ? dragSpan(this.selection, anchor, this.renderedRow(anchor.line))
+        : reduceSelection(this.selection, { type: 'drag', at: anchor });
     }
     this.render();
   }

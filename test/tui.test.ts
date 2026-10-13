@@ -175,12 +175,21 @@ test('multi-click selects the word and then the whole row, and a drag extends th
     triple.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M');
     assert.equal(triple.copy(), 'alpha beta-gamma delta');
   } finally { triple.tui.close(); }
-  // A line span drags by row into the next line.
+  // A line span drags by row, and its moving end snaps to the whole row under
+  // the pointer rather than to the raw cell.
   const byLine = open();
   try {
     byLine.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<32;4;2M');
-    assert.equal(byLine.copy(), 'alpha beta-gamma delta\nseco');
+    assert.equal(byLine.copy(), 'alpha beta-gamma delta\nsecond row');
   } finally { byLine.tui.close(); }
+  // A word span snaps the moving end to the word under the pointer, so a drag
+  // into the middle of the next word takes that whole word rather than the
+  // raw cells between the two points.
+  const snapped = open();
+  try {
+    snapped.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<32;20;1M');
+    assert.equal(snapped.copy(), 'beta-gamma delta');
+  } finally { snapped.tui.close(); }
   // A press far from the previous one restarts the sequence at one click, so a
   // drag from it is a plain character span rather than a word or row.
   const restarted = open();
@@ -202,27 +211,37 @@ test('multi-click selects the word and then the whole row, and a drag extends th
 });
 
 test('wrapped rows copy as one logical line while explicit newlines keep theirs', () => {
-  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
-  input.isTTY = true; input.setRawMode = () => {};
-  let drawn = '';
-  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
-  Object.assign(output, { isTTY: true, columns: 20, rows: 10 });
-  const tui = new TuiTerminal({ input, output }).start();
-  const key = (text: string) => input.emit('data', text);
-  const copy = () => {
-    drawn = ''; key('\x1b[99;6u');
-    const encoded = /\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/.exec(drawn)?.[1];
-    return encoded === undefined ? undefined : Buffer.from(encoded, 'base64').toString('utf8');
+  const open = (columns: number, text: string) => {
+    const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+    input.isTTY = true; input.setRawMode = () => {};
+    let drawn = '';
+    const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+    Object.assign(output, { isTTY: true, columns, rows: 10 });
+    const tui = new TuiTerminal({ input, output }).start();
+    if (text) tui.append({ kind: 'assistant', text });
+    const copy = () => {
+      drawn = ''; input.emit('data', '\x1b[99;6u');
+      const encoded = /\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/.exec(drawn)?.[1];
+      return encoded === undefined ? undefined : Buffer.from(encoded, 'base64').toString('utf8');
+    };
+    return { tui, key: (keys: string) => input.emit('data', keys), copy };
   };
+  // 20 columns with the '> ' user indent leaves 18 cells per row, so the
+  // first line wraps and the second line is an explicit newline.
+  const indented = open(20, '');
   try {
-    // 20 columns with the '> ' user indent leaves 18 cells per row, so the
-    // first line wraps and the second line is an explicit newline.
-    tui.append({ kind: 'user', text: 'aaaaaaaaaaaaaaaaaaaaaaaa\nbbbb' });
+    indented.tui.append({ kind: 'user', text: 'aaaaaaaaaaaaaaaaaaaaaaaa\nbbbb' });
     // Selecting all three rows joins the wrapped tail back onto the first line,
     // while the explicit newline keeps its own prefix.
-    key('\x1b[<0;1;1M\x1b[<32;10;3M\x1b[<0;10;3m');
-    assert.equal(copy(), '> aaaaaaaaaaaaaaaaaaaaaaaa\n> bbbb');
-  } finally { tui.close(); }
+    indented.key('\x1b[<0;1;1M\x1b[<32;10;3M\x1b[<0;10;3m');
+    assert.equal(indented.copy(), '> aaaaaaaaaaaaaaaaaaaaaaaa\n> bbbb');
+  } finally { indented.tui.close(); }
+  // A wrap point that lands on a space keeps it, so the halves do not glue.
+  const spaced = open(12, 'hello world foo bar baz');
+  try {
+    spaced.key('\x1b[<0;1;1M\x1b[<32;12;2M\x1b[<0;12;2m');
+    assert.equal(spaced.copy(), 'hello world foo bar baz');
+  } finally { spaced.tui.close(); }
 });
 
 test('selection spans preserve wide and combining graphemes in both directions', () => {

@@ -51,6 +51,32 @@ function extendSpan(state: SelectionState, at: SelectionAnchor): SelectionState 
   return { ...state, anchor: { ...span.low }, focus: { ...span.high } };
 }
 
+/**
+ * The recovered `Ng` does not use the raw pointer cell while a multi-click span
+ * is active: it re-resolves the word (or whole row) under the pointer and snaps
+ * the moving end to that boundary, then keeps the far end of the original span.
+ * A drag that stays inside the span leaves it untouched.
+ */
+export function dragSpan(state: SelectionState, at: SelectionAnchor, rowText: string | undefined): SelectionState {
+  const span = state.span;
+  if (!span || !state.dragging) return state;
+  let low = at;
+  let high = at;
+  if (rowText !== undefined) {
+    if (span.kind === 'word') {
+      const word = wordSpan(rowText, at.column);
+      if (word) { low = { line: at.line, column: word.low }; high = { line: at.line, column: word.high }; }
+    } else {
+      const line = lineSpan(rowText);
+      low = { line: at.line, column: line.low };
+      high = { line: at.line, column: line.high };
+    }
+  }
+  if (compareAnchors(high, span.low) < 0) return { ...state, anchor: { ...span.high }, focus: { ...low } };
+  if (compareAnchors(low, span.high) > 0) return { ...state, anchor: { ...span.low }, focus: { ...high } };
+  return { ...state, anchor: { ...span.low }, focus: { ...span.high } };
+}
+
 export function reduceSelection(state: SelectionState, action: SelectionAction): SelectionState {
   switch (action.type) {
     case 'start': return { anchor: { ...action.at }, focus: null, dragging: true };
@@ -187,7 +213,13 @@ export function selectionTextFromRows(state: SelectionState, rows: readonly Sele
     const toCell = row === span.end.line ? span.end.column : Infinity;
     const selected = cellsOfRow.filter(part => part.width > 0
       && part.cell + part.width > fromCell && part.cell <= toCell);
-    const text = selected.length ? meta.text.slice(selected[0]!.start, selected.at(-1)!.end).replace(/\s+$/, '') : '';
+    const slice = selected.length ? meta.text.slice(selected[0]!.start, selected.at(-1)!.end) : '';
+    // A row that continues into the next selected row keeps its trailing
+    // whitespace: when the wrap point lands on a space, that space is real
+    // text and dropping it would glue the two halves together. Only the last
+    // row of a part trims, which is what removes trailing padding.
+    const joinsNext = row < span.end.line && rows[row + 1]?.continuation === true;
+    const text = joinsNext ? slice : slice.replace(/\s+$/, '');
     if (row > span.start.line && meta.continuation) parts[parts.length - 1] += text;
     else parts.push(text);
   }
