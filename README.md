@@ -59,7 +59,7 @@ node bin/litcode.mjs --workspace /absolute/path/to/project --interactive
 node bin/litcode.mjs            # 终端中的空调用即上面的交互会话
 ```
 
-`litcode --tui` 打开全屏交互界面。鼠标在对话记录区域滚动时可查看前文，手动滚动后新输出保持当前视口；输入框与状态行保持独立。`Ctrl+O` 切换记录视图，`Ctrl+E` 在记录视图展开长条目，`/exit` 退出并恢复终端模式。
+`litcode --tui` 打开全屏交互界面。鼠标在对话记录区域滚动时可查看前文，手动滚动后新输出保持当前视口；输入框与状态行保持独立。左键拖动选择文字，Shift+方向键扩选，Shift+Home/End 选到行首/行尾。Alt+C（终端发送 Meta+C）或终端可传递的 Ctrl+Shift+C 发送 OSC52 复制请求；终端需允许 OSC52，发送后的提示不代表系统剪贴板已确认写入。选择按显示行复制，调整窗口大小或切换长条目展开状态会清除选择。`Ctrl+O` 切换记录视图，`Ctrl+E` 在记录视图展开长条目，`/exit` 退出并恢复终端模式。
 
 本地打包安装示例（npm缓存需已有生产依赖供离线安装）：
 

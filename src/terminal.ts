@@ -8,7 +8,9 @@ import { MAX_MOUSE_REPORT_CHARS, parseTerminalMouse, type TerminalMouseEvent } f
 export const MAX_PASTE_BYTES = 256 * 1024;
 
 export type EditorCommand = 'left' | 'right' | 'up' | 'down' | 'home' | 'end' | 'wordLeft' | 'wordRight'
-  | 'backspace' | 'delete' | 'newline' | 'submit' | 'interrupt' | 'eof' | 'search';
+  | 'backspace' | 'delete' | 'newline' | 'submit' | 'interrupt' | 'eof' | 'search'
+  | 'extendLeft' | 'extendRight' | 'extendUp' | 'extendDown' | 'extendLineStart' | 'extendLineEnd'
+  | 'selectionCopy';
 export type EditorAction = { type: EditorCommand } | { type: 'insert' | 'paste'; text: string }
   | { type: 'running'; value: boolean } | { type: 'pasteRejected'; bytes: number } | TerminalMouseEvent;
 export interface EditorState {
@@ -185,7 +187,8 @@ export function reduceEditor(state: EditorState, action: EditorAction, policy: E
 /** Overrides map literal input sequences to commands; null unbinds a default key. */
 export type Keybindings = Readonly<Record<string, EditorCommand | null>>;
 const EDITOR_COMMANDS: readonly EditorCommand[] = ['left', 'right', 'up', 'down', 'home', 'end',
-  'wordLeft', 'wordRight', 'backspace', 'delete', 'newline', 'submit', 'interrupt', 'eof', 'search'];
+  'wordLeft', 'wordRight', 'backspace', 'delete', 'newline', 'submit', 'interrupt', 'eof', 'search',
+  'extendLeft', 'extendRight', 'extendUp', 'extendDown', 'extendLineStart', 'extendLineEnd', 'selectionCopy'];
 
 /** Validate a parsed local JSON keybinding map without reading settings files. */
 export function decodeTerminalKeybindings(value: unknown): Keybindings {
@@ -209,6 +212,9 @@ const DEFAULT_KEYS: Keybindings = {
   '\x1b[H': 'home', '\x1b[F': 'end', '\x1bOH': 'home', '\x1bOF': 'end',
   '\x1b[1~': 'home', '\x1b[4~': 'end', '\x1b[7~': 'home', '\x1b[8~': 'end',
   '\x1b[3~': 'delete', '\x1b[1;5D': 'wordLeft', '\x1b[1;5C': 'wordRight',
+  '\x1b[1;2D': 'extendLeft', '\x1b[1;2C': 'extendRight', '\x1b[1;2A': 'extendUp', '\x1b[1;2B': 'extendDown',
+  '\x1b[1;2H': 'extendLineStart', '\x1b[1;2F': 'extendLineEnd',
+  '\x1b[99;6u': 'selectionCopy', '\x1b[67;6u': 'selectionCopy', '\x1bc': 'selectionCopy',
   '\x1b\r': 'newline', '\x1b\n': 'newline', '\x1b[13;2u': 'newline',
   '\x1b[27;2;13~': 'newline', '\x1b[13;2~': 'newline', '\x1b[13u': 'submit',
 };

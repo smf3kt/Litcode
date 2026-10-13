@@ -31,11 +31,16 @@ import { TerminalModeController, type MouseTracking } from './tui-modes.js';
 import { Keymap, contextStack, type TuiContext } from './tui-keys.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
+  createSelection, highlightSelection, moveSelectionColumn, reduceSelection, selectionColumn, selectionText,
+  type SelectionAnchor, type SelectionState,
+} from './tui-selection.js';
+import { osc52Payload } from './clipboard-osc52.js';
+import {
   createTranscriptState, layoutTranscript, reduceTranscript, transcriptLines,
   type TranscriptEntry, type TranscriptScrollCommand, type TranscriptState,
 } from './tui-transcript.js';
 import {
-  createEditorState, layoutEditor, reduceEditor, TerminalKeyDecoder,
+  cellWidth, createEditorState, layoutEditor, reduceEditor, TerminalKeyDecoder,
   type EditorAction, type EditorPolicy, type EditorState, type Keybindings, type TerminalCallbacks,
 } from './terminal.js';
 
@@ -86,6 +91,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private editor: EditorState;
   private screen: TuiScreen = 'chat';
   private transcript: TranscriptState;
+  private selection: SelectionState = createSelection();
   private status = '';
   private running = false;
   private searchQuery = '';
@@ -102,7 +108,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.transcript = createTranscriptState();
     this.decoder = new TerminalKeyDecoder(options.keybindings, options.maxPasteBytes);
     this.modes = new TerminalModeController({ output: options.output,
-      mouseTracking: options.mouseTracking ?? 'scroll',
+      mouseTracking: options.mouseTracking ?? 'full',
       synchronizedUpdate: options.synchronizedUpdate ?? true });
     this.subscribe(options);
     this.outputStream = new Writable({
@@ -239,7 +245,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private transcriptTotal(columns: number): number { return transcriptLines(this.transcript, columns).length; }
 
   private contexts(): TuiContext[] {
-    return contextStack({ screen: this.screen === 'search' ? 'search' : this.screen });
+    return this.screen === 'chat' ? ['Chat', 'Scroll', 'Global'] : contextStack({ screen: this.screen });
   }
 
   private readonly onData = (chunk: string | Buffer) => {
@@ -254,11 +260,41 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private handleMouse(event: TerminalMouseEvent): void {
     if (this.options.mouseTracking === 'off' || this.screen === 'search') return;
-    if (event.action !== 'wheelup' && event.action !== 'wheeldown') return;
     const view = this.viewportSize();
-    if (event.col < 1 || event.col > view.columns || event.row < 1 || event.row > view.rows) return;
-    const outcome = this.keys.push(event.action, ['Scroll', 'Global']);
-    if (outcome.kind === 'match') this.applyAction(outcome.match.action);
+    const inside = event.col >= 1 && event.col <= view.columns
+      && event.row >= 1 && event.row <= view.rows;
+    if (event.action === 'wheelup' || event.action === 'wheeldown') {
+      if (!inside) return;
+      const outcome = this.keys.push(event.action, ['Scroll', 'Global']);
+      if (outcome.kind === 'match') this.applyAction(outcome.match.action);
+      return;
+    }
+    if ((this.options.mouseTracking ?? 'full') !== 'full') return;
+    // Release outside the transcript still ends the drag.
+    if (event.action === 'release') {
+      const anchor = inside && (event.button & 3) === 0 ? this.anchorAt(event.col, event.row) : null;
+      if (anchor) this.selection = reduceSelection(this.selection, { type: 'drag', at: anchor });
+      this.selection = reduceSelection(this.selection, { type: 'end' });
+      this.render(); return;
+    }
+    if (!inside || (event.button & 3) !== 0) return;
+    const anchor = this.anchorAt(event.col, event.row);
+    if (!anchor) return;
+    if (event.action === 'press') {
+      this.selection = reduceSelection(this.selection, { type: 'start', at: anchor });
+    } else if (event.action === 'move') {
+      this.selection = reduceSelection(this.selection, { type: 'drag', at: anchor });
+    }
+    this.render();
+  }
+
+  /** Map a terminal coordinate to the transcript line and cell it lands on. */
+  private anchorAt(col: number, row: number): SelectionAnchor | null {
+    const view = this.viewportSize();
+    const viewport = layoutTranscript(this.transcript, view.columns, view.rows);
+    const text = viewport.lines[row - 1];
+    if (text === undefined) return null;
+    return { line: row - 1 + viewport.offset, column: selectionColumn(text, col - 1) };
   }
 
   /**
@@ -267,6 +303,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    * active context does not bind falls through to the editor.
    */
   private handleChordAction(action: EditorAction): boolean {
+    // Preserve the decoder's Shift+Enter or rebound-newline intent; LF is also an Enter alias.
+    if (action.type === 'newline') return false;
     if (action.type !== 'insert' && action.type !== 'paste') {
       const sequence = chordSequence(action);
       if (!sequence) return false;
@@ -283,6 +321,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private applyAction(action: string): void {
     this.emit('action', action);
     switch (action) {
+      case 'selection:copy': this.copySelection(); return;
+      case 'selection:extendLeft': this.extendSelection(-1, 0); return;
+      case 'selection:extendRight': this.extendSelection(1, 0); return;
+      case 'selection:extendUp': this.extendSelection(0, -1); return;
+      case 'selection:extendDown': this.extendSelection(0, 1); return;
+      case 'selection:extendLineStart': this.extendSelection(-Infinity, 0); return;
+      case 'selection:extendLineEnd': this.extendSelection(Infinity, 0); return;
       case 'app:interrupt': this.dispatch({ type: 'interrupt' }); return;
       case 'app:exit': this.close(); this.emit('exit'); return;
       case 'app:toggleTranscript':
@@ -290,6 +335,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.render(); return;
       case 'transcript:exit': this.screen = 'chat'; this.render(); return;
       case 'transcript:toggleShowAll':
+        this.selection = createSelection();
         this.transcript = reduceTranscript(this.transcript, { type: 'toggleShowAll' },
           { rows: this.viewportSize().rows, total: this.transcriptTotal(this.viewportSize().columns) });
         this.render(); return;
@@ -315,7 +361,38 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
   }
 
+  /** Move the selection focus by a line/cell delta, clamping to the transcript. */
+  private extendSelection(dx: number, dy: number): void {
+    const view = this.viewportSize();
+    const lines = transcriptLines(this.transcript, view.columns);
+    if (!lines.length) return;
+    const from = this.selection.focus ?? this.selection.anchor ?? this.anchorAt(1, 1)!;
+    if (!this.selection.anchor) this.selection = reduceSelection(this.selection, { type: 'start', at: from });
+    const line = Math.max(0, Math.min(from.line + dy, lines.length - 1));
+    const text = lines[line]!;
+    const column = !Number.isFinite(dx) ? selectionColumn(text, dx < 0 ? 0 : Infinity)
+      : dy ? selectionColumn(text, from.column) : moveSelectionColumn(text, from.column, dx);
+    this.selection = reduceSelection(this.selection, { type: 'extend', to: { line, column } });
+    const viewport = layoutTranscript(this.transcript, view.columns, view.rows);
+    if (line < viewport.offset) this.transcript = { ...this.transcript, offset: line };
+    else if (line >= viewport.offset + view.rows) this.transcript = { ...this.transcript, offset: line - view.rows + 1 };
+    this.render();
+  }
+
+  /** Copy the span through OSC 52, then take it down as the recovered app does. */
+  private copySelection(): void {
+    const text = selectionText(this.selection, transcriptLines(this.transcript, this.viewportSize().columns));
+    if (!text) return;
+    let payload: string;
+    try { payload = osc52Payload(text); }
+    catch (error) { this.setStatus((error as Error).message); return; }
+    this.options.output.write(payload);
+    this.selection = reduceSelection(this.selection, { type: 'clear' });
+    this.setStatus('copy request sent');
+  }
+
   private enterSearch(): void {
+    this.selection = createSelection();
     this.screen = 'search';
     this.searchQuery = ''; this.searchIndex = -1; this.searchDraft = this.editor.text;
     this.render();
@@ -360,7 +437,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.close();
     try { this.emit('inputError', error); } finally { this.emit('exit'); }
   };
-  private readonly onResize = () => { this.render(); };
+  private readonly onResize = () => { this.selection = createSelection(); this.render(); };
 
   private render(): void {
     if (!this.isTTY || !this.started || this.closed) return;
@@ -375,7 +452,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Rows: transcript, separator, prompt box, status. A short prompt box is
     // bottom-aligned so the draft never appears to float mid-screen.
     const frame: string[] = [];
-    for (let row = 0; row < transcriptRows; row++) frame.push(pad(viewport.lines[row] ?? '', columns));
+    for (let row = 0; row < transcriptRows; row++) {
+      frame.push(highlightSelection(this.selection, pad(viewport.lines[row] ?? '', columns), viewport.offset + row));
+    }
     frame.push(SEPARATOR.repeat(columns));
     const promptStart = promptRows - prompt.lines.length;
     for (let row = 0; row < promptRows; row++) {
@@ -414,8 +493,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
  * truncated rather than allowed to wrap and desynchronise the frame.
  */
 export function pad(line: string, columns: number): string {
-  if (line.length >= columns) return Array.from(line).slice(0, Math.max(0, columns - 1)).join('');
-  return line + ' '.repeat(columns - line.length);
+  let text = '', width = 0;
+  for (const { segment } of new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(line)) {
+    const cells = cellWidth(segment);
+    if (width + cells > columns) break;
+    text += segment; width += cells;
+  }
+  return text + ' '.repeat(Math.max(0, columns - width));
 }
 
 /** The raw sequence for an editor action, used to consult the chord registry. */
@@ -426,6 +510,10 @@ export function chordSequence(action: EditorAction): string | undefined {
     case 'home': return '\x1b[H'; case 'end': return '\x1b[F';
     case 'backspace': return '\x7f'; case 'delete': return '\x1b[3~';
     case 'newline': return '\n'; case 'submit': return '\r';
+    case 'extendLeft': return '\x1b[1;2D'; case 'extendRight': return '\x1b[1;2C';
+    case 'extendUp': return '\x1b[1;2A'; case 'extendDown': return '\x1b[1;2B';
+    case 'extendLineStart': return '\x1b[1;2H'; case 'extendLineEnd': return '\x1b[1;2F';
+    case 'selectionCopy': return '\x1b[99;6u';
     case 'interrupt': return '\u0003'; case 'eof': return '\u0004'; case 'search': return '\u0012';
     default: return undefined;
   }

@@ -65,9 +65,13 @@ export function wrapEntry(entry: TranscriptEntry, columns: number): string[] {
     let used = cellWidth(prefix);
     if (paragraph === '') { rows.push(prefix.trimEnd()); continue; }
     for (const { segment } of new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(paragraph)) {
-      const cells = cellWidth(segment);
-      if (used + cells > width) { rows.push(row); row = ' '.repeat(prefix.length); used = prefix.length; }
-      row += segment; used += cells;
+      // Resolve tab stops before writing: render and selection share literal cell positions.
+      const parts = segment === '\t' ? Array<string>(8 - used % 8).fill(' ') : [segment];
+      for (const part of parts) {
+        const cells = cellWidth(part);
+        if (used + cells > width) { rows.push(row); row = ' '.repeat(prefix.length); used = prefix.length; }
+        row += part; used += cells;
+      }
     }
     rows.push(row);
   }
@@ -84,7 +88,7 @@ export function transcriptLines(state: TranscriptState, columns: number): string
     const wrapped = wrapEntry(entry, columns);
     if (!state.showAll && wrapped.length > COLLAPSED_ENTRY_LINES) {
       const hidden = wrapped.length - COLLAPSED_ENTRY_LINES;
-      lines.push(`  ... ${hidden} earlier lines (ctrl+e shows all)`);
+      lines.push(`  ... ${hidden} earlier lines (ctrl+e shows all)`.slice(0, Math.max(8, Math.floor(columns))));
       lines.push(...wrapped.slice(-COLLAPSED_ENTRY_LINES));
       continue;
     }

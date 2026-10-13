@@ -147,6 +147,7 @@ const NAMED: Record<string, string[]> = {
   right: ['\x1b[C', '\x1bOC'], left: ['\x1b[D', '\x1bOD'],
   home: ['\x1b[H', '\x1bOH', '\x1b[1~', '\x1b[7~'], end: ['\x1b[F', '\x1bOF', '\x1b[4~', '\x1b[8~'],
   pageup: ['\x1b[5~'], pagedown: ['\x1b[6~'],
+  'ctrl+shift+c': ['\x1b[99;6u', '\x1b[67;6u'],
   wheelup: ['wheelup'], wheeldown: ['wheeldown'],
   'ctrl+up': ['\x1b[1;5A'], 'ctrl+down': ['\x1b[1;5B'], 'ctrl+right': ['\x1b[1;5C'], 'ctrl+left': ['\x1b[1;5D'],
   'meta+up': ['\x1b[1;3A'], 'meta+down': ['\x1b[1;3B'],

@@ -15,7 +15,9 @@ import { Session } from '../src/session.js';
 import { ENTER_ALT_SCREEN, LEAVE_ALT_SCREEN, MOUSE_OFF, MOUSE_SCROLL, TerminalModeController } from '../src/tui-modes.js';
 import { Keymap, contextStack, expandChord, type TuiContext } from '../src/tui-keys.js';
 import { createTranscriptState, layoutTranscript, reduceTranscript, transcriptLines } from '../src/tui-transcript.js';
-import { TuiTerminal } from '../src/tui.js';
+import { pad, TuiTerminal } from '../src/tui.js';
+import { createSelection, moveSelectionColumn, reduceSelection, selectionColumn, selectionText } from '../src/tui-selection.js';
+import { osc52Payload } from '../src/clipboard-osc52.js';
 import { TerminalKeyDecoder } from '../src/terminal.js';
 
 const cli = path.join(import.meta.dirname, '..', 'src', 'cli.ts');
@@ -76,6 +78,92 @@ test('wheel scrolling unpins the live tail and respects prompt, screen and mode 
     key('\x1b[<64;2;3M');
     assert.equal(off.transcriptState.offset, before);
   } finally { off.close(); }
+});
+
+test('pointer and keyboard selection copy the visible transcript without changing the draft', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const copy = () => {
+    drawn = ''; key('\x1b[99;6u');
+    const encoded = /\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/.exec(drawn)?.[1];
+    return encoded === undefined ? undefined : Buffer.from(encoded, 'base64').toString('utf8');
+  };
+  try {
+    assert.ok(drawn.includes('\x1b[?1002h'));
+    for (let index = 0; index < 20; index++) tui.append({ kind: 'assistant', text: `line ${index}` });
+    key('draft');
+    // Seven visible rows: row 1 is line 13, row 2 is line 14.
+    key('\x1b[<0;1;1M\x1b[<32;4;2M\x1b[<0;4;9m');
+    assert.ok(drawn.includes('\x1b[7mline\x1b[27m'));
+    // A release on the prompt ends dragging; subsequent motion cannot extend it.
+    key('\x1b[<32;7;3M');
+    tui.append({ kind: 'assistant', text: 'new output' });
+    assert.equal(copy(), 'line 13\nline');
+    assert.equal(copy(), undefined);
+    assert.equal(tui.state.text, 'draft');
+    let submitted = 0;
+    tui.on('submit', () => { submitted++; });
+    key('\x1b[13;2u');
+    assert.equal(tui.state.text, 'draft\n');
+    assert.equal(submitted, 0);
+    key('\x7f');
+    // Reversing direction moves the focus, not the ordered end of the span.
+    key('\x1b[<0;5;1M\x1b[<0;5;1m\x1b[1;2D\x1b[1;2D');
+    assert.equal(copy(), 'ne');
+    key('\x1b[1;2C');
+    assert.equal(copy(), 'li');
+    key('\x1b[<0;1;1M\x1b[<32;2;1M\x1b[<0;5;1m');
+    assert.equal(copy(), 'line');
+    key('\x1b[<0;1;1M\x1b[<0;3;1m');
+    assert.equal(copy(), 'lin');
+    tui.append({ kind: 'assistant', text: 'A\tBCDEFGHIJKLMN' });
+    key('\x1b[<0;9;7M\x1b[<32;10;7M\x1b[<0;10;7m');
+    assert.ok(drawn.includes('\x1b[7mBC\x1b[27m'));
+    assert.equal(copy(), 'BC');
+    key('\x1b[<0;1;1M\x1b[<32;3;1M\x1b[<0;3;1m');
+    output.emit('resize');
+    assert.equal(copy(), undefined);
+    key('\u0012\x1b[1;2C');
+    assert.equal(copy(), undefined);
+    assert.equal(tui.state.text, 'draft');
+    key('\u0003'); // Leave search before selecting the collapsed notice.
+    Object.assign(output, { columns: 20, rows: 40 }); output.emit('resize');
+    tui.append({ kind: 'tool', text: Array.from({ length: 30 }, (_, i) => `row ${i}`).join('\n') });
+    const noticeRow = transcriptLines(tui.transcriptState, 20).findIndex(line => line.startsWith('  ... 18')) + 1;
+    key(`\x1b[<0;1;${noticeRow}M\x1b[<0;1;${noticeRow}m\x1b[1;2F`);
+    assert.equal(copy(), '  ... 18 earlier lin');
+  } finally { tui.close(); }
+});
+
+test('selection spans preserve wide and combining graphemes in both directions', () => {
+  const lines = ['A中👩‍💻éZ', 'next   '];
+  let state = reduceSelection(createSelection(), { type: 'start', at: { line: 0, column: 1 } });
+  state = reduceSelection(state, { type: 'drag', at: { line: 0, column: 5 } });
+  assert.equal(selectionText(state, lines), '中👩‍💻é');
+  assert.equal(selectionColumn(lines[0]!, 2), 1);
+  assert.equal(moveSelectionColumn(lines[0]!, 5, -1), 3);
+  state = reduceSelection(state, { type: 'extend', to: { line: 1, column: 2 } });
+  assert.equal(selectionText(state, lines), '中👩‍💻éZ\nnex');
+  assert.equal(selectionText({ ...state, anchor: state.focus, focus: state.anchor }, lines), '中👩‍💻éZ\nnex');
+  assert.equal(pad('中👩‍💻é', 5), '中👩‍💻é');
+});
+
+test('clipboard sequences match raw, kitty, tmux and screen framing with a byte cap', () => {
+  const text = '中\u001b]52;test';
+  const body = Buffer.from(text).toString('base64');
+  const raw = `\x1b]52;c;${body}\x07`;
+  assert.equal(osc52Payload(text, {}), raw);
+  assert.equal(osc52Payload(text, { TERM: 'xterm-kitty' }), `\x1b]52;c;${body}\x1b\\`);
+  assert.equal(osc52Payload(text, { TMUX: 'fixture' }), raw + `\x1bPtmux;${raw.replaceAll('\x1b', '\x1b\x1b')}\x1b\\`);
+  const long = 'a'.repeat(80), encoded = Buffer.from(long).toString('base64');
+  assert.equal(osc52Payload(long, { STY: 'fixture' }),
+    `\x1bP\x1b]52;c;${encoded.slice(0, 76)}\x1b\\\x1bP${encoded.slice(76)}\x07\x1b\\`);
+  assert.throws(() => osc52Payload('中'.repeat(33334), {}), /100000 UTF-8 bytes/);
 });
 
 test('the kill ring coalesces, caps at ten, and cycles yank-pop', () => {
@@ -172,7 +260,8 @@ test('the transcript viewport clamps its scroll and follows the tail only when p
   // Collapsed, a long entry keeps its tail and says how much it hid.
   const long = createTranscriptState([{ kind: 'tool', text: Array.from({ length: 30 }, (_, i) => `row ${i}`).join('\n') }]);
   const collapsed = transcriptLines(long, 40);
-  assert.match(collapsed[0]!, /\.\.\. 18 earlier lines \(ctrl\+e shows all\)/);
+  assert.match(collapsed[0]!, /\.\.\. 18 earlier lines \(ctrl\+e/);
+  assert.equal(collapsed[0]!.length, 40); // The notice shares the viewport's clipping boundary.
   // One notice plus the retained tail of twelve lines.
   assert.equal(collapsed.length, 13);
   const shown = transcriptLines({ ...long, showAll: true }, 40);
