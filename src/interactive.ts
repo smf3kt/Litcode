@@ -3,7 +3,7 @@ import type { Readable, Writable } from 'node:stream';
 import { Agent } from './agent.js';
 import type { ModelProvider } from './provider.js';
 import { Session, type SessionConfig } from './session.js';
-import { createTerminalInput, type TerminalSurface } from './terminal.js';
+import { createTerminalInput, type TerminalSurface, type TerminalPromptRequest } from './terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { relocateSession } from './workspace-session.js';
 import fs from 'node:fs';
@@ -153,7 +153,25 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   let activeAgent: Agent | undefined;
   let rewindPreview: RewindPreview | undefined;
   let formController: AbortController | undefined;
+  const readDialog = async (request: TerminalPromptRequest, signal: AbortSignal, form = false) => {
+    if (!form) formController?.abort();
+    if (approval) throw new Error('Another interaction already owns terminal input');
+    if (inputClosed || signal.aborted) throw new Error('Interaction input closed');
+    const controller = new AbortController();
+    // Keep the same owner gate for both the line UI and the modal surface.
+    const owner = () => controller.abort();
+    const combined = AbortSignal.any([signal, controller.signal]);
+    const release = () => { if (approval === owner) approval = undefined; };
+    approval = owner; combined.addEventListener('abort', release, { once: true });
+    try {
+      return await terminal!.prompt!(request, combined);
+    } finally { combined.removeEventListener('abort', release); release(); }
+  };
   const readAnswer = (prompt: string, signal: AbortSignal, form = false): Promise<string> => {
+    if (terminal?.prompt) return readDialog({ message: prompt, allowText: true }, signal, form).then(answer => {
+      if (answer?.text === undefined) throw new Error('Interaction cancelled');
+      return answer.text;
+    });
     if (!form) formController?.abort();
     if (approval) return Promise.reject(new Error('Another interaction already owns terminal input'));
     if (inputClosed || signal.aborted) return Promise.reject(new Error('Interaction input closed'));
@@ -169,11 +187,28 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (signal.aborted) cancelled();
     });
   };
+  const confirm = async (title: string, message: string, signal: AbortSignal): Promise<boolean> => {
+    if (terminal?.prompt) {
+      const answer = await readDialog({ title, message, choices: [
+        { label: 'No', value: 'no' }, { label: 'Yes', value: 'yes' },
+      ], defaultIndex: 0 }, signal);
+      return answer?.selected[0] === 'yes';
+    }
+    return /^(y|yes)$/i.test((await readAnswer(`\n${message}\n${title}? [y/N] `, signal)).trim());
+  };
   const agent = () => activeAgent ??= new Agent(session, provider, activeRuntime.buildTools(session.config, session.id), {
     interaction: {
       ask: async (request, signal) => {
         const answers = [];
         for (const [questionIndex, question] of request.questions.entries()) {
+          if (terminal?.prompt) {
+            const answer = await readDialog({ title: question.header ?? 'Question', message: question.question,
+              choices: question.options.map(option => ({ ...option, value: option.label })),
+              multiple: question.multiSelect, allowText: true, maxTextChars: 4000 }, signal);
+            if (!answer) throw new Error('Interaction cancelled');
+            answers.push({ questionIndex, selected: answer.selected, ...(answer.text === undefined ? {} : { other: answer.text }) });
+            continue;
+          }
           const choices = question.options.map((option, index) => `${index + 1}. ${option.label}: ${option.description}`).join('\n');
           const answer = (await readAnswer(`\n${question.question}\n${choices}\n${question.multiSelect ? 'Numbers separated by commas' : 'One number'}, or Other text: `, signal)).trim();
           const indices = /^\d+(?:\s*,\s*\d+)*$/.test(answer) ? answer.split(',').map(value => Number(value.trim()) - 1) : [];
@@ -185,8 +220,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         return { answers };
       },
       plan: async (request, signal) => {
-        const answer = await readAnswer(`\n${request.plan}\nApprove this plan? [y/N] `, signal);
-        return { approved: /^(y|yes)$/i.test(answer.trim()) };
+        return { approved: await confirm('Approve this plan', request.plan, signal) };
       },
       report: request => {
         for (const finding of request.findings) output.write(`${finding.severity}: ${finding.file}:${finding.line} ${finding.summary}\n`);
@@ -199,8 +233,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     permission: async request => {
       if (inputClosed || request.signal.aborted) return false;
       try {
-        const answer = await readAnswer(`\n${request.reason}\n${request.tool}: ${JSON.stringify(request.input).slice(0, 2000)}\nAllow once? [y/N] `, request.signal);
-        return /^(y|yes)$/i.test(answer.trim());
+        return await confirm('Allow once', `${request.reason}\n${request.tool}: ${JSON.stringify(request.input).slice(0, 2000)}`, request.signal);
       } catch { return false; }
     },
   });
@@ -720,8 +753,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 if (inputClosed || signal.aborted) return { decision: 'deny', reason: 'Input closed' };
                 let allowed = false;
                 try {
-                  const answer = await readAnswer(`\n${decision.reason ?? 'Skill permission'}\n${tool.schema.name}: ${JSON.stringify(input).slice(0, 2000)}\nAllow once? [y/N] `, signal);
-                  allowed = /^(y|yes)$/i.test(answer.trim());
+                  allowed = await confirm('Allow once', `${decision.reason ?? 'Skill permission'}\n${tool.schema.name}: ${JSON.stringify(input).slice(0, 2000)}`, signal);
                 } catch { /* Cancellation retains a denied permission result. */ }
                 return { decision: allowed ? 'allow' : 'deny', reason: allowed ? 'Approved once' : 'Permission declined' };
               }, session.messages));

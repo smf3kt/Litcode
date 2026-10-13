@@ -36,12 +36,13 @@ import {
 } from './tui-selection.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import {
-  createTranscriptState, layoutTranscript, reduceTranscript, transcriptLines,
+  createTranscriptState, layoutTranscript, reduceTranscript, transcriptLines, wrapEntry,
   type TranscriptEntry, type TranscriptScrollCommand, type TranscriptState,
 } from './tui-transcript.js';
 import {
   cellWidth, createEditorState, layoutEditor, reduceEditor, TerminalKeyDecoder,
   type EditorAction, type EditorCommand, type EditorPolicy, type EditorState, type Keybindings, type TerminalCallbacks,
+  type TerminalPromptAnswer, type TerminalPromptRequest,
 } from './terminal.js';
 
 export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
@@ -62,7 +63,18 @@ type TuiEvents = {
   action: [action: string];
 };
 
-export type TuiScreen = 'chat' | 'transcript' | 'search';
+export type TuiScreen = 'chat' | 'transcript' | 'search' | 'dialog';
+
+interface ActiveDialog {
+  request: TerminalPromptRequest;
+  editor: EditorState;
+  index: number;
+  selected: Set<number>;
+  scroll: number;
+  followFocus: boolean;
+  error?: string;
+  finish(answer?: TerminalPromptAnswer): void;
+}
 
 const SEPARATOR = '─';
 
@@ -94,6 +106,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private screen: TuiScreen = 'chat';
   private transcript: TranscriptState;
   private selection: SelectionState = createSelection();
+  private dialog: ActiveDialog | undefined;
   private status = '';
   private running = false;
   private searchQuery = '';
@@ -170,6 +183,37 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   setKeybindings(keybindings: Keybindings = {}): void { this.decoder.setKeybindings(keybindings); }
 
+  prompt(request: TerminalPromptRequest, signal: AbortSignal): Promise<TerminalPromptAnswer | undefined> {
+    if (this.closed || signal.aborted) return Promise.resolve(undefined);
+    if (this.dialog) return Promise.reject(new Error('Another interaction owns terminal input'));
+    if (!this.isTTY || !this.started) return Promise.reject(new Error('Dialog needs an active terminal'));
+    if (Buffer.byteLength(JSON.stringify(request)) > 256 * 1024 || (request.choices?.length ?? 0) > 100) {
+      return Promise.reject(new Error('Dialog exceeds its display budget'));
+    }
+    const snapshot = structuredClone(request);
+    if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
+    this.decoder.discardPending();
+    const previousScreen = this.screen as Exclude<TuiScreen, 'dialog'>;
+    return new Promise(resolve => {
+      let settled = false;
+      const finish = (answer?: TerminalPromptAnswer) => {
+        if (settled) return;
+        settled = true; signal.removeEventListener('abort', cancelled);
+        this.dialog = undefined; this.screen = previousScreen;
+        if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
+        this.decoder.discardPending(); this.keys.reset(); this.render(); resolve(answer);
+      };
+      const cancelled = () => finish();
+      this.keys.reset(); this.selection = createSelection();
+      const choices = snapshot.choices?.length ?? 0;
+      this.dialog = { request: snapshot, editor: createEditorState(),
+        index: Math.max(0, Math.min(snapshot.defaultIndex ?? 0, Math.max(0, choices - 1))),
+        selected: new Set(), scroll: 0, followFocus: false, finish };
+      this.screen = 'dialog'; signal.addEventListener('abort', cancelled, { once: true });
+      if (signal.aborted) cancelled(); else this.render();
+    });
+  }
+
   /** Zero-width hook effects bypass text layout and never change the input draft. */
   writeTerminalSequence(sequence: string): void {
     const validated = formatHookTerminalSequence(sequence);
@@ -199,6 +243,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.dialog?.finish();
     if (this.escapeTimer) clearTimeout(this.escapeTimer);
     this.decoder.reset(); this.keys.reset();
     this.options.input.off('data', this.onData);
@@ -257,6 +302,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
     for (const action of this.decoder.push(chunk)) {
       if (this.closed) return;
+      if (this.dialog) {
+        const owner = this.dialog;
+        this.handleDialogAction(action);
+        if (this.dialog !== owner) { this.decoder.discardPending(); return; }
+        continue;
+      }
       if (action.type === 'mouse') { this.handleMouse(action); continue; }
       if (action.type === 'key') { this.routeKey(action.sequence, action.command); continue; }
       if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord)) {
@@ -274,11 +325,72 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!this.closed && this.decoder.pendingStandaloneEscape) {
       this.escapeTimer = setTimeout(() => {
         this.escapeTimer = undefined;
-        this.decoder.flushEscape(); this.routeKey('\x1b');
+        this.decoder.flushEscape();
+        if (this.dialog) this.handleDialogAction({ type: 'key', sequence: '\x1b' });
+        else this.routeKey('\x1b');
       }, 50);
       this.escapeTimer.unref?.();
     }
   };
+
+  private handleDialogAction(action: EditorAction): void {
+    const dialog = this.dialog;
+    if (!dialog || action.type === 'mouse') return;
+    const command = action.type === 'key' ? action.command : action.type;
+    const sequence = action.type === 'key' ? action.sequence : '';
+    if (command === 'interrupt' || command === 'eof' || sequence === '\x1b') { dialog.finish(); return; }
+    const choices = dialog.request.choices ?? [];
+    const textEntry = choices.length === 0 || dialog.index === choices.length;
+    if (sequence === '\x1b[5~' || sequence === '\x1b[6~') {
+      dialog.scroll = Math.max(0, dialog.scroll + (sequence === '\x1b[5~' ? -1 : 1) * Math.max(1, (this.options.output.rows ?? 24) - 4));
+      dialog.followFocus = false; this.render(); return;
+    }
+    if (choices.length && (command === 'up' || command === 'down' || sequence === '\t' || sequence === '\x1b[Z')) {
+      const count = choices.length + (dialog.request.allowText ? 1 : 0);
+      const delta = command === 'up' || sequence === '\x1b[Z' ? -1 : 1;
+      dialog.index = (dialog.index + delta + count) % count;
+      dialog.followFocus = true; this.render(); return;
+    }
+    if (choices.length && !textEntry && (command === 'home' || command === 'end')) {
+      dialog.index = command === 'home' ? 0 : choices.length - 1;
+      dialog.followFocus = true; this.render(); return;
+    }
+    if (command === 'submit') {
+      if (textEntry) {
+        const text = dialog.editor.text.trim();
+        if (text) dialog.finish({ selected: dialog.request.multiple
+          ? [...dialog.selected].sort((a, b) => a - b).map(index => choices[index]!.value) : [], text });
+        else { dialog.error = 'Enter an answer'; this.render(); }
+      } else {
+        const indices = dialog.request.multiple ? [...dialog.selected].sort((a, b) => a - b) : [dialog.index];
+        const other = dialog.request.multiple && dialog.request.allowText ? dialog.editor.text.trim() : '';
+        if (indices.length || other) dialog.finish({ selected: indices.map(index => choices[index]!.value),
+          ...(other ? { text: other } : {}) });
+        else { dialog.error = 'Space selects an option'; this.render(); }
+      }
+      return;
+    }
+    if (!textEntry && action.type === 'insert' && action.text === ' ' && dialog.request.multiple) {
+      if (dialog.selected.has(dialog.index)) dialog.selected.delete(dialog.index); else dialog.selected.add(dialog.index);
+      dialog.error = undefined; this.render(); return;
+    }
+    if (dialog.request.allowText && choices.length && (action.type === 'insert' || action.type === 'paste')) {
+      dialog.index = choices.length; dialog.followFocus = true;
+    }
+    if (choices.length === 0 || dialog.index === choices.length) {
+      const editorAction = action.type === 'key' ? action.command ? { type: action.command } as EditorAction
+        : sequence === '\t' ? { type: 'insert', text: '    ' } as EditorAction : undefined : action;
+      if (editorAction) {
+        const next = reduceEditor(dialog.editor, editorAction, { ...this.options, maxPasteBytes: 32 * 1024 });
+        if (next.state.text.length > (dialog.request.maxTextChars ?? 32 * 1024)) {
+          dialog.error = `Answer exceeds ${dialog.request.maxTextChars ?? 32 * 1024} characters`;
+        } else if (Buffer.byteLength(next.state.text) <= 32 * 1024 && !next.effects.some(effect => effect.type === 'pasteRejected')) {
+          dialog.editor = next.state; dialog.error = undefined;
+        } else dialog.error = 'Answer exceeds 32768 bytes';
+      }
+      this.render();
+    }
+  }
 
   private routeKey(sequence: string, command?: EditorCommand): void {
     if (this.closed || this.handleKey(sequence, command)) return;
@@ -464,10 +576,55 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   };
   private readonly onResize = () => { this.selection = createSelection(); this.render(); };
 
+  private renderDialog(columns: number, rows: number): string[] {
+    const dialog = this.dialog!;
+    const clean = (text: string) => text.replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
+    const oneLine = (text: string) => clean(text).replace(/[\t\n]/g, ' ');
+    const content = wrapEntry({ kind: 'assistant', text: clean(dialog.request.message) }, columns);
+    const choices = dialog.request.choices ?? [];
+    const offsets: number[] = [];
+    for (const [index, choice] of choices.entries()) {
+      offsets.push(content.length);
+      const marker = dialog.request.multiple ? (dialog.selected.has(index) ? '[x]' : '[ ]') : '   ';
+      content.push(...wrapEntry({ kind: 'assistant', text: `${dialog.index === index ? '>' : ' '} ${marker} ${clean(choice.label)}` }, columns));
+      if (choice.description) content.push(...wrapEntry({ kind: 'assistant', text: `    ${clean(choice.description)}` }, columns));
+    }
+    if (choices.length && dialog.request.allowText) {
+      offsets.push(content.length); content.push(`${dialog.index === choices.length ? '>' : ' '} Other`);
+    }
+    const height = Math.max(0, rows - 4);
+    const focused = offsets[dialog.index];
+    // Follow focus after navigation; explicit page scrolling can explore a long body.
+    if (dialog.followFocus && focused !== undefined && height > 0) {
+      if (focused < dialog.scroll) dialog.scroll = focused;
+      else if (focused >= dialog.scroll + height) dialog.scroll = focused - height + 1;
+      dialog.followFocus = false;
+    }
+    dialog.scroll = Math.min(dialog.scroll, Math.max(0, content.length - height));
+    const visible = content.slice(dialog.scroll, dialog.scroll + height);
+    while (visible.length < height) visible.push('');
+    const textEntry = choices.length === 0 || dialog.index === choices.length;
+    const answer = layoutEditor(dialog.editor, columns, '> ', '  ', 1).lines[0] ?? '> ';
+    return [oneLine(dialog.request.title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
+      textEntry ? answer : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
+      dialog.error ?? (dialog.request.multiple ? 'Space toggle / Enter submit / Esc cancel / PgUp/PgDn'
+        : 'Enter select / Esc cancel / PgUp/PgDn')].map(line => pad(line, columns));
+  }
+
   private render(): void {
     if (!this.isTTY || !this.started || this.closed) return;
     const columns = Math.max(20, this.options.output.columns ?? 80);
     const rows = Math.max(4, this.options.output.rows ?? 24);
+    if (this.dialog) {
+      const frame = this.renderDialog(columns, rows);
+      this.options.output.write(this.modes.frame(`\x1b[H${frame.map(line => `${line}\x1b[K`).join('\r\n')}`));
+      const choices = this.dialog.request.choices ?? [];
+      if (!choices.length || this.dialog.index === choices.length) {
+        const cursor = layoutEditor(this.dialog.editor, columns, '> ', '  ', 1).cursorColumn;
+        this.options.output.write(`\x1b[1A\r${cursor ? `\x1b[${cursor}C` : ''}\x1b[?25h`);
+      } else this.options.output.write('\x1b[?25l');
+      return;
+    }
     const promptRows = Math.max(1, Math.min(this.options.promptRows ?? 1, rows - 3));
     const transcriptRows = rows - promptRows - 2;
     const viewport = layoutTranscript(this.transcript, columns, transcriptRows);

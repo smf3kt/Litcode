@@ -205,6 +205,84 @@ test('actual TUI input reaches contextual navigation while paste and overrides k
   } finally { tui.close(); }
 });
 
+test('modal choices and Other text own input and restore the previous draft', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 50, rows: 10 });
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const signal = new AbortController().signal;
+  const choices = [{ label: 'A', value: 'A' }, { label: 'B', value: 'B' }];
+  try {
+    key('draft\x1b[D');
+    const before = tui.state;
+    let submissions = 0; tui.on('submit', () => { submissions++; });
+    const single = tui.prompt({ title: 'Choose', message: 'Choose an option', choices, allowText: true }, signal);
+    assert.equal(tui.currentScreen, 'dialog');
+    assert.ok(drawn.includes('Choose an option'));
+    await assert.rejects(tui.prompt({ message: 'collision' }, signal), /Another interaction/);
+    key('\x1b[B\rignored\r');
+    assert.deepEqual(await single, { selected: ['B'] });
+    assert.deepEqual(tui.state, before);
+    assert.equal(submissions, 0);
+    const multi = tui.prompt({ message: 'Choose several', choices, multiple: true, allowText: true }, signal);
+    key('\r'); assert.equal(tui.currentScreen, 'dialog');
+    assert.ok(drawn.includes('Space selects an option'));
+    key(' '); key('\x1b[B '); key('\tcustom\x1b[13;2uanswer\x1b[A\r');
+    assert.deepEqual(await multi, { selected: ['A', 'B'], text: 'custom\nanswer' });
+    assert.deepEqual(tui.state, before);
+    const confirmation = tui.prompt({ title: 'Approve', message: Array.from({ length: 30 }, (_, i) => `plan line ${i}`).join('\n'),
+      choices: [{ label: 'No', value: 'no' }, { label: 'Yes', value: 'yes' }] }, signal);
+    assert.ok(drawn.slice(drawn.lastIndexOf('\x1b[H')).includes('plan line 0'));
+    key('\x1b[6~'); assert.ok(drawn.slice(drawn.lastIndexOf('\x1b[H')).includes('plan line 7'));
+    key('\x1b[5~'); assert.ok(drawn.slice(drawn.lastIndexOf('\x1b[H')).includes('plan line 0'));
+    key('\r'); assert.deepEqual(await confirmation, { selected: ['no'] });
+    assert.deepEqual(tui.state, before);
+    const bounded = tui.prompt({ message: 'Small answer', maxTextChars: 4 }, signal);
+    key('12345'); assert.ok(drawn.includes('Answer exceeds 4 characters'));
+    key('ok\r'); assert.deepEqual(await bounded, { selected: [], text: 'ok' });
+  } finally { tui.close(); }
+});
+
+test('modal cancellation abort and close settle once without changing the draft', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  try {
+    key('retained');
+    const controller = new AbortController();
+    let settled = 0;
+    const aborted = tui.prompt({ message: 'Form', allowText: true }, controller.signal).then(answer => { settled++; return answer; });
+    key('partial'); controller.abort();
+    assert.equal(await aborted, undefined); assert.equal(settled, 1);
+    assert.equal(tui.state.text, 'retained');
+    const cancelled = tui.prompt({ message: 'Form' }, new AbortController().signal);
+    key('\u0003tail'); assert.equal(await cancelled, undefined);
+    assert.equal(tui.state.text, 'retained');
+    key('\x1b[200~stale paste');
+    const duringPaste = tui.prompt({ message: 'Confirmation', choices: [{ label: 'No', value: 'no' }, { label: 'Yes', value: 'yes' }] }, new AbortController().signal);
+    key('\x1b[B\r\x1b[201~');
+    assert.equal(tui.currentScreen, 'dialog'); // Paste tail is drained, never interpreted as approval keys.
+    key('\r'); assert.deepEqual(await duringPaste, { selected: ['no'] });
+    const partialController = new AbortController();
+    const partial = tui.prompt({ message: 'Form' }, partialController.signal);
+    key('\x1b[200~partial'); partialController.abort();
+    assert.equal(await partial, undefined);
+    key('tail\r\x1b[201~'); assert.equal(tui.state.text, 'retained');
+    const escaped = tui.prompt({ message: 'Form' }, new AbortController().signal);
+    key('\x1b'); await new Promise(resolve => setTimeout(resolve, 70));
+    assert.equal(await escaped, undefined);
+    const closing = tui.prompt({ message: 'Form' }, new AbortController().signal);
+    tui.close(); assert.equal(await closing, undefined);
+    assert.equal(tui.state.text, 'retained');
+  } finally { tui.close(); }
+});
+
 test('the kill ring coalesces, caps at ten, and cycles yank-pop', () => {
   let state = reduceKillRing(emptyKillRing, { type: 'kill', text: 'one' });
   assert.deepEqual(state.ring, ['one']);
