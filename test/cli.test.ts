@@ -182,14 +182,32 @@ test('a bare invocation at a terminal opens the interactive session', { timeout:
     process.execPath, '--import', 'tsx', cli].join(' ');
   const result = spawnSync('/bin/sh', ['-c', quit], {
     encoding: 'utf8', timeout: 50_000,
-    env: { ...process.env, LLM_API_KEY: 'offline-fixture-key', LLM_BASE_URL: 'http://127.0.0.1:1', LLM_MODEL: 'test-model', LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false', LLM_PROMPT_CACHE: 'false', LLM_EAGER_TOOL_INPUT: 'false' },
+    env: { ...process.env, TERM: 'xterm-256color', LLM_INHERIT_GATEWAY: 'false', LLM_API_KEY: 'offline-fixture-key', LLM_BASE_URL: 'http://127.0.0.1:1', LLM_MODEL: 'test-model', LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false', LLM_PROMPT_CACHE: 'false', LLM_EAGER_TOOL_INPUT: 'false' },
   });
   if (result.error || /script: .*Operation not supported/.test(result.stderr ?? '')) return;
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Personal harness\. \/help for commands\./);
+  assert.ok(result.stdout.includes('\x1b[?1049h'));
+  assert.ok(result.stdout.includes('\x1b[?1049l'));
   assert.match(result.stdout, /^workspace: /m);
   // No task was given, so the session must not have spent a model call.
   assert.doesNotMatch(result.stdout, /model calls: [1-9]/);
+});
+
+test('explicit line mode and dumb terminals avoid alternate-screen ownership', { timeout: 60_000 }, () => {
+  for (const [flag, term] of [['--no-tui', 'xterm-256color'], ['', 'dumb']]) {
+    const quit = `printf '/exit\\n' | script -q /dev/null ${process.execPath} --import tsx ${cli} ${flag}`;
+    const result = spawnSync('/bin/sh', ['-c', quit], {
+      encoding: 'utf8', timeout: 20_000,
+      env: { ...process.env, TERM: term, LLM_INHERIT_GATEWAY: 'false', LLM_API_KEY: 'offline-fixture-key',
+        LLM_BASE_URL: 'http://127.0.0.1:1', LLM_MODEL: 'test-model', LLM_AUTH: 'bearer',
+        LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false', LLM_PROMPT_CACHE: 'false' },
+    });
+    if (result.error || /script: .*Operation not supported/.test(result.stderr ?? '')) return;
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.includes('\x1b[?1049h'), false);
+    assert.match(result.stdout, /Personal harness\. \/help for commands\./);
+  }
+  assert.match(invoke(['--tui', '--no-tui', '--interactive']).stderr, /Choose --tui or --no-tui/);
 });
 
 test('a live run takes a missing gateway, credential and model from the client configuration', () => {

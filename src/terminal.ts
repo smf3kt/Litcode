@@ -12,7 +12,8 @@ export type EditorCommand = 'left' | 'right' | 'up' | 'down' | 'home' | 'end' | 
   | 'extendLeft' | 'extendRight' | 'extendUp' | 'extendDown' | 'extendLineStart' | 'extendLineEnd'
   | 'selectionCopy';
 export type EditorAction = { type: EditorCommand } | { type: 'insert' | 'paste'; text: string }
-  | { type: 'running'; value: boolean } | { type: 'pasteRejected'; bytes: number } | TerminalMouseEvent;
+  | { type: 'running'; value: boolean } | { type: 'pasteRejected'; bytes: number } | TerminalMouseEvent
+  | { type: 'key'; sequence: string; command?: EditorCommand };
 export interface EditorState {
   text: string;
   /** UTF-16 offset, always on a grapheme boundary. */
@@ -230,13 +231,18 @@ export class TerminalKeyDecoder {
   private pasteOverflow = false;
   private previousCR = false;
   private discardingMouse = false;
-  constructor(keybindings: Keybindings = {}, private readonly maxPasteBytes = MAX_PASTE_BYTES) {
-    this.bindings = { ...DEFAULT_KEYS, ...decodeTerminalKeybindings(keybindings) };
+  private overrides: Keybindings;
+  constructor(keybindings: Keybindings = {}, private readonly maxPasteBytes = MAX_PASTE_BYTES,
+    private readonly preserveKeys = false) {
+    this.overrides = decodeTerminalKeybindings(keybindings);
+    this.bindings = { ...DEFAULT_KEYS, ...this.overrides };
   }
   setKeybindings(keybindings: Keybindings = {}): void {
-    this.bindings = { ...DEFAULT_KEYS, ...decodeTerminalKeybindings(keybindings) };
+    this.overrides = decodeTerminalKeybindings(keybindings);
+    this.bindings = { ...DEFAULT_KEYS, ...this.overrides };
   }
   get pendingEscape(): boolean { return !this.paste && this.buffer.startsWith('\x1b'); }
+  get pendingStandaloneEscape(): boolean { return !this.paste && this.buffer === '\x1b'; }
   push(chunk: string | Buffer): EditorAction[] {
     this.buffer += typeof chunk === 'string' ? chunk : this.utf8.write(chunk);
     const actions: EditorAction[] = [];
@@ -290,13 +296,17 @@ export class TerminalKeyDecoder {
       const key = keys.filter(key => this.buffer.startsWith(key)).sort((a, b) => b.length - a.length)[0];
       if (key) {
         const command = this.bindings[key];
-        if (command && !(key === '\n' && this.previousCR)) actions.push({ type: command });
+        if (command && !(key === '\n' && this.previousCR)) {
+          actions.push(this.preserveKeys && !Object.hasOwn(this.overrides, key)
+            ? { type: 'key', sequence: key, command } : { type: command });
+        }
         this.previousCR = key === '\r'; this.buffer = this.buffer.slice(key.length); continue;
       }
       if (PASTE_START.startsWith(this.buffer) || keys.some(key => key.startsWith(this.buffer))) break;
       if (this.buffer.startsWith('\x1b')) {
         const sequence = /^(?:\x1b\[[0-?]*[ -/]*[@-~]|\x1bO.|\x1b[^\[O])/u.exec(this.buffer)?.[0];
         if (!sequence && this.buffer.length < 64) break;
+        if (this.preserveKeys && sequence) actions.push({ type: 'key', sequence });
         this.buffer = this.buffer.slice(sequence?.length ?? 1); this.previousCR = false; continue;
       }
       // Batch ordinary text to avoid one render per character on rapid input.
@@ -309,7 +319,8 @@ export class TerminalKeyDecoder {
       if (end) { actions.push({ type: 'insert', text: this.buffer.slice(0, end) }); this.buffer = this.buffer.slice(end); }
       else {
         const character = String.fromCodePoint(this.buffer.codePointAt(0)!);
-        if (character === '\t') actions.push({ type: 'insert', text: '    ' });
+        if (this.preserveKeys && character.charCodeAt(0) < 32) actions.push({ type: 'key', sequence: character });
+        else if (character === '\t') actions.push({ type: 'insert', text: '    ' });
         else if (character.charCodeAt(0) >= 32 && character.charCodeAt(0) !== 127) {
           actions.push({ type: 'insert', text: character });
         }

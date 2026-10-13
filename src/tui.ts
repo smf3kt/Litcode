@@ -41,7 +41,7 @@ import {
 } from './tui-transcript.js';
 import {
   cellWidth, createEditorState, layoutEditor, reduceEditor, TerminalKeyDecoder,
-  type EditorAction, type EditorPolicy, type EditorState, type Keybindings, type TerminalCallbacks,
+  type EditorAction, type EditorCommand, type EditorPolicy, type EditorState, type Keybindings, type TerminalCallbacks,
 } from './terminal.js';
 
 export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
@@ -75,7 +75,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private readonly modes: TerminalModeController;
   private readonly keys = new Keymap();
+  private readonly wheelKeys = new Keymap();
   private readonly decoder: TerminalKeyDecoder;
+  private escapeTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly killRing: KillRing = createKillRing();
   private readonly outputDecoder = new StringDecoder('utf8');
   private readonly statusDecoder = new StringDecoder('utf8');
@@ -106,7 +108,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.editor = createEditorState(options.historyLimit === 0 ? []
       : options.history?.slice(-Math.max(1, options.historyLimit ?? 100)));
     this.transcript = createTranscriptState();
-    this.decoder = new TerminalKeyDecoder(options.keybindings, options.maxPasteBytes);
+    this.decoder = new TerminalKeyDecoder(options.keybindings, options.maxPasteBytes, true);
     this.modes = new TerminalModeController({ output: options.output,
       mouseTracking: options.mouseTracking ?? 'full',
       synchronizedUpdate: options.synchronizedUpdate ?? true });
@@ -197,6 +199,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    if (this.escapeTimer) clearTimeout(this.escapeTimer);
+    this.decoder.reset(); this.keys.reset();
     this.options.input.off('data', this.onData);
     this.options.input.off('end', this.onEnd);
     this.options.input.off('close', this.onEnd);
@@ -250,13 +254,54 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private readonly onData = (chunk: string | Buffer) => {
     if (this.closed) return;
+    if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
     for (const action of this.decoder.push(chunk)) {
-      if (action.type === 'mouse') { this.handleMouse(action); continue; }
-      if (this.handleChordAction(action)) continue;
       if (this.closed) return;
-      this.dispatch(action);
+      if (action.type === 'mouse') { this.handleMouse(action); continue; }
+      if (action.type === 'key') { this.routeKey(action.sequence, action.command); continue; }
+      if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord)) {
+        for (const character of action.text) {
+          if (this.closed) return;
+          this.routeKey(character);
+        }
+        continue;
+      }
+      // Explicit local keybinding commands and paste keep their decoded intent.
+      if (action.type.startsWith('extend') || action.type === 'selectionCopy') {
+        this.routeKey(chordSequence(action)!);
+      } else this.dispatch(action);
+    }
+    if (!this.closed && this.decoder.pendingStandaloneEscape) {
+      this.escapeTimer = setTimeout(() => {
+        this.escapeTimer = undefined;
+        this.decoder.flushEscape(); this.routeKey('\x1b');
+      }, 50);
+      this.escapeTimer.unref?.();
     }
   };
+
+  private routeKey(sequence: string, command?: EditorCommand): void {
+    if (this.closed || this.handleKey(sequence, command)) return;
+    if (command) this.dispatch({ type: command });
+    else if (sequence === '\t') this.dispatch({ type: 'insert', text: '    ' });
+    else if (/^[^\u0000-\u001f\u007f]+$/u.test(sequence)) this.dispatch({ type: 'insert', text: sequence });
+  }
+
+  private handleKey(sequence: string, command?: EditorCommand): boolean {
+    if (command === 'newline') { this.dispatch({ type: command }); return true; }
+    const outcome = this.keys.push(sequence, this.contexts());
+    if (outcome.kind === 'pending') return true;
+    if (outcome.kind === 'none') {
+      if (outcome.replay) {
+        const replay = new TerminalKeyDecoder().push(outcome.replay);
+        for (const action of replay) this.dispatch(action);
+        return this.handleKey(sequence, command);
+      }
+      return false;
+    }
+    if (outcome.match.action === 'history:previous' || outcome.match.action === 'history:next') return false;
+    return this.applyAction(outcome.match.action);
+  }
 
   private handleMouse(event: TerminalMouseEvent): void {
     if (this.options.mouseTracking === 'off' || this.screen === 'search') return;
@@ -265,7 +310,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       && event.row >= 1 && event.row <= view.rows;
     if (event.action === 'wheelup' || event.action === 'wheeldown') {
       if (!inside) return;
-      const outcome = this.keys.push(event.action, ['Scroll', 'Global']);
+      const outcome = this.wheelKeys.push(event.action, ['Scroll', 'Global']);
       if (outcome.kind === 'match') this.applyAction(outcome.match.action);
       return;
     }
@@ -297,67 +342,47 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return { line: row - 1 + viewport.offset, column: selectionColumn(text, col - 1) };
   }
 
-  /**
-   * Keys arrive already reduced to editor actions, so the chording layer reads
-   * the same actions and claims the ones the registry binds. An action the
-   * active context does not bind falls through to the editor.
-   */
-  private handleChordAction(action: EditorAction): boolean {
-    // Preserve the decoder's Shift+Enter or rebound-newline intent; LF is also an Enter alias.
-    if (action.type === 'newline') return false;
-    if (action.type !== 'insert' && action.type !== 'paste') {
-      const sequence = chordSequence(action);
-      if (!sequence) return false;
-      const outcome = this.keys.push(sequence, this.contexts());
-      if (outcome.kind === 'pending') return true;
-      if (outcome.kind === 'none') return false;
-      this.applyAction(outcome.match.action);
-      return true;
-    }
-    return false;
-  }
-
   /** Actions with a local counterpart are handled; the rest are reported as unbound. */
-  private applyAction(action: string): void {
+  private applyAction(action: string): boolean {
     this.emit('action', action);
     switch (action) {
-      case 'selection:copy': this.copySelection(); return;
-      case 'selection:extendLeft': this.extendSelection(-1, 0); return;
-      case 'selection:extendRight': this.extendSelection(1, 0); return;
-      case 'selection:extendUp': this.extendSelection(0, -1); return;
-      case 'selection:extendDown': this.extendSelection(0, 1); return;
-      case 'selection:extendLineStart': this.extendSelection(-Infinity, 0); return;
-      case 'selection:extendLineEnd': this.extendSelection(Infinity, 0); return;
-      case 'app:interrupt': this.dispatch({ type: 'interrupt' }); return;
-      case 'app:exit': this.close(); this.emit('exit'); return;
+      case 'selection:copy': this.copySelection(); return true;
+      case 'selection:extendLeft': this.extendSelection(-1, 0); return true;
+      case 'selection:extendRight': this.extendSelection(1, 0); return true;
+      case 'selection:extendUp': this.extendSelection(0, -1); return true;
+      case 'selection:extendDown': this.extendSelection(0, 1); return true;
+      case 'selection:extendLineStart': this.extendSelection(-Infinity, 0); return true;
+      case 'selection:extendLineEnd': this.extendSelection(Infinity, 0); return true;
+      case 'app:interrupt': this.dispatch({ type: 'interrupt' }); return true;
+      case 'app:exit': this.close(); this.emit('exit'); return true;
       case 'app:toggleTranscript':
         this.screen = this.screen === 'transcript' ? 'chat' : 'transcript';
-        this.render(); return;
-      case 'transcript:exit': this.screen = 'chat'; this.render(); return;
+        this.render(); return true;
+      case 'transcript:exit': this.screen = 'chat'; this.render(); return true;
       case 'transcript:toggleShowAll':
         this.selection = createSelection();
         this.transcript = reduceTranscript(this.transcript, { type: 'toggleShowAll' },
           { rows: this.viewportSize().rows, total: this.transcriptTotal(this.viewportSize().columns) });
-        this.render(); return;
+        this.render(); return true;
       case 'scroll:lineUp': case 'scroll:lineDown': case 'scroll:halfPageUp': case 'scroll:halfPageDown':
       case 'scroll:fullPageUp': case 'scroll:fullPageDown': case 'scroll:pageUp': case 'scroll:pageDown':
       case 'scroll:top': case 'scroll:bottom': {
         this.transcript = reduceTranscript(this.transcript,
           { type: 'scroll', command: action.slice('scroll:'.length) as TranscriptScrollCommand },
           { rows: this.viewportSize().rows, total: this.transcriptTotal(this.viewportSize().columns) });
-        this.render(); return;
+        this.render(); return true;
       }
-      case 'history:search': this.enterSearch(); return;
-      case 'historySearch:next': this.nextSearchMatch(); return;
-      case 'historySearch:accept': case 'historySearch:cancel': this.leaveSearch(false); return;
-      case 'historySearch:execute': this.leaveSearch(true); return;
-      case 'chat:submit': this.dispatch({ type: 'submit' }); return;
-      case 'chat:newline': this.dispatch({ type: 'newline' }); return;
+      case 'history:search': this.enterSearch(); return true;
+      case 'historySearch:next': this.nextSearchMatch(); return true;
+      case 'historySearch:accept': case 'historySearch:cancel': this.leaveSearch(false); return true;
+      case 'historySearch:execute': this.leaveSearch(true); return true;
+      case 'chat:submit': this.dispatch({ type: 'submit' }); return true;
+      case 'chat:newline': this.dispatch({ type: 'newline' }); return true;
       case 'chat:clearInput':
         this.editor = { ...createEditorState(this.editor.history), running: this.editor.running };
-        this.render(); return;
-      case 'chat:undo': this.undoKill(); return;
-      default: return;
+        this.render(); return true;
+      case 'chat:undo': this.undoKill(); return true;
+      default: return false;
     }
   }
 
