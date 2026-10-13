@@ -9,3 +9,17 @@ extracted*/
 *.log
 *.tgz
 release/
+
+# Workflow, provenance and research artefacts. They stay on disk and stay out of
+# the repository: nothing here is part of the product, and none of it is shipped
+# (see the `files` list in package.json).
+AGENTS.md
+WORKFLOW.md
+WORKFLOW*.md
+LITCODE_WORKFLOW_AUDIT.md
+.agent.md
+.agents.md
+*.agent.md
+research/
+research-module-index*.json
+claude-code-*-evidence.json
