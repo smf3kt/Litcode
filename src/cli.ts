@@ -9,6 +9,7 @@ import { resolveInheritedGateway, sameGateway, type InheritedField, type Inherit
 import { Session, applyManagedPolicy, managedPolicySchema, type SessionConfig } from './session.js';
 import { PolicyHelper } from './policy-helper.js';
 import { interactiveLoop } from './interactive.js';
+import { createTuiTerminal } from './tui.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { listSessions } from './sessions.js';
@@ -80,6 +81,8 @@ Options (flags override LLM_* environment values for new sessions):
   --recover-lock        Remove a lock only if its owner process has exited
   --interactive         Read tasks and slash commands until /exit (the default
                         when no task is given and input is a terminal)
+  --tui                 Draw the full-screen interface instead of the line
+                        editor, with a transcript, status row and prompt box
   --attach PATH         Attach one workspace image/PDF to a one-shot task
   --pages RANGE         Select PDF pages for --attach, such as 2-4,8
   --output-format MODE  text, json or stream-json (one-shot; default text)
@@ -425,7 +428,7 @@ function cliVersion(): string {
 
 async function main(): Promise<void> {  const { values, positionals } = parseArgs({ allowPositionals: true, options: {
     help: { type: 'boolean' }, demo: { type: 'boolean' }, workspace: { type: 'string' },
-    interactive: { type: 'boolean' }, 'list-sessions': { type: 'boolean' },
+    interactive: { type: 'boolean' }, tui: { type: 'boolean' }, 'list-sessions': { type: 'boolean' },
     attach: { type: 'string' }, pages: { type: 'string' },
     model: { type: 'string' }, effort: { type: 'string' }, 'base-url': { type: 'string' }, auth: { type: 'string' },
     'token-counting': { type: 'string' }, thinking: { type: 'boolean' }, 'no-thinking': { type: 'boolean' },
@@ -459,6 +462,10 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     && Boolean(process.stdin.isTTY);
   if (values['mcp-elicitation'] && !values.interactive && !impliedInteractive) throw new Error('--mcp-elicitation requires --interactive');
   if (values['watch-config'] && !values.interactive && !impliedInteractive) throw new Error('--watch-config requires --interactive');
+  if (values.tui && !values.interactive && !impliedInteractive) throw new Error('--tui requires --interactive');
+  // The full-screen layer needs a terminal to draw on; without one the session
+  // runs on the line editor rather than failing, which is what a pipe expects.
+  const useTui = Boolean(values.tui) && Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY);
   if (values.pages !== undefined && values.attach === undefined) throw new Error('--pages requires --attach');
   if (values.attach !== undefined && (values.interactive || values.continue || values.demo || values['list-sessions'])) {
     throw new Error('--attach requires a one-shot new task; interactive sessions use /attach');
@@ -647,15 +654,20 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     const currentRuntime = runtime;
     process.stderr.write(`session: ${currentSession.id}\nworkspace: ${workspace}\n`);
     if (values.interactive) {
+      const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,
+        keybindings: currentSession.config.keybindings }) : undefined;
       await new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {
-        status: text => process.stderr.write(`${text}\n`),
-        ...(process.stdin.isTTY && process.stdout.isTTY ? { terminalSequence: (sequence: string) => {
-          const validated = formatHookTerminalSequence(sequence);
-          if (validated) process.stdout.write(validated);
-        } } : {}),
+        status: text => { if (tui) tui.setStatus(text); else process.stderr.write(`${text}\n`); },
+        ...(tui ? { terminalSequence: (sequence: string) => tui.writeTerminalSequence(sequence) }
+          : process.stdin.isTTY && process.stdout.isTTY ? { terminalSequence: (sequence: string) => {
+            const validated = formatHookTerminalSequence(sequence);
+            if (validated) process.stdout.write(validated);
+          } } : {}),
         hookOptions: currentRuntime.hookOptions?.(currentSession.config, currentSession.id),
       }).startSession(values.resume ? 'resume' : 'startup', controller.signal);
-      await interactiveLoop(currentSession, provider, currentRuntime, { input: process.stdin, output: process.stdout, status: process.stderr, signal: controller.signal });
+      await interactiveLoop(currentSession, provider, currentRuntime, { input: process.stdin, output: process.stdout,
+        status: tui ? tui.statusStream : process.stderr, signal: controller.signal,
+        ...(tui ? { terminal: tui } : {}) });
       if (controller.signal.aborted) process.exitCode = 130;
       return;
     }

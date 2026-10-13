@@ -3,7 +3,7 @@ import type { Readable, Writable } from 'node:stream';
 import { Agent } from './agent.js';
 import type { ModelProvider } from './provider.js';
 import { Session, type SessionConfig } from './session.js';
-import { createTerminalInput } from './terminal.js';
+import { createTerminalInput, type TerminalSurface } from './terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { relocateSession } from './workspace-session.js';
 import fs from 'node:fs';
@@ -67,12 +67,16 @@ Other text is sent as a task.`;
 
 export async function interactiveLoop(initial: Session, provider: ModelProvider, runtime: Runtime, options: {
   input: Readable; output: Writable; status: Writable; signal: AbortSignal;
+  /** A full-screen interaction layer to drive instead of the built-in line editor. */
+  terminal?: TerminalSurface;
 }): Promise<void> {
   let session = initial;
   let activeRuntime = runtime;
-  const terminal = (options.input as Readable & { isTTY?: boolean }).isTTY &&
+  const terminal: TerminalSurface | undefined = options.terminal ??
+    ((options.input as Readable & { isTTY?: boolean }).isTTY &&
     (options.output as Writable & { isTTY?: boolean }).isTTY
-    ? createTerminalInput({ input: options.input, output: options.output, keybindings: initial.config.keybindings }) : undefined;
+      ? createTerminalInput({ input: options.input, output: options.output, keybindings: initial.config.keybindings })
+      : undefined);
   const rl = terminal ? undefined : createInterface({ input: options.input, terminal: false });
   const output = terminal?.outputStream ?? options.output;
   let turnController: AbortController | undefined;

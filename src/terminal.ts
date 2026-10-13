@@ -522,3 +522,20 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
 
 export function createTerminalInput(options: TerminalOptions): TerminalInput { return new TerminalInput(options); }
 export const terminalIO = createTerminalInput;
+
+/**
+ * The surface the interactive loop needs from whatever owns the terminal, so a
+ * full-screen interaction layer can be substituted for the line editor. It is
+ * written out rather than derived from `TerminalInput`, whose `start()` returns
+ * `this` and would otherwise make the two implementations mutually exclusive.
+ */
+export interface TerminalSurface {
+  readonly isTTY: boolean;
+  readonly outputStream: Writable;
+  subscribe(callbacks: TerminalCallbacks): () => void;
+  start(): unknown;
+  close(): void;
+  setRunning(running: boolean): void;
+  setKeybindings(keybindings?: Keybindings): void;
+  writeTerminalSequence(sequence: string): void;
+}
