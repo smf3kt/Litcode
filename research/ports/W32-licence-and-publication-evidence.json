@@ -71,8 +71,9 @@
     "licenseDetected": "MIT",
     "branch": "main",
     "snapshotCommit": "a1c5107",
-    "history": "one initial commit built from the worktree's tracked tree; the private working history is not published, which is also why no commit in it needs rewriting to drop the earlier trailers; the branch tip moved to 08e5025 after the authorship correction below",
-    "verifiedAt": "2026-10-12T15:26:19Z"
+    "history": "the branch carries five commits pushed in order; the repository was rebuilt once, see repositoryRecreation",
+    "verifiedAt": "2026-10-12T15:26:19Z",
+    "recreatedAt": "2026-10-13T01:08:11Z"
   },
   "authorshipCorrection": {
     "what": "two commits published while closing this package carried author and committer litcode <litcode@users.noreply.github.com>",
@@ -89,5 +90,21 @@
     "verified": "gh api repos/smf3kt/litcode/commits shows mant1ssa <smf3kt@gmail.com> for both; the rewritten tip tree 515060e7759740a6b589b86e5c8bc3792c36a200 equals the pre-rewrite tip tree",
     "mainAfter": "08e5025a775dfa0c67f8fd1a5fb1d453acb1cb65",
     "forward": "every later commit to the public repository is made as mant1ssa <smf3kt@gmail.com>; the private worktree already used that identity"
+  },
+  "repositoryRecreation": {
+    "when": "2026-10-13",
+    "why": "the two commits that had been published with an existing account's noreply identity stayed resolvable by full SHA after the branch rewrite, and no client-side action removes an unreferenced object; the person asked for the repository to be deleted and rebuilt so nothing carried that identity",
+    "authorization": "the person deleted the repository and approved the rebuild and re-push",
+    "steps": [
+      "repository deleted, then created again as public smf3kt/litcode with the same description; issues, wiki and projects enabled and the default branch main, matching the archived metadata",
+      "the local snapshot clone pushed main: five commits, three authored mant1ssa <smf3kt@gmail.com> and two YG <smf3kt-collab@users.noreply.github.com>, unchanged in content and SHA"
+    ],
+    "lostInRebuild": "nothing measurable: the archived repository had 0 stars, 0 watchers, 0 forks and 0 open issues, and no topics or homepage",
+    "verified": {
+      "contributors": "smf3kt (3) and an anonymous YG entry (2); no account named litcode",
+      "oldCommits": "GET /repos/smf3kt/litcode/commits/9987aae answers 422 No commit found for SHA, so the former objects are gone rather than merely unreferenced",
+      "license": "MIT detected"
+    },
+    "force": "every later commit to the public repository is made as mant1ssa <smf3kt@gmail.com>"
   }
 }
