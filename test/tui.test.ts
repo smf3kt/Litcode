@@ -13,7 +13,7 @@ import type { ModelProvider } from '../src/provider.js';
 import type { Runtime } from '../src/runtime.js';
 import { Session } from '../src/session.js';
 import { ENTER_ALT_SCREEN, LEAVE_ALT_SCREEN, MOUSE_OFF, MOUSE_SCROLL, TerminalModeController } from '../src/tui-modes.js';
-import { Keymap, contextStack, expandChord } from '../src/tui-keys.js';
+import { Keymap, contextStack, expandChord, type TuiContext } from '../src/tui-keys.js';
 import { createTranscriptState, layoutTranscript, reduceTranscript, transcriptLines } from '../src/tui-transcript.js';
 import { TuiTerminal } from '../src/tui.js';
 
@@ -66,7 +66,7 @@ test('the keymap layers contexts and resolves multi-key chords', () => {
   assert.equal(keymap.push('q', contextStack({ screen: 'chat' })).kind, 'none');
 
   // A sequence chord stays pending until its second key arrives.
-  const diff = ['DiffPanel', 'Global'];
+  const diff: TuiContext[] = ['DiffPanel', 'Global'];
   assert.deepEqual(keymap.push('\u0018', diff), { kind: 'pending' });
   assert.equal(keymap.pendingChord, 'ctrl+x');
   const second = keymap.push('b', diff);
