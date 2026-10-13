@@ -119,8 +119,6 @@ test('pointer and keyboard selection copy the visible transcript without changin
     assert.equal(copy(), 'li');
     key('\x1b[<0;1;1M\x1b[<32;2;1M\x1b[<0;5;1m');
     assert.equal(copy(), 'line');
-    key('\x1b[<0;1;1M\x1b[<0;3;1m');
-    assert.equal(copy(), 'lin');
     tui.append({ kind: 'assistant', text: 'A\tBCDEFGHIJKLMN' });
     key('\x1b[<0;9;7M\x1b[<32;10;7M\x1b[<0;10;7m');
     assert.ok(drawn.includes('\x1b[7mBC\x1b[27m'));
@@ -137,6 +135,93 @@ test('pointer and keyboard selection copy the visible transcript without changin
     const noticeRow = transcriptLines(tui.transcriptState, 20).findIndex(line => line.startsWith('  ... 18')) + 1;
     key(`\x1b[<0;1;${noticeRow}M\x1b[<0;1;${noticeRow}m\x1b[1;2F`);
     assert.equal(copy(), '  ... 18 earlier lin');
+  } finally { tui.close(); }
+});
+
+test('multi-click selects the word and then the whole row, and a drag extends that span', () => {
+  // Each case starts a fresh terminal so the click sequence cannot carry over.
+  const open = () => {
+    const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+    input.isTTY = true; input.setRawMode = () => {};
+    let drawn = '';
+    const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+    Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+    const tui = new TuiTerminal({ input, output }).start();
+    tui.append({ kind: 'assistant', text: 'alpha beta-gamma delta' });
+    tui.append({ kind: 'assistant', text: 'second row' });
+    const copy = () => {
+      drawn = ''; input.emit('data', '\x1b[99;6u');
+      const encoded = /\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/.exec(drawn)?.[1];
+      return encoded === undefined ? undefined : Buffer.from(encoded, 'base64').toString('utf8');
+    };
+    return { tui, key: (text: string) => input.emit('data', text), copy };
+  };
+  // Row 1 is 'alpha beta-gamma delta', row 2 is 'second row'.
+  // A double click on 'beta-gamma' takes the whole hyphenated run, not just 'beta'.
+  const double = open();
+  try {
+    double.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M');
+    assert.equal(double.copy(), 'beta-gamma');
+  } finally { double.tui.close(); }
+  // A drag in the same sequence keeps the word span and grows its far edge.
+  const dragged = open();
+  try {
+    dragged.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<32;22;1M');
+    assert.equal(dragged.copy(), 'beta-gamma delta');
+  } finally { dragged.tui.close(); }
+  // A third press selects the whole rendered row.
+  const triple = open();
+  try {
+    triple.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M');
+    assert.equal(triple.copy(), 'alpha beta-gamma delta');
+  } finally { triple.tui.close(); }
+  // A line span drags by row into the next line.
+  const byLine = open();
+  try {
+    byLine.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<32;4;2M');
+    assert.equal(byLine.copy(), 'alpha beta-gamma delta\nseco');
+  } finally { byLine.tui.close(); }
+  // A press far from the previous one restarts the sequence at one click, so a
+  // drag from it is a plain character span rather than a word or row.
+  const restarted = open();
+  try {
+    restarted.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M');
+    restarted.key('\x1b[<0;1;2M\x1b[<32;4;2M');
+    assert.equal(restarted.copy(), 'seco');
+  } finally { restarted.tui.close(); }
+  // Changing screens between presses restarts the sequence, so the press after
+  // the change is a plain one rather than the second half of a double click.
+  const acrossScreens = open();
+  try {
+    acrossScreens.key('\x1b[<0;7;1M');
+    acrossScreens.key('\u000f');
+    acrossScreens.key('\x1b[<0;7;1M\x1b[<0;4;1m');
+    // A plain span between cells 6 and 3, i.e. 'ha b' reversed into reading order.
+    assert.equal(acrossScreens.copy(), 'ha b');
+  } finally { acrossScreens.tui.close(); }
+});
+
+test('wrapped rows copy as one logical line while explicit newlines keep theirs', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 20, rows: 10 });
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const copy = () => {
+    drawn = ''; key('\x1b[99;6u');
+    const encoded = /\x1b\]52;c;([A-Za-z0-9+/=]*)(?:\x07|\x1b\\)/.exec(drawn)?.[1];
+    return encoded === undefined ? undefined : Buffer.from(encoded, 'base64').toString('utf8');
+  };
+  try {
+    // 20 columns with the '> ' user indent leaves 18 cells per row, so the
+    // first line wraps and the second line is an explicit newline.
+    tui.append({ kind: 'user', text: 'aaaaaaaaaaaaaaaaaaaaaaaa\nbbbb' });
+    // Selecting all three rows joins the wrapped tail back onto the first line,
+    // while the explicit newline keeps its own prefix.
+    key('\x1b[<0;1;1M\x1b[<32;10;3M\x1b[<0;10;3m');
+    assert.equal(copy(), '> aaaaaaaaaaaaaaaaaaaaaaaa\n> bbbb');
   } finally { tui.close(); }
 });
 
