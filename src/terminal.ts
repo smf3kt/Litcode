@@ -3,13 +3,14 @@ import { createInterface, type Interface } from 'node:readline';
 import { StringDecoder } from 'node:string_decoder';
 import { Writable, type Readable } from 'node:stream';
 import { formatHookTerminalSequence } from './hook-terminal.js';
+import { MAX_MOUSE_REPORT_CHARS, parseTerminalMouse, type TerminalMouseEvent } from './terminal-mouse.js';
 
 export const MAX_PASTE_BYTES = 256 * 1024;
 
 export type EditorCommand = 'left' | 'right' | 'up' | 'down' | 'home' | 'end' | 'wordLeft' | 'wordRight'
   | 'backspace' | 'delete' | 'newline' | 'submit' | 'interrupt' | 'eof' | 'search';
 export type EditorAction = { type: EditorCommand } | { type: 'insert' | 'paste'; text: string }
-  | { type: 'running'; value: boolean } | { type: 'pasteRejected'; bytes: number };
+  | { type: 'running'; value: boolean } | { type: 'pasteRejected'; bytes: number } | TerminalMouseEvent;
 export interface EditorState {
   text: string;
   /** UTF-16 offset, always on a grapheme boundary. */
@@ -222,6 +223,7 @@ export class TerminalKeyDecoder {
   private pasteBytes = 0;
   private pasteOverflow = false;
   private previousCR = false;
+  private discardingMouse = false;
   constructor(keybindings: Keybindings = {}, private readonly maxPasteBytes = MAX_PASTE_BYTES) {
     this.bindings = { ...DEFAULT_KEYS, ...decodeTerminalKeybindings(keybindings) };
   }
@@ -249,6 +251,33 @@ export class TerminalKeyDecoder {
       if (this.buffer.startsWith(PASTE_START)) {
         this.paste = []; this.pasteBytes = 0; this.pasteOverflow = false; this.previousCR = false;
         this.buffer = this.buffer.slice(PASTE_START.length); continue;
+      }
+      // Mouse payload bytes belong to one report, even across chunks. An overlong
+      // numeric prefix is drained to its final byte instead of becoming draft text.
+      if (this.discardingMouse) {
+        const tail = /^[0-9;-]*/.exec(this.buffer)![0].length;
+        if (tail === this.buffer.length) { this.buffer = ''; break; }
+        this.buffer = this.buffer.slice(tail + (/[Mm]/.test(this.buffer[tail]!) ? 1 : 0));
+        this.discardingMouse = false; continue;
+      }
+      if (this.buffer.startsWith('\x1b[<')) {
+        const report = /^\x1b\[<[0-9;-]*[Mm]/.exec(this.buffer)?.[0];
+        if (report) {
+          const event = parseTerminalMouse(report);
+          if (event) actions.push(event);
+          this.buffer = this.buffer.slice(report.length); this.previousCR = false; continue;
+        }
+        const prefix = /^\x1b\[<[0-9;-]*/.exec(this.buffer)![0];
+        if (prefix.length === this.buffer.length && prefix.length <= MAX_MOUSE_REPORT_CHARS) break;
+        this.buffer = this.buffer.slice(prefix.length);
+        this.discardingMouse = prefix.length > MAX_MOUSE_REPORT_CHARS;
+        this.previousCR = false; continue;
+      }
+      if (this.buffer.startsWith('\x1b[M')) {
+        if (this.buffer.length < 6) break;
+        const event = parseTerminalMouse(this.buffer.slice(0, 6));
+        if (event) actions.push(event);
+        this.buffer = this.buffer.slice(6); this.previousCR = false; continue;
       }
       const keys = Object.keys(this.bindings);
       if (keys.some(key => key.length > this.buffer.length && key.startsWith(this.buffer))) break;
@@ -284,8 +313,14 @@ export class TerminalKeyDecoder {
     }
     return actions;
   }
-  flushEscape(): void { if (this.pendingEscape) this.buffer = ''; }
-  reset(): void { this.buffer = ''; this.paste = undefined; this.pasteBytes = 0; this.pasteOverflow = false; }
+  flushEscape(): void {
+    if (this.buffer.startsWith('\x1b[<')) this.discardingMouse = true;
+    if (this.pendingEscape) this.buffer = '';
+  }
+  reset(): void {
+    this.buffer = ''; this.paste = undefined; this.pasteBytes = 0;
+    this.pasteOverflow = false; this.discardingMouse = false;
+  }
   private appendPaste(text: string): void {
     this.pasteBytes += Buffer.byteLength(text);
     if (this.pasteBytes > Math.min(MAX_PASTE_BYTES, this.maxPasteBytes)) {

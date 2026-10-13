@@ -151,8 +151,10 @@ export function reduceTranscript(state: TranscriptState, action: TranscriptActio
       const next = appendEntry(state, action.entry);
       return pinned ? { ...next, offset: Number.MAX_SAFE_INTEGER } : next;
     }
-    case 'scroll':
-      return scrollTranscript(state, action.command, view.rows, view.total);
+    case 'scroll': {
+      const offset = Math.max(0, Math.min(state.offset, view.total - PAGE(view.rows)));
+      return scrollTranscript({ ...state, offset }, action.command, view.rows, view.total);
+    }
     case 'toggleShowAll':
       return { ...state, showAll: !state.showAll, offset: Number.MAX_SAFE_INTEGER };
     case 'clear': return { ...state, entries: [], offset: 0 };

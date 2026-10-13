@@ -59,6 +59,8 @@ node bin/litcode.mjs --workspace /absolute/path/to/project --interactive
 node bin/litcode.mjs            # 终端中的空调用即上面的交互会话
 ```
 
+`litcode --tui` 打开全屏交互界面。鼠标在对话记录区域滚动时可查看前文，手动滚动后新输出保持当前视口；输入框与状态行保持独立。`Ctrl+O` 切换记录视图，`Ctrl+E` 在记录视图展开长条目，`/exit` 退出并恢复终端模式。
+
 本地打包安装示例（npm缓存需已有生产依赖供离线安装）：
 
 ```sh
