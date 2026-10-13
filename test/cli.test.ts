@@ -11,8 +11,28 @@ const cli = path.resolve('src/cli.ts');
 function invoke(args: string[], apiKey = '') {
   return spawnSync(process.execPath, ['--import', 'tsx', cli, ...args], {
     encoding: 'utf8', timeout: 15_000,
-    env: { ...process.env, LLM_API_KEY: apiKey, LLM_BASE_URL: 'http://127.0.0.1:1', LLM_MODEL: 'test-model', LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false', LLM_PROMPT_CACHE: 'false', LLM_EAGER_TOOL_INPUT: 'false' },
+    // Inheritance is off here so a developer's own client configuration cannot reach
+    // these cases; the tests that exercise it build their own fixture directory.
+    env: { ...process.env, LLM_API_KEY: apiKey, LLM_BASE_URL: 'http://127.0.0.1:1', LLM_MODEL: 'test-model', LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false', LLM_PROMPT_CACHE: 'false', LLM_EAGER_TOOL_INPUT: 'false', LLM_INHERIT_GATEWAY: 'false' },
   });
+}
+/** Like invoke, but the case owns the whole environment so inheritance can be exercised. */
+function invokeEnv(args: string[], env: NodeJS.ProcessEnv) {
+  return spawnSync(process.execPath, ['--import', 'tsx', cli, ...args], { encoding: 'utf8', timeout: 20_000, env });
+}
+/** A fixture client configuration directory: settings.json with an env block. */
+function clientDir(env: Record<string, string>): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'client-config-'));
+  fs.writeFileSync(path.join(dir, 'settings.json'), JSON.stringify({ env }));
+  return dir;
+}
+/** A live-run environment that carries no LLM_* gateway values of its own. */
+function liveEnv(dir: string, extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  return {
+    PATH: process.env.PATH, HOME: process.env.HOME, LLM_INHERIT_DIR: dir,
+    LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false', LLM_PROMPT_CACHE: 'false', LLM_EAGER_TOOL_INPUT: 'false',
+    ...extra,
+  };
 }
 function workspace(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-cli-'));
@@ -31,6 +51,8 @@ test('CLI help works without an API key', () => {
   assert.match(result.stdout, /--settings/);
   assert.match(result.stdout, /--permission-mode/);
   assert.match(result.stdout, /--tasks/);
+  assert.match(result.stdout, /--inherit-gateway/);
+  assert.match(result.stdout, /--no-inherit-gateway/);
 });
 
 test('CLI rejects incompatible arguments before opening a session', () => {
@@ -168,4 +190,77 @@ test('a bare invocation at a terminal opens the interactive session', { timeout:
   assert.match(result.stdout, /^workspace: /m);
   // No task was given, so the session must not have spent a model call.
   assert.doesNotMatch(result.stdout, /model calls: [1-9]/);
+});
+
+test('a live run takes a missing gateway, credential and model from the client configuration', () => {
+  const dir = clientDir({
+    ANTHROPIC_BASE_URL: 'http://127.0.0.1:1',
+    ANTHROPIC_AUTH_TOKEN: 'fixture-inherited-token',
+    ANTHROPIC_MODEL: 'inherited-model',
+  });
+  const ws = workspace();
+  try {
+    // No LLM_API_KEY, LLM_BASE_URL or LLM_MODEL: everything comes from the client file.
+    const result = invokeEnv(['--workspace', ws, 'task'], liveEnv(dir));
+    assert.doesNotMatch(result.stderr, /Set LLM_API_KEY/);
+    // Each field reports the variable and file it came from, grouped by source.
+    assert.match(result.stderr, /gateway: inherited credential from ANTHROPIC_AUTH_TOKEN in .*settings\.json/);
+    assert.match(result.stderr, /base URL from ANTHROPIC_BASE_URL in .*settings\.json/);
+    assert.match(result.stderr, /model from ANTHROPIC_MODEL in .*settings\.json/);
+    // The notice names where a value came from; it never carries the value.
+    assert.doesNotMatch(result.stderr, /fixture-inherited-token/);
+    assert.doesNotMatch(result.stdout, /fixture-inherited-token/);
+  } finally { fs.rmSync(ws, { recursive: true, force: true }); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('an explicit value still outranks the client configuration', () => {
+  const dir = clientDir({
+    ANTHROPIC_BASE_URL: 'https://gateway.example.test',
+    ANTHROPIC_AUTH_TOKEN: 'fixture-inherited-token',
+    ANTHROPIC_MODEL: 'inherited-model',
+  });
+  const ws = workspace();
+  try {
+    // The flag names a different endpoint, so the borrowed credential does not apply.
+    const refused = invokeEnv(['--workspace', ws, '--base-url', 'http://127.0.0.1:1', 'task'], liveEnv(dir));
+    assert.equal(refused.status, 1);
+    assert.match(refused.stderr, /it belongs to https:\/\/gateway\.example\.test and this run uses http:\/\/127\.0\.0\.1:1/);
+    assert.doesNotMatch(refused.stderr, /fixture-inherited-token/);
+
+    // With this harness's own key the borrowed one is not consulted at all.
+    const own = invokeEnv(['--workspace', ws, 'task'], liveEnv(dir, { LLM_API_KEY: 'own-key', LLM_BASE_URL: 'http://127.0.0.1:1', LLM_MODEL: 'own-model' }));
+    assert.doesNotMatch(own.stderr, /inherited/);
+  } finally { fs.rmSync(ws, { recursive: true, force: true }); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('inheritance can be turned off and is off for the offline demo', () => {
+  const dir = clientDir({ ANTHROPIC_AUTH_TOKEN: 'fixture-inherited-token', ANTHROPIC_MODEL: 'inherited-model' });
+  const ws = workspace();
+  try {
+    const off = invokeEnv(['--workspace', ws, '--no-inherit-gateway', 'task'], liveEnv(dir));
+    assert.equal(off.status, 1);
+    assert.match(off.stderr, /Set LLM_API_KEY/);
+    const offByEnvironment = invokeEnv(['--workspace', ws, 'task'], liveEnv(dir, { LLM_INHERIT_GATEWAY: 'false' }));
+    assert.equal(offByEnvironment.status, 1);
+    assert.match(offByEnvironment.stderr, /Set LLM_API_KEY/);
+    const both = invokeEnv(['--workspace', ws, '--inherit-gateway', '--no-inherit-gateway', 'task'], liveEnv(dir));
+    assert.equal(both.status, 1);
+    assert.match(both.stderr, /Choose --inherit-gateway or --no-inherit-gateway/);
+  } finally { fs.rmSync(ws, { recursive: true, force: true }); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a resumed session borrows a credential for its pinned endpoint', () => {
+  const demo = invoke(['--demo']);
+  assert.equal(demo.status, 0, demo.stderr);
+  const demoWorkspace = /workspace: (.+)/.exec(demo.stderr)?.[1];
+  const id = /session: (.+)/.exec(demo.stderr)?.[1];
+  assert.ok(demoWorkspace && id);
+  // The demo pinned http://127.0.0.1:1, so a client configured for that endpoint applies.
+  const dir = clientDir({ ANTHROPIC_BASE_URL: 'http://127.0.0.1:1', ANTHROPIC_AUTH_TOKEN: 'fixture-inherited-token' });
+  try {
+    const resumed = invokeEnv(['--workspace', demoWorkspace, '--resume', id, 'task'], liveEnv(dir));
+    assert.doesNotMatch(resumed.stderr, /Set LLM_API_KEY/);
+    assert.match(resumed.stderr, /gateway: inherited credential from ANTHROPIC_AUTH_TOKEN in /);
+    assert.doesNotMatch(resumed.stderr, /fixture-inherited-token/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

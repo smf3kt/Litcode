@@ -1,6 +1,6 @@
 {
   "schema": "RecoveredModulePortLedger.v1",
-  "date": "2026-10-12",
+  "date": "2026-10-13",
   "sample": {
     "input": "/Users/mant1ssa/.local/share/claude/versions/2.1.296",
     "sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
@@ -12,7 +12,7 @@
     ]
   },
   "coordinateUnit": "per-module UTF-8 text; digests are sha256 of the decoded module text",
-  "recordCount": 49,
+  "recordCount": 50,
   "summary": {
     "modules": 52,
     "bytes": 10539547,
