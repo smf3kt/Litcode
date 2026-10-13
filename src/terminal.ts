@@ -231,6 +231,8 @@ export class TerminalKeyDecoder {
   private pasteOverflow = false;
   private previousCR = false;
   private discardingMouse = false;
+  private discardSequence = false;
+  private discardPaste = false;
   private overrides: Keybindings;
   constructor(keybindings: Keybindings = {}, private readonly maxPasteBytes = MAX_PASTE_BYTES,
     private readonly preserveKeys = false) {
@@ -247,6 +249,9 @@ export class TerminalKeyDecoder {
     this.buffer += typeof chunk === 'string' ? chunk : this.utf8.write(chunk);
     const actions: EditorAction[] = [];
     while (this.buffer) {
+      // A new input owner may discard an unfinished report, but still drains its framing.
+      const discard = this.discardSequence;
+      const emit = (action: EditorAction) => { if (!discard) actions.push(action); };
       if (this.paste) {
         const end = this.buffer.indexOf(PASTE_END);
         if (end < 0) {
@@ -256,12 +261,14 @@ export class TerminalKeyDecoder {
           this.buffer = suffix ? this.buffer.slice(-suffix) : ''; break;
         }
         this.appendPaste(this.buffer.slice(0, end));
-        actions.push(this.pasteOverflow ? { type: 'pasteRejected', bytes: this.pasteBytes }
+        if (!this.discardPaste) emit(this.pasteOverflow ? { type: 'pasteRejected', bytes: this.pasteBytes }
           : { type: 'paste', text: this.paste.join('') });
-        this.paste = undefined; this.buffer = this.buffer.slice(end + PASTE_END.length); continue;
+        this.paste = undefined; this.discardPaste = false; this.discardSequence = false;
+        this.buffer = this.buffer.slice(end + PASTE_END.length); continue;
       }
       if (this.buffer.startsWith(PASTE_START)) {
         this.paste = []; this.pasteBytes = 0; this.pasteOverflow = false; this.previousCR = false;
+        this.discardPaste = discard; this.discardSequence = false;
         this.buffer = this.buffer.slice(PASTE_START.length); continue;
       }
       // Mouse payload bytes belong to one report, even across chunks. An overlong
@@ -270,13 +277,14 @@ export class TerminalKeyDecoder {
         const tail = /^[0-9;-]*/.exec(this.buffer)![0].length;
         if (tail === this.buffer.length) { this.buffer = ''; break; }
         this.buffer = this.buffer.slice(tail + (/[Mm]/.test(this.buffer[tail]!) ? 1 : 0));
-        this.discardingMouse = false; continue;
+        this.discardingMouse = false; this.discardSequence = false; continue;
       }
       if (this.buffer.startsWith('\x1b[<')) {
         const report = /^\x1b\[<[0-9;-]*[Mm]/.exec(this.buffer)?.[0];
         if (report) {
           const event = parseTerminalMouse(report);
-          if (event) actions.push(event);
+          if (event) emit(event);
+          this.discardSequence = false;
           this.buffer = this.buffer.slice(report.length); this.previousCR = false; continue;
         }
         const prefix = /^\x1b\[<[0-9;-]*/.exec(this.buffer)![0];
@@ -288,7 +296,8 @@ export class TerminalKeyDecoder {
       if (this.buffer.startsWith('\x1b[M')) {
         if (this.buffer.length < 6) break;
         const event = parseTerminalMouse(this.buffer.slice(0, 6));
-        if (event) actions.push(event);
+        if (event) emit(event);
+        this.discardSequence = false;
         this.buffer = this.buffer.slice(6); this.previousCR = false; continue;
       }
       const keys = Object.keys(this.bindings);
@@ -297,18 +306,21 @@ export class TerminalKeyDecoder {
       if (key) {
         const command = this.bindings[key];
         if (command && !(key === '\n' && this.previousCR)) {
-          actions.push(this.preserveKeys && !Object.hasOwn(this.overrides, key)
+          emit(this.preserveKeys && !Object.hasOwn(this.overrides, key)
             ? { type: 'key', sequence: key, command } : { type: command });
         }
+        this.discardSequence = false;
         this.previousCR = key === '\r'; this.buffer = this.buffer.slice(key.length); continue;
       }
       if (PASTE_START.startsWith(this.buffer) || keys.some(key => key.startsWith(this.buffer))) break;
       if (this.buffer.startsWith('\x1b')) {
         const sequence = /^(?:\x1b\[[0-?]*[ -/]*[@-~]|\x1bO.|\x1b[^\[O])/u.exec(this.buffer)?.[0];
         if (!sequence && this.buffer.length < 64) break;
-        if (this.preserveKeys && sequence) actions.push({ type: 'key', sequence });
+        if (this.preserveKeys && sequence) emit({ type: 'key', sequence });
+        this.discardSequence = false;
         this.buffer = this.buffer.slice(sequence?.length ?? 1); this.previousCR = false; continue;
       }
+      if (discard) { this.discardSequence = false; this.buffer = this.buffer.slice(1); continue; }
       // Batch ordinary text to avoid one render per character on rapid input.
       let end = 0;
       for (const character of this.buffer) {
@@ -334,11 +346,18 @@ export class TerminalKeyDecoder {
     if (this.buffer.startsWith('\x1b[<')) this.discardingMouse = true;
     if (this.pendingEscape) this.buffer = '';
   }
+  discardPending(): void {
+    if (this.paste) { this.paste = []; this.discardPaste = true; }
+    else if (this.buffer === '\x1b') this.buffer = '';
+    else if (this.buffer) this.discardSequence = true;
+  }
   reset(): void {
     this.buffer = ''; this.paste = undefined; this.pasteBytes = 0;
     this.pasteOverflow = false; this.discardingMouse = false;
+    this.discardPaste = false; this.discardSequence = false;
   }
   private appendPaste(text: string): void {
+    if (this.discardPaste) return;
     this.pasteBytes += Buffer.byteLength(text);
     if (this.pasteBytes > Math.min(MAX_PASTE_BYTES, this.maxPasteBytes)) {
       this.pasteOverflow = true; this.paste = []; return;
@@ -575,12 +594,20 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
 export function createTerminalInput(options: TerminalOptions): TerminalInput { return new TerminalInput(options); }
 export const terminalIO = createTerminalInput;
 
-/**
- * The surface the interactive loop needs from whatever owns the terminal, so a
- * full-screen interaction layer can be substituted for the line editor. It is
- * written out rather than derived from `TerminalInput`, whose `start()` returns
- * `this` and would otherwise make the two implementations mutually exclusive.
- */
+/** Typed interaction request for terminal surfaces that can own a modal prompt. */
+export interface TerminalPromptChoice { label: string; value: string; description?: string }
+export interface TerminalPromptRequest {
+  title?: string;
+  message: string;
+  choices?: readonly TerminalPromptChoice[];
+  multiple?: boolean;
+  allowText?: boolean;
+  defaultIndex?: number;
+  maxTextChars?: number;
+}
+export interface TerminalPromptAnswer { selected: string[]; text?: string }
+
+/** Shared line/full-screen surface; modal support is optional for legacy hosts. */
 export interface TerminalSurface {
   readonly isTTY: boolean;
   readonly outputStream: Writable;
@@ -590,4 +617,5 @@ export interface TerminalSurface {
   setRunning(running: boolean): void;
   setKeybindings(keybindings?: Keybindings): void;
   writeTerminalSequence(sequence: string): void;
+  prompt?(request: TerminalPromptRequest, signal: AbortSignal): Promise<TerminalPromptAnswer | undefined>;
 }

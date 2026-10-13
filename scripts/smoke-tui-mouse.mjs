@@ -7,32 +7,44 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
+const dialogs = process.argv.includes('--dialogs');
 const temporary = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? `${process.env.CLAUDE_JOB_DIR}/tmp` : root, '.tui-mouse-'));
 const workspace = path.join(temporary, 'workspace'), user = path.join(temporary, 'user');
 fs.mkdirSync(workspace); fs.mkdirSync(user);
+const questions = { questions: [{ question: 'Choose output', header: 'Fixture choice', multiSelect: false,
+  options: [{ label: 'A', description: 'First' }, { label: 'B', description: 'Second' }] }] };
 const requests = [];
+const dialogCalls = [
+  { type: 'tool_use', id: 'question', name: 'ask_user_question', input: questions },
+  { type: 'tool_use', id: 'plan', name: 'submit_plan', input: { plan: 'Fixture plan body\nCreate the approved fixture file.' } },
+  { type: 'tool_use', id: 'write', name: 'write_file', input: { path: 'approved.txt', content: 'approved B\n' } },
+  { type: 'tool_use', id: 'cancel-write', name: 'write_file', input: { path: 'cancelled.txt', content: 'must stay absent\n' } },
+];
 const server = http.createServer(async (req, res) => {
   try {
     let text = ''; for await (const chunk of req) text += chunk;
     const body = JSON.parse(text); requests.push(body);
-    const answer = requests.length === 1
+    const tool = dialogs ? dialogCalls[requests.length - 1] : undefined;
+    const answer = dialogs ? 'dialogs accepted' : requests.length === 1
       ? Array.from({ length: 20 }, (_, i) => `mouse-line-${i}`).join('\n') : 'draft accepted';
     res.writeHead(200, { 'Content-Type': 'text/event-stream' });
     const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     emit('message_start', { type: 'message_start', message: { id: 'mouse-fixture', type: 'message',
       role: 'assistant', model: body.model, content: [], stop_reason: null, stop_sequence: null,
       usage: { input_tokens: 10, output_tokens: 0 } } });
-    emit('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } });
-    emit('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: answer } });
+    emit('content_block_start', { type: 'content_block_start', index: 0,
+      content_block: tool ? { ...tool, input: {} } : { type: 'text', text: '' } });
+    emit('content_block_delta', { type: 'content_block_delta', index: 0,
+      delta: tool ? { type: 'input_json_delta', partial_json: JSON.stringify(tool.input) } : { type: 'text_delta', text: answer } });
     emit('content_block_stop', { type: 'content_block_stop', index: 0 });
-    emit('message_delta', { type: 'message_delta', delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: 10 } });
+    emit('message_delta', { type: 'message_delta', delta: { stop_reason: tool ? 'tool_use' : 'end_turn', stop_sequence: null }, usage: { output_tokens: 10 } });
     emit('message_stop', { type: 'message_stop' }); res.end();
   } catch (error) { res.writeHead(500); res.end(String(error)); }
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
 const pidFile = path.join(temporary, 'cli.pid');
-const command = `printf '%s' "$$" > ${quote(pidFile)}; stty rows 10 cols 40; exec ${quote(process.execPath)} ${quote(path.join(root, 'bin/litcode.mjs'))} --workspace ${quote(workspace)} --user-dir ${quote(user)}`;
+const command = `printf '%s' "$$" > ${quote(pidFile)}; stty rows 10 cols 40; exec ${quote(process.execPath)} ${quote(path.join(root, 'bin/litcode.mjs'))} --workspace ${quote(workspace)} --user-dir ${quote(user)}${dialogs ? ' --permission-mode ask' : ''}`;
 // A shell pipe gives macOS script a pipe rather than Node's stdin socket.
 const child = spawn('/bin/sh', ['-c', `cat | script -q /dev/null /bin/sh -c ${quote(command)}`], {
   cwd: root, detached: true,
@@ -69,6 +81,32 @@ const topLine = () => output.slice(output.lastIndexOf('\x1b[H') + 3).split('\x1b
 try {
   await until(() => output.includes('\x1b[?1049h') && output.includes('ctrl+o'));
   child.stdin.write('first task\r');
+  if (dialogs) {
+    await until(() => topLine() === 'Fixture choice');
+    child.stdin.write('\x1b[B\r');
+    await until(() => topLine() === 'Approve this plan');
+    child.stdin.write('\x1b[B\r');
+    await until(() => topLine() === 'Allow once');
+    child.stdin.write('\x1b[B\r');
+    await until(() => requests.length === 4 && output.slice(output.lastIndexOf('\x1b[H')).includes('cancelled.txt'));
+    child.stdin.write('\u0003');
+    await until(() => output.includes('dialogs accepted'));
+    child.stdin.write('/exit\r'); child.stdin.end();
+    assert.equal(await exited, 0, errors);
+    assert.equal(requests.length, 5);
+    const results = requests.at(-1).messages.flatMap(message => Array.isArray(message.content) ? message.content : [])
+      .filter(block => block.type === 'tool_result');
+    const content = id => {
+      const block = results.find(result => result.tool_use_id === id);
+      assert.ok(block, id);
+      return typeof block.content === 'string' ? block.content : block.content.map(item => item.text ?? '').join('');
+    };
+    assert.deepEqual(JSON.parse(content('question')), { answers: [{ questionIndex: 0, selected: ['B'] }] });
+    assert.deepEqual(JSON.parse(content('plan')), { approved: true });
+    assert.equal(fs.readFileSync(path.join(workspace, 'approved.txt'), 'utf8'), 'approved B\n');
+    assert.equal(fs.existsSync(path.join(workspace, 'cancelled.txt')), false);
+    assert.ok(results.find(result => result.tool_use_id === 'cancel-write').is_error);
+  } else {
   await until(() => output.includes('ready  finished:') && topLine() === 'mouse-line-14');
   child.stdin.write('draft\x1b[<64;2;');
   await delay(30); child.stdin.write('3M');
@@ -97,6 +135,7 @@ try {
   assert.ok(JSON.stringify(message).includes('draft'));
   assert.equal(JSON.stringify(message).includes('[<'), false);
   assert.equal(JSON.stringify(message).includes('[M'), false);
+  }
   assert.ok(output.includes('\x1b[?1049h') && output.includes('\x1b[?1049l'));
   assert.ok(output.includes('\x1b[?1006l'));
   const files = fs.readdirSync(path.join(workspace, '.agent'));
@@ -104,9 +143,11 @@ try {
   const journal = files.find(file => file.endsWith('.jsonl'));
   assert.ok(journal);
   assert.equal(fs.readFileSync(path.join(workspace, '.agent', journal), 'utf8').includes('owned-mouse-fixture'), false);
-  console.log(JSON.stringify({ tuiMouse: 'passed', compiled: true, defaultTui: true, transcriptKeys: true, splitSgrWheel: true,
-    x10Wheel: true, pointerSelection: true, keyboardExtension: true, osc52PayloadVerified: true,
-    draftUnchanged: true, modesRestored: true, locksReleased: true,
+  console.log(JSON.stringify({ ...(dialogs ? { tuiDialogs: 'passed', question: true, plan: true,
+    permissionApproved: true, permissionCancelled: true, fileEffectsVerified: true } : {
+    tuiMouse: 'passed', transcriptKeys: true, splitSgrWheel: true, x10Wheel: true,
+    pointerSelection: true, keyboardExtension: true, osc52PayloadVerified: true, draftUnchanged: true }),
+    compiled: true, defaultTui: true, modesRestored: true, locksReleased: true,
     modelCalls: requests.length, provider: 'owned loopback SSE', paidUpstreamCalls: 0 }));
 } finally {
   clearTimeout(timer); if (child.exitCode === null) { killFixture(); await exited; }
