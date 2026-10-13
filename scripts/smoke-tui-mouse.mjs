@@ -75,6 +75,13 @@ try {
   await until(() => topLine() === 'mouse-line-13');
   child.stdin.write('\x1b[M' + String.fromCharCode(97, 34, 35));
   await until(() => topLine() === 'mouse-line-14');
+  assert.ok(output.includes('\x1b[?1002h'));
+  child.stdin.write('\x1b[<0;1;1M\x1b[<32;5;1M\x1b[<0;5;9m');
+  await until(() => output.includes('\x1b[7mmouse\x1b[27m'));
+  child.stdin.write('\x1b[1;2C\x1b[99;6u');
+  await until(() => output.includes(`\x1b]52;c;${Buffer.from('mouse-').toString('base64')}`));
+  child.stdin.write('\x1b[1;2C\x1bc');
+  await until(() => output.includes(`\x1b]52;c;${Buffer.from('mo').toString('base64')}`));
   child.stdin.write('\x1b[<0;2;3M\x1b[<0;2;3m\r');
   await until(() => output.includes('draft accepted'));
   child.stdin.write('/exit\r'); child.stdin.end();
@@ -92,7 +99,8 @@ try {
   assert.ok(journal);
   assert.equal(fs.readFileSync(path.join(workspace, '.agent', journal), 'utf8').includes('owned-mouse-fixture'), false);
   console.log(JSON.stringify({ tuiMouse: 'passed', compiled: true, splitSgrWheel: true,
-    x10Wheel: true, draftUnchanged: true, modesRestored: true, locksReleased: true,
+    x10Wheel: true, pointerSelection: true, keyboardExtension: true, osc52PayloadVerified: true,
+    draftUnchanged: true, modesRestored: true, locksReleased: true,
     modelCalls: requests.length, provider: 'owned loopback SSE', paidUpstreamCalls: 0 }));
 } finally {
   clearTimeout(timer); if (child.exitCode === null) { killFixture(); await exited; }

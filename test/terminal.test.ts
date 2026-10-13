@@ -78,6 +78,13 @@ test('word motions and key mappings decode common terminal sequences', () => {
   assert.equal(edit(decoder.push('\x1b[1;5C'), state).cursor, 8);
   assert.deepEqual(decoder.push('\x1b[13;2u\x1b\r\x1b[27;2;13~\x1b[3~'),
     [{ type: 'newline' }, { type: 'newline' }, { type: 'newline' }, { type: 'delete' }]);
+  assert.deepEqual(decoder.push('\x1b[13u'), [{ type: 'submit' }]);
+  assert.deepEqual(decoder.push('\x1b[99;6u'), [{ type: 'selectionCopy' }]);
+  // Shift+arrows extend a selection and shift+home/end reach the line ends.
+  assert.deepEqual(decoder.push('\x1b[1;2D\x1b[1;2C\x1b[1;2A\x1b[1;2B\x1b[1;2H\x1b[1;2F'), [
+    { type: 'extendLeft' }, { type: 'extendRight' }, { type: 'extendUp' }, { type: 'extendDown' },
+    { type: 'extendLineStart' }, { type: 'extendLineEnd' },
+  ]);
   assert.deepEqual(new TerminalKeyDecoder({ '\r': 'newline', '\u0013': 'submit' }).push('\r\u0013'),
     [{ type: 'newline' }, { type: 'submit' }]);
   assert.deepEqual(new TerminalKeyDecoder({ '\u0012': null }).push('\u0012'), []);
