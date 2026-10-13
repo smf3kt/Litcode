@@ -1206,6 +1206,31 @@ Suite 1133/1133 (three new cases); package 73 files, 0 upstream requests; identi
 / 92 validation / 65 build, merged `b9210f58...`. The interactive banner still reads
 `Personal harness.`, which is the legacy name the session prompt carries; renaming it is a
 separate change. Detail: ports/W33-bare-invocation.md.
+## W34 - tracking an installed client's gateway configuration
+
+The credential had to be stated twice: once for the client already configured on the
+machine, again as LLM_API_KEY for this harness. A live run now fills whatever this
+harness was not told from that client's own settings - its `env` block and its
+top-level `model`, with the process environment filling gaps - under stated bounds,
+and reads nothing beyond that file.
+
+Explicit values still win, in this order: a flag, an LLM_* variable, this harness's
+own settings file, then inheritance. A borrowed credential is used only for the
+endpoint the client itself named; pointing `--base-url` somewhere else means it is not
+borrowed, and the failure names both endpoints. The default `auth` follows the variable
+the credential came from, so a key-variable credential is not sent as a bearer token.
+One stderr line reports each source, naming the variable and the file and never a
+value; no credential reaches a session or a journal. `--inherit-gateway` /
+`--no-inherit-gateway` and LLM_INHERIT_GATEWAY control it, and a resumed session keeps
+its pinned endpoint and borrows only a credential for that endpoint. The launcher now
+shares the reader instead of comparing the environment itself.
+
+Verified with a stripped environment: `env -i ... litcode` on a PTY, with no LLM_* or
+ANTHROPIC_* variable present, inherited all three fields from the client settings file,
+opened the session and exited on /exit with 0 model calls. No live model call was made
+in this package. Suite 1148/1148 (11 unit and 4 CLI cases new); package 74 files, 0
+upstream requests; identity 126 input / 93 validation / 66 build, merged `47a942eb...`.
+Detail: ports/W34-gateway-inheritance.md.
 ## API references
 
 - https://raw.githubusercontent.com/anthropics/anthropic-sdk-typescript/main/helpers.md

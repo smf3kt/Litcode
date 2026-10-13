@@ -2,7 +2,7 @@
 
 这是个人 coding harness：优先移植已有源码中的有用实现，集中替换宿主依赖并接入自己的运行层。按完整子系统迁移，进度和行为差异记录在 `research/FEATURES.md`。模型路由和协议转换交给 Magpie，本项目使用 Messages 协议作为网关接口。
 
-模型 ID、网关地址、认证方式与能力字段均可配置。产品名称、提示词和输出保持中立；上游响应按原样传递。凭证使用 `LLM_API_KEY`，默认上下文为1M、压缩阈值为512k，工具文本结果最多24,000 UTF-8字节。
+模型 ID、网关地址、认证方式与能力字段均可配置。产品名称、提示词和输出保持中立；上游响应按原样传递。凭证默认使用 `LLM_API_KEY`，未设置时继承本机已配置客户端的网关设置（见安装一节），默认上下文为1M、压缩阈值为512k，工具文本结果最多24,000 UTF-8字节。
 
 开发遵循 [标准工作流](WORKFLOW.md)：报告定位、来源核验、copy/adapt优先、完整子系统接入、实际CLI验收和版本证据绑定。[当前工作清单](research/CURRENT.md) 管理优先级与审核问题状态；历史报告保留溯源，开工先从当前清单选择ready工作包。
 
@@ -18,13 +18,21 @@ npm install -g .          # 或 npm link，开发时改动即时生效
 litcode                   # 在终端里等价于 litcode --interactive
 ```
 
-首次运行需要网关凭证与模型 ID，缺少凭证时给出提示而不启动会话：
+凭证与模型默认**跟踪本机已配置客户端**：`LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 未设置时，依次从客户端自身的配置文件（默认`~/.claude/settings.json`，可用`CLAUDE_CONFIG_DIR`或`LLM_INHERIT_DIR`指定；也读进程环境）取其`ANTHROPIC_BASE_URL`、`ANTHROPIC_MODEL`与`ANTHROPIC_AUTH_TOKEN`/`ANTHROPIC_API_KEY`。因此通常无需导出任何变量：
+
+```sh
+litcode                   # 网关、凭证与模型都来自已配置的客户端
+```
+
+本机没有任何可跟踪的配置时，或要显式指定时：
 
 ```sh
 export LLM_API_KEY=...
 export LLM_MODEL=MODEL
 litcode
 ```
+
+三条规则：**显式优先**——本 harness 的 flag、`LLM_*` 变量与其自身`settings.json`始终压过继承值；**网关匹配**——借来的凭证只用于该客户端自己声明的那个端点，`--base-url`改成别的端点时不会被送出；**只报来源**——启动时在 stderr 打印一行`gateway: inherited …`，只写变量名与文件路径，不写任何值，凭证也不入会话。`--no-inherit-gateway`或`LLM_INHERIT_GATEWAY=false`可整体关闭；`--resume`按其固定端点重新取凭证，不受当前环境覆盖。
 
 `litcode` 不带参数时按终端决定行为：在终端中打开交互会话（等同 `--interactive`），管道或无终端时打印用法并以 0 退出（`litcode --help`、`litcode --version` 同样如此）。`--demo`、`--continue`、`--resume`、`--list-sessions` 以及 `--mcp-elicitation`/`--watch-config` 不会被当作空调用。`litcode-magpie` 与旧名 `personal-harness` 一并安装。
 
@@ -76,7 +84,7 @@ npm run identity -- --output /absolute/path/to/new-identity.json
 
 输入样本和提取目录只读；索引、identity及可选`--output`验证报告使用新文件路径。校验覆盖原始字节、解码、落盘摘要和索引记录，静态解析失败单独保留。旧索引保持历史记录，后续来源以本轮验证接受的新索引为准。身份脚本绑定src/bin/scripts、package与lock/tsconfig、test及dist，排除凭证与会话。
 
-网关鉴权按`LLM_AUTH`和`LLM_API_KEY`显式配置，隔离SDK继承的自定义header，保留Messages协议默认头。新会话、恢复换凭证、bearer/api-key均有实际loopback验收；真实Magpie管理端验收单独记录。
+网关鉴权按`LLM_AUTH`和`LLM_API_KEY`显式配置，未显式配置时可用继承凭证并按其来源变量推断`bearer`/`api-key`，隔离SDK继承的自定义header，保留Messages协议默认头。新会话、恢复换凭证、bearer/api-key均有实际loopback验收；真实Magpie管理端验收单独记录。
 
 MCP恢复：
 MCP恢复可在工作区`.harness/settings.json`显式开启，并固定到会话：
@@ -110,7 +118,7 @@ litcode-magpie --model MODEL --start-app /Applications/magpie.app -- --workspace
 
 | 配置 | CLI 参数 | 默认/行为 |
 | --- | --- | --- |
-| `LLM_API_KEY` | 环境变量 | 网关凭证；不写入会话配置 |
+| `LLM_API_KEY` | 环境变量 | 网关凭证；不写入会话配置。未设置时按端点匹配继承已配置客户端的凭证（`--no-inherit-gateway`关闭） |
 | `LLM_BASE_URL` | `--base-url` | `http://127.0.0.1:3425`，由 SDK 拼接 `/v1/messages` |
 | `LLM_MODEL` | `--model` | 必填网关模型 ID，原样传递 |
 | `LLM_EFFORT` | `--effort` | 可选 low/medium/high/xhigh/max，发送 output_config.effort；默认省略 |
@@ -166,7 +174,7 @@ npm run agent -- --workspace /absolute/path/to/project --resume UUID --continue
 
 恢复会复用已经持久化的工具结果。对已启动但缺少结果的工具，返回“效果未知”的错误结果；对未启动的排队调用，返回“已跳过”的错误结果。恢复阶段不会自动重放这些操作，模型需先检查当前工作区再决定下一步。
 
-会话固定 model、system、工具 schema、网关地址/能力与运行配置。`--resume` 使用保存值，忽略当前环境中的非密钥配置；凭证从 `LLM_API_KEY` 获取，可以轮换。`/model ID`、`/plan`、`/permissions MODE` 将已完成历史复制到新配置的新 UUID 会话。早期没有 gateway 字段的日志可用于离线审计，当前 CLI 提示创建新会话。
+会话固定 model、system、工具 schema、网关地址/能力与运行配置。`--resume` 使用保存值，忽略当前环境中的非密钥配置；凭证从 `LLM_API_KEY` 获取，未设置时按保存的端点继承，可以轮换。`/model ID`、`/plan`、`/permissions MODE` 将已完成历史复制到新配置的新 UUID 会话。早期没有 gateway 字段的日志可用于离线审计，当前 CLI 提示创建新会话。
 
 ## 配置、交互与扩展
 

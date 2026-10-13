@@ -1,0 +1,70 @@
+{
+  "schema": "GatewayInheritance.v1",
+  "date": "2026-10-13",
+  "package": "W34",
+  "request": "the LLM key setting should track an installed client's gateway configuration by default",
+  "provenance": {
+    "kind": "local product surface",
+    "recoveredSampleModules": "none; this package adds no port and cites no recovered coordinate",
+    "sampleSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "priorArt": "bin/litcode-magpie.mjs already borrowed ANTHROPIC_AUTH_TOKEN when ANTHROPIC_BASE_URL named the same endpoint; the reader is now shared so the CLI and the launcher cannot drift"
+  },
+  "reads": {
+    "file": {
+      "directory": "LLM_INHERIT_DIR, else the client's own configuration-directory variable, else <home>/.claude",
+      "members": ["env.ANTHROPIC_BASE_URL", "env.ANTHROPIC_MODEL", "env.ANTHROPIC_AUTH_TOKEN", "env.ANTHROPIC_API_KEY", "model"],
+      "nothingElse": "the client credential store, its session records and any authorization flow are never read"
+    },
+    "environment": "the same variable names fill any field the file does not name",
+    "refusals": [
+      "file over 1048576 bytes",
+      "not a regular file, or a directory in its place",
+      "malformed JSON, non-object document, non-object env block",
+      "non-string or blank value",
+      "value carrying a control character",
+      "value past its bound: credential 8192, URL 2048, model 256 characters",
+      "endpoint that is not an absolute http/https URL",
+      "env block past 4096 entries"
+    ]
+  },
+  "rules": [
+    {
+      "rule": "explicit first",
+      "detail": "flag, then LLM_* environment, then this harness's settings.json, then inheritance; a resumed session keeps its pinned endpoint and borrows only the credential for it"
+    },
+    {
+      "rule": "endpoint match",
+      "detail": "sameGateway compares origin plus path ignoring trailing slashes; a borrowed credential is never used for an endpoint the client did not name, and a client that names a credential but no endpoint contributes nothing"
+    },
+    {
+      "rule": "report the source, never the value",
+      "detail": "one stderr line names the variable and file per field; nothing prints a value and no credential enters the session configuration or a journal"
+    },
+    {
+      "rule": "auth follows the credential",
+      "detail": "the token variable is a bearer credential and the key variable is not; the default auth comes from the variable read, and LLM_AUTH/--auth override it"
+    }
+  ],
+  "changes": [
+    { "file": "src/gateway-inherit.ts", "what": "new reader with the bounds, the directory search and the endpoint comparison" },
+    { "file": "src/cli.ts", "what": "gateway/credential resolution, the precedence chain, --inherit-gateway/--no-inherit-gateway and LLM_INHERIT_GATEWAY, the source notice, the missing-credential message that names a refused endpoint, and the pinned-endpoint credential on --resume" },
+    { "file": "bin/litcode-magpie.mjs", "what": "shares the reader, falls back to the environment alone without a build, passes LLM_AUTH for a key-variable credential" },
+    { "file": "README.md", "what": "install section, configuration table row and the resume/authentication notes" }
+  ],
+  "verification": {
+    "tsc": "clean",
+    "build": "clean",
+    "unitTests": { "passed": 11, "failed": 0, "file": "test/gateway-inherit.test.ts" },
+    "cliTests": { "passed": 14, "failed": 0, "new": 4 },
+    "suite": { "passed": 1148, "failed": 0, "note": "1133 before this package" },
+    "endToEnd": {
+      "command": "env -i PATH=... HOME=... TERM=xterm litcode --workspace <temp> (PTY, then /exit)",
+      "result": "all three fields inherited from the client settings file, session opened, exited on /exit, 0 model calls",
+      "note": "no live model call was made in this package"
+    },
+    "smokePackage": { "files": 74, "upstreamRequests": 0 },
+    "identity": "47a942eb869557ef3c8d71b80c2f99fbc650d1cdfb3455bfc1c6478d62d47fb2",
+    "identityCounts": { "inputs": 126, "validation": 93, "build": 66 },
+    "notices": { "exit": 0, "installed": 28, "sha256": "6d025e66ae53c22228d4e4ddde35c1ec1d0cd45a1d40af6d00add122372c42f2", "thirdPartyNoticesModified": false }
+  }
+}

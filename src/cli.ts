@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, DEFAULT_SYSTEM, defaultConfig } from './agent.js';
 import { DEFAULT_GATEWAY, GatewayProvider, type ModelProvider } from './provider.js';
+import { resolveInheritedGateway, sameGateway, type InheritedField, type InheritedGateway } from './gateway-inherit.js';
 import { Session, applyManagedPolicy, managedPolicySchema, type SessionConfig } from './session.js';
 import { PolicyHelper } from './policy-helper.js';
 import { interactiveLoop } from './interactive.js';
@@ -46,7 +47,10 @@ Options (flags override LLM_* environment values for new sessions):
   --model NAME           Gateway model ID (LLM_MODEL; required for live sessions)
   --effort LEVEL         low, medium, high, xhigh or max (LLM_EFFORT; optional)
   --base-url URL         Messages endpoint base (LLM_BASE_URL; default http://127.0.0.1:3425)
-  --auth MODE            bearer or api-key (LLM_AUTH; default bearer)
+  --auth MODE            bearer or api-key (LLM_AUTH; default from the credential source)
+  --inherit-gateway     Take a missing gateway, credential and model from an installed
+                        client's own settings (default on; LLM_INHERIT_GATEWAY)
+  --no-inherit-gateway  Use only this harness's own flags, LLM_* values and settings
   --token-counting MODE  estimate or api (LLM_TOKEN_COUNTING; default estimate)
   --thinking            Send adaptive thinking (LLM_THINKING; default false)
   --no-thinking         Omit thinking parameter
@@ -89,7 +93,17 @@ Options (flags override LLM_* environment values for new sessions):
   --version             Show the version
   --help                Show this text
 
-LLM_API_KEY supplies the credential. Magpie translates the Messages protocol
+LLM_API_KEY supplies the credential. When it is unset, anything the other client
+on this machine did not answer is filled from that client's own settings: its
+ANTHROPIC_BASE_URL, ANTHROPIC_MODEL and ANTHROPIC_AUTH_TOKEN or ANTHROPIC_API_KEY,
+read from its settings.json and from this process's environment. A borrowed
+credential is used only for the endpoint that client named. Every explicit value
+here - a flag, an LLM_* variable or this harness's settings.json - still wins, and
+the notice names the source, never a value. LLM_INHERIT_DIR or the other client's
+own configuration-directory variable selects where to look; --no-inherit-gateway
+turns the whole thing off.
+
+Magpie translates the Messages protocol
 for configured upstream models. Capability options are opt-in. New sessions
 merge default, then settings.json, then LLM_* environment, then flags; --resume
 uses the pinned snapshot and never reloads project configuration. Estimate mode
@@ -171,20 +185,99 @@ function resolvePermissions(base: PermissionPolicy | undefined, values: Record<s
  * `--resume` reuses the pinned snapshot. The offline demo stays on base tools
  * and adds no post-MVP fields, so its journal matches the original format.
  */
+interface GatewayChoice {
+  baseURL: string;
+  model: string;
+  /** The header the chosen credential needs, when nothing more explicit said. */
+  authDefault?: 'bearer' | 'api-key';
+}
+
+/**
+ * New-session gateway values, most explicit first: a flag, then this harness's own
+ * `LLM_*` environment, then this harness's own settings, then - only where all of
+ * those are silent - the gateway another client on this machine is configured with.
+ */
+function resolveGatewayChoice(
+  values: Record<string, unknown>,
+  settings: ParsedRuntimeSettings,
+  inherited: InheritedGateway | undefined,
+  demo: boolean,
+): GatewayChoice {
+  const baseURL = (values['base-url'] as string | undefined) ?? process.env.LLM_BASE_URL
+    ?? settings.baseURL ?? inherited?.baseURL ?? DEFAULT_GATEWAY.baseURL;
+  const model = demo
+    ? 'offline-fixture'
+    : ((values.model as string | undefined) ?? process.env.LLM_MODEL ?? settings.model ?? inherited?.model ?? '');
+  const credential = gatewayCredential(baseURL, inherited);
+  return { baseURL, model, ...(credential.auth === undefined ? {} : { authDefault: credential.auth }) };
+}
+
+/**
+ * The credential for `baseURL`: this harness's own key first, then the one the other
+ * client configured - and only when that client named this exact endpoint, so a
+ * borrowed credential is never sent to a gateway it was not issued for.
+ */
+function gatewayCredential(baseURL: string, inherited: InheritedGateway | undefined): {
+  key?: string;
+  auth?: 'bearer' | 'api-key';
+  source?: string;
+  /** Set when a credential was found but belongs to a different endpoint. */
+  refusedFor?: string;
+} {
+  const own = process.env.LLM_API_KEY;
+  if (own !== undefined && own.trim() !== '') return { key: own };
+  const borrowed = inherited?.credential;
+  if (borrowed === undefined || inherited === undefined) return {};
+  if (inherited.baseURL === undefined) return { refusedFor: 'the client names no endpoint' };
+  if (!sameGateway(inherited.baseURL, baseURL)) return { refusedFor: inherited.baseURL };
+  return { key: borrowed.value, auth: borrowed.auth, source: inherited.sources.find(entry => entry.field === 'credential')?.source };
+}
+
+/** What to do when no credential applies to the endpoint this run will use. */
+function missingCredentialError(
+  credential: { refusedFor?: string },
+  baseURL: string,
+): string {
+  const opening = 'Set LLM_API_KEY in your environment before a live run (export LLM_API_KEY=…), '
+    + 'or run `litcode --demo` for an offline demonstration';
+  if (credential.refusedFor === undefined) return opening;
+  return `${opening}. A client credential was found, but it belongs to ${credential.refusedFor} and this run uses ${baseURL}`;
+}
+
+/** Report borrowed values on stderr: the source is named, a value never is. */
+function announceInheritance(inherited: InheritedGateway | undefined, used: InheritedField[]): void {
+  const notice = inheritanceNotice(inherited, used);
+  if (notice !== undefined) process.stderr.write(notice);
+}
+
+/** One non-secret line naming where the borrowed values came from. */
+function inheritanceNotice(inherited: InheritedGateway | undefined, used: InheritedField[]): string | undefined {
+  if (inherited === undefined || used.length === 0) return undefined;
+  const labels: Record<InheritedField, string> = { credential: 'credential', baseURL: 'base URL', model: 'model' };
+  const grouped = new Map<string, string[]>();
+  for (const field of used) {
+    const source = inherited.sources.find(entry => entry.field === field)?.source ?? 'the client configuration';
+    grouped.set(source, [...(grouped.get(source) ?? []), labels[field]]);
+  }
+  const parts = [...grouped].map(([source, fields]) => `${fields.join(', ').replace(/, ([^,]*)$/, ' and $1')} from ${source}`);
+  return `gateway: inherited ${parts.join('; ')}\n`;
+}
+
 function newConfig(
   values: Record<string, unknown>,
   workspace: string,
   loaded: LoadedConfig | undefined,
   settings: ParsedRuntimeSettings,
   demo: boolean,
+  gateway: GatewayChoice,
 ): SessionConfig {
   const config = defaultConfig(workspace, []);
-  config.model = demo ? 'offline-fixture' : ((values.model as string | undefined) ?? process.env.LLM_MODEL ?? settings.model ?? '');
+  config.model = gateway.model;
   const effort = (values.effort as string | undefined) ?? (demo ? undefined : process.env.LLM_EFFORT) ?? settings.effort;
   if (effort !== undefined) config.effort = choice<NonNullable<SessionConfig['effort']>>(effort, ['low', 'medium', 'high', 'xhigh', 'max'], 'high');
   config.gateway = {
-    baseURL: (values['base-url'] as string | undefined) ?? process.env.LLM_BASE_URL ?? settings.baseURL ?? DEFAULT_GATEWAY.baseURL,
-    auth: choice((values.auth as string | undefined) ?? process.env.LLM_AUTH ?? settings.auth, ['bearer', 'api-key'], 'bearer'),
+    baseURL: gateway.baseURL,
+    auth: choice((values.auth as string | undefined) ?? process.env.LLM_AUTH ?? settings.auth ?? gateway.authDefault, ['bearer', 'api-key'], 'bearer'),
     tokenCounting: choice((values['token-counting'] as string | undefined) ?? process.env.LLM_TOKEN_COUNTING ?? settings.tokenCounting, ['estimate', 'api'], 'estimate'),
     promptCaching: (values['prompt-cache'] as boolean | undefined) ?? (demo ? false : optionalBoolean('LLM_PROMPT_CACHE')) ?? settings.promptCaching ?? false,
     eagerToolInput: (values['eager-tool-input'] as boolean | undefined) ?? (demo ? false : optionalBoolean('LLM_EAGER_TOOL_INPUT')) ?? settings.eagerToolInput ?? false,
@@ -337,6 +430,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     model: { type: 'string' }, effort: { type: 'string' }, 'base-url': { type: 'string' }, auth: { type: 'string' },
     'token-counting': { type: 'string' }, thinking: { type: 'boolean' }, 'no-thinking': { type: 'boolean' },
     'prompt-cache': { type: 'boolean' }, 'eager-tool-input': { type: 'boolean' },
+    'inherit-gateway': { type: 'boolean' }, 'no-inherit-gateway': { type: 'boolean' },
     'allow-shell': { type: 'boolean' }, 'max-turns': { type: 'string' },
     'context-tokens': { type: 'string' }, 'compact-at': { type: 'string' }, 'max-tokens': { type: 'string' },
     settings: { type: 'string' }, 'managed-settings': { type: 'string' }, 'policy-helper': { type: 'string' }, 'policy-helper-interval': { type: 'string' }, 'user-dir': { type: 'string' }, 'permission-mode': { type: 'string' },
@@ -387,6 +481,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
   if (values.demo && (values.resume || values.continue || positionals.length)) throw new Error('Demo takes no task or resume options');
   if (values.continue && (!values.resume || positionals.length)) throw new Error('--continue requires --resume and no new task');
   if (values.thinking && values['no-thinking']) throw new Error('Choose --thinking or --no-thinking');
+  if (values['inherit-gateway'] && values['no-inherit-gateway']) throw new Error('Choose --inherit-gateway or --no-inherit-gateway');
   const resumeLocked = ['model', 'effort', 'base-url', 'auth', 'token-counting', 'thinking', 'no-thinking', 'prompt-cache',
     'eager-tool-input', 'allow-shell', 'max-turns', 'context-tokens', 'compact-at', 'max-tokens',
     'settings', 'managed-settings', 'user-dir', 'permission-mode', 'allow-tool', 'deny-tool', 'tasks', 'subagents', 'mcp-roots', 'mcp-sampling', 'mcp-elicitation', 'auto-memory', 'watch-config', 'approve-mcp-server', 'reject-mcp-server'];
@@ -443,10 +538,16 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     process.stdout.write(help);
     return;
   }
-  const apiKey = process.env.LLM_API_KEY;
-  if (!demo && !apiKey) {
-    throw new Error('Set LLM_API_KEY in your environment before a live run (export LLM_API_KEY=…), '
-      + 'or run `litcode --demo` for an offline demonstration');
+  // Inheritance is on by default: a person who already configured a compatible client
+  // on this machine should not have to say the same gateway, credential and model again.
+  const inheritEnabled = values['no-inherit-gateway'] === true ? false
+    : values['inherit-gateway'] === true ? true
+    : (optionalBoolean('LLM_INHERIT_GATEWAY') ?? true);
+  const inherited = resolveInheritedGateway({ enabled: inheritEnabled && !demo });
+  const gateway = resolveGatewayChoice(values, settings, inherited, demo);
+  const credential = gatewayCredential(gateway.baseURL, inherited);
+  if (!demo && !values.resume && credential.key === undefined) {
+    throw new Error(missingCredentialError(credential, gateway.baseURL));
   }
 
   const controller = new AbortController();
@@ -481,7 +582,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     let provider: ModelProvider;
     if (demo) {
       provider = wrapProvider(demoProvider());
-      const config = newConfig(values, workspace, undefined, {}, true);
+      const config = newConfig(values, workspace, undefined, {}, true, gateway);
       runtime = await createRuntime(config, provider, controller.signal);
       config.tools = pinToolSchemas(runtime.tools);
       validateRuntimeConfig(config);
@@ -489,14 +590,24 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     } else if (values.resume) {
       session = Session.open(workspace, { id: values.resume, recoverLock: values['recover-lock'] });
       if (!session.config.gateway) throw new Error('Legacy session has no gateway settings; start a new session');
-      provider = wrapProvider(new GatewayProvider(apiKey!, session.config.gateway));
+      // A resumed session keeps its pinned endpoint, so the credential has to suit that
+      // endpoint rather than whatever a new session would have chosen.
+      const pinned = gatewayCredential(session.config.gateway.baseURL, inherited);
+      if (pinned.key === undefined) throw new Error(missingCredentialError(pinned, session.config.gateway.baseURL));
+      announceInheritance(inherited, pinned.source === undefined ? [] : ['credential']);
+      provider = wrapProvider(new GatewayProvider(pinned.key, session.config.gateway));
       runtime = await createRuntime(session.config, provider, controller.signal);
     } else {
-      const config = newConfig(values, workspace, loaded, settings, false);
+      const config = newConfig(values, workspace, loaded, settings, false, gateway);
       const keybindings = loadKeybindings(workspace, values['user-dir']);
       if (Object.keys(keybindings).length) config.keybindings = keybindings;
       if (!config.model.trim()) throw new Error('Set LLM_MODEL or --model to your gateway model ID');
-      provider = wrapProvider(new GatewayProvider(apiKey!, config.gateway!));
+      announceInheritance(inherited, [
+        ...(credential.source === undefined ? [] : ['credential'] as InheritedField[]),
+        ...(inherited?.baseURL === undefined || values['base-url'] !== undefined || process.env.LLM_BASE_URL !== undefined || settings.baseURL !== undefined ? [] : ['baseURL'] as InheritedField[]),
+        ...(inherited?.model === undefined || values.model !== undefined || process.env.LLM_MODEL !== undefined || settings.model !== undefined ? [] : ['model'] as InheritedField[]),
+      ]);
+      provider = wrapProvider(new GatewayProvider(credential.key!, config.gateway!));
       runtime = await createRuntime(config, provider, controller.signal);
       config.tools = pinToolSchemas(runtime.tools);
       validateRuntimeConfig(config);

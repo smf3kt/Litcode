@@ -11,7 +11,7 @@ const raw = process.argv.slice(2), separator = raw.indexOf('--');
 const options = separator < 0 ? raw : raw.slice(0, separator);
 const childArgs = separator < 0 ? [] : raw.slice(separator + 1);
 if (options.length === 1 && options[0] === '--help' && !childArgs.length) {
-  console.log(`${usage}\n\n--check performs discovery without model calls.\nCLI_ARGS include --workspace PROJECT, --interactive, --resume UUID and --continue.\nResume uses pinned gateway/model settings. Credentials remain in the environment.\nExplicit start commands are owned and cleaned up; macOS applications remain running.`);
+  console.log(`${usage}\n\n--check performs discovery without model calls.\nCLI_ARGS include --workspace PROJECT, --interactive, --resume UUID and --continue.\nResume uses pinned gateway/model settings. A missing credential is taken from an installed client configured for the same endpoint; only the environment variable name is ever reported.\nExplicit start commands are owned and cleaned up; macOS applications remain running.`);
   process.exit(0);
 }
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -83,9 +83,20 @@ if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(ur
 }
 base = url.origin;
 if (!model || !model.trim()) throw new Error('Select a model with --model or LLM_MODEL');
-const credential = process.env.LLM_API_KEY ?? (process.env.ANTHROPIC_BASE_URL?.replace(/\/$/, '') === base ? process.env.ANTHROPIC_AUTH_TOKEN : undefined);
+// The harness borrows a missing credential from an installed client's configuration; the
+// launcher uses the same reader so both agree, and falls back to the environment alone when
+// no build is present (the reader ships compiled). Either way a borrowed credential is only
+// used for the endpoint its configuration names.
+let inherited;
+try {
+  const { resolveInheritedGateway, sameGateway } = await import('../dist/gateway-inherit.js');
+  const gateway = resolveInheritedGateway({ enabled: true });
+  if (gateway?.credential && gateway.baseURL && sameGateway(gateway.baseURL, base)) inherited = gateway.credential;
+} catch {}
+const credential = process.env.LLM_API_KEY ?? inherited?.value
+  ?? (process.env.ANTHROPIC_BASE_URL?.replace(/\/$/, '') === base ? process.env.ANTHROPIC_AUTH_TOKEN : undefined);
 if (!check) {
-  if (!credential) throw new Error('Set LLM_API_KEY or use an existing credential reference for this exact gateway');
+  if (!credential) throw new Error('Set LLM_API_KEY, or configure a client for this exact gateway (its own settings file or environment) so the credential can be inherited');
   if (!childArgs.length) throw new Error('Pass CLI arguments after --, or use --check');
   if (childArgs.some(arg => /^(--base-url|--model|--auth)(=|$)/.test(arg))) throw new Error('Gateway/model options belong before --');
 }
@@ -193,7 +204,8 @@ try {
       model, credentialPresent: !!credential, resumePinned: resume !== undefined, startupAction, modelCalls: 0 }));
   } else {
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('ANTHROPIC_')));
-    Object.assign(env, { LLM_API_KEY: credential, LLM_BASE_URL: base, LLM_MODEL: model });
+    Object.assign(env, { LLM_API_KEY: credential, LLM_BASE_URL: base, LLM_MODEL: model,
+      ...(inherited?.auth === 'api-key' ? { LLM_AUTH: 'api-key' } : {}) });
     const child = start(process.execPath, [path.join(root, 'bin/litcode.mjs'), ...childArgs], { env, stdio: 'inherit' });
     let termination;
     const abort = () => {
