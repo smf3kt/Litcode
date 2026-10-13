@@ -31,12 +31,13 @@ import { TerminalModeController, type MouseTracking } from './tui-modes.js';
 import { Keymap, contextStack, type TuiContext } from './tui-keys.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
-  createSelection, highlightSelection, moveSelectionColumn, reduceSelection, selectionColumn, selectionText,
-  type SelectionAnchor, type SelectionState,
+  createSelection, highlightSelection, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
+  selectionText, selectionTextFromRows, wordSpan,
+  type SelectionAnchor, type SelectionRow, type SelectionState,
 } from './tui-selection.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import {
-  createTranscriptState, layoutTranscript, reduceTranscript, transcriptLines, wrapEntry,
+  createTranscriptState, layoutTranscript, reduceTranscript, renderedTranscriptRows, transcriptLines, wrapEntry,
   type TranscriptEntry, type TranscriptScrollCommand, type TranscriptState,
 } from './tui-transcript.js';
 import {
@@ -104,6 +105,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private editor: EditorState;
   private stashedDraft: { text: string; cursor: number } | undefined;
+  /** Multi-click sequence state, copied from the recovered pointer handler. */
+  private clickCountValue = 0;
+  private lastClick: { time: number; line: number; column: number; screen: TuiScreen } | undefined;
   private screen: TuiScreen = 'chat';
   private transcript: TranscriptState;
   private selection: SelectionState = createSelection();
@@ -441,11 +445,43 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const anchor = this.anchorAt(event.col, event.row);
     if (!anchor) return;
     if (event.action === 'press') {
-      this.selection = reduceSelection(this.selection, { type: 'start', at: anchor });
+      const clicks = this.clickCount(anchor);
+      // A second press selects the word under the pointer, a third the whole row.
+      const text = this.renderedRow(anchor.line);
+      const span = text === undefined ? null
+        : clicks === 2 ? wordSpan(text, anchor.column) : clicks >= 3 ? lineSpan(text) : null;
+      if (span && clicks >= 2) {
+        this.selection = reduceSelection(this.selection, { type: clicks >= 3 ? 'line' : 'word',
+          at: anchor, low: { line: anchor.line, column: span.low }, high: { line: anchor.line, column: span.high } });
+      } else this.selection = reduceSelection(this.selection, { type: 'start', at: anchor });
     } else if (event.action === 'move') {
       this.selection = reduceSelection(this.selection, { type: 'drag', at: anchor });
     }
     this.render();
+  }
+
+  /**
+   * Multi-click counter copied from the recovered pointer handler: presses
+   * within 500 ms and one cell of each other count as one click sequence, and
+   * anything else resets it to a single click. The recovered handler also
+   * clears the count whenever the press is consumed by something else first,
+   * which here means any screen or overlay change.
+   */
+  private clickCount(anchor: SelectionAnchor): number {
+    const now = Date.now();
+    const last = this.lastClick;
+    const repeat = last !== undefined && last.screen === this.screen && now - last.time < 500
+      && Math.abs(anchor.column - last.column) <= 1 && Math.abs(anchor.line - last.line) <= 1;
+    this.clickCountValue = repeat ? this.clickCountValue + 1 : 1;
+    this.lastClick = { time: now, line: anchor.line, column: anchor.column, screen: this.screen };
+    return this.clickCountValue;
+  }
+
+  /** Rendered text of one absolute transcript row, when it is on screen. */
+  private renderedRow(line: number): string | undefined {
+    const view = this.viewportSize();
+    const viewport = layoutTranscript(this.transcript, view.columns, view.rows);
+    return viewport.lines[line - viewport.offset];
   }
 
   /** Map a terminal coordinate to the transcript line and cell it lands on. */
@@ -533,7 +569,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   /** Copy the span through OSC 52, then take it down as the recovered app does. */
   private copySelection(): void {
-    const text = selectionText(this.selection, transcriptLines(this.transcript, this.viewportSize().columns));
+    const view = this.viewportSize();
+    const rows = renderedTranscriptRows(this.transcript, view.columns);
+    const text = selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
     if (!text) return;
     let payload: string;
     try { payload = osc52Payload(text); }

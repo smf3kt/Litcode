@@ -54,28 +54,50 @@ export function createTranscriptState(entries: readonly TranscriptEntry[] = []):
   return { entries: [...entries], offset: 0, showAll: false };
 }
 
+/** One rendered row with the coordinates selection needs. */
+export interface RenderedRow {
+  text: string;
+  /** True when this row was produced by wrapping the previous row's logical line. */
+  continuation: boolean;
+  /** Leading cells that belong to the entry's hanging indent, not to its text. */
+  indent: number;
+}
+
 /** Wrap one entry to the given width; every entry keeps its own hanging indent. */
-export function wrapEntry(entry: TranscriptEntry, columns: number): string[] {
+export function wrapEntryRows(entry: TranscriptEntry, columns: number): RenderedRow[] {
   const width = Math.max(8, Math.floor(columns));
   const indent = entry.kind === 'user' ? '> ' : entry.kind === 'tool' ? '  ' : '';
   const prefix = entry.kind === 'error' ? '! ' : entry.kind === 'system' ? '- ' : indent;
-  const rows: string[] = [];
+  const rows: RenderedRow[] = [];
+  const push = (text: string, continuation: boolean) => {
+    rows.push({ text, continuation, indent: cellWidth(prefix) });
+  };
   for (const paragraph of entry.text.replace(/\r\n?/g, '\n').split('\n')) {
     let row = prefix;
     let used = cellWidth(prefix);
-    if (paragraph === '') { rows.push(prefix.trimEnd()); continue; }
+    if (paragraph === '') { push(prefix.trimEnd(), false); continue; }
+    let wrapped = false;
     for (const { segment } of new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(paragraph)) {
       // Resolve tab stops before writing: render and selection share literal cell positions.
       const parts = segment === '\t' ? Array<string>(8 - used % 8).fill(' ') : [segment];
       for (const part of parts) {
         const cells = cellWidth(part);
-        if (used + cells > width) { rows.push(row); row = ' '.repeat(prefix.length); used = prefix.length; }
+        if (used + cells > width) {
+          push(row, wrapped);
+          wrapped = true;
+          row = ' '.repeat(prefix.length); used = prefix.length;
+        }
         row += part; used += cells;
       }
     }
-    rows.push(row);
+    push(row, wrapped);
   }
   return rows;
+}
+
+/** Wrap one entry to the given width, keeping only the text of each row. */
+export function wrapEntry(entry: TranscriptEntry, columns: number): string[] {
+  return wrapEntryRows(entry, columns).map(row => row.text);
 }
 
 /**
@@ -104,6 +126,23 @@ export interface TranscriptViewport {
   total: number;
   /** True when the view is not pinned to the newest output. */
   scrolled: boolean;
+}
+
+/** Rendered rows for the current state, with the wrap metadata selection needs. */
+export function renderedTranscriptRows(state: TranscriptState, columns: number): RenderedRow[] {
+  const rows: RenderedRow[] = [];
+  for (const entry of state.entries) {
+    const wrapped = wrapEntryRows(entry, columns);
+    if (!state.showAll && wrapped.length > COLLAPSED_ENTRY_LINES) {
+      const hidden = wrapped.length - COLLAPSED_ENTRY_LINES;
+      rows.push({ text: `  ... ${hidden} earlier lines (ctrl+e shows all)`.slice(0, Math.max(8, Math.floor(columns))),
+        continuation: false, indent: 0 });
+      rows.push(...wrapped.slice(-COLLAPSED_ENTRY_LINES));
+      continue;
+    }
+    rows.push(...wrapped);
+  }
+  return rows;
 }
 
 export function layoutTranscript(state: TranscriptState, columns: number, rows: number): TranscriptViewport {
