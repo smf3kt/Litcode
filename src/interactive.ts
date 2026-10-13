@@ -207,6 +207,21 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const agent = () => activeAgent ??= new Agent(session, provider, activeRuntime.buildTools(session.config, session.id), {
     interaction: {
       ask: async (request, signal) => {
+        // One grouped request runs every question and then a review page, which
+        // is the recovered flow's last tab; the answers come back in order.
+        if (terminal?.prompt && request.questions.length > 0) {
+          const answer = await readDialog({ title: 'Questions', message: '', groups: request.questions.map(question => ({
+            key: question.header ?? question.question,
+            title: question.header ?? 'Question', message: question.question,
+            choices: question.options.map(option => ({ ...option, value: option.label })),
+            multiple: question.multiSelect, allowText: true, maxTextChars: 4000 })) }, signal);
+          if (!answer) throw new Error('Interaction cancelled');
+          return { answers: request.questions.map((question, questionIndex) => {
+            const entry = answer.groups?.find(item => item.key === (question.header ?? question.question));
+            return { questionIndex, selected: entry?.selected ?? [],
+              ...(entry?.text === undefined ? {} : { other: entry.text }) };
+          }) };
+        }
         const answers = [];
         for (const [questionIndex, question] of request.questions.entries()) {
           if (terminal?.prompt) {

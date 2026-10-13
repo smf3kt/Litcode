@@ -597,7 +597,9 @@ export const terminalIO = createTerminalInput;
 
 /** Typed interaction request for terminal surfaces that can own a modal prompt. */
 export interface TerminalPromptChoice { label: string; value: string; description?: string }
-export interface TerminalPromptRequest {
+/** One question inside a grouped request; answers are collected per group key. */
+export interface TerminalPromptGroup {
+  key: string;
   title?: string;
   message: string;
   choices?: readonly TerminalPromptChoice[];
@@ -606,7 +608,32 @@ export interface TerminalPromptRequest {
   defaultIndex?: number;
   maxTextChars?: number;
 }
-export interface TerminalPromptAnswer { selected: string[]; text?: string }
+export interface TerminalPromptRequest {
+  title?: string;
+  message: string;
+  choices?: readonly TerminalPromptChoice[];
+  multiple?: boolean;
+  allowText?: boolean;
+  defaultIndex?: number;
+  maxTextChars?: number;
+  /**
+   * When present the request runs as a sequence of groups followed by a review
+   * page, and the answer carries one entry per group. Copied from the recovered
+   * question flow, whose last tab is a "Review your answers" page.
+   */
+  groups?: readonly TerminalPromptGroup[];
+  /** Review-page wording; defaults match the recovered page. */
+  reviewTitle?: string;
+  submitLabel?: string;
+  cancelLabel?: string;
+}
+export interface TerminalPromptAnswer {
+  selected: string[];
+  text?: string;
+  /** Present for grouped requests: one answer per group, in group order. */
+  groups?: readonly TerminalPromptGroupAnswer[];
+}
+export interface TerminalPromptGroupAnswer { key: string; selected: string[]; text?: string }
 
 /** Shared line/full-screen surface; modal support is optional for legacy hosts. */
 export interface TerminalSurface {
