@@ -81,8 +81,9 @@ Options (flags override LLM_* environment values for new sessions):
   --recover-lock        Remove a lock only if its owner process has exited
   --interactive         Read tasks and slash commands until /exit (the default
                         when no task is given and input is a terminal)
-  --tui                 Draw the full-screen interface instead of the line
-                        editor, with a transcript, status row and prompt box
+  --tui                 Draw the full-screen interface (default at a capable
+                        terminal), with a transcript, status row and prompt box
+  --no-tui              Use the line editor even at a capable terminal
   --attach PATH         Attach one workspace image/PDF to a one-shot task
   --pages RANGE         Select PDF pages for --attach, such as 2-4,8
   --output-format MODE  text, json or stream-json (one-shot; default text)
@@ -428,7 +429,7 @@ function cliVersion(): string {
 
 async function main(): Promise<void> {  const { values, positionals } = parseArgs({ allowPositionals: true, options: {
     help: { type: 'boolean' }, demo: { type: 'boolean' }, workspace: { type: 'string' },
-    interactive: { type: 'boolean' }, tui: { type: 'boolean' }, 'list-sessions': { type: 'boolean' },
+    interactive: { type: 'boolean' }, tui: { type: 'boolean' }, 'no-tui': { type: 'boolean' }, 'list-sessions': { type: 'boolean' },
     attach: { type: 'string' }, pages: { type: 'string' },
     model: { type: 'string' }, effort: { type: 'string' }, 'base-url': { type: 'string' }, auth: { type: 'string' },
     'token-counting': { type: 'string' }, thinking: { type: 'boolean' }, 'no-thinking': { type: 'boolean' },
@@ -463,9 +464,10 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
   if (values['mcp-elicitation'] && !values.interactive && !impliedInteractive) throw new Error('--mcp-elicitation requires --interactive');
   if (values['watch-config'] && !values.interactive && !impliedInteractive) throw new Error('--watch-config requires --interactive');
   if (values.tui && !values.interactive && !impliedInteractive) throw new Error('--tui requires --interactive');
-  // The full-screen layer needs a terminal to draw on; without one the session
-  // runs on the line editor rather than failing, which is what a pipe expects.
-  const useTui = Boolean(values.tui) && Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY);
+  if (values.tui && values['no-tui']) throw new Error('Choose --tui or --no-tui');
+  // Interactive terminals own the full screen by default; pipes and dumb terminals keep line IO.
+  const useTui = !values['no-tui'] && Boolean(process.stdin.isTTY) && Boolean(process.stdout.isTTY)
+    && typeof process.stdin.setRawMode === 'function' && (values.tui === true || process.env.TERM !== 'dumb');
   if (values.pages !== undefined && values.attach === undefined) throw new Error('--pages requires --attach');
   if (values.attach !== undefined && (values.interactive || values.continue || values.demo || values['list-sessions'])) {
     throw new Error('--attach requires a one-shot new task; interactive sessions use /attach');

@@ -166,6 +166,45 @@ test('clipboard sequences match raw, kitty, tmux and screen framing with a byte 
   assert.throws(() => osc52Payload('中'.repeat(33334), {}), /100000 UTF-8 bytes/);
 });
 
+test('actual TUI input reaches contextual navigation while paste and overrides keep their intent', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  const tui = new TuiTerminal({ input, output, history: ['previous task'] }).start();
+  const key = (text: string) => input.emit('data', text);
+  const wait = () => new Promise(resolve => setTimeout(resolve, 70));
+  try {
+    for (let i = 0; i < 20; i++) tui.append({ kind: 'assistant', text: `line ${i}` });
+    key('draft'); key('\u000f');
+    assert.equal(tui.currentScreen, 'transcript');
+    key('k'); assert.equal(tui.transcriptState.offset, 12);
+    key('j'); assert.equal(tui.transcriptState.offset, 13);
+    key('\u0005'); assert.equal(tui.transcriptState.showAll, true);
+    key('g'); assert.equal(tui.transcriptState.offset, 0);
+    key('G'); assert.equal(tui.transcriptState.offset, 13);
+    key('\x1b[5~'); assert.equal(tui.transcriptState.offset, 6);
+    key('q'); assert.equal(tui.currentScreen, 'chat');
+    assert.equal(tui.state.text, 'draft');
+    key('\u000f\x1b'); await wait();
+    assert.equal(tui.currentScreen, 'chat');
+    key('\x1b[200~jkq\x1b[201~');
+    assert.equal(tui.state.text, 'draftjkq');
+    key('\u001b'); key('c'); // Split Meta+C is a complete key, not Escape + ordinary c.
+    assert.equal(tui.state.text, 'draftjkq');
+    let submitted = 0; tui.on('submit', () => { submitted++; });
+    key('\x1b[13;2u'); assert.equal(submitted, 0);
+    assert.equal(tui.state.text, 'draftjkq\n');
+    key('\x7f\u0012\t'); assert.equal(tui.currentScreen, 'chat');
+    tui.setKeybindings({ '\u000f': null, '\r': 'newline' });
+    key('\u000f\r'); assert.equal(tui.currentScreen, 'chat');
+    assert.equal(tui.state.text, 'draftjkq\n');
+    assert.equal(submitted, 0);
+    tui.setKeybindings(); key('\r'); assert.equal(submitted, 1);
+    key('\x1b[A'); assert.equal(tui.state.text, 'draftjkq\n');
+  } finally { tui.close(); }
+});
+
 test('the kill ring coalesces, caps at ten, and cycles yank-pop', () => {
   let state = reduceKillRing(emptyKillRing, { type: 'kill', text: 'one' });
   assert.deepEqual(state.ring, ['one']);

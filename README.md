@@ -15,7 +15,7 @@
 ```sh
 npm run build
 npm install -g .          # 或 npm link，开发时改动即时生效
-litcode                   # 在终端里等价于 litcode --interactive
+litcode                   # 在可用终端中直接打开全屏交互会话
 ```
 
 凭证与模型默认**跟踪本机已配置客户端**：`LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL` 未设置时，依次从客户端自身的配置文件（默认`~/.claude/settings.json`，可用`CLAUDE_CONFIG_DIR`或`LLM_INHERIT_DIR`指定；也读进程环境）取其`ANTHROPIC_BASE_URL`、`ANTHROPIC_MODEL`与`ANTHROPIC_AUTH_TOKEN`/`ANTHROPIC_API_KEY`。因此通常无需导出任何变量：
@@ -34,7 +34,7 @@ litcode
 
 三条规则：**显式优先**——本 harness 的 flag、`LLM_*` 变量与其自身`settings.json`始终压过继承值；**网关匹配**——借来的凭证只用于该客户端自己声明的那个端点，`--base-url`改成别的端点时不会被送出；**只报来源**——启动时在 stderr 打印一行`gateway: inherited …`，只写变量名与文件路径，不写任何值，凭证也不入会话。`--no-inherit-gateway`或`LLM_INHERIT_GATEWAY=false`可整体关闭；`--resume`按其固定端点重新取凭证，不受当前环境覆盖。
 
-`litcode` 不带参数时按终端决定行为：在终端中打开交互会话（等同 `--interactive`），管道或无终端时打印用法并以 0 退出（`litcode --help`、`litcode --version` 同样如此）。`--demo`、`--continue`、`--resume`、`--list-sessions` 以及 `--mcp-elicitation`/`--watch-config` 不会被当作空调用。`litcode-magpie` 与旧名 `personal-harness` 一并安装。
+`litcode` 不带参数时按终端决定行为：在可用终端中打开全屏交互会话（等同 `--interactive`，`--no-tui` 可保留行编辑器），管道或无终端时打印用法并以 0 退出（`litcode --help`、`litcode --version` 同样如此）。`--demo`、`--continue`、`--resume`、`--list-sessions` 以及 `--mcp-elicitation`/`--watch-config` 不会被当作空调用。`litcode-magpie` 与旧名 `personal-harness` 一并安装。
 
 ## 运行
 
@@ -59,7 +59,7 @@ node bin/litcode.mjs --workspace /absolute/path/to/project --interactive
 node bin/litcode.mjs            # 终端中的空调用即上面的交互会话
 ```
 
-`litcode --tui` 打开全屏交互界面。鼠标在对话记录区域滚动时可查看前文，手动滚动后新输出保持当前视口；输入框与状态行保持独立。左键拖动选择文字，Shift+方向键扩选，Shift+Home/End 选到行首/行尾。Alt+C（终端发送 Meta+C）或终端可传递的 Ctrl+Shift+C 发送 OSC52 复制请求；终端需允许 OSC52，发送后的提示不代表系统剪贴板已确认写入。选择按显示行复制，调整窗口大小或切换长条目展开状态会清除选择。`Ctrl+O` 切换记录视图，`Ctrl+E` 在记录视图展开长条目，`/exit` 退出并恢复终端模式。
+`litcode` 和 `litcode --interactive` 在可用终端中默认打开全屏交互界面；`--no-tui` 使用行编辑器，管道或 `TERM=dumb` 自动使用行输入输出。`--tui` 可显式选择全屏。鼠标在对话记录区域滚动时可查看前文，手动滚动后新输出保持当前视口；输入框与状态行保持独立。左键拖动选择文字，Shift+方向键扩选，Shift+Home/End 选到行首/行尾。Alt+C（终端发送 Meta+C）或终端可传递的 Ctrl+Shift+C 发送 OSC52 复制请求；终端需允许 OSC52，发送后的提示不代表系统剪贴板已确认写入。选择按显示行复制，调整窗口大小或切换长条目展开状态会清除选择。`Ctrl+O` 切换记录视图，`Ctrl+E` 在记录视图展开长条目，`/exit` 退出并恢复终端模式。
 
 本地打包安装示例（npm缓存需已有生产依赖供离线安装）：
 

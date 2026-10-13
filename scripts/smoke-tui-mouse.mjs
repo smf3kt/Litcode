@@ -32,11 +32,11 @@ const server = http.createServer(async (req, res) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
 const pidFile = path.join(temporary, 'cli.pid');
-const command = `printf '%s' "$$" > ${quote(pidFile)}; stty rows 10 cols 40; exec ${quote(process.execPath)} ${quote(path.join(root, 'bin/litcode.mjs'))} --workspace ${quote(workspace)} --user-dir ${quote(user)} --interactive --tui`;
+const command = `printf '%s' "$$" > ${quote(pidFile)}; stty rows 10 cols 40; exec ${quote(process.execPath)} ${quote(path.join(root, 'bin/litcode.mjs'))} --workspace ${quote(workspace)} --user-dir ${quote(user)}`;
 // A shell pipe gives macOS script a pipe rather than Node's stdin socket.
 const child = spawn('/bin/sh', ['-c', `cat | script -q /dev/null /bin/sh -c ${quote(command)}`], {
   cwd: root, detached: true,
-  env: { ...process.env, LLM_INHERIT_GATEWAY: 'false', LLM_API_KEY: 'owned-mouse-fixture',
+  env: { ...process.env, TERM: 'xterm-256color', LLM_INHERIT_GATEWAY: 'false', LLM_API_KEY: 'owned-mouse-fixture',
     LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_MODEL: 'fixture/mouse',
     LLM_AUTH: 'bearer', LLM_THINKING: 'false', LLM_TOKEN_COUNTING: 'estimate',
     LLM_PROMPT_CACHE: 'false', LLM_EAGER_TOOL_INPUT: 'false' },
@@ -75,6 +75,12 @@ try {
   await until(() => topLine() === 'mouse-line-13');
   child.stdin.write('\x1b[M' + String.fromCharCode(97, 34, 35));
   await until(() => topLine() === 'mouse-line-14');
+  child.stdin.write('\u000f');
+  await until(() => output.slice(output.lastIndexOf('\x1b[H')).includes('ctrl+o chat'));
+  child.stdin.write('k'); await until(() => topLine() === 'mouse-line-13');
+  child.stdin.write('j'); await until(() => topLine() === 'mouse-line-14');
+  child.stdin.write('\u0005q');
+  await until(() => output.slice(output.lastIndexOf('\x1b[H')).includes('ctrl+o transcript'));
   assert.ok(output.includes('\x1b[?1002h'));
   child.stdin.write('\x1b[<0;1;1M\x1b[<32;5;1M\x1b[<0;5;9m');
   await until(() => output.includes('\x1b[7mmouse\x1b[27m'));
@@ -98,7 +104,7 @@ try {
   const journal = files.find(file => file.endsWith('.jsonl'));
   assert.ok(journal);
   assert.equal(fs.readFileSync(path.join(workspace, '.agent', journal), 'utf8').includes('owned-mouse-fixture'), false);
-  console.log(JSON.stringify({ tuiMouse: 'passed', compiled: true, splitSgrWheel: true,
+  console.log(JSON.stringify({ tuiMouse: 'passed', compiled: true, defaultTui: true, transcriptKeys: true, splitSgrWheel: true,
     x10Wheel: true, pointerSelection: true, keyboardExtension: true, osc52PayloadVerified: true,
     draftUnchanged: true, modesRestored: true, locksReleased: true,
     modelCalls: requests.length, provider: 'owned loopback SSE', paidUpstreamCalls: 0 }));
