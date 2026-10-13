@@ -58,7 +58,8 @@ export const COMMAND_HELP = `/help       Show commands
 /cwd DIR    Relocate completed conversation into an existing workspace
 /worktree NAME  Create/enter an owned checkout and relocate completed history
 /worktree-exit [--remove [--discard-changes]]  Return; optionally archive history and remove owned checkout/branch
-/model ID   Start a new model-bound session with completed history
+/model [ID] Choose or enter a model, then start a session with completed history
+/thinking [on|off] Toggle or set thinking in a new session with completed history
 /plan       Start a read-only session
 /permissions MODE  Start a session in default/plan/acceptEdits/ask/bypass mode
 /clear      Start a new session without changing existing logs
@@ -147,7 +148,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   if (options.signal.aborted) abort();
   rl?.on('line', onLine); rl?.on('close', onClose);
   const unsubscribeTerminal = terminal?.subscribe({ onSubmit: onLine, onExit: onClose,
-    onInterrupt: () => turnController?.abort(new Error('Task interrupted')) });
+    onInterrupt: () => turnController?.abort(new Error('Task interrupted')),
+    onAction: action => {
+      const command = action === 'chat:modelPicker' ? '/model' : action === 'chat:thinkingToggle' ? '/thinking'
+        : action === 'app:toggleTodos' ? '/tasks' : undefined;
+      if (!command || inputClosed || approval) return;
+      if (!queue.some(item => item.source === 'user' && item.prompt === command)) queue.push({ prompt: command, source: 'user' });
+      awaken();
+    } });
   terminal?.start();
   let unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
   let activeAgent: Agent | undefined;
@@ -359,7 +367,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         continue;
       }
       const item = queue.splice(nextIndex, 1)[0]!;
-      const prompt = item.prompt.trim();
+      let prompt = item.prompt.trim();
       if (!prompt) continue;
       if (item.source === 'user' && (prompt === '/exit' || prompt === '/quit')) break;
       if (item.source === 'event') {
@@ -554,12 +562,31 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           }, null, 2) + '\n');
           continue;
         }
-        if (prompt.startsWith('/model ') || prompt.startsWith('/effort ') || prompt === '/plan' || prompt.startsWith('/permissions ')) {
+        if (prompt === '/model') {
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          let selected: string | undefined;
+          if (terminal?.prompt) {
+            const models = [...new Set([session.config.model,
+              ...(session.config.agentTypes ?? []).map(type => type.model).filter((model): model is string => Boolean(model) && model !== 'inherit'),
+              ...listSessions(session.config.workspace).map(item => item.model)])]
+              .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
+            const answer = await withTurn(signal => readDialog({ title: 'Model',
+              message: `Current: ${session.config.model}\nChoose a local model or enter another gateway model ID.`,
+              choices: models.map(model => ({ label: model, value: model })), allowText: true, maxTextChars: 256 }, signal));
+            selected = answer?.text ?? answer?.selected[0];
+          } else selected = (await withTurn(signal => readAnswer(`Current model: ${session.config.model}\nModel ID, or :cancel: `, signal))).trim();
+          if (!selected || selected === ':cancel') { options.status.write('Model selection cancelled.\n'); continue; }
+          if (selected === session.config.model) { options.status.write('Model unchanged.\n'); continue; }
+          prompt = `/model ${selected}`;
+        }
+        if (prompt.startsWith('/model ') || prompt.startsWith('/effort ') || /^\/thinking(?:\s|$)/.test(prompt)
+          || prompt === '/plan' || prompt.startsWith('/permissions ')) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           const config = structuredClone(session.config);
           const switchingModel = prompt.startsWith('/model ');
           if (switchingModel) {
-            const model = prompt.slice(7).trim(); if (!model) throw new Error('Use /model ID');
+            const model = prompt.slice(7).trim();
+            if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
             const pre = await agent().emitHook('PreModelSwitch', { model, previous_model: config.model }, options.signal);
             if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
             config.model = model;
@@ -567,6 +594,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const effort = prompt.slice(8).trim();
             if (!['low', 'medium', 'high', 'xhigh', 'max'].includes(effort)) throw new Error('Use /effort low|medium|high|xhigh|max');
             config.effort = effort as NonNullable<typeof config.effort>;
+          } else if (/^\/thinking(?:\s|$)/.test(prompt)) {
+            const value = prompt.slice('/thinking'.length).trim();
+            if (value && value !== 'on' && value !== 'off') throw new Error('Use /thinking [on|off]');
+            config.thinking = value ? value === 'on' : !config.thinking;
+            if (config.thinking === session.config.thinking) { options.status.write('Thinking unchanged.\n'); continue; }
           } else {
             if (session.config.managedPolicy?.permissions !== undefined) throw new Error('Permission mode is pinned by managed settings');
             const mode = prompt === '/plan' ? 'plan' : prompt.slice(13).trim();
@@ -601,7 +633,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
           await acceptNext(next, nextRuntime);
           announce(); await agent().startSession('resume', options.signal);
-          await agent().emitHook(switchingModel ? 'PostModelSwitch' : 'ConfigChange', { model: config.model, permission_mode: config.permissions?.mode }, options.signal);
+          await agent().emitHook(switchingModel ? 'PostModelSwitch' : 'ConfigChange', { model: config.model,
+            permission_mode: config.permissions?.mode, thinking: config.thinking }, options.signal);
+          if (switchingModel) options.status.write(`Model: ${config.model}\n`);
+          else if (/^\/thinking(?:\s|$)/.test(prompt)) options.status.write(`Thinking: ${config.thinking ? 'on' : 'off'}\n`);
           continue;
         }
         if (prompt.startsWith('/cwd ') || /^\/worktree(?:\s|$)/.test(prompt) || /^\/worktree-exit(?:\s|$)/.test(prompt)) {

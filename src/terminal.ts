@@ -401,6 +401,7 @@ export interface TerminalCallbacks {
   onSubmit?: (text: string) => void;
   onInterrupt?: () => void;
   onExit?: () => void;
+  onAction?: (action: string) => void;
 }
 export interface TerminalOptions extends EditorPolicy, TerminalCallbacks {
   input: Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode?: (raw: boolean) => unknown };

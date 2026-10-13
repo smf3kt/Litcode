@@ -103,6 +103,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private cursorColumn = 0;
 
   private editor: EditorState;
+  private stashedDraft: { text: string; cursor: number } | undefined;
   private screen: TuiScreen = 'chat';
   private transcript: TranscriptState;
   private selection: SelectionState = createSelection();
@@ -150,10 +151,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (callbacks.onSubmit) this.on('submit', callbacks.onSubmit);
     if (callbacks.onInterrupt) this.on('interrupt', callbacks.onInterrupt);
     if (callbacks.onExit) this.on('exit', callbacks.onExit);
+    if (callbacks.onAction) this.on('action', callbacks.onAction);
     return () => {
       if (callbacks.onSubmit) this.off('submit', callbacks.onSubmit);
       if (callbacks.onInterrupt) this.off('interrupt', callbacks.onInterrupt);
       if (callbacks.onExit) this.off('exit', callbacks.onExit);
+      if (callbacks.onAction) this.off('action', callbacks.onAction);
     };
   }
 
@@ -493,9 +496,21 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       case 'chat:clearInput':
         this.editor = { ...createEditorState(this.editor.history), running: this.editor.running };
         this.render(); return true;
+      case 'chat:stash': this.stashDraft(); return true;
+      case 'chat:modelPicker': case 'chat:thinkingToggle': case 'app:toggleTodos': return true;
       case 'chat:undo': this.undoKill(); return true;
       default: return false;
     }
+  }
+
+  private stashDraft(): void {
+    const current = this.editor.text.trim() ? { text: this.editor.text, cursor: this.editor.cursor } : undefined;
+    const restored = this.stashedDraft;
+    if (!current && !restored) return;
+    this.stashedDraft = current;
+    this.editor = { ...this.editor, text: restored?.text ?? '', cursor: restored?.cursor ?? 0,
+      historyIndex: this.editor.history.length, historyDraft: restored?.text ?? '' };
+    this.setStatus(restored ? current ? 'drafts swapped' : 'draft restored' : 'draft stashed');
   }
 
   /** Move the selection focus by a line/cell delta, clamping to the transcript. */

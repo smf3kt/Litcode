@@ -110,6 +110,28 @@ test('context and effort commands count paired history and pin the new request e
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
+test('thinking commands pin new sessions and preserve paired history for subsequent requests', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-thinking-')));
+  const config = defaultConfig(workspace, []); config.model = 'fixture';
+  const session = Session.open(workspace, { config });
+  const requests: Anthropic.MessageCreateParamsNonStreaming[] = [];
+  const provider: ModelProvider = { count: async () => 1, complete: async request => { requests.push(request); return reply('done'); } };
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, provider, stubRuntime(), {
+      input: Readable.from(['/thinking on\nfirst\n/thinking\nsecond\n/thinking off\n/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: new AbortController().signal,
+    });
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0]!.thinking?.type, 'adaptive');
+    assert.equal(requests[1]!.thinking?.type, 'disabled');
+    assert.equal(requests[1]!.messages.length, 3);
+    assert.match(stderr.value(), /Thinking: on/); assert.match(stderr.value(), /Thinking: off/);
+    const sessions = listSessions(workspace);
+    assert.equal(sessions.length, 3); assert.ok(sessions.every(item => !item.active));
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test('interactive rewind branches at a completed turn and preserves the original log', async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-rewind-')));
   const config = defaultConfig(workspace, []); config.model = 'test';
