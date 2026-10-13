@@ -43,7 +43,8 @@ import {
 import {
   cellWidth, createEditorState, layoutEditor, reduceEditor, TerminalKeyDecoder,
   type EditorAction, type EditorCommand, type EditorPolicy, type EditorState, type Keybindings, type TerminalCallbacks,
-  type TerminalPromptAnswer, type TerminalPromptRequest,
+  type TerminalPromptAnswer, type TerminalPromptGroup, type TerminalPromptGroupAnswer,
+  type TerminalPromptRequest,
 } from './terminal.js';
 
 export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
@@ -74,6 +75,14 @@ interface ActiveDialog {
   scroll: number;
   followFocus: boolean;
   error?: string;
+  /**
+   * Grouped questions run as a sequence of steps plus a review page, copied
+   * from the recovered tabbed question flow whose last tab reviews every
+   * answer. `step` is the group index, or `groups.length` for the review page.
+   */
+  step: number;
+  /** One entry per completed group, keyed by the group's key. */
+  answers: Map<string, TerminalPromptGroupAnswer>;
   finish(answer?: TerminalPromptAnswer): void;
 }
 
@@ -212,10 +221,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       };
       const cancelled = () => finish();
       this.keys.reset(); this.selection = createSelection();
-      const choices = snapshot.choices?.length ?? 0;
+      const first = snapshot.groups?.[0] ?? snapshot;
+      const choices = first.choices?.length ?? 0;
       this.dialog = { request: snapshot, editor: createEditorState(),
-        index: Math.max(0, Math.min(snapshot.defaultIndex ?? 0, Math.max(0, choices - 1))),
-        selected: new Set(), scroll: 0, followFocus: false, finish };
+        index: Math.max(0, Math.min(first.defaultIndex ?? 0, Math.max(0, choices - 1))),
+        selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(), finish };
       this.screen = 'dialog'; signal.addEventListener('abort', cancelled, { once: true });
       if (signal.aborted) cancelled(); else this.render();
     });
@@ -340,20 +350,34 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
   };
 
+  /**
+   * The step the dialog is answering: the current group, or the whole request
+   * when it is not grouped. `undefined` while the review page is showing.
+   */
+  private dialogStep(dialog: ActiveDialog): TerminalPromptRequest | TerminalPromptGroup | undefined {
+    const groups = dialog.request.groups ?? [];
+    if (!groups.length) return dialog.request;
+    return dialog.step >= groups.length ? undefined : groups[dialog.step];
+  }
+
   private handleDialogAction(action: EditorAction): void {
     const dialog = this.dialog;
     if (!dialog || action.type === 'mouse') return;
     const command = action.type === 'key' ? action.command : action.type;
     const sequence = action.type === 'key' ? action.sequence : '';
     if (command === 'interrupt' || command === 'eof' || sequence === '\x1b') { dialog.finish(); return; }
-    const choices = dialog.request.choices ?? [];
+    // The review page owns its keys before any per-question handling, because
+    // it has no choices of its own and would otherwise fall into text entry.
+    if (this.handleReviewAction(dialog, action, command ?? '')) return;
+    const step = this.dialogStep(dialog);
+    const choices = step?.choices ?? [];
     const textEntry = choices.length === 0 || dialog.index === choices.length;
     if (sequence === '\x1b[5~' || sequence === '\x1b[6~') {
       dialog.scroll = Math.max(0, dialog.scroll + (sequence === '\x1b[5~' ? -1 : 1) * Math.max(1, (this.options.output.rows ?? 24) - 4));
       dialog.followFocus = false; this.render(); return;
     }
     if (choices.length && (command === 'up' || command === 'down' || sequence === '\t' || sequence === '\x1b[Z')) {
-      const count = choices.length + (dialog.request.allowText ? 1 : 0);
+      const count = choices.length + (step?.allowText ? 1 : 0);
       const delta = command === 'up' || sequence === '\x1b[Z' ? -1 : 1;
       dialog.index = (dialog.index + delta + count) % count;
       dialog.followFocus = true; this.render(); return;
@@ -365,32 +389,34 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (command === 'submit') {
       if (textEntry) {
         const text = dialog.editor.text.trim();
-        if (text) dialog.finish({ selected: dialog.request.multiple
+        if (text) this.advanceDialog(dialog, { selected: step?.multiple
           ? [...dialog.selected].sort((a, b) => a - b).map(index => choices[index]!.value) : [], text });
         else { dialog.error = 'Enter an answer'; this.render(); }
       } else {
-        const indices = dialog.request.multiple ? [...dialog.selected].sort((a, b) => a - b) : [dialog.index];
-        const other = dialog.request.multiple && dialog.request.allowText ? dialog.editor.text.trim() : '';
-        if (indices.length || other) dialog.finish({ selected: indices.map(index => choices[index]!.value),
+        const indices = step?.multiple ? [...dialog.selected].sort((a, b) => a - b) : [dialog.index];
+        const other = step?.multiple && step.allowText ? dialog.editor.text.trim() : '';
+        if (indices.length || other) this.advanceDialog(dialog, { selected: indices.map(index => choices[index]!.value),
           ...(other ? { text: other } : {}) });
         else { dialog.error = 'Space selects an option'; this.render(); }
       }
       return;
     }
-    if (!textEntry && action.type === 'insert' && action.text === ' ' && dialog.request.multiple) {
+    if (this.handleReviewAction(dialog, action, command ?? '')) return;
+    if (!textEntry && action.type === 'insert' && action.text === ' ' && step?.multiple) {
       if (dialog.selected.has(dialog.index)) dialog.selected.delete(dialog.index); else dialog.selected.add(dialog.index);
       dialog.error = undefined; this.render(); return;
     }
-    if (dialog.request.allowText && choices.length && (action.type === 'insert' || action.type === 'paste')) {
+    if (step?.allowText && choices.length && (action.type === 'insert' || action.type === 'paste')) {
       dialog.index = choices.length; dialog.followFocus = true;
     }
     if (choices.length === 0 || dialog.index === choices.length) {
+      const limit = step?.maxTextChars ?? dialog.request.maxTextChars ?? 32 * 1024;
       const editorAction = action.type === 'key' ? action.command ? { type: action.command } as EditorAction
         : sequence === '\t' ? { type: 'insert', text: '    ' } as EditorAction : undefined : action;
       if (editorAction) {
         const next = reduceEditor(dialog.editor, editorAction, { ...this.options, maxPasteBytes: 32 * 1024 });
-        if (next.state.text.length > (dialog.request.maxTextChars ?? 32 * 1024)) {
-          dialog.error = `Answer exceeds ${dialog.request.maxTextChars ?? 32 * 1024} characters`;
+        if (next.state.text.length > limit) {
+          dialog.error = `Answer exceeds ${limit} characters`;
         } else if (Buffer.byteLength(next.state.text) <= 32 * 1024 && !next.effects.some(effect => effect.type === 'pasteRejected')) {
           dialog.editor = next.state; dialog.error = undefined;
         } else dialog.error = 'Answer exceeds 32768 bytes';
@@ -633,21 +659,128 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   };
   private readonly onResize = () => { this.selection = createSelection(); this.render(); };
 
+  /**
+   * Records the answer for the current step. A grouped request advances to the
+   * next group, or to the review page after the last one; an ungrouped request
+   * settles immediately, which is the pre-existing behaviour.
+   */
+  private advanceDialog(dialog: ActiveDialog, answer: TerminalPromptAnswer): void {
+    const groups = dialog.request.groups ?? [];
+    if (!groups.length) { dialog.finish(answer); return; }
+    const group = groups[dialog.step];
+    if (group) dialog.answers.set(group.key, { key: group.key, selected: answer.selected, ...(answer.text === undefined ? {} : { text: answer.text }) });
+    dialog.step += 1;
+    this.resetDialogStep(dialog);
+  }
+
+  /** Moves the dialog to `step` with a fresh editor, selection and scroll. */
+  private resetDialogStep(dialog: ActiveDialog): void {
+    const groups = dialog.request.groups ?? [];
+    const group = groups[dialog.step];
+    const source: TerminalPromptRequest | TerminalPromptGroup = group ?? dialog.request;
+    const choices = source.choices?.length ?? 0;
+    dialog.editor = createEditorState();
+    dialog.index = Math.max(0, Math.min(source.defaultIndex ?? 0, Math.max(0, choices - 1)));
+    dialog.selected = new Set();
+    dialog.scroll = 0; dialog.followFocus = true; dialog.error = undefined;
+    this.render();
+  }
+
+  /**
+   * Review-page keys, copied from the recovered page: Enter submits and the
+   * cancel label settles the whole request. Group navigation itself is handled
+   * for every grouped step, because the recovered flow is tabbed and Left/Right
+   * move between questions from any of them.
+   */
+  private handleReviewAction(dialog: ActiveDialog, action: EditorAction, command: string): boolean {
+    const groups = dialog.request.groups ?? [];
+    if (!groups.length) return false;
+    const reviewing = dialog.step >= groups.length;
+    if (command === 'left' || command === 'right') {
+      const delta = command === 'left' ? -1 : 1;
+      const from = reviewing ? groups.length : dialog.step;
+      const next = Math.max(0, Math.min(groups.length - 1, from + delta));
+      // Right on the last question goes to the review page, as the last tab does.
+      if (reviewing && command === 'right') return true;
+      if (!reviewing && command === 'right' && dialog.step === groups.length - 1) {
+        dialog.step = groups.length; this.resetDialogStep(dialog); return true;
+      }
+      if (next === dialog.step && !reviewing) return true;
+      dialog.step = next;
+      const group = groups[next]!;
+      const previous = dialog.answers.get(group.key);
+      this.resetDialogStep(dialog);
+      // Reopen the group with the answer it already has.
+      if (previous) {
+        const choices = group.choices ?? [];
+        dialog.selected = new Set(previous.selected
+          .map(value => choices.findIndex(choice => choice.value === value)).filter(index => index >= 0));
+        if (previous.text) dialog.editor = { ...dialog.editor, text: previous.text };
+      }
+      this.render();
+      return true;
+    }
+    if (!reviewing) return false;
+    if (action.type === 'insert' || action.type === 'paste') return true;
+    if (command === 'submit') {
+      dialog.finish({ selected: [], groups: groups.map(group => dialog.answers.get(group.key)
+        ?? { key: group.key, selected: [] }) });
+      return true;
+    }
+    return true;
+  }
+
   private renderDialog(columns: number, rows: number): string[] {
     const dialog = this.dialog!;
     const clean = (text: string) => text.replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
     const oneLine = (text: string) => clean(text).replace(/[\t\n]/g, ' ');
-    const content = wrapEntry({ kind: 'assistant', text: clean(dialog.request.message) }, columns);
-    const choices = dialog.request.choices ?? [];
+    const groups = dialog.request.groups ?? [];
+    const reviewing = groups.length > 0 && dialog.step >= groups.length;
+    const group = reviewing ? undefined : groups[dialog.step];
+    // A grouped step answers its own group; an ungrouped request is one step.
+    const active: TerminalPromptRequest | TerminalPromptGroup = group ?? dialog.request;
+    const title = reviewing ? (dialog.request.reviewTitle ?? 'Review your answers') : active.title ?? dialog.request.title;
+    const content: string[] = [];
+    if (reviewing) {
+      // Recovered page: a warning while questions are unanswered, then each
+      // answered question with its value, then the submit prompt.
+      const unanswered = groups.filter(item => {
+        const answer = dialog.answers.get(item.key);
+        return !answer || (!answer.selected.length && !answer.text);
+      });
+      if (unanswered.length) {
+        content.push(...wrapEntry({ kind: 'error', text: 'You have not answered all questions' }, columns));
+        content.push('');
+      }
+      for (const item of groups) {
+        const answer = dialog.answers.get(item.key);
+        content.push(...wrapEntry({ kind: 'assistant', text: oneLine(item.title ?? item.message) }, columns));
+        const value = answer?.text ?? (answer?.selected.length ? answer.selected.join(', ') : '');
+        content.push(...wrapEntry({ kind: 'system', text: `  ${value || '(no answer)'}` }, columns));
+      }
+      content.push('');
+      content.push(...wrapEntry({ kind: 'assistant', text: 'Ready to submit your answers?' }, columns));
+      const height = Math.max(0, rows - 4);
+      dialog.scroll = Math.min(dialog.scroll, Math.max(0, content.length - height));
+      const visible = content.slice(dialog.scroll, dialog.scroll + height);
+      while (visible.length < height) visible.push('');
+      const submit = dialog.request.submitLabel ?? 'Submit answers';
+      const cancel = dialog.request.cancelLabel ?? 'Cancel';
+      return [oneLine(title ?? 'Review'), ...visible, SEPARATOR.repeat(columns),
+        pad(`[ ${submit} ]  [ ${cancel} ]`, columns),
+        dialog.error ?? 'Enter submit / Esc cancel / Left Right edit a question'].map(line => pad(line, columns));
+    }
+    const body = wrapEntry({ kind: 'assistant', text: clean(active.message) }, columns);
+    const choices = active.choices ?? [];
     const offsets: number[] = [];
     for (const [index, choice] of choices.entries()) {
-      offsets.push(content.length);
-      const marker = dialog.request.multiple ? (dialog.selected.has(index) ? '[x]' : '[ ]') : '   ';
-      content.push(...wrapEntry({ kind: 'assistant', text: `${dialog.index === index ? '>' : ' '} ${marker} ${clean(choice.label)}` }, columns));
-      if (choice.description) content.push(...wrapEntry({ kind: 'assistant', text: `    ${clean(choice.description)}` }, columns));
+      offsets.push(body.length);
+      const marker = active.multiple ? (dialog.selected.has(index) ? '[x]' : '[ ]') : '   ';
+      body.push(...wrapEntry({ kind: 'assistant', text: `${dialog.index === index ? '>' : ' '} ${marker} ${clean(choice.label)}` }, columns));
+      if (choice.description) body.push(...wrapEntry({ kind: 'assistant', text: `    ${clean(choice.description)}` }, columns));
     }
-    if (choices.length && dialog.request.allowText) {
-      offsets.push(content.length); content.push(`${dialog.index === choices.length ? '>' : ' '} Other`);
+    if (choices.length && active.allowText) {
+      offsets.push(body.length); body.push(`${dialog.index === choices.length ? '>' : ' '} Other`);
     }
     const height = Math.max(0, rows - 4);
     const focused = offsets[dialog.index];
@@ -657,15 +790,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       else if (focused >= dialog.scroll + height) dialog.scroll = focused - height + 1;
       dialog.followFocus = false;
     }
-    dialog.scroll = Math.min(dialog.scroll, Math.max(0, content.length - height));
-    const visible = content.slice(dialog.scroll, dialog.scroll + height);
+    dialog.scroll = Math.min(dialog.scroll, Math.max(0, body.length - height));
+    const visible = body.slice(dialog.scroll, dialog.scroll + height);
     while (visible.length < height) visible.push('');
     const textEntry = choices.length === 0 || dialog.index === choices.length;
     const answer = layoutEditor(dialog.editor, columns, '> ', '  ', 1).lines[0] ?? '> ';
-    return [oneLine(dialog.request.title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
+    const progress = groups.length ? `Question ${dialog.step + 1} of ${groups.length}` : undefined;
+    const hint = active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'
+      : 'Enter next / Esc cancel / PgUp/PgDn';
+    return [oneLine(title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
       textEntry ? answer : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
-      dialog.error ?? (dialog.request.multiple ? 'Space toggle / Enter submit / Esc cancel / PgUp/PgDn'
-        : 'Enter select / Esc cancel / PgUp/PgDn')].map(line => pad(line, columns));
+      dialog.error ?? (progress ? `${progress} · ${hint}` : hint)].map(line => pad(line, columns));
   }
 
   private render(): void {
@@ -675,8 +810,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.dialog) {
       const frame = this.renderDialog(columns, rows);
       this.options.output.write(this.modes.frame(`\x1b[H${frame.map(line => `${line}\x1b[K`).join('\r\n')}`));
-      const choices = this.dialog.request.choices ?? [];
-      if (!choices.length || this.dialog.index === choices.length) {
+      const groups = this.dialog.request.groups ?? [];
+      const reviewing = groups.length > 0 && this.dialog.step >= groups.length;
+      const active = reviewing ? undefined : groups[this.dialog.step] ?? this.dialog.request;
+      const choices = active?.choices ?? [];
+      if (reviewing || !choices.length || this.dialog.index === choices.length) {
         const cursor = layoutEditor(this.dialog.editor, columns, '> ', '  ', 1).cursorColumn;
         this.options.output.write(`\x1b[1A\r${cursor ? `\x1b[${cursor}C` : ''}\x1b[?25h`);
       } else this.options.output.write('\x1b[?25l');

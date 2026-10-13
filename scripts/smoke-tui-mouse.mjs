@@ -111,7 +111,10 @@ try {
   } else if (dialogs) {
     child.stdin.write('first task\r');
     await until(() => topLine() === 'Fixture choice');
+    // The question now ends on a review page, so the answer is confirmed there.
     child.stdin.write('\x1b[B\r');
+    await until(() => topLine() === 'Review your answers');
+    child.stdin.write('\r');
     await until(() => topLine() === 'Approve this plan');
     child.stdin.write('\x1b[B\r');
     await until(() => topLine() === 'Allow once');

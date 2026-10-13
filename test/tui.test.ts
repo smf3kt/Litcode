@@ -309,6 +309,83 @@ test('actual TUI input reaches contextual navigation while paste and overrides k
   } finally { tui.close(); }
 });
 
+test('grouped questions step through each question and review before submitting', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 });
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => drawn.slice(drawn.lastIndexOf('\x1b[H'))
+    .replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').split('\r\n').map(line => line.trim()).filter(Boolean);
+  try {
+    const pending = tui.prompt({ title: 'Questions', message: '', groups: [
+      { key: 'First', title: 'First', message: 'Pick one', choices: [{ label: 'A', value: 'A' }, { label: 'B', value: 'B' }] },
+      { key: 'Second', title: 'Second', message: 'Pick many',
+        choices: [{ label: 'X', value: 'X' }, { label: 'Y', value: 'Y' }], multiple: true },
+    ] }, new AbortController().signal);
+    assert.equal(frame()[0], 'First');
+    assert.match(frame().at(-1)!, /Question 1 of 2/);
+    key('\x1b[B\r');
+    assert.equal(frame()[0], 'Second');
+    assert.match(frame().at(-1)!, /Question 2 of 2/);
+    key(' \x1b[B \r');
+    // The review page lists every answer before the request settles.
+    assert.equal(frame()[0], 'Review your answers');
+    assert.ok(frame().includes('-   B'), drawn);
+    assert.ok(frame().includes('-   X, Y'), drawn);
+    assert.ok(frame().includes('Ready to submit your answers?'));
+    assert.ok(frame().includes('[ Submit answers ]  [ Cancel ]'));
+    assert.match(frame().at(-1)!, /Enter submit/);
+    key('\r');
+    assert.deepEqual(await pending, { selected: [], groups: [
+      { key: 'First', selected: ['B'] }, { key: 'Second', selected: ['X', 'Y'] }] });
+  } finally { tui.close(); }
+});
+
+test('a grouped question can be reopened from the review page and cancelled', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 });
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => drawn.slice(drawn.lastIndexOf('\x1b[H'))
+    .replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').split('\r\n').map(line => line.trim()).filter(Boolean);
+  try {
+    const pending = tui.prompt({ message: '', groups: [
+      { key: 'First', title: 'First', message: 'Pick one', choices: [{ label: 'A', value: 'A' }, { label: 'B', value: 'B' }] },
+      { key: 'Second', title: 'Second', message: 'Pick many',
+        choices: [{ label: 'X', value: 'X' }, { label: 'Y', value: 'Y' }], multiple: true },
+    ] }, new AbortController().signal);
+    key('\r');            // first question keeps A
+    key(' \r');           // second question takes X
+    assert.equal(frame()[0], 'Review your answers');
+    // Left steps back one question, so it reopens the last one with its answer.
+    key('\x1b[D');
+    assert.equal(frame()[0], 'Second');
+    assert.ok(frame().includes('Selected: X'), drawn);
+    key('\x1b[D');
+    assert.equal(frame()[0], 'First');
+    assert.ok(frame().includes('Selected: A'), drawn);
+    key('\x1b[B\r');      // change it to B, which advances to the second question
+    assert.equal(frame()[0], 'Second');
+    // Right on the last question opens the review page, as the last tab does.
+    key('\x1b[C');
+    assert.equal(frame()[0], 'Review your answers');
+    key('\r');
+    assert.deepEqual(await pending, { selected: [], groups: [
+      { key: 'First', selected: ['B'] }, { key: 'Second', selected: ['X'] }] });
+    // Escape on the review page cancels the whole request.
+    const cancelled = tui.prompt({ message: '', groups: [
+      { key: 'Only', title: 'Only', message: 'Pick', choices: [{ label: 'A', value: 'A' }] }] }, new AbortController().signal);
+    key('\r'); key('\x1b');
+    assert.equal(await cancelled, undefined);
+  } finally { tui.close(); }
+});
+
 test('modal choices and Other text own input and restore the previous draft', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
