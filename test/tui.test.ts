@@ -283,6 +283,27 @@ test('modal cancellation abort and close settle once without changing the draft'
   } finally { tui.close(); }
 });
 
+test('common action keys preserve drafts and stash swaps text with its cursor', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 50, rows: 10 });
+  const actions: string[] = [];
+  const tui = new TuiTerminal({ input, output, onAction: action => actions.push(action) }).start();
+  const key = (text: string) => input.emit('data', text);
+  try {
+    key('draft\x1b[D');
+    const cursor = tui.state.cursor;
+    key('\x1bp\x1bt\u0014');
+    assert.deepEqual(actions, ['chat:modelPicker', 'chat:thinkingToggle', 'app:toggleTodos']);
+    assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, cursor);
+    key('\u0013'); assert.equal(tui.state.text, '');
+    key('other\u0013'); assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, cursor);
+    key('\u0013'); assert.equal(tui.state.text, 'other');
+    key('\r\u0013'); assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, cursor);
+  } finally { tui.close(); }
+});
+
 test('the kill ring coalesces, caps at ten, and cycles yank-pop', () => {
   let state = reduceKillRing(emptyKillRing, { type: 'kill', text: 'one' });
   assert.deepEqual(state.ring, ['one']);

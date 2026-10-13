@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const dialogs = process.argv.includes('--dialogs');
+const actions = process.argv.includes('--actions');
 const temporary = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? `${process.env.CLAUDE_JOB_DIR}/tmp` : root, '.tui-mouse-'));
 const workspace = path.join(temporary, 'workspace'), user = path.join(temporary, 'user');
 fs.mkdirSync(workspace); fs.mkdirSync(user);
@@ -44,7 +45,7 @@ const server = http.createServer(async (req, res) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const quote = value => `'${value.replaceAll("'", "'\\''")}'`;
 const pidFile = path.join(temporary, 'cli.pid');
-const command = `printf '%s' "$$" > ${quote(pidFile)}; stty rows 10 cols 40; exec ${quote(process.execPath)} ${quote(path.join(root, 'bin/litcode.mjs'))} --workspace ${quote(workspace)} --user-dir ${quote(user)}${dialogs ? ' --permission-mode ask' : ''}`;
+const command = `printf '%s' "$$" > ${quote(pidFile)}; stty rows 10 cols ${actions ? 100 : 40}; exec ${quote(process.execPath)} ${quote(path.join(root, 'bin/litcode.mjs'))} --workspace ${quote(workspace)} --user-dir ${quote(user)}${dialogs ? ' --permission-mode ask' : ''}`;
 // A shell pipe gives macOS script a pipe rather than Node's stdin socket.
 const child = spawn('/bin/sh', ['-c', `cat | script -q /dev/null /bin/sh -c ${quote(command)}`], {
   cwd: root, detached: true,
@@ -80,8 +81,35 @@ async function until(predicate) {
 const topLine = () => output.slice(output.lastIndexOf('\x1b[H') + 3).split('\x1b[K')[0].trim();
 try {
   await until(() => output.includes('\x1b[?1049h') && output.includes('ctrl+o'));
-  child.stdin.write('first task\r');
-  if (dialogs) {
+  if (actions) {
+    child.stdin.write('retained\x1bp');
+    await until(() => topLine() === 'Model');
+    child.stdin.write('fixture/other\r');
+    await until(() => output.includes('Model: fixture/other'));
+    child.stdin.write('\x1bt');
+    await until(() => output.includes('Thinking: on'));
+    child.stdin.write('\u0013');
+    await until(() => output.includes('draft stashed'));
+    child.stdin.write('scratch\u0013');
+    await until(() => output.includes('drafts swapped'));
+    child.stdin.write('\u0014');
+    await until(() => topLine() === '[]');
+    assert.equal(requests.length, 0);
+    child.stdin.write('\r');
+    await until(() => output.includes('ready  finished:'));
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].model, 'fixture/other');
+    assert.equal(requests[0].thinking.type, 'adaptive');
+    assert.equal(requests[0].messages.at(-1).content, 'retained');
+    child.stdin.write('\x1bp');
+    await until(() => topLine() === 'Model');
+    child.stdin.write('\u0003');
+    await until(() => output.includes('Model selection cancelled'));
+    child.stdin.write('/exit\r'); child.stdin.end();
+    assert.equal(await exited, 0, errors);
+    assert.equal(requests.length, 1);
+  } else if (dialogs) {
+    child.stdin.write('first task\r');
     await until(() => topLine() === 'Fixture choice');
     child.stdin.write('\x1b[B\r');
     await until(() => topLine() === 'Approve this plan');
@@ -107,6 +135,7 @@ try {
     assert.equal(fs.existsSync(path.join(workspace, 'cancelled.txt')), false);
     assert.ok(results.find(result => result.tool_use_id === 'cancel-write').is_error);
   } else {
+  child.stdin.write('first task\r');
   await until(() => output.includes('ready  finished:') && topLine() === 'mouse-line-14');
   child.stdin.write('draft\x1b[<64;2;');
   await delay(30); child.stdin.write('3M');
@@ -143,7 +172,8 @@ try {
   const journal = files.find(file => file.endsWith('.jsonl'));
   assert.ok(journal);
   assert.equal(fs.readFileSync(path.join(workspace, '.agent', journal), 'utf8').includes('owned-mouse-fixture'), false);
-  console.log(JSON.stringify({ ...(dialogs ? { tuiDialogs: 'passed', question: true, plan: true,
+  console.log(JSON.stringify({ ...(actions ? { tuiActions: 'passed', modelPicker: true, thinking: true,
+    tasks: true, stash: true, pickerCancelled: true, draftPreserved: true } : dialogs ? { tuiDialogs: 'passed', question: true, plan: true,
     permissionApproved: true, permissionCancelled: true, fileEffectsVerified: true } : {
     tuiMouse: 'passed', transcriptKeys: true, splitSgrWheel: true, x10Wheel: true,
     pointerSelection: true, keyboardExtension: true, osc52PayloadVerified: true, draftUnchanged: true }),
