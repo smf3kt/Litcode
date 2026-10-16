@@ -433,6 +433,24 @@ The surviving bodies were extracted verbatim from `b2c553b` rather than retyped,
 
 **Next (step 7c):** `services/analytics/metadata.ts`'s `getEventMetadata`, `buildProcessMetrics` and the `FirstPartyEventLogging*` converters, and with them `utils/user.ts`'s `getUserForGrowthBook` → `getCoreUserData` → `CoreUserData` chain. All of it is reader-less now; the only live surface left in `metadata.ts` is the tool-name and skill-name helpers the tool path still calls.
 
+## Wave D step 7c — the record builders and the generated protos (landed, `ce11027`)
+
+`services/analytics/metadata.ts` existed to build one record: an environment context, a process-metrics sample, the swarm/team agent identification, the user data, and a 1P snake_case formatter. `getEventMetadata` assembled them for the two transports that went in step 7a, and step 7b then took the last remaining reader — `tools/BashTool/bashSecurity.ts` names the function only in a note about `process.memoryUsage`. So the module's second half was dead as one contiguous block and went as one: from the `EnvContext` type to the end of the file. 950 lines to 363; 4 files, +10/−1,749.
+
+What is left is the part the tree still calls, and after this it is a PII-redaction module rather than a metadata module: the tool-name sanitizer (21 files), the MCP-detail, skill-name and bounded tool-input helpers (`services/tools/toolExecution.ts`), the file-extension helpers for two callers, and the `not_code_or_filepaths` marker type (137 files). Nine surviving lines are checked word-for-word against the base revision by the new fixture. The import block shrank from twenty-one bindings to four, because every other one existed for the dead half.
+
+### The deletion named its own orphans, twice
+
+The cut made `types/generated/events_mono/claude_code/v1/claude_code_internal_event.ts` — the 866-line 1P event proto type — unreferenced. Deleting that made `events_mono/common/v1/auth.ts` and `google/protobuf/timestamp.ts` unreferenced, because this file was each one's only importer. The scanner caught both rounds: 11 orphans after the truncation, back to the ten legitimate entries after the second deletion. This is the third time the post-cut re-scan has found a chain nothing else would (wave D step 3's `Stats.tsx` cascade, then the voice cluster, now this), and the first time it found a *second* round caused by the first round's own cleanup.
+
+**Recorded finding:** `types/generated/` now holds no files at all. Every generated proto type in this tree existed for the 1P event payload, so the last of them left with the last importer. Anyone looking for the proto schemas should know the directory is emptied deliberately rather than by accident.
+
+### Verification
+
+tsc 0, eleven fixtures pass, `git diff --check` clean (one repair: the truncation left a blank line at EOF, which `git diff --check` caught and the same script's neighbour removed). The orphan scan's ten remaining entries are all legitimate — a vendored TypeScript file, ambient declaration files, the CLI entrypoint, a shim and a utility with no importer by design.
+
+**Next (step 7d):** the last reader-less cluster this wave left behind. `utils/user.ts`'s `getUserForGrowthBook` → `getCoreUserData` → `CoreUserData` chain (all three reader-less now, and `CoreUserData`'s only other mention was the dead half of `metadata.ts`), the `initUser`/`resetUserCache` pair in `main.tsx` that exists to pre-fetch the email those records carried, the `GitHubActionsMetadata` type whose remaining user was this cut's generated file, and three exports 7c orphaned in modules that keep other live exports: `utils/git.ts`'s `getRepoRemoteHash`, `utils/platform.ts`'s `getLinuxDistroInfo` and `detectVcs`.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
