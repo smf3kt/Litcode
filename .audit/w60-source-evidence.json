@@ -1,0 +1,65 @@
+{
+  "original": "bd958088195aefbb4bce96ba966447e5e09b1312",
+  "evidence": [
+    {
+      "path": "utils/envUtils.ts",
+      "symbol": "isInProtectedNamespace",
+      "originalSha256": "0519e43a719ad6579319021c3949d45b7360f71d31f82186df2e9e1bfbc07cdf",
+      "originalRange": [
+        4402,
+        4924
+      ],
+      "changedSha256": "8bb984dc72255c5053e5a007a1ea3576b2d2174d505413ea81de0ed8e7dc0f29",
+      "changedRange": [
+        4402,
+        4988
+      ],
+      "coordinateUnit": "utf16-half-open",
+      "mode": "adapt",
+      "difference": "Missing internal dependency fails explicitly; live ant gate retained; external path preserved."
+    },
+    {
+      "path": "utils/permissions/classifierDecision.ts",
+      "symbol": "VERIFY_PLAN_EXECUTION_TOOL_NAME",
+      "originalSha256": "f3797aa029ad184719677b2490d22a9c68ee9d464888229f2e117e90f8aab977",
+      "originalRange": [
+        2326,
+        2595
+      ],
+      "changedSha256": "0124d343ae247a70a00de8907bb86ca523946f9fd5a27049af2dc533273988e9",
+      "changedRange": [
+        1931,
+        2246
+      ],
+      "coordinateUnit": "utf16-half-open",
+      "mode": "adapt",
+      "difference": "Missing internal dependency fails explicitly; live ant gate retained; external path preserved."
+    },
+    {
+      "path": "commands/clear/caches.ts",
+      "symbol": "clearSessionCaches",
+      "originalSha256": "9c5eef4aead5bb81c4ff7301576be4b07d79a993355ab528d5150510d0f63da2",
+      "originalRange": [
+        2338,
+        6365
+      ],
+      "changedSha256": "0dddbf4ae2736e810d302ae0a0da7b766beae1307e8f7ee4ab1023c55e12b502",
+      "changedRange": [
+        2338,
+        6296
+      ],
+      "coordinateUnit": "utf16-half-open",
+      "mode": "adapt",
+      "difference": "Missing internal dependency fails explicitly; live ant gate retained; external path preserved."
+    }
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Selected real source bodies with owned dependency fixtures; external and ant branches; no application entrypoint execution",
+  "remaining": "Internal component implementations absent from available inventories; full CLI unverified"
+}
