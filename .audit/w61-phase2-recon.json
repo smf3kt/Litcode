@@ -1,0 +1,1925 @@
+{
+ "totalCandidates": 293,
+ "removalCandidates": [
+  {
+   "name": "desktop",
+   "path": "commands/desktop/index.ts",
+   "purpose": "把当前会话交给 Claude Desktop 继续（平台受限）。",
+   "evidence": "commands/desktop/index.ts:15-24 `name: 'desktop', aliases: ['app'], description: 'Continue the current session in Claude Desktop', availability: ['claude-ai']`; 注册 commands.ts:250; 实现 commands/desktop/desktop.tsx 渲染 components/DesktopHandoff",
+   "registeredWhere": "commands.ts:250",
+   "removalRisk": "低；桌面应用移交，属明确去除候选。"
+  },
+  {
+   "name": "install-github-app",
+   "path": "commands/install-github-app/index.ts",
+   "purpose": "为仓库配置 Claude GitHub Actions（含 OAuth 流程）。",
+   "evidence": "commands/install-github-app/index.ts:4-10 `name: 'install-github-app', description: 'Set up Claude GitHub Actions for a repository', availability: ['claude-ai','console']`; 实现目录含 OAuthFlowStep.tsx; 注册 commands.ts:265",
+   "registeredWhere": "commands.ts:265",
+   "removalRisk": "低；第三方 app 安装，属明确去除候选。"
+  },
+  {
+   "name": "install-slack-app",
+   "path": "commands/install-slack-app/index.ts",
+   "purpose": "安装 Claude Slack app（打开市场页 + 埋点）。",
+   "evidence": "commands/install-slack-app/index.ts:3-10 `name: 'install-slack-app', description: 'Install the Claude Slack app', availability: ['claude-ai']`; 实现 commands/install-slack-app/install-slack-app.ts:5 `SLACK_APP_URL = 'https://slack.com/marketplace/...'`; 注册 commands.ts:266",
+   "registeredWhere": "commands.ts:266",
+   "removalRisk": "低；第三方 app 安装，明确去除候选。"
+  },
+  {
+   "name": "mobile",
+   "path": "commands/mobile/index.ts",
+   "purpose": "展示下载 Claude 移动端的二维码。",
+   "evidence": "commands/mobile/index.ts:3-10 `name: 'mobile', aliases: ['ios','android'], description: 'Show QR code to download the Claude mobile app'`; 实现 commands/mobile/mobile.tsx:18-25 PLATFORMS 指向 App Store / Play Store; 注册 commands.ts:269",
+   "registeredWhere": "commands.ts:269",
+   "removalRisk": "低；移动端，明确去除候选。"
+  },
+  {
+   "name": "remote-env",
+   "path": "commands/remote-env/index.ts",
+   "purpose": "配置 teleport 会话的默认远程环境。",
+   "evidence": "commands/remote-env/index.ts:5-16 `name: 'remote-env', description: 'Configure the default remote environment for teleport sessions', isEnabled: () => isClaudeAISubscriber() && isPolicyAllowed('allow_remote_sessions')`; 注册 commands.ts:272",
+   "registeredWhere": "commands.ts:272",
+   "removalRisk": "低；远程会话，明确去除候选。"
+  },
+  {
+   "name": "release-notes",
+   "path": "commands/release-notes/index.ts",
+   "purpose": "查看版本更新日志（含网络拉取 changelog）。",
+   "evidence": "commands/release-notes/index.ts:3-9 `description: 'View release notes', name: 'release-notes'`; 实现 commands/release-notes/release-notes.ts:3-8 导入 fetchAndStoreChangelog; 注册 commands.ts:275",
+   "registeredWhere": "commands.ts:275",
+   "removalRisk": "低；产品公告类，非 coding 功能。"
+  },
+  {
+   "name": "session",
+   "path": "commands/session/index.ts",
+   "purpose": "显示远程会话 URL 与二维码。",
+   "evidence": "commands/session/index.ts:3-13 `name: 'session', aliases: ['remote'], description: 'Show remote session URL and QR code', isEnabled: () => getIsRemoteMode()`; 注册 commands.ts:279",
+   "registeredWhere": "commands.ts:279",
+   "removalRisk": "低；远程会话，明确去除候选。"
+  },
+  {
+   "name": "stats",
+   "path": "commands/stats/index.ts",
+   "purpose": "显示使用统计与活跃度。",
+   "evidence": "commands/stats/index.ts:3-9 `name: 'stats', description: 'Show your Claude Code usage statistics and activity'`; 实现 commands/stats/stats.tsx 渲染 components/Stats; 注册 commands.ts:281",
+   "registeredWhere": "commands.ts:281",
+   "removalRisk": "低；遥测/分析类，明确去除候选。"
+  },
+  {
+   "name": "stickers",
+   "path": "commands/stickers/index.ts",
+   "purpose": "打开 Claude Code 贴纸订购页。",
+   "evidence": "commands/stickers/index.ts:3-10 `name: 'stickers', description: 'Order Claude Code stickers'`; 实现 commands/stickers/stickers.ts:5 `url = 'https://www.stickermule.com/claudecode'`; 注册 commands.ts:284",
+   "registeredWhere": "commands.ts:284",
+   "removalRisk": "低；营销类，明确去除候选。"
+  },
+  {
+   "name": "tag",
+   "path": "commands/tag/index.ts",
+   "purpose": "给当前会话打可搜索标签（ant-only）。",
+   "evidence": "commands/tag/index.ts:3-10 `name: 'tag', description: 'Toggle a searchable tag on the current session', isEnabled: () => process.env.USER_TYPE === 'ant'`; 注册 commands.ts:285",
+   "registeredWhere": "commands.ts:285",
+   "removalRisk": "低；内部会话标记，非 coding 功能。"
+  },
+  {
+   "name": "feedback",
+   "path": "commands/feedback/index.ts",
+   "purpose": "提交 Claude Code 反馈（别名 bug）。",
+   "evidence": "commands/feedback/index.ts:6-20 `name: 'feedback', aliases: ['bug'], description: 'Submit feedback about Claude Code'`; 注册 commands.ts:287",
+   "registeredWhere": "commands.ts:287",
+   "removalRisk": "低；反馈上报，明确去除候选。"
+  },
+  {
+   "name": "usage",
+   "path": "commands/usage/index.ts",
+   "purpose": "显示套餐用量限额。",
+   "evidence": "commands/usage/index.ts:3-8 `name: 'usage', description: 'Show plan usage limits', availability: ['claude-ai']`; 注册 commands.ts:297",
+   "registeredWhere": "commands.ts:297",
+   "removalRisk": "低；账号计费类。"
+  },
+  {
+   "name": "insights (usageReport)",
+   "path": "commands.ts (内联 shim) → commands/insights.ts",
+   "purpose": "分析历史会话生成报告。",
+   "evidence": "commands.ts:170-183 `const usageReport: Command = { type: 'prompt', name: 'insights', description: 'Generate a report analyzing your Claude Code sessions' … await import('./commands/insights.js') }`; 注册 commands.ts:298 `usageReport,`",
+   "registeredWhere": "commands.ts:298 (内联定义于 :170-183)",
+   "removalRisk": "低；会话分析报告，明确去除候选。"
+  },
+  {
+   "name": "web-setup (webCmd)",
+   "path": "commands/remote-setup/index.ts",
+   "purpose": "在 web 上配置 Claude Code（需连接 GitHub）。",
+   "evidence": "commands/remote-setup/index.ts:5-17 `name: 'web-setup', description: 'Setup Claude Code on the web (requires connecting your GitHub account)', availability: ['claude-ai']`; 注册 commands.ts:300 `...(webCmd ? [webCmd] : [])`",
+   "registeredWhere": "commands.ts:300 (条件注册，feature('CCR_REMOTE_SETUP'))",
+   "removalRisk": "低；远程/web runner，明确去除候选。"
+  },
+  {
+   "name": "forkCmd",
+   "path": "commands.ts:302 (变量为 null)",
+   "purpose": "占位槽，运行时恒为 null，不注册任何命令。",
+   "evidence": "commands.ts:302 `...(forkCmd ? [forkCmd] : []),`；定义处 commands.ts:106 `const forkCmd = null`",
+   "registeredWhere": "commands.ts:302",
+   "removalRisk": "无；死代码槽位，删除无影响。"
+  },
+  {
+   "name": "buddy",
+   "path": "commands.ts:302 (变量为 null) / buddy/",
+   "purpose": "伴侣精灵/宠物功能（当前为 null 槽位）。",
+   "evidence": "commands.ts:302 `...(buddy ? [buddy] : []),`；定义 commands.ts:108 `const buddy = null`；实现目录 buddy/companion.ts, buddy/CompanionSprite.tsx",
+   "registeredWhere": "commands.ts:302（槽位）；实体在 buddy/ 目录",
+   "removalRisk": "低；伴侣精灵为明确去除候选。"
+  },
+  {
+   "name": "proactive",
+   "path": "commands/proactive.js (feature PROACTIVE/KAIROS)",
+   "purpose": "主动式后台行为命令。",
+   "evidence": "commands.ts:62-66 `const proactive = feature('PROACTIVE') || feature('KAIROS') ? require('./commands/proactive.js').default : null`; 注册 commands.ts:303",
+   "registeredWhere": "commands.ts:303（条件注册）",
+   "removalRisk": "低；非 coding 主动功能。"
+  },
+  {
+   "name": "brief (briefCommand)",
+   "path": "commands/brief.ts (feature KAIROS/KAIROS_BRIEF)",
+   "purpose": "Kairos brief 模式命令。",
+   "evidence": "commands.ts:67-69 `const briefCommand = feature('KAIROS') || feature('KAIROS_BRIEF') ? require('./commands/brief.js').default : null`; 实现 commands/brief.ts:1-13 导入 BriefTool; 注册 commands.ts:304",
+   "registeredWhere": "commands.ts:304（条件注册）",
+   "removalRisk": "低；brief 为明确去除候选。"
+  },
+  {
+   "name": "assistant (assistantCommand)",
+   "path": "commands/assistant/index.js (feature KAIROS)",
+   "purpose": "Kairos assistant 命令。",
+   "evidence": "commands.ts:70-72 `const assistantCommand = feature('KAIROS') ? require('./commands/assistant/index.js').default : null`; 注册 commands.ts:305",
+   "registeredWhere": "commands.ts:305（条件注册）",
+   "removalRisk": "低；非 coding 功能。"
+  },
+  {
+   "name": "remote-control (bridge)",
+   "path": "commands/bridge/index.ts (feature BRIDGE_MODE)",
+   "purpose": "把终端接入远程控制会话（别名 rc）。",
+   "evidence": "commands/bridge/index.ts:9-21 `name: 'remote-control', aliases: ['rc'], description: 'Connect this terminal for remote-control sessions', isEnabled → isBridgeEnabled()`; 注册 commands.ts:306",
+   "registeredWhere": "commands.ts:306（条件注册）",
+   "removalRisk": "低；桥接/远程会话，明确去除候选。"
+  },
+  {
+   "name": "remoteControlServerCommand",
+   "path": "commands/remoteControlServer/index.js (feature DAEMON+BRIDGE_MODE)",
+   "purpose": "远程控制服务端命令。",
+   "evidence": "commands.ts:76-80 `const remoteControlServerCommand = feature('DAEMON') && feature('BRIDGE_MODE') ? require('./commands/remoteControlServer/index.js').default : null`; 注册 commands.ts:307",
+   "registeredWhere": "commands.ts:307（条件注册）",
+   "removalRisk": "低；远程会话/daemon，明确去除候选。"
+  },
+  {
+   "name": "voice (voiceCommand)",
+   "path": "commands/voice/index.ts (feature VOICE_MODE)",
+   "purpose": "切换语音模式（麦克风录音 + STT）。",
+   "evidence": "commands/voice/index.ts:6-18 `name: 'voice', description: 'Toggle voice mode', availability: ['claude-ai']`; 实现 commands/voice/voice.ts:1-6 导入 voiceStreamSTT; 注册 commands.ts:308",
+   "registeredWhere": "commands.ts:308（条件注册）",
+   "removalRisk": "低；语音为明确去除候选。"
+  },
+  {
+   "name": "think-back",
+   "path": "commands/thinkback/index.ts",
+   "purpose": "2025 年度回顾（growthbook 门控）。",
+   "evidence": "commands/thinkback/index.ts:3-10 `name: 'think-back', description: 'Your 2025 Claude Code Year in Review', isEnabled: () => checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_thinkback')`; 注册 commands.ts:309",
+   "registeredWhere": "commands.ts:309",
+   "removalRisk": "低；营销/回顾功能，明确去除候选。"
+  },
+  {
+   "name": "thinkback-play",
+   "path": "commands/thinkback-play/index.ts",
+   "purpose": "播放 thinkback 动画（隐藏）。",
+   "evidence": "commands/thinkback-play/index.ts:5-13 `name: 'thinkback-play', description: 'Play the thinkback animation', isHidden: true`; 注册 commands.ts:310",
+   "registeredWhere": "commands.ts:310",
+   "removalRisk": "低；动画播放，明确去除候选。"
+  },
+  {
+   "name": "privacy-settings",
+   "path": "commands/privacy-settings/index.ts",
+   "purpose": "查看并更新隐私设置。",
+   "evidence": "commands/privacy-settings/index.ts:4-11 `name: 'privacy-settings', description: 'View and update your privacy settings', isEnabled: () => isConsumerSubscriber()`; 注册 commands.ts:313",
+   "registeredWhere": "commands.ts:313",
+   "removalRisk": "低；隐私/账号设置。"
+  },
+  {
+   "name": "logout",
+   "path": "commands/logout/index.ts",
+   "purpose": "登出 Anthropic 账号。",
+   "evidence": "commands/logout/index.ts:4-10 `name: 'logout', description: 'Sign out from your Anthropic account'`; 注册 commands.ts:317 `...( !isUsing3PServices() ? [logout, login()] : [])`",
+   "registeredWhere": "commands.ts:317（条件注册，非三方服务时）",
+   "removalRisk": "中；OAuth 登录族属明确去除候选，但需同步处理鉴权路径。"
+  },
+  {
+   "name": "login",
+   "path": "commands/login/index.ts",
+   "purpose": "登录/切换 Anthropic 账号。",
+   "evidence": "commands/login/index.ts:5-14 `name: 'login', description: hasAnthropicApiKeyAuth() ? 'Switch Anthropic accounts' : 'Sign in with your Anthropic account'`; 注册 commands.ts:317",
+   "registeredWhere": "commands.ts:317（条件注册，调用 login() 工厂）",
+   "removalRisk": "中；OAuth 登录族属明确去除候选，但需处理 API key 鉴权分支。"
+  },
+  {
+   "name": "passes",
+   "path": "commands/passes/index.ts",
+   "purpose": "分享免费周/推荐奖励（推荐裂变）。",
+   "evidence": "commands/passes/index.ts:5-13 `name: 'passes', get description() … 'Share a free week of Claude Code with friends'`; 导入 services/api/referral; 注册 commands.ts:318",
+   "registeredWhere": "commands.ts:318",
+   "removalRisk": "低；推荐营销，明确去除候选。"
+  },
+  {
+   "name": "peersCmd",
+   "path": "commands.ts:319 (变量为 null)",
+   "purpose": "占位槽，恒为 null，不注册命令。",
+   "evidence": "commands.ts:319 `...(peersCmd ? [peersCmd] : []),`；定义 commands.ts:105 `const peersCmd = null`",
+   "registeredWhere": "commands.ts:319",
+   "removalRisk": "无；死代码槽位。"
+  },
+  {
+   "name": "workflowsCmd",
+   "path": "commands.ts:321 (变量为 null)",
+   "purpose": "占位槽，恒为 null。",
+   "evidence": "commands.ts:321 `...(workflowsCmd ? [workflowsCmd] : []),`；定义 commands.ts:83 `const workflowsCmd = null`",
+   "registeredWhere": "commands.ts:321",
+   "removalRisk": "无；死代码槽位。"
+  },
+  {
+   "name": "torch",
+   "path": "commands/torch.js (feature TORCH)",
+   "purpose": "Torch 功能命令（feature 门控，文件不存在于本底座）。",
+   "evidence": "commands.ts:100 `const torch = feature('TORCH') ? require('./commands/torch.js').default : null`; 注册 commands.ts:322",
+   "registeredWhere": "commands.ts:322（条件注册）",
+   "removalRisk": "低；非 coding 功能。"
+  },
+  {
+   "name": "backfill-sessions",
+   "path": "commands/backfill-sessions/index.js",
+   "purpose": "内部：回填会话数据。",
+   "evidence": "commands/backfill-sessions/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:206（INTERNAL_ONLY_COMMANDS）",
+   "registeredWhere": "commands.ts:206 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；已是 stub，恒禁用。"
+  },
+  {
+   "name": "break-cache",
+   "path": "commands/break-cache/index.js",
+   "purpose": "内部：缓存破坏调试。",
+   "evidence": "commands/break-cache/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:207",
+   "registeredWhere": "commands.ts:207 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，恒禁用。"
+  },
+  {
+   "name": "bughunter",
+   "path": "commands/bughunter/index.js",
+   "purpose": "内部：缺陷猎手（ant-only）。",
+   "evidence": "commands/bughunter/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:208",
+   "registeredWhere": "commands.ts:208 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，恒禁用。"
+  },
+  {
+   "name": "ctx_viz",
+   "path": "commands/ctx_viz/index.js",
+   "purpose": "内部：上下文可视化调试。",
+   "evidence": "commands/ctx_viz/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:211",
+   "registeredWhere": "commands.ts:211 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，明确去除候选。"
+  },
+  {
+   "name": "good-claude",
+   "path": "commands/good-claude/index.js",
+   "purpose": "内部：good-claude 反馈工具。",
+   "evidence": "commands/good-claude/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:212",
+   "registeredWhere": "commands.ts:212 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，明确去除候选。"
+  },
+  {
+   "name": "issue",
+   "path": "commands/issue/index.js",
+   "purpose": "内部：提交 issue。",
+   "evidence": "commands/issue/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:213",
+   "registeredWhere": "commands.ts:213 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，反馈上报类去除候选。"
+  },
+  {
+   "name": "force-snip (forceSnip)",
+   "path": "commands/force-snip.js (feature HISTORY_SNIP，文件不存在)",
+   "purpose": "内部：强制历史截断。",
+   "evidence": "commands.ts:81-83 `const forceSnip = feature('HISTORY_SNIP') ? require('./commands/force-snip.js').default : null`; 注册 commands.ts:215 `...(forceSnip ? [forceSnip] : [])`",
+   "registeredWhere": "commands.ts:215 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；feature 关闭时为空。"
+  },
+  {
+   "name": "mock-limits",
+   "path": "commands/mock-limits/index.js",
+   "purpose": "内部：模拟限流。",
+   "evidence": "commands/mock-limits/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:216",
+   "registeredWhere": "commands.ts:216 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，明确去除候选。"
+  },
+  {
+   "name": "bridge-kick",
+   "path": "commands/bridge-kick.ts",
+   "purpose": "内部：注入 bridge 故障状态以测试恢复路径。",
+   "evidence": "commands/bridge-kick.ts:8-12 注释 'Ant-only: inject bridge failure states to manually test recovery paths'；:1 导入 bridgeDebug; 注册 commands.ts:217",
+   "registeredWhere": "commands.ts:217 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；桥接测试，明确去除候选。"
+  },
+  {
+   "name": "version",
+   "path": "commands/version.ts",
+   "purpose": "打印当前会话运行的版本（ant-only）。",
+   "evidence": "commands/version.ts:3-15 `name: 'version', description: 'Print the version this session is running…', isEnabled: () => process.env.USER_TYPE === 'ant'`; 注册 commands.ts:218",
+   "registeredWhere": "commands.ts:218 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；版本查询，非 coding 功能。"
+  },
+  {
+   "name": "ultraplan",
+   "path": "commands/ultraplan.tsx (feature ULTRAPLAN)",
+   "purpose": "远程 ultraplan 会话（依赖 remote session URL）。",
+   "evidence": "commands/ultraplan.tsx:1-7 导入 REMOTE_CONTROL_DISCONNECTED_MSG、getRemoteSessionUrl; 注册 commands.ts:219 `...(ultraplan ? [ultraplan] : [])`",
+   "registeredWhere": "commands.ts:219 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；远程会话功能。"
+  },
+  {
+   "name": "subscribe-pr",
+   "path": "commands/subscribe-pr.js (feature KAIROS_GITHUB_WEBHOOKS)",
+   "purpose": "内部：订阅 PR webhook。",
+   "evidence": "commands.ts:84-86 `const subscribePr = feature('KAIROS_GITHUB_WEBHOOKS') ? require('./commands/subscribe-pr.js').default : null`; 注册 commands.ts:220",
+   "registeredWhere": "commands.ts:220 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；feature 关闭时为空。"
+  },
+  {
+   "name": "reset-limits",
+   "path": "commands/reset-limits/index.js",
+   "purpose": "内部：重置限额（含非交互变体）。",
+   "evidence": "commands/reset-limits/index.js:1-4 `const stub = { isEnabled: () => false, isHidden: true, name: 'stub' }; export const resetLimits = stub; export const resetLimitsNonInteractive = stub;`; 注册 commands.ts:221-222",
+   "registeredWhere": "commands.ts:221, 222 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，限流测试类去除候选。"
+  },
+  {
+   "name": "onboarding",
+   "path": "commands/onboarding/index.js",
+   "purpose": "内部：新手引导。",
+   "evidence": "commands/onboarding/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:223",
+   "registeredWhere": "commands.ts:223 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，明确去除候选。"
+  },
+  {
+   "name": "share",
+   "path": "commands/share/index.js",
+   "purpose": "分享会话（分享功能）。",
+   "evidence": "commands/share/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:224",
+   "registeredWhere": "commands.ts:224 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，明确去除候选。"
+  },
+  {
+   "name": "summary",
+   "path": "commands/summary/index.js",
+   "purpose": "内部：会话摘要。",
+   "evidence": "commands/summary/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:225",
+   "registeredWhere": "commands.ts:225 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，明确去除候选。"
+  },
+  {
+   "name": "teleport",
+   "path": "commands/teleport/index.js",
+   "purpose": "teleport 远程会话（远程/云 runner）。",
+   "evidence": "commands/teleport/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:226",
+   "registeredWhere": "commands.ts:226 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，明确去除候选。"
+  },
+  {
+   "name": "ant-trace",
+   "path": "commands/ant-trace/index.js",
+   "purpose": "内部：ant 追踪调试。",
+   "evidence": "commands/ant-trace/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:227",
+   "registeredWhere": "commands.ts:227 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub。"
+  },
+  {
+   "name": "perf-issue",
+   "path": "commands/perf-issue/index.js",
+   "purpose": "内部：性能问题上报。",
+   "evidence": "commands/perf-issue/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:228",
+   "registeredWhere": "commands.ts:228 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，反馈类去除候选。"
+  },
+  {
+   "name": "env",
+   "path": "commands/env/index.js",
+   "purpose": "内部：环境变量查看。",
+   "evidence": "commands/env/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:229",
+   "registeredWhere": "commands.ts:229 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub。"
+  },
+  {
+   "name": "oauth-refresh",
+   "path": "commands/oauth-refresh/index.js",
+   "purpose": "内部：OAuth token 刷新。",
+   "evidence": "commands/oauth-refresh/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:230",
+   "registeredWhere": "commands.ts:230 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub，OAuth 登录族去除候选。"
+  },
+  {
+   "name": "debug-tool-call",
+   "path": "commands/debug-tool-call/index.js",
+   "purpose": "内部：工具调用调试。",
+   "evidence": "commands/debug-tool-call/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:231",
+   "registeredWhere": "commands.ts:231 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub。"
+  },
+  {
+   "name": "agents-platform",
+   "path": "commands/agents-platform/index.js",
+   "purpose": "内部：agents 平台入口（ant-only require）。",
+   "evidence": "commands.ts:48-52 `const agentsPlatform = process.env.USER_TYPE === 'ant' ? require('./commands/agents-platform/index.js').default : null`; 注册 commands.ts:232",
+   "registeredWhere": "commands.ts:232 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；非 coding 平台功能。"
+  },
+  {
+   "name": "autofix-pr",
+   "path": "commands/autofix-pr/index.js",
+   "purpose": "内部：自动修复 PR。",
+   "evidence": "commands/autofix-pr/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`; 注册 commands.ts:233",
+   "registeredWhere": "commands.ts:233 (INTERNAL_ONLY_COMMANDS)",
+   "removalRisk": "低；stub。"
+  },
+  {
+   "name": "TungstenTool",
+   "path": "tools/TungstenTool/TungstenTool.ts",
+   "purpose": "未知(仅 declare any stub，无实现体)",
+   "evidence": "tools.ts:215 `...(process.env.USER_TYPE === 'ant' ? [TungstenTool] : [])`; tools/TungstenTool/TungstenTool.ts:1-3 `// stub: this module is absent from the dump` + `export declare const TungstenTool: any`",
+   "registeredWhere": "tools.ts:215 (仅 ant 构建)",
+   "removalRisk": "低：stub 且 ant-only；但 tools/TungstenTool/TungstenLiveMonitor.ts 同样为 declare stub，需确认无其他引用后再删"
+  },
+  {
+   "name": "SuggestBackgroundPRTool",
+   "path": "tools/SuggestBackgroundPRTool/",
+   "purpose": "未知(目录为空，无实现文件)",
+   "evidence": "tools.ts:216 `...(SuggestBackgroundPRTool ? [SuggestBackgroundPRTool] : [])`; tools.ts:20-24 条件 require; `ls tools/SuggestBackgroundPRTool` 返回空",
+   "registeredWhere": "tools.ts:216 (require 失败即 null，从不注册)",
+   "removalRisk": "极低：目录空，仅在 ant 下 require 且必然抛错回退 null"
+  },
+  {
+   "name": "WebBrowserTool",
+   "path": "tools/WebBrowserTool/",
+   "purpose": "未知(目录为空)；对应浏览器/扩展类能力",
+   "evidence": "tools.ts:217 `...(WebBrowserTool ? [WebBrowserTool] : [])`; tools.ts:117-119 feature('WEB_BROWSER_TOOL') 条件 require; 目录空",
+   "registeredWhere": "tools.ts:217 (feature('WEB_BROWSER_TOOL')，shim 恒 false)",
+   "removalRisk": "极低：feature 关且目录空，永不注册"
+  },
+  {
+   "name": "OverflowTestTool",
+   "path": "tools/OverflowTestTool/",
+   "purpose": "未知(目录为空)；测试用途",
+   "evidence": "tools.ts:221 `...(OverflowTestTool ? [OverflowTestTool] : [])`; tools.ts:107-109 feature('OVERFLOW_TEST_TOOL'); 目录空",
+   "registeredWhere": "tools.ts:221 (feature 关，恒不注册)",
+   "removalRisk": "极低：测试专用且永不注册"
+  },
+  {
+   "name": "CtxInspectTool",
+   "path": "tools/CtxInspectTool/",
+   "purpose": "未知(目录为空)；对应 ctx_viz 上下文可视化",
+   "evidence": "tools.ts:222 `...(CtxInspectTool ? [CtxInspectTool] : [])`; tools.ts:110-112 feature('CONTEXT_COLLAPSE'); 目录空",
+   "registeredWhere": "tools.ts:222 (feature 关)",
+   "removalRisk": "极低：目录空且 feature 关"
+  },
+  {
+   "name": "TerminalCaptureTool",
+   "path": "tools/TerminalCaptureTool/",
+   "purpose": "未知(目录为空)；TERMINAL_PANEL 终端面板",
+   "evidence": "tools.ts:223 `...(TerminalCaptureTool ? [TerminalCaptureTool] : [])`; tools.ts:113-116 feature('TERMINAL_PANEL'); 目录空",
+   "registeredWhere": "tools.ts:223 (feature 关)",
+   "removalRisk": "极低"
+  },
+  {
+   "name": "ListPeersTool",
+   "path": "tools/ListPeersTool/",
+   "purpose": "未知(目录为空)；UDS_INBOX 对等会话列举",
+   "evidence": "tools.ts:227 `...(ListPeersTool ? [ListPeersTool] : [])`; tools.ts:126-128 feature('UDS_INBOX'); 目录空",
+   "registeredWhere": "tools.ts:227 (feature 关)",
+   "removalRisk": "低：目录空，feature 关；但属远程/跨会话能力，符合去除候选"
+  },
+  {
+   "name": "VerifyPlanExecutionTool",
+   "path": "tools/VerifyPlanExecutionTool/",
+   "purpose": "未知(目录为空)；验证计划执行",
+   "evidence": "tools.ts:231 `...(VerifyPlanExecutionTool ? [VerifyPlanExecutionTool] : [])`; tools.ts:91-95 `process.env.CLAUDE_CODE_VERIFY_PLAN === 'true'`; 目录空",
+   "registeredWhere": "tools.ts:231 (env 关，恒不注册)",
+   "removalRisk": "极低：目录空且默认 env 关"
+  },
+  {
+   "name": "SleepTool",
+   "path": "tools/SleepTool/",
+   "purpose": "等待指定时长(proactive/kairos 定时唤醒)",
+   "evidence": "tools.ts:234 `...(SleepTool ? [SleepTool] : [])`; tools.ts:25-28 `feature('PROACTIVE') || feature('KAIROS')`; 仅存 tools/SleepTool/prompt.ts",
+   "registeredWhere": "tools.ts:234 (feature 关，恒不注册)",
+   "removalRisk": "低：目录仅 prompt.ts，feature 关；属 proactive 类"
+  },
+  {
+   "name": "RemoteTriggerTool",
+   "path": "tools/RemoteTriggerTool/RemoteTriggerTool.ts",
+   "purpose": "管理 claude.ai 远程触发器(CCR API)",
+   "evidence": "tools.ts:236 `...(RemoteTriggerTool ? [RemoteTriggerTool] : [])`; tools.ts:36-38 feature('AGENT_TRIGGERS_REMOTE'); RemoteTriggerTool.ts:1-15 getOauthConfig/getOrganizationUUID/axios",
+   "registeredWhere": "tools.ts:236 (feature('AGENT_TRIGGERS_REMOTE'))",
+   "removalRisk": "低：远程会话/云 runner 类，符合去除候选；feature 关且依赖 OAuth"
+  },
+  {
+   "name": "BriefTool",
+   "path": "tools/BriefTool/BriefTool.ts",
+   "purpose": "向用户发送消息(SendUserMessage，含 proactive 状态)",
+   "evidence": "tools.ts:238 `BriefTool,`(无条件); tools/BriefTool/prompt.ts:1-2 `BRIEF_TOOL_NAME = 'SendUserMessage'` / `LEGACY_BRIEF_TOOL_NAME = 'Brief'`; BriefTool.ts:88-97 KAIROS||KAIROS_BRIEF 门控 isBriefEnabled",
+   "registeredWhere": "tools.ts:238 (无条件注册，isEnabled 内部门控)",
+   "removalRisk": "中：任务清单明确列为去除候选(brief)；但无条件注册，删除需同步 ToolSearchTool/prompt.ts 与 KAIROS 分支引用"
+  },
+  {
+   "name": "SendUserFileTool",
+   "path": "tools/SendUserFileTool/",
+   "purpose": "未知(仅存 prompt.ts stub)；向用户发送文件",
+   "evidence": "tools.ts:239 `...(SendUserFileTool ? [SendUserFileTool] : [])`; tools.ts:42-44 feature('KAIROS'); SendUserFileTool/prompt.ts:1-4 仅 re-export recovered chunk 名称",
+   "registeredWhere": "tools.ts:239 (feature('KAIROS')，shim 恒 false)",
+   "removalRisk": "极低：仅名称 stub，feature 关"
+  },
+  {
+   "name": "PushNotificationTool",
+   "path": "tools/PushNotificationTool/",
+   "purpose": "未知(目录为空)；推送通知到手机",
+   "evidence": "tools.ts:240 `...(PushNotificationTool ? [PushNotificationTool] : [])`; tools.ts:45-49 feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION'); 目录空",
+   "registeredWhere": "tools.ts:240 (feature 关)",
+   "removalRisk": "极低：目录空且 feature 关"
+  },
+  {
+   "name": "SubscribePRTool",
+   "path": "tools/SubscribePRTool/",
+   "purpose": "未知(目录为空)；GitHub PR webhook 订阅",
+   "evidence": "tools.ts:241 `...(SubscribePRTool ? [SubscribePRTool] : [])`; tools.ts:50-52 feature('KAIROS_GITHUB_WEBHOOKS'); 目录空",
+   "registeredWhere": "tools.ts:241 (feature 关)",
+   "removalRisk": "极低：目录空且 feature 关"
+  },
+  {
+   "name": "SnipTool",
+   "path": "tools/SnipTool/",
+   "purpose": "未知(目录为空)；HISTORY_SNIP 历史裁剪",
+   "evidence": "tools.ts:243 `...(SnipTool ? [SnipTool] : [])`; tools.ts:123-125 feature('HISTORY_SNIP'); 目录空",
+   "registeredWhere": "tools.ts:243 (feature 关)",
+   "removalRisk": "极低：目录空且 feature 关"
+  },
+  {
+   "name": "TestingPermissionTool",
+   "path": "tools/testing/TestingPermissionTool.tsx",
+   "purpose": "测试专用权限工具",
+   "evidence": "tools.ts:244 `...(process.env.NODE_ENV === 'test' ? [TestingPermissionTool] : [])`; 文件位于 tools/testing/",
+   "registeredWhere": "tools.ts:244 (仅 NODE_ENV=test)",
+   "removalRisk": "低：测试脚手架；删除需同步相关测试用例"
+  },
+  {
+   "name": "bridge (Remote Control / CCR 桥)",
+   "path": "bridge/",
+   "purpose": "把本地终端会话接到 claude.ai CCR 的 Remote Control 桥：注册 worker、轮询 work、spawn 会话子进程、转发权限与事件；配套命令 /remote-control、--rc。",
+   "evidence": "bridge/bridgeEnabled.ts:28-36 `export function isBridgeEnabled(): boolean { return feature('BRIDGE_MODE') ? isClaudeAISubscriber() && getFeatureValue_CACHED_MAY_BE_STALE('tengu_ccr_bridge', false) : false }`；bridge/bridgeMain.ts:1-13 引入 getRemoteSessionUrl/shutdownDatadog/createBridgeApiClient；entrypoints/cli.tsx:130-132 `const { bridgeMain } = await import('../bridge/bridgeMain.js')`；main.tsx:5416 `const { bridgeMain } = await import('./bridge/bridgeMain.js')`；main.tsx:3133 `if (feature('BRIDGE_MODE') && remoteControlOption !== undefined)`",
+   "registeredWhere": "commands.ts:73-75 `const bridge = feature('BRIDGE_MODE') ? require('./commands/bridge/index.js').default : null`；commands.ts:306 `...(bridge ? [bridge] : [])`；commands/bridge/index.ts:12-24 name='remote-control'",
+   "removalRisk": "高。31 个已跟踪文件，被 main.tsx(398/3133/5416)、entrypoints/cli.tsx、commands.ts、setup.ts:170、utils/config.ts、state/AppStateStore.ts、cli/remoteIO.ts、hooks/useReplBridge.tsx、tools/BriefTool/upload.ts、tools/SendMessageTool 等约 30 处引用；同时承载 OAuth 订阅鉴权（isClaudeAISubscriber）与 trustedDevice 注册。"
+  },
+  {
+   "name": "remote (远程会话管理)",
+   "path": "remote/",
+   "purpose": "RemoteSessionManager 通过 WebSocket 连 CCR 会话，SessionsWebSocket 做重连/心跳，sdkMessageAdapter 把 SDK 消息转成 TUI Message，remotePermissionBridge 为远端工具调用造合成 AssistantMessage/Tool stub。",
+   "evidence": "remote/RemoteSessionManager.ts:1-15 引 sendEventToRemoteSession 与 SessionsWebSocket；remote/SessionsWebSocket.ts:1-15 引 getOauthConfig/controlTypes；remote/remotePermissionBridge.ts:12-46 createSyntheticAssistantMessage；remote/SessionsWebSocket.ts:22 `const PERMANENT_CLOSE_CODES = new Set([4003])`",
+   "registeredWhere": "main.tsx:398 `import { createRemoteSessionConfig } from './remote/RemoteSessionManager.js'`；hooks/useRemoteSession.ts:6-10；hooks/useAssistantHistory.ts:17-18；server/directConnectManager.ts:7 引用 RemotePermissionResponse",
+   "removalRisk": "高。与 bridge/server/ssh 三路共用 remote/ 的 SDK 适配与权限桥；REPL.tsx:1880 useRemoteSession、useDirectConnect、useSSHSession 同时依赖 sdkMessageAdapter 与 remotePermissionBridge。"
+  },
+  {
+   "name": "server (direct-connect 会话服务)",
+   "path": "server/",
+   "purpose": "`claude connect` 直连模式的会话客户端/管理器：POST {serverUrl}/sessions 建会话并校验响应，再用 WebSocket 管理会话与权限。",
+   "evidence": "server/createDirectConnectSession.ts:26-58 `await fetch(`${serverUrl}/sessions`, { method: 'POST' ... })`；server/types.ts:5-11 connectResponseSchema（session_id/ws_url/work_dir）；server/directConnectManager.ts:1-13 DirectConnectConfig",
+   "registeredWhere": "main.tsx:404 `} from './server/createDirectConnectSession.js'`；hooks/useDirectConnect.ts:14-17；screens/REPL.tsx:144,1893",
+   "removalRisk": "中。依赖面小（main.tsx + useDirectConnect + REPL），但 REPL 的 remote/direct/ssh 三路复用同一套 UI 分支，需一起处理。"
+  },
+  {
+   "name": "ssh (远程 SSH 会话)",
+   "path": "ssh/",
+   "purpose": "`claude ssh` 模式的会话句柄与管理器类型；两个文件均为缺失模块占位 stub。",
+   "evidence": "ssh/createSSHSession.ts:1-3 `// stub: this module is absent from the dump...` / `export type SSHSession = any;`；ssh/SSHSessionManager.ts:1-3 同构 stub",
+   "registeredWhere": "hooks/useSSHSession.ts:25-26；screens/REPL.tsx:147,1904",
+   "removalRisk": "低。本身是 stub；但 useSSHSession/REPL 的 ssh 分支仍引用其类型。"
+  },
+  {
+   "name": "assistant (assistant 会话历史)",
+   "path": "assistant/",
+   "purpose": "查看 claude.ai 上 assistant/CCR 会话的历史事件：分页拉取 /v1/sessions/{id}/events。sessionDiscovery 是缺失模块的占位 stub。",
+   "evidence": "assistant/sessionHistory.ts:1-13 `import axios from 'axios'` + `getOauthConfig().BASE_API_URL}/v1/sessions/${sessionId}/events`；assistant/sessionHistory.ts:26-34 createHistoryAuthCtx；assistant/sessionDiscovery.ts:1-3 stub `export type AssistantSession = any;`",
+   "registeredWhere": "hooks/useAssistantHistory.ts:10-15；dialogLaunchers.tsx:10 `import type { AssistantSession } from './assistant/sessionDiscovery.js'`；screens/REPL.tsx:146,1739 useAssistantHistory",
+   "removalRisk": "低-中。仅 useAssistantHistory 一条运行链，且只在 viewer-only 远端会话下生效。"
+  },
+  {
+   "name": "voice (语音输入)",
+   "path": "voice/",
+   "purpose": "语音模式的可见性/鉴权判定：GrowthBook 开关 tengu_amber_quartz_disabled 与 Claude.ai OAuth 令牌检查。",
+   "evidence": "voice/voiceModeEnabled.ts:16-23 `return feature('VOICE_MODE') ? !getFeatureValue_CACHED_MAY_BE_STALE('tengu_amber_quartz_disabled', false) : false`；voice/voiceModeEnabled.ts:52-54 `return hasVoiceAuth() && isVoiceGrowthBookEnabled()`",
+   "registeredWhere": "commands.ts:80-82 voiceCommand（feature('VOICE_MODE')）；commands/voice/index.ts:2-3；hooks/useVoiceEnabled.ts:3-6；components/LogoV2/VoiceModeNotice.tsx；tools/ConfigTool/prompt.ts",
+   "removalRisk": "中。除 voice/ 本身外，还有 services/voice.ts、services/voiceStreamSTT.ts、services/voiceKeyterms.ts、hooks/useVoice*.tsx 与命令族需要一并处置。"
+  },
+  {
+   "name": "buddy (伴侣精灵/宠物)",
+   "path": "buddy/",
+   "purpose": "输入框旁的宠物精灵：按 userId 确定性 roll 稀有度/物种/属性，渲染 5 行 ASCII 精灵、气泡反应与 /buddy 提示。",
+   "evidence": "buddy/prompt.ts:18 `if (!feature('BUDDY')) return []`；buddy/useBuddyNotification.tsx:43 `if (!feature('BUDDY')) return`；buddy/companion.ts:107-113 roll(userId) 与 SALT='friend-2026-401'；buddy/CompanionSprite.tsx:1-16 TICK_MS=500/IDLE_SEQUENCE",
+   "registeredWhere": "commands.ts:102 `const buddy = null`（已被置空）；state/AppStateStore.ts；utils/messages.ts；utils/attachments.ts:239,831；components/PromptInput/PromptInput.tsx:36-40,445-448,2522-2528；screens/REPL.tsx:542-545,6005-6116",
+   "removalRisk": "中。REPL 与 PromptInput 有大量 feature('BUDDY') 分支与 companionReaction 状态；命令注册已被置 null。"
+  },
+  {
+   "name": "moreright (内部专用 hook stub)",
+   "path": "moreright/",
+   "purpose": "仅供外部构建的占位：useMoreRight 返回空实现的 onBeforeQuery/onTurnComplete/render。",
+   "evidence": "moreright/useMoreRight.tsx:1-5 `// Stub for external builds — the real hook is internal only.`；moreright/useMoreRight.tsx:21-25 返回 `{ onBeforeQuery: async () => true, onTurnComplete: async () => {}, render: () => null }`",
+   "registeredWhere": "screens/REPL.tsx:150 `import { useMoreRight } from '../moreright/useMoreRight.js'`；screens/REPL.tsx:2214 `} = useMoreRight({`",
+   "removalRisk": "低。无副作用 stub，仅 REPL 一处调用。"
+  },
+  {
+   "name": "daemon (后台守护)",
+   "path": "daemon/",
+   "purpose": "空目录，无任何文件；README.md:57 仅在架构图里以文字提到 daemon runner。",
+   "evidence": "`ls -la daemon/` → 仅 . 与 ..（0 文件）；`git ls-files daemon` → 0 行；README.md:57 `CLI -->|fast paths| FP2[\"daemon/bg/templates/bridge/mcp runners\"]`",
+   "registeredWhere": "无代码引用（git 未跟踪、无 import 命中）",
+   "removalRisk": "无。空目录，删除不影响任何构建。"
+  },
+  {
+   "name": "jobs (作业调度)",
+   "path": "jobs/",
+   "purpose": "空目录，无文件，无引用。",
+   "evidence": "`ls -la jobs/` → 仅 . 与 ..；`git ls-files jobs` → 0 行；`rg \"['\\\"]\\./jobs|['\\\"]\\.\\./jobs\"` 无命中",
+   "registeredWhere": "无",
+   "removalRisk": "无。"
+  },
+  {
+   "name": "proactive (主动式交互)",
+   "path": "proactive/",
+   "purpose": "空目录，无文件；被 feature('PROACTIVE')||feature('KAIROS') 门控的 require('../proactive/index.js') 引用（模块缺失，构建开关关闭时不触发）。",
+   "evidence": "`ls proactive/` → 空；`git ls-files proactive` → 0 行；constants/prompts.ts:69-72 `const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../proactive/index.js') : null`；components/Messages.tsx:101-103 同构；main.tsx:5620 `const proactiveModule = require('./proactive/index.js')`",
+   "registeredWhere": "constants/prompts.ts:70、components/Messages.tsx:102、screens/REPL.tsx:412,419、components/PromptInput/PromptInputFooterLeftSide.tsx:61、commands/clear/conversation.ts:114、main.tsx:5620",
+   "removalRisk": "低-中。目录本身为空；但 6 处 feature 门控 require 指向它，若保留 feature 分支需保留占位，否则该分支打开时会抛错。"
+  },
+  {
+   "name": "self-hosted-runner (自托管 runner)",
+   "path": "self-hosted-runner/",
+   "purpose": "空目录；entrypoints/cli.tsx:181 有 `claude self-hosted-runner` 快速路径注释（对应代码已被剥离）。",
+   "evidence": "`ls self-hosted-runner/` → 空；`git ls-files self-hosted-runner` → 0 行；entrypoints/cli.tsx:181 `// Fast-path for \\`claude self-hosted-runner\\`: headless self-hosted-runner`",
+   "registeredWhere": "entrypoints/cli.tsx:181（仅注释）",
+   "removalRisk": "无。空目录。"
+  },
+  {
+   "name": "environment-runner (BYOC runner)",
+   "path": "environment-runner/",
+   "purpose": "空目录；被 cli.tsx 快速路径注释与 bridge 的版本头引用，实际实现文件（sessionExecutor.ts）不在树内。",
+   "evidence": "`ls environment-runner/` → 空；`git ls-files environment-runner` → 0 行；entrypoints/cli.tsx:177 `// Fast-path for \\`claude environment-runner\\`: headless BYOC runner.`；bridge/types.ts:48 `Same field the BYOC runner reads at environment-runner/sessionExecutor.ts.`；cli/remoteIO.ts:68 `headers['x-environment-runner-version'] = erVersion`",
+   "registeredWhere": "entrypoints/cli.tsx:177（注释）；bridge/types.ts:48（注释）；cli/remoteIO.ts:68,82 与 bridge/bridgeApi.ts:82 用 x-environment-runner-version 头",
+   "removalRisk": "无（目录空）。仅当同时移除 bridge 的 runner 版本头时才需处理。"
+  },
+  {
+   "name": "teleport (远程环境，无同名顶层目录)",
+   "path": "commands/teleport/ (顶层无 teleport/ 目录)",
+   "purpose": "teleport/远程环境选择：utils/teleport 提供 api/environments/gitBundle；/teleport 命令本身在此构建中被替换为 stub。",
+   "evidence": "`ls -d teleport` → (no dir)；commands/teleport/index.js:1 `export default { isEnabled: () => false, isHidden: true, name: 'stub' };`；utils/teleport/api.ts 466 行、gitBundle.ts 292 行、environments.ts 120 行、environmentSelection.ts 77 行",
+   "registeredWhere": "commands.ts:46 import teleport from './commands/teleport/index.js'；commands.ts:226 `teleport,` 列入 INTERNAL_ONLY_COMMANDS；commands/remote-env/index.ts:8 'Configure the default remote environment for teleport sessions'",
+   "removalRisk": "中。命令是 stub，但 utils/teleport/* 被 remote/server/hooks 大量复用（RemoteSessionManager、directConnectManager、useDirectConnect 均引 utils/teleport/api.js）。"
+  },
+  {
+   "name": "mobile (无同名顶层目录)",
+   "path": "commands/mobile/ (顶层无 mobile/ 目录)",
+   "purpose": "展示 Claude 移动端 App 下载二维码（iOS/Android），纯推广用途。",
+   "evidence": "`ls -d mobile` → (no dir)；commands/mobile/index.ts:3-9 `name: 'mobile', aliases: ['ios', 'android'], description: 'Show QR code to download the Claude mobile app'`；commands/mobile/mobile.tsx:18-24 PLATFORMS 指向 apps.apple.com / play.google.com",
+   "registeredWhere": "commands.ts:34 import mobile；commands.ts:269 `mobile,`（COMMANDS）；commands.ts:615 `mobile, // Mobile QR code`（bridge-safe 列表）",
+   "removalRisk": "低。仅 commands.ts 两处注册 + 自身文件。"
+  },
+  {
+   "name": "desktop (无同名顶层目录)",
+   "path": "commands/desktop/ (顶层无 desktop/ 目录)",
+   "purpose": "把当前会话移交到 Claude Desktop 应用：检查安装状态、flush 会话、用 deep link 打开或提示下载。",
+   "evidence": "`ls -d desktop` → (no dir)；commands/desktop/index.ts:3-23 `description: 'Continue the current session in Claude Desktop'` / `load: () => import('./desktop.js')`；components/DesktopHandoff.tsx:14-24 DESKTOP_DOCS_URL 与 getDownloadUrl（win32/darwin dmg 重定向）；utils/desktopDeepLink.ts:11 MIN_DESKTOP_VERSION = '1.1.2396'",
+   "registeredWhere": "commands.ts:13 import desktop；commands.ts:250 `desktop,`；另 main.tsx:4973 `.command('add-from-claude-desktop')` 与 components/DesktopUpsell/DesktopUpsellStartup.tsx",
+   "removalRisk": "中。除命令外还有 DesktopUpsell 启动弹窗、utils/desktopDeepLink、CLAUDE_CODE_ENTRYPOINT==='claude-desktop' 分支（main.tsx:1087-1112）。"
+  },
+  {
+   "name": "chrome (无同名顶层目录)",
+   "path": "commands/chrome/ + utils/claudeInChrome/ (顶层无 chrome/ 目录)",
+   "purpose": "Claude in Chrome 浏览器扩展设置与原生宿主/MCP server；扩展安装引导。",
+   "evidence": "`ls -d chrome` → (no dir)；commands/chrome/index.ts:4-10 `description: 'Claude in Chrome (Beta) settings'`；entrypoints/cli.tsx:78-90 `--claude-in-chrome-mcp` → runClaudeInChromeMcpServer、`--chrome-native-host` → runChromeNativeHost；components/ClaudeInChromeOnboarding.tsx:6-8 CHROME_EXTENSION_URL='https://claude.ai/chrome'；utils/claudeInChrome/{mcpServer,chromeNativeHost,setup,setupPortable,prompt,common,toolRendering}.ts(x)",
+   "registeredWhere": "commands.ts:130 import chrome；commands.ts:244 `chrome,`；entrypoints/cli.tsx:78-90 两条 fast-path；skills/bundled/claudeInChrome.ts",
+   "removalRisk": "中。含 cli 快速路径、bundled skill、onboarding 组件与 utils/claudeInChrome 目录。"
+  },
+  {
+   "name": "services/analytics (index/sink/datadog/firstPartyEventLogger/metadata/growthbook/sinkKillswitch/config)",
+   "path": "services/analytics/",
+   "purpose": "产品遥测与远程开关：logEvent 事件管道、Datadog 上报、1P 事件导出、GrowthBook 特性门（feature gate）。",
+   "evidence": "services/analytics/datadog.ts:12-14 `DATADOG_LOGS_ENDPOINT = 'https://http-intake.logs.us5.datadoghq.com/api/v2/logs'` / `DATADOG_CLIENT_TOKEN = 'pubbbf48e6d78dae54bceaa4acf463299bf'`；services/analytics/index.ts:4-8 注释 “main entry point for analytics events … sink handles routing to Datadog and 1P event logging”；services/analytics/config.ts:19-27 `isAnalyticsDisabled()` 依赖 BEDROCK/VERTEX/FOUNDRY 与 isTelemetryDisabled()。",
+   "registeredWhere": "被 298 个文件 import（rg -l \"from '.*services/analytics\" = 298），logEvent 调用点分布 262 个文件；main.tsx 初始化处 attachAnalyticsSink()。",
+   "removalRisk": "高风险但可摘：growthbook.ts 同时承载 126 个文件的特性门（如 hooks/useAwaySummary.ts:7、services/compact/autoCompact.ts、tools/BashTool/shouldUseSandbox.ts）。若整体删除，126 处 import 断裂，且部分功能开关失去默认值。需保留一个本地 stub（logEvent=no-op、getFeatureValue 返回常量）替代，而不是直接删目录。"
+  },
+  {
+   "name": "services/AgentSummary/agentSummary.ts",
+   "path": "services/AgentSummary/agentSummary.ts",
+   "purpose": "coordinator 模式下每 ~30s fork 子代理会话生成 1-2 句进度摘要，供 UI 显示（面向移动端/远程查看的子代理进度标签）。",
+   "evidence": "services/AgentSummary/agentSummary.ts:1-11 “Periodic background summarization for coordinator mode sub-agents … The summary is stored on AgentProgress for UI display”；:26 `const SUMMARY_INTERVAL_MS = 30_000`；:15 `import { filterIncompleteToolCalls } from '../../tools/AgentTool/runAgent.js'`。",
+   "registeredWhere": "tools/AgentTool/agentToolUtils.ts:10 与 tools/AgentTool/AgentTool.tsx:19 `import { startAgentSummarization } from '../../services/AgentSummary/agentSummary.js'`；消费点 tasks/LocalAgentTask/LocalAgentTask.tsx:454 `export function updateAgentSummary`。",
+   "removalRisk": "中：仅被 AgentTool 两处 import。删除需同时移除 AgentTool.tsx:19 与 agentToolUtils.ts:10 的调用与 updateAgentSummary 的展示链路；不影响 agent 执行本身。"
+  },
+  {
+   "name": "services/awaySummary.ts + hooks/useAwaySummary.ts",
+   "path": "services/awaySummary.ts",
+   "purpose": "“离开期间”回顾卡片：用户失焦 5 分钟后用 small-fast 模型生成 1-3 句会话摘要。",
+   "evidence": "services/awaySummary.ts:14-16 `RECENT_MESSAGE_WINDOW = 30`；:22 `The user stepped away and is coming back. Write exactly 1-3 short sentences.`；:26 “Generates a short session recap for the \"while you were away\" card”。调用方 hooks/useAwaySummary.ts:8 `import { generateAwaySummary } from '../services/awaySummary.js'`、:12 `const BLUR_DELAY_MS = 5 * 60_000`。",
+   "registeredWhere": "仅 hooks/useAwaySummary.ts（:8 import，:75 调用）；该 hook 挂在 screens/REPL.tsx。",
+   "removalRisk": "低：单点依赖。删除 services/awaySummary.ts 需同时删 hooks/useAwaySummary.ts 与 REPL.tsx 中的挂载；不影响会话恢复。"
+  },
+  {
+   "name": "services/autoDream/ (autoDream.ts/consolidationPrompt.ts/consolidationLock.ts/config.ts)",
+   "path": "services/autoDream/",
+   "purpose": "后台“做梦”记忆整理：按时间+会话数+锁三重门触发，fork 子代理执行 /dream 提示以固化记忆。",
+   "evidence": "services/autoDream/autoDream.ts:2-8 “Background memory consolidation. Fires the /dream prompt as a forked subagent when time-gate passes AND enough sessions have accumulated.”；:13-17 import runForkedAgent/createCacheSafeParams；services/autoDream/consolidationPrompt.ts 与 consolidationLock.ts 为配套。",
+   "registeredWhere": "utils/backgroundHousekeeping.ts:2 `import { initAutoDream } from '../services/autoDream/autoDream.js'`、:37 `initAutoDream()`；query/stopHooks.ts:52 `import { executeAutoDream }`。",
+   "removalRisk": "中：两处挂载（后台管家 + stop hook）。删除需清掉 backgroundHousekeeping.ts:37 与 stopHooks.ts:52 的调用；与 SessionMemory/extractMemories 有共享的 memory 目录约定。"
+  },
+  {
+   "name": "services/extractMemories/ (extractMemories.ts/prompts.ts)",
+   "path": "services/extractMemories/",
+   "purpose": "每轮 query loop 结束时 fork 子代理，从会话记录抽取“持久记忆”写入 auto-memory 目录。",
+   "evidence": "services/extractMemories/extractMemories.ts:2-9 “Extracts durable memories from the current session transcript and writes them to the auto-memory directory (~/.claude/projects/<path>/memory/) … runs once at the end of each complete query loop … via handleStopHooks in stopHooks.ts”；:16 `import { feature } from 'bun:bundle'`（EXTRACT_MEMORIES 门）。",
+   "registeredWhere": "query/stopHooks.ts:42-43 `const extractMemoriesModule = feature('EXTRACT_MEMORIES') ? (require('../services/extractMemories/extractMemories.js') …)`、:149 `void extractMemoriesModule!.executeExtractMemories(`；services/autoDream/autoDream.ts:36 `import { createAutoMemCanUseTool }`。",
+   "removalRisk": "中：与 autoDream 相互引用（autoDream.ts:36 复用其 canUseTool）。二者需一起处理，否则留下悬空 import。"
+  },
+  {
+   "name": "services/MagicDocs/ (magicDocs.ts/prompts.ts)",
+   "path": "services/MagicDocs/",
+   "purpose": "检测带 `# MAGIC DOC:` 头的 markdown，后台 fork 子代理自动维护文档内容。",
+   "evidence": "services/MagicDocs/magicDocs.ts:2-6 “Magic Docs automatically maintains markdown documentation files marked with special headers. When a file with \"# MAGIC DOC: [title]\" is read, it runs periodically in the background using a forked subagent”；:9-21 import Tool/runAgent/registerPostSamplingHook。",
+   "registeredWhere": "通过 registerPostSamplingHook 自注册（magicDocs.ts:20-21 import `registerPostSamplingHook` from utils/hooks/postSamplingHooks.js）；FileReadTool 读取时触发。",
+   "removalRisk": "低-中：自注册后钩子，删除需确认 postSamplingHooks 注册表无残留；不触碰工具执行核心。"
+  },
+  {
+   "name": "services/oauth/ (client.ts/index.ts/getOauthProfile.ts/auth-code-listener.ts/crypto.ts/types.ts)",
+   "path": "services/oauth/",
+   "purpose": "Anthropic OAuth 登录族：PKCE 授权码流程、token 交换/刷新、账号信息拉取。",
+   "evidence": "services/oauth/client.ts:1-2 “OAuth client for handling authentication flows with Claude services”；services/oauth/index.ts:1-5 `logEvent` + `openBrowser` + `AuthCodeListener`；services/oauth/auth-code-listener.ts 为本地回调监听。",
+   "registeredWhere": "cli/handlers/auth.ts:19-22 `import { getOauthProfileFromOauthToken } … import { OAuthService } from '../../services/oauth/index.js' … import type { OAuthTokens }`；entrypoints/init.ts:10 `import { populateOAuthAccountInfoIfNeeded } from '../services/oauth/client.js'`；main.tsx:5071/5082/5090 动态 import auth handlers。",
+   "removalRisk": "高：init.ts 顶层 import 会直接断链；且 cli/print.ts:193、components/ConsoleOAuthFlow.tsx:6 复用 `installOAuthTokens`。任务说明 OAuth 明确排除，但摘除需替换 init.ts:10 的账号填充与 print.ts 的 token 安装路径。"
+  },
+  {
+   "name": "services/policyLimits/ (index.ts/types.ts)",
+   "path": "services/policyLimits/",
+   "purpose": "组织级策略限制拉取（如 allow_remote_control），用于按企业策略关闭 CLI 功能。",
+   "evidence": "services/policyLimits/index.ts:2-6 “Fetches organization-level policy restrictions from the API and uses them to disable CLI features. Follows the same patterns as remote managed settings (fail open, ETag caching, background polling, retry logic).”；:15-20 import axios/createHash/oauth config。",
+   "registeredWhere": "entrypoints/init.ts:11-14 `initializePolicyLimitsLoadingPromise, isPolicyLimitsEligible`；entrypoints/cli.tsx:152-156 `const { waitForPolicyLimitsToLoad, isPolicyAllowed } = await import('../services/policyLimits/index.js')` 用于 bridge 门禁。",
+   "removalRisk": "中：init.ts 顶层 import（:11）断链风险；cli.tsx:152 的桥接门禁可一并移除。功能上只影响企业策略开关，不影响本地 coding。"
+  },
+  {
+   "name": "services/remoteManagedSettings/ (index.ts/syncCache.ts/syncCacheState.ts/securityCheck.tsx/types.ts)",
+   "path": "services/remoteManagedSettings/",
+   "purpose": "企业远程托管设置的拉取/缓存/校验（基于 checksum，失败即 fail-open）。",
+   "evidence": "services/remoteManagedSettings/index.ts:2-12 “Manages fetching, caching, and validation of remote-managed settings for enterprise customers … Eligibility: Console users (API key): All eligible; OAuth users (Claude.ai): Only Enterprise/C4E and Team”；:15-18 import axios/oauth。",
+   "registeredWhere": "entrypoints/init.ts:15-19 `initializeRemoteManagedSettingsLoadingPromise, isEligibleForRemoteManagedSettings, waitForRemoteManagedSettingsToLoad`；cli/print.ts:9 `import { waitForRemoteManagedSettingsToLoad }`。",
+   "removalRisk": "中：init.ts 与 print.ts 两处 import；删除后 managed-settings 的远程来源失效（本地 settings.json 仍可用）。"
+  },
+  {
+   "name": "services/settingsSync/ (index.ts/types.ts)",
+   "path": "services/settingsSync/",
+   "purpose": "把本地 settings 与 memory 文件跨环境同步到远端（交互式上传，CCR 下载）。",
+   "evidence": "services/settingsSync/index.ts:2-9 “Syncs user settings and memory files across Claude Code environments. - Interactive CLI: Uploads local settings to remote … - CCR: Downloads remote settings to local before plugin installation. Backend API: anthropic/anthropic#218817”；:17 `import { getIsInteractive } from '../../bootstrap/state.js'`。",
+   "registeredWhere": "cli/print.ts:5-8 `import { downloadUserSettings, redownloadUserSettings } from 'src/services/settingsSync/index.js'`。",
+   "removalRisk": "中：print.ts 与 CCR 插件安装路径依赖；本地 settings 读写不受影响，但需移除 print.ts 的下载调用。"
+  },
+  {
+   "name": "services/teamMemorySync/ (index.ts/watcher.ts/secretScanner.ts/teamMemSecretGuard.ts/types.ts)",
+   "path": "services/teamMemorySync/",
+   "purpose": "团队共享记忆同步：按 git remote hash 作用域，与服务端做增量拉/推。",
+   "evidence": "services/teamMemorySync/index.ts:2-13 “Syncs team memory files between the local filesystem and the server API. Team memory is scoped per-repo (identified by git remote hash) and shared across all authenticated org members. … GET /api/claude_code/team_memory?repo={owner/repo}”。",
+   "registeredWhere": "services/teamMemorySync/watcher.ts 为文件监听；入口在 memory 相关装配处（memdir/ 与 memory 设置项）。",
+   "removalRisk": "中：watcher 常驻文件监听；删除需停止 watcher 注册，避免遗留 fs.watch 句柄。"
+  },
+  {
+   "name": "services/tips/ (tipRegistry.ts/tipScheduler.ts/tipHistory.ts/types.ts)",
+   "path": "services/tips/",
+   "purpose": "启动/运行期“小贴士”轮播：按会话数挑选未展示过的提示。",
+   "evidence": "services/tips/tipScheduler.ts:10 `export function selectTipWithLongestTimeSinceShown(`；:6-8 import getSessionsSinceLastShown/recordTipShown/getRelevantTips；tipRegistry.ts 686 行含大量 UI 提示文案与 `install-github-app` 等非 coding 提示。",
+   "registeredWhere": "tipRegistry.ts 被 commands.ts、constants/prompts.ts、utils/attachments.ts 引用（rg skillSearch 同批命中）；tipScheduler 被启动 UI 调用。",
+   "removalRisk": "低-中：纯 UI 文案服务；删除后启动提示消失，不影响功能。"
+  },
+  {
+   "name": "services/skillSearch/ (prefetch.ts/signals.ts)",
+   "path": "services/skillSearch/",
+   "purpose": "实验性技能搜索的预取与信号定义；当前为占位 stub。",
+   "evidence": "services/skillSearch/prefetch.ts:1-3 `// W58: chunk-r1x169b6.js is the attachment barrel, not this module. // Discovery bodies remain unavailable; EXPERIMENTAL_SKILL_SEARCH is disabled. export {}`；services/skillSearch/signals.ts:1-3 `// stub: this module is absent from the dump; names are taken from the import sites / export type DiscoverySignal = any;`。",
+   "registeredWhere": "constants/prompts.ts、utils/attachments.ts、commands.ts 引用（占位）。",
+   "removalRisk": "低：已是空 stub，删除只需清 3 处 import 引用。"
+  },
+  {
+   "name": "services/PromptSuggestion/ (promptSuggestion.ts/speculation.ts)",
+   "path": "services/PromptSuggestion/",
+   "purpose": "下一步提示建议与推测式预执行（speculation 提前跑可能的后续动作）。",
+   "evidence": "services/PromptSuggestion/promptSuggestion.ts:8-12 import `createCacheSafeParams, runForkedAgent` 与 `registerPostSamplingHook`；speculation.ts:1-8 import fs/AppState 做预执行产物落盘。",
+   "registeredWhere": "自注册 postSamplingHook（promptSuggestion.ts:13 `REPLHookContext`）；speculation 由 REPL 建议 UI 驱动。",
+   "removalRisk": "低-中：speculation 会写临时文件（speculation.ts:1-4 import rm/appendFile/copyFile/mkdir），删除需清理临时目录约定。"
+  },
+  {
+   "name": "services/toolUseSummary/toolUseSummaryGenerator.ts",
+   "path": "services/toolUseSummary/toolUseSummaryGenerator.ts",
+   "purpose": "用 Haiku 为一批工具调用生成人类可读的进度标签，供 SDK 客户端展示。",
+   "evidence": "services/toolUseSummary/toolUseSummaryGenerator.ts:2-6 “Generates human-readable summaries of completed tool batches using Haiku. Used by the SDK to provide high-level progress updates to clients.”；:15 “It appears as a single-line row in a mobile app and truncates around 30 characters”。",
+   "registeredWhere": "由 SDK/print 路径调用（cli/print.ts 的 stdout 消息装配）。",
+   "removalRisk": "低：纯展示标签，删除后 SDK 进度行缺省；不影响工具执行。"
+  },
+  {
+   "name": "services/voice.ts / voiceKeyterms.ts / voiceStreamSTT.ts + voice/voiceModeEnabled.ts",
+   "path": "services/voice.ts",
+   "purpose": "按住说话语音输入：native cpal 录音、SoX 回退、Deepgram 关键词、Anthropic voice_stream STT WebSocket 客户端。",
+   "evidence": "services/voice.ts:1-5 “Voice service: audio recording for push-to-talk voice input. Recording uses native audio capture (cpal)”；services/voiceStreamSTT.ts:1-8 “Only reachable in ant builds (gated by feature('VOICE_MODE') in useVoice.ts import) … Connects to Anthropic's voice_stream WebSocket endpoint”；services/voiceKeyterms.ts:1-5 “domain-specific vocabulary hints (Deepgram \"keywords\")”。",
+   "registeredWhere": "hooks/useVoice.ts（:8 import voiceKeyterms/voiceStreamSTT）、hooks/useVoiceIntegration.tsx、components/PromptInput/Notifications.tsx、components/PromptInput/PromptInputFooterLeftSide.tsx、components/TextInput.tsx、commands/voice/index.ts、tools/ConfigTool/ConfigTool.ts。",
+   "removalRisk": "中：命令 commands/voice/ 与 PromptInput 组件多处引用；native 模块 audio-capture-napi 为懒加载，删除不影响启动。属明确非 coding 项。"
+  },
+  {
+   "name": "services/claudeAiLimits.ts / claudeAiLimitsHook.ts / rateLimitMessages.ts / rateLimitMocking.ts / mockRateLimits.ts",
+   "path": "services/claudeAiLimits.ts",
+   "purpose": "订阅配额（5h/7d/overage）状态跟踪、限额提示文案、以及 ant-only 的 /mock-limits 模拟注入。",
+   "evidence": "services/claudeAiLimits.ts:27-36 `type QuotaStatus = 'allowed' | 'allowed_warning' | 'rejected'` / `type RateLimitType = 'five_hour' | 'seven_day' | … | 'overage'`；services/mockRateLimits.ts:1-6 “Mock rate limits for testing [ANT-ONLY] … ⚠️ WARNING: This is for internal testing/demo purposes only!”；services/rateLimitMocking.ts:1-4 “Facade for rate limit header processing This isolates mock logic from production code”。",
+   "registeredWhere": "services/claudeAiLimitsHook.ts:3-6；cli/print.ts、services/api/claude.ts、services/api/errors.ts、services/api/withRetry.ts、utils/messages/mappers.ts、utils/model/check1mAccess.ts、hooks/notifs/useRateLimitWarningNotification.tsx、main.tsx、components/StatusLine.tsx、commands/cost/cost.ts、components/messages/RateLimitMessage.tsx、commands/rate-limit-options/。",
+   "removalRisk": "高：api/claude.ts 与 api/withRetry.ts 直接读取限额状态用于重试与降级。建议：保留 claudeAiLimits + rateLimitMessages（额度反馈），单独摘除 mockRateLimits/rateLimitMocking 与 commands/mock-limits、commands/reset-limits。"
+  },
+  {
+   "name": "services/internalLogging.ts",
+   "path": "services/internalLogging.ts",
+   "purpose": "ant 内部诊断：读取 k8s namespace / OCI container id，并记录权限上下文日志。",
+   "evidence": "services/internalLogging.ts:17-19 `const getKubernetesNamespace = memoize(async (): Promise<string | null> => { if (process.env.USER_TYPE !== 'ant') { return null }`；:35-37 `getContainerId` 同样以 `USER_TYPE !== 'ant'` 提前返回；:39 `/proc/self/mountinfo`。",
+   "registeredWhere": "main.tsx:297 `import { logPermissionContextForAnts } from 'src/services/internalLogging.js'`；services/compact/compact.ts:110 同名 import。",
+   "removalRisk": "低：仅在 USER_TYPE==='ant' 时产生行为；外部构建实际是空转。删除需清 2 处 import。"
+  },
+  {
+   "name": "services/vcr.ts",
+   "path": "services/vcr.ts",
+   "purpose": "API 请求录制/回放（cassette）测试夹具。",
+   "evidence": "services/vcr.ts:1-8 import `BetaContentBlock`/`addToTotalSessionCost`/`calculateUSDCost`；:16-19 import `getCwd`/`env`/`getClaudeConfigHomeDir`，以环境变量与本地 cassette 目录工作（mkdir/readFile/writeFile）。",
+   "registeredWhere": "当前工作树无静态 import 命中（rg 'services/vcr' 无结果），services/api/claude.ts 与 services/tokenEstimation.ts 中曾有引用痕迹。",
+   "removalRisk": "低：无活跃调用点，删除风险最小；属测试基建。"
+  },
+  {
+   "name": "services/api 遥测与账号族：referral.ts / grove.ts / ultrareviewQuota.ts / overageCreditGrant.ts / adminRequests.ts / metricsOptOut.ts / firstTokenDate.ts",
+   "path": "services/api/",
+   "purpose": "账号侧非推理 API：推荐活动、Grove 通知、Ultrareview 配额、超额信用授予、管理员请求、遥测退出、首 token 日期。",
+   "evidence": "services/api/referral.ts:12 `import { getOAuthHeaders, prepareApiRequest } from '../../utils/teleport/api.js'`；services/api/ultrareviewQuota.ts:1-5 `import axios` + `getOauthConfig` + `isClaudeAISubscriber`；services/api/metricsOptOut.ts:1-9 `metrics_logging_enabled` 查询；services/api/firstTokenDate.ts:9-11 “Fetch the user's first Claude Code token date … called after successful login”。",
+   "registeredWhere": "referral→components/LogoV2/GuestPassesUpsell.tsx、services/tips/tipRegistry.ts、main.tsx、commands/passes/；grove→interactiveHelpers.tsx、cli/print.ts、commands/logout/、components/grove/；ultrareviewQuota→commands/review/reviewRemote.ts；overageCreditGrant→commands/extra-usage/；adminRequests→commands/extra-usage/；metricsOptOut→utils/telemetry/bigqueryExporter.ts；firstTokenDate→cli/handlers/auth.ts:12。",
+   "removalRisk": "中：单点分散，逐一可摘；其中 reviewRemote 与 extra-usage 命令需同步移除。"
+  },
+  {
+   "name": "services/api/sessionIngress.ts + cli/transports/ (ccrClient/SSETransport/WebSocketTransport/HybridTransport/WorkerStateUploader/SerialBatchEventUploader/transportUtils)",
+   "path": "services/api/sessionIngress.ts",
+   "purpose": "会话数据上传/回传与远程传输层（SSE/WS/CCR 混合），用于远程会话与云 runner。",
+   "evidence": "cli/transports/ccrClient.ts:1-12 import `decodeJwtExpiry` from '../../bridge/jwtUtils.js' + `createAxiosInstance`；cli/transports/transportUtils.ts:9-13 “Transport selection priority: 1. SSETransport … when CLAUDE_CODE_USE_CCR_V2 is set”；services/api/sessionIngress.ts:1-13 import `getOauthConfig`/`getSessionIngressAuthToken`/`getOAuthHeaders`。",
+   "registeredWhere": "cli/remoteIO.ts:26-29 import CCRClient/SSETransport/getTransportForUrl；bridge/replBridgeTransport.ts、bridge/replBridge.ts；services/api/sessionIngress.ts→utils/teleport.tsx、utils/sessionStorage.ts、commands/clear/caches.ts。",
+   "removalRisk": "中-高：sessionStorage 在本地会话持久化中也被引用（utils/sessionStorage.ts）。需区分「本地 transcript 落盘」与「远程 ingress 上传」，只摘后者，避免破坏会话恢复。"
+  },
+  {
+   "name": "services/contextCollapse/ (空目录)",
+   "path": "services/contextCollapse/",
+   "purpose": "空目录，无任何文件（模块在转储中缺失）。",
+   "evidence": "`ls -la services/contextCollapse` 仅 `.` 与 `..`（total 0）。",
+   "registeredWhere": "无 import 引用（无文件）。",
+   "removalRisk": "无：空目录，直接移除零影响。"
+  },
+  {
+   "name": "services/sessionTranscript/ (空目录)",
+   "path": "services/sessionTranscript/",
+   "purpose": "空目录，无任何文件。",
+   "evidence": "`ls -la services/sessionTranscript` 仅 `.` 与 `..`（total 0）；services/compact/compact.ts:6-8 中有 `feature('KAIROS') ? null : null` 的相关占位。",
+   "registeredWhere": "无文件级 import。",
+   "removalRisk": "无：空目录。"
+  },
+  {
+   "name": "cli/remoteIO.ts",
+   "path": "cli/remoteIO.ts",
+   "purpose": "SDK/远程模式的双向流式 IO（继承 StructuredIO，接 WebSocket/SSE 传输）。",
+   "evidence": "cli/remoteIO.ts:35-40 `export class RemoteIO extends StructuredIO` + `private transport: Transport` / `private readonly isBridge: boolean = false`；:31-34 “Bidirectional streaming for SDK mode with session tracking Supports WebSocket transport”。",
+   "registeredWhere": "cli/print.ts:11 `import { RemoteIO } from 'src/cli/remoteIO.js'`、:2100 `if (structuredIO instanceof RemoteIO && command.mode === 'prompt')`、:5222-5224 `new RemoteIO(options.sdkUrl, inputStream, options.replayUserMessages)`；bridge/replBridgeTransport.ts。",
+   "removalRisk": "中：print.ts 有多处 instanceof 分支。删除需改为仅 StructuredIO 路径；本地 `claude -p` 不受影响。"
+  },
+  {
+   "name": "cli/update.ts",
+   "path": "cli/update.ts",
+   "purpose": "自更新：检查最新版本并就地重装全局包/原生二进制。",
+   "evidence": "cli/update.ts:30-36 `export async function update() { logEvent('tengu_update_check', {}) writeToStdout(`Current version: ${MACRO.VERSION}\\n`) … writeToStdout(`Checking for updates to ${channel} version...\\n`)`；:3-28 import getLatestVersion/installGlobalPackage/installOrUpdateClaudePackage/installLatestNative。",
+   "registeredWhere": "main.tsx:5467-5468 `const { update } = await import('src/cli/update.js'); await update()`；entrypoints/cli.tsx:215-219 把 `--update`/`--upgrade` 重写为 `update` 子命令。",
+   "removalRisk": "中：需同时清 main.tsx 的 update 子命令分支与 cli.tsx:215-219 的 flag 重写。"
+  },
+  {
+   "name": "cli/transports/Transport.ts (stub)",
+   "path": "cli/transports/Transport.ts",
+   "purpose": "传输接口占位 stub（转储中缺失，仅导出 any 类型）。",
+   "evidence": "cli/transports/Transport.ts:1-3 `// stub: this module is absent from the dump; names are taken from the import sites / export type Transport = any;`。",
+   "registeredWhere": "cli/remoteIO.ts:28、cli/transports/transportUtils.ts:5、SSETransport.ts:10、WebSocketTransport.ts。",
+   "removalRisk": "低：随远程传输层一并移除。"
+  },
+  {
+   "name": "cli/handlers/auth.ts",
+   "path": "cli/handlers/auth.ts",
+   "purpose": "`claude auth login/status/logout` 子命令：OAuth 登录、token 刷新、账号状态查询。",
+   "evidence": "cli/handlers/auth.ts:1-6 import `clearAuthRelatedCaches, performLogout` from commands/logout；:11-22 import oauth/client 的 `refreshOAuthToken, storeOAuthAccountInfo` 与 `OAuthService`；:330 行体量。",
+   "registeredWhere": "main.tsx:5071 `const { authLogin } = await import('./cli/handlers/auth.js')`、:5082 `authStatus`、:5090 `authLogout`；cli/print.ts:193 `import { installOAuthTokens } from 'src/cli/handlers/auth.js'`；components/ConsoleOAuthFlow.tsx:6 同。",
+   "removalRisk": "高：`installOAuthTokens` 被 print.ts 与 ConsoleOAuthFlow 复用，是凭据安装唯一入口。摘除需替换为 API-key/环境变量路径。"
+  },
+  {
+   "name": "--claude-in-chrome-mcp",
+   "path": "entrypoints/cli.tsx",
+   "purpose": "以 MCP stdio server 形式启动 Claude in Chrome 的浏览器扩展桥，供 Chrome 扩展连接；与 coding 无关。",
+   "evidence": "entrypoints/cli.tsx:78-84 `if (process.argv[2] === '--claude-in-chrome-mcp') { ... const { runClaudeInChromeMcpServer } = await import('../utils/claudeInChrome/mcpServer.js'); await runClaudeInChromeMcpServer() }`",
+   "registeredWhere": "cli.tsx 启动 fast-path；实现在 utils/claudeInChrome/mcpServer.ts，被 main.tsx:207-212 (prompt/setup) 与 src/utils/claudeInChrome/common.ts (main.tsx:320) 引用",
+   "removalRisk": "低。删除该 fast-path 分支 + utils/claudeInChrome/ 后，仅影响 Chrome 扩展；不影响 coding 路径。需同时清理 main.tsx 的 --chrome/--no-chrome flag 与 setupClaudeInChrome 调用，否则留下悬挂 import。"
+  },
+  {
+   "name": "--chrome-native-host",
+   "path": "entrypoints/cli.tsx",
+   "purpose": "Chrome native messaging host 入口，由浏览器扩展按 native messaging 协议拉起；与 coding 无关。",
+   "evidence": "entrypoints/cli.tsx:85-91 `} else if (process.argv[2] === '--chrome-native-host') { ... const { runChromeNativeHost } = await import('../utils/claudeInChrome/chromeNativeHost.js'); await runChromeNativeHost() }`",
+   "registeredWhere": "cli.tsx 启动 fast-path；实现在 utils/claudeInChrome/chromeNativeHost.ts",
+   "removalRisk": "低。同 Chrome 族一并移除；注意 chromeNativeHost.ts 与 mcpServer.ts 共享 utils/claudeInChrome/common.ts，删除时保留 common 引用方检查。"
+  },
+  {
+   "name": "--computer-use-mcp",
+   "path": "entrypoints/cli.tsx",
+   "purpose": "以 MCP server 形式启动 Computer Use（桌面自动化/截图控制），受 CHICAGO_MCP feature gate；与 coding 无关。",
+   "evidence": "entrypoints/cli.tsx:92-102 `} else if (feature('CHICAGO_MCP') && process.argv[2] === '--computer-use-mcp') { ... const { runComputerUseMcpServer } = await import('../utils/computerUse/mcpServer.js'); await runComputerUseMcpServer() }`",
+   "registeredWhere": "cli.tsx fast-path；实现在 utils/computerUse/mcpServer.ts；main.tsx:2337-2359 (setupComputerUseMCP) 与 main.tsx:2194-2200 (保留名检查) 也引用",
+   "removalRisk": "中。除该 fast-path 外，还需删除 main.tsx:2337-2359 的 CHICAGO_MCP 注入块和 2194-2200 的 COMPUTER_USE_MCP_SERVER_NAME 保留名校验，否则启动时会 import 已删模块。"
+  },
+  {
+   "name": "claude remote-control | rc | remote | sync | bridge",
+   "path": "entrypoints/cli.tsx",
+   "purpose": "把本机作为 bridge 环境接入 claude.ai/code 的远程控制；含 OAuth 与 policy 检查。与 coding 无关（远程会话）。",
+   "evidence": "entrypoints/cli.tsx:115-164 `if (feature('BRIDGE_MODE') && (args[0] === 'remote-control' || args[0] === 'rc' || args[0] === 'remote' || args[0] === 'sync' || args[0] === 'bridge')) { ... const { bridgeMain } = await import('../bridge/bridgeMain.js'); ... await bridgeMain(args.slice(1)) }`",
+   "registeredWhere": "cli.tsx fast-path；实现在 bridge/（29 文件，12605 行）；main.tsx:5406-5419 注册 hidden `remote-control` 子命令，main.tsx:3131-3142 解析 --rc 权限",
+   "removalRisk": "高。bridge/ 被 cli.tsx、main.tsx（--rc/remote-control）、setup.ts（claude remote-control 会话标记）、cli/remoteIO.ts、migrations/migrateReplBridgeEnabledToRemoteControlAtStartup 等多处引用；需整族成组移除，否则 tsc 报未解析 import。"
+  },
+  {
+   "name": "--dump-system-prompt",
+   "path": "entrypoints/cli.tsx",
+   "purpose": "输出渲染后的系统提示并退出，注释标注为 prompt sensitivity eval 专用（Ant-only）；非 coding 产品入口。",
+   "evidence": "entrypoints/cli.tsx:61-76 `if (feature('DUMP_SYSTEM_PROMPT') && args[0] === '--dump-system-prompt') { ... const { getSystemPrompt } = await import('../constants/prompts.js'); const prompt = await getSystemPrompt([], model); console.log(prompt.join('\\n')) }`",
+   "registeredWhere": "cli.tsx fast-path，受 feature('DUMP_SYSTEM_PROMPT') 编译期裁剪",
+   "removalRisk": "低。external build 已被 DCE 移除；删除仅影响内部评测路径，但会移除系统提示导出能力（复刻项目若要保留 prompt 可读性需评估）。"
+  },
+  {
+   "name": "--update / --upgrade 重写",
+   "path": "entrypoints/cli.tsx",
+   "purpose": "把 `claude --update|--upgrade` 重写为 `update` 子命令，触发自更新；与 coding 无关。",
+   "evidence": "entrypoints/cli.tsx:214-220 `if (args.length === 1 && (args[0] === '--update' || args[0] === '--upgrade')) { process.argv = [process.argv[0]!, process.argv[1]!, 'update'] }`",
+   "registeredWhere": "cli.tsx argv 重写 → main.tsx:5462-5469 `program.command('update').alias('upgrade')` → src/cli/update.ts",
+   "removalRisk": "低-中。删除后需同时移除 main.tsx 的 update 子命令与 cli/update.ts，否则留下孤儿入口。"
+  },
+  {
+   "name": "claude ssh <host> [dir]",
+   "path": "main.tsx",
+   "purpose": "在远端主机上运行 Claude Code，本地隧道回传 API 鉴权；注册子命令仅为 --help 展示，实际流程由 argv 早期重写消费。与 coding 无关（远程会话）。",
+   "evidence": "main.tsx:5003-5035 `if (feature('SSH_REMOTE')) { program.command('ssh <host> [dir]').description('Run Claude Code on a remote host over SSH...') ... }`；argv 重写在 main.tsx:956-1054",
+   "registeredWhere": "main.tsx 子命令注册 + main.tsx:843-862 _pendingSSH 状态 + main.tsx:956-1054 早期 argv 解析（--permission-mode/--local/-c/--resume/--model 转发）",
+   "removalRisk": "中。ssh 逻辑分散在三处（类型定义 843-862、argv 重写 956-1054、子命令 5003-5035），且注释指出 ssh 流程还依赖 main() 的 argv 重写；需整组删除并确认无 ssh 会话启动分支残留。"
+  },
+  {
+   "name": "claude auth login / status / logout",
+   "path": "main.tsx",
+   "purpose": "OAuth 登录族：登录 Anthropic 账号、显示鉴权状态、登出。与 coding 无关。",
+   "evidence": "main.tsx:5044-5092 `const auth = program.command('auth')...; auth.command('login')... await authLogin(...); auth.command('status')... authStatus(opts); auth.command('logout')... authLogout()`",
+   "registeredWhere": "main.tsx 子命令；实现在 cli/handlers/auth.ts:112 authLogin / 232 authStatus / 321 authLogout / 50 installOAuthTokens",
+   "removalRisk": "中。auth.ts 的 installOAuthTokens 可能被登录命令与 onboarding 共用；删除 CLI 入口需确认 onboarding 与 /login 斜杠命令（commands/login）不依赖同一 handler，否则运行期才暴露。"
+  },
+  {
+   "name": "claude setup-token",
+   "path": "main.tsx",
+   "purpose": "设置长期有效的鉴权 token（需 Claude 订阅），属 OAuth/凭据族；与 coding 无关。",
+   "evidence": "main.tsx:5322-5334 `program.command('setup-token').description('Set up a long-lived authentication token (requires Claude subscription)').action(async () => { const [{ setupTokenHandler }, { createRoot }] = await Promise.all([import('./cli/handlers/util.js'), import('./ink.js')]) ... })`",
+   "registeredWhere": "main.tsx 子命令；实现在 cli/handlers/util.tsx:20 setupTokenHandler（内部 import ConsoleOAuthFlow）",
+   "removalRisk": "低。与 coding 无耦合；删除后 util.tsx 仍被 doctor/install 使用，勿整文件删除。"
+  },
+  {
+   "name": "claude doctor",
+   "path": "main.tsx",
+   "purpose": "检查自动更新器/安装健康度；属自更新与安装族，与 coding 无关。",
+   "evidence": "main.tsx:5442-5454 `program.command('doctor').description('Check the health of your Claude Code auto-updater...').action(async () => { const [{ doctorHandler }, { createRoot }] = await Promise.all([import('./cli/handlers/util.js'), import('./ink.js')]) ... })`",
+   "registeredWhere": "main.tsx 子命令；实现在 cli/handlers/util.tsx:79 doctorHandler；cli/update.ts:30 update() 也调用 getDoctorDiagnostic",
+   "removalRisk": "中。doctorHandler 与 update() 共享 utils/doctorDiagnostic；若同时移除 update 子命令则一并清理，否则保留 util.tsx 会带入 nativeInstaller 依赖。"
+  },
+  {
+   "name": "claude update / upgrade（子命令）",
+   "path": "main.tsx",
+   "purpose": "检查并安装新版本（自更新）；与 coding 无关。",
+   "evidence": "main.tsx:5462-5469 `program.command('update').alias('upgrade').description('Check for updates and install if available').action(async () => { const { update } = await import('src/cli/update.js'); await update() })`",
+   "registeredWhere": "main.tsx 子命令 → cli/update.ts:30 update()",
+   "removalRisk": "中。cli/update.ts 依赖 nativeInstaller/packageManagers、completionCache、doctorDiagnostic；删除入口后应连模块一起评估，避免残留自更新依赖。"
+  },
+  {
+   "name": "claude install [target]",
+   "path": "main.tsx",
+   "purpose": "安装 Claude Code native build（stable/latest/指定版本）；自更新/安装族，与 coding 无关。",
+   "evidence": "main.tsx:5479-5490 `program.command('install [target]').description('Install Claude Code native build...').option('--force', ...).action(async (target, options) => { const { installHandler } = await import('./cli/handlers/util.js'); await installHandler(target, options) })`",
+   "registeredWhere": "main.tsx 子命令；实现在 cli/handlers/util.tsx:105 installHandler → 内部调用 setup() 与 commands/install.js",
+   "removalRisk": "低-中。installHandler 依赖 commands/install.js；注意它与斜杠命令 commands/install.tsx 是否同源，避免误删交互式安装命令。"
+  },
+  {
+   "name": "claude remote-control（hidden 子命令）",
+   "path": "main.tsx",
+   "purpose": "把本地环境接入 claude.ai/code 的远程控制；注册仅为 help 输出，实际由 cli.tsx fast-path 消费。与 coding 无关。",
+   "evidence": "main.tsx:5406-5419 `if (feature('BRIDGE_MODE')) { program.command('remote-control', { hidden: true }).alias('rc').description('Connect your local environment for remote-control sessions via claude.ai/code').action(async () => { const { bridgeMain } = await import('./bridge/bridgeMain.js'); await bridgeMain(process.argv.slice(3)) }) }`",
+   "registeredWhere": "main.tsx 子命令；实现在 bridge/bridgeMain.ts",
+   "removalRisk": "中。与 cli.tsx 的 bridge fast-path 成对；两处都要删，且需清理 --rc/--remote-control 全局 flag（main.tsx:4839-4853）与 AppState 的 replBridge* 字段。"
+  },
+  {
+   "name": "claude assistant [sessionId]",
+   "path": "main.tsx",
+   "purpose": "把 REPL 作为客户端附加到运行中的 bridge 会话；属远程/助手族，与 coding 无关。",
+   "evidence": "main.tsx:5421-5439 `if (feature('KAIROS')) { program.command('assistant [sessionId]').description('Attach the REPL as a client to a running bridge session...').action(() => { process.stderr.write('Usage: claude assistant [sessionId]...'); process.exit(1) }) }`；argv 重写在 main.tsx:935-950",
+   "registeredWhere": "main.tsx 子命令 + main.tsx:832-838 _pendingAssistantChat + main.tsx:935-950 argv 重写；assistantModule 已在 main.tsx:140-146 置空",
+   "removalRisk": "低-中。该 build 中 assistant 模块已被 DCE 置 null（main.tsx:146），仅剩命令壳与 argv 分支；删除时同时清理 935-950 与 832-838。"
+  },
+  {
+   "name": "--teleport [session]",
+   "path": "main.tsx",
+   "purpose": "恢复/选择 teleport（CCR 远程）会话；远程会话族，与 coding 无关。",
+   "evidence": "main.tsx:4827-4832 `program.addOption(new Option('--teleport [session]', 'Resume a teleport session, optionally specify session ID').hideHelp())`；处理在 main.tsx:4397-4485（launchTeleportResumeWrapper / fetchSession / teleportWithProgress）",
+   "registeredWhere": "main.tsx 全局 flag；实现 utils/teleport.ts + utils/teleport/api.ts（main.tsx:428-435 静态 import）",
+   "removalRisk": "中。除 flag 外需移除 main.tsx:428-435 的静态 import、4194 的 resume 分支条件、4397-4485 的 teleport 处理与 setTeleportedSessionInfo，否则残留未使用依赖。"
+  },
+  {
+   "name": "--remote [description]",
+   "path": "main.tsx",
+   "purpose": "创建 Claude Code Web (CCR) 远程会话；远程会话族，与 coding 无关。",
+   "evidence": "main.tsx:4833-4838 `program.addOption(new Option('--remote [description]', 'Create a remote session with the given description').hideHelp())`；处理在 main.tsx:4249-4341（teleportToRemoteWithErrorHandling、isPolicyAllowed('allow_remote_sessions')）",
+   "registeredWhere": "main.tsx 全局 flag；实现 utils/teleport.ts + remote/RemoteSessionManager.js（main.tsx:398）",
+   "removalRisk": "中。与 --teleport 共享 resume 分支（main.tsx:4191-4196）与 remote session config；需与 --teleport 一起删，避免分支半残。"
+  },
+  {
+   "name": "--remote-control / --rc",
+   "path": "main.tsx",
+   "purpose": "交互式会话中启用 Remote Control（bridge）；远程控制族，与 coding 无关。",
+   "evidence": "main.tsx:4839-4853 `if (feature('BRIDGE_MODE')) { program.addOption(new Option('--remote-control [name]', 'Start an interactive session with Remote Control enabled...')...); program.addOption(new Option('--rc [name]', 'Alias for --remote-control')...) }`；权限判定在 main.tsx:3131-3142",
+   "registeredWhere": "main.tsx 全局 flag；实现 bridge/bridgeEnabled.ts getBridgeDisabledReason",
+   "removalRisk": "中-高。--rc 结果写入 AppState.replBridge*（main.tsx:3873-3939）、setup.ts:1120-1122 会话来源标记、migrations/migrateReplBridgeEnabledToRemoteControlAtStartup；整族删除才干净。"
+  },
+  {
+   "name": "--chrome / --no-chrome",
+   "path": "main.tsx",
+   "purpose": "启用/禁用 Claude in Chrome 集成；浏览器扩展族，与 coding 无关。",
+   "evidence": "main.tsx:1652-1653 `.option('--chrome', 'Enable Claude in Chrome integration').option('--no-chrome', 'Disable Claude in Chrome integration')`；处理在 main.tsx:2237-2295（setChromeFlagOverride / shouldEnableClaudeInChrome / setupClaudeInChrome）",
+   "registeredWhere": "main.tsx 全局 flag；实现 utils/claudeInChrome/setup.ts:39 shouldEnableClaudeInChrome、:72 shouldAutoEnableClaudeInChrome；main.tsx:207-212 静态 import",
+   "removalRisk": "中。除 flag 外需移除 main.tsx:2237-2295 注入块、207-212 import、2192-2193 保留名校验与 --claude-in-chrome-mcp fast-path，否则残留悬挂引用。"
+  },
+  {
+   "name": "--file <specs...>",
+   "path": "main.tsx",
+   "purpose": "启动时经 session ingress token 下载文件资源（远程会话上下文）；与 coding 无关。",
+   "evidence": "main.tsx:1654-1657 `.option('--file <specs...>', 'File resources to download at startup. Format: file_id:relative_path ...')`；处理在 main.tsx:1963-1995（getSessionIngressAuthToken / downloadSessionFiles / getOauthConfig）",
+   "registeredWhere": "main.tsx 全局 flag；依赖 session ingress token 与 utils/filesApi",
+   "removalRisk": "低-中。属远程会话上下文注入；删除后需确认 CLAUDE_CODE_SESSION_ACCESS_TOKEN 相关路径无其他消费者。"
+  },
+  {
+   "name": "--workload <tag>",
+   "path": "main.tsx",
+   "purpose": "为 billing-header 归因设置 workload 标签（SDK daemon 调用者使用）；计费元数据，与 coding 无关。",
+   "evidence": "main.tsx:1600-1605 `new Option('--workload <tag>', 'Workload tag for billing-header attribution (cc_workload). Process-scoped; set by SDK daemon callers that spawn subprocesses for cron work. (only works with --print)').hideHelp()`",
+   "registeredWhere": "main.tsx 全局 flag（hidden）；供 SDK daemon/cron 场景",
+   "removalRisk": "低。仅计费归因；若复刻项目保留 SDK daemon 语义需评估，否则可安全移除。"
+  },
+  {
+   "name": "--brief",
+   "path": "main.tsx",
+   "purpose": "启用 SendUserMessage（agent-to-user 通信）brief 模式；KAIROS 族，与 coding 无关。",
+   "evidence": "main.tsx:4743-4750 `if (feature('KAIROS') || feature('KAIROS_BRIEF')) { program.addOption(new Option('--brief', 'Enable SendUserMessage tool for agent-to-user communication')) }`；激活逻辑 main.tsx:5627-5656 maybeActivateBrief",
+   "registeredWhere": "main.tsx 全局 flag + maybeActivateBrief（main.tsx:4635 调用）+ tools/BriefTool/BriefTool.js（条件 require）",
+   "removalRisk": "中。除 flag 外需移除 maybeActivateBrief、AppState.isBriefOnly（main.tsx:3871-3872, 3891）与 BriefTool 引用。"
+  },
+  {
+   "name": "--assistant",
+   "path": "main.tsx",
+   "purpose": "强制 assistant 模式（Agent SDK daemon 用途）；KAIROS 族，与 coding 无关。",
+   "evidence": "main.tsx:4751-4758 `if (feature('KAIROS')) { program.addOption(new Option('--assistant', 'Force assistant mode (Agent SDK daemon use)').hideHelp()) }`",
+   "registeredWhere": "main.tsx 全局 flag（hidden）；assistantModule 已在 main.tsx:140-146 置空",
+   "removalRisk": "低。本 build 中 assistant 模块已被 DCE；删除 flag 即可，注意与 claude assistant 子命令同批。"
+  },
+  {
+   "name": "--channels / --dangerously-load-development-channels",
+   "path": "main.tsx",
+   "purpose": "注册 MCP 通道通知（inbound push）的服务器白名单；KAIROS_CHANNELS 族，与 coding 无关。",
+   "evidence": "main.tsx:4759-4772 `if (feature('KAIROS') || feature('KAIROS_CHANNELS')) { program.addOption(new Option('--channels <servers...>', 'MCP servers whose channel notifications (inbound push) should register this session...')...); program.addOption(new Option('--dangerously-load-development-channels <servers...>', ...)) }`；解析在 main.tsx:2364-2467",
+   "registeredWhere": "main.tsx 全局 flag；实现 setAllowedChannels / gateChannelServer，AppState 与 services/mcp/channelNotification.ts 引用",
+   "removalRisk": "中。除 flag 与解析块外，需清理 channelNotification.ts 与启动屏 ChannelsNotice，否则残留未使用通道状态。"
+  },
+  {
+   "name": "--proactive",
+   "path": "main.tsx",
+   "purpose": "以主动自主模式启动（周期 <\\tick> 提示、自主行动）；PROACTIVE/KAIROS 族，与 coding 无关。",
+   "evidence": "main.tsx:4728-4732 `if (feature('PROACTIVE') || feature('KAIROS')) { program.addOption(new Option('--proactive', 'Start in proactive autonomous mode')) }`；激活逻辑 main.tsx:5613-5625 maybeActivateProactive",
+   "registeredWhere": "main.tsx 全局 flag + maybeActivateProactive（main.tsx:4634）+ proactive/index.js（条件 require）",
+   "removalRisk": "中。除 flag 外需移除 maybeActivateProactive 与 main.tsx:3065-3080 的 proactive prompt 注入。"
+  },
+  {
+   "name": "--messaging-socket-path",
+   "path": "main.tsx",
+   "purpose": "UDS messaging server 的 socket 路径（本机注入消息，默认 tmp 路径）；UDS_INBOX 族，与 coding 无关。",
+   "evidence": "main.tsx:4734-4741 `if (feature('UDS_INBOX')) { program.addOption(new Option('--messaging-socket-path <path>', 'Unix domain socket path for the UDS messaging server (defaults to a tmp path)')) }`；消费在 main.tsx:2698, 2747",
+   "registeredWhere": "main.tsx 全局 flag；setup.ts:56-95 setup() 参数 messagingSocketPath 与 startUdsMessaging（本 build 中 body 已空）",
+   "removalRisk": "低-中。setup() 的 messagingSocketPath 形参在 setup.ts:89-95 只剩 gate 注释；删除 flag 需同步移除 setup() 形参与调用点。"
+  },
+  {
+   "name": "claude mcp add-from-claude-desktop",
+   "path": "main.tsx",
+   "purpose": "从 Claude Desktop 导入 MCP 服务器（Mac/WSL）；桌面应用族，与 coding 无关。",
+   "evidence": "main.tsx:4972-4983 `mcp.command('add-from-claude-desktop').description('Import MCP servers from Claude Desktop (Mac and WSL only)')... .action(async (options) => { const { mcpAddFromDesktopHandler } = await import('./cli/handlers/mcp.js'); await mcpAddFromDesktopHandler(options) })`",
+   "registeredWhere": "main.tsx mcp 子命令；实现在 cli/handlers/mcp.tsx mcpAddFromDesktopHandler",
+   "removalRisk": "低。仅该 handler 分支；mcp 命令族其余子命令（add/remove/list/get/add-json/serve/reset-project-choices）保留，勿整文件删除。"
+  },
+  {
+   "name": "lockCurrentVersion()",
+   "path": "setup.ts",
+   "purpose": "锁定当前版本防止被其他进程删除（native installer 自更新配套）；与 coding 无关。",
+   "evidence": "setup.ts:44 `import { lockCurrentVersion } from './utils/nativeInstaller/index.js'`；setup.ts:290 `void lockCurrentVersion() // Lock current version to prevent deletion by other processes`",
+   "registeredWhere": "setup.ts 调用；实现在 utils/nativeInstaller/index.ts",
+   "removalRisk": "低。与自更新族成组；删除后 utils/nativeInstaller 仍被 cli/update.ts 使用，注意勿误删整个模块。"
+  },
+  {
+   "name": "checkForReleaseNotes / getRecentActivity（启动发布说明预取）",
+   "path": "setup.ts",
+   "purpose": "启动时预取发布说明与最近活动供 Logo v2 渲染（交互 UI 展示数据）；与 coding 无关。",
+   "evidence": "setup.ts:365-375 `// Pre-fetch data for Logo v2 ... if (!isBareMode()) { const { hasReleaseNotes } = await checkForReleaseNotes(getGlobalConfig().lastReleaseNotesSeen); if (hasReleaseNotes) { await getRecentActivity() } }`",
+   "registeredWhere": "setup.ts 调用；实现 src/utils/releaseNotes.ts、utils/logoV2Utils.ts；import 在 setup.ts:10, 43",
+   "removalRisk": "低。仅启动屏展示数据；删除需同时清理 setup.ts:10/43 import，并确认 LogoV2 组件不硬依赖。"
+  },
+  {
+   "name": "遥测与后台记账：tengu_started / tengu_exit / sessionFileAccessHooks / teamMemorySync watcher",
+   "path": "setup.ts",
+   "purpose": "启动信标、退出事件、会话文件访问分析钩子与团队记忆同步 watcher；遥测/分析族，与 coding 无关。",
+   "evidence": "setup.ts:344-351 `void import('./utils/sessionFileAccessHooks.js').then(m => m.registerSessionFileAccessHooks())` 与 `if (feature('TEAMMEM')) { void import('./services/teamMemorySync/watcher.js').then(m => m.startTeamMemoryWatcher()) }`；setup.ts:360 `logEvent('tengu_started', {})`；setup.ts:430-458 tengu_exit 上报",
+   "registeredWhere": "setup.ts；实现 utils/sessionFileAccessHooks.ts、services/teamMemorySync/watcher.ts、services/analytics",
+   "removalRisk": "中。logEvent/sinks 贯穿全库（main.tsx、commands 等），只删这三个调用点安全；但 teamMemorySync watcher 若被 /memory 或 team memory 读取依赖需确认，避免运行时缺 watcher。"
+  },
+  {
+   "name": "CompanionSprite（伴侣精灵/宠物动画）",
+   "path": "buddy/CompanionSprite.tsx",
+   "purpose": "在输入框旁渲染宠物精灵、气泡台词、/buddy pet 飘心动画；feature('BUDDY') 门控。",
+   "evidence": "buddy/CompanionSprite.tsx:19 PET_BURST_MS=2500 飘心；:23 IDLE_SEQUENCE 待机眨眼；:26 PET_HEARTS=figures.heart 爱心；:132 export function CompanionSprite；:176 if (!feature('BUDDY')) return null；:311 export function CompanionFloatingBubble",
+   "registeredWhere": "screens/REPL.tsx:542-545 import；:6005-6006 bottomFloat CompanionFloatingBubble；:6112-6116 与 :6782-6785 CompanionSprite；components/PromptInput/PromptInput.tsx:36 import companionReservedColumns，:445-448 companionFooterVisible，:2528 columns-3-companionReservedColumns",
+   "removalRisk": "移除后 REPL 布局与 PromptInput 宽度计算引用失效（PromptInput.tsx:2528 直接依赖 companionReservedColumns）；需同时清理 REPL 三处渲染点与 PromptInput 的 companion 分支。影响面：仅 UI 装饰，无 agent loop/工具链依赖。"
+  },
+  {
+   "name": "companion 数据模型与 sprites",
+   "path": "buddy/companion.ts, buddy/types.ts, buddy/sprites.ts, buddy/prompt.ts",
+   "purpose": "用种子 PRNG 抽取宠物物种/稀有度/帽子，渲染 ASCII 精灵，并向模型注入 companion 人格提示词。",
+   "evidence": "buddy/companion.ts:16 mulberry32 PRNG；:119 companionUserId；:127 getCompanion；buddy/types.ts:101 CompanionBones、:110 CompanionSoul、:126 RARITY_WEIGHTS、:142 RARITY_COLORS；buddy/sprites.ts:514 行精灵库；buddy/prompt.ts:7 companionIntroText 向模型注入 '# Companion' 人格段",
+   "registeredWhere": "buddy/CompanionSprite.tsx:12-14 import getCompanion/renderSprite/RARITY_COLORS；buddy/prompt.ts:19 getCompanionIntroAttachment 作为 attachment 进入对话",
+   "removalRisk": "buddy/prompt.ts 会把宠物人格写进系统提示/attachment，属于污染 coding agent 上下文的非 coding 内容；移除需同步清理 companion_intro attachment 类型。影响面：buddy 目录自洽，外部仅 CompanionSprite 与 prompt 挂载点。"
+  },
+  {
+   "name": "useBuddyNotification（/buddy 营销彩蛋）",
+   "path": "buddy/useBuddyNotification.tsx",
+   "purpose": "在启动时弹出彩虹 /buddy 通知，带 2026-04-01~07 的营销时间窗。",
+   "evidence": "buddy/useBuddyNotification.tsx:8-14 isBuddyTeaserWindow() 限定 2026 年 4 月 1-7 日；:17-23 isBuddyLive；:37-51 注释 'Rainbow /buddy teaser shown on startup' 并 addNotification({key:'buddy-teaser', timeoutMs:15_000})",
+   "registeredWhere": "components/PromptInput/PromptInput.tsx:38-40 import useBuddyNotification；:2520 调用；:764 findBuddyTriggerPositions 高亮 /buddy",
+   "removalRisk": "PromptInput 内三处调用（import、hook 调用、trigger 高亮）需一并移除；影响面限于输入框提示层。"
+  },
+  {
+   "name": "VoiceIndicator / VoiceWarmupHint（语音模式 UI）",
+   "path": "components/PromptInput/VoiceIndicator.tsx",
+   "purpose": "渲染语音录制/处理中动画与 'keep holding…' 提示，feature('VOICE_MODE') 门控。",
+   "evidence": "components/PromptInput/VoiceIndicator.tsx:17-20 export function VoiceIndicator，:18 if (!feature('VOICE_MODE')) return null；:24-25 'listening…'；:37-40 VoiceWarmupHint 'keep holding…'；:42-62 ProcessingShimmer 脉冲动画",
+   "registeredWhere": "components/PromptInput/PromptInputFooterLeftSide.tsx:47 import VoiceWarmupHint；:539 parts.push(<VoiceWarmupHint/>)；:244-251 useVoiceEnabled/useVoiceState；:571-584 'hold {voiceKeyShortcut} to speak' 提示；screens/REPL.tsx:194-204 动态 require useVoiceIntegration/VoiceKeybindingHandler",
+   "removalRisk": "语音是独立子系统（voice/、context/voice.js、hooks/useVoiceIntegration），移除需同时断开 REPL:5273-5291 与 :5722/:5954 的 VoiceKeybindingHandler。影响面：仅输入层，不影响 agent loop。"
+  },
+  {
+   "name": "VoiceModeNotice（语音功能促销提示）",
+   "path": "components/LogoV2/VoiceModeNotice.tsx",
+   "purpose": "启动时显示 'Voice mode is now available · /voice to enable' 并累计曝光次数。",
+   "evidence": "components/LogoV2/VoiceModeNotice.tsx:13-17 export function VoiceModeNotice 门控 feature('VOICE_MODE')；:45-49 AnimatedAsterisk + ' Voice mode is now available · /voice to enable'；:11 MAX_SHOW_COUNT=3；:29 voiceNoticeSeenCount",
+   "registeredWhere": "components/LogoV2/LogoV2.tsx:50 import；:188/:288/:416 三处渲染",
+   "removalRisk": "三处渲染点与 Opus1mMergeNotice 相邻，移除需保持 LogoV2 其余 notice 顺序；影响面限于启动横幅。"
+  },
+  {
+   "name": "GuestPassesUpsell（推荐/赠送名额促销）",
+   "path": "components/LogoV2/GuestPassesUpsell.tsx",
+   "purpose": "展示 'Share Claude Code and earn … extra usage · /passes' 拉新文案，含 3 次曝光上限与埋点。",
+   "evidence": "components/LogoV2/GuestPassesUpsell.tsx:62-72 GuestPassesUpsell 文案 'Share Claude Code and earn … of extra usage · /passes' / '3 guest passes at /passes'；:56 logEvent('tengu_guest_passes_upsell_shown')；:36 passesUpsellSeenCount>=3 上限",
+   "registeredWhere": "components/LogoV2/LogoV2.tsx:67-69 import，:90/:141-144 计数；components/LogoV2/CondensedLogo.tsx:20-24 import，:52 渲染",
+   "removalRisk": "依赖 services/api/referral.js 缓存；移除需同步清理 LogoV2 与 CondensedLogo 的计数 effect，并断开 commands/passes。影响面：纯营销 UI。"
+  },
+  {
+   "name": "OverageCreditUpsell（超额额度促销）",
+   "path": "components/LogoV2/OverageCreditUpsell.tsx",
+   "purpose": "展示 '… in extra usage for third-party apps · /extra-usage' 促销与 welcome feed 卡片，含曝光计数。",
+   "evidence": "components/LogoV2/OverageCreditUpsell.tsx:78-80 getUsageText '… in extra usage for third-party apps · /extra-usage'；:84 FEED_SUBTITLE 'On us. Works on third-party apps · /extra-usage'；:134 createOverageCreditFeed；:74 logEvent('tengu_overage_credit_upsell_shown')",
+   "registeredWhere": "components/LogoV2/LogoV2.tsx:70-74 import，:91/:146-160 计数，:400-403 feed 选择；components/LogoV2/CondensedLogo.tsx:25-29 import，:53-55 渲染；components/Settings/Usage.tsx:22-24 import，:241-243 渲染",
+   "removalRisk": "Usage.tsx 与 LogoV2/CondensedLogo 三处引用；需同步断开 services/api/overageCreditGrant.js。影响面：订阅/额度提示层。"
+  },
+  {
+   "name": "DesktopUpsellStartup（桌面应用推销弹窗）",
+   "path": "components/DesktopUpsell/DesktopUpsellStartup.tsx",
+   "purpose": "启动时弹 'Try Claude Code Desktop'，含 3 次曝光上限与 'Never' 持久关闭。",
+   "evidence": "components/DesktopUpsell/DesktopUpsellStartup.tsx:92 <PermissionDialog title=\"Try Claude Code Desktop\">；:96-98 'visual diffs, live app preview, parallel sessions'；:40 desktopUpsellSeenCount>=3；:60 logEvent('tengu_desktop_upsell_shown')",
+   "registeredWhere": "screens/REPL.tsx:512-514 import shouldShowDesktopUpsellStartup；:1121-1122 状态；:2725-2727 对话框优先级；:6485-6487 渲染",
+   "removalRisk": "REPL 四处引用 + 对话框优先级表（:2725）需同步清理；影响面限于启动对话框。"
+  },
+  {
+   "name": "DesktopHandoff（桌面应用下载/移交）",
+   "path": "components/DesktopHandoff.tsx",
+   "purpose": "检查桌面端安装状态、下载 dmg/exe 并把当前会话移交给桌面应用。",
+   "evidence": "components/DesktopHandoff.tsx:15 DESKTOP_DOCS_URL='https://clau.de/desktop'；:17-24 getDownloadUrl 返回 claude.ai/api/desktop/…/redirect；:41 DesktopHandoff 状态机 checking→prompt-download→opening；:8-9 openCurrentSessionInDesktop",
+   "registeredWhere": "components/DesktopUpsell/DesktopUpsellStartup.tsx:8 import，:64 渲染；commands/desktop 命令",
+   "removalRisk": "被 DesktopUpsell 引用，需与之一并移除；影响面：桌面移交与自更新相邻，注意别误删 AutoUpdater。"
+  },
+  {
+   "name": "RemoteCallout（远程控制首次提示）",
+   "path": "components/RemoteCallout.tsx",
+   "purpose": "首次会话弹出 'Remote Control' 引导，把 CLI 会话连到 claude.ai/网页端。",
+   "evidence": "components/RemoteCallout.tsx:38-41 'Enable Remote Control for this session' / 'Opens a secure connection to claude.ai.'；:50 <PermissionDialog title=\"Remote Control\">；:79-85 shouldShowRemoteCallout 依赖 isBridgeEnabled 与 OAuth token",
+   "registeredWhere": "screens/REPL.tsx:465 import；:1120 状态；:2716 优先级；:6444-6450 渲染；commands/bridge/bridge.tsx:18 import，:86-91 触发",
+   "removalRisk": "与 bridge/replBridge 状态机（replBridgeEnabled/Explicit）耦合，REPL:6452-6454 会写入这些字段；移除需同步处理 bridge 命令。影响面：远程控制子系统入口。"
+  },
+  {
+   "name": "BridgeDialog（远程控制二维码）",
+   "path": "components/BridgeDialog.tsx",
+   "purpose": "显示远程控制连接状态，按空格生成 QR 码（qrcode.toString）供移动端扫描配对。",
+   "evidence": "components/BridgeDialog.tsx:2 import { toString as qrToString } from 'qrcode'；:44 const [showQR, setShowQR]=useState(false)；:62-73 qrToString(displayUrl,{type:'utf8',errorCorrectionLevel:'L'})；:146-152 渲染 qrLines；:111 'd to disconnect · space for QR code'",
+   "registeredWhere": "bridge/bridgeStatusUtil.js、context/overlayContext（useRegisterOverlay('bridge-dialog')）",
+   "removalRisk": "唯一 qrcode 依赖点，移除后可从 package.json 去掉 qrcode；影响面：远程配对 UI。"
+  },
+  {
+   "name": "RemoteEnvironmentDialog（远程环境选择）",
+   "path": "components/RemoteEnvironmentDialog.tsx",
+   "purpose": "列出/选择远程执行环境（claude.ai/code 上配置），写入设置。",
+   "evidence": "components/RemoteEnvironmentDialog.tsx:23 DIALOG_TITLE='Select Remote Environment'；:24 SETUP_HINT='Configure environments at: https://claude.ai/code'；:14 getEnvironmentSelectionInfo；:45-49 拉取 availableEnvironments",
+   "registeredWhere": "commands/remote-env；utils/teleport/environmentSelection.js",
+   "removalRisk": "依赖 utils/teleport/*；与 Teleport 族一并移除。影响面：云 runner 环境配置。"
+  },
+  {
+   "name": "Teleport 组件族（会话传送/远程恢复）",
+   "path": "components/TeleportProgress.tsx, TeleportError.tsx, TeleportStash.tsx, TeleportResumeWrapper.tsx, TeleportRepoMismatchDialog.tsx",
+   "purpose": "远程会话传送的进度、错误（含 OAuth 登录）、git stash、恢复与仓库不匹配对话框。",
+   "evidence": "components/TeleportProgress.tsx:42 'Teleporting session…'，:22-27 STEPS validating/fetching_logs/checking_out；components/TeleportError.tsx:8 import ConsoleOAuthFlow，:13 TeleportLocalErrorType='needsLogin'|'needsGitStash'；components/TeleportStash.tsx:16 TeleportStash 调 stashToCleanState；components/TeleportResumeWrapper.tsx:29 远程会话恢复",
+   "registeredWhere": "dialogLaunchers.tsx:62-95 launchTeleportResumeWrapper / launchTeleportRepoMismatchDialog；components/ResumeTask.tsx:19 import TeleportError",
+   "removalRisk": "ResumeTask 依赖 TeleportError，且 ResumeTask 从 utils/teleport/api.js 拉远程会话列表；移除需整族处理。影响面：远程会话与云 runner。"
+  },
+  {
+   "name": "ResumeTask（远程会话选择列表）",
+   "path": "components/ResumeTask.tsx",
+   "purpose": "从 teleport Sessions API 拉取云端 CodeSession 列表供选择恢复。",
+   "evidence": "components/ResumeTask.tsx:4-6 import { type CodeSession, fetchCodeSessionsFromSessionsAPI } from 'src/utils/teleport/api.js'；:32 export function ResumeTask；:19 import TeleportError",
+   "registeredWhere": "components/TeleportResumeWrapper.tsx:14 import，:29 使用",
+   "removalRisk": "与 Teleport 族同生共死；注意不要与本地会话恢复（ResumeConversation.tsx）混淆——后者属 coding 核心。"
+  },
+  {
+   "name": "tasks/RemoteSession*（远程会话任务 UI）",
+   "path": "components/tasks/RemoteSessionProgress.tsx, components/tasks/RemoteSessionDetailDialog.tsx",
+   "purpose": "渲染远程 agent 任务的进度条与详情对话框（含 claude.ai 会话链接）。",
+   "evidence": "components/tasks/RemoteSessionProgress.tsx:2 import type { RemoteAgentTaskState } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js'；:25 formatReviewStageCounts；components/tasks/RemoteSessionDetailDialog.tsx:11-12 getRemoteTaskSessionUrl；:19 openBrowser",
+   "registeredWhere": "tasks/RemoteAgentTask 子系统；components/tasks/BackgroundTasksDialog.tsx",
+   "removalRisk": "与 tasks/RemoteAgentTask 后端强耦合；若仅去 UI 会留下无头任务。影响面：远程任务展示。"
+  },
+  {
+   "name": "Passes（推荐名额对话框）",
+   "path": "components/Passes/Passes.tsx",
+   "purpose": "展示赠送名额状态与推荐链接，回车复制推荐链接到剪贴板。",
+   "evidence": "components/Passes/Passes.tsx:46 'Guest passes dialog dismissed'；:57-60 setClipboard(referralLink) + logEvent('tengu_guest_passes_link_copied')；:11-15 import referral API",
+   "registeredWhere": "commands/passes/passes.tsx:2 import Passes",
+   "removalRisk": "与 GuestPassesUpsell 共用 services/api/referral.js；一并移除。影响面：推荐营销。"
+  },
+  {
+   "name": "ChannelsNotice（消息渠道通知）",
+   "path": "components/LogoV2/ChannelsNotice.tsx",
+   "purpose": "展示 KAIROS/KAIROS_CHANNELS 渠道（Slack 等外部消息）加载状态与允许列表提示。",
+   "evidence": "components/LogoV2/ChannelsNotice.tsx:1-5 注释 'Conditionally require()'d … behind feature(KAIROS) || feature(KAIROS_CHANNELS)'；:15 isChannelsEnabled；:25-60 读取 allowedChannels/订阅类型/策略",
+   "registeredWhere": "components/LogoV2/LogoV2.tsx:60-63 动态 require ChannelsNoticeModule；:190/:290/:418 渲染",
+   "removalRisk": "已是动态 require，移除时删 LogoV2 三处判断即可；影响面：外部渠道消息（非 coding）。"
+  },
+  {
+   "name": "EmergencyTip（运营位 tip-of-feed）",
+   "path": "components/LogoV2/EmergencyTip.tsx",
+   "purpose": "从 GrowthBook 动态配置拉取运营文案，在启动顶部展示一次。",
+   "evidence": "components/LogoV2/EmergencyTip.tsx:7 CONFIG_NAME='tengu-top-of-feed-tip'；:9 EmergencyTip；:60-64 getDynamicConfig_CACHED_MAY_BE_STALE；:23-26 lastShownEmergencyTip 去重",
+   "registeredWhere": "components/LogoV2/LogoV2.tsx:49 import；:199/:427 渲染",
+   "removalRisk": "纯运营位，无功能依赖；影响面：启动文案。"
+  },
+  {
+   "name": "feedConfigs 营销 feed（guest passes）",
+   "path": "components/LogoV2/feedConfigs.tsx",
+   "purpose": "构造 welcome 屏右栏 feed；其中 createGuestPassesFeed 为拉新营销卡片，其余为最近活动/更新说明。",
+   "evidence": "components/LogoV2/feedConfigs.tsx:84-104 createGuestPassesFeed '3 guest passes' / 'Share Claude Code with friends' / footer '/passes'；:96-97 [✻] [✻] [✻]",
+   "registeredWhere": "components/LogoV2/LogoV2.tsx:24 import；:395-398 选择该 feed",
+   "removalRisk": "文件内 createRecentActivityFeed（:15）与 createWhatsNewFeed（:35）属 coding 相关（会话/更新），应保留；只移除 guest passes 分支。影响面：welcome 屏右栏。"
+  },
+  {
+   "name": "AnimatedClawd（吉祥物点击动画）",
+   "path": "components/LogoV2/AnimatedClawd.tsx",
+   "purpose": "Logo 旁吉祥物的点击跳跃/张望动画，仅 fullscreen 生效。",
+   "evidence": "components/LogoV2/AnimatedClawd.tsx:19-27 JUMP_WAVE 注释 'Click animation: crouch, then spring up with arms raised. Twice.'；:30-34 LOOK_AROUND；:51 export function AnimatedClawd；:36 CLICK_ANIMATIONS",
+   "registeredWhere": "components/LogoV2/CondensedLogo.tsx:18 import；:31 isFullscreenEnvEnabled() ? <AnimatedClawd/> : <Clawd/>",
+   "removalRisk": "Clawd.tsx（静态吉祥物）是品牌 Logo 的一部分，可保留；AnimatedClawd 仅装饰动画。移除需把 CondensedLogo:31 改回 <Clawd/>。影响面：纯装饰。"
+  },
+  {
+   "name": "Stats（用量统计/洞察面板）",
+   "path": "components/Stats.tsx",
+   "purpose": "渲染会话/Token/花费热力图与 'fun factoid' 洞察，含截图复制。",
+   "evidence": "components/Stats.tsx:26 copyAnsiToClipboard（screenshotClipboard）；:24 generateHeatmap；:91 export function Stats；:313 generateFunFactoid(stats, totalTokens)",
+   "registeredWhere": "commands/stats/stats.tsx:2 import Stats；:6 <Stats onClose={onDone}/>",
+   "removalRisk": "属遥测/洞察类（对应判定清单 insights/stats）；移除需同步清理 commands/stats 与 utils/stats.js。影响面：统计面板，无 agent loop 依赖。"
+  },
+  {
+   "name": "Feedback（反馈/缺陷上报）",
+   "path": "components/Feedback.tsx",
+   "purpose": "收集用户反馈与 bug 报告，读取最近 API 请求与 git 状态并提交到 Anthropic。",
+   "evidence": "components/Feedback.tsx:185 export function Feedback；:216-255 submitReport/submitFeedback；:264-273 logEvent('tengu_bug_report_submitted') + 1P 事件；:80 redactSensitiveInfo",
+   "registeredWhere": "commands/feedback、commands/issue、commands/perf-issue；components/FeedbackSurvey/useFeedbackSurvey",
+   "removalRisk": "与 FeedbackSurvey 共享提交管线；影响面：上报通道（对应判定清单 feedback/issue）。"
+  },
+  {
+   "name": "FeedbackSurvey 调查族",
+   "path": "components/FeedbackSurvey/（FeedbackSurvey.tsx, useFeedbackSurvey.tsx, useMemorySurvey.tsx, usePostCompactSurvey.tsx, submitTranscriptShare.ts, TranscriptSharePrompt.tsx）",
+   "purpose": "在压缩后/记忆写入后弹出满意度调查，可选分享对话记录。",
+   "evidence": "components/FeedbackSurvey/usePostCompactSurvey.tsx、useMemorySurvey.tsx；components/FeedbackSurvey/submitTranscriptShare.ts；components/FeedbackSurvey/TranscriptSharePrompt.tsx",
+   "registeredWhere": "screens/REPL.tsx:477-480 import useFeedbackSurvey/useMemorySurvey/usePostCompactSurvey/FeedbackSurvey；:2252-2260 调用；:6510-6516 渲染",
+   "removalRisk": "REPL 内 4 处 import 与 3 处调用；影响面：交互式调查层。"
+  },
+  {
+   "name": "SkillImprovementSurvey（技能改进调查）",
+   "path": "components/SkillImprovementSurvey.tsx",
+   "purpose": "技能更新后弹出 0/1 选择的应用/忽略调查。",
+   "evidence": "components/SkillImprovementSurvey.tsx:18 export function SkillImprovementSurvey；:55 VALID_INPUTS=['0','1']；:6 import isValidResponseInput from FeedbackSurvey",
+   "registeredWhere": "screens/REPL.tsx:148-149 import；:2260 useSkillImprovementSurvey",
+   "removalRisk": "依赖 FeedbackSurvey 的输入校验；与 FeedbackSurvey 族一并处理。影响面：技能 UI 上的调查条。"
+  },
+  {
+   "name": "IssueFlagBanner（上报提示横幅，已短路）",
+   "path": "components/PromptInput/IssueFlagBanner.tsx",
+   "purpose": "检测到摩擦时提示 '/issue to report it'；当前函数体被硬编码 return null 短路。",
+   "evidence": "components/PromptInput/IssueFlagBanner.tsx:9-12 export function IssueFlagBanner { return null }（死代码）；:22-24 'Something off with Claude?' + ' /issue to report it'；:6 注释 'ANT-ONLY'",
+   "registeredWhere": "screens/REPL.tsx:539-540 import IssueFlagBanner/useIssueFlagBanner；:2262 useIssueFlagBanner(messages, submitCount)",
+   "removalRisk": "已是死代码（永远 null），但 hooks/useIssueFlagBanner.ts 仍会扫描消息并可能触发 /issue 自动运行逻辑，移除可减少误报。影响面：无用户可见变化。"
+  },
+  {
+   "name": "AutoUpdater 自更新族",
+   "path": "components/AutoUpdater.tsx, AutoUpdaterWrapper.tsx, NativeAutoUpdater.tsx, PackageManagerAutoUpdater.tsx",
+   "purpose": "检查/安装新版本并展示更新结果。",
+   "evidence": "components/AutoUpdaterWrapper.tsx:7-9 import AutoUpdater/NativeAutoUpdater/PackageManagerAutoUpdater；components/AutoUpdater.tsx:11-17 getLatestVersion/installGlobalPackage/shouldSkipVersion",
+   "registeredWhere": "utils/autoUpdater.js、hooks/useUpdateNotification.js",
+   "removalRisk": "对应判定清单的 'upgrade 自更新'；移除后需保留 utils/autoUpdater 或一并清理。影响面：版本升级通道。"
+  }
+ ],
+ "rescuedByVerification": [
+  {
+   "name": "chrome",
+   "path": "commands/chrome/index.ts",
+   "reason": "commands/chrome/index.ts 导出 default command(name:'chrome'),被 commands.ts:130 import 并在 :244 注册进 COMMANDS 注册表——commands.ts 属保留清单(交互 TUI/行模式/配置),故被 coding 核心直接引用。其所属 utils/claudeInChrome 子系统还被 main.tsx(--chrome flag、setupClaudeInChrome、MCP 保留名校验)、services/mcp/client.ts(进程内启动该 MCP server)、entrypoints/cli.tsx(mcp/native-host 子命令)、services/api/claude.ts、utils/attachments.ts、screens/REPL.tsx 等保留路径引用。结论:「可去除」判定不成立。未修改任何文件。",
+   "dependents": [
+    "/Users/mant1ssa/Projects/cc-base-2188/commands.ts:130 (import chrome from './commands/chrome/index.js')",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands.ts:244 (chrome 进入 COMMANDS 注册表 memoize 数组)",
+    "/Users/mant1ssa/Projects/cc-base-2188/main.tsx:1652-1653 (--chrome / --no-chrome CLI flag)",
+    "/Users/mant1ssa/Projects/cc-base-2188/main.tsx:207-212,2239-2293 (setupClaudeInChrome/shouldEnableClaudeInChrome/shouldAutoEnableClaudeInChrome)",
+    "/Users/mant1ssa/Projects/cc-base-2188/main.tsx:2192 (isClaudeInChromeMCPServer 保留名校验)",
+    "/Users/mant1ssa/Projects/cc-base-2188/services/mcp/client.ts:228-234,905-929,1975-1977 (MCP 生命周期内进程内启动 claude-in-chrome server)",
+    "/Users/mant1ssa/Projects/cc-base-2188/entrypoints/cli.tsx:80-90 (claude-in-chrome-mcp / chrome native host 子命令)",
+    "/Users/mant1ssa/Projects/cc-base-2188/services/api/claude.ts:164,1334 (isToolFromMcpServer 对该 MCP server 工具特殊处理)",
+    "/Users/mant1ssa/Projects/cc-base-2188/utils/attachments.ts:162-163,1542 (CHROME_TOOL_SEARCH_INSTRUCTIONS 注入)",
+    "/Users/mant1ssa/Projects/cc-base-2188/screens/REPL.tsx:483-485,1139,1177 (useChromeExtensionNotification/usePromptsFromClaudeInChrome)",
+    "/Users/mant1ssa/Projects/cc-base-2188/hooks/usePromptsFromClaudeInChrome.tsx:12,127",
+    "/Users/mant1ssa/Projects/cc-base-2188/hooks/useChromeExtensionNotification.tsx:21",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands/chrome/index.ts:10 (load: () => import('./chrome.js') 内部懒加载 chrome.tsx)"
+   ]
+  },
+  {
+   "name": "upgrade",
+   "path": "commands/upgrade/index.ts",
+   "reason": "推翻「可去除」判定。commands/upgrade/index.ts 不是叶子：commands/rate-limit-options/rate-limit-options.tsx 同时 import 了 ../upgrade/index.js（默认导出，用于 upgrade.isEnabled() 第102行）与 ../upgrade/upgrade.js 的 call（第136行），而 rate-limit-options 是被保留的交互层命令（REPL.tsx:4749-4750 提交 /rate-limit-options；REPL.tsx:5695/6040 接入 transcript；AssistantTextMessage.tsx:35/81 渲染 RateLimitMessage）。删除 commands/upgrade 会使 rate-limit-options 编译失败，属保留清单「交互 TUI 与行模式」的依赖链。次要证据：commands.ts:159/293 在共享命令表注册（但共享表本身不足以定性，feedback/share 亦在其中）。诚实备注：模块自身行为确为订阅升级(OAuth/打开 claude.ai/upgrade/max)，语义偏非 coding，这是原判定来源，但决定性证据是上述反向依赖。另：main.tsx:5463-5467 的 .command('update').alias('upgrade') 是自更新（cli/update.ts+autoUpdater），与本模块无关。",
+   "dependents": [
+    "/Users/mant1ssa/Projects/cc-base-2188/commands/rate-limit-options/rate-limit-options.tsx:24 (import upgrade from '../upgrade/index.js')",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands/rate-limit-options/rate-limit-options.tsx:25 (import { call as upgradeCall } from '../upgrade/upgrade.js')",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands/rate-limit-options/rate-limit-options.tsx:102 (upgrade.isEnabled())",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands/rate-limit-options/rate-limit-options.tsx:136 (upgradeCall(onDone, context))",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands.ts:159 (import upgrade from './commands/upgrade/index.js')",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands.ts:293 (upgrade, in commands array)",
+    "transitive: /Users/mant1ssa/Projects/cc-base-2188/screens/REPL.tsx:4749-4750,5695,6040 (interaction layer opens /rate-limit-options)",
+    "transitive: /Users/mant1ssa/Projects/cc-base-2188/components/messages/AssistantTextMessage.tsx:35,81 (renders RateLimitMessage)",
+    "transitive: /Users/mant1ssa/Projects/cc-base-2188/components/messages/RateLimitMessage.tsx:45,58"
+   ]
+  },
+  {
+   "name": "extra-usage",
+   "path": "commands/extra-usage/index.ts",
+   "reason": "复核结论：stillNonCoding=false，原「可去除」判定不成立。commands/extra-usage/index.ts 导出 extraUsage 与 extraUsageNonInteractive，被保留清单中的核心路径直接引用：1) 命令注册表 commands.ts:161-163 导入、294-295 注册；该注册表由 QueryEngine.ts:22（getSlashCommandToolSkills）与 main.tsx:165、setup.ts:21、interactiveHelpers.tsx:17、hooks/useMergedCommands.ts:3 消费，属 agent loop/query engine 与交互层。2) commands/rate-limit-options/rate-limit-options.tsx:22-23 直接导入 extra-usage/extra-usage.tsx 与 extra-usage/index.ts，并在 :143 调用；该命令由交互 TUI screens/REPL.tsx:4750 触发。3) components/messages/RateLimitMessage.tsx:2 导入 extraUsage 并在 :109/:30 调 isEnabled()，该组件由 components/messages/AssistantTextMessage.tsx:35,81 在会话/agent loop 的 assistant 消息渲染路径中渲染。4) components/Settings/Usage.tsx:3,276 导入并调用 extraUsageCommand.isEnabled()。依赖方向为：coding 核心 → extra-usage（而非相反），若要移除必须改动 commands.ts、QueryEngine.ts 消费的注册表、REPL 交互路径与消息渲染组件，属破坏保留核心的边。注：该功能本身是额度/超额计费（overage/extra usage）性质，但复核标准是「是否被保留核心引用」，证据表明被命令注册表、交互层与 agent-loop 消息渲染共同引用，故不能判定为与 coding 无关。附带依赖（非判定依据）：extra-usage.tsx:4 导入 ../login/login.js 的 Login（login 族按背景属候选去除项），extra-usage-core.ts 依赖 services/api/usage.ts（fetchUtilization/ExtraUsage）、services/api/adminRequests.ts、services/api/overageCreditGrant.ts、utils/config.ts、utils/auth.ts、utils/billing.ts、utils/browser.ts。",
+   "dependents": [
+    "/Users/mant1ssa/Projects/cc-base-2188/commands.ts:161-163 (imports extraUsage + extraUsageNonInteractive from ./commands/extra-usage/index.js)",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands.ts:294-295 (registers extraUsage + extraUsageNonInteractive in the slash-command registry)",
+    "/Users/mant1ssa/Projects/cc-base-2188/QueryEngine.ts:22 (imports getSlashCommandToolSkills from ./commands.js — the agent-loop/query engine consumes the registry containing these commands)",
+    "/Users/mant1ssa/Projects/cc-base-2188/main.tsx:165 (imports getCommands/filterCommandsForRemoteMode from ./commands.js — entrypoint/interaction layer)",
+    "/Users/mant1ssa/Projects/cc-base-2188/setup.ts:21 (imports getCommands from ./commands.js)",
+    "/Users/mant1ssa/Projects/cc-base-2188/interactiveHelpers.tsx:17 and hooks/useMergedCommands.ts:3 (interaction layer import ./commands.js)",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands/rate-limit-options/rate-limit-options.tsx:22-23 (imports call as extraUsageCall from ../extra-usage/extra-usage.js and extraUsage from ../extra-usage/index.js)",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands/rate-limit-options/rate-limit-options.tsx:143 (invokes extraUsageCall(...); menu option value 'extra-usage' at :97, :141-142)",
+    "/Users/mant1ssa/Projects/cc-base-2188/screens/REPL.tsx:4750 (interactive REPL dispatches onSubmitRef.current('/rate-limit-options') — the surface that hosts the extra-usage option)",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/messages/RateLimitMessage.tsx:2 (imports { extraUsage } from 'src/commands/extra-usage/index.js') and :109/:30 (calls extraUsage.isEnabled())",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/messages/AssistantTextMessage.tsx:35,81 (renders RateLimitMessage on the assistant-message path of the agent loop)",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/Settings/Usage.tsx:3,276 (imports extraUsage as extraUsageCommand and calls extraUsageCommand.isEnabled())",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands/extra-usage/index.ts:18,30 (load: () => import('./extra-usage.js') / './extra-usage-noninteractive.js' — own lazy loaders)"
+   ]
+  },
+  {
+   "name": "rate-limit-options",
+   "path": "commands/rate-limit-options/index.ts",
+   "reason": "判定有误：commands/rate-limit-options/index.ts 被保留清单中的交互 TUI 与 agent loop 限流路径实际引用。commands.ts:164 静态导入、:296 注册进命令表；screens/REPL.tsx:4749-4753 的 handleOpenRateLimitOptions 直接以 onSubmitRef.current('/rate-limit-options', ...) 触发该模块，并经 :5695/:6040 下发到消息树；components/messages/RateLimitMessage.tsx:85-103 在 claudeAiLimits.status==='rejected' && resetsAt 已设置（会话真实被限流）时于 useEffect 自动调用 onOpenRateLimitOptions()，属 agent 运行时路径。传递链 AssistantTextMessage:35 -> RateLimitMessage -> MessageRow:43/210 -> Messages:267/833 -> Message:73/132 -> REPL。rg 全仓（排除 node_modules/.bak）中该模块导出名与路径的引用全部落在保留核心文件内，无孤立引用。故仍是 coding 相关，不可去除。",
+   "dependents": [
+    "/Users/mant1ssa/Projects/cc-base-2188/commands.ts:164",
+    "/Users/mant1ssa/Projects/cc-base-2188/commands.ts:296",
+    "/Users/mant1ssa/Projects/cc-base-2188/screens/REPL.tsx:4749",
+    "/Users/mant1ssa/Projects/cc-base-2188/screens/REPL.tsx:4750",
+    "/Users/mant1ssa/Projects/cc-base-2188/screens/REPL.tsx:5695",
+    "/Users/mant1ssa/Projects/cc-base-2188/screens/REPL.tsx:6040",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/messages/RateLimitMessage.tsx:92",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/messages/RateLimitMessage.tsx:96",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/messages/RateLimitMessage.tsx:101",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/messages/AssistantTextMessage.tsx:35",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/messages/AssistantTextMessage.tsx:81",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/MessageRow.tsx:43",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/MessageRow.tsx:210",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/Messages.tsx:267",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/Messages.tsx:833",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/Message.tsx:73",
+    "/Users/mant1ssa/Projects/cc-base-2188/components/Message.tsx:132"
+   ]
+  }
+ ],
+ "kept": [
+  {
+   "name": "add-dir",
+   "path": "commands/add-dir/index.ts"
+  },
+  {
+   "name": "advisor",
+   "path": "commands/advisor.ts"
+  },
+  {
+   "name": "agents",
+   "path": "commands/agents/index.ts"
+  },
+  {
+   "name": "branch",
+   "path": "commands/branch/index.ts"
+  },
+  {
+   "name": "btw",
+   "path": "commands/btw/index.ts"
+  },
+  {
+   "name": "clear",
+   "path": "commands/clear/index.ts"
+  },
+  {
+   "name": "color",
+   "path": "commands/color/index.ts"
+  },
+  {
+   "name": "compact",
+   "path": "commands/compact/index.ts"
+  },
+  {
+   "name": "config",
+   "path": "commands/config/index.ts"
+  },
+  {
+   "name": "copy",
+   "path": "commands/copy/index.ts"
+  },
+  {
+   "name": "context",
+   "path": "commands/context/index.ts"
+  },
+  {
+   "name": "cost",
+   "path": "commands/cost/index.ts"
+  },
+  {
+   "name": "diff",
+   "path": "commands/diff/index.ts"
+  },
+  {
+   "name": "doctor",
+   "path": "commands/doctor/index.ts"
+  },
+  {
+   "name": "effort",
+   "path": "commands/effort/index.ts"
+  },
+  {
+   "name": "exit",
+   "path": "commands/exit/index.ts"
+  },
+  {
+   "name": "fast",
+   "path": "commands/fast/index.ts"
+  },
+  {
+   "name": "files",
+   "path": "commands/files/index.ts"
+  },
+  {
+   "name": "heapdump",
+   "path": "commands/heapdump/index.ts"
+  },
+  {
+   "name": "help",
+   "path": "commands/help/index.ts"
+  },
+  {
+   "name": "ide",
+   "path": "commands/ide/index.ts"
+  },
+  {
+   "name": "init",
+   "path": "commands/init.ts"
+  },
+  {
+   "name": "keybindings",
+   "path": "commands/keybindings/index.ts"
+  },
+  {
+   "name": "mcp",
+   "path": "commands/mcp/index.ts"
+  },
+  {
+   "name": "memory",
+   "path": "commands/memory/index.ts"
+  },
+  {
+   "name": "model",
+   "path": "commands/model/index.ts"
+  },
+  {
+   "name": "output-style",
+   "path": "commands/output-style/index.ts"
+  },
+  {
+   "name": "plugin",
+   "path": "commands/plugin/index.tsx"
+  },
+  {
+   "name": "pr-comments",
+   "path": "commands/pr_comments/index.ts"
+  },
+  {
+   "name": "reload-plugins",
+   "path": "commands/reload-plugins/index.ts"
+  },
+  {
+   "name": "rename",
+   "path": "commands/rename/index.ts"
+  },
+  {
+   "name": "resume",
+   "path": "commands/resume/index.ts"
+  },
+  {
+   "name": "skills",
+   "path": "commands/skills/index.ts"
+  },
+  {
+   "name": "status",
+   "path": "commands/status/index.ts"
+  },
+  {
+   "name": "statusline",
+   "path": "commands/statusline.tsx"
+  },
+  {
+   "name": "theme",
+   "path": "commands/theme/index.ts"
+  },
+  {
+   "name": "review",
+   "path": "commands/review.ts"
+  },
+  {
+   "name": "ultrareview",
+   "path": "commands/review.ts"
+  },
+  {
+   "name": "rewind",
+   "path": "commands/rewind/index.ts"
+  },
+  {
+   "name": "security-review",
+   "path": "commands/security-review.ts"
+  },
+  {
+   "name": "terminal-setup",
+   "path": "commands/terminalSetup/index.ts"
+  },
+  {
+   "name": "vim",
+   "path": "commands/vim/index.ts"
+  },
+  {
+   "name": "permissions",
+   "path": "commands/permissions/index.ts"
+  },
+  {
+   "name": "plan",
+   "path": "commands/plan/index.ts"
+  },
+  {
+   "name": "hooks",
+   "path": "commands/hooks/index.ts"
+  },
+  {
+   "name": "export",
+   "path": "commands/export/index.ts"
+  },
+  {
+   "name": "sandbox",
+   "path": "commands/sandbox-toggle/index.ts"
+  },
+  {
+   "name": "tasks",
+   "path": "commands/tasks/index.ts"
+  },
+  {
+   "name": "commit",
+   "path": "commands/commit.ts"
+  },
+  {
+   "name": "commit-push-pr",
+   "path": "commands/commit-push-pr.ts"
+  },
+  {
+   "name": "init-verifiers",
+   "path": "commands/init-verifiers.ts"
+  },
+  {
+   "name": "INTERNAL_ONLY_COMMANDS 整体门控",
+   "path": "commands.ts:205-234, 323-325"
+  },
+  {
+   "name": "builtInCommandNames",
+   "path": "commands.ts:327-331"
+  },
+  {
+   "name": "AgentTool",
+   "path": "tools/AgentTool/AgentTool.tsx"
+  },
+  {
+   "name": "TaskOutputTool",
+   "path": "tools/TaskOutputTool/TaskOutputTool.tsx"
+  },
+  {
+   "name": "BashTool",
+   "path": "tools/BashTool/BashTool.tsx"
+  },
+  {
+   "name": "GlobTool",
+   "path": "tools/GlobTool/GlobTool.ts"
+  },
+  {
+   "name": "GrepTool",
+   "path": "tools/GrepTool/GrepTool.ts"
+  },
+  {
+   "name": "ExitPlanModeV2Tool",
+   "path": "tools/ExitPlanModeTool/ExitPlanModeV2Tool.ts"
+  },
+  {
+   "name": "FileReadTool",
+   "path": "tools/FileReadTool/FileReadTool.ts"
+  },
+  {
+   "name": "FileEditTool",
+   "path": "tools/FileEditTool/FileEditTool.ts"
+  },
+  {
+   "name": "FileWriteTool",
+   "path": "tools/FileWriteTool/FileWriteTool.ts"
+  },
+  {
+   "name": "NotebookEditTool",
+   "path": "tools/NotebookEditTool/NotebookEditTool.ts"
+  },
+  {
+   "name": "WebFetchTool",
+   "path": "tools/WebFetchTool/WebFetchTool.ts"
+  },
+  {
+   "name": "TodoWriteTool",
+   "path": "tools/TodoWriteTool/TodoWriteTool.ts"
+  },
+  {
+   "name": "WebSearchTool",
+   "path": "tools/WebSearchTool/WebSearchTool.ts"
+  },
+  {
+   "name": "TaskStopTool",
+   "path": "tools/TaskStopTool/TaskStopTool.ts"
+  },
+  {
+   "name": "AskUserQuestionTool",
+   "path": "tools/AskUserQuestionTool/AskUserQuestionTool.tsx"
+  },
+  {
+   "name": "SkillTool",
+   "path": "tools/SkillTool/SkillTool.ts"
+  },
+  {
+   "name": "EnterPlanModeTool",
+   "path": "tools/EnterPlanModeTool/EnterPlanModeTool.ts"
+  },
+  {
+   "name": "ConfigTool",
+   "path": "tools/ConfigTool/ConfigTool.ts"
+  },
+  {
+   "name": "TaskCreateTool",
+   "path": "tools/TaskCreateTool/TaskCreateTool.ts"
+  },
+  {
+   "name": "TaskGetTool",
+   "path": "tools/TaskGetTool/TaskGetTool.ts"
+  },
+  {
+   "name": "TaskUpdateTool",
+   "path": "tools/TaskUpdateTool/TaskUpdateTool.ts"
+  },
+  {
+   "name": "TaskListTool",
+   "path": "tools/TaskListTool/TaskListTool.ts"
+  },
+  {
+   "name": "LSPTool",
+   "path": "tools/LSPTool/LSPTool.ts"
+  },
+  {
+   "name": "EnterWorktreeTool",
+   "path": "tools/EnterWorktreeTool/EnterWorktreeTool.ts"
+  },
+  {
+   "name": "ExitWorktreeTool",
+   "path": "tools/ExitWorktreeTool/ExitWorktreeTool.ts"
+  },
+  {
+   "name": "SendMessageTool",
+   "path": "tools/SendMessageTool/SendMessageTool.ts"
+  },
+  {
+   "name": "TeamCreateTool",
+   "path": "tools/TeamCreateTool/TeamCreateTool.ts"
+  },
+  {
+   "name": "TeamDeleteTool",
+   "path": "tools/TeamDeleteTool/TeamDeleteTool.ts"
+  },
+  {
+   "name": "REPLTool",
+   "path": "tools/REPLTool/"
+  },
+  {
+   "name": "WorkflowTool",
+   "path": "tools/WorkflowTool/WorkflowTool.ts"
+  },
+  {
+   "name": "CronCreateTool",
+   "path": "tools/ScheduleCronTool/CronCreateTool.ts"
+  },
+  {
+   "name": "CronDeleteTool",
+   "path": "tools/ScheduleCronTool/CronDeleteTool.ts"
+  },
+  {
+   "name": "CronListTool",
+   "path": "tools/ScheduleCronTool/CronListTool.ts"
+  },
+  {
+   "name": "MonitorTool",
+   "path": "tools/MonitorTool/MonitorTool.ts"
+  },
+  {
+   "name": "PowerShellTool",
+   "path": "tools/PowerShellTool/PowerShellTool.tsx"
+  },
+  {
+   "name": "ListMcpResourcesTool",
+   "path": "tools/ListMcpResourcesTool/ListMcpResourcesTool.ts"
+  },
+  {
+   "name": "ReadMcpResourceTool",
+   "path": "tools/ReadMcpResourceTool/ReadMcpResourceTool.ts"
+  },
+  {
+   "name": "ToolSearchTool",
+   "path": "tools/ToolSearchTool/ToolSearchTool.ts"
+  },
+  {
+   "name": "MCPTool",
+   "path": "tools/MCPTool/MCPTool.ts"
+  },
+  {
+   "name": "McpAuthTool",
+   "path": "tools/McpAuthTool/McpAuthTool.ts"
+  },
+  {
+   "name": "SyntheticOutputTool",
+   "path": "tools/SyntheticOutputTool/SyntheticOutputTool.ts"
+  },
+  {
+   "name": "coordinator (协调者模式)",
+   "path": "coordinator/"
+  },
+  {
+   "name": "memdir (持久记忆系统)",
+   "path": "memdir/"
+  },
+  {
+   "name": "native-ts (纯 TS 原生模块替代)",
+   "path": "native-ts/"
+  },
+  {
+   "name": "services/diagnosticTracking.ts",
+   "path": "services/diagnosticTracking.ts"
+  },
+  {
+   "name": "services/notifier.ts",
+   "path": "services/notifier.ts"
+  },
+  {
+   "name": "services/preventSleep.ts",
+   "path": "services/preventSleep.ts"
+  },
+  {
+   "name": "services/mcpServerApproval.tsx",
+   "path": "services/mcpServerApproval.tsx"
+  },
+  {
+   "name": "cli/handlers/autoMode.ts",
+   "path": "cli/handlers/autoMode.ts"
+  },
+  {
+   "name": "cli/handlers/agents.ts",
+   "path": "cli/handlers/agents.ts"
+  },
+  {
+   "name": "cli/handlers/plugins.ts",
+   "path": "cli/handlers/plugins.ts"
+  },
+  {
+   "name": "cli/handlers/mcp.tsx",
+   "path": "cli/handlers/mcp.tsx"
+  },
+  {
+   "name": "cli/handlers/util.tsx",
+   "path": "cli/handlers/util.tsx"
+  },
+  {
+   "name": "cli/exit.ts",
+   "path": "cli/exit.ts"
+  },
+  {
+   "name": "cli/ndjsonSafeStringify.ts",
+   "path": "cli/ndjsonSafeStringify.ts"
+  },
+  {
+   "name": "cli/print.ts",
+   "path": "cli/print.ts"
+  },
+  {
+   "name": "entrypoints/cli.tsx",
+   "path": "entrypoints/cli.tsx"
+  },
+  {
+   "name": "entrypoints/init.ts",
+   "path": "entrypoints/init.ts"
+  },
+  {
+   "name": "entrypoints/mcp.ts",
+   "path": "entrypoints/mcp.ts"
+  },
+  {
+   "name": "entrypoints/sandboxTypes.ts",
+   "path": "entrypoints/sandboxTypes.ts"
+  },
+  {
+   "name": "entrypoints/agentSdkTypes.ts + entrypoints/sdk/ (coreTypes/coreSchemas/controlTypes/controlSchemas/runtimeTypes/sdkUtilityTypes)",
+   "path": "entrypoints/agentSdkTypes.ts"
+  },
+  {
+   "name": "--sdk-url <url>",
+   "path": "main.tsx"
+  },
+  {
+   "name": "claude agents（列配置的 agents）",
+   "path": "main.tsx"
+  },
+  {
+   "name": "claude auto-mode defaults / config / critique",
+   "path": "main.tsx"
+  },
+  {
+   "name": "--advisor <model>",
+   "path": "main.tsx"
+  },
+  {
+   "name": "teammate 身份全局 flag（--agent-id/--agent-name/--team-name/--agent-color/--plan-mode-required/--parent-session-id/--teammate-mode/--agent-type）",
+   "path": "main.tsx"
+  }
+ ]
+}
