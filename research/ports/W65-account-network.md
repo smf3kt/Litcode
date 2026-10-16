@@ -297,6 +297,41 @@ components/Stats.tsx -> utils/screenshotClipboard.ts -> utils/ansiToPng.ts -> ut
 
 The zero-importer list is down from 12 to 10 entries, and all ten are legitimate: the `entrypoints/cli.tsx` entry point, six ambient `*.d.ts` declarations (`types/vendor.d.ts`, `types/lodash-es.d.ts`, `types/assets.d.ts`, `types/globals.d.ts`, `types/react-compiler-runtime.d.ts`, `ink/global.d.ts`), `shims/bun-bundle.ts`, `utils/withResolvers.ts`, and `native-ts/color-diff/index.ts`, which the native-module loader resolves by path rather than by import. That list is what "the cascade has terminated" looks like: every remaining entry has a reason it is on it, so the scan is now a no-op and further passes would find nothing.
 
+## Wave D step 4 — the feedback-survey and transcript-share surface (landed, `5b50aac`)
+
+The survey family was a question asked for Anthropic's benefit and a network call to answer it. `components/FeedbackSurvey/` held ten files and 1,538 lines: the session, memory and post-compact hooks, the shared survey state machine and digit-input debouncer, the view, the transcript prompt, and `submitTranscriptShare.ts`, which POSTs the whole conversation to `api.anthropic.com/api/claude_code_shared_session_transcripts`. The closure check came out clean in every direction — the gate `isFeedbackSurveyDisabled` was read by nothing but the three hooks, and the two config fields the hooks wrote (`feedbackSurveyState`, `transcriptShareDismissed`) were read by nothing but each other.
+
+Two satellite chains belong to the same feature and went with it:
+
+- `utils/autoRunIssue.tsx` plus the REPL's `autoRunIssueReason` / `didAutoRunIssueRef` / `handleAutoRunIssue` / `handleCancelAutoRunIssue` chain, which existed so a "bad" answer could submit `/issue`.
+- `handleSurveyRequestFeedback`, which existed so the survey's `[1]` key could submit `/feedback`.
+
+The ant-only frustration detector was already a local stub in this build (`useFrustrationDetection` returned `{state: 'closed'}` unconditionally), so its call site and the JSX branch behind it were unreachable; both are gone.
+
+### The one rehomed body, and why it is an adaptation
+
+`components/SkillImprovementSurvey.tsx` **survives**, and the reason is worth recording: its hook calls `applySkillImprovement`, which edits the user's skill files on disk. That is local behaviour, not account behaviour, so the survey stays even though its sibling did not. It imported two symbols from the deleted directory, and both needed somewhere to live:
+
+| Symbol | Disposition |
+| --- | --- |
+| `isValidResponseInput` | Ported from `FeedbackSurveyView.tsx:13-24`. Body identical; the accepted set is narrowed from the source's `['0','1','2','3']` to this survey's own `VALID_INPUTS` (`['0','1']`), because a two-option prompt must not accept `2`. |
+| `FeedbackSurveyResponse` | Re-declared as `SkillSurveyResponse = 'good' \| 'dismissed'` in `utils/hooks/skillImprovement.ts`. The deleted module was a reconstruction stub of `any` aliases with no source body, so the union is read off the survey's two live users — the literal its view emits and the literal its hook tests. Same declaration class as the wave D step 2 `OAuthTokens` case, and flagged the same way. |
+
+### The scan after the cut, again
+
+Re-running `.audit/w65-orphans.mjs` immediately named two modules this cut itself had orphaned, and neither would have been found by grepping for the removed names:
+
+- `components/Feedback.tsx` (758 lines) — the `/feedback` screen, whose command was removed in package 1. It POSTs to `api.anthropic.com/api/claude_cli_feedback` and summarizes with a Haiku call, so it is account-network twice over.
+- `hooks/useDynamicConfig.ts` (23 lines) — a GrowthBook-backed hook with no remaining caller.
+
+One process note: `w65-d4d.py`'s own pre-delete assert caught a sibling `Feedback.tsx.w54bak` that I had assumed absent, which is why the quarantine ran in `w65-d4e.py` instead. The assert is the reason the bak exists in `.audit/w65-d4-baks/` rather than having been deleted with the file.
+
+### Verification
+
+`tsc --noEmit --pretty false` exits 0; seven owned fixtures pass, the seventh being the new `w65-d4-verify`, which compares the ported validator against the recovered source over digit probes with the narrowing recorded as an explicit difference, asserts the response vocabulary reaches both of its users, and sweeps twelve removed names for live references. `git diff --check` clean. 20 files changed, +33/−2,623. Eight `*.w54bak` files quarantined to `.audit/w65-d4-baks/` and byte-compared before deletion.
+
+The scan is back to its ten known-legitimate entries, so this cut's cascade has terminated.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
