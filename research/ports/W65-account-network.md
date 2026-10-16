@@ -384,7 +384,7 @@ Two of those three properties put it inside the boundary: it talked to the accou
 
 **Kept deliberately:** `utils/apiPreconnect.ts`. It looks account-shaped — it reads `getOauthConfig().BASE_API_URL` — but its comment and code are explicit that this is the *inference* host's connection pool (`ANTHROPIC_BASE_URL || BASE_API_URL`), warmed with a HEAD so the first real API call skips a TCP+TLS handshake. That is a local startup optimization on a path that stays, not an account call. The distinction the whole wave turns on: reading the OAuth *config* is not the same as using the OAuth *account*.
 
-## Next: wave D step 7, the analytics transports (scoped, not started)
+## Wave D step 7a — the two analytics transports (landed, `18fbacc`)
 
 The one decision still open from the wave-D plan, now scoped in `.audit/w65-d7-recon.md`. The package is 4,020 lines across nine modules with 232 importing files, and the shape of the cut follows wave D step 3's precedent: remove the outbound transports, keep the local entry points inert so 232 call sites do not churn.
 
@@ -395,7 +395,19 @@ The one decision still open from the wave-D plan, now scoped in `.audit/w65-d7-r
 | `growthbook.ts` (1,155) | `api.anthropic.com/` GB proxy + Statsig gates | drop the fetch; `getDynamicConfig` returns the caller's default, which is the documented no-init behaviour; keep `setGrowthBookConfigOverride` and the env overrides so local behaviour stays configurable |
 | `sink.ts` (114) | local fan-out | shrink to the surviving arms |
 
-Two things to establish before cutting, and they are the reason this is a wave rather than a patch: whether any *coding-loop* gate currently receives a non-default answer in this build (if none does, the GrowthBook half is behaviour-neutral to remove), and whether `entrypoints/init.ts`'s dynamic `initialize1PEventLogging` import can go with the exporter it defers. Both are readable from the source; neither is a product guess.
+The two questions this scoping left open were answered by reading the sources rather than guessing, and both answers made the cut larger than "dead code":
+
+**`is1PEventLoggingEnabled()` was `!isAnalyticsDisabled()`, which is true in a normal run.** So the exporter was not sitting behind a dead flag: every session POSTed its event batches to `api.anthropic.com/api/event_logging/batch`, with an axios retry queue, an on-disk batch spool and a killswitch probe. This is a live behaviour change, not dead-weight removal, and it is the intended one.
+
+**GrowthBook's enable switch was literally `return is1PEventLoggingEnabled()`.** Delete the logger and the switch is false, so `new GrowthBook(...)`, `remoteEval` and the periodic refresh can no longer be reached and every `getFeatureValue` / `getDynamicConfig` read answers with its caller's default — the documented no-init behaviour. The switch is written as a literal `false` carrying that citation rather than deleted outright, because collapsing the machinery around it is step 7b.
+
+### What went, and what stayed inert
+
+Deleted: `datadog.ts` (307), `firstPartyEventLoggingExporter.ts` (820), `firstPartyEventLogger.ts` (451), `sink.ts` (114), `sinkKillswitch.ts` (25), the generated `growthbook_experiment_event` proto type (224), and `hooks/useTimeout.ts` (15), which step 6's preflight deletion had already orphaned. `services/analytics/index.ts` is kept as an inert API — the two marker types plus `logEvent`/`logEventAsync` as no-ops — so roughly 230 call sites stay readable instead of churning. Host cuts: `utils/sinks.ts` now attaches only the error-log sink, `main.tsx` drops the gates call, `entrypoints/init.ts` drops the deferred `import('../services/analytics/firstPartyEventLogger.js')` block and its `profileCheckpoint`, and `utils/gracefulShutdown.ts` drops the 500ms racing flush.
+
+Two smaller removals the deletion made mandatory rather than optional: `utils/config.ts` loses `insideGetConfig` and its recursion guard (the sampler that re-entered the config reader was its only reason to exist) in favour of the `logError(error)` the guard was standing in for; and `metadata.ts` keeps its tool-name and skill-name helpers, which have live consumers in the tool execution path, while its `getEventMetadata` / `buildProcessMetrics` / `FirstPartyEventLogging*` converters now have no reader — a deferred in-file cleanup recorded here rather than done in this pass.
+
+The import-graph scan, re-run after the cut, named both new orphans (`growthbook_experiment_event.ts` and `hooks/useTimeout.ts`). 17 files, +55/−2,190. tsc 0, nine fixtures pass (new `w65-d7-verify`, which asserts the seven paths against the base commit and sweeps every removed symbol as a resolution edge so the cut's own citation comments cannot self-match), `git diff --check` clean.
 
 ## Protocol slip (recorded)
 
