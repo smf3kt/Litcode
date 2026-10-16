@@ -133,7 +133,10 @@ for (const entry of cases) {
 }
 
 // The deleted corpus and every bridge host import must be gone from the tree.
-const deleted = execFileSync("git", ["-C", root, "diff", "--name-only", "--diff-filter=D", "HEAD"], {
+// Bound to the wave's own commit, not HEAD, so the check stays true as later
+// waves land on top.
+const WAVE = "88545db"
+const deleted = execFileSync("git", ["-C", root, "diff", "--name-only", "--diff-filter=D", `${WAVE}^`, WAVE], {
   encoding: "utf8",
 }).trim().split("\n").filter(Boolean)
 assert.ok(deleted.some(p => p === "bridge/replBridge.ts"), "bridge corpus deleted")
