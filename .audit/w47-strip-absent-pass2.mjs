@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const HARNESS = '/tmp/cc-2188-src';
+const HARNESS = '/Users/mant1ssa/Projects/cc-base-2188';
 const ts = createRequire(import.meta.url)('/tmp/w47-tools/node_modules/typescript');
 const APPLY = process.argv.includes('--apply');
 const LOG = process.argv[process.argv.indexOf('--tsc') + 1] ?? '/tmp/w47-strip2.txt';

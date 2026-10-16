@@ -11,7 +11,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
-const HARNESS = '/tmp/cc-2188-src';
+const HARNESS = '/Users/mant1ssa/Projects/cc-base-2188';
 const RECOVERED = path.resolve('recovered');
 const APPLY = process.argv.includes('--apply');
 const LOG = (name) => `/tmp/w47-${name}.txt`;

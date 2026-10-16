@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const HARNESS = '/tmp/cc-2188-src';
+const HARNESS = '/Users/mant1ssa/Projects/cc-base-2188';
 const LOG = process.argv[2] ?? '/tmp/w47-strip5.txt';
 
 const rows = [];

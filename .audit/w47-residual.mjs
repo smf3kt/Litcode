@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const HARNESS = '/tmp/cc-2188-src';
+const HARNESS = '/Users/mant1ssa/Projects/cc-base-2188';
 const classification = JSON.parse(fs.readFileSync('.audit/w47-gap-classification.json', 'utf8'));
 const fills = JSON.parse(fs.readFileSync('.audit/w47-fills.json', 'utf8'));
 const record = new Map(fills.results.map((r) => [r.relative, r]));

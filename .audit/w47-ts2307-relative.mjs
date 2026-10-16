@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const HARNESS = '/tmp/cc-2188-src';
+const HARNESS = '/Users/mant1ssa/Projects/cc-base-2188';
 const RECOVERED = '/Users/mant1ssa/Projects/cc_reverse/recovered';
 const rows = JSON.parse(fs.readFileSync('.audit/w47-ts2307.json', 'utf8')).rows;
 

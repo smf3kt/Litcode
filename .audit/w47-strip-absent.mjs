@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const HARNESS = '/tmp/cc-2188-src';
+const HARNESS = '/Users/mant1ssa/Projects/cc-base-2188';
 // The harness carries typescript 7, the native port, which ships no JS API. Parse with 5.7 from a
 // scratch tool directory instead of adding a dependency to the product or the harness.
 const require_ = createRequire(import.meta.url);

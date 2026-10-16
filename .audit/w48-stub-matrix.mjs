@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const HARNESS = '/tmp/cc-2188-src';
+const HARNESS = '/Users/mant1ssa/Projects/cc-base-2188';
 const RECOVERED = '/Users/mant1ssa/Projects/cc_reverse/recovered';
 const CACHE = '.audit/w48-recovered-exports.json';
 const ts = createRequire(import.meta.url)('/tmp/w47-tools/node_modules/typescript');
