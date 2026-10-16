@@ -98,6 +98,25 @@ Worth recording: `showRemoteCallout` had no producer left. Its field comment sai
 The slice was chosen with the classifier (`.audit/w65-classify.mjs`, `.audit/w65-e-targets.json`): of the 29-file remote cluster, `RemoteTriggerTool/` has exactly one outside importer (`tools.ts`) and `scheduleRemoteAgents.ts` exactly one (`skills/bundled/index.ts`), which is what made this the cheapest first bite of a ~30,000-line cluster. The remaining 22 referenced targets — `bridge/` (31 files), `remote/`, `assistant/`, `ssh/`, `server/`, `cli/transports/`, the teleport family, `tasks/RemoteAgentTask/` and the remote-session task UI — need cuts at their hosts and come next.
 
 
+## Wave E step 3 — remote assistant history and two orphans (landed, `bd7f6c7`)
+
+5 files / 715 lines deleted, 2 host files cut (717 deletions).
+
+| Deleted | Role |
+| --- | --- |
+| `assistant/sessionHistory.ts` | paged the OAuth session-events endpoint through teleport's api helpers |
+| `assistant/sessionDiscovery.ts` | the dump-absent stub the dialog launchers typed against |
+| `hooks/useAssistantHistory.ts` | the scroll-up lazy loader built on the above |
+| `services/api/adminRequests.ts` | no importer anywhere in the tree |
+| `components/RemoteEnvironmentDialog.tsx` | no importer anywhere in the tree |
+
+Cuts: `screens/REPL.tsx` (the hook import, the `HISTORY_STUB` stand-in and its comment, the KAIROS-gated call, the matching `maybeLoadOlder` scroll arm and its dependency entry, plus a comment naming the hook) and `dialogLaunchers.tsx` (the `AssistantSession` type import). A prose comment in `dialogLaunchers.tsx` still names `assistant/AssistantSessionChooser` as a module this build never contained; that is project history rather than a live reference, so it stays.
+
+The assistant-history feature was unreachable twice over: it sits behind the constant-folded `KAIROS` flag in REPL, and its only data path is the remote session-events endpoint, which needs an OAuth token. Deleting it changes nothing in a non-KAIROS local build.
+
+The two orphans are worth naming as a category. `adminRequests.ts` and `RemoteEnvironmentDialog.tsx` have no importer at all — they were already dead when this program started, and only the classifier's "leaf" column surfaced them. Every wave so far has found a few of these; they cost nothing to confirm and nothing to remove.
+
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
