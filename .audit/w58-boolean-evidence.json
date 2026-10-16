@@ -1,0 +1,1066 @@
+{
+  "root": "/Users/mant1ssa/Projects/cc-base-2188",
+  "compiler": "5.7.2",
+  "rows": [
+    {
+      "file": "utils/worktree.ts",
+      "sha256": "8dd07fcebb51122d7e3c78a37812b5d92447822d826ea8df6e648f031437ec6e",
+      "output_sha256": "24a146904d48e4afee302ce164bd4e79b2e4faa1f3f4c02a2c6102d80ed7dee8",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 42188,
+          "end": 42203,
+          "before": "!result.existed",
+          "after": "result.existed !== true",
+          "line": 1276,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "        prNumber !== null ? { prNumber } : undefined,\n      )\n      if (!result.existed) {\n        // biome-ignore lint/suspicious/noConsole: intentional console output\n        console.log(\n          `Created worktree: ${worktreeDir} (based on ${result.baseBranch})`,"
+        }
+      ]
+    },
+    {
+      "file": "utils/permissions/filesystem.ts",
+      "sha256": "dac63a73c876486a58085f63aba42d0cf0cd749766951a626981e43b832609ae",
+      "output_sha256": "f53b18bb1e42bbe72f92a870b1732344239d12dedc5efa03315a4090b38a24a1",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 47050,
+          "end": 47067,
+          "before": "!safetyCheck.safe",
+          "after": "safetyCheck.safe !== true",
+          "line": 1306,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  // permission to edit protected files\n  const safetyCheck = checkPathSafetyForAutoEdit(path, pathsToCheck)\n  if (!safetyCheck.safe) {\n    // SDK suggestion: if under .claude/skills/{name}/, emit the narrowed\n    // session-scoped addRules that step 1.6 will honor on the next call.\n    // Everything else (.claude/settings.json, .git/, .vscode/, .idea/) falls"
+        }
+      ]
+    },
+    {
+      "file": "utils/permissions/pathValidation.ts",
+      "sha256": "933b04d62f50a076eb4f9e610fe93c34a112d0bba99b5efde80ead2df1bba957",
+      "output_sha256": "cf355c491e51e16204634f658601e9432e0e30fde8b11b5d278157533fbe6990",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 6944,
+          "end": 6961,
+          "before": "!safetyCheck.safe",
+          "after": "safetyCheck.safe !== true",
+          "line": 186,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "      precomputedPathsToCheck,\n    )\n    if (!safetyCheck.safe) {\n      return {\n        allowed: false,\n        decisionReason: {"
+        }
+      ]
+    },
+    {
+      "file": "tools/PowerShellTool/pathValidation.ts",
+      "sha256": "42b7a14c6dddcd5a0ca197540b1a456cd947184e3081632cfd43e8feb0b3ee22",
+      "output_sha256": "af23dbfaddc308abbce8b2442a278fa8bb5a22c8aed0d94a86f7a5b9d2e8c6f7",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 28895,
+          "end": 28912,
+          "before": "!safetyCheck.safe",
+          "after": "safetyCheck.safe !== true",
+          "line": 905,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "      precomputedPathsToCheck,\n    )\n    if (!safetyCheck.safe) {\n      return {\n        allowed: false,\n        decisionReason: {"
+        }
+      ]
+    },
+    {
+      "file": "utils/plugins/pluginInstallationHelpers.ts",
+      "sha256": "03231dc094a94d2a03c06d2f8f0037eb2452b69c3963ec591c1ed4748a90043e",
+      "output_sha256": "ac1aa480adc6360a0cc241d7f239750e8bc6e4fb22da9e0f10ed1a816b0b9c06",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 14354,
+          "end": 14368,
+          "before": "!resolution.ok",
+          "after": "resolution.ok !== true",
+          "line": 410,
+          "domain": [
+            "true",
+            "false",
+            "false",
+            "false"
+          ],
+          "context": "    allowedCrossMarketplaces,\n  )\n  if (!resolution.ok) {\n    return { ok: false, reason: 'resolution-failed', resolution }\n  }\n"
+        },
+        {
+          "start": 17878,
+          "end": 17888,
+          "before": "!result.ok",
+          "after": "result.ok !== true",
+          "line": 527,
+          "domain": [
+            "true",
+            "false",
+            "false",
+            "false",
+            "false",
+            "false"
+          ],
+          "context": "    })\n\n    if (!result.ok) {\n      switch (result.reason) {\n        case 'local-source-no-location':\n          return {"
+        }
+      ]
+    },
+    {
+      "file": "services/mcp/config.ts",
+      "sha256": "fd78fd3d5b9c18245e8ad14b152463ac7bc21e27ab0c8263a42a47d94ee9a151",
+      "output_sha256": "c352c72b1abb28ef702756bd735eeee7a96d0917a574f386c32d34545ab60692",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 21908,
+          "end": 21923,
+          "before": "!result.success",
+          "after": "result.success !== true",
+          "line": 659,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  // Validate config first (needed for command-based policy checks)\n  const result = McpServerConfigSchema().safeParse(config)\n  if (!result.success) {\n    const formattedErrors = result.error.issues\n      .map(err => `${err.path.join('.')}: ${err.message}`)\n      .join(', ')"
+        },
+        {
+          "start": 42866,
+          "end": 42887,
+          "before": "!schemaResult.success",
+          "after": "schemaResult.success !== true",
+          "line": 1308,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const { configObject, expandVars, scope, filePath } = params\n  const schemaResult = McpJsonConfigSchema().safeParse(configObject)\n  if (!schemaResult.success) {\n    return {\n      config: null,\n      errors: schemaResult.error.issues.map(issue => ({"
+        }
+      ]
+    },
+    {
+      "file": "cli/handlers/auth.ts",
+      "sha256": "c7058aa81f0a042a4802ee9df359f4d117306a97f59bac8c6ebf9d014a8b93f3",
+      "output_sha256": "d60a1c511486bb4969e0b08cb9f5e206dcc9e3152890f29a7a1084adc701f292",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 5769,
+          "end": 5785,
+          "before": "!orgResult.valid",
+          "after": "orgResult.valid !== true",
+          "line": 161,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "\n      const orgResult = await validateForceLoginOrg()\n      if (!orgResult.valid) {\n        process.stderr.write(orgResult.message + '\\n')\n        process.exit(1)\n      }"
+        },
+        {
+          "start": 7221,
+          "end": 7237,
+          "before": "!orgResult.valid",
+          "after": "orgResult.valid !== true",
+          "line": 211,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "\n    const orgResult = await validateForceLoginOrg()\n    if (!orgResult.valid) {\n      process.stderr.write(orgResult.message + '\\n')\n      process.exit(1)\n    }"
+        }
+      ]
+    },
+    {
+      "file": "utils/settings/validateEditTool.ts",
+      "sha256": "95566eefda6f385d2c43494433ba6b0822d31a2e53ac36fd9c7c82577090f432",
+      "output_sha256": "ca83a747b1a2fa06af40af6403093140799169418617ea8b84c3b368625f83f7",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 1044,
+          "end": 1069,
+          "before": "!beforeValidation.isValid",
+          "after": "beforeValidation.isValid !== true",
+          "line": 27,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const beforeValidation = validateSettingsFileContent(originalContent)\n\n  if (!beforeValidation.isValid) {\n    // If the before version is invalid, allow the edit (don't block it)\n    return null\n  }"
+        },
+        {
+          "start": 1365,
+          "end": 1389,
+          "before": "!afterValidation.isValid",
+          "after": "afterValidation.isValid !== true",
+          "line": 36,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const afterValidation = validateSettingsFileContent(updatedContent)\n\n  if (!afterValidation.isValid) {\n    return {\n      result: false,\n      message: `Claude Code settings.json validation failed after edit:\\n${afterValidation.error}\\n\\nFull schema:\\n${afterValidation.fullSchema}\\nIMPORTANT: Do not update the env unless explicitly instructed to do so.`,"
+        }
+      ]
+    },
+    {
+      "file": "cli/transports/ccrClient.ts",
+      "sha256": "950f608c14a78d164da41e76049d9bb7a3b4a97a763e8000c47efce92044f28a",
+      "output_sha256": "39a1d23bc9f326279206e47deda2e1a96261d7a80eb4bef734cc4dee3acdd5a9",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 13442,
+          "end": 13452,
+          "before": "!result.ok",
+          "after": "result.ok !== true",
+          "line": 375,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "          'client events',\n        )\n        if (!result.ok) {\n          throw new RetryableError(\n            'client event POST failed',\n            result.retryAfterMs,"
+        },
+        {
+          "start": 14080,
+          "end": 14090,
+          "before": "!result.ok",
+          "after": "result.ok !== true",
+          "line": 398,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "          'internal events',\n        )\n        if (!result.ok) {\n          throw new RetryableError(\n            'internal event POST failed',\n            result.retryAfterMs,"
+        },
+        {
+          "start": 14876,
+          "end": 14886,
+          "before": "!result.ok",
+          "after": "result.ok !== true",
+          "line": 429,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "          'delivery batch',\n        )\n        if (!result.ok) {\n          throw new RetryableError('delivery POST failed', result.retryAfterMs)\n        }\n      },"
+        },
+        {
+          "start": 16989,
+          "end": 16999,
+          "before": "!result.ok",
+          "after": "result.ok !== true",
+          "line": 491,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "      'PUT worker (init)',\n    )\n    if (!result.ok) {\n      // 409 → onEpochMismatch may throw, but request() catches it and returns\n      // false. Without this check we'd continue to startHeartbeat(), leaking a\n      // 20s timer against a dead epoch. Throw so connect()'s rejection handler"
+        },
+        {
+          "start": 24956,
+          "end": 24965,
+          "before": "result.ok",
+          "after": "result.ok === true",
+          "line": 717,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "        { timeout: 5_000 },\n      )\n      if (result.ok) {\n        logForDebugging('CCRClient: Heartbeat sent')\n      }\n    } finally {"
+        }
+      ]
+    },
+    {
+      "file": "bridge/bridgeMessaging.ts",
+      "sha256": "1cebbf62493129bfe75a20a5398cc99300da1fad28e4bb51bef58b632d3c0ff1",
+      "output_sha256": "de001832fe9ea1ec4670333e75aa59b018990d3ac7216946dc54d207166b1eff",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 11918,
+          "end": 11928,
+          "before": "verdict.ok",
+          "after": "verdict.ok === true",
+          "line": 341,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "          'set_permission_mode is not supported in this context (onSetPermissionMode callback not registered)',\n      }\n      if (verdict.ok) {\n        response = {\n          type: 'control_response',\n          response: {"
+        }
+      ]
+    },
+    {
+      "file": "commands/ultraplan.tsx",
+      "sha256": "58cf3a36b08fc43ad1aab9c31d0ae6ee1605f650791f8bc042e6f1343fc7b60f",
+      "output_sha256": "406f335408ac6f82e7a7c5f773b309644c7614f6e725bf2f3f9785325e1ecb55",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 14696,
+          "end": 14717,
+          "before": "!eligibility.eligible",
+          "after": "eligibility.eligible !== true",
+          "line": 373,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "\n    const eligibility = await checkRemoteAgentEligibility()\n    if (!eligibility.eligible) {\n      logEvent('tengu_ultraplan_create_failed', {\n        reason:\n          'precondition' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,"
+        }
+      ]
+    },
+    {
+      "file": "components/PromptInput/PromptInput.tsx",
+      "sha256": "448995a5fca58059aca9d9087ce455ae41f2d2382792c4c7de3623d6bb25b8bb",
+      "output_sha256": "1c87cc89394f8ac42e42a90a9b9cfb0b820d53964ae8623a186150264e9d1038",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 47828,
+          "end": 47842,
+          "before": "result.success",
+          "after": "result.success === true",
+          "line": 1401,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "          )\n\n          if (result.success) {\n            addNotification({\n              key: 'direct-message-sent',\n              text: `Sent to @${result.recipientName}`,"
+        }
+      ]
+    },
+    {
+      "file": "services/plugins/pluginOperations.ts",
+      "sha256": "bb6ec0ee179f6289db6e5e04f5da790badb2eee5a06bbf1b196f3506f1648a06",
+      "output_sha256": "a5d12b9dec9dad8ad1366ab13c5d2460de569156fedf5426597f5ec97b4c13a7",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 12312,
+          "end": 12322,
+          "before": "!result.ok",
+          "after": "result.ok !== true",
+          "line": 381,
+          "domain": [
+            "true",
+            "false",
+            "false",
+            "false",
+            "false",
+            "false"
+          ],
+          "context": "  })\n\n  if (!result.ok) {\n    switch (result.reason) {\n      case 'local-source-no-location':\n        return {"
+        }
+      ]
+    },
+    {
+      "file": "hooks/useClaudeCodeHintRecommendation.tsx",
+      "sha256": "5a8be7b02eab69fd171981500915edcedd9c67059260cbdfc51c577524649b95",
+      "output_sha256": "f8ff82f4aee4de43a972248efde199a141c64691e16df80146aeea3832a3ee6f",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 3823,
+          "end": 3838,
+          "before": "!result.success",
+          "after": "result.success !== true",
+          "line": 104,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "                trigger: 'hint',\n              })\n              if (!result.success) {\n                throw new Error(result.error)\n              }\n            },"
+        }
+      ]
+    },
+    {
+      "file": "components/ConsoleOAuthFlow.tsx",
+      "sha256": "560131fbfd6a0ef2ec2dbc58d933b9779e7788d972bdd5dcbc22b2d023a11c1c",
+      "output_sha256": "1bdf1daa830a6950b99854c352effdf50c9d0f64014779558042e8d2695a2fe3",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 8520,
+          "end": 8536,
+          "before": "!orgResult.valid",
+          "after": "orgResult.valid !== true",
+          "line": 247,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "\n        const orgResult = await validateForceLoginOrg()\n        if (!orgResult.valid) {\n          throw new Error(orgResult.message)\n        }\n"
+        }
+      ]
+    },
+    {
+      "file": "services/api/filesApi.ts",
+      "sha256": "68947585389cd718c691d39354fc0db6abf43074acc15da4759d619461c4d6bb",
+      "output_sha256": "ddaa05ca82dae569715b47f61b8a79b934aa8f8c5462801899269ea2ff4a2d00",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 3097,
+          "end": 3108,
+          "before": "result.done",
+          "after": "result.done === true",
+          "line": 106,
+          "domain": [
+            "false",
+            "true"
+          ],
+          "context": "    const result = await attemptFn(attempt)\n\n    if (result.done) {\n      return result.value\n    }\n"
+        }
+      ]
+    },
+    {
+      "file": "utils/teleport/gitBundle.ts",
+      "sha256": "05349038e4f61ea37284934b916689450a62073c78f92cfa60cf118c970a3605",
+      "output_sha256": "706321affa7f9949d50f1aa93c00ac0a65abb69ab115341ace4dbdfcf4a716ac",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 8012,
+          "end": 8022,
+          "before": "!bundle.ok",
+          "after": "bundle.ok !== true",
+          "line": 233,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "    )\n\n    if (!bundle.ok) {\n      logForDebugging(`[gitBundle] ${bundle.error}`)\n      logEvent('tengu_ccr_bundle_upload', {\n        outcome:"
+        },
+        {
+          "start": 8564,
+          "end": 8579,
+          "before": "!upload.success",
+          "after": "upload.success !== true",
+          "line": 252,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "    })\n\n    if (!upload.success) {\n      logEvent('tengu_ccr_bundle_upload', {\n        outcome:\n          'failed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,"
+        }
+      ]
+    },
+    {
+      "file": "utils/teleport.tsx",
+      "sha256": "08715ece524df1d59c6b3506486f134494b1fd295af67620733a83c322292ace",
+      "output_sha256": "346fa0db88445cba0a2745950e21b26ea8f9eff0078083daf3b5d4b01f4cdd41",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 7036,
+          "end": 7055,
+          "before": "parseResult.success",
+          "after": "parseResult.success === true",
+          "line": 196,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "      .object({ title: z.string(), branch: z.string() })\n      .safeParse(parsed)\n    if (parseResult.success) {\n      return {\n        title: parseResult.data.title || fallbackTitle,\n        branchName: parseResult.data.branch || fallbackBranch,"
+        },
+        {
+          "start": 36623,
+          "end": 36638,
+          "before": "!bundle.success",
+          "after": "bundle.success !== true",
+          "line": 1061,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "          { signal },\n        )\n        if (!bundle.success) {\n          logError(new Error(`Bundle upload failed: ${bundle.error}`))\n          return null\n        }"
+        },
+        {
+          "start": 44178,
+          "end": 44193,
+          "before": "!bundle.success",
+          "after": "bundle.success !== true",
+          "line": 1256,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "        { signal },\n      )\n      if (!bundle.success) {\n        logError(new Error(`Bundle upload failed: ${bundle.error}`))\n        // Only steer users to GitHub setup when there's a remote to clone from.\n        const setup = repoInfo"
+        }
+      ]
+    },
+    {
+      "file": "tools/AgentTool/AgentTool.tsx",
+      "sha256": "126da44c0505f92fadd3bd48cd721ca9075278ddc12920a8668d91f8360de276",
+      "output_sha256": "3748a2d8804e014a62450e6652e333674e4b5ef0c82c0569bfa213171d3c4f72",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 56082,
+          "end": 56093,
+          "before": "result.done",
+          "after": "result.done === true",
+          "line": 1365,
+          "domain": [
+            "false",
+            "true"
+          ],
+          "context": "              }\n              const { result } = raceResult\n              if (result.done) break\n              const message = result.value\n\n              agentMessages.push(message)"
+        }
+      ]
+    },
+    {
+      "file": "tools/BashTool/sedValidation.ts",
+      "sha256": "a58dbb92c8a2e47f27af13cc910f02bb73236fb8262e2454677e3f64f908377f",
+      "output_sha256": "7de164dc0614530cef7fd10ee3a68c6a9652f1a78ae5c86d23fd5a7edfb62c20",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 1776,
+          "end": 1796,
+          "before": "!parseResult.success",
+          "after": "parseResult.success !== true",
+          "line": 53,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const withoutSed = command.slice(sedMatch[0].length)\n  const parseResult = tryParseShellCommand(withoutSed)\n  if (!parseResult.success) return false\n  const parsed = parseResult.tokens\n\n  // Extract all flags"
+        },
+        {
+          "start": 4704,
+          "end": 4724,
+          "before": "!parseResult.success",
+          "after": "parseResult.success !== true",
+          "line": 160,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const withoutSed = command.slice(sedMatch[0].length)\n  const parseResult = tryParseShellCommand(withoutSed)\n  if (!parseResult.success) return false\n  const parsed = parseResult.tokens\n\n  // Extract all flags"
+        },
+        {
+          "start": 9035,
+          "end": 9055,
+          "before": "!parseResult.success",
+          "after": "parseResult.success !== true",
+          "line": 313,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const withoutSed = command.slice(sedMatch[0].length)\n  const parseResult = tryParseShellCommand(withoutSed)\n  if (!parseResult.success) return true\n  const parsed = parseResult.tokens\n\n  try {"
+        },
+        {
+          "start": 11686,
+          "end": 11706,
+          "before": "!parseResult.success",
+          "after": "parseResult.success !== true",
+          "line": 404,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  // Use shell-quote to parse the arguments properly\n  const parseResult = tryParseShellCommand(withoutSed)\n  if (!parseResult.success) {\n    // Malformed shell syntax - throw error to be caught by caller\n    throw new Error(`Malformed shell syntax: ${parseResult.error}`)\n  }"
+        }
+      ]
+    },
+    {
+      "file": "tools/BashTool/bashPermissions.ts",
+      "sha256": "8656e6b59b6923cd730451f29dccac140e9622dd64c0a5ae6c1d52a5ca1b987b",
+      "output_sha256": "411640ff7279ec3d17e715730a36bef2715a381b64c9720ec510fac8731bf48b",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 67018,
+          "end": 67025,
+          "before": "!sem.ok",
+          "after": "sem.ok !== true",
+          "line": 1775,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "    // that tokenize fine but are dangerous by name.\n    const sem = checkSemantics(astResult.commands)\n    if (!sem.ok) {\n      // Same deny-rule enforcement as the too-complex path: a user with\n      // `Bash(eval:*)` deny expects `eval \"rm\"` blocked, not downgraded.\n      const earlyExit = checkSemanticsDeny("
+        },
+        {
+          "start": 68857,
+          "end": 68877,
+          "before": "!parseResult.success",
+          "after": "parseResult.success !== true",
+          "line": 1816,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "    )\n    const parseResult = tryParseShellCommand(input.command)\n    if (!parseResult.success) {\n      const decisionReason = {\n        type: 'other' as const,\n        reason: `Command contains malformed syntax that cannot be parsed: ${parseResult.error}`,"
+        },
+        {
+          "start": 96841,
+          "end": 96855,
+          "before": "parsed.success",
+          "after": "parsed.success === true",
+          "line": 2574,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const stripped = stripSafeWrappers(command)\n  const parsed = tryParseShellCommand(stripped)\n  if (parsed.success && parsed.tokens.length > 0) {\n    // Direct git command\n    if (parsed.tokens[0] === 'git') {\n      return true"
+        },
+        {
+          "start": 98118,
+          "end": 98132,
+          "before": "parsed.success",
+          "after": "parsed.success === true",
+          "line": 2606,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const stripped = stripSafeWrappers(command)\n  const parsed = tryParseShellCommand(stripped)\n  if (parsed.success && parsed.tokens.length > 0) {\n    const cmd = parsed.tokens[0]\n    return cmd === 'cd' || cmd === 'pushd' || cmd === 'popd'\n  }"
+        }
+      ]
+    },
+    {
+      "file": "services/compact/compact.ts",
+      "sha256": "d116163ed19e1b79707a346b572061c32a524dcb7d17e8011cfab8c9311afd01",
+      "output_sha256": "8751068029c73ee8e33835e0f020966b231a8169c17f6c77c93cc8d8ff317d74",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 48848,
+          "end": 48858,
+          "before": "!next.done",
+          "after": "next.done !== true",
+          "line": 1330,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "      let next = await streamIter.next()\n\n      while (!next.done) {\n        const event = next.value\n\n        if ("
+        }
+      ]
+    },
+    {
+      "file": "tools/FileReadTool/FileReadTool.ts",
+      "sha256": "09d6bc8554732ce7f1abbb7edda07dfb6cb97b0413ade26d78f37f1499098e36",
+      "output_sha256": "cb7b35db0de14f72b08004b876249798cf46a92947980db44806b74dfc5dd2a6",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 30496,
+          "end": 30518,
+          "before": "!extractResult.success",
+          "after": "extractResult.success !== true",
+          "line": 901,
+          "domain": [
+            "false",
+            "true"
+          ],
+          "context": "        parsedRange ?? undefined,\n      )\n      if (!extractResult.success) {\n        throw new Error(extractResult.error.message)\n      }\n      logEvent('tengu_pdf_page_extraction', {"
+        },
+        {
+          "start": 32724,
+          "end": 32745,
+          "before": "extractResult.success",
+          "after": "extractResult.success === true",
+          "line": 964,
+          "domain": [
+            "false",
+            "true"
+          ],
+          "context": "    if (shouldExtractPages) {\n      const extractResult = await extractPDFPages(resolvedFilePath)\n      if (extractResult.success) {\n        logEvent('tengu_pdf_page_extraction', {\n          success: true,\n          pageCount: extractResult.data.file.count,"
+        },
+        {
+          "start": 33693,
+          "end": 33712,
+          "before": "!readResult.success",
+          "after": "readResult.success !== true",
+          "line": 988,
+          "domain": [
+            "false",
+            "true"
+          ],
+          "context": "\n    const readResult = await readPDF(resolvedFilePath)\n    if (!readResult.success) {\n      throw new Error(readResult.error.message)\n    }\n    const pdfData = readResult.data"
+        }
+      ]
+    },
+    {
+      "file": "utils/attachments.ts",
+      "sha256": "7ee10ee0d958e7f2beffcf7015f57838cc86a75d1b95e9f930954b249b66186a",
+      "output_sha256": "24bd40b0cad8928847b3eab53dc7d06ca1e5380b11c01fac9ac64cb9bf86bdd4",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 66604,
+          "end": 66619,
+          "before": "!isValid.result",
+          "after": "isValid.result !== true",
+          "line": 2099,
+          "domain": [
+            "false",
+            "true"
+          ],
+          "context": "          toolUseContext,\n        )\n        if (!isValid.result) {\n          return null\n        }\n"
+        },
+        {
+          "start": 102132,
+          "end": 102147,
+          "before": "!isValid.result",
+          "after": "isValid.result !== true",
+          "line": 3172,
+          "domain": [
+            "false",
+            "true"
+          ],
+          "context": "    // Validate file path is valid\n    const isValid = await FileReadTool.validateInput(fileInput, toolUseContext)\n    if (!isValid.result) {\n      return null\n    }\n"
+        }
+      ]
+    },
+    {
+      "file": "commands/plugin/BrowseMarketplace.tsx",
+      "sha256": "362ca4bea4c1f91390c4f8593acc21cd37a01f93282f999caf4ced16860b6155",
+      "output_sha256": "6588250d7e9881e5852833375e093dc2634d703b40aed8dc779b6cf0202d4b5d",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 14286,
+          "end": 14300,
+          "before": "result.success",
+          "after": "result.success === true",
+          "line": 407,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "      })\n\n      if (result.success) {\n        successCount++\n      } else {\n        failureCount++"
+        },
+        {
+          "start": 15995,
+          "end": 16009,
+          "before": "result.success",
+          "after": "result.success === true",
+          "line": 470,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "    })\n\n    if (result.success) {\n      const loaded = await findPluginOptionsTarget(plugin.pluginId)\n      if (loaded) {\n        setIsInstalling(false)"
+        }
+      ]
+    },
+    {
+      "file": "commands/plugin/DiscoverPlugins.tsx",
+      "sha256": "7ec7a0628782e818a002c6c0516e6b27af166f049b1f9c7baed42cb36fce2315",
+      "output_sha256": "969eddda3c59a5279a1dcd8eb8d2aee10a95ef8ee0af80744e4c0e9c413ec86f",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 10539,
+          "end": 10553,
+          "before": "result.success",
+          "after": "result.success === true",
+          "line": 302,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "      })\n\n      if (result.success) {\n        successCount++\n      } else {\n        failureCount++"
+        },
+        {
+          "start": 12082,
+          "end": 12096,
+          "before": "result.success",
+          "after": "result.success === true",
+          "line": 359,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "    })\n\n    if (result.success) {\n      const loaded = await findPluginOptionsTarget(plugin.pluginId)\n      if (loaded) {\n        setIsInstalling(false)"
+        }
+      ]
+    },
+    {
+      "file": "commands/resume/resume.tsx",
+      "sha256": "52a38b8d631f4a9f14344855e86268f0747d0d8c5470b8bd654155cbd77bff42",
+      "output_sha256": "0ff3d32706cacb45df5dfca87f35c0bbf5d140f0ed9cccb47f5b04531fc7bfb1",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 4543,
+          "end": 4575,
+          "before": "crossProjectCheck.isCrossProject",
+          "after": "crossProjectCheck.isCrossProject === true",
+          "line": 146,
+          "domain": [
+            "false",
+            "true",
+            "true"
+          ],
+          "context": "      worktreePaths,\n    )\n    if (crossProjectCheck.isCrossProject) {\n      if (crossProjectCheck.isSameRepoWorktree) {\n        // Same repo worktree - can resume directly\n        setResuming(true)"
+        },
+        {
+          "start": 4589,
+          "end": 4625,
+          "before": "crossProjectCheck.isSameRepoWorktree",
+          "after": "crossProjectCheck.isSameRepoWorktree === true",
+          "line": 147,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "    )\n    if (crossProjectCheck.isCrossProject) {\n      if (crossProjectCheck.isSameRepoWorktree) {\n        // Same repo worktree - can resume directly\n        setResuming(true)\n        void onResume(sessionId, fullLog, 'slash_command_picker')"
+        }
+      ]
+    },
+    {
+      "file": "commands/review/reviewRemote.ts",
+      "sha256": "cb93f4b3ece53608ee1267f85596f995c6b7296eefed42bbb5a0950d7de7d33a",
+      "output_sha256": "37cd6804a0098e8209b3d3f5e7d3f0eda7dc8a5142e45061310055b7e36834ff",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 5240,
+          "end": 5261,
+          "before": "!eligibility.eligible",
+          "after": "eligibility.eligible !== true",
+          "line": 138,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  // consume at session creation routes billing: first N zero-rate, then\n  // anthropic:cccr org-service-key (overage-only).\n  if (!eligibility.eligible) {\n    const blockers = eligibility.errors.filter(\n      e => e.type !== 'no_remote_environment',\n    )"
+        }
+      ]
+    },
+    {
+      "file": "commands/remote-setup/remote-setup.tsx",
+      "sha256": "520b5da935007e0866c4ed157dc35c0d376c4965a4a0247bca85abc7e60b1a55",
+      "output_sha256": "985d9dc2e70367ca0aa71ccf97a0c46d489e1a1bb2654d1f8e73218e4413ffc8",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 4163,
+          "end": 4173,
+          "before": "!result.ok",
+          "after": "result.ok !== true",
+          "line": 122,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "\n    const result = await importGithubToken(token)\n    if (!result.ok) {\n      logEvent('tengu_remote_setup_result', {\n        result: 'import_failed' as SafeString,\n        error_kind: result.error.kind as SafeString,"
+        }
+      ]
+    },
+    {
+      "file": "utils/hooks.ts",
+      "sha256": "d95c84279ed5e57dbcde85f116e6e590a1a06355f786e50a8fe2dde1e555cd26",
+      "output_sha256": "90adce50d3ab78f68461cccf1cb2f5eaceea4f1230ce804b7eb774bb9ebf6a4f",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 13064,
+          "end": 13082,
+          "before": "validation.success",
+          "after": "validation.success === true",
+          "line": 387,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const parsed = jsonParse(jsonString)\n  const validation = hookJSONOutputSchema().safeParse(parsed)\n  if (validation.success) {\n    logForDebugging('Successfully parsed and validated hook JSON output')\n    return { json: validation.data }\n  }"
+        },
+        {
+          "start": 15480,
+          "end": 15498,
+          "before": "validation.success",
+          "after": "validation.success === true",
+          "line": 461,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  if (trimmed === '') {\n    const validation = hookJSONOutputSchema().safeParse({})\n    if (validation.success) {\n      logForDebugging(\n        'HTTP hook returned empty body, treating as empty JSON object',\n      )"
+        },
+        {
+          "start": 38002,
+          "end": 38020,
+          "before": "validation.success",
+          "after": "validation.success === true",
+          "line": 1085,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "          const parsed = jsonParse(trimmed)\n          const validation = promptRequestSchema().safeParse(parsed)\n          if (validation.success) {\n            processedPromptLines.add(trimmed)\n            logForDebugging(\n              `Hooks: Detected prompt request from hook: ${trimmed}`,"
+        },
+        {
+          "start": 48852,
+          "end": 48866,
+          "before": "input?.success",
+          "after": "input?.success === true",
+          "line": 1407,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "  const input = tool?.inputSchema.safeParse(hookInput.tool_input)\n  const patternMatcher =\n    input?.success && tool?.preparePermissionMatcher\n      ? await tool.preparePermissionMatcher(input.data)\n      : undefined\n"
+        },
+        {
+          "start": 75242,
+          "end": 75258,
+          "before": "!jsonInputRes.ok",
+          "after": "jsonInputRes.ok !== true",
+          "line": 2205,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "    try {\n      const jsonInputRes = getJsonInput()\n      if (!jsonInputRes.ok) {\n        yield {\n          message: createAttachmentMessage({\n            type: 'hook_error_during_execution',"
+        }
+      ]
+    },
+    {
+      "file": "utils/filePersistence/filePersistence.ts",
+      "sha256": "7a2ac8c9d100fbc5b4cbef474bfcb17e099ab77d59bb0d5ce02c1c2824367565",
+      "output_sha256": "3857698344b2acf2aefae6a943227bebdd6a5a844e5294f1c1acbf0aa43b9bd6",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 6024,
+          "end": 6038,
+          "before": "result.success",
+          "after": "result.success === true",
+          "line": 219,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "\n  for (const result of results) {\n    if (result.success) {\n      persistedFiles.push({\n        filename: result.path,\n        file_id: result.fileId,"
+        }
+      ]
+    },
+    {
+      "file": "cli/print.ts",
+      "sha256": "b565b5490f0e12ad00f12e252ee272df00d85a99bc62ecd9ad9ce4193b68ca5a",
+      "output_sha256": "e8933877ae5408a8a69458f02c2a613d9b1c8873c2f08bab9f1c63508eedcf78",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 35710,
+          "end": 35731,
+          "before": "lastMessage?.is_error",
+          "after": "lastMessage?.is_error === true",
+          "line": 972,
+          "domain": [
+            "boolean",
+            "boolean"
+          ],
+          "context": "\n  gracefulShutdownSync(\n    lastMessage?.type === 'result' && lastMessage?.is_error ? 1 : 0,\n  )\n}\n"
+        }
+      ]
+    },
+    {
+      "file": "entrypoints/mcp.ts",
+      "sha256": "67050250bfc8e9c9da559e718e1d3713722c220232ef8f5b7d67f814d7edcbd8",
+      "output_sha256": "0eb40527f90d6283c93f7eb0e95a358b220cd48cf6120e5f0d6839c3281d46ce",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 5048,
+          "end": 5072,
+          "before": "!validationResult.result",
+          "after": "validationResult.result !== true",
+          "line": 145,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "          toolUseContext,\n        )\n        if (validationResult && !validationResult.result) {\n          throw new Error(\n            `Tool ${name} input is invalid: ${validationResult.message}`,\n          )"
+        }
+      ]
+    },
+    {
+      "file": "main.tsx",
+      "sha256": "44fd05f2dcd0cf4348fbd32be1affa73df54162e103630dd6c4e1ce49fc9d6c9",
+      "output_sha256": "59d9e59621d4a52413632ab5af1983461f52d036b7a1bd9726ea678563ccfeb5",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 126747,
+          "end": 126767,
+          "before": "!orgValidation.valid",
+          "after": "orgValidation.valid !== true",
+          "line": 3176,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "        // login state are fully loaded.\n        const orgValidation = await validateForceLoginOrg()\n        if (!orgValidation.valid) {\n          await exitWithError(root, orgValidation.message)\n        }\n      }"
+        },
+        {
+          "start": 142281,
+          "end": 142301,
+          "before": "!orgValidation.valid",
+          "after": "orgValidation.valid !== true",
+          "line": 3524,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "        // Validate org restriction for non-interactive sessions\n        const orgValidation = await validateForceLoginOrg()\n        if (!orgValidation.valid) {\n          process.stderr.write(orgValidation.message + '\\n')\n          process.exit(1)\n        }"
+        }
+      ]
+    },
+    {
+      "file": "screens/ResumeConversation.tsx",
+      "sha256": "86194f7a2ced0a2709ddec7927a23fc974394e73d219f21603fc278cf089b463",
+      "output_sha256": "1e4720f042424209d3ebb9dd18d9a563e9d983c2c48e47cf2debb2c684855368",
+      "coordinates": "utf16",
+      "edits": [
+        {
+          "start": 7699,
+          "end": 7731,
+          "before": "crossProjectCheck.isCrossProject",
+          "after": "crossProjectCheck.isCrossProject === true",
+          "line": 227,
+          "domain": [
+            "false",
+            "true",
+            "true"
+          ],
+          "context": "      worktreePaths,\n    )\n    if (crossProjectCheck.isCrossProject) {\n      if (!crossProjectCheck.isSameRepoWorktree) {\n        const raw = await setClipboard(crossProjectCheck.command)\n        if (raw) process.stdout.write(raw)"
+        },
+        {
+          "start": 7745,
+          "end": 7782,
+          "before": "!crossProjectCheck.isSameRepoWorktree",
+          "after": "crossProjectCheck.isSameRepoWorktree !== true",
+          "line": 228,
+          "domain": [
+            "true",
+            "false"
+          ],
+          "context": "    )\n    if (crossProjectCheck.isCrossProject) {\n      if (!crossProjectCheck.isSameRepoWorktree) {\n        const raw = await setClipboard(crossProjectCheck.command)\n        if (raw) process.stdout.write(raw)\n        setCrossProjectCommand(crossProjectCheck.command)"
+        }
+      ]
+    }
+  ]
+}
