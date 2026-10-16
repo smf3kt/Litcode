@@ -1,0 +1,47 @@
+import { Dto, HN, IAt, Int, J4t, Lt, Q4t, ano, nno, ono, rno, tno, tso, vVe, lQt, kFe } from '../src/plugin-chain-leaf-walkers-source.js';
+
+console.log('table', Object.keys(tno).join(','), 'all functions', Object.values(tno).every((v) => typeof v === 'function'));
+console.log('constants', lQt, kFe);
+console.log('rno svg', JSON.stringify(rno({ type: 'Svg', props: { alt: 'A' } })));
+console.log('rno button children', JSON.stringify(rno({ type: 'Button', props: { label: 'L' }, children: ['a', { children: ['b', 'c'] }] })));
+console.log('rno button label', JSON.stringify(rno({ type: 'Button', props: { label: 'L' } })));
+console.log('rno input', JSON.stringify(rno({ type: 'Input', props: { label: 'L' } })));
+console.log('rno input no label', JSON.stringify(rno({ type: 'Input', props: {} })));
+console.log('rno other', JSON.stringify(rno({ type: 'Markdown', props: { text: 'x' } })));
+console.log('Q4t', JSON.stringify(Q4t(['a', { children: ['b', { children: ['c'] }] }, { children: [] }])));
+try { Q4t([1] as never); console.log('Q4t non-string', 'no throw'); } catch (e) { console.log('Q4t non-string threw', (e as Error).message); }
+console.log('ono raster', ono({ type: 'Raster', props: { rows: 7 } }));
+console.log('ono markdown', ono({ type: 'Markdown', props: { text: 'a\nb\nc' } }));
+console.log('ono plain', ono({ type: 'Markdown', props: { text: 'a' } }));
+console.log('ono button', ono({ type: 'Button', props: { label: 'x' }, children: ['hi there'] }));
+console.log('ono svg', ono({ type: 'Svg', props: { alt: 'x' } }));
+console.log('ono code source', ono({ type: 'Code', props: { source: 'a\nb\nc' } }));
+console.log('ono code long', ono({ type: 'Code', props: { source: Array.from({ length: 20 }, () => 'x').join('\n') } }));
+const diff = ['--- a/x', '+++ b/x', '@@ -1,2 +1,3 @@', ' a', '-b', '+c', '+d', '\\ No newline at end of file'].join('\n');
+console.log('tso hunks', JSON.stringify(tso(diff)));
+console.log('Dto ok', JSON.stringify(Dto(diff)));
+console.log('Dto no hunk', JSON.stringify(Dto('not a diff')));
+console.log('Dto bad header', JSON.stringify(Dto(['--- a/x', '+++ b/x', '@@ oops @@', ' a'].join('\n'))));
+console.log('vVe diff', JSON.stringify(vVe(diff, 'diff'))?.slice(0, 60));
+console.log('vVe other', JSON.stringify(vVe(diff, 'source')));
+console.log('ono code diff', ono({ type: 'Code', props: { source: diff, format: 'diff' } }));
+console.log('ono code diff truncate', ono({ type: 'Code', props: { source: diff, format: 'diff', wrap: 'truncate-end' } }));
+console.log('ono code diff startLine', ono({ type: 'Code', props: { source: diff, format: 'diff', startLine: 100 } }));
+console.log('Int', Int({ oldStart: 1, oldLines: 3, newStart: 1, newLines: 4 }));
+console.log('Lt', Lt('a\nb\nc', '\n'), Lt('aaa', 'a'));
+console.log('nno', nno('ab\tcd\nef', 100), nno('ab\tcd\nef', 2), nno('ab\tcd\nef', 1000));
+console.log('IAt', IAt('a\nb\nc', 40), IAt(Array.from({ length: 20 }, () => 'xxxx').join('\n'), 40));
+console.log('J4t', JSON.stringify(J4t('a‮b\tc')));
+console.log('HN', JSON.stringify(HN('a\n\t\tb\nc')));
+const seen = new Set();
+const leaf = (type: string, key?: unknown) => ({ type, props: key === undefined ? {} : { key } });
+console.log('ano first', ano(leaf('Input', 'k'), seen));
+console.log('ano second', ano(leaf('Input', 'k'), seen));
+console.log('ano other type same key', ano(leaf('Select', 'k'), seen));
+console.log('ano no key', ano(leaf('Input'), seen));
+console.log('ano svg', ano(leaf('Svg', 'k'), seen));
+console.log('ano non-string key', ano(leaf('Code', 5), seen));
+const malformed = ['--- a/x', '+++ b/x', '@@ -1,1 +1,5 @@', ' a'].join('\n');
+try { tso(malformed); console.log('tso malformed no throw'); } catch (e) { console.log('tso malformed threw', (e as Error).message); }
+console.log('Dto malformed', JSON.stringify(Dto(malformed)));
+console.log('Dto empty', JSON.stringify(Dto('')));

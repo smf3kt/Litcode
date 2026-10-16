@@ -1,0 +1,18 @@
+(node:84005) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ clock.now answers the process clock, not the pluggable one (0.574375ms)
+✔ clock.sleep, clock.after and clock.every are the same wait, and an abort rejects with its reason (13.383667ms)
+✔ the ms check refuses a non-finite value with the source's own text (1.862709ms)
+✔ a handler in the chain answers a clock call first (0.201042ms)
+✔ env.get reads the process environment, and answers USER_TYPE as external (0.077375ms)
+✔ env.set writes a value and unsets on none (0.078667ms)
+✔ the env check refuses a bad name or value with the source's own texts (0.06975ms)
+✔ the env entries run their check only behind a handler, as the table floors do (0.180584ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 177.621916

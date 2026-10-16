@@ -1,0 +1,739 @@
+{
+ "rows": [
+  {
+   "name": "Message",
+   "candidate": "message",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "commands/extra-usage/extra-usage-noninteractive.ts",
+     "line": 6
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "AssistantMessage",
+   "candidate": "message",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "commands/extra-usage/extra-usage-noninteractive.ts",
+     "line": 6
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "AttachmentMessage",
+   "candidate": "attachment",
+   "asType": {
+    "count": 44,
+    "first": {
+     "file": "components/MessageRow.tsx",
+     "line": 71
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "ProgressMessage",
+   "candidate": "progress",
+   "asType": {
+    "count": 23,
+    "first": {
+     "file": "components/FullscreenLayout.tsx",
+     "line": 205
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "SystemLocalCommandMessage",
+   "candidate": "local_command",
+   "asType": null,
+   "asSubtype": {
+    "count": 6,
+    "first": {
+     "file": "QueryEngine.ts",
+     "line": 589
+    }
+   }
+  },
+  {
+   "name": "SystemMessage",
+   "candidate": "message",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "commands/extra-usage/extra-usage-noninteractive.ts",
+     "line": 6
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "UserMessage",
+   "candidate": "message",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "commands/extra-usage/extra-usage-noninteractive.ts",
+     "line": 6
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "NormalizedUserMessage",
+   "candidate": "message",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "commands/extra-usage/extra-usage-noninteractive.ts",
+     "line": 6
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "AttachmentMessageType",
+   "candidate": "attachment_message",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "CollapsedReadSearchGroupType",
+   "candidate": "collapsed_read_search",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "components/MessageRow.tsx",
+     "line": 115
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "GroupedToolUseMessageType",
+   "candidate": "grouped_tool_use_message",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "NormalizedMessage",
+   "candidate": "message",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "commands/extra-usage/extra-usage-noninteractive.ts",
+     "line": 6
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "RenderableMessage",
+   "candidate": "renderable",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "PartialCompactDirection",
+   "candidate": "partial_compact_direction",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "MessageType",
+   "candidate": "message",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "commands/extra-usage/extra-usage-noninteractive.ts",
+     "line": 6
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "ProgressMessageType",
+   "candidate": "progress_message",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "CollapsedReadSearchGroup",
+   "candidate": "collapsed_read_search",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "components/MessageRow.tsx",
+     "line": 115
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "NormalizedAssistantMessage",
+   "candidate": "message",
+   "asType": {
+    "count": 6,
+    "first": {
+     "file": "commands/extra-usage/extra-usage-noninteractive.ts",
+     "line": 6
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "GroupedToolUseMessage",
+   "candidate": "grouped_tool_use",
+   "asType": {
+    "count": 14,
+    "first": {
+     "file": "components/MessageRow.tsx",
+     "line": 83
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "SystemStopHookSummaryMessage",
+   "candidate": "stop_hook_summary",
+   "asType": null,
+   "asSubtype": {
+    "count": 5,
+    "first": {
+     "file": "components/messages/SystemTextMessage.tsx",
+     "line": 201
+    }
+   }
+  },
+  {
+   "name": "SystemBridgeStatusMessage",
+   "candidate": "bridge_status",
+   "asType": null,
+   "asSubtype": {
+    "count": 1,
+    "first": {
+     "file": "components/messages/SystemTextMessage.tsx",
+     "line": 126
+    }
+   }
+  },
+  {
+   "name": "SystemTurnDurationMessage",
+   "candidate": "turn_duration",
+   "asType": null,
+   "asSubtype": {
+    "count": 1,
+    "first": {
+     "file": "components/messages/SystemTextMessage.tsx",
+     "line": 46
+    }
+   }
+  },
+  {
+   "name": "SystemThinkingMessage",
+   "candidate": "thinking",
+   "asType": {
+    "count": 19,
+    "first": {
+     "file": "components/Message.tsx",
+     "line": 568
+    }
+   },
+   "asSubtype": {
+    "count": 1,
+    "first": {
+     "file": "components/messages/SystemTextMessage.tsx",
+     "line": 123
+    }
+   }
+  },
+  {
+   "name": "SystemMemorySavedMessage",
+   "candidate": "memory_saved",
+   "asType": null,
+   "asSubtype": {
+    "count": 1,
+    "first": {
+     "file": "components/messages/SystemTextMessage.tsx",
+     "line": 58
+    }
+   }
+  },
+  {
+   "name": "SystemInformationalMessage",
+   "candidate": "informational",
+   "asType": null,
+   "asSubtype": {
+    "count": 1,
+    "first": {
+     "file": "utils/messages.ts",
+     "line": 2750
+    }
+   }
+  },
+  {
+   "name": "HookResultMessage",
+   "candidate": "hook_result",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "RequestStartEvent",
+   "candidate": "request_start",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "StopHookInfo",
+   "candidate": "stop_hook",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "StreamEvent",
+   "candidate": "stream",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "TombstoneMessage",
+   "candidate": "tombstone",
+   "asType": {
+    "count": 1,
+    "first": {
+     "file": "utils/messages.ts",
+     "line": 2916
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "ToolUseSummaryMessage",
+   "candidate": "tool_use_summary",
+   "asType": {
+    "count": 1,
+    "first": {
+     "file": "utils/messages.ts",
+     "line": 2921
+    }
+   },
+   "asSubtype": null
+  },
+  {
+   "name": "SystemAPIErrorMessage",
+   "candidate": "apierror",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "SystemCompactBoundaryMessage",
+   "candidate": "compact_boundary",
+   "asType": null,
+   "asSubtype": {
+    "count": 14,
+    "first": {
+     "file": "QueryEngine.ts",
+     "line": 472
+    }
+   }
+  },
+  {
+   "name": "MessageOrigin",
+   "candidate": "message_origin",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "CollapsibleMessage",
+   "candidate": "collapsible",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "SystemAgentsKilledMessage",
+   "candidate": "agents_killed",
+   "asType": null,
+   "asSubtype": {
+    "count": 1,
+    "first": {
+     "file": "components/messages/SystemTextMessage.tsx",
+     "line": 99
+    }
+   }
+  },
+  {
+   "name": "SystemApiMetricsMessage",
+   "candidate": "api_metrics",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "SystemAwaySummaryMessage",
+   "candidate": "away_summary",
+   "asType": null,
+   "asSubtype": {
+    "count": 2,
+    "first": {
+     "file": "components/messages/SystemTextMessage.tsx",
+     "line": 70
+    }
+   }
+  },
+  {
+   "name": "SystemMessageLevel",
+   "candidate": "message_level",
+   "asType": null,
+   "asSubtype": null
+  },
+  {
+   "name": "SystemMicrocompactBoundaryMessage",
+   "candidate": "microcompact_boundary",
+   "asType": null,
+   "asSubtype": {
+    "count": 1,
+    "first": {
+     "file": "components/Message.tsx",
+     "line": 246
+    }
+   }
+  },
+  {
+   "name": "SystemPermissionRetryMessage",
+   "candidate": "permission_retry",
+   "asType": null,
+   "asSubtype": {
+    "count": 1,
+    "first": {
+     "file": "components/messages/SystemTextMessage.tsx",
+     "line": 160
+    }
+   }
+  },
+  {
+   "name": "SystemScheduledTaskFireMessage",
+   "candidate": "scheduled_task_fire",
+   "asType": null,
+   "asSubtype": {
+    "count": 1,
+    "first": {
+     "file": "components/messages/SystemTextMessage.tsx",
+     "line": 138
+    }
+   }
+  }
+ ],
+ "typeLits": {
+  "user": 143,
+  "system": 43,
+  "assistant": 162,
+  "message_start": 4,
+  "message_delta": 2,
+  "message_stop": 2,
+  "structured_output": 2,
+  "max_turns_reached": 2,
+  "queued_command": 8,
+  "text": 144,
+  "string": 11,
+  "result": 8,
+  "error": 7,
+  "tool_start": 2,
+  "control_response": 6,
+  "control_request": 8,
+  "healthcheck": 1,
+  "session": 1,
+  "tool_use": 116,
+  "connected": 54,
+  "sse": 14,
+  "http": 24,
+  "stdio": 17,
+  "sdk": 10,
+  "pending": 13,
+  "failed": 15,
+  "local_agent": 16,
+  "local_workflow": 4,
+  "keep_alive": 2,
+  "update_environment_variables": 2,
+  "classifier": 14,
+  "stream_event": 12,
+  "code": 2,
+  "message": 6,
+  "tool_result": 76,
+  "success": 6,
+  "checking": 1,
+  "installing": 1,
+  "disabled": 10,
+  "warning": 3,
+  "plugin": 4,
+  "mcp": 4,
+  "number": 6,
+  "boolean": 10,
+  "marketplace": 1,
+  "menu": 1,
+  "help": 2,
+  "validate": 1,
+  "prompt": 47,
+  "input": 16,
+  "image": 45,
+  "permission_error": 1,
+  "progress": 23,
+  "table": 1,
+  "space": 1,
+  "thinking": 19,
+  "redacted_thinking": 12,
+  "attachment": 44,
+  "grouped_tool_use": 14,
+  "collapsed_read_search": 6,
+  "server_tool_use": 10,
+  "create": 5,
+  "advisor_tool_result": 2,
+  "advisor_result": 1,
+  "in_process_teammate": 21,
+  "idle_notification": 3,
+  "named_agent": 1,
+  "enum": 1,
+  "env": 2,
+  "reject": 3,
+  "empty": 1,
+  "remove": 4,
+  "add": 1,
+  "turn": 1,
+  "current": 1,
+  "server": 2,
+  "dream": 5,
+  "teammate_mailbox": 2,
+  "task_assignment": 2,
+  "skill_discovery": 3,
+  "notebook": 1,
+  "file_unchanged": 1,
+  "repl_tool_call": 1,
+  "teammate_terminated": 2,
+  "task_completed": 1,
+  "accept": 3,
+  "hook": 3,
+  "local_bash": 7,
+  "remote_agent": 6,
+  "monitor_mcp": 3,
+  "leader": 4,
+  "object": 1,
+  "command": 9,
+  "path": 1,
+  "alias": 1,
+  "user_reject": 1,
+  "update": 1,
+  "directory": 9,
+  "file": 3,
+  "idle": 3,
+  "count": 1,
+  "operator": 1,
+  "link": 3,
+  "start": 2,
+  "sequence": 2,
+  "decrpm": 1,
+  "osc": 1,
+  "xtversion": 1,
+  "rgb": 1,
+  "sgr": 1,
+  "hook_non_blocking_error": 4,
+  "hook_error_during_execution": 2,
+  "hook_success": 4,
+  "hook_stopped_continuation": 2,
+  "edited_text_file": 1,
+  "control_cancel_request": 1,
+  "hook_progress": 3,
+  "complete": 2,
+  "document": 8,
+  "enabled": 3,
+  "connector_text_delta": 1,
+  "connector_text": 1,
+  "mcp_tool_use": 4,
+  "skill_listing": 2,
+  "content_block_start": 3,
+  "content_block_delta": 2,
+  "text_delta": 1,
+  "ws": 2,
+  "hook_cancelled": 3,
+  "hook_blocking_error": 3,
+  "background": 1,
+  "bash_progress": 3,
+  "powershell_progress": 2,
+  "summary": 5,
+  "other": 8,
+  "rule": 9,
+  "exact": 1,
+  "prefix": 1,
+  "wildcard": 1,
+  "shutdown_response": 2,
+  "plan_approval_response": 1,
+  "redirect": 2,
+  "web_search_tool_result": 2,
+  "input_json_delta": 1,
+  "advisor_message": 1,
+  "plan_mode": 2,
+  "plan_mode_reentry": 1,
+  "plan_mode_exit": 2,
+  "auto_mode": 2,
+  "auto_mode_exit": 2,
+  "relevant_memories": 3,
+  "todo_reminder": 1,
+  "task_reminder": 1,
+  "pipeline": 5,
+  "file_redirect": 5,
+  "word": 10,
+  "function": 7,
+  "redirected_statement": 11,
+  "comment": 1,
+  "negated_command": 3,
+  "declaration_command": 4,
+  "variable_assignment": 4,
+  "for_statement": 2,
+  "variable_name": 3,
+  "do_group": 2,
+  "for": 1,
+  "in": 1,
+  "select": 1,
+  "command_substitution": 4,
+  "do": 2,
+  "done": 2,
+  "if_statement": 2,
+  "while_statement": 2,
+  "if": 1,
+  "fi": 1,
+  "else": 2,
+  "elif": 2,
+  "while": 1,
+  "until": 1,
+  "then": 2,
+  "elif_clause": 1,
+  "else_clause": 1,
+  "subshell": 3,
+  "test_command": 1,
+  "unset_command": 2,
+  "heredoc_redirect": 3,
+  "list": 4,
+  "file_descriptor": 2,
+  "raw_string": 1,
+  "concatenation": 3,
+  "heredoc_start": 2,
+  "heredoc_body": 2,
+  "heredoc_end": 1,
+  "simple_expansion": 2,
+  "special_variable_name": 1,
+  "compound_statement": 4,
+  "herestring_redirect": 2,
+  "expansion": 1,
+  "arithmetic_expansion": 1,
+  "extglob_pattern": 1,
+  "command_name": 2,
+  "case_statement": 1,
+  "function_definition": 1,
+  "html": 2,
+  "codespan": 1,
+  "nested_memory": 1,
+  "task_status": 1,
+  "deleted": 1,
+  "generated": 1,
+  "new_file": 1,
+  "new_directory": 1,
+  "invoked_skills": 1,
+  "native": 1,
+  "stream_request_start": 3,
+  "branch": 5,
+  "response": 1,
+  "agent": 5,
+  "callback": 7,
+  "list_item": 1,
+  "array": 1,
+  "integer": 7,
+  "hook_system_message": 1,
+  "hook_additional_context": 2,
+  "advisor_tool_result_error": 1,
+  "tombstone": 1,
+  "tool_use_summary": 1,
+  "team_context": 1,
+  "not_found_error": 1,
+  "plan_file_reference": 1,
+  "installed": 1,
+  "skip": 1,
+  "compact": 1,
+  "agent_mention": 1,
+  "agent_progress": 2,
+  "skill_progress": 2,
+  "tag": 3,
+  "mode": 3,
+  "ansi": 4,
+  "local": 1,
+  "permission_request": 1,
+  "permission_response": 1,
+  "sandbox_permission_request": 1,
+  "sandbox_permission_response": 1,
+  "team_permission_update": 1,
+  "git_repository": 3,
+  "env_manager_log": 1,
+  "tool_reference": 1
+ },
+ "subtypeLits": {
+  "compact_boundary": 14,
+  "local_command": 6,
+  "api_error": 5,
+  "can_use_tool": 9,
+  "session_state_changed": 1,
+  "task_notification": 2,
+  "task_started": 2,
+  "task_progress": 2,
+  "post_turn_summary": 2,
+  "interrupt": 1,
+  "end_session": 1,
+  "initialize": 1,
+  "set_permission_mode": 1,
+  "set_model": 1,
+  "set_max_thinking_tokens": 1,
+  "mcp_status": 1,
+  "get_context_usage": 1,
+  "mcp_message": 1,
+  "rewind_files": 1,
+  "cancel_async_message": 1,
+  "seed_read_state": 1,
+  "mcp_set_servers": 1,
+  "reload_plugins": 1,
+  "mcp_reconnect": 1,
+  "mcp_toggle": 1,
+  "channel_enable": 1,
+  "mcp_authenticate": 1,
+  "mcp_oauth_callback_url": 1,
+  "claude_authenticate": 1,
+  "claude_oauth_callback": 2,
+  "claude_oauth_wait_for_completion": 1,
+  "mcp_clear_auth": 1,
+  "apply_flag_settings": 1,
+  "get_settings": 1,
+  "stop_task": 1,
+  "generate_session_title": 1,
+  "side_question": 1,
+  "set_proactive": 1,
+  "remote_control": 1,
+  "success": 7,
+  "error": 3,
+  "microcompact_boundary": 1,
+  "turn_duration": 1,
+  "memory_saved": 1,
+  "away_summary": 2,
+  "agents_killed": 1,
+  "thinking": 1,
+  "bridge_status": 1,
+  "scheduled_task_fire": 1,
+  "permission_retry": 1,
+  "stop_hook_summary": 5,
+  "init": 4,
+  "status": 2,
+  "hook_progress": 7,
+  "hook_response": 7,
+  "hook_started": 1,
+  "informational": 1,
+  "file_snapshot": 1
+ }
+}

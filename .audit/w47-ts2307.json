@@ -1,0 +1,679 @@
+{
+ "rows": [
+  {
+   "file": "bridge/initReplBridge.ts",
+   "line": 480,
+   "spec": "../assistant/index.js"
+  },
+  {
+   "file": "cli/print.ts",
+   "line": 130,
+   "spec": "@anthropic-ai/claude-agent-sdk"
+  },
+  {
+   "file": "cli/print.ts",
+   "line": 363,
+   "spec": "../proactive/index.js"
+  },
+  {
+   "file": "commands.ts",
+   "line": 88,
+   "spec": "./commands/workflows/index.js"
+  },
+  {
+   "file": "commands.ts",
+   "line": 108,
+   "spec": "./commands/peers/index.js"
+  },
+  {
+   "file": "commands.ts",
+   "line": 113,
+   "spec": "./commands/fork/index.js"
+  },
+  {
+   "file": "commands.ts",
+   "line": 118,
+   "spec": "./commands/buddy/index.js"
+  },
+  {
+   "file": "commands/bridge/bridge.tsx",
+   "line": 490,
+   "spec": "../../assistant/index.js"
+  },
+  {
+   "file": "commands/compact/compact.ts",
+   "line": 36,
+   "spec": "../../services/compact/reactiveCompact.js"
+  },
+  {
+   "file": "commands/context/context-noninteractive.ts",
+   "line": 53,
+   "spec": "../../services/contextCollapse/operations.js"
+  },
+  {
+   "file": "commands/context/context.tsx",
+   "line": 24,
+   "spec": "../../services/contextCollapse/operations.js"
+  },
+  {
+   "file": "components/StructuredDiff/colorDiff.ts",
+   "line": 6,
+   "spec": "color-diff-napi"
+  },
+  {
+   "file": "components/TokenWarning.tsx",
+   "line": 36,
+   "spec": "../services/contextCollapse/index.js"
+  },
+  {
+   "file": "components/messages/UserTextMessage.tsx",
+   "line": 219,
+   "spec": "./UserCrossSessionMessage.js"
+  },
+  {
+   "file": "components/permissions/ComputerUseApproval/ComputerUseApproval.tsx",
+   "line": 2,
+   "spec": "@ant/computer-use-mcp/sentinelApps"
+  },
+  {
+   "file": "components/permissions/ComputerUseApproval/ComputerUseApproval.tsx",
+   "line": 3,
+   "spec": "@ant/computer-use-mcp/types"
+  },
+  {
+   "file": "components/permissions/ComputerUseApproval/ComputerUseApproval.tsx",
+   "line": 4,
+   "spec": "@ant/computer-use-mcp/types"
+  },
+  {
+   "file": "dialogLaunchers.tsx",
+   "line": 35,
+   "spec": "./components/agents/SnapshotUpdateDialog.js"
+  },
+  {
+   "file": "dialogLaunchers.tsx",
+   "line": 63,
+   "spec": "./commands/assistant/assistant.js"
+  },
+  {
+   "file": "entrypoints/agentSdkTypes.ts",
+   "line": 29,
+   "spec": "./sdk/toolTypes.js"
+  },
+  {
+   "file": "entrypoints/cli.tsx",
+   "line": 103,
+   "spec": "../daemon/workerRegistry.js"
+  },
+  {
+   "file": "entrypoints/cli.tsx",
+   "line": 177,
+   "spec": "../daemon/main.js"
+  },
+  {
+   "file": "entrypoints/cli.tsx",
+   "line": 191,
+   "spec": "../cli/bg.js"
+  },
+  {
+   "file": "entrypoints/cli.tsx",
+   "line": 217,
+   "spec": "../environment-runner/main.js"
+  },
+  {
+   "file": "entrypoints/cli.tsx",
+   "line": 229,
+   "spec": "../self-hosted-runner/main.js"
+  },
+  {
+   "file": "hooks/useReplBridge.tsx",
+   "line": 168,
+   "spec": "../assistant/index.js"
+  },
+  {
+   "file": "ink/reconciler.ts",
+   "line": 36,
+   "spec": "./devtools.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 80,
+   "spec": "./assistant/index.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 81,
+   "spec": "./assistant/gate.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 429,
+   "spec": "./utils/eventLoopStallDetector.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1385,
+   "spec": "src/cli/up.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1400,
+   "spec": "src/cli/rollback.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1426,
+   "spec": "./cli/handlers/ant.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1434,
+   "spec": "./cli/handlers/ant.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1447,
+   "spec": "./cli/handlers/ant.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1458,
+   "spec": "./cli/handlers/ant.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1468,
+   "spec": "./cli/handlers/ant.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1476,
+   "spec": "./cli/handlers/ant.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1489,
+   "spec": "./cli/handlers/ant.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1497,
+   "spec": "./cli/handlers/ant.js"
+  },
+  {
+   "file": "main.tsx",
+   "line": 1510,
+   "spec": "./cli/handlers/ant.js"
+  },
+  {
+   "file": "query.ts",
+   "line": 16,
+   "spec": "./services/compact/reactiveCompact.js"
+  },
+  {
+   "file": "query.ts",
+   "line": 70,
+   "spec": "./jobs/classifier.js"
+  },
+  {
+   "file": "query.ts",
+   "line": 119,
+   "spec": "./utils/taskSummary.js"
+  },
+  {
+   "file": "query/stopHooks.ts",
+   "line": 46,
+   "spec": "../jobs/classifier.js"
+  },
+  {
+   "file": "services/api/client.ts",
+   "line": 154,
+   "spec": "@anthropic-ai/bedrock-sdk"
+  },
+  {
+   "file": "services/api/client.ts",
+   "line": 192,
+   "spec": "@anthropic-ai/foundry-sdk"
+  },
+  {
+   "file": "services/api/client.ts",
+   "line": 205,
+   "spec": "@azure/identity"
+  },
+  {
+   "file": "services/api/client.ts",
+   "line": 229,
+   "spec": "@anthropic-ai/vertex-sdk"
+  },
+  {
+   "file": "services/compact/compact.ts",
+   "line": 7,
+   "spec": "../sessionTranscript/sessionTranscript.js"
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "line": 56,
+   "spec": "./cachedMicrocompact.js"
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "line": 57,
+   "spec": "./cachedMicrocompact.js"
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "line": 59,
+   "spec": "./cachedMicrocompact.js"
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "line": 63,
+   "spec": "./cachedMicrocompact.js"
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "line": 70,
+   "spec": "./cachedMicrocompact.js"
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "line": 88,
+   "spec": "./cachedMicrocompact.js"
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "line": 99,
+   "spec": "./cachedMicrocompact.js"
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "line": 112,
+   "spec": "./cachedMicrocompact.js"
+  },
+  {
+   "file": "services/compact/prompt.ts",
+   "line": 8,
+   "spec": "../../proactive/index.js"
+  },
+  {
+   "file": "services/lsp/LSPClient.ts",
+   "line": 8,
+   "spec": "vscode-jsonrpc/node.js"
+  },
+  {
+   "file": "services/mcp/client.ts",
+   "line": 119,
+   "spec": "../../skills/mcpSkills.js"
+  },
+  {
+   "file": "services/mcp/client.ts",
+   "line": 914,
+   "spec": "@ant/claude-for-chrome-mcp"
+  },
+  {
+   "file": "services/mcp/useManageMCPConnections.ts",
+   "line": 24,
+   "spec": "../../skills/mcpSkills.js"
+  },
+  {
+   "file": "services/notifier.ts",
+   "line": 138,
+   "spec": "plist"
+  },
+  {
+   "file": "services/tokenEstimation.ts",
+   "line": 5,
+   "spec": "@aws-sdk/client-bedrock-runtime"
+  },
+  {
+   "file": "services/tokenEstimation.ts",
+   "line": 478,
+   "spec": "@aws-sdk/client-bedrock-runtime"
+  },
+  {
+   "file": "services/voice.ts",
+   "line": 20,
+   "spec": "audio-capture-napi"
+  },
+  {
+   "file": "services/voice.ts",
+   "line": 27,
+   "spec": "audio-capture-napi"
+  },
+  {
+   "file": "setup.ts",
+   "line": 96,
+   "spec": "./utils/udsMessaging.js"
+  },
+  {
+   "file": "skills/bundled/claudeInChrome.ts",
+   "line": 1,
+   "spec": "@ant/claude-for-chrome-mcp"
+  },
+  {
+   "file": "tools/AgentTool/AgentTool.tsx",
+   "line": 59,
+   "spec": "../../proactive/index.js"
+  },
+  {
+   "file": "tools/FileReadTool/FileReadTool.ts",
+   "line": 1158,
+   "spec": "sharp"
+  },
+  {
+   "file": "tools/FileReadTool/imageProcessor.ts",
+   "line": 46,
+   "spec": "image-processor-napi"
+  },
+  {
+   "file": "tools/FileReadTool/imageProcessor.ts",
+   "line": 62,
+   "spec": "sharp"
+  },
+  {
+   "file": "tools/FileReadTool/imageProcessor.ts",
+   "line": 80,
+   "spec": "sharp"
+  },
+  {
+   "file": "tools/SendMessageTool/SendMessageTool.ts",
+   "line": 759,
+   "spec": "../../bridge/peerSessions.js"
+  },
+  {
+   "file": "tools/SkillTool/SkillTool.ts",
+   "line": 112,
+   "spec": "../../services/skillSearch/telemetry.js"
+  },
+  {
+   "file": "tools/WebFetchTool/utils.ts",
+   "line": 90,
+   "spec": "turndown"
+  },
+  {
+   "file": "tools/WebFetchTool/utils.ts",
+   "line": 93,
+   "spec": "turndown"
+  },
+  {
+   "file": "upstreamproxy/upstreamproxy.ts",
+   "line": 229,
+   "spec": "bun:ffi"
+  },
+  {
+   "file": "utils/attachments.ts",
+   "line": 206,
+   "spec": "../services/sessionTranscript/sessionTranscript.js"
+  },
+  {
+   "file": "utils/aws.ts",
+   "line": 52,
+   "spec": "@aws-sdk/client-sts"
+  },
+  {
+   "file": "utils/aws.ts",
+   "line": 64,
+   "spec": "@aws-sdk/credential-providers"
+  },
+  {
+   "file": "utils/claudeInChrome/mcpServer.ts",
+   "line": 6,
+   "spec": "@ant/claude-for-chrome-mcp"
+  },
+  {
+   "file": "utils/claudeInChrome/setup.ts",
+   "line": 1,
+   "spec": "@ant/claude-for-chrome-mcp"
+  },
+  {
+   "file": "utils/cleanup.ts",
+   "line": 466,
+   "spec": "cacache"
+  },
+  {
+   "file": "utils/cliHighlight.ts",
+   "line": 11,
+   "spec": "cli-highlight"
+  },
+  {
+   "file": "utils/cliHighlight.ts",
+   "line": 12,
+   "spec": "cli-highlight"
+  },
+  {
+   "file": "utils/cliHighlight.ts",
+   "line": 25,
+   "spec": "cli-highlight"
+  },
+  {
+   "file": "utils/collapseReadSearch.ts",
+   "line": 39,
+   "spec": "../tools/SnipTool/prompt.js"
+  },
+  {
+   "file": "utils/computerUse/executor.ts",
+   "line": 38,
+   "spec": "@ant/computer-use-mcp"
+  },
+  {
+   "file": "utils/computerUse/executor.ts",
+   "line": 40,
+   "spec": "@ant/computer-use-mcp"
+  },
+  {
+   "file": "utils/computerUse/gates.ts",
+   "line": 1,
+   "spec": "@ant/computer-use-mcp/types"
+  },
+  {
+   "file": "utils/computerUse/hostAdapter.ts",
+   "line": 4,
+   "spec": "@ant/computer-use-mcp/types"
+  },
+  {
+   "file": "utils/computerUse/inputLoader.ts",
+   "line": 4,
+   "spec": "@ant/computer-use-input"
+  },
+  {
+   "file": "utils/computerUse/mcpServer.ts",
+   "line": 4,
+   "spec": "@ant/computer-use-mcp"
+  },
+  {
+   "file": "utils/computerUse/setup.ts",
+   "line": 1,
+   "spec": "@ant/computer-use-mcp"
+  },
+  {
+   "file": "utils/computerUse/swiftLoader.ts",
+   "line": 1,
+   "spec": "@ant/computer-use-swift"
+  },
+  {
+   "file": "utils/computerUse/wrapper.tsx",
+   "line": 19,
+   "spec": "@ant/computer-use-mcp"
+  },
+  {
+   "file": "utils/deepLink/protocolHandler.ts",
+   "line": 95,
+   "spec": "url-handler-napi"
+  },
+  {
+   "file": "utils/dxt/helpers.ts",
+   "line": 1,
+   "spec": "@anthropic-ai/mcpb"
+  },
+  {
+   "file": "utils/dxt/helpers.ts",
+   "line": 16,
+   "spec": "@anthropic-ai/mcpb"
+  },
+  {
+   "file": "utils/dxt/zip.ts",
+   "line": 116,
+   "spec": "fflate"
+  },
+  {
+   "file": "utils/envUtils.ts",
+   "line": 142,
+   "spec": "./protectedNamespace.js"
+  },
+  {
+   "file": "utils/imagePaste.ts",
+   "line": 108,
+   "spec": "image-processor-napi"
+  },
+  {
+   "file": "utils/imagePaste.ts",
+   "line": 137,
+   "spec": "image-processor-napi"
+  },
+  {
+   "file": "utils/model/bedrock.ts",
+   "line": 12,
+   "spec": "@aws-sdk/client-bedrock"
+  },
+  {
+   "file": "utils/model/bedrock.ts",
+   "line": 51,
+   "spec": "@aws-sdk/client-bedrock"
+  },
+  {
+   "file": "utils/model/bedrock.ts",
+   "line": 68,
+   "spec": "@smithy/node-http-handler"
+  },
+  {
+   "file": "utils/model/bedrock.ts",
+   "line": 74,
+   "spec": "@smithy/core"
+  },
+  {
+   "file": "utils/model/bedrock.ts",
+   "line": 98,
+   "spec": "@aws-sdk/client-bedrock-runtime"
+  },
+  {
+   "file": "utils/model/bedrock.ts",
+   "line": 113,
+   "spec": "@smithy/node-http-handler"
+  },
+  {
+   "file": "utils/model/bedrock.ts",
+   "line": 119,
+   "spec": "@smithy/core"
+  },
+  {
+   "file": "utils/model/bedrock.ts",
+   "line": 147,
+   "spec": "@aws-sdk/client-bedrock"
+  },
+  {
+   "file": "utils/plugins/mcpbHandler.ts",
+   "line": 4,
+   "spec": "@anthropic-ai/mcpb"
+  },
+  {
+   "file": "utils/plugins/mcpbHandler.ts",
+   "line": 420,
+   "spec": "@anthropic-ai/mcpb"
+  },
+  {
+   "file": "utils/plugins/zipCache.ts",
+   "line": 223,
+   "spec": "fflate"
+  },
+  {
+   "file": "utils/proxy.ts",
+   "line": 402,
+   "spec": "@smithy/node-http-handler"
+  },
+  {
+   "file": "utils/proxy.ts",
+   "line": 403,
+   "spec": "@aws-sdk/credential-provider-node"
+  },
+  {
+   "file": "utils/sandbox/sandbox-adapter.ts",
+   "line": 17,
+   "spec": "@anthropic-ai/sandbox-runtime"
+  },
+  {
+   "file": "utils/sandbox/sandbox-adapter.ts",
+   "line": 22,
+   "spec": "@anthropic-ai/sandbox-runtime"
+  },
+  {
+   "file": "utils/systemPrompt.ts",
+   "line": 20,
+   "spec": "../proactive/index.js"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 170,
+   "spec": "@opentelemetry/exporter-metrics-otlp-grpc"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 177,
+   "spec": "@opentelemetry/exporter-metrics-otlp-http"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 184,
+   "spec": "@opentelemetry/exporter-metrics-otlp-proto"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 196,
+   "spec": "@opentelemetry/exporter-prometheus"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 239,
+   "spec": "@opentelemetry/exporter-logs-otlp-grpc"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 246,
+   "spec": "@opentelemetry/exporter-logs-otlp-http"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 253,
+   "spec": "@opentelemetry/exporter-logs-otlp-proto"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 290,
+   "spec": "@opentelemetry/exporter-trace-otlp-grpc"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 297,
+   "spec": "@opentelemetry/exporter-trace-otlp-http"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 304,
+   "spec": "@opentelemetry/exporter-trace-otlp-proto"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 362,
+   "spec": "@opentelemetry/exporter-trace-otlp-http"
+  },
+  {
+   "file": "utils/telemetry/instrumentation.ts",
+   "line": 363,
+   "spec": "@opentelemetry/exporter-logs-otlp-http"
+  },
+  {
+   "file": "utils/yaml.ts",
+   "line": 14,
+   "spec": "yaml"
+  }
+ ]
+}

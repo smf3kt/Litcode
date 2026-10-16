@@ -1,0 +1,6 @@
+file src/plugin-chain-scroll-focus-source.ts
+declared 18  imports ./plugin-chain-source.js, ./plugin-chain-host.js, ./plugin-chain-entry.js
+unresolved 0
+file src/plugin-chain-scroll-focus-sites-source.ts
+declared 17  imports ./plugin-chain-source.js, ./plugin-chain-override-sites-source.js, ./plugin-chain-sites-source.js
+unresolved 0

@@ -1,0 +1,27 @@
+import { Ace, Di, ge, oo } from '../src/plugin-chain-keys-rows-source.js';
+import { DEFAULT_BINDINGS } from '../src/plugin-chain-keys.js';
+
+const rows = Ace(DEFAULT_BINDINGS as never);
+console.log('rows', rows.length);
+console.log('row0', JSON.stringify(rows[0]));
+console.log('contexts', [...new Set(rows.map((r) => r.context))].join(' '));
+console.log('empty', JSON.stringify(Ace([])));
+console.log('chord', JSON.stringify(Ace([{ context: 'Global', bindings: { 'ctrl+x shift+y': 'app:interrupt', 'g': null } }])));
+const input = [{ context: 'Global', bindings: { 'ctrl+k': 'messageSelector:up', 'ctrl+j': null, 'ctrl+l': 'app:interrupt', 'ctrl+d': 'diff:viewDetails' } }];
+const out = ge(input as never);
+console.log('ge', JSON.stringify(out));
+console.log('ge input unchanged', JSON.stringify(input));
+console.log('ge keeps context', out[0].context, 'keys', Object.keys(out[0].bindings).join(','));
+console.log('ge empty', JSON.stringify(ge([])));
+const seen: unknown[] = [];
+console.log('mapValues', JSON.stringify(Di({ a: 1, b: 2 }, (v, k, o) => { seen.push([v, k, o === undefined]); return v; })));
+console.log('iteratee args', JSON.stringify(seen));
+console.log('aliases same', oo === Di);
+const proto = Object.create({ inherited: 9 }); proto.a = 1;
+const mapped = Di(proto, (v) => v);
+console.log('prototype input', JSON.stringify(mapped), 'inherited kept?', 'inherited' in mapped, 'own proto?', Object.getPrototypeOf(mapped) === Object.prototype);
+const tricky: Record<string, unknown> = {}; Object.defineProperty(tricky, '__proto__', { value: 5, enumerable: true, configurable: true, writable: true });
+const guarded = Di(tricky, (v) => v);
+console.log('__proto__ key', JSON.stringify(guarded), 'own?', Object.getOwnPropertyNames(guarded).join(','));
+console.log('null value', JSON.stringify(Di({ a: null }, (v) => v)));
+console.log('non-object', (() => { try { return JSON.stringify(Di(null as never, (v) => v)); } catch (e) { return 'threw ' + (e as Error).constructor.name + ': ' + (e as Error).message; } })());

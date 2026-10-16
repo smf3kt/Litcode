@@ -1,0 +1,13 @@
+import { TDe } from '../src/plugin-chain-host-call-source.js';
+const lone = 'he\ud800llo';
+const bad = { text: lone, nested: { deep: 1 }, ok: 'plain' };
+const copy = TDe(bad) as typeof bad;
+console.log('bad: same ref', copy === bad);
+console.log('bad: text', JSON.stringify(copy.text), 'caller text untouched', JSON.stringify(bad.text));
+console.log('bad: nested same ref', copy.nested === bad.nested, 'ok same', copy.ok === bad.ok);
+const good = { text: 'hello', nested: { deep: 1 } };
+console.log('good: same ref', TDe(good) === good);
+const arr = [lone, { a: 2 }];
+const arrCopy = TDe(arr) as unknown[];
+console.log('array: same ref', arrCopy === arr, 'first', JSON.stringify(arrCopy[0]), 'second same', arrCopy[1] === arr[1]);
+console.log('top string', JSON.stringify(TDe(lone)), 'top string unchanged', JSON.stringify(TDe('plain')));

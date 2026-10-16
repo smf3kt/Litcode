@@ -1,0 +1,16 @@
+(node:56718) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ an acquisition answers the release itself, and the lock is a directory beside the file (6.544084ms)
+✔ a held lock is not stolen, and a waiter wins when the holder releases inside its retry window (63.97125ms)
+✔ release never throws: a second release warns with the source's own text, and no handle is a no-op (1.159708ms)
+✔ a lock has to sit beside a file that exists (0.500334ms)
+✔ a stale lock is taken over, and the holder it displaced can still release without throwing (1.2755ms)
+✔ the release wrapper describes whatever it is handed (0.175875ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 232.758375

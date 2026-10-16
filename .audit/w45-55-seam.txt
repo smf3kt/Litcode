@@ -1,0 +1,17 @@
+(node:74186) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the customizer answers per key, and undefined for every other key (0.588166ms)
+✔ a settings merge deep-merges, dedupes arrays, and replaces the picker (0.397541ms)
+✔ the merge accumulates into the target the source passes in (0.049875ms)
+✔ a merged value is a copy, and a cyclic source terminates (0.078541ms)
+✔ the picker normalizer copies the picker and each plain-object option (0.054959ms)
+✔ the shallow override spreads the source over the target, one level deep (0.04225ms)
+✔ the legacy local settings path answers only when the store root is not the session cwd (0.736875ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 140.374542

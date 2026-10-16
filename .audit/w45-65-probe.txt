@@ -1,0 +1,31 @@
+constants = [2048,256]
+client admitted = [null,null,null]
+client props sentence = ["Client props must be { key, module }, both non-empty strings, and any of props, width, height, flexGrow","Client props must be { key, module }, both non-empty strings, and any of props, width, height, flexGrow","Client props must be { key, module }, both non-empty strings, and any of props, width, height, flexGrow","Client props must be { key, module }, both non-empty strings, and any of props, width, height, flexGrow","Client props must be { key, module }, both non-empty strings, and any of props, width, height, flexGrow","Client props must be { key, module }, both non-empty strings, and any of props, width, height, flexGrow"]
+client field + props + sizes = ["Client \"k\" width must be a number or a string","Client \"k\" height must be a number or a percentage","Client \"k\" props holds undefined (an array hole, a missing value)","Client \"k\" props holds an object that is not plain (a class instance)"]
+client stamp and children = ["Client \"k\" is not stamped by a plugin of this chain",null,"Client \"k\" takes no children","Client \"k\" takes no children"]
+link admitted = [null,null]
+link href shapes = ["Link props must be { href }",null,null,null,null,"Link href longer than 2048 characters as written","Link href longer than 2048 characters as written","Link href longer than 2048 characters as written",null]
+link label = ["Link label must be a string","Link label is blank (leave it out to draw the URL)","Link label is blank (leave it out to draw the URL)","Link label holds a control character (an escape sequence)","Link prop \"extra\" is not allowed"]
+encoder = ["a","caf%C3%A9","%C3%A9","%EF%BF%BD","%EF%BF%BDx","%EF%BF%BD","x%F0%9F%98%80"]
+markdown admitted = [null,null,null]
+markdown sentences = ["Markdown props must be { text }, a string, key a string, dimColor a boolean and pressableLinks a list of hrefs","Markdown text must be a string","Markdown props must be { text }, a string, key a string, dimColor a boolean and pressableLinks a list of hrefs","Markdown text must be a string","Markdown key \"\" is not a usable address","Markdown \"k\" text holds a control character","Markdown \"k\" dimColor is a boolean or absent","Markdown takes no children","Markdown takes no children"]
+markdown links and press = ["Markdown names pressableLinks but answers no press (onLinkPress)","Markdown pressableLinks is a string, not a list of hrefs","Markdown props must be { text }, a string, key a string, dimColor a boolean and pressableLinks a list of hrefs","Markdown \"k\" pressableLinks holds a number, not an href","Markdown \"k\" pressableLinks holds an href with a control character","Markdown \"k\" pressableLinks names more than 256 links","Markdown \"k\" pressableLinks holds an href longer than 2048 characters","Markdown is not held by a plugin of this chain","Markdown \"k\" is not held by a plugin of this chain"]
+/Users/mant1ssa/Projects/cc_reverse/.audit/w45-65-probe.ts:64
+  zto(undefined), zto('x'), zto([]), zto(new Array(pur).fill('a')).length, zto([1]), zto(['a', 2]), zto(['x'.repeat(Lrt)]),
+                                                                 ^
+
+TypeError: Cannot read properties of undefined (reading 'length')
+    at <anonymous> (/Users/mant1ssa/Projects/cc_reverse/.audit/w45-65-probe.ts:64:66)
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)
+
+Node.js v26.10.0
+list check alone = [null,"pressableLinks is a string, not a list of hrefs",null,null,"pressableLinks holds a number, not an href","pressableLinks holds a number, not an href",null,"pressableLinks holds an href longer than 2048 characters",null,"pressableLinks holds an href with a control character","pressableLinks holds null, not an href"]
+markdown press without key = ["Markdown answers its links (onLinkPress) but has no key, its address",null,"Markdown answers its links (onLinkPress) but has no key, its address",null]
+order: props before links before press = ["Markdown text must be a string","Markdown \"k\" pressableLinks is a string, not a list of hrefs","Markdown \"k\" pressableLinks is a string, not a list of hrefs"]
+client order: stamp before children, sizes before stamp = ["Client \"k\" is not stamped by a plugin of this chain","Client \"k\" width must be a number or a percentage","Client \"k\" takes no children"]
+link order: stray prop before href = ["Link prop \"extra\" is not allowed","Link label must be a string",""]
+stamps = [null,null,"Client \"k\" is not stamped by a plugin of this chain","Client \"k\" is not stamped by a plugin of this chain","Client \"k\" is not stamped by a plugin of this chain"]
+encoder = ["a b","a%0Ab","a%09b","~","%7F","a%C3%A9"]
+markdown shapes = ["Markdown text must be a string","Markdown text must be a string","Markdown key \"1\" is not a usable address",null,null,"Markdown answers its links (onLinkPress) but has no key, its address","Markdown \"k\" is not held by a plugin of this chain"]

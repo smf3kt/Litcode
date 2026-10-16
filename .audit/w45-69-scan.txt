@@ -1,0 +1,6 @@
+file src/plugin-chain-leaf-walkers-source.ts
+declared 57  imports ./plugin-chain-source.js, ./plugin-chain-text-clamp-source.js, ./plugin-chain-normalize-source.js, ./plugin-chain-site-leaves-source.js, ./plugin-chain-raster-sites-source.js, ./plugin-chain-leaves-source.js, ./plugin-chain-button-source.js
+unresolved 0
+file src/plugin-chain-site-leaves-source.ts
+declared 34  imports ./plugin-chain-source.js, ./plugin-chain-ui-blit-source.js, ./plugin-chain-raster-sites-source.js
+unresolved 0

@@ -1,0 +1,75 @@
+{
+ "schema": "W45RegistryResetModuleCoverage.v1",
+ "module": "chunk-qm4226vk.js",
+ "topLevelStatements": 9,
+ "coveredRanges": [
+  {
+   "ledger": "host boundary",
+   "range": [
+    3438,
+    3497
+   ]
+  },
+  {
+   "ledger": "plugin-chain-sources-registry-source-blocks.json",
+   "range": [
+    710,
+    722
+   ]
+  },
+  {
+   "ledger": "plugin-chain-sources-registry-source-blocks.json",
+   "range": [
+    722,
+    3319
+   ]
+  },
+  {
+   "ledger": "plugin-chain-sources-registry-source-blocks.json",
+   "range": [
+    3319,
+    3406
+   ]
+  },
+  {
+   "ledger": "plugin-chain-sources-registry-source-blocks.json",
+   "range": [
+    3406,
+    3438
+   ]
+  }
+ ],
+ "declarationsOutside": [],
+ "wiringOutside": [
+  {
+   "type": "ImportDeclaration",
+   "range": [
+    615,
+    662
+   ]
+  },
+  {
+   "type": "ImportDeclaration",
+   "range": [
+    662,
+    710
+   ]
+  },
+  {
+   "type": "ExportNamedDeclaration",
+   "range": [
+    3498,
+    3515
+   ]
+  }
+ ],
+ "everyDeclarationCovered": true,
+ "boundaryRange": [
+  [
+   3438,
+   3497
+  ]
+ ],
+ "boundaryText": "var a=new q(()=>new s);function xr(){return a.of(B().host)}",
+ "boundaryMatchesSeamHeader": false
+}

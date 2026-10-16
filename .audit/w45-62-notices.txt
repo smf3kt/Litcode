@@ -1,0 +1,3 @@
+> node scripts/dependency-notices.mjs --check
+
+{"installed":36,"missingText":["@esbuild/darwin-arm64","@xterm/headless","emoji-regex","standardwebhooks"],"sha256":"384c78801194aedea80331383ccd93708c2dfa46bc746003dc112c930b73d13c"}

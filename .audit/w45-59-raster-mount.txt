@@ -1,0 +1,19 @@
+(node:65230) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ a row is built once per key, and every later mount is written into that same row (0.824125ms)
+✔ the unregister drops the mount, and the key only once its set has emptied (0.088625ms)
+✔ a row the map no longer holds is left alone, and a repeated mount is one mount (0.096708ms)
+✔ mountRaster fills the raster registry under the site key, and its unregister empties it (0.117292ms)
+✔ mountImage fills the image registry the same way (0.131084ms)
+✔ withSwap spreads the element, then the props, then the swap the blit will call (0.084542ms)
+✔ a mounted Raster is what the ui.blit entry paints, and unmounting it ends the blit (0.712125ms)
+✔ a mounted Image is what the entry swaps into, and its swap answers the blit (0.761416ms)
+✔ a remount under a live key keeps the row, so the rate window is the row's and not the mount's (0.115542ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 171.019084

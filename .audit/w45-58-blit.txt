@@ -1,0 +1,22 @@
+(node:22194) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the table carries the blit entry as the last of the six ui names (0.597292ms)
+✔ the check takes one of cells or source, and numbers when given (0.10525ms)
+✔ the selector sends a `source` to the Image run and the rest to the Raster run (0.062625ms)
+✔ the cell decoder holds cells to the size and to width-1 printable code points (1.192166ms)
+✔ the Raster run paints every mounted element of the size, and answers {} (0.603791ms)
+✔ a blit the site does not hold is a denial, not a throw (0.271875ms)
+✔ a size the mounted element does not have is refused by name (0.122458ms)
+✔ cells the size cannot read are refused with the decoder's own problem (0.074375ms)
+✔ the window admits 120 blits a second per site, then refuses (0.097625ms)
+✔ the Image run validates the source, swaps it, and reports only the first answer (0.250083ms)
+✔ a refused swap of the first mounted element is the answer (0.1045ms)
+✔ the seam raises the entry, and a hookless raise runs the floor without the check (0.220417ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 168.688917

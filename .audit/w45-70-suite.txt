@@ -1,0 +1,51 @@
+(node:69291) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ the name lists and the predicates under them
+  ✔ covers the two environment calls and the two state calls (0.498875ms)
+  ✔ holds five dropped calls, and ui.log is one while env.get is not (0.047292ms)
+  ✔ reads four clock calls and three funnel calls (0.048875ms)
+  ✔ takes the first segment, and a name with no dot loses its last character (0.039125ms)
+  ✔ spells an interface call by its own name and method, every other call by its name (0.044167ms)
+  ✔ writes a plain name as itself and anything else as JSON (0.062583ms)
+  ✔ names the plugin that removed the call in the refusal sentence (0.031417ms)
+✔ the name lists and the predicates under them (1.169125ms)
+▶ the scan rules over what a hooks module declared
+  ✔ refuses a call the module never declared, and names what it did (0.067041ms)
+  ✔ holds an environment call to the variable it names, reads for a read and writes for a write (0.479125ms)
+  ✔ holds a state call to the reference it names, and never to a reference it does not carry (0.104542ms)
+✔ the scan rules over what a hooks module declared (0.763333ms)
+▶ the gate
+  ✔ answers the module known args when the call is declared (0.128417ms)
+  ✔ refuses a call from a plugin whose hooks module is not loaded (0.16625ms)
+  ✔ refuses a withheld call with the sentence naming the plugin that withheld it (0.078667ms)
+  ✔ refuses a call from an environment no hooks module was admitted for, unless the call is a clock call (0.043917ms)
+✔ the gate (0.465542ms)
+▶ who withholds a call, and how often the plugin is told
+  ✔ reads the holders in order: staged, staged before, the live set, then a crashed module (0.055ms)
+  ✔ offers a staged holder only to a call from an engine being created (0.022083ms)
+  ✔ names another module that crashed while withholding the same first segment (0.03925ms)
+  ✔ tells the plugin once per first segment (0.036291ms)
+✔ who withholds a call, and how often the plugin is told (0.188625ms)
+▶ the argument copy and the dropped-call notice
+  ✔ hands a state call a copy, and passes a non-object through as it is (0.061792ms)
+  ✔ leaves no answer from the dropped-call notice, which only logs and records (0.307875ms)
+✔ the argument copy and the dropped-call notice (0.396667ms)
+▶ the dispatcher
+  ✔ runs the raise, then the stamp, then the call, and hands the caller its known args (0.17275ms)
+  ✔ hands a state call a copy, leaving the object the plugin still holds untouched (0.116667ms)
+  ✔ refuses at the host check with the text the check answered, and runs nothing (0.075667ms)
+  ✔ refuses a dropped call at the host check the same way (0.109292ms)
+  ✔ refuses a call the module did not declare before the host check sees it (0.034166ms)
+  ✔ takes the funnel road for a catalog call, with the same three steps (0.054958ms)
+  ✔ takes interface.call into the call table when the spelled name is declared (0.112875ms)
+  ✔ refuses an interface call whose spelled name the module did not declare (0.03525ms)
+  ✔ cannot answer a table entry that carries no call of its own (0.057709ms)
+✔ the dispatcher (0.853542ms)
+ℹ tests 29
+ℹ suites 6
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 160.668583

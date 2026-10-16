@@ -1,0 +1,849 @@
+{
+ "present": 22,
+ "absent": 46,
+ "unknown": 17,
+ "rows": [
+  {
+   "module": "components/agents/SnapshotUpdateDialog.ts",
+   "token": "SnapshotUpdateDialog",
+   "hits": 2,
+   "importers": 2,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-1yrqse38.js",
+    "chunk-7vyj6mx6.js"
+   ]
+  },
+  {
+   "module": "commands/assistant/assistant.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "daemon/main.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "self-hosted-runner/main.ts",
+   "token": "self-hosted-runner",
+   "hits": 45,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-dsfrra43.js",
+    "chunk-r2vtj1kh.js",
+    "chunk-xbv4ppt3.js"
+   ]
+  },
+  {
+   "module": "assistant/gate.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "server/server.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "server/lockfile.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "jobs/classifier.ts",
+   "token": "classifier",
+   "hits": 39,
+   "importers": 2,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-9shw4xrd.js",
+    "chunk-rx2nah4x.js",
+    "chunk-0q677art.js"
+   ]
+  },
+  {
+   "module": "services/compact/snipCompact.ts",
+   "token": "snipCompact",
+   "hits": 0,
+   "importers": 5,
+   "names": 2,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "services/compact/snipProjection.ts",
+   "token": "snipProjection",
+   "hits": 0,
+   "importers": 3,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "assistant/index.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 4,
+   "names": 14,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "proactive/index.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 4,
+   "names": 1,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "commands/workflows/index.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 1,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "commands/peers/index.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "commands/fork/index.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "services/compact/reactiveCompact.ts",
+   "token": "reactiveCompact",
+   "hits": 12,
+   "importers": 2,
+   "names": 2,
+   "verdict": "present",
+   "chunks": [
+    "chunk-sfn1dbxq.js",
+    "chunk-5b2hxy2e.js"
+   ]
+  },
+  {
+   "module": "services/contextCollapse/operations.ts",
+   "token": "operations",
+   "hits": 2,
+   "importers": 2,
+   "names": 6,
+   "verdict": "present",
+   "chunks": [
+    "chunk-6gw241sa.js",
+    "chunk-8tta3x8h.js",
+    "chunk-yy4ay7w5.js"
+   ]
+  },
+  {
+   "module": "components/messages/SnipBoundaryMessage.ts",
+   "token": "SnipBoundaryMessage",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "tools/SendUserFileTool/prompt.ts",
+   "token": "SendUserFileTool",
+   "hits": 4,
+   "importers": 3,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-tar639dc.js",
+    "chunk-169gwk6m.js"
+   ]
+  },
+  {
+   "module": "services/compact/cachedMCConfig.ts",
+   "token": "cachedMCConfig",
+   "hits": 0,
+   "importers": 1,
+   "names": 1,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "tools/DiscoverSkillsTool/prompt.ts",
+   "token": "DiscoverSkillsTool",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "assistant/AssistantSessionChooser.ts",
+   "token": "AssistantSessionChooser",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "daemon/workerRegistry.ts",
+   "token": "workerRegistry",
+   "hits": 1,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-3n46r3pm.js"
+   ]
+  },
+  {
+   "module": "cli/handlers/templateJobs.ts",
+   "token": "templateJobs",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "environment-runner/main.ts",
+   "token": "environment-runner",
+   "hits": 4,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-geje3xvd.js",
+    "chunk-9hhsx4g6.js",
+    "chunk-5bc3870c.js"
+   ]
+  },
+  {
+   "module": "bridge/webhookSanitizer.ts",
+   "token": "webhookSanitizer",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "server/parseConnectUrl.ts",
+   "token": "parseConnectUrl",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "server/sessionManager.ts",
+   "token": "sessionManager",
+   "hits": 75,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-r2vtj1kh.js",
+    "chunk-8jhea020.js",
+    "chunk-mktwnkyx.js"
+   ]
+  },
+  {
+   "module": "server/backends/dangerousBackend.ts",
+   "token": "dangerousBackend",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "server/serverBanner.ts",
+   "token": "serverBanner",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "server/serverLog.ts",
+   "token": "serverLog",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "server/connectHeadless.ts",
+   "token": "connectHeadless",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "src/cli/rollback.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "cli/handlers/ant.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "components/FeedbackSurvey/useFrustrationDetection.ts",
+   "token": "useFrustrationDetection",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "hooks/notifs/useAntOrgWarningNotification.ts",
+   "token": "useAntOrgWarningNotification",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "services/contextCollapse/persist.ts",
+   "token": "contextCollapse",
+   "hits": 0,
+   "importers": 2,
+   "names": 1,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "services/compact/cachedMicrocompact.ts",
+   "token": "cachedMicrocompact",
+   "hits": 0,
+   "importers": 2,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "skills/mcpSkills.ts",
+   "token": "mcpSkills",
+   "hits": 26,
+   "importers": 2,
+   "names": 4,
+   "verdict": "present",
+   "chunks": [
+    "chunk-rx2nah4x.js",
+    "chunk-zs1fqezg.js",
+    "chunk-dj5t4hnw.js"
+   ]
+  },
+  {
+   "module": "coordinator/workerAgent.ts",
+   "token": "workerAgent",
+   "hits": 0,
+   "importers": 1,
+   "names": 1,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "bridge/peerSessions.ts",
+   "token": "peerSessions",
+   "hits": 6,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-0rgbqesw.js",
+    "chunk-v2xyc5y8.js",
+    "chunk-sfn1dbxq.js"
+   ]
+  },
+  {
+   "module": "services/skillSearch/telemetry.ts",
+   "token": "skillSearch",
+   "hits": 2,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-sfn1dbxq.js",
+    "chunk-0r179cga.js"
+   ]
+  },
+  {
+   "module": "tools/SnipTool/prompt.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "tools/TerminalCaptureTool/prompt.ts",
+   "token": "TerminalCaptureTool",
+   "hits": 0,
+   "importers": 1,
+   "names": 1,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "tools/VerifyPlanExecutionTool/constants.ts",
+   "token": "VerifyPlanExecutionTool",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "services/skillSearch/localSearch.ts",
+   "token": "localSearch",
+   "hits": 0,
+   "importers": 2,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "commands/buddy/index.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "tools/WorkflowTool/createWorkflowCommand.ts",
+   "token": "createWorkflowCommand",
+   "hits": 0,
+   "importers": 1,
+   "names": 3,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "utils/attributionHooks.ts",
+   "token": "attributionHooks",
+   "hits": 0,
+   "importers": 3,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "services/contextCollapse/index.ts",
+   "token": "contextCollapse",
+   "hits": 0,
+   "importers": 9,
+   "names": 11,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "utils/systemThemeWatcher.ts",
+   "token": "systemThemeWatcher",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "components/messages/UserGitHubWebhookMessage.ts",
+   "token": "UserGitHubWebhookMessage",
+   "hits": 0,
+   "importers": 1,
+   "names": 4,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "components/messages/UserForkBoilerplateMessage.ts",
+   "token": "UserForkBoilerplateMessage",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "components/messages/UserCrossSessionMessage.ts",
+   "token": "UserCrossSessionMessage",
+   "hits": 3,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-phg89898.js",
+    "chunk-3tfztmj7.js"
+   ]
+  },
+  {
+   "module": "tools/ReviewArtifactTool/ReviewArtifactTool.ts",
+   "token": "ReviewArtifactTool",
+   "hits": 0,
+   "importers": 1,
+   "names": 1,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "components/permissions/ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.ts",
+   "token": "ReviewArtifactPermissionRequest",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "tools/WorkflowTool/WorkflowTool.ts",
+   "token": "WorkflowTool",
+   "hits": 6,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-a7gk0710.js",
+    "chunk-9c5se12s.js",
+    "chunk-tar639dc.js"
+   ]
+  },
+  {
+   "module": "tools/WorkflowTool/WorkflowPermissionRequest.ts",
+   "token": "WorkflowPermissionRequest",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "tools/MonitorTool/MonitorTool.ts",
+   "token": "MonitorTool",
+   "hits": 8,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-y05an865.js",
+    "chunk-9c5se12s.js",
+    "chunk-tar639dc.js"
+   ]
+  },
+  {
+   "module": "components/permissions/MonitorPermissionRequest/MonitorPermissionRequest.ts",
+   "token": "MonitorPermissionRequest",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "components/tasks/WorkflowDetailDialog.ts",
+   "token": "WorkflowDetailDialog",
+   "hits": 2,
+   "importers": 1,
+   "names": 1,
+   "verdict": "present",
+   "chunks": [
+    "chunk-24k7d6mw.js",
+    "chunk-8vv42z7k.js"
+   ]
+  },
+  {
+   "module": "components/tasks/MonitorMcpDetailDialog.ts",
+   "token": "MonitorMcpDetailDialog",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "services/skillSearch/featureCheck.ts",
+   "token": "featureCheck",
+   "hits": 0,
+   "importers": 3,
+   "names": 1,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "entrypoints/sdk/settingsTypes.generated.ts",
+   "token": "settingsTypes.generated",
+   "hits": 0,
+   "importers": 1,
+   "names": 1,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "entrypoints/sdk/toolTypes.ts",
+   "token": "toolTypes",
+   "hits": 1,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-r2vtj1kh.js"
+   ]
+  },
+  {
+   "module": "cli/bg.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "entrypoints/sdk/coreTypes.generated.ts",
+   "token": "coreTypes.generated",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "ink/devtools.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "utils/eventLoopStallDetector.ts",
+   "token": "eventLoopStallDetector",
+   "hits": 2,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-9shw4xrd.js",
+    "chunk-c9vka9k5.js"
+   ]
+  },
+  {
+   "module": "utils/sdkHeapDumpMonitor.ts",
+   "token": "sdkHeapDumpMonitor",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "utils/sessionDataUploader.ts",
+   "token": "sessionDataUploader",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "utils/ccshareResume.ts",
+   "token": "ccshareResume",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "src/cli/up.ts",
+   "token": null,
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "unknown",
+   "chunks": []
+  },
+  {
+   "module": "memdir/memoryShapeTelemetry.ts",
+   "token": "memoryShapeTelemetry",
+   "hits": 0,
+   "importers": 2,
+   "names": 3,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "utils/taskSummary.ts",
+   "token": "taskSummary",
+   "hits": 4,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-h8atc0s7.js",
+    "chunk-7q49cqja.js",
+    "chunk-phg89898.js"
+   ]
+  },
+  {
+   "module": "tools/WebBrowserTool/WebBrowserPanel.ts",
+   "token": "WebBrowserPanel",
+   "hits": 0,
+   "importers": 1,
+   "names": 1,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "services/sessionTranscript/sessionTranscript.ts",
+   "token": "sessionTranscript",
+   "hits": 24,
+   "importers": 2,
+   "names": 1,
+   "verdict": "present",
+   "chunks": [
+    "chunk-24k7d6mw.js",
+    "chunk-sfn1dbxq.js",
+    "chunk-er0mj94r.js"
+   ]
+  },
+  {
+   "module": "utils/udsMessaging.ts",
+   "token": "udsMessaging",
+   "hits": 4,
+   "importers": 1,
+   "names": 0,
+   "verdict": "present",
+   "chunks": [
+    "chunk-hxw7kxga.js",
+    "chunk-2c87rzwm.js",
+    "chunk-kqqmqtbd.js"
+   ]
+  },
+  {
+   "module": "utils/udsClient.ts",
+   "token": "udsClient",
+   "hits": 0,
+   "importers": 2,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "services/skillSearch/remoteSkillState.ts",
+   "token": "remoteSkillState",
+   "hits": 0,
+   "importers": 1,
+   "names": 1,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "services/skillSearch/remoteSkillLoader.ts",
+   "token": "remoteSkillLoader",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "utils/attributionTrailer.ts",
+   "token": "attributionTrailer",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "utils/protectedNamespace.ts",
+   "token": "protectedNamespace",
+   "hits": 13,
+   "importers": 1,
+   "names": 1,
+   "verdict": "present",
+   "chunks": [
+    "chunk-9shw4xrd.js",
+    "chunk-hedqf2m1.js",
+    "chunk-2qc0y6h3.js"
+   ]
+  },
+  {
+   "module": "tools/OverflowTestTool/OverflowTestTool.ts",
+   "token": "OverflowTestTool",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  },
+  {
+   "module": "utils/postCommitAttribution.ts",
+   "token": "postCommitAttribution",
+   "hits": 0,
+   "importers": 1,
+   "names": 0,
+   "verdict": "absent",
+   "chunks": []
+  }
+ ]
+}

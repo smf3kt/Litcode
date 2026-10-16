@@ -1,0 +1,37 @@
+(node:22836) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the constants are the source's own (0.821917ms)
+✔ one painted cell is eight words: a flag and three channels twice (0.088041ms)
+✔ the call site of freshRasterAdmission builds an unspent row, and rasterAdmission holds it in the registry (0.096667ms)
+✔ the accessor carries no reset, because the source's memoizer is an identity in this build (0.064375ms)
+✔ admitting a frame refills against the clock and spends one token (0.095083ms)
+✔ the cost is a reserve that must be left behind, not a price (0.074959ms)
+✔ the refill is proportional to the elapsed time, capped at the capacity and never negative (0.091416ms)
+✔ encoding a cell writes the foreground from the low half and the background from the high half (0.109333ms)
+✔ the default sentinel marks the side it is passed as, and the cell it is written at (0.091167ms)
+✔ a size is checked against the limit field by field, columns first (0.085417ms)
+✔ the validating mount checks against the default size, and takes no other (0.056667ms)
+(node:22837) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the CSI helper writes the introducer and joins all but the last argument (0.587583ms)
+✔ the grammar the helper is written against is the source's own (0.280875ms)
+✔ a colour narrows to four bits a channel, and the sentinel answers the default marker (0.077209ms)
+✔ the SGR a colour is drawn with, and the side that is a reset (0.119667ms)
+✔ a fresh surface holds nothing and starts from the reset sequence (0.132916ms)
+✔ the matcher answers the closest slot, and the first one wins a tie (0.154833ms)
+✔ the stale list is the slots a paint has not touched, oldest first (0.09025ms)
+✔ a paint admits the colours it does not hold and reuses the ones it does (0.205458ms)
+✔ a colour the surface holds answers its own escape, and one it does not answers the nearest hold (0.099541ms)
+✔ a surface with nothing to match answers the last escape it emitted (0.193958ms)
+✔ a starved paint reports waiting and places nothing (0.100584ms)
+✔ a paint that stops matching reports progressing once it has evaluated the budget (383.350834ms)
+✔ a frame's runs are one key per colour change, with the distinct set beside them (0.132167ms)
+✔ the rows emit an escape only where the colour changes, and join with a newline (0.121083ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 558.818541

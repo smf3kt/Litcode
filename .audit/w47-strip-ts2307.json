@@ -1,0 +1,299 @@
+{
+ "byKind": {
+  "gated-require": 29,
+  "dynamic-import": 12
+ },
+ "report": [
+  {
+   "file": "bridge/initReplBridge.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "./assistant/index.js"
+    }
+   ]
+  },
+  {
+   "file": "cli/print.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "./utils/udsMessaging.js"
+    },
+    {
+     "kind": "gated-require",
+     "target": "../proactive/index.js"
+    }
+   ]
+  },
+  {
+   "file": "commands.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "./commands/buddy/index.js"
+    },
+    {
+     "kind": "gated-require",
+     "target": "./commands/fork/index.js"
+    },
+    {
+     "kind": "gated-require",
+     "target": "./commands/peers/index.js"
+    },
+    {
+     "kind": "gated-require",
+     "target": "./commands/workflows/index.js"
+    }
+   ]
+  },
+  {
+   "file": "commands/compact/compact.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "./services/compact/reactiveCompact.js"
+    }
+   ]
+  },
+  {
+   "file": "commands/context/context-noninteractive.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../../services/contextCollapse/operations.js"
+    }
+   ]
+  },
+  {
+   "file": "commands/context/context.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../../services/contextCollapse/operations.js"
+    }
+   ]
+  },
+  {
+   "file": "components/messages/UserTextMessage.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "./UserCrossSessionMessage.js"
+    }
+   ]
+  },
+  {
+   "file": "hooks/useReplBridge.tsx",
+   "sites": [
+    {
+     "kind": "dynamic-import",
+     "target": "./assistant/index.js"
+    }
+   ]
+  },
+  {
+   "file": "ink/reconciler.ts",
+   "sites": [
+    {
+     "kind": "dynamic-import",
+     "target": "./devtools.js"
+    }
+   ]
+  },
+  {
+   "file": "main.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../proactive/index.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./cli/handlers/ant.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./cli/handlers/ant.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./cli/handlers/ant.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./cli/handlers/ant.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./cli/handlers/ant.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./cli/handlers/ant.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./cli/handlers/ant.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./cli/handlers/ant.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./cli/handlers/ant.js"
+    },
+    {
+     "kind": "dynamic-import",
+     "target": "./utils/eventLoopStallDetector.js"
+    },
+    {
+     "kind": "gated-require",
+     "target": "./assistant/gate.js"
+    },
+    {
+     "kind": "gated-require",
+     "target": "./assistant/index.js"
+    }
+   ]
+  },
+  {
+   "file": "query.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "./utils/taskSummary.js"
+    },
+    {
+     "kind": "gated-require",
+     "target": "../jobs/classifier.js"
+    },
+    {
+     "kind": "gated-require",
+     "target": "./services/compact/reactiveCompact.js"
+    }
+   ]
+  },
+  {
+   "file": "query/stopHooks.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../jobs/classifier.js"
+    }
+   ]
+  },
+  {
+   "file": "services/compact/compact.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../services/sessionTranscript/sessionTranscript.js"
+    }
+   ]
+  },
+  {
+   "file": "services/compact/prompt.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../proactive/index.js"
+    }
+   ]
+  },
+  {
+   "file": "services/mcp/client.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../../skills/mcpSkills.js"
+    }
+   ]
+  },
+  {
+   "file": "services/mcp/useManageMCPConnections.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../../skills/mcpSkills.js"
+    }
+   ]
+  },
+  {
+   "file": "tools/AgentTool/AgentTool.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../proactive/index.js"
+    }
+   ]
+  },
+  {
+   "file": "tools/SendMessageTool/SendMessageTool.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../../bridge/peerSessions.js"
+    }
+   ]
+  },
+  {
+   "file": "tools/SkillTool/SkillTool.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../../services/skillSearch/telemetry.js"
+    }
+   ]
+  },
+  {
+   "file": "utils/attachments.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../services/sessionTranscript/sessionTranscript.js"
+    }
+   ]
+  },
+  {
+   "file": "utils/collapseReadSearch.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../tools/SnipTool/prompt.js"
+    }
+   ]
+  },
+  {
+   "file": "utils/envUtils.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "./protectedNamespace.js"
+    }
+   ]
+  },
+  {
+   "file": "utils/systemPrompt.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "target": "../proactive/index.js"
+    }
+   ]
+  }
+ ],
+ "untouched": [
+  "../services/contextCollapse/index.js",
+  "./components/agents/SnapshotUpdateDialog.js",
+  "./commands/assistant/assistant.js",
+  "./sdk/toolTypes.js",
+  "../daemon/workerRegistry.js",
+  "../daemon/main.js",
+  "../cli/bg.js",
+  "../environment-runner/main.js",
+  "../self-hosted-runner/main.js",
+  "./cachedMicrocompact.js"
+ ]
+}

@@ -1,0 +1,56 @@
+bounds = {"Vs":4294967295,"Ybr":100000,"ESe":32,"AFe":20000,"slt":10000}
+set sizes = {"Ubr":7,"rQt":10,"Cgo":3,"Rgo":19,"olt":4,"oQt":4}
+xgo keys = ["flexDirection","flexWrap","alignItems","alignSelf","justifyContent","overflow","display","position","wrap","borderStyle"]
+xgo size = 10
+cN = ["null","an array","an object","a string","a number","a boolean","a undefined","a function"]
+un = [5,5,4,5,5,null,null,null]
+ca = [null,"holds more than 20000 values","serializes to more than 100000 characters"]
+B = [3,4,2,0]
+cQt small = [null,null,null,null,null]
+cQt nested = undefined
+cQt depth = "nests deeper than 32"
+cQt cycle = "holds a cycle"
+cQt wide = "holds more than 20000 values..."
+sQt known = [null,"must be a boolean",null,"must be a color (a theme key, a name, or hex)",null,"must be a number or a percentage",null,null,null,"must be a boolean","has no value rule"]
+one of each set = ["dimColor","color","flexGrow","top","width"]
+bool props = {"dimColor":[null,null,"must be a boolean","must be a boolean"],"bold":[null,"must be a boolean"]}
+colour props = {"color":[null,null,null,"must be a color (a theme key, a name, or hex)","must be a color (a theme key, a name, or hex)"],"borderColor":["must be a color (a theme key, a name, or hex)"]}
+size props = {"width":[null,null,"must be a number or a percentage",null,"must be a finite number between 0 and 10000",null,"must be a finite number between 0 and 10000"],"minWidth":["must be a number or a percentage"]}
+spacing props = {"gap":[null,null,null,"must be a finite number within 10000"],"margin":[null,"must be a finite number within 10000"],"top":[null,"must be an integer within 10000 (character cells)"]}
+enum props = {"flexDirection":[null,null,"must be one of row, column, row-reverse, column-reverse","must be one of row, column, row-reverse, column-reverse"],"overflow":[null,"must be one of visible, hidden"],"wrap":[null],"position":[null,"must be one of relative, absolute"],"display":[null,"must be one of flex, none"]}
+unknown names = ["has no value rule","has no value rule","has no value rule","has no value rule"]
+xgo values = [["flexDirection","object"],["flexWrap","object"],["alignItems","object"],["alignSelf","object"],["justifyContent","object"],["overflow","object"],["display","object"],["position","object"],["wrap","object"],["borderStyle","object"]]
+length guard = [10,10,0,"threw: a plugin's list claims a length no list has (got 4294967296)","threw: a plugin's list claims a length no list has (got a bigint)"]
+describer answers = [null,null,null,null,"holds undefined (an array hole, a missing value)","holds a function"]
+slt = 10000
+/Users/mant1ssa/Projects/cc_reverse/.audit/w45-64-probe-c.ts:2
+import { cQt, listLength } from '../src/plugin-chain-style-props-source.js';
+              ^
+SyntaxError: The requested module '../src/plugin-chain-style-props-source.js' does not provide an export named 'listLength'
+    at #asyncInstantiate (node:internal/modules/esm/module_job:463:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:561:5)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)
+
+Node.js v26.10.0
+depth = [null,null,null,"nests deeper than 32","nests deeper than 32"]
+chars = [null,"serializes to more than 100000 characters","serializes to more than 100000 characters","serializes to more than 100000 characters"]
+repeat = [null,null]
+non-finite = ["holds NaN","holds Infinity","holds -Infinity","holds NaN"]
+class = ["holds an object that is not plain (a class instance)",null,null]
+other scalars = ["holds a bigint","holds a symbol"]
+list length bounds = [4294967295,"threw: a plugin's list claims a length no list has (got 4294967296)",0,12,0,1]
+node boundary = [null,"holds more than 20000 values","holds more than 20000 values"]
+percent = [null,"must be a number or a percentage",null,"must be a number or a percentage"]
+cycle = ["holds a cycle","holds a cycle"]
+repeat vs cycle = [null,null]
+deep inside = [null,"holds NaN"]
+key cost = ["serializes to more than 100000 characters","serializes to more than 100000 characters"]
+key straddle = [null,null,"serializes to more than 100000 characters"]
+long key = [null,null]
+bare string = [null,null,"serializes to more than 100000 characters","serializes to more than 100000 characters"]
+object+array 19996 = ["undefined",19998,40001]
+object+array 19997 = ["undefined",19999,40003]
+object+array 19998 = ["undefined",20000,40005]
+object+array 19999 = ["holds more than 20000 values",20001,40007]
+two walks undefined 19999 holds more than 20000 values 20001

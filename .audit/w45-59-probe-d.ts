@@ -1,0 +1,20 @@
+import { mountImage } from '../src/plugin-chain-raster-mount.js';
+import { raiseUiCall } from '../src/plugin-chain-ui.js';
+
+const caller = { plugin: 'tips', origin: [] };
+const png = Buffer.alloc(33);
+png.write('\x89PNG\r\n\x1a\n', 0, 'binary');
+png.write('IHDR', 12, 'binary');
+png.writeUInt32BE(1, 16);
+png.writeUInt32BE(1, 20);
+const source = { png: png.toString('base64') };
+let seen: unknown;
+const element = { requestId: 'r', key: 'k', plugin: 'tips', columns: 1, rows: 1, swap: (s: unknown) => { seen = s; return undefined; } };
+const off = mountImage(element as never);
+console.log('answer', JSON.stringify(await raiseUiCall({ event: 'ui.blit', args: { requestId: 'r', key: 'k', source }, caller: caller as never })));
+console.log('same object as source', seen === source);
+console.log('is Buffer', Buffer.isBuffer(seen));
+console.log('type', typeof seen, Object.keys(seen as object).join(','));
+console.log('png type', typeof (seen as { png: unknown }).png, Buffer.isBuffer((seen as { png: unknown }).png));
+console.log('source.png after', typeof source.png, Buffer.isBuffer(source.png));
+off();

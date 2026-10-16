@@ -1,0 +1,17 @@
+(node:29733) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the five source names, and the check that admits only them (0.531958ms)
+✔ the answer is a JSON copy, not the store's own object (0.176542ms)
+✔ with no source the merged settings come back; a source asks the store for its file (0.091292ms)
+✔ a value the JSON helpers cannot carry is their error, not a silent answer (2.991417ms)
+✔ the store the ported bodies read through must be bound (0.071542ms)
+✔ the entry is the table's shape: the check in front of the body (0.072625ms)
+✔ raised through the chain, the refusal reaches the caller, and the floor answers (2.303625ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 150.797542

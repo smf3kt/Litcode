@@ -1,0 +1,14 @@
+import '../src/plugin-chain-registry.js';
+import { chainRecords, clearChainRecords, installChainModule } from '../src/plugin-chain-host.js';
+import { reportToastGiveWay, toastKey, onPluginUiLog } from '../src/plugin-chain-ui.js';
+import { aCe } from '../src/plugin-chain-records.js';
+const mod = { name: 'fixture-open', tier: 'user' as const, hooks: (e: string) => e === 'ui.toast', record: () => ({ name: 'fixture-open', tier: 'user' as const, run: async (a: unknown, n: (v: unknown) => Promise<unknown>) => ({ value: await n(a) }) }) };
+const off = onPluginUiLog((r, s) => console.log('TRANSCRIPT', JSON.stringify(r), s));
+const remove = installChainModule(mod as any);
+console.log('aCe()', aCe());
+clearChainRecords();
+reportToastGiveWay({ key: toastKey('fixture-unseen', '1'), plugin: 'fixture-unseen', isCutShort: false });
+console.log('RECORDS', JSON.stringify(chainRecords()));
+reportToastGiveWay({ key: toastKey('fixture-unseen', '2'), plugin: 'fixture-unseen', isCutShort: false });
+console.log('RECORDS2', JSON.stringify(chainRecords()));
+remove(); off();

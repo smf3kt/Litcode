@@ -1,0 +1,21 @@
+(node:14883) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the table carries the four store names, with the checks the source gives them (0.632917ms)
+✔ set, get, keys and delete round-trip through the store file (6.79225ms)
+✔ a stored value keeps its JSON shape, and only the store's own keys are keys (1.559667ms)
+✔ a key over the limit is refused for every event but keys (0.41775ms)
+✔ a write that would push the store over its own limit is refused, and nothing is written (3.72275ms)
+✔ two writes to one store do not interleave (1.05775ms)
+✔ the entries run against the storage id the context holds, and the plugin name otherwise (1.726958ms)
+✔ the backend slot replaces the store for the whole product and restores it (0.107042ms)
+✔ the store entry reads, writes and locks the way the dispatcher needs (0.613041ms)
+✔ a store file that cannot be read or parsed is the store's own error (0.404792ms)
+✔ the entry refusals reach the caller through a chain that has a handler (2.305375ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 197.238875

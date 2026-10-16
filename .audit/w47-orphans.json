@@ -1,0 +1,384 @@
+{
+ "rows": [
+  {
+   "file": "commands/context/context-noninteractive.ts",
+   "line": 116,
+   "col": 9,
+   "name": "isContextCollapseEnabled",
+   "source": "if (isContextCollapseEnabled()) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "context-noninteractive.ts.w47bak"
+  },
+  {
+   "file": "commands/context/context-noninteractive.ts",
+   "line": 117,
+   "col": 17,
+   "name": "getStats",
+   "source": "const s = getStats()",
+   "inText": false,
+   "inBackup": true,
+   "backup": "context-noninteractive.ts.w47bak"
+  },
+  {
+   "file": "components/ContextVisualization.tsx",
+   "line": 29,
+   "col": 14,
+   "name": "isContextCollapseEnabled",
+   "source": "if (!isContextCollapseEnabled()) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "ContextVisualization.tsx.w47bak"
+  },
+  {
+   "file": "components/ContextVisualization.tsx",
+   "line": 33,
+   "col": 19,
+   "name": "getStats",
+   "source": "const s = getStats();",
+   "inText": false,
+   "inBackup": true,
+   "backup": "ContextVisualization.tsx.w47bak"
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "line": 227,
+   "col": 23,
+   "name": "GateOverridesWarning",
+   "source": "t21 = false && <GateOverridesWarning />;",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "line": 228,
+   "col": 23,
+   "name": "ExperimentEnrollmentNotice",
+   "source": "t22 = false && <ExperimentEnrollmentNotice />;",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "line": 321,
+   "col": 23,
+   "name": "GateOverridesWarning",
+   "source": "t18 = false && <GateOverridesWarning />;",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "line": 322,
+   "col": 23,
+   "name": "ExperimentEnrollmentNotice",
+   "source": "t19 = false && <ExperimentEnrollmentNotice />;",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "line": 504,
+   "col": 21,
+   "name": "GateOverridesWarning",
+   "source": "t39 = false && <GateOverridesWarning />;",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "line": 505,
+   "col": 21,
+   "name": "ExperimentEnrollmentNotice",
+   "source": "t40 = false && <ExperimentEnrollmentNotice />;",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/Message.tsx",
+   "line": 250,
+   "col": 15,
+   "name": "isSnipBoundaryMessage",
+   "source": "if (isSnipBoundaryMessage(message)) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "Message.tsx.w47bak"
+  },
+  {
+   "file": "components/Message.tsx",
+   "line": 260,
+   "col": 21,
+   "name": "SnipBoundaryMessage",
+   "source": "t3 = <SnipBoundaryMessage message={message} />;",
+   "inText": false,
+   "inBackup": true,
+   "backup": "Message.tsx.w47bak"
+  },
+  {
+   "file": "components/Message.tsx",
+   "line": 268,
+   "col": 15,
+   "name": "isSnipMarkerMessage",
+   "source": "if (isSnipMarkerMessage(message)) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "Message.tsx.w47bak"
+  },
+  {
+   "file": "components/PromptInput/PromptInputFooterLeftSide.tsx",
+   "line": 368,
+   "col": 50,
+   "name": "TungstenPill",
+   "source": "...(\"external\" === 'ant' && hasTmuxSession ? [<TungstenPill key=\"tmux\" selected={tmuxSelected} />] : []), ...(isAgentSwa",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/Settings/Settings.tsx",
+   "line": 98,
+   "col": 51,
+   "name": "Gates",
+   "source": "t7 = false ? [<Tab key=\"gates\" title=\"Gates\"><Gates onOwnsEscChange={setGatesOwnsEsc} contentHeight={contentHeight} /></",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/Spinner.tsx",
+   "line": 222,
+   "col": 31,
+   "name": "apiMetricsRef",
+   "source": "if (\"external\" === 'ant' && apiMetricsRef?.current && apiMetricsRef.current.length > 0) {",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/Spinner.tsx",
+   "line": 222,
+   "col": 57,
+   "name": "apiMetricsRef",
+   "source": "if (\"external\" === 'ant' && apiMetricsRef?.current && apiMetricsRef.current.length > 0) {",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/Spinner.tsx",
+   "line": 223,
+   "col": 16,
+   "name": "computeTtftText",
+   "source": "ttftText = computeTtftText(apiMetricsRef.current);",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/Spinner.tsx",
+   "line": 223,
+   "col": 32,
+   "name": "apiMetricsRef",
+   "source": "ttftText = computeTtftText(apiMetricsRef.current);",
+   "inText": false,
+   "inBackup": null,
+   "backup": null
+  },
+  {
+   "file": "components/messages/UserTextMessage.tsx",
+   "line": 104,
+   "col": 15,
+   "name": "UserGitHubWebhookMessage",
+   "source": "t2 = <UserGitHubWebhookMessage addMargin={addMargin} param={param} />;",
+   "inText": false,
+   "inBackup": true,
+   "backup": "UserTextMessage.tsx.w47bak"
+  },
+  {
+   "file": "components/messages/UserTextMessage.tsx",
+   "line": 198,
+   "col": 15,
+   "name": "UserForkBoilerplateMessage",
+   "source": "t2 = <UserForkBoilerplateMessage addMargin={addMargin} param={param} />;",
+   "inText": false,
+   "inBackup": true,
+   "backup": "UserTextMessage.tsx.w47bak"
+  },
+  {
+   "file": "hooks/useReplBridge.tsx",
+   "line": 196,
+   "col": 29,
+   "name": "sanitizeInboundWebhookContent",
+   "source": "sanitized = sanitizeInboundWebhookContent(fields.content);",
+   "inText": false,
+   "inBackup": true,
+   "backup": "useReplBridge.tsx.w47bak"
+  },
+  {
+   "file": "memdir/findRelevantMemories.ts",
+   "line": 69,
+   "col": 5,
+   "name": "logMemoryRecallShape",
+   "source": "logMemoryRecallShape(memories, selected)",
+   "inText": false,
+   "inBackup": true,
+   "backup": "findRelevantMemories.ts.w47bak"
+  },
+  {
+   "file": "screens/REPL.tsx",
+   "line": 2800,
+   "col": 12,
+   "name": "fireCompanionObserver",
+   "source": "void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? pr",
+   "inText": false,
+   "inBackup": false,
+   "backup": "REPL.tsx.w47bak"
+  },
+  {
+   "file": "screens/REPL.tsx",
+   "line": 4845,
+   "col": 113,
+   "name": "UltraplanChoiceDialog",
+   "source": "{feature('ULTRAPLAN') ? focusedInputDialog === 'ultraplan-choice' && ultraplanPendingChoice && <UltraplanChoiceDialog pl",
+   "inText": false,
+   "inBackup": false,
+   "backup": "REPL.tsx.w47bak"
+  },
+  {
+   "file": "screens/REPL.tsx",
+   "line": 4877,
+   "col": 18,
+   "name": "launchUltraplan",
+   "source": "void launchUltraplan({",
+   "inText": false,
+   "inBackup": false,
+   "backup": "REPL.tsx.w47bak"
+  },
+  {
+   "file": "services/compact/autoCompact.ts",
+   "line": 218,
+   "col": 9,
+   "name": "isContextCollapseEnabled",
+   "source": "if (isContextCollapseEnabled()) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "autoCompact.ts.w47bak"
+  },
+  {
+   "file": "tools/AgentTool/builtInAgents.ts",
+   "line": 39,
+   "col": 14,
+   "name": "getCoordinatorAgents",
+   "source": "return getCoordinatorAgents()",
+   "inText": false,
+   "inBackup": true,
+   "backup": "builtInAgents.ts.w47bak"
+  },
+  {
+   "file": "tools/SendMessageTool/SendMessageTool.ts",
+   "line": 779,
+   "col": 19,
+   "name": "sendToUdsSocket",
+   "source": "await sendToUdsSocket(addr.target, input.message)",
+   "inText": false,
+   "inBackup": true,
+   "backup": "SendMessageTool.ts.w47bak"
+  },
+  {
+   "file": "utils/analyzeContext.ts",
+   "line": 1122,
+   "col": 9,
+   "name": "isContextCollapseEnabled",
+   "source": "if (isContextCollapseEnabled()) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "analyzeContext.ts.w47bak"
+  },
+  {
+   "file": "utils/attachments.ts",
+   "line": 3970,
+   "col": 8,
+   "name": "isSnipRuntimeEnabled",
+   "source": "if (!isSnipRuntimeEnabled()) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "attachments.ts.w47bak"
+  },
+  {
+   "file": "utils/attachments.ts",
+   "line": 3974,
+   "col": 8,
+   "name": "shouldNudgeForSnips",
+   "source": "if (!shouldNudgeForSnips(messages)) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "attachments.ts.w47bak"
+  },
+  {
+   "file": "utils/attribution.ts",
+   "line": 384,
+   "col": 22,
+   "name": "buildPRTrailers",
+   "source": "const trailers = buildPRTrailers(attributionData, appState.attribution)",
+   "inText": false,
+   "inBackup": true,
+   "backup": "attribution.ts.w47p2bak"
+  },
+  {
+   "file": "utils/conversationRecovery.ts",
+   "line": 494,
+   "col": 30,
+   "name": "listAllLiveSessions",
+   "source": "const live = await listAllLiveSessions()",
+   "inText": false,
+   "inBackup": true,
+   "backup": "conversationRecovery.ts.w47p2bak"
+  },
+  {
+   "file": "utils/messages.ts",
+   "line": 2352,
+   "col": 9,
+   "name": "isSnipRuntimeEnabled",
+   "source": "if (isSnipRuntimeEnabled()) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "messages.ts.w47bak"
+  },
+  {
+   "file": "utils/messages.ts",
+   "line": 2419,
+   "col": 9,
+   "name": "isSnipRuntimeEnabled",
+   "source": "if (isSnipRuntimeEnabled()) {",
+   "inText": false,
+   "inBackup": true,
+   "backup": "messages.ts.w47bak"
+  },
+  {
+   "file": "utils/messages.ts",
+   "line": 4146,
+   "col": 22,
+   "name": "SNIP_NUDGE_TEXT",
+   "source": "content: SNIP_NUDGE_TEXT,",
+   "inText": false,
+   "inBackup": true,
+   "backup": "messages.ts.w47bak"
+  },
+  {
+   "file": "utils/messages.ts",
+   "line": 4642,
+   "col": 12,
+   "name": "projectSnippedView",
+   "source": "return projectSnippedView(sliced as Message[]) as T[]",
+   "inText": false,
+   "inBackup": true,
+   "backup": "messages.ts.w47bak"
+  }
+ ]
+}

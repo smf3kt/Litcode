@@ -1,0 +1,228 @@
+{
+ "out": [
+  {
+   "target": "cli/handlers/ant.js",
+   "sites": 9,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 624
+  },
+  {
+   "target": "services/compact/cachedMicrocompact.js",
+   "sites": 8,
+   "verdict": "absent",
+   "chunk": null,
+   "baseHits": 0
+  },
+  {
+   "target": "assistant/index.js",
+   "sites": 4,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 377
+  },
+  {
+   "target": "proactive/index.js",
+   "sites": 4,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 377
+  },
+  {
+   "target": "services/compact/reactiveCompact.js",
+   "sites": 2,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 1
+  },
+  {
+   "target": "services/contextCollapse/operations.js",
+   "sites": 2,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 27
+  },
+  {
+   "target": "jobs/classifier.js",
+   "sites": 2,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 85
+  },
+  {
+   "target": "services/sessionTranscript/sessionTranscript.js",
+   "sites": 2,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 0
+  },
+  {
+   "target": "skills/mcpSkills.js",
+   "sites": 2,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 2
+  },
+  {
+   "target": "commands/workflows/index.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 377
+  },
+  {
+   "target": "commands/peers/index.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 377
+  },
+  {
+   "target": "commands/fork/index.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 377
+  },
+  {
+   "target": "commands/buddy/index.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 377
+  },
+  {
+   "target": "services/contextCollapse/index.js",
+   "sites": 1,
+   "verdict": "absent",
+   "chunk": null,
+   "baseHits": 377
+  },
+  {
+   "target": "components/messages/UserCrossSessionMessage.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 2
+  },
+  {
+   "target": "components/agents/SnapshotUpdateDialog.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 2
+  },
+  {
+   "target": "commands/assistant/assistant.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 126
+  },
+  {
+   "target": "entrypoints/sdk/toolTypes.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 1
+  },
+  {
+   "target": "daemon/workerRegistry.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 0
+  },
+  {
+   "target": "daemon/main.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 297
+  },
+  {
+   "target": "cli/bg.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 611
+  },
+  {
+   "target": "environment-runner/main.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 297
+  },
+  {
+   "target": "self-hosted-runner/main.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 297
+  },
+  {
+   "target": "ink/devtools.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 1
+  },
+  {
+   "target": "assistant/gate.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 285
+  },
+  {
+   "target": "utils/eventLoopStallDetector.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 0
+  },
+  {
+   "target": "utils/taskSummary.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 5
+  },
+  {
+   "target": "utils/udsMessaging.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 0
+  },
+  {
+   "target": "bridge/peerSessions.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 0
+  },
+  {
+   "target": "services/skillSearch/telemetry.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 117
+  },
+  {
+   "target": "tools/SnipTool/prompt.js",
+   "sites": 1,
+   "verdict": "unknown",
+   "chunk": null,
+   "baseHits": 377
+  },
+  {
+   "target": "utils/protectedNamespace.js",
+   "sites": 1,
+   "verdict": "present",
+   "chunk": null,
+   "baseHits": 0
+  }
+ ]
+}

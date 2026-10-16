@@ -1,0 +1,41 @@
+(node:84480) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ the two site registries
+  ✔ are the maps the registry state holds, and a site is filed under its component and request id (0.402667ms)
+  ✔ answers nothing for a key no site is filed under (0.060625ms)
+  ✔ finds the site a call names (0.0475ms)
+✔ the two site registries (0.850916ms)
+▶ the scroll call
+  ✔ commits and answers nothing when the site lets the window move (0.285333ms)
+  ✔ refuses a call for a site that is not there, and one for a site another plugin owns (0.076958ms)
+  ✔ lets an editor call and a call for an unowned site through (0.049041ms)
+  ✔ answers the site own sentence when the window moved meanwhile (0.041917ms)
+  ✔ holds the ownership check the body reads (0.0585ms)
+✔ the scroll call (0.622542ms)
+▶ the focus call
+  ✔ commits and answers nothing when the site holds the keyboard for this plugin (0.106ms)
+  ✔ refuses a call for a site that is not there (0.054291ms)
+  ✔ refuses a forwarded call for a site another plugin owns, and lets the same plugin touch it directly (0.06275ms)
+  ✔ refuses when the site does not hold the keyboard, and when another element does (0.056084ms)
+  ✔ passes the site own refusal through, and lets the origin holder through (0.48825ms)
+  ✔ holds the forwarded-call check and the keyboard check the body reads (0.072ms)
+✔ the focus call (0.960167ms)
+▶ the two site descriptors
+  ✔ are filed in the host seam site table under their event names (0.043541ms)
+  ✔ hold a focus call to its element and to an envelope a rewrite may not change (0.09675ms)
+  ✔ hold a scroll call to a whole row offset, and never restore it (0.0745ms)
+  ✔ answer the check both sites share: a refusal has to be a non-empty string (0.04ms)
+  ✔ read the element check both directions (0.025375ms)
+✔ the two site descriptors (0.332ms)
+▶ the two entries
+  ✔ attach the site the host seam table holds to a core handler that is the body (0.057542ms)
+  ✔ refuse through the handler the way the body refuses (0.021334ms)
+✔ the two entries (0.102625ms)
+ℹ tests 21
+ℹ suites 5
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 145.036584

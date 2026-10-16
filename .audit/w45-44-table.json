@@ -1,0 +1,1225 @@
+{
+ "schema": "W45TableScan.v1",
+ "file": "extracted-v2/modules/chunk-sfn1dbxq.js",
+ "table": [
+  2346570,
+  2354666
+ ],
+ "entries": [
+  {
+   "key": "model.complete",
+   "span": [
+    2346588,
+    2346652
+   ],
+   "names": [
+    "model",
+    "complete",
+    "z7t",
+    "Y7t",
+    "plugin",
+    "signal"
+   ],
+   "units": 64
+  },
+  {
+   "key": "model.classify",
+   "span": [
+    2346652,
+    2346907
+   ],
+   "names": [
+    "model",
+    "classify",
+    "text",
+    "Array",
+    "isArray",
+    "labels",
+    "takes",
+    "RFs",
+    "pluginName",
+    "plugin",
+    "complete",
+    "Y7t",
+    "signal",
+    "defaultModel",
+    "Pw",
+    "options"
+   ],
+   "units": 255
+  },
+  {
+   "key": "model.fork",
+   "span": [
+    2346907,
+    2347066
+   ],
+   "names": [
+    "model",
+    "fork",
+    "prompt",
+    "trim",
+    "takes",
+    "a",
+    "non",
+    "empty",
+    "rQt",
+    "plugin",
+    "signal"
+   ],
+   "units": 159
+  },
+  {
+   "key": "audio.play",
+   "span": [
+    2347066,
+    2347086
+   ],
+   "names": [
+    "audio",
+    "play",
+    "WGt"
+   ],
+   "units": 20
+  },
+  {
+   "key": "audio.speak",
+   "span": [
+    2347086,
+    2347185
+   ],
+   "names": [
+    "audio",
+    "speak",
+    "ZNo",
+    "plugin",
+    "signal",
+    "pqo",
+    "text"
+   ],
+   "units": 99
+  },
+  {
+   "key": "mcp.call",
+   "span": [
+    2347185,
+    2347339
+   ],
+   "names": [
+    "mcp",
+    "call",
+    "server",
+    "tool",
+    "args",
+    "L",
+    "takes",
+    "W7t"
+   ],
+   "units": 154
+  },
+  {
+   "key": "mcp.connect",
+   "span": [
+    2347339,
+    2347429
+   ],
+   "names": [
+    "mcp",
+    "connect",
+    "L2e",
+    "server",
+    "takes",
+    "a",
+    "non",
+    "empty",
+    "yGt"
+   ],
+   "units": 90
+  },
+  {
+   "key": "interface.call",
+   "span": [
+    2347429,
+    2347676
+   ],
+   "names": [
+    "interface",
+    "call",
+    "name",
+    "method",
+    "Array",
+    "isArray",
+    "args",
+    "takes",
+    "owner",
+    "length",
+    "one",
+    "input",
+    "its",
+    "event",
+    "N2e",
+    "KGt"
+   ],
+   "units": 247
+  },
+  {
+   "key": "session.cwd",
+   "span": [
+    2347676,
+    2347740
+   ],
+   "names": [
+    "session",
+    "cwd",
+    "Bpe",
+    "plugin",
+    "then"
+   ],
+   "units": 64
+  },
+  {
+   "key": "session.root",
+   "span": [
+    2347740,
+    2347800
+   ],
+   "names": [
+    "session",
+    "root",
+    "Bpe",
+    "plugin",
+    "then"
+   ],
+   "units": 60
+  },
+  {
+   "key": "session.model",
+   "span": [
+    2347800,
+    2347862
+   ],
+   "names": [
+    "session",
+    "model",
+    "Bpe",
+    "plugin",
+    "then"
+   ],
+   "units": 62
+  },
+  {
+   "key": "session.turns",
+   "span": [
+    2347862,
+    2347905
+   ],
+   "names": [
+    "session",
+    "turns",
+    "WAo",
+    "plugin"
+   ],
+   "units": 43
+  },
+  {
+   "key": "session.id",
+   "span": [
+    2347905,
+    2347961
+   ],
+   "names": [
+    "session",
+    "id",
+    "Bpe",
+    "plugin",
+    "then"
+   ],
+   "units": 56
+  },
+  {
+   "key": "session.messages",
+   "span": [
+    2347961,
+    2348023
+   ],
+   "names": [
+    "session",
+    "messages",
+    "vNs",
+    "PAo",
+    "plugin"
+   ],
+   "units": 62
+  },
+  {
+   "key": "session.repo",
+   "span": [
+    2348023,
+    2348062
+   ],
+   "names": [
+    "session",
+    "repo",
+    "MAo",
+    "cwd"
+   ],
+   "units": 39
+  },
+  {
+   "key": "session.surface",
+   "span": [
+    2348062,
+    2348107
+   ],
+   "names": [
+    "session",
+    "surface",
+    "uMo",
+    "plugin"
+   ],
+   "units": 45
+  },
+  {
+   "key": "session.surfaces",
+   "span": [
+    2348107,
+    2348153
+   ],
+   "names": [
+    "session",
+    "surfaces",
+    "cMo",
+    "plugin"
+   ],
+   "units": 46
+  },
+  {
+   "key": "session.authorize",
+   "span": [
+    2348153,
+    2348244
+   ],
+   "names": [
+    "session",
+    "authorize",
+    "oJt",
+    "usage",
+    "INs",
+    "MYr",
+    "plugin"
+   ],
+   "units": 91
+  },
+  {
+   "key": "session.version",
+   "span": [
+    2348244,
+    2348278
+   ],
+   "names": [
+    "session",
+    "version",
+    "dMo"
+   ],
+   "units": 34
+  },
+  {
+   "key": "session.compact",
+   "span": [
+    2348278,
+    2348572
+   ],
+   "names": [
+    "session",
+    "compact",
+    "turnHeld",
+    "called",
+    "from",
+    "a",
+    "$",
+    "hook",
+    "it",
+    "would",
+    "under",
+    "the",
+    "turn",
+    "is",
+    "holding",
+    "call",
+    "later",
+    "event",
+    "complete",
+    "nas",
+    "instructions",
+    "takes",
+    "gAo",
+    "plugin",
+    "origin"
+   ],
+   "units": 294
+  },
+  {
+   "key": "session.send",
+   "span": [
+    2348572,
+    2348649
+   ],
+   "names": [
+    "session",
+    "send",
+    "Wgo",
+    "FAo",
+    "oW",
+    "findLive",
+    "Q8t"
+   ],
+   "units": 77
+  },
+  {
+   "key": "session.append",
+   "span": [
+    2348649,
+    2348706
+   ],
+   "names": [
+    "session",
+    "append",
+    "jgo",
+    "Xxo"
+   ],
+   "units": 57
+  },
+  {
+   "key": "turn.abort",
+   "span": [
+    2348706,
+    2348821
+   ],
+   "names": [
+    "turn",
+    "abort",
+    "L2e",
+    "turnId",
+    "takes",
+    "the",
+    "id",
+    "start",
+    "carried",
+    "kGo",
+    "plugin"
+   ],
+   "units": 115
+  },
+  {
+   "key": "flag.value",
+   "span": [
+    2348821,
+    2349361
+   ],
+   "names": [
+    "flag",
+    "value",
+    "rzt",
+    "prompt",
+    "submit",
+    "gye",
+    "turnHeld",
+    "text",
+    "trim",
+    "takes",
+    "a",
+    "non",
+    "empty",
+    "y",
+    "r1e",
+    "b",
+    "asUser",
+    "submits",
+    "to",
+    "the",
+    "model",
+    "beginning",
+    "with",
+    "would",
+    "command",
+    "as",
+    "user",
+    "one",
+    "$",
+    "V3e",
+    "plugin",
+    "length",
+    "O2e",
+    "FCo"
+   ],
+   "units": 540
+  },
+  {
+   "key": "prompt.read",
+   "span": [
+    2349361,
+    2349630
+   ],
+   "names": [
+    "prompt",
+    "read",
+    "uye",
+    "fill",
+    "GGt",
+    "rDo",
+    "mode",
+    "U3e",
+    "decorations",
+    "G4n",
+    "h",
+    "Ysr",
+    "knownArgs",
+    "get",
+    "plugin",
+    "scan",
+    "isFilled",
+    "refusal",
+    "text",
+    "cursor"
+   ],
+   "units": 269
+  },
+  {
+   "key": "prompt.suggest",
+   "span": [
+    2349630,
+    2349761
+   ],
+   "names": [
+    "prompt",
+    "suggest",
+    "GGt",
+    "text",
+    "trim",
+    "takes",
+    "a",
+    "non",
+    "empty",
+    "suggestion",
+    "c7o"
+   ],
+   "units": 131
+  },
+  {
+   "key": "prompt.compose",
+   "span": [
+    2349761,
+    2349821
+   ],
+   "names": [
+    "prompt",
+    "compose",
+    "XQt",
+    "tool",
+    "list",
+    "c1o",
+    "plugin"
+   ],
+   "units": 60
+  },
+  {
+   "key": "tool.call",
+   "span": [
+    2349821,
+    2349961
+   ],
+   "names": [
+    "tool",
+    "call",
+    "pJt",
+    "mJt",
+    "agent",
+    "spawn",
+    "W2e",
+    "yt",
+    "takes",
+    "the",
+    "Agent",
+    "input",
+    "O2e",
+    "budgets",
+    "spawns"
+   ],
+   "units": 140
+  },
+  {
+   "key": "ui.ask",
+   "span": [
+    2349961,
+    2350034
+   ],
+   "names": [
+    "ui",
+    "ask",
+    "W2e",
+    "Qo",
+    "takes",
+    "the",
+    "AskUserQuestion",
+    "tool",
+    "input",
+    "oW"
+   ],
+   "units": 73
+  },
+  {
+   "key": "tool.register",
+   "span": [
+    2350034,
+    2350306
+   ],
+   "names": [
+    "tool",
+    "register",
+    "isDeferred",
+    "Sro",
+    "PNs",
+    "inputSchema",
+    "is",
+    "or",
+    "Rye",
+    "f1o",
+    "plugin",
+    "uqo",
+    "isBuiltin",
+    "YQt",
+    "hqo"
+   ],
+   "units": 272
+  },
+  {
+   "key": "command.list",
+   "span": [
+    2350306,
+    2350348
+   ],
+   "names": [
+    "command",
+    "list",
+    "yMo",
+    "plugin"
+   ],
+   "units": 42
+  },
+  {
+   "key": "command.register",
+   "span": [
+    2350348,
+    2350853
+   ],
+   "names": [
+    "command",
+    "register",
+    "argumentHint",
+    "immediate",
+    "h",
+    "Sro",
+    "nas",
+    "is",
+    "a",
+    "or",
+    "LVe",
+    "description",
+    "Rye",
+    "kMo",
+    "cJt",
+    "wye",
+    "tT",
+    "plugin",
+    "B2e",
+    "spelling",
+    "name",
+    "texts",
+    "the"
+   ],
+   "units": 505
+  },
+  {
+   "key": "command.run",
+   "span": [
+    2350853,
+    2351464
+   ],
+   "names": [
+    "command",
+    "turnHeld",
+    "called",
+    "from",
+    "a",
+    "hook",
+    "it",
+    "would",
+    "wait",
+    "on",
+    "the",
+    "turn",
+    "is",
+    "holding",
+    "answer",
+    "text",
+    "instead",
+    "or",
+    "later",
+    "event",
+    "complete",
+    "$",
+    "args",
+    "takes",
+    "name",
+    "without",
+    "slash",
+    "V3e",
+    "plugin",
+    "length",
+    "O2e",
+    "bMo"
+   ],
+   "units": 611
+  },
+  {
+   "key": "config.list",
+   "span": [
+    2351464,
+    2351514
+   ],
+   "names": [
+    "config",
+    "list",
+    "CDo",
+    "plugin",
+    "origin"
+   ],
+   "units": 50
+  },
+  {
+   "key": "config.set",
+   "span": [
+    2351514,
+    2351612
+   ],
+   "names": [
+    "config",
+    "set",
+    "ZGt",
+    "telemetry",
+    "log",
+    "eqo",
+    "mark",
+    "tqo",
+    "agent",
+    "list",
+    "MFo",
+    "plugin"
+   ],
+   "units": 98
+  },
+  {
+   "key": "agent.register",
+   "span": [
+    2351612,
+    2351997
+   ],
+   "names": [
+    "agent",
+    "register",
+    "prompt",
+    "trim",
+    "Sro",
+    "LVe",
+    "description",
+    "is",
+    "a",
+    "non",
+    "empty",
+    "Rye",
+    "ELo",
+    "cJt",
+    "ozt",
+    "op",
+    "feature",
+    "plugin_function_hooks_register_agent",
+    "B2e",
+    "plugin",
+    "spelling",
+    "name",
+    "texts",
+    "the"
+   ],
+   "units": 385
+  },
+  {
+   "key": "ui.toast",
+   "span": [
+    2351997,
+    2352179
+   ],
+   "names": [
+    "ui",
+    "toast",
+    "timeoutMs",
+    "yro",
+    "F2e",
+    "LVe",
+    "text",
+    "is",
+    "a",
+    "whole",
+    "of",
+    "ms",
+    "to",
+    "$",
+    "lJt",
+    "Kxo"
+   ],
+   "units": 182
+  },
+  {
+   "key": "ui.status",
+   "span": [
+    2352179,
+    2352282
+   ],
+   "names": [
+    "ui",
+    "status",
+    "text",
+    "LVe",
+    "lJt",
+    "LWt"
+   ],
+   "units": 103
+  },
+  {
+   "key": "ui.log",
+   "span": [
+    2352282,
+    2352477
+   ],
+   "names": [
+    "ui",
+    "log",
+    "LVe",
+    "text",
+    "Izo",
+    "to",
+    "debug",
+    "Pzo",
+    "plugin",
+    "mce",
+    "$2e"
+   ],
+   "units": 195
+  },
+  {
+   "key": "ui.notice",
+   "span": [
+    2352477,
+    2353206
+   ],
+   "names": [
+    "ui",
+    "notice",
+    "gJt",
+    "invalidate",
+    "event",
+    "render",
+    "prompt",
+    "section",
+    "context",
+    "attachment",
+    "tool",
+    "describe",
+    "command",
+    "config",
+    "takes",
+    "or",
+    "switch",
+    "case",
+    "budgets",
+    "renders",
+    "plugin",
+    "break",
+    "cGt",
+    "turnHeld",
+    "QGt",
+    "pendingInvalidations",
+    "add"
+   ],
+   "units": 729
+  },
+  {
+   "key": "ui.open",
+   "span": [
+    2353206,
+    2353401
+   ],
+   "names": [
+    "ui",
+    "open",
+    "ras",
+    "Rye",
+    "eas",
+    "title",
+    "wye",
+    "id",
+    "tT",
+    "plugin",
+    "kse",
+    "B2e",
+    "spelling",
+    "name",
+    "texts",
+    "the"
+   ],
+   "units": 195
+  },
+  {
+   "key": "ui.close",
+   "span": [
+    2353401,
+    2353469
+   ],
+   "names": [
+    "ui",
+    "close",
+    "tas",
+    "R5t",
+    "id"
+   ],
+   "units": 68
+  },
+  {
+   "key": "ui.panes",
+   "span": [
+    2353469,
+    2353524
+   ],
+   "names": [
+    "ui",
+    "panes",
+    "oas",
+    "plugin"
+   ],
+   "units": 55
+  },
+  {
+   "key": "ui.selection",
+   "span": [
+    2353524,
+    2353549
+   ],
+   "names": [
+    "ui",
+    "selection",
+    "u2t"
+   ],
+   "units": 25
+  },
+  {
+   "key": "ui.scroll",
+   "span": [
+    2353549,
+    2353581
+   ],
+   "names": [
+    "ui",
+    "scroll",
+    "O5n",
+    "L5n"
+   ],
+   "units": 32
+  },
+  {
+   "key": "ui.focus",
+   "span": [
+    2353581,
+    2353612
+   ],
+   "names": [
+    "ui",
+    "focus",
+    "fzo",
+    "Szo"
+   ],
+   "units": 31
+  },
+  {
+   "key": "ui.copy",
+   "span": [
+    2353612,
+    2353652
+   ],
+   "names": [
+    "ui",
+    "copy",
+    "wGo",
+    "stamp",
+    "uzo",
+    "dzo"
+   ],
+   "units": 40
+  },
+  {
+   "key": "ui.notify",
+   "span": [
+    2353652,
+    2353694
+   ],
+   "names": [
+    "ui",
+    "notify",
+    "Dzo",
+    "stamp",
+    "Fzo",
+    "Nzo"
+   ],
+   "units": 42
+  },
+  {
+   "key": "ui.blit",
+   "span": [
+    2353694,
+    2353752
+   ],
+   "names": [
+    "ui",
+    "blit",
+    "fNs",
+    "bFo",
+    "kFo",
+    "mNs"
+   ],
+   "units": 58
+  },
+  {
+   "key": "fs.read",
+   "span": [
+    2353752,
+    2353905
+   ],
+   "names": [
+    "fs",
+    "read",
+    "hzt",
+    "write",
+    "_zt",
+    "list",
+    "gzt",
+    "exists",
+    "XAt",
+    "raise",
+    "IE",
+    "HE",
+    "event",
+    "path",
+    "plugin",
+    "cwd",
+    "then"
+   ],
+   "units": 153
+  },
+  {
+   "key": "fs.stat",
+   "span": [
+    2353905,
+    2354017
+   ],
+   "names": [
+    "fs",
+    "stat",
+    "yzt",
+    "ancestors",
+    "mzt",
+    "store",
+    "get",
+    "ppr",
+    "JAt",
+    "event",
+    "key",
+    "fW",
+    "plugin"
+   ],
+   "units": 112
+  },
+  {
+   "key": "store.set",
+   "span": [
+    2354017,
+    2354129
+   ],
+   "names": [
+    "store",
+    "set",
+    "xNs",
+    "JAt",
+    "event",
+    "key",
+    "value",
+    "fW",
+    "plugin",
+    "then"
+   ],
+   "units": 112
+  },
+  {
+   "key": "store.delete",
+   "span": [
+    2354129,
+    2354233
+   ],
+   "names": [
+    "store",
+    "delete",
+    "ppr",
+    "JAt",
+    "event",
+    "key",
+    "fW",
+    "plugin",
+    "then"
+   ],
+   "units": 104
+  },
+  {
+   "key": "store.keys",
+   "span": [
+    2354233,
+    2354294
+   ],
+   "names": [
+    "store",
+    "keys",
+    "JAt",
+    "event",
+    "fW",
+    "plugin"
+   ],
+   "units": 61
+  },
+  {
+   "key": "state.get",
+   "span": [
+    2354294,
+    2354326
+   ],
+   "names": [
+    "state",
+    "get",
+    "Pur",
+    "Our"
+   ],
+   "units": 32
+  },
+  {
+   "key": "state.set",
+   "span": [
+    2354326,
+    2354368
+   ],
+   "names": [
+    "state",
+    "set",
+    "Iur",
+    "stamp",
+    "$ss",
+    "Hur"
+   ],
+   "units": 42
+  },
+  {
+   "key": "clock.now",
+   "span": [
+    2354368,
+    2354390
+   ],
+   "names": [
+    "clock",
+    "now",
+    "cDo"
+   ],
+   "units": 22
+  },
+  {
+   "key": "clock.sleep",
+   "span": [
+    2354390,
+    2354464
+   ],
+   "names": [
+    "clock",
+    "sleep",
+    "vme",
+    "after",
+    "every",
+    "http",
+    "fetch",
+    "VQt"
+   ],
+   "units": 74
+  },
+  {
+   "key": "process.run",
+   "span": [
+    2354464,
+    2354545
+   ],
+   "names": [
+    "process",
+    "TNs",
+    "V1o",
+    "plugin",
+    "signal",
+    "cwd"
+   ],
+   "units": 81
+  },
+  {
+   "key": "settings.read",
+   "span": [
+    2354545,
+    2354605
+   ],
+   "names": [
+    "settings",
+    "read",
+    "yGo",
+    "source",
+    "hGo"
+   ],
+   "units": 60
+  },
+  {
+   "key": "env.get",
+   "span": [
+    2354605,
+    2354635
+   ],
+   "names": [
+    "env",
+    "get",
+    "s2t",
+    "pFo"
+   ],
+   "units": 30
+  },
+  {
+   "key": "env.set",
+   "span": [
+    2354635,
+    2354665
+   ],
+   "names": [
+    "env",
+    "set",
+    "s2t",
+    "gFo"
+   ],
+   "units": 30
+  }
+ ]
+}

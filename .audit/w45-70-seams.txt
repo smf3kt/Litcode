@@ -1,0 +1,116 @@
+(node:82757) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ the name lists and the predicates under them
+  ✔ covers the two environment calls and the two state calls (0.591792ms)
+  ✔ holds five dropped calls, and ui.log is one while env.get is not (0.060625ms)
+  ✔ reads four clock calls and three funnel calls (0.056667ms)
+  ✔ takes the first segment, and a name with no dot loses its last character (0.044208ms)
+  ✔ spells an interface call by its own name and method, every other call by its name (0.050209ms)
+  ✔ writes a plain name as itself and anything else as JSON (0.131709ms)
+  ✔ names the plugin that removed the call in the refusal sentence (0.036417ms)
+✔ the name lists and the predicates under them (1.430208ms)
+▶ the scan rules over what a hooks module declared
+  ✔ refuses a call the module never declared, and names what it did (0.080375ms)
+  ✔ holds an environment call to the variable it names, reads for a read and writes for a write (0.106209ms)
+  ✔ holds a state call to the reference it names, and never to a reference it does not carry (0.960084ms)
+✔ the scan rules over what a hooks module declared (1.278ms)
+▶ the gate
+  ✔ answers the module known args when the call is declared (0.322292ms)
+  ✔ refuses a call from a plugin whose hooks module is not loaded (0.350291ms)
+  ✔ refuses a withheld call with the sentence naming the plugin that withheld it (0.197167ms)
+  ✔ refuses a call from an environment no hooks module was admitted for, unless the call is a clock call (0.1115ms)
+✔ the gate (1.115209ms)
+▶ who withholds a call, and how often the plugin is told
+  ✔ reads the holders in order: staged, staged before, the live set, then a crashed module (0.1625ms)
+  ✔ offers a staged holder only to a call from an engine being created (0.061833ms)
+  ✔ names another module that crashed while withholding the same first segment (0.069958ms)
+  ✔ tells the plugin once per first segment (0.080375ms)
+✔ who withholds a call, and how often the plugin is told (0.465375ms)
+▶ the argument copy and the dropped-call notice
+  ✔ hands a state call a copy, and passes a non-object through as it is (0.1325ms)
+  ✔ leaves no answer from the dropped-call notice, which only logs and records (0.668042ms)
+✔ the argument copy and the dropped-call notice (0.869917ms)
+▶ the dispatcher
+  ✔ runs the raise, then the stamp, then the call, and hands the caller its known args (0.496417ms)
+  ✔ hands a state call a copy, leaving the object the plugin still holds untouched (0.293542ms)
+  ✔ refuses at the host check with the text the check answered, and runs nothing (0.1955ms)
+  ✔ refuses a dropped call at the host check the same way (0.256625ms)
+  ✔ refuses a call the module did not declare before the host check sees it (0.085625ms)
+  ✔ takes the funnel road for a catalog call, with the same three steps (0.114875ms)
+  ✔ takes interface.call into the call table when the spelled name is declared (0.230542ms)
+  ✔ refuses an interface call whose spelled name the module did not declare (0.108458ms)
+  ✔ cannot answer a table entry that carries no call of its own (0.129167ms)
+✔ the dispatcher (2.115916ms)
+(node:82758) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ classic PostToolBatch: the batch names no session field the source does not send (4.184833ms)
+✔ classic PostToolBatch: the agent raises it once per batch, with every call in it (87.36025ms)
+✔ classic PostToolBatch: a block is discarded and logged, and the event is not raised unhooked (105.676084ms)
+(node:82759) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ classic raise: the hook input is the source's `fe` shape and the gate is the source's `Q_t` (2.584166ms)
+✔ classic raise: the answer folds to the source's record list and its block text (3.590041ms)
+✔ classic raise: the agent's tool path applies a post hook's rewrite and its block (132.418917ms)
+(node:82760) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ classic sites: both generated families are registered from the source's own name lists (0.440625ms)
+✔ classic sites: the copied rules answer with the source's own sentences (0.202959ms)
+✔ classic sites: these names are not in the payload-builder table, so aP dispatches them (0.052708ms)
+(node:82761) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ clock.now answers the process clock, not the pluggable one (0.671458ms)
+✔ clock.sleep, clock.after and clock.every are the same wait, and an abort rejects with its reason (11.844667ms)
+✔ the ms check refuses a non-finite value with the source's own text (4.084125ms)
+✔ a handler in the chain answers a clock call first (0.36825ms)
+✔ env.get reads the process environment, and answers USER_TYPE as external (0.113ms)
+✔ env.set writes a value and unsets on none (0.089583ms)
+✔ the env check refuses a bad name or value with the source's own texts (0.087ms)
+✔ the env entries run their check only behind a handler, as the table floors do (0.220291ms)
+(node:82762) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ host call: a name no module hooks runs the floor with the caller's own argument (3.656541ms)
+✔ host call: the twelve copied names run the argument through the copier, the rest do not (1.837166ms)
+✔ host call: the entry path runs the four copied chain names through the copier (0.5395ms)
+(node:82763) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the leaf table names the nine types, each mapped to the check that refuses a bad one (0.84675ms)
+✔ a leaf contributes its own text, and a button's children win over its label (0.103291ms)
+✔ a leaf's children are flattened depth first, and anything else is measured rather than guessed (0.1745ms)
+✔ how tall a leaf is, in the lines it emits (0.594792ms)
+✔ a Code leaf's height reads the diff it holds once the format says diff (1.043792ms)
+✔ a keyed leaf drawn twice is refused the second time, and only the second time (0.084875ms)
+✔ a diff is read back into hunks, with the parser's own marker lines dropped (0.086917ms)
+✔ a diff the reader cannot read comes back as a refusal rather than an error (0.144791ms)
+✔ the parser behind the reader throws where the reader refuses, and keeps the marker line (0.081709ms)
+✔ the reader a Code leaf asks for by format, and nothing for any other format (0.096166ms)
+✔ leaf text keeps a directional override from moving the line it was drawn on (0.13375ms)
+✔ the emitted lines a string takes at a width, and the gutter a hunk's numbers take (0.0825ms)
+✔ the source bodies under their own names answer what the ported call answers (0.070292ms)
+(node:82764) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ module loader: a plugin module file loads and its handler answers the chain (9.944333ms)
+✔ module loader: registered patterns are checked against the module scan and the catalog (3.230208ms)
+✔ module loader: a pattern that cannot be a noun is reported and its hook never runs (2.777333ms)
+✔ module loader: an interface call and a press reach the module (2.233333ms)
+✔ module loader: a second load gets a fresh environment and the first record stays dead (2.020375ms)
+✔ module loader: two loaded modules answer one dispatch, folded in load order (2.708833ms)
+✔ module loader: a loaded module hooks the composer relay (8.708416ms)
+✔ module loader: the file reader names a module without a name after its file (1.037042ms)
+(node:82765) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ override sites: the seven names carry the hand-written descriptor, not the generated one (0.36825ms)
+✔ override sites: the copied argument rules answer with the source's own sentences (0.220958ms)
+✔ override sites: state.set restores only the keys a rewrite dropped (0.35075ms)
+(node:82766) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ streaming call: a name no module hooks is the floor's own stream (0.905667ms)
+✔ streaming call: a native provider relays its chunks and folds into the floor (3.503875ms)
+✔ streaming call: a withheld result says whether the floor ran (0.7975ms)
+ℹ tests 76
+ℹ suites 6
+ℹ pass 76
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 664.70375

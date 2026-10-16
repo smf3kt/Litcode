@@ -1,0 +1,121 @@
+{
+ "report": [
+  {
+   "file": "main.tsx",
+   "op": "blocks 2",
+   "ok": true,
+   "markers": [
+    "await import('src/cli/up.js')",
+    "await import('src/cli/rollback.js')"
+   ]
+  },
+  {
+   "file": "main.tsx",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "entrypoints/cli.tsx",
+   "op": "blocks 5",
+   "ok": true,
+   "markers": [
+    "await import('../daemon/workerRegistry.js')",
+    "await import('../daemon/main.js')",
+    "await import('../cli/bg.js')",
+    "await import('../environment-runner/main.js')",
+    "await import('../self-hosted-runner/main.js')"
+   ]
+  },
+  {
+   "file": "commands/bridge/bridge.tsx",
+   "op": "blocks 1",
+   "ok": true,
+   "markers": [
+    "await import('../../assistant/index.js')"
+   ]
+  },
+  {
+   "file": "dialogLaunchers.tsx",
+   "op": "blocks 2",
+   "ok": true,
+   "markers": [
+    "await import('./components/agents/SnapshotUpdateDialog.js')",
+    "await import('./commands/assistant/assistant.js')"
+   ]
+  },
+  {
+   "file": "components/messages/UserTextMessage.tsx",
+   "op": "blocks 1",
+   "ok": true,
+   "markers": [
+    "typeof import('./UserCrossSessionMessage.js')"
+   ]
+  },
+  {
+   "file": "setup.ts",
+   "op": "blocks 1",
+   "ok": true,
+   "markers": [
+    "import('./utils/udsMessaging.js')"
+   ]
+  },
+  {
+   "file": "components/TokenWarning.tsx",
+   "op": "blocks 1",
+   "ok": true,
+   "markers": [
+    "typeof import('../services/contextCollapse/index.js')"
+   ]
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "op": "replace",
+   "ok": true
+  },
+  {
+   "file": "entrypoints/agentSdkTypes.ts",
+   "op": "replace",
+   "ok": true
+  }
+ ]
+}

@@ -1,0 +1,414 @@
+{
+ "byKind": {
+  "gated-require": 50,
+  "dynamic-import": 9,
+  "property": 1
+ },
+ "report": [
+  {
+   "file": "QueryEngine.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipProjection.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipCompact.ts"
+    }
+   ]
+  },
+  {
+   "file": "commands.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/skillSearch/localSearch.ts"
+    }
+   ]
+  },
+  {
+   "file": "commands/clear/caches.ts",
+   "sites": [
+    {
+     "kind": "dynamic-import",
+     "module": "utils/attributionHooks.ts"
+    }
+   ]
+  },
+  {
+   "file": "commands/context/context-noninteractive.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    }
+   ]
+  },
+  {
+   "file": "components/ContextVisualization.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    }
+   ]
+  },
+  {
+   "file": "components/Message.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "components/messages/SnipBoundaryMessage.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipCompact.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipProjection.ts"
+    }
+   ]
+  },
+  {
+   "file": "components/TokenWarning.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    }
+   ]
+  },
+  {
+   "file": "components/design-system/ThemeProvider.tsx",
+   "sites": [
+    {
+     "kind": "dynamic-import",
+     "module": "utils/systemThemeWatcher.ts"
+    }
+   ]
+  },
+  {
+   "file": "components/messages/UserTextMessage.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "components/messages/UserForkBoilerplateMessage.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "components/messages/UserGitHubWebhookMessage.ts"
+    }
+   ]
+  },
+  {
+   "file": "components/permissions/PermissionRequest.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "components/permissions/MonitorPermissionRequest/MonitorPermissionRequest.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "tools/WorkflowTool/WorkflowPermissionRequest.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "components/permissions/ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "tools/ReviewArtifactTool/ReviewArtifactTool.ts"
+    }
+   ]
+  },
+  {
+   "file": "components/tasks/BackgroundTasksDialog.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "components/tasks/MonitorMcpDetailDialog.ts"
+    }
+   ]
+  },
+  {
+   "file": "constants/prompts.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/skillSearch/featureCheck.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "tools/DiscoverSkillsTool/prompt.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/compact/cachedMCConfig.ts"
+    }
+   ]
+  },
+  {
+   "file": "hooks/useReplBridge.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "bridge/webhookSanitizer.ts"
+    }
+   ]
+  },
+  {
+   "file": "main.tsx",
+   "sites": [
+    {
+     "kind": "dynamic-import",
+     "module": "server/parseConnectUrl.ts"
+    },
+    {
+     "kind": "dynamic-import",
+     "module": "server/backends/dangerousBackend.ts"
+    },
+    {
+     "kind": "dynamic-import",
+     "module": "utils/sessionDataUploader.ts"
+    }
+   ]
+  },
+  {
+   "file": "memdir/findRelevantMemories.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "memdir/memoryShapeTelemetry.ts"
+    }
+   ]
+  },
+  {
+   "file": "query.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipCompact.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    }
+   ]
+  },
+  {
+   "file": "screens/REPL.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "tools/WebBrowserTool/WebBrowserPanel.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "hooks/notifs/useAntOrgWarningNotification.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "components/FeedbackSurvey/useFrustrationDetection.ts"
+    }
+   ]
+  },
+  {
+   "file": "screens/ResumeConversation.tsx",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/persist.ts"
+    }
+   ]
+  },
+  {
+   "file": "services/compact/autoCompact.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    }
+   ]
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "sites": [
+    {
+     "kind": "dynamic-import",
+     "module": "services/compact/cachedMicrocompact.ts"
+    }
+   ]
+  },
+  {
+   "file": "services/compact/postCompactCleanup.ts",
+   "sites": [
+    {
+     "kind": "dynamic-import",
+     "module": "utils/attributionHooks.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    }
+   ]
+  },
+  {
+   "file": "services/mcp/useManageMCPConnections.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/skillSearch/localSearch.ts"
+    }
+   ]
+  },
+  {
+   "file": "setup.ts",
+   "sites": [
+    {
+     "kind": "dynamic-import",
+     "module": "utils/attributionHooks.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    }
+   ]
+  },
+  {
+   "file": "tools/AgentTool/builtInAgents.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "coordinator/workerAgent.ts"
+    }
+   ]
+  },
+  {
+   "file": "tools/SendMessageTool/SendMessageTool.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "utils/udsClient.ts"
+    }
+   ]
+  },
+  {
+   "file": "tools/SkillTool/SkillTool.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/skillSearch/featureCheck.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/skillSearch/remoteSkillLoader.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/skillSearch/remoteSkillState.ts"
+    }
+   ]
+  },
+  {
+   "file": "utils/analyzeContext.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/index.ts"
+    }
+   ]
+  },
+  {
+   "file": "utils/attachments.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipCompact.ts"
+    },
+    {
+     "kind": "property",
+     "module": "services/skillSearch/featureCheck.ts"
+    }
+   ]
+  },
+  {
+   "file": "utils/messages.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipProjection.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipCompact.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipCompact.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/compact/snipCompact.ts"
+    }
+   ]
+  },
+  {
+   "file": "utils/permissions/classifierDecision.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "tools/VerifyPlanExecutionTool/constants.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "tools/OverflowTestTool/OverflowTestTool.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "tools/TerminalCaptureTool/prompt.ts"
+    }
+   ]
+  },
+  {
+   "file": "utils/sessionFileAccessHooks.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "memdir/memoryShapeTelemetry.ts"
+    }
+   ]
+  },
+  {
+   "file": "utils/sessionRestore.ts",
+   "sites": [
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/persist.ts"
+    },
+    {
+     "kind": "gated-require",
+     "module": "services/contextCollapse/persist.ts"
+    }
+   ]
+  },
+  {
+   "file": "utils/worktree.ts",
+   "sites": [
+    {
+     "kind": "dynamic-import",
+     "module": "utils/postCommitAttribution.ts"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,20 @@
+(node:13464) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ ui.selection answers the bound context's selection, read through its own accessor (0.862541ms)
+✔ no context, and a context without a selection, both answer undefined rather than throwing (0.080875ms)
+✔ the entry has no check: any argument reaches the floor unchanged (2.14175ms)
+✔ a handler in the chain answers the call before the floor (0.169625ms)
+✔ the table now binds four ui names (0.046667ms)
+(node:13465) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ ui.status floor: the session gate drops an unbound write, and clears with no text (2.439875ms)
+✔ ui.log floor: the transcript route reports through mce, the debug route does not (1.513583ms)
+✔ ui floor checks: the refusals the table entries carry reach the caller through the chain (0.9405ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 157.969958

@@ -1,0 +1,757 @@
+{
+ "rows": [
+  {
+   "file": "types/message.ts",
+   "names": 42,
+   "hits": [
+    {
+     "name": "Message",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "AssistantMessage",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "AttachmentMessage",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "ProgressMessage",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "SystemLocalCommandMessage",
+     "literal": "local_command",
+     "chunks": 6,
+     "first": "chunk-08y6bv7r.js"
+    },
+    {
+     "name": "SystemMessage",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "UserMessage",
+     "literal": "user_message",
+     "chunks": 2,
+     "first": "chunk-2zj7x9mp.js"
+    },
+    {
+     "name": "UserMessage",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "NormalizedUserMessage",
+     "literal": "user",
+     "chunks": 6,
+     "first": "chunk-0767hfs9.js"
+    },
+    {
+     "name": "AttachmentMessageType",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "NormalizedMessage",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "MessageType",
+     "literal": "message_type",
+     "chunks": 1,
+     "first": "chunk-qxmpnv25.js"
+    },
+    {
+     "name": "MessageType",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "ProgressMessageType",
+     "literal": "message",
+     "chunks": 6,
+     "first": "chunk-0gkanwwq.js"
+    },
+    {
+     "name": "NormalizedAssistantMessage",
+     "literal": "assistant",
+     "chunks": 6,
+     "first": "chunk-0767hfs9.js"
+    },
+    {
+     "name": "GroupedToolUseMessage",
+     "literal": "grouped_tool_use",
+     "chunks": 3,
+     "first": "chunk-3gz7s57c.js"
+    },
+    {
+     "name": "SystemStopHookSummaryMessage",
+     "literal": "stop_hook_summary",
+     "chunks": 5,
+     "first": "chunk-3gz7s57c.js"
+    },
+    {
+     "name": "SystemBridgeStatusMessage",
+     "literal": "bridge_status",
+     "chunks": 5,
+     "first": "chunk-0f9aea7y.js"
+    },
+    {
+     "name": "SystemTurnDurationMessage",
+     "literal": "turn_duration",
+     "chunks": 6,
+     "first": "chunk-3gz7s57c.js"
+    },
+    {
+     "name": "SystemThinkingMessage",
+     "literal": "thinking",
+     "chunks": 6,
+     "first": "chunk-14rnebpd.js"
+    },
+    {
+     "name": "SystemMemorySavedMessage",
+     "literal": "memory_saved",
+     "chunks": 3,
+     "first": "chunk-phg89898.js"
+    },
+    {
+     "name": "SystemInformationalMessage",
+     "literal": "informational",
+     "chunks": 6,
+     "first": "chunk-0n88wbb5.js"
+    },
+    {
+     "name": "HookResultMessage",
+     "literal": "hook",
+     "chunks": 6,
+     "first": "chunk-0n88wbb5.js"
+    },
+    {
+     "name": "StreamEvent",
+     "literal": "stream_event",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "StreamEvent",
+     "literal": "stream",
+     "chunks": 6,
+     "first": "chunk-14rnebpd.js"
+    },
+    {
+     "name": "TombstoneMessage",
+     "literal": "tombstone",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "ToolUseSummaryMessage",
+     "literal": "tool_use_summary",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "SystemCompactBoundaryMessage",
+     "literal": "compact_boundary",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "SystemAgentsKilledMessage",
+     "literal": "agents_killed",
+     "chunks": 3,
+     "first": "chunk-phg89898.js"
+    },
+    {
+     "name": "SystemApiMetricsMessage",
+     "literal": "api_metrics",
+     "chunks": 6,
+     "first": "chunk-40cepjpq.js"
+    },
+    {
+     "name": "SystemAwaySummaryMessage",
+     "literal": "away_summary",
+     "chunks": 6,
+     "first": "chunk-14rnebpd.js"
+    },
+    {
+     "name": "SystemMicrocompactBoundaryMessage",
+     "literal": "microcompact_boundary",
+     "chunks": 2,
+     "first": "chunk-bk5ct2gw.js"
+    },
+    {
+     "name": "SystemPermissionRetryMessage",
+     "literal": "permission_retry",
+     "chunks": 3,
+     "first": "chunk-phg89898.js"
+    },
+    {
+     "name": "SystemScheduledTaskFireMessage",
+     "literal": "scheduled_task_fire",
+     "chunks": 6,
+     "first": "chunk-3gz7s57c.js"
+    }
+   ]
+  },
+  {
+   "file": "entrypoints/sdk/runtimeTypes.ts",
+   "names": 17,
+   "hits": [
+    {
+     "name": "ForkSessionOptions",
+     "literal": "fork",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "ForkSessionResult",
+     "literal": "fork",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "GetSessionInfoOptions",
+     "literal": "session_info",
+     "chunks": 1,
+     "first": "chunk-c0aaqg7t.js"
+    },
+    {
+     "name": "InferShape",
+     "literal": "infer",
+     "chunks": 1,
+     "first": "chunk-vgrqk0ky.js"
+    },
+    {
+     "name": "InternalOptions",
+     "literal": "internal",
+     "chunks": 6,
+     "first": "chunk-8tf84az4.js"
+    },
+    {
+     "name": "Options",
+     "literal": "options",
+     "chunks": 6,
+     "first": "chunk-1pwmtn16.js"
+    },
+    {
+     "name": "Query",
+     "literal": "query",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "SdkMcpToolDefinition",
+     "literal": "tool_definition",
+     "chunks": 2,
+     "first": "chunk-14rnebpd.js"
+    },
+    {
+     "name": "SessionMessage",
+     "literal": "session",
+     "chunks": 6,
+     "first": "chunk-0mtwhy7y.js"
+    }
+   ]
+  },
+  {
+   "file": "services/oauth/types.ts",
+   "names": 11,
+   "hits": [
+    {
+     "name": "OAuthTokens",
+     "literal": "tokens",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "SubscriptionType",
+     "literal": "subscription",
+     "chunks": 5,
+     "first": "chunk-1fr2177j.js"
+    },
+    {
+     "name": "BillingType",
+     "literal": "billing",
+     "chunks": 4,
+     "first": "chunk-14rnebpd.js"
+    },
+    {
+     "name": "OAuthProfileResponse",
+     "literal": "profile",
+     "chunks": 6,
+     "first": "chunk-14rnebpd.js"
+    },
+    {
+     "name": "OAuthTokenExchangeResponse",
+     "literal": "token_exchange",
+     "chunks": 2,
+     "first": "chunk-6ep3wnmg.js"
+    }
+   ]
+  },
+  {
+   "file": "types/tools.ts",
+   "names": 12,
+   "hits": [
+    {
+     "name": "AgentToolProgress",
+     "literal": "tool_progress",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "BashProgress",
+     "literal": "bash_progress",
+     "chunks": 6,
+     "first": "chunk-40cepjpq.js"
+    },
+    {
+     "name": "ToolProgressData",
+     "literal": "tool_progress",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "Progress",
+     "literal": "progress",
+     "chunks": 6,
+     "first": "chunk-08y6bv7r.js"
+    }
+   ]
+  },
+  {
+   "file": "components/mcp/types.ts",
+   "names": 7,
+   "hits": [
+    {
+     "name": "StdioServerInfo",
+     "literal": "server",
+     "chunks": 6,
+     "first": "chunk-0n88wbb5.js"
+    },
+    {
+     "name": "AgentMcpServerInfo",
+     "literal": "mcp_server",
+     "chunks": 2,
+     "first": "chunk-mktwnkyx.js"
+    },
+    {
+     "name": "ServerInfo",
+     "literal": "server",
+     "chunks": 6,
+     "first": "chunk-0n88wbb5.js"
+    }
+   ]
+  },
+  {
+   "file": "commands/install-github-app/types.ts",
+   "names": 3,
+   "hits": [
+    {
+     "name": "Workflow",
+     "literal": "workflow",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "Warning",
+     "literal": "warning",
+     "chunks": 6,
+     "first": "chunk-01svw805.js"
+    },
+    {
+     "name": "State",
+     "literal": "state",
+     "chunks": 6,
+     "first": "chunk-0gpgwsjg.js"
+    }
+   ]
+  },
+  {
+   "file": "types/connectorText.ts",
+   "names": 3,
+   "hits": [
+    {
+     "name": "ConnectorTextBlock",
+     "literal": "connector_text",
+     "chunks": 2,
+     "first": "chunk-bk5ct2gw.js"
+    },
+    {
+     "name": "ConnectorTextDelta",
+     "literal": "connector_text",
+     "chunks": 2,
+     "first": "chunk-bk5ct2gw.js"
+    },
+    {
+     "name": "isConnectorTextBlock",
+     "literal": "connector_text",
+     "chunks": 2,
+     "first": "chunk-bk5ct2gw.js"
+    }
+   ]
+  },
+  {
+   "file": "keybindings/types.ts",
+   "names": 6,
+   "hits": [
+    {
+     "name": "KeybindingBlock",
+     "literal": "keybinding",
+     "chunks": 1,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "Chord",
+     "literal": "chord",
+     "chunks": 2,
+     "first": "chunk-24k7d6mw.js"
+    }
+   ]
+  },
+  {
+   "file": "services/lsp/types.ts",
+   "names": 3,
+   "hits": [
+    {
+     "name": "LspServerState",
+     "literal": "server",
+     "chunks": 6,
+     "first": "chunk-0n88wbb5.js"
+    },
+    {
+     "name": "LspServerConfig",
+     "literal": "server",
+     "chunks": 6,
+     "first": "chunk-0n88wbb5.js"
+    }
+   ]
+  },
+  {
+   "file": "components/FeedbackSurvey/utils.ts",
+   "names": 2,
+   "hits": [
+    {
+     "name": "FeedbackSurveyResponse",
+     "literal": "feedback_survey",
+     "chunks": 2,
+     "first": "chunk-24k7d6mw.js"
+    },
+    {
+     "name": "FeedbackSurveyType",
+     "literal": "feedback_survey",
+     "chunks": 2,
+     "first": "chunk-24k7d6mw.js"
+    }
+   ]
+  },
+  {
+   "file": "query/transitions.ts",
+   "names": 2,
+   "hits": [
+    {
+     "name": "Terminal",
+     "literal": "terminal",
+     "chunks": 6,
+     "first": "chunk-0n0tsw9p.js"
+    },
+    {
+     "name": "Continue",
+     "literal": "continue",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    }
+   ]
+  },
+  {
+   "file": "services/tips/types.ts",
+   "names": 2,
+   "hits": [
+    {
+     "name": "Tip",
+     "literal": "tip",
+     "chunks": 3,
+     "first": "chunk-0n88wbb5.js"
+    },
+    {
+     "name": "TipContext",
+     "literal": "tip",
+     "chunks": 3,
+     "first": "chunk-0n88wbb5.js"
+    }
+   ]
+  },
+  {
+   "file": "utils/filePersistence/types.ts",
+   "names": 7,
+   "hits": [
+    {
+     "name": "FilesPersistedEventData",
+     "literal": "files_persisted",
+     "chunks": 4,
+     "first": "chunk-24k7d6mw.js"
+    }
+   ]
+  },
+  {
+   "file": "entrypoints/sdk/controlTypes.ts",
+   "names": 6,
+   "hits": [
+    {
+     "name": "StdoutMessage",
+     "literal": "stdout",
+     "chunks": 6,
+     "first": "chunk-06azbynj.js"
+    }
+   ]
+  },
+  {
+   "file": "commands/plugin/types.ts",
+   "names": 3,
+   "hits": [
+    {
+     "name": "ViewState",
+     "literal": "view",
+     "chunks": 6,
+     "first": "chunk-07jnjfgc.js"
+    }
+   ]
+  },
+  {
+   "file": "components/Spinner/types.ts",
+   "names": 2,
+   "hits": [
+    {
+     "name": "SpinnerMode",
+     "literal": "spinner_mode",
+     "chunks": 5,
+     "first": "chunk-40cepjpq.js"
+    }
+   ]
+  },
+  {
+   "file": "assistant/sessionDiscovery.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "AssistantSession",
+     "literal": "session",
+     "chunks": 6,
+     "first": "chunk-0mtwhy7y.js"
+    }
+   ]
+  },
+  {
+   "file": "cli/transports/Transport.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "Transport",
+     "literal": "transport",
+     "chunks": 6,
+     "first": "chunk-0f9aea7y.js"
+    }
+   ]
+  },
+  {
+   "file": "components/ui/option.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "Option",
+     "literal": "option",
+     "chunks": 6,
+     "first": "chunk-1pwmtn16.js"
+    }
+   ]
+  },
+  {
+   "file": "constants/querySource.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "QuerySource",
+     "literal": "query_source",
+     "chunks": 1,
+     "first": "chunk-ja4p43ty.js"
+    }
+   ]
+  },
+  {
+   "file": "ink/cursor.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "Cursor",
+     "literal": "cursor",
+     "chunks": 6,
+     "first": "chunk-0rgbqesw.js"
+    }
+   ]
+  },
+  {
+   "file": "ink/events/paste-event.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "PasteEvent",
+     "literal": "paste",
+     "chunks": 6,
+     "first": "chunk-06azbynj.js"
+    }
+   ]
+  },
+  {
+   "file": "ink/events/resize-event.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "ResizeEvent",
+     "literal": "resize",
+     "chunks": 6,
+     "first": "chunk-06azbynj.js"
+    }
+   ]
+  },
+  {
+   "file": "services/skillSearch/signals.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "DiscoverySignal",
+     "literal": "discovery",
+     "chunks": 4,
+     "first": "chunk-6ep3wnmg.js"
+    }
+   ]
+  },
+  {
+   "file": "tasks/LocalWorkflowTask/LocalWorkflowTask.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "LocalWorkflowTaskState",
+     "literal": "local_workflow",
+     "chunks": 6,
+     "first": "chunk-24k7d6mw.js"
+    }
+   ]
+  },
+  {
+   "file": "tasks/MonitorMcpTask/MonitorMcpTask.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "MonitorMcpTaskState",
+     "literal": "monitor_mcp",
+     "chunks": 6,
+     "first": "chunk-0n88wbb5.js"
+    }
+   ]
+  },
+  {
+   "file": "types/statusLine.ts",
+   "names": 1,
+   "hits": [
+    {
+     "name": "StatusLineCommandInput",
+     "literal": "status_line_command",
+     "chunks": 2,
+     "first": "chunk-bk5ct2gw.js"
+    }
+   ]
+  },
+  {
+   "file": "types/notebook.ts",
+   "names": 7,
+   "hits": []
+  },
+  {
+   "file": "components/wizard/types.ts",
+   "names": 3,
+   "hits": []
+  },
+  {
+   "file": "types/messageQueueTypes.ts",
+   "names": 2,
+   "hits": []
+  },
+  {
+   "file": "utils/secureStorage/types.ts",
+   "names": 2,
+   "hits": []
+  },
+  {
+   "file": "commands/plugin/unifiedTypes.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "components/agents/new-agent-creation/types.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "entrypoints/sdk/sdkUtilityTypes.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "ssh/SSHSessionManager.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "ssh/createSSHSession.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "tools/TungstenTool/TungstenLiveMonitor.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "tools/TungstenTool/TungstenTool.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "tools/WorkflowTool/constants.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "types/fileSuggestion.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "types/utils.ts",
+   "names": 1,
+   "hits": []
+  },
+  {
+   "file": "types/globals.d.ts",
+   "names": 0,
+   "hits": []
+  }
+ ]
+}

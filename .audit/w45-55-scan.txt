@@ -1,0 +1,12 @@
+file src/plugin-chain-settings-merge-source.ts
+declared 108  imports ./plugin-chain-source.js, ./plugin-chain-store-carry-source.js, ./plugin-chain-lodash-internals-source.js, ./plugin-chain-memoize-source.js, ./plugin-chain-lodash-memoize-source.js
+unresolved 0
+file src/plugin-chain-settings-source-source.ts
+declared 77  imports path, os, fs, fs/promises, ./plugin-chain-host.js, ./plugin-chain-fs-source.js, ./plugin-chain-fs-boundaries.js, ./plugin-chain-memoize-source.js, ./plugin-chain-store-carry-source.js, ./plugin-chain-local-store.js
+unresolved 0
+file src/plugin-chain-lodash-internals-source.ts
+declared 300  imports ./plugin-chain-memoize-source.js
+unresolved 0
+file src/plugin-chain-lodash-memoize-source.ts
+declared 53  imports ./plugin-chain-lodash-internals-source.js, ./plugin-chain-memoize-source.js
+unresolved 0

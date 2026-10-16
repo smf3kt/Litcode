@@ -1,0 +1,77 @@
+[
+ {
+  "f": "components/BaseTextInput.tsx",
+  "bytes": 19313,
+  "decls": 1
+ },
+ {
+  "f": "components/PromptInput/inputPaste.ts",
+  "bytes": 2693,
+  "decls": 2
+ },
+ {
+  "f": "components/SearchBox.tsx",
+  "bytes": 9421,
+  "decls": 1
+ },
+ {
+  "f": "hooks/renderPlaceholder.ts",
+  "bytes": 1280,
+  "decls": 1
+ },
+ {
+  "f": "moreright/useMoreRight.tsx",
+  "bytes": 3533,
+  "decls": 1
+ },
+ {
+  "f": "tools/BashTool/sedEditParser.ts",
+  "bytes": 9560,
+  "decls": 4
+ },
+ {
+  "f": "tools/ExitPlanModeTool/prompt.ts",
+  "bytes": 2139,
+  "decls": 1
+ },
+ {
+  "f": "tools/TungstenTool/TungstenLiveMonitor.ts",
+  "bytes": 132,
+  "decls": 1
+ },
+ {
+  "f": "tools/TungstenTool/TungstenTool.ts",
+  "bytes": 125,
+  "decls": 1
+ },
+ {
+  "f": "tools/WorkflowTool/constants.ts",
+  "bytes": 131,
+  "decls": 1
+ },
+ {
+  "f": "types/connectorText.ts",
+  "bytes": 209,
+  "decls": 3
+ },
+ {
+  "f": "utils/argumentSubstitution.ts",
+  "bytes": 5079,
+  "decls": 4
+ },
+ {
+  "f": "utils/filePersistence/types.ts",
+  "bytes": 371,
+  "decls": 7
+ },
+ {
+  "f": "utils/permissions/bashClassifier.ts",
+  "bytes": 1444,
+  "decls": 9
+ },
+ {
+  "f": "utils/permissions/shellRuleMatching.ts",
+  "bytes": 6405,
+  "decls": 7
+ }
+]

@@ -1,0 +1,101 @@
+{
+ "schema": "W45CrossResolve.v1",
+ "rows": [
+  {
+   "chunk": "chunk-4bw62nzm.js",
+   "name": "K",
+   "exported": true,
+   "local": "K",
+   "exports": 668,
+   "decl": {
+    "kind": "function",
+    "span": [
+     76686,
+     76729
+    ],
+    "units": 43,
+    "text": "function K(){return h()?.sessionId??n().id}"
+   }
+  },
+  {
+   "chunk": "chunk-4bw62nzm.js",
+   "name": "Ee",
+   "exported": true,
+   "local": "Ee",
+   "exports": 668,
+   "decl": {
+    "kind": "function",
+    "span": [
+     79590,
+     79649
+    ],
+    "units": 59,
+    "text": "function Ee(){return h()?.originalCwd??So(n()).originalCwd}"
+   }
+  },
+  {
+   "chunk": "chunk-qr9z1wer.js",
+   "name": "se",
+   "exported": true,
+   "local": "se",
+   "exports": 18,
+   "decl": {
+    "kind": "function",
+    "span": [
+     2355,
+     2405
+    ],
+    "units": 50,
+    "text": "function se(){try{return Aon()}catch{return Ee()}}"
+   }
+  },
+  {
+   "chunk": "chunk-bk5ct2gw.js",
+   "name": "tt",
+   "exported": true,
+   "local": "tt",
+   "exports": 1439,
+   "decl": {
+    "kind": "function",
+    "span": [
+     357377,
+     357451
+    ],
+    "units": 74,
+    "text": "function tt(){let e=Ah();if(e!==void 0&&e!==null)return Dt(e);return Zl()}"
+   }
+  },
+  {
+   "chunk": "chunk-3qabb19b.js",
+   "name": "F",
+   "exported": true,
+   "local": "F",
+   "exports": 6,
+   "decl": {
+    "kind": "function",
+    "span": [
+     673,
+     732
+    ],
+    "units": 59,
+    "text": "function F(n,e){let r=0;for(let t of n)r+=+!!e(t);return r}"
+   }
+  },
+  {
+   "chunk": "chunk-tvdq3hrk.js",
+   "name": "gE",
+   "exported": true,
+   "local": "gE",
+   "exports": 59,
+   "decl": {
+    "kind": "var",
+    "span": [
+     2727,
+     2792
+    ],
+    "units": 65,
+    "text": "var gE=Ge(ie(),(e)=>{for(let r of e.list())e.detach(r.clientId)})"
+   }
+  }
+ ]
+}
