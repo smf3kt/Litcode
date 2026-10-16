@@ -451,6 +451,29 @@ tsc 0, eleven fixtures pass, `git diff --check` clean (one repair: the truncatio
 
 **Next (step 7d):** the last reader-less cluster this wave left behind. `utils/user.ts`'s `getUserForGrowthBook` → `getCoreUserData` → `CoreUserData` chain (all three reader-less now, and `CoreUserData`'s only other mention was the dead half of `metadata.ts`), the `initUser`/`resetUserCache` pair in `main.tsx` that exists to pre-fetch the email those records carried, the `GitHubActionsMetadata` type whose remaining user was this cut's generated file, and three exports 7c orphaned in modules that keep other live exports: `utils/git.ts`'s `getRepoRemoteHash`, `utils/platform.ts`'s `getLinuxDistroInfo` and `detectVcs`.
 
+## Wave D step 7d — the leftovers the analytics removal stranded (landed, `11e5a4c`)
+
+Four files, one shape: modules and call sites whose only purpose was to feed the transports removed in 7a and the record builders removed in 7c. 4 files, +8/−335.
+
+`utils/user.ts` existed to build the analytics user record. `getCoreUserData` assembled it, `getUserForGrowthBook` was its GrowthBook variant, `initUser` pre-fetched the email so the record could stay synchronous, and `resetUserCache` cleared that cache on login/logout. All four, the `CoreUserData` and `GitHubActionsMetadata` types, and the two email helpers behind them had no reader left — 194 lines to 33, leaving the one export with a live caller, `getGitEmail`, which `utils/exampleCommands.ts` calls.
+
+`main.tsx` loses the startup prefetch and the post-login reset that went with it. **Two behaviour changes worth naming because they are real rather than notional:** the tree no longer spawns `git config --get user.email` during startup, and the `if (onboardingShown)` block that ordered the cache reset before a GrowthBook refresh is gone entirely rather than left as a no-op call. The prefetch comment above the skip-list was corrected to stop naming a prefetch that no longer exists.
+
+Three exports that step 7c orphaned, in modules that keep other live exports:
+
+- `getRepoRemoteHash` (`utils/git.ts`) hashed the normalized remote for the analytics `rh` field; `normalizeGitRemoteUrl` was its only caller and `isLocalHost` was the normalizer's only helper, so all three went, taking the `crypto` import with them.
+- `getLinuxDistroInfo` and `detectVcs` (`utils/platform.ts`) filled the environment context, and took the `fs/promises` and `os` imports. `getPlatform`, `getWslVersion` and `SUPPORTED_PLATFORMS` stay.
+
+### One call site is now deliberately caller-less
+
+`refreshGrowthBookAfterAuthChange` had exactly one caller — the block removed here — so its export is now the fourth caller-less export in `growthbook.ts`, alongside the local override trio 7b kept on purpose. It stays for now rather than being deleted in this package, and the reason is mechanical: `w65-d7b-verify` pins the guard-brace count at 6, and deleting this function drops it to 5. Step 7e should take it together with `initializeGrowthBook`'s two remaining warm-up calls (`interactiveHelpers.tsx`, `cli/print.ts`) and move that fixture in the same commit.
+
+### Verification
+
+tsc 0, twelve fixtures pass, `git diff --check` clean, the orphan scan at its ten legitimate entries. Three exports the cut could have orphaned were checked and still have readers: `getRateLimitTier`, `getOrCreateUserID`, `getHostPlatformForAnalytics`.
+
+**Next (step 7e):** the growthbook warm-up surface — `refreshGrowthBookAfterAuthChange`'s caller-less export, `initializeGrowthBook`'s two `void` calls, the `checkGate_CACHED_OR_BLOCKING('tengu_harbor')` call inside `interactiveHelpers.tsx`'s dead `KAIROS` block, and the resulting move of the 7b fixture.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
