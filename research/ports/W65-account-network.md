@@ -265,6 +265,38 @@ The token reader survives with its two local sources and no others — `CLAUDE_C
 
 `tsc --noEmit --pretty false` exits 0; all six owned fixtures pass (the new `w65-d2-verify` compares both ported bodies textually and behaviourally against the recovered source, asserts the module and its UI are absent, and sweeps for eight live-reference patterns); `git diff --check` clean; +81/−2,105. One `*.w54bak` source map quarantined to `.audit/w65-d2-baks/components/` and `cmp`-verified before deletion — `services/oauth/` itself never had one. The `w65-e5-verify` fixture was rebound to its own wave commit (`88545db`) rather than `HEAD`, because a HEAD-relative deletion check stops being true as soon as the next wave lands.
 
+## Wave D step 3 — the BigQuery metrics exporter and the importer-graph scan (landed, `c11b5be`, `41e43e3`, `1bc1bc0`)
+
+Two things landed together, and the second is the more useful one.
+
+**The exporter.** `utils/telemetry/bigqueryExporter.ts` (243 lines) POSTed OpenTelemetry metrics to a claude.ai-hosted endpoint with account auth headers, gated by a predicate that was pure account-plan logic: `is1PApiCustomer() || (isClaudeAISubscriber() && subscription is enterprise|team)`. Deleted, with its only consumer `utils/telemetry/instrumentation.ts` losing the import, `getBigQueryExportingReader`, `isBigQueryMetricsEnabled` and the reader push (9 files, +1/−1,888 with the orphans below). The user-configured OTLP path behind `CLAUDE_CODE_ENABLE_TELEMETRY` stays: that endpoint is the user's, not the account's.
+
+**The scan.** `.audit/w65-orphans.mjs` builds the import graph over all 1,715 source files — resolving relative specifiers, the `src/` alias, the `.js`-spelling-of-`.ts` convention and directory `index` files — and lists files with zero importers. Four earlier waves each rediscovered this category by hand (`services/api/adminRequests.ts`, `components/RemoteEnvironmentDialog.tsx`, `getOrganizationUUID`, `storeOAuthAccountInfo`); this names it in one pass. It found seven:
+
+| Removed | Left behind by |
+| --- | --- |
+| `components/Stats.tsx` (1,166 lines) | Package 1's non-coding slash-command cut |
+| `constants/github-app.ts` | The same cut, via `commands/install-github-app/`, which had already lost its `.tsx` sources |
+| `components/ManagedSettingsSecurityDialog/` (dialog + its `utils.ts`) | Wave A's managed-settings cut |
+| `services/mcp/InProcessTransport.ts` | The in-process MCP branch, which went with the computer-use and chrome clusters |
+| `components/tasks/WorkflowDetailDialog.ts`, `services/skillSearch/prefetch.ts` | Reconstruction-era stubs with nothing pointing at them |
+
+**The useful property is that the scan is run again after a deletion, not just before it.** Re-running it named two further orphans that only the `Stats.tsx` deletion created — `utils/heatmap.ts` and `utils/screenshotClipboard.ts`, its two private helpers — which a name grep cannot find and a single pre-cut pass would have missed. That follow-on is `41e43e3` (−321).
+
+**And again after that.** Re-running it a third time named `utils/ansiToPng.ts`, which nothing but `screenshotClipboard.ts` had ever imported; reading `ansiToPng` then showed its `parseAnsi` import as `ansiToSvg`'s only edge. So the chain is four levels deep:
+
+```
+components/Stats.tsx -> utils/screenshotClipboard.ts -> utils/ansiToPng.ts -> utils/ansiToSvg.ts
+```
+
+`1bc1bc0` removes the last two (−606). Each level was found by the scan that ran after the level above it was gone, and none of the three could have been found by grepping for names: once the head of the chain is deleted, no surviving file names anything behind it. This is the same lesson as the brace-depth counter from wave E step 4 and the `onOpenRateLimitOptions` chain from wave C, sharpened — the removal's own aftermath is not one reconnaissance step but a sequence of them, and it terminates only when a scan comes back with nothing but known-legitimate entries.
+
+### Verification
+
+`tsc --noEmit --pretty false` exits 0 after all three commits; all six owned fixtures pass; `git diff --check` clean; 13 files, +1/−2,815. No `*.w*bak` existed for any removed file except `ManagedSettingsSecurityDialog.tsx`, copied to `.audit/w65-d3-baks/` and byte-compared first; the ANSI pair was checked for sibling baks with a directory glob before removal (the `find <file> -name '*.w*bak'` form finds nothing, since a sibling bak is named `<file>.w54bak`).
+
+The zero-importer list is down from 12 to 10 entries, and all ten are legitimate: the `entrypoints/cli.tsx` entry point, six ambient `*.d.ts` declarations (`types/vendor.d.ts`, `types/lodash-es.d.ts`, `types/assets.d.ts`, `types/globals.d.ts`, `types/react-compiler-runtime.d.ts`, `ink/global.d.ts`), `shims/bun-bundle.ts`, `utils/withResolvers.ts`, and `native-ts/color-diff/index.ts`, which the native-module loader resolves by path rather than by import. That list is what "the cascade has terminated" looks like: every remaining entry has a reason it is on it, so the scan is now a no-op and further passes would find nothing.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
