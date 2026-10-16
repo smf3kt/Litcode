@@ -474,6 +474,24 @@ tsc 0, twelve fixtures pass, `git diff --check` clean, the orphan scan at its te
 
 **Next (step 7e):** the growthbook warm-up surface — `refreshGrowthBookAfterAuthChange`'s caller-less export, `initializeGrowthBook`'s two `void` calls, the `checkGate_CACHED_OR_BLOCKING('tengu_harbor')` call inside `interactiveHelpers.tsx`'s dead `KAIROS` block, and the resulting move of the 7b fixture.
 
+## Wave D step 7e — the GrowthBook warm-up surface (landed, `0e225a4`)
+
+Three exports and two call sites existed only to warm up, reset and refresh a client that cannot be constructed. Each had already lost every local effect: `initializeGrowthBook`'s body was `return null` (step 7b collapsed it to the source's own disabled-switch arm), `resetGrowthBook`'s only remaining work was clearing the memoized parse of `CLAUDE_INTERNAL_FC_OVERRIDES` that nothing re-read, and `refreshGrowthBookAfterAuthChange` emitted a refresh no write could have changed. Step 7d removed the last caller of the third and deliberately left the export so this step could take it together with the fixture it moves. 3 files, +12/−63. **Behaviour change: none** — every removed export was a no-op under the false switch.
+
+Both call sites were warm-ups: `interactiveHelpers.tsx`'s after-trust block and `print.ts`'s headless entry. The trust block keeps `setSessionTrustAccepted(true)` and the `getSystemContext` prefetch; `print.ts` keeps both profiler calls that surrounded it. Two comments went with them: the header note about `resetGrowthBook` not clearing the listener set, and the trust-block comment that awaited "the same memoized `initializeGrowthBook` promise fired earlier".
+
+### What was deliberately not taken
+
+`checkGate_CACHED_OR_BLOCKING` keeps its export because it keeps a caller — inside `interactiveHelpers.tsx`'s `KAIROS_CHANNELS` dev-channels block. That block is dead by constant folding, but removing it is a package of its own rather than a tail of this one: **54 files read `KAIROS` or `KAIROS_CHANNELS`, 124 times between them.** The two cannot be separated without straddling a package boundary, so the gate function waits for that package (step 7f).
+
+With the `type GrowthBook` import gone, `@growthbook/growthbook` now has **zero importers** in the tree. It is not removed from `package.json` here: the lockfile is generated, and hand-editing one package out of it is a worse risk than carrying the entry until a dependency-pruning pass does the whole set. That pass is named in the remaining-waves list below.
+
+### Verification
+
+The 7b fixture's guard-brace count moved from 6 to 5 in this commit, exactly as step 7d's record predicted it would have to — the third amendment to a per-step fixture this wave, and the reason the note was written where the next package would read it rather than only in this section. tsc 0, thirteen fixtures pass, `git diff --check` clean, the orphan scan unchanged at its ten legitimate entries.
+
+**Next (step 7f):** the `KAIROS` / `KAIROS_CHANNELS` cluster — 54 files, 124 flag reads, including `interactiveHelpers`' dev-channels dialog block and, with it, `checkGate_CACHED_OR_BLOCKING` and its import.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.

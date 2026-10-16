@@ -87,9 +87,10 @@ assert.equal((now.match(/const configOverrides = getConfigOverrides\(\)/g) ?? []
 // (strict is off, so tsc accepts falling off the end). Two generic reads return
 // defaultValue twice each; the three boolean gates return false.
 assert.equal((now.match(/return defaultValue/g) ?? []).length, 4)
-// Five reads plus refreshGrowthBookAfterAuthChange, whose source body was
-// guarded by the same line and is now nothing else.
-assert.equal((now.match(/if \(!isGrowthBookEnabled\(\)\) \{/g) ?? []).length, 6)
+// Five reads. Step 7e removed refreshGrowthBookAfterAuthChange, which was the
+// sixth guard in this file and had no local effect left, so the count moved
+// from 6 to 5 in that step.
+assert.equal((now.match(/if \(!isGrowthBookEnabled\(\)\) \{/g) ?? []).length, 5)
 // The switch itself, then two per boolean gate for Statsig and security and one
 // for the blocking gate.
 assert.equal((now.match(/return false/g) ?? []).length, 6)
