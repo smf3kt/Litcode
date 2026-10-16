@@ -220,7 +220,7 @@
  },
  "results": [
   {
-   "target": "/tmp/cc-2188-src/tools/WorkflowTool/createWorkflowCommand.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/WorkflowTool/createWorkflowCommand.ts",
    "relative": "tools/WorkflowTool/createWorkflowCommand.ts",
    "specifier": "./tools/WorkflowTool/createWorkflowCommand.js",
    "names": [
@@ -250,7 +250,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/SendUserFileTool/prompt.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/SendUserFileTool/prompt.ts",
    "relative": "tools/SendUserFileTool/prompt.ts",
    "specifier": "../tools/SendUserFileTool/prompt.js",
    "names": [
@@ -282,7 +282,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/WorkflowTool/WorkflowTool.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/WorkflowTool/WorkflowTool.ts",
    "relative": "tools/WorkflowTool/WorkflowTool.ts",
    "specifier": "../../tools/WorkflowTool/WorkflowTool.js",
    "names": [
@@ -312,7 +312,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/MonitorTool/MonitorTool.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/MonitorTool/MonitorTool.ts",
    "relative": "tools/MonitorTool/MonitorTool.ts",
    "specifier": "../../tools/MonitorTool/MonitorTool.js",
    "names": [
@@ -342,7 +342,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/tasks/WorkflowDetailDialog.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/tasks/WorkflowDetailDialog.ts",
    "relative": "components/tasks/WorkflowDetailDialog.ts",
    "specifier": "./WorkflowDetailDialog.js",
    "names": [
@@ -372,7 +372,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/skillSearch/prefetch.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/skillSearch/prefetch.ts",
    "relative": "services/skillSearch/prefetch.ts",
    "specifier": "./services/skillSearch/prefetch.js",
    "names": [
@@ -424,7 +424,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/jobs/classifier.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/jobs/classifier.ts",
    "relative": "jobs/classifier.ts",
    "specifier": "./jobs/classifier.js",
    "names": [
@@ -476,7 +476,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/skills/mcpSkills.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/skills/mcpSkills.ts",
    "relative": "skills/mcpSkills.ts",
    "specifier": "../../skills/mcpSkills.js",
    "names": [
@@ -521,7 +521,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/proactive/index.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/proactive/index.ts",
    "relative": "proactive/index.ts",
    "specifier": "../proactive/index.js",
    "names": [
@@ -567,7 +567,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/agents/SnapshotUpdateDialog.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/agents/SnapshotUpdateDialog.ts",
    "relative": "components/agents/SnapshotUpdateDialog.ts",
    "specifier": "./components/agents/SnapshotUpdateDialog.js",
    "names": [
@@ -602,7 +602,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/commands/assistant/assistant.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/commands/assistant/assistant.ts",
    "relative": "commands/assistant/assistant.ts",
    "specifier": "./commands/assistant/assistant.js",
    "names": [
@@ -636,7 +636,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/daemon/main.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/daemon/main.ts",
    "relative": "daemon/main.ts",
    "specifier": "../daemon/main.js",
    "names": [],
@@ -657,7 +657,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/self-hosted-runner/main.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/self-hosted-runner/main.ts",
    "relative": "self-hosted-runner/main.ts",
    "specifier": "../self-hosted-runner/main.js",
    "names": [],
@@ -678,7 +678,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/assistant/gate.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/assistant/gate.ts",
    "relative": "assistant/gate.ts",
    "specifier": "./assistant/gate.js",
    "names": [],
@@ -699,7 +699,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/server/server.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/server/server.ts",
    "relative": "server/server.ts",
    "specifier": "./server/server.js",
    "names": [],
@@ -720,7 +720,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/server/lockfile.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/server/lockfile.ts",
    "relative": "server/lockfile.ts",
    "specifier": "./server/lockfile.js",
    "names": [],
@@ -741,7 +741,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/compact/snipCompact.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/compact/snipCompact.ts",
    "relative": "services/compact/snipCompact.ts",
    "specifier": "./services/compact/snipCompact.js",
    "names": [
@@ -772,7 +772,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/compact/snipProjection.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/compact/snipProjection.ts",
    "relative": "services/compact/snipProjection.ts",
    "specifier": "./services/compact/snipProjection.js",
    "names": [],
@@ -795,7 +795,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/assistant/index.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/assistant/index.ts",
    "relative": "assistant/index.ts",
    "specifier": "../assistant/index.js",
    "names": [],
@@ -819,7 +819,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/commands/workflows/index.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/commands/workflows/index.ts",
    "relative": "commands/workflows/index.ts",
    "specifier": "./commands/workflows/index.js",
    "names": [
@@ -853,7 +853,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/commands/peers/index.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/commands/peers/index.ts",
    "relative": "commands/peers/index.ts",
    "specifier": "./commands/peers/index.js",
    "names": [
@@ -887,7 +887,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/commands/fork/index.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/commands/fork/index.ts",
    "relative": "commands/fork/index.ts",
    "specifier": "./commands/fork/index.js",
    "names": [
@@ -921,7 +921,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/compact/reactiveCompact.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/compact/reactiveCompact.ts",
    "relative": "services/compact/reactiveCompact.ts",
    "specifier": "../../services/compact/reactiveCompact.js",
    "names": [
@@ -952,7 +952,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/contextCollapse/operations.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/contextCollapse/operations.ts",
    "relative": "services/contextCollapse/operations.ts",
    "specifier": "../../services/contextCollapse/operations.js",
    "names": [
@@ -992,7 +992,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/messages/SnipBoundaryMessage.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/messages/SnipBoundaryMessage.ts",
    "relative": "components/messages/SnipBoundaryMessage.ts",
    "specifier": "./messages/SnipBoundaryMessage.js",
    "names": [],
@@ -1013,7 +1013,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/compact/cachedMCConfig.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/compact/cachedMCConfig.ts",
    "relative": "services/compact/cachedMCConfig.ts",
    "specifier": "../services/compact/cachedMCConfig.js",
    "names": [
@@ -1043,7 +1043,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/DiscoverSkillsTool/prompt.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/DiscoverSkillsTool/prompt.ts",
    "relative": "tools/DiscoverSkillsTool/prompt.ts",
    "specifier": "../tools/DiscoverSkillsTool/prompt.js",
    "names": [
@@ -1070,7 +1070,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/assistant/AssistantSessionChooser.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/assistant/AssistantSessionChooser.ts",
    "relative": "assistant/AssistantSessionChooser.ts",
    "specifier": "./assistant/AssistantSessionChooser.js",
    "names": [
@@ -1104,7 +1104,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/daemon/workerRegistry.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/daemon/workerRegistry.ts",
    "relative": "daemon/workerRegistry.ts",
    "specifier": "../daemon/workerRegistry.js",
    "names": [],
@@ -1125,7 +1125,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/cli/handlers/templateJobs.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/cli/handlers/templateJobs.ts",
    "relative": "cli/handlers/templateJobs.ts",
    "specifier": "../cli/handlers/templateJobs.js",
    "names": [],
@@ -1146,7 +1146,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/environment-runner/main.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/environment-runner/main.ts",
    "relative": "environment-runner/main.ts",
    "specifier": "../environment-runner/main.js",
    "names": [
@@ -1173,7 +1173,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/bridge/webhookSanitizer.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/bridge/webhookSanitizer.ts",
    "relative": "bridge/webhookSanitizer.ts",
    "specifier": "../bridge/webhookSanitizer.js",
    "names": [],
@@ -1194,7 +1194,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/server/parseConnectUrl.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/server/parseConnectUrl.ts",
    "relative": "server/parseConnectUrl.ts",
    "specifier": "./server/parseConnectUrl.js",
    "names": [],
@@ -1215,7 +1215,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/server/sessionManager.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/server/sessionManager.ts",
    "relative": "server/sessionManager.ts",
    "specifier": "./server/sessionManager.js",
    "names": [],
@@ -1236,7 +1236,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/server/backends/dangerousBackend.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/server/backends/dangerousBackend.ts",
    "relative": "server/backends/dangerousBackend.ts",
    "specifier": "./server/backends/dangerousBackend.js",
    "names": [],
@@ -1257,7 +1257,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/server/serverBanner.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/server/serverBanner.ts",
    "relative": "server/serverBanner.ts",
    "specifier": "./server/serverBanner.js",
    "names": [],
@@ -1278,7 +1278,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/server/serverLog.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/server/serverLog.ts",
    "relative": "server/serverLog.ts",
    "specifier": "./server/serverLog.js",
    "names": [],
@@ -1299,7 +1299,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/server/connectHeadless.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/server/connectHeadless.ts",
    "relative": "server/connectHeadless.ts",
    "specifier": "./server/connectHeadless.js",
    "names": [],
@@ -1320,7 +1320,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/src/cli/rollback.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/src/cli/rollback.ts",
    "relative": "src/cli/rollback.ts",
    "specifier": "src/cli/rollback.js",
    "names": [
@@ -1347,7 +1347,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/cli/handlers/ant.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/cli/handlers/ant.ts",
    "relative": "cli/handlers/ant.ts",
    "specifier": "./cli/handlers/ant.js",
    "names": [
@@ -1374,7 +1374,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/FeedbackSurvey/useFrustrationDetection.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/FeedbackSurvey/useFrustrationDetection.ts",
    "relative": "components/FeedbackSurvey/useFrustrationDetection.ts",
    "specifier": "../components/FeedbackSurvey/useFrustrationDetection.js",
    "names": [
@@ -1401,7 +1401,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/hooks/notifs/useAntOrgWarningNotification.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/hooks/notifs/useAntOrgWarningNotification.ts",
    "relative": "hooks/notifs/useAntOrgWarningNotification.ts",
    "specifier": "../hooks/notifs/useAntOrgWarningNotification.js",
    "names": [
@@ -1428,7 +1428,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/contextCollapse/persist.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/contextCollapse/persist.ts",
    "relative": "services/contextCollapse/persist.ts",
    "specifier": "../services/contextCollapse/persist.js",
    "names": [
@@ -1456,7 +1456,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/compact/cachedMicrocompact.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/compact/cachedMicrocompact.ts",
    "relative": "services/compact/cachedMicrocompact.ts",
    "specifier": "../compact/cachedMicrocompact.js",
    "names": [],
@@ -1478,7 +1478,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/coordinator/workerAgent.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/coordinator/workerAgent.ts",
    "relative": "coordinator/workerAgent.ts",
    "specifier": "../../coordinator/workerAgent.js",
    "names": [],
@@ -1499,7 +1499,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/bridge/peerSessions.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/bridge/peerSessions.ts",
    "relative": "bridge/peerSessions.ts",
    "specifier": "../../bridge/peerSessions.js",
    "names": [],
@@ -1520,7 +1520,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/skillSearch/telemetry.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/skillSearch/telemetry.ts",
    "relative": "services/skillSearch/telemetry.ts",
    "specifier": "../../services/skillSearch/telemetry.js",
    "names": [],
@@ -1541,7 +1541,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/SnipTool/prompt.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/SnipTool/prompt.ts",
    "relative": "tools/SnipTool/prompt.ts",
    "specifier": "../tools/SnipTool/prompt.js",
    "names": [
@@ -1580,7 +1580,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/TerminalCaptureTool/prompt.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/TerminalCaptureTool/prompt.ts",
    "relative": "tools/TerminalCaptureTool/prompt.ts",
    "specifier": "../../tools/TerminalCaptureTool/prompt.js",
    "names": [
@@ -1610,7 +1610,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/VerifyPlanExecutionTool/constants.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/VerifyPlanExecutionTool/constants.ts",
    "relative": "tools/VerifyPlanExecutionTool/constants.ts",
    "specifier": "../../tools/VerifyPlanExecutionTool/constants.js",
    "names": [
@@ -1637,7 +1637,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/skillSearch/localSearch.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/skillSearch/localSearch.ts",
    "relative": "services/skillSearch/localSearch.ts",
    "specifier": "./services/skillSearch/localSearch.js",
    "names": [
@@ -1665,7 +1665,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/commands/buddy/index.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/commands/buddy/index.ts",
    "relative": "commands/buddy/index.ts",
    "specifier": "./commands/buddy/index.js",
    "names": [
@@ -1697,7 +1697,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/attributionHooks.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/attributionHooks.ts",
    "relative": "utils/attributionHooks.ts",
    "specifier": "../../utils/attributionHooks.js",
    "names": [
@@ -1726,7 +1726,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/contextCollapse/index.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/contextCollapse/index.ts",
    "relative": "services/contextCollapse/index.ts",
    "specifier": "../../services/contextCollapse/index.js",
    "names": [],
@@ -1755,7 +1755,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/systemThemeWatcher.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/systemThemeWatcher.ts",
    "relative": "utils/systemThemeWatcher.ts",
    "specifier": "../../utils/systemThemeWatcher.js",
    "names": [
@@ -1782,7 +1782,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/messages/UserGitHubWebhookMessage.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/messages/UserGitHubWebhookMessage.ts",
    "relative": "components/messages/UserGitHubWebhookMessage.ts",
    "specifier": "./UserGitHubWebhookMessage.js",
    "names": [],
@@ -1803,7 +1803,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/messages/UserForkBoilerplateMessage.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/messages/UserForkBoilerplateMessage.ts",
    "relative": "components/messages/UserForkBoilerplateMessage.ts",
    "specifier": "./UserForkBoilerplateMessage.js",
    "names": [],
@@ -1824,7 +1824,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/messages/UserCrossSessionMessage.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/messages/UserCrossSessionMessage.ts",
    "relative": "components/messages/UserCrossSessionMessage.ts",
    "specifier": "./UserCrossSessionMessage.js",
    "names": [],
@@ -1845,7 +1845,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/ReviewArtifactTool/ReviewArtifactTool.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/ReviewArtifactTool/ReviewArtifactTool.ts",
    "relative": "tools/ReviewArtifactTool/ReviewArtifactTool.ts",
    "specifier": "../../tools/ReviewArtifactTool/ReviewArtifactTool.js",
    "names": [
@@ -1875,7 +1875,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/permissions/ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/permissions/ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.ts",
    "relative": "components/permissions/ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.ts",
    "specifier": "./ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.js",
    "names": [
@@ -1905,7 +1905,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/WorkflowTool/WorkflowPermissionRequest.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/WorkflowTool/WorkflowPermissionRequest.ts",
    "relative": "tools/WorkflowTool/WorkflowPermissionRequest.ts",
    "specifier": "../../tools/WorkflowTool/WorkflowPermissionRequest.js",
    "names": [
@@ -1932,7 +1932,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/permissions/MonitorPermissionRequest/MonitorPermissionRequest.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/permissions/MonitorPermissionRequest/MonitorPermissionRequest.ts",
    "relative": "components/permissions/MonitorPermissionRequest/MonitorPermissionRequest.ts",
    "specifier": "./MonitorPermissionRequest/MonitorPermissionRequest.js",
    "names": [
@@ -1959,7 +1959,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/components/tasks/MonitorMcpDetailDialog.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/components/tasks/MonitorMcpDetailDialog.ts",
    "relative": "components/tasks/MonitorMcpDetailDialog.ts",
    "specifier": "./MonitorMcpDetailDialog.js",
    "names": [
@@ -1986,7 +1986,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/skillSearch/featureCheck.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/skillSearch/featureCheck.ts",
    "relative": "services/skillSearch/featureCheck.ts",
    "specifier": "../services/skillSearch/featureCheck.js",
    "names": [],
@@ -2009,7 +2009,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/entrypoints/sdk/settingsTypes.generated.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/entrypoints/sdk/settingsTypes.generated.ts",
    "relative": "entrypoints/sdk/settingsTypes.generated.ts",
    "specifier": "./sdk/settingsTypes.generated.js",
    "names": [
@@ -2036,7 +2036,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/entrypoints/sdk/toolTypes.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/entrypoints/sdk/toolTypes.ts",
    "relative": "entrypoints/sdk/toolTypes.ts",
    "specifier": "./sdk/toolTypes.js",
    "names": [],
@@ -2057,7 +2057,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/cli/bg.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/cli/bg.ts",
    "relative": "cli/bg.ts",
    "specifier": "../cli/bg.js",
    "names": [],
@@ -2078,7 +2078,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/entrypoints/sdk/coreTypes.generated.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/entrypoints/sdk/coreTypes.generated.ts",
    "relative": "entrypoints/sdk/coreTypes.generated.ts",
    "specifier": "./coreTypes.generated.js",
    "names": [],
@@ -2099,7 +2099,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/ink/devtools.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/ink/devtools.ts",
    "relative": "ink/devtools.ts",
    "specifier": "./devtools.js",
    "names": [
@@ -2126,7 +2126,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/eventLoopStallDetector.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/eventLoopStallDetector.ts",
    "relative": "utils/eventLoopStallDetector.ts",
    "specifier": "./utils/eventLoopStallDetector.js",
    "names": [
@@ -2153,7 +2153,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/sdkHeapDumpMonitor.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/sdkHeapDumpMonitor.ts",
    "relative": "utils/sdkHeapDumpMonitor.ts",
    "specifier": "./utils/sdkHeapDumpMonitor.js",
    "names": [
@@ -2180,7 +2180,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/sessionDataUploader.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/sessionDataUploader.ts",
    "relative": "utils/sessionDataUploader.ts",
    "specifier": "./utils/sessionDataUploader.js",
    "names": [],
@@ -2201,7 +2201,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/ccshareResume.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/ccshareResume.ts",
    "relative": "utils/ccshareResume.ts",
    "specifier": "./utils/ccshareResume.js",
    "names": [],
@@ -2222,7 +2222,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/src/cli/up.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/src/cli/up.ts",
    "relative": "src/cli/up.ts",
    "specifier": "src/cli/up.js",
    "names": [
@@ -2249,7 +2249,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/memdir/memoryShapeTelemetry.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/memdir/memoryShapeTelemetry.ts",
    "relative": "memdir/memoryShapeTelemetry.ts",
    "specifier": "./memoryShapeTelemetry.js",
    "names": [],
@@ -2271,7 +2271,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/taskSummary.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/taskSummary.ts",
    "relative": "utils/taskSummary.ts",
    "specifier": "./utils/taskSummary.js",
    "names": [
@@ -2298,7 +2298,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/WebBrowserTool/WebBrowserPanel.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/WebBrowserTool/WebBrowserPanel.ts",
    "relative": "tools/WebBrowserTool/WebBrowserPanel.ts",
    "specifier": "../tools/WebBrowserTool/WebBrowserPanel.js",
    "names": [
@@ -2325,7 +2325,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/sessionTranscript/sessionTranscript.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/sessionTranscript/sessionTranscript.ts",
    "relative": "services/sessionTranscript/sessionTranscript.ts",
    "specifier": "../sessionTranscript/sessionTranscript.js",
    "names": [
@@ -2358,7 +2358,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/udsMessaging.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/udsMessaging.ts",
    "relative": "utils/udsMessaging.ts",
    "specifier": "./utils/udsMessaging.js",
    "names": [],
@@ -2379,7 +2379,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/udsClient.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/udsClient.ts",
    "relative": "utils/udsClient.ts",
    "specifier": "../../utils/udsClient.js",
    "names": [],
@@ -2401,7 +2401,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/skillSearch/remoteSkillState.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/skillSearch/remoteSkillState.ts",
    "relative": "services/skillSearch/remoteSkillState.ts",
    "specifier": "../../services/skillSearch/remoteSkillState.js",
    "names": [],
@@ -2422,7 +2422,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/services/skillSearch/remoteSkillLoader.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/services/skillSearch/remoteSkillLoader.ts",
    "relative": "services/skillSearch/remoteSkillLoader.ts",
    "specifier": "../../services/skillSearch/remoteSkillLoader.js",
    "names": [],
@@ -2443,7 +2443,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/attributionTrailer.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/attributionTrailer.ts",
    "relative": "utils/attributionTrailer.ts",
    "specifier": "./attributionTrailer.js",
    "names": [],
@@ -2464,7 +2464,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/protectedNamespace.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/protectedNamespace.ts",
    "relative": "utils/protectedNamespace.ts",
    "specifier": "./protectedNamespace.js",
    "names": [
@@ -2501,7 +2501,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/tools/OverflowTestTool/OverflowTestTool.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/tools/OverflowTestTool/OverflowTestTool.ts",
    "relative": "tools/OverflowTestTool/OverflowTestTool.ts",
    "specifier": "../../tools/OverflowTestTool/OverflowTestTool.js",
    "names": [
@@ -2528,7 +2528,7 @@
    }
   },
   {
-   "target": "/tmp/cc-2188-src/utils/postCommitAttribution.ts",
+   "target": "/Users/mant1ssa/Projects/cc-base-2188/utils/postCommitAttribution.ts",
    "relative": "utils/postCommitAttribution.ts",
    "specifier": "./postCommitAttribution.js",
    "names": [

@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const HARNESS = '/tmp/cc-2188-src';
+const HARNESS = '/Users/mant1ssa/Projects/cc-base-2188';
 const APPLY = process.argv.includes('--apply');
 
 // [file, from, to] — inclusive line ranges, verified by reading each boundary.
