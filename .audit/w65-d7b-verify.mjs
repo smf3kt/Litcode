@@ -77,9 +77,10 @@ const reads = [
   "getFeatureValue_CACHED_MAY_BE_STALE",
   "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
   "checkSecurityRestrictionGate",
-  "checkGate_CACHED_OR_BLOCKING",
 ]
-// Five reads plus hasGrowthBookEnvOverride, which reads the env channel on its own.
+// Four reads plus hasGrowthBookEnvOverride, which reads the env channel on its own.
+// Step 7f removed checkGate_CACHED_OR_BLOCKING (the blocking gate) with the
+// channels warm-up that was its only caller, so both counts dropped by one.
 assert.equal((now.match(/const overrides = getEnvOverrides\(\)/g) ?? []).length, reads.length + 1)
 assert.equal((now.match(/const configOverrides = getConfigOverrides\(\)/g) ?? []).length, reads.length)
 
@@ -87,13 +88,13 @@ assert.equal((now.match(/const configOverrides = getConfigOverrides\(\)/g) ?? []
 // (strict is off, so tsc accepts falling off the end). Two generic reads return
 // defaultValue twice each; the three boolean gates return false.
 assert.equal((now.match(/return defaultValue/g) ?? []).length, 4)
-// Five reads. Step 7e removed refreshGrowthBookAfterAuthChange, which was the
-// sixth guard in this file and had no local effect left, so the count moved
-// from 6 to 5 in that step.
-assert.equal((now.match(/if \(!isGrowthBookEnabled\(\)\) \{/g) ?? []).length, 5)
-// The switch itself, then two per boolean gate for Statsig and security and one
-// for the blocking gate.
-assert.equal((now.match(/return false/g) ?? []).length, 6)
+// Four reads. Step 7e removed refreshGrowthBookAfterAuthChange (the sixth
+// guard, no local effect left) and step 7f removed checkGate_CACHED_OR_BLOCKING
+// (the blocking gate, whose only caller was the channels warm-up), so the count
+// moved 6 → 5 → 4.
+assert.equal((now.match(/if \(!isGrowthBookEnabled\(\)\) \{/g) ?? []).length, 4)
+// The switch itself, then two per boolean gate for Statsig and security.
+assert.equal((now.match(/return false/g) ?? []).length, 5)
 
 // The surviving bodies are the source's, word for word.
 const surviving = [

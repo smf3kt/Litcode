@@ -6,14 +6,14 @@
       "file": "services/analytics/growthbook.ts",
       "change": "initializeGrowthBook (a null-returning warm-up), resetGrowthBook (cleared a memo of an env-var parse nothing re-read) and refreshGrowthBookAfterAuthChange (emitted a refresh no write could have changed) removed, with the growthbook type import",
       "sourceSha256": "b3f7cc5a6f92a9b61ce4a4eba271d963a905cba968e70b4844cc72ef3fb4f07e",
-      "portSha256": "1dccc82eb7617366283293c930ac98851a9835044ce74fc2a53cf5969ea4a107",
+      "portSha256": "031c12ac9f98e222dc71feb1626be73cf7df8c0d9fe4fb8208c1774c6f5ecb5c",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "interactiveHelpers.tsx",
       "change": "the two warm-up calls removed from the after-trust block, which keeps setSessionTrustAccepted and the getSystemContext prefetch; the KAIROS_CHANNELS dev-channels block kept, so checkGate_CACHED_OR_BLOCKING keeps its one caller",
       "sourceSha256": "84f06f3ec647b9377091993974ce79e1cd31de5bdf9e4211a29da031d3a1a35a",
-      "portSha256": "81c4210c6d569d1995a99e94c8d9afe36bc0499dff03dd3e9067cc6703de7edd",
+      "portSha256": "e47b62540dbe6998e37653c8da7acf0bc5ded5cf0ad02381d4179584d328bb7d",
       "coordinateUnit": "utf16-half-open"
     }
   ],

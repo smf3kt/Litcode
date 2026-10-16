@@ -1,0 +1,48 @@
+{
+  "before": "0e225a4",
+  "kind": "account/network cluster removal (no ported bodies)",
+  "surface": "channel notifications — an MCP server pushing inbound user messages into the conversation; gated on claude.ai OAuth plus a GrowthBook ledger plus managed-org policy",
+  "evidence": [
+    {
+      "file": "services/mcp/channelNotification.ts",
+      "change": "deleted; its gate order (capability → tengu_harbor → OAuth → org policy → session --channels → marketplace → allowlist) needed four remote inputs",
+      "sourceSha256": "64c091a8fc5f52749e57fd1791fea73a0d7b0f471f05b61c74183b90b4a81805",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/mcp/channelPermissions.ts",
+      "change": "deleted; the permission relay raced a remote yes/no against the local dialog",
+      "sourceSha256": "5fbef5c227d726418c59088fb80d870b957017f256901b66f640990997c745ac",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "cli/print.ts",
+      "change": "handleChannelEnable and reregisterChannelHandlerAfterReconnect deleted (each was `if (!(feature('KAIROS') || feature('KAIROS_CHANNELS'))) return`, so the source's fallback was the early return); the `capabilities` field survives at the value a filtered-out server produced",
+      "sourceSha256": "b75ca8968ab1f5c18988e077c48e40a488fc8bfa7a880def11590da57f1bd590",
+      "portSha256": "61f3b93bbc0a93ed7f9987744632e620cfc625a70b8ad87968516b317ee63235",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "hooks/toolPermission/handlers/interactiveHandler.ts",
+      "change": "the relay block deleted; the six win paths lost their pending-channel cleanup with it",
+      "sourceSha256": "1bafe77156c6881b430660296bcbcaf4ee3e21ed77c6c0e57381eb8cf6e82465",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "6 modules: services/mcp/channelAllowlist.ts (76), channelNotification.ts (316), channelPermissions.ts (233), components/messages/UserChannelMessage.tsx (52), components/LogoV2/ChannelsNotice.tsx (208), components/DevChannelsDialog.tsx (66)",
+    "state: bootstrap/state.ts ChannelEntry + allowedChannels/hasDevChannels + their four accessors; AppStateStore's channelPermissionCallbacks",
+    "growthbook.ts checkGate_CACHED_OR_BLOCKING — its only caller was the channels warm-up in showSetupScreens",
+    "hosts: main.tsx (the --channels/--dangerously-load-development-channels options, the parse-and-set block, the telemetry), cli/print.ts (the channel_enable control request, both handlers, the capabilities pre-filter), useManageMCPConnections (the gate, the notification handlers, the blocked toast, the permission callbacks), interactiveHelpers (the dev-channels confirmation), useCanUseTool's channelCallbacks arm, the queue/transcript visibility branches, the three plan tools' isEnabled arms, UserTextMessage's <channel> render branch, LogoV2's conditional require, the two channel constants, the four settings keys"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweeps for the flag, all six module paths and every symbol the surface owned; the surviving fallback shapes asserted textually (three isEnabled bodies, the print capabilities field, the queue predicate); import-graph orphan scan shows no new orphan; tsc log empty",
+  "remaining": "the KAIROS assistant-mode cluster proper (KAIROS/KAIROS_BRIEF/PROACTIVE: the --assistant option, memdir's daily log, SendUserFileTool, SubscribePRTool, the brief-mode UI), the model-call seams (services/api/client, claude, errors, withRetry, utils/http.ts, utils/betas.ts), utils/fastMode.ts, the replBridge* AppState leftovers, the session-ingress bearer surface, cli/transports/, the ~33 in-place CLI blocks, and the dependency-pruning pass for @growthbook/growthbook",
+  "note": "entrypoints/sdk/controlSchemas.ts still lists `channel_enable` in its reconstructed SDKControlRequestInnerSchema union; it is a reconstructed protocol description, and narrowing it belongs with the cli/transports SDK wave rather than here"
+}
