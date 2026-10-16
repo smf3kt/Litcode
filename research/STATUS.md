@@ -1713,3 +1713,7 @@ W45-20: the module-to-host call path (the `ui.*`/`env.*`/`state.*` value events'
 ## W63 phase-2 package 3: Claude-in-Chrome cluster stripped
 
 13 files deleted (2,167 lines), 14 host cuts (+14/-3,211); tsc exits 0; four fixtures pass. utils/computerUse kept as its own cluster. Five quarantined source maps byte-verified. Independent review not run (rate-limited). [W63 record](ports/W63-phase2-chrome.md).
+
+## W64 phase-2 package 4: Computer Use cluster stripped
+
+17 files deleted (2,679 lines), 9 host cuts plus the @ant/* vendor block (+5/-2,895); tsc exits 0; four fixtures pass. Three quarantined source maps byte-verified. Independent review not run (rate-limited). [W64 record](ports/W64-phase2-computeruse.md).
