@@ -1,0 +1,28 @@
+{
+  "before": "5b50aac",
+  "kind": "dead-flag cluster removal (no ported bodies)",
+  "evidence": [
+    {
+      "file": "components/TextInput.tsx",
+      "change": "the voice-waveform cursor branch removed, leaving the source's own two-arm invert; the animation ref keeps the external-build value [() => {}, 0] destructured",
+      "sourceSha256": "4db487846e081a21b7106b1bc6f4c98ef7e8d49823e450b627c67a481c7546c5",
+      "portSha256": "078e8cbb5cac589fd5957cef15a9976813b2e4a1f0c6f9888041e44979a80fe0",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "voice/ (1 file), services/voiceStreamSTT.ts (544 lines), services/voice.ts (525), services/voiceKeyterms.ts (106)",
+    "hooks/useVoice.ts (1,144), hooks/useVoiceEnabled.ts, hooks/useVoiceIntegration.tsx, context/voice.tsx",
+    "components/PromptInput/VoiceIndicator.tsx, components/LogoV2/VoiceModeNotice.tsx",
+    "11 hosts: the AppState provider passthrough, the push-to-talk binding and its validator branch, both setting registries, the ConfigTool pre-flight and kill-switch checks, the REPL mounts, the Notifications indicator, the footer warmup/hold hints, TextInput's waveform, and four voice config counters"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweeps for the flag, the module paths and the removed symbols; the surviving external-build shapes asserted textually; tsc log empty",
+  "remaining": "the model-call seams (services/api/client, claude, errors, withRetry, utils/http.ts, utils/betas.ts), utils/fastMode.ts, the subscription predicates, the replBridge* AppState leftovers, the session-ingress bearer surface, cli/transports/, in-place CLI blocks, the analytics decision"
+}
