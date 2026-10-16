@@ -1,0 +1,32 @@
+{
+  "before": "11e5a4c",
+  "kind": "warm-up surface removal; no ported bodies",
+  "evidence": [
+    {
+      "file": "services/analytics/growthbook.ts",
+      "change": "initializeGrowthBook (a null-returning warm-up), resetGrowthBook (cleared a memo of an env-var parse nothing re-read) and refreshGrowthBookAfterAuthChange (emitted a refresh no write could have changed) removed, with the growthbook type import",
+      "sourceSha256": "b3f7cc5a6f92a9b61ce4a4eba271d963a905cba968e70b4844cc72ef3fb4f07e",
+      "portSha256": "1dccc82eb7617366283293c930ac98851a9835044ce74fc2a53cf5969ea4a107",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "interactiveHelpers.tsx",
+      "change": "the two warm-up calls removed from the after-trust block, which keeps setSessionTrustAccepted and the getSystemContext prefetch; the KAIROS_CHANNELS dev-channels block kept, so checkGate_CACHED_OR_BLOCKING keeps its one caller",
+      "sourceSha256": "84f06f3ec647b9377091993974ce79e1cd31de5bdf9e4211a29da031d3a1a35a",
+      "portSha256": "81c4210c6d569d1995a99e94c8d9afe36bc0499dff03dd3e9067cc6703de7edd",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "behaviourChange": "none: every removed export was a no-op under the false switch, and both call sites' effects were on a client that cannot be constructed.",
+  "dependency": "@growthbook/growthbook now has zero importers. Removing it from package.json belongs to a dependency-pruning pass, not to this package — the lockfile is generated and hand-editing one package out of it is a worse risk than leaving the entry for that pass.",
+  "next": "the KAIROS / KAIROS_CHANNELS cluster (54 files, 124 flag reads), which is the block that holds checkGate_CACHED_OR_BLOCKING's only caller",
+  "fixtureMove": "w65-d7b-verify's guard-brace count moved from 6 to 5 in this commit, as step 7d's record said it would have to.",
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "The three removed exports and the package import swept as declarations; the eleven kept exports asserted by declaration; two surviving bodies checked word-for-word; both files' neighbouring lines asserted still present; the residual sweep re-run tree-wide; tsc log empty"
+}
