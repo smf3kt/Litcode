@@ -236,6 +236,35 @@ Two are visible and deliberate. `--remote-control` / `--rc` is gone as a flag, a
 
 `tsc --noEmit --pretty false` exits 0; all five owned fixtures pass; `git diff --check` clean. No `bridge/*.w*bak` file ever existed — the directory was never edited in an earlier wave — so the only baks to quarantine were the nine under `hooks/` and `components/`, copied to `.audit/w65-e5-baks/` and `cmp`-verified before the deletions. Two repair passes: one `cut_range` whose start anchor sat *after* the end anchor of the previous cut (the remoteIO keep-alive comment block), and one replacement that left a doubled `}` at the end of `tools/BriefTool/attachments.ts`.
 
+## Wave D step 2 — the OAuth service and the token store (landed, `e47f4a5`)
+
+`services/oauth/` is gone: 6 files, 1,064 lines — `client.ts` (the authorize/exchange/refresh/profile/roles/keychain surface), `index.ts` (`OAuthService`), `auth-code-listener.ts` (the loopback redirect listener), `crypto.ts` (PKCE), `getOauthProfile.ts` (the account API) and `types.ts`. The wave came in well under the size the plan expected because waves E 4 and 5 had already deleted the remote sites: `getOrganizationUUID` and `storeOAuthAccountInfo` were left with **zero importers**, so only five hosts needed re-stitching.
+
+### What `utils/auth.ts` keeps
+
+The token reader survives with its two local sources and no others — `CLAUDE_CODE_OAUTH_TOKEN` and the token from the file descriptor — and returns `null` where it used to read the encrypted keychain blob. Removed with the keychain read: `saveOAuthTokensIfNeeded`, the cross-process `.credentials.json` staleness check (`invalidateOAuthCacheIfDiskChanged` and its `lastCredentialsMtimeMs`), the 401 recovery chain (`handleOAuth401ErrorImpl`, `pending401Handlers`, the "another tab already refreshed" keychain comparison), the lock-guarded refresh scheduler behind `checkAndRefreshOAuthTokenIfNeededImpl` (five retries, `ELOCKED` backoff, double-checked re-read) and `getClaudeAIOAuthTokensAsync`'s async storage read. `handleOAuth401Error` and `checkAndRefreshOAuthTokenIfNeeded` keep their signatures and return `false` unconditionally, which is what an unrefreshable env-var bearer means; both carry a doc comment saying so.
+
+### Adaptations (ported, not invented)
+
+1. `shouldUseClaudeAIAuth` — ported verbatim from `services/oauth/client.ts:38-40`, with the `CLAUDE_AI_INFERENCE_SCOPE` constant now imported from `constants/oauth.ts`.
+2. `isOAuthTokenExpired` — ported verbatim from `services/oauth/client.ts:344-353` (5-minute buffer). It has two homes because two callers needed it: `utils/auth.ts` and `services/analytics/firstPartyEventLoggingExporter.ts`, whose `isClaudeAISubscriber()` guard reads it. Both cite the same range; the exporter's copy is noted as going with the exporter's own removal.
+3. `OAuthTokens` and `SubscriptionType` — **no source form exists to port.** `services/oauth/types.ts` was itself a stub created during reconstruction ("this module is absent from the dump; names are taken from the import sites", eleven `any` aliases). The two names still needed are declared from evidence instead: `OAuthTokens` from the field names `getClaudeAIOAuthTokens` constructs and `saveOAuthTokensIfNeeded` persisted as a group, `SubscriptionType` from the plan literals the predicates compare against and `isConsumerPlan`'s narrowing. This is recorded rather than glossed, because it is the one place the wave invents a declaration.
+
+### Host cuts
+
+| Host | What went |
+| --- | --- |
+| `components/ConsoleOAuthFlow.tsx` | Deleted (611 lines). Reached the browser-based login flow. |
+| `components/Onboarding.tsx` | The `oauth` step, its `skipOAuth` state, and `SkippableStep` — whose only consumer the oauth step was, so the exported wrapper is gone too |
+| `cli/handlers/util.tsx`, `main.tsx` | `setupTokenHandler` and the `claude setup-token` subcommand; minting an OAuth token was the command's whole purpose |
+| `entrypoints/init.ts` | The `populateOAuthAccountInfoIfNeeded()` call and its profile checkpoint |
+| `utils/config.ts` | The `services/oauth/types.js` type import; `BillingType` is now a local alias, noted as standing in for a stub |
+| `services/analytics/firstPartyEventLoggingExporter.ts` | The `oauth/client` import, replaced by the ported helper |
+
+### Verification
+
+`tsc --noEmit --pretty false` exits 0; all six owned fixtures pass (the new `w65-d2-verify` compares both ported bodies textually and behaviourally against the recovered source, asserts the module and its UI are absent, and sweeps for eight live-reference patterns); `git diff --check` clean; +81/−2,105. One `*.w54bak` source map quarantined to `.audit/w65-d2-baks/components/` and `cmp`-verified before deletion — `services/oauth/` itself never had one. The `w65-e5-verify` fixture was rebound to its own wave commit (`88545db`) rather than `HEAD`, because a HEAD-relative deletion check stops being true as soon as the next wave lands.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
