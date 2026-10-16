@@ -3,13 +3,13 @@ import type { ToolContext, ToolDefinition } from './tools.js';
 
 export const INTERACTION_LIMITS = Object.freeze({
   questions: 4, options: 4, questionChars: 2000, headerChars: 80,
-  labelChars: 100, descriptionChars: 2000, otherChars: 4000,
+  labelChars: 100, descriptionChars: 2000, previewChars: 8000, otherChars: 4000,
   planChars: 128 * 1024, findings: 100, fileChars: 4096, summaryChars: 4000,
   payloadBytes: 256 * 1024, outputBytes: 100_000,
   timeoutMs: 300_000, maxTimeoutMs: 600_000, maxPending: 16, maxPendingLimit: 64,
 });
 
-export interface QuestionOption { label: string; description: string }
+export interface QuestionOption { label: string; description: string; preview?: string }
 export interface InteractionQuestion {
   question: string;
   header?: string;
@@ -49,6 +49,7 @@ export interface InteractionToolOptions extends InteractionCallbacks {
 const text = (max: number) => z.string().min(1).max(max).refine(value => value.trim().length > 0, 'Text must be nonblank');
 const optionShape = z.object({
   label: text(INTERACTION_LIMITS.labelChars), description: text(INTERACTION_LIMITS.descriptionChars),
+  preview: z.string().max(INTERACTION_LIMITS.previewChars).optional(),
 }).strict();
 const questionShape = z.object({
   question: text(INTERACTION_LIMITS.questionChars), header: text(INTERACTION_LIMITS.headerChars).optional(),
@@ -225,6 +226,7 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
         name: 'ask_user_question',
         description: 'Ask the user 1-4 finite preference or decision questions with 2-4 labeled options each. ' +
           'The host supplies an Other text entry. multiSelect permits multiple options and Other together. ' +
+          'Optional previews show concrete layouts or examples for the focused option. ' +
           'Never request credentials, passwords, tokens, payment details or authentication codes. Requires a host ask callback.',
         input_schema: {
           type: 'object', additionalProperties: false, required: ['questions'],
@@ -240,6 +242,8 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
                   items: { type: 'object', additionalProperties: false, required: ['label', 'description'], properties: {
                     label: stringProperty(INTERACTION_LIMITS.labelChars, 'Unique option label; Other is reserved for the host.'),
                     description: stringProperty(INTERACTION_LIMITS.descriptionChars),
+                    preview: { type: 'string', maxLength: INTERACTION_LIMITS.previewChars,
+                      description: 'Optional text or Markdown example displayed when this option is focused.' },
                   } },
                 },
               },

@@ -1,0 +1,56 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        492416,
+        492454
+      ],
+      "units": 38,
+      "bodySha256": "d9fb55320fa4d11316d11897a02b421db1ef712e016d8ac11b2b0bb0d944731d",
+      "note": "declares ZH, the projection: undefined stays undefined, and anything else answers the value's JSON copy (parse of stringify), through the same two helpers the store's parse uses — an explicit range, because this module's top-level map cannot be walked reliably (a 60k-line chunk)"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2328610,
+        2328746
+      ],
+      "units": 136,
+      "bodySha256": "458bba2488183a7dc0e4a848fd43635fd2d5f16f6949277eb87fd1fd73b7dbd8",
+      "note": "declares J9, the source map the check and the body both read: `user` → userSettings, project, local, flag and policy — an explicit range, because this module's top-level map cannot be walked reliably (a 60k-line chunk)"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2328746,
+        2328835
+      ],
+      "units": 89,
+      "bodySha256": "20a75f916656c484630043dab110e221039a895ceea28a3e422a7fa555241890",
+      "note": "declares hGo, the entry's body: with no source the merged settings, with one the settings of that source, either way through ZH and answered as a promise with `{}` for a missing store — an explicit range, because this module's top-level map cannot be walked reliably (a 60k-line chunk)"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2328835,
+        2329021
+      ],
+      "units": 186,
+      "bodySha256": "21f7007a82a5237afc43a7e34d8be5af5d6b8d0caa2ba5d69fc86c61556b55a6",
+      "note": "declares yGo, the entry's check: no argument, or a string naming one of J9's keys, is admitted; anything else is refused with the list of names and the type it got — an explicit range, because this module's top-level map cannot be walked reliably (a 60k-line chunk)"
+    }
+  ],
+  "missing": []
+}

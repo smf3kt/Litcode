@@ -1,0 +1,251 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1837694,
+        1837732
+      ],
+      "units": 38,
+      "bodySha256": "d0450a836f803521e91f0310945376028d0ce35f3fe9840cf17f421b0936671d",
+      "note": "`R3` — the first segment of a dotted name, which is what the refusal log keys on"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1837732,
+        1838166
+      ],
+      "units": 434,
+      "bodySha256": "b4b304151eefd0d15bde54684994ccfc54beddbbf4e4c49e0cfdd34238c128e3",
+      "note": "`HGt` — the sentence a withheld call is refused with, logged once per plugin and first segment"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1838166,
+        1838257
+      ],
+      "units": 91,
+      "bodySha256": "41977c5f81da21571cac04bc95a3a7720690286fe76f7120daddabf48d208727",
+      "note": "`UGt` — whether another hooks module that crashed while withholding also holds this first segment"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1838257,
+        1838526
+      ],
+      "units": 269,
+      "bodySha256": "bd51573dba64a2d1c1204c4179046a695bf3a8f731606e798adfe42c8416ba48",
+      "note": "`jGt` — the plugin a call is withheld by: the staged holder first, then the staged-before one, then the live set, then a crashed module"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1838526,
+        1838826
+      ],
+      "units": 300,
+      "bodySha256": "7ce23f448df4804e59c20e74fc229b86071280634c61e7576ca50d67696d35de",
+      "note": "`kme` — whether the caller’s hooks module declares this call at all (the host rule over the scan)"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1838826,
+        1839344
+      ],
+      "units": 518,
+      "bodySha256": "0dfc457f009fb621c671a272cd0c0a8e8320fd0ba100afae059a84df4d487330",
+      "note": "`Sme` — the four gates a `$` call passes before anything runs: the scan, the withholding, the unadmitted module behind the call, and the clock exemption"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1844394,
+        1844768
+      ],
+      "units": 374,
+      "bodySha256": "95de0ff7970c6dda2042360baff269532e46605f25518c58ad3a98c19e8ce69f",
+      "note": "`nzt` — the scan rule for `env.get`/`env.set`: the variable name the call passes must be one the module’s scan lists"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2345040,
+        2345175
+      ],
+      "units": 135,
+      "bodySha256": "5fea2d41836952c39331282fcf536464ad5fa400bee200ada0654e0806e63cbc",
+      "note": "`H2e` — the notice a refused-but-droppable call leaves: the text beside the record the `$` table reads"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2355306,
+        2355414
+      ],
+      "units": 108,
+      "bodySha256": "8cf713d2b028c157a6e6e9ba73a5cfaa2c5c4d3f3672ce15b92a6a1608bbfcd4",
+      "note": "`kJt` — the spelling a call is refused under: an `interface.call` is named by its name and method"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2355414,
+        2355576
+      ],
+      "units": 162,
+      "bodySha256": "28af536f00339e130e7383eb05146a2bd4c0e88466c5c40da67279b7920095d8",
+      "note": "`Xqo` — the argument copy a state-carrying call is handed, so a hook cannot reach the object the plugin still holds"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2355576,
+        2356082
+      ],
+      "units": 506,
+      "bodySha256": "8905ea0e48d6861af1caf60826a7de259c43b33d201913213cc55d89022b66ce",
+      "note": "`Qqo` — the scan rule for `state.get`/`state.set`: the `{plugin, key}` a call passes must be one the module’s scan lists"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2356082,
+        2356850
+      ],
+      "units": 768,
+      "bodySha256": "2bf2c7f10629383b2bb6eba56f4adef43762d3365a7c4ccf2c620aed1d01fa80",
+      "note": "`G2e` — the dispatcher itself: copy the arguments for a state call, run the four gates, the host check and its droppable notice, then raise, stamp and run — through the funnel for an event the catalog holds, through `interface.call`’s own road, or straight into the call table"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        47535,
+        47564
+      ],
+      "units": 29,
+      "bodySha256": "2ec24474498badadd2e42603afb5362ec9b40036cdd4177fdaf508e055de4042",
+      "note": "`tho` — whether the call goes through the funnel at all: the catalog’s own value events do"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        51989,
+        52018
+      ],
+      "units": 29,
+      "bodySha256": "30cd830cbe5f4e056e949682e0fba87bd8e184c421675956ef4044f881d31ff2",
+      "note": "`Xt` — the two names the environment scan covers; the runner copy declares its own `Xt` that is a different value, so this statement is copied rather than the name imported"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        52018,
+        52046
+      ],
+      "units": 28,
+      "bodySha256": "1c80f0f1981228ed2bf94a7f6720d14fd50cd849802d8a84122397bd3386773c",
+      "note": "`tEs` — whether this call is one the environment scan reads"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        52046,
+        52107
+      ],
+      "units": 61,
+      "bodySha256": "c1eed3e4d3035a4a7a9c59f960aee8509f6e34741ad9c6d98ea3da1cbb740aea",
+      "note": "`Kt` and `nUn` — the two names the state scan covers, and the test over them"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        52107,
+        52160
+      ],
+      "units": 53,
+      "bodySha256": "7743c98138ada988555ce5b127f05a38a7b6ffb975e5e85260cdf620a3422cc8",
+      "note": "`Yo` — a name written as itself when it is plain and as JSON otherwise; the relay copy’s same-named helper is a different statement, so this one is copied"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        52160,
+        52204
+      ],
+      "units": 44,
+      "bodySha256": "97a1ab734f5aa893c93975e9f70f9c52848f84e3c64d916e943cf14a149a9e75",
+      "note": "`ylt` — one `{plugin, key}` reference written the way the scan rule names it"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        52373,
+        52425
+      ],
+      "units": 52,
+      "bodySha256": "0176cd5beae259c7c6c0c8bde7b7417ce29486b2e5406aebdef71de1d2421501",
+      "note": "`rho` — the sentence a call is refused with when the plugin that owned it was removed"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        159794,
+        159880
+      ],
+      "units": 86,
+      "bodySha256": "3a84a59fa42b1297809617fb663ab5c07440fe2fa8dad049b3620d0a1098016b",
+      "note": "`oRe` — the four clock calls, which are the exemption the unadmitted gate carries"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        160097,
+        160194
+      ],
+      "units": 97,
+      "bodySha256": "8058a16e50554b9fd7f75a86ec901d6ecd32942171155e343f271e6ac4eae389",
+      "note": "`Hp` and `iIt` — the calls whose refusal is a dropped call rather than a thrown one, and the test over them"
+    }
+  ],
+  "missing": []
+}

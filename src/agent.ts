@@ -12,6 +12,10 @@ import { boundToolContent } from './tool-output.js';
 import { mediaInputSchema, readMedia, type MediaAttachment } from './media.js';
 import { AUTO_MEMORY_INSTRUCTIONS, loadAutoMemoryContext } from './auto-memory.js';
 import { automaticCheckpoint } from './rewind.js';
+import type { AgentProgressEvent } from './tui-progress.js';
+import { classicPreToolUseHooked, raiseClassicPreToolUse } from './plugin-chain-tool-raise.js';
+import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_USE, CLASSIC_POST_TOOL_USE_FAILURE, classicEventRaised, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
+import type { ClassicPermissionRequestResult } from './plugin-chain-classic-raise.js';
 
 export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
 Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
@@ -51,6 +55,8 @@ export function assertPaired(messages: Anthropic.MessageParam[]): void {
 
 export type RunResult = { reason: string; text: string; modelCalls: number };
 export type AgentEvents = { text?: (text: string) => void; status?: (status: string) => void;
+  textStart?: () => void; textEnd?: () => void;
+  progress?: (event: AgentProgressEvent) => void;
   terminalSequence?: (sequence: string) => void;
   instructionFiles?: (paths: string[]) => void;
   permission?: (request: { tool: string; input: unknown; reason: string; signal: AbortSignal }) => Promise<boolean>;
@@ -72,6 +78,7 @@ function hookLifecycle(session: Session): HookLifecycle {
 export class Agent {
   private busy = false;
   private ended = false;
+  private turnTiming: {uuid:string; startedAt:number} | undefined;
   private tools: Map<string, ToolDefinition>;
   constructor(readonly session: Session, private provider: ModelProvider, tools: ToolDefinition[], private events: AgentEvents = {}) {
     this.tools = new Map(tools.map((tool) => [tool.schema.name, tool]));
@@ -96,7 +103,11 @@ export class Agent {
   }
 
   private finish(reason: string, text: string, modelCalls: number): RunResult {
-    this.session.append({ kind: 'turn_end', reason });
+    const duration = this.turnTiming ? {uuid:this.turnTiming.uuid,
+      durationMs:Math.max(0, Date.now() - this.turnTiming.startedAt), timestamp:new Date().toISOString()} : undefined;
+    this.session.append({ kind: 'turn_end', reason, ...(duration ? {duration} : {}) });
+    if (duration) this.events.progress?.({kind:'finish', reason, duration});
+    this.turnTiming = undefined;
     if (reason !== 'aborted') this.snapshotBoundary();
     return { reason, text, modelCalls };
   }
@@ -278,6 +289,21 @@ export class Agent {
 
   private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal): Promise<{ input: unknown; denied?: string }> {
     const decision = permissionDecision(this.session.config.permissions, tool, input);
+    // `classic.PermissionDenied` is deliberately not raised here, and nowhere else in this product: the
+    // source raises it from exactly one body (`I9r` chunk-sfn1dbxq.js [3063491,3063858)), whose single
+    // caller (chunk-sfn1dbxq.js [2288685,2289127)) is gated on
+    // `decisionReason.type === 'classifier' && decisionReason.classifier === 'auto-mode'` — the auto-mode
+    // classifier's denial. Every other denial kind (a permission rule, `behavior === 'ask'` rejected by
+    // the user, a hook) maps to `permission-rule`/`user-rejected`/`hook` in the source's own outcome
+    // mapping (`mze` chunk-sfn1dbxq.js [1006956,1007251)) and raises no hook event at all.
+    // This product has no classifier and no decision-reason surface at all (`permissionDecision` returns
+    // a rule outcome), so a deny here is the `permission-rule` kind and the raise stays unmapped rather
+    // than invented. When a classifier denial does exist, the raise is `raiseClassicEvent` with the
+    // event's own input `{hook_event_name, tool_name, tool_input, tool_use_id, reason, mcp_server?}`
+    // (`hK` chunk-r2vtj1kh.js [193916,194055)), the source's `'Permission denied'` reason fallback, and
+    // an answer read only for `retry` (schema `o0` chunk-n3ykh62m.js [395412,395472)), which pushes the
+    // meta line `Hen` = "The PermissionDenied hook indicated you may retry this tool call."
+    // (chunk-phm7wwmz.js).
     if (decision.decision === 'allow') return { input };
     if (decision.decision === 'deny') {
       await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: decision.reason }, signal);
@@ -285,6 +311,36 @@ export class Agent {
     }
     const reason = decision.reason ?? `Approval required for ${tool.schema.name}`;
     const requested = await this.hook('PermissionRequest', { tool_name: tool.schema.name, tool_input: input, reason }, signal);
+    // The chain's classic PermissionRequest event, on the source's own fields (`dze`
+    // chunk-sfn1dbxq.js [3063858,3064190), schema `aK` chunk-r2vtj1kh.js [192753,192908)):
+    // `{hook_event_name: 'PermissionRequest', tool_name, tool_input, permission_suggestions?,
+    // mcp_server?}` — no `tool_use_id`. Neither optional field is sent: this product's permission layer
+    // has no suggestion surface (its rule outcome carries a reason, not rule proposals) and its tool
+    // definitions carry no `mcpInfo`. The answer is read exactly where the source reads it
+    // (chunk-sfn1dbxq.js [3317869,3319984), schema chunk-n3ykh62m.js [395544,395771)): an item without
+    // `permissionRequestResult` is skipped, `deny` blocks with `message || "Permission denied by hook"`,
+    // and `allow` carries `updatedInput` through the same permission re-check the native answer's
+    // rewrite goes through. Two answer fields stay unmapped for lack of a consumer: `updatedPermissions`
+    // (this product keeps no always-allow rule store to update) and `interrupt` (the source aborts the
+    // whole turn's controller, which this product's `authorize` receives but does not own).
+    if (classicEventRaised(CLASSIC_PERMISSION_REQUEST)) {
+      const raised = await raiseClassicEvent({
+        event: CLASSIC_PERMISSION_REQUEST,
+        hookInput: classicHookInput(CLASSIC_PERMISSION_REQUEST, {
+          session_id: this.session.id, cwd: this.session.config.workspace,
+          tool_name: tool.schema.name, tool_input: input,
+        }),
+        signal,
+      });
+      const chain = raised.answer.permissionRequestResult as ClassicPermissionRequestResult | undefined;
+      if (chain?.behavior === 'deny') {
+        requested.blocked = true;
+        requested.reason ??= chain.message ?? 'Permission denied by hook';
+      } else if (chain?.behavior === 'allow') {
+        requested.permissionDecision = 'allow';
+        if (chain.updatedInput !== undefined) requested.updatedInput = chain.updatedInput;
+      }
+    }
     if (requested.blocked || requested.permissionDecision === 'deny') return { input,
       denied: requested.reason ?? requested.permissionDecisionReason ?? 'Permission declined by hook' };
     if (requested.updatedInput !== undefined) {
@@ -341,6 +397,11 @@ export class Agent {
       let result: ToolResult;
       let executed = false;
       let input = call.input;
+      // Source `duration_ms`: "Tool execution time in milliseconds. Excludes permission-prompt and hook
+      // time." (chunk-r2vtj1kh.js [193030,193147)), so it wraps the tool's own call and nothing else —
+      // both the PostToolUse and the PostToolUseFailure input carry it (`Okn`/`P9r`
+      // chunk-sfn1dbxq.js [3062119,3062552) and [3062552,3062957)).
+      let durationMs: number | undefined;
       if (stopReason || signal.aborted) result = this.result(call.id, stopReason ?? 'Cancelled before execution', true);
       else {
         try {
@@ -351,6 +412,23 @@ export class Agent {
           if (authorization.denied) throw new Error(authorization.denied);
           const pre = await this.hook('PreToolUse', { tool_name: call.name, tool_input: input, tool_use_id: call.id }, signal);
           extra.push(...pre.additionalContext);
+          // The chain's classic PreToolUse event, for the plugin modules that hook it. The source's own
+          // tool path raises it over the module handlers and maps the answer with `mDe`
+          // (chunk-sfn1dbxq.js `m_t` [504681,505531), `$go` chunk-nyce03br.js [121822,121896)); the
+          // answer joins the same permission path below, so a deny or a rewrite is handled once.
+          if (classicPreToolUseHooked()) {
+            const { permission } = await raiseClassicPreToolUse({ tool: call.name, toolUseId: call.id, input, signal });
+            extra.push(...(permission.additionalContexts ?? []));
+            if (permission.permissionBehavior === 'deny') {
+              pre.blocked = true;
+              pre.reason ??= permission.hookPermissionDecisionReason ?? 'Denied by a classic.PreToolUse hook';
+            } else if (permission.permissionBehavior === 'ask') {
+              pre.blocked = true;
+              pre.permissionDecision = 'ask';
+              pre.reason ??= permission.hookPermissionDecisionReason ?? 'A classic.PreToolUse hook requested approval';
+            }
+            if (permission.updatedInput !== undefined) pre.updatedInput = permission.updatedInput;
+          }
           if (pre.blocked) {
             const asks = pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer';
             if (!asks || pre.stopRequested || !this.events.permission ||
@@ -380,8 +458,12 @@ export class Agent {
           this.session.append({ kind: 'tool_start', id: call.id, name: call.name });
           executed = true;
           this.events.status?.(`tool: ${call.name}`);
-          result = this.result(call.id, tool.executeBlocks
-            ? await tool.executeBlocks(input, context) : await tool.execute(input, context));
+          this.events.progress?.({kind:'phase', mode:'tool-use'});
+          const startedAt = Date.now();
+          try {
+            result = this.result(call.id, tool.executeBlocks
+              ? await tool.executeBlocks(input, context) : await tool.execute(input, context));
+          } finally { durationMs = Date.now() - startedAt; }
         } catch (error) { result = this.result(call.id, error instanceof Error ? error.message : String(error), true); }
       }
       // Persist the effect before running a post hook, which may itself be interrupted.
@@ -393,6 +475,30 @@ export class Agent {
             tool_name: call.name, tool_input: input, tool_use_id: call.id,
             ...(result.is_error ? { error: String(result.content), is_interrupt: false } : { tool_response: result.content }),
           }, signal);
+          // The chain's classic PostToolUse / PostToolUseFailure event, for the plugin modules that hook
+          // it. The source's own tool path builds the hook input on these same fields (`Okn`
+          // chunk-sfn1dbxq.js [3062119,3062552) and `P9r` [3062552,3062957)) and raises it through `Ikt`
+          // (chunk-sfn1dbxq.js [562773,563154)); the answer joins the same post result below, so a block
+          // or a rewrite is handled once.
+          const classicName = result.is_error ? CLASSIC_POST_TOOL_USE_FAILURE : CLASSIC_POST_TOOL_USE;
+          if (classicEventRaised(classicName)) {
+            const raised = await raiseClassicEvent({
+              event: classicName,
+              hookInput: classicHookInput(classicName, {
+                session_id: this.session.id, cwd: c.workspace,
+                tool_name: call.name, tool_input: input, tool_use_id: call.id,
+                ...(result.is_error ? { error: String(result.content), is_interrupt: false } : { tool_response: result.content }),
+                duration_ms: durationMs,
+              }),
+              signal,
+            });
+            if (Array.isArray(raised.answer.additionalContexts)) extra.push(...raised.answer.additionalContexts.map(String));
+            if (post.updatedToolOutput === undefined) {
+              const rewritten = raised.answer.updatedToolOutput ?? raised.answer.updatedMCPToolOutput;
+              if (rewritten !== undefined) post.updatedToolOutput = rewritten;
+            }
+            if (raised.block !== undefined) { post.blocked = true; post.reason ??= raised.block; }
+          }
           if (!result.is_error && call.name === 'task_create') await this.hook('TaskCreated', { tool_name: call.name, tool_input: input, tool_response: result.content }, signal);
           if (!result.is_error && (call.name === 'write_file' || call.name === 'edit_file' || call.name === 'notebook_edit' || call.name === 'memory_write')) {
             await this.hook('FileChanged', { tool_name: call.name, tool_input: input }, signal);
@@ -419,6 +525,30 @@ export class Agent {
     assertPaired(this.session.messages);
     if (!signal.aborted) {
       const batch = await this.hook('PostToolBatch', { tool_use_ids: calls.map(call => call.id) }, signal);
+      // The chain's classic PostToolBatch event, on the same batch and the same per-call fields the
+      // source's own site uses (`Hkn` chunk-sfn1dbxq.js [3062957,3063491), hook input
+      // `{hook_event_name: 'PostToolBatch', tool_calls}` with `{tool_name, tool_input, tool_use_id,
+      // tool_response}` entries, raised after the results are known).
+      if (classicEventRaised(CLASSIC_POST_TOOL_BATCH)) {
+        const raised = await raiseClassicEvent({
+          event: CLASSIC_POST_TOOL_BATCH,
+          hookInput: classicHookInput(CLASSIC_POST_TOOL_BATCH, {
+            session_id: this.session.id, cwd: c.workspace,
+            tool_calls: calls.map((call, index) => ({ tool_name: call.name, tool_input: call.input, tool_use_id: call.id, tool_response: results[index]?.content })),
+          }),
+          signal,
+        });
+        if (Array.isArray(raised.answer.additionalContexts)) batch.additionalContext.push(...raised.answer.additionalContexts.map(String));
+        // Source rule, and the source's own sentence (its caller at chunk-5b2hxy2e.js [123688,123900)):
+        // a batch block is **discarded** once the turn has ended by a tool result, because no model
+        // re-invoke follows, and it is only logged.
+        const blocked = raised.answer.blockingError ?? raised.answer.preventContinuation ?? raised.block;
+        if (blocked !== undefined) {
+          const reason = (raised.answer.blockingError as { blockingError?: string } | undefined)?.blockingError ??
+            (typeof raised.answer.stopReason === 'string' ? raised.answer.stopReason : undefined) ?? 'preventContinuation';
+          this.events.status?.(`[end-turn] PostToolBatch block discarded (turn ended by tool result, no model re-invoke): ${reason}`);
+        }
+      }
       if (batch.additionalContext.length) this.session.append({ kind: 'message', message: { role: 'user', content:
         batch.additionalContext.map(text => ({ type: 'text' as const, text: `Hook context:\n${text}` })) } });
       if (batch.blocked) stopReason = batch.reason ?? 'PostToolBatch hook stopped continuation';
@@ -562,6 +692,8 @@ export class Agent {
     let text = '';
     try {
       signal.throwIfAborted();
+      this.turnTiming = {uuid:randomUUID(), startedAt:Date.now()};
+      this.events.progress?.({kind:'start', ...this.turnTiming});
       if (attachment !== undefined) {
         attachment = mediaInputSchema.parse(attachment);
         if (prompt === undefined) throw new Error('An attachment requires a new prompt');
@@ -638,7 +770,14 @@ export class Agent {
         const request = this.request();
         modelCalls++;
         let response: Anthropic.Message;
-        try { response = await this.provider.complete(request, signal, this.events.text); }
+        try {
+          this.events.textStart?.();
+          this.events.progress?.({kind:'phase', mode:'requesting'});
+          try { response = await this.provider.complete(request, signal, text => {
+            this.events.progress?.({kind:'phase', mode:'responding'}); this.events.text?.(text);
+          }, () => this.events.progress?.({kind:'phase', mode:'thinking'})); }
+          finally { this.events.textEnd?.(); }
+        }
         catch (error) {
           if (!signal.aborted) {
             try {
@@ -678,6 +817,10 @@ export class Agent {
       // A journal failure may leave an incomplete batch; recovery never replays its effects.
       if (signal.aborted) return this.finish('aborted', text, modelCalls);
       throw error;
-    } finally { this.busy = false; }
+    } finally {
+      if (this.turnTiming) this.events.progress?.({kind:'finish', reason:'error', duration:{uuid:this.turnTiming.uuid,
+        durationMs:Math.max(0, Date.now() - this.turnTiming.startedAt), timestamp:new Date().toISOString()}});
+      this.turnTiming = undefined; this.busy = false;
+    }
   }
 }

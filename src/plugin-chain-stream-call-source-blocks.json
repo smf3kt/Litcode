@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1843388,
+        1844317
+      ],
+      "units": 929,
+      "bodySha256": "dddd566ee055e4164faba438902497178db3a4babbf30d21977034684d088427",
+      "note": "the withheld-result texts, the await-then-stream retry, and aGe"
+    }
+  ],
+  "missing": []
+}

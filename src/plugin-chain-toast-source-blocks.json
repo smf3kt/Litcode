@@ -1,0 +1,82 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1691234,
+        1691480
+      ],
+      "units": 246,
+      "bodySha256": "8bc4cc3fa439d55395713a3e508a2f98611b9e51de95f962809855d8c4307f72",
+      "note": "declares sI (the plugin a `plugin-toast-<plugin>:<id>` key names) and sLs (a queue split into its current toast, its waiting ones and whether the bar is hidden)"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1695123,
+        1695224
+      ],
+      "units": 101,
+      "bodySha256": "d93ae9e732596fcd7505998f5043496e943947fb60b6527425cd24f6769ab6b5",
+      "note": "declares ACn, the waiting toasts one plugin may hold, and DWt, which names the toast that gives way when it holds that many"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1695323,
+        1696041
+      ],
+      "units": 718,
+      "bodySha256": "e0ccdc6fffd9643a0f898bd8f6207d9b232241caeb07bbe4a7464b986592dffe",
+      "note": "declares AQo (a notice once per plugin and environment), fLs (the priority every plugin toast carries), Sqt (the default timeout), mLs (the give-way report), gLs (the toast key) and hLs (the admission decision: waiting, gives way, cut short)"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1696157,
+        1696266
+      ],
+      "units": 109,
+      "bodySha256": "c5fac0f5b31819862714bddf45fd438e08681c835bbbb17ad8a7d77d097af666",
+      "note": "declares Kxo, the ui.toast floor: Vyt's gate around `session.toast(plugin, BDe(text), timeoutMs)`"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        10862,
+        10939
+      ],
+      "units": 77,
+      "bodySha256": "897f790f224883810a6f89e5b189d7cf0e1c0a9893fb7933c64fc731d4fe960d",
+      "note": "declares yro, the whole-number-in-range check the entry's timeoutMs validation uses"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2343390,
+        2343404
+      ],
+      "units": 14,
+      "bodySha256": "c6cb802db1bb56b388b7e1f3776fab37ed2803af79655ab70975376380fecb52",
+      "note": "declares F2e, the timeoutMs upper bound the entry names in its refusal"
+    }
+  ],
+  "missing": []
+}

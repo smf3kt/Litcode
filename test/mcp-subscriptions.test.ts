@@ -138,7 +138,8 @@ test("HTTP subscription opt-in and exact capabilities preserve defaults, observe
       assert.deepEqual(disabled.tools.map((item) => item.schema.name), ["mcp__srv__emit"]); await disabled.close();
     }
     subscribe = true;
-    const connection = await connectMcpServers(config, context(), { subscriptions: true, requestTimeoutMs: 100 });
+    // The budget covers the spawned server's own boot and handshake, which costs 150-170ms on a busy host.
+    const connection = await connectMcpServers(config, context(), { subscriptions: true, requestTimeoutMs: 2000 });
     const other = await connectMcpServers(config, context(), { subscriptions: true });
     try {
       assert.match(connection.limits.join("\n"), /no GET stream or continuous HTTP push/);

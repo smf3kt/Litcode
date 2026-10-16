@@ -1,0 +1,188 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        8024,
+        8080
+      ],
+      "units": 56,
+      "bodySha256": "aa78f230888df2d334bb47595a3c7d6e4364d6efc98b7213fd85e3e839ed6fe8",
+      "note": "declares on and an, the two ignore classes: Default_Ignorable_Code_Point and the format category"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        8178,
+        8299
+      ],
+      "units": 121,
+      "bodySha256": "3acf3bc1e90e8bba081a78dbe9decd67aff6cfc1fa1dddd94c9281cb0dc1c74b",
+      "note": "declares L, is this character invisible: an ignorable, a line or paragraph separator, a braille blank, a surrogate, U+10EFEE, or a format character"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        8503,
+        8706
+      ],
+      "units": 203,
+      "bodySha256": "2a4d687d2b4b0de7ca99d8b925bbb5cd4c5fa664005071160ecb4267f6564a91",
+      "note": "declares dn, the replacer: the predicate is asked about each character with both neighbours' code points in hand, and an accepted character becomes U+FFFD"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        9076,
+        9162
+      ],
+      "units": 86,
+      "bodySha256": "a49c2cd37ce3a1791a5990b6df1c5c531fb315820fee6b7c4cb4172dafc08fb0",
+      "note": "declares R, does anything visible remain once the variation selectors and the braille blank are stripped (width above zero)"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        9225,
+        9299
+      ],
+      "units": 74,
+      "bodySha256": "157a19540b9a098436170a73bca4606a69b5033747d502aa40d4e8a4e1e8eb70",
+      "note": "declares Ae, the same question with only the variation selectors stripped, so a braille blank still counts as visible"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        9299,
+        9320
+      ],
+      "units": 21,
+      "bodySha256": "a54e4484b2cde383a19b55ef26398e735369bfa783b232e4ba266a22b904803a",
+      "note": "declares fn and hn, the combining-mark budget (eight) and the mark class the budget is spent on"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        9320,
+        9362
+      ],
+      "units": 42,
+      "bodySha256": "35f93cb3fa77e695688a248610adee01290e1b08d70fad94c2d4d5f3e269effa",
+      "note": "declares hmo, a combining mark or nothing visible"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        9362,
+        9571
+      ],
+      "units": 209,
+      "bodySha256": "946e4b38584f648b665e93f757f992a2f8817b7738cf8547c20b5d7d14b81f53",
+      "note": "declares xg, the mark collapser: a mark run longer than the budget becomes one U+FFFD, the count resetting at a line feed"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        9571,
+        9602
+      ],
+      "units": 31,
+      "bodySha256": "78623e9819f8af4b1dde6ba967e8a4b16693766b33ade94ade1bd5d6c717cdaa",
+      "note": "declares Y, collapse the mark runs and trim the result"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        9602,
+        9739
+      ],
+      "units": 137,
+      "bodySha256": "2287c4524042506d0a096d1c1b77e0eb2918b923512e721e64cf81a468462c8a",
+      "note": "declares mn, trim the leading and trailing characters nothing visible is left of"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        9739,
+        9810
+      ],
+      "units": 71,
+      "bodySha256": "6f4045f0c98436d400f99ca056c2639d872345098b0670c91973c5f8a5634252",
+      "note": "declares V, the first character of the trimmed text, or the last one when asked for the end"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        9810,
+        9854
+      ],
+      "units": 44,
+      "bodySha256": "9611a747d6143cde5991803fc5a3469ba0bc6dbf4cb43e2a698a19d7de752bce",
+      "note": "declares ke, does the text end in an ellipsis"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        10024,
+        10184
+      ],
+      "units": 160,
+      "bodySha256": "1c156ba69d86cac92dbc0a0181069f9049e1aa237a7a55edcae51064e9739942",
+      "note": "declares g3, does visible content remain once a leading run of invisibles and the replacement character after it is dropped"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        10264,
+        10453
+      ],
+      "units": 189,
+      "bodySha256": "82925b31bc41e22426abdd19cc6de2c5d4a764f2bd9ff26e6e316b61c4484b8e",
+      "note": "declares O, the sanitiser: the code-point rules that let a variation selector, a zero-width joiner or a Mongolian selector live only in the context that needs it, then the normalise pass"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        10576,
+        10594
+      ],
+      "units": 18,
+      "bodySha256": "6b8308d1582194f22429da245128977eb2c34cc0648b8bac157fef0ed1f536dc",
+      "note": "declares aN, the label length cap (256), beside the 48-unit sibling this pass does not read"
+    },
+    {
+      "module": "chunk-qq2mgstr.js",
+      "sha256": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+      "range": [
+        16350,
+        16512
+      ],
+      "units": 162,
+      "bodySha256": "9c96c68d937461d9f40dd938c84433adc2b283ac14dda88115a4a242c28268df",
+      "note": "declares Mde, the label sanitiser: a non-string is null, the text is cut to the cap, sanitised, its tabs become spaces, and what is left without visible content or already elided is rejected before the 24-column clamp on the first line"
+    }
+  ],
+  "missing": []
+}

@@ -1,0 +1,177 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        15444,
+        15588
+      ],
+      "units": 144,
+      "bodySha256": "fd1d99188c61fe060876a7c43e90ef9278459ac86d3390f7f5bdce2bfa8a9858",
+      "note": "et: the `<key> after its next() was answered` clause the deny check appends"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        18608,
+        18682
+      ],
+      "units": 74,
+      "bodySha256": "6be6406112da0e7bc4ad647cb71c1dd44e7e48f0a65075cf19a368ee407909a5",
+      "note": "Rt: the origin the engine set, which ui.close requires"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25450,
+        25533
+      ],
+      "units": 83,
+      "bodySha256": "b79ba3e03053859684bbbae0aea996737061a039250450d495b1e0baaec538b5",
+      "note": "Er: the `{ value }`-or-deny check the two setters use"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        34442,
+        34559
+      ],
+      "units": 117,
+      "bodySha256": "839214ed52be5e1f441f349c3bf0fd7b77474687ae3c80ce1b753b0373cad6e9",
+      "note": "Nt: the env.get/env.set argument check (the variable name is pinned)"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        34559,
+        34627
+      ],
+      "units": 68,
+      "bodySha256": "2165f74162bf934a931fcb04b2bdb62109f3ee1fbd7f0acc09b5b96b681e843b",
+      "note": "Si: the env.get site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        34627,
+        34678
+      ],
+      "units": 51,
+      "bodySha256": "0ac2ec4a5fd8406fe4754f1f273980f8a5c550bc2c824066414cfef13813883d",
+      "note": "Oi: the env.set site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        36319,
+        36330
+      ],
+      "units": 11,
+      "bodySha256": "a9c7bc460e7b9bc319fa44b6971261a1db030e2e755e3546d3a5a42d0734573d",
+      "note": "jbr: the id length limit ui.close's id check reads"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        36330,
+        36470
+      ],
+      "units": 140,
+      "bodySha256": "d035d3dda008bed2b869a460f647ad47424cfa13469123816c4b674174e0e377",
+      "note": "ZPt: the pane-id shape check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        36470,
+        36842
+      ],
+      "units": 372,
+      "bodySha256": "1b750e39e5cde06c6c0823189472591a47a33ed5821481c6a4e44291208d026d",
+      "note": "Hi: the ui.close site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        36842,
+        36994
+      ],
+      "units": 152,
+      "bodySha256": "5cd4d667b3ba0c16d09e091e881bb810297c11c33bb7fcffc1f2241c46d72280",
+      "note": "Ni: the ui.open site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        42466,
+        42756
+      ],
+      "units": 290,
+      "bodySha256": "d4239fb4b681655cab05ea08157da49de428fc44f23b57f5b148c2d931a87ad5",
+      "note": "oa: the ui.blit site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        99758,
+        99920
+      ],
+      "units": 162,
+      "bodySha256": "48b16b4bca7e028c8a11e2bd9411452ea6eb321b3cbbc775f41d63d0fb7cfabe",
+      "note": "Bt: the plugin/key/id reference check the state sites share"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        99920,
+        100138
+      ],
+      "units": 218,
+      "bodySha256": "f78c8f1ad116ab054379ab6c737aedbf2f704edcee12777bcc516c024abc0b12",
+      "note": "Fn: the state.set check (ifVersion and previous are pinned)"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        100138,
+        100210
+      ],
+      "units": 72,
+      "bodySha256": "51ad8cdf258d4239628270a06c1ba4df03843654f3ab50b67535ee7da770861d",
+      "note": "Pa: the state.get site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        100210,
+        100308
+      ],
+      "units": 98,
+      "bodySha256": "b252a2a502ebb36609f05d9c886cb54d73b15e67cfe6adcf6fac5dd6836c02e3",
+      "note": "Ha: the state.set site"
+    }
+  ],
+  "missing": []
+}

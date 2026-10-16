@@ -1,0 +1,89 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        3763,
+        3815
+      ],
+      "units": 52,
+      "bodySha256": "c79ae7e48051f0b0e5648fb24e717bf97bccb6d0cdaf8f125859862a8d0bc02f",
+      "note": "declares wms, whether a name is a registered agent"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        3815,
+        3862
+      ],
+      "units": 47,
+      "bodySha256": "313a6c43de66a7c68619ff97ddcc345ca4561374806ec950f59a06dafc23f80f",
+      "note": "declares $Dn, whether the plugin loader may read this host's cache only"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        3862,
+        3898
+      ],
+      "units": 36,
+      "bodySha256": "5136267e50b35bd655bbd693b81bdd2208d918136714de7b9fabf8f020ded32c",
+      "note": "declares Nhr, the commands slot cleared so the producers rebuild"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        3898,
+        3958
+      ],
+      "units": 60,
+      "bodySha256": "e855ca616e80f21f418c29e3370d94065e484a5180d53b2bbd7f5a0ddb248cce",
+      "note": "declares Fhr, the two skill slots"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        3958,
+        3992
+      ],
+      "units": 34,
+      "bodySha256": "104452a9257d2be0a5aa28fba756209a25cfd00da28e2f2752c27768a8e7dca4",
+      "note": "declares $hr, the agents slot"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        3992,
+        4032
+      ],
+      "units": 40,
+      "bodySha256": "0cd132713e11f58973d8fccaa85931cb86ffa9dfbc7451cab27b5884a223f815",
+      "note": "declares Uhr, the output styles slot"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        4032,
+        4069
+      ],
+      "units": 37,
+      "bodySha256": "5f8e2aae5ffda4e469f2d6e7b2529eb3963fd0700ad22fb4641c3a4707a28138",
+      "note": "declares UDn, the workflows slot"
+    }
+  ],
+  "missing": []
+}

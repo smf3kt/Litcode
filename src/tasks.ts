@@ -118,7 +118,7 @@ const reciprocalUpdateSchema = updateSchema.extend({
   removeBlocks: z.array(z.string().uuid()).optional(),
 });
 
-type TaskRecord = z.infer<typeof taskSchema>;
+export type TaskRecord = z.infer<typeof taskSchema>;
 type TaskStore = z.infer<typeof storeSchema>;
 
 // ---------------------------------------------------------------------------
@@ -247,6 +247,30 @@ function writeStore(root: string, store: TaskStore): void {
     throw new Error(`task store would exceed the ${MAX_STORE_BYTES}-byte size limit (${bytes} bytes)`);
   }
   atomicWrite(dir, file, json);
+  for (const listener of taskObservers.get(root) ?? []) {try {listener();} catch { /* Observers own their failures. */ }}
+}
+
+const taskObservers = new Map<string, Set<() => void>>();
+
+export function readTaskRecords(workspace: string): TaskRecord[] {
+  return structuredClone(readStore(canonicalWorkspace(workspace)).tasks);
+}
+
+/** Atomic writes notify immediately; the directory watch includes other local processes. */
+export function subscribeTaskChanges(workspace: string, listener: () => void): () => void {
+  const root = canonicalWorkspace(workspace);
+  let listeners = taskObservers.get(root);
+  if (!listeners) {listeners = new Set(); taskObservers.set(root, listeners);}
+  listeners.add(listener);
+  const directory = existingAgentDir(root);
+  let watcher: fs.FSWatcher | undefined;
+  try {
+    if (directory) {
+      watcher = fs.watch(directory, (_event, file) => {if (String(file) === STORE_NAME) listener();});
+      watcher.on('error', () => {watcher?.close(); watcher = undefined;});
+    }
+  } catch { /* In-process notifications remain available. */ }
+  return () => {watcher?.close(); listeners!.delete(listener); if (!listeners!.size) taskObservers.delete(root);};
 }
 
 function atomicWrite(dir: string, file: string, content: string): void {

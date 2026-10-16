@@ -1,0 +1,78 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        460997,
+        463623
+      ],
+      "units": 2626,
+      "bodySha256": "fb4eb2b9784bffa7e8b0ba5239d51c92845432f3e1fd514cf951f1b57a4476f4",
+      "note": "decoration run geometry: the clamp, the frozen empty run list, the rebase of runs over a placed text, the split of a span around a range, the boundary walk by edge, the grapheme index of a text, the named-color table and its lookup, the style merge, the same-decoration test, the printable-text test, the rebase of one offset across an edit, and the rebasing of every run across it"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        463623,
+        464165
+      ],
+      "units": 542,
+      "bodySha256": "262a05511c7665c60b430c4d52414ae43414f5d1bb66b5e189623f344261ea8b",
+      "note": "the highlight row mapping: the draft-offset spans shifted onto rendered row offsets by binary search over the rows' text starts, the row lookup itself, and the segmentation of rendered text by spans"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        464165,
+        464391
+      ],
+      "units": 226,
+      "bodySha256": "4670f172ec58d294b4c35df33a50718a29267abc4744589152a40087e8289907",
+      "note": "run overlap resolution: the runs a normalization paints, ascending and longer-run-wins"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        464391,
+        465607
+      ],
+      "units": 1216,
+      "bodySha256": "4f7d01430faf94e8a0f036357c029cec3f91e9d9664834ba903d8f97abffbbbd",
+      "note": "the ANSI-preserving segmenter: a text and its spans walked token by token, each segment carrying the escape codes open at its start (and closed after it), with the code-stack close filter"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        465607,
+        466097
+      ],
+      "units": 490,
+      "bodySha256": "79e553e76310ea499f240afdb520b1a68c86b01bd5f9c2d551b98f59dd547d37",
+      "note": "the span overlay: base spans merged with painted runs on their shared boundaries, with the caret range split out"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        466097,
+        467086
+      ],
+      "units": 989,
+      "bodySha256": "8d3dfbc0aea0dbe7dbe8e5801a542d70ad035d99018b9aaa0ab50e773598f22a",
+      "note": "the grapheme offset lookup and the run normalization and merging (DOe, Rke)"
+    }
+  ],
+  "missing": []
+}

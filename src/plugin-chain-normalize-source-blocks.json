@@ -1,0 +1,276 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        2332,
+        2479
+      ],
+      "units": 147,
+      "bodySha256": "dbd22234223e487351813dbfe46a427e06d1a5999a1f3ee56a327b078cea4746",
+      "note": "declares the mark budget and the six ESC-sequence patterns the pass below tests"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        2479,
+        2557
+      ],
+      "units": 78,
+      "bodySha256": "76273813b7a9f56af2dc9d1971a7e347e459980690ac99ce47b0ece195ba1927",
+      "note": "declares Epe, the entry to the tab and ESC-sequence pass: untouched unless the text holds a tab or an ESC-class byte"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        2557,
+        2960
+      ],
+      "units": 403,
+      "bodySha256": "982e350e5c53cf2d875af214f140f3cd17bfd26d533621cc1859273f2e1c9e18",
+      "note": "declares mCo, the expander: a line without a tab or an escape is passed through while the running column is tracked, otherwise the line is tokenized and every tab becomes the spaces up to the next stop, a line feed resetting the column"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        2960,
+        2994
+      ],
+      "units": 34,
+      "bodySha256": "9bf378903ab08dda67a4881b85c2fe0ad60b2846faf6d2bcd5e322ba54911d40",
+      "note": "declares gGn, does the text hold an ESC-class byte"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        2994,
+        3099
+      ],
+      "units": 105,
+      "bodySha256": "93d9d1575d24d9a11173dd7b70c1c8e3c2aca8efed877feca657979bef60a648",
+      "note": "declares gCo, does tokenizing the text change it, which is the pass' own reachability test"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        3099,
+        3269
+      ],
+      "units": 170,
+      "bodySha256": "225656250f11e8514d3efc8b64d6bcc56ed1c054778c4482cf976ff0cddf362f",
+      "note": "declares ht, the tokenizer's entry: a line without an ESC-class byte is one text token, otherwise the state machine feeds it and an unterminated tail becomes a sequence or a text token"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        3269,
+        3463
+      ],
+      "units": 194,
+      "bodySha256": "574f1878481de4d997a0e3f4f9e6573b1ed70f77b1817bead423308680ef4c4f",
+      "note": "declares yt, the text of one token with its controls rewritten, and nothing for a sequence token"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        3463,
+        3508
+      ],
+      "units": 45,
+      "bodySha256": "f570438de042c3cf4700f59e3f0c4acfa11c5a2bf4e51d19a688bf8a062787a5",
+      "note": "declares mt, the C1 controls replaced by the replacement character"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        3508,
+        3577
+      ],
+      "units": 69,
+      "bodySha256": "440ae16a5900bfe5b2e26fdbe3391c1da7bcb62e8cb9f2feaf423c06d5409494",
+      "note": "declares Et, a control that is not a tab or a line feed"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        3577,
+        3644
+      ],
+      "units": 67,
+      "bodySha256": "877b53edc4c29511a194f4dbebc2bf2c10bf8df0e27b7f4ca1e4269c90e0f4de",
+      "note": "declares Rt, the Arabic number signs and their format characters"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        3644,
+        3687
+      ],
+      "units": 43,
+      "bodySha256": "f6ccfbb046fc3ae7c7fc3ceb6292ce2489a2e60626b75ccaf9afd0da605cb987",
+      "note": "declares _r, the variation selectors, dropped rather than replaced"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        3687,
+        3728
+      ],
+      "units": 41,
+      "bodySha256": "6d155ed00710002b5eaa250450cd13417833e7a1a579fe3019360763589ba62e",
+      "note": "declares Pr, a surrogate half"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        3728,
+        3856
+      ],
+      "units": 128,
+      "bodySha256": "f7b2be274aded8e7121881c2912b00020eddca5238c372002eafc0566a49eb74",
+      "note": "declares _t, the cell width of one grapheme: zero for a control, one for an Arabic number sign format character, otherwise measured"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        3856,
+        3916
+      ],
+      "units": 60,
+      "bodySha256": "1831bc24bcc88c309f7a3476b4d9177f6812929e3319c520ff9a144ffbb63dfa",
+      "note": "declares the preview budgets: the per-line character ceiling and the two square budgets beside the marker pattern this pass does not read"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        4178,
+        4302
+      ],
+      "units": 124,
+      "bodySha256": "b7b3d9edab7d807f212b4bc4c35079d11560bd3565420b842cdd8404b7e242ee",
+      "note": "declares bt, does every grapheme's measured width match its own cell width"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        4302,
+        4433
+      ],
+      "units": 131,
+      "bodySha256": "d337243b393543e3b6e4d82dc58ad48d60e7ab44895b6f75657c9ada4b7bdc83",
+      "note": "declares Ir, rewrite the graphemes whose measured width disagrees with their cell width"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        4433,
+        4599
+      ],
+      "units": 166,
+      "bodySha256": "82b8c60be5b442dd6876005df7e07f7a49883b1c64af791735086bc62146aa78",
+      "note": "declares wt, settle the text by rewriting it until every width agrees, or give up and fill it with replacement characters"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        4599,
+        4706
+      ],
+      "units": 107,
+      "bodySha256": "9252ee5a7ab73a05cc522459ecd293f040456c7bd79f4f0eb04bb10cfea2b89c",
+      "note": "declares Cr, take whole graphemes up to a character budget"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        4706,
+        4737
+      ],
+      "units": 31,
+      "bodySha256": "94147fc846561fb9553bd2be188a668c154aaad3d47ed5c6685a1b43fc59a349",
+      "note": "declares vr, cut a line to the preview's character ceiling"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        4737,
+        4885
+      ],
+      "units": 148,
+      "bodySha256": "be7538ed83cd3b25dd7364a9266a8ff7fac5c02100566c0626109343bb923015",
+      "note": "declares Pt, the cut itself: whole graphemes where possible, otherwise a slice that never splits a surrogate pair"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        4885,
+        4920
+      ],
+      "units": 35,
+      "bodySha256": "b71e9ac55aca7e930987779d18ec327ab56fb98c299ecce0cf8249021e93fd43",
+      "note": "declares the three preview budgets, the line budget being the square of the character ceiling"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        4920,
+        5531
+      ],
+      "units": 611,
+      "bodySha256": "21a3d1548cdf8124b2f939ed1effc88261abf093bd59d0c0602d4298e417360e",
+      "note": "declares Lr, the grapheme-budget preview: per line, keep the ellipsised tail already there, settle the line within the line budget, else cut to the character budget, else collapse the line to a grapheme count"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        5614,
+        5645
+      ],
+      "units": 31,
+      "bodySha256": "b2fc5b7f050ff72a36ec7fe8074d35fe0beb7c4d677795e83230a948fba46f69",
+      "note": "declares Zs, the normalise pass with the preview on"
+    },
+    {
+      "module": "chunk-bf3z2ftn.js",
+      "sha256": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+      "range": [
+        5645,
+        5792
+      ],
+      "units": 147,
+      "bodySha256": "b99bd99d3928f7686b50b8cf7b282be032c4eb30eb8da631f1a13d0534815cf2",
+      "note": "declares kt, the fold: variation selectors dropped, controls, number-sign format characters and surrogate halves replaced, then the tab and ESC-sequence pass and the preview"
+    }
+  ],
+  "missing": []
+}

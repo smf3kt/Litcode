@@ -3,7 +3,7 @@ import type { Readable, Writable } from 'node:stream';
 import { Agent } from './agent.js';
 import type { ModelProvider } from './provider.js';
 import { Session, type SessionConfig } from './session.js';
-import { createTerminalInput, type TerminalSurface, type TerminalPromptRequest } from './terminal.js';
+import { createTerminalInput, questionPreviewText, type TerminalSurface, type TerminalPromptRequest } from './terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { relocateSession } from './workspace-session.js';
 import fs from 'node:fs';
@@ -20,6 +20,10 @@ import { resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree } from 
 import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
 import { loadProjectConfig } from './config.js';
+import { saveThemeSetting, saveEditorMode } from './theme-settings.js';
+import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
+import type { EditorMode } from './tui-vim.js';
+import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import {
   expandUserSkill,
   findSkill,
@@ -59,9 +63,13 @@ export const COMMAND_HELP = `/help       Show commands
 /worktree NAME  Create/enter an owned checkout and relocate completed history
 /worktree-exit [--remove [--discard-changes]]  Return; optionally archive history and remove owned checkout/branch
 /model [ID] Choose or enter a model, then start a session with completed history
+/theme [NAME] Preview, choose and save a terminal theme
 /thinking [on|off] Toggle or set thinking in a new session with completed history
 /plan       Start a read-only session
 /permissions MODE  Start a session in default/plan/acceptEdits/ask/bypass mode
+/editor     Edit the current draft in VISUAL/EDITOR (Ctrl+G at a terminal)
+/config editor=normal|vim  Save and apply the input editor mode
+/vim        Open the Editor mode setting
 /clear      Start a new session without changing existing logs
 /exit       Close the interactive session
 Other text is sent as a task.`;
@@ -76,7 +84,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const terminal: TerminalSurface | undefined = options.terminal ??
     ((options.input as Readable & { isTTY?: boolean }).isTTY &&
     (options.output as Writable & { isTTY?: boolean }).isTTY
-      ? createTerminalInput({ input: options.input, output: options.output, keybindings: initial.config.keybindings })
+      ? createTerminalInput({ input: options.input, output: options.output, keybindings: initial.config.keybindings,sourceInputGestures:true,
+        editorMode:initial.config.editorMode,vimInsertModeRemaps:initial.config.vimInsertModeRemaps })
       : undefined);
   const rl = terminal ? undefined : createInterface({ input: options.input, terminal: false });
   const output = terminal?.outputStream ?? options.output;
@@ -95,12 +104,19 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   options.signal.addEventListener('abort', abort, { once: true });
   const queue: { prompt: string; source: 'user' | 'event'; notification?: boolean; idle?: { id: string; name: string | null } }[] = [];
+  let editorWork: Promise<import('./external-editor.js').ExternalEditorResult> | undefined;
   let inputClosed = false;
   let approval: ((value: string | undefined) => void) | undefined;
   let wake: (() => void) | undefined;
   const awaken = () => { wake?.(); wake = undefined; };
   let configDirty = false;
   let configWatch: ConfigWatcher | undefined;
+  let taskUnsubscribe: (() => void) | undefined;
+  const refreshTasks = () => {
+    if (!terminal?.setTasks) return;
+    try {terminal.setTasks(activeRuntime.taskRecords?.(session.config) ?? []);}
+    catch (error) {terminal.setTasks([]); options.status.write(`Task display error: ${String(error)}\n`);}
+  };
   const dynamicWatchPaths = new Set<string>();
   let watchedWorkspace = session.config.workspace;
   const addInstructionPaths = (paths: string[]) => {
@@ -123,6 +139,22 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       for (const file of event.paths) if (dynamicWatchPaths.size < 2048 && Buffer.byteLength(JSON.stringify([...dynamicWatchPaths, file])) <= 65536) dynamicWatchPaths.add(file);
     }
     terminal?.setKeybindings(session.config.keybindings);
+    terminal?.setEditorMode?.(session.config.editorMode,session.config.vimInsertModeRemaps);
+    terminal?.setPrefersReducedMotion?.(session.config.prefersReducedMotion);
+    terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
+    terminal?.setProgressSettings?.({timeFormat:session.config.timeFormat, timeZone:session.config.timeZone,
+      spinnerVerbs:session.config.spinnerVerbs});
+    terminal?.setMaxProseWidth?.(session.config.maxProseWidth);
+    terminal?.setSyntaxHighlightingDisabled?.(session.config.syntaxHighlightingDisabled);
+    terminal?.bindThemeCatalog?.(session.config.configSources?.userDir, session.config.workspace, session.config.plugins);
+    terminal?.setTheme?.(session.config.theme);
+    terminal?.bindStatusLine?.(session);
+    taskUnsubscribe?.(); taskUnsubscribe = undefined;
+    refreshTasks();
+    if (terminal?.setTasks) taskUnsubscribe = activeRuntime.subscribeTasks?.(session.config, refreshTasks);
+    const duration = session.events.findLast(event => event.kind === 'turn_end' && event.duration !== undefined
+      && event.reason !== 'aborted' && event.reason !== 'error');
+    terminal?.restoreTurnDuration?.(duration?.kind === 'turn_end' ? duration.duration : undefined);
     if (session.config.watchConfig) {
       let instructionPaths: string[] = [];
       let contentDirectories: string[] = [];
@@ -144,20 +176,29 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (approval) { approval(line); return; }
     queue.push({ prompt: line, source: 'user' }); awaken();
   };
-  const onClose = () => { inputClosed = true; approval?.(undefined); awaken(); };
+  const onClose = () => {
+    inputClosed = true;
+    if (terminal) turnController?.abort(new Error('Terminal input closed'));
+    approval?.(undefined); awaken();
+  };
   if (options.signal.aborted) abort();
   rl?.on('line', onLine); rl?.on('close', onClose);
   const unsubscribeTerminal = terminal?.subscribe({ onSubmit: onLine, onExit: onClose,
     onInterrupt: () => turnController?.abort(new Error('Task interrupted')),
     onAction: action => {
+      if(action==='chat:externalEditor') {
+        if(inputClosed||approval||turnController||editorWork||!terminal?.editDraft)return;
+        editorWork=terminal.editDraft(options.signal,session.config.workspace)
+          .catch(error=>({content:null,error:String(error)}));
+        queue.push({prompt:'/editor',source:'user'});awaken();return;
+      }
       const command = action === 'chat:modelPicker' ? '/model' : action === 'chat:thinkingToggle' ? '/thinking'
         : action === 'app:toggleTodos' ? '/tasks' : undefined;
       if (!command || inputClosed || approval) return;
       if (!queue.some(item => item.source === 'user' && item.prompt === command)) queue.push({ prompt: command, source: 'user' });
       awaken();
     } });
-  terminal?.start();
-  let unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
+  let unsubscribe: (() => void) | undefined;
   let activeAgent: Agent | undefined;
   let rewindPreview: RewindPreview | undefined;
   let formController: AbortController | undefined;
@@ -232,7 +273,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             answers.push({ questionIndex, selected: answer.selected, ...(answer.text === undefined ? {} : { other: answer.text }) });
             continue;
           }
-          const choices = question.options.map((option, index) => `${index + 1}. ${option.label}: ${option.description}`).join('\n');
+          const choices = question.options.map((option, index) => {
+            const preview = questionPreviewText(option.preview);
+            return `${index + 1}. ${option.label}: ${option.description}${preview === undefined ? '' : `\nPreview:\n${preview}`}`;
+          }).join('\n');
           const answer = (await readAnswer(`\n${question.question}\n${choices}\n${question.multiSelect ? 'Numbers separated by commas' : 'One number'}, or Other text: `, signal)).trim();
           const indices = /^\d+(?:\s*,\s*\d+)*$/.test(answer) ? answer.split(',').map(value => Number(value.trim()) - 1) : [];
           if (indices.length && indices.every(index => index >= 0 && index < question.options.length) &&
@@ -249,7 +293,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         for (const finding of request.findings) output.write(`${finding.severity}: ${finding.file}:${finding.line} ${finding.summary}\n`);
       },
     },
-    text: text => { output.write(text); }, status: text => { options.status.write(`${text}\n`); },
+    progress: event => terminal?.setProgress?.(event),
+    textStart: () => terminal?.beginAssistantMessage?.(),
+    text: text => { if (terminal?.writeAssistantText) terminal.writeAssistantText(text); else output.write(text); },
+    textEnd: () => terminal?.endAssistantMessage?.(),
+    status: text => { options.status.write(`${text}\n`); },
     instructionFiles: addInstructionPaths,
     ...(terminal?.isTTY ? { terminalSequence: (sequence: string) => terminal.writeTerminalSequence(sequence) } : {}),
     hookOptions: activeRuntime.hookOptions?.(session.config, session.id),
@@ -334,10 +382,56 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     } catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
     session.close(); session = next; activeRuntime = nextRuntime; activeAgent = undefined; rewindPreview = undefined;
     bindConfigWatch();
+    await terminal?.bindInputHistory?.(session);
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
     unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
   };
+  const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal) => {
+    signal.throwIfAborted();
+    const next = Session.open(config.workspace, { config });
+    try {
+      const boundaries = new Map<number, number>([[0, 0]]);
+      for (const [index, event] of session.events.entries()) {
+        if (event.kind === 'message') {
+          const copied = structuredClone(event);
+          if (Array.isArray(copied.message.content)) {
+            copied.message.content = copied.message.content.filter(block => block.type !== 'thinking' && block.type !== 'redacted_thinking');
+            if (!copied.message.content.length) copied.message.content = [{ type: 'text', text: '[Prior thinking omitted after configuration change.]' }];
+          }
+          if (copied.response) copied.response.content = copied.response.content.filter(block => block.type !== 'thinking' && block.type !== 'redacted_thinking');
+          next.append(copied);
+        }
+        if (event.kind === 'compact' || event.kind === 'turn_end') {
+          next.append(event);
+          if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
+        }
+        if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
+        if (event.kind === 'title' || event.kind === 'instruction_watch') next.append(event);
+      }
+      next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'configuration' });
+    } catch (error) { next.close(); throw error; }
+    const nextRuntime = await bindNext(activeRuntime, next);
+    try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
+    await acceptNext(next, nextRuntime);
+    announce(); await agent().startSession('resume', signal);
+    await agent().emitHook(switchingModel ? 'PostModelSwitch' : 'ConfigChange', { model: config.model,
+      permission_mode: config.permissions?.mode, thinking: config.thinking }, signal);
+  };
+  const selectTheme = async (theme: ThemeSetting, signal: AbortSignal) => {
+    signal.throwIfAborted();
+    const config = structuredClone(session.config);
+    const decision = await agent().emitHook('ConfigChange', { source: 'theme', theme }, signal);
+    if (decision.blocked || decision.stopRequested) throw new Error(decision.reason ?? 'ConfigChange hook blocked the change');
+    signal.throwIfAborted();
+    saveThemeSetting(theme, config.configSources?.userDir);
+    config.theme = theme;
+    await applyConfig(config, false, signal);
+    options.status.write(`Theme: ${theme}\n`);
+  };
   try {
+    await terminal?.bindInputHistory?.(session);
+    terminal?.start();
+    unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
     const bound = await bindNext(activeRuntime, session);
     if (bound !== activeRuntime) {
       unsubscribe?.();
@@ -375,6 +469,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             ...(event.kind === 'teammate_idle' ? { idle: { id: event.agentId, name: event.name } } : {}) });
         }
       }
+      // Terminal exit cancels its owner; piped line input still drains queued commands.
+      if (inputClosed && terminal) break;
       const nextIndex = session.awaitingResponse ? queue.findIndex(item => item.source === 'user') : (queue.length ? 0 : -1);
       if (nextIndex < 0) {
         if (inputClosed) break;
@@ -409,6 +505,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
       try {
         if (prompt === '/help') { output.write(COMMAND_HELP + '\n'); continue; }
+        if (prompt === '/editor') {
+          const edited=await (editorWork??terminal?.editDraft?.(options.signal,session.config.workspace));editorWork=undefined;
+          const report=terminal?.prompt?options.status:output;
+          if(edited?.error)report.write(`External editor: ${edited.error}\n`);
+          else report.write(edited?.content===null?'External editor returned without changes.\n':'External editor returned.\n');
+          continue;
+        }
         if (/^\/sessions(?:\s|$)/.test(prompt)) {
           const query = prompt.slice(9).trim().toLowerCase();
           const listed = listSessions(session.config.workspace).filter(item => `${item.id} ${item.title ?? ""} ${item.model} ${item.parent?.id ?? ""}`.toLowerCase().includes(query));
@@ -564,7 +667,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
         if (prompt === '/status' || prompt === '/usage' || prompt === '/cost') {
           const responses = session.events.flatMap(event => event.kind === 'message' && event.response ? [event.response] : event.kind === 'compact' ? [event.response] : []);
-          output.write(JSON.stringify({ session: session.id, model: session.config.model,
+          output.write(JSON.stringify({ session: session.id, model: session.config.model, theme: session.config.theme ?? 'dark',
             gateway: session.config.gateway?.baseURL, unfinished: session.awaitingResponse,
             contextTokens: session.config.contextTokens, compactAt: session.config.compactAt,
             skills: session.config.skills?.length ?? 0, effort: session.config.effort,
@@ -576,6 +679,29 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             outputTokens: responses.reduce((sum, r) => sum + r.usage.output_tokens, 0),
           }, null, 2) + '\n');
           continue;
+        }
+        if (prompt === '/theme') {
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          let selected: string | undefined, editing = false;
+          if (terminal?.prompt) {
+            const choices = await terminal.getThemeChoices?.() ?? themeChoices as { label: string; value: ThemeSetting }[];
+            const answer = await withTurn(signal => readDialog({ title: 'Theme',
+              message: 'Choose the text style that looks best with your terminal.',
+              choices: terminal.editCustomTheme ? [...choices, {label:'New custom theme...', value:'new-custom-theme'}] : choices,
+              defaultIndex: Math.max(0, choices.findIndex(choice => choice.value === (session.config.theme ?? 'dark'))),
+              themePreview: true, themeEdit: Boolean(terminal.editCustomTheme) }, signal));
+            selected = answer?.selected[0]; editing = answer?.themeEdit === true || selected === 'new-custom-theme';
+          } else selected = (await withTurn(signal => readAnswer('Theme name, or :cancel: ', signal))).trim();
+          if (!selected || selected === ':cancel') { options.status.write('Theme selection cancelled.\n'); continue; }
+          if (editing && terminal?.editCustomTheme) {
+            await withTurn(async signal => {
+              if (selected !== 'new-custom-theme' && selected !== session.config.theme) await selectTheme(parseTheme(selected)!, signal);
+              await terminal.editCustomTheme!(selected === 'new-custom-theme' ? undefined : selected,
+                theme => theme === session.config.theme ? Promise.resolve() : selectTheme(theme, signal), signal);
+            });
+            options.status.write('Theme editor closed.\n'); continue;
+          }
+          prompt = `/theme ${selected}`;
         }
         if (prompt === '/model') {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
@@ -594,12 +720,43 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (selected === session.config.model) { options.status.write('Model unchanged.\n'); continue; }
           prompt = `/model ${selected}`;
         }
-        if (prompt.startsWith('/model ') || prompt.startsWith('/effort ') || /^\/thinking(?:\s|$)/.test(prompt)
+        if(prompt==='/vim'||/^\/config\s+editor(?:=|\s|$)/.test(prompt)){
+          if(session.awaitingResponse)throw new Error('Finish or continue the current turn first');
+          const config=structuredClone(session.config);
+          const row=editorModeRow(config,(_key:string,value:EditorMode)=>saveEditorMode(value,config.configSources?.userDir),()=>{});
+          let picked:string|undefined;
+          if(prompt==='/vim'){
+            options.status.write(vimRedirect('vim')+'\n');
+            if(terminal?.prompt){
+              const answer=await withTurn(signal=>readDialog({title:'Editor mode',message:'Choose input editing',choices:row.options.map((value:string)=>({label:value,value})),
+                defaultIndex:row.options.indexOf(row.value)},signal));
+              picked=answer?.selected[0];
+            }else{
+              const answer=(await withTurn(signal=>readAnswer('Choose input editing\n1. normal\n2. vim\nOne number, or :cancel: ',signal))).trim();
+              picked=row.options[Number(answer)-1];
+            }
+            if(!picked)continue;
+          }else{
+            const value=prompt.replace(/^\/config\s+editor\s*(?:=|\s)\s*/,'').trim().toLowerCase();
+            if(!row.options.includes(value))throw new Error('Use /config editor=normal|vim');picked=value;
+          }
+          const mode=picked as EditorMode;
+          const decision=await agent().emitHook('ConfigChange',{source:'editor',editorMode:mode},options.signal);
+          if(decision.blocked||decision.stopRequested)throw new Error(decision.reason??'ConfigChange hook blocked the change');
+          options.signal.throwIfAborted();row.onChange(mode);config.editorMode=mode;
+          await applyConfig(config,false,options.signal);options.status.write(`Editor mode: ${mode}\n`);continue;
+        }
+        if (prompt.startsWith('/model ') || prompt.startsWith('/theme ') || prompt.startsWith('/effort ') || /^\/thinking(?:\s|$)/.test(prompt)
           || prompt === '/plan' || prompt.startsWith('/permissions ')) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           const config = structuredClone(session.config);
           const switchingModel = prompt.startsWith('/model ');
-          if (switchingModel) {
+          const switchingTheme = prompt.startsWith('/theme ');
+          if (switchingTheme) {
+            const theme = parseTheme(prompt.slice(7).trim());
+            if (!theme) throw new Error('Theme takes the name of a theme');
+            await selectTheme(theme, options.signal); continue;
+          } else if (switchingModel) {
             const model = prompt.slice(7).trim();
             if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
             const pre = await agent().emitHook('PreModelSwitch', { model, previous_model: config.model }, options.signal);
@@ -622,34 +779,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (config.configSources) config.configSources.overrides = { ...config.configSources.overrides,
               permissions: structuredClone(config.permissions) };
           }
-          const next = Session.open(config.workspace, { config });
-          try {
-            const boundaries = new Map<number, number>([[0, 0]]);
-            for (const [index, event] of session.events.entries()) {
-              if (event.kind === 'message') {
-                const copied = structuredClone(event);
-                if (Array.isArray(copied.message.content)) {
-                  copied.message.content = copied.message.content.filter(block => block.type !== 'thinking' && block.type !== 'redacted_thinking');
-                  if (!copied.message.content.length) copied.message.content = [{ type: 'text', text: '[Prior thinking omitted after configuration change.]' }];
-                }
-                if (copied.response) copied.response.content = copied.response.content.filter(block => block.type !== 'thinking' && block.type !== 'redacted_thinking');
-                next.append(copied);
-              }
-              if (event.kind === 'compact' || event.kind === 'turn_end') {
-                next.append(event);
-                if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
-              }
-              if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
-              if (event.kind === 'title' || event.kind === "instruction_watch") next.append(event);
-            }
-            next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'configuration' });
-          } catch (error) { next.close(); throw error; }
-          const nextRuntime = await bindNext(activeRuntime, next);
-          try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
-          await acceptNext(next, nextRuntime);
-          announce(); await agent().startSession('resume', options.signal);
-          await agent().emitHook(switchingModel ? 'PostModelSwitch' : 'ConfigChange', { model: config.model,
-            permission_mode: config.permissions?.mode, thinking: config.thinking }, options.signal);
+          await applyConfig(config, switchingModel, options.signal);
           if (switchingModel) options.status.write(`Model: ${config.model}\n`);
           else if (/^\/thinking(?:\s|$)/.test(prompt)) options.status.write(`Thinking: ${config.thinking ? 'on' : 'off'}\n`);
           continue;
@@ -830,10 +960,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
     }
   } finally {
+    taskUnsubscribe?.(); taskUnsubscribe = undefined;
     configWatch?.close();
     options.signal.removeEventListener('abort', abort);
     unsubscribe?.(); unsubscribeTerminal?.(); rl?.off('line', onLine); rl?.off('close', onClose);
     rl?.close(); terminal?.close();
+    await editorWork;editorWork=undefined;
+    await terminal?.flushStatusLine?.();
+    await terminal?.flushInputHistory?.();
     try { await (activeAgent ?? agent()).endSession(options.signal.aborted ? 'interrupt' : 'prompt_input_exit'); }
     catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
     try { await activeRuntime.releaseSession?.(session.id); }

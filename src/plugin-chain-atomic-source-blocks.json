@@ -1,0 +1,390 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "range": [
+        3714,
+        3869
+      ],
+      "units": 155,
+      "bodySha256": "a81f9ebab5cdb43a220ea79df1f1ab0ee748fc1f93a4bc60daa5437638899645",
+      "note": "declares x, the telemetry-safe error the in-place refusal is raised in: its message, the telemetry message and an error class"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        2493,
+        2503
+      ],
+      "units": 10,
+      "bodySha256": "9e09e06c5b8d7186d5e85c04cddd63b14b276ee0a182bf763def22a986684512",
+      "note": "declares te, the flag the in-place feature gate reads"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        2524,
+        2548
+      ],
+      "units": 24,
+      "bodySha256": "05d2029c479be22d9a6bd77a5cabf876917e1c216f146a0ef2caaf54ac54a78b",
+      "note": "declares ne, the gate's reader of that flag"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        2926,
+        2949
+      ],
+      "units": 23,
+      "bodySha256": "824bbb41fd0526aba516e860c5eef8e939145a5bac194629836b3f261ae901e2",
+      "note": "declares be, the second half of the gate: whether in-place writes are served here"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        2949,
+        3009
+      ],
+      "units": 60,
+      "bodySha256": "10824c6c2a057d4444612bba86129a34a6e9381188c68487b2ccb6a2ae590490",
+      "note": "declares $Rr, the gate itself: in-place writes are refused unless both halves allow them"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        3009,
+        3076
+      ],
+      "units": 67,
+      "bodySha256": "155d21cff38fbbf74d52442eb95135d8aff5631eb6a383cfb85f7ade12927834",
+      "note": "declares rU and ST, the staging directory's name and the errors a rename retries on (EXDEV, EPERM, EEXIST, EBUSY)"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        3076,
+        3115
+      ],
+      "units": 39,
+      "bodySha256": "989526e675204cf2658b141f74e3a5f3ac816c03c837dc6be546cb63759bf77d",
+      "note": "declares GGn, the gate asked for the unserved case"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        3115,
+        3366
+      ],
+      "units": 251,
+      "bodySha256": "c06e80679255f6b3975279ea65f0512989c348e2db2c66da0f3067301e70f6bb",
+      "note": "declares pTo, the text of the in-place refusal: the file has other names on disk"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        3366,
+        3511
+      ],
+      "units": 145,
+      "bodySha256": "fdde5b9dbb732a30b5d93fd97c07b85760414164f1b5f20dd3932838618aeedb",
+      "note": "declares ae, the refusal as the telemetry-safe error the writer raises"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        3554,
+        3611
+      ],
+      "units": 57,
+      "bodySha256": "92fb88a0a704f3f7e08682538809dbfc23a6dfd48b7dfb81b59d71720197f361",
+      "note": "declares UR, the temp file's name: the target plus `.tmp.` and four random hex bytes"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        3784,
+        3898
+      ],
+      "units": 114,
+      "bodySha256": "5dd0e29d98d9bf332d1ac451a2896b358af203fea5a631b2be191e15ecd2b060",
+      "note": "declares se, ce, ke, URr and Ae: the retry counts, the per-attempt delays, the long backoff and the shared counter the delays are taken from"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        3936,
+        3969
+      ],
+      "units": 33,
+      "bodySha256": "671af774ef345ed780f26a616fc3446a46f36007415f8637749426d1cf7e9a09",
+      "note": "declares le, whether a failed attempt may be retried"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        3969,
+        3980
+      ],
+      "units": 11,
+      "bodySha256": "70ad6f1ebafc1cf82d376ebc98af3384ad28b83f722e5682a30304ed6e9cefd2",
+      "note": "declares ue, the mode bit a symlink is recognised by"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        3980,
+        4054
+      ],
+      "units": 74,
+      "bodySha256": "fa2a8bd5934138685acbb3a63dc4451dab33e212d49e35e099cd0dfd1905c312",
+      "note": "declares Ce, whether the path is a symlink, answered from its own mode"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        4054,
+        4240
+      ],
+      "units": 186,
+      "bodySha256": "c3784d499d6c42d1debdad66fe993d783cb6b28537e780672bc8574737377eb5",
+      "note": "declares TD, the retry loop: it runs an attempt, waits the schedule's delay and gives up after the last one"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        4240,
+        4285
+      ],
+      "units": 45,
+      "bodySha256": "09ee275f5369b4800a0ef35e4e6624684ce2e835d07f7f08584db49a9e19c1a6",
+      "note": "declares ss, the retrying rename"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        4539,
+        4619
+      ],
+      "units": 80,
+      "bodySha256": "c4817e8917ecef630f5ded039f6ab52bf853a381c40c15517d097690c568f7ab",
+      "note": "declares COs, fe and Mse: the errors a write retries on (ENOSPC, EIO, EDQUOT, EFBIG), the 64 MiB bound and the open flag"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        4619,
+        4691
+      ],
+      "units": 72,
+      "bodySha256": "eeb9e07a983cb18e83757ec6c6e4e0261453462b7770cbe6c1d55eb8d737dbba",
+      "note": "declares de, whether an in-place write is possible for this path on this platform"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        4691,
+        4905
+      ],
+      "units": 214,
+      "bodySha256": "814b92a095f7ff2951adb069f7932e75a6a3c11de7f1503c7cff7a8801cabd97",
+      "note": "declares We, the platform probe de is built on: what the path's ownership and kind say on darwin"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        5018,
+        5452
+      ],
+      "units": 434,
+      "bodySha256": "5eb80d068920ab782d8d2153867c2dd3ccffa3deb5e1354743832c0143a57e83",
+      "note": "declares Me, the snapshot of the file as it is on disk, taken before the write"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        5452,
+        5821
+      ],
+      "units": 369,
+      "bodySha256": "7d4c47792edf5f8c913a37358fe915ca309272bc5eb999a7b0fce092f75073cb",
+      "note": "declares Ye, the in-place write: the one path that writes the target without a rename"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        5821,
+        6196
+      ],
+      "units": 375,
+      "bodySha256": "1e7c303e5f3bcf8a49ccd19444b6c955cfa51749e0f2763b17b7089b97e3f900",
+      "note": "declares F, the failure annotated with what the write was about to publish"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        6196,
+        6285
+      ],
+      "units": 89,
+      "bodySha256": "d1bc7d4160fbb1e02ad98b8a3e5a0707eb1aff803aef340d5767e4ce2fe50152",
+      "note": "declares i1e, whether an error says the operation is unsupported here (EINVAL, ENOTSUP, EPERM, ENOSYS)"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        6285,
+        6442
+      ],
+      "units": 157,
+      "bodySha256": "bb0c65e55838e72bdd8dec37e68275c09d1cc92052bf69f434a82a540f4d254a",
+      "note": "declares VGn, the error a refused beforePublish raises: nothing was written"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        6442,
+        6719
+      ],
+      "units": 277,
+      "bodySha256": "377b738559a761b27ad314bc7d785f7655d49b3a3bb043a81845274c58276ff0",
+      "note": "declares De, the staging directory: validated when given, the target itself otherwise"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        6719,
+        6835
+      ],
+      "units": 116,
+      "bodySha256": "73165c1a2adaf1828b595a073325b9d8f23cdb29382671b328668f55fb475874",
+      "note": "declares Ue, whether the file is owned by this process's uid"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        6835,
+        6843
+      ],
+      "units": 8,
+      "bodySha256": "f0f1cde3974b3307cb41b91aa58ec288744d81eb969c69423cc3c3272eb54fb4",
+      "note": "declares C, the attempts a taken temp name is given"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        6843,
+        6961
+      ],
+      "units": 118,
+      "bodySha256": "0045925ea88eeb23aada0ac04e7ebeef4914a9783faff5096533db69e8384cd9",
+      "note": "declares me, whether the name already exists"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        6961,
+        7136
+      ],
+      "units": 175,
+      "bodySha256": "0691cd48a4cc4537d6b601f69e0ef4751a5ebe5f64263f4cb9b4208e62fe87ad",
+      "note": "declares W, the error an exclusive create raises when the name is taken"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        7136,
+        7320
+      ],
+      "units": 184,
+      "bodySha256": "2cc3e6b33416cff80bc08f8105b3bfa91593ff2661223c1e4ce692c83a9c81b4",
+      "note": "declares j, the temp name taken by exclusive create, retried while the name is taken"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        7320,
+        7506
+      ],
+      "units": 186,
+      "bodySha256": "b7bc098f62c49450ccf1032dfebac221b8ac0462b7298950e8ddb554e5ea3b19",
+      "note": "declares RD, the write through a taken temp file"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        7710,
+        7841
+      ],
+      "units": 131,
+      "bodySha256": "5cb9fe805c3996944060564a3ac790bfe7b6553bbe0c10422dfbec754ae987cc",
+      "note": "declares Be, the same write answering the open file handle it took"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        8106,
+        8169
+      ],
+      "units": 63,
+      "bodySha256": "792ab29d2a4de57b92cf1c8f0bb0b4ac571dd00b2a71648bb856755e4b2ff2a7",
+      "note": "declares vn, the entry the store calls: a file, its contents, a mode and an optional rename"
+    },
+    {
+      "module": "chunk-1t033v1j.js",
+      "sha256": "07eb5f690bc8609b43708ba2a3d6b2f17bfee11bc493f965342ba8fe7e84cc6e",
+      "range": [
+        8169,
+        10336
+      ],
+      "units": 2167,
+      "bodySha256": "f64565adb195c5b3104008ddc669074379326e0c2f5987463779aafeb55f5e3b",
+      "note": "declares Ope, the writer itself: the snapshot, the temp file, the beforePublish gate, the flush and the rename, with the in-place path taken only where it is allowed"
+    }
+  ],
+  "missing": []
+}

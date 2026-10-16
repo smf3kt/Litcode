@@ -1,0 +1,226 @@
+cli/print.ts(1803,9): error TS2322: Type 'ScopedMcpServerConfig' is not assignable to type '{ type?: "stdio"; command: string; args?: string[]; env?: Record<string, string>; } | { type: "sse"; url: string; headers?: Record<string, string>; } | { type: "http"; url: string; headers?: Record<...>; } | { ...; }'.
+  Type '{ type: "sse-ide"; url: string; ideName: string; ideRunningInWindows?: boolean; } & { scope: "claudeai" | "dynamic" | "enterprise" | "local" | "managed" | "project" | "user"; pluginSource?: string; }' is not assignable to type '{ type?: "stdio"; command: string; args?: string[]; env?: Record<string, string>; } | { type: "sse"; url: string; headers?: Record<string, string>; } | { type: "http"; url: string; headers?: Record<...>; } | { ...; }'.
+    Type '{ type: "sse-ide"; url: string; ideName: string; ideRunningInWindows?: boolean; } & { scope: "claudeai" | "dynamic" | "enterprise" | "local" | "managed" | "project" | "user"; pluginSource?: string; }' is not assignable to type '{ type: "http"; url: string; headers?: Record<string, string>; }'.
+      Types of property 'type' are incompatible.
+        Type '"sse-ide"' is not assignable to type '"http"'.
+cli/print.ts(2839,20): error TS2367: This comparison appears to be unintentional because the types '"apply_flag_settings" | "can_use_tool" | "cancel_async_message" | "elicitation" | "get_context_usage" | "get_settings" | "hook_callback" | "initialize" | "mcp_message" | ... 10 more ... | "stop_task"' and '"end_session"' have no overlap.
+cli/print.ts(2841,72): error TS2339: Property 'reason' does not exist on type 'never'.
+cli/print.ts(3286,20): error TS2367: This comparison appears to be unintentional because the types '"apply_flag_settings" | "can_use_tool" | "elicitation" | "get_settings" | "hook_callback" | "stop_task"' and '"channel_enable"' have no overlap.
+cli/print.ts(3290,29): error TS2339: Property 'serverName' does not exist on type 'never'.
+cli/print.ts(3299,20): error TS2367: This comparison appears to be unintentional because the types '"apply_flag_settings" | "can_use_tool" | "elicitation" | "get_settings" | "hook_callback" | "stop_task"' and '"mcp_authenticate"' have no overlap.
+cli/print.ts(3452,20): error TS2367: This comparison appears to be unintentional because the types '"apply_flag_settings" | "can_use_tool" | "elicitation" | "get_settings" | "hook_callback" | "stop_task"' and '"mcp_oauth_callback_url"' have no overlap.
+cli/print.ts(3503,20): error TS2367: This comparison appears to be unintentional because the types '"apply_flag_settings" | "can_use_tool" | "elicitation" | "get_settings" | "hook_callback" | "stop_task"' and '"claude_authenticate"' have no overlap.
+cli/print.ts(3598,11): error TS2367: This comparison appears to be unintentional because the types '"apply_flag_settings" | "can_use_tool" | "elicitation" | "get_settings" | "hook_callback" | "stop_task"' and '"claude_oauth_callback"' have no overlap.
+cli/print.ts(3599,11): error TS2367: This comparison appears to be unintentional because the types '"apply_flag_settings" | "can_use_tool" | "elicitation" | "get_settings" | "hook_callback" | "stop_task"' and '"claude_oauth_wait_for_completion"' have no overlap.
+cli/print.ts(3610,33): error TS2339: Property 'subtype' does not exist on type 'never'.
+cli/print.ts(3612,52): error TS2339: Property 'authorizationCode' does not exist on type 'never'.
+cli/print.ts(3613,40): error TS2339: Property 'state' does not exist on type 'never'.
+cli/print.ts(3640,20): error TS2367: This comparison appears to be unintentional because the types '"apply_flag_settings" | "can_use_tool" | "elicitation" | "get_settings" | "hook_callback" | "stop_task"' and '"mcp_clear_auth"' have no overlap.
+cli/print.ts(3772,20): error TS2367: This comparison appears to be unintentional because the types '"can_use_tool" | "elicitation" | "hook_callback"' and '"generate_session_title"' have no overlap.
+cli/print.ts(3804,20): error TS2367: This comparison appears to be unintentional because the types '"can_use_tool" | "elicitation" | "hook_callback"' and '"side_question"' have no overlap.
+cli/print.ts(3881,20): error TS2367: This comparison appears to be unintentional because the types '"can_use_tool" | "elicitation" | "hook_callback"' and '"remote_control"' have no overlap.
+cli/print.ts(3882,31): error TS2339: Property 'enabled' does not exist on type 'never'.
+cli/print.ts(4056,11): error TS2345: Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'.
+cli/print.ts(4060,57): error TS2345: Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'.
+cli/print.ts(4088,34): error TS2345: Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'.
+cli/print.ts(4096,9): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+commands/clear/caches.ts(97,10): error TS2339: Property 'clearSessionsWithTungstenUsage' does not exist on type 'typeof import("/Users/mant1ssa/Projects/cc-base-2188/tools/TungstenTool/TungstenTool")'.
+commands/clear/caches.ts(97,42): error TS2339: Property 'resetInitializationState' does not exist on type 'typeof import("/Users/mant1ssa/Projects/cc-base-2188/tools/TungstenTool/TungstenTool")'.
+commands/install-github-app/OAuthFlowStep.tsx(132,33): error TS2345: Argument of type 'number' is not assignable to parameter of type 'Timeout'.
+components/MessageRow.tsx(197,7): error TS2322: Type 'RenderableMessage' is not assignable to type 'SystemMessage | AssistantMessage | AttachmentMessage | CollapsedReadSearchGroup | GroupedToolUseMessage | NormalizedUserMessage'.
+  Type 'NormalizedAssistantMessage<any>' is not assignable to type 'SystemMessage | AssistantMessage | AttachmentMessage | CollapsedReadSearchGroup | GroupedToolUseMessage | NormalizedUserMessage'.
+    Type 'NormalizedAssistantMessage<any>' is not assignable to type 'AssistantMessage'.
+      Type 'NormalizedAssistantMessage<any>' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+components/Messages.tsx(437,46): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '(message: Message) => boolean' is not assignable to parameter of type '(value: NormalizedMessage, index: number, array: NormalizedMessage[]) => unknown'.
+      Types of parameters 'message' and 'value' are incompatible.
+        Type 'NormalizedMessage' is not assignable to type 'Message'.
+          Type 'NormalizedAssistantMessage<any>' is not assignable to type 'Message'.
+            Type 'NormalizedAssistantMessage<any>' is not assignable to type 'AssistantMessage'.
+              Type 'NormalizedAssistantMessage<any>' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+components/Messages.tsx(648,63): error TS2345: Argument of type '(SystemMessage | AttachmentMessage | NormalizedAssistantMessage | NormalizedUserMessage)[]' is not assignable to parameter of type 'Message[]'.
+  Type 'SystemMessage | AttachmentMessage | NormalizedAssistantMessage | NormalizedUserMessage' is not assignable to type 'Message'.
+    Type 'NormalizedAssistantMessage' is not assignable to type 'Message'.
+      Type 'NormalizedAssistantMessage' is not assignable to type 'AssistantMessage'.
+        Type 'NormalizedAssistantMessage' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+components/Messages.tsx(681,27): error TS2345: Argument of type 'RenderableMessage[]' is not assignable to parameter of type 'readonly { uuid: string; }[]'.
+  Type 'RenderableMessage' is not assignable to type '{ uuid: string; }'.
+    Property 'uuid' is missing in type 'AttachmentMessage<any>' but required in type '{ uuid: string; }'.
+components/messages/AttachmentMessage.tsx(460,23): error TS1360: Type '"agent_mention" | "auto_mode" | "auto_mode_exit" | "bagel_console" | "budget_usd" | "compaction_reminder" | "companion_intro" | "context_efficiency" | "critical_system_reminder" | ... 23 more ... | "verify_plan_reminder"' does not satisfy the expected type '"agent_mention" | "auto_mode" | "auto_mode_exit" | "budget_usd" | "command_permissions" | "compaction_reminder" | "companion_intro" | "context_efficiency" | "critical_system_reminder" | ... 26 more ... | "verify_plan_reminder"'.
+  Type '"bagel_console"' is not assignable to type '"agent_mention" | "auto_mode" | "auto_mode_exit" | "budget_usd" | "command_permissions" | "compaction_reminder" | "companion_intro" | "context_efficiency" | "critical_system_reminder" | ... 26 more ... | "verify_plan_reminder"'.
+components/messages/nullRenderingAttachments.ts(43,3): error TS2322: Type '"pen_mode_enter"' is not assignable to type '"agent_listing_delta" | "agent_mention" | "already_read_file" | "async_hook_response" | "auto_mode" | "auto_mode_exit" | "bagel_console" | "budget_usd" | "command_permissions" | ... 50 more ... | "verify_plan_reminder"'.
+components/messages/nullRenderingAttachments.ts(44,3): error TS2820: Type '"pen_mode_exit"' is not assignable to type '"agent_listing_delta" | "agent_mention" | "already_read_file" | "async_hook_response" | "auto_mode" | "auto_mode_exit" | "bagel_console" | "budget_usd" | "command_permissions" | ... 50 more ... | "verify_plan_reminder"'. Did you mean '"plan_mode_exit"'?
+components/messages/nullRenderingAttachments.ts(53,7): error TS2322: Type 'Set<"agent_mention" | "auto_mode" | "auto_mode_exit" | "budget_usd" | "command_permissions" | "compaction_reminder" | "companion_intro" | "context_efficiency" | "critical_system_reminder" | ... 24 more ... | "verify_plan_reminder">' is not assignable to type 'ReadonlySet<"agent_listing_delta" | "agent_mention" | "already_read_file" | "async_hook_response" | "auto_mode" | "auto_mode_exit" | "bagel_console" | "budget_usd" | "command_permissions" | ... 50 more ... | "verify_plan_reminder">'.
+  Types of property 'forEach' are incompatible.
+    Type '(callbackfn: (value: "agent_mention" | "auto_mode" | "auto_mode_exit" | "budget_usd" | "command_permissions" | "compaction_reminder" | "companion_intro" | "context_efficiency" | "critical_system_reminder" | ... 24 more ... | "verify_plan_reminder", value2: "agent_mention" | ... 32 more ... | "verify_plan_reminder", ...' is not assignable to type '(callbackfn: (value: "agent_listing_delta" | "agent_mention" | "already_read_file" | "async_hook_response" | "auto_mode" | "auto_mode_exit" | "bagel_console" | "budget_usd" | "command_permissions" | ... 50 more ... | "verify_plan_reminder", value2: "agent_listing_delta" | ... 58 more ... | "verify_plan_reminder", se...'.
+      Types of parameters 'callbackfn' and 'callbackfn' are incompatible.
+        Types of parameters 'value' and 'value' are incompatible.
+          Type '"agent_mention" | "auto_mode" | "auto_mode_exit" | "budget_usd" | "command_permissions" | "compaction_reminder" | "companion_intro" | "context_efficiency" | "critical_system_reminder" | ... 24 more ... | "verify_plan_reminder"' is not assignable to type '"agent_listing_delta" | "agent_mention" | "already_read_file" | "async_hook_response" | "auto_mode" | "auto_mode_exit" | "bagel_console" | "budget_usd" | "command_permissions" | ... 50 more ... | "verify_plan_reminder"'.
+            Type '"pen_mode_enter"' is not assignable to type '"agent_listing_delta" | "agent_mention" | "already_read_file" | "async_hook_response" | "auto_mode" | "auto_mode_exit" | "bagel_console" | "budget_usd" | "command_permissions" | ... 50 more ... | "verify_plan_reminder"'.
+components/permissions/PermissionRequest.tsx(81,10): error TS2740: Type '{ isEnabled: () => boolean; isConcurrencySafe: (e: any) => boolean; isReadOnly: (e: any) => boolean; isDestructive: (e: any) => boolean; remoteExecution: Readonly<{ supported: false; }>; toAutoClassifierInput: (e: any) => string; userFacingName: () => any; } & { ...; }' is missing the following properties from type 'Tool': description, inputSchema, name, maxResultSizeChars, and 3 more.
+components/permissions/PermissionRequest.tsx(83,10): error TS2740: Type '{ isEnabled: () => boolean; isConcurrencySafe: (e: any) => boolean; isReadOnly: (e: any) => boolean; isDestructive: (e: any) => boolean; remoteExecution: Readonly<{ supported: false; }>; toAutoClassifierInput: (e: any) => string; userFacingName: () => any; } & { ...; }' is missing the following properties from type 'Tool': description, inputSchema, name, maxResultSizeChars, and 3 more.
+components/tasks/RemoteSessionDetailDialog.tsx(617,19): error TS2322: Type 'SystemMessage | AttachmentMessage<any> | NormalizedAssistantMessage<any> | NormalizedUserMessage' is not assignable to type 'SystemMessage | AssistantMessage | AttachmentMessage | CollapsedReadSearchGroup | GroupedToolUseMessage | NormalizedUserMessage'.
+  Type 'NormalizedAssistantMessage<any>' is not assignable to type 'SystemMessage | AssistantMessage | AttachmentMessage | CollapsedReadSearchGroup | GroupedToolUseMessage | NormalizedUserMessage'.
+    Type 'NormalizedAssistantMessage<any>' is not assignable to type 'AssistantMessage'.
+      Type 'NormalizedAssistantMessage<any>' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+query.ts(142,9): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+screens/REPL.tsx(4058,11): error TS2698: Spread types may only be created from object types.
+screens/REPL.tsx(6081,19): error TS2322: Type '{ mode: any; spinnerTip: string; responseLengthRef: RefObject<number>; apiMetricsRef: RefObject<{ ttftMs: number; firstTokenTime: number; lastTokenTime: number; responseLengthBaseline: number; endResponseLength: number; }[]>; ... 9 more ...; leaderIsIdle: boolean; }' is not assignable to type 'IntrinsicAttributes & Props'.
+  Property 'apiMetricsRef' does not exist on type 'IntrinsicAttributes & Props'.
+screens/REPL.tsx(6552,27): error TS2322: Type 'string' is not assignable to type '"closed" | "open" | "submitted" | "submitting" | "thanks" | "transcript_prompt"'.
+services/analytics/firstPartyEventLoggingExporter.ts(676,28): error TS2352: Conversion of type 'string | number | boolean | AnyValueArray | AnyValueMap | Uint8Array<ArrayBufferLike>' to type 'EventMetadata' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Uint8Array<ArrayBufferLike>' is missing the following properties from type 'EventMetadata': model, sessionId, userType, envContext, and 5 more.
+services/api/claude.ts(967,23): error TS2345: Argument of type 'BetaBrowserStateBlockParam | BetaImageBlockParam | BetaRequestDocumentBlock | BetaSearchResultBlockParam | BetaTextBlockParam | BetaToolReferenceBlockParam' is not assignable to parameter of type 'BetaContentBlockParam'.
+  Type 'BetaBrowserStateBlockParam' is not assignable to type 'BetaContentBlockParam'.
+    Type 'BetaBrowserStateBlockParam' is missing the following properties from type 'BetaWebSearchToolResultBlockParam': content, tool_use_id
+services/api/claude.ts(990,39): error TS2345: Argument of type 'BetaBrowserStateBlockParam | BetaImageBlockParam | BetaRequestDocumentBlock | BetaSearchResultBlockParam | BetaTextBlockParam | BetaToolReferenceBlockParam' is not assignable to parameter of type 'BetaContentBlockParam'.
+  Type 'BetaBrowserStateBlockParam' is not assignable to type 'BetaContentBlockParam'.
+    Type 'BetaBrowserStateBlockParam' is missing the following properties from type 'BetaWebSearchToolResultBlockParam': content, tool_use_id
+services/api/claude.ts(1735,9): error TS2322: Type '"adaptive" | "between_tools" | "disabled" | "enabled"' is not assignable to type '"adaptive" | "disabled" | "enabled"'.
+  Type '"between_tools"' is not assignable to type '"adaptive" | "disabled" | "enabled"'.
+services/api/claude.ts(1736,9): error TS2322: Type '"high" | "low" | "max" | "medium" | "xhigh"' is not assignable to type 'EffortLevel'.
+  Type '"xhigh"' is not assignable to type 'EffortLevel'. Did you mean '"high"'?
+services/lsp/passiveFeedback.ts(64,5): error TS2345: Argument of type '(diag: { message: string; severity?: number; range: { start: { line: number; character: number; }; end: { line: number; character: number; }; }; source?: string; code?: string | number; }) => { ...; }' is not assignable to parameter of type '(value: Diagnostic, index: number, array: Diagnostic[]) => { message: string; severity: "Error" | "Hint" | "Info" | "Warning"; range: { start: { line: number; character: number; }; end: { ...; }; }; source: string; code: string; }'.
+  Types of parameters 'diag' and 'value' are incompatible.
+    Type 'Diagnostic' is not assignable to type '{ message: string; severity?: number; range: { start: { line: number; character: number; }; end: { line: number; character: number; }; }; source?: string; code?: string | number; }'.
+      Types of property 'message' are incompatible.
+        Type 'string | MarkupContent' is not assignable to type 'string'.
+          Type 'MarkupContent' is not assignable to type 'string'.
+services/tokenEstimation.ts(414,48): error TS2345: Argument of type 'string | (BrowserStateBlockParam | DocumentBlockParam | ImageBlockParam | SearchResultBlockParam | TextBlockParam | ToolReferenceBlockParam)[]' is not assignable to parameter of type 'string | ContentBlock[] | ContentBlockParam[]'.
+  Type '(BrowserStateBlockParam | DocumentBlockParam | ImageBlockParam | SearchResultBlockParam | TextBlockParam | ToolReferenceBlockParam)[]' is not assignable to type 'string | ContentBlock[] | ContentBlockParam[]'.
+    Type '(BrowserStateBlockParam | DocumentBlockParam | ImageBlockParam | SearchResultBlockParam | TextBlockParam | ToolReferenceBlockParam)[]' is not assignable to type 'ContentBlock[]'.
+      Type 'BrowserStateBlockParam | DocumentBlockParam | ImageBlockParam | SearchResultBlockParam | TextBlockParam | ToolReferenceBlockParam' is not assignable to type 'ContentBlock'.
+        Type 'BrowserStateBlockParam' is not assignable to type 'ContentBlock'.
+          Type 'BrowserStateBlockParam' is missing the following properties from type 'WebSearchToolResultBlock': caller, content, tool_use_id
+services/tools/StreamingToolExecutor.ts(97,13): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/StreamingToolExecutor.ts(171,9): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/StreamingToolExecutor.ts(186,9): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/StreamingToolExecutor.ts(203,7): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/toolExecution.ts(407,9): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/toolExecution.ts(449,11): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/toolExecution.ts(486,9): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/toolExecution.ts(676,11): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/toolExecution.ts(729,11): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/toolExecution.ts(857,13): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/toolExecution.ts(1069,9): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/toolExecution.ts(1465,11): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+services/tools/toolExecution.ts(1733,11): error TS2322: Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'.
+tools/AgentTool/UI.tsx(415,5): error TS2739: Type '{ inference_geo: null; iterations: null; speed: null; input_tokens: number; output_tokens: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number; server_tool_use?: { ...; }; service_tier?: "batch" | ... 1 more ... | "standard"; cache_creation?: { ...; }; }' is missing the following properties from type 'BetaUsage': fallback_credit, output_tokens_details
+tools/BashTool/BashTool.tsx(611,7): error TS2345: Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'.
+tools/FileEditTool/FileEditTool.ts(438,9): error TS2345: Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'.
+tools/FileWriteTool/FileWriteTool.ts(262,9): error TS2345: Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'.
+tools/NotebookEditTool/NotebookEditTool.ts(315,9): error TS2345: Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'.
+tools/SendMessageTool/SendMessageTool.ts(3,10): error TS2305: Module '"../../bootstrap/state.js"' has no exported member 'isReplBridgeActive'.
+tools/ToolSearchTool/prompt.ts(2,10): error TS2305: Module '"../../bootstrap/state.js"' has no exported member 'isReplBridgeActive'.
+upstreamproxy/relay.ts(190,18): error TS2347: Untyped function calls may not accept type arguments.
+upstreamproxy/relay.ts(267,31): error TS2345: Argument of type 'string | NonSharedBuffer' is not assignable to parameter of type 'Buffer<ArrayBufferLike>'.
+  Type 'string' is not assignable to type 'Buffer<ArrayBufferLike>'.
+utils/conversationRecovery.ts(195,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'NormalizedMessage[]' is not assignable to parameter of type 'Message[]'.
+      Type 'NormalizedMessage' is not assignable to type 'Message'.
+        Type 'NormalizedAssistantMessage<any>' is not assignable to type 'Message'.
+          Type 'NormalizedAssistantMessage<any>' is not assignable to type 'AssistantMessage'.
+            Type 'NormalizedAssistantMessage<any>' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/conversationRecovery.ts(201,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'NormalizedMessage[]' is not assignable to parameter of type 'Message[]'.
+      Type 'NormalizedMessage' is not assignable to type 'Message'.
+        Type 'NormalizedAssistantMessage<any>' is not assignable to type 'Message'.
+          Type 'NormalizedAssistantMessage<any>' is not assignable to type 'AssistantMessage'.
+            Type 'NormalizedAssistantMessage<any>' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/conversationRecovery.ts(247,14): error TS2322: Type 'NormalizedMessage[]' is not assignable to type 'Message[]'.
+  Type 'NormalizedMessage' is not assignable to type 'Message'.
+    Type 'NormalizedAssistantMessage<any>' is not assignable to type 'Message'.
+      Type 'NormalizedAssistantMessage<any>' is not assignable to type 'AssistantMessage'.
+        Type 'NormalizedAssistantMessage<any>' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/envUtils.ts(141,12): error TS18050: The value 'null' cannot be used here.
+utils/execFileNoThrowPortable.ts(72,39): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type '{ env: NodeJS.ProcessEnv; maxBuffer: number; timeout: number; cwd: string; stdio: readonly [readonly StdinSingleOption<true, false, true, string>[] | StdinSingleOption<true, false, false, string>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, readonly StdoutStderrSingleOption<...>[] | Std...' is not assignable to parameter of type 'SyncOptions'.
+      Type '{ env: NodeJS.ProcessEnv; maxBuffer: number; timeout: number; cwd: string; stdio: readonly [readonly StdinSingleOption<true, false, true, string>[] | StdinSingleOption<true, false, false, string>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, readonly StdoutStderrSingleOption<...>[] | Std...' is not assignable to type 'BinaryOptions<true>'.
+        Type '{ env: NodeJS.ProcessEnv; maxBuffer: number; timeout: number; cwd: string; stdio: readonly [readonly StdinSingleOption<true, false, true, string>[] | StdinSingleOption<true, false, false, string>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, readonly StdoutStderrSingleOption<...>[] | Std...' is not assignable to type 'Omit<CommonOptions<true, BinaryEncodingOption>, "encoding">'.
+          Types of property 'stdio' are incompatible.
+            Type 'readonly [readonly StdinSingleOption<true, false, true, string>[] | StdinSingleOption<true, false, false, string>, readonly StdoutStderrSingleOption<true, false, true, string>[] | StdoutStderrSingleOption<...>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, ...StdioExtraOptionCommon<...>[]...' is not assignable to type 'readonly [readonly StdinSingleOption<true, false, true, Uint8Array<ArrayBufferLike>>[] | StdinSingleOption<true, false, false, Uint8Array<ArrayBufferLike>>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, ...StdioExtr...'.
+              Type 'readonly [readonly StdinSingleOption<true, false, true, string>[] | StdinSingleOption<true, false, false, string>, readonly StdoutStderrSingleOption<true, false, true, string>[] | StdoutStderrSingleOption<...>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, ...StdioExtraOptionCommon<...>[]]' is not assignable to type 'readonly [readonly StdinSingleOption<true, false, true, Uint8Array<ArrayBufferLike>>[] | StdinSingleOption<true, false, false, Uint8Array<ArrayBufferLike>>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, ...StdioExtr...'.
+                Type 'readonly [readonly StdinSingleOption<true, false, true, string>[] | StdinSingleOption<true, false, false, string>, readonly StdoutStderrSingleOption<true, false, true, string>[] | StdoutStderrSingleOption<...>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, ...StdioExtraOptionCommon<...>[]]' is not assignable to type 'readonly [readonly StdinSingleOption<true, false, true, Uint8Array<ArrayBufferLike>>[] | StdinSingleOption<true, false, false, Uint8Array<ArrayBufferLike>>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, readonly StdoutStderrSingleOption<...>[] | StdoutStderrSingleOption<...>, ...StdioExtr...'.
+                  Type at position 0 in source is not compatible with type at position 0 in target.
+                    Type 'readonly StdinSingleOption<true, false, true, string>[] | StdinSingleOption<true, false, false, string>' is not assignable to type 'readonly StdinSingleOption<true, false, true, Uint8Array<ArrayBufferLike>>[] | StdinSingleOption<true, false, false, Uint8Array<ArrayBufferLike>>'.
+                      Type 'AmbiguousStdioOption<true, false, false, unknown, string>' is not assignable to type 'readonly StdinSingleOption<true, false, true, Uint8Array<ArrayBufferLike>>[] | StdinSingleOption<true, false, false, Uint8Array<ArrayBufferLike>>'.
+                        Type 'AmbiguousStdioOption<true, false, false, unknown, string>' is not assignable to type 'AmbiguousStdioOption<true, false, false, unknown, Uint8Array<ArrayBufferLike>>'.
+                          Types of property 'value' are incompatible.
+                            Type 'AmbiguousStdioValue<true, false, unknown, string>' is not assignable to type 'AmbiguousStdioValue<true, false, unknown, Uint8Array<ArrayBufferLike>>'.
+                              Type 'GeneratorTransform<true, string>' is not assignable to type 'AmbiguousStdioValue<true, false, unknown, Uint8Array<ArrayBufferLike>>'.
+                                Type 'GeneratorTransform<true, string>' is not assignable to type 'GeneratorTransform<true, Uint8Array<ArrayBufferLike>>'.
+                                  Type 'string' is not assignable to type 'Uint8Array<ArrayBufferLike>'.
+utils/messageQueueManager.ts(3,15): error TS2305: Module '"src/types/utils.js"' has no exported member 'Permutations'.
+utils/messages.ts(362,3): error TS2739: Type '{ input_tokens: number; output_tokens: number; cache_creation_input_tokens: number; cache_read_input_tokens: number; server_tool_use: { web_search_requests: number; web_fetch_requests: number; }; service_tier: null; cache_creation: { ...; }; inference_geo: null; iterations: null; speed: null; }' is missing the following properties from type 'BetaUsage': fallback_credit, output_tokens_details
+utils/messages.ts(390,5): error TS2739: Type '{ id: `${string}-${string}-${string}-${string}-${string}`; container: null; model: "<synthetic>"; role: "assistant"; stop_reason: "stop_sequence"; stop_sequence: string; type: "message"; usage: Usage; content: BetaContentBlock[]; context_management: null; }' is missing the following properties from type 'BetaMessage': diagnostics, stop_details
+utils/messages.ts(755,26): error TS2345: Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'.
+utils/messages.ts(831,15): error TS2677: A type predicate's type must be assignable to its parameter's type.
+  Type 'ToolUseRequestMessage' is not assignable to type 'Message'.
+    Type 'ToolUseRequestMessage' is not assignable to type 'AssistantMessage'.
+      Type 'ToolUseRequestMessage' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/messages.ts(883,33): error TS2345: Argument of type 'SystemMessage | AttachmentMessage | NormalizedAssistantMessage | NormalizedUserMessage' is not assignable to parameter of type 'Message'.
+  Type 'NormalizedAssistantMessage' is not assignable to type 'Message'.
+    Type 'NormalizedAssistantMessage' is not assignable to type 'AssistantMessage'.
+      Type 'NormalizedAssistantMessage' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/messages.ts(901,31): error TS2345: Argument of type 'SystemMessage | AttachmentMessage | NormalizedAssistantMessage | NormalizedUserMessage' is not assignable to parameter of type 'Message'.
+  Type 'NormalizedAssistantMessage' is not assignable to type 'Message'.
+    Type 'NormalizedAssistantMessage' is not assignable to type 'AssistantMessage'.
+      Type 'NormalizedAssistantMessage' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/messages.ts(937,31): error TS2345: Argument of type 'SystemMessage | AttachmentMessage | NormalizedAssistantMessage | NormalizedUserMessage' is not assignable to parameter of type 'Message'.
+  Type 'NormalizedAssistantMessage' is not assignable to type 'Message'.
+    Type 'NormalizedAssistantMessage' is not assignable to type 'AssistantMessage'.
+      Type 'NormalizedAssistantMessage' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/messages.ts(965,33): error TS2345: Argument of type 'SystemMessage | AttachmentMessage | NormalizedAssistantMessage | NormalizedUserMessage' is not assignable to parameter of type 'Message'.
+  Type 'NormalizedAssistantMessage' is not assignable to type 'Message'.
+    Type 'NormalizedAssistantMessage' is not assignable to type 'AssistantMessage'.
+      Type 'NormalizedAssistantMessage' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/messages.ts(985,31): error TS2345: Argument of type 'SystemMessage | AttachmentMessage | NormalizedAssistantMessage | NormalizedUserMessage' is not assignable to parameter of type 'Message'.
+  Type 'NormalizedAssistantMessage' is not assignable to type 'Message'.
+    Type 'NormalizedAssistantMessage' is not assignable to type 'AssistantMessage'.
+      Type 'NormalizedAssistantMessage' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/messages.ts(1070,35): error TS2345: Argument of type 'NormalizedMessage' is not assignable to parameter of type 'Message'.
+  Type 'NormalizedAssistantMessage<any>' is not assignable to type 'Message'.
+    Type 'NormalizedAssistantMessage<any>' is not assignable to type 'AssistantMessage'.
+      Type 'NormalizedAssistantMessage<any>' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/messages.ts(1275,33): error TS2345: Argument of type 'NormalizedMessage' is not assignable to parameter of type 'Message'.
+  Type 'NormalizedAssistantMessage<any>' is not assignable to type 'Message'.
+    Type 'NormalizedAssistantMessage<any>' is not assignable to type 'AssistantMessage'.
+      Type 'NormalizedAssistantMessage<any>' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/messages/mappers.ts(18,3): error TS2305: Module '"src/types/message.js"' has no exported member 'CompactMetadata'.
+utils/messages/mappers.ts(33,11): error TS2352: Conversion of type '{ type: "assistant"; message: { readonly id: string; readonly container: { readonly id: string; readonly expires_at: string; readonly skills: readonly { readonly skill_id: string; readonly type: 'anthropic' | 'custom'; readonly version: string; }[]; }; ... 10 more ...; readonly input_transformations?: readonly ({ .....' to type 'Message' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ type: "assistant"; message: { readonly id: string; readonly container: { readonly id: string; readonly expires_at: string; readonly skills: readonly { readonly skill_id: string; readonly type: 'anthropic' | 'custom'; readonly version: string; }[]; }; ... 10 more ...; readonly input_transformations?: readonly ({ .....' is not comparable to type 'AssistantMessage'.
+    Type '{ type: "assistant"; message: { readonly id: string; readonly container: { readonly id: string; readonly expires_at: string; readonly skills: readonly { readonly skill_id: string; readonly type: 'anthropic' | 'custom'; readonly version: string; }[]; }; ... 10 more ...; readonly input_transformations?: readonly ({ .....' is not comparable to type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }'.
+      The types of 'message.container.skills' are incompatible between these types.
+        The type 'readonly { readonly skill_id: string; readonly type: "anthropic" | "custom"; readonly version: string; }[]' is 'readonly' and cannot be assigned to the mutable type 'BetaContainerSkill[]'.
+utils/permissions/classifierDecision.ts(31,7): error TS18050: The value 'null' cannot be used here.
+utils/plans.ts(10,3): error TS2305: Module '"src/types/message.js"' has no exported member 'SystemFileSnapshotMessage'.
+utils/plugins/marketplaceManager.ts(187,3): error TS2322: Type '{ [x: string]: DeclaredMarketplace | { source?: { source: "url"; url: string; headers?: Record<string, string>; } | { source: "github"; repo: string; ref?: string; path?: string; sparsePaths?: string[]; } | ... 6 more ... | { ...; }; installLocation?: string; autoUpdate?: boolean; }; }' is not assignable to type 'Record<string, DeclaredMarketplace>'.
+  'string' index signatures are incompatible.
+    Type 'DeclaredMarketplace | { source?: { source: "url"; url: string; headers?: Record<string, string>; } | { source: "github"; repo: string; ref?: string; path?: string; sparsePaths?: string[]; } | ... 6 more ... | { ...; }; installLocation?: string; autoUpdate?: boolean; }' is not assignable to type 'DeclaredMarketplace'.
+      Type '{ source?: { source: "url"; url: string; headers?: Record<string, string>; } | { source: "github"; repo: string; ref?: string; path?: string; sparsePaths?: string[]; } | { source: "git"; url: string; ref?: string; path?: string; sparsePaths?: string[]; } | ... 5 more ... | { ...; }; installLocation?: string; autoUpd...' is not assignable to type 'DeclaredMarketplace'.
+        Property 'source' is optional in type '{ source?: { source: "url"; url: string; headers?: Record<string, string>; } | { source: "github"; repo: string; ref?: string; path?: string; sparsePaths?: string[]; } | { source: "git"; url: string; ref?: string; path?: string; sparsePaths?: string[]; } | ... 5 more ... | { ...; }; installLocation?: string; autoUpd...' but required in type 'DeclaredMarketplace'.
+utils/processUserInput/processSlashCommand.tsx(882,15): error TS2322: Type 'Message[]' is not assignable to type '(SystemMessage | AssistantMessage | AttachmentMessage | ProgressMessage | UserMessage)[]'.
+  Type 'Message' is not assignable to type 'SystemMessage | AssistantMessage | AttachmentMessage | ProgressMessage | UserMessage'.
+    Type 'CollapsedReadSearchGroup' is not assignable to type 'SystemMessage | AssistantMessage | AttachmentMessage | ProgressMessage | UserMessage'.
+      Type 'CollapsedReadSearchGroup' is not assignable to type 'MessageBase & { type: "system"; subtype: "turn_duration"; }'.
+        Property 'subtype' is missing in type 'CollapsedReadSearchGroup' but required in type '{ type: "system"; subtype: "turn_duration"; }'.
+utils/queryHelpers.ts(110,32): error TS2345: Argument of type 'NormalizedAssistantMessage' is not assignable to parameter of type 'Message'.
+  Type 'NormalizedAssistantMessage' is not assignable to type 'AssistantMessage'.
+    Type 'NormalizedAssistantMessage' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/queryHelpers.ts(132,38): error TS2345: Argument of type 'NormalizedAssistantMessage' is not assignable to parameter of type 'Message'.
+  Type 'NormalizedAssistantMessage' is not assignable to type 'AssistantMessage'.
+    Type 'NormalizedAssistantMessage' is missing the following properties from type '{ type: "assistant"; message: BetaMessage; uuid: string; timestamp: string; }': uuid, timestamp
+utils/queryHelpers.ts(144,18): error TS2678: Type '"user"' is not comparable to type '"assistant"'.
+utils/ripgrep.ts(196,15): error TS2322: Type 'Error' is not assignable to type 'ExecFileException'.
+  Property 'cmd' is missing in type 'Error' but required in type 'ExecException'.
+utils/ripgrep.ts(210,13): error TS2322: Type 'ErrnoException' is not assignable to type 'ExecFileException'.
+  Property 'cmd' is missing in type 'ErrnoException' but required in type 'ExecException'.
+utils/sessionStorage.ts(1039,15): error TS2322: Type '{ type: "system"; subtype: "agents_killed"; parentUuid: `${string}-${string}-${string}-${string}-${string}`; logicalParentUuid: `${string}-${string}-${string}-${string}-${string}`; isSidechain: boolean; teamName: string; ... 9 more ...; slug: string; } | ... 17 more ... | { ...; }' is not assignable to type 'TranscriptMessage'.
+  Type '{ type: "system"; subtype: "agents_killed"; parentUuid: `${string}-${string}-${string}-${string}-${string}`; logicalParentUuid: `${string}-${string}-${string}-${string}-${string}`; isSidechain: boolean; teamName: string; ... 9 more ...; slug: string; }' is not assignable to type 'TranscriptMessage'.
+    Type '{ type: "system"; subtype: "agents_killed"; parentUuid: `${string}-${string}-${string}-${string}-${string}`; logicalParentUuid: `${string}-${string}-${string}-${string}-${string}`; isSidechain: boolean; teamName: string; ... 9 more ...; slug: string; }' is not assignable to type 'MessageBase & { type: "system"; subtype: "agents_killed"; } & { cwd: string; userType: string; entrypoint?: string; sessionId: string; timestamp: string; version: string; gitBranch?: string; slug?: string; } & { ...; }'.
+      Property 'timestamp' is missing in type '{ type: "system"; subtype: "agents_killed"; parentUuid: `${string}-${string}-${string}-${string}-${string}`; logicalParentUuid: `${string}-${string}-${string}-${string}-${string}`; isSidechain: boolean; teamName: string; ... 9 more ...; slug: string; }' but required in type '{ cwd: string; userType: string; entrypoint?: string; sessionId: string; timestamp: string; version: string; gitBranch?: string; slug?: string; }'.
+utils/sessionStorage.ts(2191,17): error TS2345: Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'.

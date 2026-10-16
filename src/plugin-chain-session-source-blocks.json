@@ -1,0 +1,119 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-3qabb19b.js",
+      "sha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-3qabb19b.js",
+      "sha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
+      "range": [
+        673,
+        732
+      ],
+      "units": 59,
+      "bodySha256": "8dfba6c6fce4cbf7879b76db23ff835a055481d92e7df90b4d119514b1d6a950",
+      "note": "declares F, the count of a list's members a predicate answers for"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        492112,
+        492181
+      ],
+      "units": 69,
+      "bodySha256": "ba15114fa71bc3bfc65ef35bf82c1c76baff209f3e05dee6cc430e8dbc9a5660",
+      "note": "declares T9n, whether message content is tool results rather than a person's turn"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        2085,
+        2727
+      ],
+      "units": 642,
+      "bodySha256": "384b0e691055cd9e950d8e3c580037051a464fac6db2de061230f965a82546f7",
+      "note": "declares ie, the drawing-session registry: attach keeps a client's viewport and answers, detach reports through the sources-change signal"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        2727,
+        2792
+      ],
+      "units": 65,
+      "bodySha256": "cab05ddf3fb118d397397c19287007f685da8c619e67e93843f62d0c7459ab82",
+      "note": "declares gE, the registry instance every surface read goes through"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1698766,
+        1698968
+      ],
+      "units": 202,
+      "bodySha256": "66102dd181d07a30065193c57f36aa25e4ce59c4bf929be7e67aeea9d2d4b41b",
+      "note": "declares Bpe, the session record the cwd/root/model/id entries answer with"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1703496,
+        1703695
+      ],
+      "units": 199,
+      "bodySha256": "a6a8c32d0f80801848aefae996a855b9b25795c3cd6036437a047b2a4b75004f",
+      "note": "declares WAo, the user turns the session holds: not meta, not virtual, not tool results"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        450195,
+        450316
+      ],
+      "units": 121,
+      "bodySha256": "daa73fd29b3dce563e7ec7f9efcc32cc8ba08c4e287d256253da9832962ddd83",
+      "note": "declares Xte, the drawing surfaces: the terminal first when this process draws to one"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1820356,
+        1820482
+      ],
+      "units": 126,
+      "bodySha256": "a1ce8557155f78df09674bc00b6b290b39a47ff764e7b447dc8b57f143a834ef",
+      "note": "declares uMo, the surface a session draws to, or null"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1820482,
+        1820600
+      ],
+      "units": 118,
+      "bodySha256": "78dc365124bef07f50fa831d5e497e491352a45f4b971ff046f9d7a9d3ae31f0",
+      "note": "declares cMo, every surface a session draws to"
+    }
+  ],
+  "missing": []
+}

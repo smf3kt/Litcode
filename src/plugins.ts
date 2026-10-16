@@ -23,10 +23,16 @@ function relativePath(value: string): string {
   }
   return value;
 }
+const themePathSchema = z.string().min(1).max(1024).refine(s => {
+  try { relativePath(s); return true; } catch { return false; }
+}, "themes must name a relative file or directory");
+const themesSchema = z.union([themePathSchema, z.array(themePathSchema).max(PLUGIN_LIMITS.entries)]);
 export const pluginManifestSchema = z.object({
   name: nameSchema,
   version: z.string().min(1).max(128).refine(s => s.trim() === s && !/[\x00-\x1f\x7f]/.test(s)),
   description: z.string().max(4096).optional(),
+  themes: themesSchema.optional(),
+  experimental: z.object({ themes: themesSchema.optional() }).strict().optional(),
   skills: z.string().min(1).max(1024).refine(s => {
     try { relativePath(s); return true; } catch { return false; }
   }, "skills must be a relative directory path").optional(),
@@ -63,16 +69,37 @@ const indexSchema = z.object({
 type Index = z.infer<typeof indexSchema>;
 type Entry = { path: string; kind: "directory" | "file"; mode: number; size?: number; sha256?: string };
 type Snapshot = InstalledPlugin & { entries: Entry[]; contents: Map<string, Buffer> };
+export interface PluginThemePaths {
+  name: string;
+  themesPath?: string;
+  themesPaths?: string[];
+}
 export interface InstalledPluginComponents {
   plugin: InstalledPlugin;
   directory: string;
   skillDirectory?: string;
   agentDirectory?: string;
+  themePaths?: PluginThemePaths;
   hooks?: HooksConfig;
   /** Persisted MCP schema: stdio command/args or HTTP URL/header env references. */
   mcpServers?: z.infer<typeof mcpServersSchema>;
+  /** The plugin's chain hooks module: the one entry its hooks file names in `modules`, relative to the
+   *  plugin folder. Source `aUr` (chunk-sfn1dbxq.js [4056182,4056874)) sets `plugin.modulePath` from
+   *  exactly one such entry — zero leaves it unset, two load neither. */
+  hooksModulePath?: string;
+  /** Why a named module is not loaded, in the source's own diagnostic shapes. The plugin still loads;
+   *  the source pushes these into its error list rather than failing the plugin. */
+  hooksModuleProblem?: PluginHooksModuleProblem;
 }
-const hookFileSchema = z.object({ hooks: hooksSchema }).strict();
+export interface PluginHooksModuleProblem {
+  type: "hook-load-failed" | "path-traversal" | "path-not-found";
+  path: string;
+  reason?: string;
+}
+const hookFileSchema = z.object({
+  hooks: hooksSchema,
+  modules: z.array(z.string().min(1).max(1024)).max(PLUGIN_LIMITS.entries).optional(),
+}).strict();
 const mcpFileSchema = z.object({ mcpServers: mcpServersSchema }).strict();
 const MAX_COMPONENT_BYTES = 512 * 1024;
 const MAX_COMPONENT_SERVERS = 1024;
@@ -201,13 +228,17 @@ function snapshot(root: string, options: Options, signal?: AbortSignal, copy = f
       throw new Error(`Plugin ${field} path must name an existing directory.`);
     }
   }
+  const themes = manifest.experimental?.themes ?? manifest.themes;
+  for (const themePath of themes === undefined ? [] : Array.isArray(themes) ? themes : [themes]) {
+    if (!entries.some(entry => entry.path === themePath)) throw new Error("Plugin themes path must name an existing file or directory.");
+  }
   entries.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const result = { manifest, entries, contents, files, bytes, digest: hash(JSON.stringify(entries)) };
-  componentConfigs(result);
+  componentConfigs(result, root);
   return result;
 }
-function componentConfigs(value: Snapshot): Pick<InstalledPluginComponents, "hooks" | "mcpServers"> {
-  const result: Pick<InstalledPluginComponents, "hooks" | "mcpServers"> = {};
+function componentConfigs(value: Snapshot, root: string): Pick<InstalledPluginComponents, "hooks" | "hooksModulePath" | "hooksModuleProblem" | "mcpServers"> {
+  const result: Pick<InstalledPluginComponents, "hooks" | "hooksModulePath" | "hooksModuleProblem" | "mcpServers"> = {};
   for (const field of ["hooks", "mcpServers"] as const) {
     const relative = value.manifest[field];
     if (relative === undefined) continue;
@@ -216,8 +247,13 @@ function componentConfigs(value: Snapshot): Pick<InstalledPluginComponents, "hoo
       throw new Error(`Plugin ${field} path must name an existing JSON file within ${MAX_COMPONENT_BYTES} bytes.`);
     }
     const json: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
-    if (field === "hooks") result.hooks = hookFileSchema.parse(json).hooks;
-    else {
+    if (field === "hooks") {
+      const parsed = hookFileSchema.parse(json);
+      result.hooks = parsed.hooks;
+      if (parsed.modules !== undefined && parsed.modules.length > 0) {
+        Object.assign(result, hookModuleFor(value.manifest.name, root, relative, parsed.modules, value.contents));
+      }
+    } else {
       const servers = mcpFileSchema.parse(json).mcpServers;
       if (Object.keys(servers).length > MAX_COMPONENT_SERVERS) throw new Error("Plugin MCP server count exceeds cap.");
       result.mcpServers = Object.fromEntries(Object.entries(servers).map(([name, config]) => {
@@ -227,6 +263,40 @@ function componentConfigs(value: Snapshot): Pick<InstalledPluginComponents, "hoo
     }
   }
   return result;
+}
+
+/** The chain hooks module one plugin's hooks file names, per the source's `aUr`
+ *  (chunk-sfn1dbxq.js [4056182,4056874)): the entries of its `modules` array, at most one of which
+ *  loads. The specifier resolves against the folder the hooks file sits in — the source's
+ *  `Fd(PS(pluginPath, hooksFilePath), spec)` — and must stay inside the plugin folder; the source's
+ *  own two diagnostics and its "one module per plugin" refusal are reported with its own words, and
+ *  the plugin still loads, exactly as the source leaves it.
+ *
+ *  Confinement here is lexical, not `Dz`'s realpath: a verified snapshot holds no symlinks, so there
+ *  is no link for a specifier to leave through. */
+function hookModuleFor(name: string, root: string, hooksFile: string, modules: readonly string[], contents: Map<string, Buffer>): Pick<InstalledPluginComponents, "hooksModulePath" | "hooksModuleProblem"> {
+  const hooksFilePath = path.join(root, hooksFile);
+  if (modules.length > 1) {
+    return { hooksModuleProblem: { type: "hook-load-failed", path: hooksFilePath,
+      reason: `Plugin ${name} names one hooks module per plugin, but ${modules.map(() => hooksFilePath).join(" and ")} each name one in \`modules\`; neither is loaded` } };
+  }
+  const spec = modules[0]!;
+  const folder = path.posix.dirname(hooksFile);
+  const candidate = path.posix.normalize(path.posix.join(folder === "." ? "" : folder, spec));
+  if (path.posix.isAbsolute(spec) || candidate === ".." || candidate.startsWith("../")) {
+    return { hooksModuleProblem: { type: "path-traversal", path: spec } };
+  }
+  if (!contents.has(candidate)) return { hooksModuleProblem: { type: "path-not-found", path: path.join(root, candidate) } };
+  return { hooksModulePath: path.join(root, candidate) };
+}
+function themePaths(value: Snapshot, root: string): PluginThemePaths | undefined {
+  const declared = value.manifest.experimental?.themes ?? value.manifest.themes;
+  if (declared !== undefined) {
+    const paths = (Array.isArray(declared) ? declared : [declared]).map(relative => path.join(root, relative));
+    return { name: value.manifest.name, themesPaths: paths };
+  }
+  return value.entries.some(entry => entry.path === "themes" && entry.kind === "directory")
+    ? { name: value.manifest.name, themesPath: path.join(root, "themes") } : undefined;
 }
 function record(value: Snapshot): InstalledPlugin {
   return { manifest: value.manifest, digest: value.digest, files: value.files, bytes: value.bytes };
@@ -393,7 +463,8 @@ export function discoverInstalledPluginComponents(workspace: string, config?: Pl
         plugin: record(current), directory: root,
         ...(current.manifest.skills ? { skillDirectory: path.join(root, current.manifest.skills) } : {}),
         ...(current.manifest.agents ? { agentDirectory: path.join(root, current.manifest.agents) } : {}),
-        ...componentConfigs(current),
+        ...(themePaths(current, root) ? { themePaths: themePaths(current, root) } : {}),
+        ...componentConfigs(current, root),
       };
     });
     const mergedHooks: Record<string, unknown[]> = {};
@@ -416,9 +487,9 @@ export function createPluginTools(config?: PluginConfig): ToolDefinition[] {
   const options = pluginConfigSchema.parse(config ?? {});
   if (!options.enabled) return [];
   const tool = (name: string, description: string, properties: Record<string, unknown>, required: string[], readOnly: boolean,
-    execute: (raw: unknown, context: ToolContext) => string): ToolDefinition => ({
+    execute: (raw: unknown, context: ToolContext) => string | Promise<string>): ToolDefinition => ({
     schema: { name, description, input_schema: { type: "object", additionalProperties: false, properties, required } },
-    readOnly, async execute(raw, context) { aborted(context.signal); return execute(raw, context); },
+    readOnly, async execute(raw, context) { aborted(context.signal); return await execute(raw, context); },
   });
   const nameProperty = { type: "string", pattern: "^[a-z][a-z0-9_-]*$", maxLength: 64 };
   const sourceProperty = { type: "string", minLength: 1, maxLength: 4096, description: "Explicit local source directory, absolute or relative to the workspace." };
@@ -450,6 +521,23 @@ export function createPluginTools(config?: PluginConfig): ToolDefinition[] {
       return result;
     });
   }
+  /** Hands the chain the store's declaration list after a change, and waits for it. The source loads a
+   *  plugin's module inside the install itself (`Re = await tGe(n, z)`, chunk-sfn1dbxq.js
+   *  [2392440,2392465)) and its removal reconciler `CVo` ([2394700,2395092)) unloads what left with
+   *  "plugin disabled or uninstalled"; waiting here is what makes an install leave the module loaded
+   *  instead of the next config read finishing it. The chain is imported dynamically so a store that
+   *  never sees a hooks module never pulls it in. */
+  async function reconcileChainHooksModules(workspace: string): Promise<void> {
+    const declarations = discoverInstalledPluginComponents(workspace, options).flatMap(item => item.hooksModulePath
+      ? [{ name: item.plugin.manifest.name, modulePath: item.hooksModulePath, path: item.directory }] : []);
+    const chain = await import("./plugin-chain-registry.js");
+    await chain.adoptPluginHooksModules(declarations);
+  }
+  const mutateTool = (operation: "install" | "update" | "remove") => async (raw: unknown, context: ToolContext): Promise<string> => {
+    const result = mutate(raw, context, operation);
+    await reconcileChainHooksModules(directory(context.workspace));
+    return result;
+  };
   return [
     tool("plugin_list", "List this workspace's independent local plugin index with content digests and modification status.", {}, [], true, (raw, context) => {
       LIST.parse(raw);
@@ -467,12 +555,12 @@ export function createPluginTools(config?: PluginConfig): ToolDefinition[] {
       });
     }),
     tool("plugin_install", "Install an inert copy of an explicitly supplied local directory containing plugin.json. No download or execution.",
-      { directory: sourceProperty }, ["directory"], false, (raw, context) => mutate(raw, context, "install")),
+      { directory: sourceProperty }, ["directory"], false, mutateTool("install")),
     tool("plugin_update", "Replace an installed local plugin from an explicit local directory, requiring its unchanged installed digest.",
       { name: nameProperty, directory: sourceProperty, expected_digest: expectedProperty }, ["name", "directory", "expected_digest"], false,
-      (raw, context) => mutate(raw, context, "update")),
+      mutateTool("update")),
     tool("plugin_remove", "Remove an indexed local plugin only when its installed digest and content still match.",
       { name: nameProperty, expected_digest: expectedProperty }, ["name", "expected_digest"], false,
-      (raw, context) => mutate(raw, context, "remove")),
+      mutateTool("remove")),
   ];
 }

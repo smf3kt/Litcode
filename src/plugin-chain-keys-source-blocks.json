@@ -1,0 +1,152 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d"
+    },
+    {
+      "module": "chunk-yvnhkg35.js",
+      "sha256": "ce3689687897e987959f19ab07f98d79e5c925a8b15620dce02d29ba4943348d"
+    },
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        1764,
+        8839
+      ],
+      "units": 7075,
+      "bodySha256": "c91f55119d2fe080cc2846a4b39c84a37c4de6d33ec71365a6a762ec9a09e3f5",
+      "note": "the default binding sets, computed for this platform: the platform and its two derived keys (`Me` the paste binding, `le` the toggle binding) and `w1`, the array of `{ context, bindings }` the engine starts from — `Global` holds the interrupt and exit keys, and the rest are per context, each binding a normalised key to a name"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        11563,
+        16491
+      ],
+      "units": 4928,
+      "bodySha256": "43ff2b07f2e3697d3491ec6864120a609f099ca9a1330a30ac7cb498038ac8c2",
+      "note": "the action names the engine knows (`ZDe`, the list `dcs` checks membership against) and `ccs`, the one-line description of each binding context"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        16491,
+        16534
+      ],
+      "units": 43,
+      "bodySha256": "9d4c2863b7cb19b56ae7a482ec7043a482ee31f5863134c6f80aaf03e66ddbd4",
+      "note": "`QOn`, the contexts a survey prompt may name, and `pe`, the membership set built from the action names"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        16534,
+        16567
+      ],
+      "units": 33,
+      "bodySha256": "9a65b9324ed2638aa14da656dc89c78af01d40425fb043f1ee25b282ca7956a3",
+      "note": "`dcs` — is this name one of the engine's keybinding actions"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        17524,
+        18783
+      ],
+      "units": 1259,
+      "bodySha256": "30481cdf60634ccdb980126995c3048dc5e9c05d2cea8cd8b09cc40977b18bd0",
+      "note": "`QDe`, the reserved keys with the reason each cannot be rebound and its severity, plus `Noo` and `Foo`"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        18864,
+        18952
+      ],
+      "units": 88,
+      "bodySha256": "fc01a2de9a5e57cbca07d7e2161f96e658a7dd7c9be9b537c790f6b89ecaf541",
+      "note": "`pqe` — the key normaliser `acs` reads the reserved keys and the default bindings through, with the space key named as a word"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        18952,
+        19125
+      ],
+      "units": 173,
+      "bodySha256": "28c215e1f7262deb497595af4a10fb3db6ebc95d1d0622ed2d795fe16b0db408",
+      "note": "`Ge`, the key alias table the normaliser resolves a lone key through (esc, return, del, the four arrows, the three spellings of capslock)"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        19125,
+        19541
+      ],
+      "units": 416,
+      "bodySha256": "8f34d4ff7d13c6de53aad62bf9d5663b12fb229999c9599a3d8388b25027f254",
+      "note": "`Ye` — the modifier normaliser: each part lowercased, the four spellings of alt and the five of meta folded, the modifiers sorted, and the key resolved through the alias table"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        19541,
+        19548
+      ],
+      "units": 7,
+      "bodySha256": "bc008870179d0e31d3c6a301d475f125f3cc7cba688c70afd0cfc06ec7e1bcb2",
+      "note": "`ee`, the slot `acs` memoises the engine-held action set in"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        19548,
+        19738
+      ],
+      "units": 190,
+      "bodySha256": "c8cc4ff78a9ca5a0ffe8631f053180d8e69c5158ceae9980f35b879dca16c6d7",
+      "note": "`acs` — the actions the engine holds alone: the reserved keys normalised into a set, then every default binding whose key is one of them"
+    },
+    {
+      "module": "chunk-yvnhkg35.js",
+      "sha256": "ce3689687897e987959f19ab07f98d79e5c925a8b15620dce02d29ba4943348d",
+      "range": [
+        1245,
+        1268
+      ],
+      "units": 23,
+      "bodySha256": "e6dd3de99d877595962fc26b4cc337ecfc74ae4f1b66ea9f013727f6d4a192a9",
+      "note": "`nA` — the probe the platform header reads before it compares a version at all; the source answers true"
+    },
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+      "range": [
+        342203,
+        342254
+      ],
+      "units": 51,
+      "bodySha256": "acd95b9a415ad68965bc259d6ea65caacf695acbbd01d974f6b01e84ef640fe1",
+      "note": "`Yho` — the version comparison the header runs on a Windows host, reaching the runtime's own semver"
+    }
+  ],
+  "missing": []
+}

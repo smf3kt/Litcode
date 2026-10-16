@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { PassThrough, Readable, Writable } from 'node:stream';
 import { test } from 'node:test';
+import { inputCursor, layoutInput } from '../src/tui-input-navigation.js';
+import { At } from '../src/tui-input-cursor.js';
+import { InputUndo } from '../src/tui-input-undo.js';
+import { InputPaste, expandPastedText } from '../src/tui-input-paste.js';
 import { cellWidth, createEditorState, createTerminalInput, decodeTerminalKeybindings, layoutEditor, MAX_PASTE_BYTES,
   reduceEditor, TerminalKeyDecoder, type EditorAction, type EditorState } from '../src/terminal.js';
 
@@ -144,6 +148,33 @@ test('decoder handles UTF-8/escape/paste splits and CRLF submits once', () => {
   assert.deepEqual(decoder.push('x'), [{ type: 'insert', text: 'x' }]);
 });
 
+test('source terminal responses stay outside editor text across splits, modal boundaries and overlong strings', () => {
+  const reports = ['\x1b]11;rgb:ffff/ffff/ffff\x07', '\x1b]11;#000\x1b\\', '\x1b[?997;2n', '\x1b[?1;2c'];
+  const expected = [{ type: 'terminalResponse', response: { type: 'osc', code: 11, data: 'rgb:ffff/ffff/ffff' } },
+    { type: 'terminalResponse', response: { type: 'osc', code: 11, data: '#000' } },
+    { type: 'terminalResponse', response: { type: 'themeNotify', dark: false } },
+    { type: 'terminalResponse', response: { type: 'da1', params: [1, 2] } }];
+  for (const [index, report] of reports.entries()) {
+    for (let split = 1; split < report.length; split++) {
+      const decoder = new TerminalKeyDecoder();
+      assert.deepEqual(decoder.push(report.slice(0, split)), []);
+      assert.deepEqual(decoder.push(report.slice(split)), [expected[index]]);
+    }
+    const state = edit([{ type: 'insert', text: 'retained' }]);
+    assert.equal(reduceEditor(state, new TerminalKeyDecoder().push(report)[0]!).state, state);
+  }
+  const decoder = new TerminalKeyDecoder(); decoder.push('\x1b]11;rgb:'); decoder.discardPending();
+  assert.deepEqual(decoder.push('ffff/ffff/ffff\x07ok'), [expected[0], { type: 'insert', text: 'ok' }]);
+  for (const ending of ['\x07', '\x1b\\']) {
+    const large = new TerminalKeyDecoder(); const actions: EditorAction[] = [];
+    for (const character of '\x1b]11;' + 'x'.repeat(400) + ending + 'ok') actions.push(...large.push(character));
+    assert.equal(edit(actions).text, 'ok'); assert.ok(actions.every(action => action.type === 'insert'));
+  }
+  assert.deepEqual(new TerminalKeyDecoder().push('\x1bPunknown\x1b\\x'), [{ type: 'insert', text: 'x' }]);
+  assert.deepEqual(new TerminalKeyDecoder().push('\x1b_x'), [{ type: 'insert', text: 'x' }]);
+  assert.deepEqual(new TerminalKeyDecoder().push('\x1b[200~' + reports[0] + '\x1b[201~'), [{ type: 'paste', text: reports[0] }]);
+});
+
 test('bracketed paste preserves multiline, strips controls and rejects over 256 KiB atomically', () => {
   const decoder = new TerminalKeyDecoder();
   assert.deepEqual(decoder.push('\x1b[200~a\nb\x03\x1b[201~'), [{ type: 'paste', text: 'a\nb\x03' }]);
@@ -193,6 +224,213 @@ test('Ctrl-C first cancels running model without losing draft; idle behavior is 
   assert.deepEqual(reduceEditor(state, { type: 'interrupt' }, { idleInterrupt: 'exit' }).effects, [{ type: 'exit' }]);
   assert.deepEqual(reduceEditor(createEditorState(), { type: 'interrupt' }, { idleInterrupt: 'clear' }).effects, []);
   assert.deepEqual(reduceEditor(state, { type: 'eof' }).effects, [{ type: 'exit' }]);
+});
+
+test('copied input navigation follows visual rows, readline words and whole placeholders without changing raw text', () => {
+  const cursor = inputCursor('abcdefghijk', 6, 8);
+  assert.deepEqual(cursor.getPosition(), { line: 1, column: 3 });
+  assert.equal(cursor.up().offset, 3); assert.equal(cursor.down().offset, 11);
+  assert.equal(cursor.startOfLine().offset, 5); assert.equal(cursor.endOfLine().offset, 10);
+  assert.deepEqual(layoutInput({ text: cursor.text, cursor: 8 }, 6, 2), {
+    lines: ['abcde', 'fghij'], cursorRow: 1, cursorColumn: 3, hiddenRows: 1, viewportStartRow: 0,
+    // Each row also reports the draft offset it starts at, which is what the highlight row mapping is
+    // handed together with the rendered value.
+    rowStartOffsets: [0, 5],
+  });
+  assert.equal(inputCursor('one two-three', 40, 4).forwardWord().offset, 7);
+  const placeholder = '[Pasted text #1 +3 lines]';
+  assert.equal(inputCursor(placeholder + ' tail', 40, placeholder.length).left().offset, 0);
+  assert.equal(inputCursor(placeholder + ' tail', 40, 0).right().offset, placeholder.length);
+  const raw = 'a\u{1f469}‍\u{1f4bb}é中\u{2fa1d}';
+  const end = inputCursor(raw, 8, raw.length);
+  assert.equal(end.text, raw);
+  assert.equal(end.left().offset, raw.length - 2);
+  assert.equal(end.left().left().offset, raw.length - 3);
+  assert.equal(layoutInput({ text: raw, cursor: raw.length }, 8, 4).lines.join(''), raw);
+  const fallback = At('abcdef', 3, () => 'different rows');
+  assert.equal(fallback.degraded, true);
+  assert.deepEqual(fallback.rows.map((row: { text: string }) => row.text), ['abc', 'def']);
+  const columns = 8;
+  const initial = { ...createEditorState(['old task']), text: 'abcdefghijk', cursor: 8 };
+  assert.equal(reduceEditor(initial, { type: 'up' }, { navigationColumns: columns }).state.cursor, 1);
+  assert.equal(reduceEditor(initial, { type: 'logicalHome' }, { navigationColumns: columns }).state.cursor, 0);
+});
+
+test('TTY measured navigation submits edits from wrapped rows and preserves history and Unicode', () => {
+  const input = new FakeInput(), output = new FakeOutput(); output.columns = 10;
+  const submitted: string[] = [];
+  const terminal = createTerminalInput({ input, output, history: ['previous'], onSubmit: text => submitted.push(text) }).start();
+  try {
+    input.key('abcdefghijk\x1b[A'); assert.equal(terminal.state.cursor, 4);
+    input.key('X\x1b[B'); assert.equal(terminal.state.cursor, 12);
+    input.key('\x1b[H'); assert.equal(terminal.state.cursor, 7);
+    input.key('Y\u0001'); assert.equal(terminal.state.cursor, 0);
+    input.key('Z\u0005\r'); assert.deepEqual(submitted, ['ZabcdXefYghijk']);
+    input.key('\x1b[A'); assert.equal(terminal.state.text, submitted[0]);
+    input.key('\u0005\x1b[B'); assert.equal(terminal.state.text, '');
+    const raw = 'é\u{1f469}‍\u{1f4bb}中';
+    input.key(raw + '\x1b[D!\r'); assert.equal(submitted[1], 'é\u{1f469}‍\u{1f4bb}!中');
+  } finally { terminal.close(); }
+  assert.equal(input.isRaw, false); assert.equal(input.listenerCount('data'), 0);
+  const clippedInput = new FakeInput(), clippedOutput = new FakeOutput();
+  clippedOutput.columns = 10; clippedOutput.rows = 3;
+  const clipped = createTerminalInput({ input: clippedInput, output: clippedOutput }).start();
+  try {
+    clippedInput.key('abcdefghijklmnopqrstuvwx\u0001');
+    assert.ok(screen(clippedOutput.text).lines.some(row => row === '> abcdefg'));
+    clippedInput.key('\u0005');
+    assert.ok(screen(clippedOutput.text).lines.some(row => row === '  opqrstu'));
+  } finally { clipped.close(); }
+});
+
+test('source kills coalesce by direction and yank spans survive only consecutive yank commands', () => {
+  const decoder = new TerminalKeyDecoder();
+  const apply = (value: string, initial = createEditorState()) => decoder.push(value)
+    .reduce((state, action) => reduceEditor(state, action, { navigationColumns: 38 }).state, initial);
+  let state = apply('alpha beta gamma\u0017\u0017');
+  assert.equal(state.text, 'alpha '); assert.deepEqual(state.killRing.ring, ['beta gamma']);
+  state = apply('\u0019\r', state); assert.equal(state.text, '');
+  assert.deepEqual(state.killRing.ring, ['beta gamma']); assert.equal(state.killRing.mode.type, 'idle');
+  state = apply('one two-three\x1b\u007f\x1b[D\x1b\u007f\u0019\x1by', state);
+  assert.equal(state.text, 'one three-');
+  assert.deepEqual(state.killRing.mode, { type: 'yanked', start: 4, length: 5, index: 1 });
+  state = apply('X\x1by', state); assert.equal(state.text, 'one threeX-');
+  assert.equal(state.killRing.mode.type, 'idle');
+  const original = apply('\x1b[200~ab\ncd\x1b[201~\u0001\u000b\u0015');
+  assert.equal(original.text, 'ab'); assert.deepEqual(original.killRing.ring, ['\ncd']);
+  assert.equal(apply('\u0019', original).text, 'ab\ncd');
+  assert.equal(apply('one two-three\u0017').text, 'one ');
+  assert.equal(apply('one two-three\x1b\u007f').text, 'one two-');
+  const forward = apply('one two three\u0001\x1bd\x1bd');
+  assert.equal(forward.text, ' three'); assert.deepEqual(forward.killRing.ring, ['one two']);
+  assert.equal(apply('[Pasted text #1 +3 lines]\u0017').text, '');
+  const raw = 'é\u{1f469}‍\u{1f4bb}中';
+  assert.equal(apply(raw + '\u0015\u0019').text, raw);
+  const limited = apply('large\u0015');
+  const denied = reduceEditor(limited, { type: 'yank' }, { maxPasteBytes: 3 });
+  assert.equal(denied.state.text, ''); assert.deepEqual(denied.state.killRing, limited.killRing);
+  assert.deepEqual(denied.effects, [{ type: 'pasteRejected', bytes: 5 }]);
+  assert.equal(limited.text, ''); assert.equal(createEditorState().killRing.ring.length, 0);
+  const wrapped = { ...createEditorState(), text: 'abcdefghijk', cursor: 8 };
+  const killed = reduceEditor(wrapped, { type: 'killLineStart' }, { navigationColumns: 6 }).state;
+  assert.equal(killed.text, 'abcdeijk'); assert.deepEqual(killed.killRing.ring, ['fgh']);
+});
+
+test('line TTY kill defaults, overrides and running cancellation retain a per-owner ring', () => {
+  const input = new FakeInput(), output = new FakeOutput(); output.columns = 40;
+  const submitted: string[] = [];
+  const terminal = createTerminalInput({ input, output, onSubmit: text => submitted.push(text) }).start();
+  try {
+    input.key('first second\u0017\u0019\r'); assert.deepEqual(submitted, ['first second']);
+    input.key('\u0019'); assert.equal(terminal.state.text, 'second');
+    terminal.setRunning(true); input.key('\u0003'); terminal.setRunning(false);
+    assert.equal(terminal.state.text, 'second'); assert.equal(terminal.state.killRing.mode.type, 'idle');
+    input.key('\u0003\u0019'); assert.equal(terminal.state.text, 'second');
+    terminal.setKeybindings({ '\u0017': null }); input.key('\u0017'); assert.equal(terminal.state.text, 'second');
+    terminal.setKeybindings({ '\u0015': 'submit' }); input.key('\u0015');
+    assert.deepEqual(submitted, ['first second', 'second']);
+    const snapshot = terminal.state; snapshot.killRing.ring.length = 0;
+    assert.deepEqual(terminal.state.killRing.ring, ['second']);
+  } finally { terminal.close(); }
+  const isolatedInput = new FakeInput(), isolatedOutput = new FakeOutput();
+  const isolated = createTerminalInput({ input: isolatedInput, output: isolatedOutput }).start();
+  try { isolatedInput.key('\u0019'); assert.equal(isolated.state.text, ''); }
+  finally { isolated.close(); }
+});
+
+test('source text paste folds at character and row thresholds and expands exact raw payloads', () => {
+  const empty = () => ({text:'',cursor:0,pastedContents:{}});
+  assert.equal(new InputPaste().paste(empty(),'x'.repeat(800),24).text.length,800);
+  const owner = new InputPaste(), raw='one\ntwo\nthree\nfour';
+  let state=owner.paste(empty(),raw,24);
+  assert.equal(state.text,'[Pasted text #1 +3 lines]'); assert.equal(expandPastedText(state.text,state.pastedContents),raw);
+  state=owner.paste(state,raw,24); assert.equal(state.text,raw); assert.deepEqual(state.pastedContents,{});
+  state=owner.paste(state,'x'.repeat(801),24); assert.match(state.text,/\[Pasted text #2\]$/);
+  assert.equal(new InputPaste().paste(empty(),'a\nb',10).text,'[Pasted text #1 +1 lines]');
+  const collision=new InputPaste().paste({text:'[Pasted text #7]',cursor:'[Pasted text #7]'.length,pastedContents:{}},'x'.repeat(801),24);
+  assert.equal(collision.text,'[Pasted text #7][Pasted text #8]');
+  assert.equal(expandPastedText(collision.text,collision.pastedContents),'[Pasted text #7]'+'x'.repeat(801));
+  const normalized=new InputPaste().paste(empty(),'\x1b[31mé👩‍💻\x1b[0m\tA\rB\r\nC',24);
+  assert.equal(normalized.text,'é👩‍💻    A\nB\nC');
+});
+
+test('line folded paste travels through undo and history while rejection and close retain ownership', context => {
+  context.mock.timers.enable({apis:['setTimeout','Date'],now:10000});
+  const input=new FakeInput(),output=new FakeOutput(),submitted:string[]=[];
+  const terminal=createTerminalInput({input,output,onSubmit:text=>submitted.push(text)}).start();
+  const raw='one\ntwo\nthree\nfour',paste='\x1b[200~'+raw+'\x1b[201~';
+  try {
+    input.key(paste); assert.equal(terminal.state.text,'[Pasted text #1 +3 lines]');
+    context.mock.timers.tick(1100);input.key(' suffix\u001f');assert.equal(terminal.state.text,'[Pasted text #1 +3 lines]');
+    const snapshot=terminal.state;snapshot.pastedContents['1']!.content='external mutation';
+    input.key('\r');assert.deepEqual(submitted,[raw]);assert.deepEqual(terminal.state.pastedContents,{});
+    input.key('\x1b[A\r');assert.deepEqual(submitted,[raw,raw]);
+    input.key(paste);assert.match(terminal.state.text,/\[Pasted text #2 /);
+    input.key(paste);assert.equal(terminal.state.text,raw);assert.deepEqual(terminal.state.pastedContents,{});
+    input.key('\u0003');assert.equal(terminal.state.text,'');
+    input.key('two\u0012\r');assert.equal(submitted.at(-1),raw);
+    input.key(paste);const marker=terminal.state.text;
+    input.key('\u007f');assert.equal(terminal.state.text,'');assert.deepEqual(terminal.state.pastedContents,{});
+    input.key(marker+'\r');assert.equal(submitted.at(-1),marker);
+    input.key(paste+'\u0015scratch\u0003\u0019\r');assert.equal(submitted.at(-1),raw);
+    terminal.close();assert.deepEqual(terminal.state.pastedContents,{});assert.deepEqual(terminal.state.historyPastes,[]);
+    const before=output.text;context.mock.timers.tick(2000);assert.equal(output.text,before);
+  } finally {terminal.close();context.mock.timers.reset();}
+  const limitedInput=new FakeInput(),limitedOutput=new FakeOutput();
+  const limited=createTerminalInput({input:limitedInput,output:limitedOutput,maxPasteBytes:3}).start();
+  try {limitedInput.key(paste);assert.equal(limited.state.text,'');assert.deepEqual(limited.state.pastedContents,{});}
+  finally {limited.close();}
+});
+
+test('copied undo buffer debounces snapshots, cancels pending work and truncates the undone branch', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 10000 });
+  const undo = new InputUndo();
+  try {
+    undo.record('first', 2); assert.equal(undo.canUndo, true);
+    context.mock.timers.tick(100); undo.record('second', 3);
+    context.mock.timers.tick(900); undo.record('third', 4);
+    assert.equal(undo.undo()?.text, 'third');
+    assert.equal(undo.undo()?.text, 'first'); assert.equal(undo.undo(), undefined);
+    context.mock.timers.tick(2000); assert.equal(undo.canUndo, false);
+    undo.record('a', 1, { immediate: true }); undo.record('b', 1, { immediate: true });
+    undo.record('c', 1, { immediate: true }); assert.equal(undo.undo()?.text, 'c');
+    undo.record('new branch', 10, { immediate: true }); assert.equal(undo.undo()?.text, 'new branch');
+    assert.equal(undo.undo()?.text, 'b'); assert.equal(undo.undo()?.text, 'a');
+    undo.clear();
+    for (let index = 0; index < 55; index++) undo.record(String(index), 0, { immediate: true });
+    let count = 0, oldest = '';
+    while (undo.canUndo) { oldest = undo.undo()!.text; count++; }
+    assert.equal(count, 50); assert.equal(oldest, '5');
+    undo.clear(); undo.record('same', 1, { immediate: true }); undo.record('same', 3, { immediate: true });
+    assert.equal(undo.undo()?.cursorOffset, 1); assert.equal(undo.canUndo, false);
+    undo.record('committed', 3, { immediate: true }); undo.record('pending', 2);
+    undo.clear(); context.mock.timers.tick(2000); assert.equal(undo.canUndo, false);
+  } finally { undo.clear(); context.mock.timers.reset(); }
+});
+
+test('line input undo restores raw text and cursor while submit, cancel and close bound its lifetime', context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 10000 });
+  const input = new FakeInput(), output = new FakeOutput();
+  const submitted: string[] = [];
+  const terminal = createTerminalInput({ input, output, onSubmit: text => submitted.push(text) }).start();
+  try {
+    input.key('first'); context.mock.timers.tick(1000);
+    input.key('\x1b[D!\u001f'); assert.equal(terminal.state.text, 'first'); assert.equal(terminal.state.cursor, 4);
+    input.key('\u001f'); assert.equal(terminal.state.text, '');
+    input.key('base'); context.mock.timers.tick(1000); context.mock.timers.tick(1000);
+    input.key(' tail'); input.key('!');
+    input.key('\u001f'); assert.equal(terminal.state.text, 'base');
+    input.key('\r\u001f'); assert.deepEqual(submitted, ['base']); assert.equal(terminal.state.text, '');
+    const raw = 'é\u{1f469}‍\u{1f4bb}中';
+    input.key(raw); context.mock.timers.tick(1000);
+    input.key('\x1b[D!\u001f'); assert.equal(terminal.state.text, raw); assert.equal(terminal.state.cursor, raw.length - 1);
+    terminal.setRunning(true); input.key('\u0003'); terminal.setRunning(false);
+    input.key('\u001f'); assert.equal(terminal.state.text, '');
+    input.key('cleared\u0003\u001f'); assert.equal(terminal.state.text, '');
+    terminal.setKeybindings({ '\u001f': 'newline' }); input.key('override\u001f'); assert.equal(terminal.state.text, 'override\n');
+    terminal.setKeybindings(); input.key('pending'); terminal.close();
+    const before = output.text; context.mock.timers.tick(2000); assert.equal(output.text, before);
+  } finally { terminal.close(); context.mock.timers.reset(); }
 });
 
 test('TTY events preserve paste as one submission and raw/ANSI cleanup is idempotent', () => {

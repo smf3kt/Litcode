@@ -1,0 +1,145 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1842414,
+        1842591
+      ],
+      "units": 177,
+      "bodySha256": "8298fb95be0c9d27bc155947c10319f838156fa8e144e9640b4f9cd11c2280af",
+      "note": "the twelve names whose answer is copied before the default action"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1842591,
+        1843388
+      ],
+      "units": 797,
+      "bodySha256": "43e945e4b9baf113a76912a1df13d7c94a32a07a5b1bae15b7ba20e0715eb9fb",
+      "note": "declares Hze, the module-to-host call raiser"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6016,
+        6041
+      ],
+      "units": 25,
+      "bodySha256": "694367aa93c3e79af2a62de2770810412f1a22be9ee0ea503fc87d7992316302",
+      "note": "the copier depth and node budgets"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6303,
+        6313
+      ],
+      "units": 10,
+      "bodySha256": "d4a737c1c0166289cd800ddeb27c70465395d57d7549dbbefb19b8c8e06a6208",
+      "note": "the copier budget multiplier"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6313,
+        6340
+      ],
+      "units": 27,
+      "bodySha256": "0f5bde9e3424dee0584d59e18be9445396b0ae332aa65d3e346ed82d5edcc57e",
+      "note": "declares U$n, the well-formed-string normalizer"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6770,
+        7275
+      ],
+      "units": 505,
+      "bodySha256": "ec0abe7d9be49f40ee0cda5da0388a662f01bb9a54074a19b6d61fd607cd65a2",
+      "note": "declares tIt, the structural copier"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        1850,
+        2243
+      ],
+      "units": 393,
+      "bodySha256": "ffeb48ff42483d2356b5f1db7892e1c393ac46c16a079f992e03f0c44cd190b2",
+      "note": "the lone-surrogate patterns and the native String bindings"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        2243,
+        2353
+      ],
+      "units": 110,
+      "bodySha256": "5c1353619095729e1a089954fa381857320dc994f2679384a0933790fe230d7b",
+      "note": "declares Yc and hf, the well-formed test and repair"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        232741,
+        232755
+      ],
+      "units": 14,
+      "bodySha256": "ae6915b933d0aeefb26ff4d3366cb73cb24b2d7e1756d40ab89c9965507a3d98",
+      "note": "the call path's async-local store"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        232946,
+        232979
+      ],
+      "units": 33,
+      "bodySha256": "250692740b44bcf3cc83a76ecd8800be34701ee3b073842e2ab19e6b3cca56b6",
+      "note": "declares YPn, running a call inside that store"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        266967,
+        267031
+      ],
+      "units": 64,
+      "bodySha256": "9e17c39c7f00f56f18758946ab8bc9609d4fead69f3b3e0784f9bb3052588c0a",
+      "note": "declares TDe, the copier as the entry path calls it"
+    }
+  ],
+  "missing": []
+}

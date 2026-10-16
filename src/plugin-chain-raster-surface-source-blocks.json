@@ -1,0 +1,126 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        248705,
+        248715
+      ],
+      "units": 10,
+      "bodySha256": "bc5a139ef04bdec04010c1b00dcbac7382bd7bae8d489ea3e4b64e22e0c31139",
+      "note": "`nb` (64), the bound the engine's alias sweep walks within"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        252200,
+        252243
+      ],
+      "units": 43,
+      "bodySha256": "2bbf53c768c431deababf01a7208ffa1bbb6e914e849015ea38b319d0a6f04b0",
+      "note": "`fc`, one channel of a packed colour widened to the 0..255 the escape wants (`(c >> shift & 15) * 17`) — the sibling the grammar names after it"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        252256,
+        252455
+      ],
+      "units": 199,
+      "bodySha256": "dad7b45e3955849c3a688a3ee9d483673a3e86013deeb01857ac4b746ff45212",
+      "note": "the colour the escapes carry: `Ff`, which answers the sentinel unchanged and otherwise un-packs the three channels back to their own shifts, and `pc`, which packs two of them into one word — a pair is the foreground and the background"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        252481,
+        252898
+      ],
+      "units": 417,
+      "bodySha256": "270fae76c961e2c9d57e864ce39b787602fc89a45bd175349957f91b2eb5b8e2",
+      "note": "the SGR the surface measures its work in: `_s` the code table (38/48 set, 39/49 reset, 2 truecolor), `Hf` the parameter list for one side, `gc` the pair of sequences for a colour, `hc` the sequence a fresh paint starts from, and `Sc` (1024) the slot capacity"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        253057,
+        253816
+      ],
+      "units": 759,
+      "bodySha256": "511f62408b4a1d8749c930a044722148add05c7e9d73db09129b709162edc908",
+      "note": "the surface state and the matcher: `lb`, which builds the slots/held/table/probe/aliases row (including the `Uint8Array(Sc * gn.width)` cell table and its one-cell probe), `cb` the slots a paint has not touched, oldest first, `ub` (16384) the alias bound, and `db`, which scores every slot against the probe by squared channel distance — counting `Lr.defaultMismatch` where a default flag differs — and answers the closest"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        253943,
+        253969
+      ],
+      "units": 26,
+      "bodySha256": "ddb43b7ff4aa8438f5b9f6734c3b0e21dd18c3e0090ff2a5b4be4fbe8e66ff73",
+      "note": "`gb` (1024) and `hb` (131072), the two numbers the engine spends and bounds its work with: the cost of reusing a slot, and the cap on what one paint may evaluate"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        254367,
+        256690
+      ],
+      "units": 2323,
+      "bodySha256": "6f0a619dd91a56690db2ee8cbb17069319b93feb9bfc5abd9523c6247cbf3721",
+      "note": "the engine and the rows it writes: `gNs`, whose `beginPaint` admits the frame's keys (a free slot or the stalest one, each admitted through the token row), rewrites the table, and whose `sgrOf` answers a key's escape — reusing what the last paint placed, then a slot matched by `db`, and answering the held escape when neither applies — with `size()` and `standing()` beside it; `_b`, which turns a frame into the distinct colour runs a row is made of; and `Lss`, which walks the frame row by row, emitting an escape only when the colour changes and a character for every cell"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f",
+      "range": [
+        935,
+        1251
+      ],
+      "units": 316,
+      "bodySha256": "69349112aba6fa4d3aac4ee268ef2788fa8a753d6ff8ca5e11429414060f20b9",
+      "note": "the terminal grammar the CSI helper is written against: `xse` the C0 code points, `PH` the escape, `nG` the bell, `Y9e` the parameter separator, `fRr` the charset reset, and `CZ` the introducer bytes (CSI 91, OSC 93, DCS 80, APC 95, PM 94, SOS 88, ST 92)"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f",
+      "range": [
+        1286,
+        1426
+      ],
+      "units": 140,
+      "bodySha256": "c3e5ff3b87596780a747797d123698c84ca59f7c5b34f65e0571695223954936",
+      "note": "`A`, the CSI introducer built from the grammar (esc plus the CSI byte), and `S`, the parameter/intermediate/final byte ranges"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f",
+      "range": [
+        1602,
+        1743
+      ],
+      "units": 141,
+      "bodySha256": "170e58f6012a41244bb2e73a9c56d30c2b424a249482127cd5a12f21e501a7c8",
+      "note": "`fl`, the CSI helper the SGR builder writes every sequence with: no argument answers the bare introducer, one argument appends it, and more join all but the last with the separator and append the last"
+    }
+  ],
+  "missing": []
+}

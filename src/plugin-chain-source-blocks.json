@@ -1,0 +1,855 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b"
+    },
+    {
+      "module": "chunk-6q0v3ahc.js",
+      "sha256": "9f2fe4d5c1888abaf3ea717fdb9958f6aa762a5379409a41915ce6c8daf5bddc"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e"
+    },
+    {
+      "module": "chunk-3qabb19b.js",
+      "sha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f"
+    },
+    {
+      "module": "chunk-c9vsmdqj.js",
+      "sha256": "59124c8f7d581be40e14655f028069ec67ba561a3395db94c65ede3aee264fb5"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae"
+    },
+    {
+      "module": "chunk-yjc18bey.js",
+      "sha256": "e53a75c48188dd5f345841ef87e452840622f9d61bc86e97b2edea656866a687"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        5183,
+        5322
+      ],
+      "units": 139,
+      "bodySha256": "dbe457500ba22284083654cd48ff2f9335a5efcc1ffd6ad0b9023c646832aef4",
+      "note": "regex class fragments"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25619,
+        25632
+      ],
+      "units": 13,
+      "bodySha256": "1edaf2810640a5c75a1cc35c949a07384014926ef7e3608161f9e27a6c5ea650",
+      "note": "log text-size ceiling"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        661,
+        807
+      ],
+      "units": 146,
+      "bodySha256": "96779a7f7c6cd42b9abbeb8e2cab00ef88193402204dbe1cf76005910f444318",
+      "note": "hooks error"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        807,
+        905
+      ],
+      "units": 98,
+      "bodySha256": "7b703136febba03c4ca263d53c3ac32fe1c8b818e88ebadb53c64848ff00d419",
+      "note": "error cause text"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        905,
+        927
+      ],
+      "units": 22,
+      "bodySha256": "6a19808f807ea589bc873efb29d0e02e1948e463475559d196ce205d6e8814cd",
+      "note": "settled-call abort error"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        927,
+        970
+      ],
+      "units": 43,
+      "bodySha256": "25b17504987e4425d201101ad847e51077a334a2ac3f076b3b189dabfd5316a8",
+      "note": "error chooser"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        970,
+        1073
+      ],
+      "units": 103,
+      "bodySha256": "020e3f6958fcc5988e40c7d48eef24bcccef373451856fdd6366ab56b843b4f3",
+      "note": "abort reason text"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        1073,
+        1123
+      ],
+      "units": 50,
+      "bodySha256": "ef47f9639dc2c7cd158cb17fe5657578b71ab561748032c3181b2594c5c9bbdb",
+      "note": "plain-data message"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        1123,
+        1268
+      ],
+      "units": 145,
+      "bodySha256": "0ed45f249a95a1a7bb8b2a0f03350b94c04a680ddbd1ca5fec8ed10d493fac44",
+      "note": "next() argument guard"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        1268,
+        1411
+      ],
+      "units": 143,
+      "bodySha256": "b77637948ab0ae0ef8791ba3bbb3852bb6d0ec31741fec2cc0e37a17452e7edb",
+      "note": "abort-signal duck check"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        1411,
+        1466
+      ],
+      "units": 55,
+      "bodySha256": "f6ce8d5c0f24d6ed382322a732193e26a448d0dc9654f5fe60aa2568d8272760",
+      "note": "plain-data message (argument)"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        1466,
+        1524
+      ],
+      "units": 58,
+      "bodySha256": "4c832403408bee5cabe4b3270b5197aebefe88d8f3bda2e1adcbf634b2796a4c",
+      "note": "plain-data message (arguments)"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        1524,
+        1561
+      ],
+      "units": 37,
+      "bodySha256": "07084c891285d4a7912539af71aed0aeac4b494d71bdd73aa0a8552592562cfd",
+      "note": "settled-call abort test"
+    },
+    {
+      "module": "chunk-kd3dbbtb.js",
+      "sha256": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+      "range": [
+        1616,
+        1666
+      ],
+      "units": 50,
+      "bodySha256": "24c2c68567478d835cfe970fdb3c5ead346912dbf22cfc28883222186720490c",
+      "note": "settled abort -> hooks error"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "range": [
+        2908,
+        2979
+      ],
+      "units": 71,
+      "bodySha256": "c6063004ac4ba58972524fbc48da370ec336b5fde4c10076f4a44c022ae17524",
+      "note": "abort error class"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "range": [
+        3000,
+        3163
+      ],
+      "units": 163,
+      "bodySha256": "4929aa4bf41477d215f8daebaadbf2b3fb764604a09006e9ba5f70ed062e181a",
+      "note": "abort classification"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "range": [
+        4754,
+        4814
+      ],
+      "units": 60,
+      "bodySha256": "2f921ed78ffeed39032d7e9c4783e05c294cba2ce61cc5ac20466ece27a81075",
+      "note": "error text"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "range": [
+        5545,
+        5647
+      ],
+      "units": 102,
+      "bodySha256": "28179a99ca4e8f79f37f09c1ef3718e34306a3ff2c2376e62163c095da85ff14",
+      "note": "error kind name"
+    },
+    {
+      "module": "chunk-6q0v3ahc.js",
+      "sha256": "9f2fe4d5c1888abaf3ea717fdb9958f6aa762a5379409a41915ce6c8daf5bddc",
+      "range": [
+        615,
+        685
+      ],
+      "units": 70,
+      "bodySha256": "6b15874e28dd4114e956d748abc4d2d737a50907ee95cb2982bdcae8d5a4ab56",
+      "note": "plain object check"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        2456,
+        2577
+      ],
+      "units": 121,
+      "bodySha256": "cd79ddf77ec91a06a36793304d8b13e8c8218b869034a1a720b15e0e21070d24",
+      "note": "plain-data object check"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        1128,
+        1272
+      ],
+      "units": 144,
+      "bodySha256": "8342442e1da2530ab21d0582e8743df3285b005a06d2ba016d50bd10383cf592",
+      "note": "truncate without splitting a pair"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        1544,
+        1645
+      ],
+      "units": 101,
+      "bodySha256": "d44450990e1124be6605b8f3519ad03c0f677f0e5c1a7fe63b667b075b337a78",
+      "note": "utf16le round trip"
+    },
+    {
+      "module": "chunk-3qabb19b.js",
+      "sha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
+      "range": [
+        883,
+        919
+      ],
+      "units": 36,
+      "bodySha256": "e08913e4ba564b11551e01e87af4d4ba5f0fde1d9cce2dc2407afcc87d3df2bb",
+      "note": "dedupe"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        5355,
+        5381
+      ],
+      "units": 26,
+      "bodySha256": "19b806bd3a5d4fe86648ae7621ec8e85d8be7064bd1d0fa8af9c627de5f30f90",
+      "note": "memo passthrough (identity in this build)"
+    },
+    {
+      "module": "chunk-c9vsmdqj.js",
+      "sha256": "59124c8f7d581be40e14655f028069ec67ba561a3395db94c65ede3aee264fb5",
+      "range": [
+        615,
+        668
+      ],
+      "units": 53,
+      "bodySha256": "2ad3005c8632df99918a325c2432212c9a8d159137a3e9b8ad521d4224c17aae",
+      "note": "single-slot holder"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        48358,
+        48457
+      ],
+      "units": 99,
+      "bodySha256": "9836be35fb7b7b26a1905d6741534051ef316cef6979472a07d8b8c1a45f4a2f",
+      "note": "tier continuations"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        48457,
+        48497
+      ],
+      "units": 40,
+      "bodySha256": "834f2927c5e88560a83839927c218ef80d0174f644897e20824f40c88c25d929",
+      "note": "tier named by next.to"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        48526,
+        48644
+      ],
+      "units": 118,
+      "bodySha256": "02005cdbc9a66ecd8592409e5c09fc0f95e3e8f4145e3ea7f151dd64b130290e",
+      "note": "next.to record"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        48672,
+        48698
+      ],
+      "units": 26,
+      "bodySha256": "bf48bfc1853649bd0201dbfb88ed07055d28a9340b9859b4fceae132a84b5ab3",
+      "note": "default floors"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        14076,
+        15227
+      ],
+      "units": 1151,
+      "bodySha256": "7ec85969bf3d4ef58c50ce89dcd96a5f15b6cd1546ffd54634365a48e1e2ac2b",
+      "note": "chain answer-shape table"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        15227,
+        15238
+      ],
+      "units": 11,
+      "bodySha256": "6b23d957525910e288ae948e7a87f4277a9df2715c636327d720ed02cd347690",
+      "note": "chain table"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        15370,
+        15444
+      ],
+      "units": 74,
+      "bodySha256": "d0fc4c96b0ee85c2121481fbf91246fc86c5260eb8ef7a9bc3869f1eb090eed7",
+      "note": "result check wrapper"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        15723,
+        15903
+      ],
+      "units": 180,
+      "bodySha256": "6dacf72443dc6483c914024a2e4a55e9f3ad561ecf59d65f4502d3322ed9a987",
+      "note": "deny/value check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        15903,
+        16055
+      ],
+      "units": 152,
+      "bodySha256": "b044d3318f33755c8a5434797c48b8891b4acf28914168fbef67b87347e11198",
+      "note": "restore missing fields"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2031,
+        2097
+      ],
+      "units": 66,
+      "bodySha256": "a52ea5f3f30720dc90471b1e173f9258de365253b33dab23695072234907df28",
+      "note": "origin key text"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25321,
+        25395
+      ],
+      "units": 74,
+      "bodySha256": "3b966ecf2c699de7f569f199308d397b72a2fd90539537b68ea59342a27d7d2b",
+      "note": "measured text length"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        38157,
+        38216
+      ],
+      "units": 59,
+      "bodySha256": "b269e637c894e10f55a53c46d0a0382aabe7cade529bd8ad2cab1c0632fc6c01",
+      "note": "whole offset check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        38216,
+        38733
+      ],
+      "units": 517,
+      "bodySha256": "fc387409e72431034aa6716edfe9969d18a9bbbbef37c3fc6aa0bb3e4da005bb",
+      "note": "prompt.edit argument check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        38733,
+        38865
+      ],
+      "units": 132,
+      "bodySha256": "4dfb3606fef9218785ed50f705303e7ff98e5de83044008ccc6875dba7543149",
+      "note": "prompt.edit result check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        40808,
+        40818
+      ],
+      "units": 10,
+      "bodySha256": "6594c5219a76c4ea2ddf5b9bc02ef012aff47a50800f25b63dd29f4907cc5aad",
+      "note": "prompt.edit budget"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        40818,
+        41072
+      ],
+      "units": 254,
+      "bodySha256": "aff45126a0d2bea6f2a233ce0dbea429eeb87c9506fbd0473b5f60e53f05eb8f",
+      "note": "prompt.edit site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2815,
+        3407
+      ],
+      "units": 592,
+      "bodySha256": "1f9306940d8f4c087a2b5881cc060e31f9e3406b439b09831a7af1f4dd598b70",
+      "note": "allowed decoration values"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        4004,
+        4016
+      ],
+      "units": 12,
+      "bodySha256": "c769da9c127ece8d8acf8916654dcc3f55408cf0e30a66401c629c586dad913b",
+      "note": "decoration offset ceiling"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        4016,
+        4075
+      ],
+      "units": 59,
+      "bodySha256": "f77d080c12223d2df6e8f5e889a5c971ad39b458ba2f907323e33e552f4b91b4",
+      "note": "decoration size keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        4140,
+        4987
+      ],
+      "units": 847,
+      "bodySha256": "c9451f390d607e159e066206a0081fe9166ae1b667ff5ab281d87346767e3c95",
+      "note": "decoration value check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        27035,
+        27058
+      ],
+      "units": 23,
+      "bodySha256": "2f741486ca964a4a084bac3ba28edff8df3850aa20098ccab5085b293a551373",
+      "note": "run offset keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        27058,
+        27149
+      ],
+      "units": 91,
+      "bodySha256": "b400f5f7ade95ff8e93d8aec10e8a75116060fc1b5a18ce1b859a05d3f1fd49e",
+      "note": "run style keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        27149,
+        27171
+      ],
+      "units": 22,
+      "bodySha256": "e6acb456960b54b3e62e6538550f91e37f11c1ccc31fe71e0c3993dce510a55d",
+      "note": "run keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        27171,
+        27261
+      ],
+      "units": 90,
+      "bodySha256": "f6f49dad8d09bedf89aabb023dc61cd84b381ba2e61d2a5d37f2a4e16e449eb9",
+      "note": "scalar text"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        27261,
+        27661
+      ],
+      "units": 400,
+      "bodySha256": "02b12b4202fff800585525c667c4b06a8c6238c38f00031d1aaa9b84b474e90e",
+      "note": "decoration run check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        1781,
+        1944
+      ],
+      "units": 163,
+      "bodySha256": "3ebbaa2f6ef29ae810378482c729549e34f1ca3fbb9dfac3fdbc21482d7b1f3e",
+      "note": "sorted-key stringify replacer"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        1944,
+        1973
+      ],
+      "units": 29,
+      "bodySha256": "bbad3f66739a3fbee21ed7ff580d477b4e821a4b413551fa421e5204c61883da",
+      "note": "unserializable prefix"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        1973,
+        2019
+      ],
+      "units": 46,
+      "bodySha256": "174666be394562a2c64bc719c62f0e0f290562ddf9c546266cb84cdde1729536",
+      "note": "unserializable counter"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2019,
+        2031
+      ],
+      "units": 12,
+      "bodySha256": "8e5e2523522c35594723ca2ca14988fbca2cce87c8ed4136602c9521c06bfe7b",
+      "note": "unserializable fallback"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6340,
+        6358
+      ],
+      "units": 18,
+      "bodySha256": "d431d6dce13da18ff3c639d4be4ff4cf1a8a69ac6c614d1716da1912e22d46e5",
+      "note": "list length ceiling"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6358,
+        6591
+      ],
+      "units": 233,
+      "bodySha256": "40ad04b21693ce422b7dcd93dcf5be7cc2f82f29a53bd7da03abd35e7af6a674",
+      "note": "plugin list length guard"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        27661,
+        27882
+      ],
+      "units": 221,
+      "bodySha256": "c4a0adcea96e4537c4dd5b7fe510c1a4a8682d0b0efa6e7459ba23b7f88d3686",
+      "note": "decoration runs check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2766,
+        2815
+      ],
+      "units": 49,
+      "bodySha256": "88c3633b9085741880764e6c932d63e4dc0369805da6d3dbf2f02d0b4d4d4b8b",
+      "note": "edge keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2523,
+        2766
+      ],
+      "units": 243,
+      "bodySha256": "12be15916a43b5c90b11a3e9217e450fecb852315a1620a38434945ab8e0ede7",
+      "note": "layout number keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2097,
+        2198
+      ],
+      "units": 101,
+      "bodySha256": "6d7c18b0bdbb874beab776c3caede62dfa1a5e654a0fe1d17f9a25b058db0673",
+      "note": "text style keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2229,
+        2288
+      ],
+      "units": 59,
+      "bodySha256": "f05697c87d1ddfed3dabb1ca511ba365ed82e22d3c41779971414bd73d37755b",
+      "note": "color keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        16055,
+        16084
+      ],
+      "units": 29,
+      "bodySha256": "65552a897ea609897a7e512b9b87d4bef0a934d4fdb647e2ae7131c75f1e94ff",
+      "note": "restore-argument builder"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        111504,
+        128400
+      ],
+      "units": 16896,
+      "bodySha256": "8434c3e4b94fbbdd72781af1fcc887190634720bfcc948e589038b4dd266ed1c",
+      "note": "chain region"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        238083,
+        238111
+      ],
+      "units": 28,
+      "bodySha256": "cf20545f924aae224fdf1a1a8eecfe544fce52b13f0efa5bfe52c8ea9ea572ce",
+      "note": "answers-for-engine tag of a module record"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        111415,
+        111504
+      ],
+      "units": 89,
+      "bodySha256": "58914804363a6e3d2eb2d4668ec017356998a98afe81d9b051d54efc5a932963",
+      "note": "site/raise descriptor of a record"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25533,
+        25619
+      ],
+      "units": 86,
+      "bodySha256": "db9ef8bf1ca9ec94b8c283c4d1688cfa530e8cda6437cca143cfb1f2f20ed5af",
+      "note": "origin chain of a record (nyce03br scope)"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25694,
+        25838
+      ],
+      "units": 144,
+      "bodySha256": "1085aade3f6894497358259bb289e21f6112bcfd6ab7ae802342ee73d8556c00",
+      "note": "site raise argument"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        237828,
+        237858
+      ],
+      "units": 30,
+      "bodySha256": "f7b4ade234ce2740fe739ccdc04461639f63cdd0acdc751bb74e6ca567780158",
+      "note": "module path lookup"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        237792,
+        237828
+      ],
+      "units": 36,
+      "bodySha256": "b2de0e60e2730e5cb157406de76872fcd550dafdd03ed254d71b5603399efb46",
+      "note": "path table holder"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        16728,
+        16740
+      ],
+      "units": 12,
+      "bodySha256": "8be91ff5900b171bddd4aa8b86e2dc31bc191e41e72368f982f56f24b2448003",
+      "note": "worker log ceiling"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        158106,
+        158196
+      ],
+      "units": 90,
+      "bodySha256": "712cbdc5e7b8990978beb99eae8f081f72faf0271d64cf78b5fb5adb42480b14",
+      "note": "abort reason reader"
+    },
+    {
+      "module": "chunk-yjc18bey.js",
+      "sha256": "e53a75c48188dd5f345841ef87e452840622f9d61bc86e97b2edea656866a687",
+      "range": [
+        2047,
+        2313
+      ],
+      "units": 266,
+      "bodySha256": "88fc55becad311e7a66dd798c087cdc4f495f34cbeb7e3848ec746fea400c5ba",
+      "note": "promise versus signal race"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        1645,
+        1850
+      ],
+      "units": 205,
+      "bodySha256": "d7ccce29523920f445390e8ce49693e3b19c49ef17df9435da791459ea9cbf34",
+      "note": "declares x, the fromCharCode chunker WMt falls back to when Buffer is absent (a gap the scope-aware scan found: the browser branch was unreachable in this product, so the name had never resolved)"
+    }
+  ],
+  "missing": []
+}

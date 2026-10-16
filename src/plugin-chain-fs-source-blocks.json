@@ -1,0 +1,185 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1839344,
+        1839395
+      ],
+      "units": 51,
+      "bodySha256": "fa8ffffd881b50628f9f99f9be620bc4afb0623d1b80a8a3101b97782e33b930",
+      "note": "declares IE, the descriptor an fs entry raises a refused path with: the field path, at the caller's cwd or the process's"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1846886,
+        1846947
+      ],
+      "units": 61,
+      "bodySha256": "08fceed62922b983599e57333d84caf0f91b8214527e080085b7f11b19ac54f7",
+      "note": "declares uGe, the kind of a directory entry: file, dir or other"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1847244,
+        1847408
+      ],
+      "units": 164,
+      "bodySha256": "76fea1eb8e7c08b1a491dca7ffd6af5b0b778291fa9525777fbb7e3322eabeba",
+      "note": "declares azt, the candidate paths a link's target is compared against: the target itself, resolved below the link's own directory, and the plain resolution"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1847408,
+        1847421
+      ],
+      "units": 13,
+      "bodySha256": "216116ef7bf71a169ee2b7a93a9c10d6e8a3d3c8460daeac5da7cf95b154d53f",
+      "note": "declares lzt, the read chunk the file floor allocates"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1847422,
+        1847436
+      ],
+      "units": 14,
+      "bodySha256": "1162621774e8aac5c937a3b03cf583180aa8930b847391ebba9ca954c0605fa1",
+      "note": "declares C3, the byte limit a write refuses over"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1847437,
+        1847447
+      ],
+      "units": 10,
+      "bodySha256": "b62d5e87502db5f192ece9a4183988a006f76c88ee2debc174db1ee0f8d59c16",
+      "note": "declares cGe, the byte limit a read refuses over, which the source sets to C3"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1847448,
+        1849273
+      ],
+      "units": 1825,
+      "bodySha256": "fee8dfe62c724313fdb3c60ae064cb69f46fde3236419b20b34ad7352139dea7",
+      "note": "declares HE, the body behind every fs entry: the location check, the read loop with its byte limit, the write, the existence probe, the stat with link resolution, and the sorted list"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1849977,
+        1850062
+      ],
+      "units": 85,
+      "bodySha256": "eea009bc750f1ed5f124b235114446b5206c672a51bd146a6995362f6bc457f8",
+      "note": "declares gzt, the fs.list entry: the path check, the raise descriptor and the list run"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1850063,
+        1850156
+      ],
+      "units": 93,
+      "bodySha256": "04915be82ca776646b807ba45e319840218e48153dd22d66a761e10dbd1d7556",
+      "note": "declares hzt, the fs.read entry: the path-and-as check and the read run"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1850157,
+        1850260
+      ],
+      "units": 103,
+      "bodySha256": "3c716bd0771dd7c84422cc5d49773b62f95ff56ed2fa5091f8e60b12126d1a2c",
+      "note": "declares yzt, the fs.stat entry: the path-and-resolve check and the stat run"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1850261,
+        1850448
+      ],
+      "units": 187,
+      "bodySha256": "c4e3cc11d19a73877400492c7b160d7cdd7fefbddf03bea55796bf8b17f6c9bd",
+      "note": "declares _zt, the fs.write entry: the path and text checks and the write run"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        12056,
+        12143
+      ],
+      "units": 87,
+      "bodySha256": "7ba7dd1f85bc76829eb077fb90e40f297849dee86465a5318e3e1616cc6ab4d6",
+      "note": "declares XAt, the path check every fs entry but stat shares: a non-empty string"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        12143,
+        12249
+      ],
+      "units": 106,
+      "bodySha256": "c49a9ec241593438bdf6cd4a5ebdead205802365c6bc5dafabad3a1ebea2bfbd",
+      "note": "declares ANs, the fs.read check: the path, then `as` being text or bytes"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        12249,
+        12354
+      ],
+      "units": 105,
+      "bodySha256": "333498768ee627909e77fee456cb32859bae60abfdae765af56c687cba3fb714",
+      "note": "declares CNs, the fs.stat check: the path, then `resolve` being a boolean"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "range": [
+        4814,
+        4913
+      ],
+      "units": 99,
+      "bodySha256": "a84ab0a2488aed5689416393c679dde4e7f4b29aa980e121bd56b25ab3e7b5e4",
+      "note": "declares E, the errno code of a thrown error, when it carries one"
+    }
+  ],
+  "missing": []
+}

@@ -1,0 +1,163 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kwp08k6x.js",
+      "sha256": "30dd63de691cb91bb82fe15f6073761e0e53c4b76025cd28c8e5274686773aab"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kwp08k6x.js",
+      "sha256": "30dd63de691cb91bb82fe15f6073761e0e53c4b76025cd28c8e5274686773aab",
+      "range": [
+        17196,
+        17365
+      ],
+      "units": 169,
+      "bodySha256": "601f710c845724d538142ba0a025a166bda192eef9e35735e24c69f264c0ad69",
+      "note": "declares xe"
+    },
+    {
+      "module": "chunk-kwp08k6x.js",
+      "sha256": "30dd63de691cb91bb82fe15f6073761e0e53c4b76025cd28c8e5274686773aab",
+      "range": [
+        17365,
+        17439
+      ],
+      "units": 74,
+      "bodySha256": "c127afa0afb079d03699bfbb3a0d0b3e0928e0e27f9762c49a7d96ebdd3895c4",
+      "note": "declares ye"
+    },
+    {
+      "module": "chunk-kwp08k6x.js",
+      "sha256": "30dd63de691cb91bb82fe15f6073761e0e53c4b76025cd28c8e5274686773aab",
+      "range": [
+        17439,
+        17723
+      ],
+      "units": 284,
+      "bodySha256": "78e064c730b026fd822fd65372e7c971457371df6fd81244689c402294fec313",
+      "note": "declares ke"
+    },
+    {
+      "module": "chunk-kwp08k6x.js",
+      "sha256": "30dd63de691cb91bb82fe15f6073761e0e53c4b76025cd28c8e5274686773aab",
+      "range": [
+        17723,
+        17793
+      ],
+      "units": 70,
+      "bodySha256": "8f3421265d9c337990575cfb43ec6556f4e324f323467c296ea50945a428d5e6",
+      "note": "declares Mo"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103321,
+        103443
+      ],
+      "units": 122,
+      "bodySha256": "53ec5b2ee8ede2a34479e112b29de3987af61e12c1c0e1acea326b06ce5a6e64",
+      "note": "declares Da"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103443,
+        103575
+      ],
+      "units": 132,
+      "bodySha256": "31126f5e07098cea487db380c3590bcc38dc976fdd3fabf8dd357749f6dad07c",
+      "note": "declares No"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103918,
+        103945
+      ],
+      "units": 27,
+      "bodySha256": "42e084b79c853b25188f3ffb0114025b955de5ea1ec3bc18c21d38eae6b99af2",
+      "note": "declares rIt"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        111504,
+        111520
+      ],
+      "units": 16,
+      "bodySha256": "0583f2432ff8dfe374dbda6088d5f6888447156e1fc2d18069259c6b5e75481d",
+      "note": "declares a8"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        111520,
+        111567
+      ],
+      "units": 47,
+      "bodySha256": "9e881a57a788edf335bc2cd7cf949df823ffd89f0b31d264908810632f6221db",
+      "note": "declares CFe"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        112820,
+        112985
+      ],
+      "units": 165,
+      "bodySha256": "4f9261b5f6ffd2daed100620b6f6667922161b7ad49f51ddfab13d7f5471bfbf",
+      "note": "declares RFe"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        121822,
+        121896
+      ],
+      "units": 74,
+      "bodySha256": "8f0b1e52979b9e82725fd009e25d57ddbb8aa2687e77c86bbe076bc26678550e",
+      "note": "declares $go"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        504161,
+        504309
+      ],
+      "units": 148,
+      "bodySha256": "836b5d470c42729c6d518c4a4c023ae359029ce8dbb2afba0e36aa4a078abdd8",
+      "note": "declares p_t"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        504309,
+        504681
+      ],
+      "units": 372,
+      "bodySha256": "69cd5137382200f85076fc3eadd51cdb6bd2cb9a80c206ff7a47e7eda86db893",
+      "note": "declares mDe"
+    }
+  ],
+  "missing": []
+}

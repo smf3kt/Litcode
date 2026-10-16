@@ -1,0 +1,34 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        707,
+        2367
+      ],
+      "units": 1660,
+      "bodySha256": "cccd26f993af32e1d26506fb288cbb6af0ab7ef0e02db54a1e5be38e6d9c2afe",
+      "note": "root discovery, object tags, core-js mask-key check, function stringification and native detection; complete dependency closure without application imports"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        2367,
+        5355
+      ],
+      "units": 2988,
+      "bodySha256": "e1b8e5769a90f612176423fdf68ac0b768564e2cc093e883a30d3aa092065171",
+      "note": "the module's cache and memoize stack: baseIsNative's alias, direct property lookup, getNative, the object-create probe, the Hash class, the ListCache class, getMapData/isKeyable, the MapCache class, the \"Expected a function\" message and memoize itself, through `var po=V`"
+    }
+  ],
+  "missing": []
+}

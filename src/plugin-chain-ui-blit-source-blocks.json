@@ -1,0 +1,101 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        241244,
+        241478
+      ],
+      "units": 234,
+      "bodySha256": "ec694e39198cb7c94fba0d92c600f68d2fdcbbf3ee89c2fba4cddb81c9e86cbb",
+      "note": "declares the base64 ratio table (`{bytes:3,characters:4}`) and `ds`, the decoder the cell check leans on: only the standard padded alphabet of whole characters is accepted"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        241740,
+        242738
+      ],
+      "units": 998,
+      "bodySha256": "0dcf390e2dd08495cc105b49eaade74e7738869dcce14c75ac6f309e55310aa5",
+      "note": "declares the ImageSource shape scalars and shapers — `sc` (a generation), `Df`/`ic` (the file-path and pixel-side ceilings), `fs` (a width and height), `F_` (the `file` form) — each turning its input into the bytes the swap path paints"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        242947,
+        245185
+      ],
+      "units": 2238,
+      "bodySha256": "020a65c00f8fd57c64c55ebce30509625f598aa06ea00deffb73dea1adf1d217",
+      "note": "declares the rest of the ImageSource machinery — `ps`/`uc`/`no`/`U_`/`G_`/`z_`/`K_`/`V_`/`Y_`/`X_`/`q_`/`J_` and `Mss`, the validator: a plain object carrying exactly one source form, with the refusal text `source must be { png }, { rgba, width, height }, { file, format } or { shm, format, width, height }` for every other shape"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        248812,
+        252131
+      ],
+      "units": 3319,
+      "bodySha256": "35904560cb88827fdd3f3b0bbea3fabff7358439f293e5ec1ae890241e249b22",
+      "note": "declares the Raster side of the blit: the check `fNs` (a requestId and key, then exactly one of `cells` or `source`, then numeric columns/rows), the cell helpers `xi`/`rb`/`Un`/`ms`/`Nf`/`ob`/`sb`/`ko`/`gs`/`Lf`/`xo` and the decoder `fur` (base64 of `columns*rows` cells), the denial helper `xDe`, the mounted-raster accessor `hs`, the other-plugin test `ib`, the lookup key `e5t`, the per-second window `ZPn`/`ab` and its limiter `qto`, the refusal text `Kto`, and the run `mNs`"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1868588,
+        1869519
+      ],
+      "units": 931,
+      "bodySha256": "ec8b7cf9a0487bf19b7348a1df4799b76f062f780945c478dc9da341921e4ad7",
+      "note": "declares the Image side of the blit: `Yj` (the mounted-image accessor), `a2t` (the other-plugin test), the run `kFo` and its `bFo` predicate"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        2833,
+        2864
+      ],
+      "units": 31,
+      "bodySha256": "21d576c31d345548f93d69bc477aa317be0de32efbc3aad15f279e9df2823152",
+      "note": "declares `QJt`, the separator the mounted-raster and mounted-image lookups join their key with"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        6302,
+        6403
+      ],
+      "units": 101,
+      "bodySha256": "c8d41584e054985a08912d8c8406bcda1b99ae8c3a6e11a4f61298577a380092",
+      "note": "declares `fpr`, the control-character pattern over the character classes `b3` (imported below, carried by ./plugin-chain-source.ts), and `QT`, the test `F_` runs on a `source.file`"
+    }
+  ],
+  "missing": []
+}

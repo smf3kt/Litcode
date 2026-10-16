@@ -175,6 +175,67 @@ Host cuts, by host:
 
 `tsc --noEmit --pretty false` exits 0; all four owned fixtures pass; `git diff --check` clean. 13 `*.w54bak` source maps were copied to `.audit/w65-e4-baks/` and `cmp`-verified **before** the files went. Four repair passes: two `cut_all` anchors that were substrings of longer indents removed a line they should not have (`remoteSessions,` inside a `count(` call and a JSX `marginTop` term), one `else if` chain whose closer left an unbalanced brace (found by counting brace depth per line — `tsc` only reports it at EOF), and one `cut_range` whose end anchor matched too early and left a dangling `if (`.
 
+## Wave E step 5 — the bridge cluster (landed, `88545db`)
+
+The whole `bridge/` module is gone: 31 files, 12,595 lines, plus `hooks/useReplBridge.tsx` and `components/BridgeDialog.tsx`. 18 hosts were re-stitched; the tree went from 28 `TS2307` errors to 0 in three passes. 53 files changed, +114/−14,675.
+
+**Order reversed from the previous tick's plan.** That tick said wave D step 2 (the OAuth token core) came next because `bridge/createSession.ts` calls `getClaudeAIOAuthTokens`. Inverting it is cheaper: `bridge/` is the token store's largest consumer, so cutting the token core first would leave the compiler unable to name a single bridge host — the bridge cuts would have to happen anyway, with less type information to drive them. Cutting `bridge/` first means the token core's remaining consumers are already visible.
+
+### Deleted roles
+
+| Deleted | Role |
+| --- | --- |
+| `bridge/bridgeEnabled.ts` | The runtime GrowthBook gate plus `getBridgeDisabledReason`, `checkBridgeMinVersion`, `isCcrMirrorEnabled`, `getCcrAutoConnectDefault` |
+| `bridge/bridgeMain.ts`, `sessionRunner.ts`, `remoteBridgeCore.ts`, `codeSessionApi.ts`, `createSession.ts`, `capacityWake.ts` | The standalone `claude remote-control` environment loop |
+| `bridge/replBridge.ts`, `replBridgeHandle.ts`, `replBridgeTransport.ts`, `initReplBridge.ts`, `envLessBridgeConfig.ts`, `bridgePointer.ts`, `pollConfig.ts`, `pollConfigDefaults.ts`, `flushGate.ts` | The in-REPL bridge: session create, poll loop, transport, pointer file |
+| `bridge/bridgePermissionCallbacks.ts`, `bridgeMessaging.ts`, `inboundMessages.ts`, `inboundAttachments.ts` | The bidirectional permission relay and inbound message/attachment ingest |
+| `bridge/jwtUtils.ts`, `workSecret.ts`, `trustedDevice.ts`, `sessionIdCompat.ts`, `types.ts`, `bridgeConfig.ts`, `bridgeApi.ts`, `bridgeDebug.ts`, `debugUtils.ts`, `bridgeStatusUtil.ts`, `bridgeUI.ts` | Token refresh, trusted-device enrollment, the `cse_` retag, headers, the status labels and the shimmer helpers |
+
+### Host cuts
+
+| Host | What went |
+| --- | --- |
+| `constants/product.ts` | `getRemoteSessionUrl`'s lazy `require` — replaced by a ported local `toCompatSessionId` |
+| `components/Spinner.tsx` | The `bridgeStatusUtil` import — replaced by three ported local helpers |
+| `cli/transports/ccrClient.ts` | The `jwtUtils` import — replaced by two ported local helpers |
+| `utils/config.ts` | `ccrAutoConnect`; `getRemoteControlAtStartup()` keeps only its explicit local value |
+| `entrypoints/cli.tsx` | The `claude remote-control` / `rc` / `remote` / `sync` / `bridge` fast-path (44 lines) |
+| `main.tsx` | The `--remote-control` / `--rc` options and their entitlement gate, the trusted-device enrollment after login, `ccrMirrorEnabled`, the hidden `remote-control` command, the `claude assistant` attach path and its `_pendingAssistantChat` stash |
+| `screens/REPL.tsx` | `useReplBridge` and `sendBridgeResult`, the sandbox-permission bridge relay and its cleanup map |
+| `commands/rename/rename.ts` | The `updateBridgeSessionTitle` sync |
+| `cli/print.ts` | The SDK `remote_control` control message, `bridgeHandle`, `forwardMessagesToBridge`, the `tengu_bridge_message_received` event, the `resolveAndPrepend` attachment fetch |
+| `hooks/toolPermission/handlers/interactiveHandler.ts` | The `bridgeCallbacks` parameter and its eight call sites, including the `Race 4` permission race |
+| `components/PromptInput/PromptInput.tsx`, `PromptInputFooter.tsx` | The `bridge` footer item, `bridgeFooterVisible`, `BridgeDialog`, `BridgeStatusIndicator` |
+| `components/Settings/Config.tsx` | The Remote-at-startup toggle |
+| `cli/remoteIO.ts` | The bridge-topology keep-alive timer and its `pollConfig` read |
+| `tools/SendMessageTool/SendMessageTool.ts`, `utils/peerAddress.ts` | The `bridge:` peer scheme and its cross-machine consent check |
+| `state/AppStateStore.ts` | `replBridgePermissionCallbacks` |
+| `hooks/useCanUseTool.tsx` | The `bridgeCallbacks` argument |
+| `tools/BriefTool/attachments.ts` | The `BRIDGE_MODE` upload branch, and `tools/BriefTool/upload.ts` with it |
+
+### Adaptations (ported, not invented)
+
+Four bodies were still load-bearing when their module left. Each was ported from the recovered source and is cited at the port site; the new `w65-e5-verify` fixture compares both copies textually (whitespace- and trailing-comma-insensitive, because the formatter reflowed them) and behaviourally over probes.
+
+1. `constants/product.ts` — `toCompatSessionId` from `bridge/sessionIdCompat.ts:26-42`. The `_isCseShimEnabled` gate is dropped: its only registrant was `setCseShimGate`, called from bridge init, and the module's own comment records that an unregistered gate means the shim is active — which is what the port produces. This is the one entry the fixture marks `mode: "adapt"`.
+2. `components/Spinner.tsx` — `SHIMMER_INTERVAL_MS`, `computeGlimmerIndex` and `computeShimmerSegments` from `bridge/bridgeStatusUtil.ts:20,53-77,80-116`. The shimmer is a plain progress animation, not bridge state; only its module home was bridge.
+3. `cli/transports/ccrClient.ts` — `decodeJwtPayload` and `decodeJwtExpiry` from `bridge/jwtUtils.ts:22-58`. The CCR client is the `--sdk-url` transport this build keeps; the 401-with-expired-JWT early exit it drives is local transport logic.
+
+### Behaviour changes
+
+Two are visible and deliberate. `--remote-control` / `--rc` is gone as a flag, a command and an AppState input, so `replBridgeEnabled` now starts from `getRemoteControlAtStartup()` alone — the field family stays because `ConfigTool`, `migrations/migrateReplBridgeEnabledToRemoteControlAtStartup.ts` and `services/api/emptyUsage.ts` still read it, and removing it is the remote-control-leftovers wave. And `resolveAndPrepend` is gone from `print.ts`'s inbound prompt path: it fetched web-composer `file_uuid` attachments from `/api/oauth/files/{uuid}/content` with the bridge token, which is exactly the account-network shape this wave removes. The prompt content is passed through unchanged.
+
+### Kept as inert declarations
+
+- The `replBridge*` AppState family (14 fields) and `getRemoteControlAtStartup()`. Survivors read them; nothing produces bridge state any more.
+- `utils/sessionIngressAuth.ts` and the `sessionIngressToken` bootstrap field, still read by `services/mcp/client.ts`, `utils/filePersistence/` and `main.tsx`.
+- `cli/remoteIO.ts`, `cli/transports/` and `--sdk-url` streaming. `RemoteIO` keeps its `isBridge` env check and its debug stdout echo; only the keep-alive timer depended on a deleted module.
+- `commands/bridge/` held only three `*.w54bak` files, already quarantined in `.audit/w61-source-baks/`; the directory was removed after a byte comparison.
+
+### Verification
+
+`tsc --noEmit --pretty false` exits 0; all five owned fixtures pass; `git diff --check` clean. No `bridge/*.w*bak` file ever existed — the directory was never edited in an earlier wave — so the only baks to quarantine were the nine under `hooks/` and `components/`, copied to `.audit/w65-e5-baks/` and `cmp`-verified before the deletions. Two repair passes: one `cut_range` whose start anchor sat *after* the end anchor of the previous cut (the remoteIO keep-alive comment block), and one replacement that left a doubled `}` at the end of `tools/BriefTool/attachments.ts`.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
@@ -185,7 +246,7 @@ One leftover cleaned up while deleting: `commands/passes/` held only `passes.tsx
 
 ## Verification and limits
 
-`tsc --noEmit --pretty false` exits 0 after each wave. All four owned fixtures (`w58-verify`, `w59-verify`, `w59-followup-verify`, `w60-verify`) pass. `git diff --check` clean. The base has no test suite and no runtime, so the acceptance surface is the compiler plus fixtures — no CLI ran, and no recovered entrypoint was executed. Two cut sites needed a repair pass: the first `settings.ts` edit left an orphan `}` from the removed `if/else` (TS1472/TS1005/TS1128), fixed by removing the leftover closer.
+`tsc --noEmit --pretty false` exits 0 after each wave. All five owned fixtures (`w58-verify`, `w59-verify`, `w59-followup-verify`, `w60-verify`, `w65-e5-verify`) pass. `git diff --check` clean. The base has no test suite and no runtime, so the acceptance surface is the compiler plus fixtures — no CLI ran, and no recovered entrypoint was executed. Two cut sites needed a repair pass: the first `settings.ts` edit left an orphan `}` from the removed `if/else` (TS1472/TS1005/TS1128), fixed by removing the leftover closer.
 
 Wave C's cuts were driven the same way, and five repair passes came out of it: an over-wide range for the `createGuestPassesFeed` tail (fixed by reading the file's exact end bytes), a `cut_all` where an 8-space anchor was a substring of a 16-space one (`onOpenRateLimitOptions` in `REPL.tsx`, reordered to cut the deeper indent first), and the `onOpenRateLimitOptions` prop chain, which surfaced one host at a time as `tsc` named the next component that still passed it. That chain is the wave's clearest illustration of why the compiler is the acceptance surface here: the prop was drilled through five components, so a single missed hop is a type error rather than a silent behaviour change.
 
@@ -194,7 +255,8 @@ Wave C's cuts were driven the same way, and five repair passes came out of it: a
 
 - **OAuth identity and token core** — `services/oauth/`, `utils/auth.ts` subscriber half, `utils/config.ts` `oauthAccount`/`AccountInfo`/`hasAvailableSubscription`, and the model-call seams: `services/api/client.ts:128-135,307-313` (`isClaudeAISubscriber()` branch, `authToken`, staging baseURL), `claude.ts:408,522,1030`, `withRetry.ts:20-21,247,332,739,768`, `errors.ts:468,737,798`, `utils/http.ts:70`, `utils/betas.ts:25,71,251`, `utils/model/*`.
 - **Usage, limits and credits** — landed as wave C (`35c180c`). Two residues kept on purpose: the SDK `rate_limit_event` schema and the server-declared `extra_usage_disabled` fast-mode reason. The plan's other named targets resolved differently than expected: there is no `components/Tips` directory in this tree (`services/tips/tipRegistry.ts` holds the tip content, and it was cut), and `components/Settings/Usage.tsx` was the usage endpoint's only consumer, so both left with this wave. `components/FeedbackSurvey/` is not part of this cluster — it posts survey answers and belongs with the product-feedback surface.
-- **Remote sessions** — `remote/`, `assistant/`, `ssh/`, `server/`, `utils/teleport*`, `utils/background/remote/`, `tools/RemoteTriggerTool/` and the ultraplan surface all landed (waves E steps 1-4). What remains of this cluster: **`bridge/`** (31 files, ~13,700 lines) with `hooks/useReplBridge.tsx`, `components/BridgeDialog.tsx`, `cli/remoteIO.ts`, `cli/transports/` (8 files) and the `PromptInputFooter`/`Spinner`/`Config`/`SendMessageTool`/`interactiveHandler` readers; plus the `session-ingress` bearer token surface (`utils/sessionIngressAuth.ts`, the MCP client's `Authorization` header, `filePersistence`) and the `--sdk-url` streaming transport.
+- **Remote sessions** — `remote/`, `assistant/`, `ssh/`, `server/`, `utils/teleport*`, `utils/background/remote/`, `tools/RemoteTriggerTool/`, the ultraplan surface and **`bridge/`** all landed (waves E steps 1-5). What remains of this cluster: the `replBridge*` AppState family and `getRemoteControlAtStartup()` (inert state with surviving readers), and the `session-ingress` bearer token surface (`utils/sessionIngressAuth.ts`, the MCP client's `Authorization` header, `filePersistence`). `cli/remoteIO.ts` and `cli/transports/` stay as the SDK `--sdk-url` transport.
+- **Remote-control leftovers** — the `replBridge*` AppState fields, `getRemoteControlAtStartup()`, the `kairosEnabled` arm of the initial state, `migrations/migrateReplBridgeEnabledToRemoteControlAtStartup.ts`, `tools/ConfigTool`'s sync site, and the comment-only references in `ink/root.ts`, `utils/messages/systemInit.ts`, `utils/toolSchemaCache.ts` and `services/api/emptyUsage.ts`.
 - **Policy limits** — `services/policyLimits/`; every `isPolicyAllowed` call site is a remote-session, remote-control or product-feedback policy, so it goes with those.
 - **Open decisions.** `services/analytics/` is network (`logEvent`, GrowthBook) and is imported by hundreds of local files — a no-op stub is the realistic cut, but the GrowthBook gates the coding loop reads (`getDynamicConfig_BLOCKS_ON_INIT` at `claude.ts:96`) need a product call. `services/teamMemorySync/teamMemSecretGuard.checkTeamMemSecrets` was local code inside a network feature. `hooks/useApiKeyVerification.ts` is API-key-shaped but routes through `isAnthropicAuthEnabled` and may need a bare rewrite rather than deletion.
 

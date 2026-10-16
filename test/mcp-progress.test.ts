@@ -45,9 +45,11 @@ test("only an open call receives its own token's progress, and settling retires 
   assert.equal(registry.size, 0);
 });
 
-// Inline child: reports progress on its own token every 40ms and answers after three reports.
+// Inline child: reports progress on its own token every `stepMs` ms, `reports` times, then answers.
 // A call that brings no token is answered at once, which is how the test detects token issuance.
-const STDIO = String.raw`
+// Every deadline in this file has to clear the child's own boot: a spawned `node -e` costs 150-170ms
+// where these tests run under load, so the budgets below are seconds, not tens of milliseconds.
+const stdio = (reports: number, stepMs: number) => String.raw`
 const readline = require('node:readline');
 const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
 readline.createInterface({ input: process.stdin }).on('line', (line) => {
@@ -60,12 +62,35 @@ readline.createInterface({ input: process.stdin }).on('line', (line) => {
     let n = 0;
     const timer = setInterval(() => {
       n += 1;
-      send({ jsonrpc:'2.0', method:'notifications/progress', params:{ progressToken:token, progress:n, total:3, message:'step ' + n } });
-      if (n === 3) { clearInterval(timer); send({ jsonrpc:'2.0', id:msg.id, result:{ content:[{ type:'text', text:'done' }] } }); }
-    }, 40);
+      send({ jsonrpc:'2.0', method:'notifications/progress', params:{ progressToken:token, progress:n, total:${reports}, message:'step ' + n } });
+      if (n === ${reports}) { clearInterval(timer); send({ jsonrpc:'2.0', id:msg.id, result:{ content:[{ type:'text', text:'done' }] } }); }
+    }, ${stepMs});
   }
 });
 `;
+
+// A child that reports every `stepMs` ms and never answers, so only a deadline can end its call.
+const stdioLoop = (stepMs: number) => String.raw`
+const readline = require('node:readline');
+const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
+readline.createInterface({ input: process.stdin }).on('line', (line) => {
+  const msg = JSON.parse(line);
+  if (msg.method === 'initialize') send({ jsonrpc:'2.0', id:msg.id, result:{ protocolVersion:'2024-11-05', capabilities:{ tools:{} } } });
+  else if (msg.method === 'tools/list') send({ jsonrpc:'2.0', id:msg.id, result:{ tools:[{ name:'slow', inputSchema:{ type:'object' } }] } });
+  else if (msg.method === 'tools/call') {
+    const token = msg.params && msg.params._meta && msg.params._meta.progressToken;
+    if (typeof token !== 'string') return send({ jsonrpc:'2.0', id:msg.id, result:{ content:[{ type:'text', text:'no-token' }] } });
+    let n = 0;
+    setInterval(() => {
+      n += 1;
+      send({ jsonrpc:'2.0', method:'notifications/progress', params:{ progressToken:token, progress:n, message:'step ' + n } });
+    }, ${stepMs});
+  }
+});
+`;
+
+const STDIO = stdio(3, 40);
+const STDIO_LOOP = stdioLoop(200);
 
 // A child that ignores the token it is given: nothing reports progress, so only a deadline ends it.
 const STDIO_SILENT = String.raw`
@@ -92,34 +117,35 @@ async function withServer<T>(options: McpConnectOptions, fn: (call: () => Promis
   } finally { await connection.close(); }
 }
 
-test("a tool call carries a token and stays alive while it reports progress", { timeout: 5000 }, async () => {
+test("a tool call carries a token and stays alive while it reports progress", { timeout: 20000 }, async () => {
   const updates: { server: string; progress: number; total?: number; message?: string }[] = [];
-  await withServer({ toolIdleTimeoutMs: 60, onProgress: (event) => { updates.push(event); } }, async (call) => {
-    // Three reports 40ms apart outlive the 60ms idle deadline twice, and finish inside the 400ms total.
+  await withServer({ requestTimeoutMs: 2000, toolIdleTimeoutMs: 500, onProgress: (event) => { updates.push(event); } }, async (call) => {
+    // Four reports 200ms apart each reset the 500ms idle deadline, which would have ended the call twice.
     assert.equal(await call(), "done");
-  });
-  assert.equal(updates.length, 3);
-  assert.deepEqual(updates.map((update) => update.progress), [1, 2, 3]);
-  assert.deepEqual(updates.map((update) => update.message), ["step 1", "step 2", "step 3"]);
-  assert.ok(updates.every((update) => update.server === "fixture" && update.total === 3));
+  }, stdio(4, 200));
+  assert.equal(updates.length, 4);
+  assert.deepEqual(updates.map((update) => update.progress), [1, 2, 3, 4]);
+  assert.deepEqual(updates.map((update) => update.message), ["step 1", "step 2", "step 3", "step 4"]);
+  assert.ok(updates.every((update) => update.server === "fixture" && update.total === 4));
 });
 
-test("a call that never reports is still cut off at its idle deadline", { timeout: 5000 }, async () => {
-  await withServer({ toolIdleTimeoutMs: 60 }, async (call) => {
-    await assert.rejects(call, /timed out after 60ms/);
+test("a call that never reports is still cut off at its idle deadline", { timeout: 20000 }, async () => {
+  await withServer({ requestTimeoutMs: 2000, toolIdleTimeoutMs: 300 }, async (call) => {
+    await assert.rejects(call, /timed out after 300ms/);
   }, STDIO_SILENT);
 });
 
-test("the idle deadline never moves past the total deadline", { timeout: 5000 }, async () => {
-  await withServer({ requestTimeoutMs: 300, toolIdleTimeoutMs: 60 }, async (call) => {
-    // Reports keep arriving every 40ms, so the call outlives its idle deadline twice and still ends.
+test("the idle deadline never moves past the total deadline", { timeout: 20000 }, async () => {
+  await withServer({ requestTimeoutMs: 2000, toolIdleTimeoutMs: 700 }, async (call) => {
+    // Reports keep arriving every 200ms, so the call ends on its own inside both deadlines.
     assert.equal(await call(), "done");
-  });
+  }, stdio(3, 200));
 
-  // Reporting every 40ms cannot outlive the 90ms ceiling: the call still ends at the total.
-  await withServer({ requestTimeoutMs: 90, toolIdleTimeoutMs: 60 }, async (call) => {
-    await assert.rejects(call, /timed out after 90ms/);
-  });
+  // The same reports reset the idle deadline as they land, and still cannot move the total: the call
+  // ends at the 900ms ceiling.
+  await withServer({ requestTimeoutMs: 900, toolIdleTimeoutMs: 700 }, async (call) => {
+    await assert.rejects(call, /timed out after 900ms/);
+  }, STDIO_LOOP);
   await delay(10);
 });
 
@@ -162,7 +188,7 @@ test("HTTP tool calls carry a token and route progress on the call's own stream"
   const address = server.address();
   assert.ok(address && typeof address !== "string");
   const connection = await connectMcpServers({ fixture: { type: "http", url: `http://127.0.0.1:${address.port}/mcp` } }, context(),
-    { requestTimeoutMs: 300, toolIdleTimeoutMs: 60, onProgress: (event) => { notifications.push(event); } });
+    { requestTimeoutMs: 2000, toolIdleTimeoutMs: 300, onProgress: (event) => { notifications.push(event); } });
   try {
     assert.equal(await connection.tools[0]!.execute({}, context()), "done");
     assert.deepEqual(notifications.map((event) => (event as { progress: number }).progress), [1, 2, 3]);

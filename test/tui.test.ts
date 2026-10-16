@@ -1,5 +1,53 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { Terminal } from '@xterm/headless';
+import { TuiRenderer } from '../src/tui-renderer.js';
+import { TuiDocumentRenderer } from '../src/tui-document-renderer.js';
+import { createThemeColorComponents } from '../src/tui-theme-color-components.js';
+import { S1 } from '../src/tui-theme-colors.js';
+import { jsx } from '../src/tui-jsx.js';
+import { ge } from '../src/tui-color.js';
+import { clt, tLo } from '../src/tui-stream-preview.js';
+import { Zqn, l$t } from '../src/tui-preview-visibility.js';
+import { themeChoices } from '../src/tui-theme-state.js';
+import { SystemThemeMonitor } from '../src/tui-system-theme.js';
+import { ThinkingProgress } from '../src/tui-progress.js';
+import { ProgressCompletion } from '../src/tui-progress-completion.js';
+import { progressTime, progressVerbs } from '../src/tui-progress-settings.js';
+import { rn, Yc } from '../src/tui-progress-source.js';
+import { parseSettings } from '../src/runtime.js';
+import type { TaskRecord } from '../src/tasks.js';
+import { SKo } from '../src/tui-system-theme-source.js';
+import { setTimeout as delay } from 'node:timers/promises';
+
+const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/headless') as { Terminal: typeof Terminal };
+const decoded = new WeakMap<Writable, Terminal>();
+const seenFrames = new WeakMap<Writable, string[]>();
+function watchScreen(output: Writable): void {
+  let columns = 0, rows = 0;
+  const terminal = new HeadlessTerminal({ allowProposedApi: true, logLevel: 'off' });
+  const write = output.write.bind(output);
+  decoded.set(output, terminal); seenFrames.set(output, []);
+  const resize = () => {
+    const size = output as Writable & { columns: number; rows: number };
+    if (size.columns !== columns || size.rows !== rows) {
+      columns = size.columns; rows = size.rows; terminal.resize(columns, rows);
+    }
+  };
+  const feed = (text: string) => {
+    resize();
+    (terminal as unknown as { _core: { writeSync(text: string): void } })._core.writeSync(text);
+    seenFrames.get(output)!.push(screenLines(output).join('\n'));
+  };
+  output.write = ((...args: Parameters<Writable['write']>) => { feed(String(args[0])); return write(...args); }) as Writable['write'];
+  output.on('resize', resize);
+}
+function screenLines(output: Writable): string[] {
+  const terminal = decoded.get(output)!;
+  const buffer = terminal.buffer.active;
+  return Array.from({ length: terminal.rows }, (_, row) => buffer.getLine(buffer.viewportY + row)?.translateToString(true) ?? '');
+}
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,11 +62,14 @@ import type { Runtime } from '../src/runtime.js';
 import { Session } from '../src/session.js';
 import { ENTER_ALT_SCREEN, LEAVE_ALT_SCREEN, MOUSE_OFF, MOUSE_SCROLL, TerminalModeController } from '../src/tui-modes.js';
 import { Keymap, contextStack, expandChord, type TuiContext } from '../src/tui-keys.js';
-import { createTranscriptState, layoutTranscript, reduceTranscript, transcriptLines } from '../src/tui-transcript.js';
-import { pad, TuiTerminal } from '../src/tui.js';
-import { createSelection, moveSelectionColumn, reduceSelection, selectionColumn, selectionText } from '../src/tui-selection.js';
+import { createTranscriptState, layoutTranscript, reduceTranscript, renderedTranscriptRows, transcriptLines } from '../src/tui-transcript.js';
+import { pad, previewBox, TuiTerminal } from '../src/tui.js';
+import { layoutEngine } from '../src/tui-layout.js';
+import { renderPreviewMarkdown } from '../src/tui-markdown.js';
+import { wrapMessageText } from '../src/tui-wrap.js';
+import { createSelection, moveSelectionColumn, reduceSelection, selectionColumn, selectionText, selectionTextFromRows } from '../src/tui-selection.js';
 import { osc52Payload } from '../src/clipboard-osc52.js';
-import { TerminalKeyDecoder } from '../src/terminal.js';
+import { cellWidth, TerminalKeyDecoder } from '../src/terminal.js';
 
 const cli = path.join(import.meta.dirname, '..', 'src', 'cli.ts');
 
@@ -53,22 +104,22 @@ test('wheel scrolling unpins the live tail and respects prompt, screen and mode 
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
   const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
-  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 }); watchScreen(output);
   const tui = new TuiTerminal({ input, output }).start();
   const key = (text: string) => input.emit('data', text);
   try {
     for (let i = 0; i < 20; i++) tui.append({ kind: 'assistant', text: `line ${i}` });
     key('draft');
     key('\x1b[<64;2;3M');
-    assert.equal(tui.transcriptState.offset, 12); // Seven visible rows, one up from the tail.
+    assert.equal(tui.transcriptState.offset, 13); // Six visible rows after the source input's two borders.
     tui.append({ kind: 'assistant', text: 'new output' });
-    assert.equal(tui.transcriptState.offset, 12);
+    assert.equal(tui.transcriptState.offset, 13);
     key('\x1b[M' + String.fromCharCode(97, 34, 35));
-    assert.equal(tui.transcriptState.offset, 13);
+    assert.equal(tui.transcriptState.offset, 14);
     key('\x1b[<64;2;9M\x1b[<64;0;3M\x1b[<0;2;3M\x1b[<0;2;3m');
-    assert.equal(tui.transcriptState.offset, 13);
+    assert.equal(tui.transcriptState.offset, 14);
     key('\u0012\x1b[<64;2;3M'); // Search owns its input; wheel does not move the transcript.
-    assert.equal(tui.transcriptState.offset, 13);
+    assert.equal(tui.transcriptState.offset, 14);
     assert.equal(tui.state.text, 'draft');
   } finally { tui.close(); }
   const off = new TuiTerminal({ input, output, mouseTracking: 'off' }).start();
@@ -85,7 +136,7 @@ test('pointer and keyboard selection copy the visible transcript without changin
   input.isTTY = true; input.setRawMode = () => {};
   let drawn = '';
   const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
-  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 }); watchScreen(output);
   const tui = new TuiTerminal({ input, output }).start();
   const key = (text: string) => input.emit('data', text);
   const copy = () => {
@@ -97,13 +148,14 @@ test('pointer and keyboard selection copy the visible transcript without changin
     assert.ok(drawn.includes('\x1b[?1002h'));
     for (let index = 0; index < 20; index++) tui.append({ kind: 'assistant', text: `line ${index}` });
     key('draft');
-    // Seven visible rows: row 1 is line 13, row 2 is line 14.
+    // Six visible rows: row 1 is line 14, row 2 is line 15.
     key('\x1b[<0;1;1M\x1b[<32;4;2M\x1b[<0;4;9m');
-    assert.ok(drawn.includes('\x1b[7mline\x1b[27m'));
+    assert.ok(screenLines(output)[1]?.startsWith('line'));
+    for (let column = 0; column < 4; column++) assert.ok(decoded.get(output)!.buffer.active.getLine(1)!.getCell(column)!.isInverse());
     // A release on the prompt ends dragging; subsequent motion cannot extend it.
     key('\x1b[<32;7;3M');
     tui.append({ kind: 'assistant', text: 'new output' });
-    assert.equal(copy(), 'line 13\nline');
+    assert.equal(copy(), 'line 14\nline');
     assert.equal(copy(), undefined);
     assert.equal(tui.state.text, 'draft');
     let submitted = 0;
@@ -120,8 +172,9 @@ test('pointer and keyboard selection copy the visible transcript without changin
     key('\x1b[<0;1;1M\x1b[<32;2;1M\x1b[<0;5;1m');
     assert.equal(copy(), 'line');
     tui.append({ kind: 'assistant', text: 'A\tBCDEFGHIJKLMN' });
-    key('\x1b[<0;9;7M\x1b[<32;10;7M\x1b[<0;10;7m');
-    assert.ok(drawn.includes('\x1b[7mBC\x1b[27m'));
+    key('\x1b[<0;9;6M\x1b[<32;10;6M\x1b[<0;10;6m');
+    assert.ok(screenLines(output)[5]?.includes('BC'));
+    for (let column = 8; column < 10; column++) assert.ok(decoded.get(output)!.buffer.active.getLine(5)!.getCell(column)!.isInverse());
     assert.equal(copy(), 'BC');
     key('\x1b[<0;1;1M\x1b[<32;3;1M\x1b[<0;3;1m');
     output.emit('resize');
@@ -145,7 +198,7 @@ test('multi-click selects the word and then the whole row, and a drag extends th
     input.isTTY = true; input.setRawMode = () => {};
     let drawn = '';
     const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
-    Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+    Object.assign(output, { isTTY: true, columns: 40, rows: 10 }); watchScreen(output);
     const tui = new TuiTerminal({ input, output }).start();
     tui.append({ kind: 'assistant', text: 'alpha beta-gamma delta' });
     tui.append({ kind: 'assistant', text: 'second row' });
@@ -274,7 +327,7 @@ test('actual TUI input reaches contextual navigation while paste and overrides k
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
   const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
-  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 }); watchScreen(output);
   const tui = new TuiTerminal({ input, output, history: ['previous task'] }).start();
   const key = (text: string) => input.emit('data', text);
   const wait = () => new Promise(resolve => setTimeout(resolve, 70));
@@ -282,12 +335,12 @@ test('actual TUI input reaches contextual navigation while paste and overrides k
     for (let i = 0; i < 20; i++) tui.append({ kind: 'assistant', text: `line ${i}` });
     key('draft'); key('\u000f');
     assert.equal(tui.currentScreen, 'transcript');
-    key('k'); assert.equal(tui.transcriptState.offset, 12);
-    key('j'); assert.equal(tui.transcriptState.offset, 13);
+    key('k'); assert.equal(tui.transcriptState.offset, 13);
+    key('j'); assert.equal(tui.transcriptState.offset, 14);
     key('\u0005'); assert.equal(tui.transcriptState.showAll, true);
     key('g'); assert.equal(tui.transcriptState.offset, 0);
-    key('G'); assert.equal(tui.transcriptState.offset, 13);
-    key('\x1b[5~'); assert.equal(tui.transcriptState.offset, 6);
+    key('G'); assert.equal(tui.transcriptState.offset, 14);
+    key('\x1b[5~'); assert.equal(tui.transcriptState.offset, 8);
     key('q'); assert.equal(tui.currentScreen, 'chat');
     assert.equal(tui.state.text, 'draft');
     key('\u000f\x1b'); await wait();
@@ -309,16 +362,106 @@ test('actual TUI input reaches contextual navigation while paste and overrides k
   } finally { tui.close(); }
 });
 
+test('copied input rows keep visible navigation and raw submission aligned through resize and history', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 18 }); watchScreen(output);
+  const submitted: string[] = [];
+  const tui = new TuiTerminal({ input, output, onSubmit: text => submitted.push(text) }).start();
+  const key = (value: string) => input.emit('data', value);
+  const raw = 'abcdefghijklmnopqrstuvwx0123456789ABCDEFGHIJ';
+  try {
+    key(raw);
+    assert.ok(screenLines(output).includes('❯ ' + raw.slice(0, 37)));
+    assert.ok(screenLines(output).includes('  ' + raw.slice(37)));
+    assert.equal(decoded.get(output)!.buffer.active.cursorX, 9);
+    key('\x1b[A'); assert.equal(tui.state.cursor, 7);
+    assert.equal(decoded.get(output)!.buffer.active.cursorX, 9);
+    key('X\x1b[B'); assert.equal(tui.state.cursor, 45);
+    key('\x1b[H'); assert.equal(tui.state.cursor, 37);
+    key('Y\u0001Z\u0005\r');
+    assert.deepEqual(submitted, ['Z' + raw.slice(0, 7) + 'X' + raw.slice(7, 36) + 'Y' + raw.slice(36)]);
+    key('\x1b[A'); assert.equal(tui.state.text, submitted[0]);
+    key('\u0005\x1b[B'); assert.equal(tui.state.text, '');
+    const unicode = 'é\u{1f469}‍\u{1f4bb}中';
+    key(unicode.repeat(10)); Object.assign(output, { columns: 24 }); output.emit('resize');
+    assert.equal(tui.state.text, unicode.repeat(10));
+    key('\x1b[D!\r'); assert.equal(submitted[1], unicode.repeat(9) + unicode.slice(0, -1) + '!中');
+  } finally { tui.close(); decoded.get(output)!.dispose(); }
+});
+
+test('TUI kill and yank commands fall through context bindings and isolate modal spans', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 18 }); watchScreen(output);
+  const submitted: string[] = [];
+  const tui = new TuiTerminal({ input, output, onSubmit: text => submitted.push(text) }).start();
+  const key = (value: string) => input.emit('data', value);
+  try {
+    key('alpha beta gamma\u0017\u0017\u0019\r'); assert.deepEqual(submitted, ['alpha beta gamma']);
+    key('one two-three\x1b\u007f\x1b[D\x1b\u007f\u0019\x1by');
+    assert.equal(tui.state.text, 'one three-');
+    assert.ok(screenLines(output).includes('❯ one three-'));
+    key('\x1b[C'); assert.equal(tui.state.text, 'one three-'); // Navigation interrupts the yank span.
+    key('\x1by'); assert.equal(tui.state.text, 'one three-');
+    const dialog = tui.prompt({ message: 'Answer', allowText: true }, new AbortController().signal);
+    key('\u0019');
+    key('answer words\u0017\u0019\r');
+    assert.deepEqual(await dialog, { selected: [], text: 'answer words' });
+    assert.equal(tui.state.text, 'one three-');
+    key('\x1by'); assert.equal(tui.state.text, 'one three-');
+    key('\u000c\u0019'); assert.equal(tui.state.text, 'two');
+    tui.setKeybindings({ '\u0015': 'submit', '\u0019': null });
+    key('\u0019\u0015'); assert.equal(submitted[1], 'two');
+    tui.setKeybindings(); key('\u0019'); assert.equal(tui.state.text, 'two');
+    key('\u0013replacement\u0013\x1by'); assert.equal(tui.state.text, 'two');
+    const snapshot = tui.state; snapshot.killRing.ring.length = 0;
+    assert.ok(tui.state.killRing.ring.length > 0);
+  } finally { tui.close(); decoded.get(output)!.dispose(); }
+});
+
+test('TUI undo restores measured caret and isolates stash, dialog and rejected answer snapshots', async context => {
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 10000 });
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 18 }); watchScreen(output);
+  const submitted: string[] = [];
+  const tui = new TuiTerminal({ input, output, onSubmit: text => submitted.push(text) }).start();
+  const key = (value: string) => input.emit('data', value);
+  try {
+    key('draft'); context.mock.timers.tick(1000);
+    key('\x1b[D!\u001f'); assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, 4);
+    assert.equal(decoded.get(output)!.buffer.active.cursorX, 6);
+    key('\u001f'); assert.equal(tui.state.text, '');
+    key('stash\u0013\u001f'); assert.equal(tui.state.text, '');
+    key('\u0013\u001f'); assert.equal(tui.state.text, 'stash');
+    const dialog = tui.prompt({ message: 'Answer', allowText: true, maxTextChars: 4 }, new AbortController().signal);
+    key('good'); context.mock.timers.tick(1000); key('extra\u001f');
+    assert.ok(screenLines(output).some(row => row.trim() === '>'));
+    key('yes\r'); assert.deepEqual(await dialog, { selected: [], text: 'yes' });
+    assert.equal(tui.state.text, 'stash');
+    key('\r\u001f'); assert.deepEqual(submitted, ['stash']); assert.equal(tui.state.text, '');
+    key('sta'); context.mock.timers.tick(1000); key('\u0012\u0012');
+    assert.equal(tui.state.text, 'stash'); key('\u001f'); assert.equal(tui.state.text, 'sta');
+    key('\u000c');
+    key('pending'); context.mock.timers.tick(100); key(' timer');
+    tui.close(); const frame = screenLines(output); context.mock.timers.tick(2000);
+    assert.deepEqual(screenLines(output), frame);
+  } finally { tui.close(); decoded.get(output)!.dispose(); context.mock.timers.reset(); }
+});
+
 test('grouped questions step through each question and review before submitting', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
   let drawn = '';
   const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
-  Object.assign(output, { isTTY: true, columns: 60, rows: 14 });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 }); watchScreen(output);
   const tui = new TuiTerminal({ input, output }).start();
   const key = (text: string) => input.emit('data', text);
-  const frame = () => drawn.slice(drawn.lastIndexOf('\x1b[H'))
-    .replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').split('\r\n').map(line => line.trim()).filter(Boolean);
+  const frame = () => screenLines(output).map(line => line.trim()).filter(Boolean);
   try {
     const pending = tui.prompt({ title: 'Questions', message: '', groups: [
       { key: 'First', title: 'First', message: 'Pick one', choices: [{ label: 'A', value: 'A' }, { label: 'B', value: 'B' }] },
@@ -349,11 +492,10 @@ test('a grouped question can be reopened from the review page and cancelled', as
   input.isTTY = true; input.setRawMode = () => {};
   let drawn = '';
   const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
-  Object.assign(output, { isTTY: true, columns: 60, rows: 14 });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 }); watchScreen(output);
   const tui = new TuiTerminal({ input, output }).start();
   const key = (text: string) => input.emit('data', text);
-  const frame = () => drawn.slice(drawn.lastIndexOf('\x1b[H'))
-    .replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').split('\r\n').map(line => line.trim()).filter(Boolean);
+  const frame = () => screenLines(output).map(line => line.trim()).filter(Boolean);
   try {
     const pending = tui.prompt({ message: '', groups: [
       { key: 'First', title: 'First', message: 'Pick one', choices: [{ label: 'A', value: 'A' }, { label: 'B', value: 'B' }] },
@@ -386,12 +528,910 @@ test('a grouped question can be reopened from the review page and cancelled', as
   } finally { tui.close(); }
 });
 
+test('the focused choice shows its preview in a box beside the options', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 80, rows: 16 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output);
+  try {
+    const pending = tui.prompt({ title: 'Pick', message: 'Choose', choices: [
+      { label: 'A', value: 'A', preview: '# Heading\n\n- one' },
+      { label: 'B', value: 'B', preview: Array.from({ length: 20 }, (_, index) => `row ${index}`).join('\n') },
+    ] }, new AbortController().signal);
+    const first = frame();
+    // The focused choice's preview renders as a bordered box to the right.
+    assert.ok(first.some(line => line.includes('┌') && line.includes('┐')), drawn);
+    assert.ok(first.some(line => line.includes('Heading')), drawn);
+    assert.equal(first.some(line => line.includes('# Heading')), false);
+    assert.ok(first.some(line => line.includes('- one')), drawn);
+    key('\x1b[B');
+    const second = frame();
+    // A body taller than the box ends with the recovered hidden-lines rule.
+    assert.ok(second.some(line => /─── ✂ ─── \d+ lines hidden/.test(line)), drawn);
+    assert.ok(!second.some(line => line.includes('Heading')), drawn);
+    assert.ok(second.some(line => line.includes('└') && line.includes('┘')), drawn);
+    assert.ok(second.every(line => cellWidth(line) <= 80));
+    key('\r');
+    assert.deepEqual(await pending, { selected: ['B'] });
+    const fallback = tui.prompt({ message: 'Choose', choices: [
+      { label: 'A', value: 'A', preview: 'x'.repeat(2001) },
+      { label: 'B', value: 'B' },
+      { label: 'C', value: 'C', preview: '```\n' + 'row\n'.repeat(30) + '```' },
+    ] }, new AbortController().signal);
+    assert.ok(frame().some(line => line.includes('preview cannot be shown')), drawn);
+    key('\x1b[B');
+    assert.ok(frame().some(line => line.includes('No preview available')), drawn);
+    Object.assign(output, { columns: 40, rows: 24 }); output.emit('resize');
+    assert.ok(frame().some(line => line.trim() === 'Preview:'), drawn);
+    assert.ok(frame().some(line => line.includes('No preview available')), drawn);
+    assert.ok(frame().every(line => cellWidth(line) <= 40));
+    key('\x1b[B');
+    assert.ok(frame().some(line => line.includes('└') && line.includes('┘')), drawn);
+    assert.ok(frame().some(line => /\d+ lines hidden/.test(line)), drawn);
+    key('\x1b'); tui.close();
+    assert.equal(await fallback, undefined);
+  } finally { tui.close(); }
+});
+
+test('streamed assistant text shares one formatted message and retains its response boundaries', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 18 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const text = '# Message layout\n\nOne streamed sentence keeps its words together.\n\n- First item\n\n```ts\nconst value = 1;\n```\n';
+  try {
+    tui.beginAssistantMessage();
+    for (let offset = 0; offset < text.length; offset += 5) tui.writeAssistantText(text.slice(offset, offset + 5));
+    assert.equal(tui.transcriptState.entries.length, 0);
+    context.mock.timers.tick(99); assert.equal(tui.transcriptState.entries.length, 0);
+    context.mock.timers.tick(1);
+    assert.equal(tui.transcriptState.entries[0]?.streaming, true);
+    assert.equal(tui.transcriptState.entries[0]?.hideTrailingLine, true);
+    const messageKey = tui.transcriptState.entries[0]?.messageKey;
+    assert.ok(messageKey);
+    tui.endAssistantMessage();
+    assert.equal(tui.transcriptState.entries[0]?.streaming, undefined);
+    assert.deepEqual(tui.transcriptState.entries, [{ kind: 'assistant', speaker: true, markdown: text,
+      text: 'Message layout\n\nOne streamed sentence keeps its words together.\n\n- First item\n\nts\nconst value = 1;' }]);
+    const lines = transcriptLines(tui.transcriptState, 40);
+    assert.equal(lines[0], '● Message layout');
+    assert.ok(lines.every(line => cellWidth(line) <= 40));
+    const sentenceRows = renderedTranscriptRows(createTranscriptState([{ kind: 'assistant', speaker: true,
+      text: 'One streamed sentence keeps its words together.' }]), 40);
+    assert.equal(selectionTextFromRows({ anchor: { line: 0, column: 2 },
+      focus: { line: sentenceRows.length - 1, column: 39 }, dragging: false }, sentenceRows),
+      'One streamed sentence keeps its words together.');
+    for (const body of ['界👩‍💻é'.repeat(12), '👨‍👩‍👧‍👦'.repeat(12),
+      '\u{F0000}👩‍💻\u{20000}\u{2FA1D}'.repeat(12), '🇺🇸1️⃣👍🏽'.repeat(12)]) {
+      const rows = renderedTranscriptRows(createTranscriptState([{ kind: 'assistant', speaker: true, text: body }]), 20);
+      const segments = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+      const boundaries = new Set([...segments.segment(body)].map(part => part.index));
+      boundaries.add(body.length);
+      let offset = 0;
+      for (const row of rows) {
+        assert.ok(cellWidth(row.text) <= 20);
+        offset += row.text.slice(2).length;
+        assert.ok(boundaries.has(offset), `row splits a grapheme at ${offset}`);
+      }
+      assert.equal(rows.map(row => row.text.slice(2)).join(''), body);
+      assert.equal(selectionTextFromRows({ anchor: { line: 0, column: 2 },
+        focus: { line: rows.length - 1, column: 19 }, dragging: false }, rows), body);
+    }
+    const colored = wrapMessageText('\x1b[31m' + '👩‍💻é'.repeat(8) + '\x1b[39m', 8);
+    assert.equal(colored.replace(/\x1b\[[\d;]*m/g, '').replaceAll('\n', ''), '👩‍💻é'.repeat(8));
+    const linked = wrapMessageText('\x1b]8;;https://example.test/\u{F0000}\x07'
+      + '👩‍💻'.repeat(8) + '\x1b]8;;\x07', 6);
+    assert.ok(linked.includes('https://example.test/\u{F0000}'));
+    assert.equal(linked.replace(/\x1b\]8;;[^\x07]*\x07/g, '').replaceAll('\n', ''), '👩‍💻'.repeat(8));
+    assert.equal(lines.some(line => line.includes('earlier lines')), false);
+    Object.assign(output, { columns: 100 }); output.emit('resize');
+    const frame = screenLines(output).join('\n');
+    assert.ok(frame.includes('One streamed sentence keeps its words together.'));
+    assert.equal(frame.includes('```'), false);
+    tui.beginAssistantMessage(); tui.writeAssistantText('Next\nresponse');
+    context.mock.timers.tick(100);
+    assert.notEqual(tui.transcriptState.entries[1]?.messageKey, messageKey);
+    tui.endAssistantMessage();
+    assert.equal(tui.transcriptState.entries.length, 2);
+    assert.equal(tui.transcriptState.entries[1]?.text, 'Next\nresponse');
+    tui.beginAssistantMessage(); tui.endAssistantMessage();
+    assert.equal(tui.transcriptState.entries.length, 2);
+    const long = 'Long response\n' + 'row\n'.repeat(30);
+    tui.beginAssistantMessage(); tui.writeAssistantText(long); tui.endAssistantMessage();
+    assert.equal(transcriptLines({ ...tui.transcriptState, entries: tui.transcriptState.entries.slice(-1) }, 40).length, 31);
+    tui.close(); drawn = ''; context.mock.timers.tick(500);
+    assert.equal(drawn, '');
+  } finally { tui.close(); context.mock.timers.reset(); }
+});
+
+test('the source preview coalesces updates and releases pending work on end, error and close', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const store = tLo();
+  const calls: (string | null)[] = [];
+  const coalescer = clt({ scheduleTimeout: (flush: () => void, ms: number) => {
+    assert.equal(ms, 100);
+    const timer = setTimeout(flush, ms); return () => clearTimeout(timer);
+  }, onFlush: (text: string | null) => { calls.push(text); store.setRaw(text); } });
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let written = '';
+  const output = new Writable({ write(chunk, _encoding, done) { written += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 18 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  try {
+    let notified = 0; const unsubscribe = store.subscribe(() => notified++);
+    const initial = store.getDerived();
+    coalescer.apply(() => 'complete line\n'); coalescer.apply((value: string | null) => value + 'partial tail');
+    context.mock.timers.tick(99); assert.equal(store.getDerived(), initial);
+    context.mock.timers.tick(1); assert.deepEqual(calls, ['complete line\npartial tail']);
+    assert.equal(store.getDerived().hideTrailingLine, true);
+    const snapshot = store.getDerived(); store.setRaw(snapshot.displayed);
+    assert.equal(store.getDerived(), snapshot); assert.equal(notified, 1);
+    store.setTransformed('display replacement'); assert.equal(store.getDerived().hideTrailingLine, false);
+    store.setTransformed(null); store.setRewrite({ original: 'complete', text: 'rewritten' });
+    assert.equal(store.getDerived().displayed, 'rewritten line\npartial tail');
+    store.setRewrite(null); store.setSalvage('prefix ', true);
+    assert.equal(store.getDerived().displayed, 'prefix complete line\npartial tail');
+    unsubscribe(); const previous = notified;
+    coalescer.clear(); assert.equal(notified, previous);
+    coalescer.apply(() => 'forced'); coalescer.flushNow();
+    assert.equal(calls.at(-1), 'forced');
+    coalescer.apply(() => 'discarded'); coalescer.dispose();
+    context.mock.timers.tick(100); assert.equal(calls.at(-1), 'forced');
+
+    tui.beginAssistantMessage(); tui.writeAssistantText('complete line\npartial tail');
+    written = ''; context.mock.timers.tick(99); assert.equal(written, '');
+    context.mock.timers.tick(1);
+    assert.ok(screenLines(output).some(line => line.includes('complete line')));
+    assert.equal(screenLines(output).some(line => line.includes('partial tail')), false);
+    tui.writeAssistantText(' finished'); tui.endAssistantMessage();
+    assert.ok(screenLines(output).some(line => line.includes('partial tail finished')));
+    written = ''; context.mock.timers.tick(500); assert.equal(written, '');
+    tui.beginAssistantMessage(); tui.writeAssistantText('fast response'); tui.endAssistantMessage();
+    assert.equal(tui.transcriptState.entries.at(-1)?.text, 'fast response');
+    let ended = false; tui.on('exit', () => ended = true);
+    tui.beginAssistantMessage(); tui.writeAssistantText('cancelled pending response');
+    input.emit('error', new Error('fixture input failure'));
+    assert.equal(ended, true);
+    written = ''; context.mock.timers.tick(500); assert.equal(written, '');
+    assert.equal(tui.transcriptState.entries.some(entry => entry.text.includes('cancelled pending response')), false);
+
+    const failing = new TuiTerminal({ input, output }).start();
+    try {
+      let failure: Error | undefined; let exited = false;
+      failing.on('inputError', error => failure = error); failing.on('exit', () => exited = true);
+      failing.beginAssistantMessage();
+      context.mock.method(failing as unknown as { paintAssistantPreview(): void }, 'paintAssistantPreview', () => {
+        throw new Error('fixture deferred render failure');
+      });
+      failing.writeAssistantText('pending render');
+      context.mock.timers.tick(100);
+      assert.equal(failure?.message, 'fixture deferred render failure'); assert.equal(exited, true);
+      assert.ok(written.includes(LEAVE_ALT_SCREEN));
+      written = ''; context.mock.timers.tick(500); assert.equal(written, '');
+    } finally { failing.close(); }
+  } finally { coalescer.dispose(); tui.close(); context.mock.timers.reset(); }
+});
+
+test('source reduced-motion and Windows Terminal gates hide previews while final text stays complete', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const previous = process.env.WT_SESSION;
+  try {
+    for (const [reducedMotion, windowsTerminal] of [[undefined, false], [false, false], [true, false], [undefined, true]] as const) {
+      if (windowsTerminal) process.env.WT_SESSION = 'owned-terminal-fixture'; else delete process.env.WT_SESSION;
+      const visible = !reducedMotion && !windowsTerminal;
+      assert.equal(Zqn(reducedMotion, l$t()), visible);
+      const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+      input.isTTY = true; input.setRawMode = () => {};
+      const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+      Object.assign(output, { isTTY: true, columns: 40, rows: 18 }); watchScreen(output);
+      const tui = new TuiTerminal({ input, output, prefersReducedMotion: reducedMotion }).start();
+      try {
+        tui.beginAssistantMessage(); tui.writeAssistantText('complete prefix\npartial tail');
+        context.mock.timers.tick(100);
+        assert.equal(screenLines(output).some(line => line.includes('complete prefix')), visible);
+        assert.equal(screenLines(output).some(line => line.includes('partial tail')), false);
+        tui.setPrefersReducedMotion(false);
+        assert.equal(screenLines(output).some(line => line.includes('complete prefix')), !windowsTerminal);
+        tui.setPrefersReducedMotion(true);
+        assert.equal(screenLines(output).some(line => line.includes('complete prefix')), false);
+        assert.equal(tui.transcriptState.entries.filter(entry => entry.streaming).length, windowsTerminal ? 0 : 1);
+        tui.writeAssistantText(' completed'); tui.endAssistantMessage();
+        assert.ok(screenLines(output).some(line => line.includes('partial tail completed')));
+        assert.equal(tui.transcriptState.entries.at(-1)?.markdown, 'complete prefix\npartial tail completed');
+        tui.setPrefersReducedMotion(undefined);
+        assert.ok(screenLines(output).some(line => line.includes('complete prefix')));
+        tui.beginAssistantMessage(); tui.writeAssistantText('next prefix\nnext tail');
+        context.mock.timers.tick(100);
+        assert.equal(screenLines(output).some(line => line.includes('next prefix')), !windowsTerminal);
+        tui.endAssistantMessage();
+        assert.equal(tui.transcriptState.entries.length, 2);
+      } finally { tui.close(); }
+    }
+  } finally {
+    if (previous === undefined) delete process.env.WT_SESSION; else process.env.WT_SESSION = previous;
+    context.mock.timers.reset();
+  }
+});
+
+test('source Markdown components preserve cell styles, Unicode copies, width and document teardown', () => {
+  const document = new TuiDocumentRenderer();
+  const screen = new HeadlessTerminal({ cols: 40, rows: 24, allowProposedApi: true, logLevel: 'off' });
+  const colors = ge as unknown as { level: number };
+  const color = colors.level;
+  try {
+    colors.level = 3;
+    const rows = document.renderMarkdown('# Heading\n\n- one\n  - child\n\n> quote\n\n```ts\nconst value = 1;\n```', 40, { speaker: true });
+    (screen as unknown as { _core: { writeSync(text: string): void } })._core.writeSync(rows.map(row => row.ansi).join('\r\n'));
+    assert.equal(rows[0]?.text, `${process.platform === 'darwin' ? '⏺' : '●'} Heading`);
+    assert.ok(screen.buffer.active.getLine(0)!.getCell(2)!.isBold());
+    assert.ok(screen.buffer.active.getLine(0)!.getCell(2)!.isUnderline());
+    assert.ok(rows.some(row => row.text === '    - child'));
+    assert.ok(rows.some(row => row.text === '  ▎ quote'));
+    const code = rows.findIndex(row => row.text === '  const value = 1;');
+    assert.ok(code >= 0);
+    assert.ok(screen.buffer.active.getLine(code)!.getCell(2)!.isFgPalette());
+    assert.equal(screen.buffer.active.getLine(code)!.getCell(2)!.getFgColor(), 4);
+    assert.equal(rows.some(row => row.text.includes('```') || row.text === '  ts'), false);
+    for (const text of ['One streamed sentence keeps its words together.', '界👩‍💻é'.repeat(12),
+      '\u{F0000}👩‍💻\u{20000}\u{2FA1D}'.repeat(8)]) {
+      const wrapped = document.renderMarkdown(text, 20, { speaker: true });
+      assert.ok(wrapped.every(row => cellWidth(row.text) <= 20));
+      assert.equal(selectionTextFromRows({ anchor: { line: 0, column: 2 },
+        focus: { line: wrapped.length - 1, column: 19 }, dragging: false }, wrapped), text);
+    }
+    const table = document.renderMarkdown('| A | B |\n|---|---|\n| x | y |', 20, { speaker: true });
+    assert.ok(table[0]?.text.includes('┌─────┬─────┐'));
+    assert.ok(table.at(-1)?.text.includes('└─────┴─────┘'));
+    const prefix = 'Stable paragraph with content.\n\n'.repeat(180);
+    const open = prefix + '```ts\n' + 'const value = 1;\n'.repeat(350);
+    document.renderMarkdown(prefix, 80, { speaker: true, streaming: true, messageKey: 'stream' });
+    const streamed = document.renderMarkdown(open, 80, { speaker: true, streaming: true, messageKey: 'stream' });
+    assert.equal(streamed.filter(row => row.text === '  Stable paragraph with content.').length, 179);
+    assert.equal(streamed.filter(row => row.text === '  const value = 1;').length, 350);
+    const closed = document.renderMarkdown(open + '```\n\nTail.', 80, { speaker: true, streaming: true, messageKey: 'stream' });
+    assert.equal(closed.at(-1)?.text, '  Tail.');
+    assert.equal(closed.some(row => row.text.includes('```')), false);
+    assert.equal(document.renderMarkdown('replacement', 80, { speaker: true, streaming: true,
+      messageKey: 'stream' }).length, 1);
+    assert.equal(document.renderMarkdown('independent', 40, { speaker: true, streaming: true,
+      messageKey: 'next' })[0]?.text.slice(2), 'independent');
+  } finally { colors.level = color; document.close(); screen.dispose(); }
+  assert.equal(document.liveNodes, 0);
+  document.close();
+});
+
+test('source prose cap reflows paragraphs, lists and quotes while code, tables and frozen chunks keep their contracts', () => {
+  const document = new TuiDocumentRenderer();
+  const prose = 'ProseWord '.repeat(9).trim();
+  const source = '# ' + 'HeadingWord '.repeat(6) + '\n\n' + prose + '\n\n- ' + 'ListWord '.repeat(9)
+    + '\n\n> ' + 'QuoteWord '.repeat(9) + '\n\n```text\n' + 'CodeWide'.repeat(9)
+    + '\n```\n\n| Long cell | End |\n|---|---|\n| ' + 'TableWide'.repeat(6) + ' | cell |\n';
+  try {
+    const capped = document.renderMarkdown(source, 100, { speaker: true, maxProseWidth: 40 });
+    for (const row of capped.filter(row => /HeadingWord|ProseWord|ListWord|QuoteWord/.test(row.text)))
+      assert.ok(cellWidth(row.text) <= 42, row.text);
+    const code = '  ' + 'CodeWide'.repeat(9);
+    const table = capped.filter(row => /[┌┐└┘├┤│]/.test(row.text));
+    assert.ok(capped.some(row => row.text === code));
+    assert.ok(table.some(row => cellWidth(row.text) > 42));
+    const larger = document.renderMarkdown(source, 100, { speaker: true, maxProseWidth: 60 });
+    assert.ok(larger.filter(row => /ProseWord/.test(row.text)).length < capped.filter(row => /ProseWord/.test(row.text)).length);
+    assert.deepEqual(larger.filter(row => /[┌┐└┘├┤│]/.test(row.text)).map(row => row.text), table.map(row => row.text));
+    const copied = document.renderMarkdown(prose, 100, { speaker: true, maxProseWidth: 40 });
+    assert.equal(selectionTextFromRows({ anchor: { line: 0, column: 2 }, focus: { line: copied.length - 1, column: 99 },
+      dragging: false }, copied), prose);
+    const prefix = (prose + '\n\n').repeat(80);
+    document.renderMarkdown(prefix, 100, { speaker: true, maxProseWidth: 40, streaming: true, messageKey: 'prose' });
+    const stream = document.renderMarkdown(prefix + 'tail', 100,
+      { speaker: true, maxProseWidth: 60, streaming: true, messageKey: 'prose' });
+    assert.ok(stream[0]!.text.length > capped[0]!.text.length);
+    const full = document.renderMarkdown(prefix + 'tail', 100, { speaker: true, streaming: true, messageKey: 'prose' });
+    assert.ok(full[0]!.text.includes(prose)); assert.ok(full.length < stream.length);
+  } finally { document.close(); }
+  assert.equal(document.liveNodes, 0);
+});
+
+test('prose setting changes invalidate transcript rows and selection without changing raw source', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, maxProseWidth: 40 }).start();
+  const source = 'ProseWord '.repeat(9).trim();
+  try {
+    tui.beginAssistantMessage(); tui.writeAssistantText(source + '\n\npartial'); context.mock.timers.tick(100);
+    assert.equal(screenLines(output).filter(row => row.includes('ProseWord')).length, 3);
+    tui.setMaxProseWidth(60);
+    assert.equal(screenLines(output).filter(row => row.includes('ProseWord')).length, 2);
+    tui.endAssistantMessage(); const entries = tui.transcriptState.entries;
+    input.emit('data', '\x1b[<0;3;1M\x1b[<32;8;1M');
+    assert.ok(decoded.get(output)!.buffer.active.getLine(0)!.getCell(2)!.isInverse());
+    tui.setMaxProseWidth(undefined);
+    assert.equal(decoded.get(output)!.buffer.active.getLine(0)!.getCell(2)!.isInverse(), 0);
+    assert.equal(screenLines(output).filter(row => row.includes('ProseWord')).length, 1);
+    assert.equal(tui.transcriptState.entries, entries);
+    assert.equal(entries[0]?.markdown, source + '\n\npartial');
+    assert.ok(tui.transcriptState.offset === Number.MAX_SAFE_INTEGER);
+    for (let index = 0; index < 30; index++) tui.append({ kind: 'assistant', text: 'row ' + index });
+    input.emit('data', '\x1b[<64;2;3M'); const offset = tui.transcriptState.offset;
+    tui.setMaxProseWidth(40); assert.equal(tui.transcriptState.offset, offset);
+  } finally { tui.close(); decoded.get(output)!.dispose(); context.mock.timers.reset(); }
+});
+
+test('source highlight setting preserves Markdown styles and re-renders frozen code with the source language label', () => {
+  const document = new TuiDocumentRenderer();
+  const colors = ge as unknown as { level: number }; const previous = colors.level;
+  const source = '# Heading\n\n```ts\nconst value = 1;\n```\n';
+  const inspect = (rows: ReturnType<TuiDocumentRenderer['renderMarkdown']>, text: string, highlighted: boolean) => {
+    const screen = new HeadlessTerminal({ cols: 100, rows: 24, allowProposedApi: true, logLevel: 'off' });
+    try {
+      const index = rows.findIndex(row => row.text.includes(text)); assert.ok(index >= 0);
+      (screen as unknown as { _core: { writeSync(text: string): void } })._core.writeSync(rows[index]!.ansi);
+      const cell = screen.buffer.active.getLine(0)!.getCell(2)!;
+      assert.equal(cell.getFgColorMode(), highlighted ? 16777216 : 0);
+      assert.equal(cell.getFgColor(), highlighted ? 4 : -1);
+      assert.equal(rows.some(row => row.text === '  ts' || row.text.endsWith(' ts')), !highlighted);
+      assert.equal(selectionTextFromRows({ anchor: { line: index, column: 2 },
+        focus: { line: index, column: 99 }, dragging: false }, rows), text);
+    } finally { screen.dispose(); }
+  };
+  try {
+    colors.level = 3;
+    for (const disabled of [undefined, true, false, undefined]) {
+      const rows = document.renderMarkdown(source, 100, { speaker: true, syntaxHighlightingDisabled: disabled });
+      inspect(rows, 'const value = 1;', !disabled);
+      assert.equal(rows[0]!.text, `${process.platform === 'darwin' ? '⏺' : '●'} Heading`);
+      assert.match(rows[0]!.ansi, /\x1b\[[\d;]*1m/);
+    }
+    const prefix = '```ts\nconst frozen = 1;\n```\n\n'.repeat(150);
+    for (const disabled of [false, true, false]) {
+      const rows = document.renderMarkdown(prefix + '```ts\nconst tail = 2;\n```\n', 100,
+        { speaker: true, streaming: true, messageKey: 'highlight-frozen', syntaxHighlightingDisabled: disabled });
+      inspect(rows, 'const frozen = 1;', !disabled); inspect(rows, 'const tail = 2;', !disabled);
+    }
+  } finally { colors.level = previous; document.close(); }
+  assert.equal(document.liveNodes, 0);
+});
+
+test('highlight setting invalidates streamed and completed transcript caches without altering raw text or viewport', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const colors = ge as unknown as { level: number }; const previous = colors.level; colors.level = 3;
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const source = '# Heading\n\n```ts\nconst value = 1;\n```\n\npartial';
+  const check = (highlighted: boolean) => {
+    const row = screenLines(output).findIndex(line => line.includes('const value = 1;')); assert.ok(row >= 0);
+    const cell = decoded.get(output)!.buffer.active.getLine(row)!.getCell(2)!;
+    assert.equal(cell.getFgColor(), highlighted ? 4 : -1);
+    assert.equal(cell.getFgColorMode(), highlighted ? 16777216 : 0);
+    assert.equal(screenLines(output).some(line => line.trim() === 'ts'), !highlighted);
+    assert.ok(decoded.get(output)!.buffer.active.getLine(0)!.getCell(2)!.isBold());
+    return row;
+  };
+  try {
+    tui.beginAssistantMessage(); tui.writeAssistantText(source); context.mock.timers.tick(100); check(true);
+    tui.setSyntaxHighlightingDisabled(true); check(false);
+    tui.endAssistantMessage(); const entries = tui.transcriptState.entries; const row = check(false);
+    input.emit('data', `\x1b[<0;3;${row + 1}M\x1b[<32;8;${row + 1}M`);
+    assert.ok(decoded.get(output)!.buffer.active.getLine(row)!.getCell(2)!.isInverse());
+    tui.setSyntaxHighlightingDisabled(undefined); const restored = check(true);
+    assert.equal(decoded.get(output)!.buffer.active.getLine(restored)!.getCell(2)!.isInverse(), 0);
+    assert.equal(tui.transcriptState.entries, entries); assert.equal(entries[0]?.markdown, source);
+    assert.equal(tui.transcriptState.offset, Number.MAX_SAFE_INTEGER);
+    for (let index = 0; index < 30; index++) tui.append({ kind: 'assistant', text: 'row ' + index });
+    input.emit('data', '\x1b[<64;2;3M'); const offset = tui.transcriptState.offset;
+    tui.setSyntaxHighlightingDisabled(true); assert.equal(tui.transcriptState.offset, offset);
+  } finally { tui.close(); decoded.get(output)!.dispose(); colors.level = previous; context.mock.timers.reset(); }
+});
+
+test('source theme colors redraw messages and chrome while chooser previews cancel without changing raw text or draft', async context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const colors = ge as unknown as { level: number }; const previous = colors.level; colors.level = 3;
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, theme: 'dark' }).start();
+  const source = 'Use `sample` text.\n\n> Quote preview';
+  const sample = () => {
+    const rows = screenLines(output); const row = rows.findIndex(line => line.includes('Use sample'));
+    assert.ok(row >= 0); const column = rows[row]!.indexOf('sample');
+    const cell = decoded.get(output)!.buffer.active.getLine(row)!.getCell(column)!;
+    return [cell.getFgColorMode(), cell.getFgColor()];
+  };
+  try {
+    tui.beginAssistantMessage(); tui.writeAssistantText(source); context.mock.timers.tick(100);
+    assert.deepEqual(sample(), [50331648, 11647481]); tui.setTheme('light');
+    assert.deepEqual(sample(), [50331648, 5728759]); tui.endAssistantMessage();
+    const entries = tui.transcriptState.entries;
+    for (const [theme, color, mode] of [['dark', 11647481, 50331648], ['light', 5728759, 50331648],
+      ['dark-daltonized', 10079487, 50331648], ['light-daltonized', 3368703, 50331648],
+      ['dark-ansi', 12, 16777216], ['light-ansi', 4, 16777216]] as const) {
+      tui.setTheme(theme); assert.deepEqual(sample(), [mode, color]);
+      const border = screenLines(output).findIndex(row => row.includes('────'));
+      const cell = decoded.get(output)!.buffer.active.getLine(border)!.getCell(0)!;
+      assert.equal(cell.getFgColorMode(), mode);
+      assert.equal(cell.getFgColor(), theme.endsWith('ansi') ? 7 : theme.startsWith('light') ? 9079434 : 8947848);
+    }
+    tui.setTheme('light'); input.emit('data', 'retained draft');
+    const request = { title: 'Theme', message: 'Choose a theme', choices: themeChoices, defaultIndex: 2, themePreview: true };
+    const controller = new AbortController(); const preview = tui.prompt(request, controller.signal);
+    assert.deepEqual(sample(), [50331648, 5728759]); input.emit('data', '\x1b[B');
+    assert.deepEqual(sample(), [50331648, 10079487]); input.emit('data', '\x03');
+    assert.equal(await preview, undefined); assert.deepEqual(sample(), [50331648, 5728759]);
+    assert.equal(tui.state.text, 'retained draft'); assert.equal(tui.transcriptState.entries, entries);
+    assert.equal(entries[0]?.markdown, source);
+    const aborter = new AbortController(); const aborted = tui.prompt(request, aborter.signal);
+    input.emit('data', '\x1b[B'); aborter.abort(); assert.equal(await aborted, undefined);
+    assert.deepEqual(sample(), [50331648, 5728759]);
+    const selection = tui.prompt(request, controller.signal); input.emit('data', '\x1b[B\r');
+    assert.deepEqual((await selection)?.selected, ['dark-daltonized']);
+    assert.deepEqual(sample(), [50331648, 5728759]);
+    for (let index = 0; index < 30; index++) tui.append({ kind: 'assistant', text: 'row ' + index });
+    input.emit('data', '\x1b[<64;2;3M'); const offset = tui.transcriptState.offset;
+    tui.setTheme('dark'); assert.equal(tui.transcriptState.offset, offset);
+  } finally { tui.close(); decoded.get(output)!.dispose(); colors.level = previous; context.mock.timers.reset(); }
+});
+
+test('source system-theme watcher queries, falls back through mux, ignores malformed colors and cancels pending owners', async context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const previous = { TMUX: process.env.TMUX, STY: process.env.STY, terminal: process.env.terminal };
+  delete process.env.TMUX; delete process.env.STY; delete process.env.terminal;
+  const settle = async () => { for (let index = 0; index < 12; index++) await Promise.resolve(); };
+  const monitors: SystemThemeMonitor[] = [];
+  try {
+    assert.equal(SKo('rgb:ffff/ffff/ffff'), 'light'); assert.equal(SKo('rgba:0000/0000/0000/ffff'), 'dark');
+    assert.equal(SKo('#fff'), 'light'); assert.equal(SKo('#000'), 'dark'); assert.equal(SKo('invalid'), undefined);
+    let writes = ''; const changes: string[] = []; const failures: Error[] = [];
+    const monitor = new SystemThemeMonitor({ write: text => { writes += text; } }, value => changes.push(value), error => failures.push(error));
+    monitors.push(monitor); monitor.setActive(true);
+    assert.equal(writes, '\x1b[?2031h\x1b]11;?\x07\x1b[c');
+    monitor.onResponse({ type: 'themeNotify', dark: true });
+    assert.equal(writes.match(/11;\?/g)?.length, 1);
+    monitor.onResponse({ type: 'osc', code: 11, data: '#fff' }); monitor.onResponse({ type: 'da1', params: [] });
+    await settle(); assert.deepEqual(changes, ['light']);
+    monitor.onResponse({ type: 'themeNotify', dark: true });
+    assert.equal(writes.match(/11;\?/g)?.length, 2);
+    monitor.onResponse({ type: 'osc', code: 11, data: 'invalid' }); monitor.onResponse({ type: 'da1', params: [] });
+    await settle(); assert.deepEqual(changes, ['light']);
+    monitor.onResponse({ type: 'themeNotify', dark: true }); monitor.setActive(false);
+    const stopped = writes; context.mock.timers.tick(3000); await settle(); assert.equal(writes, stopped);
+    monitor.onResponse({ type: 'osc', code: 11, data: '#000' }); assert.deepEqual(changes, ['light']);
+    monitor.close(); assert.equal(failures.length, 0);
+
+    process.env.TMUX = 'owned-mux'; let muxWrites = ''; const muxChanges: string[] = [];
+    const mux = new SystemThemeMonitor({ write: text => { muxWrites += text; } }, value => muxChanges.push(value), error => failures.push(error));
+    monitors.push(mux); mux.setActive(true); assert.ok(muxWrites.includes('\x1bPtmux;\x1b\x1b]11;?\x07\x1b\\'));
+    context.mock.timers.tick(2000); await settle();
+    assert.ok(muxWrites.includes('\x1b[c\x1b]11;?\x07\x1b[c'));
+    mux.onResponse({ type: 'osc', code: 11, data: '#000' });
+    mux.onResponse({ type: 'da1', params: [1, 2] }); mux.onResponse({ type: 'da1', params: [1, 2] });
+    await settle(); assert.deepEqual(muxChanges, ['dark']); mux.close();
+    const closed = muxWrites; context.mock.timers.tick(5000); await settle(); assert.equal(muxWrites, closed);
+
+    delete process.env.TMUX; let silentWrites = '';
+    const silent = new SystemThemeMonitor({ write: text => { silentWrites += text; } }, value => changes.push(value), error => failures.push(error));
+    monitors.push(silent); silent.setActive(true); context.mock.timers.tick(2000); await settle();
+    silent.setActive(false); silent.setActive(true);
+    assert.equal(silentWrites.match(/11;\?/g)?.length, 1);
+    silent.onResponse({ type: 'themeNotify', dark: false });
+    assert.equal(silentWrites.match(/11;\?/g)?.length, 2); silent.close();
+    let failQuery = true;
+    const broken = new SystemThemeMonitor({ write: text => { if (failQuery && text.includes('11;?')) { failQuery = false; throw new Error('owned query write'); } } },
+      () => {}, error => failures.push(error));
+    monitors.push(broken); broken.setActive(true); await settle();
+    assert.equal(failures.at(-1)?.message, 'owned query write'); broken.close();
+  } finally {
+    for (const monitor of monitors) monitor.close();
+    for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    context.mock.timers.reset();
+  }
+});
+
+test('auto system-theme replies recolor cached messages and chrome without entering drafts or modal answers', async context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const colors = ge as unknown as { level: number }; const previousColor = colors.level; colors.level = 3;
+  const previous = { COLORFGBG: process.env.COLORFGBG, TMUX: process.env.TMUX, STY: process.env.STY };
+  process.env.COLORFGBG = '0;0'; delete process.env.TMUX; delete process.env.STY;
+  const settle = async () => { for (let index = 0; index < 12; index++) await Promise.resolve(); };
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {}; let writes = '';
+  const output = new Writable({ write(chunk, _encoding, done) { writes += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, theme: 'auto' }).start();
+  const source = 'Use `sample` text.\n\n';
+  const sample = () => {
+    const rows = screenLines(output); const row = rows.findIndex(line => line.includes('Use sample'));
+    assert.ok(row >= 0); return decoded.get(output)!.buffer.active.getLine(row)!.getCell(rows[row]!.indexOf('sample'))!.getFgColor();
+  };
+  const reply = (data: string) => input.emit('data', `\x1b]11;${data}\x1b\\\x1b[?1;2c`);
+  try {
+    assert.ok(writes.includes('\x1b]11;?\x07'));
+    tui.beginAssistantMessage(); tui.writeAssistantText(source); context.mock.timers.tick(100);
+    input.emit('data', 'retained draft');
+    input.emit('data', '\x1b]11;rgb:ffff/'); input.emit('data', 'ffff/ffff\x07\x1b[?1;2c'); await settle();
+    assert.equal(sample(), 5728759); assert.equal(tui.state.text, 'retained draft');
+    tui.endAssistantMessage(); const entries = tui.transcriptState.entries;
+    input.emit('data', '\x1b[?997;1n'); reply('#000'); await settle(); assert.equal(sample(), 11647481);
+    assert.equal(entries[0]?.markdown, source); assert.equal(tui.transcriptState.entries, entries);
+    const controller = new AbortController(); const answer = tui.prompt({ title: 'Owned question', message: 'Enter text', allowText: true }, controller.signal);
+    input.emit('data', '\x1b[?997;2n'); reply('#fff'); await settle(); input.emit('data', 'answer\r');
+    assert.equal((await answer)?.text, 'answer'); assert.equal(tui.state.text, 'retained draft'); assert.equal(sample(), 5728759);
+    tui.setTheme('dark'); const queries = writes.match(/11;\?/g)?.length;
+    input.emit('data', '\x1b[?997;2n'); reply('#fff'); await settle();
+    assert.equal(sample(), 11647481); assert.equal(writes.match(/11;\?/g)?.length, queries);
+    tui.setTheme('auto'); assert.equal(sample(), 5728759);
+    tui.close(); const closed = writes; context.mock.timers.tick(5000); await settle(); assert.equal(writes, closed);
+    assert.ok(writes.includes('\x1b[?2031l'));
+  } finally {
+    tui.close(); decoded.get(output)!.dispose(); colors.level = previousColor;
+    for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    context.mock.timers.reset();
+  }
+});
+
+test('custom theme watcher refreshes source overrides, removes invalid files and preserves transcript, draft and owner cleanup', async () => {
+  const root = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'tui-custom-theme-'));
+  const directory = path.join(root, 'themes'); fs.mkdirSync(directory);
+  const file = path.join(directory, 'ocean.json');
+  const writeTheme = (text: string, border: string) => fs.writeFileSync(file,
+    JSON.stringify({ name: 'Ocean', base: 'light', overrides: { text, promptBorder: border, permission: '#abcdef' } }));
+  writeTheme('#112233', '#445566');
+  const colors = ge as unknown as { level: number }; const previous = colors.level; colors.level = 3;
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {}; let writes = '';
+  const output = new Writable({ write(chunk, _encoding, done) { writes += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, userDir: root, theme: 'custom:ocean' }).start();
+  const source = 'Use `sample` text.\n\npartial';
+  const color = (border = false) => {
+    const rows = screenLines(output); const row = rows.findIndex(line => border ? line.includes('────') : line.includes('Use sample'));
+    assert.ok(row >= 0); return decoded.get(output)!.buffer.active.getLine(row)!.getCell(0)!.getFgColor();
+  };
+  const until = async (predicate: () => boolean) => {
+    const deadline = Date.now() + 5000;
+    while (!predicate()) { if (Date.now() >= deadline) throw new Error('Custom theme frame did not update'); await delay(25); }
+  };
+  try {
+    assert.ok((await tui.getThemeChoices()).some(choice => choice.value === 'custom:ocean' && choice.label === 'Ocean'));
+    tui.beginAssistantMessage(); tui.writeAssistantText(source);
+    await until(() => screenLines(output).some(line => line.includes('Use sample')));
+    assert.equal(color(), 0x112233); assert.equal(color(true), 0x445566);
+    const row = screenLines(output).findIndex(line => line.includes('Use sample'));
+    assert.equal(decoded.get(output)!.buffer.active.getLine(row)!.getCell(6)!.getFgColor(), 5728759);
+    input.emit('data', 'retained draft'); tui.endAssistantMessage(); const entries = tui.transcriptState.entries;
+    writeTheme('#334455', '#667788'); await until(() => color() === 0x334455 && color(true) === 0x667788);
+    assert.equal(tui.state.text, 'retained draft'); assert.equal(tui.transcriptState.entries, entries);
+    fs.writeFileSync(file, '{'); await until(() => color() === 0xffffff);
+    assert.equal((await tui.getThemeChoices()).some(choice => choice.value === 'custom:ocean'), false);
+    writeTheme('#112233', '#445566'); await until(() => color() === 0x112233);
+    const choices = await tui.getThemeChoices(); const controller = new AbortController();
+    const prompt = tui.prompt({ title: 'Theme', message: 'Choose', choices, defaultIndex: 7, themePreview: true }, controller.signal);
+    input.emit('data', '\x1b[A'); controller.abort(); assert.equal(await prompt, undefined);
+    assert.equal(color(), 0x112233); assert.equal(tui.state.text, 'retained draft');
+    assert.equal(entries[0]?.markdown, source);
+    fs.unlinkSync(file); await until(() => color() === 0xffffff);
+    writeTheme('#223344', '#556677'); await until(() => color() === 0x223344);
+    tui.close(); const closed = writes; writeTheme('#ffffff', '#ffffff'); await delay(450); assert.equal(writes, closed);
+  } finally {
+    tui.close(); decoded.get(output)!.dispose(); colors.level = previous;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('source progress settings preserve presets, pattern cleanup and append versus replace words', () => {
+  const at = '2026-10-14T08:09:07.000Z', now = new Date('2026-10-14T12:00:00.000Z');
+  assert.equal(progressTime({timeFormat:'24-hour-utc',timeZone:'Asia/Tokyo'}).format(at,now),'08:09Z');
+  assert.equal(progressTime({timeFormat:'12-hour',timeZone:'UTC'}).format(at,now),'8:09 AM');
+  assert.equal(progressTime({timeFormat:'24-hour',timeZone:'Asia/Tokyo'}).format(at,now),'17:09');
+  assert.equal(progressTime({timeFormat:'%F %T %z %Z',timeZone:'UTC'}).format(at,now),'2026-10-14 08:09:07 +0000 UTC');
+  const clean = progressTime({timeFormat:'\x1b[31m%H\n:%M\u200b',timeZone:'UTC'});
+  assert.deepEqual(clean.resolve(),{kind:'pattern',pattern:'%H:%M',timeZone:'UTC'});
+  assert.equal(clean.format(at,now),'08:09');
+  assert.deepEqual(progressTime({timeFormat:'bad',timeZone:'not-a-zone'}).resolve(),{kind:'preset',preset:'auto',timeZone:undefined});
+  assert.equal(clean.format('invalid',now),'');
+  const base = progressVerbs(); assert.equal(base.length,188);
+  assert.deepEqual(progressVerbs({mode:'replace',verbs:[]}),base);
+  assert.deepEqual(progressVerbs({mode:'replace',verbs:['Owned building']}),['Owned building']);
+  assert.deepEqual(progressVerbs({mode:'append',verbs:['Appended fixture']}),[...base,'Appended fixture']);
+  const settings = {timeFormat:'arbitrary',timeZone:'not-a-zone',spinnerVerbs:{mode:'replace',verbs:['Owned building']}};
+  assert.deepEqual(parseSettings(settings),settings);
+  for (const field of ['timeFormat','timeZone']) assert.throws(()=>parseSettings({[field]:false}));
+  for (const spinnerVerbs of [{mode:'other',verbs:[]},{mode:'replace',verbs:[1]},null]) assert.throws(()=>parseSettings({spinnerVerbs}));
+});
+
+test('TUI progress setting changes reflow completed rows and pin each active turn word', async () => {
+  const input = new PassThrough() as PassThrough & {isTTY:boolean;setRawMode:(raw:boolean)=>void};
+  input.isTTY = true; input.setRawMode = () => {}; let writes = '';
+  const output = new Writable({write(chunk,_encoding,done){writes += String(chunk);done();}});
+  Object.assign(output,{isTTY:true,columns:100,rows:24}); watchScreen(output);
+  const settings = {timeFormat:'24-hour-utc',timeZone:'Asia/Tokyo',spinnerVerbs:{mode:'replace' as const,verbs:['Owned building']}};
+  const tui = new TuiTerminal({input,output,progressSettings:settings}).start();
+  const uuid='00000000-0000-4000-8000-000000000001',timestamp=new Date().toISOString();
+  const frame=()=>screenLines(output).join('\n');
+  try {
+    input.emit('data','retained settings draft'); tui.setRunning(true);
+    tui.setProgress({kind:'start',uuid,startedAt:Date.now()-18000}); assert.match(frame(),/Owned building…/);
+    settings.spinnerVerbs.verbs[0]='external mutation';
+    tui.setProgressSettings({timeFormat:'fixture %H:%M',timeZone:'UTC',spinnerVerbs:{mode:'replace',verbs:['Next building']}});
+    assert.match(frame(),/Owned building…/);
+    tui.setProgress({kind:'finish',reason:'end_turn',duration:{uuid,durationMs:1796000,timestamp}}); tui.setRunning(false);
+    assert.match(frame(),/done fixture \d\d:\d\d/);
+    tui.setProgressSettings({timeFormat:'24-hour-utc'}); assert.match(frame(),/done \d\d:\d\dZ/);
+    assert.doesNotMatch(frame(),/done fixture/);
+    tui.setProgressSettings({timeFormat:'fixture %H:%M',timeZone:'UTC',spinnerVerbs:{mode:'replace',verbs:['Next building']}});
+    Object.assign(output,{columns:40}); output.emit('resize'); assert.match(frame(),/done fixture/);
+    tui.setRunning(true); tui.setProgress({kind:'start',uuid:'00000000-0000-4000-8000-000000000002',startedAt:Date.now()});
+    assert.match(frame(),/Next building…/); assert.equal(tui.state.text,'retained settings draft');
+    tui.close(); const closed=writes; await delay(240); assert.equal(writes,closed);
+  } finally {tui.close();decoded.get(output)!.dispose();}
+});
+
+test('TUI folded paste survives stash, history search, undo and isolated modal input', async context => {
+  context.mock.timers.enable({apis:['setTimeout','Date'],now:10000});
+  const input=new PassThrough() as PassThrough & {isTTY:boolean;setRawMode:(raw:boolean)=>void};
+  input.isTTY=true;input.setRawMode=()=>{};let writes='';const submitted:string[]=[];
+  const output=new Writable({write(chunk,_encoding,done){writes+=String(chunk);done();}});
+  Object.assign(output,{isTTY:true,columns:40,rows:24});watchScreen(output);
+  const tui=new TuiTerminal({input,output,onSubmit:text=>submitted.push(text)}).start();
+  const raw='first\nsecond\nthird\nfourth',paste='\x1b[200~'+raw+'\x1b[201~';
+  try {
+    input.emit('data',paste);assert.match(screenLines(output).join('\n'),/\[Pasted text #1 \+3 lines\]/);
+    input.emit('data','\u0013scratch\u0013');assert.equal(tui.state.text,'[Pasted text #1 +3 lines]');
+    context.mock.timers.tick(1100);input.emit('data',' suffix\u001f');assert.equal(tui.state.text,'[Pasted text #1 +3 lines]');
+    const modal=tui.prompt({message:'Fixture',allowText:true},new AbortController().signal);
+    input.emit('data','ok\r');assert.deepEqual(await modal,{selected:[],text:'ok'});assert.equal(tui.state.pastedContents['1']!.content,raw);
+    input.emit('data','\r');assert.deepEqual(submitted,[raw]);
+    input.emit('data','\u0012second\u0012\r');assert.deepEqual(submitted,[raw,raw]);
+    input.emit('data',paste);Object.assign(output,{columns:100});output.emit('resize');
+    assert.match(screenLines(output).join('\n'),/\[Pasted text #2 \+3 lines\]/);
+    tui.close();assert.deepEqual(tui.state.pastedContents,{});assert.deepEqual(tui.state.historyPastes,[]);
+    const before=writes;context.mock.timers.tick(2000);assert.equal(writes,before);
+  } finally {tui.close();decoded.get(output)!.dispose();context.mock.timers.reset();}
+});
+
+test('source thinking progress retains frame, paused-time, task-count and completion contracts', async context => {
+  context.mock.timers.enable({apis:['setTimeout','setInterval','Date'], now:10000});
+  const document = new TuiDocumentRenderer(); let ticks = 0;
+  const progress = new ThinkingProgress(() => ticks++);
+  const task = (id: string, status: TaskRecord['status']): TaskRecord => ({id, status, subject:'Fixture ' + id,
+    activeForm:status === 'in_progress' ? 'Building fixture' : undefined, description:'', metadata:{}, blockedBy:[]});
+  const uuid = '00000000-0000-4000-8000-000000000001';
+  const paint = () => document.renderElement(progress.element(100),100,{terminalRows:24}).map(row => row.text).join('\n');
+  try {
+    progress.tasks(Array.from({length:15},(_,index) => task(String(index+1), index === 14 ? 'in_progress' : 'completed')));
+    progress.start(uuid, Date.now()-18000); progress.mode('thinking');
+    paint(); await new Promise<void>(resolve => setImmediate(resolve));
+    assert.match(paint(), /Building fixture… \(18s · thinking\)/);
+    assert.match(paint(), /15 tasks \(14 done, 1 in progress, 0 open\)/);
+    context.mock.timers.tick(240); assert.ok(ticks > 0);
+    progress.setReducedMotion(true); const stopped = ticks; context.mock.timers.tick(1000);
+    assert.equal(ticks,stopped); assert.match(paint(), /● Building fixture… \(19s · thinking\)/);
+    progress.pause(true); context.mock.timers.tick(5000); assert.match(paint(), /\(19s · thinking\)/);
+    progress.pause(false); assert.match(paint(), /\(19s · thinking\)/);
+    progress.stop(); assert.doesNotMatch(paint(), /Building fixture…/);
+    const done = {uuid, durationMs:1796000, timestamp:new Date().toISOString()};
+    const rows = document.renderElement(jsx(ProgressCompletion,{message:done},undefined),100).map(row => row.text);
+    assert.ok(rows[0]!.startsWith(`✻ ${Yc(uuid)} for 29m 56s · done `));
+    assert.equal(rn(60000,undefined),'1m 0s'); assert.equal(rn(59999,undefined),'59s');
+    progress.close(); const closed = ticks; context.mock.timers.tick(35000); assert.equal(ticks,closed);
+  } finally {progress.close(); document.close(); context.mock.timers.reset();}
+  assert.equal(document.liveNodes,0);
+});
+
+test('TUI thinking progress isolates draft, cancels clocks and renders source summary across resize', async () => {
+  const input = new PassThrough() as PassThrough & {isTTY:boolean;setRawMode:(raw:boolean)=>void};
+  input.isTTY = true; input.setRawMode = () => {}; let writes = '';
+  const output = new Writable({write(chunk,_encoding,done){writes += String(chunk);done();}});
+  Object.assign(output,{isTTY:true,columns:100,rows:24}); watchScreen(output);
+  const tui = new TuiTerminal({input,output}).start();
+  const uuid='00000000-0000-4000-8000-000000000001';
+  try {
+    input.emit('data','retained thinking draft'); tui.setRunning(true);
+    tui.setProgress({kind:'start',uuid,startedAt:Date.now()-18000}); tui.setProgress({kind:'phase',mode:'thinking'});
+    tui.setTasks([{id:'1',subject:'Fixture',activeForm:'Building fixture',description:'',metadata:{},status:'in_progress',blockedBy:[]}]);
+    const first = screenLines(output).join('\n'); assert.match(first,/1 tasks \(0 done, 1 in progress, 0 open\)/);
+    assert.match(first,/Building fixture…/);
+    await delay(750); assert.notEqual(screenLines(output).join('\n'),first);
+    tui.setPrefersReducedMotion(true); await delay(40); const staticFrame=screenLines(output).join('\n');
+    assert.match(staticFrame,/● Building fixture…/); await delay(240); assert.equal(screenLines(output).join('\n'),staticFrame);
+    const dialog=tui.prompt({message:'Answer',allowText:true},new AbortController().signal);
+    await delay(30); const modal=writes; await delay(240); assert.equal(writes,modal);
+    input.emit('data','ok\r'); await dialog; assert.equal(tui.state.text,'retained thinking draft');
+    Object.assign(output,{columns:40}); output.emit('resize'); assert.ok(screenLines(output).some(row=>row.includes('1 tasks')));
+    input.emit('data','\x1b[O\x1b[I'); assert.equal(tui.state.text,'retained thinking draft');
+    tui.setProgress({kind:'finish',reason:'end_turn',duration:{uuid,durationMs:1796000,timestamp:new Date().toISOString()}});
+    tui.setRunning(false); assert.ok(screenLines(output).some(row=>row.includes('for 29m 56s')));
+    tui.setShowTurnDuration(false); assert.equal(screenLines(output).some(row=>row.includes('for 29m 56s')),false);
+    tui.setShowTurnDuration(); assert.ok(screenLines(output).some(row=>row.includes('for 29m 56s')));
+    assert.equal(parseSettings({showTurnDuration:false}).showTurnDuration,false);
+    assert.throws(()=>parseSettings({showTurnDuration:'false'}));
+    tui.close(); const closed=writes; await delay(450); assert.equal(writes,closed);
+  } finally {tui.close();decoded.get(output)!.dispose();}
+});
+
+test('source theme color components paint literal swatches, focus and current versus preset values', () => {
+  const document = new TuiDocumentRenderer();
+  const screen = new HeadlessTerminal({cols:40, rows:12, allowProposedApi:true, logLevel:'off'});
+  const colors = ge as unknown as {level:number}, previous = colors.level; colors.level = 3;
+  const paint = (element: unknown) => {
+    const rows = document.renderElement(element, 40, {theme:'light', themeOverrides:{suggestion:'#445566'}});
+    screen.reset();
+    (screen as unknown as {_core:{writeSync(text:string):void}})._core.writeSync(rows.map(row => row.ansi).join('\r\n'));
+    return rows.map(row => row.text);
+  };
+  try {
+    const components = createThemeColorComponents({text:'#112233'}, S1('light'));
+    assert.deepEqual(paint(components.renderItem('text', true)), ['██ text (custom)']);
+    assert.equal(screen.buffer.active.getLine(0)!.getCell(0)!.getFgColor(), 0x112233);
+    assert.equal(screen.buffer.active.getLine(0)!.getCell(3)!.getFgColor(), 0x445566);
+    assert.deepEqual(paint(components.renderPreview('text')), ['current: ██ #112233', 'preset: ██ rgb(0,0,0)']);
+    assert.equal(screen.buffer.active.getLine(0)!.getCell(9)!.getFgColor(), 0x112233);
+    assert.equal(screen.buffer.active.getLine(1)!.getCell(8)!.getFgColor(), 0);
+    const base = createThemeColorComponents({}, S1('light'));
+    assert.deepEqual(paint(base.renderItem('text', false)), ['██ text']);
+    assert.deepEqual(paint(base.renderPreview('text')), ['current: ██ rgb(0,0,0)']);
+    const dark = createThemeColorComponents({}, S1('dark'));
+    for (const columns of [20,40,100]) {
+      const rows = document.renderElement(dark.renderPreview('text'), columns);
+      assert.deepEqual(rows.map(row => row.text), columns === 20
+        ? ['current: ██ ', 'rgb(255,255,255)'] : ['current: ██ rgb(255,255,255)']);
+      assert.equal(rows.at(-1)!.end, undefined);
+    }
+    for (const [value, expected] of [['#123456',0x123456],['#abc',0xaabbcc],['ansi:red',1],['ansi256(42)',42],['rgb(1,2,3)',0x010203]] as const) {
+      assert.deepEqual(paint(jsx(components.Swatch, {value}, undefined)), ['██']);
+      assert.equal(screen.buffer.active.getLine(0)!.getCell(0)!.getFgColor(), expected);
+    }
+  } finally {document.close(); screen.dispose(); colors.level = previous;}
+  assert.equal(document.liveNodes, 0);
+  assert.throws(() => document.renderElement(null, 40), /closed/);
+});
+
+test('theme editor modal previews, cancels, persists and resets colors while preserving draft and owner cleanup', async () => {
+  const root = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'tui-theme-editor-'));
+  fs.mkdirSync(path.join(root, 'themes'));
+  const file = path.join(root, 'themes/ocean.json'); fs.writeFileSync(file, '{"name":"Ocean","base":"light","overrides":{"text":"#112233"}}');
+  const colors = ge as unknown as {level:number}, previous = colors.level; colors.level = 3;
+  const input = new PassThrough() as PassThrough & {isTTY:boolean; setRawMode:(raw:boolean) => void};
+  input.isTTY = true; input.setRawMode = () => {}; let writes = '';
+  const output = new Writable({write(chunk, _encoding, done) {writes += String(chunk); done();}});
+  Object.assign(output, {isTTY:true, columns:100, rows:24}); watchScreen(output);
+  const tui = new TuiTerminal({input, output, userDir:root, theme:'custom:ocean'}).start();
+  const until = async (predicate:() => boolean) => { const deadline = Date.now() + 5000;
+    while (!predicate()) {if (Date.now() >= deadline) throw new Error('Editor frame did not update'); await delay(25);} };
+  const controller = new AbortController();
+  try {
+    await tui.getThemeChoices(); input.emit('data', 'retained editor draft');
+    tui.beginAssistantMessage(); tui.writeAssistantText('Use `sample` text.\n\n'); tui.endAssistantMessage();
+    const entries = tui.transcriptState.entries;
+    const choices = await tui.getThemeChoices();
+    const chooser = tui.prompt({message:'Choose', choices, defaultIndex:7, themePreview:true, themeEdit:true}, controller.signal);
+    input.emit('data', '\x05'); assert.deepEqual(await chooser, {selected:['custom:ocean'], themeEdit:true});
+    let editing = tui.editCustomTheme('custom:ocean', async value => tui.setTheme(value), controller.signal);
+    await until(() => screenLines(output)[0]!.includes('Ocean · based on light'));
+    input.emit('data', 'text'); input.emit('data', '\x1b[B');
+    await until(() => screenLines(output).some(row => row.includes('current: ██ #112233')));
+    const focusedRow = screenLines(output).findIndex(row => row.includes('> ██ text (custom)'));
+    assert.equal(decoded.get(output)!.buffer.active.getLine(focusedRow)!.getCell(2)!.getFgColor(), 0x112233);
+    assert.ok(screenLines(output).some(row => row.includes('preset: ██ rgb(0,0,0)')));
+    input.emit('data', '\r');
+    await until(() => screenLines(output).some(row => row.includes('Color: text')));
+    input.emit('data', '\x15#334455');
+    const previewColor = () => {const row = screenLines(output).findIndex(line => line.includes('Theme preview'));
+      return decoded.get(output)!.buffer.active.getLine(row)!.getCell(0)!.getFgColor();};
+    await until(() => previewColor() === 0x334455);
+    Object.assign(output, {columns:40}); output.emit('resize');
+    const valueSwatchRow = screenLines(output).findIndex(row => row.includes('██ text'));
+    assert.ok(valueSwatchRow >= 0);
+    assert.equal(decoded.get(output)!.buffer.active.getLine(valueSwatchRow)!.getCell(0)!.getFgColor(), 0x334455);
+    input.emit('data', '\x1b');
+    await until(() => screenLines(output)[0]!.includes('Ocean · based on light'));
+    assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).overrides.text, '#112233');
+    input.emit('data', 'text\x1b[B\r'); await until(() => screenLines(output).some(row => row.includes('Color: text')));
+    input.emit('data', '\x15#334455\r'); await until(() => JSON.parse(fs.readFileSync(file, 'utf8')).overrides.text === '#334455');
+    input.emit('data', 'text\x1b[B\t'); await until(() => Object.keys(JSON.parse(fs.readFileSync(file, 'utf8')).overrides).length === 0);
+    input.emit('data', '\x1b'); await editing;
+    assert.equal(tui.state.text, 'retained editor draft'); assert.equal(tui.transcriptState.entries, entries);
+    assert.equal(entries.at(-1)!.markdown, 'Use `sample` text.\n\n');
+    editing = tui.editCustomTheme('custom:ocean', async () => {}, controller.signal);
+    await until(() => tui.currentScreen === 'dialog'); tui.close(); const closed = writes;
+    await editing; await delay(450); assert.equal(writes, closed);
+  } finally {tui.close(); decoded.get(output)!.dispose(); colors.level = previous; fs.rmSync(root, {recursive:true, force:true});}
+});
+
+test('the source renderer diffs frames, preserves styled wide cells, resizes and releases its root', () => {
+  let writes = '';
+  const output = new Writable({ write(chunk, _encoding, done) { writes += String(chunk); done(); } });
+  Object.assign(output, { columns: 20, rows: 4 }); watchScreen(output);
+  output.write(ENTER_ALT_SCREEN);
+  const renderer = new TuiRenderer({ write: text => output.write(text) });
+  const cursor = { row: 2, column: 2, visible: true };
+  try {
+    renderer.render(['Hello 界👩‍💻é', '\x1b[7mselected\x1b[27m'], 20, 4, cursor);
+    assert.equal(screenLines(output)[0], 'Hello 界👩‍💻é');
+    assert.ok(decoded.get(output)!.buffer.active.getLine(1)!.getCell(0)!.isInverse());
+    assert.deepEqual({ row: decoded.get(output)!.buffer.active.cursorY, column: decoded.get(output)!.buffer.active.cursorX },
+      { row: cursor.row, column: cursor.column });
+    writes = '';
+    renderer.render(['Hello 界👩‍💻é', '\x1b[7mselected\x1b[27m'], 20, 4, cursor);
+    assert.equal(writes, '');
+    renderer.render(['short', 'plain'], 20, 4, cursor);
+    assert.equal(screenLines(output)[0], 'short');
+    assert.equal(screenLines(output)[1], 'plain');
+    assert.equal(decoded.get(output)!.buffer.active.getLine(1)!.getCell(0)!.isInverse(), 0);
+    writes = '';
+    renderer.render(['edge 界'.padEnd(18) + '界'], 20, 4, cursor);
+    assert.ok(screenLines(output)[0]?.endsWith('界'));
+    Object.assign(output, { columns: 12, rows: 6 }); output.emit('resize');
+    renderer.render(['resized 界'], 12, 6, { row: 4, column: 1, visible: true });
+    assert.equal(screenLines(output)[0], 'resized 界');
+    assert.equal(screenLines(output)[5], '');
+    assert.equal(cellWidth('✂ ⏺ © 🇦'), 7);
+    assert.equal(cellWidth('☀︎'), 1);
+    assert.equal(cellWidth('❤️'), 2);
+    renderer.invalidate(); writes = '';
+    renderer.render(['resized 界'], 12, 6, { row: 4, column: 1, visible: true });
+    assert.ok(writes.includes('\x1b[2J'));
+    Object.assign(output, { columns: 20, rows: 10 }); output.emit('resize');
+    renderer.renderChat(['\x1b[31mselected\x1b[39m'], ['123456789012345678', ''], ['ready'],
+      20, 10, { row: 7, column: 2, visible: true }, false,
+      { state: { anchor: { line: 0, column: 0 }, focus: { line: 0, column: 2 }, dragging: false }, offset: 0, rows: 5 });
+    const frame = screenLines(output);
+    assert.equal(frame[5], '─'.repeat(20));
+    assert.equal(frame[6], '❯ 123456789012345678');
+    assert.equal(frame[7], '');
+    assert.equal(frame[8], '─'.repeat(20));
+    assert.equal(frame[9], 'ready');
+    const selected = decoded.get(output)!.buffer.active.getLine(0)!.getCell(0)!;
+    assert.ok(selected.isInverse());
+    assert.equal(selected.getFgColor(), 1);
+  } finally { renderer.close(); decoded.get(output)!.dispose(); }
+  assert.equal(renderer.liveNodes, 0);
+  renderer.close();
+});
+
+test('the copied layout core reflows cached geometry and the copied formatter renders preview content', () => {
+  const config = layoutEngine.Config.create();
+  const root = layoutEngine.Node.create(config), list = layoutEngine.Node.create(config), preview = layoutEngine.Node.create(config);
+  root.insertChild(list, 0); root.insertChild(preview, 1);
+  try {
+    root.setWidth(80); root.setFlexDirection(2); root.setGap(2, 4);
+    list.setWidth(30); preview.setFlexGrow(1); preview.setFlexShrink(1); preview.setMinWidth(44);
+    root.calculateLayout(80, undefined, 1);
+    assert.equal(preview.getComputedLeft(), 34); assert.equal(preview.getComputedWidth(), 46);
+    root.calculateLayout(80, undefined, 1); assert.ok(config.cacheHits > 0);
+    root.setWidth(100); root.calculateLayout(100, undefined, 1);
+    assert.equal(preview.getComputedLeft(), 34); assert.equal(preview.getComputedWidth(), 66);
+  } finally { root.freeRecursive(); config.free(); }
+  assert.equal(config.liveNodes, 0);
+  assert.equal(renderPreviewMarkdown('# Heading\n\n- one'), 'Heading\n\n- one');
+  assert.equal(renderPreviewMarkdown('> quote\n\n**bold** and `code`'), '▎ quote\n\nbold and code');
+  assert.equal(renderPreviewMarkdown('| A | B |\n|---|---|\n| x | y |'), '| A   | B   |\n|-----|-----|\n| x   | y   |');
+  for (const width of [4, 8, 20, 80]) {
+    const box = previewBox('界👩‍💻é\n'.repeat(9), 3, width);
+    assert.ok(box.every(line => cellWidth(line) <= width));
+    assert.ok(box.at(-1)?.endsWith('┘'));
+  }
+});
+
 test('modal choices and Other text own input and restore the previous draft', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
   let drawn = '';
   const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
-  Object.assign(output, { isTTY: true, columns: 50, rows: 10 });
+  Object.assign(output, { isTTY: true, columns: 50, rows: 10 }); watchScreen(output);
   const tui = new TuiTerminal({ input, output }).start();
   const key = (text: string) => input.emit('data', text);
   const signal = new AbortController().signal;
@@ -402,7 +1442,7 @@ test('modal choices and Other text own input and restore the previous draft', as
     let submissions = 0; tui.on('submit', () => { submissions++; });
     const single = tui.prompt({ title: 'Choose', message: 'Choose an option', choices, allowText: true }, signal);
     assert.equal(tui.currentScreen, 'dialog');
-    assert.ok(drawn.includes('Choose an option'));
+    assert.ok(screenLines(output).join('\n').includes('Choose an option'));
     await assert.rejects(tui.prompt({ message: 'collision' }, signal), /Another interaction/);
     key('\x1b[B\rignored\r');
     assert.deepEqual(await single, { selected: ['B'] });
@@ -410,19 +1450,19 @@ test('modal choices and Other text own input and restore the previous draft', as
     assert.equal(submissions, 0);
     const multi = tui.prompt({ message: 'Choose several', choices, multiple: true, allowText: true }, signal);
     key('\r'); assert.equal(tui.currentScreen, 'dialog');
-    assert.ok(drawn.includes('Space selects an option'));
+    assert.ok(screenLines(output).join('\n').includes('Space selects an option'));
     key(' '); key('\x1b[B '); key('\tcustom\x1b[13;2uanswer\x1b[A\r');
     assert.deepEqual(await multi, { selected: ['A', 'B'], text: 'custom\nanswer' });
     assert.deepEqual(tui.state, before);
     const confirmation = tui.prompt({ title: 'Approve', message: Array.from({ length: 30 }, (_, i) => `plan line ${i}`).join('\n'),
       choices: [{ label: 'No', value: 'no' }, { label: 'Yes', value: 'yes' }] }, signal);
-    assert.ok(drawn.slice(drawn.lastIndexOf('\x1b[H')).includes('plan line 0'));
-    key('\x1b[6~'); assert.ok(drawn.slice(drawn.lastIndexOf('\x1b[H')).includes('plan line 7'));
-    key('\x1b[5~'); assert.ok(drawn.slice(drawn.lastIndexOf('\x1b[H')).includes('plan line 0'));
+    assert.ok(screenLines(output).join('\n').includes('plan line 0'));
+    key('\x1b[6~'); assert.ok(screenLines(output).join('\n').includes('plan line 7'));
+    key('\x1b[5~'); assert.ok(screenLines(output).join('\n').includes('plan line 0'));
     key('\r'); assert.deepEqual(await confirmation, { selected: ['no'] });
     assert.deepEqual(tui.state, before);
     const bounded = tui.prompt({ message: 'Small answer', maxTextChars: 4 }, signal);
-    key('12345'); assert.ok(drawn.includes('Answer exceeds 4 characters'));
+    key('12345'); assert.ok(screenLines(output).join('\n').includes('Answer exceeds 4 characters'));
     key('ok\r'); assert.deepEqual(await bounded, { selected: [], text: 'ok' });
   } finally { tui.close(); }
 });
@@ -431,7 +1471,7 @@ test('modal cancellation abort and close settle once without changing the draft'
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
   const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
-  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 }); watchScreen(output);
   const tui = new TuiTerminal({ input, output }).start();
   const key = (text: string) => input.emit('data', text);
   try {
@@ -468,7 +1508,7 @@ test('common action keys preserve drafts and stash swaps text with its cursor', 
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
   const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
-  Object.assign(output, { isTTY: true, columns: 50, rows: 10 });
+  Object.assign(output, { isTTY: true, columns: 50, rows: 10 }); watchScreen(output);
   const actions: string[] = [];
   const tui = new TuiTerminal({ input, output, onAction: action => actions.push(action) }).start();
   const key = (text: string) => input.emit('data', text);
@@ -590,11 +1630,12 @@ test('the transcript viewport clamps its scroll and follows the tail only when p
 test('the full-screen layer draws, scrolls and restores the terminal it took', async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-tui-')));
   const config = defaultConfig(workspace, []); config.model = 'test';
+  config.configSources = { userDir: path.join(workspace, 'user') };
   const session = Session.open(workspace, { config });
   const provider: ModelProvider = {
     count: async () => 10,
     complete: async (_request, _signal, onText) => {
-      onText?.('answer body');
+      onText?.('answer'); onText?.(' '); onText?.('body');
       return { id: 'fixture', model: 'test', role: 'assistant', type: 'message',
         content: [{ type: 'text', text: 'answer body' }], stop_reason: 'end_turn',
         usage: { input_tokens: 1, output_tokens: 1 } } as Anthropic.Message;
@@ -605,7 +1646,7 @@ test('the full-screen layer draws, scrolls and restores the terminal it took', a
   let drawn = '';
   const output = new Writable({ write(chunk, _encoding, callback) { drawn += String(chunk); callback(); } });
 
-  Object.assign(output, { isTTY: true, columns: 40, rows: 10 });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 }); watchScreen(output);
   const input = new PassThrough() as PassThrough & { isTTY: boolean; isRaw: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.isRaw = false; input.setRawMode = (raw: boolean) => { input.isRaw = raw; };
 
@@ -621,9 +1662,9 @@ test('the full-screen layer draws, scrolls and restores the terminal it took', a
     assert.match(drawn, new RegExp(ENTER_ALT_SCREEN.replace(/[?[\]]/g, '\\$&')));
     assert.match(drawn, new RegExp(MOUSE_SCROLL.replace(/[?[\]]/g, '\\$&')));
     // The task's answer reached the transcript, not the raw stream.
-    assert.match(drawn, /answer body/);
+    assert.ok(seenFrames.get(output)!.some(frame => frame.includes('answer body')));
     // The status row carries the hints rather than scrolling the transcript.
-    assert.match(drawn, /ctrl\+o transcript/);
+    assert.ok(seenFrames.get(output)!.some(frame => frame.includes('ctrl+o transcript')));
     assert.match(drawn, new RegExp(LEAVE_ALT_SCREEN.replace(/[?[\]]/g, '\\$&')));
     assert.match(drawn, new RegExp(MOUSE_OFF.replace(/[?[\]]/g, '\\$&')));
   } finally {
@@ -640,6 +1681,58 @@ test('the full-screen layer draws, scrolls and restores the terminal it took', a
   controller.leave(); controller.leave();
   assert.equal(sequences.filter(sequence => sequence === LEAVE_ALT_SCREEN).length, 1);
   assert.ok(sequences.includes(MOUSE_OFF));
+});
+
+test('terminal end, close and rendering errors cancel the active turn and release its session', { timeout: 5_000 }, async context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const kind of ['end', 'close', 'error', 'render'] as const) {
+    const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-tui-close-')));
+    const config = defaultConfig(workspace, []); config.model = 'fixture';
+    config.configSources = { userDir: path.join(workspace, 'user') };
+    const session = Session.open(workspace, { config });
+    const controller = new AbortController();
+    const input = new PassThrough() as PassThrough & { isTTY: boolean; isRaw: boolean; setRawMode: (raw: boolean) => void };
+    input.isTTY = true; input.isRaw = false; input.setRawMode = raw => { input.isRaw = raw; };
+    let written = '', calls = 0, aborted = false, released = false;
+    const output = new Writable({ write(chunk, _encoding, done) { written += String(chunk); done(); } });
+    Object.assign(output, { isTTY: true, columns: 40, rows: 18 });
+    const tui = new TuiTerminal({ input, output });
+    let started!: () => void;
+    const ready = new Promise<void>(resolve => started = resolve);
+    const provider: ModelProvider = { count: async () => 1, complete: async (_request, signal, onText) => {
+      calls++; onText?.('pending source\nunfinished tail'); started();
+      return await new Promise<Anthropic.Message>((_resolve, reject) => {
+        const cancel = () => { aborted = true; reject(signal.reason); };
+        if (signal.aborted) cancel(); else signal.addEventListener('abort', cancel, { once: true });
+      });
+    } };
+    const runtime: Runtime = { tools: [], buildTools: () => [], close: async () => {}, limits: [],
+      releaseSession: async () => { released = true; } };
+    const running = interactiveLoop(session, provider, runtime, { input, output, status: tui.statusStream,
+      signal: controller.signal, terminal: tui });
+    try {
+      input.write('task\r'); await ready;
+      input.write('queued task\r');
+      if (kind === 'render') {
+        context.mock.method(tui as unknown as { paintAssistantPreview(): void }, 'paintAssistantPreview', () => {
+          throw new Error('owned render failure');
+        });
+        context.mock.timers.tick(100);
+      } else if (kind === 'error') input.emit('error', new Error('owned input failure'));
+      else input.emit(kind);
+      await running;
+      assert.equal(aborted, true, kind); assert.equal(calls, 1, kind);
+      assert.equal(released, true, kind); assert.equal(input.isRaw, false, kind);
+      assert.ok(written.includes(LEAVE_ALT_SCREEN), kind);
+      assert.equal(session.events.filter(event => event.kind === 'turn_end').at(-1)?.reason, 'aborted');
+      assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false, kind);
+      written = ''; context.mock.timers.tick(500); assert.equal(written, '', kind);
+    } finally {
+      controller.abort(); await running;
+      tui.close(); session.close(); fs.rmSync(workspace, { recursive: true, force: true });
+    }
+  }
+  context.mock.timers.reset();
 });
 
 test('a terminal can open the full-screen interface and leave it on exit', { timeout: 60_000 }, () => {

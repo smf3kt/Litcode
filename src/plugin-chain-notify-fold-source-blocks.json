@@ -1,0 +1,248 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f"
+    },
+    {
+      "module": "chunk-c9vsmdqj.js",
+      "sha256": "59124c8f7d581be40e14655f028069ec67ba561a3395db94c65ede3aee264fb5"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        5355,
+        5381
+      ],
+      "units": 26,
+      "bodySha256": "19b806bd3a5d4fe86648ae7621ec8e85d8be7064bd1d0fa8af9c627de5f30f90",
+      "note": "`Ge`, the batch's marker around a store — in the shipped bundle it is the identity function, so `Zl` is a plain `Map` and `Y4t` is `bs()`"
+    },
+    {
+      "module": "chunk-c9vsmdqj.js",
+      "sha256": "59124c8f7d581be40e14655f028069ec67ba561a3395db94c65ede3aee264fb5",
+      "range": [
+        615,
+        668
+      ],
+      "units": 53,
+      "bodySha256": "2ad3005c8632df99918a325c2432212c9a8d159137a3e9b8ad521d4224c17aae",
+      "note": "`bs`: the one-value flag store (`set`/`get` over a closure slot) that `Y4t` and `Ql` are built on"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        757,
+        941
+      ],
+      "units": 184,
+      "bodySha256": "df793d243518db1d518a65c4af88857ecf5d7376afe5bc4b1d8dc706f61af57c",
+      "note": "`FDn`: the frozen initial panes state (`open`/`unplaced`/`asked`/`shownId`/`focusedId`/`focusRequest`/`placements`/`closing`), the value `Ri`'s disposer restores"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        2862,
+        2915
+      ],
+      "units": 53,
+      "bodySha256": "efa5b9e3939e7acef9bf39a43b8a7d06195c96f9f69a492374972affc3f1cd0f",
+      "note": "`Ri`: the panes store facade, `Ge(() => it().panes, …)` — what `Of` reads a reader's `requestId` against"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230179,
+        230215
+      ],
+      "units": 36,
+      "bodySha256": "45f46336bcf7859686423e54a5c09dff52ea5c3caea109fb69919a3e60fac9c4",
+      "note": "`Y4t`: the flag store behind `Ql`, disposer `set(void 0)`"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230215,
+        230241
+      ],
+      "units": 26,
+      "bodySha256": "aec450b331a043b78b1fb4461b09beafc61a8cdd94546a2f581142ca2b0a90c5",
+      "note": "`Ql`: `Y4t.get() !== true` — whether the AbovePrompt reader counts as live"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230769,
+        230803
+      ],
+      "units": 34,
+      "bodySha256": "62328bf83a0d87bf7a2b122fe6a101144ec4521f1814107c0860e0826a437e02",
+      "note": "`Zl`: the throttle table, `Ge(new Map, clear)` — a plain Map in the bundle"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230803,
+        230873
+      ],
+      "units": 70,
+      "bodySha256": "bdb6dfa52549ba992475458cddd20e73ff97a02c2e21b6f6c3aeb756eec300ca",
+      "note": "`P_` = 1000 (the throttle window) with `ec`, which stamps every reader it is given until then"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230873,
+        230929
+      ],
+      "units": 56,
+      "bodySha256": "152dde7e2e8f198d3e77249da5ee60887ec90e0eccfcd9ec523ac7ac20bf55fa",
+      "note": "`A_`: whether a reader is inside its throttle window at a given time"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230929,
+        230939
+      ],
+      "units": 10,
+      "bodySha256": "7aad696ed518652a4e113a01ccb1ac0fea97f111b858cb64b2212643e3d12eaf",
+      "note": "`nc` = 34, the live pace interval in ms"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        231041,
+        231248
+      ],
+      "units": 207,
+      "bodySha256": "3d12fd0325e6babeb40e872bcc9a5e764ea57f740454cf6779bc51ae11c194ed",
+      "note": "`Of`: a reader's pace — live only when its surface is terminal and its instance is AbovePrompt (`Ql`), PromptHint, or the pane the store shows (`Ri`)"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        271940,
+        271971
+      ],
+      "units": 31,
+      "bodySha256": "252d9d0f87db6c6c69f2a8fcb669ddfceacf8998ed5b162cde848b12734b0f2a",
+      "note": "`OL`: the render-version store facade over the host registry"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        272717,
+        272729
+      ],
+      "units": 12,
+      "bodySha256": "be322a16f0e4e8106111b138f0be64d887197dc0d1ac541188add0f80cd068ef",
+      "note": "`HAt` = 100, the steady pace interval in ms"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        272928,
+        272964
+      ],
+      "units": 36,
+      "bodySha256": "bebe69d14659b4c8693784af88869b5809dd292f3be2a2fa2e652536d83ccc0c",
+      "note": "`Rc` = \"\\x00state\", the render-version key suffix, with `jf`"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        273791,
+        273934
+      ],
+      "units": 143,
+      "bodySha256": "aab4828d8f4f2789f383bc85b9bb9b05b587ad7dde64a3ac8438cf14fa8cb342",
+      "note": "`vi`: the bump — one running counter per store, written as `jf(key)` into every render-version key it is given"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        274111,
+        274247
+      ],
+      "units": 136,
+      "bodySha256": "f9f052c9f595d3fe5fa854096d8eea2b083e26f8e6cd3b6e897ba12d8cfdd506",
+      "note": "`vc`: fan a fold's readers out — bump their keys, then hand every instance to the stale listeners"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        274247,
+        274483
+      ],
+      "units": 236,
+      "bodySha256": "a740374bb1740557385fbd73e4ccca883053ca0913dccedf495f3287bf018aaa",
+      "note": "`MAt`: run one fold — drop its pending timer, stamp `lastAt`, resolve the stale set to readers, clear it, fan out"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        274483,
+        274511
+      ],
+      "units": 28,
+      "bodySha256": "a80c016f74b9c5b738c19583a69555cbcbdeef83ae9220a21844de838a94e3ce",
+      "note": "`zf`: the timer callback, `MAt(fold, now())`"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        274511,
+        274538
+      ],
+      "units": 27,
+      "bodySha256": "ee939c770e3e38e00052f29b1c2b33ddf2f3a7bf8925d98d4451ddd2576c242d",
+      "note": "`Wf`: the two paces' intervals — steady 100ms, live 34ms"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        274539,
+        274916
+      ],
+      "units": 377,
+      "bodySha256": "34b27bfdc3cbff232d517e8110cf50c9e7c9d4c5bfb03963c1a3aeb35a510229",
+      "note": "`Ci`: the door `vb` opens — each key's reader goes stale in its pace's fold (throttled readers forced to steady), then each touched fold runs at once or arms its timer for the remainder of its interval"
+    }
+  ],
+  "missing": []
+}

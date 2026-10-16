@@ -1,0 +1,38 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        256712,
+        257058
+      ],
+      "units": 346,
+      "bodySha256": "c0fbd87e38e43ef3aaf3a527874bd4ffeb4fec625b01cd0f13cc6e7b1f1cfa68",
+      "note": "declares the Raster side of the mount: `Yto`, the register helper (one site key, one row built on demand, the mount added to the row's own set, and the unregister that drops the key once its set empties and the map still holds that same row), and `hNs`, which calls it against `hs()` — the mounted-raster registry — with the row `{rasters:new Set,windowStart:0,blits:0}`"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1869519,
+        1869714
+      ],
+      "units": 195,
+      "bodySha256": "e214f1fca725b30627f2ab21c909f811e31d926747c63cf81fb4a1d0deea0717",
+      "note": "declares the Image side: `ELs`, the same register against `Yj()` with the row `{images:new Set,windowStart:0,blits:0}`, and `vLs`, the builder an Image site passes its element and props through to gain its `swap`"
+    }
+  ],
+  "missing": []
+}

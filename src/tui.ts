@@ -1,22 +1,22 @@
+import fs from 'node:fs';
 /**
  * Full-screen interaction layer.
  *
- * This is a rewrite, not a copy. The recovered application mounts a vendored
- * Ink fork — React plus `react-reconciler` HostConfig plus the Yoga layout
- * engine, `chunk-06azbynj.js`, 360288 bytes under SHA-256
- * 5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd — and its
- * main interface module alone is `chunk-24k7d6mw.js` at 1716741 bytes, larger
- * than this entire product. Those modules are Bun bytecode-wrapped ESM served
- * from `/$bunfs/root/`, so running them would require a Bun-like host as well
- * as React and Yoga. Both conflict with this project's neutral, six-dependency,
- * Node-only surface (WORKFLOW.md section 1).
+ * W44 ports the recovered React reconciler/HostConfig, JavaScript layout,
+ * tree painter, screen pools and frame diff from chunk-06azbynj.js (SHA-256
+ * 5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd).
+ * TuiRenderer owns that chain; Node CellSegmenter/width/wrap are explicit host
+ * adaptations. TuiDocumentRenderer paints the copied Markdown components,
+ * theme and highlighter into transcript cells; copied input/footer components
+ * frame the owned editor. Dialog composition and footer service state remain
+ * earlier host adaptations.
+ * Complete provenance and remaining differences are recorded in W44.
  *
- * What is ported instead: the mode sequences (`tui-modes.ts`, a copy), the
+ * Other ports include the mode sequences (`tui-modes.ts`, a copy), the
  * keybinding registry and its context layering (`tui-keys.ts`, copied tables),
  * the kill ring (`kill-ring.ts`, a copy), and the transcript viewport contract
- * (`tui-transcript.ts`, adapted). The frame composition below is new code and
- * reuses the existing cell-accurate editor layout from `terminal.ts`, so the
- * prompt keeps grapheme-correct wrapping.
+ * (`tui-transcript.ts`, adapted). Input rows and visual navigation use copied
+ * Si/Lt/Ct measurement; raw insertion and submission remain owned transitions.
  *
  * The class implements the same surface `TerminalInput` exposes, so the
  * interactive loop can drive either one without knowing which it has.
@@ -26,22 +26,58 @@ import { EventEmitter } from 'node:events';
 import { StringDecoder } from 'node:string_decoder';
 import { Writable, type Readable } from 'node:stream';
 import { formatHookTerminalSequence } from './hook-terminal.js';
-import { createKillRing, nextYank, type KillRing } from './kill-ring.js';
+import { reduceKillRing } from './kill-ring.js';
 import { TerminalModeController, type MouseTracking } from './tui-modes.js';
 import { Keymap, contextStack, type TuiContext } from './tui-keys.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
-  createSelection, dragSpan, highlightSelection, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
-  selectionText, selectionTextFromRows, wordSpan,
+  createSelection, dragSpan, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
+  selectionTextFromRows, wordSpan,
   type SelectionAnchor, type SelectionRow, type SelectionState,
 } from './tui-selection.js';
+import { composerEditRelay, type ChainRelayKey, type ComposerEditRelay } from './plugin-chain-relay.js';
+import { paintedDecorations, normalizedRuns, highlightRows, type DecorationRun, type PaintedDecorations, type PromptSegment } from './tui-input-decorations.js';
+import { composerHighlights } from './tui-input-highlights.js';
 import { osc52Payload } from './clipboard-osc52.js';
+import { layoutEngine } from './tui-layout.js';
+import { renderPreviewMarkdown } from './tui-markdown.js';
+import { TuiRenderer, type PromptLine } from './tui-renderer.js';
+import { TuiDocumentRenderer } from './tui-document-renderer.js';
+import { clt, tLo } from './tui-stream-preview.js';
+import { Zqn, l$t } from './tui-preview-visibility.js';
+import { layoutInput } from './tui-input-navigation.js';
+import { InputUndo } from './tui-input-undo.js';
+import { InputPaste, expandPastedText, referencedPastes, type InputSnapshot } from './tui-input-paste.js';
+import { ThemeState, parseTheme, themeChoices, type ThemeSetting, type BuiltinTheme } from './tui-theme-state.js';
+import { SystemThemeMonitor } from './tui-system-theme.js';
+import { CustomThemeCatalog } from './tui-custom-themes.js';
+import { ThemeEditor, themeFileWriter } from './theme-editor.js';
+import { ThinkingProgress, type AgentProgressEvent, type TurnDuration } from './tui-progress.js';
+import { ProgressCompletion } from './tui-progress-completion.js';
+import type { TaskRecord } from './tasks.js';
+import { progressTime, type ProgressDisplaySettings } from './tui-progress-settings.js';
+import { createThemeColorComponents } from './tui-theme-color-components.js';
+import { S1 } from './tui-theme-colors.js';
+import { editExternal, type ExternalEditorResult } from './external-editor.js';
+import { InputVim, type EditorMode, type VimBridge } from './tui-vim.js';
+import { vimKey } from './tui-vim-keys.js';
+import { InputGestures } from './tui-input-gestures.js';
+import { TerminalFocus } from './tui-focus.js';
+import { StatusLine } from './tui-statusline.js';
+import { InputHistory } from './tui-input-history.js';
+import { HistorySearch, type SearchSnapshot } from './tui-history-search.js';
+import { ScopedPicker, type PickerScope, type ScopePickerSnapshot } from './tui-scope-picker.js';
+/** Source HI() gate for the picker: see research/ports/W44-scope-picker-copies.json entryEvidence. */
+const SOURCE_PICKER_OWNS_HISTORY_SEARCH = true;
+import { jde } from './tui-statusline-components.js';
+import { jsx } from './tui-jsx.js';
+import { s, n } from './tui-base-components.js';
 import {
   createTranscriptState, layoutTranscript, reduceTranscript, renderedTranscriptRows, transcriptLines, wrapEntry,
-  type TranscriptEntry, type TranscriptScrollCommand, type TranscriptState,
+  type TranscriptEntry, type TranscriptScrollCommand, type TranscriptState, type RenderedRow,
 } from './tui-transcript.js';
 import {
-  cellWidth, createEditorState, layoutEditor, reduceEditor, TerminalKeyDecoder,
+  cellWidth, createEditorState, questionPreviewText, reduceEditor, reduceEditorWithUndo, TerminalKeyDecoder,
   type EditorAction, type EditorCommand, type EditorPolicy, type EditorState, type Keybindings, type TerminalCallbacks,
   type TerminalPromptAnswer, type TerminalPromptGroup, type TerminalPromptGroupAnswer,
   type TerminalPromptRequest,
@@ -58,6 +94,15 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   synchronizedUpdate?: boolean;
   /** Rows kept for the prompt box; the recovered app grows it with the draft. */
   promptRows?: number;
+  prefersReducedMotion?: boolean;
+  showTurnDuration?: boolean;
+  progressSettings?: ProgressDisplaySettings;
+  maxProseWidth?: number;
+  syntaxHighlightingDisabled?: boolean;
+  theme?: ThemeSetting;
+  userDir?: string;
+  workspace?: string;
+  plugins?: import('./plugins.js').PluginConfig;
 }
 
 type TuiEvents = {
@@ -69,7 +114,10 @@ export type TuiScreen = 'chat' | 'transcript' | 'search' | 'dialog';
 
 interface ActiveDialog {
   request: TerminalPromptRequest;
+  themeEditor?: ThemeEditor;
+  busy?: boolean;
   editor: EditorState;
+  undo: InputUndo;
   index: number;
   selected: Set<number>;
   scroll: number;
@@ -96,11 +144,34 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   readonly statusStream: Writable;
 
   private readonly modes: TerminalModeController;
+  private renderer: TuiRenderer | undefined;
+  private documentRenderer: TuiDocumentRenderer | undefined;
+  private readonly messageRows = new WeakMap<TranscriptEntry, { columns: number; maxProseWidth?: number;
+    syntaxHighlightingDisabled?: boolean; theme: BuiltinTheme; themeGeneration: number; progressGeneration: number; rows: RenderedRow[] }>();
+  private readonly renderEntryRows = (entry: TranscriptEntry, columns: number): RenderedRow[] => {
+    if (entry.streaming && !Zqn(this.prefersReducedMotion, this.windowsTerminal)) return [];
+    if (entry.duration && !this.showTurnDuration) return [];
+    const cached = this.messageRows.get(entry);
+    if (cached?.columns === columns && cached.maxProseWidth === this.maxProseWidth
+      && cached.syntaxHighlightingDisabled === this.syntaxHighlightingDisabled
+      && cached.theme === this.theme.current && cached.themeGeneration === this.theme.generation
+      && cached.progressGeneration === this.progressGeneration) return cached.rows;
+    this.documentRenderer ??= new TuiDocumentRenderer();
+    const rows = entry.duration ? this.documentRenderer.renderElement(jsx(ProgressCompletion, {message:entry.duration, formatTime:this.timeFormatter.format}, entry.duration.uuid), columns,
+      {theme:this.theme.current, themeOverrides:this.theme.overrides}) : this.documentRenderer.renderMarkdown(entry.markdown ?? entry.text, columns,
+      { speaker: entry.speaker, streaming: entry.streaming, messageKey: entry.messageKey,
+        hideTrailingLine: entry.hideTrailingLine, maxProseWidth: this.maxProseWidth,
+        syntaxHighlightingDisabled: this.syntaxHighlightingDisabled, theme: this.theme.current,
+        themeOverrides: this.theme.overrides });
+    this.messageRows.set(entry, { columns, maxProseWidth: this.maxProseWidth,
+      syntaxHighlightingDisabled: this.syntaxHighlightingDisabled, theme: this.theme.current,
+      themeGeneration: this.theme.generation, progressGeneration:this.progressGeneration, rows });
+    return rows;
+  };
   private readonly keys = new Keymap();
   private readonly wheelKeys = new Keymap();
   private readonly decoder: TerminalKeyDecoder;
   private escapeTimer: ReturnType<typeof setTimeout> | undefined;
-  private readonly killRing: KillRing = createKillRing();
   private readonly outputDecoder = new StringDecoder('utf8');
   private readonly statusDecoder = new StringDecoder('utf8');
   private readonly originalRaw: boolean;
@@ -113,29 +184,135 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private cursorColumn = 0;
 
   private editor: EditorState;
-  private stashedDraft: { text: string; cursor: number } | undefined;
+  /** The composer edit relay: the recovered `prompt.edit` hook, inert until a module hooks it. */
+  private readonly editRelay: ComposerEditRelay;
+  /** The runs a chain answer painted over the draft, held to the text they were painted for. */
+  private readonly decorations: PaintedDecorations;
+  /** Source snapshot buffer is cleared on submit/stash and owns its pending timer. */
+  private readonly undo = new InputUndo();
+  private readonly pasteOwner = new InputPaste();
+  private readonly gestures = new InputGestures();
+  private gestureHandling = false;
+  private stashedDraft: InputSnapshot | undefined;
+  private editorController: AbortController | undefined;
+  private editorSuspended = false;
+  /** Per-terminal focus state; close releases its rendering/clock subscribers. */
+  private readonly focus = new TerminalFocus();
+  private readonly inputHistory = new InputHistory(error => this.setStatus(`History: ${String(error)}`));
+  private historyBinding = 0;
+  private readonly vim = new InputVim();
+  private vimEnabled = false;
+  private vimHandling = false;
   /** Multi-click sequence state, copied from the recovered pointer handler. */
   private clickCountValue = 0;
   private lastClick: { time: number; line: number; column: number; screen: TuiScreen } | undefined;
   private screen: TuiScreen = 'chat';
   private transcript: TranscriptState;
+  /** One provider response owns this cumulative raw source; end/close releases it. */
+  private assistantMessage: { index?: number; source: string; key: string } | undefined;
+  private messageSequence = 0;
+  private prefersReducedMotion: boolean | undefined;
+  private showTurnDuration = true;
+  private progressSettings: ProgressDisplaySettings = {};
+  private progressGeneration = 0;
+  private timeFormatter = progressTime({});
+  private maxProseWidth: number | undefined;
+  private syntaxHighlightingDisabled: boolean | undefined;
+  private readonly theme: ThemeState;
+  /** Auto-theme query/mode owner follows saved or preview theme; close releases it. */
+  private systemTheme: SystemThemeMonitor | undefined;
+  /** User catalog and directory watcher are rebound with the session and closed here. */
+  private customThemes: CustomThemeCatalog | undefined;
+  private themeUserDir: string | undefined;
+  private readonly windowsTerminal = l$t();
+  private readonly previewStore = tLo();
+  /** Source coalescer owns one cancel function; completion/new response/close dispose it. */
+  private readonly previewCoalescer = clt({
+    scheduleTimeout: (flush: () => void, milliseconds: number) => {
+      const timer = setTimeout(() => {
+        if (this.closed) return;
+        try { flush(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
+      }, milliseconds);
+      return () => clearTimeout(timer);
+    },
+    onFlush: (text: string | null) => {
+      const displayed = Zqn(this.prefersReducedMotion, this.windowsTerminal) ? text : null;
+      this.previewStore.setRaw(displayed);
+      if (!this.closed && this.assistantMessage && displayed !== null) this.paintAssistantPreview();
+    },
+  });
+  /** Source progress clock and task expiry callbacks belong to this terminal. */
+  private readonly progress = new ThinkingProgress(() => {
+    if (this.closed) return;
+    try {this.render();} catch (error) {this.onError(error instanceof Error ? error : new Error(String(error)));}
+  });
+  private progressRenderer: TuiDocumentRenderer | undefined;
+  private progressHeight = 0;
+  private completedDuration: string | undefined;
+  /** Source status-line owner and document rows share this terminal's mount lifetime. */
+  private readonly statusLine = new StatusLine();
+  private statusLineSetting: import('./tui-statusline.js').StatusLineSetting | undefined;
+  private statusLineText: string | undefined;
+  private statusLineRenderer: TuiDocumentRenderer | undefined;
+  private statusLineRows: string[] = [];
+  private statusLineKey = '';
   private selection: SelectionState = createSelection();
   private dialog: ActiveDialog | undefined;
   private status = '';
   private running = false;
+  private sourceSearch: HistorySearch | undefined;
+  private sourcePicker: ScopedPicker | undefined;
+  private pickerQuery = createEditorState();
+  private readonly pickerUndo = new InputUndo();
+  private queryEditor = createEditorState();
+  private readonly queryUndo = new InputUndo();
+  private searchSessionId = '';
   private searchQuery = '';
   private searchIndex = -1;
-  private searchDraft = '';
+  private searchDraft: InputSnapshot = {text:'',cursor:0,pastedContents:{}};
 
   constructor(private readonly options: TuiOptions) {
     super();
+    this.vimEnabled=options.editorMode==='vim';this.vim.setRemaps(options.vimInsertModeRemaps);
+    this.prefersReducedMotion = options.prefersReducedMotion;
+    this.showTurnDuration = options.showTurnDuration !== false;
+    this.progressSettings = structuredClone(options.progressSettings ?? {});
+    this.timeFormatter = progressTime(this.progressSettings);
+    this.progress.setVerbs(this.progressSettings.spinnerVerbs);
+    this.progress.setReducedMotion(options.prefersReducedMotion === true);
+    this.focus.subscribe(() => {
+      this.progress.setFocused(this.focus.focused);
+      if (!this.focus.focused && this.selection.dragging) this.selection = reduceSelection(this.selection, { type: 'end' });
+      this.render();
+    });
+    this.maxProseWidth = options.maxProseWidth;
+    this.syntaxHighlightingDisabled = options.syntaxHighlightingDisabled;
+    this.theme = new ThemeState(options.theme);
     this.isTTY = Boolean(options.input.isTTY && options.output.isTTY && options.input.setRawMode);
     this.originalRaw = Boolean(options.input.isRaw);
     this.originalPaused = options.input.readableFlowing !== true;
     this.editor = createEditorState(options.historyLimit === 0 ? []
       : options.history?.slice(-Math.max(1, options.historyLimit ?? 100)));
     this.transcript = createTranscriptState();
-    this.decoder = new TerminalKeyDecoder(options.keybindings, options.maxPasteBytes, true);
+    // The composer's edit relay (research/ports/W45-chain-runner.md#slice-3): the copied `cue` hook
+    // with this product's composer as its host. It records nothing until a loaded module hooks
+    // `prompt.edit`, and from then on a rewrite the chain answers with lands in the draft here.
+    // The host's `carry` and `paint` are the source's own bindings: the edit is offered to the painted
+    // runs first, and an answer's runs are normalized against the text they answered before they are
+    // stored (`fS=(fp,qN)=>M.paint(Rke(fp,qN))`, chunk-24k7d6mw.js [831394,831404)).
+    this.decorations = paintedDecorations(() => this.editor.text, () => this.render());
+    this.editRelay = composerEditRelay({
+      read: () => ({ text: this.editor.text, cursor: this.editor.cursor }),
+      commit: box => {
+        this.editor = { ...this.editor, text: box.text, cursor: box.cursor };
+        this.publishDraft();
+        this.render();
+      },
+      carry: edit => this.decorations.carry(edit.before, edit.after),
+      paint: (runs, text) => this.decorations.paint(normalizedRuns(runs as readonly DecorationRun[], text)),
+      report: message => this.setStatus(message),
+    });
+    this.decoder = new TerminalKeyDecoder(options.keybindings, options.maxPasteBytes, true,true);
     this.modes = new TerminalModeController({ output: options.output,
       mouseTracking: options.mouseTracking ?? 'full',
       synchronizedUpdate: options.synchronizedUpdate ?? true });
@@ -173,7 +350,37 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     };
   }
 
-  get state(): Readonly<EditorState> { return { ...this.editor, history: [...this.editor.history] }; }
+  get state(): Readonly<EditorState> { return { ...this.editor, history: [...this.editor.history],
+    pastedContents:structuredClone(this.editor.pastedContents),historyPastes:structuredClone(this.editor.historyPastes),
+    historyDraftPastes:structuredClone(this.editor.historyDraftPastes),killRing: structuredClone(this.editor.killRing) }; }
+  async bindInputHistory(session: import('./session.js').Session): Promise<void> {
+    const generation = ++this.historyBinding;
+    this.sourceSearch?.close(); this.sourceSearch = undefined;
+    this.sourcePicker?.close(); this.sourcePicker = undefined;
+    this.queryUndo.clear(); this.queryEditor = createEditorState();
+    this.pickerUndo.clear(); this.pickerQuery = createEditorState();
+    if (this.screen === 'search') this.screen = 'chat';
+    this.searchSessionId = session.id;
+    const entries = await this.inputHistory.bind(session);
+    if (this.closed || generation !== this.historyBinding) return;
+    const limit = Math.max(0, this.options.historyLimit ?? 100), selected = entries.slice(-limit);
+    this.editor = { ...this.editor, history: limit ? selected.map(entry => entry.display) : [],
+      historyPastes: limit ? selected.map(entry => entry.pastedContents) : [], historyIndex: limit ? selected.length : 0,
+      historyDraft: this.editor.text, historyDraftPastes: structuredClone(this.editor.pastedContents) };
+    this.render();
+  }
+  async flushInputHistory(): Promise<void> { await this.inputHistory.finish(); }
+  bindStatusLine(session: import('./session.js').Session): void {
+    this.statusLineSetting = session.config.statusLine;
+    this.statusLineText = undefined; this.statusLineKey = '';
+    this.statusLine.bind(session, text => {
+      if (this.closed) return;
+      this.statusLineText = text; this.statusLineKey = '';
+      try { this.render(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
+    });
+    this.render();
+  }
+  async flushStatusLine(): Promise<void> { await this.statusLine.flush(); }
   get currentScreen(): TuiScreen { return this.screen; }
   get transcriptState(): TranscriptState { return this.transcript; }
 
@@ -192,12 +399,221 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
+  async editDraft(signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult> {
+    if (!this.isTTY || !this.started || this.closed || this.running || this.dialog || this.editorController) return {content:null};
+    this.sourceSearch?.cancel();
+    this.sourcePicker?.cancel();
+    const controller=new AbortController();this.editorController=controller;
+    const snapshot={text:this.editor.text,cursor:this.editor.cursor,pastedContents:structuredClone(this.editor.pastedContents)};
+    const suspend=()=>{
+      this.gestures.reset();this.vim.externalMutation();
+      this.editorSuspended=true;this.options.input.off('data',this.onData);this.options.input.pause();
+      if(this.escapeTimer){clearTimeout(this.escapeTimer);this.escapeTimer=undefined;}this.decoder.reset();this.keys.reset();
+      this.selection=createSelection();this.progress.pause(true);this.progress.setVisible(false);this.statusLine.setActive(false);this.systemTheme?.setActive(false);
+      this.modes.leave();this.options.input.setRawMode!(false);
+    };
+    const resume=()=>{
+      if(this.closed)return;
+      this.options.input.setRawMode!(true);this.options.input.on('data',this.onData);this.modes.enter();
+      this.editorSuspended=false;this.progress.pause(false);this.syncSystemTheme();
+      this.renderer?.invalidate();this.options.input.resume();this.render();
+    };
+    try {
+      const result=await editExternal(snapshot,{suspend,resume},AbortSignal.any([signal,controller.signal]),workspace);
+      if(!this.closed&&!signal.aborted&&!controller.signal.aborted&&result.content!==null&&result.content!==snapshot.text){
+        const text=result.content.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,'');
+        this.undo.record(snapshot.text,snapshot.cursor,{immediate:true},snapshot.pastedContents);
+        const pastedContents=referencedPastes(text,snapshot.pastedContents);
+        this.editor={...this.editor,text,cursor:text.length,pastedContents,historyIndex:this.editor.history.length,
+          historyDraft:text,historyDraftPastes:pastedContents};this.vim.reset();this.render();
+      }
+      return result;
+    } finally {if(this.editorSuspended)resume();if(this.editorController===controller)this.editorController=undefined;}
+  }
+
+  setEditorMode(mode?: EditorMode,remaps?:Record<string,unknown>): void {
+    if(this.vimEnabled!==(mode==='vim')){this.gestures.reset();this.vim.reset();}this.vimEnabled=mode==='vim';this.vim.setRemaps(remaps);this.render();
+  }
+
+  private handleVim(action: EditorAction): boolean {
+    const key=vimKey(action);if(!key)return false;this.vimHandling=true;const owner=this;
+    const bridge:VimBridge={get text(){return owner.editor.text;},get cursor(){return owner.editor.cursor;},
+      columns:Math.max(20,this.options.output.columns??80)-2,
+      change:(text,previous)=>{
+        const raw=text.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,'');
+        if(raw===this.editor.text)return;
+        this.undo.record(previous?.value??this.editor.text,previous?.cursorOffset??this.editor.cursor,{immediate:true},this.editor.pastedContents);
+        const pastedContents=referencedPastes(raw,this.editor.pastedContents);
+        this.editor={...this.editor,text:raw,pastedContents,historyIndex:this.editor.history.length,historyDraft:raw,historyDraftPastes:pastedContents};
+      },offset:cursor=>{this.editor={...this.editor,cursor};},register:text=>expandPastedText(text,this.editor.pastedContents),
+      fallback:event=>{if(action.type==='insert')this.dispatch({type:'insert',text:event.key});
+        else if(action.type==='key'){if(action.command)this.dispatch({type:action.command});else if(/^[^\u0000-\u001f]+$/u.test(event.key))this.dispatch({type:'insert',text:event.key});}
+        else this.dispatch(action);},undo:()=>this.dispatch({type:'undo'}),
+      history:direction=>this.dispatch({type:direction<0?'up':'down'}),search:()=>this.enterSearch(),
+    };
+    try{this.vim.key(key,bridge);}finally{this.vimHandling=false;}this.render();return true;
+  }
+
+  private handleGesture(key:'interrupt'|'eof'|'escape'):void{
+    this.gestureHandling=true;
+    try{this.gestures.key(key,{text:this.editor.text,pastedContents:structuredClone(this.editor.pastedContents),
+      clear:()=>{this.undo.clear();this.vim.reset();this.editor={...createEditorState(this.editor.history),historyPastes:this.editor.historyPastes,killRing:this.editor.killRing};},
+      delete:()=>this.dispatch({type:'delete'}),exit:()=>{this.close();this.emit('exit');},
+      history:(text,contents)=>{this.inputHistory.add({display:text,pastedContents:contents});const limit=Math.max(0,this.options.historyLimit??100);if(limit)this.editor={...this.editor,
+        history:[...this.editor.history,text].slice(-limit),historyPastes:[...this.editor.historyPastes,structuredClone(contents)].slice(-limit)};},
+      hint:()=>this.render()});}finally{this.gestureHandling=false;}
+    this.render();
+  }
+
   setRunning(running: boolean): void {
     this.running = running;
+    if (!running) this.progress.stop();
     this.dispatch({ type: 'running', value: running });
   }
 
-  setKeybindings(keybindings: Keybindings = {}): void { this.decoder.setKeybindings(keybindings); }
+  setProgress(event: AgentProgressEvent): void {
+    if (this.closed) return;
+    if (event.kind === 'start') this.progress.start(event.uuid, event.startedAt);
+    else if (event.kind === 'phase') {if (!this.progress.mode(event.mode)) return;}
+    else {
+      this.progress.stop();
+      if (event.reason !== 'error' && event.reason !== 'aborted') this.restoreTurnDuration(event.duration);
+    }
+    this.render();
+  }
+
+  setShowTurnDuration(value?: boolean): void {
+    const enabled = value !== false;
+    if (enabled === this.showTurnDuration) return;
+    this.showTurnDuration = enabled; this.selection = createSelection(); this.render();
+  }
+
+  setProgressSettings(settings: ProgressDisplaySettings): void {
+    if (this.closed || JSON.stringify(this.progressSettings) === JSON.stringify(settings)) return;
+    const view = this.viewportSize();
+    const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
+    this.progressSettings = structuredClone(settings); this.timeFormatter = progressTime(this.progressSettings);
+    this.progress.setVerbs(settings.spinnerVerbs); this.progressGeneration++;
+    this.selection = createSelection();
+    if (pinned) this.transcript = {...this.transcript, offset:Number.MAX_SAFE_INTEGER};
+    this.render();
+  }
+
+  setTasks(tasks: readonly TaskRecord[]): void {
+    if (this.closed) return;
+    this.progress.tasks(tasks); this.render();
+  }
+
+  pauseProgress(paused: boolean): void {this.progress.pause(paused);}
+
+  restoreTurnDuration(duration?: TurnDuration): void {
+    if (!duration || this.closed || this.completedDuration === duration.uuid) return;
+    this.completedDuration = duration.uuid;
+    this.append({kind:'system', text:'', duration});
+  }
+
+  setKeybindings(keybindings: Keybindings = {}): void { this.gestures.reset();this.decoder.setKeybindings(keybindings); }
+
+  setPrefersReducedMotion(value?: boolean): void {
+    if (this.prefersReducedMotion === value) return;
+    this.prefersReducedMotion = value;
+    this.progress.setReducedMotion(value === true);
+    this.previewStore.setRaw(Zqn(value, this.windowsTerminal) ? this.previewCoalescer.peek() : null);
+    if (this.assistantMessage && this.previewStore.getDerived().displayed !== null) this.paintAssistantPreview();
+    else { this.selection = createSelection(); this.render(); }
+  }
+
+  setMaxProseWidth(value?: number): void {
+    if (this.maxProseWidth === value) return;
+    const view = this.viewportSize();
+    const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
+    this.maxProseWidth = value;
+    this.selection = createSelection();
+    if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
+    this.render();
+  }
+
+  setSyntaxHighlightingDisabled(value?: boolean): void {
+    if (this.syntaxHighlightingDisabled === value) return;
+    const view = this.viewportSize();
+    const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
+    this.syntaxHighlightingDisabled = value;
+    this.selection = createSelection();
+    if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
+    this.render();
+  }
+
+  setTheme(value?: ThemeSetting): void {
+    const view = this.viewportSize();
+    const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
+    this.theme.reset(value);
+    this.syncSystemTheme();
+    this.selection = createSelection();
+    if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
+    this.render();
+  }
+
+  bindThemeCatalog(userDir?: string, workspace?: string, plugins?: import('./plugins.js').PluginConfig): void {
+    if (!this.isTTY || !this.started || this.closed) return;
+    this.customThemes ??= new CustomThemeCatalog(themes => {
+      if (this.closed) return;
+      const view = this.viewportSize();
+      const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
+      this.theme.setCustomThemes(themes); this.selection = createSelection();
+      if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
+      this.render();
+    }, message => { if (!this.closed) this.setStatus(message); });
+    this.themeUserDir = userDir;
+    this.customThemes.bind(userDir, workspace, plugins);
+  }
+
+  async getThemeChoices(): Promise<import('./terminal.js').TerminalPromptChoice[]> {
+    await this.customThemes?.ready();
+    return [...themeChoices, ...(this.customThemes?.choices() ?? []).map(choice => ({
+      label: choice.label, value: choice.value, description: choice.origin }))];
+  }
+
+  async editCustomTheme(reference: string | undefined, pick: (theme: ThemeSetting) => Promise<void>, signal: AbortSignal): Promise<void> {
+    await this.customThemes?.ready();
+    if (signal.aborted || this.closed) return;
+    const initial = reference?.startsWith('custom:') ? this.customThemes?.values.find(theme => theme.slug === reference.slice(7)) : undefined;
+    if (reference && !initial) throw new Error('Custom theme was removed');
+    const owner = new ThemeEditor(initial, this.theme.current, this.customThemes?.values ?? [], {
+      save: themeFileWriter(this.themeUserDir),
+      reload: async () => { await this.customThemes?.reload(); }, pick,
+      preview: overrides => { if (!this.closed) { this.theme.setPreviewOverrides(overrides); this.render(); } },
+      changed: () => { if (!this.closed) this.render(); },
+    });
+    try {
+      const completion = this.prompt({title:'Theme editor', message:'', allowText:true, themePreview:true}, signal);
+      if (this.dialog) { this.dialog.themeEditor = owner; this.dialog.editor = createEditorState();
+        this.dialog.editor.text = owner.mode === 'name' ? owner.name : ''; this.dialog.editor.cursor = this.dialog.editor.text.length; this.render(); }
+      await completion;
+    } finally {
+      owner.close(); await owner.flush();
+      if (!this.closed) { await this.customThemes?.reload(); this.render(); }
+    }
+  }
+
+  private syncSystemTheme(): void {
+    if (!this.isTTY || !this.started || this.closed || this.editorSuspended) return;
+    this.systemTheme ??= new SystemThemeMonitor(this.options.output, value => {
+      if (this.closed) return;
+      const view = this.viewportSize();
+      const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
+      this.theme.setSystemTheme(value);
+      this.selection = createSelection();
+      if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
+      this.render();
+    }, error => this.onError(error));
+    this.systemTheme.setActive(this.theme.automatic);
+  }
+
+  private previewDialogTheme(): void {
+    if (!this.dialog?.request.themePreview) return;
+    const value = parseTheme(this.dialogStep(this.dialog)?.choices?.[this.dialog.index]?.value);
+    if (value) { this.theme.previewTheme(value); this.syncSystemTheme(); }
+  }
 
   prompt(request: TerminalPromptRequest, signal: AbortSignal): Promise<TerminalPromptAnswer | undefined> {
     if (this.closed || signal.aborted) return Promise.resolve(undefined);
@@ -206,16 +622,25 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (Buffer.byteLength(JSON.stringify(request)) > 256 * 1024 || (request.choices?.length ?? 0) > 100) {
       return Promise.reject(new Error('Dialog exceeds its display budget'));
     }
+    this.sourceSearch?.cancel();
+    this.sourcePicker?.cancel();
     const snapshot = structuredClone(request);
+    this.gestures.reset();this.vim.externalMutation();
+    this.progress.pause(true);
     if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
     this.decoder.discardPending();
+    this.resetKillMode();
     const previousScreen = this.screen as Exclude<TuiScreen, 'dialog'>;
     return new Promise(resolve => {
       let settled = false;
       const finish = (answer?: TerminalPromptAnswer) => {
         if (settled) return;
         settled = true; signal.removeEventListener('abort', cancelled);
+        this.dialog?.themeEditor?.close();
+        this.dialog?.undo.clear();
+        if (snapshot.themePreview) { this.theme.cancelPreview(); this.syncSystemTheme(); }
         this.dialog = undefined; this.screen = previousScreen;
+        this.progress.pause(false);
         if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
         this.decoder.discardPending(); this.keys.reset(); this.render(); resolve(answer);
       };
@@ -223,18 +648,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.keys.reset(); this.selection = createSelection();
       const first = snapshot.groups?.[0] ?? snapshot;
       const choices = first.choices?.length ?? 0;
-      this.dialog = { request: snapshot, editor: createEditorState(),
+      this.dialog = { request: snapshot, editor: createEditorState(), undo: new InputUndo(),
         index: Math.max(0, Math.min(first.defaultIndex ?? 0, Math.max(0, choices - 1))),
         selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(), finish };
       this.screen = 'dialog'; signal.addEventListener('abort', cancelled, { once: true });
-      if (signal.aborted) cancelled(); else this.render();
+      if (signal.aborted) cancelled(); else { this.previewDialogTheme(); this.render(); }
     });
   }
 
   /** Zero-width hook effects bypass text layout and never change the input draft. */
   writeTerminalSequence(sequence: string): void {
     const validated = formatHookTerminalSequence(sequence);
-    if (this.isTTY && validated && this.started) this.options.output.write(validated);
+    if (this.isTTY && validated && this.started) {
+      this.options.output.write(validated); this.renderer?.invalidate();
+    }
   }
 
   start(): this {
@@ -251,6 +678,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.modes.enter();
         this.render();
         this.options.input.resume();
+        this.syncSystemTheme();
+        this.bindThemeCatalog(this.options.userDir, this.options.workspace, this.options.plugins);
       }
     } catch (error) { this.close(); throw error; }
     return this;
@@ -260,6 +689,18 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.sourceSearch?.close();this.sourceSearch=undefined;this.queryUndo.clear();this.queryEditor=createEditorState();
+    this.sourcePicker?.close();this.sourcePicker=undefined;this.pickerUndo.clear();this.pickerQuery=createEditorState();
+    this.editorController?.abort();this.gestures.reset();this.vim.close();this.focus.close();this.inputHistory.close();
+    this.editRelay.dispose();
+    this.undo.clear();
+    this.editor = {...this.editor,pastedContents:{},historyPastes:[],historyDraftPastes:{}};
+    this.stashedDraft = undefined; this.searchDraft = {text:'',cursor:0,pastedContents:{}};
+    this.progress.close(); this.progressRenderer?.close();
+    this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
+    this.assistantMessage = undefined;
+    this.previewCoalescer.dispose();
+    this.previewStore.setRaw(null);
     this.dialog?.finish();
     if (this.escapeTimer) clearTimeout(this.escapeTimer);
     this.decoder.reset(); this.keys.reset();
@@ -269,7 +710,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.options.input.off('error', this.onError);
     this.options.output.off('resize', this.onResize);
     try {
-      if (this.isTTY && this.started) this.modes.leave();
+      try {
+        try { this.customThemes?.close(); }
+        finally {
+          try { this.systemTheme?.close(); }
+          finally { try { this.documentRenderer?.close(); } finally { this.renderer?.close(); } }
+        }
+      } finally { if (this.isTTY && this.started) this.modes.leave(); }
     } finally {
       try {
         if (this.changedRaw) { this.changedRaw = false; this.options.input.setRawMode!(this.originalRaw); }
@@ -277,17 +724,89 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
   }
 
-  /** Append already-decoded text; used by the transcript sink. */
+  beginAssistantMessage(): void {
+    this.endAssistantMessage();
+    this.previewCoalescer.clear();
+    this.previewStore.setTransformed(null);
+    this.previewStore.setRewrite(null);
+    this.previewStore.setSalvage(null, false);
+    this.assistantMessage = { source: '', key: String(++this.messageSequence) };
+  }
+
+  /** Raw text is retained immediately; source clt publishes the aggregate every 100ms. */
+  writeAssistantText(text: string): void {
+    if (!this.isTTY || !this.started || this.closed) { this.options.output.write(text); return; }
+    if (!text) return;
+    if (!this.assistantMessage) this.beginAssistantMessage();
+    const message = this.assistantMessage!;
+    message.source += text;
+    this.progress.text(text);
+    this.previewCoalescer.apply(() => message.source);
+  }
+
+  private paintAssistantPreview(completed = false): void {
+    const message = this.assistantMessage;
+    if (!message || !message.source || this.closed) return;
+    const displayed = completed ? message.source : this.previewStore.getDerived().displayed;
+    if (!displayed) return;
+    const view = this.viewportSize();
+    const total = this.transcriptTotal(view.columns);
+    const pinned = this.transcript.offset >= Math.max(0, total - view.rows);
+    const entry: TranscriptEntry = { kind: 'assistant', text: renderPreviewMarkdown(displayed),
+      markdown: displayed, speaker: true, ...(!completed ? { streaming: true, messageKey: message.key,
+        hideTrailingLine: this.previewStore.getDerived().hideTrailingLine } : {}) };
+    if (message.index === undefined) {
+      message.index = this.transcript.entries.length;
+      this.transcript = { ...this.transcript, entries: [...this.transcript.entries, entry] };
+    } else {
+      const entries = [...this.transcript.entries]; entries[message.index] = entry;
+      this.transcript = { ...this.transcript, entries };
+    }
+    if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
+    this.selection = createSelection();
+    this.render();
+  }
+
+  endAssistantMessage(): void {
+    this.previewCoalescer.dispose();
+    try { this.paintAssistantPreview(true); }
+    finally {
+      this.assistantMessage = undefined;
+      this.previewStore.setRaw(null);
+    }
+  }
+
+  /** Append already-decoded command text; model deltas use writeAssistantText. */
   write(text: string): boolean {
     if (!this.isTTY || !this.started || this.closed) return this.options.output.write(text);
     if (text) this.append({ kind: 'assistant', text: text.replace(/\n$/, '') });
     return true;
   }
 
-  dispatch(action: EditorAction): void {
-    if (this.closed) return;
-    const transition = reduceEditor(this.editor, action, this.options);
+  dispatch(action: EditorAction, sequence?: string): void {
+    if (this.closed || this.editorSuspended || this.editorController) return;
+    if (action.type === 'focus') { this.focus.set(action.focused); return; }
+    if (action.type === 'search' && !this.sourceSearch?.snapshot.searching) { this.enterSearch(); return; }
+    // The open picker owns the keyboard: source gLt handles its own keys and hands the rest to its
+    // query editor, so no key that reaches dispatch while it is up may edit the draft or submit.
+    // Same route shape as the line owner's `handleLinePicker` call.
+    if (action.type !== 'running' && this.handleSourcePicker(action)) return;
+    if (action.type !== 'running' && this.handleSourceSearch(action)) return;
+    if(this.options.sourceInputGestures&&this.options.idleInterrupt===undefined&&!this.gestureHandling&&!this.editor.running
+      &&!this.dialog&&(action.type==='interrupt'||action.type==='eof')){this.handleGesture(action.type);return;}
+    if(action.type==='running'||action.type==='submit'||action.type==='return')this.gestures.reset();
+    if(action.type==='paste')this.vim.externalMutation();
+    if(this.vimEnabled&&!this.vimHandling&&!this.dialog&&action.type!=='running'
+      &&!(action.type==='interrupt'&&this.editor.running)&&this.handleVim(action))return;
+    const transition = reduceEditorWithUndo(this.editor, action, { ...this.options,
+      navigationColumns: Math.max(20, this.options.output.columns ?? 80) - 2,
+      pasteOwner:this.pasteOwner,terminalRows:this.options.output.rows ?? 24 }, this.undo);
+    if (transition.effects.some(effect => effect.type === 'submit')) this.inputHistory.add({display:this.editor.text,pastedContents:this.editor.pastedContents});
+    const draftBefore = { text: this.editor.text, cursor: this.editor.cursor };
     this.editor = transition.state;
+    this.publishDraft();
+    this.relayEdit(action, draftBefore, sequence);
+    if(transition.effects.some(effect=>effect.type==='submit')||action.type==='interrupt'&&!this.editor.running)this.vim.reset();
     const submitted = transition.effects.find(effect => effect.type === 'submit');
     if (submitted) this.transcript = reduceTranscript(this.transcript,
       { type: 'append', entry: { kind: 'user', text: submitted.text } },
@@ -301,14 +820,62 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
   }
 
+  /** The composer's publish clause for a draft that moved: runs painted over other text stop being
+   *  this draft's, and the paint for the text being left is carried for the edit that follows. */
+  private publishDraft(): void {
+    this.decorations.publish(this.editor.text);
+  }
+
+  /** Relay one key-driven edit to the chain (source `YHo.record`): only in the chat composer, only
+   *  while a loaded module hooks `prompt.edit`, and only when the key actually changed the draft.
+   *  Everything else the draft does — a submit clearing it, a recalled history entry, a restored
+   *  draft — is not a key the chain has an event for, so it is not recorded. */
+  private relayEdit(action: EditorAction, before: { text: string; cursor: number }, sequence?: string): void {
+    if (!this.editRelay.isRecording() || this.screen !== 'chat') return;
+    const key = this.editKey(action, sequence);
+    if (!key) return;
+    const after = { text: this.editor.text, cursor: this.editor.cursor };
+    if (after.text === before.text && after.cursor === before.cursor) return;
+    this.editRelay.record({ before, after, key });
+  }
+
+  /** The key event an edit is relayed under, in the shape `Xo` reads: a single printable character
+   *  is the `key`; anything else is the named key, which for this product is the editor action the
+   *  key resolved to (its own name for that key), or `paste`/`tab` for a multi-character insert. */
+  private editKey(action: EditorAction, sequence?: string): ChainRelayKey | undefined {
+    const raw = sequence ?? (action.type === 'insert' ? action.text : undefined);
+    if (raw === undefined) return undefined;
+    if ([...raw].length === 1 && /^[^\u0000-\u001f\u007f]+$/u.test(raw)) return { key: raw, name: '' };
+    if (action.type === 'insert') return { key: '', name: raw === '\t' ? 'tab' : 'paste' };
+    return { key: '', name: action.type };
+  }
+
   private viewportSize(): { columns: number; rows: number } {
     const columns = Math.max(20, this.options.output.columns ?? 80);
     const rows = Math.max(4, this.options.output.rows ?? 24);
-    const promptRows = Math.max(1, Math.min(this.options.promptRows ?? 1, rows - 3));
-    return { columns, rows: rows - promptRows - 2 };
+    const promptRows = this.inputLayout(columns, rows).lines.length;
+    return { columns, rows: Math.max(0, rows - promptRows - 3 - this.progressHeight - this.statusLineRows.length) };
   }
 
-  private transcriptTotal(columns: number): number { return transcriptLines(this.transcript, columns).length; }
+  private inputLayout(columns: number, rows: number) {
+    const maximum = Math.max(1, Math.min(this.options.promptRows ?? Math.max(3, Math.floor(rows / 2) - 5), rows - 4));
+    const body = layoutInput(this.editor, columns - 2, maximum,this.vimEnabled?{mode:this.vim.mode,anchor:this.vim.anchor}:undefined,this.focus.focused);
+    // The composer's own highlights are built first (the `/btw` notice, the keyword rainbows, the
+    // ghost text), then a chain answer's runs are overlaid on them, then the input maps the result onto
+    // the rendered rows: `composerHighlights` is the source's span assembly and its `w9r` overlay, and
+    // `highlightRows` is the input's own caret filter and segmentation.
+    const rendered = body.lines.join('\n');
+    const highlights = composerHighlights({
+      value: this.editor.text, caret: this.editor.cursor, storeValue: this.editor.text,
+      isModalOverlayActive: this.dialog !== undefined,
+    }, this.decorations.runs(this.editor.text));
+    const lines: PromptLine[] = highlights.length === 0 ? body.lines
+      : highlightRows(highlights, rendered, body.rowStartOffsets, this.editor.cursor)
+          .map(row => (row.length === 0 ? '' : row));
+    return { ...body, lines, cursorColumn: body.cursorColumn + 2 };
+  }
+
+  private transcriptTotal(columns: number): number { return transcriptLines(this.transcript, columns, this.renderEntryRows).length; }
 
   private contexts(): TuiContext[] {
     return this.screen === 'chat' ? ['Chat', 'Scroll', 'Global'] : contextStack({ screen: this.screen });
@@ -317,19 +884,28 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private readonly onData = (chunk: string | Buffer) => {
     if (this.closed) return;
     if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
+    let handedOff = false;
     for (const action of this.decoder.push(chunk)) {
-      if (this.closed) return;
+      if (this.closed || this.editorController) return;
+      if (action.type === 'terminalResponse') { this.systemTheme?.onResponse(action.response); continue; }
+      if (action.type === 'focus') { this.focus.set(action.focused); continue; }
+      if (handedOff) continue;
+      if (!this.focus.focused && (action.type !== 'mouse' || action.action === 'press')) this.focus.set(true);
       if (this.dialog) {
         const owner = this.dialog;
-        this.handleDialogAction(action);
-        if (this.dialog !== owner) { this.decoder.discardPending(); return; }
+        this.handleDialogAction(action.type==='return'?{type:action.meta||action.shift?'newline':'submit'}:action);
+        if (this.dialog !== owner) { this.decoder.discardPending(); handedOff = true; }
         continue;
+      }
+      if (this.handleSourceSearch(action)) continue;
+      if(action.type==='return'&&(this.keys.pendingChord||this.screen!=='chat')){
+        this.routeKey(action.sequence,action.meta||action.shift?'newline':'submit');continue;
       }
       if (action.type === 'mouse') { this.handleMouse(action); continue; }
       if (action.type === 'key') { this.routeKey(action.sequence, action.command); continue; }
       if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord)) {
         for (const character of action.text) {
-          if (this.closed) return;
+          if (this.closed || this.editorController) return;
           this.routeKey(character);
         }
         continue;
@@ -337,14 +913,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       // Explicit local keybinding commands and paste keep their decoded intent.
       if (action.type.startsWith('extend') || action.type === 'selectionCopy') {
         this.routeKey(chordSequence(action)!);
-      } else this.dispatch(action);
+      } else this.dispatch(action, action.type === 'insert' ? action.text : undefined);
     }
     if (!this.closed && this.decoder.pendingStandaloneEscape) {
       this.escapeTimer = setTimeout(() => {
         this.escapeTimer = undefined;
         this.decoder.flushEscape();
+        if (!this.focus.focused) this.focus.set(true);
         if (this.dialog) this.handleDialogAction({ type: 'key', sequence: '\x1b' });
-        else this.routeKey('\x1b');
+        else if (!this.handleSourceSearch({type:'key',sequence:'\x1b'})) this.routeKey('\x1b');
       }, 50);
       this.escapeTimer.unref?.();
     }
@@ -360,9 +937,68 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return dialog.step >= groups.length ? undefined : groups[dialog.step];
   }
 
+  private handleThemeEditorAction(dialog: ActiveDialog, action: EditorAction): void {
+    const owner = dialog.themeEditor!;
+    const command = action.type === 'key' ? action.command : action.type;
+    const sequence = action.type === 'key' ? action.sequence : '';
+    const resetInput = (value = '') => {
+      dialog.undo.clear(); dialog.editor = createEditorState();
+      dialog.editor.text = value; dialog.editor.cursor = value.length; dialog.scroll = 0;
+    };
+    if (command === 'interrupt' || command === 'eof') { dialog.finish(); return; }
+    if (sequence === '\x1b') {
+      if (owner.token !== null) { owner.cancelValue(); resetInput(); this.render(); }
+      else dialog.finish();
+      return;
+    }
+    if (dialog.busy) return;
+    const tokens = owner.filtered(dialog.editor.text);
+    if (owner.mode === 'colors' && owner.token === null) {
+      if (command === 'up' || command === 'down') {
+        dialog.index = tokens.length ? (dialog.index + (command === 'up' ? -1 : 1) + tokens.length) % tokens.length : 0;
+        this.render(); return;
+      }
+      if (sequence === '\t') {
+        if (tokens[dialog.index]) owner.reset(tokens[dialog.index]!);
+        this.render(); return;
+      }
+    }
+    if (command === 'submit') {
+      if (owner.mode === 'name') {
+        if (!dialog.editor.text.trim()) { dialog.error = 'Enter a theme name'; this.render(); return; }
+        owner.create(dialog.editor.text); resetInput(); dialog.busy = true;
+        void owner.flush().then(() => { if (this.dialog === dialog) { dialog.busy = false; this.render(); } });
+      } else if (owner.token !== null) {
+        if (!owner.accept()) { dialog.error = 'Accepts rgb(r,g,b), #rrggbb, ansi256(n), or ansi:name'; this.render(); return; }
+        resetInput(); this.render();
+      } else if (tokens[dialog.index]) { owner.edit(tokens[dialog.index]!); resetInput(owner.value); this.render(); }
+      return;
+    }
+    const editorAction = action.type === 'key' ? action.command ? {type:action.command} as EditorAction : undefined : action;
+    if (!editorAction) return;
+    const policy = {...this.options, maxPasteBytes:32768, navigationColumns:Math.max(20, this.options.output.columns ?? 80) - 2};
+    const next = editorAction.type === 'undo' ? reduceEditorWithUndo(dialog.editor, editorAction, policy, dialog.undo)
+      : reduceEditor(dialog.editor, editorAction, policy);
+    if (next.state.text.length > 256 || Buffer.byteLength(next.state.text) > 1024 || next.effects.some(effect => effect.type === 'pasteRejected')) {
+      dialog.error = 'Theme input exceeds its display budget'; this.render(); return;
+    }
+    if (editorAction.type !== 'undo' && next.state.text !== dialog.editor.text) dialog.undo.record(dialog.editor.text, dialog.editor.cursor);
+    const changed = next.state.text !== dialog.editor.text;
+    dialog.editor = next.state; dialog.error = undefined;
+    if (owner.token !== null) owner.change(dialog.editor.text);
+    else if (changed) dialog.index = 0;
+    this.render();
+  }
+
   private handleDialogAction(action: EditorAction): void {
     const dialog = this.dialog;
     if (!dialog || action.type === 'mouse') return;
+    if (dialog.themeEditor) { this.handleThemeEditorAction(dialog, action); return; }
+    if (dialog.request.themeEdit && action.type === 'key' && action.sequence === '\x05') {
+      const selected = dialog.request.choices?.[dialog.index]?.value;
+      if (selected?.startsWith('custom:')) dialog.finish({selected:[selected], themeEdit:true});
+      return;
+    }
     const command = action.type === 'key' ? action.command : action.type;
     const sequence = action.type === 'key' ? action.sequence : '';
     if (command === 'interrupt' || command === 'eof' || sequence === '\x1b') { dialog.finish(); return; }
@@ -380,11 +1016,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const count = choices.length + (step?.allowText ? 1 : 0);
       const delta = command === 'up' || sequence === '\x1b[Z' ? -1 : 1;
       dialog.index = (dialog.index + delta + count) % count;
-      dialog.followFocus = true; this.render(); return;
+      dialog.followFocus = true; this.previewDialogTheme(); this.render(); return;
     }
-    if (choices.length && !textEntry && (command === 'home' || command === 'end')) {
-      dialog.index = command === 'home' ? 0 : choices.length - 1;
-      dialog.followFocus = true; this.render(); return;
+    if (choices.length && !textEntry && (command === 'home' || command === 'end'
+      || command === 'logicalHome' || command === 'logicalEnd')) {
+      dialog.index = command === 'home' || command === 'logicalHome' ? 0 : choices.length - 1;
+      dialog.followFocus = true; this.previewDialogTheme(); this.render(); return;
     }
     if (command === 'submit') {
       if (textEntry) {
@@ -414,10 +1051,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const editorAction = action.type === 'key' ? action.command ? { type: action.command } as EditorAction
         : sequence === '\t' ? { type: 'insert', text: '    ' } as EditorAction : undefined : action;
       if (editorAction) {
-        const next = reduceEditor(dialog.editor, editorAction, { ...this.options, maxPasteBytes: 32 * 1024 });
+        const policy = { ...this.options, maxPasteBytes: 32 * 1024,
+          navigationColumns: Math.max(20, this.options.output.columns ?? 80) - 2 };
+        const next = editorAction.type === 'undo' ? reduceEditorWithUndo(dialog.editor, editorAction, policy, dialog.undo)
+          : reduceEditor(dialog.editor, editorAction, policy);
         if (next.state.text.length > limit) {
           dialog.error = `Answer exceeds ${limit} characters`;
         } else if (Buffer.byteLength(next.state.text) <= 32 * 1024 && !next.effects.some(effect => effect.type === 'pasteRejected')) {
+          if (editorAction.type !== 'undo' && next.state.text !== dialog.editor.text)
+            dialog.undo.record(dialog.editor.text, dialog.editor.cursor);
           dialog.editor = next.state; dialog.error = undefined;
         } else dialog.error = 'Answer exceeds 32768 bytes';
       }
@@ -426,20 +1068,30 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   private routeKey(sequence: string, command?: EditorCommand): void {
-    if (this.closed || this.handleKey(sequence, command)) return;
-    if (command) this.dispatch({ type: command });
-    else if (sequence === '\t') this.dispatch({ type: 'insert', text: '    ' });
-    else if (/^[^\u0000-\u001f\u007f]+$/u.test(sequence)) this.dispatch({ type: 'insert', text: sequence });
+    if (this.closed) return;
+    if ((!command || !['yank', 'yankPop', 'killLineStart', 'killLineEnd', 'killWordForward', 'killWordBackward', 'killWORDBackward'].includes(command))
+      && !this.keys.pendingChord) this.resetKillMode();
+    if(sequence==='\x1b'&&this.keys.pendingChord){this.handleKey(sequence,command);return;}
+    if(sequence==='\x1b'&&this.options.sourceInputGestures&&this.screen==='chat'&&!this.vimEnabled&&!this.running){
+      this.handleGesture('escape');return;
+    }
+    if (sequence!=='\x1b' && this.handleKey(sequence, command)) return;
+    if(this.vimEnabled&&this.screen==='chat'&&!this.dialog&&!this.vimHandling
+      && this.handleVim({type:'key',sequence,command}))return;
+    if (sequence==='\x1b' && this.handleKey(sequence, command)) return;
+    if (command) this.dispatch({ type: command }, sequence);
+    else if (sequence === '\t') this.dispatch({ type: 'insert', text: '    ' }, sequence);
+    else if (/^[^\u0000-\u001f\u007f]+$/u.test(sequence)) this.dispatch({ type: 'insert', text: sequence }, sequence);
   }
 
   private handleKey(sequence: string, command?: EditorCommand): boolean {
-    if (command === 'newline') { this.dispatch({ type: command }); return true; }
+    if (command === 'newline') { this.dispatch({ type: command }, sequence); return true; }
     const outcome = this.keys.push(sequence, this.contexts());
     if (outcome.kind === 'pending') return true;
     if (outcome.kind === 'none') {
       if (outcome.replay) {
         const replay = new TerminalKeyDecoder().push(outcome.replay);
-        for (const action of replay) this.dispatch(action);
+        for (const action of replay) this.dispatch(action, action.type === 'insert' ? action.text : undefined);
         return this.handleKey(sequence, command);
       }
       return false;
@@ -510,22 +1162,35 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Rendered text of one absolute transcript row, when it is on screen. */
   private renderedRow(line: number): string | undefined {
     const view = this.viewportSize();
-    const viewport = layoutTranscript(this.transcript, view.columns, view.rows);
+    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows);
     return viewport.lines[line - viewport.offset];
   }
 
   /** Map a terminal coordinate to the transcript line and cell it lands on. */
   private anchorAt(col: number, row: number): SelectionAnchor | null {
     const view = this.viewportSize();
-    const viewport = layoutTranscript(this.transcript, view.columns, view.rows);
+    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows);
     const text = viewport.lines[row - 1];
     if (text === undefined) return null;
     return { line: row - 1 + viewport.offset, column: selectionColumn(text, col - 1) };
   }
 
+  private resetKillMode(): void {
+    this.editor = { ...this.editor, killRing: reduceKillRing(this.editor.killRing, { type: 'interrupt' }) };
+  }
+
   /** Actions with a local counterpart are handled; the rest are reported as unbound. */
   private applyAction(action: string): boolean {
     this.emit('action', action);
+    // Source hands the open picker the whole keyboard: its Global shortcuts must not run while it
+    // is up. Map the three that matter onto the picker's own actions and swallow the rest.
+    if (this.sourcePicker?.snapshot.searching) {
+      if (action === 'app:interrupt') return this.handleSourcePicker('historySearch:cancel');
+      if (action === 'history:search') return this.handleSourcePicker('historySearch:next');
+      if (action.startsWith('historySearch:')) return this.handleSourcePicker(action);
+      return true;
+    }
+    if (action !== 'chat:defaultToNewerModel') this.resetKillMode();
     switch (action) {
       case 'selection:copy': this.copySelection(); return true;
       case 'selection:extendLeft': this.extendSelection(-1, 0); return true;
@@ -535,7 +1200,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       case 'selection:extendLineStart': this.extendSelection(-Infinity, 0); return true;
       case 'selection:extendLineEnd': this.extendSelection(Infinity, 0); return true;
       case 'app:interrupt': this.dispatch({ type: 'interrupt' }); return true;
-      case 'app:exit': this.close(); this.emit('exit'); return true;
+      case 'app:exit':
+        if(this.options.sourceInputGestures)this.dispatch({type:'eof'});else{this.close();this.emit('exit');}return true;
       case 'app:toggleTranscript':
         this.screen = this.screen === 'transcript' ? 'chat' : 'transcript';
         this.render(); return true;
@@ -554,35 +1220,41 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.render(); return true;
       }
       case 'history:search': this.enterSearch(); return true;
-      case 'historySearch:next': this.nextSearchMatch(); return true;
-      case 'historySearch:accept': case 'historySearch:cancel': this.leaveSearch(false); return true;
-      case 'historySearch:execute': this.leaveSearch(true); return true;
+      case 'historySearch:next': if(this.handleSourcePicker(action))return true;if(this.sourceSearch?.snapshot.searching)this.sourceSearch.action(action);else this.nextSearchMatch();return true;
+      case 'historySearch:accept': case 'historySearch:cancel': if(this.handleSourcePicker(action))return true;if(this.sourceSearch?.snapshot.searching)this.sourceSearch.action(action);else this.leaveSearch(false);return true;
+      case 'historySearch:execute': if(this.sourceSearch?.snapshot.searching)this.sourceSearch.action(action);else this.leaveSearch(true);return true;
+      case 'historySearch:cycleScope': return this.handleSourcePicker(action);
       case 'chat:submit': this.dispatch({ type: 'submit' }); return true;
       case 'chat:newline': this.dispatch({ type: 'newline' }); return true;
+      case 'chat:undo': this.dispatch({ type: 'undo' }); return true;
       case 'chat:clearInput':
-        this.editor = { ...createEditorState(this.editor.history), running: this.editor.running };
+        this.undo.clear();this.gestures.reset();this.vim.reset();
+        this.editor = { ...createEditorState(this.editor.history), historyPastes:this.editor.historyPastes,
+          running: this.editor.running, killRing: this.editor.killRing };
         this.render(); return true;
       case 'chat:stash': this.stashDraft(); return true;
-      case 'chat:modelPicker': case 'chat:thinkingToggle': case 'app:toggleTodos': return true;
-      case 'chat:undo': this.undoKill(); return true;
+      case 'chat:modelPicker': case 'chat:thinkingToggle': case 'app:toggleTodos': case 'chat:externalEditor': return true;
       default: return false;
     }
   }
 
   private stashDraft(): void {
-    const current = this.editor.text.trim() ? { text: this.editor.text, cursor: this.editor.cursor } : undefined;
+    const current = this.editor.text.trim() ? { text:this.editor.text,cursor:this.editor.cursor,
+      pastedContents:structuredClone(this.editor.pastedContents) } : undefined;
     const restored = this.stashedDraft;
     if (!current && !restored) return;
-    this.stashedDraft = current;
+    this.undo.clear();
+    this.stashedDraft = current;this.gestures.reset();this.vim.reset();
     this.editor = { ...this.editor, text: restored?.text ?? '', cursor: restored?.cursor ?? 0,
-      historyIndex: this.editor.history.length, historyDraft: restored?.text ?? '' };
+      pastedContents:structuredClone(restored?.pastedContents ?? {}),
+      historyIndex: this.editor.history.length, historyDraft: restored?.text ?? '',historyDraftPastes:structuredClone(restored?.pastedContents ?? {}) };
     this.setStatus(restored ? current ? 'drafts swapped' : 'draft restored' : 'draft stashed');
   }
 
   /** Move the selection focus by a line/cell delta, clamping to the transcript. */
   private extendSelection(dx: number, dy: number): void {
     const view = this.viewportSize();
-    const lines = transcriptLines(this.transcript, view.columns);
+    const lines = transcriptLines(this.transcript, view.columns, this.renderEntryRows);
     if (!lines.length) return;
     const from = this.selection.focus ?? this.selection.anchor ?? this.anchorAt(1, 1)!;
     if (!this.selection.anchor) this.selection = reduceSelection(this.selection, { type: 'start', at: from });
@@ -591,7 +1263,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const column = !Number.isFinite(dx) ? selectionColumn(text, dx < 0 ? 0 : Infinity)
       : dy ? selectionColumn(text, from.column) : moveSelectionColumn(text, from.column, dx);
     this.selection = reduceSelection(this.selection, { type: 'extend', to: { line, column } });
-    const viewport = layoutTranscript(this.transcript, view.columns, view.rows);
+    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows);
     if (line < viewport.offset) this.transcript = { ...this.transcript, offset: line };
     else if (line >= viewport.offset + view.rows) this.transcript = { ...this.transcript, offset: line - view.rows + 1 };
     this.render();
@@ -600,7 +1272,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Copy the span through OSC 52, then take it down as the recovered app does. */
   private copySelection(): void {
     const view = this.viewportSize();
-    const rows = renderedTranscriptRows(this.transcript, view.columns);
+    const rows = renderedTranscriptRows(this.transcript, view.columns, this.renderEntryRows);
     const text = selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
     if (!text) return;
     let payload: string;
@@ -611,10 +1283,123 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.setStatus('copy request sent');
   }
 
+  private ensureSourceSearch(): HistorySearch {
+    return this.sourceSearch ??= new HistorySearch({
+      read: () => this.inputHistory.readEntries(), sessionId: () => this.searchSessionId,allocator:this.pasteOwner.allocator,
+      carriers: () => [this.editor.text,...this.editor.history,this.stashedDraft?.text ?? '',this.searchDraft.text],
+      report: error => this.setStatus(`History: ${String(error)}`),
+      changed: snapshot => this.publishSearch(snapshot),
+      submit: entry => {
+        if (this.closed) return;
+        this.editor = {...this.editor,text:entry.display,cursor:entry.display.length,pastedContents:structuredClone(entry.pastedContents)};
+        this.dispatch({type:'submit'});
+      },
+    });
+  }
+  private publishSearch(snapshot: SearchSnapshot): void {
+    if (this.closed || !this.sourceSearch) return;
+    this.screen = snapshot.searching ? 'search' : 'chat';
+    this.editor = {...this.editor,text:snapshot.text,cursor:snapshot.cursor,pastedContents:snapshot.pastedContents};
+    if (!snapshot.searching) {this.queryUndo.clear();this.queryEditor=createEditorState();}
+    else if(snapshot.query!==this.queryEditor.text)this.sourceSearch.queryCursor=snapshot.query.length;
+    this.render();
+  }
+  private handleSourceSearch(action: EditorAction): boolean {
+    if (!this.sourceSearch?.snapshot.searching) return false;
+    const sequence = action.type === 'key' ? action.sequence : action.type === 'return' ? action.sequence : '';
+    const command = action.type === 'key' ? action.command : action.type;
+    const operation = command === 'search' || sequence === '\u0012' ? 'historySearch:next'
+      : command === 'interrupt' || sequence === '\u0003' ? 'historySearch:cancel'
+      : sequence === '\x1b' || sequence === '\t' ? 'historySearch:accept'
+      : command === 'submit' || command === 'return' ? 'historySearch:execute' : undefined;
+    if (operation) {this.sourceSearch.action(operation);return true;}
+    if (command === 'backspace' && this.sourceSearch.backspace()) return true;
+    if (command === 'eof') {this.sourceSearch.cancel();return false;}
+    const edit = action.type === 'key' ? action.command ? {type:action.command} as EditorAction : undefined : action;
+    if (!edit || edit.type === 'mouse' || edit.type === 'terminalResponse') return true;
+    const next = reduceEditorWithUndo(this.queryEditor,edit,{navigationColumns:Math.max(20,this.options.output.columns ?? 80),
+      maxPasteBytes:this.options.maxPasteBytes,historyLimit:0},this.queryUndo);
+    this.queryEditor = next.state;
+    this.sourceSearch.queryCursor = this.queryEditor.cursor;
+    this.sourceSearch.query(this.queryEditor.text);this.render();return true;
+  }
+  private ensureSourcePicker(): ScopedPicker {
+    return this.sourcePicker ??= new ScopedPicker({
+      read: scope => this.inputHistory.readTimestamped(scope),
+      report: error => this.setStatus(`History: ${String(error)}`),
+      changed: snapshot => this.publishPicker(snapshot),
+    });
+  }
+  private publishPicker(snapshot: ScopePickerSnapshot): void {
+    if (this.closed || !this.sourcePicker) return;
+    this.screen = snapshot.searching ? 'search' : 'chat';
+    // The picker owns the draft while it is open. Once it closes, a later cancel must not restore
+    // the pre-picker draft over the row the user just accepted, so the draft is retired with it.
+    if (!snapshot.searching) {this.pickerUndo.clear();this.pickerQuery=createEditorState();this.searchDraft={text:'',cursor:0,pastedContents:{}};}
+    else if (snapshot.query !== this.pickerQuery.text) this.sourcePicker.queryCursor = this.pickerQuery.cursor;
+    this.render();
+  }
+  /** Source Kse returns a scoped picker row only through onSelect; its resolver is awaited here. */
+  private async applyPickerRow(): Promise<void> {
+    const picker = this.sourcePicker;
+    if (!picker) return;
+    const entry = await picker.chosenEntry();
+    if (!entry || this.closed) return;
+    this.editor = {...this.editor,text:entry.display,cursor:entry.display.length,pastedContents:structuredClone(entry.pastedContents)};
+    this.render();
+  }
+  private handleSourcePicker(action: EditorAction | string): boolean {
+    const picker = this.sourcePicker;
+    if (!picker?.snapshot.searching) return false;
+    if (typeof action === 'string') {
+      if (action === 'historySearch:cycleScope') { picker.cycleScope(); return true; }
+      if (action === 'historySearch:next') { picker.move(-1); return true; }
+      if (action === 'historySearch:cancel') { picker.cancel(); return true; }
+      // Source gLt return/tab both call `onSelect(<focused row>)`; the HistorySearch table names
+      // enter `historySearch:execute`, so both actions select into the prompt and never run it.
+      if (action === 'historySearch:accept' || action === 'historySearch:execute') { if(picker.accept())void this.applyPickerRow(); return true; }
+      return false;
+    }
+    const sequence = action.type === 'key' ? action.sequence : action.type === 'return' ? action.sequence : '';
+    const command = action.type === 'key' ? action.command : action.type;
+    if (command === 'search' || sequence === '\u0013') { picker.cycleScope(); return true; }
+    if (command === 'interrupt' || sequence === '\u0003') { picker.cancel(); return true; }
+    if (sequence === '\t' || sequence === '\x1b') { if(picker.accept())void this.applyPickerRow(); return true; }
+    // Source gLt swallows return/tab when its window holds no row: no selection, no submit, no close.
+    if (command === 'submit' || command === 'return') { if(picker.accept())void this.applyPickerRow(); return true; }
+    if (command === 'up' || sequence === '\x1b[A') { picker.move(-1); return true; }
+    if (command === 'down' || sequence === '\x1b[B') { picker.move(1); return true; }
+    // Source gLt builds its query editor with `backspaceExitsOnEmpty:!1`.
+    if (command === 'backspace' && this.pickerQuery.text === '') return true;
+    const edit = action.type === 'key' ? action.command ? {type:action.command} as EditorAction : undefined : action;
+    if (!edit || edit.type === 'mouse' || edit.type === 'terminalResponse') return true;
+    const next = reduceEditorWithUndo(this.pickerQuery,edit,{navigationColumns:Math.max(20,this.options.output.columns ?? 80),
+      maxPasteBytes:this.options.maxPasteBytes,historyLimit:0},this.pickerUndo);
+    this.pickerQuery = next.state;
+    picker.query(this.pickerQuery.text);this.render();return true;
+  }
   private enterSearch(): void {
+    if (this.inputHistory.bound) {
+      // Source registers the scoped picker as the Global history:search action when the history
+      // feature is on, and the async search hook registers the same action as inactive then. The
+      // picker's screen output is not wired yet, so the overlay route stays opt-in: an input that
+      // cannot render its own frame must not swallow the key that opens history search.
+      if (SOURCE_PICKER_OWNS_HISTORY_SEARCH) {
+      this.selection=createSelection();this.gestures.reset();this.vim.externalMutation();
+      this.searchDraft={text:this.editor.text,cursor:this.editor.cursor,pastedContents:structuredClone(this.editor.pastedContents)};
+      this.undo.record(this.editor.text,this.editor.cursor,{immediate:true},this.editor.pastedContents);
+        // Source `_y` seeds query and caret from `initialQuery`, and its consumer passes the draft
+        // (`e(Kse,{initialQuery: ee.value, …})`), so the picker opens pre-filtered by the draft.
+        this.pickerUndo.clear();this.pickerQuery={...createEditorState(),text:this.editor.text,cursor:this.editor.text.length};
+        this.ensureSourcePicker().begin(this.editor.text);return;
+      }
+      this.queryUndo.clear();this.queryEditor=createEditorState();
+      this.ensureSourceSearch().open(this.searchDraft);return;
+    }
     this.selection = createSelection();
     this.screen = 'search';
-    this.searchQuery = ''; this.searchIndex = -1; this.searchDraft = this.editor.text;
+    this.searchQuery = ''; this.searchIndex = -1;
+    this.searchDraft = {text:this.editor.text,cursor:this.editor.cursor,pastedContents:structuredClone(this.editor.pastedContents)};
     this.render();
   }
 
@@ -622,9 +1407,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const history = this.editor.history;
     if (!this.searchQuery) { this.searchQuery = this.editor.text; }
     for (let index = (this.searchIndex < 0 ? history.length : this.searchIndex) - 1; index >= 0; index--) {
-      if (history[index]!.includes(this.searchQuery)) {
+      if (history[index]!.includes(this.searchQuery)
+        || expandPastedText(history[index]!,this.editor.historyPastes[index]).includes(this.searchQuery)) {
         this.searchIndex = index;
-        this.editor = { ...this.editor, text: history[index]!, cursor: history[index]!.length };
+        if (this.editor.text !== history[index]) this.undo.record(this.editor.text,this.editor.cursor,undefined,this.editor.pastedContents);
+        this.editor = { ...this.editor, text:history[index]!,cursor:history[index]!.length,
+          pastedContents:structuredClone(this.editor.historyPastes[index] ?? {}) };
         this.render(); return;
       }
     }
@@ -634,22 +1422,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private leaveSearch(execute: boolean): void {
     this.screen = 'chat';
-    if (!execute) this.editor = { ...this.editor, text: this.searchDraft, cursor: this.searchDraft.length };
-    this.searchQuery = ''; this.searchIndex = -1;
+    if (!execute) {
+      if (this.editor.text !== this.searchDraft.text) this.undo.record(this.editor.text,this.editor.cursor,undefined,this.editor.pastedContents);
+      this.editor = { ...this.editor, ...this.searchDraft,pastedContents:structuredClone(this.searchDraft.pastedContents) };
+    }
+    this.searchQuery = ''; this.searchIndex = -1; this.searchDraft = {text:'',cursor:0,pastedContents:{}};
     this.render();
     if (execute) this.dispatch({ type: 'submit' });
-  }
-
-  /** Repeating the last movement after a kill continues the ring, as emacs yank-pop does. */
-  private undoKill(): void {
-    const pop = nextYank(this.killRing.state);
-    if (!pop) return;
-    this.killRing.dispatch({ type: 'yankPop' });
-    const replacement = this.killRing.state.ring[(this.killRing.state.mode as { index: number }).index] ?? '';
-    const text = this.editor.text.slice(0, pop.start) + replacement + this.editor.text.slice(pop.start + pop.length);
-    this.editor = { ...this.editor, text, cursor: pop.start + replacement.length };
-    this.killRing.dispatch({ type: 'updateYankLength', length: replacement.length });
-    this.render();
   }
 
   private readonly onEnd = () => { if (!this.closed) { this.close(); this.emit('exit'); } };
@@ -679,6 +1458,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const group = groups[dialog.step];
     const source: TerminalPromptRequest | TerminalPromptGroup = group ?? dialog.request;
     const choices = source.choices?.length ?? 0;
+    dialog.undo.clear();
     dialog.editor = createEditorState();
     dialog.index = Math.max(0, Math.min(source.defaultIndex ?? 0, Math.max(0, choices - 1)));
     dialog.selected = new Set();
@@ -770,19 +1550,47 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         pad(`[ ${submit} ]  [ ${cancel} ]`, columns),
         dialog.error ?? 'Enter submit / Esc cancel / Left Right edit a question'].map(line => pad(line, columns));
     }
-    const body = wrapEntry({ kind: 'assistant', text: clean(active.message) }, columns);
     const choices = active.choices ?? [];
+    const previews = choices.map(choice => questionPreviewText(choice.preview));
+    const hasPreview = previews.some(preview => preview !== undefined);
+    const previewText = previews[dialog.index] ?? 'No preview available';
+    const height = Math.max(0, rows - 4);
+    const body = wrapEntry({ kind: 'assistant', text: clean(active.message) }, columns);
+    const questionRows = body.length;
+    const previewColumn = hasPreview && columns >= PREVIEW_LIST_WIDTH + 4 + PREVIEW_MIN_WIDTH + 4
+      && height - questionRows >= 4;
+    const geometry = previewColumn ? previewGeometry(columns) : undefined;
+    const bodyWidth = geometry?.listWidth ?? columns;
     const offsets: number[] = [];
     for (const [index, choice] of choices.entries()) {
       offsets.push(body.length);
       const marker = active.multiple ? (dialog.selected.has(index) ? '[x]' : '[ ]') : '   ';
-      body.push(...wrapEntry({ kind: 'assistant', text: `${dialog.index === index ? '>' : ' '} ${marker} ${clean(choice.label)}` }, columns));
-      if (choice.description) body.push(...wrapEntry({ kind: 'assistant', text: `    ${clean(choice.description)}` }, columns));
+      body.push(...wrapEntry({ kind: 'assistant', text: `${dialog.index === index ? '>' : ' '} ${marker} ${clean(choice.label)}` }, bodyWidth));
+      if (choice.description) body.push(...wrapEntry({ kind: 'assistant', text: `    ${clean(choice.description)}` }, bodyWidth));
     }
     if (choices.length && active.allowText) {
       offsets.push(body.length); body.push(`${dialog.index === choices.length ? '>' : ' '} Other`);
     }
-    const height = Math.max(0, rows - 4);
+    const themeRows = new Map<number, string>();
+    if (dialog.request.themePreview) {
+      this.documentRenderer ??= new TuiDocumentRenderer();
+      const sample = this.documentRenderer.renderMarkdown('Theme preview\n\nUse `sample` text.\n\n> Quote preview', columns,
+        { theme: this.theme.current, themeOverrides: this.theme.overrides,
+          syntaxHighlightingDisabled: this.syntaxHighlightingDisabled });
+      body.push('');
+      for (const row of sample) { themeRows.set(body.length, row.ansi); body.push(row.text); }
+    }
+    if (hasPreview) {
+      const boxRows = geometry ? height - questionRows : height - body.length - 2;
+      const box = previewBox(renderPreviewMarkdown(previewText), Math.max(1, boxRows - 3), geometry?.previewWidth ?? columns);
+      if (geometry) {
+        const optionRows = body.length - questionRows;
+        for (let row = 0; row < Math.max(optionRows, box.length); row++) {
+          body[questionRows + row] = pad(body[questionRows + row] ?? '', geometry.listWidth)
+            + ' '.repeat(geometry.previewLeft - geometry.listWidth) + (box[row] ?? '');
+        }
+      } else body.push('', 'Preview:', ...box);
+    }
     const focused = offsets[dialog.index];
     // Follow focus after navigation; explicit page scrolling can explore a long body.
     if (dialog.followFocus && focused !== undefined && height > 0) {
@@ -794,81 +1602,236 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const visible = body.slice(dialog.scroll, dialog.scroll + height);
     while (visible.length < height) visible.push('');
     const textEntry = choices.length === 0 || dialog.index === choices.length;
-    const answer = layoutEditor(dialog.editor, columns, '> ', '  ', 1).lines[0] ?? '> ';
+    const answer = '> ' + (layoutInput(dialog.editor, columns - 2, 1).lines[0] ?? '');
     const progress = groups.length ? `Question ${dialog.step + 1} of ${groups.length}` : undefined;
     const hint = active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'
       : 'Enter next / Esc cancel / PgUp/PgDn';
     return [oneLine(title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
       textEntry ? answer : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
-      dialog.error ?? (progress ? `${progress} · ${hint}` : hint)].map(line => pad(line, columns));
+      dialog.error ?? (progress ? `${progress} · ${hint}` : hint)].map((line, row) =>
+        row > 0 && row <= height ? themeRows.get(dialog.scroll + row - 1) ?? pad(line, columns) : pad(line, columns));
+  }
+
+  private renderThemeEditor(dialog: ActiveDialog, columns: number, rows: number): string[] {
+    const owner = dialog.themeEditor!;
+    const content: string[] = [];
+    this.documentRenderer ??= new TuiDocumentRenderer();
+    const colors = createThemeColorComponents(owner.overrides, S1(owner.base));
+    const paint = (tree: unknown) => this.documentRenderer!.renderElement(tree, columns,
+      {theme:this.theme.current, themeOverrides:this.theme.overrides}).map(row => row.ansi);
+    const editing = owner.mode === 'name' || owner.token !== null;
+    const title = owner.mode === 'name' ? owner.fork ? `Fork ${owner.name} to your themes` : 'New custom theme'
+      : owner.token !== null ? owner.name : `${owner.name} · based on ${owner.base}`;
+    if (owner.mode === 'name') content.push(`Name: ${dialog.editor.text}`, `Based on ${owner.base}`);
+    else if (owner.token !== null) {
+      content.push(`Color: ${owner.token}`, ...paint(jsx(s, {children:[
+        jsx(colors.Swatch, {value:owner.valid ? owner.value : owner.preset(owner.token)}, undefined),
+        jsx(n, {bold:true, children:' ' + owner.token}, undefined),
+      ]}, undefined)), `Preset: ${owner.preset(owner.token)}`, `Value: ${dialog.editor.text}`);
+    } else {
+      content.push(`Filter color tokens: ${dialog.editor.text}`);
+      const tokens = owner.filtered(dialog.editor.text);
+      dialog.index = Math.min(dialog.index, Math.max(0, tokens.length - 1));
+      const height = Math.max(1, rows - 14);
+      const offset = Math.max(0, Math.min(dialog.index - Math.floor(height / 2), tokens.length - height));
+      const items = tokens.slice(offset, offset + height).map((token, index) => jsx(s, {children:[
+        jsx(n, {children:offset + index === dialog.index ? '> ' : '  '}, undefined),
+        colors.renderItem(token, offset + index === dialog.index),
+      ]}, token));
+      const focused = tokens[dialog.index];
+      content.push(...paint(jsx(s, {flexDirection:'column', children:items}, undefined)));
+      if (!tokens.length) content.push(colors.empty(dialog.editor.text));
+      if (focused) content.push(...paint(colors.renderPreview(focused)));
+    }
+    const sample = this.documentRenderer.renderMarkdown('Theme preview\n\nUse `sample` text.\n\n> Quote preview', columns,
+      {theme:this.theme.current, themeOverrides:this.theme.overrides, speaker:true, syntaxHighlightingDisabled:this.syntaxHighlightingDisabled});
+    const height = Math.max(0, rows - 4);
+    const body = [...content.slice(0, Math.max(0, height - sample.length - 1)), '', ...sample.map(row => row.ansi)].slice(0, height);
+    while (body.length < height) body.push('');
+    const error = owner.error ?? dialog.error;
+    const hint = dialog.busy ? 'Saving theme' : owner.mode === 'name' ? 'Enter continue / Esc cancel'
+      : owner.token !== null ? 'Enter save / Esc cancel' : 'Enter edit / Tab reset / Esc done';
+    return [pad(title, columns), ...body, SEPARATOR.repeat(columns),
+      editing ? '> ' + (layoutInput(dialog.editor, columns - 2, 1).lines[0] ?? '') : `Filter: ${dialog.editor.text}`,
+      pad(error ?? hint, columns)];
   }
 
   private render(): void {
-    if (!this.isTTY || !this.started || this.closed) return;
+    if (!this.isTTY || !this.started || this.closed || this.editorSuspended) return;
     const columns = Math.max(20, this.options.output.columns ?? 80);
     const rows = Math.max(4, this.options.output.rows ?? 24);
+    this.statusLine.setVimMode(this.vim.mode); this.statusLine.refresh();
+    this.statusLine.setActive(this.dialog === undefined && this.screen === 'chat' && !this.gestures.hint);
+    this.progress.setVisible(this.dialog === undefined);
     if (this.dialog) {
+      if (this.dialog.themeEditor) {
+        const frame = this.renderThemeEditor(this.dialog, columns, rows);
+        const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;
+        this.drawFrame(frame, columns, rows, rows - 2, cursor, !this.dialog.busy); return;
+      }
       const frame = this.renderDialog(columns, rows);
-      this.options.output.write(this.modes.frame(`\x1b[H${frame.map(line => `${line}\x1b[K`).join('\r\n')}`));
       const groups = this.dialog.request.groups ?? [];
       const reviewing = groups.length > 0 && this.dialog.step >= groups.length;
       const active = reviewing ? undefined : groups[this.dialog.step] ?? this.dialog.request;
       const choices = active?.choices ?? [];
       if (reviewing || !choices.length || this.dialog.index === choices.length) {
-        const cursor = layoutEditor(this.dialog.editor, columns, '> ', '  ', 1).cursorColumn;
-        this.options.output.write(`\x1b[1A\r${cursor ? `\x1b[${cursor}C` : ''}\x1b[?25h`);
-      } else this.options.output.write('\x1b[?25l');
+        const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;
+        this.drawFrame(frame, columns, rows, rows - 2, cursor, true);
+      } else this.drawFrame(frame, columns, rows, rows - 1, 0, false);
       return;
     }
-    const promptRows = Math.max(1, Math.min(this.options.promptRows ?? 1, rows - 3));
-    const transcriptRows = rows - promptRows - 2;
-    const viewport = layoutTranscript(this.transcript, columns, transcriptRows);
-    const prompt = layoutEditor(this.editor, columns, this.options.prompt ?? '> ',
-      this.options.continuationPrompt ?? '  ', promptRows);
+    if (this.sourcePicker?.snapshot.searching) {
+      const prompt = this.inputLayout(columns, rows);
+      const rowsBudget = Math.max(4, rows - prompt.lines.length - 3);
+      const pickerRows = this.sourcePicker.styled(columns, rowsBudget).map(row=>row.ansi);
+      const listRows = pickerRows.slice(0, Math.max(0, pickerRows.length - 1));
+      const target = rows - 1;
+      this.renderer ??= new TuiRenderer(this.options.output,this.options.synchronizedUpdate ?? true);
+      this.renderer.renderChat(listRows, prompt.lines, [pickerRows.at(-1) ?? ''], columns, rows, {row:target,
+        column:prompt.cursorColumn,visible:true},
+        this.running,undefined,this.theme.current,this.theme.overrides,[],[]);
+      this.drawnRows=rows;this.cursorRow=0;this.cursorColumn=prompt.cursorColumn;return;
+    }
+    if (this.sourceSearch?.snapshot.searching) {
+      const prompt = this.inputLayout(columns, rows);
+      this.documentRenderer ??= new TuiDocumentRenderer();
+      const queryDocument = this.documentRenderer.renderElement(this.sourceSearch.element(),columns,
+        {theme:this.theme.current,themeOverrides:this.theme.overrides});
+      const queryRows = queryDocument.map(row=>row.ansi);
+      const height = Math.max(0,rows-prompt.lines.length-queryRows.length-3);
+      const viewport=layoutTranscript(this.transcript,columns,height,this.renderEntryRows);
+      const frame=Array.from({length:height},(_,index)=>viewport.rows[index]?.ansi ?? pad('',columns));
+      const target=rows-1;
+      this.renderer ??= new TuiRenderer(this.options.output,this.options.synchronizedUpdate ?? true);
+      this.renderer.renderChat(frame,prompt.lines,[queryRows.at(-1) ?? ''],columns,rows,{row:target,
+        column:this.sourceSearch.caretColumn(columns),visible:true},
+        this.running,undefined,this.theme.current,this.theme.overrides,[],queryRows.slice(0,-1));
+      this.drawnRows=rows;this.cursorRow=0;this.cursorColumn=this.queryEditor.cursor;return;
+    }
+    const prompt = this.inputLayout(columns, rows);
+    const statusRows = this.renderStatusLine(columns, rows, Math.max(0, rows - prompt.lines.length - 4));
+    const progressRows = this.renderProgress(columns, rows, Math.max(0, rows - prompt.lines.length - 4 - statusRows.length));
+    const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - progressRows.length - statusRows.length);
+    const viewport = layoutTranscript(this.transcript, columns, transcriptRows, this.renderEntryRows);
 
-    // Rows: transcript, separator, prompt box, status. A short prompt box is
-    // bottom-aligned so the draft never appears to float mid-screen.
     const frame: string[] = [];
     for (let row = 0; row < transcriptRows; row++) {
-      frame.push(highlightSelection(this.selection, pad(viewport.lines[row] ?? '', columns), viewport.offset + row));
+      const rendered = viewport.rows[row];
+      frame.push(rendered?.ansi ?? pad(rendered?.text ?? '', columns));
     }
-    frame.push(SEPARATOR.repeat(columns));
-    const promptStart = promptRows - prompt.lines.length;
-    for (let row = 0; row < promptRows; row++) {
-      frame.push(pad(row < promptStart ? '' : prompt.lines[row - promptStart]!, columns));
-    }
-    frame.push(pad(this.statusRow(columns), columns));
+    const target = transcriptRows + progressRows.length + 1 + prompt.cursorRow;
+    this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true);
+    this.renderer.renderChat(frame, prompt.lines,
+      [this.statusRow(columns)],
+      columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
+      { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows);
+    this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
+  }
 
-    const body = `\x1b[H${frame.map(line => `${line}\x1b[K`).join('\r\n')}`;
-    // Writing the frame leaves the cursor on the status row; walk back to the
-    // prompt row the editor reports.
-    const target = transcriptRows + 1 + prompt.cursorRow;
-    const cursorUp = Math.max(0, rows - 1 - target);
-    this.options.output.write(this.modes.frame(body));
-    this.options.output.write(`\x1b[${cursorUp}A\r${prompt.cursorColumn ? `\x1b[${prompt.cursorColumn}C` : ''}\x1b[?25h`);
-    this.drawnRows = rows; this.cursorRow = cursorUp; this.cursorColumn = prompt.cursorColumn;
+  private renderStatusLine(columns: number, rows: number, maximum: number): string[] {
+    const shown = this.statusLineSetting && this.screen === 'chat' && !this.gestures.hint ? this.statusLineText : undefined;
+    const padding = Math.max(0, Math.min(Math.floor(this.statusLineSetting?.padding ?? 0), Math.floor(columns / 2)));
+    const key = JSON.stringify([shown, columns, rows, maximum, padding, this.theme.current, this.theme.overrides]);
+    if (key !== this.statusLineKey) {
+      this.statusLineRenderer ??= new TuiDocumentRenderer();
+      this.statusLineRows = this.statusLineRenderer.renderElement(shown ? jsx(s, { paddingX: padding,
+        children: jsx(jde, { text: shown }, undefined) }, undefined) : null, columns,
+        {theme:this.theme.current,themeOverrides:this.theme.overrides,terminalRows:rows}).slice(0,maximum).map(row => row.ansi);
+      this.statusLineKey = key;
+    }
+    return this.statusLineRows;
+  }
+
+  private renderProgress(columns: number, rows: number, maximum: number): string[] {
+    if (!this.progress.running && !this.progress.hasTasks) {
+      this.progressRenderer?.renderElement(null, columns); this.progressHeight = 0; return [];
+    }
+    this.progressRenderer ??= new TuiDocumentRenderer();
+    const content = this.progressRenderer.renderElement(this.progress.element(columns), columns,
+      {theme:this.theme.current, themeOverrides:this.theme.overrides, terminalRows:rows}).map(row => row.ansi);
+    const visible = content.slice(0, maximum);
+    this.progressHeight = visible.length;
+    return visible;
+  }
+
+  private drawFrame(lines: readonly string[], columns: number, rows: number,
+    row: number, column: number, visible: boolean): void {
+    this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true);
+    this.renderer.render(lines, columns, rows, { row, column, visible });
+  }
+
+  private statusHints(): string {
+    return this.screen === 'transcript'
+      ? 'ctrl+o chat  ctrl+e all  j/k scroll  q close'
+      : 'ctrl+o transcript  ctrl+r search  ctrl+c interrupt';
   }
 
   private statusRow(columns: number): string {
-    const hints = this.screen === 'transcript'
-      ? 'ctrl+o chat  ctrl+e all  j/k scroll  q close'
-      : 'ctrl+o transcript  ctrl+r search  ctrl+c interrupt';
+    if(this.gestures.hint)return this.gestures.hint.slice(0,columns);
+    const hints = this.statusLineSetting && this.screen === 'chat' ? '' : this.statusHints();
     // The hints are the part a person needs when they are lost, so they keep as
     // much room as they need up to half the row, and status text is clipped
     // into what is left rather than allowed to push the hints off the screen.
     const shown = hints.slice(0, Math.min(hints.length, Math.floor(columns / 2)));
-    const left = `${this.running ? 'running' : 'ready'}${this.status ? `  ${this.status}` : ''}`
+    const left = `${this.running ? 'running' : 'ready'}${this.vimEnabled&&!this.statusLineSetting?.hideVimModeIndicator&&this.vim.mode!=='NORMAL'&&this.screen!=='search'?' -- '+this.vim.mode+' --':''}${this.status ? `  ${this.status}` : ''}`
       .slice(0, Math.max(0, columns - shown.length - 1));
     const gap = Math.max(1, columns - left.length - shown.length);
     return left + ' '.repeat(gap) + shown;
   }
 }
 
-/**
- * Render one screen row. Callers pass lines that the cell-accurate layouts
- * already bounded to `columns`, so this only pads; an over-long line is
- * truncated rather than allowed to wrap and desynchronise the frame.
- */
+const PREVIEW_BOX = { tl: '┌', tr: '┐', bl: '└', br: '┘', h: '─', v: '│', teeL: '├', teeR: '┤' };
+const PREVIEW_LIST_WIDTH = 30;
+const PREVIEW_MIN_WIDTH = 40;
+
+function previewGeometry(columns: number): { listWidth: number; previewLeft: number; previewWidth: number } {
+  const config = layoutEngine.Config.create();
+  const root = layoutEngine.Node.create(config);
+  const list = layoutEngine.Node.create(config);
+  const preview = layoutEngine.Node.create(config);
+  root.insertChild(list, 0); root.insertChild(preview, 1);
+  try {
+    root.setWidth(columns); root.setFlexDirection(2); root.setGap(2, 4);
+    list.setWidth(PREVIEW_LIST_WIDTH);
+    preview.setFlexGrow(1); preview.setFlexShrink(1); preview.setMinWidth(PREVIEW_MIN_WIDTH + 4);
+    root.calculateLayout(columns, undefined, 1);
+    return { listWidth: list.getComputedWidth(), previewLeft: preview.getComputedLeft(), previewWidth: preview.getComputedWidth() };
+  } finally { root.freeRecursive(); config.free(); }
+}
+
+/** Adapted from Nbe: hard wrap, minimum inner width, borders and hidden count. */
+export function previewBox(content: string, maxLines: number, maxWidth: number): string[] {
+  maxWidth = Math.max(4, Math.floor(maxWidth));
+  maxLines = Math.max(0, Math.floor(maxLines));
+  const inner = Math.max(1, maxWidth - 4);
+  const lines: string[] = [];
+  for (const raw of content.split('\n')) {
+    let row = '', used = 0;
+    for (const { segment } of new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(raw)) {
+      const cells = cellWidth(segment);
+      if (used + cells > inner && row) { lines.push(row); row = ''; used = 0; }
+      row += segment; used += cells;
+    }
+    lines.push(row);
+  }
+  const hidden = Math.max(0, lines.length - maxLines);
+  const shown = hidden ? lines.slice(0, maxLines) : lines;
+  const widest = shown.reduce((max, line) => Math.max(max, cellWidth(line)), 0);
+  const width = Math.max(4, Math.min(Math.max(PREVIEW_MIN_WIDTH, widest) + 4, maxWidth));
+  const text = width - 4;
+  const row = (line: string) => `${PREVIEW_BOX.v} ${pad(line, text)} ${PREVIEW_BOX.v}`;
+  const out = [`${PREVIEW_BOX.tl}${PREVIEW_BOX.h.repeat(width - 2)}${PREVIEW_BOX.tr}`, ...shown.map(row)];
+  if (hidden) {
+    const label = `${PREVIEW_BOX.h.repeat(3)} ✂ ${PREVIEW_BOX.h.repeat(3)} ${hidden} lines hidden `;
+    const note = cellWidth(label) <= width - 2 ? label : `${hidden} hidden`;
+    const shownNote = pad(note, Math.min(cellWidth(note), width - 2));
+    out.push(`${PREVIEW_BOX.teeL}${shownNote}${PREVIEW_BOX.h.repeat(width - 2 - cellWidth(shownNote))}${PREVIEW_BOX.teeR}`);
+  }
+  out.push(`${PREVIEW_BOX.bl}${PREVIEW_BOX.h.repeat(width - 2)}${PREVIEW_BOX.br}`);
+  return out;
+}
+
+/** Pad or clip a screen row at grapheme boundaries to keep the frame aligned. */
 export function pad(line: string, columns: number): string {
   let text = '', width = 0;
   for (const { segment } of new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(line)) {

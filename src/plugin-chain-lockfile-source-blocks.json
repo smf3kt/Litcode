@@ -1,0 +1,188 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        758,
+        4746
+      ],
+      "units": 3988,
+      "bodySha256": "19e7b3ac8ddeabe04423aef4cf75b091e0a2f7a97660db9f89d029010e2d8376",
+      "note": "declares qe, graceful-fs's polyfills module: the fs calls it re-implements around a cached cwd, chdir tracking and its own retry forms"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        4746,
+        6264
+      ],
+      "units": 1518,
+      "bodySha256": "b711393feaf0486448a32a469771d5d487568bb3e301126b2d61fba65b0adba2",
+      "note": "declares $e, graceful-fs's legacy-streams module: the ReadStream and WriteStream constructors it re-exports"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        6264,
+        6628
+      ],
+      "units": 364,
+      "bodySha256": "a75fd0e9c205cdb883647afc4b2339d14de682a3ecea3ac384ec717ec183bbe4",
+      "note": "declares Ye, graceful-fs's clone module: the object clone it hands to the calls it patches"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        6628,
+        11842
+      ],
+      "units": 5214,
+      "bodySha256": "761ca87e5e17ea669cbb4a218e8e836118313799b1f776b047082dd7299c6565",
+      "note": "declares ge, graceful-fs itself: the fs module through which every stat, mkdir, utimes, rmdir and realpath of the lock runs"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        11842,
+        14117
+      ],
+      "units": 2275,
+      "bodySha256": "0bea43bb31b799ff23ba1789b69dbe491d9834ee536b2627cc5b9e1fb207a2c2",
+      "note": "declares ze, retry's RetryOperation: the backoff schedule a lock acquisition retries on"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        14117,
+        15279
+      ],
+      "units": 1162,
+      "bodySha256": "01a5b88a6c773ec8a0925b9211508b0d7f2bc3181ad925e6e336b70e77a33e2e",
+      "note": "declares Ve, retry's index: the operation and timeouts the schedule is built from"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        15279,
+        15464
+      ],
+      "units": 185,
+      "bodySha256": "d9a44454ae9ba3b1e8851133c7a7bc4cf28174be872c0a758cbb25738ce26e7b",
+      "note": "declares Xe, signal-exit's signal list: the signals it listens on"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        15464,
+        17546
+      ],
+      "units": 2082,
+      "bodySha256": "5521accc9c248ce68b2e43b0931ee7042241cc6ab9495090b1c055f8e178133f",
+      "note": "declares Je, signal-exit: the exit hook that releases a lock the process still holds when it leaves"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        17546,
+        18065
+      ],
+      "units": 519,
+      "bodySha256": "4c97c7b34230f9f592b018c4927070998f12d95cc828a30ce72e2d0aa2e5061d",
+      "note": "declares Ze, proper-lockfile's mtime precision: the second-precision timestamps a lock's staleness is read from"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        18065,
+        21324
+      ],
+      "units": 3259,
+      "bodySha256": "1088d66755916b7be0f0708f43e2a47487d6132083b62c586e9ed7585cbed1ec",
+      "note": "declares ot, proper-lockfile's lockfile module: the acquire, the staleness probe, the takeover of a stale lock and the release"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        21324,
+        22042
+      ],
+      "units": 718,
+      "bodySha256": "1d898f4acea5aeae03c15a99957cb036930db92f66623cdaa8c9e20e6b73179f",
+      "note": "declares ct, proper-lockfile's adapter: the callback, promise and sync forms of the same calls"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        22042,
+        22559
+      ],
+      "units": 517,
+      "bodySha256": "c3e90f5efaa2041cb81a7f9173c43be475cf751829dd3b03b0322b6a24389a36",
+      "note": "declares ft, proper-lockfile's entry: the lock, unlock and check surface with the option defaults"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        22559,
+        22585
+      ],
+      "units": 26,
+      "bodySha256": "300a2ce339489ff8a67c1fee10b75dcebbe34d2f848de5d659b1e3bab22b6764",
+      "note": "declares lt, the lockfile library itself as the store reads it — the memoized `ft()`"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        22585,
+        22685
+      ],
+      "units": 100,
+      "bodySha256": "d08504ea3e9e737484d62daddfda8bbf473e8c21eb6ec0b1105196778de844e4",
+      "note": "declares Wa, the acquire the store calls: it takes the lock and attaches Symbol.asyncDispose to the handle"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        22685,
+        22726
+      ],
+      "units": 41,
+      "bodySha256": "d6375a48cc3f92dd58b2db5c3fca0318bf26238c94618b764fcafeabb3fa7093",
+      "note": "declares VPs, the check the store calls: whether this lock is currently held"
+    },
+    {
+      "module": "chunk-c6qwr3kc.js",
+      "sha256": "18721e879b6a77283e8f9eb34808c9dc42b3acfafa9376df48a313f2258aaea0",
+      "range": [
+        22726,
+        23114
+      ],
+      "units": 388,
+      "bodySha256": "293157e9fc531d49c89eb1d2f0dc45753816bb5af4714105dc641c605529fa3d",
+      "note": "declares Um, the release the store calls: it maps a lock that was no longer held to a diagnostic instead of letting it throw"
+    }
+  ],
+  "missing": []
+}

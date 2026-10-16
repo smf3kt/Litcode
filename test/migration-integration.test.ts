@@ -72,6 +72,7 @@ async function fixture(root: string, complete: ModelProvider['complete'], config
   events: AgentEvents = {}) {
   const provider: ModelProvider = { count: async request => { assertPaired(request.messages); return 1; }, complete };
   const config = defaultConfig(root, []); config.model = 'fixture'; config.features = { ...FEATURES };
+  config.configSources = { userDir: path.join(root, 'user') };
   config.maxOutputBytes = 100_000; configure?.(config);
   const controller = new AbortController();
   const runtime = await createRuntime(config, provider, controller.signal);
@@ -389,15 +390,18 @@ test('migration actual interactive TTY preserves multiline submit, cancels a tur
   let running: Promise<void> | undefined;
   try {
     const config = defaultConfig(root, []); config.model = 'fixture'; config.features = { ...FEATURES };
+    config.configSources = { userDir: path.join(root, 'user') };
     runtime = await createRuntime(config, provider, lifetime.signal); config.tools = pinToolSchemas(runtime.tools);
     session = Session.open(root, { config });
     running = interactiveLoop(session, provider, runtime, { input, output, status, signal: lifetime.signal });
+    await until(() => input.listenerCount('data') > 0);
     input.key('\x1b[200~first line\nsecond line\x1b[201~\r');
     await until(() => calls > 0).catch(error => { throw new Error(`${String(error)}; status=${status.text}; output=${output.text}`); });
     assert.equal(captured, 'first line\nsecond line'); input.key('\x03');
     await until(() => status.text.includes('finished: aborted')); assert.equal(turnSignal!.aborted, true);
     assert.equal(lifetime.signal.aborted, false); input.key('continue the cancelled task\r');
-    await until(() => status.text.includes('finished: end_turn')); input.key('\x04'); await running;
+    await until(() => status.text.includes('finished: end_turn')); input.key('\x04');
+    assert.equal(input.isRaw,true);assert.ok(output.text.includes('Press Ctrl-D again to exit'));input.key('\x04');await running;
     assert.equal(calls, 2); assert.deepEqual(input.rawCalls, [true, false]); assert.equal(input.isRaw, false);
     assert.equal(input.listenerCount('data'), 0); assertPaired(session.messages); assert.equal(session.awaitingResponse, false);
     assert.ok(output.text.includes('resumed'));
@@ -465,7 +469,7 @@ test('migration idle interactive host abort and pre-aborted entry wake the queue
       if (preAborted) controller.abort();
       const running = interactiveLoop(f.session, f.provider, f.runtime,
         { input, output, status: output, signal: controller.signal });
-      if (!preAborted) controller.abort();
+      if (!preAborted) { await until(() => input.listenerCount('data') > 0); controller.abort(); }
       await running;
       assert.equal(input.isRaw, false); assert.equal(input.listenerCount('data'), 0);
       assert.deepEqual(input.rawCalls, preAborted ? [] : [true, false]);
@@ -564,9 +568,11 @@ test('migration interactive TTY consumes pinned custom submit binding instead of
   let running: Promise<void> | undefined;
   try {
     running = interactiveLoop(f.session, f.provider, f.runtime, { input, output, status: statusStream, signal: f.controller.signal });
+    await until(() => input.listenerCount('data') > 0);
     input.emit('data', Buffer.from('first\rsecond\x1b[99~'));
     await until(() => status.includes('finished: end_turn'));
-    assert.equal(calls, 1); assert.equal(captured, 'first\nsecond'); input.emit('data', Buffer.from('\x04')); await running;
+    assert.equal(calls,1);assert.equal(captured,'first\nsecond');input.emit('data',Buffer.from('\x04'));
+    assert.equal(input.isRaw,true);input.emit('data',Buffer.from('\x04'));await running;
     assert.equal(input.isRaw, false); assert.equal(input.listenerCount('data'), 0);
   } finally { f.controller.abort(); input.emit('end'); await running; await f.close(); }
 });

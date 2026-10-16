@@ -1,0 +1,45 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        235982,
+        236808
+      ],
+      "units": 826,
+      "bodySha256": "c47ff34f4ca813a45f59f228e1920be7241acfc82401957a3c946f189abc2759",
+      "note": "`Mto`, the Client leaf: key and module, a prop-bag that goes through the value budget, three numbers that go through the prop rules, a required stamp, and no children"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        247312,
+        248693
+      ],
+      "units": 1381,
+      "bodySha256": "275e4505b5fea33c9a032c1326a99fa4ad7c906e6f1b89366ecf735f243bf78c",
+      "note": "`Lrt` (2048) and `pur` (256), the Link href and pressable-link limits, then `zto`, the pressable-links list check, and `Vto`, the Markdown leaf that calls it"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        260226,
+        260804
+      ],
+      "units": 578,
+      "bodySha256": "5811eb034475059a1280ca6422a02e7b46e95ca83041c0a8ce3c7fa56989dd9d",
+      "note": "`Nrt`, the href encoder that repairs lone surrogates before percent-encoding, and `sno`, the Link leaf that measures the href as written and as encoded"
+    }
+  ],
+  "missing": []
+}

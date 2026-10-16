@@ -1,0 +1,71 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        10481,
+        10621
+      ],
+      "units": 140,
+      "bodySha256": "2e65a6af84bf5b3087b4fde7e0608dbd030d1a19cf546f2d1c709225fdc70898",
+      "note": "`Ace` — one row per binding: the chord split into the keys it is made of, the action as the file wrote it, and the context the block named"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        11037,
+        11145
+      ],
+      "units": 108,
+      "bodySha256": "64c7274aba1695ec19729ed009560e86bede7506769493f7a17b9295e7bc0377",
+      "note": "`ge` — the blocks as the runtime reads them: each binding map is mapped value-wise, and a value that is one of the legacy action names is replaced by the name it is read as"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        21687,
+        21738
+      ],
+      "units": 51,
+      "bodySha256": "11f2fefbd779b9b0a242028e95591d0de8a7b267165b92b975d68bf6c7e5c9e1",
+      "note": "`Yr` — the own-key walk this chunk's `mapValues` iterates with — and `JMt`, the name it calls it by"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24850,
+        24936
+      ],
+      "units": 86,
+      "bodySha256": "3ce61daec88280223b4d47d2a1b14308733371d76ba89810937f3cd940ab6565",
+      "note": "`Di` — this chunk's `mapValues`: the iteratee folded to arity three, the object walked by its own keys, and each value replaced by the result"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24936,
+        24946
+      ],
+      "units": 10,
+      "bodySha256": "818c9f775a01351cb6db5140bfd9be59971cf8c3042b0fad00fea1b8f03d2878",
+      "note": "`oo` — the name the keybinding chunk reaches that map-values by, which is why the mapper above can be copied before it"
+    }
+  ],
+  "missing": []
+}

@@ -1,0 +1,91 @@
+{
+  "original": "bd958088195aefbb4bce96ba966447e5e09b1312",
+  "deletedFiles": 34,
+  "evidence": [
+    {
+      "port": "constants/product.ts",
+      "symbol": "toCompatSessionId",
+      "source": "bridge/sessionIdCompat.ts",
+      "sourceSha256": "8c99317ff59c95b29f02503dbea705dd06fcf14e424c169c62156d4cabb0dd2b",
+      "sourceRange": [
+        1614,
+        1816
+      ],
+      "portSha256": "e6fb0fa02ee69c931d909600ca9620a0feaa963ddb94abd19a56df07310d5906",
+      "portRange": [
+        2387,
+        2523
+      ],
+      "coordinateUnit": "utf16-half-open",
+      "mode": "adapt",
+      "difference": "Kill-switch gate dropped: its only registrant was bridge init; the unset default is unchanged.",
+      "probes": 3
+    },
+    {
+      "port": "components/Spinner.tsx",
+      "symbol": "computeGlimmerIndex",
+      "source": "bridge/bridgeStatusUtil.ts",
+      "sourceSha256": "b869eb6870cee3cb9fdf77b3a4c234184a04e7c7bfee363011f8111bb71a7291",
+      "sourceRange": [
+        1863,
+        2043
+      ],
+      "portSha256": "d3485cdc504df1e4b19fdd2f52bf5b3aec613133b8ecf88555a0afda8967ff8b",
+      "portRange": [
+        23569,
+        23735
+      ],
+      "coordinateUnit": "utf16-half-open",
+      "mode": "port",
+      "difference": "None — body and behaviour identical.",
+      "probes": 7
+    },
+    {
+      "port": "components/Spinner.tsx",
+      "symbol": "computeShimmerSegments",
+      "source": "bridge/bridgeStatusUtil.ts",
+      "sourceSha256": "b869eb6870cee3cb9fdf77b3a4c234184a04e7c7bfee363011f8111bb71a7291",
+      "sourceRange": [
+        2432,
+        3391
+      ],
+      "portSha256": "d3485cdc504df1e4b19fdd2f52bf5b3aec613133b8ecf88555a0afda8967ff8b",
+      "portRange": [
+        23953,
+        24905
+      ],
+      "coordinateUnit": "utf16-half-open",
+      "mode": "port",
+      "difference": "None — body and behaviour identical.",
+      "probes": 8
+    },
+    {
+      "port": "cli/transports/ccrClient.ts",
+      "symbol": "decodeJwtExpiry",
+      "source": "bridge/jwtUtils.ts",
+      "sourceSha256": "0510d42414b6fb16f8b362146074f4c73cdf10d7cfc1e08696fee3e4993bc592",
+      "sourceRange": [
+        1361,
+        1641
+      ],
+      "portSha256": "d04679d27adc793ac74dc5e51724fb95c153b38cdd5bdf18759b04b236370cb9",
+      "portRange": [
+        34362,
+        34635
+      ],
+      "coordinateUnit": "utf16-half-open",
+      "mode": "port",
+      "difference": "None — body and behaviour identical.",
+      "probes": 4
+    }
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Ported bodies compared textually and behaviourally against the recovered source; deleted-file inventory and live-import sweep bound the removal",
+  "remaining": "replBridge* AppState fields, cli/transports and the session-ingress bearer surface remain for later waves"
+}

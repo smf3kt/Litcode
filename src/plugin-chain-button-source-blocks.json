@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        234038,
+        235650
+      ],
+      "units": 1612,
+      "bodySha256": "05736f30502f30fe5997336510a03e5894039c8340710b066f10f583559b8634",
+      "note": "`Hto` — the Button site check: the props shape and the two keys, then the five option shapes in the order the source names them, then the autoFocus problem, then the hotkey, then the action — refused when the engine does not know it and again when the engine holds it alone — then the label, the press and the children"
+    }
+  ],
+  "missing": []
+}

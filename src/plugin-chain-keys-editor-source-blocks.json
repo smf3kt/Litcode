@@ -1,0 +1,181 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-fdwn5gdv.js",
+      "sha256": "bdd8f0094eb4fcd0daa8d9fa47261b47d4a0384894c1701f74ba72b338a9be11"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-fdwn5gdv.js",
+      "sha256": "bdd8f0094eb4fcd0daa8d9fa47261b47d4a0384894c1701f74ba72b338a9be11",
+      "range": [
+        615,
+        918
+      ],
+      "units": 303,
+      "bodySha256": "ac8fa5a2a589fa1dd648bd6ea9451f06fb378142827f2b065f3628d8134987d9",
+      "note": "`i` — the lazy registry the schemas are built through: a slot per builder, a resetter for each, and the accessor that builds a value once and remembers it"
+    },
+    {
+      "module": "chunk-fdwn5gdv.js",
+      "sha256": "bdd8f0094eb4fcd0daa8d9fa47261b47d4a0384894c1701f74ba72b338a9be11",
+      "range": [
+        918,
+        932
+      ],
+      "units": 14,
+      "bodySha256": "0a28dbd728ca368cc6a870a3fde72412a2e37f5353d16d4e76f5511d4b2209fa",
+      "note": "`RTr` — the one instance of that registry"
+    },
+    {
+      "module": "chunk-fdwn5gdv.js",
+      "sha256": "bdd8f0094eb4fcd0daa8d9fa47261b47d4a0384894c1701f74ba72b338a9be11",
+      "range": [
+        932,
+        965
+      ],
+      "units": 33,
+      "bodySha256": "5de6b725ba1fafa447bb2e9f1fc3158cd965b402c6adaff44a824d751a5238d5",
+      "note": "`p` — the accessor a builder is filed through, which is how every schema in this module is written"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        8839,
+        9463
+      ],
+      "units": 624,
+      "bodySha256": "2877b92cbcf0d8f114f3a532fbd2d25ab15ee11ab44d0db85947929fa4a2dfd7",
+      "note": "`mJ` — the key parser: split on `+`, fold each part to a modifier flag, resolve the four aliases and the four arrow glyphs, and answer the key with its modifier record"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        9463,
+        9546
+      ],
+      "units": 83,
+      "bodySha256": "699db986d2ac9e5a5c0734872c5b573d9bb309e26170a1a3442702330edba4f7",
+      "note": "`h9` — a chord split into the keys it is made of: the space key on its own, and anything else trimmed and split on whitespace before each part is parsed"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        10621,
+        10997
+      ],
+      "units": 376,
+      "bodySha256": "baf701703983b96f8561baad3ead5b8c98fe1daa9f020f5bea3da7acb3751a43",
+      "note": "`Z` and `Re` — the six legacy action names the configuration still accepts and the name each one is read as"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        10997,
+        11037
+      ],
+      "units": 40,
+      "bodySha256": "992de1bb1f6089200d269b9af6c335e2a58876f024e8cc499f756b0af3389977",
+      "note": "`Q` — is this one of those legacy names"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        11145,
+        11530
+      ],
+      "units": 385,
+      "bodySha256": "bfce3ce8e72ac5777cb13fe3504b1b2f8479afe3e85419b5eff8fdfe9f0c8355",
+      "note": "`v9t` — the 29 binding contexts a keybindings file may name in a stable order — and `We`, the same list as a set"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        11530,
+        11563
+      ],
+      "units": 33,
+      "bodySha256": "7695e2bfa5815fb2790f69d0fb098fd71e04fde3a65dcf5d212e501a8ff0783a",
+      "note": "`lcs` — is this string one of those contexts"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        16567,
+        16624
+      ],
+      "units": 57,
+      "bodySha256": "a20469eaf3d4e6e164ef1ea1d51f551edf8c2cc39d784a94a600608316f19fa5",
+      "note": "`F` — is this an action the engine knows, or a `command:` binding, which is the other thing an action field may hold"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        16624,
+        17524
+      ],
+      "units": 900,
+      "bodySha256": "913bda53b40a768f205aef21429b95385a01e88eff995b97dedd5c4c116319be",
+      "note": "`ze` and `Bn` — the schema a keybindings file is described by: a block of `context` and `bindings`, each binding an action name, a legacy name, a `command:` pattern or null to unbind, and the document that is an array of them under `$schema` and `$docs`"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        18783,
+        18864
+      ],
+      "units": 81,
+      "bodySha256": "166a9d5d2e5b89e50f842a22ef2e1fae23aa0d206f005a17c0363abfb1e9f745",
+      "note": "`fe` — the reserved keys for the platform this build runs on: the table plus the platform's own additions"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        19738,
+        19801
+      ],
+      "units": 63,
+      "bodySha256": "6040c93b193e521c0d12af70243d84d7e5a4be02a1d1cca67e55f0b7fcb751fb",
+      "note": "`He` — the runtime schema for one binding block, weaker than the file's: its context is any string and its action any string or null, so the values that were checked when the file was read are not checked again"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        19801,
+        19849
+      ],
+      "units": 48,
+      "bodySha256": "f00695601d930835510f04b773b13bfcc35f1347a9624e2de2beb4b8397ffab5",
+      "note": "`Ve` — does one block pass the runtime schema"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        19849,
+        19900
+      ],
+      "units": 51,
+      "bodySha256": "ab297e2015e2c7659efc1e5ceb32c236e6b40d0f31946eb027e04fab7f6484ce",
+      "note": "`T` — is this an array of blocks that each pass it, which is the whole document's check"
+    }
+  ],
+  "missing": []
+}

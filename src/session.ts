@@ -4,6 +4,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { GatewayConfig } from './provider.js';
+import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { HOOK_EVENTS, hooksSchema, type HooksConfig } from './hooks.js';
 import { permissionPolicySchema, type PermissionPolicy } from './permissions.js';
 import type { SkillInfo, ConditionalRule } from './config.js';
@@ -14,6 +15,9 @@ import type { Keybindings } from './terminal.js';
 import { webSearchConfigSchema, type WebSearchConfig } from './web-search.js';
 import { pluginConfigSchema, type PluginConfig } from './plugins.js';
 import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
+import { spinnerVerbsSchema } from './tui-progress-settings.js';
+import { statusLineSchema } from './tui-statusline-schema.js';
+import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 
 export type SessionConfig = {
   model: string;
@@ -40,6 +44,17 @@ export type SessionConfig = {
   skills?: SkillInfo[];
   conditionalRules?: ConditionalRule[];
   keybindings?: Keybindings;
+  prefersReducedMotion?: boolean;
+  showTurnDuration?: boolean;
+  timeFormat?: string;
+  timeZone?: string;
+  spinnerVerbs?: import('./tui-progress-settings.js').SpinnerVerbs;
+  editorMode?: import('./tui-vim.js').EditorMode;
+  vimInsertModeRemaps?: Record<string,unknown>;
+  maxProseWidth?: number;
+  syntaxHighlightingDisabled?: boolean;
+  theme?: ThemeSetting;
+  statusLine?: import('./tui-statusline.js').StatusLineSetting;
   webSearch?: WebSearchConfig;
   plugins?: PluginConfig;
   agentTypes?: AgentTypeInfo[];
@@ -87,7 +102,7 @@ export type SessionEvent =
   | { kind: 'stop_hook_count'; count: number; hookId?: string }
   | { kind: 'hook_result'; id: string; event: string; blocked: boolean; reason?: string; additionalContext: string[]; stopRequested?: boolean; suppressOutput?: boolean; systemMessages?: string[]; terminalSequences?: string[] }
   | { kind: 'compact'; summary: string; response: Anthropic.Message }
-  | { kind: 'turn_end'; reason: string };
+  | { kind: 'turn_end'; reason: string; duration?: import('./tui-progress.js').TurnDuration };
 
 const policyFeaturesSchema = z.object({ tasks: z.boolean().optional(), subagents: z.boolean().optional(), notebooks: z.boolean().optional(), background: z.boolean().optional(), scheduler: z.boolean().optional(),
   workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(), taskProjections: z.boolean().optional(), schedulerJitter: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
@@ -136,6 +151,17 @@ export const configSchema = z.object({
     hooks: hooksSchema.optional(), command: z.string().optional(), shell: z.string().optional(), metadata: z.record(z.unknown()).optional(), limitations: z.array(z.string()).optional(),
   }).strict()).optional(),
   keybindings: keybindingsSchema.optional(),
+  prefersReducedMotion: z.boolean().optional(),
+  showTurnDuration: z.boolean().optional(),
+  timeFormat: z.string().optional(),
+  timeZone: z.string().optional(),
+  spinnerVerbs: spinnerVerbsSchema.optional(),
+  editorMode: editorModeSchema,
+  vimInsertModeRemaps: vimRemapsSchema,
+  maxProseWidth: z.number().int().min(40).optional(),
+  syntaxHighlightingDisabled: z.boolean().optional(),
+  theme: z.string().refine(value => parseTheme(value) !== undefined, 'Invalid theme').optional(),
+  statusLine: statusLineSchema,
   webSearch: webSearchConfigSchema.optional(),
   plugins: pluginConfigSchema.optional(),
   agentTypes: z.lazy(() => agentTypesSchema).optional(),
@@ -195,7 +221,8 @@ const eventSchema = z.discriminatedUnion('kind', [
     terminalSequences: z.array(z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096)).max(128)
       .refine(values => values.reduce((total, value) => total + Buffer.byteLength(value), 0) <= 32768).optional() }).strict(),
   z.object({ kind: z.literal('compact'), summary: z.string().min(1), response: responseSchema }).strict(),
-  z.object({ kind: z.literal('turn_end'), reason: z.string() }).strict(),
+  z.object({ kind: z.literal('turn_end'), reason: z.string(), duration: z.object({uuid:z.string().uuid(),
+    durationMs:z.number().finite().nonnegative(), timestamp:z.string().datetime({offset:true})}).strict().optional() }).strict(),
 ]).superRefine((record, context) => {
   if (record.kind !== 'hook_once') return;
   const [event, entry, inner] = record.key.split(':');

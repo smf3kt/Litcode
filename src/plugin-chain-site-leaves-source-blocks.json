@@ -1,0 +1,100 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        233140,
+        233219
+      ],
+      "units": 79,
+      "bodySha256": "9dfa3394aa99d2d4a11560670bd50550ca8bf8ac8deed7fb3fc2e70a872e0cc6",
+      "note": "`TAt`, the autoFocus check three leaves run: absent or exactly `true`, and anything else answers the sentence"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        233330,
+        233611
+      ],
+      "units": 281,
+      "bodySha256": "917b3618abeae2e66d493c83ac533c6edf4f38fe1cff532a7e91cd6167b8a456",
+      "note": "`xAt`, the hover-scope key check: a non-empty string of at most `RAt`, without a control character, and each refusal says what happens instead — the key is dropped and names no scope"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        233864,
+        234038
+      ],
+      "units": 174,
+      "bodySha256": "9e28b44c3b146c3fae5f1fc9bd3edd7657630d28beddcd974bdb51bed418ab28",
+      "note": "`wVe`, the press check: the leaf must be held by a plugin of this chain, which for a press means a plugin name and a whole-number handle"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        236808,
+        236820
+      ],
+      "units": 12,
+      "bodySha256": "cff3a94e29e83d45c83903aaccc3a61f87ca68009e14ae4ce6be742bbc5ab428",
+      "note": "`PAt` (1e9), the line a Code block may start at"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        237485,
+        238267
+      ],
+      "units": 782,
+      "bodySha256": "d4a6a78f2b7b5cae66ac4cda83c2121f5813e1f8185faaca5cf0508e30fd9cf7",
+      "note": "`Lto`, the Code leaf problem: props are `{ source }` and any of language, path, startLine, format, wrap, with no other key and no children; source by `ace`, language and path by `xye`, then startLine as a positive safe integer within `PAt`, format one of source or diff, and wrap one of wrap or truncate-end — every sentence prefixed with `Code`"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        246293,
+        246804
+      ],
+      "units": 511,
+      "bodySha256": "2ea7f957b7379a18185ca81fb54ea35fb27848dea1e0c7e9afb87e3dc4f2b2a6",
+      "note": "`cur`, the four fields an Input admits beside `key` and `autoFocus`, and `jto`, the Input leaf problem: the props are checked by an every-key sweep rather than a picker, then the four fields in list order, then autoFocus, then the press — and children last, so `Input \"<key>\" takes no children` is the one sentence with no field name in it"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        246992,
+        247131
+      ],
+      "units": 139,
+      "bodySha256": "777848f9b6edd252843c56f1f744c66da99ee6826b55e7dfb47d2dc20995ebf9",
+      "note": "the checks an Input and a Select share: `ZAe`, a string that is not blank once trimmed, `JPn` (4096), the pixel bound an Svg side is measured against, and `uur`, which admits an absent side and otherwise a finite positive number within `JPn`"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        257601,
+        259180
+      ],
+      "units": 1579,
+      "bodySha256": "35411a1a8f53f618394623c9135c7f0b9e89f518d8f891fcdce86666b995c289",
+      "note": "the Select and the Svg: `mur` (64), how many options a Select may hold; `Qto`, the option check — `{ value, label? }` and nothing else, a value that is a string and unique within the Set the caller threads through, a label by `ace` — whose sentence is `option \"<value>\" <problem>`; `Zto`, the Select leaf problem, which checks the key list, the label, the value, then the options through `Qto`, then autoFocus, the press and finally children; `gur` (131072), how long an Svg source may be; and `eno`, the Svg leaf problem — source, alt, width and height, with the size pair checked together against `JPn` and `isInteractive` last"
+    }
+  ],
+  "missing": []
+}

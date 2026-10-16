@@ -99,6 +99,37 @@ test("component paths schemas and installed integrity fail before activation", a
   assert.throws(() => discoverInstalledPluginComponents(f.workspace, { enabled: true }), /Symlink/);
 });
 
+test("plugin themes discover defaults and declared paths within verified snapshots", async t => {
+  const f = fixture(t);
+  const manifest = JSON.parse(fs.readFileSync(path.join(f.source, "plugin.json"), "utf8"));
+  f.put(f.source, "themes/ocean.json", { name: "Ocean", base: "light" });
+  await f.install();
+  const components = () => discoverInstalledPluginComponents(f.workspace, { enabled: true });
+  assert.deepEqual(components()[0]!.themePaths, { name: "sample", themesPath: path.join(f.workspace, ".harness/plugins/sample/themes") });
+  assert.deepEqual(discoverInstalledPluginComponents(f.workspace), []);
+  f.put(f.source, "extra/single.json", { name: "Single" });
+  f.put(f.source, "extra/directory/other.json", { name: "Other" });
+  const update = async () => {
+    const previous = components()[0]!.plugin;
+    return createPluginTools({ enabled: true }).find(tool => tool.schema.name === "plugin_update")!
+      .execute({ name: "sample", directory: f.source, expected_digest: previous.digest }, {
+        workspace: f.workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 100_000 });
+  };
+  f.put(f.source, "plugin.json", { ...manifest, themes: ["extra/single.json", "extra/directory"] });
+  await update();
+  assert.deepEqual(components()[0]!.themePaths!.themesPaths, ["extra/single.json", "extra/directory"]
+    .map(relative => path.join(f.workspace, ".harness/plugins/sample", relative)));
+  f.put(f.source, "plugin.json", { ...manifest, themes: "extra/directory", experimental: { themes: "extra/single.json" } });
+  await update();
+  assert.deepEqual(components()[0]!.themePaths!.themesPaths, [path.join(f.workspace, ".harness/plugins/sample/extra/single.json")]);
+  for (const themes of ["../outside", "/absolute", "missing.json"]) {
+    f.put(f.source, "plugin.json", { ...manifest, themes });
+    await assert.rejects(update());
+  }
+  f.put(f.workspace, ".harness/plugins/sample/extra/single.json", { name: "Tampered" });
+  assert.throws(components, /Installed plugin changed/);
+});
+
 test("flattened hook cap includes groups events and explicit configuration", async t => {
   const f = fixture(t);
   const group = { hooks: Array.from({ length: 600 }, (_, index) => ({ command: `fixture-${index}` })) };

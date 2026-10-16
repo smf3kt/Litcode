@@ -1,0 +1,188 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        447999,
+        448102
+      ],
+      "units": 103,
+      "bodySha256": "2681f8b015da5e8bd6b12869eff1185a7f64ef2815d937c07a5c7d7f9d07a33e",
+      "note": "Joe: the agent.offer core, `{ isOffered: true }`"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        459180,
+        459384
+      ],
+      "units": 204,
+      "bodySha256": "9c4817278a951924f54215397cd714c55ebf9a8d81521084e8d275bfc3d592da",
+      "note": "Cht: the five chains whose core answers the text unchanged"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        459472,
+        459497
+      ],
+      "units": 25,
+      "bodySha256": "c2be1be748e78253ab8f5d6b9387a905285964075210b6a663ba5bba93ef2e6d",
+      "note": "HT: the chain builder for a name in Cht"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        459497,
+        459528
+      ],
+      "units": 31,
+      "bodySha256": "746cd67fbe672917088afd552382619dcbf38fad26bba24ec4f5c8ba18f6f56c",
+      "note": "_re: the attribution.text chain"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        459638,
+        459729
+      ],
+      "units": 91,
+      "bodySha256": "ce5d330d0c732c2317c74ab2b83b4ad6125c1a3f7bdb6dd1a90a2d1f3f37f0af",
+      "note": "COe: the command.describe core projection"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        459729,
+        459828
+      ],
+      "units": 99,
+      "bodySha256": "ab71f33228fa5db08a9354c632a676fd68afb95cb343c599d690e10311ef4cbf",
+      "note": "kre: the command.describe chain"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        459828,
+        459905
+      ],
+      "units": 77,
+      "bodySha256": "e9aacca864c38c86596be24dc1778b0471e84b538141f37e40ed18016d211859",
+      "note": "wre: the config.describe core projection"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        459905,
+        460002
+      ],
+      "units": 97,
+      "bodySha256": "74b2108aa2d5e4a1409e576a70196f47a59e44d94d8a31ae9de1f35ebd313596",
+      "note": "YH: the config.describe chain"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        460002,
+        460034
+      ],
+      "units": 32,
+      "bodySha256": "5228248910cb770ffec249b5a3174b51bf06a1c613c7d4f32985d77918aadf10",
+      "note": "vre: the prompt.attachment chain"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        460034,
+        460091
+      ],
+      "units": 57,
+      "bodySha256": "fa132fd972bd5dc485b7a0f9655e12e79c546fbdf19133083c46d31019ba3cb0",
+      "note": "Rre: the prompt.autocomplete chain, `{ suggestions: [] }`"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        460263,
+        460409
+      ],
+      "units": 146,
+      "bodySha256": "e9ed7221e3848404610294ce59f517875d5cbd04a4a250e6fad617a234b4f051",
+      "note": "xre: the prompt.context core, the two lists handed back"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        470161,
+        470190
+      ],
+      "units": 29,
+      "bodySha256": "5c4ca530bfa0556cb9cd7b7aa1d974ef66e4c3c7ae44a40d7859595423097ac3",
+      "note": "Fre: the prompt.section chain"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        474276,
+        474306
+      ],
+      "units": 30,
+      "bodySha256": "203db5b41e024bc45ea37f018856270770d43302a5d65aee0dc09a31f80ee418",
+      "note": "ose: the session.receive chain"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        474334,
+        474361
+      ],
+      "units": 27,
+      "bodySha256": "cbf1c3889113921dd43010ebcab38b84b884f9f0513f6503b33f9ed0720445df",
+      "note": "ise: the skill.prompt chain"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        475160,
+        475210
+      ],
+      "units": 50,
+      "bodySha256": "033b4f6fe7f6da205d44f034e5888f82c1866d4766820c2ee7febe48fbfaa41f",
+      "note": "lse: the telemetry.mark chain, `{ value: undefined }`"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        475210,
+        475394
+      ],
+      "units": 184,
+      "bodySha256": "e2d2bf29544414edb096596c511e807a159d7a6dcdd32d1421338280e59fec7d",
+      "note": "cse: the tool.describe core projection"
+    }
+  ],
+  "missing": []
+}

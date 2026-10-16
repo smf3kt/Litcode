@@ -1,0 +1,45 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        941,
+        1236
+      ],
+      "units": 295,
+      "bodySha256": "63a4c788f6571d7d7091712c0da0051d030583f090bb68f3caa65190a6e54f0c",
+      "note": "declares Zco, the plugin-state store: values (a store over a Map), readers, readersOf, mounted, the steady/live fold queues, staleListeners, faultRuns, bumps and versionFloor"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        1236,
+        1283
+      ],
+      "units": 47,
+      "bodySha256": "afaa57b50d25b8ec634dcf0d2523e7a203c8d3fe32a22580a1bdd80475386c5a",
+      "note": "declares edo, the toast clock: a handle with pending and pausedAt, both undefined"
+    },
+    {
+      "module": "chunk-3ph567jx.js",
+      "sha256": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+      "range": [
+        1283,
+        3650
+      ],
+      "units": 2367,
+      "bodySha256": "cbead4858616a9c253c2c8e46e3ed4696c2a446f235e7a7aef11a89629c12561",
+      "note": "declares s, the registry state literal: every field the source's registry carries, among them renderVersions/panes/hoverGroups as stores, pluginState Zco(), toastClock edo(), notices, the two change signals and the ui log sink"
+    }
+  ],
+  "missing": []
+}

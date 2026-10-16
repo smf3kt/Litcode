@@ -1,0 +1,435 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713"
+    },
+    {
+      "module": "chunk-nqc6v990.js",
+      "sha256": "261b35d99a3bb5aed676678c983f7c903da023ab3ad0c4117a3474d6b51e0738"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        359965,
+        360273
+      ],
+      "units": 308,
+      "bodySha256": "a62f5ffb35fd09889fe1d2d5917eceedb76acf9cef3494b42c824f28b5b0e29d",
+      "note": "declares the managed-settings path cache `vd` and its `Ad` instance: the file path and the drop-in directory are each computed once and reset on demand"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        360273,
+        360287
+      ],
+      "units": 14,
+      "bodySha256": "53210f059e5a0249ce6b4382a49f0f348f74947c68815d100204e8f39fddc718",
+      "note": "declares `Ad`, the one managed-settings cache the process reads"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        360287,
+        360332
+      ],
+      "units": 45,
+      "bodySha256": "52d8693557b33a6ae1ae33562f1f1d24c90fd3c59447c457910cb971aa3f860a",
+      "note": "declares `eC`, the managed-settings directory: the cached path through `Ad`"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        360332,
+        360539
+      ],
+      "units": 207,
+      "bodySha256": "eda8a56ee206f0957793945670e8082ae04e453697d1fcb20f2575b717eb6d7e",
+      "note": "declares `My`, the platform default the managed-settings directory falls back to: the override first, then macos / windows / linux paths"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        360539,
+        360561
+      ],
+      "units": 22,
+      "bodySha256": "45f534c11aed80f99ff666a5d5071836f4928173f6e44ff87811a045c28c761d",
+      "note": "declares `Oko`, the managed-settings directory override — it answers nothing in this build, which is why `My` always reaches its platform switch"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        387272,
+        387326
+      ],
+      "units": 54,
+      "bodySha256": "d1e502d1da64804fc59e763be295073e52beb7fc4de670a19ab04d6b2a9a511f",
+      "note": "declares `m_`, the managed settings file: `managed-settings.json` inside the managed directory"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        398204,
+        398553
+      ],
+      "units": 349,
+      "bodySha256": "2436d0b8fe088ef66369e93b5b0ae15169f02f5c0d60902cb2a9b1c9766e607a",
+      "note": "declares `Ynn`, the source → directory resolver: userSettings is the `.claude` directory, policy the managed one, project the configured project directory or the cwd, local the same with the canonical-root decision, flag the flag path's directory"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        398553,
+        398611
+      ],
+      "units": 58,
+      "bodySha256": "1572bcf076ce0a5784b7fd2fff4b11245986df246bdb8f3d676a92cb59bef4bb",
+      "note": "declares `FWn`, the cwd a project or local source needs, refused with the no-project-directory error when the context has none"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        398611,
+        398733
+      ],
+      "units": 122,
+      "bodySha256": "666495ec73c3f70525382bdbc9add050d35a2cf72aa4af1e5c4ace7386766f6a",
+      "note": "declares `RN`, the local-settings root decision: the canonical root when the cwd and the root disagree and the root is owned by the user, the cwd otherwise"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        398733,
+        398952
+      ],
+      "units": 219,
+      "bodySha256": "f5cd4e2e6de35cb0ee22e5cb814be945a684d707383ed668bdb7d15b3e43edb3",
+      "note": "declares `pTr`, that decision's inputs: the root, the cwd, and whether they are the same or the root is the real home directory"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        398952,
+        399026
+      ],
+      "units": 74,
+      "bodySha256": "47420fb38e7e3be0b6be491edbcba693b43e3d74e923ba86323d6e89b8ecc545",
+      "note": "declares `Q$s`, the ownership probe: the root, its `.git` entry and its `.claude` entry, read once per root through the local store's probe cache"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        399026,
+        399193
+      ],
+      "units": 167,
+      "bodySha256": "e08dfe260ee7869a0814e5c105151042d32e257ee1c936663797e31346a01009",
+      "note": "declares `b_`, the uid triple the probe answers with: the root's uid, the `.git` entry's uid, and the `.claude` entry's uid or null when it is absent"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        399193,
+        399278
+      ],
+      "units": 85,
+      "bodySha256": "8148116e4730d9abef5408f653718e83c631355b640939f9dba904cac7cc73cb",
+      "note": "declares `E_`, the `.git` entry's uid"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        399278,
+        400402
+      ],
+      "units": 1124,
+      "bodySha256": "3854d64dd05835cf6f52c50a7620f3a34f3059fbe8a160e61e0903991c8e0d6f",
+      "note": "declares `Z$s`, the ownership gate: without uid semantics, or with any of the three uids unequal to the current one, the store stays at the session cwd and a warn line names the uid it found; the three texts are the source's"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        400402,
+        400472
+      ],
+      "units": 70,
+      "bodySha256": "bb87305d1c41f5e473b37dc58134056a686b638d019a22a05aaa2f758c955f09",
+      "note": "declares `fTr`, the normalized real home directory, read once per process through the same probe cache"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        400472,
+        400577
+      ],
+      "units": 105,
+      "bodySha256": "e8550cfd7d349e763d1da166c3cc288bbd2acc09bc9775a47b1c03e088abfad3",
+      "note": "declares `w_`, the realpath of the home directory, normalized to NFC, throwing when the realpath is unavailable"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        400716,
+        400779
+      ],
+      "units": 63,
+      "bodySha256": "7ab73c8b2581446960f0c0903b70e0b11a83a9741aa75fa844501491c257ca59",
+      "note": "declares `UE`, the two settings file names: `settings.json` and the cowork one"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        400779,
+        400882
+      ],
+      "units": 103,
+      "bodySha256": "4772a9088e56c34a125a47935b6148881e846c979f3aaf0528524d87cd967593",
+      "note": "declares `k_`, the user settings file name: the cowork name when the context says so or the environment flag is set, the default otherwise"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        400882,
+        401146
+      ],
+      "units": 264,
+      "bodySha256": "833640cc61663dec769c08acd83d102eddfd192c4da20b0a801c9e70e6688791",
+      "note": "declares `GW`, the resolver every settings read goes through: user settings are the `.claude` directory joined with the file name, project and local are the resolved directory joined with their names and refuse a context with neither cwd nor project directory, policy is the managed file, flag is the context's flag path"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        401146,
+        401294
+      ],
+      "units": 148,
+      "bodySha256": "6732084f6a29ec0fc139a0ee37ba4c0923ceec8a22b1064fb2f993ccd26cd9ff",
+      "note": "declares `TO`, the two per-source file names: `settings.json` for project, `settings.local.json` for local"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        59700,
+        59730
+      ],
+      "units": 30,
+      "bodySha256": "972294fafda488d6b34fadabc4c009286f8a598cd6881dcf4582c5acbc3a088b",
+      "note": "declares `Xs`, the disposable the facade's telemetry spans are built on — a no-op in this build"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        59730,
+        59754
+      ],
+      "units": 24,
+      "bodySha256": "2ba5ddb21c0f0db285a013be400ed5567fd40951d50847c53c2540ec796fbdc2",
+      "note": "declares `Qs`, that disposable's accessor"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        59754,
+        59764
+      ],
+      "units": 10,
+      "bodySha256": "470948aa64a5d6fb52387cd3d1c13ef625860edf4f25f3da1f3aa8092f5d8b61",
+      "note": "declares `ih`, the template tag the facade wraps every call in"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        60401,
+        60417
+      ],
+      "units": 16,
+      "bodySha256": "6bcceb7d5cb7ad06d252725a00716d8d7ef8a82d64622bcad9c7ef25a083624e",
+      "note": "declares `pi`, the arrow the facade's directory-open errors are written with"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        60417,
+        60484
+      ],
+      "units": 67,
+      "bodySha256": "5c424e1a998a005647c31da6207c4cd00957bcb0a7d43f6ba80250f6d964431c",
+      "note": "declares `hi`, the open flags a no-follow directory read uses"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        60484,
+        60570
+      ],
+      "units": 86,
+      "bodySha256": "aaeb606584d8f7963880f178f6bd1cd15142906dcc6a66a131fc4b572cab9943",
+      "note": "declares `kY`, the open flags a plain read uses"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        77042,
+        80312
+      ],
+      "units": 3270,
+      "bodySha256": "4418be1c93b0c56a3a0d698844d25c001254ccc496c97849b864d652c8247bb1",
+      "note": "declares `Vy`, the fs facade the whole bundle reads through: the sync and async stat/lstat/read/open family, the directory walk, and the error texts each one writes"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        80312,
+        80336
+      ],
+      "units": 24,
+      "bodySha256": "7760f98bc6a6dacc483cb8443cf93309744cdeab3bd6c551950c97dfd879e63f",
+      "note": "declares `ie`, the facade accessor"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        80736,
+        81001
+      ],
+      "units": 265,
+      "bodySha256": "e7146358ec5b918ea27922d588c8199b4c49f675e3d63afe2c9d7d32cf26ad04",
+      "note": "declares `ID`, the bounded read the facade's byte reads go through"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        52926,
+        52959
+      ],
+      "units": 33,
+      "bodySha256": "e3dea4501c64137fefce9d210e455ea643a453fdb8fef291e4855580f0caa97f",
+      "note": "declares `an`, the no-project-directory error's name"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        52959,
+        53053
+      ],
+      "units": 94,
+      "bodySha256": "42066d9d15b37d9a482c3b2ddaba3ff5407ead8c341277c2389b8a6f3e09f0c2",
+      "note": "declares `GP`, the no-project-directory error the project and local resolutions throw"
+    },
+    {
+      "module": "chunk-nqc6v990.js",
+      "sha256": "261b35d99a3bb5aed676678c983f7c903da023ab3ad0c4117a3474d6b51e0738",
+      "range": [
+        2485,
+        2535
+      ],
+      "units": 50,
+      "bodySha256": "56028277f60f6e94969f1d7daab62c615fc9e3e06265c7a3dd2b3b51b5a823d9",
+      "note": "declares `o`, the configuration directory override the `.claude` path is built from"
+    },
+    {
+      "module": "chunk-nqc6v990.js",
+      "sha256": "261b35d99a3bb5aed676678c983f7c903da023ab3ad0c4117a3474d6b51e0738",
+      "range": [
+        2704,
+        2762
+      ],
+      "units": 58,
+      "bodySha256": "a278f105aa10d19970e98fb6c10b2044e1794a272a2b3a270f54d07fd2277b19",
+      "note": "declares `be`, the `.claude` directory: the override or the home directory's, normalized to NFC, remembered after the first read"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        14875,
+        15025
+      ],
+      "units": 150,
+      "bodySha256": "2cc266b2e773a747761ea086d3848b906b135b6cabcca1a9639fc714acfeaee2",
+      "note": "declares `lA`, the realpath cache the home-directory read goes through"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        15548,
+        15610
+      ],
+      "units": 62,
+      "bodySha256": "52256777c03afba6339fecd63de41141892ea32dfa904c0d6f6cfb2c25062500",
+      "note": "declares `Hp`, the realpath of a path, answering null instead of throwing"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        7395,
+        7436
+      ],
+      "units": 41,
+      "bodySha256": "fce11281169388623aca1324f3dc87f2e80b286ecb465abcb5398ad79bfbb34d",
+      "note": "declares `On`, the NFC normalization every path comparison goes through"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        401294,
+        401454
+      ],
+      "units": 160,
+      "bodySha256": "1c2dbfe11a2f1ee85de349c36339af6bbbd785f42465b77751c6edbfbc584c57",
+      "note": "declares `vse`, the local settings path: the session cwd's local file, or nothing when the cwd is absent, when the cwd *is* the canonical git root, or when the project config directory is set (W45-55)"
+    }
+  ],
+  "missing": []
+}

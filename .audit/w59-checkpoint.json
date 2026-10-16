@@ -1,0 +1,105 @@
+{
+  "status": "partial",
+  "head": "033b9b8d704a12fed9e70e0b9429b49f87870508",
+  "compiler": "Version 7.0.2",
+  "errors": 100,
+  "files": 46,
+  "codes": {
+    "TS2322": 27,
+    "TS2367": 11,
+    "TS2339": 8,
+    "TS2345": 24,
+    "TS1360": 1,
+    "TS2820": 1,
+    "TS2740": 2,
+    "TS2698": 5,
+    "TS2352": 3,
+    "TS2554": 1,
+    "TS18050": 6,
+    "TS2739": 2,
+    "TS2305": 5,
+    "TS2344": 1,
+    "TS2347": 1,
+    "TS2769": 1,
+    "TS2678": 1
+  },
+  "identities": {
+    "commands.ts": "0613b2dbd390ccf9a7ca70e963b473dbc2c599812402e5dba4c6db423a0304ba",
+    "commands/insights.ts": "9da54827bd65726e8a1d9d2e31c766e9a88233fc9794dae2f6f39ba6a4f363b3",
+    "components/QuickOpenDialog.tsx": "8c2d785564745fd7dc0def6bd42b3a01090105dae4428dd833fa0e5398fdbef5",
+    "components/Spinner/types.ts": "f957aa4c2a4fc5bdcc18640264fbe3e1fa6727a454f2b653b2ad5158febd88c9",
+    "constants/prompts.ts": "50897e9d8bec1a2fa9abfcdc7ea3ee5d3d5e1dbef71414aa1e4c1696e0604f08",
+    "entrypoints/sdk/controlTypes.ts": "930b01c84b19e9acd6f01550eb6a59198e238ca7e5a4780c6417fed8737f1427",
+    "entrypoints/sdk/runtimeTypes.ts": "af9357293da2d15edcb805858d2be73a06825860c093f9b80064b6a1482b0e0f",
+    "ink/ink.tsx": "321e26a6ca6d679aaea72b1f5dc19144be752ed1762bea98b8d99d6432cd37af",
+    "ink/render-to-screen.ts": "e4b717ae910b304f4e9e49ae4a40fddd3f6ab641acb2540bf6d0ce6cc55deeeb",
+    "services/analytics/firstPartyEventLogger.ts": "d6e93cf9691911a3169910031ba35e45c6cf78deb58ac295d6d0c7439f1947a1",
+    "services/mcp/client.ts": "5499e05818c8830c7c61f98bcf76e4f4f9da41a3da1cfcb6d7b47133b17a2223",
+    "services/mcp/useManageMCPConnections.ts": "4a48207c1b74b8e502b8dfd8906210f9787f76595b56a731d4b63ac08b1e048d",
+    "types/vendor.d.ts": "140dd62d75fd382aaba56d4f1760f795e4b4970e88f8c513187e6fe679717931",
+    "utils/bash/commands.ts": "fc74e35dcfa5e843eb40cd91efccac7822fff3645dfdeea1b6e41d396c31bd75",
+    "utils/collapseReadSearch.ts": "f1b0efd64fe0a0049c951ab3a49b0b2a948b7adcee1ad1aad028b902e8bb274a",
+    "utils/execFileNoThrowPortable.ts": "8c6657b2982482f630b06b5d22be9bcbe321e0d18b7a069d7ba0f1a0dfdb100c",
+    "utils/filePersistence/outputsScanner.ts": "8776edb54ade925ebe43e76f8b82f67787fec71b05c90997ff8f042c2bc70f3f",
+    "utils/heapDumpService.ts": "7c4da464401644b3bf5a5cbe7858a5222bcc404afd36cb487e13ba69c45a9eb6",
+    "utils/log.ts": "7320ccab18126af0d6aa52255db4d9a9414bb151a27081637366bc7fa11af720",
+    "utils/permissions/classifierDecision.ts": "164a359f372c8f38fc986b74a711871304e8732b16a11abcd8fe48e3b7e22fd8",
+    "utils/telemetry/instrumentation.ts": "d80381ea38b7bc6dfccf219179fca39bdca50895607b51e26408200cc5120167",
+    "package.json": "5ef955d666d867ff445668465545f47e0e3ec05df98cbf98a361f597308e971f",
+    "package-lock.json": "b0d06e63cd10f039c593420f81c9422576ab9da25952095aabb03cc5db72b974",
+    "tsconfig.json": "b05db6cf3dbe03b5593f56f326b6adaba493120905c306d31e97153c6312abe9"
+  },
+  "log_sha256": "0a260bb450abb67f747e445bc5788d3a7a946179362b13d5f0cc35693d7efe94",
+  "sources": [
+    {
+      "module": "chunk-fn59xp63.js",
+      "sha256": "0b84fad20e5e56dd7e759048435f4400da577a1250d8209a4ce4c06b05e5fef7",
+      "ranges": [
+        [
+          1728,
+          1736
+        ],
+        [
+          2053,
+          2060
+        ]
+      ],
+      "coordinates": "one-based-lines-inclusive",
+      "reason": "batch log exporter options API adaptation"
+    },
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "1aab9e50181ffef960cba4dc6cb7668ebb91c13056810165a96bc2160fa7791c",
+      "ranges": [
+        [
+          29285,
+          29293
+        ]
+      ],
+      "coordinates": "one-based-lines-inclusive",
+      "reason": "first party batch exporter options API adaptation"
+    },
+    {
+      "module": "chunk-w2r9hdjf.js",
+      "sha256": "6ca6d851f70d5d38f1b70b260632f48211abfaeedac273953f9e7c71004e3800",
+      "ranges": [
+        [
+          1,
+          5
+        ]
+      ],
+      "coordinates": "one-based-lines-inclusive",
+      "reason": "grant flag declaration"
+    }
+  ],
+  "checks": [
+    "w58-verify.mjs exit 0",
+    "w59-verify.mjs exit 0",
+    "git diff --check exit 0"
+  ],
+  "unverified": [
+    "full build",
+    "application CLI",
+    "remaining protocol schema and message type repairs"
+  ]
+}
