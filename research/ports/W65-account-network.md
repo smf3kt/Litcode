@@ -376,6 +376,27 @@ Two user-visible strings that had become untrue were corrected rather than left:
 
 One honest note about the tooling: the import-graph scan could not have found this cluster. Every one of these modules was reached through a conditional `require` inside a flag ternary, not through an import edge, so the scan's list is unchanged at its ten legitimate entries — this is the wave where the scanner was the wrong instrument and reading the flag's own call sites was the right one.
 
+## Wave D step 6 — the first-run connectivity and region preflight (landed, `b2c553b`)
+
+`utils/preflightChecks.tsx` (151 lines) was the first onboarding step whenever `isAnthropicAuthEnabled()` was true. It fetched two endpoints — `${getOauthConfig().BASE_API_URL}/api/hello` and the OAuth token origin's `/v1/oauth/hello` — and on any failure printed `Claude Code might not be available in your country` with a link to `anthropic.com/supported-countries`, then called `process.exit(1)` 100ms later.
+
+Two of those three properties put it inside the boundary: it talked to the account and region service, and its failure mode was to stop the agent from starting at all. Removed with its step id in `Onboarding`'s `StepId` union; theme, API-key approval, security and terminal setup are untouched. 2 files, +1/−157.
+
+**Kept deliberately:** `utils/apiPreconnect.ts`. It looks account-shaped — it reads `getOauthConfig().BASE_API_URL` — but its comment and code are explicit that this is the *inference* host's connection pool (`ANTHROPIC_BASE_URL || BASE_API_URL`), warmed with a HEAD so the first real API call skips a TCP+TLS handshake. That is a local startup optimization on a path that stays, not an account call. The distinction the whole wave turns on: reading the OAuth *config* is not the same as using the OAuth *account*.
+
+## Next: wave D step 7, the analytics transports (scoped, not started)
+
+The one decision still open from the wave-D plan, now scoped in `.audit/w65-d7-recon.md`. The package is 4,020 lines across nine modules with 232 importing files, and the shape of the cut follows wave D step 3's precedent: remove the outbound transports, keep the local entry points inert so 232 call sites do not churn.
+
+| Transport | Endpoint | Disposition |
+| --- | --- | --- |
+| `datadog.ts` (307 lines) | `http-intake.logs.us5.datadoghq.com` | delete the transport; `logEvent`'s Datadog arm goes with it |
+| `firstPartyEventLoggingExporter.ts` (820) | `api.anthropic.com` / `api-staging` | delete the exporter; already lost its BigQuery reader in step 3 |
+| `growthbook.ts` (1,155) | `api.anthropic.com/` GB proxy + Statsig gates | drop the fetch; `getDynamicConfig` returns the caller's default, which is the documented no-init behaviour; keep `setGrowthBookConfigOverride` and the env overrides so local behaviour stays configurable |
+| `sink.ts` (114) | local fan-out | shrink to the surviving arms |
+
+Two things to establish before cutting, and they are the reason this is a wave rather than a patch: whether any *coding-loop* gate currently receives a non-default answer in this build (if none does, the GrowthBook half is behaviour-neutral to remove), and whether `entrypoints/init.ts`'s dynamic `initialize1PEventLogging` import can go with the exporter it defers. Both are readable from the source; neither is a product guess.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
