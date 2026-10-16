@@ -1,0 +1,154 @@
+{
+ "report": [
+  {
+   "file": "commands/context/context-noninteractive.ts",
+   "op": "range 113-145",
+   "ok": true
+  },
+  {
+   "file": "components/ContextVisualization.tsx",
+   "op": "range 23-65",
+   "ok": true
+  },
+  {
+   "file": "components/Message.tsx",
+   "op": "range 249-271",
+   "ok": true
+  },
+  {
+   "file": "components/Spinner.tsx",
+   "op": "range 222-224",
+   "ok": true
+  },
+  {
+   "file": "components/Spinner.tsx",
+   "op": "range 216-220",
+   "ok": true
+  },
+  {
+   "file": "hooks/useReplBridge.tsx",
+   "op": "range 193-197",
+   "ok": true
+  },
+  {
+   "file": "memdir/findRelevantMemories.ts",
+   "op": "range 64-70",
+   "ok": true
+  },
+  {
+   "file": "screens/REPL.tsx",
+   "op": "range 4847-4885",
+   "ok": true
+  },
+  {
+   "file": "screens/REPL.tsx",
+   "op": "range 4845-4845",
+   "ok": true
+  },
+  {
+   "file": "screens/REPL.tsx",
+   "op": "range 2799-2804",
+   "ok": true
+  },
+  {
+   "file": "tools/AgentTool/builtInAgents.ts",
+   "op": "range 32-41",
+   "ok": true
+  },
+  {
+   "file": "tools/SendMessageTool/SendMessageTool.ts",
+   "op": "range 775-795",
+   "ok": true
+  },
+  {
+   "file": "utils/analyzeContext.ts",
+   "op": "range 1119-1125",
+   "ok": true
+  },
+  {
+   "file": "utils/attribution.ts",
+   "op": "range 376-388",
+   "ok": true
+  },
+  {
+   "file": "utils/conversationRecovery.ts",
+   "op": "range 492-505",
+   "ok": true
+  },
+  {
+   "file": "utils/messages.ts",
+   "op": "range 4639-4643",
+   "ok": true
+  },
+  {
+   "file": "utils/messages.ts",
+   "op": "range 4143-4150",
+   "ok": true
+  },
+  {
+   "file": "utils/messages.ts",
+   "op": "range 2411-2432",
+   "ok": true
+  },
+  {
+   "file": "utils/messages.ts",
+   "op": "range 2351-2361",
+   "ok": true
+  },
+  {
+   "file": "utils/attachments.ts",
+   "op": "range 3968-3978",
+   "ok": true
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "op": "line",
+   "ok": true
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "op": "line",
+   "ok": true
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "op": "line",
+   "ok": true
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "op": "line",
+   "ok": true
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "op": "line",
+   "ok": true
+  },
+  {
+   "file": "components/LogoV2/LogoV2.tsx",
+   "op": "line",
+   "ok": true
+  },
+  {
+   "file": "components/Settings/Settings.tsx",
+   "op": "line",
+   "ok": true
+  },
+  {
+   "file": "components/PromptInput/PromptInputFooterLeftSide.tsx",
+   "op": "line",
+   "ok": true
+  },
+  {
+   "file": "components/messages/UserTextMessage.tsx",
+   "op": "line",
+   "ok": true
+  },
+  {
+   "file": "components/messages/UserTextMessage.tsx",
+   "op": "line",
+   "ok": true
+  }
+ ]
+}

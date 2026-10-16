@@ -1,0 +1,56 @@
+(node:38054) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the constants are the source's own (0.818792ms)
+✔ one painted cell is eight words: a flag and three channels twice (0.080792ms)
+✔ the call site of freshRasterAdmission builds an unspent row, and rasterAdmission holds it in the registry (0.093834ms)
+✔ the accessor carries no reset, because the source's memoizer is an identity in this build (0.061833ms)
+✔ admitting a frame refills against the clock and spends one token (0.10625ms)
+✔ the cost is a reserve that must be left behind, not a price (0.080416ms)
+✔ the refill is proportional to the elapsed time, capped at the capacity and never negative (0.072875ms)
+✔ encoding a cell writes the foreground from the low half and the background from the high half (0.101208ms)
+✔ the default sentinel marks the side it is passed as, and the cell it is written at (0.095959ms)
+✔ a size is checked against the limit field by field, columns first (0.091166ms)
+✔ the validating mount checks against the default size, and takes no other (0.053333ms)
+(node:38055) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the bounds a problem works within are the source's own numbers (0.583709ms)
+✔ a label scrubs what the pattern matches and is cut only past the limit (0.110708ms)
+✔ the allowed-keys predicate reads own keys only (0.05ms)
+✔ a leaf is stamped only by a non-empty plugin string (0.04725ms)
+✔ the string check caps its length where the label check does not (0.087959ms)
+✔ the control test is the pattern, not the sentence it answers with (0.077541ms)
+✔ the field sweep answers the first problem in list order (0.052708ms)
+✔ an Image size is checked against the 255 by 255 limits (0.056667ms)
+✔ the Raster picker answers a copy, and only for a keyed well-formed object (0.074375ms)
+✔ a Raster is admitted when its props, frame and stamp all hold (0.524584ms)
+✔ a Raster is refused by the picker before anything else (0.057542ms)
+✔ a Raster's children, size, cells and stamp are checked in that order (0.102ms)
+✔ a Raster problem names the site by the scrubbed, truncated key (0.082ms)
+✔ an Image is admitted when its source, alt, size and stamp all hold (0.214833ms)
+✔ an Image names the stray field it found, and says where a press goes (0.043917ms)
+✔ an Image's alt, key and size are checked before its source (0.061375ms)
+✔ the Image's own type checks are bare, and only its last four name the site (0.081625ms)
+(node:38056) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the CSI helper writes the introducer and joins all but the last argument (0.604583ms)
+✔ the grammar the helper is written against is the source's own (0.285958ms)
+✔ a colour narrows to four bits a channel, and the sentinel answers the default marker (0.080708ms)
+✔ the SGR a colour is drawn with, and the side that is a reset (0.116708ms)
+✔ a fresh surface holds nothing and starts from the reset sequence (0.134125ms)
+✔ the matcher answers the closest slot, and the first one wins a tie (0.160666ms)
+✔ the stale list is the slots a paint has not touched, oldest first (0.093583ms)
+✔ a paint admits the colours it does not hold and reuses the ones it does (0.21325ms)
+✔ a colour the surface holds answers its own escape, and one it does not answers the nearest hold (0.097417ms)
+✔ a surface with nothing to match answers the last escape it emitted (0.08675ms)
+✔ a starved paint reports waiting and places nothing (0.054292ms)
+✔ a paint that stops matching reports progressing once it has evaluated the budget (391.874917ms)
+✔ a frame's runs are one key per colour change, with the distinct set beside them (0.134958ms)
+✔ the rows emit an escape only where the colour changes, and join with a newline (0.124958ms)
+ℹ tests 42
+ℹ suites 0
+ℹ pass 42
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 577.610041

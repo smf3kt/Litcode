@@ -1,0 +1,209 @@
+{
+ "schema": "W47Ports.v1",
+ "baseline": 1448,
+ "final": 1443,
+ "candidates": 24,
+ "kept": 6,
+ "reverted": 18,
+ "results": [
+  {
+   "module": "components/agents/SnapshotUpdateDialog.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "self-hosted-runner/main.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "jobs/classifier.ts",
+   "chunk": "chunk-r1x169b6.js",
+   "form": "named",
+   "names": [
+    "createAttachmentMessage",
+    "filterDuplicateMemoryAttachments",
+    "getAttachmentMessages",
+    "startRelevantMemoryPrefetch"
+   ],
+   "signalBefore": 12,
+   "signalAfter": 11,
+   "delta": -1,
+   "verdict": "kept",
+   "tried": 1
+  },
+  {
+   "module": "proactive/index.ts",
+   "chunk": null,
+   "form": null,
+   "names": [],
+   "signalBefore": 35,
+   "signalAfter": 43,
+   "delta": 8,
+   "verdict": "reverted",
+   "tried": 2
+  },
+  {
+   "module": "services/compact/reactiveCompact.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "services/contextCollapse/operations.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "tools/SendUserFileTool/prompt.ts",
+   "chunk": "chunk-5zy1gftc.js",
+   "form": "named",
+   "names": [
+    "SEND_USER_FILE_TOOL_NAME"
+   ],
+   "signalBefore": 15,
+   "signalAfter": 12,
+   "delta": -3,
+   "verdict": "kept",
+   "tried": 1
+  },
+  {
+   "module": "daemon/workerRegistry.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "environment-runner/main.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "server/sessionManager.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "skills/mcpSkills.ts",
+   "chunk": null,
+   "form": null,
+   "names": [],
+   "signalBefore": 2,
+   "signalAfter": 0,
+   "delta": -2,
+   "verdict": "reverted",
+   "tried": 1
+  },
+  {
+   "module": "bridge/peerSessions.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "services/skillSearch/telemetry.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "tools/WorkflowTool/createWorkflowCommand.ts",
+   "chunk": "chunk-yqmn7976.js",
+   "form": "named",
+   "names": [
+    "getWorkflowCommands"
+   ],
+   "signalBefore": 1,
+   "signalAfter": 0,
+   "delta": -1,
+   "verdict": "kept",
+   "tried": 1
+  },
+  {
+   "module": "components/messages/UserCrossSessionMessage.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "tools/WorkflowTool/WorkflowTool.ts",
+   "chunk": "chunk-a7gk0710.js",
+   "form": "named",
+   "names": [
+    "WorkflowTool"
+   ],
+   "signalBefore": 3,
+   "signalAfter": 1,
+   "delta": -2,
+   "verdict": "kept",
+   "tried": 1
+  },
+  {
+   "module": "tools/MonitorTool/MonitorTool.ts",
+   "chunk": "chunk-y05an865.js",
+   "form": "named",
+   "names": [
+    "MonitorTool"
+   ],
+   "signalBefore": 1,
+   "signalAfter": 0,
+   "delta": -1,
+   "verdict": "kept",
+   "tried": 1
+  },
+  {
+   "module": "components/tasks/WorkflowDetailDialog.ts",
+   "chunk": "chunk-8vv42z7k.js",
+   "form": "named",
+   "names": [
+    "WorkflowDetailDialog"
+   ],
+   "signalBefore": 1,
+   "signalAfter": 0,
+   "delta": -1,
+   "verdict": "kept",
+   "tried": 1
+  },
+  {
+   "module": "entrypoints/sdk/toolTypes.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "utils/eventLoopStallDetector.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "utils/taskSummary.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "services/sessionTranscript/sessionTranscript.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "utils/udsMessaging.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  },
+  {
+   "module": "utils/protectedNamespace.ts",
+   "verdict": "no name evidence",
+   "delta": 0,
+   "tried": 0
+  }
+ ]
+}

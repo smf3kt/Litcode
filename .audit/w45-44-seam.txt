@@ -1,0 +1,17 @@
+(node:69122) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the session floor answers from the process when no session is bound, and says so (0.571708ms)
+✔ a caller cwd wins over the process cwd, and a bound session names the model (0.373916ms)
+✔ a handler in the chain answers first, and next() reaches the floor (1.581834ms)
+✔ session.turns counts a person's turns and drops meta, virtual and tool-result messages (0.126125ms)
+✔ session.surface and session.surfaces read the drawing registry, terminal first (0.441458ms)
+✔ the drawing registry merges a re-attach, reports a detach, and keeps the silence marks (0.129209ms)
+✔ the two copied helpers answer the source's own way (0.050375ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 146.633417

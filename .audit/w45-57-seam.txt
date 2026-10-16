@@ -1,0 +1,18 @@
+(node:91806) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the table carries the notify entry beside the four ui names (0.3365ms)
+✔ the check reads only the text and, when given, the title (0.058709ms)
+✔ the stamp fills an absent title with the plugin name (0.260917ms)
+✔ the run maps the channel the session answers with (0.218458ms)
+✔ an error channel throws the source's own error, and any other answer is its own hole (0.194792ms)
+✔ the request the session receives is the source's own shape (0.074833ms)
+✔ the committed flag answers no-surface without touching the session (0.06125ms)
+✔ the seam raises the entry, and its hookless path runs the floor without the check (0.277125ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 140.377833

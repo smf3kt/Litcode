@@ -1,0 +1,19 @@
+(node:71248) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the publish leaves the file and nothing else (4.872542ms)
+✔ without a mode the file is created with the platform default (0.343834ms)
+✔ exactMode fixes the mode through the handle, and flush syncs what it wrote (5.239042ms)
+✔ a refused publish raises the source's own error and leaves nothing behind (0.646458ms)
+✔ the staged file lives in the staging directory when there is one (0.652ms)
+✔ a rename that fails without a retryable code publishes nothing (0.298ms)
+✔ a cross-device rename falls back to the in-place arm and still writes the file (0.821334ms)
+✔ the publish is a rename, so a symlink target is replaced rather than followed (0.375709ms)
+✔ a refused staging write falls back to the in-place arm only when it is allowed to (0.749ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 158.860958

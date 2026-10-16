@@ -1,0 +1,418 @@
+{
+ "totals": {
+  "staticImport": 33,
+  "gatedRequire": 0,
+  "dynamicImport": 0,
+  "typeofImport": 0,
+  "other": 135
+ },
+ "gatedOnly": 0,
+ "staticOnly": 6,
+ "perModule": [
+  {
+   "module": "tools/VerifyPlanExecutionTool/constants.ts",
+   "importers": 1,
+   "staticImport": 11,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 4
+  },
+  {
+   "module": "tools/TerminalCaptureTool/prompt.ts",
+   "importers": 1,
+   "staticImport": 9,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "tools/DiscoverSkillsTool/prompt.ts",
+   "importers": 1,
+   "staticImport": 6,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 4
+  },
+  {
+   "module": "services/contextCollapse/index.ts",
+   "importers": 9,
+   "staticImport": 5,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 21
+  },
+  {
+   "module": "services/compact/snipCompact.ts",
+   "importers": 5,
+   "staticImport": 1,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 13
+  },
+  {
+   "module": "memdir/memoryShapeTelemetry.ts",
+   "importers": 2,
+   "staticImport": 1,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 3
+  },
+  {
+   "module": "services/compact/snipProjection.ts",
+   "importers": 3,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 6
+  },
+  {
+   "module": "components/messages/SnipBoundaryMessage.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "services/compact/cachedMCConfig.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "assistant/AssistantSessionChooser.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "cli/handlers/templateJobs.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "bridge/webhookSanitizer.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "server/parseConnectUrl.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "server/backends/dangerousBackend.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "server/serverBanner.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "server/serverLog.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "server/connectHeadless.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "components/FeedbackSurvey/useFrustrationDetection.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "hooks/notifs/useAntOrgWarningNotification.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "services/contextCollapse/persist.ts",
+   "importers": 2,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 6
+  },
+  {
+   "module": "services/compact/cachedMicrocompact.ts",
+   "importers": 2,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 10
+  },
+  {
+   "module": "coordinator/workerAgent.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "services/skillSearch/localSearch.ts",
+   "importers": 2,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 4
+  },
+  {
+   "module": "utils/attributionHooks.ts",
+   "importers": 3,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 3
+  },
+  {
+   "module": "utils/systemThemeWatcher.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "components/messages/UserGitHubWebhookMessage.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "components/messages/UserForkBoilerplateMessage.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "tools/ReviewArtifactTool/ReviewArtifactTool.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "components/permissions/ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "tools/WorkflowTool/WorkflowPermissionRequest.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "components/permissions/MonitorPermissionRequest/MonitorPermissionRequest.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "components/tasks/MonitorMcpDetailDialog.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "services/skillSearch/featureCheck.ts",
+   "importers": 3,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 6
+  },
+  {
+   "module": "entrypoints/sdk/settingsTypes.generated.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "entrypoints/sdk/coreTypes.generated.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "utils/sdkHeapDumpMonitor.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "utils/sessionDataUploader.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "utils/ccshareResume.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "tools/WebBrowserTool/WebBrowserPanel.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "utils/udsClient.ts",
+   "importers": 2,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 3
+  },
+  {
+   "module": "services/skillSearch/remoteSkillState.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "services/skillSearch/remoteSkillLoader.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "utils/attributionTrailer.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  },
+  {
+   "module": "tools/OverflowTestTool/OverflowTestTool.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 2
+  },
+  {
+   "module": "utils/postCommitAttribution.ts",
+   "importers": 1,
+   "staticImport": 0,
+   "gatedRequire": 0,
+   "dynamicImport": 0,
+   "typeofImport": 0,
+   "other": 1
+  }
+ ]
+}

@@ -1,0 +1,2558 @@
+{
+ "schema": "W47MissingModuleFills.v1",
+ "tscLog": "/tmp/cc-spike-tsc3.txt",
+ "gaps": 86,
+ "strong": 7,
+ "weak": 2,
+ "unmatched": 77,
+ "applied": 9,
+ "assets": {
+  "extensions": [
+   {
+    "ext": ".md",
+    "count": 29,
+    "distinct": 29
+   }
+  ],
+  "filled": 5,
+  "withoutAsset": [
+   "./claude-api/csharp/claude-api.md",
+   "./claude-api/go/claude-api.md",
+   "./claude-api/java/claude-api.md",
+   "./claude-api/php/claude-api.md",
+   "./claude-api/python/agent-sdk/patterns.md",
+   "./claude-api/python/agent-sdk/README.md",
+   "./claude-api/python/claude-api/batches.md",
+   "./claude-api/python/claude-api/files-api.md",
+   "./claude-api/python/claude-api/README.md",
+   "./claude-api/python/claude-api/streaming.md",
+   "./claude-api/python/claude-api/tool-use.md",
+   "./claude-api/ruby/claude-api.md",
+   "./claude-api/SKILL.md",
+   "./claude-api/shared/models.md",
+   "./claude-api/typescript/agent-sdk/patterns.md",
+   "./claude-api/typescript/agent-sdk/README.md",
+   "./claude-api/typescript/claude-api/batches.md",
+   "./claude-api/typescript/claude-api/files-api.md",
+   "./claude-api/typescript/claude-api/README.md",
+   "./claude-api/typescript/claude-api/streaming.md",
+   "./claude-api/typescript/claude-api/tool-use.md",
+   "./verify/examples/cli.md",
+   "./verify/examples/server.md",
+   "./verify/SKILL.md"
+  ],
+  "list": [
+   {
+    "specifier": "./claude-api/csharp/claude-api.md",
+    "target": "skills/bundled/claude-api/csharp/claude-api.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/curl/examples.md",
+    "target": "skills/bundled/claude-api/curl/examples.md",
+    "asset": "examples-3840245f.md.zst",
+    "bytes": 9696
+   },
+   {
+    "specifier": "./claude-api/go/claude-api.md",
+    "target": "skills/bundled/claude-api/go/claude-api.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/java/claude-api.md",
+    "target": "skills/bundled/claude-api/java/claude-api.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/php/claude-api.md",
+    "target": "skills/bundled/claude-api/php/claude-api.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/python/agent-sdk/patterns.md",
+    "target": "skills/bundled/claude-api/python/agent-sdk/patterns.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/python/agent-sdk/README.md",
+    "target": "skills/bundled/claude-api/python/agent-sdk/README.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/python/claude-api/batches.md",
+    "target": "skills/bundled/claude-api/python/claude-api/batches.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/python/claude-api/files-api.md",
+    "target": "skills/bundled/claude-api/python/claude-api/files-api.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/python/claude-api/README.md",
+    "target": "skills/bundled/claude-api/python/claude-api/README.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/python/claude-api/streaming.md",
+    "target": "skills/bundled/claude-api/python/claude-api/streaming.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/python/claude-api/tool-use.md",
+    "target": "skills/bundled/claude-api/python/claude-api/tool-use.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/ruby/claude-api.md",
+    "target": "skills/bundled/claude-api/ruby/claude-api.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/SKILL.md",
+    "target": "skills/bundled/claude-api/SKILL.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/shared/error-codes.md",
+    "target": "skills/bundled/claude-api/shared/error-codes.md",
+    "asset": "error-codes-d8bc7037.md.zst",
+    "bytes": 20742
+   },
+   {
+    "specifier": "./claude-api/shared/live-sources.md",
+    "target": "skills/bundled/claude-api/shared/live-sources.md",
+    "asset": "live-sources-753dfdf8.md.zst",
+    "bytes": 17730
+   },
+   {
+    "specifier": "./claude-api/shared/models.md",
+    "target": "skills/bundled/claude-api/shared/models.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/shared/prompt-caching.md",
+    "target": "skills/bundled/claude-api/shared/prompt-caching.md",
+    "asset": "prompt-caching-7e13e9e6.md.zst",
+    "bytes": 33121
+   },
+   {
+    "specifier": "./claude-api/shared/tool-use-concepts.md",
+    "target": "skills/bundled/claude-api/shared/tool-use-concepts.md",
+    "asset": "tool-use-concepts-fdeefa81.md.zst",
+    "bytes": 44324
+   },
+   {
+    "specifier": "./claude-api/typescript/agent-sdk/patterns.md",
+    "target": "skills/bundled/claude-api/typescript/agent-sdk/patterns.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/typescript/agent-sdk/README.md",
+    "target": "skills/bundled/claude-api/typescript/agent-sdk/README.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/typescript/claude-api/batches.md",
+    "target": "skills/bundled/claude-api/typescript/claude-api/batches.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/typescript/claude-api/files-api.md",
+    "target": "skills/bundled/claude-api/typescript/claude-api/files-api.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/typescript/claude-api/README.md",
+    "target": "skills/bundled/claude-api/typescript/claude-api/README.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/typescript/claude-api/streaming.md",
+    "target": "skills/bundled/claude-api/typescript/claude-api/streaming.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./claude-api/typescript/claude-api/tool-use.md",
+    "target": "skills/bundled/claude-api/typescript/claude-api/tool-use.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./verify/examples/cli.md",
+    "target": "skills/bundled/verify/examples/cli.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./verify/examples/server.md",
+    "target": "skills/bundled/verify/examples/server.md",
+    "asset": null,
+    "bytes": null
+   },
+   {
+    "specifier": "./verify/SKILL.md",
+    "target": "skills/bundled/verify/SKILL.md",
+    "asset": null,
+    "bytes": null
+   }
+  ]
+ },
+ "results": [
+  {
+   "target": "/tmp/cc-2188-src/tools/WorkflowTool/createWorkflowCommand.ts",
+   "relative": "tools/WorkflowTool/createWorkflowCommand.ts",
+   "specifier": "./tools/WorkflowTool/createWorkflowCommand.js",
+   "names": [
+    "getWorkflowCommands"
+   ],
+   "importers": 1,
+   "importersList": [
+    "commands.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "getWorkflowCommands",
+     "in": [
+      "chunk-yqmn7976.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-yqmn7976.js",
+    "hit": 1,
+    "coverage": 1,
+    "literalHit": 0,
+    "score": 100,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/SendUserFileTool/prompt.ts",
+   "relative": "tools/SendUserFileTool/prompt.ts",
+   "specifier": "../tools/SendUserFileTool/prompt.js",
+   "names": [
+    "SEND_USER_FILE_TOOL_NAME"
+   ],
+   "importers": 3,
+   "importersList": [
+    "components/Messages.tsx",
+    "tools/ToolSearchTool/prompt.ts",
+    "utils/conversationRecovery.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "SEND_USER_FILE_TOOL_NAME",
+     "in": [
+      "chunk-5zy1gftc.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-5zy1gftc.js",
+    "hit": 1,
+    "coverage": 1,
+    "literalHit": 0,
+    "score": 100,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/WorkflowTool/WorkflowTool.ts",
+   "relative": "tools/WorkflowTool/WorkflowTool.ts",
+   "specifier": "../../tools/WorkflowTool/WorkflowTool.js",
+   "names": [
+    "WorkflowTool"
+   ],
+   "importers": 1,
+   "importersList": [
+    "components/permissions/PermissionRequest.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "WorkflowTool",
+     "in": [
+      "chunk-a7gk0710.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-a7gk0710.js",
+    "hit": 1,
+    "coverage": 1,
+    "literalHit": 0,
+    "score": 100,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/MonitorTool/MonitorTool.ts",
+   "relative": "tools/MonitorTool/MonitorTool.ts",
+   "specifier": "../../tools/MonitorTool/MonitorTool.js",
+   "names": [
+    "MonitorTool"
+   ],
+   "importers": 1,
+   "importersList": [
+    "components/permissions/PermissionRequest.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "MonitorTool",
+     "in": [
+      "chunk-y05an865.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-y05an865.js",
+    "hit": 1,
+    "coverage": 1,
+    "literalHit": 0,
+    "score": 100,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/tasks/WorkflowDetailDialog.ts",
+   "relative": "components/tasks/WorkflowDetailDialog.ts",
+   "specifier": "./WorkflowDetailDialog.js",
+   "names": [
+    "WorkflowDetailDialog"
+   ],
+   "importers": 1,
+   "importersList": [
+    "components/tasks/BackgroundTasksDialog.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "WorkflowDetailDialog",
+     "in": [
+      "chunk-8vv42z7k.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-8vv42z7k.js",
+    "hit": 1,
+    "coverage": 1,
+    "literalHit": 0,
+    "score": 100,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/skillSearch/prefetch.ts",
+   "relative": "services/skillSearch/prefetch.ts",
+   "specifier": "./services/skillSearch/prefetch.js",
+   "names": [
+    "createAttachmentMessage",
+    "filterDuplicateMemoryAttachments",
+    "getAttachmentMessages",
+    "startRelevantMemoryPrefetch"
+   ],
+   "importers": 2,
+   "importersList": [
+    "query.ts",
+    "utils/attachments.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "createAttachmentMessage",
+     "in": [
+      "chunk-r1x169b6.js"
+     ]
+    },
+    {
+     "name": "filterDuplicateMemoryAttachments",
+     "in": [
+      "chunk-r1x169b6.js"
+     ]
+    },
+    {
+     "name": "getAttachmentMessages",
+     "in": [
+      "chunk-r1x169b6.js"
+     ]
+    },
+    {
+     "name": "startRelevantMemoryPrefetch",
+     "in": [
+      "chunk-r1x169b6.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-r1x169b6.js",
+    "hit": 4,
+    "coverage": 1,
+    "literalHit": 0,
+    "score": 100,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/jobs/classifier.ts",
+   "relative": "jobs/classifier.ts",
+   "specifier": "./jobs/classifier.js",
+   "names": [
+    "createAttachmentMessage",
+    "filterDuplicateMemoryAttachments",
+    "getAttachmentMessages",
+    "startRelevantMemoryPrefetch"
+   ],
+   "importers": 2,
+   "importersList": [
+    "query.ts",
+    "query/stopHooks.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "createAttachmentMessage",
+     "in": [
+      "chunk-r1x169b6.js"
+     ]
+    },
+    {
+     "name": "filterDuplicateMemoryAttachments",
+     "in": [
+      "chunk-r1x169b6.js"
+     ]
+    },
+    {
+     "name": "getAttachmentMessages",
+     "in": [
+      "chunk-r1x169b6.js"
+     ]
+    },
+    {
+     "name": "startRelevantMemoryPrefetch",
+     "in": [
+      "chunk-r1x169b6.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-r1x169b6.js",
+    "hit": 4,
+    "coverage": 1,
+    "literalHit": 0,
+    "score": 100,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/skills/mcpSkills.ts",
+   "relative": "skills/mcpSkills.ts",
+   "specifier": "../../skills/mcpSkills.js",
+   "names": [
+    "getLoggingSafeMcpBaseUrl",
+    "fetchMcpSkillsForClient",
+    "MCPServerConnection",
+    "ScopedMcpServerConfig",
+    "ServerResource"
+   ],
+   "importers": 2,
+   "importersList": [
+    "services/mcp/client.ts",
+    "services/mcp/useManageMCPConnections.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "fetchMcpSkillsForClient",
+     "in": [
+      "chunk-zs1fqezg.js"
+     ]
+    }
+   ],
+   "absent": [
+    "getLoggingSafeMcpBaseUrl",
+    "MCPServerConnection",
+    "ScopedMcpServerConfig",
+    "ServerResource"
+   ],
+   "match": {
+    "file": "chunk-zs1fqezg.js",
+    "hit": 1,
+    "coverage": 0.2,
+    "literalHit": 1,
+    "score": 35,
+    "missing": [
+     "getLoggingSafeMcpBaseUrl",
+     "MCPServerConnection",
+     "ScopedMcpServerConfig",
+     "ServerResource"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/proactive/index.ts",
+   "relative": "proactive/index.ts",
+   "specifier": "../proactive/index.js",
+   "names": [
+    "isExtractModeActive",
+    "asSystemPrompt",
+    "SystemPrompt"
+   ],
+   "importers": 4,
+   "importersList": [
+    "cli/print.ts",
+    "services/compact/prompt.ts",
+    "tools/AgentTool/AgentTool.tsx",
+    "utils/systemPrompt.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "isExtractModeActive",
+     "in": [
+      "chunk-r3ykg004.js"
+     ]
+    },
+    {
+     "name": "asSystemPrompt",
+     "in": [
+      "chunk-tttzy25p.js"
+     ]
+    }
+   ],
+   "absent": [
+    "SystemPrompt"
+   ],
+   "match": {
+    "file": "chunk-r3ykg004.js",
+    "hit": 1,
+    "coverage": 0.33,
+    "literalHit": 0,
+    "score": 33.3,
+    "missing": [
+     "asSystemPrompt",
+     "SystemPrompt"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/agents/SnapshotUpdateDialog.ts",
+   "relative": "components/agents/SnapshotUpdateDialog.ts",
+   "specifier": "./components/agents/SnapshotUpdateDialog.js",
+   "names": [
+    "default"
+   ],
+   "importers": 2,
+   "importersList": [
+    "dialogLaunchers.tsx",
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "default",
+     "in": [
+      "audio-capture.js",
+      "chunk-0n0tsw9p.js",
+      "chunk-16xqpv1q.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-0q677art.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 2,
+    "score": 30,
+    "missing": [
+     "default"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/commands/assistant/assistant.ts",
+   "relative": "commands/assistant/assistant.ts",
+   "specifier": "./commands/assistant/assistant.js",
+   "names": [
+    "default"
+   ],
+   "importers": 1,
+   "importersList": [
+    "dialogLaunchers.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "default",
+     "in": [
+      "audio-capture.js",
+      "chunk-0n0tsw9p.js",
+      "chunk-16xqpv1q.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-0767hfs9.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 2,
+    "score": 30,
+    "missing": [
+     "default"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/daemon/main.ts",
+   "relative": "daemon/main.ts",
+   "specifier": "../daemon/main.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "entrypoints/cli.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-0n88wbb5.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 2,
+    "score": 30,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/self-hosted-runner/main.ts",
+   "relative": "self-hosted-runner/main.ts",
+   "specifier": "../self-hosted-runner/main.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "entrypoints/cli.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-0n88wbb5.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 2,
+    "score": 30,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/assistant/gate.ts",
+   "relative": "assistant/gate.ts",
+   "specifier": "./assistant/gate.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-0h9tjxyg.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 2,
+    "score": 30,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/server/server.ts",
+   "relative": "server/server.ts",
+   "specifier": "./server/server.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-03hxp3zp.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 2,
+    "score": 30,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/server/lockfile.ts",
+   "relative": "server/lockfile.ts",
+   "specifier": "./server/lockfile.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-sfn1dbxq.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 2,
+    "score": 30,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/compact/snipCompact.ts",
+   "relative": "services/compact/snipCompact.ts",
+   "specifier": "./services/compact/snipCompact.js",
+   "names": [
+    "count"
+   ],
+   "importers": 5,
+   "importersList": [
+    "QueryEngine.ts",
+    "components/Message.tsx",
+    "query.ts",
+    "utils/attachments.ts",
+    "utils/messages.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "count"
+   ],
+   "match": {
+    "file": "chunk-0ffaqb39.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "count"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/compact/snipProjection.ts",
+   "relative": "services/compact/snipProjection.ts",
+   "specifier": "./services/compact/snipProjection.js",
+   "names": [],
+   "importers": 3,
+   "importersList": [
+    "QueryEngine.ts",
+    "components/Message.tsx",
+    "utils/messages.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-0ffaqb39.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/assistant/index.ts",
+   "relative": "assistant/index.ts",
+   "specifier": "../assistant/index.js",
+   "names": [],
+   "importers": 4,
+   "importersList": [
+    "bridge/initReplBridge.ts",
+    "commands/bridge/bridge.tsx",
+    "hooks/useReplBridge.tsx",
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-0767hfs9.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/commands/workflows/index.ts",
+   "relative": "commands/workflows/index.ts",
+   "specifier": "./commands/workflows/index.js",
+   "names": [
+    "default"
+   ],
+   "importers": 1,
+   "importersList": [
+    "commands.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "default",
+     "in": [
+      "audio-capture.js",
+      "chunk-0n0tsw9p.js",
+      "chunk-16xqpv1q.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-0q6c90q6.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "default"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/commands/peers/index.ts",
+   "relative": "commands/peers/index.ts",
+   "specifier": "./commands/peers/index.js",
+   "names": [
+    "default"
+   ],
+   "importers": 1,
+   "importersList": [
+    "commands.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "default",
+     "in": [
+      "audio-capture.js",
+      "chunk-0n0tsw9p.js",
+      "chunk-16xqpv1q.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-0rgbqesw.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "default"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/commands/fork/index.ts",
+   "relative": "commands/fork/index.ts",
+   "specifier": "./commands/fork/index.js",
+   "names": [
+    "default"
+   ],
+   "importers": 1,
+   "importersList": [
+    "commands.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "default",
+     "in": [
+      "audio-capture.js",
+      "chunk-0n0tsw9p.js",
+      "chunk-16xqpv1q.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-0krtqd6x.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "default"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/compact/reactiveCompact.ts",
+   "relative": "services/compact/reactiveCompact.ts",
+   "specifier": "../../services/compact/reactiveCompact.js",
+   "names": [
+    "buildEffectiveSystemPrompt",
+    "SystemPrompt"
+   ],
+   "importers": 2,
+   "importersList": [
+    "commands/compact/compact.ts",
+    "query.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "buildEffectiveSystemPrompt",
+    "SystemPrompt"
+   ],
+   "match": {
+    "file": "chunk-0ffaqb39.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "buildEffectiveSystemPrompt",
+     "SystemPrompt"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/contextCollapse/operations.ts",
+   "relative": "services/contextCollapse/operations.ts",
+   "specifier": "../../services/contextCollapse/operations.js",
+   "names": [
+    "getAppState",
+    "tools",
+    "agentDefinitions",
+    "customSystemPrompt",
+    "appendSystemPrompt"
+   ],
+   "importers": 2,
+   "importersList": [
+    "commands/context/context-noninteractive.ts",
+    "commands/context/context.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "getAppState",
+    "tools",
+    "agentDefinitions",
+    "customSystemPrompt",
+    "appendSystemPrompt"
+   ],
+   "match": {
+    "file": "chunk-24k7d6mw.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "getAppState",
+     "tools",
+     "agentDefinitions",
+     "customSystemPrompt",
+     "appendSystemPrompt"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/messages/SnipBoundaryMessage.ts",
+   "relative": "components/messages/SnipBoundaryMessage.ts",
+   "specifier": "./messages/SnipBoundaryMessage.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "components/Message.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-0n88wbb5.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/compact/cachedMCConfig.ts",
+   "relative": "services/compact/cachedMCConfig.ts",
+   "specifier": "../services/compact/cachedMCConfig.js",
+   "names": [
+    "isMcpInstructionsDeltaEnabled",
+    "getCachedMCConfig"
+   ],
+   "importers": 1,
+   "importersList": [
+    "constants/prompts.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "isMcpInstructionsDeltaEnabled",
+    "getCachedMCConfig"
+   ],
+   "match": {
+    "file": "chunk-0ffaqb39.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "isMcpInstructionsDeltaEnabled",
+     "getCachedMCConfig"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/DiscoverSkillsTool/prompt.ts",
+   "relative": "tools/DiscoverSkillsTool/prompt.ts",
+   "specifier": "../tools/DiscoverSkillsTool/prompt.js",
+   "names": [
+    "DISCOVER_SKILLS_TOOL_NAME"
+   ],
+   "importers": 1,
+   "importersList": [
+    "constants/prompts.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "DISCOVER_SKILLS_TOOL_NAME"
+   ],
+   "match": {
+    "file": "chunk-01dkdjqy.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "DISCOVER_SKILLS_TOOL_NAME"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/assistant/AssistantSessionChooser.ts",
+   "relative": "assistant/AssistantSessionChooser.ts",
+   "specifier": "./assistant/AssistantSessionChooser.js",
+   "names": [
+    "default"
+   ],
+   "importers": 1,
+   "importersList": [
+    "dialogLaunchers.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "default",
+     "in": [
+      "audio-capture.js",
+      "chunk-0n0tsw9p.js",
+      "chunk-16xqpv1q.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "chunk-0767hfs9.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "default"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/daemon/workerRegistry.ts",
+   "relative": "daemon/workerRegistry.ts",
+   "specifier": "../daemon/workerRegistry.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "entrypoints/cli.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-03hxp3zp.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/cli/handlers/templateJobs.ts",
+   "relative": "cli/handlers/templateJobs.ts",
+   "specifier": "../cli/handlers/templateJobs.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "entrypoints/cli.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-53ca5km4.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/environment-runner/main.ts",
+   "relative": "environment-runner/main.ts",
+   "specifier": "../environment-runner/main.js",
+   "names": [
+    "feature"
+   ],
+   "importers": 1,
+   "importersList": [
+    "entrypoints/cli.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "feature"
+   ],
+   "match": {
+    "file": "chunk-03m733d4.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "feature"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/bridge/webhookSanitizer.ts",
+   "relative": "bridge/webhookSanitizer.ts",
+   "specifier": "../bridge/webhookSanitizer.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "hooks/useReplBridge.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-01ee7e9z.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/server/parseConnectUrl.ts",
+   "relative": "server/parseConnectUrl.ts",
+   "specifier": "./server/parseConnectUrl.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-03hxp3zp.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/server/sessionManager.ts",
+   "relative": "server/sessionManager.ts",
+   "specifier": "./server/sessionManager.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-03hxp3zp.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/server/backends/dangerousBackend.ts",
+   "relative": "server/backends/dangerousBackend.ts",
+   "specifier": "./server/backends/dangerousBackend.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-03hxp3zp.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/server/serverBanner.ts",
+   "relative": "server/serverBanner.ts",
+   "specifier": "./server/serverBanner.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-03hxp3zp.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/server/serverLog.ts",
+   "relative": "server/serverLog.ts",
+   "specifier": "./server/serverLog.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-03hxp3zp.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/server/connectHeadless.ts",
+   "relative": "server/connectHeadless.ts",
+   "specifier": "./server/connectHeadless.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-03hxp3zp.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/src/cli/rollback.ts",
+   "relative": "src/cli/rollback.ts",
+   "specifier": "src/cli/rollback.js",
+   "names": [
+    "description"
+   ],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "description"
+   ],
+   "match": {
+    "file": "chunk-1dhzexv1.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "description"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/cli/handlers/ant.ts",
+   "relative": "cli/handlers/ant.ts",
+   "specifier": "./cli/handlers/ant.js",
+   "names": [
+    "description"
+   ],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "description"
+   ],
+   "match": {
+    "file": "chunk-53ca5km4.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "description"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/FeedbackSurvey/useFrustrationDetection.ts",
+   "relative": "components/FeedbackSurvey/useFrustrationDetection.ts",
+   "specifier": "../components/FeedbackSurvey/useFrustrationDetection.js",
+   "names": [
+    "useFrustrationDetection"
+   ],
+   "importers": 1,
+   "importersList": [
+    "screens/REPL.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "useFrustrationDetection"
+   ],
+   "match": {
+    "file": "chunk-0q677art.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "useFrustrationDetection"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/hooks/notifs/useAntOrgWarningNotification.ts",
+   "relative": "hooks/notifs/useAntOrgWarningNotification.ts",
+   "specifier": "../hooks/notifs/useAntOrgWarningNotification.js",
+   "names": [
+    "useAntOrgWarningNotification"
+   ],
+   "importers": 1,
+   "importersList": [
+    "screens/REPL.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "useAntOrgWarningNotification"
+   ],
+   "match": {
+    "file": "chunk-02army2d.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "useAntOrgWarningNotification"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/contextCollapse/persist.ts",
+   "relative": "services/contextCollapse/persist.ts",
+   "specifier": "../services/contextCollapse/persist.js",
+   "names": [
+    "restoreFromEntries"
+   ],
+   "importers": 2,
+   "importersList": [
+    "screens/ResumeConversation.tsx",
+    "utils/sessionRestore.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "restoreFromEntries"
+   ],
+   "match": {
+    "file": "chunk-02army2d.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "restoreFromEntries"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/compact/cachedMicrocompact.ts",
+   "relative": "services/compact/cachedMicrocompact.ts",
+   "specifier": "../compact/cachedMicrocompact.js",
+   "names": [],
+   "importers": 2,
+   "importersList": [
+    "services/api/claude.ts",
+    "services/compact/microCompact.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-0ffaqb39.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/coordinator/workerAgent.ts",
+   "relative": "coordinator/workerAgent.ts",
+   "specifier": "../../coordinator/workerAgent.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "tools/AgentTool/builtInAgents.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-0krtqd6x.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/bridge/peerSessions.ts",
+   "relative": "bridge/peerSessions.ts",
+   "specifier": "../../bridge/peerSessions.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "tools/SendMessageTool/SendMessageTool.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-01ee7e9z.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/skillSearch/telemetry.ts",
+   "relative": "services/skillSearch/telemetry.ts",
+   "specifier": "../../services/skillSearch/telemetry.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "tools/SkillTool/SkillTool.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "chunk-0n88wbb5.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/SnipTool/prompt.ts",
+   "relative": "tools/SnipTool/prompt.ts",
+   "specifier": "../tools/SnipTool/prompt.js",
+   "names": [
+    "isAutoManagedMemoryFile",
+    "isAutoManagedMemoryPattern",
+    "isMemoryDirectory",
+    "isShellCommandTargetingMemory",
+    "SNIP_TOOL_NAME"
+   ],
+   "importers": 1,
+   "importersList": [
+    "utils/collapseReadSearch.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "isAutoManagedMemoryFile",
+    "isAutoManagedMemoryPattern",
+    "isMemoryDirectory",
+    "isShellCommandTargetingMemory",
+    "SNIP_TOOL_NAME"
+   ],
+   "match": {
+    "file": "chunk-01dkdjqy.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "isAutoManagedMemoryFile",
+     "isAutoManagedMemoryPattern",
+     "isMemoryDirectory",
+     "isShellCommandTargetingMemory",
+     "SNIP_TOOL_NAME"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/TerminalCaptureTool/prompt.ts",
+   "relative": "tools/TerminalCaptureTool/prompt.ts",
+   "specifier": "../../tools/TerminalCaptureTool/prompt.js",
+   "names": [
+    "YOLO_CLASSIFIER_TOOL_NAME",
+    "TERMINAL_CAPTURE_TOOL_NAME"
+   ],
+   "importers": 1,
+   "importersList": [
+    "utils/permissions/classifierDecision.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "YOLO_CLASSIFIER_TOOL_NAME",
+    "TERMINAL_CAPTURE_TOOL_NAME"
+   ],
+   "match": {
+    "file": "chunk-01dkdjqy.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "YOLO_CLASSIFIER_TOOL_NAME",
+     "TERMINAL_CAPTURE_TOOL_NAME"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/VerifyPlanExecutionTool/constants.ts",
+   "relative": "tools/VerifyPlanExecutionTool/constants.ts",
+   "specifier": "../../tools/VerifyPlanExecutionTool/constants.js",
+   "names": [
+    "VERIFY_PLAN_EXECUTION_TOOL_NAME"
+   ],
+   "importers": 1,
+   "importersList": [
+    "utils/permissions/classifierDecision.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "VERIFY_PLAN_EXECUTION_TOOL_NAME"
+   ],
+   "match": {
+    "file": "chunk-8jhea020.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 1,
+    "score": 15,
+    "missing": [
+     "VERIFY_PLAN_EXECUTION_TOOL_NAME"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/skillSearch/localSearch.ts",
+   "relative": "services/skillSearch/localSearch.ts",
+   "specifier": "./services/skillSearch/localSearch.js",
+   "names": [
+    "clearSkillIndexCache"
+   ],
+   "importers": 2,
+   "importersList": [
+    "commands.ts",
+    "services/mcp/useManageMCPConnections.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "clearSkillIndexCache"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "clearSkillIndexCache"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/commands/buddy/index.ts",
+   "relative": "commands/buddy/index.ts",
+   "specifier": "./commands/buddy/index.js",
+   "names": [
+    "default"
+   ],
+   "importers": 1,
+   "importersList": [
+    "commands.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "default",
+     "in": [
+      "audio-capture.js",
+      "chunk-0n0tsw9p.js",
+      "chunk-16xqpv1q.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/attributionHooks.ts",
+   "relative": "utils/attributionHooks.ts",
+   "specifier": "../../utils/attributionHooks.js",
+   "names": [
+    "then"
+   ],
+   "importers": 3,
+   "importersList": [
+    "commands/clear/caches.ts",
+    "services/compact/postCompactCleanup.ts",
+    "setup.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "then"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "then"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/contextCollapse/index.ts",
+   "relative": "services/contextCollapse/index.ts",
+   "specifier": "../../services/contextCollapse/index.js",
+   "names": [],
+   "importers": 9,
+   "importersList": [
+    "commands/context/context-noninteractive.ts",
+    "components/ContextVisualization.tsx",
+    "components/TokenWarning.tsx",
+    "query.ts",
+    "screens/REPL.tsx",
+    "services/compact/autoCompact.ts",
+    "services/compact/postCompactCleanup.ts",
+    "setup.ts",
+    "utils/analyzeContext.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/systemThemeWatcher.ts",
+   "relative": "utils/systemThemeWatcher.ts",
+   "specifier": "../../utils/systemThemeWatcher.js",
+   "names": [
+    "then"
+   ],
+   "importers": 1,
+   "importersList": [
+    "components/design-system/ThemeProvider.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "then"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "then"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/messages/UserGitHubWebhookMessage.ts",
+   "relative": "components/messages/UserGitHubWebhookMessage.ts",
+   "specifier": "./UserGitHubWebhookMessage.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "components/messages/UserTextMessage.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/messages/UserForkBoilerplateMessage.ts",
+   "relative": "components/messages/UserForkBoilerplateMessage.ts",
+   "specifier": "./UserForkBoilerplateMessage.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "components/messages/UserTextMessage.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/messages/UserCrossSessionMessage.ts",
+   "relative": "components/messages/UserCrossSessionMessage.ts",
+   "specifier": "./UserCrossSessionMessage.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "components/messages/UserTextMessage.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/ReviewArtifactTool/ReviewArtifactTool.ts",
+   "relative": "tools/ReviewArtifactTool/ReviewArtifactTool.ts",
+   "specifier": "../../tools/ReviewArtifactTool/ReviewArtifactTool.js",
+   "names": [
+    "WebFetchPermissionRequest",
+    "ReviewArtifactTool"
+   ],
+   "importers": 1,
+   "importersList": [
+    "components/permissions/PermissionRequest.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "WebFetchPermissionRequest",
+    "ReviewArtifactTool"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "WebFetchPermissionRequest",
+     "ReviewArtifactTool"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/permissions/ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.ts",
+   "relative": "components/permissions/ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.ts",
+   "specifier": "./ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.js",
+   "names": [
+    "WebFetchPermissionRequest",
+    "ReviewArtifactPermissionRequest"
+   ],
+   "importers": 1,
+   "importersList": [
+    "components/permissions/PermissionRequest.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "WebFetchPermissionRequest",
+    "ReviewArtifactPermissionRequest"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "WebFetchPermissionRequest",
+     "ReviewArtifactPermissionRequest"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/WorkflowTool/WorkflowPermissionRequest.ts",
+   "relative": "tools/WorkflowTool/WorkflowPermissionRequest.ts",
+   "specifier": "../../tools/WorkflowTool/WorkflowPermissionRequest.js",
+   "names": [
+    "WorkflowPermissionRequest"
+   ],
+   "importers": 1,
+   "importersList": [
+    "components/permissions/PermissionRequest.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "WorkflowPermissionRequest"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "WorkflowPermissionRequest"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/permissions/MonitorPermissionRequest/MonitorPermissionRequest.ts",
+   "relative": "components/permissions/MonitorPermissionRequest/MonitorPermissionRequest.ts",
+   "specifier": "./MonitorPermissionRequest/MonitorPermissionRequest.js",
+   "names": [
+    "MonitorPermissionRequest"
+   ],
+   "importers": 1,
+   "importersList": [
+    "components/permissions/PermissionRequest.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "MonitorPermissionRequest"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "MonitorPermissionRequest"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/components/tasks/MonitorMcpDetailDialog.ts",
+   "relative": "components/tasks/MonitorMcpDetailDialog.ts",
+   "specifier": "./MonitorMcpDetailDialog.js",
+   "names": [
+    "MonitorMcpDetailDialog"
+   ],
+   "importers": 1,
+   "importersList": [
+    "components/tasks/BackgroundTasksDialog.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "MonitorMcpDetailDialog"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "MonitorMcpDetailDialog"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/skillSearch/featureCheck.ts",
+   "relative": "services/skillSearch/featureCheck.ts",
+   "specifier": "../services/skillSearch/featureCheck.js",
+   "names": [],
+   "importers": 3,
+   "importersList": [
+    "constants/prompts.ts",
+    "tools/SkillTool/SkillTool.ts",
+    "utils/attachments.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/entrypoints/sdk/settingsTypes.generated.ts",
+   "relative": "entrypoints/sdk/settingsTypes.generated.ts",
+   "specifier": "./sdk/settingsTypes.generated.js",
+   "names": [
+    "Settings"
+   ],
+   "importers": 1,
+   "importersList": [
+    "entrypoints/agentSdkTypes.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "Settings"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "Settings"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/entrypoints/sdk/toolTypes.ts",
+   "relative": "entrypoints/sdk/toolTypes.ts",
+   "specifier": "./sdk/toolTypes.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "entrypoints/agentSdkTypes.ts"
+   ],
+   "namespaceImporters": 1,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/cli/bg.ts",
+   "relative": "cli/bg.ts",
+   "specifier": "../cli/bg.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "entrypoints/cli.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/entrypoints/sdk/coreTypes.generated.ts",
+   "relative": "entrypoints/sdk/coreTypes.generated.ts",
+   "specifier": "./coreTypes.generated.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "entrypoints/sdk/coreTypes.ts"
+   ],
+   "namespaceImporters": 1,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/ink/devtools.ts",
+   "relative": "ink/devtools.ts",
+   "specifier": "./devtools.js",
+   "names": [
+    "applyStyles"
+   ],
+   "importers": 1,
+   "importersList": [
+    "ink/reconciler.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "applyStyles"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "applyStyles"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/eventLoopStallDetector.ts",
+   "relative": "utils/eventLoopStallDetector.ts",
+   "specifier": "./utils/eventLoopStallDetector.js",
+   "names": [
+    "then"
+   ],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "then"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "then"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/sdkHeapDumpMonitor.ts",
+   "relative": "utils/sdkHeapDumpMonitor.ts",
+   "specifier": "./utils/sdkHeapDumpMonitor.js",
+   "names": [
+    "then"
+   ],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "then"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "then"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/sessionDataUploader.ts",
+   "relative": "utils/sessionDataUploader.ts",
+   "specifier": "./utils/sessionDataUploader.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/ccshareResume.ts",
+   "relative": "utils/ccshareResume.ts",
+   "specifier": "./utils/ccshareResume.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/src/cli/up.ts",
+   "relative": "src/cli/up.ts",
+   "specifier": "src/cli/up.js",
+   "names": [
+    "description"
+   ],
+   "importers": 1,
+   "importersList": [
+    "main.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "description"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "description"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/memdir/memoryShapeTelemetry.ts",
+   "relative": "memdir/memoryShapeTelemetry.ts",
+   "specifier": "./memoryShapeTelemetry.js",
+   "names": [],
+   "importers": 2,
+   "importersList": [
+    "memdir/findRelevantMemories.ts",
+    "utils/sessionFileAccessHooks.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/taskSummary.ts",
+   "relative": "utils/taskSummary.ts",
+   "specifier": "./utils/taskSummary.js",
+   "names": [
+    "count"
+   ],
+   "importers": 1,
+   "importersList": [
+    "query.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "count"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "count"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/WebBrowserTool/WebBrowserPanel.ts",
+   "relative": "tools/WebBrowserTool/WebBrowserPanel.ts",
+   "specifier": "../tools/WebBrowserTool/WebBrowserPanel.js",
+   "names": [
+    "TungstenLiveMonitor"
+   ],
+   "importers": 1,
+   "importersList": [
+    "screens/REPL.tsx"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "TungstenLiveMonitor"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "TungstenLiveMonitor"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/sessionTranscript/sessionTranscript.ts",
+   "relative": "services/sessionTranscript/sessionTranscript.ts",
+   "specifier": "../sessionTranscript/sessionTranscript.js",
+   "names": [
+    "default"
+   ],
+   "importers": 2,
+   "importersList": [
+    "services/compact/compact.ts",
+    "utils/attachments.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "default",
+     "in": [
+      "audio-capture.js",
+      "chunk-0n0tsw9p.js",
+      "chunk-16xqpv1q.js"
+     ]
+    }
+   ],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/udsMessaging.ts",
+   "relative": "utils/udsMessaging.ts",
+   "specifier": "./utils/udsMessaging.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "setup.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/udsClient.ts",
+   "relative": "utils/udsClient.ts",
+   "specifier": "../../utils/udsClient.js",
+   "names": [],
+   "importers": 2,
+   "importersList": [
+    "tools/SendMessageTool/SendMessageTool.ts",
+    "utils/conversationRecovery.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/skillSearch/remoteSkillState.ts",
+   "relative": "services/skillSearch/remoteSkillState.ts",
+   "specifier": "../../services/skillSearch/remoteSkillState.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "tools/SkillTool/SkillTool.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/services/skillSearch/remoteSkillLoader.ts",
+   "relative": "services/skillSearch/remoteSkillLoader.ts",
+   "specifier": "../../services/skillSearch/remoteSkillLoader.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "tools/SkillTool/SkillTool.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/attributionTrailer.ts",
+   "relative": "utils/attributionTrailer.ts",
+   "specifier": "./attributionTrailer.js",
+   "names": [],
+   "importers": 1,
+   "importersList": [
+    "utils/attribution.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": []
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/protectedNamespace.ts",
+   "relative": "utils/protectedNamespace.ts",
+   "specifier": "./protectedNamespace.js",
+   "names": [
+    "default",
+    "checkProtectedNamespace"
+   ],
+   "importers": 1,
+   "importersList": [
+    "utils/envUtils.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [
+    {
+     "name": "default",
+     "in": [
+      "audio-capture.js",
+      "chunk-0n0tsw9p.js",
+      "chunk-16xqpv1q.js"
+     ]
+    }
+   ],
+   "absent": [
+    "checkProtectedNamespace"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "checkProtectedNamespace"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/tools/OverflowTestTool/OverflowTestTool.ts",
+   "relative": "tools/OverflowTestTool/OverflowTestTool.ts",
+   "specifier": "../../tools/OverflowTestTool/OverflowTestTool.js",
+   "names": [
+    "OVERFLOW_TEST_TOOL_NAME"
+   ],
+   "importers": 1,
+   "importersList": [
+    "utils/permissions/classifierDecision.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "OVERFLOW_TEST_TOOL_NAME"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "OVERFLOW_TEST_TOOL_NAME"
+    ]
+   }
+  },
+  {
+   "target": "/tmp/cc-2188-src/utils/postCommitAttribution.ts",
+   "relative": "utils/postCommitAttribution.ts",
+   "specifier": "./postCommitAttribution.js",
+   "names": [
+    "then"
+   ],
+   "importers": 1,
+   "importersList": [
+    "utils/worktree.ts"
+   ],
+   "namespaceImporters": 0,
+   "survivors": [],
+   "absent": [
+    "then"
+   ],
+   "match": {
+    "file": "audio-capture.js",
+    "hit": 0,
+    "coverage": 0,
+    "literalHit": 0,
+    "score": 0,
+    "missing": [
+     "then"
+    ]
+   }
+  }
+ ]
+}

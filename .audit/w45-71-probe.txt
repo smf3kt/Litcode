@@ -1,0 +1,43 @@
+key button:r1 a:b:c :
+registries are the registry state true true
+miss undefined undefined
+scroll found true
+scroll commit {}
+scroll other owner {"deny":"not this plugin's site"}
+scroll no owner {}
+scroll editor origin, foreign owner {}
+scroll moved meanwhile {"deny":"the window moved meanwhile"}
+pyt true false false false
+focus commit {}
+focus other owner {}
+focus same owner plugin p1 {}
+focus not held {"deny":"that site does not hold the keyboard"}
+focus foreign holder {"deny":"another plugin's element holds the keyboard"}
+focus refused by site {"deny":"the element refused"}
+focus holder is the origin {}
+uyt false false false false
+uyt forwarded true false false
+focus forwarded call {"deny":"not this plugin's site"}
+XH true false false false
+entries ["site","core"] ["site","core"]
+entry sites true true core 0
+entry body scroll {}
+entry body focus {}
+entry body refuses like the body {"deny":"no such site"}
+sites ui.focus ui.scroll ["component","requestId","plugin","origin"] ["component","requestId","by","bodyRows","contentRows","origin","pointer"]
+focus checkArgument ok undefined
+focus checkArgument element "an element that is not a non-empty string"
+focus checkArgument stray undefined
+focus checkArgument no prev threw Cannot read properties of undefined (reading 'component')
+focus checkArgument changed "a changed plugin (the envelope is the engine's; a rewrite keeps component, requestId, plugin, origin)"
+focus check answer undefined "a deny that is not a non-empty string" undefined
+focus restore {"component":"input","requestId":"r1","plugin":"p1","origin":{"kind":"plugin","name":"p1"},"element":"el","junk":1}
+scroll checkArgument ok undefined
+scroll checkArgument offset "an offset that is not a whole row number (0 or more)" "an offset that is not a whole row number (0 or more)"
+scroll checkArgument stray undefined
+scroll check answer "a deny that is not a non-empty string" "something that is not a result object"
+scroll restore {"component":"button","requestId":"r1","by":3,"bodyRows":10,"contentRows":20,"origin":{"kind":"plugin","name":"p1"},"pointer":1,"offset":9,"junk":1}
+pr direct undefined undefined "a deny that is not a non-empty string"
+Vr "an element where the move named none (one of the engine's stops)" "no element where the move named one (a rewrite names another)" undefined "an element that is not a non-empty string" "an element that is not a non-empty string"
+(node:84169) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

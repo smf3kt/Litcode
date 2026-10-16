@@ -1,0 +1,35 @@
+{
+ "total": 5,
+ "report": [
+  {
+   "file": "components/TokenWarning.tsx",
+   "edits": [
+    {
+     "reason": "on-null",
+     "snippet": "const {       isContextCollapseEnabled     } = null;"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const {     getStats,     subscribe   } = t1 as typeof impor"
+    }
+   ]
+  },
+  {
+   "file": "services/compact/microCompact.ts",
+   "edits": [
+    {
+     "reason": "missing-module",
+     "snippet": "let pendingCacheEdits:   | import('./cachedMicrocompact.js')"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "let cachedMCState: import('./cachedMicrocompact.js').CachedM"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "let cachedMCModule: typeof import('./cachedMicrocompact.js')"
+    }
+   ]
+  }
+ ]
+}

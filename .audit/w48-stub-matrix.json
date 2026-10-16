@@ -1,0 +1,426 @@
+{
+ "rows": [
+  {
+   "file": "tools/WorkflowTool/constants.ts",
+   "names": 1,
+   "values": 1,
+   "types": 0,
+   "inRecovered": 1,
+   "bestChunk": "chunk-qq208e3t.js",
+   "bestScore": 1,
+   "detail": [
+    "WORKFLOW_TOOL_NAME(value)->1"
+   ]
+  },
+  {
+   "file": "types/message.ts",
+   "names": 42,
+   "values": 0,
+   "types": 42,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "entrypoints/sdk/runtimeTypes.ts",
+   "names": 17,
+   "values": 0,
+   "types": 17,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "types/tools.ts",
+   "names": 12,
+   "values": 0,
+   "types": 12,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "services/oauth/types.ts",
+   "names": 11,
+   "values": 0,
+   "types": 11,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "components/mcp/types.ts",
+   "names": 7,
+   "values": 0,
+   "types": 7,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "types/notebook.ts",
+   "names": 7,
+   "values": 0,
+   "types": 7,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "utils/filePersistence/types.ts",
+   "names": 7,
+   "values": 3,
+   "types": 4,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "entrypoints/sdk/controlTypes.ts",
+   "names": 6,
+   "values": 0,
+   "types": 6,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "keybindings/types.ts",
+   "names": 6,
+   "values": 0,
+   "types": 6,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "commands/install-github-app/types.ts",
+   "names": 3,
+   "values": 0,
+   "types": 3,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "commands/plugin/types.ts",
+   "names": 3,
+   "values": 0,
+   "types": 3,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "components/wizard/types.ts",
+   "names": 3,
+   "values": 0,
+   "types": 3,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "services/lsp/types.ts",
+   "names": 3,
+   "values": 0,
+   "types": 3,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "types/connectorText.ts",
+   "names": 3,
+   "values": 1,
+   "types": 2,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "components/FeedbackSurvey/utils.ts",
+   "names": 2,
+   "values": 0,
+   "types": 2,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "components/Spinner/types.ts",
+   "names": 2,
+   "values": 0,
+   "types": 2,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "query/transitions.ts",
+   "names": 2,
+   "values": 0,
+   "types": 2,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "services/tips/types.ts",
+   "names": 2,
+   "values": 0,
+   "types": 2,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "types/messageQueueTypes.ts",
+   "names": 2,
+   "values": 0,
+   "types": 2,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "utils/secureStorage/types.ts",
+   "names": 2,
+   "values": 0,
+   "types": 2,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "assistant/sessionDiscovery.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "cli/transports/Transport.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "commands/plugin/unifiedTypes.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "components/agents/new-agent-creation/types.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "components/ui/option.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "constants/querySource.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "entrypoints/sdk/sdkUtilityTypes.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "ink/cursor.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "ink/events/paste-event.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "ink/events/resize-event.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "services/skillSearch/signals.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "ssh/SSHSessionManager.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "ssh/createSSHSession.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "tasks/LocalWorkflowTask/LocalWorkflowTask.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "tasks/MonitorMcpTask/MonitorMcpTask.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "tools/TungstenTool/TungstenLiveMonitor.ts",
+   "names": 1,
+   "values": 1,
+   "types": 0,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "tools/TungstenTool/TungstenTool.ts",
+   "names": 1,
+   "values": 1,
+   "types": 0,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "types/fileSuggestion.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "types/statusLine.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "types/utils.ts",
+   "names": 1,
+   "values": 0,
+   "types": 1,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  },
+  {
+   "file": "types/globals.d.ts",
+   "names": 0,
+   "values": 0,
+   "types": 0,
+   "inRecovered": 0,
+   "bestChunk": null,
+   "bestScore": 0,
+   "detail": []
+  }
+ ]
+}

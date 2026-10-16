@@ -1,0 +1,11 @@
+import { cQt, sQt } from '../src/plugin-chain-style-props-source.js';
+const show = (n: string, v: unknown) => console.log(n, '=', JSON.stringify(v));
+show('node boundary', [cQt(Array(19999).fill(0)), cQt(Array(20000).fill(0)), cQt(Array(20001).fill(0))]);
+show('percent', [sQt('width', '100%'), sQt('width', '1000%'), sQt('width', '0%'), sQt('width', '%')]);
+const a: unknown[] = [];
+a.push(a);
+show('cycle', [cQt(a), cQt({ a })]);
+const shared = { s: 1 };
+show('repeat vs cycle', [cQt({ a: shared, b: shared }), cQt({ a: shared, b: { c: shared } })]);
+show('deep inside', [cQt({ deep: [[[[1]]]] }), cQt(Object.fromEntries([['k', NaN]]))]);
+show('key cost', [cQt({ k: 'x'.repeat(99997) }), cQt({ k: 'x'.repeat(99998) })]);

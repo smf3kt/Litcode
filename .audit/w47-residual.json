@@ -1,0 +1,274 @@
+{
+ "rows": [
+  {
+   "module": "services/compact/snipCompact.ts",
+   "deleted": 7,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "services/compact/snipProjection.ts",
+   "deleted": 3,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "components/messages/SnipBoundaryMessage.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "services/compact/cachedMCConfig.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "tools/DiscoverSkillsTool/prompt.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "assistant/AssistantSessionChooser.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "cli/handlers/templateJobs.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "bridge/webhookSanitizer.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "server/parseConnectUrl.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "server/backends/dangerousBackend.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "server/serverBanner.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "server/serverLog.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "server/connectHeadless.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "components/FeedbackSurvey/useFrustrationDetection.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "hooks/notifs/useAntOrgWarningNotification.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "services/contextCollapse/persist.ts",
+   "deleted": 3,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "services/compact/cachedMicrocompact.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "coordinator/workerAgent.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "tools/TerminalCaptureTool/prompt.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "tools/VerifyPlanExecutionTool/constants.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "services/skillSearch/localSearch.ts",
+   "deleted": 2,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "utils/attributionHooks.ts",
+   "deleted": 3,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "services/contextCollapse/index.ts",
+   "deleted": 10,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "utils/systemThemeWatcher.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "components/messages/UserGitHubWebhookMessage.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "components/messages/UserForkBoilerplateMessage.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "tools/ReviewArtifactTool/ReviewArtifactTool.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "components/permissions/ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "tools/WorkflowTool/WorkflowPermissionRequest.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "components/permissions/MonitorPermissionRequest/MonitorPermissionRequest.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "components/tasks/MonitorMcpDetailDialog.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "services/skillSearch/featureCheck.ts",
+   "deleted": 3,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "entrypoints/sdk/settingsTypes.generated.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "entrypoints/sdk/coreTypes.generated.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "utils/sdkHeapDumpMonitor.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "utils/sessionDataUploader.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "utils/ccshareResume.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "memdir/memoryShapeTelemetry.ts",
+   "deleted": 2,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "tools/WebBrowserTool/WebBrowserPanel.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "utils/udsClient.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "services/skillSearch/remoteSkillState.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "services/skillSearch/remoteSkillLoader.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "utils/attributionTrailer.ts",
+   "deleted": 0,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "tools/OverflowTestTool/OverflowTestTool.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  },
+  {
+   "module": "utils/postCommitAttribution.ts",
+   "deleted": 1,
+   "residual": 0,
+   "hits": []
+  }
+ ]
+}

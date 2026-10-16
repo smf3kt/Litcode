@@ -1,0 +1,401 @@
+{
+  "schema": "W45ChainCopyVerification.v1",
+  "passed": true,
+  "files": [
+    {
+      "plan": "research/ports/W45-chain-runner-blocks.plan.json",
+      "product": "src/plugin-chain-source.ts",
+      "sha256": "670e565800f3954de04ca602a8f57229e5f7bb8036bca2baec830ac10270cfa1",
+      "blocks": 73,
+      "units": 26233
+    },
+    {
+      "plan": "research/ports/W45-chain-matchers-blocks.plan.json",
+      "product": "src/plugin-chain-matchers.ts",
+      "sha256": "fae817eb21520fa7192a309e57fe9b7313a7f8ef4bfaa9106a516e3a29c0a036",
+      "blocks": 23,
+      "units": 3115
+    },
+    {
+      "plan": "research/ports/W45-chain-records-blocks.plan.json",
+      "product": "src/plugin-chain-records.ts",
+      "sha256": "a064ef917865ef27968a4f691dc43e1740895202efa5f4fa1f49504f9d5d19fb",
+      "blocks": 56,
+      "units": 12117
+    },
+    {
+      "plan": "research/ports/W45-chain-entry-blocks.plan.json",
+      "product": "src/plugin-chain-entry.ts",
+      "sha256": "806db28c26c2c504ba13a2bca0b9bf68fba4bf9b1688b807a43af041c0b9ac11",
+      "blocks": 10,
+      "units": 2637
+    },
+    {
+      "plan": "research/ports/W45-chain-relay-blocks.plan.json",
+      "product": "src/plugin-chain-relay-source.ts",
+      "sha256": "36eb9fee4b224d579d4c17a7302374b5a2ce9aed6efe03446e9d8ec292d84126",
+      "blocks": 16,
+      "units": 3050
+    },
+    {
+      "plan": "research/ports/W45-chain-install-blocks.plan.json",
+      "product": "src/plugin-chain-install-source.ts",
+      "sha256": "388e77c367ebcfabf5f63bb9e8382439e9d6dc4b03797be25664d299594282d0",
+      "blocks": 3,
+      "units": 665
+    },
+    {
+      "plan": "research/ports/W45-chain-memoize-blocks.plan.json",
+      "product": "src/plugin-chain-memoize-source.ts",
+      "sha256": "c418a5c5efadad64d05078cb2eda4c5c8346ec547d3f8d832705e618d359f34c",
+      "blocks": 2,
+      "units": 4648
+    },
+    {
+      "plan": "research/ports/W45-loader-blocks.plan.json",
+      "product": "src/plugin-chain-loader-source.ts",
+      "sha256": "ee83c5d8cf3f5942c822d104e00482b0a9e410085a2645bb07563aac5f7353cc",
+      "blocks": 31,
+      "units": 4999
+    },
+    {
+      "plan": "research/ports/W45-chain-decorations-blocks.plan.json",
+      "product": "src/plugin-chain-decorations-source.ts",
+      "sha256": "04a035e901f3c370a0d1299794ab4c263f60bb4db4098458bec9aea697561ac2",
+      "blocks": 6,
+      "units": 6089
+    },
+    {
+      "plan": "research/ports/W45-sgr-tokens-blocks.plan.json",
+      "product": "src/tui-sgr-tokens-source.ts",
+      "sha256": "d5dce1ded2c06a7826e0eb7aa47a7940db987925b6d467785c32d3cea21a1fc7",
+      "blocks": 9,
+      "units": 3620
+    },
+    {
+      "plan": "research/ports/W45-highlights-producers-blocks.plan.json",
+      "product": "src/tui-input-highlights-source.ts",
+      "sha256": "994fd2394d7549fab62e6db7721afdd8fd4a5dc662d31d2589f223f38bb3b0b9",
+      "blocks": 8,
+      "units": 2815
+    },
+    {
+      "plan": "research/ports/W45-chain-sites-blocks.plan.json",
+      "product": "src/plugin-chain-sites-source.ts",
+      "sha256": "bed3b69e3db2a3586457c9062713411cee9bf623e6873eb1b038286c42ea2593",
+      "blocks": 57,
+      "units": 12327
+    },
+    {
+      "plan": "research/ports/W45-chain-cores-blocks.plan.json",
+      "product": "src/plugin-chain-cores-source.ts",
+      "sha256": "1040d1b10dd6df5fd3793f700a96532a4c55ac719208c0c8f796ac41e26673f7",
+      "blocks": 16,
+      "units": 1282
+    },
+    {
+      "plan": "research/ports/W45-chain-classic-blocks.plan.json",
+      "product": "src/plugin-chain-classic-source.ts",
+      "sha256": "ff8884d5357bbebc4e9dffff2cfa72e2e8427d26a86911d7f77dfc683d05c512",
+      "blocks": 19,
+      "units": 4579
+    },
+    {
+      "plan": "research/ports/W45-chain-override-sites-blocks.plan.json",
+      "product": "src/plugin-chain-override-sites-source.ts",
+      "sha256": "b98bbfca10b546dffe7cdb202da235b98bd926f57078ec914ad01dc9aa86ae6c",
+      "blocks": 15,
+      "units": 2052
+    },
+    {
+      "plan": "research/ports/W45-lodash-memoize-source-blocks.plan.json",
+      "product": "src/plugin-chain-lodash-memoize-source.ts",
+      "sha256": "390efc50f6e7a6b80994407c5c0e3a00c4ee2ca33549fe4027676510ec2291fe",
+      "blocks": 20,
+      "units": 1231
+    },
+    {
+      "plan": "research/ports/W45-lodash-internals-source-blocks.plan.json",
+      "product": "src/plugin-chain-lodash-internals-source.ts",
+      "sha256": "5c7e3eb62681c2d0cd12394422b9fe0115610bbb773c8c9bdb2b61f0d22490ab",
+      "blocks": 146,
+      "units": 10343
+    },
+    {
+      "plan": "research/ports/W45-lodash-mapvalues-source-blocks.plan.json",
+      "product": "src/plugin-chain-lodash-mapvalues-source.ts",
+      "sha256": "448358d480ebe189ff6c3f0a4be0a86962b4ee1fa1ed82b7c8073846f8c6804b",
+      "blocks": 5,
+      "units": 363
+    },
+    {
+      "plan": "research/ports/W45-classic-sites-blocks.plan.json",
+      "product": "src/plugin-chain-classic-sites-source.ts",
+      "sha256": "0be35a765b7e63a76236cbbab7f6f29bea49c255a8254fc6a9d5ee8814b5efd3",
+      "blocks": 32,
+      "units": 4236
+    },
+    {
+      "plan": "research/ports/W45-tool-raise-blocks.plan.json",
+      "product": "src/plugin-chain-tool-raise-source.ts",
+      "sha256": "0adad1b33cea9fa28a8aedd207d3b9bc0d6ba7fe79b717ab318674375726391f",
+      "blocks": 13,
+      "units": 1700
+    },
+    {
+      "plan": "research/ports/W45-classic-raise-blocks.plan.json",
+      "product": "src/plugin-chain-classic-raise-source.ts",
+      "sha256": "4426e84d706f7a5249b5622b972863bc2a3eb09c2fc83ea244f417a14b83ad9c",
+      "blocks": 18,
+      "units": 2095
+    },
+    {
+      "plan": "research/ports/W45-host-call-blocks.plan.json",
+      "product": "src/plugin-chain-host-call-source.ts",
+      "sha256": "5da1a327f576790f9121a49ff5d2b8149abda5ba9aaa71ec2f8bc5a84cf7b614",
+      "blocks": 11,
+      "units": 2155
+    },
+    {
+      "plan": "research/ports/W45-stream-blocks.plan.json",
+      "product": "src/plugin-chain-stream-source.ts",
+      "sha256": "2be58c0e5db4ce0243a0348966bea113fbefb29d0ca8d3f4eb940465014badcc",
+      "blocks": 2,
+      "units": 9637
+    },
+    {
+      "plan": "research/ports/W45-stream-call-blocks.plan.json",
+      "product": "src/plugin-chain-stream-call-source.ts",
+      "sha256": "6400aedcf4dd67cc509bc2904b7adfd1a9a70e4a84ffcbd27e1a2b62a8918d9b",
+      "blocks": 1,
+      "units": 929
+    },
+    {
+      "plan": "research/ports/W45-ui-blocks.plan.json",
+      "product": "src/plugin-chain-ui-source.ts",
+      "sha256": "bb48e1f044ae119d03d420382fa846b907579b719eb70c06685f532a4a1618f5",
+      "blocks": 14,
+      "units": 1490
+    },
+    {
+      "plan": "research/ports/W45-toast-blocks.plan.json",
+      "product": "src/plugin-chain-toast-source.ts",
+      "sha256": "ef2c5cc095552bff2af2236d88d03ecea1df6d0a44d4c418a8bcfe73c83aa58a",
+      "blocks": 6,
+      "units": 1265
+    },
+    {
+      "plan": "research/ports/W45-notify-blocks.plan.json",
+      "product": "src/plugin-chain-notify-source.ts",
+      "sha256": "1573b4a294ef5a222f1f161416fe2ea1547e74ece194e9656a4a965fe69c8416",
+      "blocks": 16,
+      "units": 2897
+    },
+    {
+      "plan": "research/ports/W45-notify-store-blocks.plan.json",
+      "product": "src/plugin-chain-notify-store-source.ts",
+      "sha256": "ffe4acc1578c4264b052089b035dd2fbf0c6c8eaa9c5a9cc74e91ad628873bb0",
+      "blocks": 7,
+      "units": 863
+    },
+    {
+      "plan": "research/ports/W45-notify-write-blocks.plan.json",
+      "product": "src/plugin-chain-notify-write-source.ts",
+      "sha256": "6bad74a5815548ba6085e911ed3e8dd7e8f59a443d78c2ff231d166d41c477b8",
+      "blocks": 11,
+      "units": 1489
+    },
+    {
+      "plan": "research/ports/W45-notify-fold-blocks.plan.json",
+      "product": "src/plugin-chain-notify-fold-source.ts",
+      "sha256": "ae688c1fb117ba457e2ec5f5170aca4de91893b364a62603afa1ffbf4e27639c",
+      "blocks": 20,
+      "units": 1781
+    },
+    {
+      "plan": "research/ports/W45-notify-clock-blocks.plan.json",
+      "product": "src/plugin-chain-notify-clock-source.ts",
+      "sha256": "6803ef4035338b66e8aed04d1778fdfe346348824023d7bcd977ec45434a4f35",
+      "blocks": 2,
+      "units": 500
+    },
+    {
+      "plan": "research/ports/W45-notify-stack-blocks.plan.json",
+      "product": "src/plugin-chain-notify-stack-source.ts",
+      "sha256": "b17eb0bd32d747353eb8039efe40ab39ae69b745f401d0380e8cb8680bd7e9f8",
+      "blocks": 17,
+      "units": 2268
+    },
+    {
+      "plan": "research/ports/W45-notify-verbs-blocks.plan.json",
+      "product": "src/plugin-chain-notify-verbs-source.ts",
+      "sha256": "070f215b091b88cc61850348810f59a67421705a84855322e64e7ed7d42de711",
+      "blocks": 4,
+      "units": 681
+    },
+    {
+      "plan": "research/ports/W45-registry-blocks.plan.json",
+      "product": "src/plugin-chain-registry-source.ts",
+      "sha256": "8957f9957836fcaffb1bb22d4cbb1d3bdeeb8f1b22b2d4829a4236d8ad53b3c1",
+      "blocks": 3,
+      "units": 2709
+    },
+    {
+      "plan": "research/ports/W45-registry-stores-blocks.plan.json",
+      "product": "src/plugin-chain-registry-stores-source.ts",
+      "sha256": "844d215bba524ac36a8d341b93080ed86f97632d7d4b9f17ae7077f7492b079e",
+      "blocks": 3,
+      "units": 621
+    },
+    {
+      "plan": "research/ports/W45-text-clamp-blocks.plan.json",
+      "product": "src/plugin-chain-text-clamp-source.ts",
+      "sha256": "bd6f4aa9f52219bb0fa8118185752f83b40240483654136121fab7837c769511",
+      "blocks": 9,
+      "units": 652
+    },
+    {
+      "plan": "research/ports/W45-normalize-blocks.plan.json",
+      "product": "src/plugin-chain-normalize-source.ts",
+      "sha256": "04c4dd7daedffc4b0e8f61e391875d83baa29ec18399bf057f5d561d3fff458e",
+      "blocks": 24,
+      "units": 3115
+    },
+    {
+      "plan": "research/ports/W45-label-text-blocks.plan.json",
+      "product": "src/plugin-chain-label-text-source.ts",
+      "sha256": "9f254927e1ce0171f2e1a88bf1bf48634791617b83addbf60dbe5684ab8a1fa4",
+      "blocks": 16,
+      "units": 1624
+    },
+    {
+      "plan": "research/ports/W45-bar-mount-blocks.plan.json",
+      "product": "src/plugin-chain-bar-mount-source.ts",
+      "sha256": "6c86ba33a5e9e2d1b083790ef8af9f4ad9e58a6b42b605b1586dd586d78f334e",
+      "blocks": 2,
+      "units": 101
+    },
+    {
+      "plan": "research/ports/W45-notify-queue-blocks.plan.json",
+      "product": "src/plugin-chain-notify-queue-source.ts",
+      "sha256": "b9f404df37a67a99f33af246ca49625b825f8698cac39ed165058af77440ed7d",
+      "blocks": 10,
+      "units": 773
+    },
+    {
+      "plan": "research/ports/W45-registry-reset-blocks.plan.json",
+      "product": "src/plugin-chain-registry-reset-source.ts",
+      "sha256": "a8f341f7ef88247a82349d010c38df5159f607d4e5f84e79959ecaab2e40a6e9",
+      "blocks": 7,
+      "units": 306
+    },
+    {
+      "plan": "research/ports/W45-sources-registry-blocks.plan.json",
+      "product": "src/plugin-chain-sources-registry-source.ts",
+      "sha256": "3070fc5997e4534d4bdec41169470498d03dfa717c134ea3ca6aaf78caee27dc",
+      "blocks": 4,
+      "units": 2728
+    },
+    {
+      "plan": "research/ports/W45-invalidate-blocks.plan.json",
+      "product": "src/plugin-chain-invalidate-source.ts",
+      "sha256": "cbbfed381faaf423389ddfe75b3798b8296c2aeb7f24cd562a42b9f578a92091",
+      "blocks": 4,
+      "units": 281
+    },
+    {
+      "plan": "research/ports/W45-session-blocks.plan.json",
+      "product": "src/plugin-chain-session-source.ts",
+      "sha256": "263b04e358cd9fe764b8ac3579f5a65e1e61aa309cef865fc6725c9f1aa15c45",
+      "blocks": 9,
+      "units": 1601
+    },
+    {
+      "plan": "research/ports/W45-clock-env-blocks.plan.json",
+      "product": "src/plugin-chain-clock-env-source.ts",
+      "sha256": "7979bc0f56325c38162af6ff0813b29fe94e07512d97170bf8c7cf7baef66c07",
+      "blocks": 10,
+      "units": 1158
+    }
+  ],
+  "byteIdenticalFiles": 90,
+  "modules": {
+    "chunk-nyce03br.js": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+    "chunk-kd3dbbtb.js": "876ff996096e91580e480add134de1189e9423074098c3907d856595e774fbd4",
+    "chunk-886tf6ja.js": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+    "chunk-6q0v3ahc.js": "9f2fe4d5c1888abaf3ea717fdb9958f6aa762a5379409a41915ce6c8daf5bddc",
+    "chunk-ed7zyzrn.js": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+    "chunk-ax7r0qj7.js": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+    "chunk-3qabb19b.js": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
+    "chunk-ae84tp6z.js": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+    "chunk-c9vsmdqj.js": "59124c8f7d581be40e14655f028069ec67ba561a3395db94c65ede3aee264fb5",
+    "chunk-m4qpskd4.js": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+    "chunk-yjc18bey.js": "e53a75c48188dd5f345841ef87e452840622f9d61bc86e97b2edea656866a687",
+    "chunk-bk5ct2gw.js": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+    "chunk-2kdsvp3x.js": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+    "chunk-sfn1dbxq.js": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+    "chunk-stnaz0rq.js": "dfc19e4c0816c91916156f7e915efa0fbbd4092a388951756023e84573166b53",
+    "chunk-6ejn7q9s.js": "e652d11d8941d479b41f93f296877a1bc0544c549ddd6b9999f681192effbfee",
+    "chunk-mven2c2x.js": "e2f58e7f95f30e10bd73c8047084a1ba104ae00ebf4cbd223b5466085d79c170",
+    "chunk-nrk8z90j.js": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+    "chunk-q4ya5hp8.js": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+    "chunk-n3ykh62m.js": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+    "chunk-d3s5r8h5.js": "202506d3996b4fffe72418c623c884a93169f9352a17331ba6268b2e2eb4e2db",
+    "chunk-eb9r2hbv.js": "3b1f83a5d1fcec7a1aa8a7d0adf139d8643ace6755985b79f19ddc1e7de22abe",
+    "chunk-24k7d6mw.js": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+    "chunk-btcaa7nx.js": "bd6433a1d0f3e3132f7826fcd967f1dc97ed0f19990ea0f865822d4af6e030e3",
+    "chunk-a60ee1ne.js": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1",
+    "chunk-3cynezh1.js": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+    "chunk-t2x9eyac.js": "50d1cb53fc75bae8856145272fd5f9d400d86282f3581a827a98dfd86eda6dad",
+    "chunk-4bw62nzm.js": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+    "chunk-kwp08k6x.js": "30dd63de691cb91bb82fe15f6073761e0e53c4b76025cd28c8e5274686773aab",
+    "chunk-tvdq3hrk.js": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+    "chunk-qq2mgstr.js": "84f8f93155c8c7dcf287306959a002f20e09b31cfe97bd68e2ae14048f290e6f",
+    "chunk-fdwn5gdv.js": "bdd8f0094eb4fcd0daa8d9fa47261b47d4a0384894c1701f74ba72b338a9be11",
+    "chunk-nwffn64n.js": "55ad6416b53bf514959570f3629776420692340439c948db6a00954961d234eb",
+    "chunk-3ph567jx.js": "281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b",
+    "chunk-356hrhz3.js": "0c821efb255e53af566480e6263c87c8be068ed1a7dae3205b2964f0f0c9076a",
+    "chunk-fdxhcr6b.js": "3c625e31827ca4ef7cc3a4691103fbbb3abbdd338778cbf70c0054f37359507b",
+    "chunk-tavdbgyw.js": "3ce548e44986d7954bff4d9ce784041040c20028b4176413cd5d459072106d80",
+    "chunk-yn0pfn70.js": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f",
+    "chunk-pa2d6xdm.js": "0a153d833913cb0d61d58e8fcef2305314884997ff8ade99440e04c4cc1e5b2e",
+    "chunk-bf3z2ftn.js": "1c4ed6b761e5ced6000d4a7c4c43b970eb1d35c37015a35c3ac825b5739478b3",
+    "chunk-6zdc3jq1.js": "8009c180a36973dc5853feebabd9653728bb5a902f3f27aa36cd883187ca3e9a",
+    "chunk-qm4226vk.js": "03facde94be2af5141839b3f90cc3821dc8344709a1160c01101c49b95c13051"
+  },
+  "memoizeClosure": {
+    "ranges": [
+      [
+        707,
+        2367
+      ],
+      [
+        2367,
+        5355
+      ]
+    ],
+    "units": 4648,
+    "coordinates": "zero-based UTF-16 [start,end)",
+    "completeTopLevelStatements": true,
+    "applicationImports": 0,
+    "exports": [
+      "V",
+      "po",
+      "nie",
+      "rie",
+      "nIr",
+      "_U",
+      "aA",
+      "bG",
+      "iYe",
+      "Hwe",
+      "Qpt",
+      "RDt",
+      "TDt",
+      "Zpt"
+    ]
+  },
+  "missingOutputLeavesFilesUnchanged": true,
+  "incompletePlanLeavesFilesUnchanged": true,
+  "recoveredApplicationEntrypointsExecuted": false
+}

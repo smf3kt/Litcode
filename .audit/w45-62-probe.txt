@@ -1,0 +1,83 @@
+constants = {"KEY_LABEL_LIMIT":40,"STRING_LIMIT":10000,"IMAGE_COLUMNS":255,"IMAGE_ROWS":255,"RASTER_SITE_FIELDS":["key","columns","rows","cells"]}
+labelOf short = "key"
+labelOf 40 = "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+labelOf 41 = "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk..."
+labelOf tab = "a?b"
+labelOf newline = "a?b"
+labelOf esc = "a?b"
+allowedKeys good = true
+allowedKeys stray = false
+isChainStamped = [true,false,false,false]
+checkString = [null,null,"key must be a string",null,"key longer than 10000 characters",null]
+checkLabel = [null,null,null]
+firstFieldProblem = [null,null,"a must be a string"]
+imageSizeProblem = [null,"columns must be a whole number from 1 to 255","columns must be a whole number from 1 to 255","columns must be a whole number from 1 to 255"]
+pickRasterProps = [{"key":"k","columns":1,"rows":1,"cells":"x"},null,null,null]
+rasterLeafProblem = ["Raster \"k\" cells must be the base64 of 1 cells of 12 bytes (16 characters for 1x1)","Raster \"k\" rows must be a whole number from 1 to 256","Raster \"k\" cells must be the base64 of 1 cells of 12 bytes (16 characters for 1x1)","Raster \"k\" cells must be the base64 of 1 cells of 12 bytes (16 characters for 1x1)","Raster takes no children","Raster props must be { key, columns, rows, cells }, key a non-empty string, and nothing else (no hover or onPress yet)","Raster \"a?b\" cells must be the base64 of 1 cells of 12 bytes (16 characters for 1x1)","Raster \"k\" columns must be a whole number from 1 to 512"]
+imageLeafProblem = ["Image columns must be a whole number from 1 to 255","Image \"k\" columns must be a whole number from 1 to 255","Image prop \"hover\" is not allowed (no hover or onPress; a press goes on an enclosing Button)","Image alt must be a string","Image key must be a non-empty string when given","Image columns must be a whole number from 1 to 255","Image columns must be a whole number from 1 to 255","Image columns must be a whole number from 1 to 255","Image takes no children","Image props must be { source, columns, rows, alt }"]
+(node:23962) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+encoded 1x1 = "AQEBAQEBAQEBAQEB"
+raster admitted = ["Raster \"k\" cell 0 holds code point 16843009, beyond the Basic Multilingual Plane","Raster \"k\" cell 0 holds code point 16843009, beyond the Basic Multilingual Plane","Raster \"kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...\" cell 0 holds code point 16843009, beyond the Basic Multilingual Plane"]
+raster missing key = "Raster props must be { key, columns, rows, cells }, key a non-empty string, and nothing else (no hover or onPress yet)"
+raster class name only = "Raster props must be { key, columns, rows, cells }, key a non-empty string, and nothing else (no hover or onPress yet)"
+image admitted = ["Image source.png does not start as a PNG file does","Image \"k\" source.png does not start as a PNG file does","Image source.rgba decodes to 3 bytes, not width * height * 4 (4)","Image source.format must be \"png\", \"rgba\" or \"rgb\" beside file"]
+image long key = "Image \"kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk...\" source.png does not start as a PNG file does"
+image alt control = "Image source.png does not start as a PNG file does"
+image not stamped = "Image source.png does not start as a PNG file does"
+image alt at the cap = "not this check"
+firstFieldProblem both bad = "a must be a string"
+(node:23991) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+blank cell = "AAAAAAAAAAAAAAAA"
+raster admitted = ["Raster \"k\" cell 0 holds U+0000, which is not one printable width-1 code point (a control, combining or wide character)","Raster \"k\" cell 0 holds U+0000, which is not one printable width-1 code point (a control, combining or wide character)","Raster \"k\" cell 0 holds U+0000, which is not one printable width-1 code point (a control, combining or wide character)"]
+image admitted = ["Image source.png has no IHDR header after its signature","Image source.png has no IHDR header after its signature"]
+image rgba admitted = undefined
+(node:24016) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+one A = "QQAAAACAAAAAgAAA"
+raster admitted = [null,null,null]
+raster missing key with a good frame = "Raster props must be { key, columns, rows, cells }, key a non-empty string, and nothing else (no hover or onPress yet)"
+raster not stamped = "Raster \"k\" is not stamped by a plugin of this chain"
+raster no children = "Raster takes no children"
+(node:24044) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+matches = [["tab",null],["newline",null],["esc","key holds a control character"],["nul","key holds a control character"],["del","key holds a control character"],["lone high surrogate","key holds a control character"],["lone low surrogate","key holds a control character"],["paired surrogate",null],["replacement",null],["object",null],["label esc","alt holds a control character"]]
+image stamp sentence = "Image source.png has no IHDR header after its signature"
+image with key prefix = "Image \"k\" source.png has no IHDR header after its signature"
+image no prefix = "Image alt must be a string"
+(node:24070) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+signature only = "Image source.png has no IHDR header after its signature"
+IHDR name only = "Image source.png has no IHDR header after its signature"
+length + IHDR = "Image source.png has no IHDR header after its signature"
+IHDR + 13 bytes = "Image source.png has no IHDR header after its signature"
+full with crc = "Image source.png declares 0x0 pixels; a side is 1 to 4096"
+(node:24095) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+1x1 rgba = undefined
+size elsewhere = undefined
+depth 16 = undefined
+interlaced = undefined
+too wide = "Image source.png declares 4097x1 pixels; a side is 1 to 4096"
+alt empty = undefined
+(node:24142) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+bare props no key = "Image props must be { source, columns, rows, alt }"
+bare props with key = "Image alt must be a string"
+bare children no key = "Image prop \"children\" is not allowed (no hover or onPress; a press goes on an enclosing Button)"
+bare children with key = "Image prop \"children\" is not allowed (no hover or onPress; a press goes on an enclosing Button)"
+bare alt type no key = "Image alt must be a string"
+bare alt type with key = "Image alt must be a string"
+bare key empty no key = "Image key must be a non-empty string when given"
+bare key empty with key = undefined
+stray no key = "Image prop \"hover\" is not allowed (no hover or onPress; a press goes on an enclosing Button)"
+stray with key = "Image prop \"hover\" is not allowed (no hover or onPress; a press goes on an enclosing Button)"
+z size no key = "Image columns must be a whole number from 1 to 255"
+z size with key = "Image \"k\" columns must be a whole number from 1 to 255"
+z alt control no key = "Image alt holds a control character"
+z alt control with key = "Image \"k\" alt holds a control character"
+z stamp no key = undefined
+z stamp with key = undefined
+(node:24243) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

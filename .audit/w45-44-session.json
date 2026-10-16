@@ -1,0 +1,338 @@
+{
+ "schema": "W45NameResolve.v1",
+ "file": "extracted-v2/modules/chunk-sfn1dbxq.js",
+ "rows": [
+  {
+   "name": "Bpe",
+   "kind": "function",
+   "span": [
+    1698781,
+    1698968
+   ],
+   "units": 187,
+   "text": "Bpe(e,n){let r=bI();if(r===void 0)t(`$.session (${e}): no session bound; id, cwd and model answered from the process`);return{id:String(K()),cwd:n??se(),root:Ee(),model:r?.model()??tt()}}",
+   "names": [
+    "let",
+    "bI",
+    "if",
+    "void",
+    "session",
+    "no",
+    "bound",
+    "id",
+    "cwd",
+    "and",
+    "model",
+    "answered",
+    "from",
+    "the",
+    "process",
+    "return",
+    "String",
+    "se",
+    "root",
+    "Ee",
+    "tt"
+   ]
+  },
+  {
+   "name": "Bpe",
+   "kind": "reference",
+   "span": [
+    2347703,
+    2347706
+   ],
+   "units": 3,
+   "text": "n)},\"session.cwd\":{run:(n,r)=>Bpe(r.plugin,r.cwd).then((s)=>s.cwd)},\"s",
+   "names": []
+  },
+  {
+   "name": "Bpe",
+   "kind": "reference",
+   "span": [
+    2347768,
+    2347771
+   ],
+   "units": 3,
+   "text": ")},\"session.root\":{run:(n,r)=>Bpe(r.plugin).then((s)=>s.root)},\"sessio",
+   "names": []
+  },
+  {
+   "name": "Bpe",
+   "kind": "reference",
+   "span": [
+    2347829,
+    2347832
+   ],
+   "units": 3,
+   "text": "},\"session.model\":{run:(n,r)=>Bpe(r.plugin).then((s)=>s.model)},\"sessi",
+   "names": []
+  },
+  {
+   "name": "WAo",
+   "kind": "function",
+   "span": [
+    1703511,
+    1703695
+   ],
+   "units": 184,
+   "text": "WAo(e){let n=bI();if(!n)return t(`$.session.turns (${e}): no session bound; 0`),0;return F(n.messages(),(r)=>r.type===\"user\"&&r.isMeta!==!0&&r.isVirtual!==!0&&!T9n(r.message.content))}",
+   "names": [
+    "let",
+    "bI",
+    "if",
+    "return",
+    "session",
+    "turns",
+    "no",
+    "bound",
+    "messages",
+    "type",
+    "user",
+    "isMeta",
+    "isVirtual",
+    "T9n",
+    "message",
+    "content"
+   ]
+  },
+  {
+   "name": "WAo",
+   "kind": "reference",
+   "span": [
+    2347891,
+    2347894
+   ],
+   "units": 3,
+   "text": "},\"session.turns\":{run:(n,r)=>WAo(r.plugin)},\"session.id\":{run:(n,r)=>",
+   "names": []
+  },
+  {
+   "name": "vNs",
+   "kind": "reference",
+   "span": [
+    22931,
+    22934
+   ],
+   "units": 3,
+   "text": "J,Qis,eas,tas,ENs,nas,yro,ppr,vNs,kNs,XAt,ANs,CNs,QIn,TNs,RNs,Sro,xNs,",
+   "names": []
+  },
+  {
+   "name": "vNs",
+   "kind": "reference",
+   "span": [
+    2347988,
+    2347991
+   ],
+   "units": 3,
+   "text": "d)},\"session.messages\":{check:vNs,run:(n,r)=>PAo(n??{},r.plugin)},\"ses",
+   "names": []
+  },
+  {
+   "name": "PAo",
+   "kind": "function",
+   "span": [
+    1701079,
+    1701466
+   ],
+   "units": 387,
+   "text": "PAo(e,n){let r=sp(n,\"$.session.messages\"),{agentId:s}=e,h=e.as===\"api\",y=s===void 0?r.messages():await TAo(r,s);if(!y)return{deny:`no conversation of agent ${s} in this session: not one of its agents, running in another process, or finished…",
+   "names": [
+    "let",
+    "sp",
+    "session",
+    "messages",
+    "agentId",
+    "as",
+    "api",
+    "void",
+    "await",
+    "TAo",
+    "if",
+    "return",
+    "deny",
+    "no",
+    "conversation",
+    "of",
+    "agent",
+    "in",
+    "this",
+    "not",
+    "one",
+    "its",
+    "agents",
+    "running",
+    "another",
+    "process"
+   ]
+  },
+  {
+   "name": "PAo",
+   "kind": "reference",
+   "span": [
+    2348003,
+    2348006
+   ],
+   "units": 3,
+   "text": "ssages\":{check:vNs,run:(n,r)=>PAo(n??{},r.plugin)},\"session.repo\":{run",
+   "names": []
+  },
+  {
+   "name": "MAo",
+   "kind": "function",
+   "span": [
+    1701481,
+    1701651
+   ],
+   "units": 170,
+   "text": "MAo(e){let n=e??se(),r=NW(n),s=r??Fs(n);if(s===null)return null;let[h,y]=await Promise.all([Qbe(n),E9n(e)]);return{root:s,remote:F9n(h),internal:y,name:await P9n(r,h,y)}}",
+   "names": [
+    "let",
+    "se",
+    "NW",
+    "Fs",
+    "if",
+    "null",
+    "return",
+    "await",
+    "Promise",
+    "all",
+    "Qbe",
+    "E9n",
+    "root",
+    "remote",
+    "F9n",
+    "internal",
+    "name",
+    "P9n"
+   ]
+  },
+  {
+   "name": "MAo",
+   "kind": "reference",
+   "span": [
+    2348051,
+    2348054
+   ],
+   "units": 3,
+   "text": ")},\"session.repo\":{run:(n,r)=>MAo(r.cwd)},\"session.surface\":{run:(n,r)",
+   "names": []
+  },
+  {
+   "name": "uMo",
+   "kind": "function",
+   "span": [
+    1820371,
+    1820482
+   ],
+   "units": 111,
+   "text": "uMo(e){let n=Xte()[0]??null;if(n===null)t(`$.session.surface (${e}): no drawing session bound; null`);return n}",
+   "names": [
+    "let",
+    "Xte",
+    "null",
+    "if",
+    "session",
+    "surface",
+    "no",
+    "drawing",
+    "bound",
+    "return"
+   ]
+  },
+  {
+   "name": "uMo",
+   "kind": "reference",
+   "span": [
+    2348093,
+    2348096
+   ],
+   "units": 3,
+   "text": "\"session.surface\":{run:(n,r)=>uMo(r.plugin)},\"session.surfaces\":{run:(",
+   "names": []
+  },
+  {
+   "name": "cMo",
+   "kind": "function",
+   "span": [
+    1820497,
+    1820600
+   ],
+   "units": 103,
+   "text": "cMo(e){let n=Xte();if(n.length===0)t(`$.session.surfaces (${e}): nothing attached draws; []`);return n}",
+   "names": [
+    "let",
+    "Xte",
+    "if",
+    "length",
+    "session",
+    "surfaces",
+    "nothing",
+    "attached",
+    "draws",
+    "return"
+   ]
+  },
+  {
+   "name": "cMo",
+   "kind": "reference",
+   "span": [
+    2348139,
+    2348142
+   ],
+   "units": 3,
+   "text": "session.surfaces\":{run:(n,r)=>cMo(r.plugin)},\"session.authorize\":oJt,\"",
+   "names": []
+  },
+  {
+   "name": "dMo",
+   "kind": "function",
+   "span": [
+    1819284,
+    1820356
+   ],
+   "units": 1072,
+   "text": "dMo(){let e=gct(),n={ISSUES_EXPLAINER:\"report the issue at https://github.com/anthropics/claude-code/issues\",PACKAGE_URL:\"@anthropic-ai/claude-code\",README_URL:\"https://code.claude.com/docs/en/overview\",VERSION:\"2.1.296\",FEEDBACK_CHANNEL:\"h…",
+   "names": [
+    "let",
+    "gct",
+    "ISSUES_EXPLAINER",
+    "report",
+    "the",
+    "issue",
+    "at",
+    "https",
+    "github",
+    "com",
+    "anthropics",
+    "claude",
+    "code",
+    "issues",
+    "PACKAGE_URL",
+    "anthropic",
+    "ai",
+    "README_URL",
+    "docs",
+    "en",
+    "overview",
+    "VERSION",
+    "FEEDBACK_CHANNEL",
+    "BUILD_TIME",
+    "T01",
+    "GIT_SHA"
+   ]
+  },
+  {
+   "name": "dMo",
+   "kind": "reference",
+   "span": [
+    2348272,
+    2348275
+   ],
+   "units": 3,
+   "text": ")},\"session.version\":{run:()=>dMo()},\"session.compact\":{check:(n,r)=>{",
+   "names": []
+  }
+ ]
+}

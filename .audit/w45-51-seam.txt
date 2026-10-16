@@ -1,0 +1,19 @@
+(node:99513) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the candidates are the built-in twins of the id, and only for a builtin id (0.619458ms)
+✔ a missing store is carried from the twin, and the carry file is removed (5.604708ms)
+✔ the candidate read answers the twin id with its text, and nothing when there is no store (0.423125ms)
+✔ a carry with no candidate, or with content that is not a plain object, leaves nothing (0.744833ms)
+✔ a store another session already carried is reported at debug and answers true (1.164583ms)
+✔ unparseable content is a failed carry, reported at warn, and publishes nothing (0.279458ms)
+✔ a store the filesystem refuses to write is a failed carry, reported at warn (0.961333ms)
+✔ the carry takes whatever the twin holds at that moment (1.204208ms)
+✔ the seam and the boundary module share one platform table (0.05075ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 144.472083

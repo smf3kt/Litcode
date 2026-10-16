@@ -1,0 +1,129 @@
+{
+ "schema": "W45RegistryResetModuleCoverage.v1",
+ "module": "chunk-3ph567jx.js",
+ "topLevelStatements": 19,
+ "coveredRanges": [
+  {
+   "ledger": "host boundary",
+   "range": [
+    3650,
+    3763
+   ]
+  },
+  {
+   "ledger": "plugin-chain-notify-fold-source-blocks.json",
+   "range": [
+    757,
+    941
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-reset-source-blocks.json",
+   "range": [
+    3763,
+    3815
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-reset-source-blocks.json",
+   "range": [
+    3815,
+    3862
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-reset-source-blocks.json",
+   "range": [
+    3862,
+    3898
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-reset-source-blocks.json",
+   "range": [
+    3898,
+    3958
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-reset-source-blocks.json",
+   "range": [
+    3958,
+    3992
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-reset-source-blocks.json",
+   "range": [
+    3992,
+    4032
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-reset-source-blocks.json",
+   "range": [
+    4032,
+    4069
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-source-blocks.json",
+   "range": [
+    941,
+    1236
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-source-blocks.json",
+   "range": [
+    1236,
+    1283
+   ]
+  },
+  {
+   "ledger": "plugin-chain-registry-source-blocks.json",
+   "range": [
+    1283,
+    3650
+   ]
+  }
+ ],
+ "declarationsOutside": [],
+ "wiringOutside": [
+  {
+   "type": "ImportDeclaration",
+   "range": [
+    615,
+    662
+   ]
+  },
+  {
+   "type": "ImportDeclaration",
+   "range": [
+    662,
+    710
+   ]
+  },
+  {
+   "type": "ImportDeclaration",
+   "range": [
+    710,
+    757
+   ]
+  },
+  {
+   "type": "ExportNamedDeclaration",
+   "range": [
+    4070,
+    4121
+   ]
+  }
+ ],
+ "everyDeclarationCovered": true,
+ "boundaryRange": [
+  3650,
+  3763
+ ],
+ "boundaryText": "class n{registry=s()}var r=new q(()=>new n);function a(){return r.of(B().host)}function it(){return a().registry}",
+ "boundaryMatchesSeamHeader": true
+}

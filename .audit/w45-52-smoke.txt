@@ -1,0 +1,1 @@
+{"package":"passed","compiledCLI":true,"binHelp":true,"offlineInstall":true,"packagedDemo":true,"installedLauncherHelp":true,"installedLauncherFixtures":true,"installedStartupFixtures":true,"devRuntimeAbsent":true,"extractedSamplesExcluded":true,"files":277,"archiveSha256":"98087f9dd65815c7d7fb1f4fbc6f6639849386b475fb5852b54439a435322116","upstreamRequests":0}

@@ -1,0 +1,458 @@
+[
+ {
+  "file": "types/message.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "Message",
+   "AssistantMessage",
+   "AttachmentMessage",
+   "ProgressMessage",
+   "SystemLocalCommandMessage",
+   "SystemMessage",
+   "UserMessage",
+   "NormalizedUserMessage",
+   "AttachmentMessageType",
+   "CollapsedReadSearchGroupType",
+   "GroupedToolUseMessageType",
+   "NormalizedMessage",
+   "RenderableMessage",
+   "PartialCompactDirection",
+   "MessageType",
+   "ProgressMessageType",
+   "CollapsedReadSearchGroup",
+   "NormalizedAssistantMessage",
+   "GroupedToolUseMessage",
+   "SystemStopHookSummaryMessage",
+   "SystemBridgeStatusMessage",
+   "SystemTurnDurationMessage",
+   "SystemThinkingMessage",
+   "SystemMemorySavedMessage",
+   "SystemInformationalMessage",
+   "HookResultMessage",
+   "RequestStartEvent",
+   "StopHookInfo",
+   "StreamEvent",
+   "TombstoneMessage",
+   "ToolUseSummaryMessage",
+   "SystemAPIErrorMessage",
+   "SystemCompactBoundaryMessage",
+   "MessageOrigin",
+   "CollapsibleMessage",
+   "SystemAgentsKilledMessage",
+   "SystemApiMetricsMessage",
+   "SystemAwaySummaryMessage",
+   "SystemMessageLevel",
+   "SystemMicrocompactBoundaryMessage",
+   "SystemPermissionRetryMessage",
+   "SystemScheduledTaskFireMessage"
+  ],
+  "bytes": 1786
+ },
+ {
+  "file": "entrypoints/sdk/runtimeTypes.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "AnyZodRawShape",
+   "ForkSessionOptions",
+   "ForkSessionResult",
+   "GetSessionInfoOptions",
+   "GetSessionMessagesOptions",
+   "InferShape",
+   "InternalOptions",
+   "InternalQuery",
+   "ListSessionsOptions",
+   "McpSdkServerConfigWithInstance",
+   "Options",
+   "Query",
+   "SDKSession",
+   "SDKSessionOptions",
+   "SdkMcpToolDefinition",
+   "SessionMessage",
+   "SessionMutationOptions"
+  ],
+  "bytes": 702
+ },
+ {
+  "file": "types/tools.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "AgentToolProgress",
+   "BashProgress",
+   "MCPProgress",
+   "REPLToolProgress",
+   "SkillToolProgress",
+   "TaskOutputProgress",
+   "ToolProgressData",
+   "WebSearchProgress",
+   "ShellProgress",
+   "PowerShellProgress",
+   "Progress",
+   "SdkWorkflowProgress"
+  ],
+  "bytes": 507
+ },
+ {
+  "file": "services/oauth/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "OAuthTokens",
+   "ReferralRedemptionsResponse",
+   "ReferrerRewardInfo",
+   "ReferralCampaign",
+   "ReferralEligibilityResponse",
+   "SubscriptionType",
+   "BillingType",
+   "OAuthProfileResponse",
+   "OAuthTokenExchangeResponse",
+   "RateLimitTier",
+   "UserRolesResponse"
+  ],
+  "bytes": 507
+ },
+ {
+  "file": "components/mcp/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "ClaudeAIServerInfo",
+   "HTTPServerInfo",
+   "SSEServerInfo",
+   "StdioServerInfo",
+   "AgentMcpServerInfo",
+   "ServerInfo",
+   "MCPViewState"
+  ],
+  "bytes": 325
+ },
+ {
+  "file": "types/notebook.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "NotebookCellType",
+   "NotebookContent",
+   "NotebookCell",
+   "NotebookCellOutput",
+   "NotebookCellSource",
+   "NotebookCellSourceOutput",
+   "NotebookOutputImage"
+  ],
+  "bytes": 347
+ },
+ {
+  "file": "utils/filePersistence/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "FailedPersistence",
+   "FilesPersistedEventData",
+   "PersistedFile",
+   "TurnStartTime",
+   "DEFAULT_UPLOAD_CONCURRENCY",
+   "FILE_COUNT_LIMIT",
+   "OUTPUTS_SUBDIR"
+  ],
+  "bytes": 371
+ },
+ {
+  "file": "entrypoints/sdk/controlTypes.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "SDKControlRequest",
+   "SDKControlResponse",
+   "SDKControlCancelRequest",
+   "SDKControlPermissionRequest",
+   "SDKControlRequestInner",
+   "StdoutMessage"
+  ],
+  "bytes": 325
+ },
+ {
+  "file": "keybindings/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "KeybindingAction",
+   "KeybindingContextName",
+   "ParsedKeystroke",
+   "ParsedBinding",
+   "KeybindingBlock",
+   "Chord"
+  ],
+  "bytes": 290
+ },
+ {
+  "file": "commands/install-github-app/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "Workflow",
+   "Warning",
+   "State"
+  ],
+  "bytes": 165
+ },
+ {
+  "file": "commands/plugin/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "ViewState",
+   "ParentViewState",
+   "PluginSettingsProps"
+  ],
+  "bytes": 188
+ },
+ {
+  "file": "components/wizard/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "WizardStepComponent",
+   "WizardContextValue",
+   "WizardProviderProps"
+  ],
+  "bytes": 201
+ },
+ {
+  "file": "services/lsp/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "LspServerState",
+   "ScopedLspServerConfig",
+   "LspServerConfig"
+  ],
+  "bytes": 195
+ },
+ {
+  "file": "types/connectorText.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "ConnectorTextBlock",
+   "ConnectorTextDelta",
+   "isConnectorTextBlock"
+  ],
+  "bytes": 209
+ },
+ {
+  "file": "components/FeedbackSurvey/utils.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "FeedbackSurveyResponse",
+   "FeedbackSurveyType"
+  ],
+  "bytes": 165
+ },
+ {
+  "file": "components/Spinner/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "SpinnerMode",
+   "RGBColorType"
+  ],
+  "bytes": 148
+ },
+ {
+  "file": "query/transitions.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "Terminal",
+   "Continue"
+  ],
+  "bytes": 141
+ },
+ {
+  "file": "services/tips/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "Tip",
+   "TipContext"
+  ],
+  "bytes": 138
+ },
+ {
+  "file": "types/messageQueueTypes.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "QueueOperationMessage",
+   "QueueOperation"
+  ],
+  "bytes": 160
+ },
+ {
+  "file": "utils/secureStorage/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "SecureStorageData",
+   "SecureStorage"
+  ],
+  "bytes": 155
+ },
+ {
+  "file": "assistant/sessionDiscovery.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "AssistantSession"
+  ],
+  "bytes": 121
+ },
+ {
+  "file": "cli/transports/Transport.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "Transport"
+  ],
+  "bytes": 114
+ },
+ {
+  "file": "commands/plugin/unifiedTypes.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "UnifiedInstalledItem"
+  ],
+  "bytes": 125
+ },
+ {
+  "file": "components/agents/new-agent-creation/types.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "AgentWizardData"
+  ],
+  "bytes": 120
+ },
+ {
+  "file": "components/ui/option.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "Option"
+  ],
+  "bytes": 111
+ },
+ {
+  "file": "constants/querySource.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "QuerySource"
+  ],
+  "bytes": 116
+ },
+ {
+  "file": "entrypoints/sdk/sdkUtilityTypes.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "NonNullableUsage"
+  ],
+  "bytes": 121
+ },
+ {
+  "file": "ink/cursor.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "Cursor"
+  ],
+  "bytes": 111
+ },
+ {
+  "file": "ink/events/paste-event.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "PasteEvent"
+  ],
+  "bytes": 115
+ },
+ {
+  "file": "ink/events/resize-event.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "ResizeEvent"
+  ],
+  "bytes": 116
+ },
+ {
+  "file": "services/skillSearch/signals.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "DiscoverySignal"
+  ],
+  "bytes": 120
+ },
+ {
+  "file": "ssh/SSHSessionManager.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "SSHSessionManager"
+  ],
+  "bytes": 122
+ },
+ {
+  "file": "ssh/createSSHSession.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "SSHSession"
+  ],
+  "bytes": 115
+ },
+ {
+  "file": "tasks/LocalWorkflowTask/LocalWorkflowTask.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "LocalWorkflowTaskState"
+  ],
+  "bytes": 127
+ },
+ {
+  "file": "tasks/MonitorMcpTask/MonitorMcpTask.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "MonitorMcpTaskState"
+  ],
+  "bytes": 124
+ },
+ {
+  "file": "tools/TungstenTool/TungstenLiveMonitor.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "TungstenLiveMonitor"
+  ],
+  "bytes": 132
+ },
+ {
+  "file": "tools/TungstenTool/TungstenTool.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "TungstenTool"
+  ],
+  "bytes": 125
+ },
+ {
+  "file": "tools/WorkflowTool/constants.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "WORKFLOW_TOOL_NAME"
+  ],
+  "bytes": 131
+ },
+ {
+  "file": "types/fileSuggestion.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "FileSuggestionCommandInput"
+  ],
+  "bytes": 131
+ },
+ {
+  "file": "types/statusLine.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "StatusLineCommandInput"
+  ],
+  "bytes": 127
+ },
+ {
+  "file": "types/utils.ts",
+  "head": "// stub: this module is absent from the dump; names are taken from the import sites",
+  "names": [
+   "DeepImmutable"
+  ],
+  "bytes": 118
+ },
+ {
+  "file": "types/globals.d.ts",
+  "head": "// stub: build-time macro the bundler substitutes, and the Bun runtime globals the sample is built for",
+  "names": [],
+  "bytes": 169
+ }
+]

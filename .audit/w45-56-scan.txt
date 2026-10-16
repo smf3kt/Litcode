@@ -1,0 +1,15 @@
+file src/plugin-chain-local-store-source.ts
+declared 25  imports path, ./plugin-chain-lodash-internals-source.js, ./plugin-chain-local-store-probes-source.js, ./plugin-chain-registry-stores-source.js
+unresolved 0
+file src/plugin-chain-lodash-internals-source.ts
+declared 300  imports ./plugin-chain-memoize-source.js
+unresolved 0
+file src/plugin-chain-settings-source-source.ts
+declared 77  imports path, os, fs, fs/promises, ./plugin-chain-host.js, ./plugin-chain-fs-source.js, ./plugin-chain-fs-boundaries.js, ./plugin-chain-memoize-source.js, ./plugin-chain-store-carry-source.js, ./plugin-chain-local-store.js
+unresolved 0
+file src/plugin-chain-local-store-probes-source.ts
+declared 5  imports 
+unresolved 0
+file src/plugin-chain-registry-stores-source.ts
+declared 13  imports 
+unresolved 0

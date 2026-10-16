@@ -1,0 +1,56 @@
+lists ["env.get","env.set"] ["state.get","state.set"] 5 true false
+tEs true false nUn true false
+oRe true true false
+tho true false true
+R3 ui plai kJt srv.m ui.log
+Yo plain "a b" ylt p.k "a b".k
+rho $.ui.log: removed by plugin `p`
+Xqo same value 1 new object true non-object 5
+kme none no hooks module of that name is loaded, so there is no scan to allow it (host rule)
+kme miss its hooks module does not call it (host rule; the scan lists $.ui.toast, $.ui.status)
+kme none-declared its hooks module does not call it (host rule; the scan lists no calls)
+kme hit undefined
+nzt ok undefined
+nzt miss its hooks module does not name PATH in a $.env.get("<name>") call (host rule; the scan lists reads of HOME)
+nzt write undefined | miss its hooks module does not name HOME in a $.env.set("<name>") call (host rule; the scan lists writes of PATH)
+nzt no-literal it carries no variable name a $.env.get("<name>") call passes | other op undefined
+Qqo ok undefined
+Qqo miss its hooks module does not refer to p.other in a $.state.get({ plugin, key }) call (host rule; the scan lists reads of p.k)
+Qqo no-ref it carries no reference a $.state.set({ plugin, key }) call passes | other op undefined
+Sme ok $.ui.log: removed by plugin `other`
+Sme no-scan p: $.ui.log refused: no hooks module of that name is loaded, so there is no scan to allow it (host rule)
+Sme withheld $.ui.log: removed by plugin `p0`
+Sme unadmitted $.ui.log: removed by plugin `other`
+Sme unadmitted but clock p: $.clock.now refused: its hooks module does not call it (host rule; the scan lists $.state.get, $.env.get, $.test.op, $.ui.log, $.interface.call)
+UGt other undefined undefined
+jGt staged staged
+jGt staged-before before
+jGt crashed other
+HGt $.ui.log: removed by plugin `p0`
+HGt again $.ui.log: removed by plugin `p0` [ 'p:ui' ]
+H2e undefined
+plain answered {"args":{"a":1},"caller":{"plugin":"p","origin":{},"environmentId":"env-1","admitted":{"pluginName":"p","pluginStorageId":"s@1","scan":{"calls":["state.get","env.get","test.op","ui.log","interface.call"],"state":{"reads":[{"plugin":"p","key":"k"}],"writes":[{"plugin":"p","key":"k"}]},"env":{"reads":["HOME"],"writes":["PATH"]}}}}} order raise>stamp>run
+state-copied answered {"args":{"plugin":"p","key":"k"},"caller":{"plugin":"p","origin":{},"environmentId":"env-1","admitted":{"pluginName":"p","pluginStorageId":"s@1","scan":{"calls":["state.get","env.get","test.op","ui.log","interface.call"],"state":{"reads":[{"plugin":"p","key":"k"}],"writes":[{"plugin":"p","key":"k"}]},"env":{"reads":["HOME"],"writes":["PATH"]}}}}} order raise>stamp>run
+host-check threw p: test.op: not allowed (host check) order 
+host-check-droppable threw $.ui.log: removed by plugin `other` order 
+scan-miss threw p: $.env.get refused: its hooks module does not name PATH in a $.env.get("<name>") call (host rule; the scan lists reads of HOME) order 
+scan-ok answered {"args":{"name":"HOME"},"caller":{"plugin":"p","origin":{},"environmentId":"env-1","admitted":{"pluginName":"p","pluginStorageId":"s@1","scan":{"calls":["state.get","env.get","test.op","ui.log","interface.call"],"state":{"reads":[{"plugin":"p","key":"k"}],"writes":[{"plugin":"p","key":"k"}]},"env":{"reads":["HOME"],"writes":["PATH"]}}}}} order raise>stamp>run
+args-copied answered {"args":{"plugin":"p","key":"k"},"caller":{"plugin":"p","origin":{},"environmentId":"env-1","admitted":{"pluginName":"p","pluginStorageId":"s@1","scan":{"calls":["state.get","env.get","test.op","ui.log","interface.call"],"state":{"reads":[{"plugin":"p","key":"k"}],"writes":[{"plugin":"p","key":"k"}]},"env":{"reads":["HOME"],"writes":["PATH"]}}}}} order raise>stamp>run
+caller args untouched {"plugin":"p","key":"k"}
+droppable-host-check threw $.ui.log: removed by plugin `other` order 
+funnel threw $.ui.log: removed by plugin `other` order 
+interface-road threw p: $.srv.m refused: its hooks module does not call it (host rule; the scan lists $.state.get, $.env.get, $.test.op, $.ui.log, $.interface.call) order 
+ops without run [ 'threw', 'h.run is not a function' ]
+clean-host-check threw p: test.op: nope (host check) order 
+clean-droppable-check threw p: ui.log: nope (host check) order 
+clean-funnel answered {"args":{"text":"x"},"caller":{"plugin":"p","origin":{},"environmentId":"env-1","admitted":{"pluginName":"p","pluginStorageId":"s@1","scan":{"calls":["state.get order raise>stamp>run
+clean-interface threw p: $.srv.m refused: its hooks module does not call it (host rule; the scan lists $.state.get, $.env.get, $.test.op, $.ui.log, $.interface.call) order 
+records undefined
+Sme clock listed, unadmitted no throw
+Sme clock listed, no exemption p: $.clock.now refused: a hooks module behind the call is not admitted (plugin.register runs once the set is built)
+Sme clock listed, declared and admitted no throw
+Sme returns {"pluginName":"p","pluginStorageId":"s@1","scan":{"calls":["clock.now","clock.every"],"state":{},"env":{}}}
+interface-road declared answered {"road":"call table","a":{"name":"srv","method":"m","args":[{"q":1}]},"c":{"plugin":"p","origin":{},"environmentId":"env-1","admitted":{"pluginName":"p","pluginStorageId":"s@1","scan":{"calls":["inter
+interface-road one segment threw p: $.srv.undefined refused: its hooks module does not call it (host rule; the scan lists $.interface.call, $.srv)
+(node:40950) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

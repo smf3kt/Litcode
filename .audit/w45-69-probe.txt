@@ -1,0 +1,40 @@
+table Button,Client,Code,Image,Input,Markdown,Raster,Select,Svg all functions true
+constants 40 12
+rno svg ["A"]
+rno button children ["abc"]
+rno button label ["L"]
+rno input ["L"]
+rno input no label [""]
+rno other []
+Q4t ["a","b","c"]
+Q4t non-string threw Cannot use 'in' operator to search for 'children' in 1
+ono raster 7
+ono markdown 3
+ono plain 1
+ono button 1
+ono svg 1
+ono code source 3
+ono code long 20
+tso hunks [{"oldFileName":"a/x","oldHeader":"","newFileName":"b/x","newHeader":"","hunks":[{"oldStart":1,"oldLines":2,"newStart":1,"newLines":3,"lines":[" a","-b","+c","+d","\\ No newline at end of file"]}]}]
+Dto ok {"kind":"hunks","hunks":[{"oldStart":1,"oldLines":2,"newStart":1,"newLines":3,"lines":[" a","-b","+c","+d"]}]}
+Dto no hunk {"kind":"refused","problem":"no @@ hunk header found"}
+Dto bad header {"kind":"refused","problem":"hunk 1 header is not @@ -a,b +c,d @@ within 1000000000 lines"}
+vVe diff {"kind":"hunks","hunks":[{"oldStart":1,"oldLines":2,"newStar
+vVe other undefined
+ono code diff 9
+ono code diff truncate 8
+ono code diff startLine 9
+Int 4
+Lt 2 3
+nno 6 4 6
+IAt 2 19
+J4t "a�b     c"
+HN "a\n    b\nc"
+ano first undefined
+ano second Input "k" is drawn twice; each takes its own key
+ano other type same key undefined
+ano no key undefined
+ano svg undefined
+ano non-string key undefined
+(node:10024) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

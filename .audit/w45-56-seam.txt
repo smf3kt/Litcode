@@ -1,0 +1,18 @@
+(node:90100) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the store is one per host, and ji answers it (0.404666ms)
+✔ a fresh store carries the fields the settings readers read (0.067125ms)
+✔ the empty-settings normalize and the snapshot the diff compares (0.371958ms)
+✔ the changed-source keys are the entries whose snapshots differ (0.260417ms)
+✔ the store clears its plugin base, drops every cache and bumps the epoch (0.122625ms)
+✔ the epoch guards, and the listing caches the walk reads (0.121125ms)
+✔ a policy verdict is an install until a walk has been counted (0.117708ms)
+✔ the policy pin is write-once, and it gates the walk (0.134ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 122.55075

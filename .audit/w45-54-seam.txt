@@ -1,0 +1,18 @@
+(node:45269) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ every source resolves to the file the source names, and only those (0.565292ms)
+✔ the directory behind a source, and the source own error for a source with no cwd (0.09475ms)
+✔ the settings file names, and the relative path a project or local file is joined under (0.251ms)
+✔ the managed settings file, its directory and its drop-in, cached until reset (0.05225ms)
+✔ the .claude directory, the home realpath, and the facade the probes read through (0.1545ms)
+✔ the ownership gate: the source own three answers, with the source own warn texts (0.984958ms)
+✔ the local settings root takes the canonical root only when the user owns it (0.489ms)
+✔ the probes are read through the store handle, and the handle can be replaced (0.642583ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 145.173459

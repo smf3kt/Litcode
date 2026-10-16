@@ -1,0 +1,21 @@
+(node:66441) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the constants are the source's own (0.759917ms)
+✔ one painted cell is eight words: a flag and three channels twice (0.084708ms)
+✔ the call site of freshRasterAdmission builds an unspent row, and rasterAdmission holds it in the registry (0.08525ms)
+✔ the accessor carries no reset, because the source's memoizer is an identity in this build (0.063333ms)
+✔ admitting a frame refills against the clock and spends one token (0.09725ms)
+✔ the cost is a reserve that must be left behind, not a price (0.07425ms)
+✔ the refill is proportional to the elapsed time, capped at the capacity and never negative (0.066458ms)
+✔ encoding a cell writes the foreground from the low half and the background from the high half (0.105084ms)
+✔ the default sentinel marks the side it is passed as, and the cell it is written at (0.099667ms)
+✔ a size is checked against the limit field by field, columns first (0.084959ms)
+✔ the validating mount checks against the default size, and takes no other (0.050292ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 137.734875

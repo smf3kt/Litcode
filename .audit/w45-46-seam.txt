@@ -1,0 +1,24 @@
+(node:98696) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ fs.read answers the file text, and its bytes as base64 (5.433ms)
+✔ a relative path with no caller cwd resolves against the process cwd the host holds (0.415625ms)
+✔ fs.write makes the directory, writes the text, and logs the byte count (0.737875ms)
+✔ the write refuses text over the 4 MiB limit before it touches the disk (0.621583ms)
+✔ the read refuses a file over the 4 MiB limit (3.169583ms)
+✔ fs.exists answers a boolean and never throws (0.391209ms)
+✔ fs.list answers the entries sorted by name, with kinds, sizes and link flags (4.412583ms)
+✔ fs.stat answers the entry, and follows a link whose target is reachable (0.703667ms)
+✔ the floor refuses a location the policy refuses, with the source's text (0.228708ms)
+✔ the platform the read picks its open mode by is the bound one (0.295166ms)
+✔ the entry checks refuse with the source's own texts (0.103833ms)
+✔ an entry check runs only behind a handler, as the table floors do (1.7465ms)
+✔ a handler in the chain answers an fs call first (0.151208ms)
+✔ runFsEvent runs one filesystem event directly (0.490625ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 173.909542

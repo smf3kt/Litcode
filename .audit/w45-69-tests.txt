@@ -1,0 +1,23 @@
+(node:10596) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ the leaf table names the nine types, each mapped to the check that refuses a bad one (1.182167ms)
+✔ a leaf contributes its own text, and a button's children win over its label (0.108291ms)
+✔ a leaf's children are flattened depth first, and anything else is measured rather than guessed (0.169ms)
+✔ how tall a leaf is, in the lines it emits (0.562709ms)
+✔ a Code leaf's height reads the diff it holds once the format says diff (1.053541ms)
+✔ a keyed leaf drawn twice is refused the second time, and only the second time (0.087334ms)
+✔ a diff is read back into hunks, with the parser's own marker lines dropped (0.093583ms)
+✔ a diff the reader cannot read comes back as a refusal rather than an error (0.14775ms)
+✔ the parser behind the reader throws where the reader refuses, and keeps the marker line (0.075834ms)
+✔ the reader a Code leaf asks for by format, and nothing for any other format (0.080666ms)
+✔ leaf text keeps a directional override from moving the line it was drawn on (0.113458ms)
+✔ the emitted lines a string takes at a width, and the gutter a hunk's numbers take (0.085917ms)
+✔ the source bodies under their own names answer what the ported call answers (0.054083ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 216.951125
