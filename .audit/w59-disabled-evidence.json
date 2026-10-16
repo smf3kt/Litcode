@@ -1,0 +1,144 @@
+{
+  "feature_shim_sha256": "d0f644b3bb126c718bc0904d298fe5fbb05804d55aed3f550d4fb095dd206101",
+  "rows": [
+    {
+      "file": "commands.ts",
+      "sha256": "aeb89fc685efb3e8f850222d52d3bd02f19b336211425d5ff8de41a57213ea29",
+      "output_sha256": "0613b2dbd390ccf9a7ca70e963b473dbc2c599812402e5dba4c6db423a0304ba",
+      "coordinates": "utf16-half-open",
+      "edits": [
+        {
+          "start": 3921,
+          "end": 3974,
+          "before": "feature('WORKFLOW_SCRIPTS')\n  ? null.default\n  : null",
+          "after": "null",
+          "flag": "WORKFLOW_SCRIPTS"
+        },
+        {
+          "start": 4179,
+          "end": 4254,
+          "before": "feature('EXPERIMENTAL_SKILL_SEARCH')\n  ? null.clearSkillIndexCache\n  : null",
+          "after": "null",
+          "flag": "EXPERIMENTAL_SKILL_SEARCH"
+        },
+        {
+          "start": 4559,
+          "end": 4605,
+          "before": "feature('UDS_INBOX')\n  ? null.default\n  : null",
+          "after": "null",
+          "flag": "UDS_INBOX"
+        },
+        {
+          "start": 4622,
+          "end": 4672,
+          "before": "feature('FORK_SUBAGENT')\n  ? null.default\n  : null",
+          "after": "null",
+          "flag": "FORK_SUBAGENT"
+        },
+        {
+          "start": 4687,
+          "end": 4729,
+          "before": "feature('BUDDY')\n  ? null.default\n  : null",
+          "after": "null",
+          "flag": "BUDDY"
+        }
+      ]
+    },
+    {
+      "file": "constants/prompts.ts",
+      "sha256": "b0a42d823a1f2bfb008dfc6667bc9498e88513c660e3981e8e99f862cb4f611a",
+      "output_sha256": "50897e9d8bec1a2fa9abfcdc7ea3ee5d3d5e1dbef71414aa1e4c1696e0604f08",
+      "coordinates": "utf16-half-open",
+      "edits": [
+        {
+          "start": 3118,
+          "end": 3184,
+          "before": "feature('CACHED_MICROCOMPACT')\n  ? null.getCachedMCConfig\n  : null",
+          "after": "null",
+          "flag": "CACHED_MICROCOMPACT"
+        },
+        {
+          "start": 3780,
+          "end": 3865,
+          "before": "feature(\n  'EXPERIMENTAL_SKILL_SEARCH',\n)\n  ? null.DISCOVER_SKILLS_TOOL_NAME\n  : null",
+          "after": "null",
+          "flag": "EXPERIMENTAL_SKILL_SEARCH"
+        }
+      ]
+    },
+    {
+      "file": "services/mcp/client.ts",
+      "sha256": "bb048e045309733e248d257f6e20aa1b31b44c6a8a9837b04c24552a5f44a428",
+      "output_sha256": "5499e05818c8830c7c61f98bcf76e4f4f9da41a3da1cfcb6d7b47133b17a2223",
+      "coordinates": "utf16-half-open",
+      "edits": [
+        {
+          "start": 4284,
+          "end": 4347,
+          "before": "feature('MCP_SKILLS')\n  ? null.fetchMcpSkillsForClient\n  : null",
+          "after": "null",
+          "flag": "MCP_SKILLS"
+        }
+      ]
+    },
+    {
+      "file": "services/mcp/useManageMCPConnections.ts",
+      "sha256": "bc6862197494f1475848c60aabc3c397762b2976ad230ed3470c93aba77eff44",
+      "output_sha256": "4a48207c1b74b8e502b8dfd8906210f9787f76595b56a731d4b63ac08b1e048d",
+      "coordinates": "utf16-half-open",
+      "edits": [
+        {
+          "start": 650,
+          "end": 713,
+          "before": "feature('MCP_SKILLS')\n  ? null.fetchMcpSkillsForClient\n  : null",
+          "after": "null",
+          "flag": "MCP_SKILLS"
+        },
+        {
+          "start": 743,
+          "end": 818,
+          "before": "feature('EXPERIMENTAL_SKILL_SEARCH')\n  ? null.clearSkillIndexCache\n  : null",
+          "after": "null",
+          "flag": "EXPERIMENTAL_SKILL_SEARCH"
+        }
+      ]
+    },
+    {
+      "file": "utils/collapseReadSearch.ts",
+      "sha256": "c774b82498f184c8bd7a0aefa3f9eb093e90df629745472e2f53b2cca383ba06",
+      "output_sha256": "f1b0efd64fe0a0049c951ab3a49b0b2a948b7adcee1ad1aad028b902e8bb274a",
+      "coordinates": "utf16-half-open",
+      "edits": [
+        {
+          "start": 1384,
+          "end": 1440,
+          "before": "feature('HISTORY_SNIP')\n  ? null.SNIP_TOOL_NAME\n  : null",
+          "after": "null",
+          "flag": "HISTORY_SNIP"
+        }
+      ]
+    },
+    {
+      "file": "utils/permissions/classifierDecision.ts",
+      "sha256": "47a29be607dd1c5cc041d2b1a7b1d327238511e4b89b58da8355f654377fa018",
+      "output_sha256": "164a359f372c8f38fc986b74a711871304e8732b16a11abcd8fe48e3b7e22fd8",
+      "coordinates": "utf16-half-open",
+      "edits": [
+        {
+          "start": 1889,
+          "end": 1959,
+          "before": "feature('TERMINAL_PANEL')\n  ? null.TERMINAL_CAPTURE_TOOL_NAME\n  : null",
+          "after": "null",
+          "flag": "TERMINAL_PANEL"
+        },
+        {
+          "start": 1992,
+          "end": 2063,
+          "before": "feature('OVERFLOW_TEST_TOOL')\n  ? null.OVERFLOW_TEST_TOOL_NAME\n  : null",
+          "after": "null",
+          "flag": "OVERFLOW_TEST_TOOL"
+        }
+      ]
+    }
+  ]
+}
