@@ -332,6 +332,50 @@ One process note: `w65-d4d.py`'s own pre-delete assert caught a sibling `Feedbac
 
 The scan is back to its ten known-legitimate entries, so this cut's cascade has terminated.
 
+## Wave D step 5 — the voice cluster (landed, `6e580ac`)
+
+`VOICE_MODE` is one of the 88 flags that constant-fold to false in this build, so every read of it already took the fallback. The cluster still typechecked, and what it typechecked is the account path — `voice/voiceModeEnabled.ts` states the reason in its own comment: voice mode requires Anthropic OAuth because it streams audio to the `voice_stream` WebSocket on `api.anthropic.com` with `stt_provider=deepgram-nova3`. That is the same boundary the rest of this wave is drawn along.
+
+| Removed | Lines |
+| --- | --- |
+| `hooks/useVoice.ts` | 1,144 |
+| `services/voiceStreamSTT.ts` | 544 |
+| `services/voice.ts` | 525 |
+| `services/voiceKeyterms.ts` | 106 |
+| `voice/voiceModeEnabled.ts` | 54 |
+| `hooks/useVoiceIntegration.tsx`, `hooks/useVoiceEnabled.ts`, `context/voice.tsx` | — |
+| `components/PromptInput/VoiceIndicator.tsx`, `components/LogoV2/VoiceModeNotice.tsx` | 114 |
+
+### The hosts
+
+Eleven files, and every arm had the same shape — `feature('VOICE_MODE') ? X : fallback` — so each cut keeps the fallback:
+
+- `state/AppState.tsx` — the `VoiceProvider` conditional require, whose external build was already `({children}) => children`; the wrapper at the call site went with it.
+- `keybindings/defaultBindings.ts` — `space: 'voice:pushToTalk'`, plus the action's entry in `schema.ts` and its `validate.ts` branch. The action had no handler left, so leaving it registered would have kept a no-op binding that still warned about warmup.
+- `tools/ConfigTool/supportedSettings.ts`, `utils/settings/types.ts` — the `voiceEnabled` registration in both registries.
+- `tools/ConfigTool/prompt.ts` — the GrowthBook filter that hid the key from the model prompt.
+- `tools/ConfigTool/ConfigTool.ts` — the kill-switch pre-check and the ~50-line pre-flight (auth check, `isVoiceStreamAvailable`, `checkRecordingAvailability`, `checkVoiceDependencies`, microphone permission with per-platform guidance), plus the `settingsChangeDetector.notifyChange` call whose stated reason was to resync `AppState.settings` for `useVoiceEnabled`.
+- `screens/REPL.tsx` — the two `typeof import` conditional requires, the `useVoiceIntegration` call, and both `VoiceKeybindingHandler` mounts.
+- `components/PromptInput/Notifications.tsx` — the conditional-require indicator, the three voice state selectors and the early return that replaced all notifications with the indicator.
+- `components/PromptInput/PromptInputFooterLeftSide.tsx` — the warmup hint, the hold-to-speak hint, the mount-time hint counter and its `useEffect` write, and `MAX_VOICE_HINT_SHOWS`.
+- `components/TextInput.tsx` — the waveform cursor, its five tuning constants and the animation frame that drove it.
+
+### Dead parameters with no supplier left
+
+Three props existed only so the voice cluster could reach into shared components, and all three were cut with it: `insertTextRef` and `voiceInterimRange` on `PromptInput` (STT spliced text at the cursor and dimmed interim dictation), and `hidePlaceholderText` on `BaseTextInput`/`renderPlaceholder` (the recording state blanked the placeholder). Four voice counters left `utils/config.ts` the same way — `voiceNoticeSeenCount`, `voiceLangHintShownCount`, `voiceLangHintLastLanguage`, `voiceFooterHintSeenCount`.
+
+Two user-visible strings that had become untrue were corrected rather than left: the `language` setting's description no longer advertises dictation, and `LanguagePicker` no longer says "response and voice language".
+
+### The one shape worth recording
+
+`TextInput`'s `invert` was a three-arm chain: no cursor, voice waveform, `chalk.inverse`. The cut leaves the two arms the source's own external build runs, and `animRef` keeps the value that build assigned it — `[() => {}, 0]` destructured, of which only the ref ever reached the `Box`. Nothing was invented; both are the flag's false arm made literal.
+
+### Verification
+
+`tsc --noEmit --pretty false` exits 0; eight owned fixtures pass. The new `w65-d5-verify` asserts no `feature('VOICE_MODE')` read survives, no import edge names any of the ten removed paths, the seven removed symbol families (`voice:pushToTalk`, `hidePlaceholderText`, the four counters, `insertTextRef`/`voiceInterimRange`) are unreferenced, and the surviving shapes are the external-build ones. `git diff --check` clean; 28 files changed, +24/−3,792; four `*.w54bak` quarantined to `.audit/w65-d5-baks/` and byte-compared first.
+
+One honest note about the tooling: the import-graph scan could not have found this cluster. Every one of these modules was reached through a conditional `require` inside a flag ternary, not through an import edge, so the scan's list is unchanged at its ten legitimate entries — this is the wave where the scanner was the wrong instrument and reading the flag's own call sites was the right one.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
