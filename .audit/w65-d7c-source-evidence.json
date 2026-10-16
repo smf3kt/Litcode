@@ -1,0 +1,31 @@
+{
+  "before": "b2c553b",
+  "kind": "dead-record-builder removal; the surviving redaction helpers are the source's",
+  "evidence": [
+    {
+      "file": "services/analytics/metadata.ts",
+      "change": "everything from the EnvContext type to the end of the file removed (the environment builder, the process-metrics sampler, the agent-identification helper, getEventMetadata, the 1P snake_case formatter and their types); the import block cut from twenty-one bindings to four",
+      "sourceSha256": "c97676a48ef02fbc2797c5251287f5fa336d8e5ca8a42c92e26a1e7752bd366e",
+      "portSha256": "d71d6c7ff9f88e11207809e5ec368c2db3ae4fd11b728b5482ca612ec92bf274",
+      "coordinateUnit": "utf16-half-open",
+      "sourceBytes": 31655,
+      "portBytes": 11852
+    }
+  ],
+  "removed": [
+    "services/analytics/metadata.ts: 950 lines to 363",
+    "types/generated/events_mono/claude_code/v1/claude_code_internal_event.ts (866 lines, the 1P event proto type)",
+    "types/generated/events_mono/common/v1/auth.ts (101) and types/generated/google/protobuf/timestamp.ts (188) — each had this file as its only importer"
+  ],
+  "finding": "types/generated/ now holds no files at all: every generated proto type in the tree existed for the 1P event payload, so the last of them left with the last importer.",
+  "kept": "the tool-name sanitizer (21 files), the MCP-detail / skill-name / tool-input helpers (services/tools/toolExecution.ts), the file-extension helpers (toolExecution.ts, tools/FileReadTool) and the not-code-or-filepaths marker type (137 files)",
+  "next": "utils/user.ts's getUserForGrowthBook -> getCoreUserData -> CoreUserData chain, main.tsx's initUser/resetUserCache calls, and three exports 7c orphaned: utils/git.ts's getRepoRemoteHash, utils/platform.ts's getLinuxDistroInfo and detectVcs",
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "The whole dead region swept by name; the surviving bodies and nine of their lines checked word-for-word against the base revision; the import list asserted exactly; the three generated types checked absent and present-in-the-base; the generated tree asserted empty; tsc log empty"
+}
