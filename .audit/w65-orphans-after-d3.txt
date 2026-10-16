@@ -1,0 +1,14 @@
+1708 files scanned, 12 with no importer
+
+  1000  native-ts/color-diff/index.ts
+   295  types/vendor.d.ts
+   199  utils/heatmap.ts
+   159  entrypoints/cli.tsx
+   137  types/lodash-es.d.ts
+   122  utils/screenshotClipboard.ts
+    76  ink/global.d.ts
+    21  utils/withResolvers.ts
+     9  shims/bun-bundle.ts
+     6  types/assets.d.ts
+     4  types/globals.d.ts
+     4  types/react-compiler-runtime.d.ts
