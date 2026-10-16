@@ -1,0 +1,50 @@
+{
+  "before": "1bc1bc0",
+  "evidence": [
+    {
+      "port": "components/SkillImprovementSurvey.tsx",
+      "symbol": "isValidResponseInput",
+      "source": "components/FeedbackSurvey/FeedbackSurveyView.tsx",
+      "sourceSha256": "105f27f8d7caf386f40efeb6ff99e4a22fa37a27f836acbc12a1c93fa5edb226",
+      "sourceRange": [
+        604,
+        739
+      ],
+      "portSha256": "70009a731a604ffa8bd344e8fc215a90cfe6c3c81e39b663d1f49730cf108711",
+      "portRange": [
+        1674,
+        1807
+      ],
+      "coordinateUnit": "utf16-half-open",
+      "mode": "adapt",
+      "difference": "accepted set narrowed from the source's ['0','1','2','3'] to the host survey's ['0','1']; body otherwise identical",
+      "probes": 6
+    },
+    {
+      "port": "utils/hooks/skillImprovement.ts",
+      "symbol": "SkillSurveyResponse",
+      "source": "components/FeedbackSurvey/utils.ts (reconstruction stub, no body)",
+      "coordinateUnit": "utf16-half-open",
+      "mode": "adapt",
+      "difference": "declared from the host's own two users because the recovered stub is `any`; same declaration class as the wave D step 2 OAuthTokens case",
+      "probes": 2
+    }
+  ],
+  "removed": [
+    "components/FeedbackSurvey/ (10 files, 1,538 lines)",
+    "utils/autoRunIssue.tsx",
+    "components/Feedback.tsx (758 lines, /feedback screen)",
+    "hooks/useDynamicConfig.ts",
+    "isFeedbackSurveyDisabled, feedbackSurveyState, transcriptShareDismissed",
+    "the REPL survey wiring: four hook calls, the survey JSX chain, the auto-run-/issue chain"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "The one rehomed body is compared against the recovered source over digit probes with the narrowing recorded as an explicit difference; absence and no-live-reference sweeps bound the removal",
+  "remaining": "the voice cluster, the model-call seams (services/api/*, utils/http.ts), utils/fastMode.ts, the session-ingress bearer surface, the ~33 in-place CLI blocks"
+}
