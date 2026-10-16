@@ -1717,3 +1717,7 @@ W45-20: the module-to-host call path (the `ui.*`/`env.*`/`state.*` value events'
 ## W64 phase-2 package 4: Computer Use cluster stripped
 
 17 files deleted (2,679 lines), 9 host cuts plus the @ant/* vendor block (+5/-2,895); tsc exits 0; four fixtures pass. Three quarantined source maps byte-verified. Independent review not run (rate-limited). [W64 record](ports/W64-phase2-computeruse.md).
+
+## W65 wave A: org-pushed settings network removed
+
+New directive: drop the account/subscription network, keep local only. Wave A deletes the org settings surface (services/remoteManagedSettings, settingsSync, teamMemorySync; 12 files, 3,963 lines) plus 11 host cuts (+7/-3,982); tsc exits 0; four fixtures pass. policySettings resolves from local sources only. One protocol slip recorded: the three dirs were deleted before the bak quarantine; exposure bounded to one file, its dump-state text recovered into .audit/w65-source-baks/. Independent review not run (rate-limited). [W65 record](ports/W65-account-network.md).
