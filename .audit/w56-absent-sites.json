@@ -1,0 +1,58 @@
+{
+ "total": 12,
+ "report": [
+  {
+   "file": "main.tsx",
+   "edits": [
+    {
+     "reason": "missing-module",
+     "snippet": "const { runConnectHeadless } = await import(             './"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const { parseConnectUrl } = await import(             './ser"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const { writeServerLock, removeServerLock, probeRunningServe"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const { createServerLogger } = await import('./server/server"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const { printBanner } = await import('./server/serverBanner."
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const { DangerousBackend } = await import(             './se"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const { SessionManager } = await import('./server/sessionMan"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const { startServer } = await import('./server/server.js')"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const { buildMergePrompt } = await import(               './"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const { parseConnectUrl } = await import('./server/parseConn"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const kairosGate = feature('KAIROS')   ? (require('./assista"
+    },
+    {
+     "reason": "missing-module",
+     "snippet": "const assistantModule = feature('KAIROS')   ? (require('./as"
+    }
+   ]
+  }
+ ]
+}
