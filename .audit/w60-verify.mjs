@@ -49,7 +49,18 @@ for (const [path, name] of selections) {
       const current = execute(b.text, name, userType, true, preserved)
       const oldErrors = (await Promise.all(old.pending)).filter(Boolean)
       const errors = (await Promise.all(current.pending)).filter(Boolean)
-      assert.deepEqual(current.calls, old.calls)
+      // W65 wave E step 4 removed the remote session-ingress clear: the
+      // recovered body's `clearAllSessions()` belongs to the CCR transcript
+      // sync this build does not carry. Every other call must match exactly,
+      // and the removed entry must be the only difference.
+      assert.deepEqual(
+        old.calls.filter(([key]) => key === "clearAllSessions"),
+        [["clearAllSessions"]],
+      )
+      assert.deepEqual(
+        current.calls,
+        old.calls.filter(([key]) => key !== "clearAllSessions"),
+      )
       assert.ok(current.calls.some(([key, value]) => key === "resetGetMemoryFilesCache" && value === "session_start"))
       assert.deepEqual(current.calls.find(([key]) => key === "clearInvokedSkills"), ["clearInvokedSkills", preserved ? ["agent-a"] : []])
       assert.equal(current.calls.some(([key]) => key === "clearAllPendingCallbacks"), !preserved)
