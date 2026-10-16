@@ -6,10 +6,10 @@
       "file": "services/analytics/growthbook.ts",
       "change": "the remote-eval client, its payload transform, the exposure log, the disk cache and the periodic refresh removed; every read keeps the source's local override channels and its !isGrowthBookEnabled() guard",
       "sourceSha256": "42541e6311ebed2d2865332eb7d9b2b99ac46f16d47674e702d7b035c1b96cf4",
-      "portSha256": "b3f7cc5a6f92a9b61ce4a4eba271d963a905cba968e70b4844cc72ef3fb4f07e",
+      "portSha256": "031c12ac9f98e222dc71feb1626be73cf7df8c0d9fe4fb8208c1774c6f5ecb5c",
       "coordinateUnit": "utf16-half-open",
       "sourceBytes": 40526,
-      "portBytes": 16510
+      "portBytes": 14372
     },
     {
       "file": "utils/config.ts",

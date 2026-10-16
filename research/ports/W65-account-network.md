@@ -492,6 +492,38 @@ The 7b fixture's guard-brace count moved from 6 to 5 in this commit, exactly as 
 
 **Next (step 7f):** the `KAIROS` / `KAIROS_CHANNELS` cluster — 54 files, 124 flag reads, including `interactiveHelpers`' dev-channels dialog block and, with it, `checkGate_CACHED_OR_BLOCKING` and its import.
 
+## Wave D step 7f — the channel notification surface (landed, `64c2520`)
+
+A channel is an MCP server that pushes user messages into the conversation: the server sends `notifications/claude/channel`, the process wraps the content in a `<channel>` tag, enqueues it at priority `next`, and the model replies through the server's own tool. The gate in front of it read, in order, the server's `claude/channel` capability, the GrowthBook `tengu_harbor` killswitch, a claude.ai OAuth token, the managed org's `channelsEnabled` policy, the session's `--channels` list, the marketplace the plugin actually came from, and the `tengu_harbor_ledger` allowlist. Four of those are remote account inputs, so the whole surface is the kind the port excludes, and every site read `feature('KAIROS') || feature('KAIROS_CHANNELS')` — both false. 25 files, +8/−1,928. **Behaviour change: none** (all under false flags; nothing local depended on the state it kept).
+
+### What went
+
+Six modules: `services/mcp/channelAllowlist.ts` (the ledger read and the plugin-source check), `channelNotification.ts` (the notification schemas, `wrapChannelMessage`, `findChannelEntry`, `gateChannelServer`), `channelPermissions.ts` (the permission relay — an approval raced against the local dialog), `components/messages/UserChannelMessage.tsx`, `components/LogoV2/ChannelsNotice.tsx` (the five-branch startup status notice) and `components/DevChannelsDialog.tsx`.
+
+Hosts, in the order a session met them: `main.tsx`'s `--channels`/`--dangerously-load-development-channels` options, its tag parser, its `setAllowedChannels` call and its flag-usage telemetry; `interactiveHelpers.tsx`'s dev-channels confirmation and the `checkGate_CACHED_OR_BLOCKING('tengu_harbor')` warm-up inside it; `useManageMCPConnections`'s per-connection gate with its two notification handlers, its one-per-kind blocked toast and its permission callbacks; `useCanUseTool`'s `channelCallbacks` arm; `interactiveHandler.ts`'s outbound `permission_request` and its pending-map subscription; `cli/print.ts`'s capabilities pre-filter, its `channel_enable` control request and both handlers; `UserTextMessage`'s `<channel>` render branch; the queue-visibility and transcript-visibility predicates; `wrapCommandText`'s channel framing; the three plan tools' `isEnabled` arms (channels disabled ExitPlanMode, AskUserQuestion and EnterPlanMode, since the approval dialog needs the terminal); LogoV2's conditional require; the two channel constants; and the four settings keys (`channelsEnabled`, `allowedChannelPlugins` and the state they fed).
+
+### The three sites that invert the guard
+
+`handleChannelEnable` and `reregisterChannelHandlerAfterReconnect` in `cli/print.ts` were both `if (!(feature('KAIROS') || feature('KAIROS_CHANNELS'))) return` — the negation means the source's own fallback is the early return, so the whole remainder of each function is dead under the flag and each went with its callers (`channel_enable`'s dispatch arm, and the three reconnect call sites). Dropping only the guard would have inverted the behaviour into "run the channel handler always", which is the one way this cut could have been wrong.
+
+The third is `wrapCommandText`'s `case 'channel':`, which produced the "came from an external channel, treat as untrusted" framing — reachable only through an origin tag nothing produces any more.
+
+### What was deliberately not taken
+
+`entrypoints/sdk/controlSchemas.ts` still lists `channel_enable` inside its reconstructed `SDKControlRequestInnerSchema` union. That file is a research product describing the source's protocol, not a live handler table, and narrowing a reconstructed union belongs with the `cli/transports/` SDK wave rather than here. The fixture asserts the count is exactly one and that it lives there.
+
+The plan tools keep the source's own `return true` rather than a rewritten condition, and print mode keeps the `capabilities` field at the value a filtered-out server produced, so no new branch was invented where the guard collapsed.
+
+### Two fixtures moved, as predicted
+
+`w65-d7b-verify` pinned `checkGate_CACHED_OR_BLOCKING` as one of the five reads that keep the override channels ahead of the switch, and `w65-d7e-verify` pinned the `interactiveHelpers` import and call as the reason that export was kept in 7e. Both had to move in this commit, which is what step 7e's record said would happen and where it said to look. Amended counts: 5 reads to 4, 5 guards to 4, 6 `return false` to 5.
+
+### Verification
+
+tsc 0, fourteen fixtures pass, `git diff --check` clean, the orphan scan unchanged at its ten legitimate entries. Absence sweeps cover the flag itself, all six module paths, every symbol the surface owned (including the state accessors, the relay helpers, the two constants and `tengu_harbor`), and the three surviving fallback shapes textually.
+
+**Next (step 7g):** the KAIROS assistant-mode cluster proper — `KAIROS`, `KAIROS_BRIEF` and `PROACTIVE` still read ~160 times across ~45 files, including the `--assistant` option, `memdir`'s daily-log prompt, `SendUserFileTool`, `SubscribePRTool`, the brief-mode UI (`BriefTool`, `Spinner`, `PromptInputQueuedCommands`) and the tick machinery in `screens/REPL.tsx` and `sessionStorage.ts`.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.

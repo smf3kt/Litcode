@@ -25,7 +25,6 @@ for (const gone of ["initializeGrowthBook", "resetGrowthBook", "refreshGrowthBoo
 
 // What stays, and why each one stays.
 for (const kept of [
-  "checkGate_CACHED_OR_BLOCKING",
   "onGrowthBookRefresh",
   "setGrowthBookConfigOverride",
   "clearGrowthBookConfigOverrides",
@@ -42,7 +41,6 @@ for (const kept of [
 
 // The surviving bodies are the source's, word for word.
 const surviving = [
-  "  return getFeatureValueInternal(gate, false, true)",
   "  return getFeatureValue_DEPRECATED(configName, defaultValue)",
   "  return getFeatureValue_CACHED_MAY_BE_STALE(configName, defaultValue)",
 ]
@@ -51,16 +49,16 @@ for (const s of surviving) {
   assert.ok(gbNow.includes(s), `not carried into the cut: ${s}`)
 }
 
-// interactiveHelpers: the trust block keeps its neighbours, and the one caller
-// of checkGate_CACHED_OR_BLOCKING survives inside the dead KAIROS block (its own
-// package).
+// interactiveHelpers: the trust block keeps its neighbours. The one caller of
+// checkGate_CACHED_OR_BLOCKING was inside the dead KAIROS_CHANNELS block, which
+// step 7f took together with the function itself, so the import is gone too.
 const ihNow = read("interactiveHelpers.tsx")
 const ihSrc = show("interactiveHelpers.tsx")
 assert.doesNotMatch(ihNow, /resetGrowthBook|initializeGrowthBook/)
 assert.match(ihNow, /    setSessionTrustAccepted\(true\)\n\n    \/\/ Now that trust is established/)
 assert.match(ihNow, /    void getSystemContext\(\)/)
-assert.match(ihNow, /await checkGate_CACHED_OR_BLOCKING\('tengu_harbor'\)/)
-assert.match(ihNow, /^import \{ checkGate_CACHED_OR_BLOCKING \} from '\.\/services\/analytics\/growthbook\.js'$/m)
+assert.doesNotMatch(ihNow, /checkGate_CACHED_OR_BLOCKING/)
+assert.doesNotMatch(ihNow, /growthbook\.js'/)
 
 // cli/print.ts: the neighbouring profiler calls stay.
 const prNow = read("cli/print.ts")

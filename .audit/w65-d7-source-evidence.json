@@ -13,7 +13,7 @@
       "file": "services/analytics/growthbook.ts",
       "change": "isGrowthBookEnabled() replaced with a literal false carrying the source's own predicate as its citation",
       "sourceSha256": "42541e6311ebed2d2865332eb7d9b2b99ac46f16d47674e702d7b035c1b96cf4",
-      "portSha256": "f41775bcb7c763ccdc82325b5ace5cfaaab551c305b74a9d7f6f9cd0ffe8aa32",
+      "portSha256": "031c12ac9f98e222dc71feb1626be73cf7df8c0d9fe4fb8208c1774c6f5ecb5c",
       "coordinateUnit": "utf16-half-open"
     }
   ],
