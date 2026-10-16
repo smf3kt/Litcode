@@ -1,0 +1,1401 @@
+{
+ "generatedFrom": "w61-phase2-recon.json",
+ "base": "/Users/mant1ssa/Projects/cc-base-2188",
+ "summary": {
+  "leaf": 1,
+  "referenced": 106,
+  "missing": 30
+ },
+ "leaf": [
+  {
+   "name": "DesktopHandoff（桌面应用下载/移交）",
+   "normPath": "components/DesktopHandoff.tsx",
+   "moduleCount": 1,
+   "status": "leaf",
+   "outsideImporters": [],
+   "more": 0
+  }
+ ],
+ "referenced": [
+  {
+   "name": "desktop",
+   "normPath": "commands/desktop/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/desktop/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "install-github-app",
+   "normPath": "commands/install-github-app/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/install-github-app/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "install-slack-app",
+   "normPath": "commands/install-slack-app/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/install-slack-app/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "mobile",
+   "normPath": "commands/mobile/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/mobile/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "remote-env",
+   "normPath": "commands/remote-env/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/remote-env/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "release-notes",
+   "normPath": "commands/release-notes/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/release-notes/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "session",
+   "normPath": "commands/session/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/session/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "stats",
+   "normPath": "commands/stats/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/stats/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "stickers",
+   "normPath": "commands/stickers/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/stickers/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "tag",
+   "normPath": "commands/tag/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/tag/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "feedback",
+   "normPath": "commands/feedback/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/feedback/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "usage",
+   "normPath": "commands/usage/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/usage/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "insights (usageReport)",
+   "normPath": "commands/insights.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/insights.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "web-setup (webCmd)",
+   "normPath": "commands/remote-setup/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/remote-setup/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "brief (briefCommand)",
+   "normPath": "commands/brief.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/brief.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "remote-control (bridge)",
+   "normPath": "commands/bridge/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/bridge/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "voice (voiceCommand)",
+   "normPath": "commands/voice/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/voice/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "think-back",
+   "normPath": "commands/thinkback/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/thinkback/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "thinkback-play",
+   "normPath": "commands/thinkback-play/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/thinkback-play/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "privacy-settings",
+   "normPath": "commands/privacy-settings/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/privacy-settings/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "logout",
+   "normPath": "commands/logout/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/logout/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "login",
+   "normPath": "commands/login/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/login/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "passes",
+   "normPath": "commands/passes/index.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/passes/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "backfill-sessions",
+   "normPath": "commands/backfill-sessions/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/backfill-sessions/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "break-cache",
+   "normPath": "commands/break-cache/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/break-cache/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "bughunter",
+   "normPath": "commands/bughunter/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/bughunter/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "ctx_viz",
+   "normPath": "commands/ctx_viz/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/ctx_viz/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "good-claude",
+   "normPath": "commands/good-claude/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/good-claude/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "issue",
+   "normPath": "commands/issue/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/issue/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "mock-limits",
+   "normPath": "commands/mock-limits/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/mock-limits/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "bridge-kick",
+   "normPath": "commands/bridge-kick.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/bridge-kick.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "version",
+   "normPath": "commands/version.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/version.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "ultraplan",
+   "normPath": "commands/ultraplan.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/tasks/BackgroundTasksDialog.tsx -> ../../commands/ultraplan.js",
+    "commands.ts -> ./commands/ultraplan.js",
+    "components/permissions/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.tsx -> ../../../commands/ultraplan.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "reset-limits",
+   "normPath": "commands/reset-limits/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/reset-limits/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "onboarding",
+   "normPath": "commands/onboarding/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/onboarding/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "share",
+   "normPath": "commands/share/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/share/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "summary",
+   "normPath": "commands/summary/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/summary/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "teleport",
+   "normPath": "commands/teleport/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/teleport/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "ant-trace",
+   "normPath": "commands/ant-trace/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/ant-trace/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "perf-issue",
+   "normPath": "commands/perf-issue/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/perf-issue/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "env",
+   "normPath": "commands/env/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/env/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "oauth-refresh",
+   "normPath": "commands/oauth-refresh/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/oauth-refresh/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "debug-tool-call",
+   "normPath": "commands/debug-tool-call/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/debug-tool-call/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "autofix-pr",
+   "normPath": "commands/autofix-pr/index.js",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/autofix-pr/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "TungstenTool",
+   "normPath": "tools/TungstenTool/TungstenTool.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "tools.ts -> ./tools/TungstenTool/TungstenTool.js",
+    "components/agents/ToolSelector.tsx -> src/tools/TungstenTool/TungstenTool.js",
+    "commands/clear/caches.ts -> ../../tools/TungstenTool/TungstenTool.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "SleepTool",
+   "normPath": "tools/SleepTool",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "query.ts -> ./tools/SleepTool/prompt.js",
+    "screens/REPL.tsx -> ../tools/SleepTool/prompt.js",
+    "constants/prompts.ts -> ../tools/SleepTool/prompt.js",
+    "utils/permissions/classifierDecision.ts -> ../../tools/SleepTool/prompt.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "RemoteTriggerTool",
+   "normPath": "tools/RemoteTriggerTool/RemoteTriggerTool.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "tools.ts -> ./tools/RemoteTriggerTool/RemoteTriggerTool.js",
+    "tools/RemoteTriggerTool/UI.tsx -> ./RemoteTriggerTool.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "BriefTool",
+   "normPath": "tools/BriefTool/BriefTool.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "tools.ts -> ./tools/BriefTool/BriefTool.js",
+    "hooks/useGlobalKeybindings.tsx -> ../tools/BriefTool/BriefTool.js",
+    "main.tsx -> ./tools/BriefTool/BriefTool.js",
+    "constants/prompts.ts -> ../tools/BriefTool/BriefTool.js",
+    "components/Settings/Config.tsx -> ../../tools/BriefTool/BriefTool.js",
+    "tools/BriefTool/UI.tsx -> ./BriefTool.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "SendUserFileTool",
+   "normPath": "tools/SendUserFileTool",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "utils/conversationRecovery.ts -> ../tools/SendUserFileTool/prompt.js",
+    "components/Messages.tsx -> ../tools/SendUserFileTool/prompt.js",
+    "tools/ToolSearchTool/prompt.ts -> ../SendUserFileTool/prompt.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "TestingPermissionTool",
+   "normPath": "tools/testing/TestingPermissionTool.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "tools.ts -> ./tools/testing/TestingPermissionTool.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "bridge (Remote Control / CCR 桥)",
+   "normPath": "bridge",
+   "moduleCount": 31,
+   "status": "referenced",
+   "outsideImporters": [
+    "tools/BriefTool/upload.ts -> ../../bridge/bridgeConfig.js",
+    "commands/bridge/bridge.tsx -> ../../bridge/bridgeEnabled.js",
+    "commands/rename/rename.ts -> ../../bridge/createSession.js",
+    "constants/product.ts -> ../bridge/sessionIdCompat.js",
+    "hooks/useReplBridge.tsx -> ../bridge/inboundMessages.js",
+    "tools/SendMessageTool/SendMessageTool.ts -> ../../bridge/replBridgeHandle.js",
+    "cli/transports/ccrClient.ts -> ../../bridge/jwtUtils.js",
+    "state/AppStateStore.ts -> ../bridge/bridgePermissionCallbacks.js",
+    "hooks/toolPermission/handlers/interactiveHandler.ts -> ../../../bridge/bridgePermissionCallbacks.js",
+    "main.tsx -> ./bridge/bridgeMain.js",
+    "commands/login/login.tsx -> ../../bridge/trustedDevice.js",
+    "commands/logout/logout.tsx -> ../../bridge/trustedDevice.js"
+   ],
+   "more": 7
+  },
+  {
+   "name": "remote (远程会话管理)",
+   "normPath": "remote",
+   "moduleCount": 4,
+   "status": "referenced",
+   "outsideImporters": [
+    "hooks/useDirectConnect.ts -> ../remote/sdkMessageAdapter.js",
+    "hooks/useSSHSession.ts -> ../remote/sdkMessageAdapter.js",
+    "hooks/useRemoteSession.ts -> ../remote/sdkMessageAdapter.js",
+    "screens/REPL.tsx -> ../remote/RemoteSessionManager.js",
+    "hooks/useAssistantHistory.ts -> ../remote/sdkMessageAdapter.js",
+    "main.tsx -> ./remote/RemoteSessionManager.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "server (direct-connect 会话服务)",
+   "normPath": "server",
+   "moduleCount": 3,
+   "status": "referenced",
+   "outsideImporters": [
+    "main.tsx -> ./server/createDirectConnectSession.js",
+    "screens/REPL.tsx -> ../server/directConnectManager.js",
+    "hooks/useDirectConnect.ts -> ../server/directConnectManager.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "ssh (远程 SSH 会话)",
+   "normPath": "ssh",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "screens/REPL.tsx -> ../ssh/createSSHSession.js",
+    "hooks/useSSHSession.ts -> ../ssh/SSHSessionManager.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "assistant (assistant 会话历史)",
+   "normPath": "assistant",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "dialogLaunchers.tsx -> ./assistant/sessionDiscovery.js",
+    "hooks/useAssistantHistory.ts -> ../assistant/sessionHistory.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "voice (语音输入)",
+   "normPath": "voice",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "hooks/useVoiceEnabled.ts -> ../voice/voiceModeEnabled.js",
+    "tools/ConfigTool/ConfigTool.ts -> ../../voice/voiceModeEnabled.js",
+    "tools/ConfigTool/prompt.ts -> ../../voice/voiceModeEnabled.js",
+    "commands/voice/voice.ts -> ../../voice/voiceModeEnabled.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "buddy (伴侣精灵/宠物)",
+   "normPath": "buddy",
+   "moduleCount": 6,
+   "status": "referenced",
+   "outsideImporters": [
+    "utils/attachments.ts -> ../buddy/prompt.js",
+    "utils/messages.ts -> ../buddy/prompt.js",
+    "utils/config.ts -> ../buddy/types.js",
+    "screens/REPL.tsx -> ../buddy/CompanionSprite.js",
+    "components/PromptInput/PromptInput.tsx -> ../../buddy/useBuddyNotification.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "moreright (内部专用 hook stub)",
+   "normPath": "moreright",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "screens/REPL.tsx -> ../moreright/useMoreRight.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "mobile (无同名顶层目录)",
+   "normPath": "commands/mobile",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/mobile/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "desktop (无同名顶层目录)",
+   "normPath": "commands/desktop",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/desktop/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "chrome (无同名顶层目录)",
+   "normPath": "commands/chrome",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands.ts -> ./commands/chrome/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/analytics (index/sink/datadog/firstPartyEventLogger/metadata/growthbook/sinkKillswitch/config)",
+   "normPath": "services/analytics",
+   "moduleCount": 9,
+   "status": "referenced",
+   "outsideImporters": [
+    "utils/computerUse/mcpServer.ts -> ../../services/analytics/sink.js",
+    "utils/gracefulShutdown.ts -> ../services/analytics/index.js",
+    "utils/claudeInChrome/mcpServer.ts -> ../../services/analytics/growthbook.js",
+    "entrypoints/init.ts -> ../services/analytics/growthbook.js",
+    "main.tsx -> src/services/analytics/growthbook.js",
+    "utils/sinks.ts -> ../services/analytics/sink.js",
+    "services/notifier.ts -> ./analytics/index.js",
+    "services/mcp/auth.ts -> ../analytics/metadata.js",
+    "services/mcp/config.ts -> ../analytics/index.js",
+    "services/mcp/claudeai.ts -> src/services/analytics/index.js",
+    "services/mcp/client.ts -> ../analytics/index.js",
+    "services/mcp/useManageMCPConnections.ts -> src/services/analytics/index.js"
+   ],
+   "more": 274
+  },
+  {
+   "name": "services/AgentSummary/agentSummary.ts",
+   "normPath": "services/AgentSummary/agentSummary.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "tools/AgentTool/agentToolUtils.ts -> ../../services/AgentSummary/agentSummary.js",
+    "tools/AgentTool/AgentTool.tsx -> ../../services/AgentSummary/agentSummary.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/awaySummary.ts + hooks/useAwaySummary.ts",
+   "normPath": "services/awaySummary.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "hooks/useAwaySummary.ts -> ../services/awaySummary.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/autoDream/ (autoDream.ts/consolidationPrompt.ts/consolidationLock.ts/config.ts)",
+   "normPath": "services/autoDream",
+   "moduleCount": 4,
+   "status": "referenced",
+   "outsideImporters": [
+    "query/stopHooks.ts -> ../services/autoDream/autoDream.js",
+    "utils/backgroundHousekeeping.ts -> ../services/autoDream/autoDream.js",
+    "components/memory/MemoryFileSelector.tsx -> ../../services/autoDream/config.js",
+    "tasks/DreamTask/DreamTask.ts -> ../../services/autoDream/consolidationLock.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/extractMemories/ (extractMemories.ts/prompts.ts)",
+   "normPath": "services/extractMemories",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "query/stopHooks.ts -> ../services/extractMemories/extractMemories.js",
+    "cli/print.ts -> ../services/extractMemories/extractMemories.js",
+    "utils/backgroundHousekeeping.ts -> ../services/extractMemories/extractMemories.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/MagicDocs/ (magicDocs.ts/prompts.ts)",
+   "normPath": "services/MagicDocs",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "utils/backgroundHousekeeping.ts -> ../services/MagicDocs/magicDocs.js",
+    "commands/clear/caches.ts -> ../../services/MagicDocs/magicDocs.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/oauth/ (client.ts/index.ts/getOauthProfile.ts/auth-code-listener.ts/crypto.ts/types.ts)",
+   "normPath": "services/oauth",
+   "moduleCount": 6,
+   "status": "referenced",
+   "outsideImporters": [
+    "utils/auth.ts -> ../services/oauth/client.js",
+    "hooks/notifs/useCanSwitchToExistingSubscription.tsx -> src/services/oauth/getOauthProfile.js",
+    "commands/upgrade/upgrade.tsx -> ../../services/oauth/getOauthProfile.js",
+    "services/mockRateLimits.ts -> ../services/oauth/types.js",
+    "utils/config.ts -> ../services/oauth/types.js",
+    "utils/background/remote/preconditions.ts -> src/services/oauth/client.js",
+    "entrypoints/init.ts -> ../services/oauth/client.js",
+    "utils/teleport.tsx -> ../services/oauth/client.js",
+    "utils/teleport/api.ts -> src/services/oauth/client.js",
+    "utils/teleport/environments.ts -> src/services/oauth/client.js",
+    "cli/print.ts -> src/services/oauth/index.js",
+    "components/ConsoleOAuthFlow.tsx -> ../services/oauth/index.js"
+   ],
+   "more": 1
+  },
+  {
+   "name": "services/policyLimits/ (index.ts/types.ts)",
+   "normPath": "services/policyLimits",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "skills/bundled/scheduleRemoteAgents.ts -> ../../services/policyLimits/index.js",
+    "cli/print.ts -> src/services/policyLimits/index.js",
+    "main.tsx -> ./services/policyLimits/index.js",
+    "utils/background/remote/remoteSession.ts -> ../../../services/policyLimits/index.js",
+    "entrypoints/init.ts -> ../services/policyLimits/index.js",
+    "entrypoints/cli.tsx -> ../services/policyLimits/index.js",
+    "components/FeedbackSurvey/useFeedbackSurvey.tsx -> ../../services/policyLimits/index.js",
+    "components/FeedbackSurvey/useMemorySurvey.tsx -> ../../services/policyLimits/index.js",
+    "utils/teleport.tsx -> src/services/policyLimits/index.js",
+    "commands/login/login.tsx -> ../../services/policyLimits/index.js",
+    "commands/bridge/bridge.tsx -> ../../services/policyLimits/index.js",
+    "commands/logout/logout.tsx -> ../../services/policyLimits/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/remoteManagedSettings/ (index.ts/syncCache.ts/syncCacheState.ts/securityCheck.tsx/types.ts)",
+   "normPath": "services/remoteManagedSettings",
+   "moduleCount": 5,
+   "status": "referenced",
+   "outsideImporters": [
+    "utils/managedEnv.ts -> ../services/remoteManagedSettings/syncCache.js",
+    "utils/settings/settings.ts -> ../../services/remoteManagedSettings/syncCacheState.js",
+    "cli/print.ts -> src/services/remoteManagedSettings/index.js",
+    "main.tsx -> ./services/remoteManagedSettings/index.js",
+    "entrypoints/init.ts -> ../services/remoteManagedSettings/index.js",
+    "commands/login/login.tsx -> ../../services/remoteManagedSettings/index.js",
+    "commands/logout/logout.tsx -> ../../services/remoteManagedSettings/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/settingsSync/ (index.ts/types.ts)",
+   "normPath": "services/settingsSync",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "cli/print.ts -> src/services/settingsSync/index.js",
+    "main.tsx -> ./services/settingsSync/index.js",
+    "commands/reload-plugins/reload-plugins.ts -> ../../services/settingsSync/index.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/teamMemorySync/ (index.ts/watcher.ts/secretScanner.ts/teamMemSecretGuard.ts/types.ts)",
+   "normPath": "services/teamMemorySync",
+   "moduleCount": 5,
+   "status": "referenced",
+   "outsideImporters": [
+    "setup.ts -> ./services/teamMemorySync/watcher.js",
+    "utils/sessionFileAccessHooks.ts -> ../services/teamMemorySync/watcher.js",
+    "tools/FileWriteTool/FileWriteTool.ts -> ../../services/teamMemorySync/teamMemSecretGuard.js",
+    "tools/FileEditTool/FileEditTool.ts -> ../../services/teamMemorySync/teamMemSecretGuard.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/tips/ (tipRegistry.ts/tipScheduler.ts/tipHistory.ts/types.ts)",
+   "normPath": "services/tips",
+   "moduleCount": 4,
+   "status": "referenced",
+   "outsideImporters": [
+    "screens/REPL.tsx -> src/services/tips/tipScheduler.js",
+    "main.tsx -> src/services/tips/tipRegistry.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/skillSearch/ (prefetch.ts/signals.ts)",
+   "normPath": "services/skillSearch",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "utils/attachments.ts -> ../services/skillSearch/signals.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/PromptSuggestion/ (promptSuggestion.ts/speculation.ts)",
+   "normPath": "services/PromptSuggestion",
+   "moduleCount": 2,
+   "status": "referenced",
+   "outsideImporters": [
+    "query/stopHooks.ts -> ../services/PromptSuggestion/promptSuggestion.js",
+    "state/AppStateStore.ts -> ../services/PromptSuggestion/promptSuggestion.js",
+    "cli/print.ts -> src/services/PromptSuggestion/promptSuggestion.js",
+    "main.tsx -> ./services/PromptSuggestion/promptSuggestion.js",
+    "components/PromptInput/PromptInput.tsx -> ../../services/PromptSuggestion/speculation.js",
+    "screens/REPL.tsx -> ../services/PromptSuggestion/speculation.js",
+    "hooks/usePromptSuggestion.ts -> ../services/PromptSuggestion/speculation.js",
+    "tasks/LocalAgentTask/LocalAgentTask.tsx -> ../../services/PromptSuggestion/speculation.js",
+    "tasks/LocalShellTask/LocalShellTask.tsx -> ../../services/PromptSuggestion/speculation.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/toolUseSummary/toolUseSummaryGenerator.ts",
+   "normPath": "services/toolUseSummary/toolUseSummaryGenerator.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "query.ts -> ./services/toolUseSummary/toolUseSummaryGenerator.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/voice.ts / voiceKeyterms.ts / voiceStreamSTT.ts + voice/voiceModeEnabled.ts",
+   "normPath": "services/voice.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "hooks/useVoice.ts -> ../services/voice.js",
+    "tools/ConfigTool/ConfigTool.ts -> ../../services/voice.js",
+    "commands/voice/voice.ts -> ../../services/voice.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/claudeAiLimits.ts / claudeAiLimitsHook.ts / rateLimitMessages.ts / rateLimitMocking.ts / mockRateLimits.ts",
+   "normPath": "services/claudeAiLimits.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "services/claudeAiLimitsHook.ts -> ./claudeAiLimits.js",
+    "services/mockRateLimits.ts -> ./claudeAiLimits.js",
+    "services/rateLimitMessages.ts -> ./claudeAiLimits.js",
+    "cli/print.ts -> src/services/claudeAiLimits.js",
+    "hooks/notifs/useRateLimitWarningNotification.tsx -> src/services/claudeAiLimits.js",
+    "main.tsx -> ./services/claudeAiLimits.js",
+    "utils/model/check1mAccess.ts -> src/services/claudeAiLimits.js",
+    "components/StatusLine.tsx -> ../services/claudeAiLimits.js",
+    "utils/messages/mappers.ts -> src/services/claudeAiLimits.js",
+    "commands/cost/cost.ts -> ../../services/claudeAiLimits.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/internalLogging.ts",
+   "normPath": "services/internalLogging.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "services/compact/compact.ts -> ../internalLogging.js",
+    "main.tsx -> src/services/internalLogging.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/vcr.ts",
+   "normPath": "services/vcr.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "services/tokenEstimation.ts -> ./vcr.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "services/api 遥测与账号族：referral.ts / grove.ts / ultrareviewQuota.ts / overageCreditGrant.ts / adminRequests.ts / metricsOptOut.ts / firstTokenDate.ts",
+   "normPath": "services/api",
+   "moduleCount": 20,
+   "status": "referenced",
+   "outsideImporters": [
+    "services/compact/microCompact.ts -> ../api/promptCacheBreakDetection.js",
+    "services/compact/compact.ts -> ../api/claude.js",
+    "services/compact/autoCompact.ts -> ../api/claude.js",
+    "commands/compact/compact.ts -> ../../services/api/promptCacheBreakDetection.js",
+    "commands/clear/caches.ts -> ../../services/api/dumpPrompts.js",
+    "tools/AgentTool/runAgent.ts -> ../../services/api/dumpPrompts.js",
+    "components/ConsoleOAuthFlow.tsx -> ../services/api/errorUtils.js",
+    "components/messages/SystemAPIErrorMessage.tsx -> src/services/api/errorUtils.js",
+    "utils/preflightChecks.tsx -> ../services/api/errorUtils.js",
+    "utils/sideQuestion.ts -> ../services/api/logging.js",
+    "main.tsx -> ./services/api/bootstrap.js",
+    "commands/passes/passes.tsx -> ../../services/api/referral.js"
+   ],
+   "more": 39
+  },
+  {
+   "name": "services/api/sessionIngress.ts + cli/transports/ (ccrClient/SSETransport/WebSocketTransport/HybridTransport/WorkerStateUploader/SerialBatchEventUploader/transportUtils)",
+   "normPath": "services/api/sessionIngress.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "utils/sessionStorage.ts -> ../services/api/sessionIngress.js",
+    "utils/teleport.tsx -> ../services/api/sessionIngress.js",
+    "commands/clear/caches.ts -> ../../services/api/sessionIngress.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "cli/remoteIO.ts",
+   "normPath": "cli/remoteIO.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "cli/print.ts -> src/cli/remoteIO.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "cli/update.ts",
+   "normPath": "cli/update.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "main.tsx -> src/cli/update.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "cli/transports/Transport.ts (stub)",
+   "normPath": "cli/transports/Transport.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "cli/transports/SSETransport.ts -> ./Transport.js",
+    "cli/transports/WebSocketTransport.ts -> ./Transport.js",
+    "cli/transports/transportUtils.ts -> ./Transport.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "cli/handlers/auth.ts",
+   "normPath": "cli/handlers/auth.ts",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "cli/print.ts -> src/cli/handlers/auth.js",
+    "main.tsx -> ./cli/handlers/auth.js",
+    "components/ConsoleOAuthFlow.tsx -> ../cli/handlers/auth.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "CompanionSprite（伴侣精灵/宠物动画）",
+   "normPath": "buddy/CompanionSprite.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "screens/REPL.tsx -> ../buddy/CompanionSprite.js",
+    "components/PromptInput/PromptInput.tsx -> ../../buddy/CompanionSprite.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "useBuddyNotification（/buddy 营销彩蛋）",
+   "normPath": "buddy/useBuddyNotification.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/PromptInput/PromptInput.tsx -> ../../buddy/useBuddyNotification.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "VoiceIndicator / VoiceWarmupHint（语音模式 UI）",
+   "normPath": "components/PromptInput/VoiceIndicator.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/PromptInput/Notifications.tsx -> ./VoiceIndicator.js",
+    "components/PromptInput/PromptInputFooterLeftSide.tsx -> ./VoiceIndicator.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "VoiceModeNotice（语音功能促销提示）",
+   "normPath": "components/LogoV2/VoiceModeNotice.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/LogoV2/LogoV2.tsx -> ./VoiceModeNotice.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "GuestPassesUpsell（推荐/赠送名额促销）",
+   "normPath": "components/LogoV2/GuestPassesUpsell.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/LogoV2/CondensedLogo.tsx -> ./GuestPassesUpsell.js",
+    "components/LogoV2/LogoV2.tsx -> ./GuestPassesUpsell.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "OverageCreditUpsell（超额额度促销）",
+   "normPath": "components/LogoV2/OverageCreditUpsell.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/LogoV2/CondensedLogo.tsx -> ./OverageCreditUpsell.js",
+    "components/LogoV2/LogoV2.tsx -> ./OverageCreditUpsell.js",
+    "components/Settings/Usage.tsx -> ../LogoV2/OverageCreditUpsell.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "DesktopUpsellStartup（桌面应用推销弹窗）",
+   "normPath": "components/DesktopUpsell/DesktopUpsellStartup.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "screens/REPL.tsx -> src/components/DesktopUpsell/DesktopUpsellStartup.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "RemoteCallout（远程控制首次提示）",
+   "normPath": "components/RemoteCallout.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "screens/REPL.tsx -> ../components/RemoteCallout.js",
+    "commands/bridge/bridge.tsx -> ../../components/RemoteCallout.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "BridgeDialog（远程控制二维码）",
+   "normPath": "components/BridgeDialog.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/PromptInput/PromptInput.tsx -> ../BridgeDialog.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "RemoteEnvironmentDialog（远程环境选择）",
+   "normPath": "components/RemoteEnvironmentDialog.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands/remote-env/remote-env.tsx -> ../../components/RemoteEnvironmentDialog.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "ResumeTask（远程会话选择列表）",
+   "normPath": "components/ResumeTask.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/TeleportResumeWrapper.tsx -> ./ResumeTask.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "Passes（推荐名额对话框）",
+   "normPath": "components/Passes/Passes.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands/passes/passes.tsx -> ../../components/Passes/Passes.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "ChannelsNotice（消息渠道通知）",
+   "normPath": "components/LogoV2/ChannelsNotice.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/LogoV2/LogoV2.tsx -> ./ChannelsNotice.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "EmergencyTip（运营位 tip-of-feed）",
+   "normPath": "components/LogoV2/EmergencyTip.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/LogoV2/LogoV2.tsx -> ./EmergencyTip.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "feedConfigs 营销 feed（guest passes）",
+   "normPath": "components/LogoV2/feedConfigs.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/LogoV2/LogoV2.tsx -> ./feedConfigs.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "AnimatedClawd（吉祥物点击动画）",
+   "normPath": "components/LogoV2/AnimatedClawd.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/LogoV2/CondensedLogo.tsx -> ./AnimatedClawd.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "Stats（用量统计/洞察面板）",
+   "normPath": "components/Stats.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "commands/stats/stats.tsx -> ../../components/Stats.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "Feedback（反馈/缺陷上报）",
+   "normPath": "components/Feedback.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "components/FeedbackSurvey/submitTranscriptShare.ts -> ../Feedback.js",
+    "commands/feedback/feedback.tsx -> ../../components/Feedback.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "SkillImprovementSurvey（技能改进调查）",
+   "normPath": "components/SkillImprovementSurvey.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "screens/REPL.tsx -> ../components/SkillImprovementSurvey.js"
+   ],
+   "more": 0
+  },
+  {
+   "name": "IssueFlagBanner（上报提示横幅，已短路）",
+   "normPath": "components/PromptInput/IssueFlagBanner.tsx",
+   "moduleCount": 1,
+   "status": "referenced",
+   "outsideImporters": [
+    "screens/REPL.tsx -> ../components/PromptInput/IssueFlagBanner.js"
+   ],
+   "more": 0
+  }
+ ],
+ "missing": [
+  {
+   "name": "proactive",
+   "normPath": "commands/proactive.js",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "assistant (assistantCommand)",
+   "normPath": "commands/assistant/index.js",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "remoteControlServerCommand",
+   "normPath": "commands/remoteControlServer/index.js",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "torch",
+   "normPath": "commands/torch.js",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "force-snip (forceSnip)",
+   "normPath": "commands/force-snip.js",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "subscribe-pr",
+   "normPath": "commands/subscribe-pr.js",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "agents-platform",
+   "normPath": "commands/agents-platform/index.js",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "SuggestBackgroundPRTool",
+   "normPath": "tools/SuggestBackgroundPRTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "WebBrowserTool",
+   "normPath": "tools/WebBrowserTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "OverflowTestTool",
+   "normPath": "tools/OverflowTestTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "CtxInspectTool",
+   "normPath": "tools/CtxInspectTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "TerminalCaptureTool",
+   "normPath": "tools/TerminalCaptureTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "ListPeersTool",
+   "normPath": "tools/ListPeersTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "VerifyPlanExecutionTool",
+   "normPath": "tools/VerifyPlanExecutionTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "PushNotificationTool",
+   "normPath": "tools/PushNotificationTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "SubscribePRTool",
+   "normPath": "tools/SubscribePRTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "SnipTool",
+   "normPath": "tools/SnipTool",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "daemon (后台守护)",
+   "normPath": "daemon",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "jobs (作业调度)",
+   "normPath": "jobs",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "proactive (主动式交互)",
+   "normPath": "proactive",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "self-hosted-runner (自托管 runner)",
+   "normPath": "self-hosted-runner",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "environment-runner (BYOC runner)",
+   "normPath": "environment-runner",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "teleport (远程环境，无同名顶层目录)",
+   "normPath": "commands/teleport",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "services/contextCollapse/ (空目录)",
+   "normPath": "services/contextCollapse",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "services/sessionTranscript/ (空目录)",
+   "normPath": "services/sessionTranscript",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "companion 数据模型与 sprites",
+   "normPath": "buddy/companion.ts, buddy/types.ts, buddy/sprites.ts, buddy/prompt.ts",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "Teleport 组件族（会话传送/远程恢复）",
+   "normPath": "components/TeleportProgress.tsx, TeleportError.tsx, TeleportStash.tsx, TeleportResumeWrapper.tsx, TeleportRepoMismatchDialog.tsx",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "tasks/RemoteSession*（远程会话任务 UI）",
+   "normPath": "components/tasks/RemoteSessionProgress.tsx, components/tasks/RemoteSessionDetailDialog.tsx",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "FeedbackSurvey 调查族",
+   "normPath": "components/FeedbackSurvey/（FeedbackSurvey.tsx, useFeedbackSurvey.tsx, useMemorySurvey.tsx, usePostCompactSurvey.tsx, submitTranscriptShare.ts, TranscriptSharePrompt.tsx）",
+   "status": "missing",
+   "outsideImporters": []
+  },
+  {
+   "name": "AutoUpdater 自更新族",
+   "normPath": "components/AutoUpdater.tsx, AutoUpdaterWrapper.tsx, NativeAutoUpdater.tsx, PackageManagerAutoUpdater.tsx",
+   "status": "missing",
+   "outsideImporters": []
+  }
+ ]
+}
