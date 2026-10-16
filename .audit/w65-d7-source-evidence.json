@@ -1,0 +1,38 @@
+{
+  "before": "b2c553b",
+  "kind": "outbound-telemetry removal; destination is an inert no-op API (no ported bodies)",
+  "evidence": [
+    {
+      "file": "services/analytics/index.ts",
+      "change": "rewritten as an inert API: the two marker types plus logEvent/logEventAsync as no-ops, so ~230 call sites keep compiling",
+      "sourceSha256": "293b4c3660ec2c1e01e7916e2e5ccd580275301907e8d96644191e07f91c44b9",
+      "portSha256": "f9291126a81d66fd151cbe0c459e0d9f7ba1481c8a79993a938b56a44275c366",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/analytics/growthbook.ts",
+      "change": "isGrowthBookEnabled() replaced with a literal false carrying the source's own predicate as its citation",
+      "sourceSha256": "42541e6311ebed2d2865332eb7d9b2b99ac46f16d47674e702d7b035c1b96cf4",
+      "portSha256": "f41775bcb7c763ccdc82325b5ace5cfaaab551c305b74a9d7f6f9cd0ffe8aa32",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "services/analytics/datadog.ts (307 lines; POSTed to http-intake.logs.us5.datadoghq.com)",
+    "services/analytics/firstPartyEventLoggingExporter.ts (820; OpenTelemetry batch exporter to api.anthropic.com/api/event_logging/batch)",
+    "services/analytics/firstPartyEventLogger.ts (451), sink.ts (114), sinkKillswitch.ts (25)",
+    "hooks/useTimeout.ts (15), orphaned by step 6's preflight deletion",
+    "types/generated/events_mono/growthbook/v1/growthbook_experiment_event.ts (224)",
+    "host cuts: utils/sinks.ts, main.tsx, entrypoints/init.ts's deferred logger import, utils/gracefulShutdown.ts's racing flush, utils/config.ts's recursion guard"
+  ],
+  "behaviourChange": "is1PEventLoggingEnabled() was !isAnalyticsDisabled(), true in a normal run, and GrowthBook's enable switch was that same predicate: the exporter was live and the remote-eval client is now unconstructible, so every dynamic-config read answers with its caller's default.",
+  "deferred": "services/analytics/metadata.ts's getEventMetadata / buildProcessMetrics / FirstPartyEventLogging* converters now have no reader (its tool-name and skill-name helpers keep live consumers in the tool path)",
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence of all seven paths asserted against the base commit; every removed symbol swept as a resolution edge so the cut's own citation comments do not self-match; the two rewritten shapes and the inert API asserted textually; tsc log empty"
+}
