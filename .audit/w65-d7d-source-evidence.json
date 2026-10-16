@@ -1,0 +1,37 @@
+{
+  "before": "ce11027",
+  "kind": "reader-less leftovers removed; every surviving export is the source's",
+  "evidence": [
+    {
+      "file": "utils/user.ts",
+      "change": "reduced to getGitEmail, the one export with a live caller (utils/exampleCommands.ts)",
+      "sourceSha256": "498a297cc26eb9587cac1a08a21dd7d0af13dea6d3b24d049873d15a581c1b77",
+      "portSha256": "313ea3b874fa974c6c52117176addfd7faf23328aa011e759a5c07643266ddf5",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/git.ts",
+      "change": "getRepoRemoteHash, normalizeGitRemoteUrl and the isLocalHost helper only the normalizer used removed; the crypto import went with them",
+      "sourceSha256": "bf6179ca8143646f2c6c728405acf6bca6dc9031d0e4e5c37030458e59f941fa",
+      "portSha256": "9660c0fb4ec47e6c8118dd609e36a4265bdc4cfbadd7fc647152c9324c322a34",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/platform.ts",
+      "change": "getLinuxDistroInfo, its type, VCS_MARKERS and detectVcs removed; the fs and os imports went with them",
+      "sourceSha256": "9593ffa1f4ec1f3b38d417a5c7e89649c00a599539f39208afa67f2596baa303",
+      "portSha256": "add93277cb571f71b470103822e3168373e926aac673adfe7efbff3bf423f055",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "behaviourChange": "main.tsx no longer spawns `git config --get user.email` as a startup prefetch, and no longer resets the user cache after login; both existed only to fill the analytics user record.",
+  "callSiteLeft": "refreshGrowthBookAfterAuthChange now has no caller. main.tsx's block was removed rather than kept as a no-op call, so the export is caller-less like the override trio in the same module. Step 7e should decide it together with initializeGrowthBook's two remaining warm-up calls (interactiveHelpers.tsx, cli/print.ts) — and note that deleting it drops the guard-brace count its fixture pins from 6 to 5.",
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Per-file absence sweeps paired with a base-revision presence check for each removed name; the surviving exports asserted by declaration; the one surviving body checked word-for-word; main.tsx's neighbours in the same function asserted still present; the residual sweep run as import edges and calls; tsc log empty"
+}
