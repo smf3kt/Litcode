@@ -1,0 +1,157 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nwffn64n.js",
+      "sha256": "55ad6416b53bf514959570f3629776420692340439c948db6a00954961d234eb"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nwffn64n.js",
+      "sha256": "55ad6416b53bf514959570f3629776420692340439c948db6a00954961d234eb",
+      "range": [
+        615,
+        635
+      ],
+      "units": 20,
+      "bodySha256": "71307797b6ddccf916cfd68d92132557e949094b340c51dcb7ce161a1b0bb5f5",
+      "note": "the freeze depth ceiling `PQt` (1e5) `O` throws on, taken with its neighbour `hR` because the declaration is one statement"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        212618,
+        212634
+      ],
+      "units": 16,
+      "bodySha256": "25ada96e210b32b1330c30138a752329aba7eaac0d1021498419984f11672779",
+      "note": "`jde` = 4194304, the JSON-character ceiling the state store's set enforces"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        48497,
+        48526
+      ],
+      "units": 29,
+      "bodySha256": "76f0d59f9d7e2cdbbc5e45aff03b74eeb08c1fc1cafb23745d3d7ff7bb759ae3",
+      "note": "`Zws`, the seats that count as managed: `[\"prepend\",\"append\"]`"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        37034,
+        37144
+      ],
+      "units": 110,
+      "bodySha256": "28634df61216cb887a0e3c5c5c9981e522bb23248501463e30b0b07685b94b6e",
+      "note": "`Ee`: a plugin's seat — its module record's tier, else the seat table, else \"user\""
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        37144,
+        37182
+      ],
+      "units": 38,
+      "bodySha256": "fa6f6e7e06bad1b7d54b58d4771e359fe6c4ed28b010a48f3e8cf60ae714ed5b",
+      "note": "`sOn`: whether the plugin's seat is one of `Zws`"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        2900,
+        3169
+      ],
+      "units": 269,
+      "bodySha256": "8731edb83e5b41b1742ea0519d5c081955b01273f9f861d9ed73c603b51edab7",
+      "note": "`O`: the freeze walk's cursor over arrays and plain objects, bounded by `PQt`"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        3169,
+        3400
+      ],
+      "units": 231,
+      "bodySha256": "936979617aa43038183e551b71f9f966672ab1cb96a13c15f82df3b1fcb9c20e",
+      "note": "`cho` freezes every reachable node with that cursor, and `OFe` is `cho(o, new Set), o`"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        274916,
+        274994
+      ],
+      "units": 78,
+      "bodySha256": "feabc35b5feda9e60d0f65215ba58606e23b808adddb347f12b515c00a73d38f",
+      "note": "`vb`: tell a key's readers it changed — nothing to do while `readersOf` holds no reader"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        275644,
+        275983
+      ],
+      "units": 339,
+      "bodySha256": "9c686c9b4958301d4ddb0c22a4e66f176a86f8908ce78a99c17d4e3029d666e0",
+      "note": "`o5t`: the state store's set — JSON round-trip under `jde`, next version from the value and the floor, the write inside `ls.exit`, then `vb`"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1694273,
+        1694442
+      ],
+      "units": 169,
+      "bodySha256": "e3c9d205e3b926d2962adc49b6221b0366b6a6f9e2fcb26b7043dd7ee60a91de",
+      "note": "`lLs`: append a toast to the stored ledger with `isManaged` from the plugin's seat"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1692719,
+        1692909
+      ],
+      "units": 190,
+      "bodySha256": "16938cf7d1c3bee68567f9c728f45680fb07bdb7725087bb629e08fabf81bee9",
+      "note": "`xYr`: write the ledger unless both it and the stored one are empty, and log when the write fails"
+    }
+  ],
+  "missing": []
+}

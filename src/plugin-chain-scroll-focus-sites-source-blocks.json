@@ -1,0 +1,89 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        15588,
+        15723
+      ],
+      "units": 135,
+      "bodySha256": "f15a38854af9ab2d212794e5387b1c57540c676068390df3fbd8a324efa41149",
+      "note": "`pr` — the check every `ui.*` site shares: a `deny` that is absent, or a non-empty string"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        16084,
+        16200
+      ],
+      "units": 116,
+      "bodySha256": "e68a5d587606874448c0b19d176381653cee222dbdadead66b98166de61903e9",
+      "note": "`ro` — the site builder: the restored argument list, the argument check and the answer check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        34850,
+        35160
+      ],
+      "units": 310,
+      "bodySha256": "f59e2d26b04d236bb5be5db8f9e0a443e3f73a0f951d9df4c38638b5a2bda2a9",
+      "note": "`Vr` — the element check: an element where the move named none, no element where it named one, an element that is not a non-empty string"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        35160,
+        35211
+      ],
+      "units": 51,
+      "bodySha256": "fb608ade8d10b6e8ee2dd79649aa261ba425563fb2b6ba36fb31c7ee92d81808",
+      "note": "`ko` — the focus call's argument names"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        35211,
+        35334
+      ],
+      "units": 123,
+      "bodySha256": "99eecd3a2720ac724d4de6bcab7e421ebeaeeb460fbaf49fece2a9bfd592f1b5",
+      "note": "`Ci` — the `ui.focus` site: its restored arguments, its argument check and the shared answer check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        94084,
+        94166
+      ],
+      "units": 82,
+      "bodySha256": "507fc16afdef998f239e1fd6b30abd481b8cfe0931caa533c0e98630600e4721",
+      "note": "`Po` — the scroll call's argument names"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        94166,
+        94345
+      ],
+      "units": 179,
+      "bodySha256": "0392f16d9f34fe39b4ab90d216b193be42644a848378e7a02a95b3e0a9794776",
+      "note": "`wa` — the `ui.scroll` site: the whole-row offset check, the argument check and the shared answer check"
+    }
+  ],
+  "missing": []
+}

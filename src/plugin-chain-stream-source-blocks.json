@@ -1,0 +1,38 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-yjc18bey.js",
+      "sha256": "e53a75c48188dd5f345841ef87e452840622f9d61bc86e97b2edea656866a687"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        147445,
+        156519
+      ],
+      "units": 9074,
+      "bodySha256": "64da4cca4a6ee45d07b364c2460226864ee81c0b4fcd3e8df3c3281633d59233",
+      "note": "the streaming dispatch family: $6, wt, tRe, Ep, bp, Sp, Ts, Jx, vp, Ap, Rp, iwr"
+    },
+    {
+      "module": "chunk-yjc18bey.js",
+      "sha256": "e53a75c48188dd5f345841ef87e452840622f9d61bc86e97b2edea656866a687",
+      "range": [
+        940,
+        1503
+      ],
+      "units": 563,
+      "bodySha256": "40de7b1044f0aa5df01c447e6434f4b2fda4a8dea7b3101f7f1e31962b69f7b3",
+      "note": "the clock mIr, its default instance nS, and Q, the abortable clock sleep the stream relay waits on"
+    }
+  ],
+  "missing": []
+}

@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 // Messages is the gateway wire protocol; Magpie owns model-specific translation.
 export type ModelRequest = Anthropic.MessageCreateParamsNonStreaming;
 export interface ModelProvider {
-  complete(request: ModelRequest, signal: AbortSignal, onText?: (text: string) => void): Promise<Anthropic.Message>;
+  complete(request: ModelRequest, signal: AbortSignal, onText?: (text: string) => void, onThinking?: () => void): Promise<Anthropic.Message>;
   count(request: ModelRequest, signal: AbortSignal): Promise<number>;
 }
 export type GatewayConfig = {
@@ -51,10 +51,11 @@ export class GatewayProvider implements ModelProvider {
     return wire;
   }
 
-  async complete(request: ModelRequest, signal: AbortSignal, onText?: (text: string) => void): Promise<Anthropic.Message> {
+  async complete(request: ModelRequest, signal: AbortSignal, onText?: (text: string) => void, onThinking?: () => void): Promise<Anthropic.Message> {
     signal.throwIfAborted();
     const stream = this.client.messages.stream(this.wire(request), { signal });
     if (onText) stream.on('text', onText);
+    if (onThinking) stream.on('thinking', () => onThinking());
     return stream.finalMessage();
   }
 

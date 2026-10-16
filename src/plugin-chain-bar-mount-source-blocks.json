@@ -1,0 +1,34 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        7622,
+        7670
+      ],
+      "units": 48,
+      "bodySha256": "fd342ab8523e60d73591585b2af6c7ecf104b08d3d136245884d2a017bd81792",
+      "note": "declares YAt, the open pane whose id is the shown one"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        7670,
+        7723
+      ],
+      "units": 53,
+      "bodySha256": "ac7340b080cb5b096146e406ad0906dbba05221e4945ccff68631c0565f70c3e",
+      "note": "declares gro, whether that pane's placements hold toasts"
+    }
+  ],
+  "missing": []
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        16313,
+        16862
+      ],
+      "units": 549,
+      "bodySha256": "1d35b53e384549e345ffcf2ec801466460043a6fbde33f3535a4fe426d8f0db6",
+      "note": "declares `Ht`, the local store's probe cache: the ownership uids remembered per root with a has/prime/clear set around them, and the normalized real home directory remembered for the process"
+    }
+  ],
+  "missing": []
+}

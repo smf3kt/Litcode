@@ -1,0 +1,5 @@
+// @ts-nocheck
+// Source copies and adapters: research/ports/W44-tui-renderer.md.
+
+var l=Object.create;var{getPrototypeOf:m,defineProperty:g,getOwnPropertyNames:n}=Object;var k=Object.prototype.hasOwnProperty;function o(a){return this[a]}var p,q,we=(a,c,d)=>{var e=a!=null&&typeof a==="object";if(e){var i=c?p??=new WeakMap:q??=new WeakMap,j=i.get(a);if(j)return j}d=a!=null?l(m(a)):{};let f=c||!a||!a.__esModule||!k.call(a,"default")?g(d,"default",{value:a,enumerable:!0}):d;if(a&&typeof a==="object"||typeof a==="function"){for(let h of n(a))if(!k.call(f,h))g(f,h,{get:o.bind(a,h),enumerable:!0})}if(e)i.set(a,f);return f};var T=(a,c)=>()=>(c||a((c={exports:{}}).exports,c),c.exports);var r=(a)=>a;function s(a,c){this[a]=r.bind(null,c)}var Hr=(a,c)=>{for(var d in c)g(a,d,{get:c[d],enumerable:!0,configurable:!0,set:s.bind(c,d)})};var Ji=(a,c,d)=>()=>{if(a)try{c=a(a=0)}catch(e){d=[e]}if(d)throw d[0];return c};var b=Symbol.for("react.memo_cache_sentinel"),bn=Symbol.for("react.early_return_sentinel"),wUs=(a,c,d)=>{for(var e in c)g(a,e,{get:c[e],set:d[e],enumerable:!0,configurable:!0})},Le=import.meta.require;
+export { we, T, Ji, wUs, b, bn };

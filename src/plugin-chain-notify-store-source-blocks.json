@@ -1,0 +1,101 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-fdwn5gdv.js",
+      "sha256": "bdd8f0094eb4fcd0daa8d9fa47261b47d4a0384894c1701f74ba72b338a9be11"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-fdwn5gdv.js",
+      "sha256": "bdd8f0094eb4fcd0daa8d9fa47261b47d4a0384894c1701f74ba72b338a9be11",
+      "range": [
+        615,
+        965
+      ],
+      "units": 350,
+      "bodySha256": "6f8c6eb2cb660c588201ac2ac9e03936068479e40f533bb5e8e9de5ae8e80697",
+      "note": "declares the lazy-memo registry its class, RTr, and p — the accessor TWt holds: calling it builds the schema once and tracks it for release"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        111504,
+        111520
+      ],
+      "units": 16,
+      "bodySha256": "0583f2432ff8dfe374dbda6088d5f6888447156e1fc2d18069259c6b5e75481d",
+      "note": "declares a8, the plugin the bar's state belongs to (\"engine\")"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1691490,
+        1691527
+      ],
+      "units": 37,
+      "bodySha256": "9d71cf4d04139b9721832c96d786fdfa33970d98e6313e48bd17190ade11f039",
+      "note": "declares Ope, the {plugin,key} pair the bar's ledger is stored under"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        275562,
+        275644
+      ],
+      "units": 82,
+      "bodySha256": "f8beb5eb1109e40c00b6d01a23a405e35d7471451d2b118b91630e5b0e6e4b34",
+      "note": "declares Pye, the `${plugin}\\x00${key}` state key builder"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1691527,
+        1691764
+      ],
+      "units": 237,
+      "bodySha256": "dd590dd7afce716958e1e1ce0b7dc80fc36a6183656f563eb2e89ca3836bf3cb",
+      "note": "declares TWt, the zod schema of the stored ledger: its toasts (key, plugin, text, isManaged, leftMs, wasShown, lentMs, untoldMs) and its at/slot"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        273997,
+        274025
+      ],
+      "units": 28,
+      "bodySha256": "cdedf15b4f7eb535a9eb4fe5539863bb9038f3f5849f3fe7973724683f71eefa",
+      "note": "declares s_, the host registry's plugin-state store"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1692468,
+        1692581
+      ],
+      "units": 113,
+      "bodySha256": "09350d26dfab11e85f7ededc32ae0851b2194afae9222fe87c7105177ac5124e",
+      "note": "declares SEt, which parses what the store holds for the bar's key and falls back to the empty ledger"
+    }
+  ],
+  "missing": []
+}

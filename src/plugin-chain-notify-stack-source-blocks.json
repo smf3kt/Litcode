@@ -1,0 +1,207 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    },
+    {
+      "module": "chunk-3qabb19b.js",
+      "sha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        170752,
+        170786
+      ],
+      "units": 34,
+      "bodySha256": "8e75a71f386acb88a349e4cfb4f5b3eb8efd0d276c05cbd33074ae926dbfeca4",
+      "note": "declares cI, the id set the stack writer deletes from as it reports an undrawn toast"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        170786,
+        170797
+      ],
+      "units": 11,
+      "bodySha256": "65ed47e52508f44bf950a0be1fb9f7869d8c5e806443a5575547d9e16424c789",
+      "note": "declares RF, how long a toast stays in its leaving phase (240ms)"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        170797,
+        170818
+      ],
+      "units": 21,
+      "bodySha256": "ca42dff9d537ea8f64efa7555a39317b82f65b6e4e6a10adf23958198683113b",
+      "note": "declares PF, the hold that re-bases a toast's deadline (30000ms)"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        170818,
+        171054
+      ],
+      "units": 236,
+      "bodySha256": "7d94f03ec2300932ba7076a7f9ec6bb5769b64446064fa1f193d1cb027d74a15",
+      "note": "declares MF, the fold's stack transform: a held toast's time is added to its deadline, a spent one leaves, and a leaving one gets RF more"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        171054,
+        171080
+      ],
+      "units": 26,
+      "bodySha256": "d3e85b4c1be195a44f1991389dfc7ba041c2cf039c6a72b40c99d3e681332097",
+      "note": "declares fee, the frozen empty stack a reader without a stored value gets"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        171080,
+        171111
+      ],
+      "units": 31,
+      "bodySha256": "a9cd7135f8d3ea468bbfa52ddabf729467bc2e4a3325b8ff825608047d86d5a2",
+      "note": "declares IF, the plugin-state key the stack is stored under (`{plugin:a8,key:\"toasts\"}`)"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        171112,
+        171208
+      ],
+      "units": 96,
+      "bodySha256": "12504e7a08b63aa0ba3fe1fa3ea128cecb246ff2a46044224bf479557f9e297a",
+      "note": "declares bu, the stack reader: the stored value under Pye(IF) when it is an array, else the frozen empty stack"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        171208,
+        171235
+      ],
+      "units": 27,
+      "bodySha256": "ba8f0c48ec72a83277b1531e916380d50e225b1b5a79f7eecc65ead9a3ccf40c",
+      "note": "declares TC, the toast clock the host registry carries"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        171235,
+        171566
+      ],
+      "units": 331,
+      "bodySha256": "f708f2b740cdafe569feb66fcdf990a99cf11e9313fadfce174399ec7d720544",
+      "note": "declares yee, which arms one timer for the stack's next deadline (dropping the one before it, skipping while paused or empty, and unref-ing the handle)"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        171566,
+        171787
+      ],
+      "units": 221,
+      "bodySha256": "a51b76aee72b1a41522b223604be0ea78bbecfacd60e556fa5e069e409b43854",
+      "note": "declares aV, the per-plugin cap: while a stack holds more than ACn, the largest non-managed group loses its oldest member, recursively"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        171787,
+        172000
+      ],
+      "units": 213,
+      "bodySha256": "99801c7589ff45110bcef11a95e35dca38567b878448b6a7af7176ec7b15a738",
+      "note": "declares See, the report for a toast that left the stack before it was drawn (the log line and the once-per-plugin notice)"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        172000,
+        172257
+      ],
+      "units": 257,
+      "bodySha256": "7f75bda93d05bd2096ee127521f468eece2320c236285c1d9ce5932f5037471c",
+      "note": "declares bh, the stack writer: trim, write the trimmed stack when it differs from the reader's, report the entries that left undrawn, and run the fold through MF"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        172976,
+        173176
+      ],
+      "units": 200,
+      "bodySha256": "fd390ea707196eb23cff291111bee6cba897d5af376ed73927f1245f254d16d2",
+      "note": "declares wee, which builds the entry a plugin toast becomes (id from crypto's randomUUID, label from Nle, seat from sOn, deadlines from the toast clock) and writes the stack"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        173176,
+        173443
+      ],
+      "units": 267,
+      "bodySha256": "18f1e6a5d5c683ee265c20d960745921d29cc4148dc3dabb55e5133b4bd3ca44",
+      "note": "declares EEe, the host toast method: remember the ids, push, and report whether the toast was stacked or the stack was full"
+    },
+    {
+      "module": "chunk-3qabb19b.js",
+      "sha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
+      "range": [
+        732,
+        883
+      ],
+      "units": 151,
+      "bodySha256": "766eb9b0a7e961e270d749dde4d904cf5711d3d243916471950b33bc40bf3c26",
+      "note": "declares $P, the shallow list equality bh gates the store write on"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        4522274,
+        4522361
+      ],
+      "units": 87,
+      "bodySha256": "0d2bc443a40e95d6553c827d62375c8875bf4d7f24c78e3f603c0f22bd583635",
+      "note": "declares SKr (\"unnamed\"), the label a plugin whose name cannot be resolved gets; the statement it shares with h3t (an unrelated bound-thread prompt) is taken whole so the declaration stays"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        4522361,
+        4522420
+      ],
+      "units": 59,
+      "bodySha256": "423f86f0c47dab8c76b897fe1fb0b9856e9c54108f46578169396eb631861f77",
+      "note": "declares Nle, the plugin label policy: Mde's sanitized name, or \"unnamed\" when it resolves to null"
+    }
+  ],
+  "missing": []
+}

@@ -1,0 +1,120 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-d3s5r8h5.js",
+      "sha256": "202506d3996b4fffe72418c623c884a93169f9352a17331ba6268b2e2eb4e2db"
+    },
+    {
+      "module": "chunk-eb9r2hbv.js",
+      "sha256": "3b1f83a5d1fcec7a1aa8a7d0adf139d8643ace6755985b79f19ddc1e7de22abe"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+      "range": [
+        399661,
+        400220
+      ],
+      "units": 559,
+      "bodySha256": "ef56142453117ff9b873e696e9b74ad472ddf4e5f790ebef627854a486dbfbf9",
+      "note": "the ultrathink matcher (`aZt` tests, `YIt` collects), the rainbow palette pairs (`LF` base, `UF` shimmer) and the wrap-around palette pick `fB`"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        453609,
+        454576
+      ],
+      "units": 967,
+      "bodySha256": "b5d343e8a5cbb61dd85136dd428268277b8a9f6482164f9d0df9e3a3c3e30f12",
+      "note": "the keyword matcher `Qp` over the quote/bracket map `IE`: skips quoted and bracketed runs, rejects slash/dash/backslash boundaries and trailing `?` or `.word`, plus its `ultraplan`/`ultrareview`/`ultracode` entry points"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        462993,
+        463045
+      ],
+      "units": 52,
+      "bodySha256": "507dc46dec9bfa859c52baa2bdfdbafb30bf85e1b9cf31fcb54bd663ef7df656",
+      "note": "the half-open range-overlap test `mW` the suggestion merge uses"
+    },
+    {
+      "module": "chunk-d3s5r8h5.js",
+      "sha256": "202506d3996b4fffe72418c623c884a93169f9352a17331ba6268b2e2eb4e2db",
+      "range": [
+        1005,
+        1698
+      ],
+      "units": 693,
+      "bodySha256": "af9e10a85f300043f296550057c1162f7f41c3385ee3fb418fccecf22d910a52",
+      "note": "the slash-command matcher `d3n` with its `/^\\/btw\\b/gi` pattern `A`, and the companion reply strings of the same top-level declaration"
+    },
+    {
+      "module": "chunk-eb9r2hbv.js",
+      "sha256": "3b1f83a5d1fcec7a1aa8a7d0adf139d8643ace6755985b79f19ddc1e7de22abe",
+      "range": [
+        803,
+        902
+      ],
+      "units": 99,
+      "bodySha256": "285d1334c1b9ba0c2a5da93a0074e6053faac7f8ac73653cc15ae3e0cc5d47e8",
+      "note": "`ewe`: the first grapheme of a slice, the caret highlight's width unit"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        805913,
+        806052
+      ],
+      "units": 139,
+      "bodySha256": "cfe68965fe682d92b11111a6135a7d2614a93fd891e5efcdcd89ea2d7d66373e",
+      "note": "the mark merge `pue`: base spans kept, marks appended only where they overlap nothing already kept"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        3604158,
+        3604403
+      ],
+      "units": 245,
+      "bodySha256": "0fda31d7dc331c4ad080e39a907e2d8665085926ba190cc1c1677b09e9fce10c",
+      "note": "the slash-command run matcher `vMe`: a `/name` after start or a separator, trailing dots trimmed"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        405289,
+        405350
+      ],
+      "units": 61,
+      "bodySha256": "48338fe115ee98820ad31fa7c7bcf8e3d7d7860c706aed1a977a522454a594d3",
+      "note": "`j5r`, the spread-highlights producer of this build: an optional call on a null literal, so the composer spreads nothing"
+    }
+  ],
+  "missing": []
+}

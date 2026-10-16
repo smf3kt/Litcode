@@ -19,7 +19,9 @@
 
 import type Anthropic from '@anthropic-ai/sdk';
 import { randomUUID } from 'node:crypto';
+import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { z } from 'zod';
+import { statusLineSchema } from './tui-statusline-schema.js';
 
 import { expandSkill, type InstructionFile, type SkillInfo } from './config.js';
 import { hooksSettingsSchema, type HooksConfig, type HookRunOptions } from './hooks.js';
@@ -49,7 +51,9 @@ import { configSchema, fingerprint as sessionFingerprint } from './session.js';
 import type { Session, SessionConfig } from './session.js';
 import { mcpSubscriptionState, commitMcpSubscription } from './mcp-session-subscriptions.js';
 import { createSubagentTool, type ChildEnvironmentFactory } from './subagents.js';
-import { createTaskTools } from './tasks.js';
+import { createTaskTools, readTaskRecords, subscribeTaskChanges, type TaskRecord } from './tasks.js';
+import { spinnerVerbsSchema, type SpinnerVerbs } from './tui-progress-settings.js';
+import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 import { createTools, type ToolDefinition } from './tools.js';
 import { createNotebookTools } from './notebooks.js';
 import { BackgroundRegistry, createBackgroundTools } from './background.js';
@@ -74,6 +78,17 @@ export type ParsedRuntimeSettings = {
   auth?: 'bearer' | 'api-key';
   tokenCounting?: 'estimate' | 'api';
   thinking?: boolean;
+  prefersReducedMotion?: boolean;
+  showTurnDuration?: boolean;
+  timeFormat?: string;
+  timeZone?: string;
+  spinnerVerbs?: SpinnerVerbs;
+  editorMode?: import('./tui-vim.js').EditorMode;
+  vimInsertModeRemaps?: Record<string,unknown>;
+  maxProseWidth?: number;
+  syntaxHighlightingDisabled?: boolean;
+  theme?: ThemeSetting;
+  statusLine?: import('./tui-statusline.js').StatusLineSetting;
   promptCaching?: boolean;
   eagerToolInput?: boolean;
   effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
@@ -164,6 +179,19 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
     out.tokenCounting = settingEnum(settings, 'tokenCounting', ['estimate', 'api'] as const);
   }
   if ('thinking' in settings) out.thinking = settingBoolean(settings, 'thinking');
+  if ('prefersReducedMotion' in settings) out.prefersReducedMotion = settingBoolean(settings, 'prefersReducedMotion');
+  if ('showTurnDuration' in settings) out.showTurnDuration = settingBoolean(settings, 'showTurnDuration');
+  if (settings.timeFormat !== undefined) out.timeFormat = z.string().parse(settings.timeFormat);
+  if (settings.timeZone !== undefined) out.timeZone = z.string().parse(settings.timeZone);
+  if (settings.spinnerVerbs !== undefined) out.spinnerVerbs = spinnerVerbsSchema.parse(settings.spinnerVerbs);
+  const editorMode=editorModeSchema.parse(settings.editorMode);if(editorMode!==undefined)out.editorMode=editorMode;
+  const remaps=vimRemapsSchema.parse(settings.vimInsertModeRemaps);if(remaps!==undefined)out.vimInsertModeRemaps=remaps;
+  const proseWidth = z.number().int().min(40).optional().catch(undefined).parse(settings.maxProseWidth);
+  if (proseWidth !== undefined) out.maxProseWidth = proseWidth;
+  if (settings.syntaxHighlightingDisabled !== undefined) out.syntaxHighlightingDisabled = settingBoolean(settings, 'syntaxHighlightingDisabled');
+  if (settings.statusLine !== undefined) out.statusLine = statusLineSchema.parse(settings.statusLine);
+  const theme = parseTheme(settings.theme);
+  if (theme !== undefined) out.theme = theme;
   if ('promptCaching' in settings) out.promptCaching = settingBoolean(settings, 'promptCaching');
   if ('eagerToolInput' in settings) out.eagerToolInput = settingBoolean(settings, 'eagerToolInput');
   if ('effort' in settings) out.effort = settingEnum(settings, 'effort', ['low', 'medium', 'high', 'xhigh', 'max'] as const);
@@ -362,6 +390,8 @@ export type Runtime = {
   /** Drain session-owned events only between completed turns. */
   drainEvents?(owner: string): RuntimeEvent[];
   subscribe?(listener: (owner: string) => void): () => void;
+  taskRecords?(config: SessionConfig): TaskRecord[];
+  subscribeTasks?(config: SessionConfig, listener: () => void): () => void;
   releaseSession?(owner: string): Promise<void>;
   runSkill?(config: SessionConfig, owner: string, skill: SkillInfo, args: string, signal: AbortSignal,
     requestPermission?: (tool: ToolDefinition, input: unknown, decision: PermissionDecision) => Promise<PermissionDecision>,
@@ -478,6 +508,7 @@ export async function createRuntime(
   const childInstructionCallbacks = new WeakMap<ToolDefinition[], (workspace: string, paths: string[]) => void>();
   const workflowAccessors = new Map<string, () => WorkflowRegistry>();
   const listeners = new Set<(owner: string) => void>();
+  const taskSubscriptions = new Set<() => void>();
   let closed = false;
   let closing: Promise<void> | undefined;
   let boundSession: Session | undefined;
@@ -834,6 +865,8 @@ export async function createRuntime(
     if (closing) return closing;
     closed = true; lifetimeController.abort(); bindingController.abort(); signal.removeEventListener('abort', onAbort);
     listeners.clear();
+    for (const stop of taskSubscriptions) stop();
+    taskSubscriptions.clear();
     closing = (async () => {
       try { await Promise.all([...ownerScopes.keys()].map(releaseSession)); }
       finally { await mcp.close(); }
@@ -940,6 +973,13 @@ export async function createRuntime(
         return executeSkill(skill, args, { config: current, provider, tools, signal: invocationSignal,
           source: 'user', registry: agentAccessors.get(tools)?.(), requestPermission, conversation, hookOptions: () => callbackHooks(),
           terminalSequence: childTerminalCallbacks.get(tools), instructionFiles: childInstructionCallbacks.get(tools) });
+      },
+      taskRecords(current) {if (closed) return []; return current.features?.tasks ? readTaskRecords(current.workspace) : [];},
+      subscribeTasks(current, listener) {
+        if (closed || !current.features?.tasks) return () => {};
+        const unsubscribe = subscribeTaskChanges(current.workspace, () => {if (!closed) listener();});
+        const stop = () => {unsubscribe(); taskSubscriptions.delete(stop);};
+        taskSubscriptions.add(stop); return stop;
       },
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
       drainEvents(owner) {

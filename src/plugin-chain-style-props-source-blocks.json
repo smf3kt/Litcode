@@ -1,0 +1,199 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2097,
+        2198
+      ],
+      "units": 101,
+      "bodySha256": "6d7c18b0bdbb874beab776c3caede62dfa1a5e654a0fe1d17f9a25b058db0673",
+      "note": "`Ubr`, the text-style prop names (dimColor, bold, italic, underline, strikethrough, inverse, borderDimColor). `Ago` (2) sits between this and the next block and is referenced by nothing here, so the run is split rather than taken whole."
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2208,
+        2288
+      ],
+      "units": 80,
+      "bodySha256": "6147e1146a5ce27a7badc2b42a5bc76f19d3f6da610becd5dbc6b4b603bdc5a3",
+      "note": "`rQt`, the border prop names (`new Set(PFs)` — the border table the W44 tui copy already carries) and `Cgo`, the colour ones (color, backgroundColor, borderColor)"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2523,
+        2815
+      ],
+      "units": 292,
+      "bodySha256": "3ff3653232086cf599c8e79a584f9a381df8f5744805f08b1b6ad426d6a5ecd1",
+      "note": "`Rgo`, the flex and spacing prop names, and `olt`, the four sides"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2815,
+        3407
+      ],
+      "units": 592,
+      "bodySha256": "1f9306940d8f4c087a2b5881cc060e31f9e3406b439b09831a7af1f4dd598b70",
+      "note": "`xgo`, the per-prop validator table `sQt` looks a name up in — the largest single body of this package"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        4004,
+        4075
+      ],
+      "units": 71,
+      "bodySha256": "d6a8aedd8810f28950cc1ecad491cefbdfe78aa491903272ebfaac55ae83a268",
+      "note": "`slt` (10000), the tolerance a number is compared with, and `oQt`, the size prop names (width, height, minWidth, minHeight)"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        4140,
+        4987
+      ],
+      "units": 847,
+      "bodySha256": "c9451f390d607e159e066206a0081fe9166ae1b667ff5ab281d87346767e3c95",
+      "note": "`sQt`, the prop validator: a name looked up in `xgo`, whose answer is either a sentence or a predicate that is run against the value — the table holds both, which is why the name is checked before the value"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        5978,
+        5990
+      ],
+      "units": 12,
+      "bodySha256": "e0cf534fdee318de846b984e84bdcf62c13b9c2115b599c641f583caf6e3f493",
+      "note": "`Ybr` (1e5), how many characters a described value may serialize to. `B3e` (\"AskUserQuestion\") sits between this and the next block and is referenced by nothing here."
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6016,
+        6041
+      ],
+      "units": 25,
+      "bodySha256": "694367aa93c3e79af2a62de2770810412f1a22be9ee0ea503fc87d7992316302",
+      "note": "`ESe` (32), how deep the describer walks, and `AFe` (20000), how many values it may visit"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6041,
+        6172
+      ],
+      "units": 131,
+      "bodySha256": "d267c6da2b1c8d2f174218cf44d26b77973822e43b5cc76ce1b5a26dd8ebff25",
+      "note": "`cN`, the short description of a value — null, an array, an object, or `a <typeof>` — which is the sentence a leaf drops into its own when a prop had the wrong shape"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6340,
+        6358
+      ],
+      "units": 18,
+      "bodySha256": "d431d6dce13da18ff3c639d4be4ff4cf1a8a69ac6c614d1716da1912e22d46e5",
+      "note": "`Vs`, the largest length a plugin's list may claim"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6358,
+        6591
+      ],
+      "units": 233,
+      "bodySha256": "40ad04b21693ce422b7dcd93dcf5be7cc2f82f29a53bd7da03abd35e7af6a674",
+      "note": "`B`, the list length a plugin declares, which throws `He` rather than answering when the claim is not a length any list has — the one body here that refuses instead of describing"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        87341,
+        87483
+      ],
+      "units": 142,
+      "bodySha256": "2a9d68c8f2cefe8e7a26e5dff793d1b31722987cd64c527e3355116726f2bb63",
+      "note": "`fa`, the generator the describer walks with: an array yields each element under the key length one, an object yields its own keys at their own length plus four (`\"key\":` and the comma)"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        87483,
+        87576
+      ],
+      "units": 93,
+      "bodySha256": "6617c850dd35fef358f55af06eadcd9723b193faec252ee85534d18195a739e2",
+      "note": "the budget and its three bounds: `F$n` (1e5 characters), `Xbr` (32 deep), `Jbr` (20000 values), and `Ro`, a fresh walk budget — a path Set for cycles and a done Map for values already seen"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        87576,
+        87714
+      ],
+      "units": 138,
+      "bodySha256": "f360377fbe814caa935e8b6e8a24289895a6827a044fca79c7d7358bf7f58311",
+      "note": "`ca`, the budget check: more than 20000 values answers `holds more than 20000 values`, more than 1e5 characters answers `serializes to more than 100000 characters`, and otherwise nothing"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        87714,
+        87871
+      ],
+      "units": 157,
+      "bodySha256": "5900f5b358dc03d554a601d7abd311b4cfbc36837ac4221e903ff215a3cff5a8",
+      "note": "`un`, what a scalar costs the budget: a boolean is 5 (`false`), a string its length plus two quotes, a number the length of its text, and null 5 — anything else answers nothing and is walked instead"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        87871,
+        88707
+      ],
+      "units": 836,
+      "bodySha256": "d8035f090ec09aeea2d807167617f22ad22d05634f2254346931a9e6885fcf2a",
+      "note": "`Dt`, the describer itself: it walks the value against the budget, spending `un` on scalars and recursing through `fa`, tracking the path to cut a cycle and the done Map to cut a repeat, and answers either the serialized text or the budget sentence"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        88772,
+        88798
+      ],
+      "units": 26,
+      "bodySha256": "da0dcc3366c26c08854fcbe0d928374a9d01313aaf757954881c159c9789934f",
+      "note": "`cQt`, the describer at its entry: `Dt(value, 0, Ro())` — depth zero and a fresh budget"
+    }
+  ],
+  "missing": []
+}

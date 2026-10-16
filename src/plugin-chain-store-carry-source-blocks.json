@@ -1,0 +1,263 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3"
+    },
+    {
+      "module": "chunk-mven2c2x.js",
+      "sha256": "e2f58e7f95f30e10bd73c8047084a1ba104ae00ebf4cbd223b5466085d79c170"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b"
+    },
+    {
+      "module": "chunk-6q0v3ahc.js",
+      "sha256": "9f2fe4d5c1888abaf3ea717fdb9958f6aa762a5379409a41915ce6c8daf5bddc"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        16724,
+        16841
+      ],
+      "units": 117,
+      "bodySha256": "0b3a7d084c269d1a55d0fea9eb3f2cb0ccc915ea906ac7d62670fb24b005b19d",
+      "note": "declares ye, the candidate's store read: the file's text paired with the candidate's name, or undefined when the file is not there"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        16841,
+        17404
+      ],
+      "units": 563,
+      "bodySha256": "a5577ab697629cea2fbfa33b30db2897c4741e4cc6abc2b0e52ff7593d8297b3",
+      "note": "declares he, the carry itself: it picks the first candidate that has a store, writes it as `<file>.carry-<uuid>`, links it into place (copying when a link is refused) and removes the carry file — logging a concurrent carry at debug and any other failure at warn"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        17444,
+        17609
+      ],
+      "units": 165,
+      "bodySha256": "b0806211b3ea3038c6bfa9137f129c94ce9fb5bec001c0f4de95c6916677669a",
+      "note": "declares vt, the read the store calls: the file's text, or — when it is missing and the carry succeeded — the text again"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+      "range": [
+        8301,
+        8728
+      ],
+      "units": 427,
+      "bodySha256": "865c5849b2265346be88a2675eeec026dc11ba164b2e34d73a5ea051e0152df7",
+      "note": "declares A and I, the external plugin-id table: a short name to package id map, `external` keyed and remembered"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+      "range": [
+        8728,
+        8742
+      ],
+      "units": 14,
+      "bodySha256": "33cc92322ff0d56e848ac4a31f77db3ee840d430a636f05f8687e28e928ae25b",
+      "note": "declares m, the table's accessor"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+      "range": [
+        8769,
+        8820
+      ],
+      "units": 51,
+      "bodySha256": "a28564e116f99a4264042cbf948d6467c2757c1f72c012931b45d54b46bebce4",
+      "note": "declares g, the reverse lookup: the short names whose package id is this one"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+      "range": [
+        8941,
+        9017
+      ],
+      "units": 76,
+      "bodySha256": "17c3f0b8bef50fe9de68ad4b42ce17db8c64c5bf589b45fce55c73b280e38101",
+      "note": "declares _d, CQt, hu, ha and Pi: the inline suffix, the built-in identifier for the skills package, and the `builtin`, `skills-dir` and `synced` tags"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+      "range": [
+        9399,
+        9493
+      ],
+      "units": 94,
+      "bodySha256": "a1b09944d69633a6cb9375a888208d6467ac6912ebaa67265549a0b523df839b",
+      "note": "declares R, the id split: the base of `<base>@<platform>`, but only when the platform half canonicalizes to the built-in tag"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+      "range": [
+        9765,
+        9853
+      ],
+      "units": 88,
+      "bodySha256": "b5be029d2e1f071953b60d5faf9bdf814bb32a2daedb7321e6b7c2705ff80509",
+      "note": "declares mR, the candidate list the carry walks: the built-in twins of this id, most recent first"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+      "range": [
+        9853,
+        9907
+      ],
+      "units": 54,
+      "bodySha256": "b00054d278d4d6d8bdcc284d3d2bd21ac505dc685bab96cc4a988d1d5009ce5b",
+      "note": "declares h, the lookup with a fallback to the normalized id when the id as written has no twin"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+      "range": [
+        9907,
+        9962
+      ],
+      "units": 55,
+      "bodySha256": "dc2575e019cd1758cc38a0909e86aaa9f2e4d55d9536b5c77958637adda5e4d4",
+      "note": "declares AUn, the platform canonicalizer: the lowercased id when the table knows it, the id as written otherwise"
+    },
+    {
+      "module": "chunk-nrk8z90j.js",
+      "sha256": "5650fa172647083d24e2d83889060a8915ecb0b4cf46154bbef490e700187ad3",
+      "range": [
+        12751,
+        12806
+      ],
+      "units": 55,
+      "bodySha256": "4a8fe78c350094291c9340e4bab68ae76f4650199d03f97b4886303614f2e5cc",
+      "note": "declares _r, the normalized form an id is looked up under when it has no twin as written"
+    },
+    {
+      "module": "chunk-mven2c2x.js",
+      "sha256": "e2f58e7f95f30e10bd73c8047084a1ba104ae00ebf4cbd223b5466085d79c170",
+      "range": [
+        615,
+        667
+      ],
+      "units": 52,
+      "bodySha256": "1e611e36ebcb103e215fa24a34cd49444c9b5cb07c63b4fcbb764198c3e68912",
+      "note": "declares uRe and xQt, the package name the built-in identifier is built from"
+    },
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "range": [
+        7507,
+        7544
+      ],
+      "units": 37,
+      "bodySha256": "8439c063340ce5b84a3647299d7b288005264d912e9522120edf677792960d6f",
+      "note": "declares W, whether an error is a missing file"
+    },
+    {
+      "module": "chunk-6q0v3ahc.js",
+      "sha256": "9f2fe4d5c1888abaf3ea717fdb9958f6aa762a5379409a41915ce6c8daf5bddc",
+      "range": [
+        615,
+        685
+      ],
+      "units": 70,
+      "bodySha256": "6b15874e28dd4114e956d748abc4d2d737a50907ee95cb2982bdcae8d5a4ab56",
+      "note": "declares L, whether a parsed value is a plain object"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        59700,
+        59730
+      ],
+      "units": 30,
+      "bodySha256": "972294fafda488d6b34fadabc4c009286f8a598cd6881dcf4582c5acbc3a088b",
+      "note": "declares Xs, the no-op disposable the parse helper holds while it parses"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        59730,
+        59754
+      ],
+      "units": 24,
+      "bodySha256": "2ba5ddb21c0f0db285a013be400ed5567fd40951d50847c53c2540ec796fbdc2",
+      "note": "declares Qs, that disposable's accessor"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        59754,
+        59764
+      ],
+      "units": 10,
+      "bodySha256": "470948aa64a5d6fb52387cd3d1c13ef625860edf4f25f3da1f3aa8092f5d8b61",
+      "note": "declares ih, the accessor under the name the parse helper uses"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        60056,
+        60154
+      ],
+      "units": 98,
+      "bodySha256": "235e3d3aa6c73b8a182b442559a919be0222c076fe480993e2083d7d42a5c0af",
+      "note": "declares Y, the parse the carried content goes through, with the disposable held across it"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        60348,
+        60401
+      ],
+      "units": 53,
+      "bodySha256": "cdbd7d0cd0cdbb4822ddc801739eb72bb7d99c419a158068e063cbf70392eb14",
+      "note": "declares Pe, the length the parse reports for its input"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        59764,
+        59848
+      ],
+      "units": 84,
+      "bodySha256": "a18934a7230cb0ac4961d42de90295e79a08a02f769e56da5f2925358865066e",
+      "note": "declares `_`, the JSON text helper the store writes through and the value check measures with — it holds the same disposable guard as the parse, so it is copied here beside `ih` and `Pe` rather than in the store entry's own copy, where the store chunk's unrelated `Pe` (the backend factory) would collide with this one"
+    }
+  ],
+  "missing": []
+}

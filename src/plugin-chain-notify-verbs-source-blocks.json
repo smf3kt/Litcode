@@ -1,0 +1,56 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        172257,
+        172364
+      ],
+      "units": 107,
+      "bodySha256": "459de8299ddad1fff7b7f5e2808f13c2cd2648dcc76cbb5ee1e72ee04462566b",
+      "note": "declares IEe, dismissToast: drop the id from the stack, remember it in cI so it is not reported undrawn, and write"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        172364,
+        172396
+      ],
+      "units": 32,
+      "bodySha256": "46f4b7d7ef03b1b055ce8d3d3065f79c85f31d2cf10d8f7b5d72049d76b2c745",
+      "note": "declares pvt, expireToasts: fold the stack now and write it"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        172396,
+        172675
+      ],
+      "units": 279,
+      "bodySha256": "6dc9df040101b6bad182a0d2200ae5ac991663c86da793fa5e5bf330a87a0ab8",
+      "note": "declares dV, holdToast: hold the entry (phase shown, heldAt stamped) or release it (drop heldAt, add the held time to leavesAt), writing only when something changed"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        172675,
+        172938
+      ],
+      "units": 263,
+      "bodySha256": "8950c1c9e91fd77a9c153326b5e30677a471e071dd2fd67326c55b441be0f059",
+      "note": "declares bee, pauseToasts: flip the clock's pausedAt and shift every deadline (and heldAt) by the time that passed while paused"
+    }
+  ],
+  "missing": []
+}

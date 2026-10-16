@@ -185,9 +185,11 @@ test("a thinking block with its signature is preserved and multi-tool results pa
   ]);
 
   const streamed: string[] = [];
+  const lifecycle: string[] = [];
   const session = Session.open(ws, { config: cfg });
   try {
-    const agent = new Agent(session, provider, tools, { text: (value) => streamed.push(value) });
+    const agent = new Agent(session, provider, tools, { textStart: () => lifecycle.push('start'),
+      text: (value) => { streamed.push(value); lifecycle.push(value); }, textEnd: () => lifecycle.push('end') });
     const result = await agent.run("go");
 
     assert.equal(result.reason, "end_turn");
@@ -202,6 +204,7 @@ test("a thinking block with its signature is preserved and multi-tool results pa
     assert.equal((provider.requests[0]!.tools as Anthropic.Tool[])[0]!.eager_input_streaming, true);
     assert.deepEqual(provider.requests[0]!.messages, [{ role: "user", content: "go" }]);
     assert.deepEqual(streamed, ["working on it", "done"]);
+    assert.deepEqual(lifecycle, ['start', 'working on it', 'end', 'start', 'done', 'end']);
 
     const messages = session.messages;
     assert.equal(messages.length, 4);
@@ -600,8 +603,11 @@ test("a model failure after tool results resumes append-only without re-running 
   const session = Session.open(ws, { config: cfg });
   const id = session.id;
 
-  const agent1 = new Agent(session, provider1, tools);
+  const lifecycle: string[] = [];
+  const agent1 = new Agent(session, provider1, tools, { textStart: () => lifecycle.push('start'),
+    textEnd: () => lifecycle.push('end') });
   await assert.rejects(agent1.run("go"), /no scripted model reply/);
+  assert.deepEqual(lifecycle, ['start', 'end', 'start', 'end']);
 
   assert.equal(alpha.calls.length, 1);
   assert.equal(session.messages.length, 3); // user, assistant(tool_use), user(results)

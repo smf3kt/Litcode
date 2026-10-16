@@ -1,0 +1,222 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-c9vsmdqj.js",
+      "sha256": "59124c8f7d581be40e14655f028069ec67ba561a3395db94c65ede3aee264fb5"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        10939,
+        11214
+      ],
+      "units": 275,
+      "bodySha256": "a5bf25249fa35a066498422722dd75c112f074c37e98096bbf22db284b2d6e75",
+      "note": "declares _ro, the value check the store.set entry carries: the value must serialize as JSON, be a string, and be within the store's character limit"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        11214,
+        11283
+      ],
+      "units": 69,
+      "bodySha256": "f0a5602ffc5301ef4a4bc40898c1ceee2a90256ea58e59d73b2335420b480371",
+      "note": "declares ppr, the key check the get and delete entries carry: the call must name a string key"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        13344,
+        13379
+      ],
+      "units": 35,
+      "bodySha256": "32e0b27715bbc531c8ebdc0c80f14b12ff934cea8c76871dafe4fa26a25539d5",
+      "note": "declares xNs, the set entry's check: the key check first, then the value check"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15456,
+        15601
+      ],
+      "units": 145,
+      "bodySha256": "2437af90c2b34dfc7e7c7893e2ca09f4250e7e158f27efd32824174d9651fb7f",
+      "note": "declares pt, the options every store lock is taken with: no realpath, ten retries from 5ms to 100ms, and a compromised lock logged at warn"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15601,
+        15635
+      ],
+      "units": 34,
+      "bodySha256": "a15006a86c5c9bcb263e25d4d43b0c9d87f3599cd0dbd249b749d8d65fe571bf",
+      "note": "declares de, the settled-promise helper the store's serial queue hands on"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15635,
+        15722
+      ],
+      "units": 87,
+      "bodySha256": "e1b01f0afa0322256d742c8d12e69690beef65c0884a72aaa6447f42f817355f",
+      "note": "declares NDe, the one-at-a-time queue: each task waits for the previous one and a rejection does not stop the chain"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15722,
+        15805
+      ],
+      "units": 83,
+      "bodySha256": "1f558982bbb7d649a1b667efe727f78ca481708aee33c3280953b21a50f44559",
+      "note": "declares le, the memoizer: one queue per key"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15829,
+        15841
+      ],
+      "units": 12,
+      "bodySha256": "fc3d1410eac9179afd69c201b8c50b5c063505e4bd45edae1bf94bbceceec74d",
+      "note": "declares ct, the memoized queue the store's write and delete go through, keyed by the plugin's storage id"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        17609,
+        18093
+      ],
+      "units": 484,
+      "bodySha256": "2de3ac81fc67444e007630c372f9ab3fc35fb3dd4cdfafcd4fe04c12d24af697",
+      "note": "declares Se, the store entry itself: read (through W45-51's read and carry, parsed and shape-checked), write (through W45-50's writer, at 0600, with W45-48's directory), and lock (through W45-49's lockfile beside the store file, with `pt`)"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        18093,
+        18165
+      ],
+      "units": 72,
+      "bodySha256": "2e5b83e14fa58b9b6fee2a41f4c364a564a59782d878a2c5dad7fee4d5cb8dc4",
+      "note": "declares Pe, the backend-slot factory: a setter and a getter over one slot"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        18165,
+        18177
+      ],
+      "units": 12,
+      "bodySha256": "90edb754066774a2ab4e2135eb1eba064d95912d7a0d68fa52c60f20f84fd0db",
+      "note": "declares Dt, the product's one backend slot"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        18177,
+        18213
+      ],
+      "units": 36,
+      "bodySha256": "779ed6c3fe8d9f8dafd6f46cd3002160370f83cfcb5c7d3f31cbc5931c553be2",
+      "note": "declares Ae, the backend in force: whatever the slot holds, else the store entry"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        18213,
+        18223
+      ],
+      "units": 10,
+      "bodySha256": "1ee2ae31a2d1ba08ff1f38fe0be1ce5b2c81cce2d3cdbbe9cbb0b49035a0e100",
+      "note": "declares Z, the key-length limit the dispatcher refuses at (256 characters), for every event but `keys`"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        18223,
+        19056
+      ],
+      "units": 833,
+      "bodySha256": "ff0bdbcdbed68ee1a5bf33787ab93f5e5e0c66f7937067b82b467b9654e4d33e",
+      "note": "declares Ce, the dispatcher: the key limit, the write lock for set and delete (released through the wrapper whatever happens), read, the four events, the store's own character limit on a set, the `$.store.set (plugin): key` log, and the error wrapping in the hooks error class"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        19056,
+        19090
+      ],
+      "units": 34,
+      "bodySha256": "b303855c4cc8fb7110d622681d2322aff14aa446300ddb324a3c8f5939126b36",
+      "note": "declares JAt, the event site: the dispatcher behind the per-plugin queue"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        212618,
+        212634
+      ],
+      "units": 16,
+      "bodySha256": "25ada96e210b32b1330c30138a752329aba7eaac0d1021498419984f11672779",
+      "note": "declares jde, the store's size limit: a stored value and the whole store are both held to 4,194,304 characters"
+    },
+    {
+      "module": "chunk-c9vsmdqj.js",
+      "sha256": "59124c8f7d581be40e14655f028069ec67ba561a3395db94c65ede3aee264fb5",
+      "range": [
+        615,
+        668
+      ],
+      "units": 53,
+      "bodySha256": "2ad3005c8632df99918a325c2432212c9a8d159137a3e9b8ad521d4224c17aae",
+      "note": "declares bs, the slot the backend indirection is built on"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2342617,
+        2342670
+      ],
+      "units": 53,
+      "bodySha256": "034586ab37c4b70de87821faad5f18ea2e059edd941aa933713c935aae9d644f",
+      "note": "declares fW, the storage id a table entry runs against: the plugin's own id when the dispatcher knows one, the plugin's name otherwise — a 53-unit one-liner inside the plugin-method table's module, taken as an explicit range because the module's top-level map cannot be walked reliably (a 60k-line chunk)"
+    }
+  ],
+  "missing": []
+}

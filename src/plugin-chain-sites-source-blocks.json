@@ -1,0 +1,647 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-btcaa7nx.js",
+      "sha256": "bd6433a1d0f3e3132f7826fcd967f1dc97ed0f19990ea0f865822d4af6e030e3"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6678,
+        6770
+      ],
+      "units": 92,
+      "bodySha256": "ff058a725b75b5486de57808fddb172f011a77af9f17e0d5acbd9879698f8976",
+      "note": "iD: the hole-preserving array copy the site rules build their lists with"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        16200,
+        16307
+      ],
+      "units": 107,
+      "bodySha256": "652b808517055571d67f6ae94220eb6e905dd010f8b0184286361985b67f3ac6",
+      "note": "at: the first index whose mapper returns a value"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        16740,
+        16959
+      ],
+      "units": 219,
+      "bodySha256": "48b74e79d9391b866becf34d5635d310e3d2c50dc5da4fc0f203c7c8c446e08f",
+      "note": "At and fr: the truncation text and the kept/keptResult pair the argument checks return"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        16959,
+        17208
+      ],
+      "units": 249,
+      "bodySha256": "52ddd0b18cde94c048d902f31657d0a5b41a7bbe70e12ea17aeef690dee1eac4",
+      "note": "Ee: the changed-argument lookup the describe sites restore through"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        17208,
+        17366
+      ],
+      "units": 158,
+      "bodySha256": "e1315c8e8aa4a157947d4f7e2da1a477eec49fd86cb744c6d6493875da70e1c2",
+      "note": "re: the `a changed <field>` message"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        17397,
+        17514
+      ],
+      "units": 117,
+      "bodySha256": "d71d2bd98a029982e7fbb27817358c8d0214a24f5d08080c9ee6c8336caff0cd",
+      "note": "ur: the `no { text }` check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        20175,
+        20185
+      ],
+      "units": 10,
+      "bodySha256": "0a0451c405a397e2a10d43c8e4ebd6f4ca8cdcc976f42777989b5541dbc86f38",
+      "note": "ao: the instruction-block ceiling"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        20185,
+        20727
+      ],
+      "units": 542,
+      "bodySha256": "51a791c642085a3a75ad3338534d369f1586ff8f80f432ea7e916a1ee52ecc73",
+      "note": "lr: the instruction-file check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        20727,
+        20799
+      ],
+      "units": 72,
+      "bodySha256": "1f61eeeb71d2e52f4227542f5b04b6313a3ff3772608b0fe11603f51cc8c489d",
+      "note": "yr: an instruction file's path, or the empty string"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        20799,
+        21103
+      ],
+      "units": 304,
+      "bodySha256": "03cb30120065fd369db4c3cbca818a3fd027a408a99ee3435115e52f9524642b",
+      "note": "Ct: the instructionFiles list check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        21103,
+        21695
+      ],
+      "units": 592,
+      "bodySha256": "5121d6cf86b42b93edea2c233c6003f7524ee822a338e39ab747f9b308d88b0b",
+      "note": "gr: the prompt.context argument check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        21990,
+        22160
+      ],
+      "units": 170,
+      "bodySha256": "50e9a08324873e877eed1ca62f16cbe7b0b6d150a468b8351bf18f537bc24d5f",
+      "note": "Zs: the instruction-file kind's label"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        22265,
+        22495
+      ],
+      "units": 230,
+      "bodySha256": "69e34f761311cf604daa4628f7c5984277e7d3c3099ee737b4cb69c9c16aa6b0",
+      "note": "kws: the element-by-element deep equality the prompt.context rules compare with"
+    },
+    {
+      "module": "chunk-btcaa7nx.js",
+      "sha256": "bd6433a1d0f3e3132f7826fcd967f1dc97ed0f19990ea0f865822d4af6e030e3",
+      "range": [
+        1595,
+        1628
+      ],
+      "units": 33,
+      "bodySha256": "9e780ee846ab2435727da0eaf6d11c8d8c78d0087d6c211d765b752083aa3e7b",
+      "note": "Loe: the auto-memory content reader the per-file text uses"
+    },
+    {
+      "module": "chunk-btcaa7nx.js",
+      "sha256": "bd6433a1d0f3e3132f7826fcd967f1dc97ed0f19990ea0f865822d4af6e030e3",
+      "range": [
+        1757,
+        1838
+      ],
+      "units": 81,
+      "bodySha256": "0fe189971ffac106b9dea61bd7620c5c3f4707a96cd1f794d201f646fbd389a7",
+      "note": "Sho and i: the dropped code points and the invisible-character pattern klt reads"
+    },
+    {
+      "module": "chunk-btcaa7nx.js",
+      "sha256": "bd6433a1d0f3e3132f7826fcd967f1dc97ed0f19990ea0f865822d4af6e030e3",
+      "range": [
+        1838,
+        1962
+      ],
+      "units": 124,
+      "bodySha256": "e9921674edecb3730af52e70f0df90d09901ab7a1f22ed52d69b6324d1d8ed9d",
+      "note": "klt: the invisible-character test the record filter drops on"
+    },
+    {
+      "module": "chunk-btcaa7nx.js",
+      "sha256": "bd6433a1d0f3e3132f7826fcd967f1dc97ed0f19990ea0f865822d4af6e030e3",
+      "range": [
+        1962,
+        2071
+      ],
+      "units": 109,
+      "bodySha256": "e2d38698d91b11b632d7ed4831fe1af14cb3534b228837cedad9cabedb9bdc43",
+      "note": "s: the separator and invisible-character normalization the reader applies first"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        22989,
+        23378
+      ],
+      "units": 389,
+      "bodySha256": "12ff4084298029f33f5767e8334757d46b11ca507acbd6d966a95a8eef49543a",
+      "note": "ti: the instruction-file kind's parenthesised note"
+    },
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        47970,
+        48024
+      ],
+      "units": 54,
+      "bodySha256": "aa123f0f25f0fbb2d73d06e7853982a0301cb755b6807d4dc8cb7ceebee3bafb",
+      "note": "Jws: the instruction-file kinds, in order"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        22786,
+        22989
+      ],
+      "units": 203,
+      "bodySha256": "ee987e41aec33ae96b28889a4e25c0ce05c16a45b0a604a606c5178e2f73a87e",
+      "note": "ei: the instruction preamble text"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        23378,
+        23524
+      ],
+      "units": 146,
+      "bodySha256": "0541fbd8b7df728baa434f424c5d3f59e3f960f7bed30a42f3724dd95f4c047b",
+      "note": "Nbr: the per-file `Contents of` text"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        23524,
+        23584
+      ],
+      "units": 60,
+      "bodySha256": "09263a24f8f50eb2f3db1c1a74e46a32e16b9c858c51d53874548704e5317947",
+      "note": "EFe: the preamble joined to the file list"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        23584,
+        23672
+      ],
+      "units": 88,
+      "bodySha256": "bf1eb8a67db8d30573362453a6239dffb373b1988fde82d31a215a62fd5e3b83",
+      "note": "pt: the file list mapped to { path, type, content }"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        23672,
+        23727
+      ],
+      "units": 55,
+      "bodySha256": "11b008b4759d495bf3af663704fd0a82ade24fda5c6523a78df1249668b45a34",
+      "note": "fo: whether a value is an instruction-file list"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        23727,
+        23768
+      ],
+      "units": 41,
+      "bodySha256": "1efea1ac827b62a1e424475e25a61cd0045ce9c6bc55c14bbc4d9ed260bdf13c",
+      "note": "kr: the file list, or undefined"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        23768,
+        24159
+      ],
+      "units": 391,
+      "bodySha256": "3b463296181c7899b031a2e6fad3ff5d3ab45c207d1de916934bf7f077dd80de",
+      "note": "wr: the prompt.context measure"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        24806,
+        25026
+      ],
+      "units": 220,
+      "bodySha256": "a27ab69b66c727a7b26b01be320b57443fe3020cb2d815fb4a5cccee1525e5aa",
+      "note": "_t: the blocks-list copy the restores put back"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25114,
+        25181
+      ],
+      "units": 67,
+      "bodySha256": "1b8b1afd6c6e76af464b60d800f2689e9a641b673a2429045d82c2d8cdada363",
+      "note": "mo and ft: the restore-argument builder and the union of a list's keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25395,
+        25450
+      ],
+      "units": 55,
+      "bodySha256": "656be2a261952e03cdf842e671d0cd1d2ed393d14b12b16048f9b30d617d15c3",
+      "note": "mt and Er: the per-field measurer and the `{ value }` check it is built on"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25893,
+        26158
+      ],
+      "units": 265,
+      "bodySha256": "73355e86ca53d5f4286a5f7eb147b74736a9dabbcd7b9166bead94b9e844880b",
+      "note": "Sr: whether a suggestion entry is usable"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        26158,
+        26262
+      ],
+      "units": 104,
+      "bodySha256": "8a6d184d9c73021b6c90f9eb500e848e9c0b9fd57fc9d18b961e80dcd616ec90",
+      "note": "Or: the suggestions check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        26262,
+        26313
+      ],
+      "units": 51,
+      "bodySha256": "8559948885a41201e4811bbdbf77ec0311093cfcb92df4187e0965b41692ba61",
+      "note": "vr: the suggestions restore"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        26313,
+        26489
+      ],
+      "units": 176,
+      "bodySha256": "a67d712fb641c395b78b784d67ef37819c18d06bf1fe15a094c7431224acc486",
+      "note": "ai: the prompt.autocomplete site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        30898,
+        31169
+      ],
+      "units": 271,
+      "bodySha256": "216578e349b2acbdf322a874878e0dcf9b7e5b378adb84d3d079fa83aea3c663",
+      "note": "go: the command.describe argument check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        31169,
+        31207
+      ],
+      "units": 38,
+      "bodySha256": "0f195d9bd20d2af2c90aa1540b7ce411b29abed26a58fea3597e9e70b8510276",
+      "note": "Pt: the command fields the check is applied to"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        31207,
+        31729
+      ],
+      "units": 522,
+      "bodySha256": "0fd6bb6cbd6f122ab969f25d08141e93109356f7830fdfc4d993b990dd371430",
+      "note": "xi: the command.describe site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        32975,
+        33138
+      ],
+      "units": 163,
+      "bodySha256": "c418b177381255e17072ad773d102f33bf58669b534cf4eebd06e2bbb52ec745",
+      "note": "It: the config.describe argument check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        33138,
+        33412
+      ],
+      "units": 274,
+      "bodySha256": "1b7be7be00e2cd807c36c6b46e928b351fe9407595160320f1a131a3d4be33fe",
+      "note": "xo: the config key check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        33412,
+        33443
+      ],
+      "units": 31,
+      "bodySha256": "fbbb8cbad4c1710ecdb40d4a5f5000b7a66e5bb120961b79e4c63edad30c95bd",
+      "note": "Ht: the config fields the check is applied to"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        33443,
+        33641
+      ],
+      "units": 198,
+      "bodySha256": "33764662ddfa128ee4715d81c22afedb3c5f07e999a27465efde4727c437607b",
+      "note": "Ei: the config.describe site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        37791,
+        38157
+      ],
+      "units": 366,
+      "bodySha256": "b2efbd4b48c81a110dfecfe368db3a94c892fb2743ef49944aa45c23767751b1",
+      "note": "Di: the attribution.text site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        38896,
+        39361
+      ],
+      "units": 465,
+      "bodySha256": "86eab7d4120ba7950eb601b784e3e6383d2979013316ff1acdba1b6296ee2603",
+      "note": "Bi: the prompt.attachment site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        39361,
+        39491
+      ],
+      "units": 130,
+      "bodySha256": "b06bcee4f92eb9335a3e47894b53079f9b2d62040cd8af4006bca1f91a26750d",
+      "note": "Ki: the prompt.attachment settle"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        39491,
+        39563
+      ],
+      "units": 72,
+      "bodySha256": "29813cebb7325d43b1466db80298f8f9bf952b6cb01d33d1d6f74b077c50f87d",
+      "note": "To: the claudeMd block's text"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        39563,
+        39625
+      ],
+      "units": 62,
+      "bodySha256": "3fd44dbfa7990afb22536b0f0cbf6856c2921825b19bd375f84cfd452adb4aa0",
+      "note": "qr: the deep-equality test the prompt.context rules compare with"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        39625,
+        39774
+      ],
+      "units": 149,
+      "bodySha256": "c6207e93b443e7bd9c856ba415732a43ac6bbdedc3b231ce4a28edb6b4955fa7",
+      "note": "Qr: the claudeMd block map"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        39774,
+        40289
+      ],
+      "units": 515,
+      "bodySha256": "315bcd5ec66cd4b151895ee9059ded00681042bb5337b3410b0c4f2361f1b93b",
+      "note": "Wi: the instructionFiles restore field"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        40289,
+        40600
+      ],
+      "units": 311,
+      "bodySha256": "68c8ce43aa1325b9c477c7988714f48443bb657983bc5ccf482ec5ce679d3546",
+      "note": "Mt: the restore list"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        40600,
+        40622
+      ],
+      "units": 22,
+      "bodySha256": "212d1427eb8d8f26c9388bd336e43614f4c9b4cc4a9964545973aadb15d74292",
+      "note": "Gi: the restore argument the site publishes"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        40622,
+        40656
+      ],
+      "units": 34,
+      "bodySha256": "261bf2e41b1638ff965fc4b24b4ea449b239d78ac55323e100142f262df17eca",
+      "note": "zi: the restore result the site publishes"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        40656,
+        40808
+      ],
+      "units": 152,
+      "bodySha256": "5c4a26a46bac3308dc64bbb65bd2768c24924008aca3129f7e4b83ec8e4a204a",
+      "note": "Yi: the prompt.context site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        41072,
+        41456
+      ],
+      "units": 384,
+      "bodySha256": "32cdd76039c992dbc1c32611f4ca8b1167e6477612ecc14151602390827a3189",
+      "note": "Qi: the prompt.section site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        42107,
+        42466
+      ],
+      "units": 359,
+      "bodySha256": "501607a1283daa4c6ca8d132f9136fdec8029faed65222e3df1dadb8da2fc172",
+      "note": "ea: the skill.prompt site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        98416,
+        99076
+      ],
+      "units": 660,
+      "bodySha256": "d562abea568f339e48db79fce27620f4f9718e95d78bd82668aebfdd52477c79",
+      "note": "Ra: the session.receive site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        100510,
+        100604
+      ],
+      "units": 94,
+      "bodySha256": "b8057b842857b0959b3f1c542be3ca2231bab4a3de06e385b8bce081e7d7bc4d",
+      "note": "ja: the telemetry.mark site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        100604,
+        101162
+      ],
+      "units": 558,
+      "bodySha256": "e728aa7a01c4562dde6522edefe5384ca7621a2e9ab2f06cb45e0112fb1d0f63",
+      "note": "La: the agent.offer site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        106133,
+        107056
+      ],
+      "units": 923,
+      "bodySha256": "fded84ad4c4108b5451df8b224eb643f0a777f529e5107e645aceb433698dbb4",
+      "note": "Wa: the tool.describe site"
+    }
+  ],
+  "missing": []
+}

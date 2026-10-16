@@ -1,0 +1,137 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        248693,
+        248705
+      ],
+      "units": 12,
+      "bodySha256": "aadbcdf6cce5c82e0452ee8e28b2ecf5d9d3ebb91bac5c7fb7ff692d0ae370f7",
+      "note": "`tb`, the millisecond base the token bucket refills against (1000) — the sibling `nb` (64) belongs to the engine and is not copied"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        248715,
+        248812
+      ],
+      "units": 97,
+      "bodySha256": "27ece60a9038ef26d15ba9ab57b7e7eeee7b1593759cae5e38c27ed343f67d70",
+      "note": "the packed-colour half word: `Lr` (halfBits 16, halfMask 65535, defaultMismatch 4096) and `dc`, which takes the high half — with `mc`, the low half"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        252131,
+        252200
+      ],
+      "units": 69,
+      "bodySha256": "d188ec14741d944108baed5b653d5951e95a3bae85713c844fd75d69b3db6aa4",
+      "note": "`Gn`, the channel layout one colour is packed with: 4 bits per channel, max 15, step 17, green at shift 4 and red at shift 8"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        252243,
+        252256
+      ],
+      "units": 13,
+      "bodySha256": "2edf2d0515f37bd4884fa3c45a339f74ffd64b73fb0dd8a45509db07aacbc9b1",
+      "note": "`ys`, the sentinel (32768, the high bit) that marks a channel as the surface default rather than a packed colour"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        252455,
+        252481
+      ],
+      "units": 26,
+      "bodySha256": "f445468cdece24585d649e06eb8c8a98a36475d2fa0940132cde40e32846f316",
+      "note": "`mc`, the low half of the packed pair — the foreground half `$f` writes"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        252898,
+        253057
+      ],
+      "units": 159,
+      "bodySha256": "0f21734b0af33bba0dcd8a55239aa25d0accc96e34b76854129caa8a40447fd1",
+      "note": "`gn`, the word layout of one painted cell: width 8, then foreground default/red/green/blue at 0..3 and background default/red/green/blue at 4..7"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        253816,
+        253943
+      ],
+      "units": 127,
+      "bodySha256": "59c67400bfe5f2edb3d55fdaa7b15205b4efdb00ebc97e0177bd47d61f4ef679",
+      "note": "the admission bucket: `bc` its capacity (4096), `fb` the fresh row (`{tokens: bc, refilledAt: 0}`), and `mb` the memoized accessor that lazily writes the row into the host registry and clears it again"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        253969,
+        254367
+      ],
+      "units": 398,
+      "bodySha256": "2c4af259dd2c6b7d55fbc7a1e3b582b50f1ce85bee9780c3a9b85a5c2dd4be90",
+      "note": "the refill and the encoder: `yb` the tokens per second (160), `Sb` which refills the row against the clock and spends one token per admitted frame, and `$f` which writes one cell — the default flag plus the three channels of the foreground and of the background — into the surface word table. The sibling constants `gb` (1024) and `hb` (131072) are the engine's costs, not this pair's"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        256690,
+        256712
+      ],
+      "units": 22,
+      "bodySha256": "e88c86bcbbb9cb86182c972d3958c029e1651efdf0c363115e8e94fbe0e741b7",
+      "note": "`bb` and `wb`, the default raster size (512 by 256) the validating mount checks against"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        257058,
+        257143
+      ],
+      "units": 85,
+      "bodySha256": "366fa4671a716a6e9a22e82e72f66125eac2c25618aa725fa6a1c902c4522a43",
+      "note": "the validating mount: `tF`, which checks a key and size against the defaults through `Kbr`, and `Xto`, the field list a site mount admits"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        87140,
+        87341
+      ],
+      "units": 201,
+      "bodySha256": "88bcdddbdca228e2f9f4dd33966ef4956beab38724f6f0dbfe1541acdc69b3d7",
+      "note": "`Kbr`, the whole-number check both sizes answer: a columns outside 1..the limit gets `columns must be a whole number from 1 to N`, and a rows gets the same sentence for `rows`"
+    }
+  ],
+  "missing": []
+}

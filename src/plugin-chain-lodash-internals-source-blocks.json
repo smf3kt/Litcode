@@ -1,0 +1,1695 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        1620,
+        2100
+      ],
+      "units": 480,
+      "bodySha256": "7b86651945e4ecd5af9c52d07939f917079a5bf306eac8652ab646d4e013c59e",
+      "note": "the five stack method bodies the `P` prototype assignments point at, and the `Ln` they close over (W45-55): `Pn`/`An`/`Mn`/`wn`/`In` with their aliases `Ze`/`et`/`tt`/`nt`/`ot`. Source order matters here and below: the aliases are `var`s, so a prototype assignment that runs before its method body is assigned keeps `undefined`"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2100,
+        2162
+      ],
+      "units": 62,
+      "bodySha256": "683e2851055f22d4c66add982500165ee3767005456e8a8116c44119d0894853",
+      "note": "declares P"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2162,
+        2262
+      ],
+      "units": 100,
+      "bodySha256": "0f2494515982621183bb794bf2c06ec64892bb7b58dc97599ce5453a474a8ede",
+      "note": "the `P` class's prototype methods — `clear`/`delete`/`get`/`has`/`set` (W45-55). W45-14 copied the constructor alone; the merge layer's `baseMerge` builds a `new k1e` stack and reads it back with `stack.get`/`stack.set`/`stack.delete`, so the constructor without these five assignments is not the class the source runs"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2262,
+        2272
+      ],
+      "units": 10,
+      "bodySha256": "4a6468e0436ab8685dd33d0855b7f9eff06084f328800330ec5a0c8b7554f60e",
+      "note": "declares k1e"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2272,
+        2421
+      ],
+      "units": 149,
+      "bodySha256": "592a6e346c091378ff95737836a45247ab11696bf56f89ae81586dba580c78da",
+      "note": "the `Fn` sentinel and the `E` (SetCache) prototype method bodies `En`/`Dn` with their aliases `rt`/`it` (W45-55), inline in the gap between the two classes"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2421,
+        2514
+      ],
+      "units": 93,
+      "bodySha256": "3ddfd077ba9167ab9b290a2cc088a02868a2b0591b7f3c72eae48bcbb6958f5d",
+      "note": "declares E"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2514,
+        2569
+      ],
+      "units": 55,
+      "bodySha256": "038734dfb0bb5b9ff7f729055c1784a030e9966662e3d5e819e0873381f4241b",
+      "note": "the `E` (SetCache) class's prototype methods — `add`/`push`/`has` (W45-55), copied with its constructor at [2421,2514) for the same reason"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2569,
+        2579
+      ],
+      "units": 10,
+      "bodySha256": "debfaf4603ac1b6a43f3a47f1ce72356bdd4851190d6f9fc0efcae9c3df11f7e",
+      "note": "declares kxr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2579,
+        2671
+      ],
+      "units": 92,
+      "bodySha256": "a7898ef1e68cd4c33250a29230a1b4e813025d03f811151a688a70a373038c55",
+      "note": "declares Hn"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2671,
+        2681
+      ],
+      "units": 10,
+      "bodySha256": "6b70067f3c3cbea67045661f7afd2b23860cb9a7e17d9a6ecfba37d81ce14204",
+      "note": "declares st"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2681,
+        2714
+      ],
+      "units": 33,
+      "bodySha256": "f02dd81e455cdb9c8609b5e77c93d78a27055d5bb4c176188b22aa9d3ac20390",
+      "note": "declares Bn"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2714,
+        2725
+      ],
+      "units": 11,
+      "bodySha256": "8fea5635ff393edd8de52b3b378256bed5c3e65cab2ad1bec140905e1c50618b",
+      "note": "declares Axr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2725,
+        2739
+      ],
+      "units": 14,
+      "bodySha256": "aa8e432155a5785e6700dfc08c3691c6c9f096e6656da85f849e18bfcd203236",
+      "note": "declares Un, _n"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        2739,
+        3223
+      ],
+      "units": 484,
+      "bodySha256": "db3a0c3d2d5252cdcf381547b2fa525f2c60b396e4bb762fc39741563d2599ee",
+      "note": "declares qn"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        3223,
+        3232
+      ],
+      "units": 9,
+      "bodySha256": "805e060c79d802d4af2c2b266edbcb2489ec33e1c4f8cfec2d947e7faabe2c80",
+      "note": "declares D"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        3232,
+        3260
+      ],
+      "units": 28,
+      "bodySha256": "211166c1daa52de4d9e2e3cbbf8b503a29df2775085e9625ca91b14deac4ddc7",
+      "note": "declares Wn, Zon"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        3260,
+        3348
+      ],
+      "units": 88,
+      "bodySha256": "492960b991642f747a9291e3e5cb1cf80bd2f1a0f30a223dcf860dce11225fff",
+      "note": "declares Nn"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        3348,
+        3358
+      ],
+      "units": 10,
+      "bodySha256": "4852d2c9492b60ca0895aa131faf4b1127989ada6d3f6140e0d2217fb5ae0d72",
+      "note": "declares at"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        3358,
+        3440
+      ],
+      "units": 82,
+      "bodySha256": "b0f8acfb55f187d412518a4d97ea0c4a0b066344c8c98260d60bfb0f6420a56d",
+      "note": "declares Gn"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        3440,
+        3451
+      ],
+      "units": 11,
+      "bodySha256": "022c994db6f1868dd4576c38450cb03745e0c6b7dd81625b9afaff47cb231a38",
+      "note": "declares esn"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        3451,
+        3745
+      ],
+      "units": 294,
+      "bodySha256": "7e42c85ca7fdf7fda68ae82b0e1da18b5d2ae309c07f9c99cae9c2d3ef2aa56f",
+      "note": "declares Kn, Jn, zn, Qn, Xn, Yn, …"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        3745,
+        4315
+      ],
+      "units": 570,
+      "bodySha256": "5da9da9130c3070e5d1c3771e6b52f035b5d0c5246434b7c503a460664d82439",
+      "note": "declares ao"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4315,
+        4325
+      ],
+      "units": 10,
+      "bodySha256": "dcae3c20496b530c30e2866d07c4f2848269552e73d08ecf807e53f655a6d4d8",
+      "note": "declares ut"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4325,
+        4406
+      ],
+      "units": 81,
+      "bodySha256": "e99a80eea264e4448125b3f8d78572b971b22c65c599a2a7cc6f288fb3ad046c",
+      "note": "declares lo"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4406,
+        4417
+      ],
+      "units": 11,
+      "bodySha256": "4a03becb92489d6c132a4a43d16a93b5f240c3a1f2da705c5f957ec9a41fcd07",
+      "note": "declares qMt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4417,
+        4444
+      ],
+      "units": 27,
+      "bodySha256": "809937852a7d51943dc8c44e26aecf925f4ff2e7c9274e31bc9d154ea8cc70d4",
+      "note": "declares uo, zw"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4444,
+        4501
+      ],
+      "units": 57,
+      "bodySha256": "30e5c29581cd128fb75ed1154812eb7f39658294f1d9b232f9472433230091a5",
+      "note": "declares co"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4501,
+        4512
+      ],
+      "units": 11,
+      "bodySha256": "dde7d2aaa61712d2a6528bf7344fe0ae5cf2859836995ef07f24e2721d1d3ad3",
+      "note": "declares Cxr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4512,
+        4622
+      ],
+      "units": 110,
+      "bodySha256": "68459c47bb29ad30b02ae7d589dfede58b4abaae0dc1deba50a5d3dc40cf20ee",
+      "note": "declares fo"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4622,
+        4633
+      ],
+      "units": 11,
+      "bodySha256": "7fb07f824b3591d959eec54c6f49d014ce3c387c0ea4137b51de1d2f62b86e92",
+      "note": "declares Txr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4633,
+        4656
+      ],
+      "units": 23,
+      "bodySha256": "43d4aa2603ae3db16da3bfc55209cf5ce5340d6b0ef6549387e36b37eae0dea2",
+      "note": "declares go"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4656,
+        4667
+      ],
+      "units": 11,
+      "bodySha256": "8bd63b95fdbef07597da6483362bb4c30e66dd54089f0924655985c146973d0f",
+      "note": "declares Rxr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4667,
+        4864
+      ],
+      "units": 197,
+      "bodySha256": "49108a3738fece2a22bd76978449f102528ec4c2c2952cc530c3963d931c461e",
+      "note": "declares ho, mo, ct, vo, KMt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4864,
+        4932
+      ],
+      "units": 68,
+      "bodySha256": "fb5b32b65daf7d9a2f1cb093efff8fa8575f72d09fdc793d3978ab70b1c080b8",
+      "note": "declares yo"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4932,
+        4942
+      ],
+      "units": 10,
+      "bodySha256": "ced9c77b43db5819e820fafcb11e8b5f4113cad8dd6eef27916c7f03b3542ded",
+      "note": "declares pt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4942,
+        4992
+      ],
+      "units": 50,
+      "bodySha256": "2750ee27eb4e128b4560d3b0bb94149c98fa3d7dc67bd504672a3b07a13d520a",
+      "note": "declares ko"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        4992,
+        5002
+      ],
+      "units": 10,
+      "bodySha256": "58da7e6bc2461e0eca15d3d8703c43e1466047e5f5e3b0de17cdafa8fcd519ea",
+      "note": "declares pG"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5002,
+        5030
+      ],
+      "units": 28,
+      "bodySha256": "48ec5cc8ba4759a471498c4a7abf0ad80d2ea36c825239203d13a7bcfca47426",
+      "note": "declares Co"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5030,
+        5070
+      ],
+      "units": 40,
+      "bodySha256": "267f65bc9cb7dae0e7172366ef30f1dd65439745918796dbe6ccb7e958fdfaa3",
+      "note": "declares xo"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5070,
+        5080
+      ],
+      "units": 10,
+      "bodySha256": "acd337279c1b605de3c567932a3837905479f747979b48a5c23e2202db8cddc2",
+      "note": "declares te"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5080,
+        5268
+      ],
+      "units": 188,
+      "bodySha256": "d62a21d2845a53ce9c0190de9eca2ebda69afb46930b1237e6618263fb5b3d87",
+      "note": "declares ft, Ro, To, Po, D8e"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5268,
+        5277
+      ],
+      "units": 9,
+      "bodySha256": "9945198ca4dbe441c7cb2f794ac93bc9606d6ced4a99b6a97f64cd8b2a6387f5",
+      "note": "declares U"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5301,
+        5324
+      ],
+      "units": 23,
+      "bodySha256": "02ce4d4b7d02bf0b5647759c3286db152ef41af99459146f567ee0b48ac76556",
+      "note": "declares Ao"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5324,
+        5334
+      ],
+      "units": 10,
+      "bodySha256": "9492ccfa7586b7dcdd77dc4f9f5dde45c7c2995d100c2776b3582d4cbe6d8897",
+      "note": "declares gt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5334,
+        5512
+      ],
+      "units": 178,
+      "bodySha256": "3e4f0a2589dd435237fd0bb7259cb4693ba854f2385b52a3557b81413ce6d2a7",
+      "note": "declares St, ht, Mo, mt, wo, Lo, …"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5512,
+        5558
+      ],
+      "units": 46,
+      "bodySha256": "5b46bbcb05f083e688b909ff17dda354b86348ef45c0bb70069714803295fa86",
+      "note": "declares Oo, Io"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5558,
+        5677
+      ],
+      "units": 119,
+      "bodySha256": "0afa4b656e131aa084da498ded743ac4ab6f439cf2be818464d58a0ca061b1c1",
+      "note": "declares Fo"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5677,
+        5688
+      ],
+      "units": 11,
+      "bodySha256": "0b70c43b2132716ee330b15b5c7cb932b4b23583f3b9b7d6ca55dd76d4eb301d",
+      "note": "declares L8e"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5688,
+        5712
+      ],
+      "units": 24,
+      "bodySha256": "8fc1b19843d523d7cd3679e6a5baabcd8d383b3876cf9e72f8c5b42b82b10d66",
+      "note": "declares Eo"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5712,
+        5774
+      ],
+      "units": 62,
+      "bodySha256": "b1be4470a645feb19a1b6fb137e8e6da4cb88fef2998f0c1272151c1b7deb27c",
+      "note": "declares Do"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5774,
+        5783
+      ],
+      "units": 9,
+      "bodySha256": "818a81add861129ddd51e3c77f16db042ed180bc9e24a208977a82d46a2a809e",
+      "note": "declares A"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        5783,
+        6348
+      ],
+      "units": 565,
+      "bodySha256": "6f90d4257d58b8a41604af4234545ed3e6cc717e752c0135a65e06cec0240e17",
+      "note": "declares Ho, Bo, Uo, jo, _o, qo, …"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        6498,
+        6552
+      ],
+      "units": 54,
+      "bodySha256": "8311d978c3a84d5662eaffca70c6aad3f31930384f50e6437da70b19200d63ae",
+      "note": "declares sr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        6552,
+        6562
+      ],
+      "units": 10,
+      "bodySha256": "12439c1cc680b3ab323b6e7d7e3042a9a7a90948582a10f7e4a4f2c3255f48aa",
+      "note": "declares vt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        6562,
+        6609
+      ],
+      "units": 47,
+      "bodySha256": "c14f7ea7c80d03ef0d59d4617ada3e75e9f6f81ee739819dc7766aec9b2e8798",
+      "note": "declares ar"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        6609,
+        6620
+      ],
+      "units": 11,
+      "bodySha256": "d36cec9fb8b2b559faf6d4cd2ec05f64788b9d724822e190756fd14316d34e2b",
+      "note": "declares tsn"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        6620,
+        6629
+      ],
+      "units": 9,
+      "bodySha256": "c362b0ec4d780261f1ca2bffff5f2451f6b1fca596287c00f5bfb7fdbfcc02ba",
+      "note": "declares W"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        6653,
+        6921
+      ],
+      "units": 268,
+      "bodySha256": "65df93641a7ada728ca33a62909594c6fe017caf0010b798a057ebcc8df5b38e",
+      "note": "declares yt, L, lr, ne, dr, C1e"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        6921,
+        6974
+      ],
+      "units": 53,
+      "bodySha256": "9434aa22f8446f3425fa059babb674d48a1620713d2fb260e44615700864ab26",
+      "note": "declares bt, ur, nsn"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        6974,
+        7019
+      ],
+      "units": 45,
+      "bodySha256": "6baa707a8831f6a5344b0aa997541a0ac2f531883008ed04838fdb998fe593e2",
+      "note": "declares pr, fr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7019,
+        7319
+      ],
+      "units": 300,
+      "bodySha256": "8ab5d9b7ec2f07df220ee2c73843867ba94c9d32907245b3b1c652984906a672",
+      "note": "declares gr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7319,
+        7330
+      ],
+      "units": 11,
+      "bodySha256": "566aef2e8030b9ceb7d579506bfa5964c0ca05d38819c1100bf10fa60fc96928",
+      "note": "declares xxr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7330,
+        7354
+      ],
+      "units": 24,
+      "bodySha256": "da0a34a9d23ec1e7cfc2b5f473b05ad0c09ac115b1dcd99fb182e2f2c20f3bd3",
+      "note": "declares hr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7354,
+        7445
+      ],
+      "units": 91,
+      "bodySha256": "6d30af364014884bab42ec5140ffd104f711856a1b8e6c744b630f95c9a5fdaa",
+      "note": "declares mr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7445,
+        7456
+      ],
+      "units": 11,
+      "bodySha256": "0cb9532172208ddb30c1130c9ed4da5384f62f26d372434554af506efee697c8",
+      "note": "declares YMt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7456,
+        7508
+      ],
+      "units": 52,
+      "bodySha256": "37fddff5c1cdaeaa94b2cb9bb147c29b24a45d66121e6c3ae861df6f96f4ec30",
+      "note": "declares Sr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7508,
+        7519
+      ],
+      "units": 11,
+      "bodySha256": "cba37834c18f88fc08f3e3a8a812ebe1c1760ad24bdf52be05df8c5b702c2cbd",
+      "note": "declares Pxr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7519,
+        7556
+      ],
+      "units": 37,
+      "bodySha256": "25e3b356a0ed3b0e4a72d206fee44ac1438b316da5c8a2ca21518c617c523a41",
+      "note": "declares vr, kt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7556,
+        7601
+      ],
+      "units": 45,
+      "bodySha256": "9bcb1e349eddd3b2540c6b536c40f0432656c66fc81d00fdded75b61f0bbc7df",
+      "note": "declares yr, br"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7601,
+        7725
+      ],
+      "units": 124,
+      "bodySha256": "3ae29c205939ef1f1a5b1d20f987f6e7821d919fdd4bd20e5334fd2c4115694b",
+      "note": "declares kr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7725,
+        7735
+      ],
+      "units": 10,
+      "bodySha256": "cb75cdddbec619e606b072e82e01a3463fff64ea63002fc7233a487e0c9598a1",
+      "note": "declares Ct"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7735,
+        7787
+      ],
+      "units": 52,
+      "bodySha256": "6b53d39619c4c540770e3c1514c66ce968a38ea52902b1e5cec820e6ddb5d7c2",
+      "note": "declares Cr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7787,
+        7798
+      ],
+      "units": 11,
+      "bodySha256": "0335808fe6ef1490b98aea4f6ad6b914baef7447c57b37e5fb307d5aaf643510",
+      "note": "declares wwe"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7798,
+        7840
+      ],
+      "units": 42,
+      "bodySha256": "c6c325134e58634f01150bda2cd50fb6a4e44cfc713e4d73565d342340a543e2",
+      "note": "declares xr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7840,
+        7851
+      ],
+      "units": 11,
+      "bodySha256": "a0ce8f64f429122401e7b4eef22e08a4a9c319d8ab3fbd6f4e88840cc8fafed0",
+      "note": "declares Wpe"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7851,
+        7888
+      ],
+      "units": 37,
+      "bodySha256": "bdc71b1d96e903f4d3accd88b495c7d3f97b6ef3068e2d85c843af2f86b613f1",
+      "note": "declares Rr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7888,
+        7899
+      ],
+      "units": 11,
+      "bodySha256": "2fe14f15304052064df08b9162847a0268554a976f522ec05feccbbcbc80eee6",
+      "note": "declares Dzn"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7899,
+        7949
+      ],
+      "units": 50,
+      "bodySha256": "2129f2b7b88c2635bbcefff726bd83c210742b9d53a0aa8c4da7137daeeba33a",
+      "note": "declares Tr, Pr, Ar"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        7949,
+        8578
+      ],
+      "units": 629,
+      "bodySha256": "35a91f839350de5018ebc825f877d796417d443c5a58094ad65bc708b548b823",
+      "note": "declares Mr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        8578,
+        8588
+      ],
+      "units": 10,
+      "bodySha256": "87386d75c3ca1f65c24947eb10877dd1d7b385ef24103bc57e9b2b720878a622",
+      "note": "declares xt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        8588,
+        8619
+      ],
+      "units": 31,
+      "bodySha256": "6c1b69c81da2ba48e89e806ae6f16c172558c595265d2256fbeb95ae09abd531",
+      "note": "declares wr, N"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        8619,
+        8649
+      ],
+      "units": 30,
+      "bodySha256": "29e49b3bb9e6e8f270d75f1d034d7e76c650fa8f3dbf057e81b106fc0abe6dac",
+      "note": "declares Lr, G"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        8649,
+        8677
+      ],
+      "units": 28,
+      "bodySha256": "56e46d7d7d00738c5236aa4feef766b61ac29083ffe4e495958909fae0059d0a",
+      "note": "declares Or, Apt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        8677,
+        8707
+      ],
+      "units": 30,
+      "bodySha256": "1e078badd26e0b82b3fe65aa3b8203b1322cb3f153a8cde8a5ed1c213321c6de",
+      "note": "declares Ir, V"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        8707,
+        8895
+      ],
+      "units": 188,
+      "bodySha256": "817bc59696105cb6e38fa67a57e5f6fc0137fd3eac7823f5ad58e8c30d46f99f",
+      "note": "declares Rt, Fr, Tt, Pt, At, Mt, …"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        9201,
+        9211
+      ],
+      "units": 10,
+      "bodySha256": "eb732ad019859a67d52d8eab7cba2eea481933ff4dec36eb3c3e480e4ccb145b",
+      "note": "declares N8e"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        9211,
+        9325
+      ],
+      "units": 114,
+      "bodySha256": "84ad5eb591ce337a08001a99a504fd70eae2b3609d17d12b04aaaccfff3ac75a",
+      "note": "declares _r, wt, Lt, J, qr, Ot"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        9325,
+        9775
+      ],
+      "units": 450,
+      "bodySha256": "22a866784a9075f356f2fd6a28c92d9068c5166216f263518a7bd16c26635e9d",
+      "note": "declares Wr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        9775,
+        9785
+      ],
+      "units": 10,
+      "bodySha256": "2f050de8ef5bf152ed7a049d0cdaddb24f1ca388f13ba1dcf9ef1d98f54d352f",
+      "note": "declares It"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        9785,
+        9906
+      ],
+      "units": 121,
+      "bodySha256": "307d144335fa8cf0746e2e5a7f1081aa86839cac193ff30d1fc7907d6ef22b70",
+      "note": "declares Ft"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        9906,
+        9915
+      ],
+      "units": 9,
+      "bodySha256": "b28054871935b7738101e6aa6f6014cab36ff1bf6d9a34da6fc16c292072b13a",
+      "note": "declares M"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        21293,
+        21392
+      ],
+      "units": 99,
+      "bodySha256": "b01b8cf86d17854a95eb70e436945c37857dfc0eb8d54b290871e5b79bf5f35f",
+      "note": "osn: the defineProperty probe `zr` reads"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        21392,
+        21507
+      ],
+      "units": 115,
+      "bodySha256": "c214caa26e57487931e62a76a55a43fc2da4dd3c11d958e074577f1a8510068f",
+      "note": "zr: the short-name builder `zZ` aliases"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        21507,
+        21517
+      ],
+      "units": 10,
+      "bodySha256": "2be50d39b8ef0d565b7918ca48d6c132b09899ef1e8859bcd960925ba753ed18",
+      "note": "zZ: the key-shortening alias chunk-t2x9eyac imports"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        21738,
+        21752
+      ],
+      "units": 14,
+      "bodySha256": "e9143edcae085fdc07381ce1c93eca7f96082d4c4707c2e48f33fc37743c9d85",
+      "note": "declares $r, Zr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        21752,
+        22089
+      ],
+      "units": 337,
+      "bodySha256": "f1d667e05572b170c4ae98d9611c04eb1b29f006ad031c1585f4d5e3ae8ba2a3",
+      "note": "declares ei"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22089,
+        22099
+      ],
+      "units": 10,
+      "bodySha256": "266c4c89b5f2a5c01c57988c3755b2da6c73b99dc59e6fea9af6d523541cc3fa",
+      "note": "declares Ut"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22099,
+        22135
+      ],
+      "units": 36,
+      "bodySha256": "6d81b046fad0a5f7a1e4a49fc456aa2d62763bdf8753974d9a6c5dca79c9e436",
+      "note": "declares ti"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22135,
+        22144
+      ],
+      "units": 9,
+      "bodySha256": "10dc5c9c205aa1dcb0b1cfe8b384b8327fc70439e3be6ef74ee54feb9acf2139",
+      "note": "declares Q"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22144,
+        22237
+      ],
+      "units": 93,
+      "bodySha256": "b9a434d2f75b26b6b2c8fe237c189a852fe8b4245123226e1989896fbc53834c",
+      "note": "declares ni"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22237,
+        22247
+      ],
+      "units": 10,
+      "bodySha256": "33f69dd0cfb19a342caf2c193dbf899d4f888412910c160e8c07d30c44900c14",
+      "note": "declares jt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22247,
+        22352
+      ],
+      "units": 105,
+      "bodySha256": "6202e064ca354a9461923d09fb8d5d8503b601f8e2f3f14eb7ba0c7c61432099",
+      "note": "declares oi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22352,
+        22361
+      ],
+      "units": 9,
+      "bodySha256": "9380968ed6512e0e61d7645124479ca7f6337bf3f8ba56a79d27bf6fab857f83",
+      "note": "declares X"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22361,
+        22482
+      ],
+      "units": 121,
+      "bodySha256": "9e69ee9de58a31489a386d04a95e4a37555760feebc9a5eec6fed7c020ec3252",
+      "note": "declares ri"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22482,
+        22492
+      ],
+      "units": 10,
+      "bodySha256": "a393ae4f546b690873dd697d82daf2a305382f5c769a6624b2bb1e893996d1cd",
+      "note": "declares _t"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22492,
+        22517
+      ],
+      "units": 25,
+      "bodySha256": "bcc94b7ab54fbddf7bc11d9f9c3e833f15fe6c7dfa652bb94c6991ca2a112dea",
+      "note": "declares ii"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22517,
+        22577
+      ],
+      "units": 60,
+      "bodySha256": "efa2aea0028435940dfe8f44461d5daf78d3725ffe6fa0c91183d02b20fd37c3",
+      "note": "declares si"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22577,
+        22588
+      ],
+      "units": 11,
+      "bodySha256": "cc36e8de5bd84fc26f72f2402e0b6a2611c8881face2eb9325d848ce870ec85b",
+      "note": "declares Gse"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22588,
+        22657
+      ],
+      "units": 69,
+      "bodySha256": "4510d1c38ec56ba0787e1061bedab4c9999fc77c8fef6b25d34dc6378c7ad89b",
+      "note": "declares ai, di"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22657,
+        22831
+      ],
+      "units": 174,
+      "bodySha256": "8a915444725e6a9b0fa23bac681eb697339574e967fe1974f6a01b3a28645a6e",
+      "note": "declares ui"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22831,
+        22840
+      ],
+      "units": 9,
+      "bodySha256": "3313c142ca19b277d056e823469ff82b51571fb2c4331b896a665876649a0d55",
+      "note": "declares w"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22840,
+        22851
+      ],
+      "units": 11,
+      "bodySha256": "b2a4cf4c63b7fe153e8feecd06f4494d1b010a27ee4f1531a6e461e7fd7765ed",
+      "note": "declares ci"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22851,
+        22944
+      ],
+      "units": 93,
+      "bodySha256": "a35b739307835a37aa35148560840e14f5355e54f0d60679bf7e555d7bf4d2b9",
+      "note": "declares pi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22944,
+        22954
+      ],
+      "units": 10,
+      "bodySha256": "7ef8550ee26a2e72e4ee17b907948c19989555657709fa5e4f908c22e7b852ed",
+      "note": "declares qt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        22954,
+        23220
+      ],
+      "units": 266,
+      "bodySha256": "87d621c6dad5d161a41265b76587a932bf05adb22a0108c32c2dc52d29fbeecb",
+      "note": "declares fi, gi, hi, Wt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23220,
+        23316
+      ],
+      "units": 96,
+      "bodySha256": "7c2772142518a9153122a13a741f85c9a15555562af16ad1ab34e05f5578c0e0",
+      "note": "declares mi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23316,
+        23327
+      ],
+      "units": 11,
+      "bodySha256": "8754d2d38302135e79afa063e261bf91c1633c0d7c65a735c5d99241180a4eb6",
+      "note": "declares T1e"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23327,
+        23389
+      ],
+      "units": 62,
+      "bodySha256": "d965f98dfa3282dbce3c2174448ce0bfecba360506c02dc43a6792fab4f31e5b",
+      "note": "declares Si, Nt, Gt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23389,
+        23540
+      ],
+      "units": 151,
+      "bodySha256": "c7014adc401175b59fa35432c9b59c50c879eedc4c2557efceeb776fcef36a83",
+      "note": "declares Kt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23540,
+        23550
+      ],
+      "units": 10,
+      "bodySha256": "2a1fa98fbebe7e4e0559034f25705cfc5cec275325212822f97fdf04b53e55e2",
+      "note": "declares Vt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23550,
+        23589
+      ],
+      "units": 39,
+      "bodySha256": "fa2b9d74b3af647d286637ca16dd35fc4dfea6c6facb92f2b48c2458c6e9b56e",
+      "note": "declares vi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23589,
+        23600
+      ],
+      "units": 11,
+      "bodySha256": "5145b471bbf5ae965d197661c2a8fd36a4d919ccff6a91d46e9e294b048bb564",
+      "note": "declares Gpe"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23600,
+        23664
+      ],
+      "units": 64,
+      "bodySha256": "fbaf18280361987f57c9680dca3861045b187b05cbc507911e4f06c7e243c05a",
+      "note": "declares yi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23664,
+        23675
+      ],
+      "units": 11,
+      "bodySha256": "9e9791e9e7ce2c89eb0462b514fa3ffdc60838f1136388a18c026f9b20e8dac4",
+      "note": "declares zpe"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23675,
+        23686
+      ],
+      "units": 11,
+      "bodySha256": "346c52ce94a7b0387461f7b001a5970e136c9f9fc2358cd4986ef6ad720b7ea3",
+      "note": "declares bi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23686,
+        23782
+      ],
+      "units": 96,
+      "bodySha256": "0e75264cbeb256166fa253387be0d0b3106a617f78caddbea9647470efcccd5a",
+      "note": "declares ki"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23782,
+        23793
+      ],
+      "units": 11,
+      "bodySha256": "fa0d68c82f886c020197bd8fa7620c2eeb52a2df67c526f7a1f59177c764eb35",
+      "note": "declares zse"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23793,
+        23900
+      ],
+      "units": 107,
+      "bodySha256": "7bc3df75f21a5bab9e0703cb4fa01c695e09a2761850b099e94f503a1d5f8e95",
+      "note": "declares Ci"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23900,
+        23911
+      ],
+      "units": 11,
+      "bodySha256": "26afddae4a0c6630bb42d1b5cfa95a01e5ef8575d11080b95e397f2258e6f74c",
+      "note": "declares $8e"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23911,
+        23982
+      ],
+      "units": 71,
+      "bodySha256": "5e7a37ec7f754067d956cc2750ea7c16eb139e6b8b8cdb23dc88055d284f22b8",
+      "note": "declares xi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23982,
+        23993
+      ],
+      "units": 11,
+      "bodySha256": "8ac207c46d6aae4d4aa032d86aea1e5455072211160fc03de7978d7e294456a0",
+      "note": "declares Nxr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        23993,
+        24041
+      ],
+      "units": 48,
+      "bodySha256": "676968b3e051b3668d165eac3da07051187b608bf8ae8c82b68270a70e731c4b",
+      "note": "declares Ri"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24041,
+        24051
+      ],
+      "units": 10,
+      "bodySha256": "cd18b71507b84b639771efe5768e01953fcaf4b495f1030aed4e9f6b3982c10b",
+      "note": "declares zt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24051,
+        24259
+      ],
+      "units": 208,
+      "bodySha256": "a50e47f2502ea5dff7ea18e46494680cd7b35699729f97bdb92f50596448f7cc",
+      "note": "declares Ti"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24259,
+        24269
+      ],
+      "units": 10,
+      "bodySha256": "d0d53867303c41bd51262ceed2752a8b89880400ce610fd190bacb3dfbd55221",
+      "note": "declares Qt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24269,
+        24313
+      ],
+      "units": 44,
+      "bodySha256": "202d7252c907d770b359d58572d071425c8bfa4920ff2d5353b0dcf6346fddfe",
+      "note": "declares Pi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24313,
+        24324
+      ],
+      "units": 11,
+      "bodySha256": "33469a01889a3fa9012990746195003bd610fab65e4c1fa69e6f77357079a283",
+      "note": "declares Fxr"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24324,
+        24338
+      ],
+      "units": 14,
+      "bodySha256": "ceac4a27b72d501ae0108298cd52a18937ef995287270963156307d9a7377fc1",
+      "note": "declares Ai, Mi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24338,
+        24470
+      ],
+      "units": 132,
+      "bodySha256": "63582618a2501d58ba622201ef9635ca84718b5fcf88633ffb8dd33b20166332",
+      "note": "declares wi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24470,
+        24480
+      ],
+      "units": 10,
+      "bodySha256": "9583a7bc7f3709bb6e3f778db5cec152bd13ebb54cec1966f0e636d3703f6d81",
+      "note": "declares Xt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24480,
+        24504
+      ],
+      "units": 24,
+      "bodySha256": "ea1ca325051602387f936450c2652d48ef705f0fb59b249df0f4a1b4921a5630",
+      "note": "declares Li"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24504,
+        24515
+      ],
+      "units": 11,
+      "bodySha256": "af1fbe4f0362596edeabbb2f29759bc7e794baa81543d34599c6520273e73716",
+      "note": "declares U8e"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24515,
+        24577
+      ],
+      "units": 62,
+      "bodySha256": "2c38b81d1d1ad4201264885f9270e2ea234b30d3fe3da832e0c72f05a74be765",
+      "note": "declares Oi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24577,
+        24587
+      ],
+      "units": 10,
+      "bodySha256": "187eb406c9c07b9a002b3d02a359b2df55d6125ac3cc5d5c9f576084c8c4be62",
+      "note": "declares Yt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24587,
+        24638
+      ],
+      "units": 51,
+      "bodySha256": "02f9dedac3dfa1a72634d711c905b6eaf534b175ea722b456d6947b84d862ab6",
+      "note": "declares Ii"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24638,
+        24648
+      ],
+      "units": 10,
+      "bodySha256": "fbc0a5bbd901a634adf32458b90038ba3c104e4b667ac3c365d5c1ad03556bb1",
+      "note": "declares $t"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24648,
+        24692
+      ],
+      "units": 44,
+      "bodySha256": "7a33bbb2a8f6e94a1cd3fee5f0a2510a32acc472b9cf439ef274d41f32d87717",
+      "note": "declares Fi"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24692,
+        24702
+      ],
+      "units": 10,
+      "bodySha256": "ca740cec07676bd867d1f7ee9887e3fa8125afc92e6b8ad622b9b1ec4ff36d2a",
+      "note": "declares Zt"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24702,
+        24840
+      ],
+      "units": 138,
+      "bodySha256": "5966fbe1c51d5bb24b7c0eb24b69a6a516ce8d1945ba01a907a52f0a2f9a6a4b",
+      "note": "declares Ei"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        24840,
+        24850
+      ],
+      "units": 10,
+      "bodySha256": "0df2247721b2317b60f1e3dc44e3cc918c2d38aaf7ab52de929dbcbb348e4596",
+      "note": "declares uU"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        21517,
+        21658
+      ],
+      "units": 141,
+      "bodySha256": "54960eb12eb29de30760d714e00f202e2b87c86e750a500d1f35cdfc0ebce089",
+      "note": "declares Qr: the collection walker the merge layer's `baseEach` is built from (W45-55)"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        21658,
+        21668
+      ],
+      "units": 10,
+      "bodySha256": "3b9ffda7660b848a0dc4469b15c4da293983d381885f3f0d4fd6045fcb701945",
+      "note": "declares Bt (W45-55)"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        21668,
+        21687
+      ],
+      "units": 19,
+      "bodySha256": "0ddf73b5a924ecc92eaa8d96ac1e877d9bdafef6db7881593d2cb833891900a9",
+      "note": "declares Xr and Lxr: the built walker the merge internals iterate collections with (W45-55)"
+    }
+  ],
+  "missing": []
+}

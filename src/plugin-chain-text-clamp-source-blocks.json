@@ -1,0 +1,123 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-eb9r2hbv.js",
+      "sha256": "3b1f83a5d1fcec7a1aa8a7d0adf139d8643ace6755985b79f19ddc1e7de22abe"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e"
+    },
+    {
+      "module": "chunk-pa2d6xdm.js",
+      "sha256": "0a153d833913cb0d61d58e8fcef2305314884997ff8ade99440e04c4cc1e5b2e"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-eb9r2hbv.js",
+      "sha256": "3b1f83a5d1fcec7a1aa8a7d0adf139d8643ace6755985b79f19ddc1e7de22abe",
+      "range": [
+        615,
+        640
+      ],
+      "units": 25,
+      "bodySha256": "1e97a7dd9a3cde5e248eb964e48866c34f2c886df604cf852cb7353ce3d954a8",
+      "note": "declares the segmenter memo beside the display-name memo this pass does not read"
+    },
+    {
+      "module": "chunk-eb9r2hbv.js",
+      "sha256": "3b1f83a5d1fcec7a1aa8a7d0adf139d8643ace6755985b79f19ddc1e7de22abe",
+      "range": [
+        720,
+        803
+      ],
+      "units": 83,
+      "bodySha256": "3bb900c08b81c7434cc11e06c5859e506f3ee3886c81a6c1f20f4b51f50a2ffb",
+      "note": "declares ra, the lazily built grapheme segmenter every width and cut below reads"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f",
+      "range": [
+        863,
+        892
+      ],
+      "units": 29,
+      "bodySha256": "cb8b1e574afc6c8b9f7d8a0e49416270f6ad961cf44bad2557078f680a79c3d9",
+      "note": "declares z, the width options the host call is given"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f",
+      "range": [
+        892,
+        935
+      ],
+      "units": 43,
+      "bodySha256": "f4f9588d319d263d23717eb01e33c366d8a7ebcab863b4e2a0e1ba8aafecffaf",
+      "note": "declares ae, the width of a string"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f",
+      "range": [
+        8443,
+        8612
+      ],
+      "units": 169,
+      "bodySha256": "b8519145022d51041df2bb7d36d334a20ba13d82a6d2d8e757db4afbec6449eb",
+      "note": "declares ct, cut to a column budget without splitting a grapheme, ellipsis included in the budget"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f",
+      "range": [
+        9072,
+        9254
+      ],
+      "units": 182,
+      "bodySha256": "85a2dba66536933d609af7f0898adf918f67f730add19f7a977c89b3754a73d8",
+      "note": "declares jo, the first line only, ellipsis appended or the line cut to the budget"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        3224,
+        3289
+      ],
+      "units": 65,
+      "bodySha256": "7184cd31a9af8f0fac35de5b85a290da988105f5df932de856f663e2dc2427cd",
+      "note": "declares Qe, the text before a separator"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        3529,
+        3561
+      ],
+      "units": 32,
+      "bodySha256": "b4022a3d073a7db41c37c63237ed26eb7fb5f7a1caff06b8c1be5c4a57d00cf4",
+      "note": "declares Ar, the first line of a text"
+    },
+    {
+      "module": "chunk-pa2d6xdm.js",
+      "sha256": "0a153d833913cb0d61d58e8fcef2305314884997ff8ade99440e04c4cc1e5b2e",
+      "range": [
+        720,
+        744
+      ],
+      "units": 24,
+      "bodySha256": "e68496fc882a9433d7d05681c1369d627589a6def1594d4ab56db4d3685d9e03",
+      "note": "declares $8, the identity the sanitiser returns its clamped text through"
+    }
+  ],
+  "missing": []
+}

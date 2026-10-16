@@ -1,0 +1,111 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+      "range": [
+        6940,
+        7011
+      ],
+      "units": 71,
+      "bodySha256": "29c49b34ac087130abea62a888340b0274fb96e5d25d0d15eb0f8c30aa91ba72",
+      "note": "the fullwidth-form code point ranges (the wide width table's ambiguous half)"
+    },
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+      "range": [
+        7011,
+        9282
+      ],
+      "units": 2271,
+      "bodySha256": "fa2082f98b32ea4740223b17d14ea8bb521bbb717740ba43087c0e9a8bee4012",
+      "note": "the wide code point range table (CJK, hangul, fullwidth forms, supplementary planes)"
+    },
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+      "range": [
+        9475,
+        9540
+      ],
+      "units": 65,
+      "bodySha256": "b83cd7db6a1dba4d933131deada153ba9f73bb972324816b681706e2e3e501d9",
+      "note": "the full-width code point test the tokenizer reports per character"
+    },
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+      "range": [
+        9540,
+        9701
+      ],
+      "units": 161,
+      "bodySha256": "07168810be1331e52a4377ae05cda8b128b1736fdbae5440535b32e525d4df33",
+      "note": "the hyperlink (OSC 8) sequence reader: the prefix match and the BEL-terminated slice"
+    },
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+      "range": [
+        9701,
+        9726
+      ],
+      "units": 25,
+      "bodySha256": "d27d4373c8ba8fe03b1524e3d167aab4a0fe461d7d6631663711e5d2b48a7f92",
+      "note": "the CSI scan's character codes: 0-9, ';' and 'm'"
+    },
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+      "range": [
+        9726,
+        9864
+      ],
+      "units": 138,
+      "bodySha256": "7eb8a97725b40fe5beb43db8723f8fe9c5918756e4102335d1d589b83b9ecddf",
+      "note": "the CSI sequence end scan: digits and semicolons up to the final byte"
+    },
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+      "range": [
+        9864,
+        9943
+      ],
+      "units": 79,
+      "bodySha256": "ad74b7b1fafe6d3cc9276ae973f477ffa08403ad4dd35d23c006d2548b0e5a5d",
+      "note": "the CSI sequence slice from the end scan"
+    },
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+      "range": [
+        9943,
+        10289
+      ],
+      "units": 346,
+      "bodySha256": "00485d7a41c80fbdbc29cd93da2b49299ac86d802d16a264ea41647b1de2df41",
+      "note": "the SGR splitter: one sequence per colour, keeping extended 38/48;5;n and 38/48;2;r;g;b parameter groups together"
+    },
+    {
+      "module": "chunk-q4ya5hp8.js",
+      "sha256": "af9981afeb41bc2063fc88fbd1386bf960f9f731336e5b9f43a1525571ca31f3",
+      "range": [
+        10289,
+        10753
+      ],
+      "units": 464,
+      "bodySha256": "5f376ae53b53e81d9ab3e5b026fa470efe099069229e100cf511876ccb1499c6",
+      "note": "the ANSI tokenizer: escape sequences as ansi tokens carrying their close code, every other code point as a char token carrying its full-width flag, up to a visible-width budget"
+    }
+  ],
+  "missing": []
+}

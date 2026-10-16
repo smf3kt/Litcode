@@ -1,0 +1,856 @@
+{
+  "status": "partial-unfinished",
+  "head": "033b9b8d704a12fed9e70e0b9429b49f87870508",
+  "compiler": "7.0.2",
+  "baseline_errors": 136,
+  "errors": 46,
+  "files": 18,
+  "diagnostics": [
+    {
+      "file": "cli/print.ts",
+      "line": 1803,
+      "column": 9,
+      "code": "TS2322",
+      "message": "Type 'ScopedMcpServerConfig' is not assignable to type '{ type?: \"stdio\"; command: string; args?: string[]; env?: Record<string, string>; } | { type: \"sse\"; url: string; headers?: Record<string, string>; } | { type: \"http\"; url: string; headers?: Record<...>; } | { ...; }'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 2839,
+      "column": 20,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"apply_flag_settings\" | \"can_use_tool\" | \"cancel_async_message\" | \"elicitation\" | \"get_context_usage\" | \"get_settings\" | \"hook_callback\" | \"initialize\" | \"mcp_message\" | ... 10 more ... | \"stop_task\"' and '\"end_session\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 2841,
+      "column": 72,
+      "code": "TS2339",
+      "message": "Property 'reason' does not exist on type 'never'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3286,
+      "column": 20,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"apply_flag_settings\" | \"can_use_tool\" | \"elicitation\" | \"get_settings\" | \"hook_callback\" | \"stop_task\"' and '\"channel_enable\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3290,
+      "column": 29,
+      "code": "TS2339",
+      "message": "Property 'serverName' does not exist on type 'never'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3299,
+      "column": 20,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"apply_flag_settings\" | \"can_use_tool\" | \"elicitation\" | \"get_settings\" | \"hook_callback\" | \"stop_task\"' and '\"mcp_authenticate\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3452,
+      "column": 20,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"apply_flag_settings\" | \"can_use_tool\" | \"elicitation\" | \"get_settings\" | \"hook_callback\" | \"stop_task\"' and '\"mcp_oauth_callback_url\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3503,
+      "column": 20,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"apply_flag_settings\" | \"can_use_tool\" | \"elicitation\" | \"get_settings\" | \"hook_callback\" | \"stop_task\"' and '\"claude_authenticate\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3598,
+      "column": 11,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"apply_flag_settings\" | \"can_use_tool\" | \"elicitation\" | \"get_settings\" | \"hook_callback\" | \"stop_task\"' and '\"claude_oauth_callback\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3599,
+      "column": 11,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"apply_flag_settings\" | \"can_use_tool\" | \"elicitation\" | \"get_settings\" | \"hook_callback\" | \"stop_task\"' and '\"claude_oauth_wait_for_completion\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3610,
+      "column": 33,
+      "code": "TS2339",
+      "message": "Property 'subtype' does not exist on type 'never'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3612,
+      "column": 52,
+      "code": "TS2339",
+      "message": "Property 'authorizationCode' does not exist on type 'never'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3613,
+      "column": 40,
+      "code": "TS2339",
+      "message": "Property 'state' does not exist on type 'never'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3640,
+      "column": 20,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"apply_flag_settings\" | \"can_use_tool\" | \"elicitation\" | \"get_settings\" | \"hook_callback\" | \"stop_task\"' and '\"mcp_clear_auth\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3772,
+      "column": 20,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"can_use_tool\" | \"elicitation\" | \"hook_callback\"' and '\"generate_session_title\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3804,
+      "column": 20,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"can_use_tool\" | \"elicitation\" | \"hook_callback\"' and '\"side_question\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3881,
+      "column": 20,
+      "code": "TS2367",
+      "message": "This comparison appears to be unintentional because the types '\"can_use_tool\" | \"elicitation\" | \"hook_callback\"' and '\"remote_control\"' have no overlap."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 3882,
+      "column": 31,
+      "code": "TS2339",
+      "message": "Property 'enabled' does not exist on type 'never'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 4056,
+      "column": 11,
+      "code": "TS2345",
+      "message": "Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 4060,
+      "column": 57,
+      "code": "TS2345",
+      "message": "Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 4088,
+      "column": 34,
+      "code": "TS2345",
+      "message": "Argument of type 'string' is not assignable to parameter of type '`${string}-${string}-${string}-${string}-${string}`'."
+    },
+    {
+      "file": "cli/print.ts",
+      "line": 4096,
+      "column": 9,
+      "code": "TS2322",
+      "message": "Type 'string' is not assignable to type '`${string}-${string}-${string}-${string}-${string}`'."
+    },
+    {
+      "file": "commands/clear/caches.ts",
+      "line": 97,
+      "column": 10,
+      "code": "TS2339",
+      "message": "Property 'clearSessionsWithTungstenUsage' does not exist on type 'typeof import(\"/Users/mant1ssa/Projects/cc-base-2188/tools/TungstenTool/TungstenTool\")'."
+    },
+    {
+      "file": "commands/clear/caches.ts",
+      "line": 97,
+      "column": 42,
+      "code": "TS2339",
+      "message": "Property 'resetInitializationState' does not exist on type 'typeof import(\"/Users/mant1ssa/Projects/cc-base-2188/tools/TungstenTool/TungstenTool\")'."
+    },
+    {
+      "file": "components/MessageRow.tsx",
+      "line": 197,
+      "column": 7,
+      "code": "TS2322",
+      "message": "Type 'Message' is not assignable to type 'SystemMessage | AssistantMessage | AttachmentMessage | CollapsedReadSearchGroup | GroupedToolUseMessage | NormalizedUserMessage'."
+    },
+    {
+      "file": "components/Messages.tsx",
+      "line": 587,
+      "column": 9,
+      "code": "TS2345",
+      "message": "Argument of type '(SystemMessage | AssistantMessage | AttachmentMessage<any> | CollapsedReadSearchGroup | ... 4 more ... | UserMessage)[]' is not assignable to parameter of type '(SystemMessage | AttachmentMessage | NormalizedAssistantMessage | NormalizedUserMessage)[]'."
+    },
+    {
+      "file": "components/Messages.tsx",
+      "line": 681,
+      "column": 27,
+      "code": "TS2345",
+      "message": "Argument of type 'Message[]' is not assignable to parameter of type 'readonly { uuid: string; }[]'."
+    },
+    {
+      "file": "components/VirtualMessageList.tsx",
+      "line": 327,
+      "column": 9,
+      "code": "TS2322",
+      "message": "Type '\"assistant\" | \"attachment\" | \"collapsed_read_search\" | \"grouped_tool_use\" | \"progress\" | \"stream_event\" | \"system\" | \"tombstone\" | \"tool_use_summary\" | \"user\"' is not assignable to type '\"assistant\" | \"attachment\" | \"collapsed_read_search\" | \"grouped_tool_use\" | \"system\" | \"user\"'."
+    },
+    {
+      "file": "components/messages/AttachmentMessage.tsx",
+      "line": 460,
+      "column": 23,
+      "code": "TS1360",
+      "message": "Type '\"agent_mention\" | \"auto_mode\" | \"auto_mode_exit\" | \"bagel_console\" | \"budget_usd\" | \"compaction_reminder\" | \"companion_intro\" | \"context_efficiency\" | \"critical_system_reminder\" | ... 23 more ... | \"verify_plan_reminder\"' does not satisfy the expected type '\"agent_mention\" | \"auto_mode\" | \"auto_mode_exit\" | \"budget_usd\" | \"command_permissions\" | \"compaction_reminder\" | \"companion_intro\" | \"context_efficiency\" | \"critical_system_reminder\" | ... 26 more ... | \"verify_plan_reminder\"'."
+    },
+    {
+      "file": "components/messages/nullRenderingAttachments.ts",
+      "line": 43,
+      "column": 3,
+      "code": "TS2322",
+      "message": "Type '\"pen_mode_enter\"' is not assignable to type '\"agent_listing_delta\" | \"agent_mention\" | \"already_read_file\" | \"async_hook_response\" | \"auto_mode\" | \"auto_mode_exit\" | \"bagel_console\" | \"budget_usd\" | \"command_permissions\" | ... 50 more ... | \"verify_plan_reminder\"'."
+    },
+    {
+      "file": "components/messages/nullRenderingAttachments.ts",
+      "line": 44,
+      "column": 3,
+      "code": "TS2820",
+      "message": "Type '\"pen_mode_exit\"' is not assignable to type '\"agent_listing_delta\" | \"agent_mention\" | \"already_read_file\" | \"async_hook_response\" | \"auto_mode\" | \"auto_mode_exit\" | \"bagel_console\" | \"budget_usd\" | \"command_permissions\" | ... 50 more ... | \"verify_plan_reminder\"'. Did you mean '\"plan_mode_exit\"'?"
+    },
+    {
+      "file": "components/messages/nullRenderingAttachments.ts",
+      "line": 53,
+      "column": 7,
+      "code": "TS2322",
+      "message": "Type 'Set<\"agent_mention\" | \"auto_mode\" | \"auto_mode_exit\" | \"budget_usd\" | \"command_permissions\" | \"compaction_reminder\" | \"companion_intro\" | \"context_efficiency\" | \"critical_system_reminder\" | ... 24 more ... | \"verify_plan_reminder\">' is not assignable to type 'ReadonlySet<\"agent_listing_delta\" | \"agent_mention\" | \"already_read_file\" | \"async_hook_response\" | \"auto_mode\" | \"auto_mode_exit\" | \"bagel_console\" | \"budget_usd\" | \"command_permissions\" | ... 50 more ... | \"verify_plan_reminder\">'."
+    },
+    {
+      "file": "components/permissions/PermissionRequest.tsx",
+      "line": 81,
+      "column": 10,
+      "code": "TS2740",
+      "message": "Type '{ isEnabled: () => boolean; isConcurrencySafe: (e: any) => boolean; isReadOnly: (e: any) => boolean; isDestructive: (e: any) => boolean; remoteExecution: Readonly<{ supported: false; }>; toAutoClassifierInput: (e: any) => string; userFacingName: () => any; } & { ...; }' is missing the following properties from type 'Tool': description, inputSchema, name, maxResultSizeChars, and 3 more."
+    },
+    {
+      "file": "components/permissions/PermissionRequest.tsx",
+      "line": 83,
+      "column": 10,
+      "code": "TS2740",
+      "message": "Type '{ isEnabled: () => boolean; isConcurrencySafe: (e: any) => boolean; isReadOnly: (e: any) => boolean; isDestructive: (e: any) => boolean; remoteExecution: Readonly<{ supported: false; }>; toAutoClassifierInput: (e: any) => string; userFacingName: () => any; } & { ...; }' is missing the following properties from type 'Tool': description, inputSchema, name, maxResultSizeChars, and 3 more."
+    },
+    {
+      "file": "components/tasks/RemoteSessionDetailDialog.tsx",
+      "line": 617,
+      "column": 19,
+      "code": "TS2322",
+      "message": "Type 'SystemMessage | AssistantMessage | AttachmentMessage<any> | CollapsedReadSearchGroup | ... 4 more ... | UserMessage' is not assignable to type 'SystemMessage | AssistantMessage | AttachmentMessage | CollapsedReadSearchGroup | GroupedToolUseMessage | NormalizedUserMessage'."
+    },
+    {
+      "file": "services/analytics/firstPartyEventLoggingExporter.ts",
+      "line": 676,
+      "column": 28,
+      "code": "TS2352",
+      "message": "Conversion of type 'string | number | boolean | AnyValueArray | AnyValueMap | Uint8Array<ArrayBufferLike>' to type 'EventMetadata' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+      "file": "upstreamproxy/relay.ts",
+      "line": 190,
+      "column": 18,
+      "code": "TS2347",
+      "message": "Untyped function calls may not accept type arguments."
+    },
+    {
+      "file": "utils/envUtils.ts",
+      "line": 141,
+      "column": 12,
+      "code": "TS18050",
+      "message": "The value 'null' cannot be used here."
+    },
+    {
+      "file": "utils/messageQueueManager.ts",
+      "line": 3,
+      "column": 15,
+      "code": "TS2305",
+      "message": "Module '\"src/types/utils.js\"' has no exported member 'Permutations'."
+    },
+    {
+      "file": "utils/permissions/classifierDecision.ts",
+      "line": 31,
+      "column": 7,
+      "code": "TS18050",
+      "message": "The value 'null' cannot be used here."
+    },
+    {
+      "file": "utils/plugins/marketplaceManager.ts",
+      "line": 187,
+      "column": 3,
+      "code": "TS2322",
+      "message": "Type '{ [x: string]: DeclaredMarketplace | { source?: { source: \"url\"; url: string; headers?: Record<string, string>; } | { source: \"github\"; repo: string; ref?: string; path?: string; sparsePaths?: string[]; } | ... 6 more ... | { ...; }; installLocation?: string; autoUpdate?: boolean; }; }' is not assignable to type 'Record<string, DeclaredMarketplace>'."
+    },
+    {
+      "file": "utils/processUserInput/processSlashCommand.tsx",
+      "line": 882,
+      "column": 15,
+      "code": "TS2322",
+      "message": "Type 'Message[]' is not assignable to type '(SystemMessage | AssistantMessage | AttachmentMessage | ProgressMessage | UserMessage)[]'."
+    },
+    {
+      "file": "utils/queryHelpers.ts",
+      "line": 144,
+      "column": 18,
+      "code": "TS2678",
+      "message": "Type '\"user\"' is not comparable to type '\"assistant\"'."
+    },
+    {
+      "file": "utils/queryHelpers.ts",
+      "line": 317,
+      "column": 43,
+      "code": "TS2352",
+      "message": "Conversion of type '{ type: 'assistant'; session_id: SessionId; parent_tool_use_id: null; }' to type '{ type: \"user\"; message: MessageParam; parent_tool_use_id?: string; isSynthetic?: boolean; tool_use_result?: unknown; priority?: \"later\" | \"next\" | \"now\"; timestamp?: string; uuid?: string; session_id?: string; } | ... 23 more ... | { ...; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+      "file": "utils/queryHelpers.ts",
+      "line": 337,
+      "column": 38,
+      "code": "TS2352",
+      "message": "Conversion of type '{ type: \"system\"; subtype: \"agents_killed\"; session_id: SessionId; parent_tool_use_id: null; } | { type: \"system\"; subtype: \"api_error\"; session_id: SessionId; parent_tool_use_id: null; } | ... 22 more ... | { ...; }' to type '{ type: \"user\"; message: MessageParam; parent_tool_use_id?: string; isSynthetic?: boolean; tool_use_result?: unknown; priority?: \"later\" | \"next\" | \"now\"; timestamp?: string; uuid?: string; session_id?: string; } | ... 23 more ... | { ...; }' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first."
+    },
+    {
+      "file": "utils/sessionStorage.ts",
+      "line": 1039,
+      "column": 15,
+      "code": "TS2322",
+      "message": "Type '{ type: \"system\"; subtype: \"agents_killed\"; parentUuid: `${string}-${string}-${string}-${string}-${string}`; logicalParentUuid: `${string}-${string}-${string}-${string}-${string}`; isSidechain: boolean; teamName: string; ... 9 more ...; slug: string; } | ... 17 more ... | { ...; }' is not assignable to type 'TranscriptMessage'."
+    }
+  ],
+  "identities": {
+    "bootstrap/state.ts": "079eda613de7f249d1593f2ed6b12056ad861f417756564ebda17b6411f79aa5",
+    "cli/transports/ccrClient.ts": "cd354b4e6f111da964d3903be3cc7632dd8eac95f48f78abfbfc285f6bb22945",
+    "commands.ts": "0613b2dbd390ccf9a7ca70e963b473dbc2c599812402e5dba4c6db423a0304ba",
+    "commands/insights.ts": "9da54827bd65726e8a1d9d2e31c766e9a88233fc9794dae2f6f39ba6a4f363b3",
+    "commands/install-github-app/OAuthFlowStep.tsx": "128ec98057503b01cd523403784081a141c32d7413300b3524eac555de82c743",
+    "components/QuickOpenDialog.tsx": "8c2d785564745fd7dc0def6bd42b3a01090105dae4428dd833fa0e5398fdbef5",
+    "components/Spinner/types.ts": "f957aa4c2a4fc5bdcc18640264fbe3e1fa6727a454f2b653b2ad5158febd88c9",
+    "constants/prompts.ts": "50897e9d8bec1a2fa9abfcdc7ea3ee5d3d5e1dbef71414aa1e4c1696e0604f08",
+    "entrypoints/sdk/controlSchemas.ts": "9c08e79ed85a1992f5951865bc9cf2d8d777221daf9f10b0a55b9e09f631dffc",
+    "entrypoints/sdk/controlTypes.ts": "930b01c84b19e9acd6f01550eb6a59198e238ca7e5a4780c6417fed8737f1427",
+    "entrypoints/sdk/coreSchemas.ts": "bf64fe84c22b3873a8b6980e524fd7da4a27ea9858a9f72f53576dd313272a00",
+    "entrypoints/sdk/runtimeTypes.ts": "af9357293da2d15edcb805858d2be73a06825860c093f9b80064b6a1482b0e0f",
+    "ink/ink.tsx": "321e26a6ca6d679aaea72b1f5dc19144be752ed1762bea98b8d99d6432cd37af",
+    "ink/render-to-screen.ts": "e4b717ae910b304f4e9e49ae4a40fddd3f6ab641acb2540bf6d0ce6cc55deeeb",
+    "keybindings/types.ts": "582aee5780e2edfcd839602fcff0b0a261df115757ad482ab5c4e2f0610cff30",
+    "screens/REPL.tsx": "62a124eba0e44f28ed7da009d7946ec7ebe67950ce065f19943ace4dc2f22562",
+    "services/analytics/firstPartyEventLogger.ts": "d6e93cf9691911a3169910031ba35e45c6cf78deb58ac295d6d0c7439f1947a1",
+    "services/api/bootstrap.ts": "cb9b231f298a54d681ff0f5d08546970892840298536c8d50ea6f5cc3a14ba6a",
+    "services/api/claude.ts": "e03987b7a2d9b6cada920b336c8aaa3e2af69c860a0f56703c9d05c2d4de8707",
+    "services/api/logging.ts": "480010483c2fafacebc232da553dc0b58d0282fc4a60d3ad0561c00a5555af83",
+    "services/compact/postCompactCleanup.ts": "ef0f1e6fc66c8c959695627f817a873f3dd98fddadaeffa659dd6a9ae26c175e",
+    "services/lsp/passiveFeedback.ts": "940fb520b5f89f1092c4a0ac7f0ccff94673990c6e4406717aec7550338c07b5",
+    "services/mcp/client.ts": "5499e05818c8830c7c61f98bcf76e4f4f9da41a3da1cfcb6d7b47133b17a2223",
+    "services/mcp/useManageMCPConnections.ts": "4a48207c1b74b8e502b8dfd8906210f9787f76595b56a731d4b63ac08b1e048d",
+    "services/tokenEstimation.ts": "15185e647a3214c224c49822b9492548884afdd80328f4a9685a8f42fdc893f5",
+    "setup.ts": "2f32814507ebe6025053d3b58ed696703062894002f7f2cff4f0bb86857e828b",
+    "tools/AgentTool/UI.tsx": "299a3f42e85717a50a1ddb0a09fc75450117a8ffba0adb543c10850479d813b0",
+    "tools/SkillTool/SkillTool.ts": "1f38229ce8d27ddf4e89cdb8acdc6b8e420267bd35b04babcf79cb9e980bac99",
+    "types/message.ts": "d96317a287d8182c06d4a96aa885faed53a914a9e4e2d7bfb2ae6594f5a07152",
+    "types/vendor.d.ts": "140dd62d75fd382aaba56d4f1760f795e4b4970e88f8c513187e6fe679717931",
+    "upstreamproxy/relay.ts": "2c82ee51c9cb3a8cf2841aa391a5cfa8d46991cd9ab3c2b12a6abb518471fa3e",
+    "utils/bash/commands.ts": "fc74e35dcfa5e843eb40cd91efccac7822fff3645dfdeea1b6e41d396c31bd75",
+    "utils/collapseReadSearch.ts": "f1b0efd64fe0a0049c951ab3a49b0b2a948b7adcee1ad1aad028b902e8bb274a",
+    "utils/execFileNoThrowPortable.ts": "8d4f0d3016ba1d156fe7372f0758b82a96c25e9d19cdd4eaecdcd006fc61bf3f",
+    "utils/filePersistence/outputsScanner.ts": "8776edb54ade925ebe43e76f8b82f67787fec71b05c90997ff8f042c2bc70f3f",
+    "utils/generators.ts": "247d53c12074e258fdd7f46bccbeeb5faba799bf8c33b0af025701d607d974d0",
+    "utils/heapDumpService.ts": "7c4da464401644b3bf5a5cbe7858a5222bcc404afd36cb487e13ba69c45a9eb6",
+    "utils/hooks.ts": "635f43be35bded54a64d55defb01c2ddb4ad97b908a85e2e9dd0dd25722d4b62",
+    "utils/log.ts": "7320ccab18126af0d6aa52255db4d9a9414bb151a27081637366bc7fa11af720",
+    "utils/messages.ts": "f1fea03cab3ec4be4cd30e82d3b5ed7d5c4e2152b4b2000432e62aa6e8e1155d",
+    "utils/permissions/classifierDecision.ts": "164a359f372c8f38fc986b74a711871304e8732b16a11abcd8fe48e3b7e22fd8",
+    "utils/ripgrep.ts": "5b0193db4bd1bd2ed15399494de138ee7faeb0f44217c60bd4a802c5682502af",
+    "utils/sessionRestore.ts": "b3785efd27e479717851e976ca8515aa6fd55111cebcd9869db8518f417f65e8",
+    "utils/telemetry/instrumentation.ts": "d80381ea38b7bc6dfccf219179fca39bdca50895607b51e26408200cc5120167",
+    "package.json": "5ef955d666d867ff445668465545f47e0e3ec05df98cbf98a361f597308e971f",
+    "package-lock.json": "b0d06e63cd10f039c593420f81c9422576ab9da25952095aabb03cc5db72b974",
+    "tsconfig.json": "b05db6cf3dbe03b5593f56f326b6adaba493120905c306d31e97153c6312abe9"
+  },
+  "sources": [
+    {
+      "file": "bootstrap/state.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "7018a1682f63caa901796c7b76774c7cb0465acca2d81b88abfe25cd742fad71",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-199,0 +200",
+        "-1634,0 +1636,5"
+      ]
+    },
+    {
+      "file": "cli/transports/ccrClient.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "950f608c14a78d164da41e76049d9bb7a3b4a97a763e8000c47efce92044f28a",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-120,4 +120",
+        "-212,3 +209"
+      ]
+    },
+    {
+      "file": "commands.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "3bfd54c3cfcaed9f10d5dc15334cc49e42d0c9374e92d9a7058897701d95df64",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-86,3 +86",
+        "-94,3 +92",
+        "-104,9 +100,3"
+      ]
+    },
+    {
+      "file": "commands/insights.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "b5539a84bd6f8fbb23509046c223e73d8f95959ab8055626d4e424c0d6392108",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-123 +123",
+        "-2758 +2758"
+      ]
+    },
+    {
+      "file": "commands/install-github-app/OAuthFlowStep.tsx",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "d4202f77f452eef39d5f684f225359ec053c167ee25b12903e4b8e2407a76248",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-1,0 +2",
+        "-128 +129",
+        "-131 +132"
+      ]
+    },
+    {
+      "file": "components/QuickOpenDialog.tsx",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "653ebc53bd8aa57ce34ddd7466e16cf66013bd701ffdbc82a264aadfbd1b02dc",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-139 +139"
+      ]
+    },
+    {
+      "file": "components/Spinner/types.ts",
+      "status": "absent-in-original-commit",
+      "authority": "existing reconstruction"
+    },
+    {
+      "file": "constants/prompts.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "7dac778e089a7f002403df2a2efb6f0b9e4a450af21766680ab8948596c10f25",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-66,3 +66",
+        "-84,5 +82"
+      ]
+    },
+    {
+      "file": "entrypoints/sdk/controlSchemas.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "f6371808ab47f2f57cd75d6f6ac7926ebb8a8d2b818a8871b8f7cf1d099f8baf",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-10,0 +11",
+        "-37 +38"
+      ]
+    },
+    {
+      "file": "entrypoints/sdk/controlTypes.ts",
+      "status": "absent-in-original-commit",
+      "authority": "existing reconstruction"
+    },
+    {
+      "file": "entrypoints/sdk/coreSchemas.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "7c4e83756565d421d6d338a2b8356147d95b30132e555c68012ea2551fb3ea9e",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-11 +11",
+        "-287 +287,2",
+        "-1257 +1258"
+      ]
+    },
+    {
+      "file": "entrypoints/sdk/runtimeTypes.ts",
+      "status": "absent-in-original-commit",
+      "authority": "existing reconstruction"
+    },
+    {
+      "file": "ink/ink.tsx",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "5146a91e3de2cfb73f4bf95775df8547556562e390a04bc8d3c0bbd1fcbc4375",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-341,2 +340,0",
+        "-933 +930,0",
+        "-1682 +1678,0",
+        "-1684 +1679,0",
+        "-1754 +1748,0",
+        "-1756 +1749,0"
+      ]
+    },
+    {
+      "file": "ink/render-to-screen.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "b24b63033f8d1410f9f21dd171b1c903b47eb5832fba1b2959e6ce2ab4f1c400",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-69 +68,0",
+        "-85 +83,0",
+        "-87 +84,0",
+        "-120 +116,0",
+        "-122 +117,0"
+      ]
+    },
+    {
+      "file": "keybindings/types.ts",
+      "status": "absent-in-original-commit",
+      "authority": "existing reconstruction"
+    },
+    {
+      "file": "screens/REPL.tsx",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "a0644a57e2a6f401a6e30848a3425cf759f875af4cb51216a9228835507af28c",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-218 +218",
+        "-4058 +4058",
+        "-4064 +4064",
+        "-6081 +6080,0"
+      ]
+    },
+    {
+      "file": "services/analytics/firstPartyEventLogger.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "b82ad966ed3a32724f65c828deb87023d3401281d4d60bd6ad40a84889e10728",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-373 +373,3"
+      ]
+    },
+    {
+      "file": "services/api/bootstrap.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "947aee6acdef6f1cb6310b3953063ad7c7985757bff7f57df6679a9bb440a7d5",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-21 +21"
+      ]
+    },
+    {
+      "file": "services/api/claude.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "6d3fd16e608120d502e70ec461ffb66bcbca12fa86862859606c9118f977a999",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-941 +941"
+      ]
+    },
+    {
+      "file": "services/api/logging.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "2d5effa9bc7b52c8c20a57a1fd9666e4925e40ee624a26e3641522a048c5d535",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-191,2 +191,2"
+      ]
+    },
+    {
+      "file": "services/compact/postCompactCleanup.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "2783f5c75e80638002b5563a0b4ee5daff912bab6523c1473ed1e5060f12e9b7",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-42,7 +42"
+      ]
+    },
+    {
+      "file": "services/lsp/passiveFeedback.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "c160d3bb5f03f3d682412d4c35d1c33ab86f59960f178cbc3da5bb132177e631",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-2 +2",
+        "-64,11 +64,2"
+      ]
+    },
+    {
+      "file": "services/mcp/client.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "787bba952e1f37dead67afab114b4ee71f66c95e8dba4559afa55679b113b8d2",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-117,3 +117"
+      ]
+    },
+    {
+      "file": "services/mcp/useManageMCPConnections.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "2536c13da7f1a19ff272d58d0d9d1616433bdcdc57546d17d2c352911e12175b",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-22,6 +22,2"
+      ]
+    },
+    {
+      "file": "services/tokenEstimation.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "f2027b551a4c2b540ba293478be892c5b3de4f8afef4173e41fdcad7295e0dd9",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-375,0 +376",
+        "-392 +393"
+      ]
+    },
+    {
+      "file": "setup.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "43a7f88331f6136e5bb096c63a33ce99bbbdb5108696a97f017d3c1eb8ef1e35",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-288,5 +288"
+      ]
+    },
+    {
+      "file": "tools/AgentTool/UI.tsx",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "ec572743582b458da27869933927b8b44e9707ab26cfd304c5dc5afff6bcfe34",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-415 +415,2"
+      ]
+    },
+    {
+      "file": "tools/SkillTool/SkillTool.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "5ac5ec6af747cb9665055076aa70e0a9270dc2b131f90d231ba7d181f96371b4",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-108,8 +108,2"
+      ]
+    },
+    {
+      "file": "types/message.ts",
+      "status": "absent-in-original-commit",
+      "authority": "existing reconstruction"
+    },
+    {
+      "file": "types/vendor.d.ts",
+      "status": "absent-in-original-commit",
+      "authority": "existing reconstruction"
+    },
+    {
+      "file": "upstreamproxy/relay.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "f08e9cec87d252afc6a4edadd5c4e9b6a1ed137b1025328158e56e23b13282b6",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-66 +66,2",
+        "-266 +267"
+      ]
+    },
+    {
+      "file": "utils/bash/commands.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "1ecd2e1188e4347ae4dc2abc58e7fd9b8e079f5cfbc37360425e565f9642cd33",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-255 +255",
+        "-523 +523",
+        "-531 +531"
+      ]
+    },
+    {
+      "file": "utils/collapseReadSearch.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "02f4ed0778f82fbc3bfa793680a6479277344b95e1bd9d050b8c30bf094dab48",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-37,3 +37"
+      ]
+    },
+    {
+      "file": "utils/execFileNoThrowPortable.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "0802410bb219dfa6ccbf62be8eed900f41f1bf4ae7f97398e95beee4f196ce83",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-1 +1",
+        "-12 +12",
+        "-77,0 +78,2",
+        "-82 +84"
+      ]
+    },
+    {
+      "file": "utils/filePersistence/outputsScanner.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "dd774f6071ee72ecc6e60efc5c535f7f2c88cd31471bf5aa79607d20aebdefb3",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-67 +67"
+      ]
+    },
+    {
+      "file": "utils/generators.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "11b3774ac8c3e4872dce7e284d49392426d3422ea967e59bbd3abe1703c15d2e",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-24,3 +24",
+        "-39,3 +37,2",
+        "-60 +57"
+      ]
+    },
+    {
+      "file": "utils/heapDumpService.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "8401be69d7c662ca3f4fa7ec92835b5772a27ba2e1aebe13f902fd3aa6704256",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-290 +289,0"
+      ]
+    },
+    {
+      "file": "utils/hooks.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "d95c84279ed5e57dbcde85f116e6e590a1a06355f786e50a8fe2dde1e555cd26",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-2413 +2413"
+      ]
+    },
+    {
+      "file": "utils/log.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "82f7f41d4803c6498518fda9f969509a546424a6218b46c54986fdd9572bf339",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-232 +232"
+      ]
+    },
+    {
+      "file": "utils/messages.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "24e36a51f351df9687cdac084d9b9573549a7bb5b8859b4ff39cc2d02ec7095a",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-375,0 +376,3"
+      ]
+    },
+    {
+      "file": "utils/permissions/classifierDecision.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "f3797aa029ad184719677b2490d22a9c68ee9d464888229f2e117e90f8aab977",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-27,6 +27,2"
+      ]
+    },
+    {
+      "file": "utils/ripgrep.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "bf4bfadbbbea5d5d35a13eea9159ae59f9780d28ee907d6bd5cc1bd1f30a8c70",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-1,0 +2,3",
+        "-113 +116",
+        "-196 +199",
+        "-210 +213",
+        "-359 +362"
+      ]
+    },
+    {
+      "file": "utils/sessionRestore.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "9dfe9c2203aac5c3cc6d49e45bf2f8fd381582781b5cec3abbc4ceb6d219e177",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-127,8 +127",
+        "-492,8 +485"
+      ]
+    },
+    {
+      "file": "utils/telemetry/instrumentation.ts",
+      "commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "sha256": "3f44210def6ae7fc917d77ddff8ccdbc18e0661f60fd2fb91d8dbd3dee5c1181",
+      "coordinates": "one-based-lines",
+      "changed_hunks": [
+        "-393 +393,3",
+        "-588 +590,2"
+      ]
+    },
+    {
+      "file": "/Users/mant1ssa/Projects/cc_reverse/recovered/chunk-4bw62nzm.js",
+      "sha256": "29428fdfa85ca9c8b13918e26bf4d09a07867f97484581457d599dccb9a31ab0",
+      "coordinates": "one-based-lines-inclusive",
+      "ranges": [
+        [
+          3034,
+          3042
+        ],
+        [
+          7612,
+          7617
+        ]
+      ]
+    },
+    {
+      "file": "/Users/mant1ssa/Projects/cc_reverse/recovered/chunk-xveb52av.js",
+      "sha256": "f3dbd0fb2a66f35dea491554c84709fd1c83f63238dc042ef0ec68b858d399cd",
+      "coordinates": "one-based-lines-inclusive",
+      "ranges": [
+        [
+          1347,
+          1359
+        ]
+      ]
+    }
+  ],
+  "log_sha256": "c957da305e7c65a83beecc3579755f416cebf36aa7c0b880b757d779e00c0151",
+  "checks": [
+    {
+      "command": "tsc --noEmit --pretty false",
+      "exit": 1
+    },
+    {
+      "command": "w58-verify.mjs",
+      "exit": 0
+    },
+    {
+      "command": "w59-verify.mjs",
+      "exit": 0
+    },
+    {
+      "command": "w59-followup-verify.mjs",
+      "exit": 0
+    },
+    {
+      "command": "git diff --check (both repositories)",
+      "exit": 0
+    }
+  ],
+  "incidents": [
+    "Initial AST matcher compared quoted token to bare text; zero edits; historical evidence retained.",
+    "Original gated module bodies differ from already folded null calls; source AST ranges used.",
+    "Assistant/normalized message tightening created new consumer errors; those experimental edits withdrawn.",
+    "Compilation cleanup remains incomplete; remaining diagnostics are not all source-absence blockers."
+  ],
+  "limitations": [
+    "No full build or application CLI validation",
+    "Control schema variants require further source recovery",
+    "Tungsten exports remain absent in searched recovered tree",
+    "Live USER_TYPE null module branches preserved",
+    "Internal Markdown completion record has not been written"
+  ]
+}

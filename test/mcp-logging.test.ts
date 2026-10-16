@@ -82,7 +82,8 @@ test("HTTP logging preserves defaults, exact capability gating, POST SSE isolati
       capability = absent; const gated = await connectMcpServers(config, context(), { logging: true }); assert.deepEqual(gated.tools, []); await gated.close();
     }
     capability = {};
-    const connection = await connectMcpServers(config, context(), { logging: true, requestTimeoutMs: 200 });
+    // The budget covers the spawned server's own boot and handshake, which costs 150-170ms on a busy host.
+    const connection = await connectMcpServers(config, context(), { logging: true, requestTimeoutMs: 2000 });
     const other = await connectMcpServers(config, context(), { logging: true });
     try {
       assert.deepEqual(connection.tools.map((item) => item.schema.name), ["mcp_logging_set_level", "mcp_logging_notifications"]);

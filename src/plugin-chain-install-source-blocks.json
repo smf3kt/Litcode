@@ -1,0 +1,45 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1829037,
+        1829052
+      ],
+      "units": 15,
+      "bodySha256": "96c20fd67c3cbc9f6d9f6a604af612d77254dbb3e095db8e8488dcc4fe7b3c59",
+      "note": "the record an installed environment becomes"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1829052,
+        1829624
+      ],
+      "units": 572,
+      "bodySha256": "d76a9af84046af6c65b0fdca770db4733ba3db8833c3a1cf6311345fc01b43da",
+      "note": "the hook surface a registered pattern list answers as"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1829624,
+        1829702
+      ],
+      "units": 78,
+      "bodySha256": "27d2e6a6b7dc1944b898d25899412e25b75b8d5f0e6c8fdf2dd40f99c7e94cbf",
+      "note": "unloaded environment gate"
+    }
+  ],
+  "missing": []
+}

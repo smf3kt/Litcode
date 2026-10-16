@@ -118,7 +118,9 @@ function notes(file: string): Record<string, any>[] {
   if (!fs.existsSync(file)) return [];
   return fs.readFileSync(file, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
 }
-async function waitFor(check: () => boolean, timeout = 3000): Promise<void> {
+// The budget covers a spawned fixture answering on a busy host, not an idle machine's latency: a bare
+// `node -e ''` costs 150-170ms where these tests run under load, and every wait below starts after one.
+async function waitFor(check: () => boolean, timeout = 15000): Promise<void> {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     if (check()) return;
@@ -310,7 +312,9 @@ test("file bound allows didOpen above 1 MiB; frame, header and malformed protoco
 });
 
 test("timeouts cancel requests, pre-aborted calls do not spawn, and per-call abort preserves server", async (t) => {
-  const f = fixture(t, "hang", { requestTimeoutMs: 150 });
+  // The budget also covers the fixture's own boot and handshake: a spawned `node` costs 150-170ms on a
+  // busy host, so anything near that kills the handshake and the server never answers at all.
+  const f = fixture(t, "hang", { requestTimeoutMs: 2000 });
   const pre = new AbortController();
   pre.abort();
   assert.equal((await f.call(hover, { signal: pre.signal })).status, "aborted");
@@ -324,7 +328,7 @@ test("timeouts cancel requests, pre-aborted calls do not spawn, and per-call abo
   assert.equal((await result).status, "aborted");
   await waitFor(() => notes(f.log).filter((n) => n.method === "$/cancelRequest").length === 2);
   assert.equal(alive(notes(f.log)[0]!.pid), true);
-  const init = fixture(t, "hunginit", { requestTimeoutMs: 150 });
+  const init = fixture(t, "hunginit", { requestTimeoutMs: 2000 });
   assert.match((await init.call(hover)).message, /timed out/);
   await init.adapter.close();
   assert.equal(alive(notes(init.log)[0]!.pid), false);
@@ -392,7 +396,7 @@ test("abnormal leader exit sweeps descendants that inherited stdio", async (t) =
 });
 
 test("queued cancellation and initialization cancellation settle without extra requests", async (t) => {
-  const f = fixture(t, "hang", { requestTimeoutMs: 200 });
+  const f = fixture(t, "hang", { requestTimeoutMs: 2000 });
   const first = f.call(hover);
   await waitFor(() => notes(f.log).some((n) => n.method === "textDocument/hover"));
   const controller = new AbortController();

@@ -1,0 +1,269 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7"
+    },
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        2334,
+        2418
+      ],
+      "units": 84,
+      "bodySha256": "d1870c3d40e6b4b3993e316eeadefdfd6d88e63b121c94b8203302be67c4d80a",
+      "note": "matcher context"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        4815,
+        5465
+      ],
+      "units": 650,
+      "bodySha256": "9bfc78a738ed6e2807d589c5f36a6fbfad18345e9304cfb2308a6fe612d675f7",
+      "note": "matcher runner"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        5465,
+        5844
+      ],
+      "units": 379,
+      "bodySha256": "f2f9cd8c2a372a7ddff177cea442f378cd6f3e19e5187c23f3462806d3e34c50",
+      "note": "matcher result"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        8279,
+        8325
+      ],
+      "units": 46,
+      "bodySha256": "1cdb6aa30c0ded626bc40f25b2ece03f0fd28b1f29af5a38505b46c5d0513333",
+      "note": "worker-hop matcher"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        8440,
+        8524
+      ],
+      "units": 84,
+      "bodySha256": "94bb965c7d78fb132f2d90accf6dc8a8cbd9f4234bf09c98357b8db1a9c11d8d",
+      "note": "pinned-keys matcher"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        8712,
+        8754
+      ],
+      "units": 42,
+      "bodySha256": "d983a058e93371dd16d15a71855fd1602097163ca2bc6feae8366b3ad02ee999",
+      "note": "ordinary matcher"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        1567,
+        1592
+      ],
+      "units": 25,
+      "bodySha256": "57852e48cc662a3fb7f4022320647a42860a1bf46e224b943f8e785d1631b5b7",
+      "note": "matcher input context"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        3521,
+        3547
+      ],
+      "units": 26,
+      "bodySha256": "501c3171d39637412b832f71730e7d3177b5eee9272fa7dd521fd8a1e6173e48",
+      "note": "matcher cache slot"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        7750,
+        7996
+      ],
+      "units": 246,
+      "bodySha256": "a1128f7268f0afe5ee1e762accaf3faa7b7339df40f2e39b6c59f0a6c5c484df",
+      "note": "matcher invocation"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        5844,
+        5855
+      ],
+      "units": 11,
+      "bodySha256": "5f884715509691c4e135a2f39362f6620911e55c8651b405571481291f9bc998",
+      "note": "matcher result marker"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        1436,
+        1567
+      ],
+      "units": 131,
+      "bodySha256": "d782ff92602f9f40d47b1c13c382699450491b0e56b643e27c330b787ea83343",
+      "note": "named path selection"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        2088,
+        2130
+      ],
+      "units": 42,
+      "bodySha256": "d0928dc853f79af7e0c860d2dd1236c7cfdf5daffefd0bcf06c478226aeb3c93",
+      "note": "regex table lookup"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        2599,
+        2611
+      ],
+      "units": 12,
+      "bodySha256": "7bff3247c732a530affd9f2da6ba5a73cfa4017e55ac2d1e4aa6425b778c20b8",
+      "note": "matcher input ceiling"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        3400,
+        3521
+      ],
+      "units": 121,
+      "bodySha256": "194abb9feacdebc645ec074089c395e464ccbb6d4b055d710f6e3163090f233b",
+      "note": "regex-like object gate"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        3864,
+        3989
+      ],
+      "units": 125,
+      "bodySha256": "19ee1f055c24a4c94a561591243db8793cd8fd791247223244c1afaef6e4cfd2",
+      "note": "regex source/flags reader"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        6311,
+        6369
+      ],
+      "units": 58,
+      "bodySha256": "7590df62e02d64cdc6a9a5a8452fb335ca6a2e6aa5c9c378704282dc746d3c5c",
+      "note": "regex flag pick"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        8325,
+        8440
+      ],
+      "units": 115,
+      "bodySha256": "1a5a03183250584a743dc4b660c95ff98c68f72b1c2263d9524645a4743a5e20",
+      "note": "nested field matcher"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        1592,
+        2224
+      ],
+      "units": 632,
+      "bodySha256": "7bf6fe8449729edb70227919cac456d976406b7fd05b6bf56d9dc4c30ddc1086",
+      "note": "event table"
+    },
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+      "range": [
+        643173,
+        643231
+      ],
+      "units": 58,
+      "bodySha256": "136b3b2f20575e3191e687227f80b7a6050bcd3b29cfe68b5804d0401ed22c95",
+      "note": "single-slot holder (its only consumer is in this file)"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        2130,
+        2162
+      ],
+      "units": 32,
+      "bodySha256": "bfd25aff0fca62109996b23e2ca4f172713f649b6cc90f055ffdda59365ec096",
+      "note": "regex table holder"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        1242,
+        1307
+      ],
+      "units": 65,
+      "bodySha256": "c6016e6db4d7e44244e337146f03813c4da21b284cbef780fc4aa861e355921b",
+      "note": "frozen string-valued table"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        1131,
+        1242
+      ],
+      "units": 111,
+      "bodySha256": "1c0f363ae36680f2977f278f80d974d900a7af382e85487ba924636c24c0541f",
+      "note": "table value mapping"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        1111,
+        1131
+      ],
+      "units": 20,
+      "bodySha256": "dd8e00d73c293ac30d392ed2461d72dd6099f8330e549deff47fb73933c4c388",
+      "note": "prototype key name"
+    }
+  ],
+  "missing": []
+}

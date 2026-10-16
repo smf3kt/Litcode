@@ -1,0 +1,252 @@
+[
+ {
+  "target": "bridge/",
+  "moduleCount": 31,
+  "status": "referenced",
+  "importers": [
+   "cli/remoteIO.ts -> ../bridge/pollConfig.js",
+   "cli/print.ts -> src/bridge/replBridge.js",
+   "hooks/useReplBridge.tsx -> ../bridge/replBridgeHandle.js",
+   "main.tsx -> ./bridge/trustedDevice.js",
+   "entrypoints/cli.tsx -> ../bridge/types.js",
+   "components/Settings/Config.tsx -> ../../bridge/bridgeEnabled.js",
+   "utils/config.ts -> ../bridge/bridgeEnabled.js",
+   "components/PromptInput/PromptInputFooter.tsx -> ../../bridge/bridgeStatusUtil.js",
+   "components/BridgeDialog.tsx -> ../bridge/bridgeStatusUtil.js",
+   "components/Spinner.tsx -> ../bridge/bridgeStatusUtil.js",
+   "commands/rename/rename.ts -> ../../bridge/bridgeConfig.js",
+   "commands/ultraplan.tsx -> ../bridge/types.js",
+   "state/AppStateStore.ts -> ../bridge/bridgePermissionCallbacks.js",
+   "hooks/toolPermission/handlers/interactiveHandler.ts -> ../../../bridge/bridgePermissionCallbacks.js",
+   "tools/SendMessageTool/SendMessageTool.ts -> ../../bridge/replBridgeHandle.js",
+   "constants/product.ts -> ../bridge/sessionIdCompat.js",
+   "tools/BriefTool/upload.ts -> ../../bridge/bridgeConfig.js"
+  ]
+ },
+ {
+  "target": "remote/",
+  "moduleCount": 4,
+  "status": "referenced",
+  "importers": [
+   "hooks/useAssistantHistory.ts -> ../remote/RemoteSessionManager.js",
+   "main.tsx -> ./remote/RemoteSessionManager.js",
+   "screens/REPL.tsx -> ../remote/RemoteSessionManager.js"
+  ]
+ },
+ {
+  "target": "assistant/",
+  "moduleCount": 2,
+  "status": "referenced",
+  "importers": [
+   "hooks/useAssistantHistory.ts -> ../assistant/sessionHistory.js",
+   "dialogLaunchers.tsx -> ./assistant/sessionDiscovery.js"
+  ]
+ },
+ {
+  "target": "ssh/",
+  "moduleCount": 2,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../ssh/createSSHSession.js"
+  ]
+ },
+ {
+  "target": "server/",
+  "moduleCount": 3,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../server/directConnectManager.js",
+   "main.tsx -> ./server/createDirectConnectSession.js"
+  ]
+ },
+ {
+  "target": "cli/transports/",
+  "moduleCount": 8,
+  "status": "referenced",
+  "importers": [
+   "cli/remoteIO.ts -> ./transports/transportUtils.js"
+  ]
+ },
+ {
+  "target": "utils/teleport.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "commands/ultraplan.tsx -> ../utils/teleport.js",
+   "main.tsx -> ./utils/teleport.js",
+   "cli/print.ts -> src/utils/teleport.js",
+   "tools/AgentTool/AgentTool.tsx -> ../../utils/teleport.js"
+  ]
+ },
+ {
+  "target": "utils/teleport/",
+  "moduleCount": 4,
+  "status": "referenced",
+  "importers": [
+   "main.tsx -> ./utils/teleport/api.js",
+   "screens/REPL.tsx -> ../utils/teleport/api.js",
+   "utils/filePersistence/outputsScanner.ts -> ../teleport/environments.js"
+  ]
+ },
+ {
+  "target": "utils/background/remote/",
+  "moduleCount": 2,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "tasks/RemoteAgentTask/",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "tasks.ts -> ./tasks/RemoteAgentTask/RemoteAgentTask.js",
+   "commands/ultraplan.tsx -> ../tasks/RemoteAgentTask/RemoteAgentTask.js",
+   "tasks/types.ts -> ./RemoteAgentTask/RemoteAgentTask.js",
+   "tools/AgentTool/AgentTool.tsx -> ../../tasks/RemoteAgentTask/RemoteAgentTask.js",
+   "tools/TaskOutputTool/TaskOutputTool.tsx -> ../../tasks/RemoteAgentTask/RemoteAgentTask.js",
+   "screens/REPL.tsx -> ../tasks/RemoteAgentTask/RemoteAgentTask.js",
+   "components/tasks/BackgroundTasksDialog.tsx -> src/tasks/RemoteAgentTask/RemoteAgentTask.js"
+  ]
+ },
+ {
+  "target": "tools/RemoteTriggerTool/",
+  "moduleCount": 3,
+  "status": "referenced",
+  "importers": [
+   "tools.ts -> ./tools/RemoteTriggerTool/RemoteTriggerTool.js"
+  ]
+ },
+ {
+  "target": "skills/bundled/scheduleRemoteAgents.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "skills/bundled/index.ts -> ./scheduleRemoteAgents.js"
+  ]
+ },
+ {
+  "target": "components/tasks/RemoteSessionDetailDialog.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "components/tasks/BackgroundTasksDialog.tsx -> ./RemoteSessionDetailDialog.js"
+  ]
+ },
+ {
+  "target": "components/tasks/RemoteSessionProgress.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "components/tasks/BackgroundTask.tsx -> ./RemoteSessionProgress.js"
+  ]
+ },
+ {
+  "target": "components/RemoteCallout.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../components/RemoteCallout.js"
+  ]
+ },
+ {
+  "target": "components/RemoteEnvironmentDialog.tsx",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "components/ResumeTask.tsx",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "components/TeleportError.tsx",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "components/TeleportProgress.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "main.tsx -> ./components/TeleportProgress.js"
+  ]
+ },
+ {
+  "target": "components/TeleportRepoMismatchDialog.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "dialogLaunchers.tsx -> ./components/TeleportRepoMismatchDialog.js"
+  ]
+ },
+ {
+  "target": "components/TeleportResumeWrapper.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "dialogLaunchers.tsx -> ./components/TeleportResumeWrapper.js"
+  ]
+ },
+ {
+  "target": "components/TeleportStash.tsx",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "hooks/useRemoteSession.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../hooks/useRemoteSession.js"
+  ]
+ },
+ {
+  "target": "hooks/useSSHSession.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../hooks/useSSHSession.js"
+  ]
+ },
+ {
+  "target": "hooks/useTeleportResume.tsx",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "hooks/useDirectConnect.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../hooks/useDirectConnect.js"
+  ]
+ },
+ {
+  "target": "services/api/sessionIngress.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "commands/clear/caches.ts -> ../../services/api/sessionIngress.js",
+   "utils/sessionStorage.ts -> ../services/api/sessionIngress.js"
+  ]
+ },
+ {
+  "target": "services/api/adminRequests.ts",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "utils/ultraplan/ccrSession.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "commands/ultraplan.tsx -> ../utils/ultraplan/ccrSession.js"
+  ]
+ }
+]

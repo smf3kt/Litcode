@@ -1,0 +1,628 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        27458,
+        27621
+      ],
+      "units": 163,
+      "bodySha256": "211d8584d85a32ce637c7cbbb8c5d4b9c465ff22fc93c21e95aee55a4f048b32",
+      "note": "origin chain of a record list"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        27621,
+        27720
+      ],
+      "units": 99,
+      "bodySha256": "dc3e8097f33b379abffbf409b4a0de32ecc89087109febeee0890ea1ea8390f1",
+      "note": "split caller/above at the last seat"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        27720,
+        27748
+      ],
+      "units": 28,
+      "bodySha256": "ff41ceeaa5d922484ff4c3ab2a486cda105772df20718e69cb7788c1aa74c744",
+      "note": "seat store"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        27748,
+        27789
+      ],
+      "units": 41,
+      "bodySha256": "50baf1542326e1b3d273791e5d72ae06e81f0d98bfa390708b3136059fb21074",
+      "note": "tier chain text of an origin list"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        27789,
+        29001
+      ],
+      "units": 1212,
+      "bodySha256": "5089082677aaf01624d8339be6ab6125242f7c91feebba29d979751df5665c75",
+      "note": "re-entry wrapper (lent/held seats, leftOut/told/causes)"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        29180,
+        29214
+      ],
+      "units": 34,
+      "bodySha256": "04023f87676f434b4bf5d1c99f69bfd59fa033ab6833f4505b3ae8772ce65dbd",
+      "note": "per-record counter store"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        29248,
+        29490
+      ],
+      "units": 242,
+      "bodySha256": "0d4f47cd39d9902149135acb417dbedf01d2b740cf6210bd56d61cf1a42ac9a9",
+      "note": "re-entry counter"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        29490,
+        29645
+      ],
+      "units": 155,
+      "bodySha256": "07ba95ddfc6e54d1c7f13795971a28062e77c2f6b4030ad91ac8b7efa9d0ab58",
+      "note": "seat gate (worker hops take the other matcher)"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        29645,
+        29727
+      ],
+      "units": 82,
+      "bodySha256": "8e1897eca29cce83b70868e3c96f81fffa5f0bf06a32c7c9c40d3b5d6808695b",
+      "note": "record for a name, from the first seat on"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        29727,
+        29904
+      ],
+      "units": 177,
+      "bodySha256": "cee67c1a7ba1a2aa5137a92a93d2bd346679594418701cd9ab90d3fce12d1277",
+      "note": "catch question for pinned keys"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        33818,
+        34569
+      ],
+      "units": 751,
+      "bodySha256": "6d6c8f1c51678b80c7c87ac528804b8cba91b8c19d4d11def0de6885317837d9",
+      "note": "non-native record runner"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        34569,
+        34712
+      ],
+      "units": 143,
+      "bodySha256": "53e927ea4e8f71bc9008bb10bc6f3bed564efcf9114f565545f8b5ebedb33fc3",
+      "note": "leave/measure of a record run"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        34712,
+        34872
+      ],
+      "units": 160,
+      "bodySha256": "04f8330a4920e9500412c37c46c8f44b94c5697dfbd4efab59876e78176da161",
+      "note": "re-entry question of a linked record"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        34872,
+        35397
+      ],
+      "units": 525,
+      "bodySha256": "4e234a08bd7ced4c00b4e12d5e3fdca1b8e0926af4f12b9cf13a712db2fa21f8",
+      "note": "linked (native) record to handler"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        36530,
+        36977
+      ],
+      "units": 447,
+      "bodySha256": "64fa04636ea935676b84bfbdccca84dad9ff9c1d26c2b2776542d73b9431ae01",
+      "note": "plain loaded record to handler"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        36977,
+        37034
+      ],
+      "units": 57,
+      "bodySha256": "2dd558b35ef0a65aaa3ded8dab2da154ff8465a207fed063e77331c1581f7a81",
+      "note": "record to handler: linked or plain"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        37034,
+        37144
+      ],
+      "units": 110,
+      "bodySha256": "28634df61216cb887a0e3c5c5c9981e522bb23248501463e30b0b07685b94b6e",
+      "note": "plugin name of a record, seat table fallback"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        37182,
+        37411
+      ],
+      "units": 229,
+      "bodySha256": "e2fd04b5ba9276b9720578bd7e43e984326180dc95836186a38c868802f70fa0",
+      "note": "from/e seat filter"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        37411,
+        37704
+      ],
+      "units": 293,
+      "bodySha256": "75ab4e384707ea0a3d7426124176e735e75d1a509cfa17641043d35cbf13f8c4",
+      "note": "pinned-keys filter"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        37996,
+        38339
+      ],
+      "units": 343,
+      "bodySha256": "b79a4839c34bf496dda4118c4dee758126143d98895bfa9a1d939e9a453f3038",
+      "note": "refusal when the hooks worker is being replaced"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        38388,
+        38403
+      ],
+      "units": 15,
+      "bodySha256": "eb9e2020ae78fcffa194b796dd7e99bea3af8855518f35c52284b9fc5e92c296",
+      "note": "async-context store"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        38403,
+        38517
+      ],
+      "units": 114,
+      "bodySha256": "d057292e2a966bfa0b9110a555049db0d46fe5dfa8d023211fafeae4aec0a70a",
+      "note": "store value builder"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        38517,
+        38557
+      ],
+      "units": 40,
+      "bodySha256": "01204a3ce5929d37b61f7461503b21ac583c2d228307dbc4a1f2dd8d78108f64",
+      "note": "inside a run whose isOver is false"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        27348,
+        27414
+      ],
+      "units": 66,
+      "bodySha256": "ebf459eec9e8822a45c40d7dfc64e2d4c948dbc661b5ab2558e873ba5556eed3",
+      "note": "tier of a record"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        29214,
+        29248
+      ],
+      "units": 34,
+      "bodySha256": "66aeb89ba30e2a33c6f25d6a0df4ab321461dc623b131521f6899f406871ccce",
+      "note": "record counter of a run"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        29904,
+        30290
+      ],
+      "units": 386,
+      "bodySha256": "c9dd0c2c4d654da00507e417fcb77e0cd8197622fc3cfe4518c356b78a30a9ae",
+      "note": "seat chain of one record"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30290,
+        30321
+      ],
+      "units": 31,
+      "bodySha256": "18bfffd4ccfbd817bfaa93ef440bd75ddf4250a0a1318454b8fe69793ebc7e83",
+      "note": "record run state"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        31234,
+        31278
+      ],
+      "units": 44,
+      "bodySha256": "aa8bf5e4a53fdc7cd8ad66352e847982ac81f00fee81e8a7d26b5f7ecdab0c9f",
+      "note": "hop key of a record"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        31395,
+        31950
+      ],
+      "units": 555,
+      "bodySha256": "de707b5ded94092e243fdb75d4616dfdb11a28dae033687b41c3cd10e1af7fe3",
+      "note": "record run (engine side)"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        32505,
+        33818
+      ],
+      "units": 1313,
+      "bodySha256": "42dace51674f37da08958149089a637c7fbefe9f0c8a23cfd66a4053cf38f9c1",
+      "note": "record run (plain side)"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        36398,
+        36530
+      ],
+      "units": 132,
+      "bodySha256": "83711b6a4e4162dac7481effffe27a3ffdcfb26bdc22afb026909d8bf2fb8708",
+      "note": "record link table"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        39281,
+        39295
+      ],
+      "units": 14,
+      "bodySha256": "49fc71c9cf6ef3389f0254c75aa51b795dda4cdc708eda3ebb55a4dd7cc15f47",
+      "note": "cut marker"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        39295,
+        39309
+      ],
+      "units": 14,
+      "bodySha256": "f44b4117e4b432a2ee809bf8cea3ca1bed33098bc84ccef3a29b0d8974b9b824",
+      "note": "duration text"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30930,
+        31024
+      ],
+      "units": 94,
+      "bodySha256": "94a6e22dcb162963122d748250779f2fa3e84876ee797aa5319d0e76a5be31ea",
+      "note": "record run state helper"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        31024,
+        31109
+      ],
+      "units": 85,
+      "bodySha256": "77409b04a4a14f42d3c3a80c48c02f9c9c883f5d78fc0aed51c19016f3f1d52c",
+      "note": "record run state table"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        31950,
+        32505
+      ],
+      "units": 555,
+      "bodySha256": "745ce54138e7a33e32ae644bce26029b4160d52736f236c7c7599803d3f3bc71",
+      "note": "record run (hop side)"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        26970,
+        27006
+      ],
+      "units": 36,
+      "bodySha256": "eee239e389dd0ae8a24ba209d4433e053ce8f958bcba5182f0e7250c5802b30f",
+      "note": "watched plugin dirs holder"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        27042,
+        27198
+      ],
+      "units": 156,
+      "bodySha256": "a497de8b17a0b8c4e5ed104f5e8623cf80e5678664959db7e53cbffab02e79e1",
+      "note": "configured plugin seats"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30321,
+        30381
+      ],
+      "units": 60,
+      "bodySha256": "12ba3b9ff6e3c1ad4791ca3cf5410d5272638748bded2f351c14ef90f725e275",
+      "note": "whether the plugin dir is watched"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30413,
+        30573
+      ],
+      "units": 160,
+      "bodySha256": "ce5ff2a343ef991eeb65e74b20f5b9038b04e019f2f8d3a2c64ea64c50572a93",
+      "note": "seat list for the current project"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30573,
+        30603
+      ],
+      "units": 30,
+      "bodySha256": "6e4588171b3f6f844aa47f91c493c0994c5d61389a9605271a47364c8940dc42",
+      "note": "every plugin source"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30603,
+        30635
+      ],
+      "units": 32,
+      "bodySha256": "0ba5aee965d4534ee12cea0327df4f6a2322aa5a1b42678a29f8413bd776228d",
+      "note": "whether a seat chain is raised"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30635,
+        30647
+      ],
+      "units": 12,
+      "bodySha256": "1e1ec5da84d8fdf99972b8d40da8098006a52f96c59665b93075b33560987824",
+      "note": "seat list cache age"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30647,
+        30707
+      ],
+      "units": 60,
+      "bodySha256": "916ae4665f6fdf0616b0dd51c87e4b118a4011629480536d5accfe45299efa61",
+      "note": "log line trimming"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30707,
+        30718
+      ],
+      "units": 11,
+      "bodySha256": "959a5617bcf6e3ffa21cc5466a3c94587b31fbaf80ad6a23443186e75c4d3e0b",
+      "note": "module log throttle"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        30718,
+        30930
+      ],
+      "units": 212,
+      "bodySha256": "0b56afa637faea50226e9a7da2fa1cdd46e3e05cd29f6a79838c309c06e6a427",
+      "note": "module log line"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        38557,
+        38835
+      ],
+      "units": 278,
+      "bodySha256": "5c4d16200dc29bb16c1b77a11c1ecfdc1527a36e53f5d7b5c6614de920433c05",
+      "note": "hooks respawn hop"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        39124,
+        39281
+      ],
+      "units": 157,
+      "bodySha256": "5836a7e79a4a0e14764e9936bfd21b8d40efaa0ce35efbda5a2a9f3ec7056b51",
+      "note": "handler collection"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        37704,
+        37996
+      ],
+      "units": 292,
+      "bodySha256": "50239f52372bdd9e60abcb82ae9f7863152c8fbdfac2516cd6856413fadedab0",
+      "note": "pinned/only filter"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        39328,
+        39441
+      ],
+      "units": 113,
+      "bodySha256": "3958612d435bbd30998eaedd172346e1f4ba6031a68337a13d9f1c2195d7551b",
+      "note": "origin descriptor"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        27414,
+        27458
+      ],
+      "units": 44,
+      "bodySha256": "a938b8e845ad1f587dac28ab70f816eb9f68117b38f87b3267c8661b6ee357ad",
+      "note": "plugin name of a record"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        27006,
+        27042
+      ],
+      "units": 36,
+      "bodySha256": "17ae28bfc844bd62ea44ebdc12f4b8def5b0c4eafc60cc10cab5cd95ab09edd3",
+      "note": "config plugin dirs holder"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        35397,
+        35875
+      ],
+      "units": 478,
+      "bodySha256": "371e29fcf866a42ebcea16c577970263bab6e301a2b1bd0bafe21072b5f7f538",
+      "note": "declares et, the streaming hop dispatch"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        35875,
+        36398
+      ],
+      "units": 523,
+      "bodySha256": "0fc57c6f202a90532529efbd39d7a672246dd534f248fa2f54e226324fd3944b",
+      "note": "declares _o, the streaming record builder (the twin of rt)"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        39309,
+        39328
+      ],
+      "units": 19,
+      "bodySha256": "9018c9d9f0798aa03787f226cd3c2c41779eb233b89657d901c13f3762620639",
+      "note": "declares ft, the streamLinks branch"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        39563,
+        40188
+      ],
+      "units": 625,
+      "bodySha256": "816665a9a36fff1de4800ae4d74a173b2c31aa66e0c026b14344d45836eb3df5",
+      "note": "declares ct and has, the streaming handler and its collector"
+    }
+  ],
+  "missing": []
+}

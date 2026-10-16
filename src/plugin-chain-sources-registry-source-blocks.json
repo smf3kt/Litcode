@@ -1,0 +1,56 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-qm4226vk.js",
+      "sha256": "03facde94be2af5141839b3f90cc3821dc8344709a1160c01101c49b95c13051"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-qm4226vk.js",
+      "sha256": "03facde94be2af5141839b3f90cc3821dc8344709a1160c01101c49b95c13051",
+      "range": [
+        710,
+        722
+      ],
+      "units": 12,
+      "bodySha256": "4aa687ed73f8f456e3aa33c67f3b3448050fbe8cd3589fea1ae75f23fdd36fa0",
+      "note": "declares o, the source kind the dynamic-skill state key is built from (module-internal; the source does not export it)"
+    },
+    {
+      "module": "chunk-qm4226vk.js",
+      "sha256": "03facde94be2af5141839b3f90cc3821dc8344709a1160c01101c49b95c13051",
+      "range": [
+        722,
+        3319
+      ],
+      "units": 2597,
+      "bodySha256": "8dac813b9ca623abc9d3d06d26e35bf626b705ca43cbb24803445257892bb50c",
+      "note": "declares s, the per-host source registry: 45 field initialisers and eight methods (reservedSpellingsFor, refusedReservedSkillNames, markLoadedResultMissingTrustedNames, loadedResultIsMissingTrustedNames, clearLoadCaches, invalidateCommands, invalidateSkillDirs, evictDynamicSkillState)"
+    },
+    {
+      "module": "chunk-qm4226vk.js",
+      "sha256": "03facde94be2af5141839b3f90cc3821dc8344709a1160c01101c49b95c13051",
+      "range": [
+        3319,
+        3406
+      ],
+      "units": 87,
+      "bodySha256": "8b381b071862771095540341054ee82a793ad92715c11a91f372885432975f98",
+      "note": "declares pQ, memoise-or-build for a keyed table"
+    },
+    {
+      "module": "chunk-qm4226vk.js",
+      "sha256": "03facde94be2af5141839b3f90cc3821dc8344709a1160c01101c49b95c13051",
+      "range": [
+        3406,
+        3438
+      ],
+      "units": 32,
+      "bodySha256": "48ae3afe27a2b756efb6a66978844bc76350d5ab48d95734b5b790c88f366a17",
+      "note": "declares fQ, the nullable-key normaliser"
+    }
+  ],
+  "missing": []
+}

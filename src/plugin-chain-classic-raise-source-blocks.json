@@ -1,0 +1,222 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2"
+    },
+    {
+      "module": "chunk-kwp08k6x.js",
+      "sha256": "30dd63de691cb91bb82fe15f6073761e0e53c4b76025cd28c8e5274686773aab"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        123587,
+        123677
+      ],
+      "units": 90,
+      "bodySha256": "dbce995599bedf6b16ec9755a93d0075c739769b73648d9109eb02a099e78bef",
+      "note": "declares Bde"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        38835,
+        38972
+      ],
+      "units": 137,
+      "bodySha256": "e31a53a34e62d6c8923a5943d9ac2b68d7dfae0ed8dc497b6a68de2545cb3bf1",
+      "note": "declares N5t"
+    },
+    {
+      "module": "chunk-2kdsvp3x.js",
+      "sha256": "2005e8ff7e9534510b3d7f687d6a190f21c5930f1d8e5397070e2fa018bf52d2",
+      "range": [
+        38972,
+        39124
+      ],
+      "units": 152,
+      "bodySha256": "fc4bc95cbebd2a273e5e5f4d94cc84d1b28562ebaa394124b32d903997f59d3d",
+      "note": "declares Cro"
+    },
+    {
+      "module": "chunk-kwp08k6x.js",
+      "sha256": "30dd63de691cb91bb82fe15f6073761e0e53c4b76025cd28c8e5274686773aab",
+      "range": [
+        16626,
+        16718
+      ],
+      "units": 92,
+      "bodySha256": "df032fef740a67378587142918b500fefcc4807ba96a56d5f2133d41a650fbd6",
+      "note": "declares fe"
+    },
+    {
+      "module": "chunk-kwp08k6x.js",
+      "sha256": "30dd63de691cb91bb82fe15f6073761e0e53c4b76025cd28c8e5274686773aab",
+      "range": [
+        16718,
+        17014
+      ],
+      "units": 296,
+      "bodySha256": "dea457ad78c5157913258f250646c9c9ef0d007e50ac6b0705420892c570e68a",
+      "note": "declares le"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        556178,
+        556225
+      ],
+      "units": 47,
+      "bodySha256": "53c3ac07265f0225a52fed50641f8831d586194b06b9f1596745ec471bd805f2",
+      "note": "declares Gnr"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        556225,
+        556265
+      ],
+      "units": 40,
+      "bodySha256": "4f307c05d317597278d434fdc2a774eed4a7bdaeedc021eeb3f6dad34b86e4b1",
+      "note": "declares Q_t, the gate the product path asks before raising"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        556265,
+        556293
+      ],
+      "units": 28,
+      "bodySha256": "678c5b40ee8c3e38012b9158329826343715d9173485e70b7de9ff888f7e17aa",
+      "note": "declares FDe"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        556293,
+        556325
+      ],
+      "units": 32,
+      "bodySha256": "82d6dabe11d1442f96a4bea0b6a037901e78800fb7d6694271da31dc872ab882",
+      "note": "declares die, the plain per-event gate"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        557292,
+        557326
+      ],
+      "units": 34,
+      "bodySha256": "b94547f6aff6209a581ceaa4afc214b57925c3ea0e4f20f9a7366154567924d5",
+      "note": "declares lM, the drop-undefined fold the records use"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        558335,
+        558460
+      ],
+      "units": 125,
+      "bodySha256": "8d2c92f077bc7b054294acb1885a5d7b65fd91124aa00187a519e9470df5a579",
+      "note": "declares gkt, the text a hook answer blocks with"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        559965,
+        560231
+      ],
+      "units": 266,
+      "bodySha256": "0c6d55c483297e47ff076fab92c599e3fb6386c30557761fa7571cfe45fa7cff",
+      "note": "declares znr, the generic raise itself"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        561742,
+        561804
+      ],
+      "units": 62,
+      "bodySha256": "8e1fe6977ee42a284cba86991ab6e6d5696452e1072698f6cefb52d68e53dac0",
+      "note": "declares Rkt, the blocked record"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        561804,
+        561890
+      ],
+      "units": 86,
+      "bodySha256": "dd991bdac3d4e4d8c2c26babf20126b14d6eba94adee98e5fdb8734d94fe2df8",
+      "note": "declares p7n, the last non-empty line of a hook's output"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        561890,
+        562000
+      ],
+      "units": 110,
+      "bodySha256": "7e677e1af0d0cbbd3641fc41f87639aac83a1afcc7292555bde6c199f0e7a9f2",
+      "note": "declares cU, the first surviving output line"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        562000,
+        562127
+      ],
+      "units": 127,
+      "bodySha256": "5ec8d679a85003c9fe37b4147339875a597a10fb02ebd18c2c748dba3d143a86",
+      "note": "declares cie, the block a record list stands for"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        562402,
+        562464
+      ],
+      "units": 62,
+      "bodySha256": "04a117a0c6762f4f76a1890c0fc643fd96fabd8b40efe2cbd595b968b350dc70",
+      "note": "declares Pkt, the worktree record"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        562464,
+        562773
+      ],
+      "units": 309,
+      "bodySha256": "38b817be829a8d9950ae55c2ee9ccf33c48fdf37b09e575d6939100673d3103c",
+      "note": "declares h7n, the record list the raise folds to"
+    }
+  ],
+  "missing": []
+}

@@ -1,0 +1,32 @@
+{
+  "feature_shim_sha256": "d0f644b3bb126c718bc0904d298fe5fbb05804d55aed3f550d4fb095dd206101",
+  "rows": [
+    {
+      "file": "setup.ts",
+      "source_commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "source_sha256": "43a7f88331f6136e5bb096c63a33ce99bbbdb5108696a97f017d3c1eb8ef1e35",
+      "input_sha256": "0e589e3906b50711b87b30b8d922b792558a6b96156bbd1c2a9ae9c41f05a7f1",
+      "output_sha256": "0e589e3906b50711b87b30b8d922b792558a6b96156bbd1c2a9ae9c41f05a7f1",
+      "coordinates": "utf16-half-open",
+      "edits": []
+    },
+    {
+      "file": "utils/sessionRestore.ts",
+      "source_commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "source_sha256": "9dfe9c2203aac5c3cc6d49e45bf2f8fd381582781b5cec3abbc4ceb6d219e177",
+      "input_sha256": "005abfaa884ce0a43c04ad8837485d06cb007f8260831b9fc63358b95a04cc15",
+      "output_sha256": "005abfaa884ce0a43c04ad8837485d06cb007f8260831b9fc63358b95a04cc15",
+      "coordinates": "utf16-half-open",
+      "edits": []
+    },
+    {
+      "file": "services/compact/postCompactCleanup.ts",
+      "source_commit": "bd958088195aefbb4bce96ba966447e5e09b1312",
+      "source_sha256": "2783f5c75e80638002b5563a0b4ee5daff912bab6523c1473ed1e5060f12e9b7",
+      "input_sha256": "ef7431cf0b81221cdfe2ba6923d3c845d040ab37433456eeebe2a632e17a2f78",
+      "output_sha256": "ef7431cf0b81221cdfe2ba6923d3c845d040ab37433456eeebe2a632e17a2f78",
+      "coordinates": "utf16-half-open",
+      "edits": []
+    }
+  ]
+}

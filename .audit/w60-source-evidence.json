@@ -43,10 +43,10 @@
         2338,
         6365
       ],
-      "changedSha256": "0dddbf4ae2736e810d302ae0a0da7b766beae1307e8f7ee4ab1023c55e12b502",
+      "changedSha256": "3206b35fc62f8671d6f59333a8c494637264e59676112fc56a1fdf9f82b4be5e",
       "changedRange": [
-        2338,
-        6296
+        2266,
+        6203
       ],
       "coordinateUnit": "utf16-half-open",
       "mode": "adapt",

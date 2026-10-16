@@ -913,6 +913,11 @@ export function defaultUserDir(): string {
  * (carrying the offending path) before any result is returned, so a partial
  * configuration is never emitted.
  */
+/** Whether this process has ever handed the chain a plugin hooks declaration. Set on the first read
+ *  that finds one, so every later read reconciles against it even when the list is empty: a removed
+ *  plugin must be unloaded, and an empty declaration list *is* that removal. */
+let pluginHooksAdoptionStarted = false;
+
 export function loadProjectConfig(workspace: string, options: LoadProjectOptions = {}): LoadedConfig {
   const workspaceRoot = path.resolve(workspace);
   const workspaceReal = tryRealpath(workspaceRoot);
@@ -1065,6 +1070,19 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   let installedComponents: ReturnType<typeof discoverInstalledPluginComponents>;
   try {
     installedComponents = discoverInstalledPluginComponents(workspaceReal, plugins);
+    // The chain's side of the same discovery: a plugin whose hooks file names a module hands the chain
+    // its descriptor (`{name, modulePath, path}` — the source's own fields, `cIo`), which loads the
+    // module in the background because the module is code and discovery is synchronous. Once a process
+    // has adopted anything, every later read adopts again even with nothing declared, because that
+    // empty list is how a removed plugin is unloaded. Imported lazily until then, so a config read with
+    // no such plugin never pulls the chain in.
+    const declarations = installedComponents.flatMap(item => item.hooksModulePath
+      ? [{name: item.plugin.manifest.name, modulePath: item.hooksModulePath, path: item.directory}]
+      : []);
+    if (declarations.length > 0 || pluginHooksAdoptionStarted) {
+      pluginHooksAdoptionStarted = true;
+      void import("./plugin-chain-registry.js").then(chain => chain.adoptPluginHooksModules(declarations));
+    }
     // Plugin hooks run first; each explicit layer keeps its actual precedence.
     const pluginHooks: Record<string, unknown[]> = {};
     const pluginServers = Object.fromEntries(installedComponents.flatMap(item => Object.entries(item.mcpServers ?? {})));

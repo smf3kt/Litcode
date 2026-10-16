@@ -11,20 +11,30 @@
  * bounded render prefix, and the two-rows-of-overscan window. What is
  * rewritten, with the reason: the recovered viewer is a React component that
  * lays out its rows through the vendored Yoga engine and holds its state in
- * `useState` memo slots, which this product has no counterpart for; here the
- * viewport is a pure reducer plus an explicit row layout reusing the existing
- * cell-accurate wrapper from `terminal.ts`. The recovered viewer's second
+ * `useState` memo slots. This earlier reducer adaptation remains while W44
+ * ports the full renderer. Assistant messages now use source re/M's grapheme
+ * masking with a Node width/wrap host; details are in the W44 port record.
+ * The recovered viewer's second
  * output region (`{transcript, progress}`) is not modelled here, because this
  * product renders its live progress on the status line instead.
  */
 
 import { cellWidth } from './terminal.js';
+import { wrapMessageText } from './tui-wrap.js';
 
 export type TranscriptEntryKind = 'user' | 'assistant' | 'system' | 'tool' | 'error';
 
 export interface TranscriptEntry {
   kind: TranscriptEntryKind;
   text: string;
+  /** A model message has one two-cell speaker gutter, including wrapped rows. */
+  speaker?: boolean;
+  /** Cumulative source stays separate from formatted selection text. */
+  markdown?: string;
+  streaming?: boolean;
+  messageKey?: string;
+  hideTrailingLine?: boolean;
+  duration?: import('./tui-progress.js').TurnDuration;
 }
 
 export interface TranscriptState {
@@ -61,11 +71,28 @@ export interface RenderedRow {
   continuation: boolean;
   /** Leading cells that belong to the entry's hanging indent, not to its text. */
   indent: number;
+  ansi?: string;
+  end?: number;
+  elidedSeparator?: boolean;
 }
 
 /** Wrap one entry to the given width; every entry keeps its own hanging indent. */
-export function wrapEntryRows(entry: TranscriptEntry, columns: number): RenderedRow[] {
+export type EntryRowRenderer = (entry: TranscriptEntry, columns: number) => RenderedRow[];
+
+export function wrapEntryRows(entry: TranscriptEntry, columns: number, renderer?: EntryRowRenderer): RenderedRow[] {
   const width = Math.max(8, Math.floor(columns));
+  if ((entry.markdown !== undefined || entry.duration !== undefined) && renderer) return renderer(entry, width);
+  if (entry.speaker) {
+    const rows: RenderedRow[] = [];
+    // Recovered vu(..., 'wrap') uses hard:true, trim:false with word wrapping.
+    for (const paragraph of entry.text.replace(/\r\n?/g, '\n').split('\n')) {
+      for (const [index, text] of wrapMessageText(paragraph, width - 2).split('\n').entries()) {
+        rows.push({ text: '  ' + text, continuation: index > 0, indent: 2 });
+      }
+    }
+    if (rows.length) rows[0] = { ...rows[0]!, text: '● ' + rows[0]!.text.slice(2) };
+    return rows;
+  }
   const indent = entry.kind === 'user' ? '> ' : entry.kind === 'tool' ? '  ' : '';
   const prefix = entry.kind === 'error' ? '! ' : entry.kind === 'system' ? '- ' : indent;
   const rows: RenderedRow[] = [];
@@ -104,23 +131,13 @@ export function wrapEntry(entry: TranscriptEntry, columns: number): string[] {
  * Rendered lines for the current state. `showAll` off collapses only the tail
  * of an over-long entry, so the newest output stays visible either way.
  */
-export function transcriptLines(state: TranscriptState, columns: number): string[] {
-  const lines: string[] = [];
-  for (const entry of state.entries) {
-    const wrapped = wrapEntry(entry, columns);
-    if (!state.showAll && wrapped.length > COLLAPSED_ENTRY_LINES) {
-      const hidden = wrapped.length - COLLAPSED_ENTRY_LINES;
-      lines.push(`  ... ${hidden} earlier lines (ctrl+e shows all)`.slice(0, Math.max(8, Math.floor(columns))));
-      lines.push(...wrapped.slice(-COLLAPSED_ENTRY_LINES));
-      continue;
-    }
-    lines.push(...wrapped);
-  }
-  return lines;
+export function transcriptLines(state: TranscriptState, columns: number, renderer?: EntryRowRenderer): string[] {
+  return renderedTranscriptRows(state, columns, renderer).map(row => row.text);
 }
 
 export interface TranscriptViewport {
   lines: string[];
+  rows: RenderedRow[];
   /** First rendered line index, after clamping. */
   offset: number;
   total: number;
@@ -129,11 +146,13 @@ export interface TranscriptViewport {
 }
 
 /** Rendered rows for the current state, with the wrap metadata selection needs. */
-export function renderedTranscriptRows(state: TranscriptState, columns: number): RenderedRow[] {
+export function renderedTranscriptRows(state: TranscriptState, columns: number, renderer?: EntryRowRenderer): RenderedRow[] {
   const rows: RenderedRow[] = [];
   for (const entry of state.entries) {
-    const wrapped = wrapEntryRows(entry, columns);
-    if (!state.showAll && wrapped.length > COLLAPSED_ENTRY_LINES) {
+    const wrapped = wrapEntryRows(entry, columns, renderer);
+    if (!wrapped.length) continue;
+    if (entry.speaker && rows.length) rows.push({ text: '', continuation: false, indent: 0 });
+    if (!state.showAll && !entry.speaker && wrapped.length > COLLAPSED_ENTRY_LINES) {
       const hidden = wrapped.length - COLLAPSED_ENTRY_LINES;
       rows.push({ text: `  ... ${hidden} earlier lines (ctrl+e shows all)`.slice(0, Math.max(8, Math.floor(columns))),
         continuation: false, indent: 0 });
@@ -145,13 +164,14 @@ export function renderedTranscriptRows(state: TranscriptState, columns: number):
   return rows;
 }
 
-export function layoutTranscript(state: TranscriptState, columns: number, rows: number): TranscriptViewport {
-  const lines = transcriptLines(state, columns);
+export function layoutTranscript(state: TranscriptState, columns: number, rows: number, renderer?: EntryRowRenderer): TranscriptViewport {
+  const rendered = renderedTranscriptRows(state, columns, renderer);
+  const lines = rendered.map(row => row.text);
   const height = Math.max(1, Math.floor(rows));
   const total = lines.length;
   const maxOffset = Math.max(0, total - height);
   const offset = Math.max(0, Math.min(state.offset, maxOffset));
-  return { lines: lines.slice(offset, offset + height), offset, total, scrolled: offset < maxOffset };
+  return { lines: lines.slice(offset, offset + height), rows: rendered.slice(offset, offset + height), offset, total, scrolled: offset < maxOffset };
 }
 
 const PAGE = (rows: number) => Math.max(1, Math.floor(rows));

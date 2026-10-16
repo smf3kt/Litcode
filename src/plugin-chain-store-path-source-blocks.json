@@ -1,0 +1,100 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15805,
+        15829
+      ],
+      "units": 24,
+      "bodySha256": "cae0f791cff6146a56513a796cd8f57a06fbb9dd540e972623cd1d631c5c6016",
+      "note": "declares lt, the name a storage id may be used verbatim as"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15383,
+        15436
+      ],
+      "units": 53,
+      "bodySha256": "6c97910adf9b4af33472727bdf7690d366ab4bfeb359598c043b2fcd96695b06",
+      "note": "declares nt, the Windows device names a storage id may not be"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15436,
+        15446
+      ],
+      "units": 10,
+      "bodySha256": "4ff802bb1df3665534768a35bddc8e8a25302fe7997332e3b9b82accbe005529",
+      "note": "declares me, the length a storage id is cut to in a hashed name"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15446,
+        15456
+      ],
+      "units": 10,
+      "bodySha256": "dbc6c822259839196d74137048de02554a897ed027ce7ac77dbfc143cb4fe544",
+      "note": "declares st, the hex digits of the hash a hashed name keeps"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        15976,
+        16204
+      ],
+      "units": 228,
+      "bodySha256": "1fc204674589b39f75da24e8afd68f890574def722c7493b2435f22ca64df9c9",
+      "note": "declares ue, the file name for a storage id: safe ids verbatim, anything else sanitized and hashed"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        16204,
+        16238
+      ],
+      "units": 34,
+      "bodySha256": "1636aeef19f674acfc8ed4c65bf11fa7342f2eb80ce3a28d4f17d54214731019",
+      "note": "declares S, the store file's path: the data directory, the store subdirectory and the name"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        16238,
+        16319
+      ],
+      "units": 81,
+      "bodySha256": "84b8bedab8dcc43027bae22f73a6f8f18ffa3a5a32cbac024b0d5aef1b1b1d84",
+      "note": "declares xe, which makes the store file's directory and answers its path"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        16357,
+        16491
+      ],
+      "units": 134,
+      "bodySha256": "d97096e89400cf97f559cdf228f12e20ced73ba82212e52dce31f1ff19790488",
+      "note": "declares St, the touch that keeps a store file from being collected, warning rather than throwing"
+    }
+  ],
+  "missing": []
+}

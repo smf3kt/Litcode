@@ -24,6 +24,26 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   applyManagedPolicy(next, loaded.managedSettings);
   next.autoMemory = overrides.autoMemory ?? settings.autoMemory ?? false;
   next.watchConfig = overrides.watchConfig ?? settings.watchConfig ?? false;
+  if (settings.prefersReducedMotion !== undefined) next.prefersReducedMotion = settings.prefersReducedMotion;
+  else delete next.prefersReducedMotion;
+  if (settings.showTurnDuration !== undefined) next.showTurnDuration = settings.showTurnDuration;
+  else delete next.showTurnDuration;
+  for (const key of ['timeFormat', 'timeZone', 'spinnerVerbs','editorMode','vimInsertModeRemaps'] as const) {
+    if (settings[key] === undefined) delete next[key];
+  }
+  if (settings.timeFormat !== undefined) next.timeFormat = settings.timeFormat;
+  if (settings.timeZone !== undefined) next.timeZone = settings.timeZone;
+  if (settings.spinnerVerbs !== undefined) next.spinnerVerbs = settings.spinnerVerbs;
+  if(settings.editorMode!==undefined)next.editorMode=settings.editorMode;
+  if(settings.vimInsertModeRemaps!==undefined)next.vimInsertModeRemaps=settings.vimInsertModeRemaps;
+  if (settings.maxProseWidth !== undefined) next.maxProseWidth = settings.maxProseWidth;
+  else delete next.maxProseWidth;
+  if (settings.syntaxHighlightingDisabled !== undefined) next.syntaxHighlightingDisabled = settings.syntaxHighlightingDisabled;
+  else delete next.syntaxHighlightingDisabled;
+  if (settings.theme !== undefined) next.theme = settings.theme;
+  else delete next.theme;
+  if (settings.statusLine !== undefined) next.statusLine = settings.statusLine;
+  else delete next.statusLine;
   next.system = buildSystem(DEFAULT_SYSTEM, [...loaded.instructions,
     ...(next.features.memory === false || next.autoMemory ? [] : loaded.memories ?? [])], loaded.skills);
   if (next.features.subagents && next.features.agentTypes) {

@@ -1,0 +1,144 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        475447,
+        475544
+      ],
+      "units": 97,
+      "bodySha256": "5f39566959f017d9521d0574418648025dc61a9f0dc6f59eba0c1e330c39f724",
+      "note": "`XH` — does another plugin's element hold the keyboard at this site"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        475544,
+        475653
+      ],
+      "units": 109,
+      "bodySha256": "9726871e816893673ad48a388c2d81db62e79bf6eb5d29ea8dcc228be1df003e",
+      "note": "`uyt` — is the focus caller neither the site's owner nor the origin's plugin"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        475653,
+        475702
+      ],
+      "units": 49,
+      "bodySha256": "ab686471d83fade9b2284f5cb0e2bc03c65dc5aa1063575aba09eddf912751b4",
+      "note": "`Uet` — the focus-site registry: `it().focusSites`, cleared through its own disposer"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        476009,
+        476078
+      ],
+      "units": 69,
+      "bodySha256": "02ff744581ab1602209a7ea808458619fd7b42601e1f6f7fe4a66cb39670e35c",
+      "note": "`pyt` — is the scroll caller a plugin that is not the site's owner"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        476191,
+        476241
+      ],
+      "units": 50,
+      "bodySha256": "f87314a44e71e8593fcef0724830a06ce2a4c648ab08854f1c49f4ec6f66f478",
+      "note": "`ahe` — the scroll-site registry: `it().scrollSites`, cleared through its own disposer"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        476241,
+        476267
+      ],
+      "units": 26,
+      "bodySha256": "fc98bf0e125101c7006512b407b8795bcb6e0b9b3e4bc539709fe883b6e75adb",
+      "note": "`_z` — the key a site is filed under: `component:requestId`"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        476681,
+        476733
+      ],
+      "units": 52,
+      "bodySha256": "17d9e1c0c45c84ec1e0316cd7eb4333465438df78785270ee63f8dd66431cf94",
+      "note": "`mse` — the scroll site a call names, out of the scroll registry"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        476733,
+        476926
+      ],
+      "units": 193,
+      "bodySha256": "a0f13e099aa306219e346864390b3688042a90855b968a14c3cc35e56bbcfab9",
+      "note": "`PY` — `$.ui.scroll`: no such site, not this plugin's site, then the site's own commit"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        479578,
+        479605
+      ],
+      "units": 27,
+      "bodySha256": "c6971b758a50cf980ab928eafb88594eaa4e7a5710afc43944b56a747a12beb4",
+      "note": "`bse` — the `ui.scroll` entry: `Mm(\"ui.scroll\", PY)`"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        479605,
+        479656
+      ],
+      "units": 51,
+      "bodySha256": "64dc206ec65ed034f43e048ab1463203687be7750c9f613eb5e108f304d084ae",
+      "note": "`iL` — the focus site a call names, out of the focus registry"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        479656,
+        479962
+      ],
+      "units": 306,
+      "bodySha256": "f3aa07d1a62886bfc40a8f83b8b1bcff504350435d100ad5ddb4e24a4fe29632",
+      "note": "`IY` — `$.ui.focus`: no such site, not this plugin's site, the site does not hold the keyboard, another plugin's element holds it, then the site's own commit"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        479962,
+        479988
+      ],
+      "units": 26,
+      "bodySha256": "a6de35f6abd0595813d95fc75d926a4b157eb6d598cab1dcbbf2d19867dceb55",
+      "note": "`vse` — the `ui.focus` entry: `Mm(\"ui.focus\", IY)`"
+    }
+  ],
+  "missing": []
+}

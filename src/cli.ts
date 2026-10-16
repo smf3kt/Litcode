@@ -294,6 +294,17 @@ function newConfig(
   config.contextTokens = positive(values['context-tokens'] as string | undefined, settings.contextTokens ?? config.contextTokens);
   config.compactAt = positive(values['compact-at'] as string | undefined, Math.min(settings.compactAt ?? config.compactAt, config.contextTokens - config.maxTokens - 8192));
   config.maxOutputBytes = settings.maxOutputBytes ?? config.maxOutputBytes;
+  if (settings.prefersReducedMotion !== undefined) config.prefersReducedMotion = settings.prefersReducedMotion;
+  if (settings.showTurnDuration !== undefined) config.showTurnDuration = settings.showTurnDuration;
+  if (settings.timeFormat !== undefined) config.timeFormat = settings.timeFormat;
+  if (settings.timeZone !== undefined) config.timeZone = settings.timeZone;
+  if (settings.spinnerVerbs !== undefined) config.spinnerVerbs = settings.spinnerVerbs;
+  if(settings.editorMode!==undefined)config.editorMode=settings.editorMode;
+  if(settings.vimInsertModeRemaps!==undefined)config.vimInsertModeRemaps=settings.vimInsertModeRemaps;
+  if (settings.maxProseWidth !== undefined) config.maxProseWidth = settings.maxProseWidth;
+  if (settings.syntaxHighlightingDisabled !== undefined) config.syntaxHighlightingDisabled = settings.syntaxHighlightingDisabled;
+  if (settings.theme !== undefined) config.theme = settings.theme;
+  if (settings.statusLine !== undefined) config.statusLine = settings.statusLine;
   config.thinking = values['no-thinking']
     ? false
     : (values.thinking as boolean | undefined) ?? (demo ? false : optionalBoolean('LLM_THINKING')) ?? settings.thinking ?? false;
@@ -656,8 +667,17 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     const currentRuntime = runtime;
     process.stderr.write(`session: ${currentSession.id}\nworkspace: ${workspace}\n`);
     if (values.interactive) {
-      const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,
-        keybindings: currentSession.config.keybindings }) : undefined;
+      const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
+        keybindings: currentSession.config.keybindings,
+        prefersReducedMotion: currentSession.config.prefersReducedMotion,
+        showTurnDuration: currentSession.config.showTurnDuration,
+        editorMode:currentSession.config.editorMode,vimInsertModeRemaps:currentSession.config.vimInsertModeRemaps,
+        progressSettings: {timeFormat:currentSession.config.timeFormat, timeZone:currentSession.config.timeZone,
+          spinnerVerbs:currentSession.config.spinnerVerbs},
+        maxProseWidth: currentSession.config.maxProseWidth,
+        syntaxHighlightingDisabled: currentSession.config.syntaxHighlightingDisabled,
+        theme: currentSession.config.theme, userDir: currentSession.config.configSources?.userDir,
+        workspace: currentSession.config.workspace, plugins: currentSession.config.plugins }) : undefined;
       await new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {
         status: text => { if (tui) tui.setStatus(text); else process.stderr.write(`${text}\n`); },
         ...(tui ? { terminalSequence: (sequence: string) => tui.writeTerminalSequence(sequence) }

@@ -1,0 +1,368 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-m4qpskd4.js",
+      "sha256": "730cbd0e42d685bf16a3b53c020b479670597d6bef6db2ab594049eea3e782ae",
+      "range": [
+        48214,
+        48245
+      ],
+      "units": 31,
+      "bodySha256": "4086cc9666ef0da1645e678a50bd8ff537466bfb3809f045aae3f794e7cfe488",
+      "note": "Qws: the permission decisions a classic answer may name"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        7376,
+        7551
+      ],
+      "units": 175,
+      "bodySha256": "f4651049998c198b51be0f8fa5759d75ff045f8b9e36280f3d2ffaf3f9d7b427",
+      "note": "declares oIt, Zbr, oo, W3e, W$n, ewr, …"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        7551,
+        7609
+      ],
+      "units": 58,
+      "bodySha256": "f8432242e3061534fbbaffd412dd5d76f95e32df8e0be7d5b31c71f7cb80da0b",
+      "note": "declares Dgo"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        7609,
+        8001
+      ],
+      "units": 392,
+      "bodySha256": "247a9180950768e29e0ac1b5eae9ad67f2749844d558e51bc69f61ee250a9624",
+      "note": "declares twr"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        16307,
+        16335
+      ],
+      "units": 28,
+      "bodySha256": "3aa21e8edc905d6cfaa4b6d29a5568fc07d2a05b688307ea0c8b9a32301603b7",
+      "note": "declares Gs"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        16335,
+        16391
+      ],
+      "units": 56,
+      "bodySha256": "6287383ca83aae91e2095186db343fdf6a8e0b2dba2158c19c5b6b3286970900",
+      "note": "declares vgo"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        16583,
+        16728
+      ],
+      "units": 145,
+      "bodySha256": "ac61b3f76e3870d836c530c1de64332e4cd288b33982b7649f0526097ae38cef",
+      "note": "declares vt"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        17366,
+        17397
+      ],
+      "units": 31,
+      "bodySha256": "eec0aa77eab875c109b1581b9294db06311e6e1b9649454f315d0d9ae86ce0a2",
+      "note": "declares mr"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        18260,
+        18608
+      ],
+      "units": 348,
+      "bodySha256": "deeea453b1839508cd58c202332df73f98a0f825263817580c7012e14c4e399e",
+      "note": "declares io"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        24689,
+        24806
+      ],
+      "units": 117,
+      "bodySha256": "39f74726e0683818cec8caf91937eaa61dab660c4c910fa714ee82a018fa74ec",
+      "note": "declares ni"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25026,
+        25114
+      ],
+      "units": 88,
+      "bodySha256": "ff69fe54ee994165ee37858cb115bf4b56373c50b14d59a372192e2b0bd242c3",
+      "note": "declares si"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25181,
+        25321
+      ],
+      "units": 140,
+      "bodySha256": "4c7df0ac151a04df13b7ec7b819a76de8220269d6d728c53667373b8694761b6",
+      "note": "declares ft"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        42925,
+        43074
+      ],
+      "units": 149,
+      "bodySha256": "a6e596b0e53546594d5f7e4f0b36827c4c1f7e5089a57b80d3c555812aeecfa5",
+      "note": "declares jt"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103064,
+        103154
+      ],
+      "units": 90,
+      "bodySha256": "1eba9b16075cbf09ad34ad8e5861b86a4042e2e0518793bb6f852d9e2347d476",
+      "note": "declares Wn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103154,
+        103187
+      ],
+      "units": 33,
+      "bodySha256": "0f8fc2944328115ed278d5f1096df11199900b837f447c4f49566bd14180dafa",
+      "note": "declares Vn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103187,
+        103227
+      ],
+      "units": 40,
+      "bodySha256": "1c0e9643b3e63bf73be624a31d7e33bc331613e8f48d0101544f4353ed0de9a2",
+      "note": "declares wy"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103227,
+        103246
+      ],
+      "units": 19,
+      "bodySha256": "212161c39a30cca98170a1fb161f7ae3189604710b65ffafe18d7b001c640e6c",
+      "note": "declares je"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103246,
+        103268
+      ],
+      "units": 22,
+      "bodySha256": "a4777c68c2715a8d97c60c613d174e5dc2709d8b2bfb0ec99e14596cc896c62d",
+      "note": "declares j$n"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103268,
+        103321
+      ],
+      "units": 53,
+      "bodySha256": "e485ed246426f88b08c4c82b086d3967782a28fb86036b593b078faf8b242113",
+      "note": "declares Gn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103620,
+        103642
+      ],
+      "units": 22,
+      "bodySha256": "d26326067f551faebf844b1fa9abbfff56e244eb72a2f219760d05032b30ecba",
+      "note": "declares Ay"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        103772,
+        103888
+      ],
+      "units": 116,
+      "bodySha256": "86960d9a945f66478d85c0dbb7ed55b28a10f3fd75b0c3588a698a39c827bb97",
+      "note": "declares Ude"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        104050,
+        104075
+      ],
+      "units": 25,
+      "bodySha256": "2a8e76577218e6fbdeef540a5a57f4241f489d18883360990cfd1f0aa96ef780",
+      "note": "declares Vt"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        104075,
+        104152
+      ],
+      "units": 77,
+      "bodySha256": "eecb9d4eec77addba3f7a7bb43440dd039324f87ec4cb8a79ee433f9789a0133",
+      "note": "declares zn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        104152,
+        104568
+      ],
+      "units": 416,
+      "bodySha256": "6eb1d39fd31c708c18bf1fcd03f50724c67d666f1116eb9d42cc0f1fd47b9e27",
+      "note": "declares Ua"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        104568,
+        104838
+      ],
+      "units": 270,
+      "bodySha256": "5c954bba1e08705d2272240dca8f3f0795e78d15f708d04d260cd6715bdd3307",
+      "note": "declares Xn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        104838,
+        104873
+      ],
+      "units": 35,
+      "bodySha256": "1263d7b916288816da863f011ec3f42b938116336c6ef091b2dc6fe6f1889fc3",
+      "note": "declares Yn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        104873,
+        104962
+      ],
+      "units": 89,
+      "bodySha256": "f75bb21239186cfcc988bd7706df133a22cc5453922a1139a15f27d4f556323b",
+      "note": "declares Jn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        104962,
+        105113
+      ],
+      "units": 151,
+      "bodySha256": "46f4a09693abf733c78d22e68c7244c4caa542353ee4b379e4f60389d8c273d2",
+      "note": "declares qn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        105113,
+        105501
+      ],
+      "units": 388,
+      "bodySha256": "8adf57dcbb2022bfe77b916549d96bf682b2fd47da85cc466083066656a28edb",
+      "note": "declares Ba"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        105501,
+        105559
+      ],
+      "units": 58,
+      "bodySha256": "2dfbbd50ea76f27c2c278422a8dfc390939ab36fe1c63790cc74c915472a20de",
+      "note": "declares Qn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        105559,
+        105602
+      ],
+      "units": 43,
+      "bodySha256": "55ff5bf49f96decf4681c7f99710e87114f492743468444ed787e7a87b558af5",
+      "note": "declares Zn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        105602,
+        106133
+      ],
+      "units": 531,
+      "bodySha256": "fea506a7d51e94649170eb2c75023f82a5218123a84632f5478670f84bdf0337",
+      "note": "declares Ka"
+    }
+  ],
+  "missing": []
+}

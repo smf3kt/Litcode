@@ -1,0 +1,159 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713"
+    },
+    {
+      "module": "chunk-k1419ccf.js",
+      "sha256": "c16ef15d854983cef4a918f0e03680314c24bb195dfb9771dad68fc7d8b6ef1a"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        9915,
+        9946
+      ],
+      "units": 31,
+      "bodySha256": "9126b02857ad3421de7ce6c9db39f377cab00c0ea58489f0e0ce1c44262ffe2e",
+      "note": "declares `Nr`: a pass-through to the equality helper the settings diff compares two wrapped source entries with"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        9946,
+        9956
+      ],
+      "units": 10,
+      "bodySha256": "23eb6d215ad46301520de9036b5f855eeb0b8b2d2c09eb854f473c63bd0039ef",
+      "note": "declares `Vn`: the alias that equality is reached by"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        10003,
+        10147
+      ],
+      "units": 144,
+      "bodySha256": "6ed6bf109547e3a7e97f913dcd4c3fdfad6122c24dd49230df5dc803386e9165",
+      "note": "declares `q`: the per-host instance cache. `of(host)` answers the host's instance, building it through the factory on first ask and remembering it in a `WeakMap` — this is the class `Ixr` is built from"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        10256,
+        10514
+      ],
+      "units": 258,
+      "bodySha256": "43c54431963a229d08ff7c860d16166adbc27d1153fc523e94109add5bd12354",
+      "note": "declares `oe`: the walk cache — the folders a policy walk has visited, whether each is a link, the managed MCP document, `noteWalked(key, thunk)` memoizing by key, and `all()`"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        10514,
+        11767
+      ],
+      "units": 1253,
+      "bodySha256": "8066c8c8c1a08fee73db86a69e379acc195349c478409bdc9ba0e692ef392a25",
+      "note": "declares `re`: the repository tier with its holders, baseline and lingering tier — the object a store keeps so a tier stays frozen while something still holds it"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        11767,
+        11833
+      ],
+      "units": 66,
+      "bodySha256": "b9612138b779606b41ac66fad517270fef7ae4268f8d8c27f4cf002fd6ec699c",
+      "note": "declares `XMt`: the empty-settings normalize — a null or empty object answers null"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        11833,
+        11960
+      ],
+      "units": 127,
+      "bodySha256": "7f88781d701e3d76c0cf2e94925e32ad82930cf2804dc5d3ad525153a576c466",
+      "note": "declares `Et`: the source snapshot `{...entry, settings: XMt(settings), unfiltered: XMt(unfiltered), …legacy` — what the settings diff compares"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        11960,
+        12107
+      ],
+      "units": 147,
+      "bodySha256": "2088e5b0ffdcec2517676b338ecdc27934450222b73bacf6918fc102023b7350",
+      "note": "declares `Gr`: the changed-source diff — the keys of both maps, filtered to the entries whose wrapped snapshots are not equal"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        12107,
+        16313
+      ],
+      "units": 4206,
+      "bodySha256": "812a5e14d11676916d2730fa0eafe05e96e36204f5563c80d90ff64e69811b72",
+      "note": "declares `F8e`: the local settings store itself — `mergedSettings`, `perSource`, the parsed-file and managed-read caches, `repoTierFreeze`, `isLoadingFromDisk`, `pluginBase`, the epoch, the walk and listing caches, and the methods that load, seed, invalidate and diff them"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        16862,
+        16889
+      ],
+      "units": 27,
+      "bodySha256": "bc64688bf3a8d6c13314a5bb76a196f22fafba782cb66f96c4af9fd8ee3e3f76",
+      "note": "declares `Ixr`: the store, one per host — `new q(() => new F8e)`"
+    },
+    {
+      "module": "chunk-k1419ccf.js",
+      "sha256": "c16ef15d854983cef4a918f0e03680314c24bb195dfb9771dad68fc7d8b6ef1a",
+      "range": [
+        1148,
+        1154
+      ],
+      "units": 6,
+      "bodySha256": "6e9d709460a3b6fc14785a086d9d2a2824f35ee92889ae39b46e6c61a13b7ef4",
+      "note": "declares the pin state `t` that `j()` reads"
+    },
+    {
+      "module": "chunk-k1419ccf.js",
+      "sha256": "c16ef15d854983cef4a918f0e03680314c24bb195dfb9771dad68fc7d8b6ef1a",
+      "range": [
+        1154,
+        1181
+      ],
+      "units": 27,
+      "bodySha256": "c6dd0e5d07308a75d000df79ceeab6ff9542cbecdb247c3a68db1da4f88d74e3",
+      "note": "declares `j`: whether the policy setting is pinned — the flag the store consults before it walks"
+    },
+    {
+      "module": "chunk-k1419ccf.js",
+      "sha256": "c16ef15d854983cef4a918f0e03680314c24bb195dfb9771dad68fc7d8b6ef1a",
+      "range": [
+        1181,
+        1280
+      ],
+      "units": 99,
+      "bodySha256": "acc69bc9b985a5920ece54f86980d30d431b77aef905097aff220f7f50a1ec1b",
+      "note": "declares `nHs`: the pin setter — `true`/`false` pins the flag and answers \"pinned\" the first time, \"unchanged\" when the value is already the one asked for, and \"conflict\" (leaving the flag alone) when it disagrees"
+    }
+  ],
+  "missing": []
+}

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import type Anthropic from '@anthropic-ai/sdk';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -6,10 +7,19 @@ import { after, test } from 'node:test';
 
 import { Agent, defaultConfig } from '../src/agent.js';
 import type { SkillInfo } from '../src/config.js';
+import { saveThemeSetting } from '../src/theme-settings.js';
+import { ThemeEditor, themeFileWriter } from '../src/theme-editor.js';
+import { S1 } from '../src/tui-theme-colors.js';
+import { ThemeState, themeChoices } from '../src/tui-theme-state.js';
+import { CustomThemeCatalog } from '../src/tui-custom-themes.js';
+import { initializeCustomThemes } from '../src/tui-custom-theme-source.js';
+import { initializePluginThemes } from '../src/tui-plugin-theme-source.js';
+import { createPluginTools, discoverInstalledPluginComponents } from '../src/plugins.js';
 import { HOOK_EVENTS, type HooksConfig } from '../src/hooks.js';
 import type { ModelProvider } from '../src/provider.js';
 import type { SessionConfig } from '../src/session.js';
 import { createTools, type ToolContext, type ToolDefinition } from '../src/tools.js';
+import type { AgentProgressEvent } from '../src/tui-progress.js';
 import {
   buildSystem,
   createRuntime,
@@ -120,7 +130,7 @@ test('trusted callback hooks reach child and skill lifecycles with independent o
 test('parseSettings maps known runtime fields and ignores unknown keys', () => {
   const parsed = parseSettings({
     model: 'magpie-x', baseURL: 'http://127.0.0.1:9', auth: 'api-key', tokenCounting: 'api',
-    thinking: true, promptCaching: true, eagerToolInput: true, allowShell: true,
+    thinking: true, prefersReducedMotion: true, maxProseWidth: 40, syntaxHighlightingDisabled: true, promptCaching: true, eagerToolInput: true, allowShell: true,
     maxTurns: 5, maxTokens: 10, contextTokens: 11, compactAt: 12, maxOutputBytes: 13,
     hooks: {
       PreToolUse: [{ command: 'echo hi', matcher: 'Write', timeout: 1.5 }],
@@ -137,6 +147,18 @@ test('parseSettings maps known runtime fields and ignores unknown keys', () => {
   assert.equal(parsed.auth, 'api-key');
   assert.equal(parsed.tokenCounting, 'api');
   assert.equal(parsed.thinking, true);
+  assert.equal(parsed.prefersReducedMotion, true);
+  assert.equal(parseSettings({ prefersReducedMotion: false }).prefersReducedMotion, false);
+  assert.equal(parseSettings({}).prefersReducedMotion, undefined);
+  assert.equal(parsed.maxProseWidth, 40);
+  assert.equal(parseSettings({ maxProseWidth: 60 }).maxProseWidth, 60);
+  assert.equal(parseSettings({}).maxProseWidth, undefined);
+  for (const value of [null, false, '60', 39, -1, 40.5, NaN, Infinity])
+    assert.equal(parseSettings({ maxProseWidth: value }).maxProseWidth, undefined);
+  assert.equal(parsed.syntaxHighlightingDisabled, true);
+  assert.equal(parseSettings({ syntaxHighlightingDisabled: false }).syntaxHighlightingDisabled, false);
+  assert.equal(parseSettings({}).syntaxHighlightingDisabled, undefined);
+  assert.equal(parseSettings({ syntaxHighlightingDisabled: undefined }).syntaxHighlightingDisabled, undefined);
   assert.equal(parsed.maxOutputBytes, 13);
   assert.deepEqual(parsed.permissions, { mode: 'plan', allow: ['read_*'], deny: ['run_command'] });
   assert.deepEqual(parsed.mcpServers, { srv: { command: 'node', args: ['-e', 'x'] } });
@@ -151,8 +173,188 @@ test('parseSettings maps known runtime fields and ignores unknown keys', () => {
   assert.equal('nested' in parsed, false);
 });
 
+test('source theme state and settings save preserve authored fields and failures', () => {
+  const root = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'theme-settings-'));
+  const file = path.join(root, 'settings.json'); const previous = process.env.COLORFGBG;
+  try {
+    assert.deepEqual(themeChoices.map((choice: { value: string }) => choice.value),
+      ['auto', 'dark', 'light', 'dark-daltonized', 'light-daltonized', 'dark-ansi', 'light-ansi']);
+    for (const theme of themeChoices.map((choice: { value: string }) => choice.value).concat('custom:missing'))
+      assert.equal(parseSettings({ theme }).theme, theme);
+    for (const theme of [null, false, 1, 'Dark', 'unknown', [], {}]) assert.equal(parseSettings({ theme }).theme, undefined);
+    const state = new ThemeState('dark'); state.previewTheme('light');
+    assert.equal(state.setting, 'dark'); assert.equal(state.current, 'light');
+    state.cancelPreview(); assert.equal(state.current, 'dark');
+    process.env.COLORFGBG = '0;15'; state.reset('auto'); assert.equal(state.current, 'light');
+    state.previewTheme('dark-ansi'); assert.equal(state.current, 'dark-ansi');
+    state.cancelPreview(); assert.equal(state.current, 'light');
+    process.env.COLORFGBG = '15;0'; state.reset('auto'); assert.equal(state.current, 'dark');
+    process.env.COLORFGBG = '0;999'; state.reset('auto'); assert.equal(state.current, 'dark');
+    state.reset('custom:missing'); assert.equal(state.current, 'dark');
+    fs.writeFileSync(file, JSON.stringify({ model: 'pinned', nested: { keep: 1 }, syntaxHighlightingDisabled: false }));
+    fs.chmodSync(file, 0o640); saveThemeSetting('light-ansi', root);
+    assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')),
+      { model: 'pinned', nested: { keep: 1 }, syntaxHighlightingDisabled: false, theme: 'light-ansi' });
+    assert.equal(fs.statSync(file).mode & 0o777, 0o640);
+    fs.writeFileSync(file, '{'); assert.throws(() => saveThemeSetting('dark', root), /JSON/);
+    assert.equal(fs.readFileSync(file, 'utf8'), '{');
+    fs.writeFileSync(file, '[]'); assert.throws(() => saveThemeSetting('dark', root), /object/);
+    assert.equal(fs.readFileSync(file, 'utf8'), '[]');
+    fs.unlinkSync(file); saveThemeSetting('dark', root); assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    assert.deepEqual(fs.readdirSync(root), ['settings.json']);
+  } finally {
+    if (previous === undefined) delete process.env.COLORFGBG; else process.env.COLORFGBG = previous;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('source custom theme parser, serial catalog and live watcher preserve generation and file contracts', async () => {
+  const root = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'custom-theme-'));
+  const themes = path.join(root, 'themes'); fs.mkdirSync(themes);
+  const updates: unknown[] = [], warnings: string[] = [];
+  const catalog = new CustomThemeCatalog(value => updates.push(value), message => warnings.push(message));
+  const until = async (predicate: () => boolean) => {
+    const deadline = Date.now() + 5000;
+    while (!predicate()) { if (Date.now() >= deadline) throw new Error('Theme watcher did not publish'); await delay(25); }
+  };
+  try {
+    const parser = initializeCustomThemes({ be: () => root, BU: () => ({}), t: () => {} });
+    const parsed = parser.parse('ocean', JSON.stringify({ name: 'Ocean', base: 'light', overrides: {
+      text: '#112233', promptBorder: 'ansi:red', unknown: '#ffffff', error: 'invalid' } }), 'user');
+    assert.deepEqual(parsed, { slug: 'ocean', name: 'Ocean', base: 'light',
+      overrides: { text: '#112233', promptBorder: 'ansi:red' }, source: 'user' });
+    assert.equal(parser.parse('bad', '{', 'user'), undefined); assert.equal(parser.parse('bad', '[]', 'user'), undefined);
+    const fallback = parser.parse('fallback', '{"base":"auto"}', 'user');
+    assert.ok(fallback); assert.equal(fallback.base, 'dark');
+    fs.writeFileSync(path.join(themes, 'ocean.json'), JSON.stringify({ name: 'Zulu', base: 'light', overrides: { text: '#112233' } }));
+    fs.writeFileSync(path.join(themes, 'first.json'), JSON.stringify({ name: 'Alpha' }));
+    fs.writeFileSync(path.join(themes, 'bad.json'), '{');
+    fs.writeFileSync(path.join(themes, 'large.json'), ' '.repeat(262145));
+    fs.writeFileSync(path.join(themes, 'ignored.txt'), '{}');
+    catalog.bind(root); await catalog.ready();
+    assert.deepEqual(catalog.values.map(theme => theme.slug), ['first', 'ocean']);
+    assert.ok(warnings.some(message => message.includes('256KB')));
+    const stable = catalog.values; await catalog.reload(); assert.equal(catalog.values, stable);
+    await delay(150);
+    fs.writeFileSync(path.join(themes, 'ocean.json'), JSON.stringify({ name: 'Ocean', base: 'dark', overrides: { text: '#334455' } }));
+    await until(() => catalog.values.find(theme => theme.slug === 'ocean')?.overrides.text === '#334455');
+    fs.unlinkSync(path.join(themes, 'ocean.json'));
+    await until(() => !catalog.values.some(theme => theme.slug === 'ocean'));
+    fs.writeFileSync(path.join(themes, 'ocean.json'), JSON.stringify({ base: 'light' }));
+    await until(() => catalog.values.some(theme => theme.slug === 'ocean'));
+    assert.ok(catalog.choices().some(choice => choice.value === 'custom:ocean' && choice.origin === 'custom'));
+    const other = path.join(root, 'other'); fs.mkdirSync(path.join(other, 'themes'), { recursive: true });
+    fs.writeFileSync(path.join(other, 'themes/new.json'), '{"base":"dark-ansi"}');
+    const pending = catalog.reload(); catalog.bind(other); await Promise.all([pending, catalog.ready()]);
+    assert.deepEqual(catalog.values.map(theme => theme.slug), ['new']);
+    const state = new ThemeState('custom:new'); state.setCustomThemes(catalog.values); assert.equal(state.current, 'dark-ansi');
+    state.setCustomThemes([]); assert.equal(state.current, 'dark');
+    const finishing = catalog.reload(); catalog.close(); const count = updates.length;
+    await finishing; assert.equal(updates.length, count);
+  } finally { catalog.close(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('source plugin theme catalog activates verified snapshots, retains user precedence and cancels stale loads', async () => {
+  // Realpath'd: the plugin store refuses a workspace reached through a symlink, and macOS's tmpdir
+  // is one.
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'plugin-themes-')));
+  const workspace = path.join(root, 'workspace'), user = path.join(root, 'user'), source = path.join(root, 'source');
+  for (const directory of [workspace, user, source]) fs.mkdirSync(directory);
+  fs.mkdirSync(path.join(source, 'themes')); fs.mkdirSync(path.join(user, 'themes'));
+  fs.writeFileSync(path.join(source, 'plugin.json'), '{"name":"sample","version":"1"}');
+  fs.writeFileSync(path.join(source, 'themes/ocean.json'), '{"name":"Zulu","base":"light","overrides":{"text":"#112233"}}');
+  fs.writeFileSync(path.join(source, 'themes/alpha.json'), '{"name":"Alpha","base":"light-ansi"}');
+  fs.writeFileSync(path.join(source, 'themes/bad.json'), '{');
+  fs.writeFileSync(path.join(user, 'themes/sample:ocean.json'), '{"name":"User ocean","base":"dark-ansi"}');
+  const warnings: string[] = [], updates: unknown[] = [];
+  const catalog = new CustomThemeCatalog(themes => updates.push(themes), message => warnings.push(message));
+  const context: ToolContext = { workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 100_000 };
+  const tools = createPluginTools({ enabled: true });
+  try {
+    await tools.find(tool => tool.schema.name === 'plugin_install')!.execute({ directory: source }, context);
+    catalog.bind(user, workspace, { enabled: true }); await catalog.ready();
+    assert.deepEqual(catalog.values.map(theme => theme.slug), ['sample:ocean', 'sample:alpha', 'sample:ocean']);
+    assert.ok(warnings.some(message => message.includes('invalid JSON')));
+    assert.ok(catalog.choices().some(choice => choice.value === 'custom:sample:ocean' && choice.origin === 'from sample'));
+    const state = new ThemeState('custom:sample:ocean'); state.setCustomThemes(catalog.values); assert.equal(state.current, 'dark-ansi');
+    const stable = catalog.values; catalog.bind(user, workspace, { enabled: true }); await catalog.ready(); assert.equal(catalog.values, stable);
+    fs.unlinkSync(path.join(user, 'themes/sample:ocean.json')); await catalog.reload();
+    state.setCustomThemes(catalog.values); assert.equal(state.current, 'light'); assert.equal(state.resolved.text, '#112233');
+    catalog.bind(user, workspace, { enabled: true }); catalog.bind(user, workspace, { enabled: false }); await catalog.ready();
+    assert.equal(catalog.values.length, 0); state.setCustomThemes(catalog.values); assert.equal(state.current, 'dark');
+    catalog.bind(user, workspace, { enabled: true }); await catalog.ready(); assert.equal(catalog.values.length, 2);
+    fs.writeFileSync(path.join(source, 'themes/ocean.json'), '{"name":"Zulu","base":"light","overrides":{"text":"#334455"}}');
+    const previous = discoverInstalledPluginComponents(workspace, { enabled: true })[0]!.plugin;
+    await tools.find(tool => tool.schema.name === 'plugin_update')!.execute({ name: 'sample', directory: source, expected_digest: previous.digest }, context);
+    assert.equal(catalog.values.find(theme => theme.slug === 'sample:ocean')!.overrides.text, '#112233');
+    catalog.bind(user, workspace, { enabled: true }); await catalog.ready();
+    assert.equal(catalog.values.find(theme => theme.slug === 'sample:ocean')!.overrides.text, '#334455');
+    fs.writeFileSync(path.join(workspace, '.harness/plugins/sample/themes/ocean.json'), '{}');
+    catalog.bind(user, workspace, { enabled: true }); await catalog.ready();
+    assert.equal(catalog.values.length, 0); assert.ok(warnings.some(message => message.includes('Installed plugin changed')));
+    const sourceGate = initializePluginThemes({ VJn: () => { throw new Error('Disabled themes read paths'); }, BU: () => ({ pluginThemes: {
+      setState: (update: (value: unknown[]) => unknown[]) => assert.deepEqual(update([{}]), []) } }), br: () => true, g: () => {} });
+    assert.deepEqual(await sourceGate.load([{ name: 'sample', themesPath: 'unused' }]), []);
+    catalog.bind(user, workspace, { enabled: true }); catalog.close(); const count = updates.length;
+    await catalog.ready(); assert.equal(updates.length, count);
+  } finally { catalog.close(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('source theme editor creates unique user files, previews, resets, forks and recovers writes', async () => {
+  const root = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'theme-editor-'));
+  const state = new ThemeState('dark'), saved: string[] = [];
+  const writer = themeFileWriter(root);
+  const catalog = new CustomThemeCatalog(themes => state.setCustomThemes(themes), () => {});
+  catalog.bind(root);
+  const host = { save:writer, reload:() => catalog.reload(), pick:async (value: import('../src/tui-theme-state.js').ThemeSetting) => {
+    saved.push(value); state.reset(value);
+  }, preview:(value: Record<string,string> | null) => state.setPreviewOverrides(value), changed:() => {} };
+  let owner = new ThemeEditor(undefined, 'dark', [{slug:'my-ocean', name:'Existing', base:'dark', overrides:{}, source:'user'}], host);
+  try {
+    owner.create('My Ocean'); await owner.flush();
+    assert.equal(owner.slug, 'my-ocean-2'); assert.equal(owner.mode, 'colors');
+    assert.deepEqual(saved, ['custom:my-ocean-2']);
+    const file = path.join(root, 'themes/my-ocean-2.json');
+    assert.equal(fs.readFileSync(file, 'utf8'), '{\n  "name": "My Ocean",\n  "base": "dark",\n  "overrides": {}\n}\n');
+    assert.equal(fs.statSync(file).mode & 0o777, 0o600); fs.chmodSync(file, 0o640);
+    assert.deepEqual(owner.filtered('PROMPTBORDER'), ['promptBorder', 'promptBorderShimmer']);
+    owner.edit('text'); owner.change('#112233'); assert.equal(state.resolved.text, '#112233');
+    owner.change('invalid'); assert.equal(owner.accept(), false); assert.equal(state.resolved.text, '#112233');
+    owner.cancelValue(); assert.equal(state.resolved.text, S1('dark').text); assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).overrides.text, undefined);
+    owner.edit('text'); owner.change('#112233'); assert.equal(owner.accept(), true); await owner.flush();
+    assert.equal(fs.statSync(file).mode & 0o777, 0o640); assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).overrides.text, '#112233');
+    owner.edit('text'); owner.change(S1('dark').text); owner.accept(); await owner.flush();
+    assert.equal(Object.keys(owner.overrides).length, 0); assert.deepEqual(JSON.parse(fs.readFileSync(file, 'utf8')).overrides, {});
+    owner.edit('promptBorder'); owner.change('#445566'); owner.accept(); await owner.flush();
+    owner.reset('promptBorder'); await owner.flush(); assert.equal(Object.keys(owner.overrides).length, 0);
+    owner.close(); await catalog.reload(); assert.equal(state.resolved.text, S1('dark').text);
+    const plugin = {slug:'sample:ocean', name:'Ocean', base:'light' as const, overrides:{text:'#223344'}, source:{plugin:'sample'}};
+    owner = new ThemeEditor(plugin, 'dark', catalog.values, host);
+    assert.equal(owner.fork, true); assert.equal(owner.mode, 'name'); assert.equal(owner.slug, '');
+    owner.create('Ocean'); await owner.flush(); assert.equal(owner.slug, 'ocean');
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'themes/ocean.json'), 'utf8')),
+      {name:'Ocean', base:'light', overrides:{text:'#223344'}});
+    owner.edit('text'); owner.change('#334455'); owner.accept(); owner.close(); await owner.flush();
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'themes/ocean.json'), 'utf8')).overrides.text, '#334455');
+    assert.equal(plugin.overrides.text, '#223344');
+    let fail = true;
+    owner = new ThemeEditor({...plugin, slug:'retry', source:'user'}, 'dark', [], {...host, save:async theme => {
+      if (fail) throw new Error('owned write failure'); await writer(theme);
+    }});
+    owner.edit('text'); owner.change('#556677'); owner.accept(); await owner.flush();
+    assert.match(owner.error!, /owned write failure/); fail = false;
+    owner.edit('text'); owner.change('#667788'); owner.accept(); await owner.flush();
+    assert.equal(owner.error, undefined); assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'themes/retry.json'), 'utf8')).overrides.text, '#667788');
+    await assert.rejects(writer({...plugin, slug:'../outside', source:'user'}), /slug/);
+    fs.symlinkSync(file, path.join(root, 'themes/link.json')); await assert.rejects(writer({...plugin, slug:'link', source:'user'}), /regular file/);
+  } finally { owner.close(); await owner.flush(); catalog.close(); fs.rmSync(root, {recursive:true, force:true}); }
+});
+
 test('parseSettings rejects malformed known fields and unknown hook events', () => {
   assert.throws(() => parseSettings({ thinking: 'yes' }), /settings\.thinking/);
+  assert.throws(() => parseSettings({ prefersReducedMotion: 'yes' }), /settings\.prefersReducedMotion/);
+  for (const value of [null, 'true', 0, 1, [], {}])
+    assert.throws(() => parseSettings({ syntaxHighlightingDisabled: value }), /settings\.syntaxHighlightingDisabled/);
   assert.throws(() => parseSettings({ maxTurns: 0 }), /settings\.maxTurns/);
   assert.throws(() => parseSettings({ auth: 'basic' }), /settings\.auth/);
   assert.throws(() => parseSettings({ permissions: { mode: 'yolo', allow: [], deny: [] } }));
@@ -348,6 +550,43 @@ test('createRuntime surfaces an MCP connect failure without leaking the provider
 // ---------------------------------------------------------------------------
 // The assembled config integrates with the session layer
 // ---------------------------------------------------------------------------
+
+test('thinking progress events, durable task notifications and completion timing recover under their owners', async () => {
+  const ws = fs.realpathSync(tmpDir());
+  const config = defaultConfig(ws, []); config.model = 'test'; config.features = {tasks:true, subagents:false};
+  config.permissions = {mode:'default', allow:['task_*'], deny:[]};
+  const progress: AgentProgressEvent[] = []; let calls = 0; let taskId = '';
+  const provider: ModelProvider = {count:async () => 1, complete:async (_request,_signal,onText,onThinking) => {
+    calls++; onThinking?.();
+    if (calls <= 2) return {id:'fixture',model:'test',role:'assistant',type:'message',content:[{type:'tool_use',
+      id:'call-'+calls,name:calls === 1 ? 'task_create' : 'task_update',input:calls === 1
+        ? {subject:'Fixture task',description:'owned',activeForm:'Building fixture'} : {id:taskId,status:'in_progress'}}],
+      stop_reason:'tool_use',usage:{input_tokens:1,output_tokens:1}} as Anthropic.Message;
+    onText?.('done'); return {id:'fixture',model:'test',role:'assistant',type:'message',content:[{type:'text',text:'done'}],
+      stop_reason:'end_turn',usage:{input_tokens:1,output_tokens:1}} as Anthropic.Message;
+  }};
+  const runtime = await createRuntime(config,provider,new AbortController().signal);
+  config.tools = pinToolSchemas(runtime.tools);
+  const {Session} = await import('../src/session.js'); const session=Session.open(ws,{config});
+  let updates=0; const stop=runtime.subscribeTasks!(config,() => {
+    updates++; taskId=runtime.taskRecords!(config)[0]?.id ?? '';
+  });
+  try {
+    await new Agent(session,provider,runtime.buildTools(config,session.id),{progress:event=>progress.push(event)}).run('Build fixture',new AbortController().signal);
+    assert.ok(updates >= 2); assert.equal(runtime.taskRecords!(config)[0]?.status,'in_progress');
+    assert.equal(progress[0]?.kind,'start'); assert.ok(progress.some(event=>event.kind==='phase'&&event.mode==='thinking'));
+    assert.ok(progress.some(event=>event.kind==='phase'&&event.mode==='tool-use'));
+    assert.equal(progress.at(-1)?.kind,'finish');
+    const end=session.events.findLast(event=>event.kind==='turn_end'); assert.ok(end?.kind==='turn_end'&&end.duration);
+    assert.ok(end.duration.durationMs >= 0); assert.equal(new Date(end.duration.timestamp).toISOString(),end.duration.timestamp);
+    assert.deepEqual(runtime.taskRecords!({...config,features:{tasks:false,subagents:false}}),[]);
+    session.close(); const restored=Session.open(ws,{id:session.id});
+    try {assert.deepEqual(restored.events.findLast(event=>event.kind==='turn_end'),end);} finally {restored.close();}
+    stop(); const stopped=updates;
+    await runtime.buildTools(config,session.id).find(tool=>tool.schema.name==='task_update')!.execute({id:taskId,status:'completed'},toContext(ws));
+    await delay(40); assert.equal(updates,stopped);
+  } finally {stop();session.close();await runtime.close();}
+});
 
 test('a modern session round-trips runtime fields and rebuilt tools match the pinned schemas', async () => {
   const ws = fs.realpathSync(tmpDir());

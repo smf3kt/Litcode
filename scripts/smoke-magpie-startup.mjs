@@ -244,13 +244,17 @@ async function commandOwnership() {
   passed.push('command-ownership');
 }
 
+// The starter is a spawned `node`, which costs 150-170ms to boot on a busy host, so these deadlines
+// have to clear that boot before they can prove a deadline still reaps what it cancelled.
+const startupDeadlinesMs = [750, 1500];
+
 async function cancellation() {
-  for (const timeout of [100, 300]) {
+  for (const timeout of startupDeadlinesMs) {
     const base = await unusedBase();
     const marker = markerFor(`deadline-${timeout}`);
     const result = await launch(base, ['--startup-timeout-ms', String(timeout), ...commandArgs(base, marker, 'stall')]).done;
     assert.notEqual(result.code, 0, `${timeout}ms startup deadline unexpectedly passed`);
-    assert.ok(result.elapsedMs < 3000, `${timeout}ms deadline exceeded startup plus cleanup bound`);
+    assert.ok(result.elapsedMs < timeout + 2000, `${timeout}ms deadline exceeded startup plus cleanup bound`);
     await assertReaped(marker);
   }
 
@@ -277,7 +281,7 @@ try {
   await cancellation();
   console.log(JSON.stringify({ startup: 'passed', groups: passed, coldDiscovery: true, modelReadiness: true,
     exactCredentialOrigin: true, defaultNoSpawn: true, healthyNoStarter: true, invalidIdentityNoStarter: true,
-    deadlinesMs: [100, 300], signalCancellation: true, ownedChildrenReaped: true, deadCommandGroupReaped: true,
+    deadlinesMs: startupDeadlinesMs, signalCancellation: true, ownedChildrenReaped: true, deadCommandGroupReaped: true,
     noSecretOutput: true, modelCalls: 0 }));
 } catch (error) {
   console.error(clean(error.stack ?? String(error)));

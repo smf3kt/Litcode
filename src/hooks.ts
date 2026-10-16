@@ -460,7 +460,7 @@ type RawHookResult = {
   spawnError: NodeJS.ErrnoException | null;
 };
 
-function runHookCommand(
+export function runHookCommand(
   command: string,
   cwd: string,
   timeoutMs: number,

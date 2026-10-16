@@ -190,6 +190,8 @@ export interface SelectionRow {
   text: string;
   continuation: boolean;
   indent: number;
+  end?: number;
+  elidedSeparator?: boolean;
 }
 /**
  * Copy text for rows that carry wrap metadata. A row produced by wrapping is
@@ -210,10 +212,13 @@ export function selectionTextFromRows(state: SelectionState, rows: readonly Sele
     // prefix, because that prefix is part of the line the person sees.
     const startCell = meta.continuation ? meta.indent : 0;
     const fromCell = Math.max(startCell, row === span.start.line ? span.start.column : startCell);
-    const toCell = row === span.end.line ? span.end.column : Infinity;
+    const toCell = Math.min(row === span.end.line ? span.end.column : Infinity,
+      meta.end === undefined ? Infinity : meta.end - 1);
     const selected = cellsOfRow.filter(part => part.width > 0
       && part.cell + part.width > fromCell && part.cell <= toCell);
-    const slice = selected.length ? meta.text.slice(selected[0]!.start, selected.at(-1)!.end) : '';
+    const separator = row > span.start.line && meta.continuation && meta.elidedSeparator
+      && fromCell <= meta.indent ? ' ' : '';
+    const slice = separator + (selected.length ? meta.text.slice(selected[0]!.start, selected.at(-1)!.end) : '');
     // A row that continues into the next selected row keeps its trailing
     // whitespace: when the wrap point lands on a space, that space is real
     // text and dropping it would glue the two halves together. Only the last

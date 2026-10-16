@@ -48,6 +48,25 @@ test('ask delivers full questions and validates single, multiple and Other text 
   assert.deepEqual(JSON.parse(await run('ask_user_question', request)), result);
 });
 
+test('question previews are advertised, preserved and bounded before host dispatch', async () => {
+  const ask = createInteractionTools({ ask: async received => {
+    assert.equal(received.questions[0].options[0].preview, '# Layout\n\n- item');
+    assert.equal(received.questions[0].options[1].preview, '');
+    return answer;
+  } }).find(tool => tool.schema.name === 'ask_user_question')!;
+  const schema = ask.schema.input_schema as { properties: { questions: { items: { properties: {
+    options: { items: { properties: { preview: { type: string; maxLength: number } } } };
+  } } } } };
+  assert.deepEqual(schema.properties.questions.items.properties.options.items.properties.preview.type, 'string');
+  assert.equal(schema.properties.questions.items.properties.options.items.properties.preview.maxLength, INTERACTION_LIMITS.previewChars);
+  const request = structuredClone(question);
+  request.questions[0].options[0].preview = '# Layout\n\n- item';
+  request.questions[0].options[1].preview = '';
+  assert.deepEqual(JSON.parse(await ask.execute(request, context())), answer);
+  request.questions[0].options[0].preview = 'x'.repeat(INTERACTION_LIMITS.previewChars + 1);
+  await assert.rejects(ask.execute(request, context()), /invalid data/);
+});
+
 test('context callbacks are used when factory callbacks are absent', async () => {
   const run = tools(); let reports = 0;
   const ctx = context({ interaction: {

@@ -1,0 +1,188 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1691480,
+        1691490
+      ],
+      "units": 10,
+      "bodySha256": "711a944567344f7296917f11e189f7d47d3606db22c31a99de50d99897213b00",
+      "note": "declares a3, the 50 ms of untold time a toast may hold before the bar loses it"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1691764,
+        1691998
+      ],
+      "units": 234,
+      "bodySha256": "51d3ac32dfe5e473387156890e61d238b92a696986ac8170de69ee114f9ae096",
+      "note": "declares Fpe (the managed-first order the bar lays toasts out in) and EWt (one toast's lent time: what it was shown for, and what it lent another)"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1691998,
+        1692401
+      ],
+      "units": 403,
+      "bodySha256": "bc75b004353886958f01e731fc878922d60ad76dc33940f9fd6c16065585d14f",
+      "note": "declares RWt (a laid-out ledger: toasts, the tick's `at`, the running slot) and CWt (which toasts keep their time and which are lost once the waiting ones cannot hold it)"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1692401,
+        1692468
+      ],
+      "units": 67,
+      "bodySha256": "7949637db7e14006b5208091f069857169cb44e50c94414748fd0b51782f0ff0",
+      "note": "declares RYr, the empty frozen ledger a bar starts from"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1692581,
+        1692719
+      ],
+      "units": 138,
+      "bodySha256": "8e8b8c55bfe667f6eac41420090a2d3048c32bc809bf71f45cfb4b14bdfb4938",
+      "note": "declares iLs, whether a toast was shown to its plugin, or is the managed toast now cut short"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1692909,
+        1693009
+      ],
+      "units": 100,
+      "bodySha256": "9fbc173bb826c14173a01c67c3ceec72611f4327712eea255aa07e47c445fbef",
+      "note": "declares AWt, the toasts the next ledger keeps: those still running, plus every key the queue still holds"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1693009,
+        1693411
+      ],
+      "units": 402,
+      "bodySha256": "b82156cb6a4d631b93d9df77f475052bf19c153c2ee6664779289fef42456747",
+      "note": "declares PWt, one tick's aging: the slot's elapsed time lent away, and every toast the queue no longer holds cut to zero unless a3 of time is left"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1693411,
+        1693504
+      ],
+      "units": 93,
+      "bodySha256": "e07cc84b0a9c78458fee80ef9c8f51ed022c8b5921ae3b6bdc400350fdc6cfb1",
+      "note": "declares MWt, the key-to-text map of the toasts the ledger laid out"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1693504,
+        1693578
+      ],
+      "units": 74,
+      "bodySha256": "f7a5171a171d6e0345b0117cb67dcb9be030e456ac3b9432ae0efe3a00fb4d6b",
+      "note": "declares IWt, the running slot: the current toast's key, when its time ends, and which toast is being shown"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1693578,
+        1693754
+      ],
+      "units": 176,
+      "bodySha256": "730f3d3cc9d20501271fec68648208ece5163eb9d89547fa74d3e445737bcd43",
+      "note": "declares OWt, which laid-out toast is shown at each of the queue's own start times"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1693754,
+        1694273
+      ],
+      "units": 519,
+      "bodySha256": "c072c149489b79f5ebac889c4235e153f7b34d071f85c817175f8b40295d2295",
+      "note": "declares aLs, the tick: age the ledger, hand the queue's time to CWt, lay out what is kept, and return {ledger, texts, lost}"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1694442,
+        1694593
+      ],
+      "units": 151,
+      "bodySha256": "10e180d1b64d89f88bb96df2c2c96373a2af0129f7cc664568aad40f50c31858",
+      "note": "declares cLs, the merge of the queued toasts with the ledger's stale ones (which keep their remaining time ahead of them)"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1694593,
+        1694731
+      ],
+      "units": 138,
+      "bodySha256": "72d94ba09a8a1d46efbdda581dddca7beaec62284585991e9a20909da2c51965",
+      "note": "declares dLs, the delay to the next tick: the shown toast's end while it has time left"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1694731,
+        1694871
+      ],
+      "units": 140,
+      "bodySha256": "7c1009dab4dde019720cc37fbd5ac37beb7dd52337e2c5f684961bcfacc1e2d6",
+      "note": "declares uLs, the line a toast logs when the bar had no time left to give it"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1694871,
+        1694966
+      ],
+      "units": 95,
+      "bodySha256": "ca79171b60c9c7d4eb834bdd41f649e1fa296547f8a93551c0467e94b70b0e41",
+      "note": "declares u1e, an entry with the text a plugin changed since it was queued"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1694966,
+        1695123
+      ],
+      "units": 157,
+      "bodySha256": "cedeb4ca0867c72f8c602ed56e08ff00103b001fc285849b56265a3f72f4e442",
+      "note": "declares pLs, the queue-state refresh: the same state back when no text changed"
+    }
+  ],
+  "missing": []
+}
