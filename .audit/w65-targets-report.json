@@ -1,0 +1,440 @@
+[
+ {
+  "target": "services/oauth/",
+  "moduleCount": 6,
+  "status": "referenced",
+  "importers": [
+   "services/analytics/firstPartyEventLoggingExporter.ts -> ../oauth/client.js",
+   "entrypoints/init.ts -> ../services/oauth/client.js",
+   "utils/auth.ts -> ../services/oauth/getOauthProfile.js",
+   "utils/config.ts -> ../services/oauth/types.js",
+   "components/Passes/Passes.tsx -> ../../services/oauth/types.js"
+  ]
+ },
+ {
+  "target": "services/remoteManagedSettings/",
+  "moduleCount": 5,
+  "status": "referenced",
+  "importers": [
+   "cli/print.ts -> src/services/remoteManagedSettings/index.js",
+   "main.tsx -> ./services/remoteManagedSettings/index.js",
+   "entrypoints/init.ts -> ../services/remoteManagedSettings/index.js",
+   "utils/settings/settings.ts -> ../../services/remoteManagedSettings/syncCacheState.js",
+   "utils/managedEnv.ts -> ../services/remoteManagedSettings/syncCache.js"
+  ]
+ },
+ {
+  "target": "services/settingsSync/",
+  "moduleCount": 2,
+  "status": "referenced",
+  "importers": [
+   "cli/print.ts -> src/services/settingsSync/index.js",
+   "commands/reload-plugins/reload-plugins.ts -> ../../services/settingsSync/index.js",
+   "main.tsx -> ./services/settingsSync/index.js"
+  ]
+ },
+ {
+  "target": "services/policyLimits/",
+  "moduleCount": 2,
+  "status": "referenced",
+  "importers": [
+   "cli/print.ts -> src/services/policyLimits/index.js",
+   "main.tsx -> ./services/policyLimits/index.js",
+   "entrypoints/cli.tsx -> ../services/policyLimits/index.js",
+   "entrypoints/init.ts -> ../services/policyLimits/index.js",
+   "components/FeedbackSurvey/useFeedbackSurvey.tsx -> ../../services/policyLimits/index.js",
+   "components/FeedbackSurvey/useMemorySurvey.tsx -> ../../services/policyLimits/index.js"
+  ]
+ },
+ {
+  "target": "services/teamMemorySync/",
+  "moduleCount": 5,
+  "status": "referenced",
+  "importers": [
+   "tools/FileEditTool/FileEditTool.ts -> ../../services/teamMemorySync/teamMemSecretGuard.js",
+   "tools/FileWriteTool/FileWriteTool.ts -> ../../services/teamMemorySync/teamMemSecretGuard.js",
+   "setup.ts -> ./services/teamMemorySync/watcher.js",
+   "utils/sessionFileAccessHooks.ts -> ../services/teamMemorySync/watcher.js"
+  ]
+ },
+ {
+  "target": "services/api/referral.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "services/tips/tipRegistry.ts -> ../api/referral.js",
+   "main.tsx -> ./services/api/referral.js",
+   "components/LogoV2/GuestPassesUpsell.tsx -> ../../services/api/referral.js",
+   "components/LogoV2/feedConfigs.tsx -> ../../services/api/referral.js",
+   "components/Passes/Passes.tsx -> ../../services/api/referral.js"
+  ]
+ },
+ {
+  "target": "services/api/grove.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "interactiveHelpers.tsx -> ./services/api/grove.js",
+   "cli/print.ts -> src/services/api/grove.js",
+   "components/grove/Grove.tsx -> ../../services/api/grove.js"
+  ]
+ },
+ {
+  "target": "services/api/ultrareviewQuota.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "commands/review/reviewRemote.ts -> ../../services/api/ultrareviewQuota.js"
+  ]
+ },
+ {
+  "target": "services/api/overageCreditGrant.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "services/tips/tipRegistry.ts -> ../api/overageCreditGrant.js"
+  ]
+ },
+ {
+  "target": "services/api/adminRequests.ts",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "services/api/metricsOptOut.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "utils/telemetry/bigqueryExporter.ts -> src/services/api/metricsOptOut.js"
+  ]
+ },
+ {
+  "target": "services/api/firstTokenDate.ts",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "services/api/sessionIngress.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "commands/clear/caches.ts -> ../../services/api/sessionIngress.js",
+   "utils/sessionStorage.ts -> ../services/api/sessionIngress.js"
+  ]
+ },
+ {
+  "target": "services/api/usage.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "commands/review/reviewRemote.ts -> ../../services/api/usage.js",
+   "components/Settings/Usage.tsx -> ../../services/api/usage.js"
+  ]
+ },
+ {
+  "target": "services/claudeAiLimits.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "services/api/claude.ts -> ../claudeAiLimits.js",
+   "services/api/errors.ts -> ../claudeAiLimits.js",
+   "services/PromptSuggestion/promptSuggestion.ts -> ../claudeAiLimits.js",
+   "cli/print.ts -> src/services/claudeAiLimits.js",
+   "main.tsx -> ./services/claudeAiLimits.js",
+   "hooks/notifs/useRateLimitWarningNotification.tsx -> src/services/claudeAiLimits.js",
+   "components/StatusLine.tsx -> ../services/claudeAiLimits.js",
+   "utils/model/check1mAccess.ts -> src/services/claudeAiLimits.js",
+   "utils/messages/mappers.ts -> src/services/claudeAiLimits.js"
+  ]
+ },
+ {
+  "target": "services/claudeAiLimitsHook.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "hooks/notifs/useRateLimitWarningNotification.tsx -> src/services/claudeAiLimitsHook.js",
+   "components/messages/RateLimitMessage.tsx -> src/services/claudeAiLimitsHook.js",
+   "components/PromptInput/Notifications.tsx -> ../../services/claudeAiLimitsHook.js"
+  ]
+ },
+ {
+  "target": "services/rateLimitMessages.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "components/messages/AssistantTextMessage.tsx -> src/services/rateLimitMessages.js"
+  ]
+ },
+ {
+  "target": "services/mockRateLimits.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "services/rateLimitMocking.ts -> ./mockRateLimits.js",
+   "utils/auth.ts -> ../services/mockRateLimits.js"
+  ]
+ },
+ {
+  "target": "bridge/",
+  "moduleCount": 31,
+  "status": "referenced",
+  "importers": [
+   "cli/remoteIO.ts -> ../bridge/pollConfig.js",
+   "cli/print.ts -> src/bridge/replBridge.js",
+   "hooks/useReplBridge.tsx -> ../bridge/replBridgeHandle.js",
+   "main.tsx -> ./bridge/trustedDevice.js",
+   "entrypoints/cli.tsx -> ../bridge/types.js",
+   "hooks/useRemoteSession.ts -> ../bridge/bridgeMessaging.js",
+   "components/Settings/Config.tsx -> ../../bridge/bridgeEnabled.js",
+   "utils/config.ts -> ../bridge/bridgeEnabled.js",
+   "components/PromptInput/PromptInputFooter.tsx -> ../../bridge/bridgeStatusUtil.js",
+   "components/Spinner.tsx -> ../bridge/bridgeStatusUtil.js",
+   "commands/rename/rename.ts -> ../../bridge/bridgeConfig.js",
+   "commands/ultraplan.tsx -> ../bridge/types.js",
+   "state/AppStateStore.ts -> ../bridge/bridgePermissionCallbacks.js",
+   "hooks/toolPermission/handlers/interactiveHandler.ts -> ../../../bridge/bridgePermissionCallbacks.js",
+   "tools/SendMessageTool/SendMessageTool.ts -> ../../bridge/replBridgeHandle.js",
+   "constants/product.ts -> ../bridge/sessionIdCompat.js",
+   "tools/BriefTool/upload.ts -> ../../bridge/bridgeConfig.js"
+  ]
+ },
+ {
+  "target": "remote/",
+  "moduleCount": 4,
+  "status": "referenced",
+  "importers": [
+   "hooks/useSSHSession.ts -> ../remote/remotePermissionBridge.js",
+   "hooks/useDirectConnect.ts -> ../remote/remotePermissionBridge.js",
+   "hooks/useAssistantHistory.ts -> ../remote/RemoteSessionManager.js",
+   "hooks/useRemoteSession.ts -> ../remote/remotePermissionBridge.js",
+   "screens/REPL.tsx -> ../remote/RemoteSessionManager.js",
+   "main.tsx -> ./remote/RemoteSessionManager.js"
+  ]
+ },
+ {
+  "target": "server/",
+  "moduleCount": 3,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../server/directConnectManager.js",
+   "hooks/useDirectConnect.ts -> ../server/directConnectManager.js",
+   "main.tsx -> ./server/createDirectConnectSession.js"
+  ]
+ },
+ {
+  "target": "ssh/",
+  "moduleCount": 2,
+  "status": "referenced",
+  "importers": [
+   "hooks/useSSHSession.ts -> ../ssh/createSSHSession.js",
+   "screens/REPL.tsx -> ../ssh/createSSHSession.js"
+  ]
+ },
+ {
+  "target": "assistant/",
+  "moduleCount": 2,
+  "status": "referenced",
+  "importers": [
+   "hooks/useAssistantHistory.ts -> ../assistant/sessionHistory.js",
+   "dialogLaunchers.tsx -> ./assistant/sessionDiscovery.js"
+  ]
+ },
+ {
+  "target": "utils/teleport/api.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../utils/teleport/api.js",
+   "main.tsx -> ./utils/teleport/api.js",
+   "tasks/RemoteAgentTask/RemoteAgentTask.tsx -> ../../utils/teleport/api.js",
+   "hooks/useTeleportResume.tsx -> src/utils/teleport/api.js",
+   "hooks/useSSHSession.ts -> ../utils/teleport/api.js",
+   "hooks/useDirectConnect.ts -> ../utils/teleport/api.js",
+   "hooks/useRemoteSession.ts -> ../utils/teleport/api.js",
+   "utils/ultraplan/ccrSession.ts -> ../teleport/api.js",
+   "components/TeleportResumeWrapper.tsx -> src/utils/teleport/api.js"
+  ]
+ },
+ {
+  "target": "utils/teleport/environments.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "utils/filePersistence/outputsScanner.ts -> ../teleport/environments.js"
+  ]
+ },
+ {
+  "target": "utils/teleport/environmentSelection.ts",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "utils/teleport/gitBundle.ts",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "utils/teleport.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "commands/ultraplan.tsx -> ../utils/teleport.js",
+   "cli/print.ts -> src/utils/teleport.js",
+   "commands/review/reviewRemote.ts -> ../../utils/teleport.js",
+   "main.tsx -> ./utils/teleport.js",
+   "tasks/RemoteAgentTask/RemoteAgentTask.tsx -> ../../utils/teleport.js",
+   "hooks/useTeleportResume.tsx -> ../utils/teleport.js",
+   "utils/ultraplan/ccrSession.ts -> ../teleport.js",
+   "components/tasks/RemoteSessionDetailDialog.tsx -> ../../utils/teleport.js",
+   "tools/AgentTool/AgentTool.tsx -> ../../utils/teleport.js",
+   "components/TeleportProgress.tsx -> ../utils/teleport.js"
+  ]
+ },
+ {
+  "target": "utils/background/remote/",
+  "moduleCount": 2,
+  "status": "referenced",
+  "importers": [
+   "tasks/RemoteAgentTask/RemoteAgentTask.tsx -> ../../utils/background/remote/remoteSession.js",
+   "components/TeleportError.tsx -> src/utils/background/remote/preconditions.js"
+  ]
+ },
+ {
+  "target": "tools/RemoteTriggerTool/",
+  "moduleCount": 3,
+  "status": "referenced",
+  "importers": [
+   "tools.ts -> ./tools/RemoteTriggerTool/RemoteTriggerTool.js"
+  ]
+ },
+ {
+  "target": "cli/transports/",
+  "moduleCount": 8,
+  "status": "referenced",
+  "importers": [
+   "cli/remoteIO.ts -> ./transports/transportUtils.js"
+  ]
+ },
+ {
+  "target": "services/mcp/claudeai.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "services/mcp/config.ts -> ./claudeai.js",
+   "services/mcp/client.ts -> ./claudeai.js",
+   "services/mcp/useManageMCPConnections.ts -> ./claudeai.js",
+   "main.tsx -> src/services/mcp/claudeai.js",
+   "hooks/notifs/useMcpConnectivityStatus.tsx -> ../../services/mcp/claudeai.js"
+  ]
+ },
+ {
+  "target": "utils/billing.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../utils/billing.js",
+   "costHook.ts -> ./utils/billing.js",
+   "hooks/notifs/useRateLimitWarningNotification.tsx -> src/utils/billing.js",
+   "components/messages/RateLimitMessage.tsx -> src/utils/billing.js"
+  ]
+ },
+ {
+  "target": "utils/extraUsage.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "commands/model/model.tsx -> ../../utils/extraUsage.js",
+   "components/Settings/Config.tsx -> ../../utils/extraUsage.js",
+   "components/PromptInput/PromptInput.tsx -> ../../utils/extraUsage.js"
+  ]
+ },
+ {
+  "target": "components/ConsoleOAuthFlow.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "cli/handlers/util.tsx -> ../../components/ConsoleOAuthFlow.js",
+   "components/TeleportError.tsx -> ./ConsoleOAuthFlow.js",
+   "components/Onboarding.tsx -> ./ConsoleOAuthFlow.js"
+  ]
+ },
+ {
+  "target": "components/BridgeDialog.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "components/PromptInput/PromptInput.tsx -> ../BridgeDialog.js"
+  ]
+ },
+ {
+  "target": "components/RemoteCallout.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "screens/REPL.tsx -> ../components/RemoteCallout.js"
+  ]
+ },
+ {
+  "target": "components/RemoteEnvironmentDialog.tsx",
+  "moduleCount": 1,
+  "status": "leaf",
+  "importers": []
+ },
+ {
+  "target": "components/ResumeTask.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "components/TeleportResumeWrapper.tsx -> ./ResumeTask.js"
+  ]
+ },
+ {
+  "target": "components/LogoV2/OverageCreditUpsell.tsx",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "services/tips/tipRegistry.ts -> ../../components/LogoV2/OverageCreditUpsell.js",
+   "components/Settings/Usage.tsx -> ../LogoV2/OverageCreditUpsell.js",
+   "components/LogoV2/CondensedLogo.tsx -> ./OverageCreditUpsell.js",
+   "components/LogoV2/LogoV2.tsx -> ./OverageCreditUpsell.js"
+  ]
+ },
+ {
+  "target": "commands/cost/",
+  "moduleCount": 2,
+  "status": "referenced",
+  "importers": [
+   "commands.ts -> ./commands/cost/index.js"
+  ]
+ },
+ {
+  "target": "commands/rate-limit-options/",
+  "moduleCount": 2,
+  "status": "referenced",
+  "importers": [
+   "commands.ts -> ./commands/rate-limit-options/index.js"
+  ]
+ },
+ {
+  "target": "commands/extra-usage/",
+  "moduleCount": 4,
+  "status": "referenced",
+  "importers": [
+   "commands.ts -> ./commands/extra-usage/index.js",
+   "components/Settings/Usage.tsx -> src/commands/extra-usage/index.js",
+   "components/messages/RateLimitMessage.tsx -> src/commands/extra-usage/index.js"
+  ]
+ },
+ {
+  "target": "skills/bundled/scheduleRemoteAgents.ts",
+  "moduleCount": 1,
+  "status": "referenced",
+  "importers": [
+   "skills/bundled/index.ts -> ./scheduleRemoteAgents.js"
+  ]
+ }
+]
