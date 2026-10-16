@@ -72,7 +72,9 @@ assert.match(index, /AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS 
 const gb = fs.readFileSync(`${root}/services/analytics/growthbook.ts`, "utf8")
 assert.match(gb, /function isGrowthBookEnabled\(\): boolean \{[\s\S]{0,400}?\n {2}return false\n\}/)
 assert.doesNotMatch(gb, /logGrowthBookExperimentTo1P/)
-assert.match(gb, /loggedExposures\.add\(feature\)/)
+// The exposure-log line this fixture used to assert went with the rest of the
+// fetch machinery in step 7b, which replaced it with w65-d7b-verify.
+assert.doesNotMatch(gb, /logExposureForFeature/)
 
 // 6. The sinks module attaches one sink now.
 const sinks = fs.readFileSync(`${root}/utils/sinks.ts`, "utf8")

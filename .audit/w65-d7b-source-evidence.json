@@ -1,0 +1,39 @@
+{
+  "before": "b2c553b",
+  "kind": "collapse to the source's own disabled-switch arm; surviving bodies extracted verbatim",
+  "evidence": [
+    {
+      "file": "services/analytics/growthbook.ts",
+      "change": "the remote-eval client, its payload transform, the exposure log, the disk cache and the periodic refresh removed; every read keeps the source's local override channels and its !isGrowthBookEnabled() guard",
+      "sourceSha256": "42541e6311ebed2d2865332eb7d9b2b99ac46f16d47674e702d7b035c1b96cf4",
+      "portSha256": "b3f7cc5a6f92a9b61ce4a4eba271d963a905cba968e70b4844cc72ef3fb4f07e",
+      "coordinateUnit": "utf16-half-open",
+      "sourceBytes": 40526,
+      "portBytes": 16510
+    },
+    {
+      "file": "utils/config.ts",
+      "change": "cachedStatsigGates / cachedDynamicConfigs / cachedGrowthBookFeatures removed; growthBookOverrides kept as the local override channel",
+      "sourceSha256": "e8f7d9caccdf680b0c24ec352e0766e5069130a1d0ab59d129bfc550b6f697cf",
+      "portSha256": "571f9741472400061fccc0169997acc07033522d169079b6e40621d7d6c6b6f7",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "constants/keys.ts (one export, getGrowthBookClientKey, whose only caller was the client construction)",
+    "the remote-eval client, processRemoteEvalPayload, syncRemoteEvalToDisk, getUserAttributes, getApiBaseUrlHost, getAllGrowthBookFeatures, the exposure log and its three sets",
+    "refreshGrowthBookFeatures, setupPeriodicGrowthBookRefresh, stopPeriodicGrowthBookRefresh, the interval constant and the two named process handlers",
+    "two never-called imports in main.tsx (hasGrowthBookEnvOverride, initializeGrowthBook) and two hooks comments that described the removed fetch"
+  ],
+  "behaviourChange": "a feature read answered from the disk cache or the remote-eval map when neither a previous process nor this one had a local override; it now answers with the caller's default. The disk cache was deliberately not moved above the source's guard.",
+  "kept": "the env-var and config override channels, onGrowthBookRefresh with its two subscribers, initializeGrowthBook as a null-returning warm-up, and the three zero-caller local override functions (their /config Gates panel left in an earlier wave)",
+  "next": "services/analytics/metadata.ts's getEventMetadata / buildProcessMetrics / FirstPartyEventLogging* converters and utils/user.ts's getUserForGrowthBook + CoreUserData + getCoreUserData are now reader-less — the deferred in-file cleanup",
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Every collapsed declaration swept by declaration form; each surviving body checked word-for-word against the base revision; the emit count and the two override channels counted; the removed config fields checked against the source's own reads; tsc log empty"
+}
