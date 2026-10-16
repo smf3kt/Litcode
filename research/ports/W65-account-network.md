@@ -117,11 +117,69 @@ The assistant-history feature was unreachable twice over: it sits behind the con
 The two orphans are worth naming as a category. `adminRequests.ts` and `RemoteEnvironmentDialog.tsx` have no importer at all — they were already dead when this program started, and only the classifier's "leaf" column surfaced them. Every wave so far has found a few of these; they cost nothing to confirm and nothing to remove.
 
 
+## Wave E step 4 — teleport and the remote-session cluster (landed, `db6e7c7`)
+
+33 files deleted, 31 hosts cut, 64 files changed, +54/−11,452 — the largest slice of the program.
+
+| Deleted | Role |
+| --- | --- |
+| `utils/teleport.tsx` | the teleport entrypoint: create/resume a Claude Code Web session, git bundle, repo validation, branch checkout |
+| `utils/teleport/{api,environments,environmentSelection,gitBundle}.ts` | the Sessions API client, the environment model, the environment picker, the git bundle |
+| `components/{TeleportError,TeleportProgress,TeleportRepoMismatchDialog,TeleportResumeWrapper,TeleportStash,ResumeTask}.tsx` | the teleport UI |
+| `hooks/useTeleportResume.tsx` | the resume flow built on the above |
+| `hooks/{useRemoteSession,useSSHSession,useDirectConnect}.ts` | the three transport hooks that drove the REPL from elsewhere (WebSocket, ssh child process, direct connect) |
+| `remote/` (5) | `RemoteSessionManager`, the permission bridge, the SDK message adapter, `SessionsWebSocket` |
+| `server/` (3) | `createDirectConnectSession`, `directConnectManager`, types |
+| `ssh/` (2) | `createSSHSession`, `SSHSessionManager` |
+| `utils/background/remote/` (2) | the background remote-session preconditions and runner |
+| `services/api/sessionIngress.ts` | the v1 session-ingress transcript API |
+| `tasks/RemoteAgentTask/` (2) | the remote agent task type and its renderer |
+| `components/tasks/{RemoteSessionDetailDialog,RemoteSessionProgress}.tsx` | the remote session UI |
+| `commands/ultraplan.tsx` | `/ultraplan`: launch a CCR session, poll for the approved plan, offer to implement |
+| `utils/ultraplan/keyword.ts` | the keyword detector that routed a plain prompt to `/ultraplan` |
+
+Host cuts, by host:
+
+| Host | Cut |
+| --- | --- |
+| `screens/REPL.tsx` | the three transport hooks and `activeRemote`; `isRemoteSession` and its six gate uses (each takes the local arm, e.g. `enabled: !isRemoteSession` → `enabled: true`, `isRemoteSession ? EMPTY_MCP_CLIENTS : mcp.clients` → `mcp.clients`); `handleRemoteInit` and the `onInit` wiring; the two `restoreRemoteAgentTasks` calls; the remote interrupt arm; the empty-input early return; the three `submitsNow` / placeholder / speculation conditions; the whole remote-send block including the content-block and `RemoteMessageContent` construction; the two ultraplan dialog entries and their state reads |
+| `main.tsx` | the `PendingConnect`/`PendingSSH` types and their argv blocks, the DIRECT_CONNECT launch branch, the `--teleport`/`--remote` branch (240 lines) with its `cc://` rewrite stub, the `claude ssh` command registration, the `teleport`/`remote` option extraction, the `--teleport`/`--remote` CLI registrations, the `messages` local and the teleport arm of the resume-data construction |
+| `cli/print.ts` | the teleport-resume branch, the `teleport` field in three type positions, the v1 ingress hydration branch and its import |
+| `utils/sessionStorage.ts` | the v1 remote-ingress append path, `setRemoteIngressUrl`, the `remoteIngressUrl` field, `hydrateRemoteSession`, `setRemoteIngressUrlForTesting`, and the whole remote-agent metadata sidecar family (`RemoteAgentMetadata`, `getRemoteAgentsDir`, read/write/delete/list) |
+| `components/tasks/BackgroundTasksDialog.tsx` | the `remote_agent` list-item variant, the sort bucket, the kill arm, the detail arm, the group render and its `marginTop` term, the `toListItem` arm, the subtitle count |
+| `tools/AgentTool/AgentTool.tsx` | the four remote imports, `teleportToRemote`, `RemoteLaunchedOutput`, the `isolation: 'remote'` arm, the remote-launched tool result |
+| `tools/AgentTool/UI.tsx` | the `RemoteLaunchedOutput` import, the remote-launched render branch, the `backgroundedMidExecution` term |
+| `utils/processUserInput/processUserInput.ts` | the ultraplan keyword import and its routing block |
+| `components/PromptInput/PromptInput.tsx` | the keyword import, the trigger computation, the rainbow arm, the notification effect, the dependency entry |
+| `state/AppStateStore.ts` | `ultraplanLaunching`, `ultraplanSessionUrl`, `ultraplanPendingChoice`, `ultraplanLaunchPending`, `isUltraplanMode`, `remoteSessionUrl` |
+| `state/onChangeAppState.ts` | the `is_ultraplan_mode` metadata write (the `set_permission_mode` handler still applies the mode) |
+| `bootstrap/state.ts` | `teleportedSessionInfo`, `setTeleportedSessionInfo`, `getTeleportedSessionInfo`, `markFirstTeleportMessageLogged` |
+| `services/api/logging.ts` | the two first-message teleport reliability log blocks and their imports |
+| `components/permissions/ExitPlanModePermissionRequest/…` | the `ultraplan` response value, the Ultraplan button and its props |
+| `components/tasks/{BackgroundTask,BackgroundTaskStatus}.tsx` | the remote render arm, the pill's `remote_agent` case, `pillNeedsCta` and its call |
+| `tools/TaskOutputTool/TaskOutputTool.tsx` | the `remote_agent` output arm and the render branch |
+| others | `bridge/createSession.ts`, `dialogLaunchers.tsx`, `commands/clear/caches.ts`, `tasks.ts`, `tasks/types.ts`, `Task.ts`, `tasks/pillLabel.ts`, `utils/filePersistence/outputsScanner.ts`, `components/PromptInput/PromptInputFooterLeftSide.tsx`, `utils/sessionTitle.ts`, `types/textInputTypes.ts`, `utils/config.ts`, `constants/xml.ts`, `utils/sessionStorage.ts` |
+
+### Adaptations (each one recorded, none invented)
+
+1. **`bridge/createSession.ts`** was the only remaining consumer of `getOAuthHeaders`, which lived in the deleted `utils/teleport/api.ts`. Its 6-line body is ported verbatim from `utils/teleport/api.ts:276-282` (unit: UTF-16 half-open) into the file, with the range cited in the comment. No other bridge file used it, so no shared module was needed.
+2. **`utils/filePersistence/outputsScanner.ts`** typed `getEnvironmentKind()` against `EnvironmentKind` from the deleted `utils/teleport/environments.ts`. The union is declared locally with the source line (`:9`) cited. The function's own value set (`'byoc' | 'anthropic_cloud'`) is unchanged; only the type's home moved.
+3. **`commands/clear/caches.ts`** lost its `clearAllSessions()` call: the imported `sessionIngress.clearAllSessions` was the remote transcript sync's cache reset, so it leaves with the sync. The `w60-verify` fixture asserted call-sequence equality with the recovered body; it now asserts that this entry is the **only** difference, and that the recovered body does call it. That keeps the port honest — the deviation is named and measured rather than absorbed.
+
+### Kept as inert declarations
+
+- `entrypoints/sdk/controlSchemas.ts` `ultraplan` and `utils/sessionState.ts` `is_ultraplan_mode` — SDK protocol fields. With no producer, they are inert; removing them is a public-contract change, the same call already recorded for `rate_limit_event`.
+- `utils/sessionIngressAuth.ts` and the `sessionIngressToken` bootstrap field — the SDK/ingress bearer token still read by `services/mcp/client.ts`, `utils/filePersistence/filePersistence.ts` and `main.tsx`. That surface belongs to the SDK transport wave, not this one.
+
+### Verification
+
+`tsc --noEmit --pretty false` exits 0; all four owned fixtures pass; `git diff --check` clean. 13 `*.w54bak` source maps were copied to `.audit/w65-e4-baks/` and `cmp`-verified **before** the files went. Four repair passes: two `cut_all` anchors that were substrings of longer indents removed a line they should not have (`remoteSessions,` inside a `count(` call and a JSX `marginTop` term), one `else if` chain whose closer left an unbalanced brace (found by counting brace depth per line — `tsc` only reports it at EOF), and one `cut_range` whose end anchor matched too early and left a dangling `if (`.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
 
-Wave B repeated the slip (4 of 9 files carried baks, dump-state text recovered from `bd958088`). Wave C ran the quarantine first: `find <targets> -name '*.w*bak'` copied two files (`commands/extra-usage/extra-usage.tsx.w54bak`, `commands/rate-limit-options/rate-limit-options.tsx.w54bak`) into `.audit/w65-c-baks/`, both byte-compared with `cmp` before any deletion; no other target carried one.
+Wave B repeated the slip (4 of 9 files carried baks, dump-state text recovered from `bd958088`). Wave E step 4 also ran the quarantine first: 13 `*.w54bak` source maps copied to `.audit/w65-e4-baks/` and `cmp`-verified before deletion. Wave C ran the quarantine first: `find <targets> -name '*.w*bak'` copied two files (`commands/extra-usage/extra-usage.tsx.w54bak`, `commands/rate-limit-options/rate-limit-options.tsx.w54bak`) into `.audit/w65-c-baks/`, both byte-compared with `cmp` before any deletion; no other target carried one.
 
 One leftover cleaned up while deleting: `commands/passes/` held only `passes.tsx.w54bak`, a stray from the earlier package `bea1b62` ("Remove the non-coding slash-command surface"), which had deleted the `.tsx` and left its bak behind. The directory was removed with the rest of the command dirs. No source is lost — `bea1b62^:commands/passes/passes.tsx` exists, so that command's source is recoverable from history, and the bak predated this wave.
 
@@ -136,7 +194,7 @@ Wave C's cuts were driven the same way, and five repair passes came out of it: a
 
 - **OAuth identity and token core** — `services/oauth/`, `utils/auth.ts` subscriber half, `utils/config.ts` `oauthAccount`/`AccountInfo`/`hasAvailableSubscription`, and the model-call seams: `services/api/client.ts:128-135,307-313` (`isClaudeAISubscriber()` branch, `authToken`, staging baseURL), `claude.ts:408,522,1030`, `withRetry.ts:20-21,247,332,739,768`, `errors.ts:468,737,798`, `utils/http.ts:70`, `utils/betas.ts:25,71,251`, `utils/model/*`.
 - **Usage, limits and credits** — landed as wave C (`35c180c`). Two residues kept on purpose: the SDK `rate_limit_event` schema and the server-declared `extra_usage_disabled` fast-mode reason. The plan's other named targets resolved differently than expected: there is no `components/Tips` directory in this tree (`services/tips/tipRegistry.ts` holds the tip content, and it was cut), and `components/Settings/Usage.tsx` was the usage endpoint's only consumer, so both left with this wave. `components/FeedbackSurvey/` is not part of this cluster — it posts survey answers and belongs with the product-feedback surface.
-- **Remote sessions** — `remote/`, `assistant/`, `ssh/`, `server/`, `cli/transports/`, `tools/RemoteTriggerTool/`, `utils/teleport*`, `utils/background/remote/`, `bridge/`, and their hosts (`main.tsx` argv blocks, `entrypoints/cli.tsx`, `screens/REPL.tsx` hooks, `commands.ts`).
+- **Remote sessions** — `remote/`, `assistant/`, `ssh/`, `server/`, `utils/teleport*`, `utils/background/remote/`, `tools/RemoteTriggerTool/` and the ultraplan surface all landed (waves E steps 1-4). What remains of this cluster: **`bridge/`** (31 files, ~13,700 lines) with `hooks/useReplBridge.tsx`, `components/BridgeDialog.tsx`, `cli/remoteIO.ts`, `cli/transports/` (8 files) and the `PromptInputFooter`/`Spinner`/`Config`/`SendMessageTool`/`interactiveHandler` readers; plus the `session-ingress` bearer token surface (`utils/sessionIngressAuth.ts`, the MCP client's `Authorization` header, `filePersistence`) and the `--sdk-url` streaming transport.
 - **Policy limits** — `services/policyLimits/`; every `isPolicyAllowed` call site is a remote-session, remote-control or product-feedback policy, so it goes with those.
 - **Open decisions.** `services/analytics/` is network (`logEvent`, GrowthBook) and is imported by hundreds of local files — a no-op stub is the realistic cut, but the GrowthBook gates the coding loop reads (`getDynamicConfig_BLOCKS_ON_INIT` at `claude.ts:96`) need a product call. `services/teamMemorySync/teamMemSecretGuard.checkTeamMemSecrets` was local code inside a network feature. `hooks/useApiKeyVerification.ts` is API-key-shaped but routes through `isAnthropicAuthEnabled` and may need a bare rewrite rather than deletion.
 
