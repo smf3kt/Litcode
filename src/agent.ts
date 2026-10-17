@@ -416,9 +416,11 @@ export class Agent {
       // `isolatedContext` exclusion has no analogue here. PostModelSwitch
       // stages its contexts for the next request (`sXr`/`gZo`,
       // chunk-sfn1dbxq.js offsets 2939454 and 2940920) and drops them once
-      // that request drains them, so the same one-shot scan applies.
+      // that request drains them, so the same one-shot scan applies. Setup
+      // wraps its additionalContexts in a `hook_additional_context` attachment
+      // for the startup message list (offset 2484520).
       if (event.kind === 'hook_result' && (event.event === 'SessionStart' ||
-        event.event === 'SubagentStart' || event.event === 'PostModelSwitch')) {
+        event.event === 'SubagentStart' || event.event === 'PostModelSwitch' || event.event === 'Setup')) {
         context.unshift(...event.additionalContext);
       }
     }
