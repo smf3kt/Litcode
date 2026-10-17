@@ -2581,3 +2581,14 @@ stays single; the generated pipeline imports the site module first so registrati
 probe draws `{type:'engine',ref:1}` with the original input as its descriptor. Focused 34/34,
 full 2273/2273, tsc 0, build 0, notices 0, identity `e6ede94c…`.
 [W144 record](ports/W144-gno-pipeline.md).
+
+W145 starts C-2's AbovePrompt pane with its renderer-free core. Eleven blocks (1,473 units) port
+the row-budget window, which reserves one row for the cue only when the tree overflows and floors
+the body at the settled budget minus one; the autofocus index; the Input/Select key-context names;
+the hotkey map, which takes a Button's hotkey and stops there, skipping engine subtrees; the cue
+fully-laid-out check, which sums yoga tops up to but excluding the content root and rejects a node
+with no height or outside the window; the content/plugin disjointness test; the six scroll
+handlers; the pane key merge, which aliases pane scrolling to AbovePrompt next/previous only
+outside inputs; and the 5-column handle and 150 ms settle constants. `NFe` itself (5,856 units, 82
+unresolved names) stays for the next slice. Focused 14/14, full 2285/2285, tsc 0, build 0,
+notices 0, identity `b8af8bb6…`. [W145 record](ports/W145-above-prompt-core.md).
