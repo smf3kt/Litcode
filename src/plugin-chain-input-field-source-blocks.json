@@ -1,0 +1,86 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-tz1x0g31.js",
+      "sha256": "10751c84c86c36b891f188a164550476851171023694b1eec9ac94c3a9206657"
+    },
+    {
+      "module": "chunk-z7whhrje.js",
+      "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22928,
+        22938
+      ],
+      "units": 10,
+      "bodySha256": "4f141cff1a748f4aa809aaedb72de2a4cded5f35f727171bc0ba490bba844b8e",
+      "note": "`Gt` — the minimum field width (12)"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22946,
+        22963
+      ],
+      "units": 17,
+      "bodySha256": "fe4395b3a61c46d2e3082ada041542f0345d7bca3c09aed74a7da5705bf67828",
+      "note": "`cdn` — the input-fields context: `textOf(plugin, element)` and `edit(site, value)`"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22967,
+        22984
+      ],
+      "units": 17,
+      "bodySha256": "03119db9d7c00198a8978bc4b034ae1b32ca32176c524f846554673d0fa29923",
+      "note": "`ddn` — the site-columns context"
+    },
+    {
+      "module": "chunk-tz1x0g31.js",
+      "sha256": "10751c84c86c36b891f188a164550476851171023694b1eec9ac94c3a9206657",
+      "range": [
+        715,
+        829
+      ],
+      "units": 114,
+      "bodySha256": "23d7fafa3a01951f86bc8e07ca1315b0fdd6751ca378d8c918f1af8188979650",
+      "note": "`ke` — the terminal-size hook; throws outside a provider"
+    },
+    {
+      "module": "chunk-z7whhrje.js",
+      "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac",
+      "range": [
+        10384,
+        10400
+      ],
+      "units": 16,
+      "bodySha256": "06f627c83413d40f7687537d23297e571a637dedbb78d87fa61ef2da4700e293",
+      "note": "`Zm` — the terminal-size context the hook reads"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        23378,
+        24196
+      ],
+      "units": 818,
+      "bodySha256": "2433c50b67a7afec1c186401e66b5decc451faa2ae9c837d7f4621a23dfa534e",
+      "note": "`Vt` — the Input field site: focus, value/cursor state, label, editor or dim text, and the submit hint"
+    }
+  ],
+  "missing": []
+}
