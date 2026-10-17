@@ -1,0 +1,34 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        28189,
+        29373
+      ],
+      "units": 1184,
+      "bodySha256": "dd10cc022f7f05e75cb47c958bd3de682475792b57b27328bdb13ff388b19c9c",
+      "note": "ZQr: parse a unified diff into per-file hunks, with the file cap, oversized-section set and per-hunk line cap"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        32005,
+        32259
+      ],
+      "units": 254,
+      "bodySha256": "b8cc9854a1350bdff4101f0d88babdbff1372853cdc5dcc8db1e9cabd536b652",
+      "note": "pxn: parse git --shortstat totals"
+    }
+  ],
+  "missing": []
+}
