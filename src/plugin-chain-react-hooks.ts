@@ -106,14 +106,17 @@ function sameDeps(a: readonly unknown[] | undefined, b: readonly unknown[]): boo
 }
 
 /** Source `y` (React.useState): one slot, an initializer run once when the source passes a function,
- *  the value itself otherwise (`y(!1)` and `y()` are the source's other two forms), and a setter. */
-export function y<T>(init?: (() => T) | T): [T, (next: T) => void] {
+ *  the value itself otherwise (`y(!1)` and `y()` are the source's other two forms), and a setter.
+ *  A setter argument that is a function is the updater form React defines, not a function-valued
+ *  state: it receives the previous value. The recovered picker frame relies on that form. */
+export function y<T>(init?: (() => T) | T): [T, (next: T | ((previous: T) => T)) => void] {
   const runtime = requireRuntime();
   const initial = typeof init === 'function' ? (init as () => T)() : init as T;
   const slot = slotAt(runtime, runtime.cursor++, () => ({ value: initial }));
-  return [slot.value, (next: T) => {
-    if (Object.is(slot.value, next)) return;
-    slot.value = next;
+  return [slot.value, (next: T | ((previous: T) => T)) => {
+    const value = typeof next === 'function' ? (next as (previous: T) => T)(slot.value) : next;
+    if (Object.is(slot.value, value)) return;
+    slot.value = value;
     runtime.dirty = true;
   }];
 }

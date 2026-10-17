@@ -1,0 +1,77 @@
+(node:16665) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ the frame limits and labels
+  ✔ carries the source defaults (0.498875ms)
+  ✔ clamps an index into an optional range (0.054708ms)
+  ✔ labels a chord with the first word of its action (0.042625ms)
+✔ the frame limits and labels (0.9405ms)
+▶ the frame layout
+  ✔ draws the title, search, rows, match label, preview and hints (0.737708ms)
+  ✖ stacks the preview under the rows by default (1.535917ms)
+  ✔ clamps the visible count to the terminal and the frame chrome (0.192291ms)
+  ✔ collapses the select hint to one word on a narrow terminal (0.137292ms)
+  ✔ drops the tab hint when the frame has no tab action (0.109292ms)
+✖ the frame layout (2.853875ms)
+▶ the frame movement
+  ✔ moves the focus, the window, the selection and the tab action (0.345958ms)
+  ✔ selects the focused row when tab has no action (0.548291ms)
+  ✔ moves the window with the wheel and stops the event (0.258458ms)
+  ✔ reverses the wheel for an up direction (0.111667ms)
+✔ the frame movement (1.3615ms)
+▶ the search input
+  ✔ types into the query and reports it (0.173333ms)
+  ✔ edits with backspace, delete, home, end and paste (0.499334ms)
+  ✔ resets the focus and window when the query changes (0.172125ms)
+  ✔ ignores control chords and non-edit keys (0.07525ms)
+✔ the search input (0.975958ms)
+▶ the row list
+  ✔ draws the empty state as the empty-state block (0.179083ms)
+  ✔ renders the empty-state block with an optional hint (0.076042ms)
+  ✔ draws the visible rows with focus and scroll markers (0.109208ms)
+  ✔ reverses the list and the markers for an up direction (0.055667ms)
+  ✔ declares the cursor only when the host context asks (0.074542ms)
+  ✔ guards the first click and then reports the row (321.93575ms)
+  ✔ reports hover changes and clears the hover on leave (0.731208ms)
+✔ the row list (323.585667ms)
+▶ the hook seam and the public names
+  ✔ supports the functional state update form (0.3795ms)
+  ✔ keeps the aliases on the source names (0.167542ms)
+✔ the hook seam and the public names (0.733125ms)
+ℹ tests 25
+ℹ suites 6
+ℹ pass 24
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 504.027042
+
+✖ failing tests:
+
+test at test/tui-scope-picker-frame.test.ts:1:6142
+✖ stacks the preview under the rows by default (1.535917ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  -   [Function: Vse],
+      'Box',
+  +   'Box'
+    ]
+  
+      at TestContext.<anonymous> (/Users/mant1ssa/Projects/cc_reverse/test/tui-scope-picker-frame.test.ts:181:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1905:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [Array],
+    expected: [Array],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

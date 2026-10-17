@@ -1,0 +1,557 @@
+(node:16324) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+{
+ "constants": {
+  "TBe": 8,
+  "MBe": 10,
+  "DBe": 2,
+  "FLt": true
+ },
+ "chord": {
+  "spaced": "select",
+  "plain": "select",
+  "empty": ""
+ },
+ "clamp": {
+  "under": 0,
+  "over": 5,
+  "inside": 2,
+  "free": 42
+ },
+ "frame": {
+  "passes": [
+   {
+    "pass": 0,
+    "focus": 0,
+    "windowStart": 0,
+    "visible": [
+     "k0",
+     "k1",
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 1,
+    "focus": 0,
+    "windowStart": 0,
+    "visible": [
+     "k0",
+     "k1",
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 2,
+    "focus": 1,
+    "windowStart": 0,
+    "visible": [
+     "k0",
+     "k1",
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 3,
+    "focus": 2,
+    "windowStart": 0,
+    "visible": [
+     "k0",
+     "k1",
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 4,
+    "focus": 3,
+    "windowStart": 0,
+    "visible": [
+     "k0",
+     "k1",
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 5,
+    "focus": 0,
+    "windowStart": 0,
+    "visible": [
+     "k0",
+     "k1",
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 6,
+    "focus": 8,
+    "windowStart": 1,
+    "visible": [
+     "k1",
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7",
+     "k8"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 7,
+    "focus": 9,
+    "windowStart": 2,
+    "visible": [
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7",
+     "k8",
+     "k9"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 8,
+    "focus": 9,
+    "windowStart": 2,
+    "visible": [
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7",
+     "k8",
+     "k9"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 9,
+    "focus": 10,
+    "windowStart": 3,
+    "visible": [
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7",
+     "k8",
+     "k9",
+     "k10"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 10,
+    "focus": 10,
+    "windowStart": 3,
+    "visible": [
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7",
+     "k8",
+     "k9",
+     "k10"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   },
+   {
+    "pass": 11,
+    "focus": 0,
+    "windowStart": 0,
+    "visible": [
+     "k0",
+     "k1",
+     "k2",
+     "k3",
+     "k4",
+     "k5",
+     "k6",
+     "k7"
+    ],
+    "visibleCount": 8,
+    "total": 30
+   }
+  ],
+  "selected": [
+   "k9"
+  ],
+  "tabbed": [
+   "k8"
+  ],
+  "queried": [
+   "",
+   "x"
+  ],
+  "wheelCalls": [
+   [
+    "stop"
+   ],
+   [
+    "stop"
+   ]
+  ],
+  "lastQueryHandled": 12,
+  "tree": {
+   "type": "PermissionColor",
+   "props": {
+    "color": "permission"
+   },
+   "children": [
+    {
+     "type": "Box",
+     "props": {
+      "flexDirection": "column",
+      "tabIndex": -1
+     },
+     "children": [
+      {
+       "type": "Text",
+       "props": {
+        "bold": true,
+        "color": "permission"
+       },
+       "children": [
+        "Pick a scope"
+       ]
+      },
+      {
+       "type": "SearchInput",
+       "props": {
+        "query": "x",
+        "cursorOffset": 1,
+        "placeholder": "search",
+        "isFocused": true,
+        "autoFocus": true,
+        "isTerminalFocused": true
+       },
+       "children": []
+      },
+      {
+       "type": "Box",
+       "props": {
+        "flexDirection": "row",
+        "gap": 2,
+        "height": 9
+       },
+       "children": [
+        {
+         "type": "Box",
+         "props": {
+          "flexDirection": "column",
+          "flexShrink": 0
+         },
+         "children": [
+          {
+           "type": "Vse",
+           "props": {
+            "visible": [
+             {
+              "key": "k0",
+              "label": "item 0"
+             },
+             {
+              "key": "k1",
+              "label": "item 1"
+             },
+             {
+              "key": "k2",
+              "label": "item 2"
+             },
+             {
+              "key": "k3",
+              "label": "item 3"
+             },
+             {
+              "key": "k4",
+              "label": "item 4"
+             },
+             {
+              "key": "k5",
+              "label": "item 5"
+             },
+             {
+              "key": "k6",
+              "label": "item 6"
+             },
+             {
+              "key": "k7",
+              "label": "item 7"
+             }
+            ],
+            "windowStart": 0,
+            "visibleCount": 8,
+            "total": 30,
+            "focusedIndex": 0,
+            "direction": "down",
+            "emptyText": "nothing"
+           },
+           "children": []
+          },
+          {
+           "type": "Text",
+           "props": {
+            "dimColor": true
+           },
+           "children": [
+            "match"
+           ]
+          }
+         ]
+        },
+        {
+         "type": "Box",
+         "props": {
+          "flexDirection": "column",
+          "flexGrow": 1
+         },
+         "children": [
+          {
+           "type": "Text",
+           "props": {},
+           "children": [
+            "preview k0"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "type": "Text",
+       "props": {
+        "dimColor": true
+       },
+       "children": [
+        {
+         "type": "InlineRow",
+         "props": {},
+         "children": [
+          {
+           "type": "KeyHint",
+           "props": {
+            "chord": [
+             "up",
+             "down"
+            ],
+            "action": "navigate"
+           },
+           "children": []
+          },
+          {
+           "type": "KeyHint",
+           "props": {
+            "chord": "enter",
+            "action": "select item"
+           },
+           "children": []
+          },
+          {
+           "type": "KeyHint",
+           "props": {
+            "chord": "tab",
+            "action": "switch"
+           },
+           "children": []
+          },
+          {
+           "type": "KeyHint",
+           "props": {
+            "chord": "escape",
+            "action": "cancel"
+           },
+           "children": []
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "hints": [
+   {
+    "chord": [
+     "up",
+     "down"
+    ],
+    "action": "navigate"
+   },
+   {
+    "chord": "enter",
+    "action": "select item"
+   },
+   {
+    "chord": "tab",
+    "action": "switch"
+   },
+   {
+    "chord": "escape",
+    "action": "cancel"
+   }
+  ]
+ },
+ "narrowChords": [
+  {
+   "chord": [
+    "up",
+    "down"
+   ],
+   "action": "nav"
+  },
+  {
+   "chord": "enter",
+   "action": "select"
+  },
+  {
+   "chord": "escape",
+   "action": "cancel"
+  }
+ ],
+ "empty": {
+  "type": "Box",
+  "props": {
+   "height": 4,
+   "flexShrink": 0
+  },
+  "children": [
+   {
+    "type": "fo",
+    "props": {},
+    "children": [
+     "nothing here"
+    ]
+   }
+  ]
+ },
+ "rows": {
+  "count": 4,
+  "rowProps": [
+   {
+    "key": "k0:false",
+    "isFocused": false,
+    "declareCursor": false,
+    "showScrollUp": true,
+    "showScrollDown": false,
+    "styled": false
+   },
+   {
+    "key": "k1:true",
+    "isFocused": true,
+    "declareCursor": false,
+    "showScrollUp": false,
+    "showScrollDown": false,
+    "styled": false
+   },
+   {
+    "key": "k2:false",
+    "isFocused": false,
+    "declareCursor": false,
+    "showScrollUp": false,
+    "showScrollDown": false,
+    "styled": false
+   },
+   {
+    "key": "k3:false",
+    "isFocused": false,
+    "declareCursor": false,
+    "showScrollUp": false,
+    "showScrollDown": true,
+    "styled": false
+   }
+  ],
+  "container": {
+   "height": 4,
+   "flexDirection": "column",
+   "hasLeave": true
+  }
+ },
+ "clickAfterGuard": [
+  "stray",
+  "k1"
+ ],
+ "hovers": [
+  "k0",
+  null
+ ],
+ "up": {
+  "flexDirection": "column-reverse",
+  "markers": [
+   [
+    false,
+    false
+   ],
+   [
+    false,
+    false
+   ],
+   [
+    false,
+    false
+   ],
+   [
+    true,
+    false
+   ]
+  ]
+ },
+ "declaredCursor": [
+  true,
+  true,
+  true,
+  true
+ ]
+}
