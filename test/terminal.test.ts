@@ -7,11 +7,25 @@ import { At } from '../src/tui-input-cursor.js';
 import { InputUndo } from '../src/tui-input-undo.js';
 import { InputPaste, expandPastedText } from '../src/tui-input-paste.js';
 import { cellWidth, createEditorState, createTerminalInput, decodeTerminalKeybindings, layoutEditor, MAX_PASTE_BYTES,
-  reduceEditor, TerminalKeyDecoder, type EditorAction, type EditorState } from '../src/terminal.js';
+  questionPreviewText, reduceEditor, TerminalKeyDecoder, type EditorAction, type EditorState } from '../src/terminal.js';
 
 function edit(actions: EditorAction[], initial = createEditorState()): EditorState {
   return actions.reduce((state, action) => reduceEditor(state, action).state, initial);
 }
+test('question previews use the recovered sanitise pass', () => {
+  const withheld = '(preview cannot be shown in full — compare the option labels and descriptions instead)';
+  assert.equal(questionPreviewText(undefined), undefined);
+  assert.equal(questionPreviewText('a\u0007b'), 'a�b');
+  assert.equal(questionPreviewText('a\tb'), 'a       b');
+  assert.equal(questionPreviewText('a​b'), 'a�b');
+  assert.equal(questionPreviewText('a‌b'), 'a‌b');
+  assert.equal(questionPreviewText('a\r\nb'), 'a�\nb');
+  assert.equal(questionPreviewText('�'), undefined);
+  assert.equal(questionPreviewText('… [+3 graphemes]'), withheld);
+  assert.equal(questionPreviewText('a' + '́'.repeat(9)), withheld);
+  assert.equal(questionPreviewText('x'.repeat(2001)), withheld);
+});
+
 class FakeInput extends PassThrough {
   isTTY = true;
   isRaw = false;

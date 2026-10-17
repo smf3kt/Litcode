@@ -1,0 +1,170 @@
+{
+ "schema": "W76PreviewDisplaySanitationEvidence.v1",
+ "package": "W76-01 — preview display sanitation",
+ "date": "2026-10-17",
+ "question": "Does the terminal preview host follow the recovered display string branch, including pn, pc, tab replacement and the marker/mark-run withholding checks?",
+ "answer": "Yes: questionPreviewText applies the 2000-unit cut gate with the copied ne, sanitises through pc (Ce/cn + Zs), replaces tabs with one space, and withholds on rPe or xg rewrite; the W74 admission helpers now delegate to the shared preview-sanitize module.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-qq2mgstr.js",
+  "unit": "UTF-16 code units",
+  "display": {
+   "symbol": "Yb",
+   "range": [
+    14883,
+    15431
+   ]
+  },
+  "cutGate": {
+   "symbol": "pn",
+   "range": [
+    8907,
+    8946
+   ],
+   "limit": {
+    "symbol": "N6",
+    "position": 8811,
+    "value": 2000
+   }
+  },
+  "keyScrub": {
+   "symbol": "Pe",
+   "range": [
+    8773,
+    8807
+   ],
+   "used": false
+  },
+  "sanitize": {
+   "symbol": "pc",
+   "range": [
+    8706,
+    8741
+   ]
+  },
+  "ignore": {
+   "symbol": "ln",
+   "range": [
+    8080,
+    8178
+   ]
+  },
+  "replacePredicate": {
+   "symbol": "cn",
+   "range": [
+    8375,
+    8414
+   ]
+  },
+  "replacer": {
+   "symbol": "Ce",
+   "range": [
+    8414,
+    8503
+   ]
+  },
+  "markerCollapse": {
+   "symbol": "xg",
+   "range": [
+    9362,
+    9571
+   ]
+  },
+  "admissionCheck": {
+   "symbol": "nD",
+   "range": [
+    15431,
+    15484
+   ]
+  },
+  "rewriteCheck": {
+   "symbol": "Ee",
+   "range": [
+    15517,
+    15549
+   ]
+  },
+  "normalize": {
+   "module": "extracted-v2/modules/chunk-bf3z2ftn.js",
+   "symbol": "Zs/kt",
+   "range": [
+    5645,
+    5792
+   ]
+  },
+  "markerPattern": {
+   "module": "extracted-v2/modules/chunk-bf3z2ftn.js",
+   "symbol": "rPe",
+   "range": [
+    3856,
+    3916
+   ]
+  }
+ },
+ "behavior": {
+  "cut": "ne(preview, 2000) !== preview -> withheld",
+  "sanitize": "Zs(Ce(preview, cn)) then /\t/g -> one space",
+  "empty": "replacement-only text -> undefined (host plain-text filter)",
+  "withhold": "rPe.test(text) || xg(text) !== text",
+  "effects": "BEL -> U+FFFD; tab -> spaces to the eight-column stop; ZWSP -> U+FFFD; ZWNJ preserved; CRLF -> U+FFFD + newline"
+ },
+ "changes": [
+  {
+   "file": "src/preview-sanitize.ts",
+   "change": "shared pc/nD/display check port",
+   "sha256": "40d472067a4340c577171eff0994bc8639eff7f5690976cf6ce1f73eb2347ee9"
+  },
+  {
+   "file": "src/terminal.ts",
+   "change": "questionPreviewText follows the recovered string branch",
+   "sha256": "59779f0f053c03f352c5e8abf399853ab9ea30698171fc82b83d9bc2eca93c77"
+  },
+  {
+   "file": "src/interaction-tools.ts",
+   "change": "W74 helpers delegate to the shared module",
+   "sha256": "ec5c0899139f0f831273ac0911e9835f02a5a951fb31353e1cccbbc295da4356"
+  },
+  {
+   "file": "test/terminal.test.ts",
+   "change": "one sanitise case",
+   "sha256": "1e522971863a133f252eea1fb21dba734485ca33ffba4630a2d74713e0cf544a"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-11 rows record display sanitation",
+   "sha256": "c00285f986965fa1e68d3a42d401532abd95394f739874d8cfe89e5b5eb317a9"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Interactive terminal row records display sanitation",
+   "sha256": "8089db01009825fa0ea05d34cb72193f86e1572e1e2d52c75d71395c1b1f60b5"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W76-01 entry",
+   "sha256": "26f99f318c36b49b4c02b3eaf8e31fbb9f8f48b626e097160e40182fecfabfc9"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W76-01 S-1..S-7 entry",
+   "sha256": "9a28b2b19bc860f543abf82e87d8ba1730a818e20acfb19e9b3bf8be787de50b"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "terminal": "28/28",
+  "interactionTools": "32/32",
+  "build": "exit 0",
+  "full": "2,104/2,104",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "27613f94512349b224ad7d49b1f36fe9e361b5a527b2078c78862f66c4971e61"
+ },
+ "residuals": [
+  "The full renderer and formatting host remain C-11 work.",
+  "Soft-wrap, key scrub, structured payload and the RS gutter flag are not reachable in this host.",
+  "The empty-text filter is the host contract, not a source branch."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-11 continues with the full renderer and formatting host."
+}
