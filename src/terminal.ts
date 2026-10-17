@@ -18,6 +18,8 @@ import { InputGestures } from './tui-input-gestures.js';
 import { TerminalFocus } from './tui-focus.js';
 import { InputHistory } from './tui-input-history.js';
 import type { HistorySearch, SearchSnapshot } from './tui-history-search.js';
+import { ne } from './plugin-chain-source.js';
+import { previewSanitized, previewUnstableText } from './preview-sanitize.js';
 import type { ScopedPicker } from './tui-scope-picker.js';
 /** Source HI() gate for the picker: see research/ports/W44-scope-picker-copies.json entryEvidence. */
 const SOURCE_PICKER_OWNS_HISTORY_SEARCH = true;
@@ -1021,13 +1023,20 @@ export interface TerminalPromptChoice {
 const PREVIEW_MAX_CHARS = 2000;
 const PREVIEW_WITHHELD = '(preview cannot be shown in full — compare the option labels and descriptions instead)';
 
-/** The recovered full/empty/withheld split, with the host's plain-text filter. */
+/**
+ * The recovered full/empty/withheld split (`Yb` [14883,…), chunk-qq2mgstr.js):
+ * `pn` refuses a preview the 2000-unit cut would change, the string is sanitised
+ * through `pc`, tabs become one space, and a truncation marker or a mark run the
+ * collapser still rewrites withholds the preview. The empty check is the host's
+ * own plain-text filter.
+ */
 export function questionPreviewText(preview: string | undefined): string | undefined {
   if (preview === undefined) return undefined;
-  if (preview.length > PREVIEW_MAX_CHARS) return PREVIEW_WITHHELD;
-  if (!preview.replace(/�/g, '').trim()) return undefined;
-  if (/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]|… \[\+\d+ graphemes\]/.test(preview)) return PREVIEW_WITHHELD;
-  return preview.replace(/\r\n?/g, '\n').replace(/\t/g, '    ');
+  if (ne(preview, PREVIEW_MAX_CHARS) !== preview) return PREVIEW_WITHHELD;
+  const sanitized = previewSanitized(preview).replace(/\t/g, ' ');
+  if (!sanitized.replace(/�/g, '').trim()) return undefined;
+  if (previewUnstableText(sanitized)) return PREVIEW_WITHHELD;
+  return sanitized;
 }
 
 /** One question inside a grouped request; answers are collected per group key. */

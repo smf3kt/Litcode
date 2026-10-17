@@ -1954,3 +1954,12 @@ replaces the previous plain structural check, so JSON-equivalent forms such as
 source's warning is not emitted; the refusal is the effect. One new case,
 interaction-tools 32/32, tsc 0, full 2,103/2,103, chain 767/767, identity
 `b03f27a0…`. [W75 record](ports/W75-card-field-comparison.md).
+
+W76-01 ports the recovered preview display sanitation. `questionPreviewText`
+now runs the source string branch: the 2000-unit cut gate, `pc` control folding
+through `Ce`/`cn`/`Zs`, tab expansion to the eight-column stop, then the
+truncation-marker and `xg` mark-run checks that withhold. Control characters
+become U+FFFD instead of withholding the preview, and the W74 admission helpers
+move to a shared `preview-sanitize` module. One new case, terminal 28/28,
+interaction-tools 32/32, tsc 0, full 2,104/2,104, chain 767/767, identity
+`27613f94…`. [W76 record](ports/W76-preview-display-sanitation.md).
