@@ -3027,3 +3027,18 @@ answers through the same helper, and the existing answer admission enforces that
 matches a preview the question showed. Question-level notes and the AFK timeout remain out.
 Focused 80/80, full 2586/2586, tsc 0, build 0, notices 0, identity `04faee71…`.
 [W176 record](ports/W176-terminal-preview-annotation.md).
+
+W177 ports the recovered AFK timeout for grouped questions. `Zbe` resolves the timeout from
+`CLAUDE_AFK_TIMEOUT_MS`, the host value, then 60000 ms, clamps the countdown window to
+`min(CLAUDE_AFK_COUNTDOWN_MS ?? 20000, timeout)` and ticks once a second. Elapsed time is
+`now - max(lastInteraction, base)`, the base moves on every focused tick, and the window displays
+`auto-continue in Ns · any key to stay`. On timeout the source runs `sl` once and passes the answers
+map to `P3`, so only questions already answered are submitted. The product adds the host-only
+`afkTimeoutMs` request field (the model field is still refused), starts the clock only for grouped
+dialogs, resets it on any dialog key, pauses while the terminal state is focused, reserves one frame
+row for the countdown and submits the answered groups. The local `askUserQuestionTimeout` setting,
+screen-reader gate and external-racer gate have no host counterpart and remain unported.
+New tests cover the enable gate and environment overrides, a blurred countdown with a key reset and
+partial-answer submission, and a focused terminal that never triggers. Focused tui 50/50,
+interaction-tools 33/33, full 2589/2589, tsc 0, build 0, notices 0, identity `10311b2b…`.
+[W177 record](ports/W177-afk-timeout.md).

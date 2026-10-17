@@ -1,0 +1,106 @@
+{
+ "schema": "W177AfkTimeout.v1",
+ "package": "W177 — AFK auto-continue",
+ "date": "2026-10-18",
+ "question": "When does the recovered question dialog auto-continue on idle, what does it display, and which answers does it submit?",
+ "answer": "Zbe enables the clock only with a non-null host timeout or CLAUDE_AFK_TIMEOUT_MS, resolves env ?? host ?? 60000 ms, clamps the countdown window to min(CLAUDE_AFK_COUNTDOWN_MS ?? 20000, timeout), and ticks once a second with elapsed = now - max(lastInteraction, base); a focused terminal moves base to now. ywe renders one right-aligned dim row `auto-continue in Ns · any key to stay` while remaining*1000 <= countdown. On elapsed >= timeout, sl fires once and P3 submits the answers map as-is, so only questions already answered are included. The product implements the same clock for grouped request dialogs, with a host-only afkTimeoutMs request field and the environment override.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+  "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+  "ranges": {
+   "Zbe": [1163297, 1163934],
+   "ywe": [1177646, 1178182],
+   "enableGate": [1174715, 1174796],
+   "onTimeout": [1175051, 1175817],
+   "P3": [1178668, 1179279],
+   "XZe": [1165013, 1165119],
+   "defaults": [1163279, 1163296]
+  },
+  "additionalModules": [
+   {
+    "module": "extracted-v2/modules/chunk-4bw62nzm.js",
+    "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+    "ranges": {"V8eDefault": [85608, 85622]}
+   },
+   {
+    "module": "extracted-v2/modules/chunk-14rnebpd.js",
+    "sha256": "d1ba8228f324b01eb984c0a09eed1095d0bb0e6ace7c295b0c0fdb03a17be810",
+    "ranges": {"efo": [216274, 216316]}
+   },
+   {
+    "module": "extracted-v2/modules/chunk-x0dc37w9.js",
+    "sha256": "0b4db31ad035eb234d6943552606135e83405b719e32a114283cadad4e957d92",
+    "ranges": {"Kdt": [109538, 109592]}
+   },
+   {
+    "module": "extracted-v2/modules/chunk-phz47asr.js",
+    "sha256": "3d37bfa1a457f1e45fa115ea9002376a2549517043763e9cdb0d29e09e8d967d",
+    "ranges": {"intParser": [1169, 1474]}
+   }
+  ]
+ },
+ "sourceDigests": {
+  "Zbe": "549d445f220eeef1089eced0463f2620abb29960f1de4d009c675291670a6f20",
+  "ywe": "1728bdf1a56ac5a89092753f5847efc2ff7f306e00afdd01705f62a7f298ca05",
+  "enableGate": "5e565a660c3f2c28ce831894f4dd6e9c1fbe73a300febb643d0a775d6512c52d",
+  "onTimeout": "bf73d369725cfa63e7bc27103981cea7a91eaf2ef67c23f67dcd5b41f89b7e2c",
+  "P3": "b5f21dd71a361d78ca0945199dac63c16fd7d51b29955a85aab43fe2405f6ffa",
+  "XZe": "bf05ceab7c3a438ca066341c304263d9db462814f83535a92077e8831697d081",
+  "defaults": "92a5c7de512c18ccd6f43cd567762e8d90f6430cf416902a8869b494431ef48b",
+  "V8eDefault": "de9954933fc985a709cbc6f2f45e292a3d5208427ad1982bdd2898bec9ccda46",
+  "efo": "cc097c60fbed62e1d32fb148315bcea6dd6ed486e6de490bd365450db957d477",
+  "Kdt": "c7d60d6222ddf7f8d4499fee3594394c13d44f3488ed4710954edc0e5ba358c4",
+  "intParser": "3b97a010897e9dcd9e61e618b76ee99d3e3bd3098aedf823b3f6e57f3f1f10e5"
+ },
+ "behavior": {
+  "enable": "requested !== null || CLAUDE_AFK_TIMEOUT_MS defined; grouped question dialogs only",
+  "timeoutMs": "env ?? request ?? 60000",
+  "countdownMs": "min(env ?? 20000, timeoutMs)",
+  "tickMs": 1000,
+  "elapsed": "now - max(lastInteraction, base)",
+  "focusedBase": "base = now whenever the terminal focus state is focused",
+  "remaining": "elapsed >= timeout - countdown ? max(0, ceil((timeout - elapsed)/1000)) : ceil(timeout/1000)",
+  "display": "auto-continue in {N}s · any key to stay when remaining*1000 <= countdown",
+  "submit": "answers taken so far, keyed by group; unanswered questions are absent from the source map",
+  "keyReset": true,
+  "oneShot": true
+ },
+ "adaptations": [
+  "The recovered AskUserQuestion host supplies afkTimeoutMs through a dialog prop; the product exposes the same host-only field on TerminalPromptRequest while the model input keeps refusing the name as host_field.",
+  "The local askUserQuestionTimeout setting surface (Kdt/efo: 60s, 5m, 10m, never) is not ported; the environment variable and host field are the available triggers.",
+  "The screen-reader and external-racer gates have no state in this runtime and are treated as false, matching earlier host conventions.",
+  "The source builds the answer asynchronously and rechecks interaction/focus after the build; this host settles synchronously, so those checks reduce to clearing the one-second timer.",
+  "The countdown row reserves one frame content row and shifts the input cursor up by one; source styling is dim, while product frame rows carry no per-row style."
+ ],
+ "changes": [
+  {"file": "src/tui-afk.ts", "sha256": "c7b71a7c214cb253bb0b79e03cd3746fa9a61ae04a16079b6ddbd9403aeb0870"},
+  {"file": "src/terminal.ts", "sha256": "f63235be9bcb9b0667b8c349b69604813affb206d9d8fdd858549a543464ed8c"},
+  {"file": "src/tui.ts", "sha256": "5d456bff297f93a0cac2346ed72b6735b3c444882d5d153c2343b1ca929fcee7"},
+  {"file": "test/tui.test.ts", "sha256": "344c3bd91d992db2460a7389e1db01dc78d2aa3b79aa2916c6b58e0ca3defd02"},
+  {"file": "research/ports/W177-afk-timeout.md", "sha256": "3c350328d310520b809dd8a1ecb21d9b53d4794f3259b3c548da9f5c2a73aafd"},
+  {"file": "research/ports/W43-tui-preview.md", "sha256": "aa1421fad3aecf2a7ac18cf189192d077bca0552020408c1c7e8dada4bbbbeda"},
+  {"file": "research/CURRENT.md", "sha256": "4fcf7f9a218e4e1a98f85d54450ba9bad8e61623b9365e1905078eb09180ebd9"},
+  {"file": "research/FEATURES.md", "sha256": "734fd328342b51c5a56dfed94490f354c22cbf8e2b884b69e19ae02089ff48f9"},
+  {"file": "research/STATUS.md", "sha256": "8155fb0983d0a7a1ae793c89b783d76c5835478876fc721475ecb630f92d27b7"}
+ ],
+ "gates": {
+  "focused": {"tui": "50/50", "interactionTools": "33/33"},
+  "full": "2589/2589",
+  "tsc": "exit 0",
+  "build": "exit 0",
+  "notices": {"exit": 0, "sha256": "46f276dca3414377a658af8af63da39e296adb6b13985e4f1b4f29fed807c4b7"},
+  "identity": {
+   "sha256": "10311b2b972d2ad8a9eaee68b9b78f1d82c39fa044b38ee1d0069e6fe7e0ed86",
+   "inputs": {"sha256": "207b409010429a5b99463551a60e905f744a11c1cdb7e4bde39d0ee91b52c091", "files": 685},
+   "validation": {"sha256": "238ee0a821bffc207201d533a62b37533ea3fa9d7a1b11ed4b083e8b1808df3e", "files": 230},
+   "build": {"sha256": "92414da36af507adf331898a3737a391642b2ec664b7d76f5a6cfa60b3d9e432", "files": 471}
+  }
+ },
+ "residuals": [
+  "The askUserQuestionTimeout setting surface (60s/5m/10m/never) is not ported.",
+  "Screen-reader and external-racer enable gates have no host counterpart.",
+  "Question-level notes, chat-about-design, external-editor/image-paste and the full React renderer remain W43 work."
+ ],
+ "recoveredEntrypointsExecuted": false
+}
