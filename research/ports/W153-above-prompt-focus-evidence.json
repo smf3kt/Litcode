@@ -1,0 +1,147 @@
+{
+  "schema": "W153AbovePromptFocus.v1",
+  "package": "W153-above-prompt-focus",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+      },
+      {
+        "module": "chunk-bwyexfny.js",
+        "sha256": "35fae44d02574c1e366e2c50484d2ce75e87a0b017d91b0e5a8a6ca4bc8ff647"
+      },
+      {
+        "module": "chunk-6ejn7q9s.js",
+        "sha256": "e652d11d8941d479b41f93f296877a1bc0544c549ddd6b9999f681192effbfee"
+      }
+    ],
+    "blocks": 10,
+    "units": 3840,
+    "ranges": [
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "range": [
+          475702,
+          475813
+        ],
+        "units": 111,
+        "note": "scroll window clamp"
+      },
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "range": [
+          476169,
+          476191
+        ],
+        "units": 22,
+        "note": "above-prompt request tag"
+      },
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "range": [
+          2336000,
+          2336062
+        ],
+        "units": 62,
+        "note": "act wrapper"
+      },
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "range": [
+          2336190,
+          2338444
+        ],
+        "units": 2254,
+        "note": "focus ring hook"
+      },
+      {
+        "module": "chunk-bwyexfny.js",
+        "range": [
+          3579,
+          3835
+        ],
+        "units": 256,
+        "note": "active context hook"
+      },
+      {
+        "module": "chunk-6ejn7q9s.js",
+        "range": [
+          108086,
+          108477
+        ],
+        "units": 391,
+        "note": "focusables of"
+      },
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "range": [
+          2334533,
+          2335070
+        ],
+        "units": 537,
+        "note": "focus request"
+      },
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "range": [
+          2335070,
+          2335123
+        ],
+        "units": 53,
+        "note": "focus draw clears"
+      },
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "range": [
+          2336062,
+          2336073
+        ],
+        "units": 11,
+        "note": "focus queue limit"
+      },
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "range": [
+          476538,
+          476681
+        ],
+        "units": 143,
+        "note": "above-prompt focus handler"
+      }
+    ]
+  },
+  "exports": [
+    "A9r",
+    "Xq",
+    "sZo",
+    "iZo",
+    "ZD",
+    "PYe",
+    "Lqt",
+    "Nqt",
+    "GQt",
+    "fse"
+  ],
+  "seam": [
+    "clampScrollTop",
+    "ABOVE_PROMPT_REQUEST_ID",
+    "FOCUS_ACT_QUEUE_LIMIT",
+    "actHandlers",
+    "useFocusRing",
+    "useActiveContext",
+    "focusablesOf",
+    "focusSiteDrawStore",
+    "raiseFocusRequest",
+    "raiseFocusDispatch"
+  ],
+  "gates": {
+    "focused": "8/8",
+    "full": "2362/2362",
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "identity": "774e46e1f7dcee268718b2f9e1187df6086bcb0a48261bcd659ff98b6b5789d8"
+  }
+}

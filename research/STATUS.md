@@ -2661,3 +2661,14 @@ both agent task kinds. Focused 24/24, full 2354/2354, tsc 0, build 0, notices 0,
 `97360dc7…`. The `_Fe`/`RFe` measure/render closure exceeds one package (wheel acceleration, the
 `hs` settings schema at 5,548 units, and the `xwt` scroll dispatch) and moves to W157.
 [W152 record](ports/W152-above-prompt-local.md).
+
+W153 landed the AbovePrompt focus/scroll seam (10 blocks, 3,840 UTF-16 units) in
+`plugin-chain-above-prompt-focus`. `A9r` clamps the scroll top against the viewport bottom; `Xq`
+names the `above-prompt` request; `iZo` registers the focus ring site, queues acts behind an
+in-flight request up to 64, aborts on forget/unmount and auto-focuses a held-empty seat; `Lqt` and
+`fse` raise `ui.focus` through the pre-hook, the record handler table and the host; `sZo` wraps
+non-kept handlers so they call `act(value)`; `ZD` registers the keybinding context while mounted;
+`PYe` flattens the element tree into Button/Input/Select seats and stops at a Select. The host
+registry `focusSites`/`focusSiteDraws` is reused, not recopied. Focused 8/8, full 2362/2362,
+tsc 0, build 0, notices 0, identity `774e46e1…`. Next is W154 (keybinding/registry).
+[W153 record](ports/W153-above-prompt-focus.md).

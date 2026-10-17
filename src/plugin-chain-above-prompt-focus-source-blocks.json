@@ -1,0 +1,130 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-bwyexfny.js",
+      "sha256": "35fae44d02574c1e366e2c50484d2ce75e87a0b017d91b0e5a8a6ca4bc8ff647"
+    },
+    {
+      "module": "chunk-6ejn7q9s.js",
+      "sha256": "e652d11d8941d479b41f93f296877a1bc0544c549ddd6b9999f681192effbfee"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        475702,
+        475813
+      ],
+      "units": 111,
+      "bodySha256": "3802556f57275112b8eb126b8f3e55b073ab5f9c8b018ba8df379d219a5ceebe",
+      "note": "scroll window clamp"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        476169,
+        476191
+      ],
+      "units": 22,
+      "bodySha256": "a0373bda888b261768a42e8f130ed47346537a5283d95c5c2862327b9029e706",
+      "note": "above-prompt request tag"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2336000,
+        2336062
+      ],
+      "units": 62,
+      "bodySha256": "f32a3a056f4e21ebc4ecb24646a59d8fb539a483561424953786164e6c2c6c96",
+      "note": "act wrapper"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2336190,
+        2338444
+      ],
+      "units": 2254,
+      "bodySha256": "887ebe6a8016b9376bf2466bd5398445a60c37c6b3f00092ae8dc1480549661b",
+      "note": "focus ring hook"
+    },
+    {
+      "module": "chunk-bwyexfny.js",
+      "sha256": "35fae44d02574c1e366e2c50484d2ce75e87a0b017d91b0e5a8a6ca4bc8ff647",
+      "range": [
+        3579,
+        3835
+      ],
+      "units": 256,
+      "bodySha256": "0fed1529c2b34e7472de2661466f76c814a210bf4ae323ace507db32622da603",
+      "note": "active context hook"
+    },
+    {
+      "module": "chunk-6ejn7q9s.js",
+      "sha256": "e652d11d8941d479b41f93f296877a1bc0544c549ddd6b9999f681192effbfee",
+      "range": [
+        108086,
+        108477
+      ],
+      "units": 391,
+      "bodySha256": "f948d199c409ced06c5c5eb9346fa77f2c0406a3673ab6fe1890f768311eb6b9",
+      "note": "focusables of"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2334533,
+        2335070
+      ],
+      "units": 537,
+      "bodySha256": "9adccae15bb109311fcd96cf9c02ea2485ad1334d7d2493df756dbc7ce18f046",
+      "note": "focus request"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2335070,
+        2335123
+      ],
+      "units": 53,
+      "bodySha256": "69e8e1bebf1b37abbff68b919f20a8799179ec460b8549a67b9160035da90c2b",
+      "note": "focus draw clears"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2336062,
+        2336073
+      ],
+      "units": 11,
+      "bodySha256": "aaddc1ee3aabcfeafb6c531f7ebd2fb7827f268671da02c4d15b7f0396dce28b",
+      "note": "focus queue limit"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        476538,
+        476681
+      ],
+      "units": 143,
+      "bodySha256": "5759557bb5193988e9602f4f04ec9c26e7fbd00bf1887a07fc0bbb4a97ebe407",
+      "note": "above-prompt focus handler"
+    }
+  ],
+  "missing": []
+}
