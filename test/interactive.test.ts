@@ -216,7 +216,8 @@ test('/skills lists skills and /NAME runs a user-invocable skill', async () => {
   config.skills = [
     skill(),
     skill({ name: 'quiet', description: 'Silent', userInvocable: false }),
-    skill({ name: 'auto', description: 'Model disabled', body: 'Auto $1', disableModelInvocation: true }),
+    skill({ name: 'auto', description: 'Model disabled', body: 'Auto $1', disableModelInvocation: true,
+      source: 'projectSettings' }),
   ];
   const expansionLog = path.join(workspace, 'expansions.jsonl');
   config.hooks = { UserPromptExpansion: [{ command: `cat >> ${JSON.stringify(expansionLog)}` }] };
@@ -250,9 +251,13 @@ test('/skills lists skills and /NAME runs a user-invocable skill', async () => {
     assert.match(stderr.value(), /not user-invocable/);
     assert.match(stderr.value(), /Unknown command/);
     const expansions = fs.readFileSync(expansionLog, 'utf8').trim().split('\n')
-      .map(line => JSON.parse(line) as { expansion_type?: string; command_name?: string; command_args?: string; prompt?: string });
-    assert.deepEqual(expansions.map(event => [event.expansion_type, event.command_name, event.command_args, event.prompt]),
-      [['slash_command', 'greet', 'world', '/greet world'], ['slash_command', 'auto', 'z', '/auto z']]);
+      .map(line => JSON.parse(line) as { expansion_type?: string; command_name?: string; command_args?: string;
+        command_source?: string; prompt?: string });
+    assert.deepEqual(expansions.map(event => [event.expansion_type, event.command_name, event.command_args,
+      event.command_source, event.prompt]),
+      [['slash_command', 'greet', 'world', undefined, '/greet world'],
+        ['slash_command', 'auto', 'z', 'projectSettings', '/auto z']]);
+    assert.equal('command_source' in expansions[0]!, false);
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 

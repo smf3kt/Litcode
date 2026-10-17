@@ -68,6 +68,11 @@ export interface ConditionalRule extends InstructionFile {
 
 export type SkillEffort = "low" | "medium" | "high" | "xhigh" | "max";
 
+/** Settings scope that authorized the directory a skill was read from.
+ *  The recovered loader assigns these as the skill's `source` (`mO`,
+ *  chunk-sfn1dbxq.js [3384052,3388176); plugin skills carry `plugin` at 962912). */
+export type SkillSource = "userSettings" | "projectSettings" | "plugin";
+
 export interface SkillInfo {
   /** Frontmatter `name`, or the skill directory name when it is absent. */
   name: string;
@@ -77,6 +82,8 @@ export interface SkillInfo {
   path: string;
   /** Markdown body after the frontmatter block, verbatim. */
   body: string;
+  /** Settings scope that authorized the directory the skill was read from. */
+  source?: SkillSource;
   /** Frontmatter `user-invocable`; defaults to true. */
   userInvocable: boolean;
   /** Frontmatter `disable-model-invocation`; defaults to false. */
@@ -889,7 +896,7 @@ function stringField(data: Record<string, unknown>, field: string, file: string)
   return value;
 }
 
-function loadSkill(skillDir: string, skillManifest: string, into: Map<string, SkillInfo>, budget: ByteBudget, namespace?: string): void {
+function loadSkill(skillDir: string, skillManifest: string, into: Map<string, SkillInfo>, budget: ByteBudget, source: SkillSource, namespace?: string): void {
   const text = readTextFile(skillManifest, budget);
   const frontmatter = parseFrontmatter(text, { full: true });
   const data = frontmatter.data;
@@ -900,6 +907,7 @@ function loadSkill(skillDir: string, skillManifest: string, into: Map<string, Sk
     description: stringField(data, "description", skillManifest) ?? "",
     path: skillManifest,
     body: frontmatter.body,
+    source,
     userInvocable: toBoolean(data["user-invocable"], true, "user-invocable", skillManifest),
     disableModelInvocation: toBoolean(data["disable-model-invocation"], false, "disable-model-invocation", skillManifest),
   };
@@ -970,7 +978,7 @@ function loadSkill(skillDir: string, skillManifest: string, into: Map<string, Sk
  * realpaths de-duplicates symlinked or repeated entries across directories.
  * Every loaded SKILL.md draws from the shared aggregate byte budget.
  */
-function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillInfo>, budget: ByteBudget, namespace?: string): void {
+function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillInfo>, budget: ByteBudget, source: SkillSource, namespace?: string): void {
   if (!isDirectory(baseDir)) return;
   let entries: fs.Dirent[];
   try {
@@ -993,7 +1001,7 @@ function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillI
     if (seen.has(manifestReal)) continue;
     seen.add(real);
     seen.add(manifestReal);
-    loadSkill(skillDir, skillManifest, into, budget, namespace);
+    loadSkill(skillDir, skillManifest, into, budget, source, namespace);
   }
 }
 
@@ -1199,8 +1207,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   const skills = new Map<string, SkillInfo>();
   const seen = new Set<string>();
   // Scan highest precedence first so a shared realpath cannot demote a project skill.
-  scanSkills(path.join(harnessDir, "skills"), seen, skills, budget);
-  scanSkills(path.join(userDir, "skills"), seen, skills, budget);
+  scanSkills(path.join(harnessDir, "skills"), seen, skills, budget, "projectSettings");
+  scanSkills(path.join(userDir, "skills"), seen, skills, budget, "userSettings");
   let installedComponents: ReturnType<typeof discoverInstalledPluginComponents>;
   try {
     installedComponents = discoverInstalledPluginComponents(workspaceReal, plugins);
@@ -1249,7 +1257,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     throw new ConfigError(`invalid installed plugin catalog (${(error as Error).message})`, path.join(harnessDir, "plugins"), { cause: error });
   }
   const namespacePlugins = isPlainObject(settings.features) && settings.features.pluginSkillNamespaces === true;
-  for (const item of installedComponents) if (item.skillDirectory) scanSkills(item.skillDirectory, seen, skills, budget,
+  for (const item of installedComponents) if (item.skillDirectory) scanSkills(item.skillDirectory, seen, skills, budget, "plugin",
     namespacePlugins ? item.plugin.manifest.name : undefined);
   const pluginDirs = settings.pluginDirs;
   if (pluginDirs !== undefined) {
@@ -1258,7 +1266,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     }
     if (pluginDirs.length > CONFIG_LIMITS.dirEntries) throw new ConfigError("settings pluginDirs exceeds directory count limit");
     for (const dir of pluginDirs as string[]) {
-      scanSkills(path.resolve(workspaceRoot, dir), seen, skills, budget);
+      scanSkills(path.resolve(workspaceRoot, dir), seen, skills, budget, "plugin");
     }
   }
   const memorySeen = new Set<string>();

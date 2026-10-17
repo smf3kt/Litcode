@@ -1,0 +1,152 @@
+{
+ "schema": "W99SkillSourceEvidence.v1",
+ "package": "W99-01 — UserPromptExpansion command_source",
+ "date": "2026-10-18",
+ "question": "Which field does UserPromptExpansion carry for the command source, and what values can it take?",
+ "answer": "VYr always passes command_source from the command entry; the skill loader sets it to the settings scope that authorized the skill directory (projectSettings, userSettings, plugin among the scopes this runtime reads). The hook schema keeps it optional.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "builder": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "VYr",
+   "range": [
+    2947575,
+    2947964
+   ]
+  },
+  "caller": {
+   "module": "extracted-v2/modules/chunk-htgmc2p1.js",
+   "symbol": "at",
+   "offset": 38703
+  },
+  "loader": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "mO",
+   "range": [
+    3384052,
+    3388176
+   ]
+  },
+  "sourceAssignment": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 3383703,
+   "text": "source:n,baseDir:V,loadedFrom:\"skills\""
+  },
+  "discovery": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "sAr",
+   "offset": 3390484
+  },
+  "pluginSource": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 962912,
+   "text": "source:\"plugin\""
+  },
+  "schema": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "offset": 195092,
+   "field": "command_source:o().optional()"
+  }
+ },
+ "behavior": {
+  "payload": [
+   "expansion_type",
+   "command_name",
+   "command_args",
+   "command_source",
+   "prompt"
+  ],
+  "expansionType": {
+   "mcp": "mcp_prompt",
+   "other": "slash_command"
+  },
+  "scopes": [
+   "projectSettings",
+   "userSettings",
+   "plugin"
+  ]
+ },
+ "adaptations": [
+  "No managed policy skills, synced host catalog, bundled, MCP or memory-store catalogs exist, so those scopes cannot occur.",
+  "A hand-built skill without a scope omits the optional key instead of sending undefined.",
+  "Only the interactive slash-command path expands; the source also expands MCP prompts, which this runtime does not load."
+ ],
+ "changes": [
+  {
+   "file": "src/config.ts",
+   "change": "SkillSource type, SkillInfo.source, loader plumbing",
+   "sha256": "f35c19d25c9c09764e88baa4e9362957c8f15896a800c1f60b1eddb7c4cd238f"
+  },
+  {
+   "file": "src/hooks.ts",
+   "change": "payload field declaration",
+   "sha256": "f2509603e411c21ff0460ceb7701a0818955332c5be8ee20403b681857c73223"
+  },
+  {
+   "file": "src/agent.ts",
+   "change": "PromptExpansion type and corrected source range",
+   "sha256": "9b72ac24fa8472daed68df7d8bc4eec4a555af50ef6e8558dfd26915923c9890"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "expansion carries command_source",
+   "sha256": "5d6e0df8c201d7228365564e14becebb8faddd8646cbacf8a7e47fbdf69f16e6"
+  },
+  {
+   "file": "src/session.ts",
+   "change": "stored config schema accepts source",
+   "sha256": "8ac7b886844b559d8ed53152015b1ed85b92c30bea727cce8cd99b6460d38445"
+  },
+  {
+   "file": "test/config.test.ts",
+   "change": "scope assertions and minimal key set",
+   "sha256": "b78c4f4255788527bfbab8fbcf326d3db2406c88580089b13948dd0d132eab2c"
+  },
+  {
+   "file": "test/interactive.test.ts",
+   "change": "payload scope and omission assertions",
+   "sha256": "546be55bd259a0822e74eedad7c0ef106ed9208bc65577441a8e7141b8530756"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "hook receives command_source",
+   "sha256": "3d4eb78ede5cc97f950c43ce8ad0820e0510fecbfc6d96456fa018797536f08a"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W99",
+   "sha256": "4453d31e2611ae291c5a9d7d47d5155561d67e79888ec972b9f753373b52c859"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W99",
+   "sha256": "8cd7eec8d3a1f431bad623e1dcc2ba59843d984cb83a2296d739a21bf2aad4a1"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W99-01 entry",
+   "sha256": "916068d2d015c3587d1f278f0eb1d73841c1fcaee2b6ef8cb191536c74b141cf"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W99-01 S-1..S-7 entry",
+   "sha256": "383010d1135a108e014933db544889cbfbabfd9cc2121a02d27f6456c1442dc8"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "170/170 (config, interactive, agent-lifecycle, hooks)",
+  "build": "exit 0",
+  "full": "2,131/2,131",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "e0cd9d5ea54fd4260349d6d0d13d251e6c7dbf9fce87f146a04a286a833c3177"
+ },
+ "residuals": [
+  "policySettings, synced/bundled/MCP/memory-store sources cannot occur without their catalogs.",
+  "MCP prompt expansion is not implemented, so expansion_type stays slash_command."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with full consumers and the fork-skill expansion path."
+}

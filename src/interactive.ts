@@ -1044,10 +1044,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const parsed = parseSlashCommand(prompt);
           const skill = parsed ? findSkill(session.config.skills, parsed.name) : undefined;
           if (!parsed || !skill) throw new Error('Unknown command; use /help');
-          // The expansion payload names the canonical command and the typed arguments; `prompt` is
-          // the command text the source reconstructs (`VYr`, chunk-sfn1dbxq.js offset 2947732).
+          // The expansion payload names the canonical command, the typed arguments, and the
+          // skill's settings scope (`VYr`, chunk-sfn1dbxq.js [2947575,2947964); `prompt` is the
+          // command text the source reconstructs).
           const expansion = { expansion_type: 'slash_command' as const, command_name: skill.name,
-            command_args: parsed.args, prompt: parsed.args === '' ? `/${skill.name}` : `/${skill.name} ${parsed.args}` };
+            command_args: parsed.args, ...(skill.source === undefined ? {} : { command_source: skill.source }),
+            prompt: parsed.args === '' ? `/${skill.name}` : `/${skill.name} ${parsed.args}` };
           if (skillRequiresExecution(skill, session.config) && activeRuntime.runSkill) {
             const result = await withTurn(signal => activeRuntime.runSkill!(session.config, session.id, skill, parsed.args, signal,
               async (tool, input, decision) => {
