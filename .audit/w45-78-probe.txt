@@ -1,0 +1,50 @@
+XPt [{"tag":"Button","plugin":"probe-fixture","handle":1,"element":"b1"},{"tag":"Input","plugin":"probe-fixture","handle":2,"element":"i1"},{"tag":"Select","plugin":"probe-fixture","handle":3,"element":"s1","options":["a","b"]},{"tag":"Button","plugin":"probe-fixture","handle":4,"element":"nokey"},{"tag":"Button","plugin":"other","handle":7,"element":"b2"}]
+Rto presses [["Button","b1",790841127],["Input","i1",790841128],["Select","s1",790841129],["Button","nokey",790841130],["Button","b2",790841131]]
+Rto count 5
+holdersOf(identity) ["probe-fixture","other"]
+hostedButtonsOf [790841127]
+_f "probe-fixture\u0000Fixture\u0000r1\u0000terminal"
+S_ 1073741824 __range number true
+b_ {
+  hosted: [ [ 5, 804682847 ] ],
+  byKey: true,
+  byFilter: true,
+  byWrong: true,
+  reuse: true,
+  r1after: true,
+  r2after: true,
+  count: 1,
+  holders: [ 'p' ]
+}
+handles 790841128 790841129
+k_ held true
+k_ by element true
+k_ absent false
+x_ result {"element":"i1","value":"hello"}
+x_ pressed {"handle":2,"argument":{"plugin":"probe-fixture","element":"i1","component":"Fixture","requestId":"r1","surface":"terminal","kind":"text","value":"hello"}}
+T_ result {"element":"s1","value":"a"}
+T_ pressed {"handle":3,"argument":{"plugin":"probe-fixture","element":"s1","component":"Fixture","requestId":"r1","surface":"terminal","value":"a"}}
+T_ refused undefined ran 0
+UPn result {"element":"i1","value":"queued"}
+UPn skipped undefined
+jPn result {"element":"s1","value":"b"}
+ql direct ran probe-fixture
+x_ by key {"element":"i1","value":"byKey"}
+x_ missing undefined
+SFs [["Button","b1",100],["Input","i1",2],["Select","s1",3],["Button","nokey",4],["Button","b2",7]]
+Rto next released [1,3,4]
+FM released [1,3,4]
+BM released [2]
+m_ runner true true false 1
+m_ released undefined 0
+Hrt count 0
+sites ui.press ui.input ui.select 3
+ot ok undefined
+ot plugin a plugin other than the one that drew the element
+ot surface no { surface } naming a surface
+ot link a { link } on a press that had none
+mn ok undefined
+mn kind a kind other than the text it was given
+Cn value no { value } string
+(node:58136) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

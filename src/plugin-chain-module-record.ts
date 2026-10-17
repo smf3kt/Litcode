@@ -108,6 +108,11 @@ export function chainModuleRecord(module: ChainModule): ChainModuleRecord {
     matcherFor: surface === undefined ? () => undefined : surface.matcherFor,
     registrationsFor: surface === undefined ? () => [] : surface.registrationsFor,
     hasCatch: surface === undefined ? () => false : surface.hasCatch,
+    // Source `tGe`'s record: a press names the handle the drawing held, and runs the module's own
+    // press in process (there is no worker to cross). A release has no environment to tell, since
+    // this product's module holds no handles of its own.
+    press: (handle: number, argument: unknown) => module.press?.(handle, argument),
+    releasePresses: () => {},
     // A module that provides streams carries its own `streamLinks` into the record, which is where
     // the copied `_o` looks for it. Without it the module is collected as a hop instead.
     ...(module.streamLinks !== undefined && { streamLinks: (input: ChainStreamLinksInput) => module.streamLinks?.(input) ?? [] }),

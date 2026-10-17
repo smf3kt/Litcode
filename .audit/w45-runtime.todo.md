@@ -807,3 +807,12 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The element seam follows the compiled call shape.** `Xe` serves jsx/jsxs (children in props, third argument the key) and `Tc` stays createElement; the renderers render their children instead of the key.
 - [x] **Behaviour was measured before it was asserted.** Width resolution, both truncation paths, the gutter marker, the long-line marker, the language fallback, the hunk separator and the word-level pairing are in the probe log and in the suite.
 - [x] **Sweep.** tsc 0, copies `declared 47/88/76/55 / unresolved 0`, notices 0, new suite 24/24 plus 2 element-factory tests, chain family 594/594, full 1,870/1,870, index 62 chunks / 278,059 units, identity `0baf2436…`.
+
+## W45-78 acceptance (2026-10-17)
+
+- [x] **Partition 4 starts with the held-press core.** The press cluster and the three site descriptors are copied whole; the store, the drawing passes and the input/select dispatch are the product surface.
+- [x] **The module record carries the source press pair.** `Yl` calls the record's `press`/`releasePresses`; the in-process record now answers both, with the module's own press receiving the handle the drawing held.
+- [x] **The dispatch's two misses stay distinct.** A tag mismatch answers undefined silently; a matching-tag press for an unloaded plugin reaches `Yl` and throws the source's message. The full-key fallback is tested.
+- [x] **Behaviour was measured before it was asserted.** Hosting, handle reuse, per-element filtering, option admission, the release sequence and every site refusal message are in the probe log and the suite.
+- [x] **Scope split recorded.** `BPn`/`TIe`/`Ohe` and the `mxn` URL graph move to W45-79; `Xt` Markdown to W45-80.
+- [x] **Sweep.** tsc 0, copies `declared 75/16 / unresolved 0`, notices 0, new suite 20/20, chain family 614/614, full 1,890/1,890, index 62 chunks / 286,430 units, identity `eb114e4a…`.

@@ -89,8 +89,8 @@ export interface ChainModule {
   modulePath?: string;
   /** The interfaces this module answers `callInterface` with: `interface[name][method](...args)`. */
   interface?: ChainInterfaceTable;
-  /** How this module answers a `ui.press` on its environment, when it declares one. */
-  press?: (name: string, argument: unknown) => unknown;
+  /** How this module answers a `ui.press` on its environment: the handle the drawing held. */
+  press?: (handle: number, argument: unknown) => unknown;
   /**
    * The patterns this module declared. When present the record's hook surface is the source's own
    * `wGt` over these declarations; when absent the module is asked through its `hooks` predicate.
@@ -156,6 +156,10 @@ export interface ChainModuleRecord {
   status: () => { kind: 'live' | 'dead' };
   /** The environment this record answers for. */
   environmentId?: string | number;
+  /** Source `tGe`'s record: run the environment's press and hand back what it returned. */
+  press?: (handle: number, argument: unknown) => unknown;
+  /** Source `tGe`'s record: drop the press handles the environment no longer holds. */
+  releasePresses?: (handles: readonly unknown[]) => void;
 }
 
 /** One module's interface table: what a `$.name.method` call reaches inside its environment. */
@@ -205,7 +209,7 @@ export interface ChainEnvironmentHost {
   resolveTables(environmentId: number, tables: unknown): Promise<unknown>;
   build(environmentId: number, tables: unknown, argument: unknown): Promise<void>;
   callInterface(environmentId: number, call: ChainInterfaceCall, options?: { callers?: readonly unknown[]; lent?: readonly unknown[] }): Promise<unknown>;
-  press(environmentId: number, name: string, argument: unknown): Promise<unknown>;
+  press(environmentId: number, handle: number, argument: unknown): Promise<unknown>;
   releasePresses(environmentId: number, handles: readonly unknown[]): void;
   terminate?(): void;
 }

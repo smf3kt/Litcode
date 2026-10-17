@@ -1,0 +1,478 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        223903,
+        224239
+      ],
+      "units": 336,
+      "bodySha256": "b070bd98d0e683940a87536251b0ac2c8857dba4e666f91c7aba6afb2cbc6335",
+      "note": "`m_` — the per-plugin press runner table"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        224239,
+        224255
+      ],
+      "units": 16,
+      "bodySha256": "6c59490c491ac8e5496cb2c49114339481f47203f606ec78d71c804cc2ca6a8a",
+      "note": "`g_` — whether a handle marks a released press"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        224255,
+        224268
+      ],
+      "units": 13,
+      "bodySha256": "1e3ff76eac1098f87839bb047a155c396ead18b1f988077f18c3526d28473501",
+      "note": "`Hrt` — the runner table instance"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        224268,
+        224602
+      ],
+      "units": 334,
+      "bodySha256": "514afcd0903a0a09327ffb87428431f5611e4b2d582f4f399b5e071705a9f8fd",
+      "note": "`Yl` — the press handler a dispatch appends"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        224602,
+        224704
+      ],
+      "units": 102,
+      "bodySha256": "6f57b246d1d3f5c6fa993e5d3bfbfbcfe7922e9e4782d6cd82d655abfab92b17",
+      "note": "`bo` — a per-name serial queue"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        224704,
+        224777
+      ],
+      "units": 73,
+      "bodySha256": "5756418806cc657d897b13119bdf51d5a444f12fdf4e32a726617248900d36d8",
+      "note": "`_f` — the drawing key a hosted press is filed under"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        224777,
+        224929
+      ],
+      "units": 152,
+      "bodySha256": "e53289a4062240aded201ada892429a2f8a939bf20f7b5926519830b3298b406",
+      "note": "`bf` — a press held by another drawing of the same plugin"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        224929,
+        224947
+      ],
+      "units": 18,
+      "bodySha256": "58d625f93ccddee268fc61e83a43b0e1ccdfd49c3bf4442a53596ad62782878d",
+      "note": "`S_` — the handle space"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        224947,
+        224987
+      ],
+      "units": 40,
+      "bodySha256": "7e2206b72c8232f6f376cd1663382c63d884ff4dee19a2be395585d21f8a9900",
+      "note": "`__` — the next random handle"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        224987,
+        226254
+      ],
+      "units": 1267,
+      "bodySha256": "ab7eda4538911b81141c0febf5d2abb61c490549d8faa79bd40592172987ebf4",
+      "note": "`b_` — the held-press store"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        226254,
+        226266
+      ],
+      "units": 12,
+      "bodySha256": "e0404be49cf5966db0229b80b4c480b7e7d72003347354f8fa895182329b6d9e",
+      "note": "`AK` — the held-press store instance"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        226266,
+        226550
+      ],
+      "units": 284,
+      "bodySha256": "dc16833982f3d45139365067a26b31397b11546517b6c4c25b4f953e8fc634b8",
+      "note": "`vAt` — release the handles a new drawing no longer holds"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        226550,
+        226974
+      ],
+      "units": 424,
+      "bodySha256": "20030149ba58b8dadd773e8316f2cd6965ff00341774d058ea99610b8de0bc0d",
+      "note": "`Rto` — host a drawn press set and relabel its handles"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        226974,
+        227125
+      ],
+      "units": 151,
+      "bodySha256": "5cac33dac2029a516476b028130aeacb5cc1fc9f7df27ce97409ad0a78ca9d82",
+      "note": "`w_` — the input argument a press carries"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        227125,
+        227137
+      ],
+      "units": 12,
+      "bodySha256": "f764b6a698038d813937b819180a7ea759d01699af058446a14a5eac59649f02",
+      "note": "`kf` — the input site queue"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        227137,
+        227159
+      ],
+      "units": 22,
+      "bodySha256": "a75b0f97d4af5bc436e30a074deb32e71ace365c3478fc1b27b44b004f40f7a6",
+      "note": "`Ef` — the ui.input site"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        227159,
+        227274
+      ],
+      "units": 115,
+      "bodySha256": "e31786762bbf234378a6b7e90272d5953c09373484d96a38167e8efd2c453045",
+      "note": "`k_` — whether a plugin holds a press for a key"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        227629,
+        227931
+      ],
+      "units": 302,
+      "bodySha256": "254713894b47024ee2cc73a20c8d51f0dfe8c6f37f0b0f7cf8867736784717cc",
+      "note": "`FM` — release the presses a replaced drawing dropped"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        227931,
+        228055
+      ],
+      "units": 124,
+      "bodySha256": "0671ea4e608ccde0e4a930e0fa6903e5cee298bbd549b3ec94ebcc7cb3f6bddf",
+      "note": "`BM` — release every press a drawing held"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        228055,
+        228808
+      ],
+      "units": 753,
+      "bodySha256": "422a0190334246fda415cf194b213878eeaadf3270aed3d86c2359472150f5b7",
+      "note": "`Xl` — dispatch one input/select"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        228808,
+        228967
+      ],
+      "units": 159,
+      "bodySha256": "d8cedc3598490bed9836e667208e484bea9d9baccf27134aeb4c58ddb764f188",
+      "note": "`x_` — the ui.input dispatch"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        228967,
+        229104
+      ],
+      "units": 137,
+      "bodySha256": "5971b322ec23a81a36e6e564dabb6aad220a919e8f4398c9e3b389f3df172108",
+      "note": "`R_` — the select argument"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        229104,
+        229127
+      ],
+      "units": 23,
+      "bodySha256": "070650d80c4d26f36b228cf8dde3ba004162441fba7520fdd6ed69e4e511d08f",
+      "note": "`vf` — the ui.select site"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        229127,
+        229321
+      ],
+      "units": 194,
+      "bodySha256": "cfd28d3442283ccdde8bfe209421e5962fe9f3c80501a5ddd8226ac6d96184d5",
+      "note": "`T_` — the ui.select dispatch"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        229321,
+        229389
+      ],
+      "units": 68,
+      "bodySha256": "b289b668a970a4157474ae22bd71c86d06c1e52e3c6bbe590535c836bf008461",
+      "note": "`ql` — dispatch when the plugin holds the element"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        229389,
+        229414
+      ],
+      "units": 25,
+      "bodySha256": "515657057b6d3208784f2555d26113a5678641835c36b5dd5f051ea05410ed08",
+      "note": "`UPn` — inputFromTerminal"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230142,
+        230154
+      ],
+      "units": 12,
+      "bodySha256": "af55e143617b59985c97330502df27736cb325b915f356d3a8d62a2f25b5ff8e",
+      "note": "`Cf` — the press site queue"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230154,
+        230179
+      ],
+      "units": 25,
+      "bodySha256": "f630ecb2cb152222552916c91cd954f440802a5ee83e6b567b4b0d8fec8e84a6",
+      "note": "`jPn` — selectFromTerminal"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        1064,
+        1099
+      ],
+      "units": 35,
+      "bodySha256": "55f80860252116c960e65454a1d6e0002287772259269f0164f5aee35921213b",
+      "note": "`_` — whether a drawing element is the engine or an Svg"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        1099,
+        1166
+      ],
+      "units": 67,
+      "bodySha256": "8a2c825cd3e4604ad14546926699ac81cbf13627a9349db5cbf9db287fafb4f4",
+      "note": "`I` — the four pressable element kinds"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        1166,
+        1246
+      ],
+      "units": 80,
+      "bodySha256": "04a5083d9a6a2d0c2b157ed0f33e97c95af818faaaaaac3156d5d1c5679592ee",
+      "note": "`ke` — whether an element kind holds children"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        1246,
+        1332
+      ],
+      "units": 86,
+      "bodySha256": "eafd7eaf69ada06f47d0a17dd7552aa7a7eee23c3d18c0d37443e94a20fdfa80",
+      "note": "`D` — walk an element's children"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        1623,
+        1794
+      ],
+      "units": 171,
+      "bodySha256": "825943bfd0a70176d75164a34eccefca4f44888da52af7621bb614962f06698e",
+      "note": "`ve` — the option values a Select drew"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        1794,
+        2305
+      ],
+      "units": 511,
+      "bodySha256": "652c5ba1fa300e1806a03ab06d5d15a4d5846f0f51cf20c87850a0d0737df88d",
+      "note": "`XPt` — the presses a drawing holds"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        2833,
+        2864
+      ],
+      "units": 31,
+      "bodySha256": "21d576c31d345548f93d69bc477aa317be0de32efbc3aad15f279e9df2823152",
+      "note": "`QJt` — the drawing key separator"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        2481,
+        2516
+      ],
+      "units": 35,
+      "bodySha256": "772d7fb6d003d15cebd51b1eaf610ccfe20a802fdc54a799a610425a210163db",
+      "note": "`M$n` — the element kinds a hover group names"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        3700,
+        3742
+      ],
+      "units": 42,
+      "bodySha256": "29f9ab78bc27d25af1707cd4e47f7fb7671e0b8d73fec0949fb43d099e54e2c7",
+      "note": "`q` — whether an element is a leaf"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        3742,
+        3790
+      ],
+      "units": 48,
+      "bodySha256": "988497426a36ec9c8cff234c0a59c879548f03d06786d15a3d8568e9d6cfaa89",
+      "note": "`z` — whether an element carries a press"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        5382,
+        5661
+      ],
+      "units": 279,
+      "bodySha256": "56261ba57ee5d514c63eaf9413e2abef8f682b84a2b2d8de8524499412cb5850",
+      "note": "`je` — rewrite one element under a press handle"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        5661,
+        5771
+      ],
+      "units": 110,
+      "bodySha256": "602d2dac524256b6d8a3d66426f96490e1d105d60a3e9124032c6ca5c241acd6",
+      "note": "`K` — map an element's children"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        5771,
+        5906
+      ],
+      "units": 135,
+      "bodySha256": "90585036e573a1d2503dcdf868fc1645122b40fa042176097c74dc58ac8e1424",
+      "note": "`le` — rewrite every press handle in a drawing"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        5906,
+        5929
+      ],
+      "units": 23,
+      "bodySha256": "136dbc30ede6c0ce04da801ee59bc4e07c0406a6a98b7bab2c0642de9838780b",
+      "note": "`SFs` — the drawing relabel entry"
+    }
+  ],
+  "missing": []
+}

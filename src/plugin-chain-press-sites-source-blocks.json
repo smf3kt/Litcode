@@ -1,0 +1,122 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        84644,
+        84984
+      ],
+      "units": 340,
+      "bodySha256": "9b527c030d5c501d4bf64a9bd38ab572aa12a0220895f3dd034aa93996b532b4",
+      "note": "`w3` — the element names each surface offers"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        85526,
+        85580
+      ],
+      "units": 54,
+      "bodySha256": "962ed93856bd5e991aedcec5335b3a901ebf8a2e0bd7924669229cfb600ffa3b",
+      "note": "`vFe` — whether a name is a surface"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        15370,
+        15444
+      ],
+      "units": 74,
+      "bodySha256": "d0fc4c96b0ee85c2121481fbf91246fc86c5260eb8ef7a9bc3869f1eb090eed7",
+      "note": "`C` — wrap an argument check so a non-object result is refused first"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        86234,
+        86790
+      ],
+      "units": 556,
+      "bodySha256": "10a5b7f249e331097063bfe21e25f82a85509e3748da0382b37102658d573094",
+      "note": "`ot` — the press argument check shared by input and select"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        86790,
+        86978
+      ],
+      "units": 188,
+      "bodySha256": "551447f0ccb24c4ffa9e716ced311e94f1cfea2b7a8d45065a8982d491c5a9f9",
+      "note": "`mn` — the input argument check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        93336,
+        93452
+      ],
+      "units": 116,
+      "bodySha256": "4a54c6460dbabdef63854c1366bd0dc73665c7c13a7fb0b992e5ec16b0d06661",
+      "note": "`Cn` — the select argument check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        44342,
+        44484
+      ],
+      "units": 142,
+      "bodySha256": "34e59bccf78fe87e04123c6617a743aad4836d618ede16ef9311eae9c34d7f43",
+      "note": "`Lt` — build an input/select site descriptor"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        93534,
+        93643
+      ],
+      "units": 109,
+      "bodySha256": "cf46aa17d8ecfc1025a9fcae8a3de52423b74d235134cf2fa517168df1aef873",
+      "note": "`ya` — the ui.press site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        93452,
+        93477
+      ],
+      "units": 25,
+      "bodySha256": "560c5da19052fcc651977030cc35af73892bf956c77851fdb2de81b818b14412",
+      "note": "`da` — the ui.input site"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        94058,
+        94084
+      ],
+      "units": 26,
+      "bodySha256": "bb4e62501c0412554e60210493ce1274914b516e1da33ab1a2b7e4e7fd20e2fd",
+      "note": "`ha` — the ui.select site"
+    }
+  ],
+  "missing": []
+}
