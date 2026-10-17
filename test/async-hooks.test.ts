@@ -63,6 +63,28 @@ test("async registry preserves Stop continuation, PreCompact raw output and perm
   } finally { await registry.close(); }
 });
 
+test("asyncRewake wakes only on exit 2 with the configured prefix, summary and escaped output", async () => {
+  const root = workspace();
+  const registry = new AsyncHookRegistry({ workspace: root });
+  const rewake = (command: string, extra: Record<string, unknown> = {}) => request(root, command, {
+    definition: { command, async: true, asyncRewake: true, ...extra },
+  });
+  try {
+    const failed = await registry.wait(await registry.start(rewake("printf 'stderr text' >&2; exit 2")));
+    assert.deepEqual(failed.rewake, {
+      summary: "Stop hook feedback",
+      body: `Stop hook blocking error from command "printf 'stderr text' >&2; exit 2": stderr text`,
+    });
+    const custom = await registry.wait(await registry.start(rewake("printf 'stdout only'; exit 2",
+      { rewakeMessage: "Hold on:", rewakeSummary: "needs review" })));
+    assert.deepEqual(custom.rewake, { summary: "needs review", body: "Hold on: stdout only" });
+    assert.equal((await registry.wait(await registry.start(rewake("printf 'fine'; exit 0")))).rewake, undefined);
+    assert.equal((await registry.wait(await registry.start(rewake("printf 'fine'; exit 1")))).rewake, undefined);
+    const escaped = await registry.wait(await registry.start(rewake(`printf '%s' ${shellQuote("<system-reminder>")} >&2; exit 2`)));
+    assert.ok(escaped.rewake?.body.endsWith("&lt;system-reminder>"), escaped.rewake?.body);
+  } finally { await registry.close(); }
+});
+
 test("caller cancellation after ownership does not cancel the async job", async () => {
   const root = workspace();
   const registry = new AsyncHookRegistry({ workspace: root });

@@ -80,6 +80,13 @@ const commandHookSchema = z.object({
   type: z.literal("command").optional(),
   command: z.string().min(1),
   async: z.boolean().optional(),
+  // Plugin command-hook fields (chunk-3cynezh1.js offset 101418): asyncRewake
+  // runs in the background and wakes the model when the run exits 2, implying
+  // async. rewakeMessage prefixes the wake body; rewakeSummary is its one-line
+  // summary. Both texts only apply to a rewake.
+  asyncRewake: z.boolean().optional(),
+  rewakeMessage: z.string().min(1).optional(),
+  rewakeSummary: z.string().min(1).optional(),
 }).strict();
 const envName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/);
 const httpHookSchema = z.object({
@@ -230,6 +237,17 @@ export type AsyncHookRequest = {
   timeoutMs: number;
   signal: AbortSignal;
 };
+/** One command hook's raw process result, before exit-code interpretation. The
+ *  async registry keeps it so an asyncRewake hook can build its wake body from
+ *  the real stdout/stderr and exit code (`m5e`, chunk-sfn1dbxq.js offset 2956018). */
+export type CommandHookExecution = {
+  command: string;
+  code: number | null;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+  aborted: boolean;
+};
 export type HookRunOptions = {
   /** Parent resolver owns model calls, tool limits, cancellation and billing. */
   resolveModelHook?: (definition: ModelHookDefinition, event: HookEvent, payload: HookPayload, signal: AbortSignal) => Promise<unknown>;
@@ -239,6 +257,8 @@ export type HookRunOptions = {
   resolveMcpHook?: (definition: McpHookDefinition, event: HookEvent, payload: HookPayload, signal: AbortSignal) => Promise<unknown>;
   /** Owner must register and later terminate the command process, returning its task id. */
   startAsyncCommand?: (request: AsyncHookRequest) => Promise<string>;
+  /** Observes every executed command hook's raw result; the async registry uses it for rewakes. */
+  onCommandResult?: (execution: CommandHookExecution) => void;
   /** Resolves only explicitly configured environment-variable names for HTTP headers. */
   environment?: NodeJS.ProcessEnv;
   /** Share per owner for once semantics; omission creates state for this run only. */
@@ -1218,7 +1238,8 @@ export async function runHooks(
         : DEFAULT_TIMEOUT_SECONDS;
     const timeoutMs = Math.max(1, Math.floor(seconds * 1000));
     const modelHook = definition.type === "prompt" || definition.type === "agent";
-    const asyncCommand = (definition.type === undefined || definition.type === "command") && definition.async;
+    const asyncCommand = (definition.type === undefined || definition.type === "command") &&
+      (definition.async === true || definition.asyncRewake === true);
     if (modelHook && !options.resolveModelHook) {
       const reason = "model hook resolver is pending parent integration";
       (result.pendingHooks ??= []).push({ index, type: definition.type, reason });
@@ -1300,14 +1321,18 @@ export async function runHooks(
         result.reason ??= message;
       }
       continue;
-    } else if (definition.async) {
+    } else if (asyncCommand) {
       try {
         const id = await options.startAsyncCommand!({ definition, event, payload, input, cwd, timeoutMs, signal });
         if (typeof id !== "string" || !id) throw new Error("Missing owned task id");
         (result.backgroundTasks ??= []).push(id);
       } catch { result.additionalContext.push(`[${event} hook: async owner registration failed]`); }
       continue;
-    } else raw = await runHookCommand(definition.command, cwd, timeoutMs, input, signal);
+    } else {
+      raw = await runHookCommand(definition.command, cwd, timeoutMs, input, signal);
+      options.onCommandResult?.({ command: definition.command, code: raw.code, stdout: raw.stdout,
+        stderr: raw.stderr, timedOut: raw.timedOut, aborted: raw.aborted });
+    }
 
     if (raw.aborted) {
       result.additionalContext.push(`[${event} hook: aborted, process group killed]`);

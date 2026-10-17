@@ -1,0 +1,3 @@
+2026-10-18T01:10:00Z	package	W119-01 asyncRewake command hooks	插件schema 101418（chunk-3cynezh1.js）、m5e 2956018、Ebt/Abt 632160/632770、UT/zLe/z6t 632948/633015/633021（chunk-sfn1dbxq.js）	隐式async；exit 2唤醒；stderr优先；默认前缀引用命令；摘要rewakeSummary/Stop hook feedback；提醒转义与凭据脱敏	hooks/async-hooks/runtime-resources 103/103；扩展226/226；tsc 0；build 0；全量2,171/2,171；链768/768
+2026-10-18T01:13:00Z	decision	W119-01 本地适配	本地无钩子名与插件id；脚本钩子构建拒绝；无account-memory工具	破损检测与去重不移植；插件JSON摘要路径不读；唤醒为FIFO事件提示	.audit/w119-01-full.txt
+2026-10-18T01:16:00Z	verification	W119-01 验收：聚焦103/103、扩展226/226、tsc 0、build 0、2,171/2,171、768/768	exit 2唤醒；exit 0/1不唤醒；stderr优先stdout；自定义前缀与摘要；提醒转义；runtime入队正文	notices 0；索引 75 chunks / 323,525 单位不变；identity 06c37dbf…

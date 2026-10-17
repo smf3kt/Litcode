@@ -208,6 +208,29 @@ test('closed runtime invalidates inert initial tools and hook starters', async (
   } finally { f.cleanup(); }
 });
 
+test('asyncRewake exit-2 completion wakes its owner with the hook body instead of the completion record', async () => {
+  const f = fixture();
+  const runtime = await createRuntime(f.config, unused, f.controller.signal, { scheduler: { timer: f.timer } });
+  try {
+    const hooks = runtime.hookOptions!(f.config, 'rewake-owner');
+    const command = "printf 'hook failed' >&2; exit 2";
+    const payload = { cwd: f.workspace, session_id: 'rewake-owner' };
+    await hooks.startAsyncCommand!({
+      definition: { command, asyncRewake: true, rewakeSummary: 'hook wake' },
+      event: 'SessionStart', payload, input: `${JSON.stringify({ ...payload, hook_event_name: 'SessionStart' })}\n`,
+      cwd: f.workspace, timeoutMs: 5000, signal: f.context.signal,
+    });
+    let events: ReturnType<NonNullable<Runtime['drainEvents']>> = [];
+    for (let i = 0; i < 200 && events.length === 0; i++) {
+      events = runtime.drainEvents!('rewake-owner');
+      if (!events.length) await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.equal(events.length, 1);
+    assert.equal(events[0]!.kind, 'notification');
+    assert.equal(events[0]!.prompt, `Stop hook blocking error from command "${command}": hook failed`);
+  } finally { await runtime.close(); f.cleanup(); }
+});
+
 test('child terminal queue bounds serialized bytes and discards released generation callbacks', async () => {
   const f = fixture();
   const skill = { name: 'terminal', description: 'fixture', body: 'task', path: 'fixture/SKILL.md',

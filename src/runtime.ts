@@ -1068,7 +1068,11 @@ export async function createRuntime(
             if (owners.get(owner) !== resources || ownerScopes.get(owner) !== scope) return;
             if (resources.queued.length >= 50) { resources.queued.shift(); resources.dropped++; }
             const { terminalSequences, ...result } = completion.result;
-            resources.queued.push({ kind: 'notification', prompt: 'Async hook completion (data):\n' + JSON.stringify({ ...completion, result }),
+            // An asyncRewake exit-2 completion wakes the model with its own body
+            // (source `m5e` → `z6t`, chunk-sfn1dbxq.js offsets 2956018/633021)
+            // instead of the generic completion record.
+            resources.queued.push({ kind: 'notification',
+              prompt: completion.rewake ? completion.rewake.body : 'Async hook completion (data):\n' + JSON.stringify({ ...completion, result }),
               ...(terminalSequences?.length ? { hookTerminal: { id: completion.id, event: completion.event, sequences: terminalSequences } } : {}) });
             notify(owner);
           } });

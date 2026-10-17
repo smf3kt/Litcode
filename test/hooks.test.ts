@@ -12,6 +12,7 @@ import {
   hooksSchema,
   normalizeSessionTitle,
   runHooks,
+  type CommandHookExecution,
   type HookDefinition,
   type HookEvent,
   type HooksConfig,
@@ -849,6 +850,9 @@ async function localServer(handler: http.RequestListener): Promise<{ url: string
 test("hook transport definitions preserve legacy commands and reject ambiguous/credential shapes", () => {
   assert.deepEqual(hookDefinitionSchema.parse({ command: "true" }), { command: "true" });
   assert.deepEqual(hookDefinitionSchema.parse({ type: "command", command: "true", async: true }), { type: "command", command: "true", async: true });
+  assert.deepEqual(hookDefinitionSchema.parse({ command: "true", asyncRewake: true, rewakeMessage: "prefix", rewakeSummary: "summary" }),
+    { command: "true", asyncRewake: true, rewakeMessage: "prefix", rewakeSummary: "summary" });
+  assert.throws(() => hookDefinitionSchema.parse({ command: "true", rewakeMessage: "" }));
   assert.deepEqual(hookDefinitionSchema.parse({ type: "http", url: "http://127.0.0.1/hook", headersEnv: { Authorization: "HOOK_TOKEN" } }), { type: "http", url: "http://127.0.0.1/hook", headersEnv: { Authorization: "HOOK_TOKEN" } });
   for (const invalid of [
     { type: "http", url: "file:///tmp/hook" },
@@ -1181,4 +1185,25 @@ test("async command hooks explicitly require an owned registry and return regist
   } });
   assert.deepEqual(result.backgroundTasks, ["owned-hook-task"]);
   assert.equal(fs.existsSync(marker), false);
+});
+
+test("asyncRewake implies the async owner and command results stay observable", async () => {
+  const dir = tmpDir();
+  const definition: HookDefinition = { command: "true", asyncRewake: true };
+  const pending = await runHooks({ PostToolUse: [definition] }, "PostToolUse", { cwd: dir });
+  assert.equal(pending.pendingHooks?.[0]?.type, "command");
+  const registered = await runHooks({ PostToolUse: [definition] }, "PostToolUse", { cwd: dir }, signal(), {
+    startAsyncCommand: async request => {
+      assert.equal((request.definition as { asyncRewake?: boolean }).asyncRewake, true);
+      return "rewake-task";
+    },
+  });
+  assert.deepEqual(registered.backgroundTasks, ["rewake-task"]);
+  let seen: CommandHookExecution | undefined;
+  const result = await runHooks({ PostToolUse: [{ command: "printf out; printf err >&2; exit 2" }] }, "PostToolUse",
+    { cwd: dir }, signal(), { onCommandResult: execution => { seen = execution; } });
+  assert.equal(seen?.code, 2);
+  assert.equal(seen?.stdout, "out");
+  assert.equal(seen?.stderr, "err");
+  assert.equal(result.blocked, false);
 });

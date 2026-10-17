@@ -2314,3 +2314,14 @@ while allow rules with content, unsupported modes and directories are dropped.
 No settings writer exists, so the updates die with the session. Focused
 131/131, extended 246/246, tsc 0, build 0, full 2,168/2,168, chain 768/768,
 identity `b50e00a3…`. [W118 record](ports/W118-permission-updates.md).
+
+W119-01 consumes a plugin command hook's `asyncRewake`. The definition implies
+the async owner; the owner keeps the run's raw exit code and output, and an
+exit code 2 completion carries a wake whose body is the configured prefix (or
+`Stop hook blocking error from command "…":`) followed by stderr else stdout,
+reminder-escaped and credential-redacted, with `rewakeSummary` or
+`Stop hook feedback` as the summary. The runtime queues the body as the owner's
+event prompt. Broken-install detection, its dedupe and the trusted-plugin JSON
+summary have no local surface. Focused 103/103, extended 226/226, tsc 0,
+build 0, full 2,171/2,171, chain 768/768, identity `06c37dbf…`.
+[W119 record](ports/W119-async-rewake.md).

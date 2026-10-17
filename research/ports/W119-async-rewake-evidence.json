@@ -1,0 +1,122 @@
+{
+ "schema": "W119AsyncRewakeEvidence.v1",
+ "package": "W119-01 — asyncRewake command hooks",
+ "date": "2026-10-18",
+ "question": "How does an asyncRewake command hook wake the model?",
+ "answer": "asyncRewake implies the async owner. The owner keeps the run's raw exit code, stdout and stderr; an exit code 2 completion carries a wake whose body is the configured rewakeMessage prefix (default Stop hook blocking error from command \"<command>\":) followed by stderr else stdout, reminder-escaped and credential-redacted, with rewakeSummary (default Stop hook feedback) as the summary. The runtime queues that body as the owner's event prompt instead of the generic completion record.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "pluginSchema": {
+   "module": "extracted-v2/modules/chunk-3cynezh1.js",
+   "offsets": [
+    101418
+   ]
+  },
+  "consumer": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offsets": [
+    2956018,
+    632160,
+    632770,
+    2955284,
+    632948,
+    633015,
+    633021
+   ]
+  },
+  "reminderEscape": {
+   "module": "extracted-v2/modules/chunk-hwpb27as.js",
+   "offsets": [
+    43
+   ]
+  }
+ },
+ "behavior": {
+  "asyncRewakeImpliesAsync": true,
+  "wakeOnlyOnExitTwo": true,
+  "stderrPreferredOverStdout": true,
+  "defaultSummary": "Stop hook feedback",
+  "defaultPrefixQuotesCommand": true,
+  "reminderEscape": true,
+  "credentialRedaction": true,
+  "runtimeQueuesWakeBody": true,
+  "brokenInstallDedupePorted": false,
+  "pluginJsonSummaryPorted": false,
+  "notificationPriorityAndAttributionPorted": false
+ },
+ "adaptations": [
+  "Local command hooks have no hook name; the default prefix quotes the command text.",
+  "The trusted-plugin stdout JSON rewakeSummary path has no local plugin identity; only the definition field is read, without the JSON path's 300-unit normalization.",
+  "Broken-install detection and dedupe need script hooks' scriptPaths; this build refuses script hooks and command hooks carry none.",
+  "ranForAccountMemory and its withheld-output branch have no local counterpart.",
+  "The wake is a FIFO event prompt, not a task notification with priority, stopHookActive and turnAttribution; child-agent registries journal the completion without a wake queue."
+ ],
+ "changes": [
+  {
+   "file": "src/hooks.ts",
+   "change": "schema fields, implied async, raw command result seam",
+   "sha256": "42c5bddf72c47f0102db61f94117502aed42f66e8d2941ed2e3b23dbc9c0714b"
+  },
+  {
+   "file": "src/async-hooks.ts",
+   "change": "exit-2 wake on the completion",
+   "sha256": "4e1d9e7d17e2f7ca6f1ff180ede78b0e0148aef7e2c648f9f95564a44adcb969"
+  },
+  {
+   "file": "src/runtime.ts",
+   "change": "wake body as the owner event prompt",
+   "sha256": "744be54dc01cb3316104b01e4caee21b5249ac6123639bf0d7694cd9ccc06633"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "schema, implication and raw result tests",
+   "sha256": "4237467bc55e806305ab037884b980cb36fc57bcc8563e091d983e7bbd25f9e2"
+  },
+  {
+   "file": "test/async-hooks.test.ts",
+   "change": "wake condition, text and escape tests",
+   "sha256": "d4d24895b448980e4752bb842b965b594a6f37886279615052b719d53074c3ef"
+  },
+  {
+   "file": "test/runtime-resources.test.ts",
+   "change": "queued wake body test",
+   "sha256": "bf9f13fc24e12520ad3ff5eb0377129b4ffab021b0431d84f45fa83169f6676e"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W119",
+   "sha256": "eeaeed98ad0e9e8538b12973e3bc5665abdda1a9914a82f4b7be22c1d5afcb73"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W119",
+   "sha256": "e573444754c2ad937f2301c8089d8d59f7660e0692426cebf167d66101766655"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W119-01 entry",
+   "sha256": "56b09639df1e8f3dc7e0e31bf6c9588514618842c85b6f133fb67dfa68486dd4"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W119-01 S-1..S-7 entry",
+   "sha256": "f759300b73bbb87767c27a0c1b2997b3002f386b160e0afe6913ca331e6671ba"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "103/103 (hooks, async-hooks, runtime-resources, hook-groups, hook-transports)",
+  "extended": "226/226",
+  "build": "exit 0",
+  "full": "2,171/2,171",
+  "chain": "768/768",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "06c37dbf84a7b7c228acdfdc566caa8c56d390b1c0376b64784fe6aabc69c8d5"
+ },
+ "residuals": [
+  "The remaining C-6 hook output consumers and script semantics are unconsumed."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with the remaining hook output consumers."
+}
