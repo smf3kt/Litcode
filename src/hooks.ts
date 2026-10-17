@@ -390,7 +390,6 @@ export type HookResult = {
   permissionDecisionReason?: string;
   updatedPermissions?: unknown[];
   updatedToolOutput?: unknown;
-  updatedPrompt?: string;
   suppressOutput?: boolean;
   systemMessages?: string[];
   /** Validated terminal side effects, in execution order and independent of text suppression. */
@@ -913,7 +912,6 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   }
   (result.hookSpecificOutput ??= []).push(output);
   if (event === "PostToolUse" && output.updatedToolOutput !== undefined) result.updatedToolOutput = output.updatedToolOutput;
-  if (event === "UserPromptExpansion" && typeof output.updatedPrompt === "string") result.updatedPrompt = output.updatedPrompt;
   // MessageDisplay is display-only: `hookSpecificOutput.displayContent` replaces the delta on
   // screen while the stored message and what the model sees stay unchanged (source output
   // processing at chunk-sfn1dbxq.js offset 2967137).

@@ -956,7 +956,7 @@ test("event output translation retains permission, updated result and general sp
   const output = await runHooks({ PostToolUse: [emit({ hookSpecificOutput: { hookEventName: "PostToolUse", updatedToolOutput: { replacement: true } } })] }, "PostToolUse", {});
   assert.deepEqual(output.updatedToolOutput, { replacement: true });
   const expansion = await runHooks({ UserPromptExpansion: [emit({ hookSpecificOutput: { hookEventName: "UserPromptExpansion", updatedPrompt: "expanded" } })] }, "UserPromptExpansion", {});
-  assert.equal(expansion.updatedPrompt, "expanded");
+  assert.equal("updatedPrompt" in expansion, false);
   const generic = await runHooks({ ElicitationResult: [emit({ hookSpecificOutput: { hookEventName: "ElicitationResult", action: "accept", content: { name: "x" } } })] }, "ElicitationResult", {});
   assert.deepEqual(generic.hookSpecificOutput, [{ hookEventName: "ElicitationResult", action: "accept", content: { name: "x" } }]);
 });

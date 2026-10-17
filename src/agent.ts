@@ -893,7 +893,8 @@ export class Agent {
           this.events.status?.(submitted.reason ?? 'UserPromptSubmit hook blocked the prompt');
           return this.finish('hook_blocked', '', 0);
         }
-        prompt = submitted.updatedPrompt ?? prompt;
+        // The recovered consumer reads blocking verdicts, additional context and messages; it
+        // exposes no prompt-rewrite field, so the submitted text is authoritative.
         // UserPromptExpansion is an expansion event, not a per-prompt event: it carries the typed
         // command's name, raw arguments and reconstructed command text (`VYr`, chunk-sfn1dbxq.js
         // offset 2947732, raised from the skill-expansion path at chunk-htgmc2p1.js offset 38795).
@@ -901,7 +902,6 @@ export class Agent {
         if (expansion !== undefined) {
           const expanded = await this.hook('UserPromptExpansion', { ...expansion }, signal);
           if (expanded.blocked) return this.finish('hook_blocked', '', 0);
-          prompt = expanded.updatedPrompt ?? prompt;
           expansionContext = expanded.additionalContext;
         }
         const context = [...startContext, ...submitted.additionalContext, ...expansionContext];
