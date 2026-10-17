@@ -786,6 +786,32 @@ Two repair passes, both fixed in `w65-d7r1.py` with every touched path restored 
 
 **Next (step 7s):** `utils/fastMode.ts`'s account-status path — `hasProfileScope`'s last reader — then the ~33 in-place CLI blocks, `cli/transports/`, the dependency-pruning pass (nine zero-importer dependencies) and the `utils/filePersistence/` rename.
 
+## Wave D step 7s — the fast-mode account-status probe (`8c8d201`, landed)
+
+**The probe was a subscription lookup with one dead arm and one live one.** `utils/fastMode.ts` fetched `GET ${getOauthConfig().BASE_API_URL}/api/claude_code_penguin_mode`, chose between an OAuth bearer with `anthropic-beta: OAUTH_BETA_HEADER` and an `x-api-key`, and cached the org answer in `orgStatus` for `getFastModeUnavailableReason`. The OAuth arm was dead on the same producer fact step 7r recorded: both surviving token sources hardcode `scopes: ['user:inference']`, so `hasProfileScope()` was constant false. The API-key arm still posted a remote account endpoint whose answer only the server can give — what the 2026-10-16 local-only directive excludes — so the whole probe goes.
+
+**The local surface stays.** `isFastModeEnabled` (the disable env flag), the cached GrowthBook flags (`tengu_penguins_off`, `tengu_marble_sandcastle`), the SDK `flagSettings` opt-in, the first-party provider gate, the model-support and initial-setting predicates, the cooldown state machine with its two signals, `/fast` and the picker are untouched. The gate the probe fed — `orgStatus.status === 'disabled'` — has no producer left, so it folds to an in-session flag set by the API-rejection path. `handleFastModeRejectedByAPI` remains the server-feedback arm: it still clears the persisted `fastMode` preference and emits the notification signal, now payloadless because no probe can report the opposite transition. The hook loses its unreachable `orgEnabled === true` arm.
+
+**Every host folds.** `prefetchFastModeStatus`, `resolveFastModeStatusFromCache`, `fetchFastModeStatus`, the `FastModeResponse`/`FastModeOrgStatus`/`FastModeDisabledReason` model, the reason table, the 30 s throttle and the `startupPrefetchedAt` bookkeeping are deleted. `main.tsx` loses the whole startup-prefetch block (the throttle, the kill switch, the cache resolution, the config write and both log lines) and the two imports it alone read (`prefetchFastModeStatus`/`resolveFastModeStatusFromCache`, `getFeatureValue_CACHED_MAY_BE_STALE`); the settings-dialog block is followed directly by the example-command prefetch. `commands/fast/fast.tsx` no longer awaits the probe before its picker. `penguinModeOrgEnabled` and `startupPrefetchedAt` leave `utils/config.ts`.
+
+**The last readers leave.** `handleOAuth401Error` and `hasProfileScope` are deleted — the probe was the last reader of both — and `OAUTH_BETA_HEADER` leaves `constants/oauth.ts` with them. The bearer/API-key surface stays in full: `getClaudeAIOAuthTokens` with both producers, `getAuthTokenSource`, `getAccountInformation`, the API-key helpers and the `SubscriptionType`-typed token field.
+
+**One behaviour change, stated.** The org-disabled memory is now session-scoped: the source persisted it through `penguinModeOrgEnabled` and restored it at startup from the deleted cache. The preference is still cleared on rejection, so a restart begins with fast mode off, and the inference API remains the authority on the next request. Before any probe answer arrived the source treated fast mode as available (`pending` fell through), so a fresh session's availability answer is unchanged.
+
+### Port coordinate refresh
+
+Eleven historical evidence files moved, all by re-running their own fixtures: `w65-d2`, `w65-d7b`, `w65-d7h`, `w65-d7i`, `w65-d7j`, `w65-d7l`, `w65-d7n`, `w65-d7o`, `w65-d7p`, `w65-d7q` and `w65-d7r`. `portSha256` only; no `sourceSha256` changed and no range moved.
+
+### Verification
+
+tsc 0, twenty-seven fixtures pass (the new `w65-d7s-verify` plus twenty-six carried), `git diff --check` clean, the orphan scan at its ten legitimate entries with the file count unchanged (1632 — no module was deleted). Two carried fixtures were amended, each a pin this step supersedes: `w65-d7q-verify` pinned `hasProfileScope` as the fast-mode account gate, and `w65-d7r-verify` pinned both predicates the probe kept alive. Both now assert their absence.
+
+The fixture's absence sweep covers the probe family (the fetch/prefetch/resolve names, the status model, the reason table, the throttle, the endpoint, the env bypass, the analytics event and both config fields), the two auth predicates and the header only the probe read. Survivors are asserted with the reader that keeps each, including the folded rejection body, the payloadless signal, the hook's single arm, the direct settings-dialog→example-command seam and the `/fast` argument path. The base-commit check confirms `755d79b` carried the probe the tree no longer has.
+
+One repair pass: `w65-d7s1.py`'s first `cut_between` retained its end anchor while the replacement re-declared the signal, which tsc rejected with four TS2451s; the script now deletes up to the old signal block and rewrites it in a separate cut, and the tree was restored from `HEAD` before the replay that produced the final state in one pass.
+
+**Next (step 7t):** the ~33 in-place CLI blocks, `cli/transports/`, the dependency-pruning pass (nine zero-importer dependencies) and the `utils/filePersistence/` rename.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.

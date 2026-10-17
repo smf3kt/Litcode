@@ -1,0 +1,107 @@
+{
+  "before": "755d79b",
+  "kind": "remote account-status probe removed (no ported bodies; the removed code was a network fetch and its cache substitute)",
+  "surface": "utils/fastMode.ts's GET of `${getOauthConfig().BASE_API_URL}/api/claude_code_penguin_mode` with an OAuth bearer + OAUTH_BETA_HEADER or an x-api-key, its auth selection through getClaudeAIOAuthTokens/hasProfileScope, the 401 retry through handleOAuth401Error, the cache-resolution substitute, the 30s prefetch throttle, the startup kill switch and startupPrefetchedAt bookkeeping, and the org-status reason table",
+  "decisiveFact": "the OAuth arm could never run: both token producers this build keeps hardcode scopes ['user:inference'], so hasProfileScope() was constant false (the fact its own deleted comment recorded). The surviving arm posted a remote account endpoint whose answer only the server can give, so under the local-only directive the client-side probe goes; the inference API's own rejection (handleFastModeRejectedByAPI) remains the authority and is handled locally",
+  "sourceRanges": {
+    "utils/fastMode.ts": {
+      "sha256": "b381804969900a2fb1713026b74cf775ba8e138c33a3e0976d2014748620132e",
+      "statusReasonTable": [
+        8561,
+        9534
+      ],
+      "probeAndPrefetch": [
+        9534,
+        15122
+      ],
+      "coordinateUnit": "utf16-half-open"
+    },
+    "utils/auth.ts": {
+      "sha256": "3b7466a8866d573df99c92bde1af850965848376791e139aea635ab8ee6ad52c",
+      "deletedPredicates": [
+        38339,
+        39414
+      ],
+      "coordinateUnit": "utf16-half-open"
+    }
+  },
+  "changes": [
+    {
+      "file": "utils/fastMode.ts",
+      "change": "fetchFastModeStatus, prefetchFastModeStatus, resolveFastModeStatusFromCache, the FastModeResponse/FastModeOrgStatus/FastModeDisabledReason model, the reason-message table, the 30s throttle and the auth selection are deleted; getFastModeUnavailableReason drops the orgStatus arm and folds the rejection to an in-session flag; handleFastModeRejectedByAPI sets that flag, clears the persisted preference and emits the payloadless signal; orgFastModeChange loses its boolean payload. The local flags (tengu_penguins_off, tengu_marble_sandcastle), the SDK/provider checks, cooldown and the model predicates are untouched",
+      "sourceSha256": "b381804969900a2fb1713026b74cf775ba8e138c33a3e0976d2014748620132e",
+      "portSha256": "d2d66c2d8dcef86842a21d66a6897628f24cddea9fd85338cfdfd77a8ab108d9",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/auth.ts",
+      "change": "handleOAuth401Error and hasProfileScope are deleted — the fast-mode account-status path was the last reader of both — and the CLAUDE_AI_PROFILE_SCOPE import goes with them. getClaudeAIOAuthTokens with both producers, getAuthTokenSource, getAccountInformation, the API-key surface and the SubscriptionType-typed token field stay",
+      "sourceSha256": "3b7466a8866d573df99c92bde1af850965848376791e139aea635ab8ee6ad52c",
+      "portSha256": "c16f1a12753d0e05143ccfe809d5b74091d0b794822ef5727da54a6bd1bc5878",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "constants/oauth.ts",
+      "change": "OAUTH_BETA_HEADER leaves; the probe was its only reader. The scope constants, the authorize URLs and getOauthConfig stay",
+      "sourceSha256": "66ac4c909f92f0a1505002db0a467310788b3dc6577ca3492c2aaf8ecf7d773c",
+      "portSha256": "0a48a9ebbd03481ac4e8971899e0997108021f904ecd41810f9cda50ce1db93e",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/config.ts",
+      "change": "penguinModeOrgEnabled and startupPrefetchedAt leave the global config; the probe and its startup throttle were their only writer and reader",
+      "sourceSha256": "0352b290233e0c5909be3e7ec2c295b002c5ea3e2b565b4f462e7360e3e9b5ed",
+      "portSha256": "2e9a2179c344d08294b2cf3d8d5ed6f2eebc28cb3737fd82c034d8605c678c98",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "the startup prefetch block (throttle, kill switch, cache resolution, startupPrefetchedAt write, both log lines) is deleted together with the two fastMode imports and the growthbook import only it used; the settings-dialog block is followed directly by the example-command prefetch",
+      "sourceSha256": "c92abf00d38ec9d0dc46a52403004c4349ed745273079bd7ac108634bcc9407f",
+      "portSha256": "6c4f7679f0787cc4675ac58295cf29e514851fa3a09aab3d3f6e38f066071f6b",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "commands/fast/fast.tsx",
+      "change": "the pre-picker prefetch call and its comment are deleted; the local enabled guard, the unavailable-reason read and the toggle path stay",
+      "sourceSha256": "ac317ddeef1928dd6ce78368fc904c6cdb0714b785e4e0275dd6fc940c6ccffc",
+      "portSha256": "ba65204953ec0ccfe1154461ac4f773683a30318ac6b050d01dc2174921a3a98",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "hooks/notifs/useFastModeNotification.tsx",
+      "change": "the org-status effect loses the orgEnabled=true arm (no probe can report re-enablement) and subscribes to the payloadless signal; the API-rejection notification and the cooldown notifications stay",
+      "sourceSha256": "c61e970fbff5bdddec3e854e7a108ffd0f91630a92b9da22672b186ea56efb0b",
+      "portSha256": "69837e9f9d29383343dcd6364bdfbeec86f560d996f478b62a982179f7148c49",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "utils/fastMode.ts's /api/claude_code_penguin_mode fetch, its OAuth bearer + anthropic-beta header, the 30s prefetch throttle and the startup kill switch",
+    "resolveFastModeStatusFromCache, the startupPrefetchedAt write and the penguinModeOrgEnabled cache",
+    "the org-status discriminated union, the API-reason table and the network-error bypass env",
+    "handleOAuth401Error and hasProfileScope (their last reader)",
+    "OAUTH_BETA_HEADER, penguinModeOrgEnabled and startupPrefetchedAt",
+    "the hook's now-impossible re-enablement branch"
+  ],
+  "kept": [
+    "the whole local fast-mode surface: isFastModeEnabled, isFastModeAvailable, getFastModeUnavailableReason's local checks, the cooldown state machine and signals, getFastModeState, the model-support and initial-setting predicates, the /fast command and the picker",
+    "handleFastModeRejectedByAPI as the server-feedback arm, now in-session only: it clears the persisted preference and emits the payloadless signal, which the notification hook consumes",
+    "the bearer/API-key surface in utils/auth.ts: getClaudeAIOAuthTokens with both producers, getAuthTokenSource, getAccountInformation and the API-key helpers",
+    "getOauthConfig and the scope constants in constants/oauth.ts"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Tree-wide absence sweep over the probe family (fetch/prefetch/resolve/cache names, the endpoint, the reason table, the env bypass, the throttles, the endpoint's analytics event), over the three config/header artifacts and over the two auth predicates whose last reader the probe was; survivor assertions for the local fast-mode surface with the folded rejection body, the payloadless signal and its hook arm; every host asserted as the arm the absent probe left (the direct settings-dialog→example-command seam, the /fast argument path, the retained withRetry call and the claude.ts availability reads); tsc clean",
+  "remaining": "the ~33 in-place CLI blocks, cli/transports/, the dependency-pruning pass (nine zero-importer dependencies) and the utils/filePersistence/ rename",
+  "notes": [
+    "the OAuth arm of the deleted probe was dead on the same scope fact step 7r recorded: both token producers hardcode ['user:inference']. The surviving API-key arm was a remote subscription/account lookup, which the local-only directive removes",
+    "one repair pass in w65-d7s1.py: the first cut_between kept the end anchor and the replacement re-declared the signal, so tsc reported four TS2451s; the script now deletes up to the old signal and rewrites it in a separate cut, and the tree was restored from HEAD before the replay that produced this state",
+    "the org-rejection memory is now session-scoped. The persisted preference is still cleared on rejection, so a restart starts with fast mode off; the source's cross-session disabled state came from the deleted cache and its probe"
+  ]
+}

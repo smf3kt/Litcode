@@ -52,14 +52,13 @@ for (const name of [
   assert.equal(rg(`\\b${name}\\b`), "", `${name} still appears in the tree`)
 }
 
-// 2. The survivors: the bearer surface and hasProfileScope, whose only reader
-//    is the fast-mode account gate. The three names the claude.ai connector
-//    still read at this step (isAnthropicAuthEnabled, isClaudeAISubscriber,
-//    getOauthAccountInfo) retired with the connector in step 7r, as this
-//    file's own `remaining` predicted; their pins go with them.
+// 2. The survivors: the bearer surface. hasProfileScope retired with the
+//    fast-mode account-status path in step 7s; the three names the claude.ai
+//    connector still read at this step (isAnthropicAuthEnabled,
+//    isClaudeAISubscriber, getOauthAccountInfo) retired with the connector in
+//    step 7r; their pins went with them.
 const auth = read("utils/auth.ts")
 for (const keep of [
-  "export function hasProfileScope(): boolean {",
   "export const getClaudeAIOAuthTokens = memoize((): OAuthTokens | null => {",
   "export function getAccountInformation() {",
 ]) {

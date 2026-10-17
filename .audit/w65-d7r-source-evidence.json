@@ -50,7 +50,7 @@
       "file": "main.tsx",
       "change": "the -p claudeaiConfigPromise prefetch with its enterprise/strict/bare gate and policy warning go, the claudeaiMcpPromise prefetch and the uniqBy merge fold to the single local prefetch, and the lazy dedup + connectMcpBatch('claudeai') block with its 5s CLAUDE_AI_MCP_TIMEOUT_MS race goes; the imports only that block read (fetchClaudeAIMcpConfigsIfEligible, dedupClaudeAiMcpServers, getMcpServerSignature, clearServerCache, the two exclude helpers, pickBy, getOauthConfig) are removed",
       "sourceSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd8",
-      "portSha256": "c92abf00d38ec9d0dc46a52403004c4349ed745273079bd7ac108634bcc9407f",
+      "portSha256": "6c4f7679f0787cc4675ac58295cf29e514851fa3a09aab3d3f6e38f066071f6b",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -98,21 +98,21 @@
       "file": "utils/config.ts",
       "change": "claudeAiMcpEverConnected (the prior-connected gate for the connector notices) is deleted together with AccountInfo and the BillingType alias — the shape the deleted getOauthAccountInfo returned, and with no writer or reader left in the tree",
       "sourceSha256": "0c68c1a7baa6d3ba0032dbff43c60b3e08bef1ea0043b010ed05b1c1018759ad",
-      "portSha256": "0352b290233e0c5909be3e7ec2c295b002c5ea3e2b565b4f462e7360e3e9b5ed",
+      "portSha256": "2e9a2179c344d08294b2cf3d8d5ed6f2eebc28cb3737fd82c034d8605c678c98",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "constants/oauth.ts",
       "change": "CLAUDE_AI_ORIGIN with its doc block, MCP_PROXY_URL and MCP_PROXY_PATH leave the OauthConfig type and all four config arms (prod, staging, local, custom-override); their only readers were the connector transport and the auth menu. The authorize URLs, the scope constants and every other field stay",
       "sourceSha256": "e456760d19381a4581eaecaac2737aa20fdb4d1e123e6d89c3094df01c586b2a",
-      "portSha256": "66ac4c909f92f0a1505002db0a467310788b3dc6577ca3492c2aaf8ecf7d773c",
+      "portSha256": "0a48a9ebbd03481ac4e8971899e0997108021f904ecd41810f9cda50ce1db93e",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "utils/auth.ts",
       "change": "isAnthropicAuthEnabled, shouldUseClaudeAIAuth, isClaudeAISubscriber and getOauthAccountInfo are deleted — the connector was the last reader of all four — together with the now-readerless getClaudeAIOAuthTokensAsync and checkAndRefreshOAuthTokenIfNeeded stubs; handleOAuth401Error stays for utils/fastMode.ts. The AccountInfo import, the inference-scope import and the comment that named the deleted predicate are removed. Kept in full: getClaudeAIOAuthTokens with both producers, getAuthTokenSource, getAccountInformation, hasProfileScope and the API-key surface",
       "sourceSha256": "17b7584e2330ef8a11181e5b2b6c2090f66dd6d187bef58403414e2d8dafa012",
-      "portSha256": "3b7466a8866d573df99c92bde1af850965848376791e139aea635ab8ee6ad52c",
+      "portSha256": "c16f1a12753d0e05143ccfe809d5b74091d0b794822ef5727da54a6bd1bc5878",
       "coordinateUnit": "utf16-half-open"
     }
   ],

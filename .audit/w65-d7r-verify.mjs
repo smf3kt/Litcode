@@ -56,8 +56,9 @@ assert.match(
   /\/\*\* Where the auth token is being sourced from, if any\. \*\/\nexport function getAuthTokenSource\(\) \{/,
   "getAuthTokenSource follows its doc comment after the deleted 1P predicate",
 )
-assert.match(auth, /export function hasProfileScope\(\): boolean \{/)
-assert.match(auth, /export function handleOAuth401Error\(/)
+// Both predicates retired in wave D step 7s with utils/fastMode.ts's
+// account-status path, their last reader; this file's `remaining` predicted it.
+assert.doesNotMatch(auth, /hasProfileScope|handleOAuth401Error/)
 assert.match(auth, /export const getClaudeAIOAuthTokens = memoize/)
 assert.match(auth, /export function getAccountInformation\(\) \{/)
 assert.match(
