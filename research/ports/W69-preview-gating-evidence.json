@@ -1,0 +1,101 @@
+{
+ "schema": "W69PreviewGatingEvidence.v1",
+ "package": "W69-01 — recovered HTML preview fragment gate",
+ "date": "2026-10-17",
+ "question": "Does the product apply the recovered AskUserQuestion preview fragment rules with the source messages when the host declares HTML previews?",
+ "answer": "Yes: previewFragmentError is a direct port of Ae with the three source messages in source order, gated by the product previewFormat option standing in for the host launch option; previews stay opaque otherwise.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-ktr9sak2.js",
+  "unit": "UTF-16 code units",
+  "validator": {
+   "symbol": "Ae",
+   "range": [
+    19624,
+    20102
+   ],
+   "units": 478
+  },
+  "caller": {
+   "symbol": "validateInput",
+   "range": [
+    16528,
+    16776
+   ],
+   "units": 248
+  },
+  "gate": {
+   "symbol": "uPr",
+   "module": "extracted-v2/modules/chunk-4bw62nzm.js",
+   "range": [
+    98437,
+    98515
+   ],
+   "units": 78,
+   "reads": "host.launchOptions.questionPreviewFormat()",
+   "setter": "pPr"
+  }
+ },
+ "sourceMessages": [
+  "preview must be an HTML fragment, not a full document (no <html>, <body>, or <!DOCTYPE>)",
+  "preview must not contain <script> or <style> tags. Use inline styles via the style attribute if needed.",
+  "preview must contain HTML (previewFormat is set to \"html\"). Wrap content in a tag like <div> or <pre>."
+ ],
+ "port": {
+  "function": "previewFragmentError",
+  "option": "InteractionToolOptions.previewFormat",
+  "order": "full document, then script/style, then missing markup",
+  "dispatch": "checked for every question option before the host ask callback",
+  "errorShape": "ask_user_question: Option \"<label>\" in question \"<question>\": <source message>",
+  "opaquePath": "no previewFormat option means previews are text and only length-checked"
+ },
+ "changes": [
+  {
+   "file": "src/interaction-tools.ts",
+   "change": "previewFormat option, previewFragmentError, dispatch gate",
+   "sha256": "7707c139ca693100d4cbcf4a341cec06f46225210889ad50b42ba57d36eace74"
+  },
+  {
+   "file": "test/interaction-tools.test.ts",
+   "change": "two preview gate cases",
+   "sha256": "4a9cc792c37deb32251483c209c86630a235543faa650c98d0b2c05e4c63d86d"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-11 rows record the preview gate",
+   "sha256": "eaf1b7c5479edb7a2465bb4498ef2dd670d080cc68dea8a9fa7799fe1bbed8d0"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Question/plan/findings row records the gate",
+   "sha256": "a482ac9c922484f66b91c75c9999b2d61fb38096e31c173b00991a862dc7993c"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W69-01 entry",
+   "sha256": "bc27b854fd5b5941ebdbaba95486f41cab5ef8bb65f3532e5304d3351d21973b"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W69-01 S-1..S-7 entry",
+   "sha256": "9676a5c855761df84cfe5b8212f9835f02012fbd795bad16c2d69d584c3b7f08"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "interactionTools": "23/23",
+  "build": "exit 0",
+  "full": "2,094/2,094",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "dc4f6cce982240c956b999be9ba905be6eae6e79a2a364ecb048258935a540bb"
+ },
+ "residuals": [
+  "The host launch-options store and the pPr setter are not ported; the explicit previewFormat option carries the declaration.",
+  "The source tool-input error envelope (result/errorCode) is not ported; the product throws its usual tool error.",
+  "Annotation admission, extended question kinds and notes remain C-11 work.",
+  "The full renderer and formatting host remain C-11 work."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-11 continues with the full renderer, formatting host and notes/annotations."
+}

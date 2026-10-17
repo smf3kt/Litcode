@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  createInteractionTools, INTERACTION_LIMITS,
+  createInteractionTools, INTERACTION_LIMITS, previewFragmentError,
   type AskUserQuestionAnswer, type AskUserQuestionRequest, type InteractionCallbacks, type InteractionToolOptions,
 } from '../src/interaction-tools.js';
 import type { ToolContext } from '../src/tools.js';
@@ -65,6 +65,42 @@ test('question previews are advertised, preserved and bounded before host dispat
   assert.deepEqual(JSON.parse(await ask.execute(request, context())), answer);
   request.questions[0].options[0].preview = 'x'.repeat(INTERACTION_LIMITS.previewChars + 1);
   await assert.rejects(ask.execute(request, context()), /invalid data/);
+});
+
+test('the recovered HTML preview fragment rules report exactly the source messages', () => {
+  assert.equal(previewFragmentError(undefined), null);
+  assert.equal(previewFragmentError('<div><pre>+ add</pre></div>'), null);
+  assert.equal(previewFragmentError('plain text without markup'), 'preview must contain HTML (previewFormat is set to "html"). Wrap content in a tag like <div> or <pre>.');
+  for (const preview of ['<!DOCTYPE html><p>x</p>', '<html><p>x</p></html>', '<BODY>x</BODY>']) {
+    assert.equal(previewFragmentError(preview), 'preview must be an HTML fragment, not a full document (no <html>, <body>, or <!DOCTYPE>)');
+  }
+  for (const preview of ['<div><script>alert(1)</script></div>', '<STYLE>p{}</STYLE><p>x</p>']) {
+    assert.equal(previewFragmentError(preview), 'preview must not contain <script> or <style> tags. Use inline styles via the style attribute if needed.');
+  }
+});
+
+test('the html preview format rejects invalid fragments before host dispatch', async () => {
+  let calls = 0;
+  const ask = createInteractionTools({ previewFormat: 'html', ask: async () => { calls++; return answer; } })
+    .find(tool => tool.schema.name === 'ask_user_question')!;
+  const run = async (preview: string) => {
+    const request = structuredClone(question);
+    request.questions[0].options[0].preview = preview;
+    return ask.execute(request, context());
+  };
+  await assert.rejects(run('plain text'), /ask_user_question: Option "A" in question "Which implementation\?": preview must contain HTML/);
+  await assert.rejects(run('<html><div>x</div></html>'), /preview must be an HTML fragment/);
+  await assert.rejects(run('<div><style>p{}</style></div>'), /preview must not contain <script> or <style> tags/);
+  assert.equal(calls, 0);
+  const result = structuredClone(question);
+  result.questions[0].options[0].preview = '<div>Option A layout</div>';
+  assert.deepEqual(JSON.parse(await ask.execute(result, context())), answer);
+  assert.equal(calls, 1);
+  // Without the option, previews stay opaque text and are only length-checked.
+  const opaque = tools({ ask: async received => { assert.equal(received.questions[0].options[0].preview, 'plain text'); return answer; } });
+  const plain = structuredClone(question);
+  plain.questions[0].options[0].preview = 'plain text';
+  await opaque('ask_user_question', plain);
 });
 
 test('context callbacks are used when factory callbacks are absent', async () => {
