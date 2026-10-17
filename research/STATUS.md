@@ -2683,3 +2683,16 @@ cleanup trick, not a store read). The product already carries the same `Lc`, `Ri
 context and themed Box `s`, so those are reused rather than duplicated. Focused 7/7, full
 2369/2369, tsc 0, build 0, notices 0, identity `96434b80…`. Next is W155 (host glue).
 [W154 record](ports/W154-keybinding-registry.md).
+
+W155 landed the AbovePrompt host-glue seam (3 blocks, 798 UTF-16 units). `QY` and `Mmt` are the
+host context tokens for the pane measurement getter and the owed-rows callback; `sa` registers an
+active overlay in app state and removes it on unmount, with the source's frame invalidation running
+on cleanup; `us` answers the keybinding display text and reports a missing or unknown binding once
+and answers the fallback. Two host bindings are recorded as rewrites: `F` reaches the renderer's
+invalidate in the source through the host instance map, which this product populates with selection
+readers, so it is bound through `bindPrevFrameInvalidator` (unbound is the source's absent-instance
+no-op); `vot`'s analytics normalization chain is outside the local-only scope, so the same event is
+recorded through the host feature recorder with its raw fields. Focused 5/5, full 2374/2374, tsc 0,
+build 0, notices 0, identity `d83b46fd…`. Next is W157 (wheel acceleration / settings schema /
+scroll dispatch), then W156 (`NFe` wiring).
+[W155 record](ports/W155-host-glue.md).

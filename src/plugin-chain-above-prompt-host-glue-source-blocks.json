@@ -1,0 +1,53 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-ejnyhzsc.js",
+      "sha256": "24697cf467fb57202c5ec305d52e767e0f6693a85e3b36ba1f0bb4dbc279e8d4"
+    },
+    {
+      "module": "chunk-pxjy4t8j.js",
+      "sha256": "523505a6cb4614eda623cc9249eeab5a0e5f398f789ac555e5c997dc1d24eef7"
+    },
+    {
+      "module": "chunk-t8vb436n.js",
+      "sha256": "9c9120f6c661ca18e4be547045c3415ab62054a1f3fdfd09127fd9c3ba3a5324"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-ejnyhzsc.js",
+      "sha256": "24697cf467fb57202c5ec305d52e767e0f6693a85e3b36ba1f0bb4dbc279e8d4",
+      "range": [
+        668,
+        697
+      ],
+      "units": 29,
+      "bodySha256": "3909e70430822bc12c426a833b26c9c2add70306f3c1858d8eb839602e2af759",
+      "note": "two host context tokens"
+    },
+    {
+      "module": "chunk-pxjy4t8j.js",
+      "sha256": "523505a6cb4614eda623cc9249eeab5a0e5f398f789ac555e5c997dc1d24eef7",
+      "range": [
+        1298,
+        1856
+      ],
+      "units": 558,
+      "bodySha256": "d892e28d52fbc1c833a1a543db4e34d46f8c3b3cc90559f8e55ebc0a114922c0",
+      "note": "active overlay registration"
+    },
+    {
+      "module": "chunk-t8vb436n.js",
+      "sha256": "9c9120f6c661ca18e4be547045c3415ab62054a1f3fdfd09127fd9c3ba3a5324",
+      "range": [
+        764,
+        975
+      ],
+      "units": 211,
+      "bodySha256": "09b6b4fb2dec67d44a6d78aa7007003ac77cedd4613683a1bcdf7acc0e47f053",
+      "note": "keybinding display text"
+    }
+  ],
+  "missing": []
+}

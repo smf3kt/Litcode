@@ -1,0 +1,39 @@
+{
+  "imports": [
+    "import { w, P, en, R, Ae, qt } from \"./plugin-chain-react-hooks.js\";",
+    "import { appStateContext as sx } from \"./plugin-chain-app-state.js\";",
+    "import { Lc } from \"./plugin-chain-press-button.js\";",
+    "import { invalidatePrevFrame as F, recordKeybindingFallback as vot } from \"./plugin-chain-above-prompt-host.js\";"
+  ],
+  "exports": [
+    "QY",
+    "sa",
+    "us"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-ejnyhzsc.js",
+      "range": [
+        668,
+        697
+      ],
+      "note": "two host context tokens"
+    },
+    {
+      "file": "chunk-pxjy4t8j.js",
+      "range": [
+        1298,
+        1856
+      ],
+      "note": "active overlay registration"
+    },
+    {
+      "file": "chunk-t8vb436n.js",
+      "range": [
+        764,
+        975
+      ],
+      "note": "keybinding display text"
+    }
+  ]
+}
