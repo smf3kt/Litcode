@@ -4,7 +4,7 @@ import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provid
 import type { ToolDefinition, ToolContext } from './tools.js';
 import { randomUUID } from 'node:crypto';
 import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
-import { permissionDecision } from './permissions.js';
+import { applyPermissionUpdates, permissionDecision, permissionUpdateListSchema } from './permissions.js';
 import path from 'node:path';
 import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
 import type { InteractionCallbacks } from './interaction-tools.js';
@@ -267,7 +267,7 @@ export class Agent {
               const tool = tools.find(candidate => candidate.schema.name === call.name);
               try {
                 if (!tool) throw new Error('Hook tool is unavailable');
-                const decision = permissionDecision(this.session.config.permissions, tool, call.input);
+                const decision = permissionDecision(this.session.config.permissions, tool, call.input, this.session.permissionUpdates);
                 if (decision.decision !== 'allow') throw new Error(decision.reason ?? 'Hook tool requires approval');
                 const context: ToolContext = { workspace: this.session.config.workspace, signal: hookSignal,
                   allowShell: false, maxOutputBytes: Math.min(this.session.config.maxOutputBytes, 16_384) };
@@ -289,7 +289,7 @@ export class Agent {
         const tool = this.tools.get(definition.tool);
         if (!tool || !tool.readOnly || !tool.schema.name.startsWith("mcp__")) throw new Error("MCP hooks require an available read-only namespaced tool");
         const input = definition.arguments ?? {};
-        if (permissionDecision(this.session.config.permissions, tool, input).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
+        if (permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
         hookSignal.throwIfAborted();
         const content = await tool.execute(input, { workspace: this.session.config.workspace, signal: hookSignal,
           allowShell: false, maxOutputBytes: this.session.config.maxOutputBytes });
@@ -439,7 +439,7 @@ export class Agent {
   }
 
   private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal): Promise<{ input: unknown; denied?: string; retry?: boolean }> {
-    const decision = permissionDecision(this.session.config.permissions, tool, input);
+    const decision = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates);
     // `classic.PermissionDenied` is deliberately not raised here, and nowhere else in this product: the
     // source raises it from exactly one body (`I9r` chunk-sfn1dbxq.js [3063491,3063858)), whose single
     // caller (chunk-sfn1dbxq.js [2288685,2289127)) is gated on
@@ -476,8 +476,10 @@ export class Agent {
     // `permissionRequestResult` is skipped, `deny` blocks with `message || "Permission denied by hook"`,
     // and `allow` carries `updatedInput` through the same permission re-check the native answer's
     // rewrite goes through. A deny's `interrupt` aborts the turn through the owning controller
-    // (`interruptTurn`); `updatedPermissions` stays unmapped because this product keeps no
-    // always-allow rule store to update.
+    // (`interruptTurn`). An allow's `updatedPermissions` is validated against the same list schema
+    // and applied to the session's permission state by `applyPermissionUpdates` before the call runs
+    // (`CUt` launcher arm, chunk-fyhzvvp0.js offset 3459); this product's session state stands in for
+    // the source's session permission context and settings writes.
     if (classicEventRaised(CLASSIC_PERMISSION_REQUEST)) {
       const raised = await raiseClassicEvent({
         event: CLASSIC_PERMISSION_REQUEST,
@@ -488,13 +490,22 @@ export class Agent {
         signal,
       });
       const chain = raised.answer.permissionRequestResult as ClassicPermissionRequestResult | undefined;
-      if (chain?.behavior === 'deny') {
+      // The classic answer check validates the list through `Fr`
+      // (chunk-nyce03br.js [28640,29566)) and rejects the whole result when an
+      // entry is malformed (`Lr`, [29566,30208)); the same list schema is applied
+      // here before any field of the answer is read.
+      const chainUpdates = chain?.updatedPermissions === undefined
+        ? undefined
+        : permissionUpdateListSchema.safeParse(chain.updatedPermissions);
+      const chainUsable = chain?.updatedPermissions === undefined || chainUpdates?.success === true;
+      if (chainUsable && chain?.behavior === 'deny') {
         requested.blocked = true;
         requested.reason ??= chain.message ?? 'Permission denied by hook';
         if (chain.interrupt === true) hookInterrupt = true;
-      } else if (chain?.behavior === 'allow') {
+      } else if (chainUsable && chain?.behavior === 'allow') {
         requested.permissionDecision = 'allow';
         if (chain.updatedInput !== undefined) requested.updatedInput = chain.updatedInput;
+        if (chainUpdates?.success) requested.updatedPermissions = chainUpdates.data;
       }
     }
     if (requested.blocked || requested.permissionDecision === 'deny') {
@@ -510,13 +521,26 @@ export class Agent {
     }
     if (requested.updatedInput !== undefined) {
       input = requested.updatedInput;
-      const updated = permissionDecision(this.session.config.permissions, tool, input);
+      const updated = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates);
       if (updated.decision === 'deny') {
         const deniedHook = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: updated.reason }, signal);
         return { input, denied: updated.reason ?? 'Permission denied', retry: deniedHook.retry === true };
       }
     }
-    if (requested.permissionDecision === 'allow') return { input };
+    if (requested.permissionDecision === 'allow') {
+      // The adopted allow answer's updates join the session permission state
+      // before the call runs. The source's launcher consumer applies them
+      // through `q`/`WK` and its session context (`CUt`, chunk-fyhzvvp0.js
+      // offset 3459); this product has no settings writer, so every
+      // destination lands in this session only. A deny or ask rule that cannot
+      // be represented refuses the call instead of running without it (`AXn`).
+      if (requested.updatedPermissions?.length) {
+        const outcome = applyPermissionUpdates(this.session.permissionUpdates, requested.updatedPermissions);
+        if (outcome.blocked !== undefined) return { input, denied: outcome.blocked };
+        this.session.permissionUpdates = outcome.state;
+      }
+      return { input };
+    }
     if (!this.events.permission) return { input, denied: reason + '; use an interactive session or an explicit allow rule' };
     return await this.events.permission({ tool: tool.schema.name, input, reason, signal })
       ? { input } : { input, denied: 'Permission declined' };

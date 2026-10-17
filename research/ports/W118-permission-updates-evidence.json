@@ -1,0 +1,171 @@
+{
+ "schema": "W118PermissionUpdatesEvidence.v1",
+ "package": "W118-01 — PermissionRequest allow updatedPermissions",
+ "date": "2026-10-18",
+ "question": "How does a PermissionRequest allow answer's updatedPermissions affect the session?",
+ "answer": "The list is validated as a whole against the recovered Bz schema; the adopted allow applies its rules and mode to session-owned permission state consulted by every later decision. Rules map to the product's tool-name patterns; a deny or ask rule with ruleContent cannot be represented and refuses the call with the source's strict-consumer text, while allow rules with content, unsupported modes and directory updates are dropped.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "answerSchema": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offsets": [
+    389976,
+    390059,
+    395547
+   ]
+  },
+  "modes": {
+   "module": "extracted-v2/modules/chunk-a60ee1ne.js",
+   "offsets": [
+    678,
+    782
+   ]
+  },
+  "normalizer": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offsets": [
+    558460
+   ]
+  },
+  "strictStripAndRefusal": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offsets": [
+    546964,
+    548142,
+    544491
+   ]
+  },
+  "launcherConsumer": {
+   "module": "extracted-v2/modules/chunk-fyhzvvp0.js",
+   "offsets": [
+    3459,
+    3158,
+    15469
+   ]
+  },
+  "webFilter": {
+   "module": "extracted-v2/modules/chunk-nkb63p1y.js",
+   "offsets": [
+    3223,
+    3840,
+    1801
+   ]
+  },
+  "classicValidation": {
+   "module": "extracted-v2/modules/chunk-nyce03br.js",
+   "ranges": [
+    [
+     28640,
+     29566
+    ],
+    [
+     29566,
+     30208
+    ]
+   ]
+  },
+  "suppressions": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offsets": [
+    3316759,
+    3316685
+   ]
+  }
+ },
+ "behavior": {
+  "adoptedAllowOnly": true,
+  "wholeOutputInvalidatedByBadEntry": true,
+  "sessionRulesJoinSettingsRules": true,
+  "denyDominatesSessionAllow": true,
+  "sessionAllowSatisfiesAllowList": true,
+  "sessionAskAddsAsk": true,
+  "setModeAppliesToSession": true,
+  "unrepresentableTighteningRefusesCall": true,
+  "settingsPersistence": false
+ },
+ "adaptations": [
+  "No settings writer: every destination applies to the in-memory session state and dies with the session.",
+  "Rules are tool-name patterns; deny/ask rules carrying ruleContent refuse the call (source AXn), allow rules with content are dropped.",
+  "setMode auto and dontAsk have no local mode and are dropped; directory updates have no local concept and are dropped.",
+  "replaceRules/removeRules address the session store rather than a destination-keyed rule store.",
+  "The WebFetch/WebSearch loosening filter and the tool-level suppression branches have no local activation surface."
+ ],
+ "changes": [
+  {
+   "file": "src/permissions.ts",
+   "change": "update schema, session state, merged decision",
+   "sha256": "4ba4025c9688adb104c239f0d248aab4ebd7f677c8babfe92862157df504e3f9"
+  },
+  {
+   "file": "src/hooks.ts",
+   "change": "whole-output validation and typed updates",
+   "sha256": "ed8eae22f357f3775b6490298712f61c97a769da805c7079b5724f741bc8ef0c"
+  },
+  {
+   "file": "src/agent.ts",
+   "change": "adoption before the call and classic list validation",
+   "sha256": "19e1e004dff1fbf555c08db9b63bad26cf17d4667b4dc51ccb6a5bd103cc4316"
+  },
+  {
+   "file": "src/session.ts",
+   "change": "session permission state",
+   "sha256": "572a7969dd1564754994b694211ccb8cb4a2995f70c4403934670eeb92669d9b"
+  },
+  {
+   "file": "src/plugin-chain-classic-raise.ts",
+   "change": "classic answer type",
+   "sha256": "6c3fb926ddef4c523a4cb018a3485d8bce25b412aed4d06382cb79046541686d"
+  },
+  {
+   "file": "test/permissions.test.ts",
+   "change": "schema and merge tests",
+   "sha256": "07fd0db8352492383449476fd0f54f1730ac401403cc917b53dc8f57c119dc7f"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "whole-output invalidation test",
+   "sha256": "1078c4d84fe002a77938d7048638de4c49020c220210848598ffcfa017da4bd4"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "adoption, deny survival, refusal tests",
+   "sha256": "7d9029f41a1c088171807f9faba185b1bf3db868b70e450eaba8fee7980ac69c"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W118",
+   "sha256": "f8224bc5ed9595616d706d8596a6fa92d5a60f46c7dac038851590d6a1d51508"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W118",
+   "sha256": "dee56a4ef440b46ac298d6cd4505e849514075a926b1b453f5cfe2828f2d4a2e"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W118-01 entry",
+   "sha256": "1675af194ff204a10a06f7026862214ef7cc156e104f763e440cf4e862b28541"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W118-01 S-1..S-7 entry",
+   "sha256": "5a174f9333e154e6395f762e5dae5ed4811bb0e7e2a639bb6d6bdf7731c08e63"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "131/131 (permissions, hooks, agent-lifecycle)",
+  "extended": "246/246",
+  "build": "exit 0",
+  "full": "2,168/2,168",
+  "chain": "768/768",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "b50e00a3424a7095ffa5ab479f197a4f5a16fd3a350770751c83f52eab636305"
+ },
+ "residuals": [
+  "The remaining C-6 hook output consumers and script semantics are unconsumed."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with the remaining hook output consumers."
+}

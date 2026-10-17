@@ -947,10 +947,18 @@ test("HTTP hook cancellation, timeout and missing header variables prevent or en
 });
 
 test("event output translation retains permission, updated result and general specific fields", async () => {
-  const permission = await runHooks({ PermissionRequest: [emit({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow", updatedInput: { path: "a" }, updatedPermissions: [{ type: "allow", tool: "read_file" }] } } })] }, "PermissionRequest", { tool_name: "read_file" });
+  const updates = [{ type: "addRules", rules: [{ toolName: "read_file" }], behavior: "allow", destination: "session" }];
+  const permission = await runHooks({ PermissionRequest: [emit({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow", updatedInput: { path: "a" }, updatedPermissions: updates } } })] }, "PermissionRequest", { tool_name: "read_file" });
   assert.equal(permission.permissionDecision, "allow");
   assert.deepEqual(permission.updatedInput, { path: "a" });
-  assert.deepEqual(permission.updatedPermissions, [{ type: "allow", tool: "read_file" }]);
+  assert.deepEqual(permission.updatedPermissions, updates);
+  // The stdout object is validated as a whole against the event schema
+  // (chunk-n3ykh62m.js offset 395678): one malformed update entry makes every
+  // field of that output unused, including the top-level ones.
+  const malformed = await runHooks({ PermissionRequest: [emit({ systemMessage: "not shown", hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow", updatedPermissions: [{ type: "allow", tool: "read_file" }] } } })] }, "PermissionRequest", {});
+  assert.equal(malformed.permissionDecision, undefined);
+  assert.equal(malformed.updatedPermissions, undefined);
+  assert.equal(malformed.systemMessages, undefined);
   const denied = await runHooks({ PermissionRequest: [emit({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "deny", message: "blocked" } } })] }, "PermissionRequest", {});
   assert.equal(denied.blocked, true);
   assert.equal(denied.reason, "blocked");

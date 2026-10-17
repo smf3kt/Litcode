@@ -2305,3 +2305,12 @@ aborts the turn's owned controller; the denial is still the tool result and the
 turn finishes aborted before any post hook. Focused 214/214, tsc 0, build 0,
 full 2,162/2,162, chain 768/768, identity `1c73f452…`.
 [W117 record](ports/W117-permission-interrupt.md).
+
+W118-01 consumes a PermissionRequest allow's `updatedPermissions`. The list is
+validated with the recovered `Bz` schema, and the adopted answer's rules and
+mode join a session-owned permission state consulted by every decision; an
+unrepresentable deny or ask rule refuses the call with the source's own text,
+while allow rules with content, unsupported modes and directories are dropped.
+No settings writer exists, so the updates die with the session. Focused
+131/131, extended 246/246, tsc 0, build 0, full 2,168/2,168, chain 768/768,
+identity `b50e00a3…`. [W118 record](ports/W118-permission-updates.md).

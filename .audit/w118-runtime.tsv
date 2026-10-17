@@ -1,0 +1,3 @@
+2026-10-18T00:35:00Z	package	W118-01 PermissionRequest allow updatedPermissions	Bz 389976（chunk-n3ykh62m.js）、rh 782（chunk-a60ee1ne.js）、CUt 3459（chunk-fyhzvvp0.js）、s9r/Bnr/AXn（chunk-sfn1dbxq.js）、PDn/WK（chunk-nkb63p1y.js）	严格列表校验；会话态合并；deny双胜；session allow满足allow list；不可表示deny/ask拒绝调用	permissions/hooks/agent-lifecycle 131/131；扩展246/246；tsc 0；build 0；全量2,168/2,168；链768/768
+2026-10-18T00:38:00Z	decision	W118-01 本地适配	无设置写入：所有destination仅会话内存；规则仅为工具名模式；Web过滤与工具级抑制无对应	ruleContent deny/ask用源AXn拒绝；ruleContent allow/setMode auto|dontAsk/目录更新丢弃	.audit/w118-01-full.txt
+2026-10-18T00:42:00Z	verification	W118-01 验收：聚焦131/131、扩展246/246、tsc 0、build 0、2,168/2,168、768/768	模式更新即时生效；deny规则跨调用存活；不可表示限制阻止调用	notices 0；索引 75 chunks / 323,525 单位不变；identity b50e00a3…
