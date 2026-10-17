@@ -1,0 +1,39 @@
+Rf url https://example.com/a
+Rf www http://www.example.com/x
+Rf abs file:///tmp/a%20b
+Rf file file:///tmp/x
+Rf unc //server/share/x
+Rf rel ../x
+mxn traversal file:///etc/passwd
+mxn query file:///tmp/x?q=1#f
+mxn localhost file:///tmp/x
+mxn encoded traversal file:///etc
+mxn drive file:///C:/x C:/x
+Cot false false false
+nur none true
+nur same true
+nur slash true
+nur file true
+nur other false
+nur traversal true
+hosted [{"type":"Button","props":{"key":"b1"},"press":{"plugin":"dispatch-fixture","handle":18077024}},{"type":"Markdown","props":{"key":"m1","pressableLinks":["https://example.com/a","/tmp/a b"]},"press":{"plugin":"dispatch-fixture","handle":18077025}}]
+BPn button {"element":"b1"} {"handle":1,"argument":{"plugin":"dispatch-fixture","element":"b1","component":"Fixture","requestId":"r1","surface":"terminal"}}
+BPn byKey undefined
+BPn missing undefined 0
+BPn link ok {"element":"m1"} {"handle":2,"argument":{"plugin":"dispatch-fixture","element":"m1","component":"Fixture","requestId":"r1","surface":"terminal","link":{"href":"https://example.com/a"}}}
+BPn link file {"element":"m1"}
+BPn link bad undefined 0
+BPn tag mismatch undefined 0
+Ohe result undefined {"kind":"log","level":"error","message":"probe: boom"}
+TIe return undefined
+(node:72143) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+TIe pressed {"handle":1,"argument":{"plugin":"dispatch-fixture","element":"b1","component":"Fixture","requestId":"r1","surface":"terminal"}}
+TIe ghost log {"kind":"log","level":"debug","message":"ui.press: no Button of ghost is held under handle 999; nothing ran"}
+E_ {"plugin":"p","element":"e","component":"C","requestId":"r","surface":"terminal"}
+E_ link {"plugin":"p","element":"e","component":"C","requestId":"r","surface":"terminal","link":{"href":"https://x"}}
+mxn empty "" slash file:/// Rf slash file:///
+nur www false
+BPn link refused undefined {"kind":"log","level":"debug","message":"ui.press: the Markdown dispatch-fixture holds under handle 18077027 names that link none of its own; nothing ran"}
+BPn missing log {"kind":"log","level":"debug","message":"ui.press: no Button of dispatch-fixture is held under handle -1 and the key the press names; nothing ran"}
+TIe ghost held log {"kind":"log","level":"error","message":"ui.press ghost: ui.press: ghost, which drew g1, is not loaded"}

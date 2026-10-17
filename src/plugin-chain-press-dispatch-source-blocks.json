@@ -1,0 +1,97 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        227274,
+        227380
+      ],
+      "units": 106,
+      "bodySha256": "92c16e558727150c7aa94c336014fdf583bae7891de903717d538a77f9603fd5",
+      "note": "`Rf` — normalize an href for comparison"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        227380,
+        227463
+      ],
+      "units": 83,
+      "bodySha256": "d3b58f21f4858e98e284deb2432a9ca2b63530ee6abcf8ffa11fe7ec5581017b",
+      "note": "`nur` — whether a link is one the drawing declared pressable"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        227463,
+        227607
+      ],
+      "units": 144,
+      "bodySha256": "e9cb79b5082c5837c1a017b7e1ee550535e992e7595e73aa48693725ce07cb5c",
+      "note": "`E_` — the ui.press argument"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        227607,
+        227629
+      ],
+      "units": 22,
+      "bodySha256": "335d93e0a3fe522f9c91b6db20b845ab7fdcc271517b20b3295510b28ba0db65",
+      "note": "`Tf` — the ui.press site"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        229414,
+        230142
+      ],
+      "units": 728,
+      "bodySha256": "5121d23fd321b3ffad999fe029b54b62e56b5cc49fa30968fdf0d6afa5af14c2",
+      "note": "`BPn` — dispatch one held press"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        24200,
+        24313
+      ],
+      "units": 113,
+      "bodySha256": "0fd2acc3664734c7e8877c2fe6a325002e4a95623232f6c5bba3c4481a8d25aa",
+      "note": "`TIe` — pressFromTerminal"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2336117,
+        2336190
+      ],
+      "units": 73,
+      "bodySha256": "eed33b01d62c60b95c38a36dbb82bf0e8ba41a4c142aa4a95f7823b458c7a463",
+      "note": "`Ohe` — settle a dispatch quietly, logging a rejection"
+    }
+  ],
+  "missing": []
+}
