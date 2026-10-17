@@ -220,8 +220,8 @@ test("transition matchers follow the recovered per-event selector fields", async
   assert.deepEqual((await run("FileChanged", "notes\\.md", { file_path: "/w/docs/notes.md" })).additionalContext, ["hit"]);
   assert.deepEqual((await run("FileChanged", "docs\\.md", { file_path: "/w/docs/notes.md" })).additionalContext, []);
   // DirectoryAdded and ConfigChange select `source`, not the directory.
-  assert.deepEqual((await run("DirectoryAdded", "cwd_relocation", { directory: "/w", source: "cwd_relocation" })).additionalContext, ["hit"]);
-  assert.deepEqual((await run("DirectoryAdded", "/w", { directory: "/w", source: "cwd_relocation" })).additionalContext, []);
+  assert.deepEqual((await run("DirectoryAdded", "slash_command", { directory: "/w", source: "slash_command" })).additionalContext, ["hit"]);
+  assert.deepEqual((await run("DirectoryAdded", "/w", { directory: "/w", source: "slash_command" })).additionalContext, []);
   // InstructionsLoaded selects the load reason; Setup selects the trigger.
   assert.deepEqual((await run("InstructionsLoaded", "session_start", { load_reason: "session_start" })).additionalContext, ["hit"]);
   assert.deepEqual((await run("InstructionsLoaded", "startup", { load_reason: "session_start" })).additionalContext, []);

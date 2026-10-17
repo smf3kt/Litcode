@@ -8,7 +8,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, defaultConfig } from '../src/agent.js';
 import { configChangeSource, interactiveLoop, notifyPermissionPrompt } from '../src/interactive.js';
 import type { ModelProvider } from '../src/provider.js';
-import type { Runtime } from '../src/runtime.js';
+import { createRuntime, type Runtime } from '../src/runtime.js';
 import { Session } from '../src/session.js';
 import { forkSession, listSessions } from '../src/sessions.js';
 import type { SkillInfo } from '../src/config.js';
@@ -468,4 +468,35 @@ test('a pending permission prompt notifies after six seconds and can be cancelle
     t.mock.timers.tick(6_000);
     assert.equal(emitted.length, 1);
   } finally { delete process.env.CLAUDE_CODE_DISABLE_PERMISSION_PROMPT_NOTIFY_HOOKS; }
+});
+
+test('workspace relocation raises DirectoryAdded as a documented slash_command hook and displays its failure', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-cwd-hooks-')));
+  const target = path.join(workspace, 'next');
+  fs.mkdirSync(target);
+  const payloadLog = path.join(workspace, 'directory-added.jsonl');
+  const config = { ...defaultConfig(workspace, []), model: 'test', hooks: {
+    DirectoryAdded: [
+      { matcher: 'slash_command', command: `printf '%s' '{"systemMessage":"directory note"}'` },
+      { matcher: 'slash_command',
+        command: `cat >> ${JSON.stringify(payloadLog)}; printf 'boom' >&2; exit 3` },
+    ],
+  } };
+  const provider: ModelProvider = { count: async () => 0, complete: async () => reply('unused') };
+  const lifetime = AbortSignal.timeout(6000);
+  const runtime = await createRuntime(config, provider, lifetime);
+  config.tools = runtime.buildTools(config, 'schema').map(tool => ({ ...tool.schema, eager_input_streaming: true }));
+  const session = Session.open(workspace, { config });
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, provider, runtime, {
+      input: Readable.from(['/cwd next\n', '/exit\n']), output: stdout.stream, status: stderr.stream, signal: lifetime,
+    });
+    const payload = JSON.parse(fs.readFileSync(payloadLog, 'utf8').trim().split('\n')[0]!) as
+      { hook_event_name?: string; directory?: string; source?: string };
+    assert.deepEqual([payload.hook_event_name, payload.directory, payload.source],
+      ['DirectoryAdded', target, 'slash_command']);
+    assert.match(stderr.value(), /hook DirectoryAdded: directory note/);
+    assert.match(stderr.value(), /\[DirectoryAdded hook: exit code 3\] boom/);
+  } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });

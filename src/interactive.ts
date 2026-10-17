@@ -993,11 +993,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           }
           // CwdChanged carries both directories (`ZXr`, chunk-sfn1dbxq.js
           // [2935532,2935646)); DirectoryAdded carries `directory` and `source`
-          // (`lvt`, chunk-sfn1dbxq.js [2933905,2934228)).
+          // (`lvt`, chunk-sfn1dbxq.js [2933905,2934228)), where `source` is the
+          // documented slash-command or registration producer (`jK`,
+          // chunk-r2vtj1kh.js offset 203596). This CLI has no /add-dir or
+          // register_repo_root, so its relocation commands are the slash-command
+          // producer. Failed outputs display after the system messages, as in
+          // `ke`/`Pe` (chunk-sfn1dbxq.js [1678937,1679560)).
           const moved = await agent().emitHook('CwdChanged', { old_cwd: previousWorkspace, new_cwd: target }, options.signal);
           if (moved.watchPaths?.length) configWatch?.addInstructionPaths?.(moved.watchPaths);
           for (const failure of moved.failures ?? []) options.status.write(`${failure}\n`);
-          await agent().emitHook('DirectoryAdded', { directory: target, source: 'cwd_relocation' }, options.signal);
+          const added = await agent().emitHook('DirectoryAdded', { directory: target, source: 'slash_command' }, options.signal);
+          for (const failure of added.failures ?? []) options.status.write(`${failure}\n`);
           continue;
         }
         if (prompt === '/checkpoint-recover') {

@@ -1,0 +1,3 @@
+2026-10-17T23:25:00Z	package	W116-01 DirectoryAdded raise and failed output	jK 203596（chunk-r2vtj1kh.js）、lvt 2933998（chunk-sfn1dbxq.js）、/add-dir 2197、register_repo_root 565798	source限slash_command/register_repo_root；本地迁移命令为slash_command生产者；失败输出在systemMessages之后	interactive/hooks 71/71；tsc 0；build 0；全量 2,159/2,159；链 767/767
+2026-10-17T23:27:00Z	decision	W116-01 本地适配	本地无/add-dir与register_repo_root；运行器按事件聚合失败文本；通知摘要行无本地通知面	不重复源前缀；注册生命周期无对应	.audit/w116-01-full.txt
+2026-10-17T23:29:00Z	verification	W116-01 验收：聚焦 71/71、tsc 0、build 0、2,159/2,159、767/767	/cwd载荷为slash_command；systemMessage与失败输出均显示	notices 0；索引 75 chunks / 323,525 单位不变；identity 7b5c2d92…
