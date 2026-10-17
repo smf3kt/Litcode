@@ -2554,3 +2554,15 @@ exceeds `OAt`, and reports exhausted budgets. The five noted handlers (`qss`, `U
 `wur` and `pno` keep the source wording. Three value helpers (`iD`, `eIt`, `Iws`) come from
 chunk-nyce03br.js. Focused 10/10, full 2255/2255, tsc 0, build 0, notices 0, identity `46284acf…`.
 [W142 record](ports/W142-engine-draw-budget-handlers.md).
+
+W143 adds the engine's tree validation. `Eur` (chunk-n3ykh62m.js [262627,266967)) bounds node
+count and depth, checks root/text/non-node/unknown-element/block-inline/surface rules, runs each
+element's validator, the sibling key scope and `lur`'s hover/group/client rules, restricts Button
+children and the dialog component (one engine node, no Markdown or layout props around it, at
+most 12 measured rows), checks Link props through `sno` and props through `Pgo`/`sQt`/`Igo`, and
+bounds Raster cells and Image bytes; Box key problems reach `note` without failing the tree, and
+`measured` receives the row cost on success. `lur` ([239459,241244)), `Nto`/`EVe`, the
+`$to`/`Fto`/`Drt`/`Wto`/`dur` helpers and eight nyce tables/constants come with it; the W141 copy
+now exports `QPn`/`eIn`/`tIn`. Focused 12/12, full 2265/2265, tsc 0, notices 0, build 0,
+identity `6960bd86…`.
+[W143 record](ports/W143-engine-tree-validation.md).

@@ -1,0 +1,63 @@
+{
+ "schema": "W143EngineTreeValidationEvidence.v1",
+ "package": "W143-01 — engine tree validation (gno slice 3)",
+ "date": "2026-10-18",
+ "question": "What does the engine check on a hook-returned tree before drawing it, and can the walk run unchanged in the product?",
+ "answer": "Yes. Eur walks the tree with its node/depth/element/prop/surface/dialog rules, answering the first problem or reporting measured rows; twenty verbatim blocks (8,449 units) include the walk, lur, the hover-scope check and the tables it reads. The seam exposes validateDrawnTree and the source limits; no gno caller is wired yet.",
+ "sourcePosition": {
+  "modules": [
+   {"module": "extracted-v2/modules/chunk-n3ykh62m.js", "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac", "blocks": 12},
+   {"module": "extracted-v2/modules/chunk-nyce03br.js", "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f", "blocks": 8}
+  ],
+  "totalBlocks": 20,
+  "totalUnits": 8449,
+  "ranges": {
+   "Eur": [262627, 266967],
+   "lur": [239459, 241244],
+   "Nto": [239044, 239321],
+   "EVe": [235650, 235711],
+   "$to": [239381, 239459],
+   "Fto": [239321, 239381],
+   "Drt": [238438, 238618],
+   "Wto": [246804, 246937],
+   "dur": [246937, 246992],
+   "aur": [239033, 239044],
+   "hur": [260971, 260987],
+   "yur": [260987, 261002],
+   "Pgo": [3407, 4004],
+   "Igo": [4075, 4140],
+   "Tgo": [2288, 2523],
+   "Ogo": [4987, 5093],
+   "Ago": [2198, 2208],
+   "B3e": [5990, 6016],
+   "h$": [38157, 38216],
+   "w3": [84644, 84984]
+  }
+ },
+ "semantics": {
+  "bounds": {"nodes": 20000, "depth": 32, "dialogRows": 12, "rasterCells": 262144, "imageBytes": 2097152, "hoverScopeName": 64},
+  "walk": "root must be an element; text children may not hold control characters; non-nodes and unknown elements fail; block elements fail inside inline; surface membership is checked; per-element validators, sibling key scope and lur's hover/group/client rules run; Button children are strings/Text only; Link props go through sno; prop names/kinds/sQt rules and layout names around the dialog are checked; Raster cells and Image bytes are bounded",
+  "dialog": "component B3e (AskUserQuestion) requires exactly one engine node, forbids Markdown, layout props and hover display/position props around it, and bounds measured rows",
+  "reporting": "the first problem is returned; Box key problems (control characters, duplicates) reach note() without failing the tree; measured(rows) is called when the tree validates"
+ },
+ "product": {
+  "files": [
+   "src/plugin-chain-engine-validate-source.ts",
+   "src/plugin-chain-engine-validate.ts",
+   "test/plugin-chain-engine-validate.test.ts"
+  ],
+  "generator": "scripts/copy-module-regions.mjs",
+  "plan": "research/ports/W143-engine-tree-validation.plan.json",
+  "importedHelpers": ["AFe", "ESe", "cN", "oQt", "olt", "sQt", "L", "$A", "ZAe", "IL", "Mrt", "X4t", "IAt", "ano", "kFe", "lQt", "ono", "tno", "sno", "QT", "B_", "QPn", "eIn", "tIn"],
+  "w141ExportExtension": ["QPn", "eIn", "tIn"],
+  "caller": "none yet; the gno pipeline wiring remains the last slice"
+ },
+ "verification": {
+  "focused": "12/12",
+  "full": "2265/2265",
+  "tsc": 0,
+  "notices": 0,
+  "build": 0,
+  "identity": "6960bd86d682f89690cebb95383afd0ba5c8902d39e61b787367833175ced989"
+ }
+}
