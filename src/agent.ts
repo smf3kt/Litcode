@@ -331,11 +331,7 @@ export class Agent {
     // Recovered payload (`t7r`, chunk-sfn1dbxq.js [2942449,2942805)) carries the agent type and the
     // session title in addition to source and model; `vm` resolves the current session's title, which
     // this runtime records as a `title` event, and yields undefined when none was set.
-    let sessionTitle: string | undefined;
-    for (let i = this.session.events.length - 1; i >= 0; i--) {
-      const event = this.session.events[i]!;
-      if (event.kind === 'title') { sessionTitle = event.title; break; }
-    }
+    const sessionTitle = this.currentSessionTitle();
     const result = await this.hook('SessionStart', {
       source, model: this.session.config.model,
       ...(this.session.config.childMode === undefined ? {} : { agent_type: this.session.config.childMode }),
@@ -840,6 +836,15 @@ export class Agent {
     return this.finish(reason, text, modelCalls);
   }
 
+  /** `vm` resolves the current title recorded as a `title` event; absent means none was set. */
+  private currentSessionTitle(): string | undefined {
+    for (let i = this.session.events.length - 1; i >= 0; i--) {
+      const event = this.session.events[i]!;
+      if (event.kind === 'title') return event.title;
+    }
+    return undefined;
+  }
+
   async run(prompt?: string, signal = new AbortController().signal, attachment?: MediaAttachment,
     expansion?: PromptExpansion): Promise<RunResult> {
     if (this.busy) throw new Error('Agent is already running');
@@ -861,7 +866,12 @@ export class Agent {
         if (!prompt.trim()) throw new Error('Prompt is empty');
         if (this.session.awaitingResponse) throw new Error('Session has an unfinished turn; continue it first');
         this.snapshotBoundary(signal);
-        const submitted = await this.hook('UserPromptSubmit', { prompt, source: 'user' }, signal);
+        // `Yir`/`qtt` (chunk-sfn1dbxq.js [2952083,2952751)) carry the prompt and the
+        // current session title; this build emits no `source` (the schema keeps it
+        // optional while the field rolls out).
+        const sessionTitle = this.currentSessionTitle();
+        const submitted = await this.hook('UserPromptSubmit', { prompt,
+          ...(sessionTitle === undefined ? {} : { session_title: sessionTitle }) }, signal);
         if (submitted.blocked) {
           this.events.status?.(submitted.reason ?? 'UserPromptSubmit hook blocked the prompt');
           return this.finish('hook_blocked', '', 0);

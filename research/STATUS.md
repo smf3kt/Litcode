@@ -2144,3 +2144,10 @@ The invented synchronous raises for theme, editor, model-family config,
 reload and MCP reconnect are removed. `config-watch` 4/4, `hooks` 52/52,
 `interactive` 9/9, tsc 0, build 0, full 2,127/2,127, chain 767/767, identity
 `6443354c…`. [W96 record](ports/W96-config-change.md).
+
+W97-01 aligns the UserPromptSubmit payload. The event carries `prompt` and the
+recorded `session_title` and no longer invents `source: "user"`; this build's
+two builders omit the optional field. The title resolves from the latest
+`title` event through the same helper SessionStart uses.
+`agent-lifecycle` 38/38, tsc 0, build 0, full 2,128/2,128, chain 767/767,
+identity `fc290fa6…`. [W97 record](ports/W97-user-prompt-submit.md).

@@ -570,6 +570,22 @@ test("PreCompact receives custom instructions and hook stdout becomes Additional
   } finally { session.close(); }
 });
 
+test("UserPromptSubmit omits source and carries the recorded session title", async () => {
+  const root = workspace();
+  const capture = path.join(root, "user-prompt-submit.jsonl");
+  const hooks = { UserPromptSubmit: [{ command: `cat >> ${shellQuote(capture)}` }] };
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  session.append({ kind: "title", title: "Recorded title" });
+  try {
+    await new Agent(session, new ScriptedProvider([done()]), []).run("hello");
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.hook_event_name, "UserPromptSubmit");
+    assert.equal(payload.prompt, "hello");
+    assert.equal(payload.session_title, "Recorded title");
+    assert.equal("source" in payload, false);
+  } finally { session.close(); }
+});
+
 test("SessionStart carries the child agent type and the recorded session title", async () => {
   const root = workspace();
   const capture = path.join(root, "session-start.jsonl");
