@@ -1,0 +1,47 @@
+(node:30403) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ the frame limits and labels
+  ✔ carries the source defaults (0.477791ms)
+  ✔ clamps an index into an optional range (0.053625ms)
+  ✔ labels a chord with the first word of its action (0.043916ms)
+✔ the frame limits and labels (0.914875ms)
+▶ the frame layout
+  ✔ draws the title, search, rows, match label, preview and hints (0.734375ms)
+  ✔ stacks the preview under the rows by default (0.206667ms)
+  ✔ clamps the visible count to the terminal and the frame chrome (0.193625ms)
+  ✔ collapses the select hint to one word on a narrow terminal (0.134708ms)
+  ✔ drops the tab hint when the frame has no tab action (0.105125ms)
+✔ the frame layout (1.501791ms)
+▶ the frame movement
+  ✔ moves the focus, the window, the selection and the tab action (0.356167ms)
+  ✔ selects the focused row when tab has no action (0.200709ms)
+  ✔ moves the window with the wheel and stops the event (0.226083ms)
+  ✔ reverses the wheel for an up direction (0.148459ms)
+✔ the frame movement (1.136417ms)
+▶ the search input
+  ✔ types into the query and reports it (0.183208ms)
+  ✔ edits with backspace, delete, home, end and paste (0.50425ms)
+  ✔ resets the focus and window when the query changes (0.190875ms)
+  ✔ ignores control chords and non-edit keys (0.081959ms)
+✔ the search input (1.012708ms)
+▶ the row list
+  ✔ draws the empty state as the empty-state block (0.192ms)
+  ✔ renders the empty-state block with an optional hint (1.216542ms)
+  ✔ draws the visible rows with focus and scroll markers (0.151042ms)
+  ✔ reverses the list and the markers for an up direction (0.059625ms)
+  ✔ declares the cursor only when the host context asks (0.06175ms)
+  ✔ guards the first click and then reports the row (321.816583ms)
+  ✔ reports hover changes and clears the hover on leave (0.538959ms)
+✔ the row list (324.460084ms)
+▶ the hook seam and the public names
+  ✔ supports the functional state update form (0.172ms)
+  ✔ keeps the aliases on the source names (0.063333ms)
+✔ the hook seam and the public names (0.334333ms)
+ℹ tests 25
+ℹ suites 6
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 491.428916
