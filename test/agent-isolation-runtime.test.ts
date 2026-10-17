@@ -322,3 +322,54 @@ test('concurrent child checkouts serialize owned metadata updates and runtime cl
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(f.workspace, '.agent', 'worktrees.json'), 'utf8')).records, []);
   } finally { await f.cleanup(); }
 });
+
+async function hookFixture(hookPath: string, removeMarker: string, workspace = fs.realpathSync(
+  fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-parent-')))) {
+  const provider: ModelProvider = { count: async () => 0, complete: async () => done() };
+  const config: SessionConfig = { ...defaultConfig(workspace, createTools()), model: 'fixture',
+    features: { tasks: true, subagents: true, agentTypes: true, agentMessaging: true, agentIdle: true, worktrees: true },
+    hooks: {
+      WorktreeCreate: [{ hooks: [{ type: 'command', command: `printf '%s\\n' '${hookPath}'` }] }],
+      WorktreeRemove: [{ hooks: [{ type: 'command', command: `: > '${removeMarker}'` }] }],
+    } };
+  const controller = new AbortController();
+  const runtime = await createRuntime(config, provider, controller.signal);
+  config.tools = pinToolSchemas(runtime.tools);
+  return { workspace, runtime,
+    invoke: (name: string, input: unknown) => tool(runtime.tools, name).execute(input, context(workspace)),
+    async cleanup() { await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); } };
+}
+
+test('WorktreeCreate hooks supply and remove the isolated child checkout outside git', async () => {
+  const checkout = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-child-')));
+  const parent = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-parent-')));
+  const f = await hookFixture(checkout, path.join(parent, 'removed.txt'), parent);
+  try {
+    const rawChild = await f.invoke('agent', { prompt: 'inspect', isolation: 'worktree' });
+    const child = JSON.parse(rawChild) as Child;
+    assert.equal(child.status, 'completed', rawChild);
+    assert.equal(child.workspace, checkout);
+    await f.invoke('stop_agent', { id: child.id });
+    assert.ok(fs.existsSync(path.join(parent, 'removed.txt')));
+  } finally { await f.cleanup(); fs.rmSync(checkout, { recursive: true, force: true }); }
+});
+
+test('WorktreeCreate hook paths with dot segments or symlink ancestors are refused', async () => {
+  const dottedParent = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-parent-')));
+  const dottedCheckout = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-child-'));
+  const dotted = await hookFixture(`${dottedCheckout}/./nested`, path.join(dottedParent, 'removed.txt'), dottedParent);
+  try {
+    await assert.rejects(dotted.invoke('agent', { prompt: 'inspect', isolation: 'worktree' }), /dot segments/);
+  } finally {
+    await dotted.cleanup();
+    fs.rmSync(dottedCheckout, { recursive: true, force: true });
+  }
+  const linkedParent = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-parent-')));
+  const real = path.join(linkedParent, 'real');
+  fs.mkdirSync(real);
+  fs.symlinkSync(real, path.join(linkedParent, 'link'));
+  const linked = await hookFixture(path.join(linkedParent, 'link'), path.join(linkedParent, 'removed.txt'), linkedParent);
+  try {
+    await assert.rejects(linked.invoke('agent', { prompt: 'inspect', isolation: 'worktree' }), /is a symlink/);
+  } finally { await linked.cleanup(); }
+});

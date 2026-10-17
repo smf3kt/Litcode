@@ -19,12 +19,14 @@
 
 import type Anthropic from '@anthropic-ai/sdk';
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { z } from 'zod';
 import { statusLineSchema } from './tui-statusline-schema.js';
 
 import { expandSkill, type InstructionFile, type SkillInfo } from './config.js';
-import { hooksSettingsSchema, type HooksConfig, type HookRunOptions } from './hooks.js';
+import { hooksSettingsSchema, runHooks, type HooksConfig, type HookRunOptions } from './hooks.js';
 import { AsyncHookRegistry } from './async-hooks.js';
 import { validateHookTerminalSequence } from './hook-terminal.js';
 import { connectMcpServers, mcpServersSchema, type McpClientRequests, type McpConnection, type McpServerConfig } from './mcp.js';
@@ -44,7 +46,8 @@ import { WorkflowRegistry, createWorkflowTools } from './workflow.js';
 import { AgentRegistry, createAgentRegistryTools } from './agent-registry.js';
 import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
 import { createCheckpointTools } from './checkpoints.js';
-import { WorktreeManager, createWorktreeTools } from './worktrees.js';
+import { WorktreeManager, createWorktreeTools, hasDotSegment, requireHookWorktreeDirectory, screenWorktreeAncestry } from './worktrees.js';
+import { classicEventHooked, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
 import { permissionPolicySchema, type PermissionPolicy, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
 import type { StopRuntimeState } from './agent.js';
@@ -670,27 +673,105 @@ export async function createRuntime(
     const childEnvironmentFactory: ChildEnvironmentFactory = async request => {
       checkScope(owner, scope);
       request.signal.throwIfAborted();
+      // WorktreeCreate hooks own the checkout when configured; a loaded classic
+      // module counts too (`ATn`/`die`, chunk-sfn1dbxq.js offsets 2952836 and
+      // 556297). Otherwise the owned Git worktree manager creates it.
+      const createConfigured = (current.hooks?.WorktreeCreate?.length ?? 0) > 0;
+      const hookBased = createConfigured || classicEventHooked('WorktreeCreate');
       // Cleanup needs a live manager even after the child or parent is cancelled.
-      const manager = new WorktreeManager({ workspace: current.workspace,
+      const manager = hookBased ? undefined : new WorktreeManager({ workspace: current.workspace,
         maxOutputBytes: Math.min(4 * 1024 * 1024, Math.max(16_384, current.maxOutputBytes)) });
       const name = `agent-${randomUUID()}`;
       let checkout: string | undefined;
       let childRuntime: Runtime | undefined;
       let closing: Promise<void> | undefined;
+      // `CTn` (chunk-sfn1dbxq.js offset 2952999): the hook answers with the
+      // checkout path, which the caller then screens before using it.
+      const createHookWorktree = async (): Promise<string> => {
+        const payload = { name, cwd: current.workspace };
+        const raised = await runHooks(current.hooks ?? {}, 'WorktreeCreate', payload, request.signal, callbackHooks());
+        let supplied = raised.worktreePath;
+        let classicRecords = 0;
+        if (classicEventHooked('WorktreeCreate')) {
+          const classic = await raiseClassicEvent({ event: 'WorktreeCreate',
+            hookInput: classicHookInput('WorktreeCreate', payload), signal: request.signal });
+          classicRecords = classic.records.length;
+          if (classic.block !== undefined) throw new Error(`WorktreeCreate hook failed: ${classic.block}`);
+          if (supplied === undefined && typeof classic.answer.worktreePath === 'string') {
+            supplied = classic.answer.worktreePath;
+          }
+        }
+        if (raised.blocked) throw new Error(`WorktreeCreate hook failed: ${raised.reason ?? 'blocked'}`);
+        if (supplied === undefined) {
+          if ((raised.executedHooks ?? 0) + classicRecords === 0) {
+            throw new Error('WorktreeCreate hook failed: hook is configured but did not run (workspace not trusted or matcher mismatch)');
+          }
+          if (raised.failures?.length) throw new Error(`WorktreeCreate hook failed: ${raised.failures.join('; ')}`);
+          throw new Error('WorktreeCreate hook failed: hook succeeded but returned no worktree path (command: echo the path to stdout; http/callback: return hookSpecificOutput.worktreePath)');
+        }
+        const absolute = path.isAbsolute(supplied);
+        const target = absolute ? supplied : path.resolve(current.workspace, supplied);
+        if (absolute && hasDotSegment(supplied)) {
+          throw new Error(`Cannot use the WorktreeCreate hook's worktree: the hook emitted a path with dot segments (${supplied}). The symlink screen cannot verify a dotted spelling — have the hook emit a normalized (dot-free) absolute path and retry.`);
+        }
+        const problem = await screenWorktreeAncestry(target, fs.realpathSync(current.workspace));
+        if (problem) {
+          throw new Error(`Cannot use the WorktreeCreate hook's worktree: ${problem.component} ${problem.kind === 'symlink' ? 'is a symlink. ' : 'could not be verified. '}A repository-committed symlink below the checkout root could redirect the worktree outside the repository. Remove the symlink (or emit a path outside the repository) and retry.`);
+        }
+        await requireHookWorktreeDirectory(target);
+        return target;
+      };
+      // `Xir` (chunk-sfn1dbxq.js offset 2954231): a configured WorktreeRemove
+      // hook must succeed; otherwise the checkout is kept and the caller
+      // surfaces the preserved path.
+      const removeHookWorktree = async (target: string): Promise<void> => {
+        const configured = (current.hooks?.WorktreeRemove?.length ?? 0) > 0 || classicEventHooked('WorktreeRemove');
+        if (!configured) {
+          throw new Error('no WorktreeRemove hook is enabled here (hooks are disabled, or the repo defines only WorktreeCreate)');
+        }
+        const raised = await runHooks(current.hooks ?? {}, 'WorktreeRemove',
+          { worktree_path: target, cwd: current.workspace }, undefined, callbackHooks());
+        let classicRecords = 0;
+        let classicFailure: string | undefined;
+        if (classicEventHooked('WorktreeRemove')) {
+          const classic = await raiseClassicEvent({ event: 'WorktreeRemove',
+            hookInput: classicHookInput('WorktreeRemove', { worktree_path: target, cwd: current.workspace }) });
+          classicRecords = classic.records.length;
+          const failed = classic.records.find(record => !record.succeeded);
+          if (failed) classicFailure = failed.output.trim() || 'failed with no output';
+          if (classic.block !== undefined) classicFailure ??= classic.block;
+        }
+        if ((raised.executedHooks ?? 0) + classicRecords === 0) {
+          throw new Error('WorktreeRemove hook failed: is configured but did not run (workspace not trusted, or no matching hook entries)');
+        }
+        const failure = raised.blocked ? (raised.reason ?? 'blocked')
+          : raised.failures?.[0] ?? classicFailure;
+        if (failure !== undefined) {
+          // Source: a path already gone still counts as removed.
+          if (!fs.existsSync(target)) return;
+          throw new Error(failure);
+        }
+      };
       const close = (): Promise<void> => closing ??= (async () => {
         try { await childRuntime?.close(); }
         finally {
           try {
-            if (checkout) await serializeWorktree(() => manager.remove({ name, discard_changes: false }));
+            if (checkout) {
+              if (hookBased) await removeHookWorktree(checkout);
+              else await serializeWorktree(() => manager!.remove({ name, discard_changes: false }));
+            }
           } catch (error) {
             throw new Error(`Child worktree preserved at ${checkout}: ${(error as Error).message}`);
-          } finally { await manager.close(); }
+          } finally { await manager?.close(); }
         }
       })();
       try {
-        const created = await serializeWorktree(() => manager.create({ name }, request.signal));
-        checkout = created.path;
-        if (!created.owned || created.state !== 'ready') throw new Error('Child worktree ownership verification failed');
+        if (hookBased) checkout = await createHookWorktree();
+        else {
+          const created = await serializeWorktree(() => manager!.create({ name }, request.signal));
+          checkout = created.path;
+          if (!created.owned || created.state !== 'ready') throw new Error('Child worktree ownership verification failed');
+        }
         request.signal.throwIfAborted();
         checkScope(owner, scope);
         const childConfig = { ...request.config, workspace: checkout };

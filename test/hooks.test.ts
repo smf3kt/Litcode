@@ -1017,6 +1017,25 @@ test("event output translation retains permission, updated result and general sp
   assert.equal("permissionDecision" in notModelSwitch, false);
 });
 
+test("WorktreeCreate reads worktreePath from hook JSON or command stdout only", async () => {
+  const json = await runHooks({ WorktreeCreate: [emit({ hookSpecificOutput: { hookEventName: "WorktreeCreate", worktreePath: "/fixture/tree" } })] }, "WorktreeCreate", {});
+  assert.equal(json.worktreePath, "/fixture/tree");
+  // `cU`/`p7n`: a command hook supplies the trailing non-empty stdout line.
+  const command = await runHooks({ WorktreeCreate: [{ hooks: [{ type: "command", command: "printf '%s\\n' /fixture/echoed" }] }] },
+    "WorktreeCreate", { cwd: process.cwd() });
+  assert.equal(command.worktreePath, "/fixture/echoed");
+  // The first successful hook with a non-empty line wins; empty output is skipped.
+  const ordered = await runHooks({ WorktreeCreate: [
+    { hooks: [{ type: "command", command: "true" }] },
+    { hooks: [{ type: "command", command: "printf '%s\\n' /fixture/second" }] },
+  ] }, "WorktreeCreate", { cwd: process.cwd() });
+  assert.equal(ordered.worktreePath, "/fixture/second");
+  const mismatched = await runHooks({ WorktreeCreate: [emit({ hookSpecificOutput: { hookEventName: "PostToolUse", worktreePath: "/fixture/wrong-event" } })] }, "WorktreeCreate", {});
+  assert.equal("worktreePath" in mismatched, false);
+  const elsewhere = await runHooks({ PostToolUse: [emit({ hookSpecificOutput: { hookEventName: "PostToolUse", worktreePath: "/fixture/not-create" } })] }, "PostToolUse", {});
+  assert.equal("worktreePath" in elsewhere, false);
+});
+
 test("session titles normalize like the recovered ci helper", () => {
   assert.equal(normalizeSessionTitle("  a\u0000b\u2028c  "), "a b c");
   assert.equal(normalizeSessionTitle("\u0000\u0007"), "");
