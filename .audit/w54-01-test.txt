@@ -1,0 +1,42 @@
+(node:90968) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ checkpoint tools expose permission metadata and restore confirmation contract (0.629209ms)
+✔ checkpoint snapshots hidden files and .harness, excluding reserved trees and symlink contents (48.935959ms)
+✔ incremental checkpoints survive new tool instances and restore modified/deleted bytes and modes (236.898542ms)
+✔ selected paths scope effects and removal requires explicit diff paths (213.6075ms)
+✔ stale digest catches unrelated changes and permissions before restore effects (80.500458ms)
+✔ corrupt manifest and content are checked in full even for a selected good file (96.587584ms)
+✔ structurally invalid rehashed manifests reject traversal and symlink parents (69.288875ms)
+✔ metadata symlinks at .agent, checkpoint directories, manifest and objects are rejected (78.577291ms)
+✔ restore never follows leaf/ancestor symlinks or replaces captured symlink metadata (115.442416ms)
+✔ invalid names and paths produce no workspace effects (258.052709ms)
+✔ pre-aborted tools leave checkpoint storage and workspace untouched (64.484ms)
+✔ snapshot byte/count caps fail before checkpoint publication (517.736708ms)
+✔ exclusive locks and duplicate checkpoint names preserve existing snapshots (44.978666ms)
+✔ a later filesystem failure rolls back earlier writes and newly created directories (135.5085ms)
+✔ mid-restore cancellation rolls back committed bytes and explicit removals (159.868292ms)
+✔ a target edit during atomic staging survives the conflict and earlier effects roll back (190.229458ms)
+✔ recovery preserves active and invalid lock owners and validates legacy PID locks (54.53175ms)
+✔ mkdir before inode publication preserves an explicit ownership residual (95.131709ms)
+✔ diff/list outputs paginate and cap JSON while retaining digest confirmation (42.359666ms)
+✔ recovery removes this store's staging files and keeps foreign, legacy and linked ones (34.342208ms)
+✔ a pending transaction sweeps staging files from its target directories (90.857709ms)
+✔ recovery sweeps unreferenced objects and intents whose creator died before capture (144.137583ms)
+✔ an unreadable manifest retains every otherwise unreferenced object (36.9725ms)
+(node:90969) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ combined rewind restores changed/deleted files, removes added files and persists the branch (362.200709ms)
+✔ stale file or history preview leaves files and session identity intact (127.63275ms)
+✔ branch commit failure rolls files back and removes the uncommitted branch (243.026791ms)
+✔ durable branch proof preserves committed files through marker and cleanup failures (515.528375ms)
+✔ automatic main checkpoints deduplicate persisted boundaries and skip child snapshots (158.633917ms)
+✔ association recovery clears unprovable intents, keeps foreign evidence and is idempotent (89.963459ms)
+✔ a real crash between capture and association is completed on the next open (421.053667ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3031.089583

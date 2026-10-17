@@ -1857,3 +1857,12 @@ published, or one already represented by the same name and digest, is cleared, w
 unreadable or digest-mismatched files stay for inspection. Rewind 7/7 adds a real SIGKILL between
 capture and append; checkpoints 21/21, full 2,088/2,088, chain 767/767, both checkpoint crash smoke
 modes pass; identity `df90fb56…`. [W53 record](ports/W53-checkpoint-association.md).
+
+W54-01 sweeps provable checkpoint garbage and records the durable write order. Under the store lock,
+after any pending transaction is resolved, `recoverCheckpoint` removes content-addressed objects no
+valid manifest references and association intents whose creator died before publishing a manifest;
+unknown names, unreadable manifests, symlinks and capped stores retain the whole affected set. The
+four durable writers (intent, object, manifest, transaction) share `atomicWrite`: fsync file, rename,
+fsync directory, with the manifest published last and the transaction before effects. Checkpoints
+23/23, rewind 7/7, full 2,090/2,090, chain 767/767, both crash smoke modes pass; identity
+`6eaa8c28…`. [W54 record](ports/W54-checkpoint-gc.md).
