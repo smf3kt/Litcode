@@ -348,6 +348,8 @@ export type HookResult = {
   additionalContext: string[];
   /** Absolute paths a hook asked the file watcher to add (`hookSpecificOutput.watchPaths`). */
   watchPaths?: string[];
+  /** Failed hook outputs, also carried in `additionalContext`, for watcher display. */
+  failures?: string[];
   /**
    * Set only by an explicit `continue:false` output, meaning "terminate the
    * session". A Stop hook that merely requests continuation (exit 2 or a
@@ -953,6 +955,13 @@ export async function runHooks(
     return result;
   }
   const cwd = asString(payload.cwd) ?? process.cwd();
+  // Failure text stays in additionalContext for the model and is also kept
+  // separately so a watcher can display it like the recovered failed-hook
+  // output (`ke`, chunk-sfn1dbxq.js [1678937,1679425)).
+  const fail = (message: string): void => {
+    result.additionalContext.push(message);
+    (result.failures ??= []).push(message);
+  };
 
   for (const [index, flattened] of definitions.entries()) {
     const stored = flattened.definition;
@@ -1058,7 +1067,7 @@ export async function runHooks(
       break;
     }
     if (raw.spawnError) {
-      result.additionalContext.push(`[${event} hook: failed to launch: ${raw.spawnError.message}]`);
+      fail(`[${event} hook: failed to launch: ${raw.spawnError.message}]`);
       continue;
     }
 
@@ -1085,7 +1094,7 @@ export async function runHooks(
     }
 
     if (raw.timedOut) {
-      result.additionalContext.push(`[${event} hook: timed out after ${timeoutMs}ms, process group killed]`);
+      fail(`[${event} hook: timed out after ${timeoutMs}ms, process group killed]`);
       continue;
     }
     if (raw.code === BLOCKING_EXIT_CODE) {
@@ -1096,12 +1105,12 @@ export async function runHooks(
       } else {
         // Display-only events (SessionStart/PostToolUse/PostCompact/StopFailure/
         // SessionEnd) must never block: record the failure, do not gate.
-        result.additionalContext.push(
+        fail(
           `[${event} hook: exit code 2 is non-blocking for this event]${raw.stderr.trim() ? ` ${raw.stderr.trim()}` : ""}`,
         );
       }
     } else if (raw.code !== 0) {
-      result.additionalContext.push(
+      fail(
         `[${event} hook: exit code ${raw.code ?? "null"}]${raw.stderr.trim() ? ` ${raw.stderr.trim()}` : ""}`,
       );
     }

@@ -188,6 +188,16 @@ test("watchPaths are collected from matching hookSpecificOutput entries in order
   assert.equal(absent.watchPaths, undefined);
 });
 
+test("failed hook output is reported for watcher display without leaving context", async () => {
+  const failed = await runHooks({ FileChanged: [{ command: "printf 'boom' >&2; exit 3" }] },
+    "FileChanged", { file_path: "/w/f.md", event: "change" });
+  assert.deepEqual(failed.failures, ["[FileChanged hook: exit code 3] boom"]);
+  assert.deepEqual(failed.additionalContext, ["[FileChanged hook: exit code 3] boom"]);
+  const clean = await runHooks({ FileChanged: [{ command: "true" }] },
+    "FileChanged", { file_path: "/w/f.md", event: "change" });
+  assert.equal(clean.failures, undefined);
+});
+
 test("transition matchers follow the recovered per-event selector fields", async () => {
   const context = (text: string): HookDefinition => emit({ additionalContext: text });
   const run = (event: HookEvent, matcher: string, payload: HookPayload) =>

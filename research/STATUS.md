@@ -2019,3 +2019,12 @@ paths to the config watcher, which applies its existing absolute-path, count
 and byte bounds. The agent's tool-mutation FileChanged raise has no watcher
 consumer and ignores them. `hooks` 49/49, tsc 0, build 0, full 2,109/2,109,
 chain 767/767, identity `35629d1f…`. [W82 record](ports/W82-watch-paths.md).
+
+W83-01 ports the failed-hook display for watcher events. `HookResult.failures`
+carries the same failure text already placed in model context for spawn
+errors, timeouts, non-blocking exit 2 and other non-zero exits; the interactive
+FileChanged and CwdChanged raises display those entries after the system
+messages, as `ke` does with unsuccessful results. Blocking exit-2 events keep
+their existing block behavior. `hooks` 50/50, tsc 0, build 0, full
+2,110/2,110, chain 767/767, identity `53e0f27e…`.
+[W83 record](ports/W83-failed-hook-output.md).
