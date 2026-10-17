@@ -2490,3 +2490,14 @@ longer display `additionalContext` or carry it into context. `error_details` is 
 because local error values carry no such detail object. Focused 136/136, full 2238/2238,
 tsc 0, build 0, notices 0, identity `1d28148b…`.
 [W136 record](ports/W136-stop-failure-discard.md).
+
+W137 closes the PostCompact display difference. The recovered `avt` collector reads none of the
+hook's structured fields: it skips cancelled records and builds one
+`PostCompact [<label>] completed successfully|failed[: <output>]` line per remaining record
+from its raw stdout/stderr, joined into a display-only `userDisplayMessage`. The product now
+builds that same message with the source's label mapping (`Mx`), journals it on the
+`hook_result` event and displays it through the existing bounded status path. For this event
+`suppressOutput`, `systemMessage` and `additionalContext` no longer apply, matching the
+recovered caller; non-command transports use their own labels. Focused 136/136, full
+2238/2238, tsc 0, build 0, notices 0, identity `9e503123…`.
+[W137 record](ports/W137-post-compact-display.md).

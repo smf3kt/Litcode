@@ -119,7 +119,7 @@ export type SessionEvent =
   | { kind: 'hook_terminal'; id: string; event: string; sequences: string[] }
   | { kind: 'instruction_watch'; workspace: string; paths: string[] }
   | { kind: 'stop_hook_count'; count: number; hookId?: string }
-  | { kind: 'hook_result'; id: string; event: string; blocked: boolean; reason?: string; additionalContext: string[]; stopRequested?: boolean; suppressOutput?: boolean; systemMessages?: string[]; terminalSequences?: string[] }
+  | { kind: 'hook_result'; id: string; event: string; blocked: boolean; reason?: string; additionalContext: string[]; stopRequested?: boolean; suppressOutput?: boolean; systemMessages?: string[]; terminalSequences?: string[]; userDisplayMessage?: string }
   | { kind: 'compact'; summary: string; response: Anthropic.Message }
   | { kind: 'turn_end'; reason: string; duration?: import('./tui-progress.js').TurnDuration };
 
@@ -248,7 +248,7 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('hook_terminal'), id: z.string(), event: z.string(),
     sequences: z.array(z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096)).max(128)
       .refine(values => values.reduce((total, value) => total + Buffer.byteLength(value), 0) <= 32768) }).strict(),
-  z.object({ kind: z.literal('hook_result'), id: z.string(), event: z.string(), blocked: z.boolean(), reason: z.string().optional(), additionalContext: z.array(z.string()), stopRequested: z.boolean().optional(), suppressOutput: z.boolean().optional(), systemMessages: z.array(z.string()).optional(),
+  z.object({ kind: z.literal('hook_result'), id: z.string(), event: z.string(), blocked: z.boolean(), reason: z.string().optional(), additionalContext: z.array(z.string()), stopRequested: z.boolean().optional(), suppressOutput: z.boolean().optional(), systemMessages: z.array(z.string()).optional(), userDisplayMessage: z.string().optional(),
     terminalSequences: z.array(z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096)).max(128)
       .refine(values => values.reduce((total, value) => total + Buffer.byteLength(value), 0) <= 32768).optional() }).strict(),
   z.object({ kind: z.literal('compact'), summary: z.string().min(1), response: responseSchema }).strict(),

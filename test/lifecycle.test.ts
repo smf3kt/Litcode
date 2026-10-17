@@ -327,16 +327,17 @@ test('manual compaction consumes pre instructions and displays post output', asy
     assert.match(JSON.stringify(f.requests[0]!.messages), /pre summary context/);
     assert.doesNotMatch(JSON.stringify(session.messages), /after summary context/);
     const displayed = statuses.filter(text => text.startsWith('hook PostCompact: '));
-    if (mode === 'visible' || mode === 'raw') assert.match(displayed.join('\n'), /after summary context/);
-    if (mode === 'hidden') assert.deepEqual(displayed, []);
+    // The source renders each record's raw output with its labels; structured
+    // fields (additionalContext, systemMessage, suppressOutput) are ignored.
+    assert.match(displayed.join('\n'), /PostCompact \[/);
+    if (mode !== 'bounded') assert.match(displayed.join('\n'), /after summary context/);
     if (mode === 'bounded') {
-      assert.ok(displayed.some(text => text.includes('budget first')));
-      assert.ok(displayed.some(text => text.includes('after [2J')));
       assert.ok(displayed.reduce((bytes, text) => bytes + Buffer.byteLength(text) + 1, 0) <= 96);
       assert.doesNotMatch(displayed.join('\n'), /\x1b|�/);
     }
     const post = session.events.findLast(event => event.kind === 'hook_result' && event.event === 'PostCompact');
-    assert.ok(post?.kind === 'hook_result'); assert.deepEqual(post.additionalContext, [context]);
+    assert.ok(post?.kind === 'hook_result'); assert.deepEqual(post.additionalContext, []);
+    assert.match(post.userDisplayMessage ?? '', /PostCompact \[.+\] completed successfully/);
     assert.deepEqual(session.events.filter(event => event.kind === 'hook_start').map(event => event.event), ['PreCompact', 'PostCompact']);
     assert.equal(session.awaitingResponse, false); assertPaired(session.messages);
   } finally { session.close(); f.cleanup(); }
