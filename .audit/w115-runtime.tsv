@@ -1,0 +1,3 @@
+2026-10-17T23:05:00Z	package	W115-01 Elicitation hook answers	schema 395776/395895（chunk-n3ykh62m.js）、f7r 3055929、cvt/dvt 2934418/2934736（chunk-sfn1dbxq.js）、Zgn/ehn（chunk-nejdhvxk.js）	action必填；content字符串或记录；后钩覆盖；阻断=拒绝；结果钩缺省内容保留本人内容	hooks/mcp-form-ownership/mcp-client-requests/interactive 97/97；tsc 0；build 0；全量 2,158/2,158；链 767/767
+2026-10-17T23:07:00Z	decision	W115-01 本地适配	本地MCP结果校验仍运行于表单答案；源响应通知无本地通知面；answerHeld/异步排除无对应	URL 模式钩子内容被本地校验拒绝（源直接转发）	.audit/w115-01-full.txt
+2026-10-17T23:09:00Z	verification	W115-01 验收：聚焦 97/97、tsc 0、build 0、2,158/2,158、767/767	钩子答题不弹对话框；结果钩覆盖动作与内容	notices 0；索引 75 chunks / 323,525 单位不变；identity 82dd4570…
