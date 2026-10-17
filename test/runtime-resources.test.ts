@@ -262,6 +262,34 @@ test("child instruction discoveries deduplicate owner events and skip released g
   } finally { await runtime.close(); f.cleanup(); }
 });
 
+test('stopState projects running background jobs and session cron tasks', async () => {
+  const f = fixture();
+  const now = new Date(2026, 9, 10, 12, 0);
+  const runtime = await createRuntime(f.config, unused, f.controller.signal, { scheduler: { timer: f.timer, now: () => now } });
+  const owner = 'stop-state';
+  try {
+    const tools = runtime.buildTools(f.config, owner);
+    const created = await selected(tools, 'cron_create').execute(
+      { cron: '*/5 * * * *', prompt: 'x'.repeat(1001), recurring: true }, { ...f.context, allowShell: true });
+    assert.ok((JSON.parse(String(created)) as { id?: string }).id);
+    const started = JSON.parse(await selected(tools, 'run_background').execute(
+      { command: 'sleep 5', description: 'tail' }, { ...f.context, allowShell: true })) as { id: string };
+    const state = runtime.stopState!(owner);
+    assert.equal(state.background_tasks.length, 1);
+    assert.equal(state.background_tasks[0]!.type, 'shell');
+    assert.equal(state.background_tasks[0]!.status, 'running');
+    assert.equal(state.background_tasks[0]!.command, 'sleep 5');
+    assert.equal(state.session_crons.length, 1);
+    assert.equal(state.session_crons[0]!.schedule, '*/5 * * * *');
+    assert.equal(state.session_crons[0]!.recurring, true);
+    assert.equal(state.session_crons[0]!.prompt, 'x'.repeat(1000) + '… [+1 chars]');
+    await selected(tools, 'task_stop').execute({ id: started.id }, { ...f.context, allowShell: true });
+    await selected(tools, 'get_background_task').execute({ id: started.id, wait_ms: 5000 }, { ...f.context, allowShell: true });
+    assert.deepEqual(runtime.stopState!(owner).background_tasks, []);
+    assert.equal(runtime.stopState!(owner).session_crons.length, 1);
+  } finally { await runtime.close(); f.cleanup(); }
+});
+
 test('effort settings accepts exactly five levels without introducing a default', () => {
   assert.deepEqual(parseSettings({}), {});
   for (const effort of ['low', 'medium', 'high', 'xhigh', 'max']) assert.deepEqual(parseSettings({ effort }), { effort });

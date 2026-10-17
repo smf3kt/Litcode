@@ -2151,3 +2151,11 @@ two builders omit the optional field. The title resolves from the latest
 `title` event through the same helper SessionStart uses.
 `agent-lifecycle` 38/38, tsc 0, build 0, full 2,128/2,128, chain 767/767,
 identity `fc290fa6…`. [W97 record](ports/W97-user-prompt-submit.md).
+
+W98-01 completes the Stop/SubagentStop runtime state. Both events now carry
+`background_tasks` (running shell/monitor jobs with the 1000-unit truncation)
+and `session_crons` (`id`, `schedule`, `recurring`, truncated `prompt`),
+projected from the owning runtime in the interactive, headless and every
+child-agent path. `background` 23/23, `runtime-resources` 11/11,
+`agent-lifecycle` 39/39, tsc 0, build 0, full 2,131/2,131, chain 767/767,
+identity `9b2dc7df…`. [W98 record](ports/W98-stop-runtime-state.md).

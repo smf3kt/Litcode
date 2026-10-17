@@ -201,6 +201,19 @@ test("createBackgroundTools exposes the five job tools with the right flags", as
 // Lifecycle: success, failure, timeout, cancellation, defaults
 // ---------------------------------------------------------------------------
 
+test("active reports only running jobs for the Stop payload", async () => {
+  const f = makeRegistry();
+  try {
+    const job = f.registry.start("sleep 5", "fixture job", 30_000, "run");
+    assert.deepEqual(f.registry.active(), [
+      { id: job.id, kind: "run", state: "running", command: "sleep 5", description: "fixture job" },
+    ]);
+    f.registry.stop(job.id);
+    await waitDone(f, job.id);
+    assert.deepEqual(f.registry.active(), []);
+  } finally { await f.registry.close(); }
+});
+
 test("run_background completes a natural success and reports exit 0", async () => {
   const f = makeRegistry();
   try {

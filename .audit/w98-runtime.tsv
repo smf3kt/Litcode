@@ -1,0 +1,3 @@
+2026-10-18T08:00:00Z	package	W98-01 Stop/SubagentStop 运行时状态	Sle 2945580、sdn 2944321、idn 2944915、Vg 16174、wcr 14951、_c 4917、Km 106264；BackgroundRegistry.active 与 runtime.stopState	两数组恒在；类型 shell/monitor；1000 截断；全部 Agent 构造路径接线	background 23/23；runtime-resources 11/11；agent-lifecycle 39/39；tsc 0；build 0；全量 2,131/2,131；链 767/767
+2026-10-18T08:03:00Z	decision	W98-01 适配	本地无 MCP 任务注册表与 pending 状态，仅 running 的 run/monitor 任务；isBackgrounded 不存在因全部任务均为后台	子代理按所属 runtime owner 取得同一投影	.audit/w98-01-full.txt
+2026-10-18T08:06:00Z	verification	W98-01 验收：background 23/23、runtime-resources 11/11、agent-lifecycle 39/39、tsc 0、build 0、2,131/2,131、767/767	active 仅运行中且 stop 后清空；runtime 投影含 shell 命令与截断 prompt；Stop 载荷两数组原样	notices 0；索引 75 chunks / 323,525 单位不变；identity 9b2dc7df…

@@ -24,6 +24,7 @@ export interface SkillExecutionOptions {
   hookOptions?: ChildHookOptions['hookOptions'];
   terminalSequence?: ChildHookOptions['terminalSequence'];
   instructionFiles?: ChildHookOptions['instructionFiles'];
+  stopState?: ChildHookOptions['stopState'];
 }
 
 function skillConversation(skill: SkillInfo, options: SkillExecutionOptions): Anthropic.MessageParam[] | undefined {
@@ -272,7 +273,8 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
     asyncHooks = createChildHookLifecycle(session, { hookOptions: options.hookOptions, terminalSequence: options.terminalSequence });
     agent = new Agent(session, options.provider, selected, { text: options.onText, hookOptions: asyncHooks.hookOptions,
       ...(options.instructionFiles ? { instructionFiles: paths => options.instructionFiles!(session.config.workspace, paths) } : {}),
-      ...(options.terminalSequence ? { terminalSequence: sequence => options.terminalSequence!(session.id, sequence) } : {}) });
+      ...(options.terminalSequence ? { terminalSequence: sequence => options.terminalSequence!(session.id, sequence) } : {}),
+      ...(options.stopState ? { stopState: options.stopState } : {}) });
     await agent.startSession(conversation !== undefined ? 'fork' : 'startup', options.signal);
     const result = await agent.run(body, options.signal);
     return capChildOutput(JSON.stringify({ session_id: session.id, reason: result.reason, text: result.text, model_calls: result.modelCalls }), config.maxOutputBytes);

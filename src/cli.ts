@@ -680,6 +680,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         theme: currentSession.config.theme, userDir: currentSession.config.configSources?.userDir,
         workspace: currentSession.config.workspace, plugins: currentSession.config.plugins }) : undefined;
       await new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {
+        stopState: () => currentRuntime.stopState?.(currentSession.id) ?? { background_tasks: [], session_crons: [] },
         status: text => { if (tui) tui.setStatus(text); else process.stderr.write(`${text}\n`); },
         ...(tui ? { terminalSequence: (sequence: string) => tui.writeTerminalSequence(sequence) }
           : process.stdin.isTTY && process.stdout.isTTY ? { terminalSequence: (sequence: string) => {
@@ -699,6 +700,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     const agent = activeAgent = new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {
       text: text => { finalText += text; headless!.text(text); }, status: status => headless!.status(status),
       hookOptions: currentRuntime.hookOptions?.(currentSession.config, currentSession.id),
+      stopState: () => currentRuntime.stopState?.(currentSession.id) ?? { background_tasks: [], session_crons: [] },
     });
     // Run SessionStart hooks once, for startup or resume.
     await agent.startSession(values.resume ? 'resume' : 'startup', controller.signal);
