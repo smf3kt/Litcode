@@ -934,6 +934,20 @@ tsc 0, thirty-three fixtures pass (the new `w65-d7y-verify` plus thirty-two carr
 
 **Next:** the dependency-pruning pass (nine zero-importer dependencies), the `utils/filePersistence/` rename and the analytics transports.
 
+## Dependency-pruning pass (`827583f`, landed)
+
+**Four declared packages had no importer left.** `@growthbook/growthbook` lost its client with the telemetry transport in step 7a — the module now keeps only the env-var and local-config override channels. `@opentelemetry/core` lost its direct importers in the same step, but it remains a dependency of the retained `@opentelemetry/sdk-*` packages, so only its root declaration is removed and its lock entry stays. `asciichart`'s only consumer was the removed usage-chart UI, and `themeColorToAnsi` — the exported helper that converted theme colors for that chart — had no caller itself. `qrcode` has no reference in the tree.
+
+**The lock was pruned by reachability, not by hand.** The cut walks node resolution from the remaining root dependency set and removes every entry no remaining package can reach (36 entries across the four packages and their transitive-only dependencies). The fixture reruns the same walk: every declared dependency resolves, and no entry is unreachable.
+
+**The record's earlier count was stale.** The "nine zero-importer dependencies" named from step 7p onward predated steps 7a-7y; a fresh scan over the committed tree finds four. `utils/theme.ts` keeps its theme tables and `getTheme`.
+
+### Verification
+
+tsc 0, thirty-four fixtures pass (the new `w65-d7z-verify` plus thirty-three carried, none amended), `git diff --check` clean, the orphan scan unchanged at its ten legitimate entries over 1607 files. No historical evidence file moved: the pruning touches package files and the theme module, which no earlier fixture records. The first cut left a blank line at EOF where the removed helper ended the file; the script trims to one final newline and the files were restored from `HEAD` before the replay.
+
+**Next:** the `utils/filePersistence/` rename and the analytics transports.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
