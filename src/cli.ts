@@ -304,6 +304,8 @@ function newConfig(
   if(settings.vimInsertModeRemaps!==undefined)config.vimInsertModeRemaps=settings.vimInsertModeRemaps;
   if (settings.maxProseWidth !== undefined) config.maxProseWidth = settings.maxProseWidth;
   if (settings.syntaxHighlightingDisabled !== undefined) config.syntaxHighlightingDisabled = settings.syntaxHighlightingDisabled;
+  if (settings.enableWorkflows !== undefined) config.enableWorkflows = settings.enableWorkflows;
+  if (settings.workflowKeywordTriggerEnabled !== undefined) config.workflowKeywordTriggerEnabled = settings.workflowKeywordTriggerEnabled;
   if (settings.theme !== undefined) config.theme = settings.theme;
   if (settings.statusLine !== undefined) config.statusLine = settings.statusLine;
   config.thinking = values['no-thinking']

@@ -1735,6 +1735,52 @@ test('terminal end, close and rendering errors cancel the active turn and releas
   context.mock.timers.reset();
 });
 
+test('alt+w dismisses and restores the workflow keyword run for the draft', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 140, rows: 10 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).join('\n');
+  try {
+    key('plain');
+    key('\x1bw');
+    assert.equal(frame().includes('Ultracode keyword ignored'), false, 'no keyword run means no notice');
+    key(' ultracode');
+    key('\x1bw');
+    assert.ok(frame().includes('Ultracode keyword ignored'), 'dismissing shows the source notice');
+    key('\x1bw');
+    assert.equal(frame().includes('Ultracode keyword ignored'), false, 'restoring clears the notice');
+    key('\x1bw');
+    assert.ok(frame().includes('Ultracode keyword ignored'));
+    for (let index = 0; index < ' ultracode'.length; index++) key('\x7f');
+    assert.equal(frame().includes('Ultracode keyword ignored'), false, 'removing the run restores the gate');
+  } finally { tui.close(); }
+});
+
+test('the workflow keyword toggle is inactive outside its availability and trigger gates', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 140, rows: 10 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).join('\n');
+  try {
+    key('ultracode');
+    tui.setWorkflowKeywordSettings({ available: false, triggerEnabled: true });
+    key('\x1bw');
+    assert.equal(frame().includes('Ultracode keyword ignored'), false);
+    tui.setWorkflowKeywordSettings({ available: true, triggerEnabled: false });
+    key('\x1bw');
+    assert.equal(frame().includes('Ultracode keyword ignored'), false);
+    tui.setWorkflowKeywordSettings({ available: true, triggerEnabled: true });
+    key('\x1bw');
+    assert.ok(frame().includes('Ultracode keyword ignored'));
+  } finally { tui.close(); }
+});
+
 test('a terminal can open the full-screen interface and leave it on exit', { timeout: 60_000 }, () => {
   // Same PTY arrangement as the bare-invocation case: `script` allocates the
   // terminal, and the session runs behind a shell pipeline because `script`

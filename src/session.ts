@@ -72,6 +72,9 @@ export type SessionConfig = {
   vimInsertModeRemaps?: Record<string,unknown>;
   maxProseWidth?: number;
   syntaxHighlightingDisabled?: boolean;
+  /** Composer workflow-keyword gates: the `dg` availability switch and the `C7t` trigger setting. */
+  enableWorkflows?: boolean;
+  workflowKeywordTriggerEnabled?: boolean;
   theme?: ThemeSetting;
   statusLine?: import('./tui-statusline.js').StatusLineSetting;
   webSearch?: WebSearchConfig;
@@ -189,6 +192,10 @@ export const configSchema = z.object({
   vimInsertModeRemaps: vimRemapsSchema,
   maxProseWidth: z.number().int().min(40).optional(),
   syntaxHighlightingDisabled: z.boolean().optional(),
+  // `enableWorkflows` and `workflowKeywordTriggerEnabled` are the two settings the composer's
+  // workflow-keyword gate reads (chunk-c5zwk83v.js `dg`/`C7t`).
+  enableWorkflows: z.boolean().optional(),
+  workflowKeywordTriggerEnabled: z.boolean().optional(),
   theme: z.string().refine(value => parseTheme(value) !== undefined, 'Invalid theme').optional(),
   statusLine: statusLineSchema,
   webSearch: webSearchConfigSchema.optional(),

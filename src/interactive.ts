@@ -26,6 +26,7 @@ import { saveThemeSetting, saveEditorMode } from './theme-settings.js';
 import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
 import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
+import { workflowsAvailable } from './tui-input-highlights.js';
 import {
   expandUserSkill,
   findSkill,
@@ -212,6 +213,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       spinnerVerbs:session.config.spinnerVerbs});
     terminal?.setMaxProseWidth?.(session.config.maxProseWidth);
     terminal?.setSyntaxHighlightingDisabled?.(session.config.syntaxHighlightingDisabled);
+    terminal?.setWorkflowKeywordSettings?.({
+      available: workflowsAvailable(session.config.enableWorkflows),
+      triggerEnabled: session.config.workflowKeywordTriggerEnabled ?? true,
+    });
     terminal?.bindThemeCatalog?.(session.config.configSources?.userDir, session.config.workspace, session.config.plugins);
     terminal?.setTheme?.(session.config.theme);
     terminal?.bindStatusLine?.(session);

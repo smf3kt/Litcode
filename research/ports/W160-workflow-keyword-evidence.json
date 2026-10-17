@@ -1,0 +1,88 @@
+{
+  "schema": "W160WorkflowKeyword.v1",
+  "package": "W160-workflow-keyword",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      {
+        "module": "chunk-24k7d6mw.js",
+        "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+        "ranges": [
+          { "name": "jl (alt+w toggle callback)", "range": [827947, 828285], "units": 338, "digest": "18aede5c784a53d7a25018c51bf5700e7f3f4127ccd1a0b5ae614d6680a7de30", "note": "flips Zi when Art(value) is non-empty; raises workflow-keyword-ignored (5000ms) or removes it" },
+          { "name": "ul (input subscription)", "range": [822206, 822361], "units": 155, "digest": "c985676ac75db515f2503baecde35d5502e402a10f3388d0bae221a744041118", "note": "when the value changes and Zi is set and the keyword runs are empty, clears Zi and the ignored notice" }
+        ]
+      },
+      {
+        "module": "chunk-c5zwk83v.js",
+        "sha256": "6959b4be7259da93c2fa4cf4ae0704ff8c14f60a1967d7bdc4dbee0f675828a60",
+        "ranges": [
+          { "name": "dg", "range": [2239, 2275], "units": 36, "digest": "7941a836e0c9ca8dd0ffb702c5ee13d398cc8089109e6fe4d7cf00ea86bcce61", "note": "returns $uo() === undefined" },
+          { "name": "$uo", "range": [2275, 2697], "units": 422, "digest": "8645cff93618b4042776c03aef70c03ae3f69c17c6e2b5c4816dc7e465cd32fc", "note": "managed settings, org policy, plan availability, CLAUDE_CODE_DISABLE_WORKFLOWS, enableWorkflows" },
+          { "name": "C7t", "range": [2849, 2920], "units": 71, "digest": "e4a47cc8594a8d8aa283fe18d544247c828dc601495811fcb96da60d74bf530c", "note": "settings.workflowKeywordTriggerEnabled ?? true" }
+        ]
+      }
+    ],
+    "notice": {
+      "key": "workflow-keyword-ignored",
+      "text": "Ultracode keyword ignored for this prompt · alt+w to undo",
+      "priority": "immediate",
+      "timeoutMs": 5000
+    },
+    "reused": [
+      { "names": ["Art", "Qp", "IE"], "source": "chunk-n3ykh62m.js [453609,454576) 967 units sha256 b5d343e8a5cbb61dd85136dd428268277b8a9f6482164f9d0df9e3a3c3e30f12", "product": "src/tui-input-highlights-source.ts", "note": "the keyword-run matcher was already copied; the toggle consumes it unchanged" },
+      { "names": ["composerHighlights"], "product": "src/tui-input-highlights.ts", "note": "the workflowKeyword gate already existed and is fed by the new dismissal state" }
+    ],
+    "rewrite": [
+      {
+        "source": "dg()/$uo(): managed-settings exclusion, org policy, plan availability and the source enableWorkflows gate",
+        "reason": "this runtime has no managed, org or plan surface, and its process environment carries strings, so the source's boolean-identity CLAUDE_CODE_WORKFLOWS checks have no reachable true/false states",
+        "replacement": "workflowsAvailable(enableWorkflows, env): a non-empty CLAUDE_CODE_DISABLE_WORKFLOWS disables, enableWorkflows defaults to true"
+      },
+      {
+        "source": "the composer's keyed notification queue (workflow-keyword-ignored and the adjacent workflow-keyword-active notice)",
+        "reason": "the TUI has one status row, and the active state is already visible as the keyword highlight",
+        "replacement": "the ignored notice only, with the source text and 5000ms timeout on the status row; the active notice is not raised"
+      },
+      {
+        "source": "Rl = us(\"chat:workflowKeywordToggle\",\"Chat\",\"alt+w\") interpolated into the notice text",
+        "reason": "the product's TUI binding table is fixed, so the source fallback label is the binding",
+        "replacement": "the literal alt+w in the notice text"
+      }
+    ]
+  },
+  "product": {
+    "files": [
+      "src/tui.ts",
+      "src/tui-input-highlights.ts",
+      "src/terminal.ts",
+      "src/interactive.ts",
+      "src/session.ts",
+      "src/runtime.ts",
+      "src/cli.ts",
+      "src/reload.ts",
+      "test/tui.test.ts",
+      "test/input-decorations.test.ts",
+      "test/runtime.test.ts"
+    ],
+    "behavior": [
+      "The toggle is bound as chat:workflowKeywordToggle on meta+w and only acts when workflowsAvailable() and workflowKeywordTriggerEnabled both hold and the draft has non-empty Art(value) runs.",
+      "Dismissing suppresses the keyword highlight through composerHighlights' workflowKeyword gate, shows the source notice on the status row for 5000ms, and keeps the dismissal across further edits.",
+      "Pressing alt+w again clears the notice and restores the highlight.",
+      "Editing until the keyword runs disappear clears the dismissal and the notice, mirroring the source input subscription.",
+      "The two settings parse strictly, merge into the CLI config, reload live through bindConfigWatch, and reach the TUI through setWorkflowKeywordSettings."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 82, "failed": 0, "files": ["test/tui.test.ts", "test/input-decorations.test.ts", "test/runtime.test.ts"], "new": 3 },
+    "full": { "passed": 2450, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0
+  },
+  "identity": {
+    "sha256": "b2c11915fe65b7a60b1614a7227cfdf2ff4869a28ff37cde988312d84e215d96",
+    "inputs": 616,
+    "validation": 216,
+    "build": 425
+  }
+}

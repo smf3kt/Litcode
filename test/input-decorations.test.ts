@@ -9,7 +9,7 @@ import { PassThrough, Writable } from 'node:stream';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { paintedDecorations, normalizedRuns, caretVisibleRuns, highlightRows, type DecorationRun, type PromptSegment } from '../src/tui-input-decorations.js';
-import { composerBaseSpans, composerHighlights } from '../src/tui-input-highlights.js';
+import { composerBaseSpans, composerHighlights, workflowsAvailable } from '../src/tui-input-highlights.js';
 import { d3n, ewe, j5r } from '../src/tui-input-highlights-source.js';
 import { layoutInput } from '../src/tui-input-navigation.js';
 import { S9r, b9r, OOe } from '../src/plugin-chain-decorations-source.js';
@@ -261,6 +261,14 @@ test('slash-command runs are suggestions only for names the host knows', () => {
     [{ start: 0, end: 5, color: 'suggestion', priority: 5 }], 'the trailing dot is not part of the name');
   assert.deepEqual(composerBaseSpans({ value: '/help me', caret: 8, storeValue: '/help me' }), [],
     'a host with no known commands marks nothing');
+});
+
+test('workflow availability keeps the local setting and the disable switch', () => {
+  assert.equal(workflowsAvailable(undefined, {}), true, 'the local default is available');
+  assert.equal(workflowsAvailable(true, {}), true);
+  assert.equal(workflowsAvailable(false, {}), false);
+  assert.equal(workflowsAvailable(true, { CLAUDE_CODE_DISABLE_WORKFLOWS: '1' }), false);
+  assert.equal(workflowsAvailable(true, { CLAUDE_CODE_DISABLE_WORKFLOWS: '' }), true, 'an empty switch is unset');
 });
 
 test('the remaining producers keep the composer\'s order and shapes', () => {

@@ -38,6 +38,7 @@ import {
 import { composerEditRelay, type ChainRelayKey, type ComposerEditRelay } from './plugin-chain-relay.js';
 import { paintedDecorations, normalizedRuns, highlightRows, type DecorationRun, type PaintedDecorations, type PromptSegment } from './tui-input-decorations.js';
 import { composerHighlights } from './tui-input-highlights.js';
+import { Art } from './tui-input-highlights-source.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { layoutEngine } from './tui-layout.js';
 import { renderPreviewMarkdown } from './tui-markdown.js';
@@ -268,6 +269,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private dialog: ActiveDialog | undefined;
   private status = '';
   private running = false;
+  /** Composer gates `dg()` and `C7t()`: on until the session settings say otherwise. */
+  private workflowKeywordAvailable = true;
+  private workflowKeywordTriggerEnabled = true;
+  /** `Zi`: the per-draft dismissal the alt+w toggle sets. */
+  private workflowKeywordDismissed = false;
+  /** The keyed notice `workflow-keyword-ignored`, shown on the one status row this terminal has. */
+  private workflowKeywordNotice: string | undefined;
+  private workflowKeywordNoticeTimer: ReturnType<typeof setTimeout> | undefined;
   private sourceSearch: HistorySearch | undefined;
   private sourcePicker: ScopedPicker | undefined;
   private pickerQuery = createEditorState();
@@ -312,7 +321,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.editRelay = composerEditRelay({
       read: () => ({ text: this.editor.text, cursor: this.editor.cursor }),
       commit: box => {
-        this.editor = { ...this.editor, text: box.text, cursor: box.cursor };
+        this.replaceDraft({ ...this.editor, text: box.text, cursor: box.cursor });
         this.publishDraft();
         this.render();
       },
@@ -432,8 +441,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         const text=result.content.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,'');
         this.undo.record(snapshot.text,snapshot.cursor,{immediate:true},snapshot.pastedContents);
         const pastedContents=referencedPastes(text,snapshot.pastedContents);
-        this.editor={...this.editor,text,cursor:text.length,pastedContents,historyIndex:this.editor.history.length,
-          historyDraft:text,historyDraftPastes:pastedContents};this.vim.reset();this.render();
+        this.replaceDraft({...this.editor,text,cursor:text.length,pastedContents,historyIndex:this.editor.history.length,
+          historyDraft:text,historyDraftPastes:pastedContents});this.vim.reset();this.render();
       }
       return result;
     } finally {if(this.editorSuspended)resume();if(this.editorController===controller)this.editorController=undefined;}
@@ -549,6 +558,68 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.selection = createSelection();
     if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
     this.render();
+  }
+
+  setWorkflowKeywordSettings(settings: { available: boolean; triggerEnabled: boolean }): void {
+    if (this.workflowKeywordAvailable === settings.available && this.workflowKeywordTriggerEnabled === settings.triggerEnabled) return;
+    this.workflowKeywordAvailable = settings.available;
+    this.workflowKeywordTriggerEnabled = settings.triggerEnabled;
+    this.render();
+  }
+
+  /** Source `da`: dismiss or restore the keyword run for this draft. The handler only exists while
+   *  `dg() && C7t()` and the draft holds a keyword run (`Pi.length > 0`), so an inactive press falls
+   *  through to the next context. */
+  private toggleWorkflowKeyword(): boolean {
+    if (!this.workflowKeywordAvailable || !this.workflowKeywordTriggerEnabled) return false;
+    if (Art(this.editor.text).length === 0) return false;
+    this.workflowKeywordDismissed = !this.workflowKeywordDismissed;
+    if (this.workflowKeywordDismissed) {
+      // Source notice: `Ultracode keyword ignored for this prompt${display ? ` · ${display} to undo` : ''}`;
+      // `us` returns the registry's own text, whose fallback here is the same literal the source passes.
+      this.showWorkflowKeywordNotice('Ultracode keyword ignored for this prompt · alt+w to undo');
+    } else {
+      this.clearWorkflowKeywordNotice();
+    }
+    this.render();
+    return true;
+  }
+
+  /** Source notice key `workflow-keyword-ignored`, `timeoutMs: 5000`. This terminal has one status row
+   *  instead of a keyed notification queue, so the clear only removes the row while it still shows it. */
+  private showWorkflowKeywordNotice(text: string): void {
+    this.workflowKeywordNotice = text;
+    this.setStatus(text);
+    if (this.workflowKeywordNoticeTimer !== undefined) clearTimeout(this.workflowKeywordNoticeTimer);
+    this.workflowKeywordNoticeTimer = setTimeout(() => {
+      this.workflowKeywordNoticeTimer = undefined;
+      if (this.workflowKeywordNotice !== text) return;
+      this.workflowKeywordNotice = undefined;
+      if (this.status === text) { this.status = ''; this.render(); }
+    }, 5_000);
+    this.workflowKeywordNoticeTimer.unref?.();
+  }
+
+  private clearWorkflowKeywordNotice(): void {
+    const text = this.workflowKeywordNotice;
+    if (text === undefined) return;
+    if (this.workflowKeywordNoticeTimer !== undefined) { clearTimeout(this.workflowKeywordNoticeTimer); this.workflowKeywordNoticeTimer = undefined; }
+    this.workflowKeywordNotice = undefined;
+    if (this.status === text) { this.status = ''; this.render(); }
+  }
+
+  /** Source input-store subscription: a draft that no longer holds a keyword run restores the gate. */
+  private settleWorkflowKeyword(): void {
+    if (!this.workflowKeywordDismissed) return;
+    if (Art(this.editor.text).length !== 0) return;
+    this.workflowKeywordDismissed = false;
+    this.clearWorkflowKeywordNotice();
+  }
+
+  /** Every draft replacement passes the source subscription `ul`, not only reducer transitions. */
+  private replaceDraft(next: EditorState): void {
+    this.editor = next;
+    this.settleWorkflowKeyword();
   }
 
   setTheme(value?: ThemeSetting): void {
@@ -711,6 +782,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.previewCoalescer.dispose();
     this.previewStore.setRaw(null);
     this.dialog?.finish();
+    if (this.workflowKeywordNoticeTimer !== undefined) { clearTimeout(this.workflowKeywordNoticeTimer); this.workflowKeywordNoticeTimer = undefined; }
+    this.workflowKeywordNotice = undefined;
     if (this.escapeTimer) clearTimeout(this.escapeTimer);
     this.decoder.reset(); this.keys.reset();
     this.options.input.off('data', this.onData);
@@ -813,6 +886,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (transition.effects.some(effect => effect.type === 'submit')) this.inputHistory.add({display:this.editor.text,pastedContents:this.editor.pastedContents});
     const draftBefore = { text: this.editor.text, cursor: this.editor.cursor };
     this.editor = transition.state;
+    this.settleWorkflowKeyword();
     this.publishDraft();
     this.relayEdit(action, draftBefore, sequence);
     if(transition.effects.some(effect=>effect.type==='submit')||action.type==='interrupt'&&!this.editor.running)this.vim.reset();
@@ -877,6 +951,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const highlights = composerHighlights({
       value: this.editor.text, caret: this.editor.cursor, storeValue: this.editor.text,
       isModalOverlayActive: this.dialog !== undefined,
+      workflowKeyword: this.workflowKeywordAvailable && this.workflowKeywordTriggerEnabled && !this.workflowKeywordDismissed,
     }, this.decorations.runs(this.editor.text));
     const lines: PromptLine[] = highlights.length === 0 ? body.lines
       : highlightRows(highlights, rendered, body.rowStartOffsets, this.editor.cursor)
@@ -1238,10 +1313,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       case 'chat:undo': this.dispatch({ type: 'undo' }); return true;
       case 'chat:clearInput':
         this.undo.clear();this.gestures.reset();this.vim.reset();
-        this.editor = { ...createEditorState(this.editor.history), historyPastes:this.editor.historyPastes,
-          running: this.editor.running, killRing: this.editor.killRing };
+        this.replaceDraft({ ...createEditorState(this.editor.history), historyPastes:this.editor.historyPastes,
+          running: this.editor.running, killRing: this.editor.killRing });
         this.render(); return true;
       case 'chat:stash': this.stashDraft(); return true;
+      case 'chat:workflowKeywordToggle': return this.toggleWorkflowKeyword();
       case 'chat:modelPicker': case 'chat:thinkingToggle': case 'app:toggleTodos': case 'chat:externalEditor': return true;
       default: return false;
     }
@@ -1254,9 +1330,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!current && !restored) return;
     this.undo.clear();
     this.stashedDraft = current;this.gestures.reset();this.vim.reset();
-    this.editor = { ...this.editor, text: restored?.text ?? '', cursor: restored?.cursor ?? 0,
+    this.replaceDraft({ ...this.editor, text: restored?.text ?? '', cursor: restored?.cursor ?? 0,
       pastedContents:structuredClone(restored?.pastedContents ?? {}),
-      historyIndex: this.editor.history.length, historyDraft: restored?.text ?? '',historyDraftPastes:structuredClone(restored?.pastedContents ?? {}) };
+      historyIndex: this.editor.history.length, historyDraft: restored?.text ?? '',historyDraftPastes:structuredClone(restored?.pastedContents ?? {}) });
     this.setStatus(restored ? current ? 'drafts swapped' : 'draft restored' : 'draft stashed');
   }
 
@@ -1300,7 +1376,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       changed: snapshot => this.publishSearch(snapshot),
       submit: entry => {
         if (this.closed) return;
-        this.editor = {...this.editor,text:entry.display,cursor:entry.display.length,pastedContents:structuredClone(entry.pastedContents)};
+        this.replaceDraft({...this.editor,text:entry.display,cursor:entry.display.length,pastedContents:structuredClone(entry.pastedContents)});
         this.dispatch({type:'submit'});
       },
     });
@@ -1308,7 +1384,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private publishSearch(snapshot: SearchSnapshot): void {
     if (this.closed || !this.sourceSearch) return;
     this.screen = snapshot.searching ? 'search' : 'chat';
-    this.editor = {...this.editor,text:snapshot.text,cursor:snapshot.cursor,pastedContents:snapshot.pastedContents};
+    this.replaceDraft({...this.editor,text:snapshot.text,cursor:snapshot.cursor,pastedContents:snapshot.pastedContents});
     if (!snapshot.searching) {this.queryUndo.clear();this.queryEditor=createEditorState();}
     else if(snapshot.query!==this.queryEditor.text)this.sourceSearch.queryCursor=snapshot.query.length;
     this.render();
@@ -1354,7 +1430,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!picker) return;
     const entry = await picker.chosenEntry();
     if (!entry || this.closed) return;
-    this.editor = {...this.editor,text:entry.display,cursor:entry.display.length,pastedContents:structuredClone(entry.pastedContents)};
+    this.replaceDraft({...this.editor,text:entry.display,cursor:entry.display.length,pastedContents:structuredClone(entry.pastedContents)});
     this.render();
   }
   private handleSourcePicker(action: EditorAction | string): boolean {
@@ -1424,8 +1500,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         || expandPastedText(history[index]!,this.editor.historyPastes[index]).includes(this.searchQuery)) {
         this.searchIndex = index;
         if (this.editor.text !== history[index]) this.undo.record(this.editor.text,this.editor.cursor,undefined,this.editor.pastedContents);
-        this.editor = { ...this.editor, text:history[index]!,cursor:history[index]!.length,
-          pastedContents:structuredClone(this.editor.historyPastes[index] ?? {}) };
+        this.replaceDraft({ ...this.editor, text:history[index]!,cursor:history[index]!.length,
+          pastedContents:structuredClone(this.editor.historyPastes[index] ?? {}) });
         this.render(); return;
       }
     }
@@ -1437,7 +1513,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.screen = 'chat';
     if (!execute) {
       if (this.editor.text !== this.searchDraft.text) this.undo.record(this.editor.text,this.editor.cursor,undefined,this.editor.pastedContents);
-      this.editor = { ...this.editor, ...this.searchDraft,pastedContents:structuredClone(this.searchDraft.pastedContents) };
+      this.replaceDraft({ ...this.editor, ...this.searchDraft,pastedContents:structuredClone(this.searchDraft.pastedContents) });
     }
     this.searchQuery = ''; this.searchIndex = -1; this.searchDraft = {text:'',cursor:0,pastedContents:{}};
     this.render();
