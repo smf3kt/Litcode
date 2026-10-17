@@ -2475,3 +2475,10 @@ unchanged; the source's stream-watchdog default and whole-query retry are not po
 retry restarts the request and does not replay executed tools. Focused 87/87, full 2237/2237,
 tsc 0, build 0, notices 0, both workflow smokes passed, identity `0d0226fa…`.
 [W134 record](ports/W134-workflow-agent-stall.md).
+
+W135 closes one PostToolBatch payload difference. The source's hook input is the common
+fields plus `tool_calls`, each `{tool_name, tool_input, tool_use_id, tool_response}` built from
+the resolved batch and its `tool_result` content. The independent transport now sends that
+shape and shares the same array with the classic chain event; `tool_use_ids` is no longer
+emitted. Focused 83/83, full 2238/2238, tsc 0, build 0, notices 0, identity `8066539f…`.
+[W135 record](ports/W135-post-tool-batch-input.md).

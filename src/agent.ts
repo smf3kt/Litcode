@@ -929,17 +929,21 @@ export class Agent {
     if (retryMeta) this.session.append({ kind: 'message', message: { role: 'user', content: PERMISSION_RETRY_META } });
     assertPaired(this.session.messages);
     if (!signal.aborted) {
-      const batch = await this.hook('PostToolBatch', { tool_use_ids: calls.map(call => call.id) }, signal);
+      // The source's PostToolBatch input is `{hook_event_name: 'PostToolBatch', tool_calls}` with
+      // `{tool_name, tool_input, tool_use_id, tool_response}` entries (`dK`, chunk-r2vtj1kh.js
+      // offset 193602; `Hkn` caller, chunk-5b2hxy2e.js [123931,124000)), raised once after the
+      // whole batch resolved. Both transports receive the same entries.
+      const toolCalls = calls.map((call, index) => ({
+        tool_name: call.name, tool_input: call.input, tool_use_id: call.id, tool_response: results[index]?.content,
+      }));
+      const batch = await this.hook('PostToolBatch', { tool_calls: toolCalls }, signal);
       // The chain's classic PostToolBatch event, on the same batch and the same per-call fields the
-      // source's own site uses (`Hkn` chunk-sfn1dbxq.js [3062957,3063491), hook input
-      // `{hook_event_name: 'PostToolBatch', tool_calls}` with `{tool_name, tool_input, tool_use_id,
-      // tool_response}` entries, raised after the results are known).
+      // source's own site uses (`Hkn` chunk-sfn1dbxq.js [3062957,3063491)).
       if (classicEventRaised(CLASSIC_POST_TOOL_BATCH)) {
         const raised = await raiseClassicEvent({
           event: CLASSIC_POST_TOOL_BATCH,
           hookInput: classicHookInput(CLASSIC_POST_TOOL_BATCH, {
-            session_id: this.session.id, cwd: c.workspace,
-            tool_calls: calls.map((call, index) => ({ tool_name: call.name, tool_input: call.input, tool_use_id: call.id, tool_response: results[index]?.content })),
+            session_id: this.session.id, cwd: c.workspace, tool_calls: toolCalls,
           }),
           signal,
         });

@@ -1,0 +1,32 @@
+{
+ "schema": "W135PostToolBatchInputEvidence.v1",
+ "package": "W135-01 — PostToolBatch input shape",
+ "date": "2026-10-18",
+ "question": "What does the recovered PostToolBatch hook input carry, and how does the product send it?",
+ "answer": "The input is the common hook fields plus hook_event_name and tool_calls, where each call is {tool_name, tool_input, tool_use_id, tool_response?} taken from the resolved batch and its tool_result content. The independent transport now sends that shape, and the classic chain uses the same array.",
+ "sourcePosition": {
+  "schema": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "perCall": 193602,
+   "event": 193669
+  },
+  "caller": {
+   "module": "extracted-v2/modules/chunk-5b2hxy2e.js",
+   "range": [123931, 124000]
+  }
+ },
+ "product": {
+  "files": ["src/hooks.ts", "src/agent.ts", "test/hooks.test.ts", "test/lifecycle.test.ts"],
+  "field": "tool_calls",
+  "removed": "tool_use_ids",
+  "sharedWithClassicChain": true
+ },
+ "verification": {
+  "focused": "83/83",
+  "full": "2238/2238",
+  "tsc": 0,
+  "build": 0,
+  "notices": 0,
+  "identity": "8066539fc572396aeb7f14e86d7335ed171c4dcf3c4e2f84aafa29807d15f396"
+ }
+}

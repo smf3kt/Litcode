@@ -323,8 +323,9 @@ test("new event payload fields serialize onto stdin", async () => {
   }[] = [
     {
       event: "PostToolBatch",
-      payload: { tool_use_ids: ["a", "b"] },
-      check: (p) => assert.deepEqual(p.tool_use_ids, ["a", "b"]),
+      payload: { tool_calls: [{ tool_name: "Bash", tool_input: { command: "true" }, tool_use_id: "a", tool_response: "ok" }] },
+      check: (p) => assert.deepEqual(p.tool_calls,
+        [{ tool_name: "Bash", tool_input: { command: "true" }, tool_use_id: "a", tool_response: "ok" }]),
     },
     {
       event: "PostToolUseFailure",

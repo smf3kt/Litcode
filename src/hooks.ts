@@ -307,8 +307,8 @@ export type HookPayload = {
   permission_mode?: string;
   stop_hook_active?: boolean;
   last_assistant_message?: string;
-  /** PostToolBatch: the tool_use_ids of every call in the resolved batch. */
-  tool_use_ids?: string[];
+  /** PostToolBatch: every call in the resolved batch (`dK`, chunk-r2vtj1kh.js offset 193602). */
+  tool_calls?: Array<{ tool_name: string; tool_input: unknown; tool_use_id: string; tool_response?: unknown }>;
   /** PostToolUseFailure / StopFailure: the failure text. */
   error?: string;
   /** PostToolUseFailure: true when the call was interrupted rather than failed. */
