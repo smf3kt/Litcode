@@ -117,10 +117,22 @@ export const z = (props: any): unknown => {
     : raw === 'ctrl+s' ? 'Ctrl+S' : raw;
   return r(n, { dimColor: true, children: [chord, ' ', String(props?.action ?? ''), ' '] });
 };
-export const rS = (props: any): unknown => e(n, {
-  color: props?.isFocused ? 'suggestion' : undefined,
-  children: props?.query ? String(props.query) : String(props?.placeholder ?? ''),
-});
+/** The frame's search field is the only element that carries its key handler. The host captures the
+ *  handler during render so the picker can drive movement without a focus manager; the frame keeps
+ *  owning query, focus and window state. */
+let frameKeyDown: ((event: any) => void) | undefined;
+export function dispatchFrameKey(event: any): boolean {
+  if (frameKeyDown === undefined) return false;
+  frameKeyDown(event);
+  return true;
+}
+export const rS = (props: any): unknown => {
+  if (typeof props?.onKeyDown === 'function') frameKeyDown = props.onKeyDown;
+  return e(n, {
+    color: props?.isFocused ? 'suggestion' : undefined,
+    children: props?.query ? String(props.query) : String(props?.placeholder ?? ''),
+  });
+};
 export const _C = (props: any): unknown => e(s, {
   flexDirection: 'row',
   children: [

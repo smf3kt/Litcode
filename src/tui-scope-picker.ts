@@ -1,4 +1,4 @@
-import { initializeScopePickerSource, scopePickerFramePropsFor } from './tui-scope-picker-source.js';
+import { buildScopePickerFrameProps, initializeScopePickerSource, scopePickerFramePropsFor } from './tui-scope-picker-source.js';
 import { TuiDocumentRenderer, type DocumentRow } from './tui-document-renderer.js';
 import { Mct } from './tui-input-paste-source.js';
 import { expandPastedText, type InputSnapshot, type PastedContents } from './tui-input-paste.js';
@@ -7,9 +7,9 @@ import { layoutEngine } from './tui-layout.js';
 import { Gt, Lr, TE } from './tui-render-engine.js';
 import { en } from './tui-react-runtime.js';
 import { jsx } from './tui-jsx.js';
-import { s, n } from './tui-base-components.js';
+import { s } from './tui-base-components.js';
 import { cellWidth } from './terminal.js';
-import { setFrameSize, setSearchInputHook } from './tui-scope-picker-frame-tui-host.js';
+import { dispatchFrameKey, setFrameSize, setSearchInputHook } from './tui-scope-picker-frame-tui-host.js';
 import type { InputHistoryEntry, InputHistoryTimestampedEntry } from './tui-input-history.js';
 
 export type PickerScope = 'session' | 'project' | 'everywhere';
@@ -51,6 +51,11 @@ export class ScopedPicker {
   private readonly scopes: readonly PickerScope[] = PICKER_SCOPE_ORDER;
   private scan: AbortController | undefined;
   private readonly converter = new TuiDocumentRenderer();
+  /** Frame surface state: the host supplies the budget, the frame owns focus/window, onFocus reports
+   *  the focused row back so the picker's cursor mirrors the visible selection. */
+  private frameRows = 24;
+  private frameItems: readonly PickerRow[] = [];
+  private readonly frameHost = () => this.frameElement();
   /** Caret offset inside the filter query, tracked by the owning editor. */
   queryCursor = 0;
 
@@ -93,10 +98,33 @@ export class ScopedPicker {
     this.scopeValue = next;
     this.cursor = 0; this.rows = []; this.status = null; this.publish(); this.start(); return true;
   }
+  /**
+   * Move the selection by `delta` list positions. The recovered frame owns focus and window, so the
+   * picker sends the frame's own key (`direction:"up"` maps the up key to focus+1) and lets the
+   * render report the focused row back through `onFocus`; the source clamps at both ends.
+   */
   move(delta: number): void {
+    if (!this.open || delta === 0) return;
     const visible = this.filtered();
-    if (!this.open || !visible.length) return;
-    this.cursor = (this.cursor + delta + visible.length) % visible.length;
+    if (!visible.length) return;
+    const next = Math.max(0, Math.min(visible.length - 1, this.cursor + delta));
+    if (next === this.cursor) return;
+    this.cursor = next;
+    for (let step = 0; step < Math.abs(delta); step++) dispatchFrameKey({ key: delta > 0 ? 'up' : 'down', ctrl: false, meta: false,
+      preventDefault() {}, stopImmediatePropagation() {} });
+    this.publish();
+  }
+  /** Page movement by the frame's visible count (`Bo`, clamped at both ends). */
+  page(delta: 1 | -1): void {
+    if (!this.open) return;
+    const visible = this.filtered();
+    if (!visible.length) return;
+    const step = Math.max(2, Math.min(8, this.frameRows - 10));
+    const next = Math.max(0, Math.min(visible.length - 1, this.cursor + delta * step));
+    if (next === this.cursor) return;
+    this.cursor = next;
+    dispatchFrameKey({ key: delta > 0 ? 'pageup' : 'pagedown', ctrl: false, meta: false,
+      preventDefault() {}, stopImmediatePropagation() {} });
     this.publish();
   }
   /** Resolve the accepted row exactly as the host applies it. */
@@ -121,37 +149,56 @@ export class ScopedPicker {
   close(): void {
     if (this.closed) return;
     this.closed = true; this.scan?.abort(); this.scan = undefined;
+    setSearchInputHook(undefined);
     try { this.converter.close(); } catch (error) { this.options.report(error); }
   }
-  /** Host rows: the same text the frame shows, carried as plain text for the host renderer. */
+  /** Host rows: the recovered frame's plain text, padded to the column width. */
   frame(columns: number, rows: number): string[] {
     const pad = (text: string) => { let width = 0; let out = '';
       for (const part of text) { const cells = cellWidth(part); if (width + cells > columns) break; out += part; width += cells; }
       return out + ' '.repeat(Math.max(0, columns - width)); };
-    const lines: string[] = [];
-    const scopeNote = this.status === 'truncated' ? ` · newest ${this.rows.length.toLocaleString()} only` : '';
-    lines.push(pad(`Search prompts · ${this.scopeValue}${scopeNote}${this.filterQuery ? `  Filter history… ${this.filterQuery}` : ''}`));
-    const budget = Math.max(1, rows - 3);
-    const list = this.filtered();
-    const start = list.length > budget ? Math.max(0, Math.min(this.cursor - Math.floor(budget / 2), list.length - budget)) : 0;
-    const visible = list.slice(start, start + budget);
-    for (let index = 0; index < visible.length; index++) {
-      const row = visible[index]!;
-      const stamp = new Date(row.entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      lines.push(pad(`${start + index === this.cursor ? '>' : ' '} ${stamp.padEnd(8)} ${row.firstLine}`));
-    }
-    if (!visible.length) lines.push(pad(this.emptyMessage()));
-    while (lines.length < rows - 1) lines.push(pad(''));
-    lines.push(pad('Enter select · Ctrl+S scope · Esc cancel'));
-    return lines.slice(0, rows);
+    return this.renderFrame(columns, rows).slice(0, rows).map((row) => pad(row.text));
   }
-  /** Plain text rows converted by the shared document renderer, for hosts that want styled rows. */
+  /** The same frame render with its ANSI cells, for the terminal and TUI painters. */
   styled(columns: number, rows: number): DocumentRow[] {
+    return this.renderFrame(columns, rows).slice(0, rows);
+  }
+  /**
+   * Draw the recovered frame in the persistent document tree. The frame's hooks own focus and
+   * window across calls; a query or scope change remounts the host component, which is the host-tree
+   * equivalent of the source query handler's `Vo({focus:0,window:0})` reset.
+   */
+  private renderFrame(columns: number, rows: number): DocumentRow[] {
     if (this.closed) return [];
-    const text = this.frame(columns, rows);
-    const tree = jsx(s, { flexDirection: 'column', width: columns, children:
-      text.map((line, index) => jsx(n, { children: line || ' ' }, String(index))) }, undefined);
+    this.frameRows = rows;
+    // The frame's memo compares `items` by identity; the scan mutates its row array in place, so a
+    // fresh slice is what makes the frame see growth (otherwise it keeps a stale empty window).
+    const items = this.filtered().slice();
+    this.frameItems = items;
+    setFrameSize({ columns, rows });
+    setSearchInputHook(() => ({ query: this.filterQuery, cursorOffset: this.queryCursor,
+      handleKeyDown: () => {}, handlePaste: () => {} }));
+    const tree = jsx(s, { flexDirection: 'column', width: columns, minHeight: rows, children:
+      jsx(this.frameHost, {}, `${this.scopeValue}\u0000${this.filterQuery}`) }, undefined);
     return this.converter.renderElement(tree, columns, { theme: 'dark' });
+  }
+  private frameElement(): unknown {
+    const items = this.frameItems;
+    return buildScopePickerFrameProps({
+      scope: this.scopeValue, status: this.status, label: this.rows.length.toLocaleString(),
+      query: this.filterQuery, items, cursor: this.cursor, hint: this.emptyMessage(), hintRows: this.frameRows,
+      onFocus: (item: PickerRow | undefined) => {
+        if (!item) return;
+        const index = items.indexOf(item);
+        if (index >= 0) this.cursor = index;
+      },
+    }, {
+      rw: (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      ae: cellWidth,
+      ct: (text: string, budget: number) => text.slice(0, Math.max(0, budget)),
+      Nu: (text: string) => text,
+      wy: () => null,
+    });
   }
   private filtered(): readonly PickerRow[] {
     const needle = this.filterQuery.trim().toLowerCase();

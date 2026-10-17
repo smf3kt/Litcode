@@ -1,0 +1,30 @@
+first rows [" ^   row 3","   row 2","   row 1",">> row 0"]
+hints ["↕ Enter select Esc cancel Ctrl+S scope"]
+after mount focus [ 'k0' ] [ 0 ]
+press up handled true prevented 1 stopped 1
+after up rows [" ^   row 3","   row 2",">> row 1","   row 0"]
+after up focus [ 'k0', 'k1' ] [ 0, 1 ]
+press up handled true prevented 1 stopped 1
+after up 2 rows [" ^   row 3",">> row 2","   row 1","   row 0"]
+after up 2 focus [ 'k0', 'k1', 'k2' ] [ 0, 1, 2 ]
+press down handled true prevented 1 stopped 1
+after down rows [" ^   row 3","   row 2",">> row 1","   row 0"]
+after down focus [ 'k0', 'k1', 'k2', 'k1' ] [ 0, 1, 2, 1 ]
+press pagedown handled true prevented 1 stopped 1
+after pagedown rows [" ^   row 3","   row 2","   row 1",">> row 0"]
+after pagedown focus [ 'k0', 'k1', 'k2', 'k1', 'k0' ] [ 0, 1, 2, 1, 0 ]
+press pagedown handled true prevented 1 stopped 1
+press pagedown handled true prevented 1 stopped 1
+press pagedown handled true prevented 1 stopped 1
+press pagedown handled true prevented 1 stopped 1
+press pagedown handled true prevented 1 stopped 1
+after 6 pagedown rows [" ^   row 3","   row 2","   row 1",">> row 0"]
+after 6 pagedown focus [ 'k0', 'k1', 'k2', 'k1', 'k0' ] [ 0, 1, 2, 1, 0 ]
+full layout ["Search prompts · everywhere"," ^   row 3","   row 2","   row 1",">> row 0","ab","↕ Enter select Esc cancel Ctrl+S scope","","","","","","",""]
+empty layout ["Search prompts · everywhere","No history yet","","","","zz","↕ Enter select Esc cancel Ctrl+S scope","","","","","","",""]
+focus before remount [ 'k0', 'k0', 'k1' ] [ 0, 0, 1 ]
+focus after remount [ 'k0', 'k1', 'k0' ] [ 0, 1, 0 ]
+preview rows 14 ["Search prompts · everywhere"," ^   row 3","   row 2","   row 1",">> row 0","╭──────────────────────────────────────────────────────────╮","│ preview row 0                                            │","│                                                          │","│                                                          │","│                                                          │","│                                                          │","│                                                          │","╰──────────────────────────────────────────────────────────╯","ab","↕ Enter select Esc cancel Ctrl+S scope"]
+preview rows 10 ["Search prompts · everywhere"," ^   row 1",">> row 0","╭──────────────────────────────────────────────────────────╮","│ preview row 0                                            │","│                                                          │","│                                                          │","╰──────────────────────────────────────────────────────────╯","ab","↕ Enter select Esc cancel Ctrl+S scope"]
+(node:74095) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

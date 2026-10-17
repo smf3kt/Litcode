@@ -74,8 +74,16 @@ try{
   // row is reached by walking the list, accepted into the draft, and then submitted explicitly. The
   // filter is cleared after opening so the steps below do not depend on the open-time query.
   const openPicker=async query=>{await run.send('\u0012');await run.until(()=>run.frame().includes('Search prompts'));
-    await run.send('\u007f'.repeat(80));await delay(60);if(query)await run.send(query);};
-  await openPicker();await run.send('\x1b[A');await run.until(()=>run.frame().includes('[Pasted text #1'));
+    await run.send('\u007f'.repeat(80));
+    // Each backspace re-renders; wait for the cleared query instead of assuming a fixed delay.
+    await run.until(()=>run.frame().includes('Filter history…'));
+    if(query)await run.send(query);};
+  // Visibility is not focus: the frame's window shows the row above the focused one. Walk the
+  // frame's own focus until the target row carries the `>` marker.
+  const focusedRow=text=>run.frame().split('\n').some(row=>row.startsWith('>')&&row.includes(text));
+  const walkTo=async text=>{for(let step=0;step<12&&!focusedRow(text);step++){await run.send('\x1b[A');await delay(40);}
+    await run.until(()=>focusedRow(text));};
+  await openPicker();await walkTo('[Pasted text #1');
   await run.send('\r');await run.until(()=>run.draft('[Pasted text #1'));assert.equal(requests.length,2);
   await run.send('\r');
   await run.until(()=>requests.length===3&&run.frame().includes('history accepted 3')&&(line?(run.output().match(/finished: end_turn/g)??[]).length===2:run.frame().includes('ready')));
@@ -114,8 +122,7 @@ try{
     await run.until(()=>requests.length===5&&run.frame().includes('history accepted 5'));
     assert.equal(requests[4].messages.filter(row=>row.role==='user').at(-1).content.startsWith('FOREIGN Needle'),true);
     // Accepting a folded row keeps the shared paste allocator; the new body rebases onto its payload.
-    await openPicker();await run.send('\x1b[A');await run.send('\x1b[A');
-    await run.until(()=>run.frame().includes('[Pasted text #1'));
+    await openPicker();await walkTo('[Pasted text #1');
     await run.send('\t');await run.until(()=>run.draft('[Pasted text #1'));assert.equal(requests.length,5);
     await run.send('\x1b[200~new\npaste\nbody\x1b[201~');await run.until(()=>/text #\d+ \+2 lines\]/.test(run.frame()));
     await run.send('\r');await completed(6,raw+'new\npaste\nbody');

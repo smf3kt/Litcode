@@ -17,3 +17,13 @@
 - [x] **The replacement frame is gone.** `pickerFrameProps` calls the recovered frame with the consumer props; the draft query seeds it.
 - [x] **The narrow projection fits.** Compact hint labels and a budget-shaped preview keep `Ctrl+S scope` visible at 40x10.
 - [x] **Sweep.** tsc 0, both copies unresolved 0, notices 0, 5/5 new, scope-picker 2/2, chain 767/767, full 2,073/2,073, identity `6e8c48df…`.
+
+
+## W46-03 acceptance (2026-10-17)
+
+- [x] **The frame is the ScopedPicker frame.** The class both terminal hosts use renders the recovered `gLt`/`Vse` element through the persistent document tree.
+- [x] **The frame owns focus and window.** Host movement dispatches the frame's own keys; `onFocus` mirrors the focused row into the picker cursor, and movement clamps instead of wrapping.
+- [x] **The source reset is preserved.** Scope and query changes remount the host component; a fresh item slice per render keeps the identity-based memo in step with the scan.
+- [x] **Both projections work.** `frame()` pads plain text and `styled()` returns ANSI cells; the TUI keeps the hint row in the footer and line mode draws the same rows.
+- [x] **The real CLI walks the focus.** `--search-chain` accepts the folded paste row with tab, rebases a new paste onto it, and passes in TUI and `--line` modes.
+- [x] **Sweep.** tsc 0, both generated copies unresolved 0, notices 0, 5/5 new, picker entry 2/2, chain 767/767, full 2,078/2,078, build 0, identity `e8177e84…`.

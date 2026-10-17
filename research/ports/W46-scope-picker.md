@@ -71,3 +71,33 @@ budget (`min(8, rows - 5)`) so a ten-row projection keeps the hint row.
 Verified: `test/tui-scope-picker-frame-tui.test.ts` 5/5, `test/scope-picker.test.ts` 2/2, full
 2,073/2,073, chain 767/767, tsc 0, both generated copies unresolved 0, notices 0, identity
 `6e8c48df…`.
+
+## W46-03 made the recovered frame the ScopedPicker frame (2026-10-17)
+
+The W46-02 frame was mounted only in the test-facing `ScopePicker`; the class both terminal hosts
+actually use is `ScopedPicker`. It now renders the same `gLt`/`Vse` element through its
+persistent document tree and projects the rows twice: `frame()` pads plain text for the tests and
+`styled()` returns the ANSI cells the TUI and line painters draw. The frame owns `{focus,window}`.
+
+The document tree has no focus manager, so the frame's only key handler, which rides on its search
+field (`rS` receives `props.onKeyDown` = `zr`), is captured at the host seam. `dispatchFrameKey`
+replays the frame's own key events, so movement stays the source's: up is focus+1 under
+`direction:"up"`, down is focus-1, ctrl+p/n match, and pageup/pagedown move by
+`Bo = max(DBe, min(TBe, rows - MBe)) = max(2, min(8, rows - 10))`. `onFocus` reports the focused row
+back and the picker mirrors it into its cursor, so the drawn marker, the picker selection and the
+accepted row are one state; `move` and `page` clamp rather than wrap.
+
+A query or scope change changes the host element key (`scope\0query`), which remounts the host
+component, the host-tree equivalent of the source query handler resetting `{focus:0,window:0}`.
+The scan mutates its row array in place while the frame memo compares `items` by identity, so each
+render passes a fresh slice; without it the frame kept a stale empty window.
+
+Host key mappings in `src/tui.ts` and `src/terminal.ts` follow the source mapping, including raw
+`\x1b[5~`/`\x1b[6~` paging. The preview height fits the frame budget so a ten-row projection keeps
+the hint row.
+
+Verified: `test/tui-scope-picker-frame-scoped.test.ts` 5/5, `test/picker-entry.test.ts` 2/2 in
+both modes, chain family 767/767, full 2,078/2,078, build 0, tsc 0, both generated copies
+unresolved 0, notices 0, index 75 chunks / 323,525 units, identity `e8177e84…`.
+`scripts/smoke-input-history.mjs --search-chain` passes in TUI and `--line` modes; its walk
+targets the focused row, because a visible row in the frame window is not necessarily the focus.

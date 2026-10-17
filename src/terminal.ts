@@ -781,7 +781,7 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
     if(!picker?.snapshot.searching)return false;
     if(typeof action==='string'){
       if(action==='historySearch:cycleScope'){picker.cycleScope();return true;}
-      if(action==='historySearch:next'){picker.move(-1);return true;}
+      if(action==='historySearch:next'){picker.move(1);return true;}
       if(action==='historySearch:cancel'){picker.cancel();return true;}
       // Source gLt return/tab both call `onSelect(<focused row>)`; the HistorySearch table names
       // enter `historySearch:execute`, so both actions select into the prompt and never run it.
@@ -795,8 +795,12 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
     if(sequence==='\t'||sequence==='\x1b'){this.acceptLinePicker();return true;}
     // Source gLt swallows return/tab when its window holds no row: no selection, no submit, no close.
     if(command==='submit'||command==='return'){this.acceptLinePicker();return true;}
-    if(command==='up'||sequence==='\x1b[A'){picker.move(-1);return true;}
-    if(command==='down'||sequence==='\x1b[B'){picker.move(1);return true;}
+    // Source gLt with `direction:"up"` draws a bottom-anchored list: the up key advances the focus
+    // index (the row above), so the picker's index delta follows the frame's mapping.
+    if(command==='up'||sequence==='\x1b[A'||sequence==='\x10'){picker.move(1);return true;}
+    if(command==='down'||sequence==='\x1b[B'||sequence==='\x0e'){picker.move(-1);return true;}
+    if(sequence==='\x1b[5~'){picker.page(1);return true;}
+    if(sequence==='\x1b[6~'){picker.page(-1);return true;}
     // Source gLt builds its query editor with `backspaceExitsOnEmpty:!1`.
     if(command==='backspace'&&this.queryEditor.text==='')return true;
     const edit=action.type==='key'?action.command?{type:action.command} as EditorAction:undefined:action;

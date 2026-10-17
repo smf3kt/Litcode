@@ -1,0 +1,21 @@
+(node:74216) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ ctrl+r opens the scoped picker in both terminal modes and only a selection replaces the draft (3826.92775ms)
+✔ the open picker owns the keyboard in both terminal modes (623.899583ms)
+(node:74217) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ the scoped picker frame
+  ✔ draws the recovered layout with the newest row at the bottom and the hint row (15.98475ms)
+  ✔ filters by the query, resets the focus and reports the focused row back (9.589292ms)
+  ✔ clamps movement at both ends and pages by the visible count (8.919ms)
+  ✔ reports the empty state for a query with no match (8.826042ms)
+  ✔ accepts the row under the frame focus (8.179208ms)
+✔ the scoped picker frame (52.055625ms)
+ℹ tests 7
+ℹ suites 1
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4835.222792
