@@ -2707,3 +2707,17 @@ environment check `mLr`, the settings read `hs`, the wrapper `gbt`/`AZ`/`_Fe`, t
 `xwt` and the render host `RFe` remain in later W157 steps. Focused 7/7, full 2381/2381, tsc 0,
 build 0, notices 0, identity `ab3d43d6…`.
 [W157a record](ports/W157a-wheel-acceleration.md).
+
+W157b landed the terminal environment probe the wheel path reads before stepping (3 blocks, 1,711
+UTF-16 units): the per-host answer cache and its invalidator, the Cursor / VS Code-version-window /
+xterm.js flood tests, the JetBrains terminal name table, the base selection with the
+`CLAUDE_CODE_SCROLL_SPEED` override, and the terminal version readers. Measured branch behaviour:
+an xterm.js DA reply is itself a flood, so it keeps the window curve; `TERM_PROGRAM=vscode` selects
+the decay curve outside the flood window; JediTerm takes base 2. The cache guard compares only
+xtversion, wheelFlood, jediTerm, wtSession and xtermJs, so a speed change needs the invalidator,
+and `AZ`'s identity comparison relies on the cache answering the same object. `q` is reused from
+the local-store copy, `Nx` from the text-style copy, `a` from the host environment; `B`/`Su`/`DT`
+are host bindings, and the `DT` capability/image-file getters stay with the capability-defaults
+subsystem. Focused 11/11, full 2392/2392, tsc 0, build 0, notices 0, identity `8ae9bc13…`. Next are
+the settings read `hs`, `gbt`/`AZ`/`_Fe`/`mLr`, the scroll dispatch `xwt` and the render host `RFe`.
+[W157b record](ports/W157b-terminal-environment.md).
