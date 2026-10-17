@@ -10,14 +10,24 @@ export const INTERACTION_LIMITS = Object.freeze({
 });
 
 export interface QuestionOption { label: string; description: string; preview?: string }
+export type QuestionKind = 'choice' | 'text' | 'number';
 export interface InteractionQuestion {
   question: string;
   header?: string;
   options: QuestionOption[];
   multiSelect: boolean;
+  /** Extended kinds only; `choice` is filled in when the host enables extended questions. */
+  kind?: QuestionKind;
+  description?: string;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  defaultValue?: number;
+  unit?: string;
 }
 /** Hosts render an additional Other text entry, separate from the listed options. */
-export interface AskUserQuestionRequest { questions: InteractionQuestion[] }
+export interface AskUserQuestionRequest { title?: string; questions: InteractionQuestion[] }
 export interface QuestionAnswer {
   questionIndex: number;
   selected: string[];
@@ -50,6 +60,14 @@ export interface InteractionToolOptions extends InteractionCallbacks {
    * script/style tags. Omission leaves previews opaque text.
    */
   previewFormat?: 'html';
+  /**
+   * Mirrors the host's `extendedQuestionsEnabled` launch option. When set,
+   * questions may declare `kind: "text"` (no options) or `kind: "number"`
+   * (min..max, optional step/defaultValue/unit), an optional top-level title,
+   * and the per-kind field rules from the recovered schema. Omitted kind
+   * becomes `"choice"` before the host sees the request.
+   */
+  extendedQuestions?: boolean;
 }
 
 const text = (max: number) => z.string().min(1).max(max).refine(value => value.trim().length > 0, 'Text must be nonblank');
@@ -65,7 +83,61 @@ const questionShape = z.object({
   if (new Set(labels).size !== labels.length) ctx.addIssue({ code: 'custom', message: 'Option labels must be unique' });
   if (labels.includes('other')) ctx.addIssue({ code: 'custom', message: 'Other is supplied by the host as a text entry' });
 });
-const askShape = z.object({ questions: z.array(questionShape).min(1).max(INTERACTION_LIMITS.questions) }).strict();
+/** Recovered `me()`: extended kinds, their field applicability and number bounds. */
+const extendedQuestionShape = z.object({
+  question: text(INTERACTION_LIMITS.questionChars), header: text(INTERACTION_LIMITS.headerChars).optional(),
+  options: z.array(optionShape).max(INTERACTION_LIMITS.options).default(() => []),
+  multiSelect: z.boolean().default(false),
+  kind: z.enum(['choice', 'text', 'number']).optional(),
+  description: z.string().optional(), placeholder: z.string().optional(),
+  min: z.number().optional(), max: z.number().optional(), step: z.number().positive().optional(),
+  defaultValue: z.number().optional(), unit: z.string().optional(),
+}).strict().superRefine((question, ctx) => {
+  const kind = question.kind ?? 'choice';
+  for (const [field, expected] of [['placeholder', 'text'], ['min', 'number'], ['max', 'number'],
+    ['step', 'number'], ['defaultValue', 'number'], ['unit', 'number']] as const) {
+    if (kind !== expected && question[field] !== undefined) {
+      ctx.addIssue({ code: 'custom', path: [field], message: `${field} applies only to "${expected}" questions.` });
+    }
+  }
+  if (kind === 'choice') {
+    if (question.options.length < 2) {
+      ctx.addIssue({ code: 'custom', path: ['options'], message: 'A choice question needs 2-4 options; use kind "text" for an open-ended question.' });
+    }
+  } else {
+    if (question.options.length > 0) {
+      ctx.addIssue({ code: 'custom', path: ['options'], message: `A "${kind}" question takes no options; remove them or omit kind to ask a choice question.` });
+    }
+    if (question.multiSelect) {
+      ctx.addIssue({ code: 'custom', path: ['multiSelect'], message: `multiSelect applies only to choice questions, not "${kind}".` });
+    }
+  }
+  if (kind === 'number') {
+    const { min, max, defaultValue } = question;
+    if (min === undefined || max === undefined || !(min < max)) {
+      ctx.addIssue({ code: 'custom', path: ['min'], message: 'A number question needs numeric min and max with min < max.' });
+      return;
+    }
+    if (defaultValue !== undefined && (defaultValue < min || defaultValue > max)) {
+      ctx.addIssue({ code: 'custom', path: ['defaultValue'], message: 'defaultValue must lie within min..max.' });
+    }
+  }
+  const labels = question.options.map(option => option.label.trim().toLowerCase());
+  if (new Set(labels).size !== labels.length) ctx.addIssue({ code: 'custom', message: 'Option labels must be unique' });
+  if (labels.includes('other')) ctx.addIssue({ code: 'custom', message: 'Other is supplied by the host as a text entry' });
+});
+/** Recovered `Q.check`: question texts are unique across the call. */
+function uniqueQuestionTexts(request: { questions: { question: string }[] }, ctx: z.RefinementCtx): void {
+  const texts = request.questions.map(question => question.question);
+  if (new Set(texts).size !== texts.length) {
+    ctx.addIssue({ code: 'custom', path: ['questions'], message: 'Question texts must be unique, option labels must be unique within each question' });
+  }
+}
+const askShape = z.object({ questions: z.array(questionShape).min(1).max(INTERACTION_LIMITS.questions) }).strict().superRefine(uniqueQuestionTexts);
+const extendedAskShape = z.object({
+  title: z.string().optional(),
+  questions: z.array(extendedQuestionShape).min(1).max(INTERACTION_LIMITS.questions),
+}).strict().superRefine(uniqueQuestionTexts);
 const answerShape = z.object({ answers: z.array(z.object({
   questionIndex: z.number().int().min(0).max(INTERACTION_LIMITS.questions - 1),
   selected: z.array(text(INTERACTION_LIMITS.labelChars)).max(INTERACTION_LIMITS.options),
@@ -121,7 +193,9 @@ function parse<T>(shape: z.ZodType<T>, input: unknown, tool: string): T {
   const result = shape.safeParse(input);
   if (!result.success) {
     const issue = result.error.issues[0];
-    throw new Error(`${tool}: invalid data at ${issue.path.join('.') || 'input'} (${issue.code})`);
+    // Recovered schema rules carry model-facing messages; keep them on custom issues.
+    const detail = issue.code === 'custom' ? `: ${issue.message}` : '';
+    throw new Error(`${tool}: invalid data at ${issue.path.join('.') || 'input'} (${issue.code})${detail}`);
   }
   if (Buffer.byteLength(JSON.stringify(result.data)) > INTERACTION_LIMITS.payloadBytes) {
     throw new Error(`${tool}: data exceeds its byte budget`);
@@ -225,6 +299,62 @@ function validAnswer(input: unknown, request: AskUserQuestionRequest): AskUserQu
 }
 
 const stringProperty = (maxLength: number, description?: string) => ({ type: 'string', minLength: 1, maxLength, ...(description ? { description } : {}) });
+/** The advertised schema matches the active question kind surface. */
+function askInputSchema(extended: boolean): Record<string, unknown> {
+  const properties = extended ? {
+    question: stringProperty(INTERACTION_LIMITS.questionChars),
+    header: stringProperty(INTERACTION_LIMITS.headerChars),
+  } : {
+    question: stringProperty(INTERACTION_LIMITS.questionChars), header: stringProperty(INTERACTION_LIMITS.headerChars),
+    multiSelect: { type: 'boolean' },
+    options: {
+      type: 'array', minItems: 2, maxItems: INTERACTION_LIMITS.options,
+      items: { type: 'object', additionalProperties: false, required: ['label', 'description'], properties: {
+        label: stringProperty(INTERACTION_LIMITS.labelChars, 'Unique option label; Other is reserved for the host.'),
+        description: stringProperty(INTERACTION_LIMITS.descriptionChars),
+        preview: { type: 'string', maxLength: INTERACTION_LIMITS.previewChars,
+          description: 'Optional text or Markdown example displayed when this option is focused.' },
+      } },
+    },
+  };
+  if (extended) {
+    return {
+      type: 'object', additionalProperties: false, required: ['questions'],
+      properties: {
+        title: { type: 'string', description: 'Optional single-line heading shown above the questions.' },
+        questions: {
+          type: 'array', minItems: 1, maxItems: INTERACTION_LIMITS.questions,
+          items: { type: 'object', additionalProperties: false, required: ['question'], properties: {
+            question: properties.question, header: properties.header, kind: { type: 'string', enum: ['choice', 'text', 'number'] },
+            description: { type: 'string' }, placeholder: { type: 'string' },
+            min: { type: 'number' }, max: { type: 'number' }, step: { type: 'number', exclusiveMinimum: 0 },
+            defaultValue: { type: 'number' }, unit: { type: 'string' },
+            options: {
+              type: 'array', maxItems: INTERACTION_LIMITS.options, default: [],
+              items: { type: 'object', additionalProperties: false, required: ['label', 'description'], properties: {
+                label: stringProperty(INTERACTION_LIMITS.labelChars, 'Unique option label; Other is reserved for the host.'),
+                description: stringProperty(INTERACTION_LIMITS.descriptionChars),
+                preview: { type: 'string', maxLength: INTERACTION_LIMITS.previewChars,
+                  description: 'Optional text or Markdown example displayed when this option is focused.' },
+              } },
+            },
+            multiSelect: { type: 'boolean', default: false },
+          } },
+        },
+      },
+    };
+  }
+  return {
+    type: 'object', additionalProperties: false, required: ['questions'],
+    properties: { questions: {
+      type: 'array', minItems: 1, maxItems: INTERACTION_LIMITS.questions,
+      items: {
+        type: 'object', additionalProperties: false, required: ['question', 'options', 'multiSelect'],
+        properties,
+      },
+    } },
+  };
+}
 function contextCallbacks(context: ToolContext): InteractionCallbacks | undefined {
   return (context as ToolContext & { interaction?: InteractionCallbacks }).interaction;
 }
@@ -239,6 +369,7 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
   }
   const callbacks = { ask: options.ask, plan: options.plan, report: options.report };
   const previewFormat = options.previewFormat;
+  const extendedQuestions = options.extendedQuestions === true;
   const dispatch = createQueue(timeoutMs, maxPending);
   return [
     {
@@ -247,34 +378,21 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
         name: 'ask_user_question',
         description: 'Ask the user 1-4 finite preference or decision questions with 2-4 labeled options each. ' +
           'The host supplies an Other text entry. multiSelect permits multiple options and Other together. ' +
+          (extendedQuestions
+            ? 'Extended kinds: "text" for open-ended input with no options, "number" for a value between min and max with an optional step, defaultValue and unit; omitted kind means "choice". '
+            : '') +
           'Optional previews show concrete layouts or examples for the focused option. ' +
           'Never request credentials, passwords, tokens, payment details or authentication codes. Requires a host ask callback.',
-        input_schema: {
-          type: 'object', additionalProperties: false, required: ['questions'],
-          properties: { questions: {
-            type: 'array', minItems: 1, maxItems: INTERACTION_LIMITS.questions,
-            items: {
-              type: 'object', additionalProperties: false, required: ['question', 'options', 'multiSelect'],
-              properties: {
-                question: stringProperty(INTERACTION_LIMITS.questionChars), header: stringProperty(INTERACTION_LIMITS.headerChars),
-                multiSelect: { type: 'boolean' },
-                options: {
-                  type: 'array', minItems: 2, maxItems: INTERACTION_LIMITS.options,
-                  items: { type: 'object', additionalProperties: false, required: ['label', 'description'], properties: {
-                    label: stringProperty(INTERACTION_LIMITS.labelChars, 'Unique option label; Other is reserved for the host.'),
-                    description: stringProperty(INTERACTION_LIMITS.descriptionChars),
-                    preview: { type: 'string', maxLength: INTERACTION_LIMITS.previewChars,
-                      description: 'Optional text or Markdown example displayed when this option is focused.' },
-                  } },
-                },
-              },
-            },
-          } },
-        },
+        input_schema: askInputSchema(extendedQuestions) as ToolDefinition['schema']['input_schema'],
       },
       async execute(input, context) {
         checkSignal(context.signal);
-        const request = parse(askShape, input, 'ask_user_question');
+        const shape = (extendedQuestions ? extendedAskShape : askShape) as unknown as z.ZodType<AskUserQuestionRequest>;
+        const request = parse(shape, input, 'ask_user_question');
+        if (extendedQuestions) {
+          // Recovered `K`: the host card input always carries an explicit kind.
+          for (const question of request.questions) question.kind = question.kind ?? 'choice';
+        }
         if (previewFormat === 'html') {
           for (const question of request.questions) for (const option of question.options) {
             const error = previewFragmentError(option.preview);

@@ -1,0 +1,3 @@
+2026-10-17T14:10:00Z	package	W70-01 扩展问题类型 schema	G/me [7068,9556) 逐类字段规则与消息；X/Y 选项、B 基础问题、Q.check 唯一性、be 输入 schema、K kind 缺省；产品以 extendedQuestions 选项承载	choice/text/number 全规则移植；答案合同、J 注释、卡片映射不移植（记录）	interaction-tools 27/27；tsc 0；build 0；全量 2,098/2,098；链 767/767
+2026-10-17T14:12:00Z	decision	W70-01 以显式 extendedQuestions 选项承载宿主开关	① 无 launchOptions 存储；② 默认关闭保持现有严格 schema 与 TUI 行为；③ 自定义 schema 消息随错误返回，源消息可观察；④ 扩展选项保留必填 description 以适配产品宿主渲染	残余：完整渲染器、格式化宿主、notes/annotations、卡片答案合同	.audit/w70-01-full.txt
+2026-10-17T14:15:00Z	verification	W70-01 验收：interaction-tools 27/27、tsc 0、build 0、2,098/2,098、767/767	kind 缺省与字段转发；六类规则消息；未开启时 title/kind 被拒；重复问题文本被拒	notices 0；索引 75 chunks / 323,525 单位不变；identity 054cdd94…（inputs 2687f006…、build e5b2e0f8…）
