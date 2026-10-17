@@ -1,0 +1,3 @@
+2026-10-18T07:00:00Z	package	W97-01 UserPromptSubmit 载荷	Yir 2952083、qtt 2952369、schema 194211；currentSessionTitle 复用	prompt + session_title；删除 source	agent-lifecycle 38/38；tsc 0；build 0；全量 2,128/2,128；链 767/767
+2026-10-18T07:02:00Z	decision	W97-01 纠正	先前每个提示固定 source:"user"，但两个源 builder 都不发该字段；SDK/loop/事件注入的提示并非用户作者	schema 枚举保留为契约，不伪造值	.audit/w97-01-full.txt
+2026-10-18T07:05:00Z	verification	W97-01 验收：agent-lifecycle 38/38、tsc 0、build 0、2,128/2,128、767/767	捕获断言 prompt 与 title，且 "source" in payload === false	notices 0；索引 75 chunks / 323,525 单位不变；identity fc290fa6…
