@@ -975,6 +975,12 @@ test("event output translation retains permission, updated result and general sp
   assert.equal("initialUserMessage" in emptyInitial, false);
   const submitInitial = await runHooks({ UserPromptSubmit: [emit({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", initialUserMessage: "not a start" } })] }, "UserPromptSubmit", {});
   assert.equal("initialUserMessage" in submitInitial, false);
+  const reload = await runHooks({ SessionStart: [emit({ hookSpecificOutput: { hookEventName: "SessionStart", reloadSkills: true } })] }, "SessionStart", {});
+  assert.equal(reload.reloadSkills, true);
+  const noReload = await runHooks({ SessionStart: [emit({ hookSpecificOutput: { hookEventName: "SessionStart", reloadSkills: false } })] }, "SessionStart", {});
+  assert.equal("reloadSkills" in noReload, false);
+  const submitReload = await runHooks({ UserPromptSubmit: [emit({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", reloadSkills: true } })] }, "UserPromptSubmit", {});
+  assert.equal("reloadSkills" in submitReload, false);
 });
 
 test("session titles normalize like the recovered ci helper", () => {

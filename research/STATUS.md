@@ -2200,3 +2200,12 @@ stored as a lone message event, so the first `run()` is not blocked by an
 unfinished turn. Focused 107/107, tsc 0, build 0, full 2,138/2,138, chain
 767/767, identity `b4860f22…`.
 [W103 record](ports/W103-initial-message.md).
+
+W104-01 honors the SessionStart `reloadSkills` output. After the hooks
+complete, the skill directories are re-scanned, the live catalog array is
+replaced in place so the already-built skill tool sees it, and the system
+prompt's catalog section is rewritten; settings, hooks, permissions and
+instructions stay as loaded. A legacy configuration without a skill catalog and
+a failed rescan both keep the previous state. Focused 110/110, tsc 0, build 0,
+full 2,140/2,140, chain 767/767, identity `b59db97a…`.
+[W104 record](ports/W104-skill-reload.md).

@@ -1,0 +1,3 @@
+2026-10-18T12:20:00Z	package	W104-01 SessionStart reloadSkills	schema 392149/205984、消费点 2482855、bM 1675968、$5 3689254、i1 2478788	仅SessionStart且===true；原地替换skills数组并重写系统技能段；设置不重载	hooks/reload/agent-lifecycle/runtime-resources 110/110；tsc 0；build 0；全量 2,140/2,140；链 767/767
+2026-10-18T12:23:00Z	decision	W104-01 本地适配	源使派生缓存失效；本产品目录即活动数组与系统提示文本	legacy无技能工具时不动；重扫失败保留旧目录；SKILL_TOOL_NAME迁至skill-catalog并由runtime再导出	.audit/w104-01-full.txt
+2026-10-18T12:26:00Z	verification	W104-01 验收：聚焦 110/110、tsc 0、build 0、2,140/2,140、767/767	增删技能可见；数组引用保留；系统段重写且保留后续段；设置与权限不变；钩子安装技能进入活动目录	notices 0；索引 75 chunks / 323,525 单位不变；identity b59db97a…
