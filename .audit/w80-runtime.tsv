@@ -1,0 +1,3 @@
+2026-10-17T21:40:00Z	package	W80-01 模型切换载荷	oXr [2937531,2939081)、sXr [2939454,2940852)；Pre/Post from_model/to_model/requested_model；选择器只取 to_model	applyConfig 入口捕获 prior model；非模型分支保留 ConfigChange 载荷	interactive 7/7；hooks 48/48；tsc 0；build 0；全量 2,107/2,107；链 767/767
+2026-10-17T21:42:00Z	decision	W80-01 未移植项	① 模型别名归一化 g4e/zIt 无产品对应，选择器用原始 to_model；② 源 source 字段与 zWe 标志展开未提供；③ ConfigChange 载荷保持产品形态	残余：完整消费者、脚本语义、per-file watcher 与指令加载	.audit/w80-01-full.txt
+2026-10-17T21:45:00Z	verification	W80-01 验收：interactive 7/7、hooks 48/48、tsc 0、build 0、2,107/2,107、767/767	真实钩子捕获 Pre/Post 载荷；from_model 为切换前模型；to_model/requested_model 为新模型	notices 0；索引 75 chunks / 323,525 单位不变；identity 560f098a…（inputs cbc2dcbb…、validation fcfba5b7…、build 98bfd7dd…）

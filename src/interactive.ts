@@ -396,6 +396,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal) => {
     signal.throwIfAborted();
+    const previousModel = session.config.model;
     const next = Session.open(config.workspace, { config });
     try {
       const boundaries = new Map<number, number>([[0, 0]]);
@@ -422,8 +423,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
     await acceptNext(next, nextRuntime);
     announce(); await agent().startSession('resume', signal);
-    await agent().emitHook(switchingModel ? 'PostModelSwitch' : 'ConfigChange', { model: config.model,
-      permission_mode: config.permissions?.mode, thinking: config.thinking }, signal);
+    // Pre/PostModelSwitch carry from_model, to_model and requested_model
+    // (`oXr`, chunk-sfn1dbxq.js [2937531,2939081); `sXr`, [2939454,2940852)).
+    if (switchingModel) {
+      await agent().emitHook('PostModelSwitch', { from_model: previousModel, to_model: config.model,
+        requested_model: config.model }, signal);
+    } else {
+      await agent().emitHook('ConfigChange', { model: config.model,
+        permission_mode: config.permissions?.mode, thinking: config.thinking }, signal);
+    }
   };
   const selectTheme = async (theme: ThemeSetting, signal: AbortSignal) => {
     signal.throwIfAborted();
@@ -767,7 +775,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           } else if (switchingModel) {
             const model = prompt.slice(7).trim();
             if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
-            const pre = await agent().emitHook('PreModelSwitch', { model, previous_model: config.model }, options.signal);
+            const pre = await agent().emitHook('PreModelSwitch', { from_model: config.model, to_model: model,
+              requested_model: model }, options.signal);
             if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
             config.model = model;
           } else if (prompt.startsWith('/effort ')) {

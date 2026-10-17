@@ -1993,3 +1993,12 @@ InstructionsLoaded carries `load_reason`, Setup carries `trigger: "init"`,
 and Elicitation carries `mcp_server_name`. `hooks` 48/48,
 `agent-lifecycle` 25/25, tsc 0, full 2,107/2,107, chain 767/767, identity
 `fd3b6906…`. [W79 record](ports/W79-hook-selectors.md).
+
+W80-01 ports the recovered model-switch hook payloads. PreModelSwitch sends
+`from_model`, `to_model` and `requested_model` before the change;
+PostModelSwitch sends the same three fields after it, with the prior model
+captured before `applyConfig` replaces the session. The selector reads
+`to_model` only; model-alias normalization and the `source`/flag fields stay
+unported. `interactive` 7/7 with both payloads captured from real hooks,
+`hooks` 48/48, tsc 0, full 2,107/2,107, chain 767/767, identity `560f098a…`.
+[W80 record](ports/W80-model-switch-payloads.md).

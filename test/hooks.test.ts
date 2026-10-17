@@ -197,6 +197,8 @@ test("transition matchers follow the recovered per-event selector fields", async
   assert.equal(hookMatcherValue("Notification", { notification_type: "plugin_notification" }), "plugin_notification");
   assert.equal(hookMatcherValue("Elicitation", { mcp_server_name: "server" }), "server");
   assert.equal(hookMatcherValue("SessionEnd", { reason: "exit" }), "exit");
+  assert.equal(hookMatcherValue("PreModelSwitch", { to_model: "second-model" }), "second-model");
+  assert.equal(hookMatcherValue("PreModelSwitch", { model: "second-model" }), undefined);
   assert.equal(hookMatcherValue("TaskCreated", { tool_name: "Bash" }), undefined);
 });
 
