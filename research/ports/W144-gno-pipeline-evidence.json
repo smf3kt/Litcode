@@ -1,0 +1,98 @@
+{
+ "schema": "W144GnoPipelineEvidence.v1",
+ "package": "W144-01 — ui.render engine pipeline (gno slice 4, final)",
+ "date": "2026-10-18",
+ "question": "What does gno do end to end, what closure does the final slice need beyond the three landed slices, and can it run unchanged as the product's RenderAnswerHost?",
+ "answer": "Yes. gno dispatches the render argument through the hooks chain with the ui.render site, flushes version reads, copies and validates the answer, then runs the draw, link and row passes and hands the tree to the renderer. Sixteen n3 blocks (3,392 units) carry the pipeline; thirty nyce blocks (4,796 units) carry the previously unported ui.render site and ilt. The seam installs gno as RenderAnswerHost and the end-to-end probe draws {type:'engine',ref:1} with the original input as its descriptor.",
+ "sourcePosition": {
+  "modules": [
+   {"module": "extracted-v2/modules/chunk-n3ykh62m.js", "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac", "blocks": 16, "units": 3392},
+   {"module": "extracted-v2/modules/chunk-nyce03br.js", "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f", "blocks": 30, "units": 4796}
+  ],
+  "totalBlocks": 46,
+  "totalUnits": 8188,
+  "ranges": {
+   "gno": [283212, 284410],
+   "Pto": [231570, 231688],
+   "AAt": [232412, 232444],
+   "HD": [232444, 232604],
+   "Mf": [232817, 232852],
+   "Ito": [232979, 233003],
+   "Pb": [276273, 276688],
+   "jss": [279923, 280080],
+   "M_": [231733, 232412],
+   "ki": [231688, 231723],
+   "I_": [231723, 231733],
+   "Ai": [275983, 276166],
+   "Yf": [276166, 276261],
+   "Gf": [273149, 273315],
+   "Xf": [276261, 276273],
+   "uno": [279850, 279923],
+   "ilt": [7275, 7339],
+   "ga": [93643, 93988],
+   "vn": [92104, 92135],
+   "Sn": [91090, 91576],
+   "tn": [43763, 44236],
+   "tt": [42756, 42774],
+   "$t": [86978, 87140],
+   "on": [44263, 44317],
+   "rn": [44317, 44342],
+   "So": [44236, 44263],
+   "ve": [43725, 43763],
+   "wn": [90267, 90312],
+   "Zr": [42774, 42865],
+   "Eo": [42865, 42925],
+   "bo": [43275, 43324],
+   "Wbr": [5093, 5183],
+   "Ft": [43324, 43356],
+   "Gbr": [5322, 5363],
+   "Vbr": [5411, 5457],
+   "zbr": [5363, 5411],
+   "en": [43356, 43725],
+   "Tn": [90312, 90596],
+   "bn": [90833, 91090],
+   "hn": [89856, 90040],
+   "nn": [44484, 44811],
+   "gn": [89441, 89656],
+   "xn": [89656, 89856],
+   "kn": [90040, 90267],
+   "En": [90596, 90833],
+   "yn": [89170, 89441]
+  }
+ },
+ "semantics": {
+  "dispatch": "RFe records, Pto wraps zss(answer,input,{cut,own}) as the core handler, aP dispatches with P0(vA) hook records, the ui.render site and ls; the core answers {type:'engine',ref:keep(drawn,undefined)}",
+  "flush": "requestId !== '' and a live signal: Ai detaches readers, Pb keeps at most Xf (4000) readers and drops unmounted instances (Yf), Ci notifies on changed versions",
+  "validateAndFallback": "ilt copies the answer, Eur validates it; the dialog (B3e) additionally reports client rows and measured own rows; a problem logs, jss records it and Ioe is returned",
+  "drawPasses": "nIn/dno border and key transforms, kur link validation, vur/Nss code-row and cut measurement, FM press relabelling, bVe/Lur descriptor and trace tables",
+  "rowLedger": "M_ keeps I_ (64) request entries, reports freed rows when own/client rows shrink, fits at kFe (12) counting own plus every other client's rows"
+ },
+ "product": {
+  "files": [
+   "src/plugin-chain-engine-pipeline-source.ts",
+   "src/plugin-chain-engine-pipeline-source-blocks.json",
+   "src/plugin-chain-engine-render-site-source.ts",
+   "src/plugin-chain-engine-render-site-source-blocks.json",
+   "src/plugin-chain-engine-pipeline.ts",
+   "src/plugin-chain-engine-render-site.ts",
+   "test/plugin-chain-engine-pipeline.test.ts"
+  ],
+  "generator": "scripts/copy-module-regions.mjs",
+  "plans": [
+   "research/ports/W144-gno-pipeline.plan.json",
+   "research/ports/W144-engine-render-site.plan.json"
+  ],
+  "reusedSeams": ["ls", "tIt", "MF", "SVe", "Ioe", "s_", "vA", "kFe", "OL", "jf", "aP", "P0", "aJ", "aCe", "bVe", "Lur", "Vss", "cce", "CK", "t", "zd", "Nss", "qss", "Bss", "Uss", "Wss", "Gss", "zss", "JAe", "nIn", "dno", "kur", "vur", "validateDrawnTree", "DIALOG_COMPONENT", "AK", "vAt", "XPt", "FM", "BM", "Ci", "RFe", "sIt", "Ge", "Oe", "Slt", "L", "er", "b3", "re", "j3e", "iD", "eIt"],
+  "host": "installEnginePipelineHost()/engineRenderHost; the module installs itself as RenderAnswerHost on evaluation",
+  "siteRegistration": "plugin-chain-engine-render-site.ts registers ui.render before the pipeline body binds Ito, mirroring the source literal table"
+ },
+ "verification": {
+  "focused": "34/34",
+  "full": "2273/2273",
+  "tsc": 0,
+  "notices": 0,
+  "build": 0,
+  "identity": "e6ede94cf49084a3d4505b780b61801701edeecf8dde3a0a3d4b74c35d2e7486",
+  "probe": "runEnginePipeline({component:'Probe',requestId:'',surface:'terminal',props:{}}) -> {type:'engine',ref:1}; descriptorInput(drawn,1) === input"
+ }
+}

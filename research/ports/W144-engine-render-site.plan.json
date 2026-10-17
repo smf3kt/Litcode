@@ -1,0 +1,43 @@
+{
+ "imports": [
+  "import { Slt } from './plugin-chain-matchers.js';",
+  "import { L, er, b3 } from './plugin-chain-source.js';",
+  "import { re } from './plugin-chain-sites-source.js';",
+  "import { j3e } from './plugin-chain-render-keys.js';",
+  "import { iD, eIt } from './plugin-chain-engine-budget-source.js';",
+  "import { tIt } from './plugin-chain-host-call-source.js';"
+ ],
+ "exports": ["ga", "ilt", "vn", "Sn", "So", "on"],
+ "blocks": [
+  {"file": "chunk-nyce03br.js", "needle": "var ilt=", "k": "stmt", "note": "unwrap the dispatch answer"},
+  {"file": "chunk-nyce03br.js", "needle": "var So=", "k": "stmt", "note": "the permission component"},
+  {"file": "chunk-nyce03br.js", "needle": "var on=[", "k": "stmt", "note": "render envelope keys"},
+  {"file": "chunk-nyce03br.js", "needle": "var rn=", "k": "stmt", "note": "envelope check"},
+  {"file": "chunk-nyce03br.js", "needle": "var ve=", "k": "stmt", "note": "object/null/missing kinds"},
+  {"file": "chunk-nyce03br.js", "needle": "var tn=", "k": "stmt", "note": "component prop specs"},
+  {"file": "chunk-nyce03br.js", "needle": "var tt=", "k": "stmt", "note": "any-kind marker"},
+  {"file": "chunk-nyce03br.js", "needle": "function $t(", "k": "fn", "note": "kind name"},
+  {"file": "chunk-nyce03br.js", "needle": "var wn=", "k": "stmt", "note": "UserMessage prop names"},
+  {"file": "chunk-nyce03br.js", "needle": "function Zr(", "k": "fn", "note": "tool call id"},
+  {"file": "chunk-nyce03br.js", "needle": "function Eo(", "k": "fn", "note": "tool call list"},
+  {"file": "chunk-nyce03br.js", "needle": "var bo=", "k": "stmt", "note": "a prop's character cost"},
+  {"file": "chunk-nyce03br.js", "needle": "function Wbr(", "k": "fn", "note": "one character's cost"},
+  {"file": "chunk-nyce03br.js", "needle": "var Ft=", "k": "stmt", "note": "whether a prop grew"},
+  {"file": "chunk-nyce03br.js", "needle": "var Gbr=", "k": "stmt", "note": "escape pattern"},
+  {"file": "chunk-nyce03br.js", "needle": "var Vbr=", "k": "stmt", "note": "placeholder pattern"},
+  {"file": "chunk-nyce03br.js", "needle": "var zbr=", "k": "stmt", "note": "lone-surrogate pattern"},
+  {"file": "chunk-nyce03br.js", "needle": "function en(", "k": "fn", "note": "prop validator en"},
+  {"file": "chunk-nyce03br.js", "needle": "function Tn(", "k": "fn", "note": "prop validator Tn"},
+  {"file": "chunk-nyce03br.js", "needle": "function bn(", "k": "fn", "note": "prop validator bn"},
+  {"file": "chunk-nyce03br.js", "needle": "function hn(", "k": "fn", "note": "prop validator hn"},
+  {"file": "chunk-nyce03br.js", "needle": "function nn(", "k": "fn", "note": "prop validator nn"},
+  {"file": "chunk-nyce03br.js", "needle": "function gn(", "k": "fn", "note": "prop validator gn"},
+  {"file": "chunk-nyce03br.js", "needle": "function xn(", "k": "fn", "note": "prop validator xn"},
+  {"file": "chunk-nyce03br.js", "needle": "function kn(", "k": "fn", "note": "prop validator kn"},
+  {"file": "chunk-nyce03br.js", "needle": "function En(", "k": "fn", "note": "prop validator En"},
+  {"file": "chunk-nyce03br.js", "needle": "function yn(", "k": "fn", "note": "prop validator yn"},
+  {"file": "chunk-nyce03br.js", "needle": "function Sn(", "k": "fn", "note": "component props check"},
+  {"file": "chunk-nyce03br.js", "needle": "var vn=", "k": "stmt", "note": "site argument check"},
+  {"file": "chunk-nyce03br.js", "needle": "var ga={event:\"ui.render\"", "k": "stmt", "note": "the ui.render site descriptor"}
+ ]
+}
