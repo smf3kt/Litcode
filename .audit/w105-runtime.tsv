@@ -1,0 +1,3 @@
+2026-10-18T12:30:00Z	package	W105-01 suppressOriginalPrompt 与阻断消息	schema 391571/391772、消费 34121/39033、TUI 4938、EMe 3009974、pX 2961295、Ret 566691	仅两事件解析且===true；普通exit 2不抑制；内部未运行自动抑制；两事件支持decision:block	hooks/lifecycle/interactive 88/88；tsc 0；build 0；全量 2,143/2,143；链 767/767
+2026-10-18T12:33:00Z	decision	W105-01 本地适配	源写入警告消息并返回resultText；本实现仅返回该轮text	事件日志与模型历史保持不变；由前端打印	.audit/w105-01-full.txt
+2026-10-18T12:36:00Z	verification	W105-01 验收：聚焦 88/88、tsc 0、build 0、2,143/2,143、767/767	可见文本含 Original prompt；抑制文本不含；内部缺解析器自动抑制；执行型技能路径同形	notices 0；索引 75 chunks / 323,525 单位不变；identity 3319a5a3…

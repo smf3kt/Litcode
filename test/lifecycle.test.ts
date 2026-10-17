@@ -93,6 +93,47 @@ test('prompt guard blocks before any model request and leaves a completed turn',
   } finally { session.close(); f.cleanup(); }
 });
 
+test('prompt block messages carry the original prompt unless suppressed', async () => {
+  const visible = fixture();
+  visible.config.hooks = { UserPromptSubmit: [{ command: 'printf nope >&2; exit 2' }] };
+  const first = Session.open(visible.workspace, { config: visible.config });
+  try {
+    const result = await new Agent(first, visible.provider, [visible.tool]).run('task');
+    assert.equal(result.reason, 'hook_blocked'); assert.equal(result.modelCalls, 0);
+    assert.equal(result.text, 'UserPromptSubmit operation blocked by hook:\nnope\n\nOriginal prompt: task');
+  } finally { first.close(); visible.cleanup(); }
+
+  const hidden = fixture();
+  hidden.config.hooks = { UserPromptSubmit: [{ command: command({ decision: 'block', reason: 'not now',
+    hookSpecificOutput: { hookEventName: 'UserPromptSubmit', suppressOriginalPrompt: true } }) }] };
+  const second = Session.open(hidden.workspace, { config: hidden.config });
+  try {
+    const result = await new Agent(second, hidden.provider, [hidden.tool]).run('task');
+    assert.equal(result.text, 'UserPromptSubmit operation blocked by hook:\nnot now');
+  } finally { second.close(); hidden.cleanup(); }
+});
+
+test('expansion block messages carry the command unless suppressed', async () => {
+  const expansion = { expansion_type: 'slash_command' as const, command_name: 'greet', command_args: 'x', prompt: '/greet x' };
+  const visible = fixture();
+  visible.config.hooks = { UserPromptExpansion: [{ command: 'printf nope >&2; exit 2' }] };
+  const first = Session.open(visible.workspace, { config: visible.config });
+  try {
+    const result = await new Agent(first, visible.provider, [visible.tool]).run('expanded body', undefined, undefined, expansion);
+    assert.equal(result.reason, 'hook_blocked'); assert.equal(result.modelCalls, 0);
+    assert.equal(result.text, 'UserPromptExpansion operation blocked by hook:\nnope\n\nOriginal prompt: /greet x');
+  } finally { first.close(); visible.cleanup(); }
+
+  const hidden = fixture();
+  hidden.config.hooks = { UserPromptExpansion: [{ command: command({ decision: 'block', reason: 'no expansion',
+    hookSpecificOutput: { hookEventName: 'UserPromptExpansion', suppressOriginalPrompt: true } }) }] };
+  const second = Session.open(hidden.workspace, { config: hidden.config });
+  try {
+    const result = await new Agent(second, hidden.provider, [hidden.tool]).run('expanded body', undefined, undefined, expansion);
+    assert.equal(result.text, 'UserPromptExpansion operation blocked by hook:\nno expansion');
+  } finally { second.close(); hidden.cleanup(); }
+});
+
 test('post hook stopping continuation pairs later skipped tools and preserves the first effect', async () => {
   const f = fixture();
   f.config.hooks = { PostToolUse: [{ command: command({ continue: false, stopReason: 'stop after effect' }) }] };
