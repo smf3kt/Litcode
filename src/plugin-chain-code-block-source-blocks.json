@@ -1,0 +1,100 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-yfhs3yf4.js",
+      "sha256": "6ffe40814d515224c1fdcdc6ad4d4eb83fde964dc3364a61eb99c6b2d5c9ea6e"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-yfhs3yf4.js",
+      "sha256": "6ffe40814d515224c1fdcdc6ad4d4eb83fde964dc3364a61eb99c6b2d5c9ea6e",
+      "range": [
+        1765,
+        1972
+      ],
+      "units": 207,
+      "bodySha256": "4726e25b84c0d189e4bed01ea1488380429c89913db18c342ed9a8549f1547e4",
+      "note": "`j` — split a source into lines and remember where each was truncated"
+    },
+    {
+      "module": "chunk-yfhs3yf4.js",
+      "sha256": "6ffe40814d515224c1fdcdc6ad4d4eb83fde964dc3364a61eb99c6b2d5c9ea6e",
+      "range": [
+        1972,
+        2093
+      ],
+      "units": 121,
+      "bodySha256": "b2c0d05fcc09bab3b8467b47991ba5088b49370a06238de781dd41b75986d01b",
+      "note": "`H` — append the truncation marker to the line it belongs to"
+    },
+    {
+      "module": "chunk-yfhs3yf4.js",
+      "sha256": "6ffe40814d515224c1fdcdc6ad4d4eb83fde964dc3364a61eb99c6b2d5c9ea6e",
+      "range": [
+        2093,
+        2778
+      ],
+      "units": 685,
+      "bodySha256": "cf597910e6039bd023a1e90469ae8248b27da2840afce68e5c37cb88277aeee5",
+      "note": "`B` — draw a whole source: highlight it, or the uncoloured text when the terminal skips colour"
+    },
+    {
+      "module": "chunk-yfhs3yf4.js",
+      "sha256": "6ffe40814d515224c1fdcdc6ad4d4eb83fde964dc3364a61eb99c6b2d5c9ea6e",
+      "range": [
+        2778,
+        3503
+      ],
+      "units": 725,
+      "bodySha256": "d7c8e9c5db18d4fcd68bb138fa899345d3fdb8f5dff531847413f574f502c1c6",
+      "note": "`nt` — highlight one source through the render cache, falling back to markdown"
+    },
+    {
+      "module": "chunk-yfhs3yf4.js",
+      "sha256": "6ffe40814d515224c1fdcdc6ad4d4eb83fde964dc3364a61eb99c6b2d5c9ea6e",
+      "range": [
+        3503,
+        3568
+      ],
+      "units": 65,
+      "bodySha256": "812f86fbdc03c5173cffe4145934a083f75bc5066578c6a69e6f3b1fe59c78ad",
+      "note": "`he` — wrap one line of a rendered source as Text"
+    },
+    {
+      "module": "chunk-yfhs3yf4.js",
+      "sha256": "6ffe40814d515224c1fdcdc6ad4d4eb83fde964dc3364a61eb99c6b2d5c9ea6e",
+      "range": [
+        3568,
+        5882
+      ],
+      "units": 2314,
+      "bodySha256": "4a6d5d6dce96f96dc9ffe4640b8b4806df1a6add252e388fc2863dad0d061570",
+      "note": "`Wt` and `Ob` — the default width and the Code block renderer"
+    },
+    {
+      "module": "chunk-yfhs3yf4.js",
+      "sha256": "6ffe40814d515224c1fdcdc6ad4d4eb83fde964dc3364a61eb99c6b2d5c9ea6e",
+      "range": [
+        5882,
+        5943
+      ],
+      "units": 61,
+      "bodySha256": "f009c19da25e01f66effeb606e6ce2f94251738aedcf1804ff5e5781ff718bb8",
+      "note": "`K` — how many lines a source holds, without counting the final newline"
+    },
+    {
+      "module": "chunk-yfhs3yf4.js",
+      "sha256": "6ffe40814d515224c1fdcdc6ad4d4eb83fde964dc3364a61eb99c6b2d5c9ea6e",
+      "range": [
+        5943,
+        6371
+      ],
+      "units": 428,
+      "bodySha256": "6fe6ade999f581ae5e29a7f55fb198367eb0a0f78ada5870a2209d2b4a25f04f",
+      "note": "`gt` — one source line beside its gutter"
+    }
+  ],
+  "missing": []
+}

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { hs, e5t } from '../src/plugin-chain-ui-blit-source.js';
 import { gNs, Lss } from '../src/plugin-chain-raster-surface.js';
 import {
-  Bo, Ce, Fo, Ko, Wo, eg, jo, nr, runComponent, ee, n, s,
+  Bo, Ce, Fo, Ko, Tc, Wo, Xe, eg, jo, nr, runComponent, ee, n, s,
 } from '../src/plugin-chain-react-surface.js';
 
 const CELL = 8;
@@ -160,6 +160,23 @@ describe('the mount object builder', () => {
     assert.deepEqual(Wo({ plugin: 'p', requestId: 'r', key: 'k' }, { columns: 4, rows: 2 }, paint), {
       plugin: 'p', requestId: 'r', key: 'k', columns: 4, rows: 2, paint,
     });
+  });
+});
+
+describe('the element factory seam', () => {
+  it('builds a createElement element: the trailing arguments are its children', () => {
+    const child = { type: 'Text', props: {}, children: [] };
+    const made = Tc('Box', { flexDirection: 'column' }, child);
+    assert.deepEqual(made.children, [child]);
+    assert.equal(made.props.flexDirection, 'column');
+    assert.equal(made.key, undefined);
+  });
+
+  it('builds a jsx element: children stay in props and the third argument is the key', () => {
+    const made = Xe('Box', { flexDirection: 'column', children: ['hunk'] }, 'hunk-0');
+    assert.deepEqual(made.children, ['hunk']);
+    assert.equal(made.props.flexDirection, 'column');
+    assert.equal(made.key, 'hunk-0');
   });
 });
 

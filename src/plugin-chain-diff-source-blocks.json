@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d",
+      "range": [
+        615,
+        11040
+      ],
+      "units": 10425,
+      "bodySha256": "5891e675646744fd2e73ff4bb295fba86715219c3c60eadac46b423a34e425dd",
+      "note": "the `diff` package: `Zoo` and the character/word diff classes it runs on"
+    }
+  ],
+  "missing": []
+}
