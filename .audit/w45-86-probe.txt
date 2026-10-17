@@ -1,0 +1,36 @@
+string {"type":"Text","props":{},"children":["hello"]}
+engine "DRAWN:REF"
+button true {"plugin":"p","handle":3,"element":"b","label":"Go","hotkey":"g","action":"act","plain":true,"dimColor":false,"variant":"primary","role":"primary","hover":{"color":"red"},"held":["A",{"type":"Text","props":{},"children":["B"]}]} []
+input {"type":"Vt","props":{"plugin":"p","handle":4,"element":"i","label":"L","placeholder":"P","value":"V","submitLabel":"S"},"children":[]}
+select {"type":"sr","props":{"plugin":"p","handle":5,"element":"s","label":"L","options":[{"value":"a","label":"A"}],"value":"a"},"children":[]}
+code lt
+markdown {"type":"Xt","props":{"text":"m","dimColor":true,"press":{"kind":"press"},"elementKey":"k","pressableLinks":["u"]},"children":[]}
+client {"type":"Io","props":{"key":"client:cp:ck","plugin":"cp","module":"mod","elementKey":"ck","props":{"a":1},"drawn":{"key":"ck","module":"mod","props":{"a":1},"drawn":"D","width":9,"height":2,"flexGrow":3},"width":9,"height":2,"flexGrow":3},"children":[]}
+svg {"type":"Text","props":{"dimColor":true},"children":["ALT"]}
+image {"type":"No","props":{"key":"image:ip:ik","plugin":"ip","elementKey":"ik","source":"src","columns":2,"rows":3,"alt":"alt"},"children":[]}
+raster {"type":"jo","props":{"key":"raster:rp:rk","plugin":"rp","elementKey":"rk","columns":2,"rows":1,"cells":[1]},"children":[]}
+link {"type":"Link","props":{"url":"https://e.test/a b","fallback":{"type":"Text","props":{},"children":["label"," ",{"type":"Text","props":{"dimColor":true},"children":["https://e.test/a b"]}]}},"children":["label"]}
+link bare {"type":"Link","url":"https://e.test/a b","fallback":"none","children":["https://e.test/a b"]}
+box keyed {"type":"$t","props":{"key":"k1","isLive":true,"elementKey":"k1","layout":{"flexDirection":"row"},"hover":{"scope":"h1","color":"red"},"group":{"plugin":"gp","scope":"h1"},"children":[{"type":"Text","props":{},"children":["x"]}]},"children":[{"type":"Text","props":{},"children":["x"]}]}
+box plain {"type":"Box","props":{"flexDirection":"row"},"children":[{"type":"Text","props":{},"children":["x"]}]}
+text hover {"type":"Ut","props":{"isInline":true,"props":{"color":"red"},"hover":{"scope":"h2"},"group":{"plugin":"gp","scope":"h2"},"children":["t"]},"children":["t"]}
+inline children ["Text","Text"]
+text children ["a",{"type":"Text","props":{},"children":["b"]}]
+dup keys [{"type":"$t","live":true,"key":"d","elementKey":"d"},{"type":"$t","live":false,"elementKey":"d"}]
+X4t valid undefined
+X4t first undefined second Box "k" is drawn twice under one parent; only the first is a hover scope
+X4t empty Box key "" is not a string of 1 to 10000 characters; it is dropped and names no hover scope
+X4t long Box key "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+X4t nonstring Box key "3" is not a string of 1 to 1000
+Mrt space a b
+Mrt tab a%09b newline a%0Ab control a%01b
+Mrt bidi a%E2%80%AEb placeholder a￼b
+Mrt unicode é
+patterns true true [[1564,1564],[8234,8238],[8294,8297]] \u{61c}\u{202a}-\u{202e}\u{2066}-\u{2069
+Bt undefined {"plugin":"gp","scope":"h1"}
+X4t control "Box \"a?\" key holds a control character; it is dropped and names no hover scope"
+X4t long head "Box key \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...\" is not a string of 1 to 10"
+X4t nonstring full "Box key \"3\" is not a string of 1 to 10000 characters; it is dropped and names no hover scope"
+X4t empty full "Box key \"\" is not a string of 1 to 10000 characters; it is dropped and names no hover scope"
+(node:65999) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

@@ -1,0 +1,79 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-t58kj6z7.js",
+      "sha256": "bdf6e3dc738a7e907f629626301f1db57163ff23280792dd42efa125f4633283"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        38173,
+        40655
+      ],
+      "units": 2482,
+      "bodySha256": "edc470c7eb8abb49131571a27c93cb5c759229b05242c280556599fb17803686",
+      "note": "`je` — the site-tree walker: every node type to its component, hover groups, link text and the inline/block split"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        238267,
+        238357
+      ],
+      "units": 90,
+      "bodySha256": "72ef53bc60c2168925b14722981df688fdbde0b0f8c00f580e313e0b5b832fd8",
+      "note": "`Mrt` — the display href encoder: unsafe characters percent-encoded, controls and bidi marks replaced"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        112643,
+        112741
+      ],
+      "units": 98,
+      "bodySha256": "308ff211f2b2e7120795e0207cb35acc001953a38b95f27b15b470fb4f9063fc",
+      "note": "`y$` — the control-character class the display encoder strips"
+    },
+    {
+      "module": "chunk-t58kj6z7.js",
+      "sha256": "bdf6e3dc738a7e907f629626301f1db57163ff23280792dd42efa125f4633283",
+      "range": [
+        615,
+        799
+      ],
+      "units": 184,
+      "bodySha256": "5389019d3898ce5c738ae6192518e5aee469ce218c020383483ef2eb58735078",
+      "note": "`zDe`/`zpr`/`pot` — the bidi-mark table and the regex the display encoder replaces"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        233611,
+        233808
+      ],
+      "units": 197,
+      "bodySha256": "d6a9308e728e872369acff726a40dd4e012cc0500dd9938fd752b958615301c5",
+      "note": "`X4t` — the Box-key scope check: a usable key names one hover scope per parent, reported once"
+    }
+  ],
+  "missing": []
+}
