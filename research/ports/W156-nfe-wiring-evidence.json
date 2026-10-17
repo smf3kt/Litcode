@@ -1,0 +1,78 @@
+{
+  "schema": "W156AbovePromptComponent.v1",
+  "package": "W156-nfe-wiring",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31" }
+    ],
+    "blocks": 1,
+    "units": 5856,
+    "ranges": [
+      { "module": "chunk-24k7d6mw.js", "range": [456049, 461905], "units": 5856, "note": "NFe the AbovePrompt component", "bodySha256": "7932cc004bd2c951cd9a8e5bc3b3c082baf2d3ace1c09764e19b331c31b1401d" }
+    ],
+    "reused": [
+      { "names": ["e", "r", "s", "R", "P", "Z", "en", "le", "y", "Ae"], "product": "src/plugin-chain-react-hooks.ts", "note": "jsx, Box, the ref/effect/memo/state/callback/context hooks" },
+      { "names": ["QY", "sa", "us"], "product": "src/plugin-chain-above-prompt-host-glue.ts", "note": "paneMeasurementContext, useActiveOverlay, keyDisplayText (W155)" },
+      { "names": ["ke", "cdn"], "product": "src/plugin-chain-input-field-source.ts", "note": "terminal size reader and the select-field context" },
+      { "names": ["G1", "NI", "Tne", "_ne", "kne", "pne", "vne", "wne", "yne"], "product": "src/plugin-chain-above-prompt-source.ts", "note": "W145/W146 window, prompt-placeholder, hotkey and key-merge core" },
+      { "names": ["j1", "PFe", "TFe", "Rne", "w0", "wFe", "bne", "K1", "J1", "z1"], "product": "src/plugin-chain-above-prompt-parts-source.ts", "note": "W146 content/fold components and row walkers" },
+      { "names": ["IV", "Ine", "Z1", "cK", "q1", "tK", "vp"], "product": "src/plugin-chain-above-prompt-local-source.ts", "note": "W152 draft/settled-budget/agent-id/selectable contexts" },
+      { "names": ["Ihe", "fd", "lK", "nK", "uK"], "product": "src/plugin-chain-above-prompt-select-keys-source.ts", "note": "W150 controlled state and select key helpers" },
+      { "names": ["A9r", "PYe", "Xq", "ZD", "iZo", "sZo"], "product": "src/plugin-chain-above-prompt-focus-source.ts", "note": "W153 focus ring, scroll clamp and seat walkers" },
+      { "names": ["Ane", "X1", "eK"], "product": "src/plugin-chain-above-prompt-seats-source.ts", "note": "W148 focus seat layer" },
+      { "names": ["Tp"], "product": "src/plugin-chain-above-prompt-input-source.ts", "note": "W147 digit confirmation hook" },
+      { "names": ["HG", "Ze", "gpr", "hro", "nn"], "product": "src/plugin-chain-above-prompt-keybinding-source.ts", "note": "W154 debounce, keybinding hooks and focus request" },
+      { "names": ["fdn", "gdn", "ldn", "pdn", "udn"], "product": "src/plugin-chain-select-field-source.ts", "note": "select field providers" },
+      { "names": ["VH", "hdn"], "product": "src/plugin-chain-terminal-glue-source.ts", "note": "the terminal surface node and row helper" },
+      { "names": ["kj", "wFt", "y3n"], "product": "src/plugin-chain-press-button-source.ts", "note": "dialog store, node capture and seat report" },
+      { "names": ["Ey"], "product": "src/plugin-chain-client-host-source.ts", "note": "pre-dispatch registration" },
+      { "names": ["$pn", "Kje", "c9"], "product": "src/plugin-chain-client-host.ts", "note": "client host helpers" },
+      { "names": ["Ri", "Y4t"], "product": "src/plugin-chain-notify-fold-source.ts", "note": "pane store and the above-prompt flag" },
+      { "names": ["Re"], "product": "src/plugin-chain-hover-source.ts", "note": "hover tracking" },
+      { "names": ["Ys", "kc"], "product": "src/plugin-chain-code-host.ts", "note": "node width/height and memo" },
+      { "names": ["RFe"], "product": "src/plugin-chain-pane-scroll-source.ts", "note": "W157d pane scroll site" },
+      { "names": ["_Fe"], "product": "src/plugin-chain-wheel-glue-source.ts", "note": "W157c wheel handler" }
+    ],
+    "hostBound": [
+      { "name": "QY/paneMeasureContext", "reason": "the measurement getter is a mounted context value; a null context falls back to the terminal rows, as the source's budget does" },
+      { "name": "Zm", "reason": "terminal rows/columns come from the input-field context; `ke` throws outside it" },
+      { "name": "appStateContext", "reason": "viewed agent-task slice, read by `q1`" },
+      { "name": "sessionContext", "reason": "the draft store's session, read by `vp`" },
+      { "name": "aq", "reason": "dialog store, read by `kj`" },
+      { "name": "eE", "reason": "clock, read by the markdown renderer and the digit-confirmation hook" },
+      { "name": "keybinding service", "reason": "registerHandler/registerPreDispatch/getDisplayText; the source reads it through `Lc`" }
+    ],
+    "deferred": [
+      { "name": "host mounting inside the application renderer", "reason": "this package exports the component and its props; placing it in the product's prompt host is the renderer's composition" }
+    ],
+    "unresolved": 0
+  },
+  "product": {
+    "sourceFile": "src/plugin-chain-above-prompt-component-source.ts",
+    "seamFile": "src/plugin-chain-above-prompt-component.ts",
+    "exports": ["AbovePrompt"],
+    "types": ["AbovePromptProps"],
+    "notes": [
+      "NFe renders the six providers with values null, the node capture, the graph handle, the select field slices, the dialog slices and the seat report; the outer Box carries the measured window budget and the inner Box the wheel handler when a cue is present.",
+      "The budget is the pane measurement clamped to the terminal rows, or the settled-budget store when the measurement is null; the settled value is debounced through `HG` and written back with `Z1.set`.",
+      "The content node is TFe with columns = max(0, columns - 5), the five-column fold handle; offset comes from RFe.",
+      "The toggle and focus actions register in the Chat context and answer false while nothing is drawn; the three context handler tables register only while their context holds focus.",
+      "onHoldsBandChange reports `holds && !isMultiLine(hostRows)` on mount and false on unmount."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 6, "failed": 0, "file": "test/plugin-chain-above-prompt-component.test.ts" },
+    "full": { "passed": 2437, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": { "blocks": 1, "missing": 0, "units": 5856, "declared": 178, "unresolved": 0 }
+  },
+  "identity": {
+    "sha256": "386a9933fbad9ec4e0aa9f06917fb22a63e18feb709ca831e37912b5e9b1107a",
+    "inputs": 612,
+    "validation": 215,
+    "build": 422
+  }
+}
