@@ -1,0 +1,19 @@
+{
+  "imports": [
+    "import { Xe as e, Xe as r, w, n, P, R, Children as xy, fragment as X, fragment as Zc, earlyReturn as bn, isValidElement as em } from './plugin-chain-react-surface.js';",
+    "import { Lc } from './plugin-chain-press-button.js';",
+    "import { recordKeybindingFallback as vot } from './plugin-chain-above-prompt-host.js';",
+    "import { z } from './diff-dialog-chrome-source.js';"
+  ],
+  "exports": ["je", "de", "E1", "A9t", "Ke", "V", "eLe", "ma", "pt", "Se"],
+  "blocks": [
+    { "file": "chunk-6ccen3s8.js", "range": [9546, 10191], "note": "je/de/E1: one key record to its display text, and a chord's records joined with spaces" },
+    { "file": "chunk-6ccen3s8.js", "range": [35212, 35388], "note": "A9t: the chord bound to an action in a context, null when shadowed by a later duplicate, undefined when unbound" },
+    { "file": "chunk-6ccen3s8.js", "range": [35924, 36074], "note": "Ke: whether a later binding repeats the same context and chord" },
+    { "file": "chunk-6ccen3s8.js", "range": [36598, 36731], "note": "V: chord equality over the key-record array" },
+    { "file": "chunk-6ccen3s8.js", "range": [37204, 37333], "note": "eLe: one key record equality (alt and meta alias each other)" },
+    { "file": "chunk-z3f0m1q8.js", "range": [771, 1001], "note": "ma: the display text for an action's chord, the fallback text, and the one-shot fallback event" },
+    { "file": "chunk-nh8hd3rr.js", "range": [800, 1044], "note": "pt: the key hint component, chord from ma through the z chord hint" },
+    { "file": "chunk-fz2251t0.js", "range": [867, 1269], "note": "y/C/Se: the hint strip, children joined with a dim middle dot" }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d"
+    },
+    {
+      "module": "chunk-z3f0m1q8.js",
+      "sha256": "f035b4067fe457f5a4584fe03292045e6d53134136827d2236d1e1540cc87d1f"
+    },
+    {
+      "module": "chunk-nh8hd3rr.js",
+      "sha256": "5194b7a0a1b3c5beeae642f9b337330dabb12d436085c4aa52a1cf5ff81d1794"
+    },
+    {
+      "module": "chunk-fz2251t0.js",
+      "sha256": "5b8789988815996ef934fa9d83ec0813f8ebec48dd7ec67d24d8c110fd8f5eff"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        9546,
+        10191
+      ],
+      "units": 645,
+      "bodySha256": "120a0e9d87d21db4ceb2cb7c96cce9d294a1f09d49cda5173a2665d8488cd1d2",
+      "note": "je/de/E1: one key record to its display text, and a chord's records joined with spaces"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        35212,
+        35388
+      ],
+      "units": 176,
+      "bodySha256": "809807cca51858ae8214af71dee205f68417fb466dea4209478a703bf2a28f56",
+      "note": "A9t: the chord bound to an action in a context, null when shadowed by a later duplicate, undefined when unbound"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        35924,
+        36074
+      ],
+      "units": 150,
+      "bodySha256": "c8dc215997d2a2687af81d14e12044356e8705ff66e4fe15df4c410028978d2d",
+      "note": "Ke: whether a later binding repeats the same context and chord"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        36598,
+        36731
+      ],
+      "units": 133,
+      "bodySha256": "67bed0cfc090b3ab810430735c182e5f6920c9dcf90905ae89bd6656c644dd03",
+      "note": "V: chord equality over the key-record array"
+    },
+    {
+      "module": "chunk-6ccen3s8.js",
+      "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d",
+      "range": [
+        37204,
+        37333
+      ],
+      "units": 129,
+      "bodySha256": "944d82bf0833dc8aeaffcbfbed1e14f0026cfb8ff87e25d3cad9818d2a4391b2",
+      "note": "eLe: one key record equality (alt and meta alias each other)"
+    },
+    {
+      "module": "chunk-z3f0m1q8.js",
+      "sha256": "f035b4067fe457f5a4584fe03292045e6d53134136827d2236d1e1540cc87d1f",
+      "range": [
+        771,
+        1001
+      ],
+      "units": 230,
+      "bodySha256": "65e8a5b92dfde3f66f350438616d2807a313ee23b7a01894fcbf21abe8ecfd4b",
+      "note": "ma: the display text for an action's chord, the fallback text, and the one-shot fallback event"
+    },
+    {
+      "module": "chunk-nh8hd3rr.js",
+      "sha256": "5194b7a0a1b3c5beeae642f9b337330dabb12d436085c4aa52a1cf5ff81d1794",
+      "range": [
+        800,
+        1044
+      ],
+      "units": 244,
+      "bodySha256": "7e8002191e844d33872730a10c8c41d6369c23e4dea83108627a035b18f5844d",
+      "note": "pt: the key hint component, chord from ma through the z chord hint"
+    },
+    {
+      "module": "chunk-fz2251t0.js",
+      "sha256": "5b8789988815996ef934fa9d83ec0813f8ebec48dd7ec67d24d8c110fd8f5eff",
+      "range": [
+        867,
+        1269
+      ],
+      "units": 402,
+      "bodySha256": "fc99a790bc1a8c7a5789e818aaa379ed0092f211606af327d8745275b8d3f582",
+      "note": "y/C/Se: the hint strip, children joined with a dim middle dot"
+    }
+  ],
+  "missing": []
+}
