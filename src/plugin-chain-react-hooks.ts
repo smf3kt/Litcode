@@ -172,6 +172,10 @@ export function km<T>(component: T): T {
   return component;
 }
 
+/** Source `N` (chunk-kexg5hxg.js): the one-time React symbol install. This runner carries its own
+ *  element and context symbols, so the call keeps its place and does nothing else. */
+export function N(): void {}
+
 /** Source `Rt` (React.useSyncExternalStore): the snapshot, with the store's subscription held while
  *  the component is mounted. A store that changes marks the runtime dirty, so the runner renders
  *  again. */
@@ -265,7 +269,12 @@ function commit(element: SurfaceElement | string, parentNode: SurfaceNode | null
   const ref = props.ref as { current: unknown } | undefined;
   if (ref !== undefined && ref !== null && typeof ref === 'object') ref.current = node;
   if (typeof element !== 'string') {
-    for (const child of element.children) node.children.push(commit(child as SurfaceElement | string, node));
+    for (const child of element.children) {
+      // A render-prop child belongs to the component that receives it (the focusable action box does
+      // not render one here); it is not a node of its own.
+      if (typeof child === 'function') continue;
+      node.children.push(commit(child as SurfaceElement | string, node));
+    }
   }
   return node;
 }

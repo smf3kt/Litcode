@@ -1,0 +1,30 @@
+cr "C\u0000r\u000080\u0000false\u000044136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a" ""
+dr undefined
+lr off {"wasOff":false,"input":{"surface":"terminal","component":"C","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{}},"drawn":"d"}
+lr rows {"wasOff":false,"input":{"surface":"terminal","component":"C","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{}},"drawn":"e"}
+mr starting {"rows":4,"wasOff":true,"input":{"surface":"terminal","component":"C","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{}},"drawn":"d"}
+mr other input {"rows":4,"wasOff":true,"input":{"surface":"terminal","component":"C","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{}},"drawn":"d"}
+fr on undefined
+fr off 4
+ur off {"input":{"surface":"terminal","component":"C","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{}}}
+ur on {"site":{"tree":"s"},"input":{"surface":"terminal","component":"C","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{"onScreen":{"surface":"terminal","component":"C","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{}}}},"lastRows":4,"contentRows":7}
+xr none {}
+xr pending {}
+xr seeded {"drawn":{"type":"Text","props":{},"children":["drawn"]}}
+VH {"surface":"terminal","component":"C","requestId":"r","props":{"a":1}}
+yt {"type":"object","props":["value"],"children":[{"type":"Text","props":[],"children":["t"]}]}
+pr pane {"type":"yt","props":["tree","input","draw"],"children":[]}
+pr boundary {"type":"XD","props":["resetKey","fallback","telemetryMessage","onError","children"],"children":[{"type":"yt","props":["tree","input","draw"],"children":[]}]}
+hdn {"node":{"type":"Box","props":["ref","flexDirection","renderEvent","renderComponent","drawPending","minHeight","overflow"],"children":[{"type":"Text","props":[],"children":["drawn"]}]}}
+TU {"type":"Box","props":["ref","flexDirection","renderEvent","renderComponent","drawPending","minHeight","overflow"],"children":[{"type":"Text","props":[],"children":["drawn"]}]}
+$e "0"
+uo {"surface":"terminal","component":"C","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{}} {"surface":"terminal","component":"D","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{}}
+pIn {"load":"a#undefined,b#undefined","lead":"hooks"}
+CAt {"surface":"terminal","component":"C","requestId":"r","viewport":{"columns":80,"isFullscreen":false},"props":{"seen":{"k":1}}}
+ar false true
+hdn hooked {"drawn":{"type":"Text","props":[],"children":["drawn"]},"node":{"type":"Box","props":["ref","flexDirection","renderEvent","renderComponent","drawPending","minHeight","overflow"],"children":[{"type":"XD","props":["resetKey","fallback","telemetryMessage","onError","children"],"children":[{"type":"yt","props":["tree","input","draw"],"children":[]}]}]}}
+GPn submitted 1 1
+Fss release function function
+dce thrown true undefined
+(node:1974) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

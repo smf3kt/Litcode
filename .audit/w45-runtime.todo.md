@@ -892,3 +892,12 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The stores and sentinels are exposed.** `Omt` starts false, `l9` starts empty, `Ioe` is the engine sentinel and `j3e` is the message list.
 - [x] **The matcher runner is recovered.** `l` is the recovered runner again: scalar mismatches are false, object matchers are partial, aliases expand and regex matchers test the value.
 - [x] **Sweep.** tsc 0, copies `declared 55 / unresolved 0` and `declared 54 / unresolved 0`, notices 0, new suite 25/25, chain family 748/748, full 2,024/2,024, index 74 chunks / 310,408 units, identity `f1522ee4…`.
+
+## W45-88 acceptance (2026-10-17)
+
+- [x] **One site becomes one surface node.** `hdn` carries the drawn site ref, the render event and component, the held-row height and the overflow decision; `TU` is its node.
+- [x] **The tree is walked under the plugin context.** `yt` builds the context element from component and request id and hands the draw callback the descriptor input.
+- [x] **The boundary wraps everything but a Pane.** The fallback redraws the sentinel tree; a caught throw notes the site and files one failure note.
+- [x] **The settled answer is versioned.** `xr` reads the cached answer for the current version, subscribes while hooked and holds the mount counter.
+- [x] **The held rows survive off-screen draws.** The row helpers clear, store and restore the last measured height by the source rules.
+- [x] **Sweep.** tsc 0, copy `declared 101 / unresolved 0`, notices 0, new suite 19/19, chain family 767/767, full 2,043/2,043, index 74 chunks / 315,116 units, identity `76b9199c…`.

@@ -1,0 +1,237 @@
+{
+ "schema": "W45TerminalGlueEvidence.v1",
+ "package": "W45-88 — the terminal glue",
+ "date": "2026-10-17",
+ "question": "How does one plugin site become a terminal surface node — which rows are held, when is the engine answer read, and what does the boundary and the failure note do?",
+ "answer": "8 blocks are copied verbatim (4,823 units) into one module. A terminal site is drawn by `yt`: the walker produces the tree, each drawn value answers through the plugin context built from component and request id, and the draw callback receives the input the drawn descriptor names (`uo`). `pr` wraps the tree in the error boundary unless the component is a Pane; the fallback redraws the engine sentinel tree, and a caught throw notes the site as thrown, files one render-failure note and hands the tree to `onThrown`. `ur` resolves the on-screen input only while the terminal is fullscreen and the site is hooked; it reads the held rows and the asked range from the render accounting, attaches `onScreen` to the props and keeps the last rows as a fallback. `xr` reads the settled answer for the current render version, subscribes to the engine render service while hooked, bumps the mount counter, and maps a thrown promise to the engine sentinel through `onThrown`. `hdn` composes the surface node: the Box carries the drawn site ref, the render event and component, the held-row height and the overflow decision; while hooked it draws the rendered tree under the boundary, and while pending its first frame draws the fallback text. The row helpers keep the held rows stable: a changed draw or a filled content clears them, turning off stores the last rows, and the first empty content restores them. The failure note is deduplicated by component and teller (`s5t`/`Iye`), and its module list is the plugins that contributed to the settled site, or every candidate when no site is recorded (`pIn`).",
+ "measured": [
+  "`cr(input, input)` is `C\\u0000r\\u000080\\u0000false\\u0000<sha256 of {}>` and `cr(null, input)` is the empty string; `dr` logs the failed site and answers undefined.",
+  "`lr` clears the rows when the content fills them or the draw changes, and clears `wasOff` on a steady draw; `mr` turns off into the last rows, and an input change still turns off.",
+  "`fr` answers undefined while on and the last rows while off.",
+  "`ur` off answers the input untouched with no site and no rows; in fullscreen it answers the drawn site, the input with `onScreen`, last rows 4 and content rows 7 from the row host.",
+  "`xr` with no hook answers undefined drawn; with a hosted answer and a matching origin it answers the settled tree; a hooked pending answer settles through the store, not the returned object.",
+  "`$e` on an empty store is `\"0\"`; `VH` merges the props and the terminal store viewport into the terminal input.",
+  "`yt` builds a context element whose only child is the walked tree; `pr` keeps a Pane bare and wraps every other component in `XD` with resetKey, fallback, telemetryMessage, onError and the tree child.",
+  "`hdn` draws a Box with ref, flexDirection, renderEvent, renderComponent, drawPending, minHeight and overflow; without a matching hook its child is the drawn fallback, with one it is the `XD` boundary, and `hasThrown` is the predicate closure `le` returns.",
+  "`TU` is the node of `hdn`; `ar(true)` is false and `ar(false)` is true; `uo` answers the third argument unless the drawn descriptor names the same component; `CAt` reads the descriptor input; `pIn` falls back to every candidate and answers the `kAt` descriptor.",
+  "A Pane component bypasses the boundary; `GPn(input, [component])` lists the one installed module; `Fss` returns a release function per mount.",
+  "Matcher/slice preconditions: the error-boundary component `XD`, the telemetry message stub `i5t`, the logger `t`, the control-character class `y$` and the notification sinks `aCe`/`zz` were already product-side."
+ ],
+ "partition": {
+  "slice": "6. Site-tree walker and terminal glue",
+  "state": "complete",
+  "landed": {
+   "package": "W45-88",
+   "bodies": [
+    "yt",
+    "pr",
+    "ir",
+    "ar",
+    "lr",
+    "mr",
+    "fr",
+    "ur",
+    "cr",
+    "dr",
+    "xr",
+    "$e",
+    "hdn",
+    "TU",
+    "VH",
+    "uo",
+    "Oto",
+    "bVe",
+    "CAt",
+    "Vss",
+    "fno",
+    "Lur",
+    "pIn",
+    "cIn",
+    "dIn",
+    "mno",
+    "uIn",
+    "cce",
+    "HM",
+    "s5t",
+    "sIn",
+    "CK",
+    "Iye"
+   ],
+   "units": 4823
+  },
+  "remaining": "Partition 4 (the plugin chain runner) is complete through its terminal glue. The next ready item is C-1 (Magpie startup and recovery), with A-1 still a user action."
+ },
+ "ledger": {
+  "blocks": 8,
+  "units": 4823,
+  "sources": {
+   "schema": "W45ChainRunnerBlocks.v1",
+   "modules": [
+    {
+     "module": "chunk-kjfwbh4w.js",
+     "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+     "module": "chunk-n3ykh62m.js",
+     "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+   ],
+   "blocks": [
+    {
+     "module": "chunk-kjfwbh4w.js",
+     "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+     "range": [
+      40655,
+      44099
+     ],
+     "units": 3444,
+     "bodySha256": "8d492f431f10a8275f2081efe61093de35a05b418d760e703f87d791a67a47ff",
+     "note": "the terminal glue: `yt` renders one tree through the draw callback, `pr` adds the boundary, the row helpers keep the held rows, `ur` resolves the on-screen input, `xr` reads the settled answer, `hdn`/`TU` assemble the surface node, `VH` names the terminal input"
+    },
+    {
+     "module": "chunk-kjfwbh4w.js",
+     "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+     "range": [
+      21203,
+      21286
+     ],
+     "units": 83,
+     "bodySha256": "6a3f38edb11bc7105c32c111f58957557d432b0cd365cd729eb501298b02f281",
+     "note": "`uo` — the input a drawn site answers when its descriptor names the same component"
+    },
+    {
+     "module": "chunk-n3ykh62m.js",
+     "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+     "range": [
+      233003,
+      233140
+     ],
+     "units": 137,
+     "bodySha256": "0b894f4dd33cb2256118e028e8497002da1146022eeb4e51deafe64f40b07758",
+     "note": "`bVe` — the WeakMap from a drawn site to its render descriptor, with `CAt` reading one input"
+    },
+    {
+     "module": "chunk-n3ykh62m.js",
+     "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+     "range": [
+      278989,
+      279366
+     ],
+     "units": 377,
+     "bodySha256": "03afa7792c6f1586cc885ed17e4adb8932db1ad0fc1b505e5c95ed0d96bb0eb9",
+     "note": "`cce`/`HM`/`s5t`/`sIn`/`CK`/`Iye` — the render-failure note: dedupe slot, warning log and notification"
+    },
+    {
+     "module": "chunk-n3ykh62m.js",
+     "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+     "range": [
+      281622,
+      281762
+     ],
+     "units": 140,
+     "bodySha256": "dd312aed000bcd4ba263fa7cb54858ac121f381addaf7277bd2effe985476b5f",
+     "note": "`cIn`/`dIn` — the failure-note key and the thrown-while-drawn label"
+    },
+    {
+     "module": "chunk-n3ykh62m.js",
+     "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+     "range": [
+      282221,
+      282478
+     ],
+     "units": 257,
+     "bodySha256": "008722cb4bf10cb1087fe2afdef9437f457631c61fb8964741b4aaebfaa02d29",
+     "note": "`fno`/`Lur`/`Vss` — the module list behind one settled site, filtered to the plugins that contributed"
+    },
+    {
+     "module": "chunk-n3ykh62m.js",
+     "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+     "range": [
+      282478,
+      282706
+     ],
+     "units": 228,
+     "bodySha256": "5f6be11443d7d065c2c1eae86db6b72641cc540ff43f7f69590a586abf971419",
+     "note": "`mno`/`uIn` — the failure text and the one note per component/teller key"
+    },
+    {
+     "module": "chunk-n3ykh62m.js",
+     "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+     "range": [
+      282706,
+      282863
+     ],
+     "units": 157,
+     "bodySha256": "07349bee2a70fe59b7dc5a86d8ce41823e703bc7a118c985820e8c7184d7502e",
+     "note": "`pIn` — the modules a render-failure note names: the settled site contributing plugins, or every candidate"
+    }
+   ],
+   "missing": []
+  }
+ },
+ "decisiveFact": "The terminal surface is one node per site, not a component tree walk at this layer: `hdn` decides the rows, the render version and the drawn answer, and hands the tree to the walker only while a hook matches. The held-row state survives off-screen draws because the row helpers keep the last measured height until the content changes; the engine answer is read through a versioned cache, so a redraw without a version bump reuses the settled tree.",
+ "hostBoundary": {
+  "surfaces": [
+   "che",
+   "dce",
+   "g4n",
+   "Fss",
+   "Mi",
+   "XD",
+   "i5t",
+   "t",
+   "OL adapter"
+  ],
+  "reason": "The engine that answers a render (`che`), its settled-evaluation cache (`dce`), the frame row accounting (`g4n`), the render-version mount counter (`Fss`) and the terminal mode (`Mi`) belong to the engine/host; the copied glue is the only caller. The host module mirrors the source contracts the glue reads and keeps the engine injectable. `dce.uiRender` delegates evaluation to the injected render service instead of copying the engine pipeline (`gno`) whose dependency closure is the next subsystem, not this package."
+ },
+ "changes": [
+  {
+   "file": "src/plugin-chain-terminal-glue-source.ts",
+   "change": "eight copied blocks: the terminal glue, the site input matcher, the render-descriptor WeakMap, the module filter and the render-failure notes",
+   "portSha256": "1bea90c0e98f0bfafa1a149c443c69358fbdbc11c9d9bf3786cff8e800f2666f",
+   "coordinateUnit": "utf16-half-open"
+  },
+  {
+   "file": "src/plugin-chain-terminal-host.ts",
+   "change": "the host seam: `che`, the `dce` settled cache, `g4n`, `Fss`, `Mi`, the `OL` store adapter, plus re-exports of `XD`/`i5t`/`kAt`/`t`",
+   "portSha256": "c8503600d692db24ab6c50bd45edb5d39c91a6fed45c834a182401f91abde03e",
+   "coordinateUnit": "utf16-half-open"
+  },
+  {
+   "file": "src/plugin-chain-terminal.ts",
+   "change": "the public seam: the source names plus `renderSiteNode`, `renderTree`, `settledRender`, `heldRows` and the rest",
+   "coordinateUnit": "utf16-half-open"
+  },
+  {
+   "file": "src/plugin-chain-react-hooks.ts",
+   "change": "`N` — the source symbol-install call this runner keeps as a no-op",
+   "coordinateUnit": "utf16-half-open"
+  },
+  {
+   "file": "test/plugin-chain-terminal.test.ts",
+   "change": "nineteen tests: the row helpers, the on-screen input, the settled render, the tree and boundary, the surface node and the local helpers",
+   "coordinateUnit": "utf16-half-open"
+  },
+  {
+   "file": ".audit/w45-88-plan.mjs",
+   "change": "the copy plan: eight blocks",
+   "coordinateUnit": "utf16-half-open"
+  }
+ ],
+ "validation": {
+  "tsc": {
+   "command": "node_modules/.bin/tsc --noEmit --pretty false",
+   "exitCode": 0,
+   "diagnostics": 0,
+   "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "undeclaredScan": {
+   "src/plugin-chain-terminal-glue-source.ts": "declared 101, unresolved 0"
+  },
+  "notices": "node scripts/dependency-notices.mjs --check exits 0",
+  "suite": "19/19 new; chain family 767/767; full 2,043/2,043 pass, 0 fail",
+  "sourceIndex": "74 chunks, 1,736/30,139 statements, 315,116/10,878,702 units (2.9%)",
+  "identity": "76b9199cdd03…"
+ },
+ "next": "C-1: Magpie startup and recovery — the app-side startup configuration and rotation recovery, with A-1 (credential issuance) still a user action."
+}

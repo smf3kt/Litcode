@@ -4303,3 +4303,48 @@ Verified: tsc 0, the copy scans `declared 55 / unresolved 0` and `declared 54 / 
 notices 0, 25 new tests, the chain family 748/748, full 2,024/2,024, and the recovered-source index
 at 74 chunks / 1,698 statements / 310,408 units (2.9%). Identity `f1522ee4…`.
 
+## W45-88 ported the terminal glue (2026-10-17)
+
+Eight blocks are copied verbatim (4,823 units) into `plugin-chain-terminal-glue-source.ts`: the
+glue itself from chunk-kjfwbh4w.js, the site input matcher `uo`, the render-descriptor WeakMap
+`bVe`/`CAt`, the settled-list reader `Vss`/`Lur`, the module filter `pIn`, and the render-failure
+notes `cIn`/`dIn`/`mno`/`uIn` with their dedupe (`cce`/`HM`/`s5t`/`sIn`/`CK`/`Iye`) from
+chunk-n3ykh62m.js.
+
+A site becomes one surface node. `yt` walks the tree under a plugin context built from component
+and request id, and the draw callback receives the input the drawn descriptor names (`uo`). `pr`
+keeps a Pane bare and wraps every other component in the error boundary `XD`: the fallback redraws
+the engine sentinel tree, and a caught throw notes the site, files one failure note and calls
+`onThrown`. `ur` resolves the on-screen input only while fullscreen and hooked, attaching the
+asked range and keeping the held rows as the fallback. `xr` reads the settled answer for the
+current render version, subscribes to the engine render service while hooked, holds the mount
+counter `Fss`, and maps a rejected answer to the sentinel through `onThrown`. `hdn` composes the
+Box with the drawn site ref, the render event and component, the held-row height and the overflow
+decision, and `TU` is its node. The row helpers keep the held rows stable across off-screen draws:
+a changed draw or filled content clears them, turning off stores the last rows, and the first empty
+content restores them.
+
+The failure note is deduplicated by component and teller, and its module list is the plugins that
+contributed to the settled site, or every candidate when none is recorded.
+
+Host boundary: the engine render client `che`, the settled-evaluation cache `dce`, the frame row
+accounting `g4n`, the mount counter `Fss` and the terminal mode `Mi` are host seams, because the
+engine that answers a render and owns the frame graph is outside this product. `src/plugin-chain-terminal-host.ts`
+mirrors the source contracts the glue reads, keeps the engine injectable, and adapts the host
+render-version store for the selector hook (`OL`). `dce.uiRender` delegates evaluation to the
+injected service instead of copying the engine pipeline `gno`, whose dependency closure is the next
+subsystem, not this package.
+
+What was measured (probe log `.audit/w45-88-probe.txt`): the render key and its digest; the row
+helper transitions; the fullscreen on-screen input; the settled render with and without a cached
+answer; the terminal input merge; the context element; the Pane bypass and the boundary wrapper;
+the fallback Box and the hooked boundary node; the first-run ref; `uo`/`CAt`/`pIn`; the mount
+release; the failure text and the dedupe check; and the public aliases.
+
+Partition 4 (the plugin chain runner) is complete through its terminal glue. The next ready item
+is C-1 (Magpie startup and recovery); A-1 remains a user action.
+
+Verified: tsc 0, the copy scan `declared 101 / unresolved 0`, notices 0, 19 new tests, the chain
+family 767/767, full 2,043/2,043, and the recovered-source index at 74 chunks / 1,736 statements /
+315,116 units (2.9%). Identity `76b9199c…`.
+

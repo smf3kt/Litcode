@@ -1,0 +1,104 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        40655,
+        44099
+      ],
+      "units": 3444,
+      "bodySha256": "8d492f431f10a8275f2081efe61093de35a05b418d760e703f87d791a67a47ff",
+      "note": "the terminal glue: `yt` renders one tree through the draw callback, `pr` adds the boundary, the row helpers keep the held rows, `ur` resolves the on-screen input, `xr` reads the settled answer, `hdn`/`TU` assemble the surface node, `VH` names the terminal input"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        21203,
+        21286
+      ],
+      "units": 83,
+      "bodySha256": "6a3f38edb11bc7105c32c111f58957557d432b0cd365cd729eb501298b02f281",
+      "note": "`uo` — the input a drawn site answers when its descriptor names the same component"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        233003,
+        233140
+      ],
+      "units": 137,
+      "bodySha256": "0b894f4dd33cb2256118e028e8497002da1146022eeb4e51deafe64f40b07758",
+      "note": "`bVe` — the WeakMap from a drawn site to its render descriptor, with `CAt` reading one input"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        278989,
+        279366
+      ],
+      "units": 377,
+      "bodySha256": "03afa7792c6f1586cc885ed17e4adb8932db1ad0fc1b505e5c95ed0d96bb0eb9",
+      "note": "`cce`/`HM`/`s5t`/`sIn`/`CK`/`Iye` — the render-failure note: dedupe slot, warning log and notification"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        281622,
+        281762
+      ],
+      "units": 140,
+      "bodySha256": "dd312aed000bcd4ba263fa7cb54858ac121f381addaf7277bd2effe985476b5f",
+      "note": "`cIn`/`dIn` — the failure-note key and the thrown-while-drawn label"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        282221,
+        282478
+      ],
+      "units": 257,
+      "bodySha256": "008722cb4bf10cb1087fe2afdef9437f457631c61fb8964741b4aaebfaa02d29",
+      "note": "`fno`/`Lur`/`Vss` — the module list behind one settled site, filtered to the plugins that contributed"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        282478,
+        282706
+      ],
+      "units": 228,
+      "bodySha256": "5f6be11443d7d065c2c1eae86db6b72641cc540ff43f7f69590a586abf971419",
+      "note": "`mno`/`uIn` — the failure text and the one note per component/teller key"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        282706,
+        282863
+      ],
+      "units": 157,
+      "bodySha256": "07349bee2a70fe59b7dc5a86d8ce41823e703bc7a118c985820e8c7184d7502e",
+      "note": "`pIn` — the modules a render-failure note names: the settled site contributing plugins, or every candidate"
+    }
+  ],
+  "missing": []
+}
