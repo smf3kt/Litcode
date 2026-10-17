@@ -7,6 +7,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { Agent, assertPaired, defaultConfig, toolCalls } from "../src/agent.js";
 import { loadProjectConfig } from "../src/config.js";
 import { Session, type SessionConfig, type ToolResult } from "../src/session.js";
+import { listSessions } from "../src/sessions.js";
 import type { ModelProvider, ModelRequest } from "../src/provider.js";
 import { createTools, type ToolDefinition } from "../src/tools.js";
 import { createTaskTools, readTaskRecord, readTaskRecords } from "../src/tasks.js";
@@ -624,6 +625,36 @@ test("SessionStart carries the child agent type and the recorded session title",
     assert.equal(payload.model, "fixture-model");
     assert.equal(payload.agent_type, "general");
     assert.equal(payload.session_title, "Fixture title");
+  } finally { session.close(); }
+});
+
+test("SessionStart and UserPromptSubmit hook titles are normalized and recorded", async () => {
+  const root = workspace();
+  const hooks = {
+    SessionStart: [{ command: emit({ hookSpecificOutput: { hookEventName: "SessionStart", sessionTitle: "  Start\u0000 title  " } }) }],
+    UserPromptSubmit: [{ command: emit({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", sessionTitle: "Submit\u2028title" } }) }],
+  };
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  try {
+    await new Agent(session, new ScriptedProvider([done()]), []).startSession("startup");
+    assert.deepEqual(session.events.filter(event => event.kind === "title").map(event => event.kind === "title" && event.title),
+      ["Start  title"]);
+    await new Agent(session, new ScriptedProvider([done()]), []).run("prompt");
+    assert.deepEqual(session.events.filter(event => event.kind === "title").map(event => event.kind === "title" && event.title),
+      ["Start  title", "Submit title"]);
+  } finally { session.close(); }
+  const resumed = Session.open(root, { id: session.id });
+  try { assert.equal(listSessions(root).find(item => item.id === resumed.id)?.title, "Submit title"); }
+  finally { resumed.close(); }
+});
+
+test("a clear start ignores the SessionStart hook title", async () => {
+  const root = workspace();
+  const hooks = { SessionStart: [{ command: emit({ hookSpecificOutput: { hookEventName: "SessionStart", sessionTitle: "Ignored" } }) }] };
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  try {
+    await new Agent(session, new ScriptedProvider([]), []).startSession("clear");
+    assert.equal(session.events.some(event => event.kind === "title"), false);
   } finally { session.close(); }
 });
 

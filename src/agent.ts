@@ -3,7 +3,7 @@ import { Session, type SessionConfig, type ToolResult } from './session.js';
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
 import type { ToolDefinition, ToolContext } from './tools.js';
 import { randomUUID } from 'node:crypto';
-import { HookLifecycle, runHooks, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
+import { HookLifecycle, normalizeSessionTitle, runHooks, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
 import { permissionDecision } from './permissions.js';
 import path from 'node:path';
 import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
@@ -351,6 +351,13 @@ export class Agent {
       ...(sessionTitle === undefined ? {} : { session_title: sessionTitle }),
     }, signal);
     if (result.blocked) throw new Error(result.reason ?? 'SessionStart hook stopped continuation');
+    // The recovered consumer records a pending SessionStart title only for the
+    // startup, resume and fork sources (`pendingHookSessionTitle`); clear and
+    // compact starts ignore it. The title setter skips an unchanged value.
+    if ((source === 'startup' || source === 'resume' || source === 'fork') && result.sessionTitle !== undefined) {
+      const title = normalizeSessionTitle(result.sessionTitle);
+      if (title !== '' && title !== this.currentSessionTitle()) this.session.append({ kind: 'title', title });
+    }
   }
 
   async endSession(reason = 'exit'): Promise<void> {
@@ -892,6 +899,12 @@ export class Agent {
         if (submitted.blocked) {
           this.events.status?.(submitted.reason ?? 'UserPromptSubmit hook blocked the prompt');
           return this.finish('hook_blocked', '', 0);
+        }
+        // The UserPromptSubmit consumer takes the last hook-provided title and
+        // commits it before the turn (`u = m.sessionTitle ?? u`).
+        if (submitted.sessionTitle !== undefined) {
+          const title = normalizeSessionTitle(submitted.sessionTitle);
+          if (title !== '' && title !== this.currentSessionTitle()) this.session.append({ kind: 'title', title });
         }
         // The recovered consumer reads blocking verdicts, additional context and messages; it
         // exposes no prompt-rewrite field, so the submitted text is authoritative.

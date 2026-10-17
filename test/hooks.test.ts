@@ -10,6 +10,7 @@ import {
   hookDefinitionSchema,
   hookMatcherValue,
   hooksSchema,
+  normalizeSessionTitle,
   runHooks,
   type HookDefinition,
   type HookEvent,
@@ -959,6 +960,19 @@ test("event output translation retains permission, updated result and general sp
   assert.equal("updatedPrompt" in expansion, false);
   const generic = await runHooks({ ElicitationResult: [emit({ hookSpecificOutput: { hookEventName: "ElicitationResult", action: "accept", content: { name: "x" } } })] }, "ElicitationResult", {});
   assert.deepEqual(generic.hookSpecificOutput, [{ hookEventName: "ElicitationResult", action: "accept", content: { name: "x" } }]);
+  const startTitle = await runHooks({ SessionStart: [emit({ hookSpecificOutput: { hookEventName: "SessionStart", sessionTitle: "Start" } })] }, "SessionStart", {});
+  assert.equal(startTitle.sessionTitle, "Start");
+  const submitTitle = await runHooks({ UserPromptSubmit: [emit({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", sessionTitle: "Submit" } })] }, "UserPromptSubmit", {});
+  assert.equal(submitTitle.sessionTitle, "Submit");
+  const ignored = await runHooks({ Stop: [emit({ hookSpecificOutput: { hookEventName: "Stop", sessionTitle: "Ignored" } })] }, "Stop", {});
+  assert.equal("sessionTitle" in ignored, false);
+});
+
+test("session titles normalize like the recovered ci helper", () => {
+  assert.equal(normalizeSessionTitle("  a\u0000b\u2028c  "), "a b c");
+  assert.equal(normalizeSessionTitle("\u0000\u0007"), "");
+  assert.equal(normalizeSessionTitle("x".repeat(201)), "x".repeat(200));
+  assert.equal(normalizeSessionTitle("\u{1F600}".repeat(200)).length, 200);
 });
 
 test("prompt/agent hooks require explicit injected resolvers and normalize model verdicts", async () => {

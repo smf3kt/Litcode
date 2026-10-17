@@ -2183,3 +2183,11 @@ additional context reaches fallthrough turns through a new optional
 blocking set. Focused 102/102, tsc 0, build 0, full 2,133/2,133, chain
 767/767, identity `ef637462…`.
 [W101 record](ports/W101-expansion-execution.md).
+
+W102-01 consumes the hook-provided session title. SessionStart records it only
+for startup, resume and fork sources, UserPromptSubmit records it before the
+turn, and both normalize through the recovered `ci` helper (control/format
+runs become a space, 200 code points, trimmed). The session list and later
+UserPromptSubmit payloads now read the recorded title. Focused 94/94, tsc 0,
+build 0, full 2,136/2,136, chain 767/767, identity `6c6de060…`.
+[W102 record](ports/W102-session-title.md).

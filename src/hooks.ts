@@ -379,6 +379,8 @@ export type HookResult = {
   newCustomInstructions?: string[];
   /** MessageDisplay: replacement text for the displayed delta; storage is untouched. */
   displayContent?: string;
+  /** SessionStart / UserPromptSubmit: a hook-provided session title, last one wins. */
+  sessionTitle?: string;
   /**
    * Set only by an explicit `continue:false` output, meaning "terminate the
    * session". A Stop hook that merely requests continuation (exit 2 or a
@@ -400,6 +402,26 @@ export type HookResult = {
   /** Supplemental claims; the synchronous lifecycle journal callback commits them. */
   consumedOnce?: HookOnceRecord[];
 };
+
+/**
+ * Normalize a hook-provided session title the way `ci` does
+ * (chunk-r2vtj1kh.js offset 663011): trim, replace control/format characters
+ * and U+2028/U+2029 runs with a space, strip the remaining C0/C1 controls, keep
+ * the first 200 code points (`AP`, chunk-64ag51qf.js offset 2304), trim again.
+ * The local session schema bounds titles at 200 UTF-16 units, so a title made
+ * entirely of astral characters is shortened further than the source's code
+ * points.
+ */
+export function normalizeSessionTitle(text: string): string {
+  const cleaned = text.trim().replace(/[\p{Cc}\p{Cf}\u2028\u2029]+/gu, " ").replace(/[\x00-\x1f\x7f-\x9f]/g, "");
+  let title = [...cleaned].slice(0, 200).join("");
+  if (title.length > 200) {
+    title = title.slice(0, 200);
+    const last = title.charCodeAt(title.length - 1);
+    if (last >= 0xd800 && last <= 0xdbff) title = title.slice(0, -1);
+  }
+  return title.trim();
+}
 
 const DEFAULT_TIMEOUT_SECONDS = 60;
 const MAX_HOOK_OUTPUT_BYTES = 64 * 1024;
@@ -915,6 +937,10 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   }
   (result.hookSpecificOutput ??= []).push(output);
   if (event === "PostToolUse" && output.updatedToolOutput !== undefined) result.updatedToolOutput = output.updatedToolOutput;
+  // `sessionTitle` exists only on the SessionStart and UserPromptSubmit output
+  // schemas (chunk-n3ykh62m.js offsets 391440 and 391966); the last hook that
+  // provides one wins in the recovered consumer loops.
+  if ((event === "SessionStart" || event === "UserPromptSubmit") && typeof output.sessionTitle === "string") result.sessionTitle = output.sessionTitle;
   // MessageDisplay is display-only: `hookSpecificOutput.displayContent` replaces the delta on
   // screen while the stored message and what the model sees stay unchanged (source output
   // processing at chunk-sfn1dbxq.js offset 2967137).
