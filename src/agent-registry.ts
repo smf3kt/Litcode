@@ -44,6 +44,8 @@ export type AgentLaunch = ChildLaunchOptions & {
   structured_schema?: unknown;
   /** Workflow tool narrowing (`agent({disallowedTools, bashCommandClamp})`). */
   disallowed_tools?: unknown; bash_command_clamp?: unknown;
+  /** Workflow stall watchdog (`agent({stallMs})`). */
+  stall_ms?: unknown;
 };
 
 const launchSchema = z.object({
@@ -52,6 +54,7 @@ const launchSchema = z.object({
   name: z.string().trim().min(1).max(128).optional(), background: z.boolean().default(false),
   model: z.string().trim().min(1).max(256).optional(), structured_schema: z.unknown().optional(),
   disallowed_tools: z.unknown().optional(), bash_command_clamp: z.unknown().optional(),
+  stall_ms: z.unknown().optional(),
 }).strict();
 const advancedLaunchSchema = launchSchema.extend({ mode: z.enum(['explore', 'general']).optional(),
   max_turns: z.number().int().min(1).max(30).optional(), ...advancedChildFields }).strict();
@@ -280,6 +283,14 @@ export class AgentRegistry {
     // (chunk-hedqf2m1.js [77200,80100)); bad entries refuse the spawn.
     const disallowedTools = args.disallowed_tools === undefined ? undefined : normalizeDisallowedTools(args.disallowed_tools);
     const bashCommandClamp = args.bash_command_clamp === undefined ? undefined : normalizeBashCommandClamp(args.bash_command_clamp);
+    // The source coerces with Number() and only arms the timer when the value is
+    // above zero; a non-finite value would silently disable it, so the bridge
+    // refuses it instead.
+    let stallMs: number | undefined;
+    if (args.stall_ms !== undefined && args.stall_ms !== null) {
+      stallMs = Number(args.stall_ms);
+      if (!Number.isFinite(stallMs)) throw new Error('agent({stallMs}) must be a finite number');
+    }
     this.capacity();
     if (args.name && (this.reservedNames.has(args.name) || [...this.children.values()].some(child => child.view.name === args.name || child.view.id === args.name))) {
       throw new Error(`Child agent name already exists: ${args.name}`);
@@ -335,6 +346,7 @@ export class AgentRegistry {
     } : parent;
     let config = childConfig(inherited, selected, launch);
     if (bashCommandClamp !== undefined) config = { ...config, bashCommandClamp };
+    if (stallMs !== undefined) config = { ...config, stallMs };
     if (structuredState !== undefined) config = { ...config, system: config.system + STRUCTURED_OUTPUT_SYSTEM_NOTE };
     const controller = new AbortController();
     const onCallerAbort = () => controller.abort(callerSignal?.reason);

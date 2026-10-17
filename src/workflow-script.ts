@@ -42,7 +42,7 @@ export type WorkflowScriptParse = ParsedWorkflowScript | { error: string };
 export type WorkflowScriptAgentOptions = {
   label?: string; phase?: string; model?: string; effort?: string; isolation?: 'worktree';
   agentType?: string; schema?: unknown; disallowedTools?: string[]; bashCommandClamp?: string[][];
-  stallMs?: unknown;
+  stallMs?: number;
 };
 // A bridge returns the child summary; `null` mirrors a skipped child, and
 // `{ failure }` mirrors a terminal child failure, which the script sees as
@@ -922,9 +922,6 @@ export async function runWorkflowScript(
     return cloneValue(value) as Record<string, unknown>;
   };
   const assertUnsupportedOptions = (opts: Record<string, unknown>) => {
-    if (opts.stallMs !== undefined) {
-      throw new Error('agent({stallMs}) is not available in this runtime yet');
-    }
     if (opts.isolation === 'remote') {
       throw new Error("agent({isolation:'remote'}) is not available in this build");
     }
@@ -958,6 +955,11 @@ export async function runWorkflowScript(
     if (opts.bashCommandClamp !== undefined) {
       const normalized = normalizeBashCommandClamp(opts.bashCommandClamp);
       if (normalized !== undefined) result.bashCommandClamp = normalized;
+    }
+    if (opts.stallMs !== undefined && opts.stallMs !== null) {
+      const stallMs = Number(opts.stallMs);
+      if (!Number.isFinite(stallMs)) throw new TypeError('agent({stallMs}) must be a finite number');
+      result.stallMs = stallMs;
     }
     if (opts.schema !== undefined) {
       try { compileStructuredOutputSchema(opts.schema); }

@@ -463,6 +463,7 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
             ...(agentOptions.isolation !== undefined ? { isolation: agentOptions.isolation } : {}),
             ...(agentOptions.disallowedTools !== undefined ? { disallowed_tools: agentOptions.disallowedTools } : {}),
             ...(agentOptions.bashCommandClamp !== undefined ? { bash_command_clamp: agentOptions.bashCommandClamp } : {}),
+            ...(agentOptions.stallMs !== undefined ? { stall_ms: agentOptions.stallMs } : {}),
             ...(agentOptions.schema !== undefined ? { structured_schema: agentOptions.schema } : {}),
           }, signal);
           onStarted?.(child.id);

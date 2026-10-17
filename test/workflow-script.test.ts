@@ -184,18 +184,18 @@ test('tool-restriction options are validated before the bridge and passed throug
   assert.equal(calls, 0);
   assert.match(inert.error?.message ?? '', /bashCommandClamp entry 'Bash'/);
 
-  const stall = await run(`return await agent('x', { stallMs: 1000 })`, bridge);
+  const stall = await run(`return await agent('x', { stallMs: 'never' })`, bridge);
   assert.equal(calls, 0);
-  assert.match(stall.error?.message ?? '', /stallMs.*not available/);
+  assert.match(stall.error?.message ?? '', /stallMs\}\) must be a finite number/);
 
   const seen: unknown[] = [];
-  const ok = await run(`return await agent('x', { disallowedTools: ['Write', 'Bash'], bashCommandClamp: ['Bash(git:*)'] })`,
+  const ok = await run(`return await agent('x', { disallowedTools: ['Write', 'Bash'], bashCommandClamp: ['Bash(git:*)'], stallMs: 250 })`,
     async (_prompt, options) => {
-      seen.push(json({ disallowed: options.disallowedTools, clamp: options.bashCommandClamp }));
+      seen.push(json({ disallowed: options.disallowedTools, clamp: options.bashCommandClamp, stall: options.stallMs }));
       return 'ok';
     });
   assert.equal(ok.error, undefined);
-  assert.deepEqual(seen, [{ disallowed: ['Bash', 'Write'], clamp: [['Bash(git:*)']] }]);
+  assert.deepEqual(seen, [{ disallowed: ['Bash', 'Write'], clamp: [['Bash(git:*)']], stall: 250 }]);
 });
 
 test('schema mode passes the schema and returns the validated object', async () => {
