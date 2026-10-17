@@ -1,0 +1,126 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-z9nv3z8k.js",
+      "sha256": "80a7eda1db7332eb0f201204442b37faab0dbd9fe0157f77f24a380f2208fed6"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        25725,
+        25741
+      ],
+      "units": 16,
+      "bodySha256": "7badedaa3d787f83cfb981e6288ee361aea2d6aa619cb07a725ddbd067feced3",
+      "note": "`ee` — the focus/request context a site component reads its requestId from"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        30201,
+        30219
+      ],
+      "units": 18,
+      "bodySha256": "bc2234a5ce128e6f2578768d723e161dbaadd253c9de948144d8845e99ee9c21",
+      "note": "`Ce` — the requestId a component outside a focused site reports"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        35779,
+        36211
+      ],
+      "units": 432,
+      "bodySha256": "a749818623e23f017c46ca4abb92a111fe95abe5367f30a5259639ea8807a7bd",
+      "note": "`Fo` — the paint scheduler: coalesce a paint within a frame, a max delay, and cancel"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        36211,
+        36249
+      ],
+      "units": 38,
+      "bodySha256": "069cb2a271e1802611a6ade7425bf497c0907f8edd72e864dc45f316bed8f241",
+      "note": "`Wo` — the mount object a surface hook registers: its props, its frame size and its paint"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        36249,
+        36347
+      ],
+      "units": 98,
+      "bodySha256": "1b09f790de38ba732e3fc1a119eabab566779661fed68ae702baaa90cef91ef1",
+      "note": "`_o` — write a painted frame to the node's raw text and mark it dirty"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        36347,
+        36358
+      ],
+      "units": 11,
+      "bodySha256": "5f75149e30105ff70ebdd85ad064ff9f22484c125796cd3e34056e257a2833bd",
+      "note": "`Bo` — the settle delay a waiting surface paints at"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        36358,
+        36453
+      ],
+      "units": 95,
+      "bodySha256": "6867c9f35c7159bea6910119f70c0e2cbc567d5182af4b7e19725717190ce686",
+      "note": "`nr` — schedule the next paint only while the surface is not complete"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        36453,
+        36835
+      ],
+      "units": 382,
+      "bodySha256": "b1ae756d1086030cec762655d23dde8fa3d88778c3ca6fd840edaf6f03c3c1ea",
+      "note": "`Ko` — the surface hook: register the mount, paint through its scheduler, repaint on a frame change, unregister on unmount"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        36835,
+        37183
+      ],
+      "units": 348,
+      "bodySha256": "7f5a6e7b991fcea43bdf11a6416ed836de3afb0d656730ef905b424a04432882",
+      "note": "`jo` — the Raster site component: a raw-ansi element sized to the frame, driven by `Ko`"
+    },
+    {
+      "module": "chunk-z9nv3z8k.js",
+      "sha256": "80a7eda1db7332eb0f201204442b37faab0dbd9fe0157f77f24a380f2208fed6",
+      "range": [
+        615,
+        656
+      ],
+      "units": 41,
+      "bodySha256": "b15fa736085c3f2f3507fe48c935d2b2d977597573f985f524b57d4b6f96ad4d",
+      "note": "`eg` — the frame interval the scheduler and `nr` wait by"
+    }
+  ],
+  "missing": []
+}

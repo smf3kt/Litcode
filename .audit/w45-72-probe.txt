@@ -1,0 +1,16 @@
+root type Box
+child type ink-raw-ansi rawWidth 4 rawHeight 2
+rawText length 61
+registry rows 1 [ [ 'plug\x00req-1\x00k1', [ 'plug/req-1/k1' ] ] ]
+node flags ink-raw-ansi false 0 0
+mount keys [ 'plugin', 'requestId', 'key', 'columns', 'rows', 'paint' ]
+after paint rawText length 167
+after paint flags true 1 0
+second paint flags true 1 0 before { dirty: true, marks: 1, renders: 0 }
+registry after unmount 0
+after two paints [ 1 ]
+(node:17869) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+after timer [ 1, 2 ]
+after cancel [ 1, 2 ]
+nr schedules [[9,16],[9,250]]
