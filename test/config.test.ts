@@ -722,7 +722,7 @@ test("skills retain optional invocation fields and validated flat command hooks 
     assert.ok(skill.limitations?.some(value => /inline shell/.test(value)));
     assert.equal(fs.existsSync(marker), false);
     const minimal = cfg.skills.find(item => item.name === "minimal")!;
-    assert.deepEqual(Object.keys(minimal).sort(), ["body", "description", "disableModelInvocation", "name", "path", "userInvocable"].sort());
+    assert.deepEqual(Object.keys(minimal).sort(), ["body", "description", "disableModelInvocation", "name", "path", "source", "userInvocable"].sort());
   });
 });
 
@@ -991,6 +991,9 @@ test("installed plugin skills are pinned below project and user but above config
     const cfg = loadProjectConfig(workspace, { userDir });
     assert.deepEqual(Object.fromEntries(cfg.skills.map(skill => [skill.name, skill.body])), {
       shared: "Project wins", user: "User wins", installed: "Installed wins", only: "Pinned plugin body", configured: "Configured only",
+    });
+    assert.deepEqual(Object.fromEntries(cfg.skills.map(skill => [skill.name, skill.source])), {
+      shared: "projectSettings", user: "userSettings", installed: "plugin", only: "plugin", configured: "plugin",
     });
     const pinned = cfg.skills.find(skill => skill.name === "only")!;
     writeFile(path.join(workspace, ".harness", "settings.json"), JSON.stringify({ plugins: { enabled: true }, pluginDirs: [pluginDir], features: { pluginSkillNamespaces: true } }));

@@ -1,0 +1,3 @@
+2026-10-18T09:00:00Z	package	W99-01 UserPromptExpansion command_source	VYr [2947575,2947964)、at 38703、mO [3384052,3388176)、source 3383703、sAr 3390484、plugin source 962912、schema 195092	SkillInfo.source 三值；interactive 展开携带 command_source；无来源时省略	config/interactive/agent-lifecycle/hooks 170/170；tsc 0；build 0；全量 2,131/2,131；链 767/767
+2026-10-18T09:03:00Z	decision	W99-01 适配	本地无 policySettings/synced/bundled/MCP/memoryStore 技能目录，只映射实际扫描的三类	session 配置 schema 增补可选 source 枚举	.audit/w99-01-full.txt
+2026-10-18T09:06:00Z	verification	W99-01 验收：聚焦 170/170、tsc 0、build 0、2,131/2,131、767/767	项目/用户/安装插件/配置插件来源断言；作用于技能时键存在，手建技能时不存在	notices 0；索引 75 chunks / 323,525 单位不变；identity e0cd9d5e…

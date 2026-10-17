@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { HookLifecycle, runHooks, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
 import { permissionDecision } from './permissions.js';
 import path from 'node:path';
-import { matchesConditionalRule, loadPathInstructions } from './config.js';
+import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
 import type { InteractionCallbacks } from './interaction-tools.js';
 import { boundToolContent } from './tool-output.js';
 import { mediaInputSchema, readMedia, type MediaAttachment } from './media.js';
@@ -57,12 +57,14 @@ export function assertPaired(messages: Anthropic.MessageParam[]): void {
 
 export type RunResult = { reason: string; text: string; modelCalls: number };
 
-/** The recovered UserPromptExpansion payload (`VYr`, chunk-sfn1dbxq.js offset 2947732);
- *  this runtime has no command-source catalog, so `command_source` stays unset. */
+/** The recovered UserPromptExpansion payload (`VYr`, chunk-sfn1dbxq.js
+ *  [2947575,2947964)); `command_source` is the skill's settings scope, passed
+ *  through from the expansion path (`at`, chunk-htgmc2p1.js offset 38703). */
 export type PromptExpansion = {
   expansion_type: 'slash_command' | 'mcp_prompt';
   command_name: string;
   command_args: string;
+  command_source?: SkillSource;
   prompt: string;
 };
 

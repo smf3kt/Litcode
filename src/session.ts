@@ -148,7 +148,7 @@ export const configSchema = z.object({
   policyHelper: z.object({ path: z.string().min(1),
     intervalMs: z.number().int().positive().max(86_400_000).optional(),
     defaultPolicy: managedPolicySchema.optional() }).strict().optional(),
-  skills: z.array(z.object({ name: z.string().min(1), description: z.string(), path: z.string(), body: z.string(), userInvocable: z.boolean(), disableModelInvocation: z.boolean(),
+  skills: z.array(z.object({ name: z.string().min(1), description: z.string(), path: z.string(), body: z.string(), source: z.enum(['userSettings', 'projectSettings', 'plugin']).optional(), userInvocable: z.boolean(), disableModelInvocation: z.boolean(),
     allowedTools: z.array(z.string()).optional(), argumentNames: z.array(z.string().refine(name => name.trim() !== '' && !/^\d+$/.test(name), 'argument names must be non-empty and not all digits')).optional(), model: z.string().optional(), effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(), context: z.literal('fork').optional(), agent: z.string().trim().min(1).max(128).optional(), background: z.boolean().optional(),
     aliases: z.array(z.string().min(1).max(128).regex(/^[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)*$/)).max(32).refine(names => new Set(names).size === names.length).optional(),
     hooks: hooksSchema.optional(), command: z.string().optional(), shell: z.string().optional(), metadata: z.record(z.unknown()).optional(), limitations: z.array(z.string()).optional(),

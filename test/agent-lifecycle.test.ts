@@ -955,13 +955,13 @@ test("UserPromptExpansion is raised only for an expansion and carries its recove
     const provider = new ScriptedProvider([done()]);
     await new Agent(session, provider, []).run("expanded skill body",
       new AbortController().signal, undefined, { expansion_type: "slash_command",
-        command_name: "greet", command_args: "world", prompt: "/greet world" });
+        command_name: "greet", command_args: "world", command_source: "projectSettings", prompt: "/greet world" });
     const payload = JSON.parse(fs.readFileSync(captured, "utf8").trim()) as Record<string, unknown>;
     assert.equal(payload.expansion_type, "slash_command");
     assert.equal(payload.command_name, "greet");
     assert.equal(payload.command_args, "world");
+    assert.equal(payload.command_source, "projectSettings");
     assert.equal(payload.prompt, "/greet world");
-    assert.equal("command_source" in payload, false);
     const messages = JSON.stringify(provider.requests[0]!.messages);
     assert.match(messages, /\/greet rewritten/);
     assert.match(messages, /expansion context/);

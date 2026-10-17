@@ -2159,3 +2159,10 @@ projected from the owning runtime in the interactive, headless and every
 child-agent path. `background` 23/23, `runtime-resources` 11/11,
 `agent-lifecycle` 39/39, tsc 0, build 0, full 2,131/2,131, chain 767/767,
 identity `9b2dc7df…`. [W98 record](ports/W98-stop-runtime-state.md).
+
+W99-01 restores the UserPromptExpansion `command_source` field. The skill
+loader records the settings scope that authorized each directory
+(`projectSettings`, `userSettings`, `plugin`) and the interactive slash
+command passes it into the hook payload; a hand-built skill without a scope
+omits the optional key. Focused 170/170, tsc 0, build 0, full 2,131/2,131,
+chain 767/767, identity `e0cd9d5e…`. [W99 record](ports/W99-skill-source.md).
