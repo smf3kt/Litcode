@@ -294,6 +294,8 @@ export type HookPayload = {
   is_interrupt?: boolean;
   /** PreCompact / PostCompact: how compaction was started; Setup: its dispatch kind. */
   trigger?: string;
+  /** PreCompact: user-supplied compaction instructions, or null when none were given. */
+  custom_instructions?: string | null;
   /** PostCompact: the summary produced by compaction. */
   compact_summary?: string;
   /** SessionEnd: why the session is ending. */
@@ -355,6 +357,12 @@ export type HookResult = {
   watchPaths?: string[];
   /** Failed hook outputs, also carried in `additionalContext`, for watcher display. */
   failures?: string[];
+  /**
+   * PreCompact: each successful hook's trimmed stdout, joined by the caller.
+   * The source treats this as `newCustomInstructions` and appends it to the
+   * compaction prompt rather than ordinary hook context.
+   */
+  newCustomInstructions?: string[];
   /**
    * Set only by an explicit `continue:false` output, meaning "terminate the
    * session". A Stop hook that merely requests continuation (exit 2 or a
@@ -1089,7 +1097,10 @@ export async function runHooks(
       // structured protocol handled below.
       if (event === "PreCompact") {
         const text = raw.stdout.trim();
-        if (text.length > 0) result.additionalContext.push(text);
+        if (text.length > 0) {
+          result.additionalContext.push(text);
+          (result.newCustomInstructions ??= []).push(text);
+        }
       }
       const json = parseHookJson(raw.stdout);
       if (json) {

@@ -950,7 +950,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           await startAgentSession(prompt === '/clear' ? 'clear' : 'fork');
           continue;
         }
-        if (prompt === '/compact') { await withTurn(signal => agent().compactContext(signal)); options.status.write('Context compacted\n'); continue; }
+        if (/^\/compact(?:\s|$)/.test(prompt)) {
+          const instructions = prompt.slice(8).trim();
+          await withTurn(signal => agent().compactContext(signal, instructions || undefined));
+          options.status.write('Context compacted\n'); continue;
+        }
         if (/^\/paste-image(?:\s|$)/.test(prompt)) {
           const task = prompt.slice(12).trim();
           if (!task) throw new Error('Use /paste-image PROMPT');
