@@ -876,6 +876,28 @@ The fixture's base check confirms `e864296` carried every producer and consumer;
 
 **Next (step 7w):** the auto-updater surface (the update/install commands with `utils/autoUpdater.ts` and its UI), then the dependency-pruning pass (nine zero-importer dependencies), the `utils/filePersistence/` rename and the analytics transports.
 
+## Wave D step 7w — the background auto-update UI lane (`f95398a`, landed)
+
+**The lane was a poller and an in-place installer, rendered from the footer.** `AutoUpdaterWrapper` detected the installation type and selected `NativeAutoUpdater`, `PackageManagerAutoUpdater` or `AutoUpdater`; the selected component checked the release bucket on mount and every 30 minutes thereafter, compared versions against `getMaxVersion`, and on `wasUpdated` reported through `onAutoUpdaterResult`. `useUpdateNotification` supplied the semver display helpers, and `useInstallMessages` surfaced the native installer's startup messages. All of it is remote release-channel machinery: the product's own update path calls a vendor bucket and replaces the running build.
+
+**The prop chain existed only for these components.** REPL held `autoUpdaterResult` with a notification effect and called `useInstallMessages`; `PromptInput` held `isAutoUpdating`; `PromptInputFooter` and `Notifications` forwarded `autoUpdaterResult`, `isAutoUpdating`, `onAutoUpdaterResult` and `onChangeIsUpdating` through to `AutoUpdaterWrapper`. With the components gone the chain has no consumer, so it is removed with them. The rest of the notification footer — API-key status, token count, IDE indicator, memory usage, token warning, plugin notifications — is independent and stays.
+
+**Two comments named the removed components.** `PromptInput`'s overlay note justified `height=0` (not unmount) by the updater's initial-check effect; the structural reason remains and the clause is dropped. `debugFilter`'s secondary-category example used an `AutoUpdaterWrapper` log line and now uses an MCP transport line. `usePluginAutoupdateNotification` and the plugin-marketplace lane are untouched: they update marketplaces from their configured git sources, which is not the CLI release channel.
+
+**The core stays for the next step.** `utils/autoUpdater.ts`, `utils/nativeInstaller/`, `cli/update.ts`, `commands/install.tsx` and `main.tsx`'s `assertMinVersion` still compile and now have no UI consumer; they, the CLI blocks, the config/settings keys, the migration and the doctor diagnostics are step 7x.
+
+### Port coordinate refresh
+
+Two historical evidence files moved, both by re-running their own fixtures: `w65-d7j` and `w65-d7q`. `portSha256` only; no `sourceSha256` changed and no range moved.
+
+### Verification
+
+tsc 0, thirty-one fixtures pass (the new `w65-d7w-verify` plus thirty carried), `git diff --check` clean, the orphan scan at its ten legitimate entries with the file count down by six to 1617. Three carried fixtures were amended, all file-count pins this step supersedes: `w65-d7t`, `w65-d7u` and `w65-d7v` now expect 1617 with a comment naming the six removed modules.
+
+The fixture's base check confirms `d66887e` carried the six files and the REPL state; the current tree has no updater UI token and none of the files; survivor assertions pin the remaining notification surface and the updater core the next step owns. Two repair passes: `PromptInput` and `PromptInputFooter` interleave `debug`/`isAutoUpdating` rather than grouping the updater props, and `Notifications` carries its two updater prop pairs in both the component and `NotificationContent` types; the anchors now include the surrounding props and the pairs use `n=2`, with every touched file restored from `HEAD` before each replay.
+
+**Next (step 7x):** the updater core and commands — `utils/autoUpdater.ts`, `utils/nativeInstaller/`, `cli/update.ts`, `commands/install.tsx`, `main.tsx`'s `assertMinVersion` and update/install blocks, the doctor diagnostics, and the config/settings/migration residue — then the dependency-pruning pass and the `utils/filePersistence/` rename.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.

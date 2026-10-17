@@ -15,7 +15,7 @@
       "file": "screens/REPL.tsx",
       "change": "the useSyncExternalStore over the null module, the Sleep-only spinner rule, and five `if (feature('PROACTIVE') || feature('KAIROS')) { proactiveModule?.… }` blocks plus the terminalFocus spread deleted; the tools memo keeps its getTools dependency alone",
       "sourceSha256": "8e8e2ed99732883e1b5b73a83a514f0f9749e6aedcf67b422a8aee95f83584f5",
-      "portSha256": "98e214092a8efc5c76e61980e5ad68307a1fe0e1d962f94c2371dc9cee88470a",
+      "portSha256": "a8875c55929ba33777b82ceed0440e5770dfa5d8d63a0e1de19348dcdee922ee",
       "coordinateUnit": "utf16-half-open"
     },
     {
