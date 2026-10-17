@@ -3018,3 +3018,12 @@ answer is taken. The product derives the same condition from its groups data: `a
 finishes immediately with the recorded group answer, and the review Right path is inert. The
 review-cancel test now uses a multi-select single question so that path stays covered. Focused
 47/47, full 2585/2585, tsc 0, build 0, notices 0, identity `304b061e…`. [W175 record](ports/W175-hide-submit-tab.md).
+
+W176 attaches the recovered single-select preview annotation to terminal answers. `zet` requires a
+non-multi-select question whose options include a preview, and `P3` attaches the selected option's
+full preview only when that option carries one; screen-reader suppression is absent because this
+runtime has no screen-reader state. Both the grouped and sequential terminal ask paths pass their
+answers through the same helper, and the existing answer admission enforces that the annotation
+matches a preview the question showed. Question-level notes and the AFK timeout remain out.
+Focused 80/80, full 2586/2586, tsc 0, build 0, notices 0, identity `04faee71…`.
+[W176 record](ports/W176-terminal-preview-annotation.md).

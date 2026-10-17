@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  createInteractionTools, INTERACTION_LIMITS, previewFragmentError, admitCardAnswer,
+  createInteractionTools, INTERACTION_LIMITS, previewFragmentError, admitCardAnswer, terminalAnswerAnnotation,
   type AskUserQuestionAnswer, type AskUserQuestionRequest, type InteractionCallbacks, type InteractionToolOptions,
 } from '../src/interaction-tools.js';
 import type { ToolContext } from '../src/tools.js';
@@ -25,6 +25,22 @@ function deferred<T>() {
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 }
+
+test('a terminal answer preview annotation follows the single-select preview gate', async () => {
+  const withPreview: AskUserQuestionRequest = { questions: [{
+    question: 'Pick', header: 'Pick', multiSelect: false,
+    options: [{ label: 'A', description: 'first', preview: 'Preview A' }, { label: 'B', description: 'second' }],
+  }] };
+  assert.deepEqual(terminalAnswerAnnotation(withPreview.questions[0]!, ['A']), { preview: 'Preview A' });
+  assert.equal(terminalAnswerAnnotation(withPreview.questions[0]!, ['B']), undefined);
+  assert.equal(terminalAnswerAnnotation({ ...withPreview.questions[0]!, multiSelect: true }, ['A']), undefined);
+  assert.equal(terminalAnswerAnnotation({ ...withPreview.questions[0]!, options: [
+    { label: 'A', description: 'first' }, { label: 'B', description: 'second' }] }, ['A']), undefined);
+  const answer: AskUserQuestionAnswer = { answers: [{
+    questionIndex: 0, selected: ['A'], annotations: { preview: 'Preview A' } }] };
+  const run = tools({ ask: async () => answer });
+  assert.deepEqual(JSON.parse(await run('ask_user_question', withPreview)), answer);
+});
 
 test('interaction catalog exposes strict schemas and read-only flags without invoking callbacks', () => {
   const result = createInteractionTools({ ask: async () => { throw new Error('unexpected'); } });
