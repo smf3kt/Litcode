@@ -65,6 +65,7 @@ import { InputVim, type EditorMode, type VimBridge } from './tui-vim.js';
 import { vimKey } from './tui-vim-keys.js';
 import { InputGestures } from './tui-input-gestures.js';
 import { TerminalFocus } from './tui-focus.js';
+import { afkCountdown, afkTimeoutSettings, type AfkTimeoutSettings } from './tui-afk.js';
 import { StatusLine } from './tui-statusline.js';
 import { InputHistory } from './tui-input-history.js';
 import { HistorySearch, type SearchSnapshot } from './tui-history-search.js';
@@ -138,6 +139,21 @@ interface ActiveDialog {
   /** One entry per completed group, keyed by the group's key. */
   answers: Map<string, TerminalPromptGroupAnswer>;
   finish(answer?: TerminalPromptAnswer): void;
+}
+
+/** One dialog's AFK clock, copied from the recovered `Zbe` component state. */
+interface DialogAfk {
+  target: ActiveDialog;
+  settings: AfkTimeoutSettings;
+  fullSeconds: number;
+  remainingSeconds: number;
+  showCountdown: boolean;
+  fired: boolean;
+  /** Source `Le`: the last tick at which the terminal was focused. */
+  base: number;
+  /** Source `Ip()`: the last answer interaction. */
+  lastInteraction: number;
+  timer: ReturnType<typeof setInterval>;
 }
 
 const SEPARATOR = '─';
@@ -267,6 +283,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private statusLineKey = '';
   private selection: SelectionState = createSelection();
   private dialog: ActiveDialog | undefined;
+  /** The grouped question dialog's AFK countdown, when the host enables it. */
+  private afk: DialogAfk | undefined;
   private status = '';
   private running = false;
   /** Composer gates `dg()` and `C7t()`: on until the session settings say otherwise. */
@@ -715,6 +733,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const finish = (answer?: TerminalPromptAnswer) => {
         if (settled) return;
         settled = true; signal.removeEventListener('abort', cancelled);
+        this.stopAfk();
         this.dialog?.themeEditor?.close();
         this.dialog?.undo.clear();
         if (snapshot.themePreview) { this.theme.cancelPreview(); this.syncSystemTheme(); }
@@ -727,11 +746,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.keys.reset(); this.selection = createSelection();
       const first = snapshot.groups?.[0] ?? snapshot;
       const choices = first.choices?.length ?? 0;
-      this.dialog = { request: snapshot, editor: createEditorState(), undo: new InputUndo(),
+      const dialog: ActiveDialog = { request: snapshot, editor: createEditorState(), undo: new InputUndo(),
         index: Math.max(0, Math.min(first.defaultIndex ?? 0, Math.max(0, choices - 1))),
         selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(), finish };
+      this.dialog = dialog;
       this.screen = 'dialog'; signal.addEventListener('abort', cancelled, { once: true });
-      if (signal.aborted) cancelled(); else { this.previewDialogTheme(); this.render(); }
+      if (signal.aborted) cancelled();
+      else { this.startAfk(dialog, snapshot); this.previewDialogTheme(); this.render(); }
     });
   }
 
@@ -1077,6 +1098,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private handleDialogAction(action: EditorAction): void {
     const dialog = this.dialog;
     if (!dialog || action.type === 'mouse') return;
+    // Source presence records the interaction behind `Ip()`, so any key defers AFK.
+    this.noteAfkInteraction();
     if (dialog.themeEditor) { this.handleThemeEditorAction(dialog, action); return; }
     if (dialog.request.themeEdit && action.type === 'key' && action.sequence === '\x05') {
       const selected = dialog.request.choices?.[dialog.index]?.value;
@@ -1563,6 +1586,70 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   /**
+   * Starts the recovered `Zbe` clock for a grouped question dialog. The source
+   * enables it only with a host timeout or `CLAUDE_AFK_TIMEOUT_MS`; it counts
+   * idle time from dialog open, stays at full while the terminal is focused and
+   * resets on any key. The answer is built synchronously here, so the source's
+   * post-fire interaction checks collapse to clearing the clock.
+   */
+  private startAfk(dialog: ActiveDialog, request: TerminalPromptRequest): void {
+    this.stopAfk();
+    if (!request.groups?.length) return;
+    const settings = afkTimeoutSettings(request.afkTimeoutMs);
+    if (settings === undefined) return;
+    const fullSeconds = Math.ceil(settings.timeoutMs / 1000);
+    const initial = afkCountdown(settings, fullSeconds, 0);
+    const state: DialogAfk = { target: dialog, settings, fullSeconds, remainingSeconds: initial.remainingSeconds,
+      showCountdown: initial.showCountdown, fired: false, base: Date.now(), lastInteraction: 0,
+      timer: setInterval(() => this.tickAfk(state), 1000) };
+    state.timer.unref?.();
+    this.afk = state;
+  }
+
+  private stopAfk(): void {
+    if (this.afk) clearInterval(this.afk.timer);
+    this.afk = undefined;
+  }
+
+  private noteAfkInteraction(): void {
+    if (this.afk) this.afk.lastInteraction = Date.now();
+  }
+
+  private tickAfk(state: DialogAfk): void {
+    if (this.afk !== state || this.dialog !== state.target || state.fired) return;
+    const now = Date.now();
+    // Source `GPe()===true`: a focused terminal keeps moving the baseline.
+    if (this.focus.state === 'focused') state.base = now;
+    const elapsedMs = now - Math.max(state.base, state.lastInteraction);
+    if (elapsedMs >= state.settings.timeoutMs) {
+      state.fired = true;
+      const groups = state.target.request.groups ?? [];
+      // Source `P3` receives the answers map as-is: only taken answers submit.
+      const answers = groups.map(group => state.target.answers.get(group.key))
+        .filter((answer): answer is TerminalPromptGroupAnswer => answer !== undefined);
+      state.target.finish({ selected: [], groups: answers });
+      return;
+    }
+    const next = afkCountdown(state.settings, state.fullSeconds, elapsedMs);
+    if (next.remainingSeconds === state.remainingSeconds && next.showCountdown === state.showCountdown) return;
+    state.remainingSeconds = next.remainingSeconds;
+    state.showCountdown = next.showCountdown;
+    this.render();
+  }
+
+  /** The `ywe` countdown row, or undefined while it is not showing. */
+  private dialogCountdown(): string | undefined {
+    const afk = this.afk;
+    if (!afk?.showCountdown || this.dialog !== afk.target) return undefined;
+    return `auto-continue in ${afk.remainingSeconds}s · any key to stay`;
+  }
+
+  /** One extra frame row is reserved for the countdown while it shows. */
+  private afkRows(): number {
+    return this.dialogCountdown() === undefined ? 0 : 1;
+  }
+
+  /**
    * Review-page keys, copied from the recovered page: Enter submits and the
    * cancel label settles the whole request. Group navigation itself is handled
    * for every grouped step, because the recovered flow is tabbed and Left/Right
@@ -1619,6 +1706,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // A grouped step answers its own group; an ungrouped request is one step.
     const active: TerminalPromptRequest | TerminalPromptGroup = group ?? dialog.request;
     const title = reviewing ? (dialog.request.reviewTitle ?? 'Review your answers') : active.title ?? dialog.request.title;
+    // Source `Ku` renders the countdown as its own row after the question body;
+    // the dialog frame trades one content row for it.
+    const countdown = this.dialogCountdown();
+    const height = Math.max(0, rows - 4 - (countdown === undefined ? 0 : 1));
     const content: string[] = [];
     if (reviewing) {
       // Recovered page: a warning while questions are unanswered, then each
@@ -1639,7 +1730,6 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
       content.push('');
       content.push(...wrapEntry({ kind: 'assistant', text: 'Ready to submit your answers?' }, columns));
-      const height = Math.max(0, rows - 4);
       dialog.scroll = Math.min(dialog.scroll, Math.max(0, content.length - height));
       const visible = content.slice(dialog.scroll, dialog.scroll + height);
       while (visible.length < height) visible.push('');
@@ -1647,13 +1737,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const cancel = dialog.request.cancelLabel ?? 'Cancel';
       return [oneLine(title ?? 'Review'), ...visible, SEPARATOR.repeat(columns),
         pad(`[ ${submit} ]  [ ${cancel} ]`, columns),
-        dialog.error ?? 'Enter submit / Esc cancel / Left Right edit a question'].map(line => pad(line, columns));
+        dialog.error ?? 'Enter submit / Esc cancel / Left Right edit a question',
+        ...(countdown === undefined ? [] : [countdown])].map(line => pad(line, columns));
     }
     const choices = active.choices ?? [];
     const previews = choices.map(choice => questionPreviewText(choice.preview));
     const hasPreview = previews.some(preview => preview !== undefined);
     const previewText = previews[dialog.index] ?? 'No preview available';
-    const height = Math.max(0, rows - 4);
     const body = wrapEntry({ kind: 'assistant', text: clean(active.message) }, columns);
     const questionRows = body.length;
     const previewColumn = hasPreview && columns >= PREVIEW_LIST_WIDTH + 4 + PREVIEW_MIN_WIDTH + 4
@@ -1707,7 +1797,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       : 'Enter next / Esc cancel / PgUp/PgDn';
     return [oneLine(title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
       textEntry ? answer : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
-      dialog.error ?? (progress ? `${progress} · ${hint}` : hint)].map((line, row) =>
+      dialog.error ?? (progress ? `${progress} · ${hint}` : hint),
+      ...(countdown === undefined ? [] : [countdown])].map((line, row) =>
         row > 0 && row <= height ? themeRows.get(dialog.scroll + row - 1) ?? pad(line, columns) : pad(line, columns));
   }
 
@@ -1773,10 +1864,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const reviewing = groups.length > 0 && this.dialog.step >= groups.length;
       const active = reviewing ? undefined : groups[this.dialog.step] ?? this.dialog.request;
       const choices = active?.choices ?? [];
+      const afkRows = this.afkRows();
       if (reviewing || !choices.length || this.dialog.index === choices.length) {
         const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;
-        this.drawFrame(frame, columns, rows, rows - 2, cursor, true);
-      } else this.drawFrame(frame, columns, rows, rows - 1, 0, false);
+        this.drawFrame(frame, columns, rows, rows - 2 - afkRows, cursor, true);
+      } else this.drawFrame(frame, columns, rows, rows - 1 - afkRows, 0, false);
       return;
     }
     if (this.sourcePicker?.snapshot.searching) {

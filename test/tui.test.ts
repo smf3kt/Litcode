@@ -64,6 +64,7 @@ import { ENTER_ALT_SCREEN, LEAVE_ALT_SCREEN, MOUSE_OFF, MOUSE_SCROLL, TerminalMo
 import { Keymap, contextStack, expandChord, type TuiContext } from '../src/tui-keys.js';
 import { createTranscriptState, layoutTranscript, reduceTranscript, renderedTranscriptRows, transcriptLines } from '../src/tui-transcript.js';
 import { pad, previewBox, TuiTerminal } from '../src/tui.js';
+import { afkCountdown, afkTimeoutSettings } from '../src/tui-afk.js';
 import { layoutEngine } from '../src/tui-layout.js';
 import { renderPreviewMarkdown } from '../src/tui-markdown.js';
 import { wrapMessageText } from '../src/tui-wrap.js';
@@ -508,6 +509,78 @@ test('a single non-multi-select question submits when its answer is taken', asyn
     assert.deepEqual(await pending, { selected: [], groups: [{ key: 'Only', selected: ['B'] }] });
     assert.ok(!drawn.includes('Review your answers'));
   } finally { tui.close(); }
+});
+
+test('AFK settings follow the recovered enable gate and environment overrides', () => {
+  assert.equal(afkTimeoutSettings(undefined, {}), undefined);
+  assert.equal(afkTimeoutSettings(null, {}), undefined);
+  assert.deepEqual(afkTimeoutSettings(60_000, {}), { timeoutMs: 60_000, countdownMs: 20_000 });
+  assert.deepEqual(afkTimeoutSettings(null, { CLAUDE_AFK_TIMEOUT_MS: '120000' }),
+    { timeoutMs: 120_000, countdownMs: 20_000 });
+  assert.deepEqual(afkTimeoutSettings(60_000,
+    { CLAUDE_AFK_TIMEOUT_MS: 'not-a-number', CLAUDE_AFK_COUNTDOWN_MS: '5000' }),
+    { timeoutMs: 60_000, countdownMs: 5000 });
+  assert.deepEqual(afkTimeoutSettings(10_000, {}), { timeoutMs: 10_000, countdownMs: 10_000 });
+  assert.deepEqual(afkCountdown({ timeoutMs: 60_000, countdownMs: 20_000 }, 60, 39_999),
+    { remainingSeconds: 60, showCountdown: false });
+  assert.deepEqual(afkCountdown({ timeoutMs: 60_000, countdownMs: 20_000 }, 60, 40_000),
+    { remainingSeconds: 20, showCountdown: true });
+  assert.deepEqual(afkCountdown({ timeoutMs: 60_000, countdownMs: 20_000 }, 60, 60_000),
+    { remainingSeconds: 0, showCountdown: true });
+});
+
+test('the AFK countdown auto-continues with the answers taken so far', async (context) => {
+  context.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 1_000_000 });
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).map(line => line.trim()).filter(Boolean);
+  try {
+    const pending = tui.prompt({ message: '', afkTimeoutMs: 60_000, groups: [
+      { key: 'First', title: 'First', message: 'Pick one', multiple: true,
+        choices: [{ label: 'A', value: 'A' }, { label: 'B', value: 'B' }] },
+      { key: 'Second', title: 'Second', message: 'Pick many', multiple: true,
+        choices: [{ label: 'X', value: 'X' }, { label: 'Y', value: 'Y' }] },
+    ] }, new AbortController().signal);
+    key(' \r');           // First takes A and advances.
+    key('\x1b[O');        // Focus leaves; idle time starts counting.
+    context.mock.timers.tick(40_000);
+    assert.match(frame().at(-1)!, /auto-continue in 20s · any key to stay/);
+    key('\x1b[B');        // Any key stays; the countdown clears on the next tick.
+    assert.ok(frame().at(-1)!.includes('auto-continue in 20s · any key to stay'), drawn);
+    context.mock.timers.tick(1_000);
+    assert.ok(!frame().at(-1)!.includes('auto-continue'), drawn);
+    key('\x1b[O');        // Focus leaves again, so idle time resumes.
+    context.mock.timers.tick(60_000);
+    assert.deepEqual(await pending, { selected: [], groups: [{ key: 'First', selected: ['A'] }] });
+  } finally { tui.close(); context.mock.timers.reset(); }
+});
+
+test('AFK stays at full while the terminal is focused', async (context) => {
+  context.mock.timers.enable({ apis: ['setInterval', 'Date'], now: 2_000_000 });
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).map(line => line.trim()).filter(Boolean);
+  try {
+    const pending = tui.prompt({ message: '', afkTimeoutMs: 60_000, groups: [
+      { key: 'Only', title: 'Only', message: 'Pick', multiple: true,
+        choices: [{ label: 'A', value: 'A' }] }] }, new AbortController().signal);
+    key('\x1b[I');        // Focus is held.
+    context.mock.timers.tick(120_000);
+    assert.ok(!frame().at(-1)!.includes('auto-continue'), drawn);
+    key('\x1b[O');
+    context.mock.timers.tick(60_000);
+    assert.deepEqual(await pending, { selected: [], groups: [] });
+  } finally { tui.close(); context.mock.timers.reset(); }
 });
 
 test('a grouped question can be reopened from the review page and cancelled', async () => {

@@ -1071,6 +1071,14 @@ export interface TerminalPromptRequest {
   /** Trusted local theme chooser; focus previews are restored when it closes. */
   themePreview?: boolean;
   themeEdit?: boolean;
+  /**
+   * Host-supplied AFK timeout for a grouped question dialog, copied from the
+   * recovered `afkTimeoutMs` prop (`hwe`, chunk-24k7d6mw.js [1168211)). The
+   * environment `CLAUDE_AFK_TIMEOUT_MS` overrides it; `null` disables AFK
+   * unless that environment value is present. The model input field of the
+   * same name is refused (`host_field`) and never reaches this request.
+   */
+  afkTimeoutMs?: number | null;
 }
 export interface TerminalPromptAnswer {
   selected: string[];
