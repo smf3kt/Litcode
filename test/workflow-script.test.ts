@@ -173,6 +173,31 @@ test('agent option failures surface as script errors without spawning', async ()
   assert.match(remote.error?.message ?? '', /is not available in this build/);
 });
 
+test('tool-restriction options are validated before the bridge and passed through', async () => {
+  let calls = 0;
+  const bridge = async () => { calls += 1; return 'ok'; };
+  const malformed = await run(`return await agent('x', { disallowedTools: ['run_command', ''] })`, bridge);
+  assert.equal(calls, 0);
+  assert.match(malformed.error?.message ?? '', /disallowedTools must be an array of non-empty tool-name strings/);
+
+  const inert = await run(`return await agent('x', { bashCommandClamp: ['Bash'] })`, bridge);
+  assert.equal(calls, 0);
+  assert.match(inert.error?.message ?? '', /bashCommandClamp entry 'Bash'/);
+
+  const stall = await run(`return await agent('x', { stallMs: 1000 })`, bridge);
+  assert.equal(calls, 0);
+  assert.match(stall.error?.message ?? '', /stallMs.*not available/);
+
+  const seen: unknown[] = [];
+  const ok = await run(`return await agent('x', { disallowedTools: ['Write', 'Bash'], bashCommandClamp: ['Bash(git:*)'] })`,
+    async (_prompt, options) => {
+      seen.push(json({ disallowed: options.disallowedTools, clamp: options.bashCommandClamp }));
+      return 'ok';
+    });
+  assert.equal(ok.error, undefined);
+  assert.deepEqual(seen, [{ disallowed: ['Bash', 'Write'], clamp: [['Bash(git:*)']] }]);
+});
+
 test('schema mode passes the schema and returns the validated object', async () => {
   const schema = { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'],
     additionalProperties: false };

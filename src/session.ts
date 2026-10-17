@@ -39,6 +39,9 @@ export type SessionConfig = {
   gateway?: GatewayConfig;
   hooks?: HooksConfig;
   permissions?: PermissionPolicy;
+  /** Per-spawn `agent({bashCommandClamp})` groups. Every reading of a shell
+   *  command has to match a rule in every group (source `fTr`). */
+  bashCommandClamp?: string[][];
   managedPolicy?: { allowShell?: boolean; permissions?: PermissionPolicy;
     features?: Partial<NonNullable<SessionConfig['features']>>; mcpClient?: SessionConfig['mcpClient'] };
   policyHelper?: { path: string; intervalMs?: number; defaultPolicy?: SessionConfig['managedPolicy'] };
@@ -150,6 +153,7 @@ export const configSchema = z.object({
   }).strict().optional(),
   hooks: hooksSchema.optional(),
   permissions: permissionPolicySchema.optional(),
+  bashCommandClamp: z.array(z.array(z.string().min(1)).min(1)).min(1).optional(),
   managedPolicy: managedPolicySchema.optional(),
   // Opt-in managed-settings helper. Distinct from `managedSettingsFile`, which
   // is read once and is fatal when unusable: a helper is expected to change under

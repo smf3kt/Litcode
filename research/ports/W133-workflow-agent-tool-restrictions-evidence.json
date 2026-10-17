@@ -1,0 +1,88 @@
+{
+ "schema": "W133WorkflowAgentToolRestrictionsEvidence.v1",
+ "package": "W133-01 — workflow agent({disallowedTools, bashCommandClamp})",
+ "date": "2026-10-17",
+ "question": "How does a workflow script narrow a child's tools and clamp its shell commands?",
+ "answer": "The spawn validates arrays of unpadded tool names and Bash(...) rules, merges the deny list into the child pool, adds an implicit mcp__* deny for a clamp, refuses a schema spawn whose StructuredOutput is denied or a clamp with no shell tool, and at execution admits a shell command only when every reading matches a rule in every clamp group; an incomplete reading set is refused.",
+ "sourcePosition": {
+  "workflow": {
+   "module": "extracted-v2/modules/chunk-hedqf2m1.js",
+   "optionKeys": 33406,
+   "disallowedValidation": [77423, 78030],
+   "clampValidation": [78145, 79640],
+   "denyMerge": [88522, 89047],
+   "mergedList": [90647, 90700],
+   "poolChecks": [92900, 98900],
+   "schemaDenied": [98500, 98700],
+   "aliasRefusal": [99851, 100127],
+   "noShellRefusal": [100377, 100758]
+  },
+  "clamp": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "matcher": [5444505, 5444900],
+   "denialText": [174085, 174105],
+   "ruleMatch": [5439798, 5443900]
+  },
+  "ruleGrammar": {
+   "module": "extracted-v2/modules/chunk-z6p21rxk.js",
+   "parser": [95, 205]
+  },
+  "ruleShape": {
+   "module": "extracted-v2/modules/chunk-3cynezh1.js",
+   "prefixAndWildcard": [264332, 266180]
+  },
+  "constants": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "bash": 13835,
+   "powerShell": 13836
+  }
+ },
+ "behavior": {
+  "disallowedTools": {
+   "shape": "array of non-empty, unpadded strings",
+   "empty": "no narrowing",
+   "order": "dedupe and sort",
+   "entryGrammar": "Tool or Tool(content); first/last unescaped parens",
+   "mcp": "mcp__<server>, mcp__<server>__<tool>, mcp__*; empty/wildcard segments refused",
+   "case": "case mismatch against the pool is refused",
+   "noOp": "an entry naming no pool tool has no effect"
+  },
+  "bashCommandClamp": {
+   "shape": "array of Bash(<command or prefix>) rules",
+   "prefix": "content ending :* matches the prefix, its space suffix and xargs forms",
+   "exact": "content equals a reading",
+   "everyReading": true,
+   "incompleteSet": "refused as unverifiable",
+   "groups": "every inherited clamp group must admit every reading",
+   "implicitDenies": ["mcp__*"]
+  },
+  "spawnRefusals": [
+   "malformed disallowedTools",
+   "malformed or inert bashCommandClamp entry",
+   "schema mode with StructuredOutput denied",
+   "clamp with no shell tool in the resolved pool"
+  ]
+ },
+ "product": {
+  "files": [
+   "src/agent-tool-restrictions.ts",
+   "src/agent-registry.ts",
+   "src/agent.ts",
+   "src/session.ts",
+   "src/workflow-script.ts",
+   "src/workflow.ts"
+  ],
+  "shellTools": ["run_command", "run_background", "bash", "Bash"],
+  "configField": "bashCommandClamp",
+  "journalOptionKeys": ["disallowedTools", "bashCommandClamp"]
+ },
+ "verification": {
+  "focused": "111/111",
+  "full": "2235/2235",
+  "tsc": 0,
+  "build": 0,
+  "notices": 0,
+  "smokes": ["smoke:workflow-resume", "smoke:workflow-cli"],
+  "identity": "eff677d0e5be4b8c7de753232dfc5a09f1857920f7b7c2e305497d311afc6da8"
+ }
+}
