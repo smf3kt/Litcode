@@ -469,6 +469,23 @@ test("exit code 2 never blocks the display-only feedback events", async () => {
   assert.equal(post.userDisplayMessage, "PostCompact [echo 'late failure' 1>&2; exit 2] failed: late failure");
 });
 
+test("SessionEnd keeps the source's failed-record output lines", async () => {
+  const stderrCommand = "printf boom 1>&2; exit 3";
+  const silentCommand = "printf stdout-only; exit 2";
+  const reasonCommand = "printf '{\"decision\":\"block\",\"reason\":\"stop now\"}'; exit 2";
+  const result = await runHooks(
+    { SessionEnd: [{ command: stderrCommand }, { command: silentCommand }, { command: reasonCommand }] },
+    "SessionEnd",
+    { reason: "exit" },
+    signal(),
+  );
+  assert.equal(result.blocked, false);
+  assert.deepEqual(result.failures, [
+    `SessionEnd hook [${stderrCommand}] failed: boom`,
+    `SessionEnd hook [${reasonCommand}] failed: stop now`,
+  ]);
+});
+
 test("exit code 2 blocks PreCompact, PostToolBatch and PostToolUseFailure", async () => {
   for (const event of ["PreCompact", "PostToolBatch", "PostToolUseFailure"] as const) {
     const result = await runHooks(
