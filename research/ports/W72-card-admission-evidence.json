@@ -1,0 +1,138 @@
+{
+ "schema": "W72CardAdmissionEvidence.v1",
+ "package": "W72-01 — recovered card answer admission",
+ "date": "2026-10-17",
+ "question": "Does the product carry the recovered card answer admission contract, including shown-field integrity and all answer/annotation bounds?",
+ "answer": "Yes: admitCardAnswer ports V/le/ce/de/qht rule for rule and is exported for card hosts; the normalized preview arm and xHe transform remain unported with reasons, and the default ask contract is unchanged until a card host is wired.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-ktr9sak2.js",
+  "unit": "UTF-16 code units",
+  "join": {
+   "symbol": "qht",
+   "range": [
+    1397,
+    1484
+   ]
+  },
+  "limits": {
+   "position": 2011,
+   "values": {
+    "M": 8192,
+    "te": 8192,
+    "ne": 32768,
+    "oe": 2000,
+    "ie": 2000
+   },
+   "gH": {
+    "module": "extracted-v2/modules/chunk-phm7wwmz.js",
+    "position": 1308,
+    "value": 50000
+   }
+  },
+  "wrapper": {
+   "symbol": "V",
+   "range": [
+    2142,
+    2202
+   ]
+  },
+  "admission": {
+   "symbol": "le",
+   "range": [
+    2202,
+    4005
+   ]
+  },
+  "questionMap": {
+   "symbol": "ce",
+   "range": [
+    4005,
+    4482
+   ]
+  },
+  "kindAllowance": {
+   "symbol": "de",
+   "range": [
+    4482,
+    4720
+   ]
+  },
+  "previewAdmission": {
+   "symbol": "pe",
+   "range": [
+    4720,
+    4845
+   ]
+  }
+ },
+ "behavior": {
+  "export": "admitCardAnswer(shown, answer): admitted input or refused rule",
+  "rules": [
+   "not_an_object",
+   "host_field",
+   "changed_shown_field",
+   "unknown_field",
+   "answers",
+   "annotations",
+   "response",
+   "follow_up",
+   "too_large"
+  ],
+  "answers": "question-text keys; string or multiSelect array; 8192 per entry; qht join with JSON quoting",
+  "annotations": "strict preview/notes per known question; exact shown preview; notes 8192",
+  "response": "string up to 8192",
+  "followUp": "boolean only when every shown question has a string kind",
+  "size": "text <= 32768 and text + preview <= 48000",
+  "kindAllowance": "answer may omit kind:\"choice\" where shown carries it, and only then"
+ },
+ "changes": [
+  {
+   "file": "src/interaction-tools.ts",
+   "change": "card admission port and export",
+   "sha256": "f900910f7d8fd99299ec5057d0c98d5a9c191cde06b512347c94229734f75815"
+  },
+  {
+   "file": "test/interaction-tools.test.ts",
+   "change": "one card admission case",
+   "sha256": "80e7404c38068284dad45b76f68324a549da74144f5296c695d22fa2616f9b51"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-11 rows record card admission",
+   "sha256": "6dd1743a0ba21d55273c9fb8a24399e5c0d540ac425d2ff6fa4ae4daed48ebaa"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Question/plan/findings row records card admission",
+   "sha256": "b163cadcf521a4f04e51a5f5954fa58f198f91b9cbaf8b6731e713714c55c98d"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W72-01 entry",
+   "sha256": "17b9a1dc3009fa520dd68358d53abe040d43bb4789e37786d0fe3d158d5e1281"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W72-01 S-1..S-7 entry",
+   "sha256": "d0e66b616b75c2f497a4788ef4969e6edb23fffbf800d60509561482f38bb6d1"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "interactionTools": "29/29",
+  "build": "exit 0",
+  "full": "2,100/2,100",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "21433e8881be0b52f6dab79d7fae89c1d4d04e29fa980a1d032dbc8ba42b2336"
+ },
+ "residuals": [
+  "No product host emits card answers yet; the default ask contract is unchanged.",
+  "The normalized-equivalent preview arm depends on renderer helpers and stays with the renderer port.",
+  "xHe compares after a transform; this port compares plain JSON structurally.",
+  "The full renderer and formatting host remain C-11 work."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-11 continues with card host wiring, the full renderer and the formatting host."
+}

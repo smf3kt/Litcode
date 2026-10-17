@@ -1,0 +1,3 @@
+2026-10-17T15:10:00Z	package	W72-01 卡片答案准入	qht [1397,1484)、V [2142,2202)、le [2202,4005)、ce [4005,4482)、de [4482,4720)、pe [4720,4845)；gH=50000；导出 admitCardAnswer	规则名/键控/上限/引用/严格注释/exact预览/仅扩展followUp 全按源；归一化预览与 xHe 变换未移植（记录）	interaction-tools 29/29；tsc 0；build 0；全量 2,100/2,100；链 767/767
+2026-10-17T15:12:00Z	decision	W72-01 导出校验器而不改默认 ask 合同	① 无产品宿主发卡片答案；② 默认 questionIndex/selected/other 合同保持不变；③ 卡片宿主可用同一校验器；④ 未移植分支与理由逐条记录	残余：卡片宿主接入、完整渲染器、格式化宿主	.audit/w72-01-full.txt
+2026-10-17T15:15:00Z	verification	W72-01 验收：interaction-tools 29/29、tsc 0、build 0、2,100/2,100、767/767	准入+注释+response+followUp；多选联接与引用；host/unknown/changed 字段；单选择数组拒绝；未知答案键；未展示预览；非扩展followUp；kind省略允许/添加拒绝；非对象；总容量	notices 0；索引 75 chunks / 323,525 单位不变；identity 21433e88…（inputs 1d893042…、build d12b4e87…）

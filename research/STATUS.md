@@ -1916,3 +1916,13 @@ preview arm depends on renderer helpers and stays with the renderer port; the so
 annotations by question text while the product carries them on the indexed answer. One new case,
 interaction-tools 28/28, tsc 0, full 2,099/2,099, chain 767/767, identity `3ed12d16…`.
 [W71 record](ports/W71-answer-annotations.md).
+
+W72-01 ports the recovered card answer admission as `admitCardAnswer(shown,
+answer)`. Shown-field integrity, the host-only `afkTimeoutMs`, answers keyed by
+question text with 8192-unit entries and `qht` joining, strict annotations with an
+exact shown-preview match and 8192-unit notes, `response`, extended-only
+`followUp`, and the 32768/48000 size caps all follow `V`/`le`/`ce`/`de`/`qht`.
+The normalized preview arm and `xHe`'s transform remain unported with reasons, and
+no product host emits cards yet, so the default ask contract is unchanged. One new
+case, interaction-tools 29/29, tsc 0, full 2,100/2,100, chain 767/767, identity
+`21433e88…`. [W72 record](ports/W72-card-admission.md).

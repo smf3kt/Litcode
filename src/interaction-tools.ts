@@ -225,6 +225,158 @@ export function previewFragmentError(preview: string | undefined): string | null
   return null;
 }
 
+const CARD_LIMITS = Object.freeze({ answerChars: 8192, notesChars: 8192, textChars: 32768, combinedChars: 48000 });
+
+function plainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+function sameJson(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((value, index) => sameJson(value, b[index]));
+  if (plainObject(a) && plainObject(b)) {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every(key => Object.hasOwn(b, key) && sameJson(a[key], b[key]));
+  }
+  return false;
+}
+/** Recovered `qht`: comma-join, JSON-quoting parts that hold ", " or a quote. */
+function cardAnswerJoin(parts: string[]): string {
+  return parts.map(part => part.includes(', ') || part.includes('"') ? JSON.stringify(part) : part).join(', ');
+}
+/** Recovered `de`: an answer may omit `kind: "choice"` where the shown question carries it. */
+function sameQuestions(answered: unknown, shown: unknown): boolean {
+  if (!Array.isArray(answered) || !Array.isArray(shown) || answered.length !== shown.length) return false;
+  const normalized = shown.map((question, index) => {
+    const answer = answered[index];
+    if (!plainObject(question) || question.kind !== 'choice' || !plainObject(answer) || Object.hasOwn(answer, 'kind')) return question;
+    const { kind: _kind, ...rest } = question;
+    return rest;
+  });
+  return sameJson(answered, normalized);
+}
+export type CardAnswerAdmission =
+  | { kind: 'admitted'; input: Record<string, unknown> }
+  | { kind: 'refused'; rule: string };
+/**
+ * Recovered card answer admission (`V`/`le`). A card host returns the shown
+ * input plus `answers`, `annotations`, `response` and (for extended questions)
+ * `followUp`; every shown field must be unchanged and every answer key must be
+ * a question the card displayed. The default ask contract is separate.
+ */
+export function admitCardAnswer(shown: AskUserQuestionRequest, answer: unknown): CardAnswerAdmission {
+  try {
+    return admitCardAnswerUnchecked(shown, answer);
+  } catch {
+    return { kind: 'refused', rule: 'threw' };
+  }
+}
+function admitCardAnswerUnchecked(shown: AskUserQuestionRequest, answer: unknown): CardAnswerAdmission {
+  const refused = (rule: string): CardAnswerAdmission => ({ kind: 'refused', rule });
+  if (!plainObject(answer)) return refused('not_an_object');
+  const shownRecord = shown as unknown as Record<string, unknown>;
+  for (const key of Object.keys(answer)) {
+    if (key === 'afkTimeoutMs') return refused('host_field');
+    if (key === 'answers' || key === 'annotations' || key === 'response' || key === 'followUp') {
+      if (Object.hasOwn(shownRecord, key)) return refused('changed_shown_field');
+      continue;
+    }
+    if (!Object.hasOwn(shownRecord, key)) return refused('unknown_field');
+    if (!sameJson(answer[key], shownRecord[key]) &&
+        !(key === 'questions' && !Object.hasOwn(shownRecord, 'title') && sameQuestions(answer[key], shownRecord[key]))) {
+      return refused('changed_shown_field');
+    }
+  }
+  const questions = new Map<string, { multiSelect: boolean; optionCount: number; previews: Set<string> }>();
+  let extended = Array.isArray(shown.questions) && shown.questions.length > 0;
+  for (const question of shown.questions as unknown[]) {
+    if (!plainObject(question)) { extended = false; continue; }
+    if (typeof question.kind !== 'string') extended = false;
+    if (typeof question.question !== 'string') continue;
+    const options = Array.isArray(question.options) ? question.options : [];
+    const previews = new Set<string>();
+    for (const option of options) {
+      const preview = plainObject(option) ? option.preview : undefined;
+      if (typeof preview === 'string') previews.add(preview);
+    }
+    questions.set(question.question, { multiSelect: question.multiSelect === true, optionCount: options.length, previews });
+  }
+  const input: Record<string, unknown> = { ...shownRecord };
+  let textChars = 0;
+  let previewChars = 0;
+  const touched = new Set<string>();
+
+  const answers = answer.answers;
+  if (answers !== undefined) {
+    if (!plainObject(answers)) return refused('answers');
+    const admitted: Record<string, string> = Object.create(null);
+    for (const key of Object.keys(answers)) {
+      const info = questions.get(key);
+      if (info === undefined) return refused('answers');
+      touched.add(key);
+      const value = answers[key];
+      if (typeof value === 'string') {
+        if (value.length > CARD_LIMITS.answerChars) return refused('answers');
+        textChars += value.length;
+        admitted[key] = value;
+        continue;
+      }
+      if (!info.multiSelect || !Array.isArray(value) || value.length > info.optionCount + 1) return refused('answers');
+      const parts: string[] = [];
+      for (const item of value) {
+        if (typeof item !== 'string' || item.length > CARD_LIMITS.answerChars) return refused('answers');
+        parts.push(item);
+      }
+      const joined = cardAnswerJoin(parts);
+      textChars += joined.length;
+      admitted[key] = joined;
+    }
+    if (!Object.hasOwn(shownRecord, 'answers')) input.answers = admitted;
+  }
+  const annotations = answer.annotations;
+  if (annotations !== undefined) {
+    if (!plainObject(annotations)) return refused('annotations');
+    const admitted: Record<string, { preview?: string; notes?: string }> = Object.create(null);
+    for (const key of Object.keys(annotations)) {
+      const info = questions.get(key);
+      const value = annotations[key];
+      if (info === undefined || !plainObject(value)) return refused('annotations');
+      touched.add(key);
+      const entry: { preview?: string; notes?: string } = {};
+      for (const field of Object.keys(value)) {
+        const fieldValue = value[field];
+        if (field === 'preview') {
+          // Recovered `pe` first arm: only a preview this question showed.
+          if (typeof fieldValue !== 'string' || !info.previews.has(fieldValue)) return refused('annotations');
+          previewChars += fieldValue.length;
+          entry.preview = fieldValue;
+        } else if (field === 'notes') {
+          if (typeof fieldValue !== 'string' || fieldValue.length > CARD_LIMITS.notesChars) return refused('annotations');
+          textChars += fieldValue.length;
+          entry.notes = fieldValue;
+        } else return refused('annotations');
+      }
+      admitted[key] = entry;
+    }
+    input.annotations = admitted;
+  }
+  const response = answer.response;
+  if (response !== undefined) {
+    if (typeof response !== 'string' || response.length > CARD_LIMITS.answerChars) return refused('response');
+    textChars += response.length;
+    input.response = response;
+  }
+  const followUp = answer.followUp;
+  if (followUp !== undefined) {
+    if (typeof followUp !== 'boolean' || !extended) return refused('follow_up');
+    input.followUp = followUp;
+  }
+  for (const key of touched) previewChars += key.length;
+  if (textChars > CARD_LIMITS.textChars || textChars + previewChars > CARD_LIMITS.combinedChars) return refused('too_large');
+  return { kind: 'admitted', input };
+}
+
 function output(value: unknown, context: ToolContext, tool: string): string {
   const json = JSON.stringify(value);
   const configured = Math.floor(context.maxOutputBytes);
