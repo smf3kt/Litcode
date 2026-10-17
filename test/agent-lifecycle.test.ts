@@ -422,6 +422,32 @@ test("PermissionRequest allowing updatedInput executes the replacement and expos
   } finally { session.close(); }
 });
 
+test("PermissionRequest deny with interrupt aborts the turn before the tool runs", async () => {
+  const root = workspace();
+  const effect = spy("write_file");
+  const statuses: string[] = [];
+  const cfg = config(root, [effect.tool], { permissions: { mode: "ask", allow: [], deny: [] }, hooks: {
+    PermissionRequest: [{ command: emit({ hookSpecificOutput: { hookEventName: "PermissionRequest",
+      decision: { behavior: "deny", message: "stop the turn", interrupt: true } } }) }],
+  } });
+  const provider = new ScriptedProvider([response([call("one", "write_file", { path: "effect.txt" })], "tool_use"), done()]);
+  const session = Session.open(root, { config: cfg });
+  const turn = new AbortController();
+  try {
+    const result = await new Agent(session, provider, [effect.tool], {
+      status: text => statuses.push(text),
+      interruptTurn: () => turn.abort(new Error("Hook interrupt")),
+    }).run("write", turn.signal);
+    assert.equal(result.reason, "aborted");
+    assert.deepEqual(effect.inputs, []);
+    assert.ok(statuses.includes("Hook interrupt: tool=write_file hookMessage=stop the turn"));
+    const results = resultBatches(session)[0]!;
+    assert.equal(results[0]!.is_error, true);
+    assert.match(String(results[0]!.content), /stop the turn/);
+    assertBatchAdjacency(session);
+  } finally { session.close(); }
+});
+
 test("PermissionRequest replacement denied by input rules produces a paired error before tool effects", async () => {
   const root = workspace();
   const effect = spy("write_file");

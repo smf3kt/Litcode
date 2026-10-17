@@ -311,6 +311,9 @@ export class AgentRegistry {
       hooks = createChildHookLifecycle(session, this.options);
       const childId = session.id;
       const agent = new Agent(session, this.options.provider, tools, { hookOptions: hooks.hookOptions,
+        // A denying PermissionRequest hook with `interrupt:true` aborts this
+        // child's turn (source subagent consumer, chunk-fk088dyb.js offset 89115).
+        interruptTurn: () => controller.abort(new Error('Hook interrupt')),
         ...(this.options.instructionFiles ? { instructionFiles: paths => this.options.instructionFiles!(config.workspace, paths) } : {}),
         ...(this.options.terminalSequence ? { terminalSequence: sequence => this.options.terminalSequence!(childId, sequence) } : {}),
         ...(this.options.stopState ? { stopState: this.options.stopState } : {}) });
@@ -431,6 +434,7 @@ export class AgentRegistry {
         child.hooks = createChildHookLifecycle(child.session, this.options);
         const childId = child.session.id;
         child.agent = new Agent(child.session, this.options.provider, child.tools, { hookOptions: child.hooks.hookOptions,
+          interruptTurn: () => child.controller.abort(new Error('Hook interrupt')),
           ...(this.options.instructionFiles ? { instructionFiles: paths => this.options.instructionFiles!(child.config.workspace, paths) } : {}),
           ...(this.options.terminalSequence ? { terminalSequence: sequence => this.options.terminalSequence!(childId, sequence) } : {}),
           ...(this.options.stopState ? { stopState: this.options.stopState } : {}) });

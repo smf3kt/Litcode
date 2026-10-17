@@ -1,0 +1,130 @@
+{
+ "schema": "W117PermissionInterruptEvidence.v1",
+ "package": "W117-01 — PermissionRequest deny interrupt",
+ "date": "2026-10-17",
+ "question": "How does a PermissionRequest deny with interrupt affect the turn?",
+ "answer": "Only the adopted denying hook can carry interrupt, and only when it is exactly true. The consumer logs Hook interrupt with the tool and message, then aborts the turn controller; the denial remains the recorded tool result and the turn finishes aborted.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "denyArmSchemas": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "range": [
+    395544,
+    395771
+   ]
+  },
+  "normalizer": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 556404
+  },
+  "answerFold": {
+   "module": "extracted-v2/modules/chunk-fyhzvvp0.js",
+   "offset": 15469
+  },
+  "consumers": [
+   {
+    "module": "extracted-v2/modules/chunk-rx2nah4x.js",
+    "offset": 660951
+   },
+   {
+    "module": "extracted-v2/modules/chunk-fk088dyb.js",
+    "offset": 89113
+   }
+  ]
+ },
+ "behavior": {
+  "adoptedDecisionOnly": true,
+  "interruptMustBeTrue": true,
+  "denialRecordedAsToolResult": true,
+  "turnAbortedAfterLog": true,
+  "postHooksSkippedAfterAbort": true,
+  "logFormat": "Hook interrupt: tool=<name> hookMessage=<message>"
+ },
+ "adaptations": [
+  "The status line is user-visible where the source writes a log line.",
+  "The foreground subagent runner and the skill-fork runner receive only a signal and own no controller, so they record the denial without aborting.",
+  "No per-hook outcome record exists beyond the adopted interrupt flag."
+ ],
+ "changes": [
+  {
+   "file": "src/hooks.ts",
+   "change": "interrupt parse",
+   "sha256": "5c6b87f002bdfc5a0f89042e840c71638dc11f763fd750caaa67c0ddea004193"
+  },
+  {
+   "file": "src/agent.ts",
+   "change": "interrupt consumption and turn abort seam",
+   "sha256": "0de4d99d7f804db611a12c472da65ae8ef932d13a992679e1fa13e91375d0bf7"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "turn controller abort wiring",
+   "sha256": "ab70735d92f83f0f654a7c94ac531d74b441d484137fb70115986f04c45ef156"
+  },
+  {
+   "file": "src/cli.ts",
+   "change": "headless controller abort wiring",
+   "sha256": "9733efbb17288daf593c65f8ba4b2508e4e426c4390c0b758c311902abc216fe"
+  },
+  {
+   "file": "src/agent-registry.ts",
+   "change": "registry child controller abort wiring",
+   "sha256": "bc1f40caf4f36f1cd8099ed320f17bafc5a7f4b8cd490b3927c7e1397176086a"
+  },
+  {
+   "file": "src/plugin-chain-classic-raise.ts",
+   "change": "classic deny interrupt type",
+   "sha256": "55a3ce98bcfcffeca34a41afc13c0ae46bc492aa026a995595f5058b3783929c"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "interrupt adoption test",
+   "sha256": "7b55e9bbf980fd43e7cc3b79d86773de8ff26113e596e7b36b5d3ee68f67be82"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "turn abort test",
+   "sha256": "33e748d037db81f95a6517b393f3b143947ebb17715862cc029721082d63e065"
+  },
+  {
+   "file": "test/plugin-chain-permission.test.ts",
+   "change": "classic interrupt test",
+   "sha256": "0dccc79ec8f6c7320e1cfb86b2fc8dd0e31ee89b3d12bea11058957ebf17518a"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W117",
+   "sha256": "6595606b98872d9eac1d581a0dd41b73b9e4020dc14b439b143a16430f46dc8e"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W117",
+   "sha256": "055e5841930d66cc26f3fa3cc473e38664be259296d3270660083373a1c520cb"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W117-01 entry",
+   "sha256": "e4892b533a7d953d5c16e98ed32c635b40b95e8de7485e334c5a6dc4aec808ff"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W117-01 S-1..S-7 entry",
+   "sha256": "5d80785175269f279830829aa8fbf6d725ffa0ba055c139d29be8564033239c5"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "214/214 (hooks, agent-lifecycle, plugin-chain-permission, interactive, agent-registry, cli, skill-runtime, subagents)",
+  "build": "exit 0",
+  "full": "2,162/2,162",
+  "chain": "768/768",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "1c73f4529c42a0667306529e8b8cb0c22d72ad647baa6f2845aa62621927282b"
+ },
+ "residuals": [
+  "The remaining C-6 hook output consumers and script semantics are unconsumed."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with the remaining hook output consumers."
+}

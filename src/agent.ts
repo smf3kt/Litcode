@@ -93,6 +93,10 @@ export type AgentEvents = { text?: (text: string) => void; status?: (status: str
   terminalSequence?: (sequence: string) => void;
   instructionFiles?: (paths: string[]) => void;
   permission?: (request: { tool: string; input: unknown; reason: string; signal: AbortSignal }) => Promise<boolean>;
+  /** Abort the turn after a PermissionRequest deny carried `interrupt:true`; the owner of the
+   *  turn's controller supplies this (the source aborts it directly at
+   *  chunk-rx2nah4x.js offset 660913). */
+  interruptTurn?: () => void;
   hookOptions?: HookRunOptions; interaction?: InteractionCallbacks;
   /** Live background jobs and session cron tasks for Stop/SubagentStop (`Sle`). */
   stopState?: () => StopRuntimeState };
@@ -458,6 +462,10 @@ export class Agent {
     }
     const reason = decision.reason ?? `Approval required for ${tool.schema.name}`;
     const requested = await this.hook('PermissionRequest', { tool_name: tool.schema.name, tool_input: input, reason }, signal);
+    // `interrupt` belongs to the adopted deny only; `runHooks` keeps the first
+    // non-allow decision, matching the source's first-result loop (`n2e`,
+    // chunk-fyhzvvp0.js offset 15633).
+    let hookInterrupt = requested.interrupt === true;
     // The chain's classic PermissionRequest event, on the source's own fields (`dze`
     // chunk-sfn1dbxq.js [3063858,3064190), schema `aK` chunk-r2vtj1kh.js [192753,192908)):
     // `{hook_event_name: 'PermissionRequest', tool_name, tool_input, permission_suggestions?,
@@ -467,9 +475,9 @@ export class Agent {
     // (chunk-sfn1dbxq.js [3317869,3319984), schema chunk-n3ykh62m.js [395544,395771)): an item without
     // `permissionRequestResult` is skipped, `deny` blocks with `message || "Permission denied by hook"`,
     // and `allow` carries `updatedInput` through the same permission re-check the native answer's
-    // rewrite goes through. Two answer fields stay unmapped for lack of a consumer: `updatedPermissions`
-    // (this product keeps no always-allow rule store to update) and `interrupt` (the source aborts the
-    // whole turn's controller, which this product's `authorize` receives but does not own).
+    // rewrite goes through. A deny's `interrupt` aborts the turn through the owning controller
+    // (`interruptTurn`); `updatedPermissions` stays unmapped because this product keeps no
+    // always-allow rule store to update.
     if (classicEventRaised(CLASSIC_PERMISSION_REQUEST)) {
       const raised = await raiseClassicEvent({
         event: CLASSIC_PERMISSION_REQUEST,
@@ -483,13 +491,23 @@ export class Agent {
       if (chain?.behavior === 'deny') {
         requested.blocked = true;
         requested.reason ??= chain.message ?? 'Permission denied by hook';
+        if (chain.interrupt === true) hookInterrupt = true;
       } else if (chain?.behavior === 'allow') {
         requested.permissionDecision = 'allow';
         if (chain.updatedInput !== undefined) requested.updatedInput = chain.updatedInput;
       }
     }
-    if (requested.blocked || requested.permissionDecision === 'deny') return { input,
-      denied: requested.reason ?? requested.permissionDecisionReason ?? 'Permission declined by hook' };
+    if (requested.blocked || requested.permissionDecision === 'deny') {
+      const denied = requested.reason ?? requested.permissionDecisionReason ?? 'Permission declined by hook';
+      if (hookInterrupt) {
+        // The source logs the interrupt, then aborts the turn's controller
+        // (`n2e` consumers, chunk-rx2nah4x.js offset 660913 and
+        // chunk-fk088dyb.js offset 89115).
+        this.events.status?.(`Hook interrupt: tool=${tool.schema.name} hookMessage=${denied}`);
+        this.events.interruptTurn?.();
+      }
+      return { input, denied };
+    }
     if (requested.updatedInput !== undefined) {
       input = requested.updatedInput;
       const updated = permissionDecision(this.session.config.permissions, tool, input);

@@ -701,6 +701,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       write: text => { process.stdout.write(text); }, writeError: text => { process.stderr.write(text); } });
     const agent = activeAgent = new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {
       text: text => { finalText += text; headless!.text(text); }, status: status => headless!.status(status),
+      interruptTurn: () => controller.abort(new Error('Hook interrupt')),
       hookOptions: currentRuntime.hookOptions?.(currentSession.config, currentSession.id),
       stopState: () => currentRuntime.stopState?.(currentSession.id) ?? { background_tasks: [], session_crons: [] },
     });
