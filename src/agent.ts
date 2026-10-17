@@ -28,6 +28,15 @@ Shell access is available only when enabled by the user. Keep credentials out of
 Use the user's language. Preserve user-authored text exactly unless asked to change it.
 Do not automatically add co-author trailers, vendor attribution, promotional text, invisible characters or watermarks to commits, files or replies.`;
 
+// `Hen` (chunk-phm7wwmz.js offset 10022): when a PermissionDenied hook sets
+// `retry`, the source pushes this meta user message after the denied tool
+// result (`chunk-sfn1dbxq.js` offset 2288904: `if (gr && !decisionReason.noVerdict)`)
+// with `isMeta` and `turnCompanion` set, so it is not shown but reaches the next
+// request. `noVerdict` is only set on auto-mode classifier denials (offsets
+// 3343515/3344972/3351249); this product has no classifier, so every deny path
+// here is eligible.
+const PERMISSION_RETRY_META = 'The PermissionDenied hook indicated you may retry this tool call.';
+
 export function defaultConfig(workspace: string, tools: ToolDefinition[]): SessionConfig {
   return {
     model: '', system: DEFAULT_SYSTEM, gateway: { ...DEFAULT_GATEWAY },
@@ -406,7 +415,7 @@ export class Agent {
     return context;
   }
 
-  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal): Promise<{ input: unknown; denied?: string }> {
+  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal): Promise<{ input: unknown; denied?: string; retry?: boolean }> {
     const decision = permissionDecision(this.session.config.permissions, tool, input);
     // `classic.PermissionDenied` is deliberately not raised here, and nowhere else in this product: the
     // source raises it from exactly one body (`I9r` chunk-sfn1dbxq.js [3063491,3063858)), whose single
@@ -425,8 +434,8 @@ export class Agent {
     // (chunk-phm7wwmz.js).
     if (decision.decision === 'allow') return { input };
     if (decision.decision === 'deny') {
-      await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: decision.reason }, signal);
-      return { input, denied: decision.reason ?? 'Permission denied' };
+      const deniedHook = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: decision.reason }, signal);
+      return { input, denied: decision.reason ?? 'Permission denied', retry: deniedHook.retry === true };
     }
     const reason = decision.reason ?? `Approval required for ${tool.schema.name}`;
     const requested = await this.hook('PermissionRequest', { tool_name: tool.schema.name, tool_input: input, reason }, signal);
@@ -466,8 +475,8 @@ export class Agent {
       input = requested.updatedInput;
       const updated = permissionDecision(this.session.config.permissions, tool, input);
       if (updated.decision === 'deny') {
-        await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: updated.reason }, signal);
-        return { input, denied: updated.reason ?? 'Permission denied' };
+        const deniedHook = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: updated.reason }, signal);
+        return { input, denied: updated.reason ?? 'Permission denied', retry: deniedHook.retry === true };
       }
     }
     if (requested.permissionDecision === 'allow') return { input };
@@ -530,6 +539,7 @@ export class Agent {
     const results: ToolResult[] = [];
     const extra: string[] = [];
     let stopReason = blocked;
+    let retryMeta = false;
     // Keep hook feedback after the entire paired batch, including on cancellation.
     for (const call of calls) {
       let result: ToolResult;
@@ -547,6 +557,7 @@ export class Agent {
           if (!tool) throw new Error(`Unknown tool: ${call.name}`);
           const authorization = await this.authorize(tool, input, signal);
           input = authorization.input;
+          if (authorization.retry === true) retryMeta = true;
           if (authorization.denied) throw new Error(authorization.denied);
           const pre = await this.hook('PreToolUse', { tool_name: call.name, tool_input: input, tool_use_id: call.id }, signal);
           extra.push(...pre.additionalContext);
@@ -577,6 +588,7 @@ export class Agent {
           if (pre.updatedInput !== undefined) {
             const updated = await this.authorize(tool, pre.updatedInput, signal);
             input = updated.input;
+            if (updated.retry === true) retryMeta = true;
             if (updated.denied) throw new Error(updated.denied);
           }
           const rules = (await this.ruleContext(call.name, input, signal)).filter(text => !this.session.messages.some(message =>
@@ -694,6 +706,10 @@ export class Agent {
     this.session.append({ kind: 'message', message: { role: 'user', content: [
       ...results, ...extra.map(text => ({ type: 'text' as const, text: `Hook context:\n${text}` })),
     ] } });
+    // `Hen` is a separate meta user message after the denied tool result, so it
+    // is not shown yet reaches the next request. The source appends one per
+    // denied call; this batch model appends one after the whole result batch.
+    if (retryMeta) this.session.append({ kind: 'message', message: { role: 'user', content: PERMISSION_RETRY_META } });
     assertPaired(this.session.messages);
     if (!signal.aborted) {
       const batch = await this.hook('PostToolBatch', { tool_use_ids: calls.map(call => call.id) }, signal);

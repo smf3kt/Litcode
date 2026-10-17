@@ -438,6 +438,26 @@ test("PermissionRequest replacement denied by input rules produces a paired erro
     const result = resultBatches(session)[0]![0]!;
     assert.equal(result.is_error, true);
     assert.match(String(result.content), /input denied/);
+    assert.equal(session.messages.some(message => message.content === "The PermissionDenied hook indicated you may retry this tool call."), false);
+    assertBatchAdjacency(session);
+  } finally { session.close(); }
+});
+
+test("PermissionDenied retry adds the recovered hint after the denied tool result", async () => {
+  const root = workspace();
+  const effect = spy("write_file");
+  const cfg = config(root, [effect.tool], { permissions: { mode: "ask", allow: [], deny: [], inputRules: [{ tool: "write_file", path: "blocked.txt", decision: "deny" }] }, hooks: {
+    PermissionRequest: [{ command: emit({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "allow", updatedInput: { path: "blocked.txt" } } } }) }],
+    PermissionDenied: [{ command: emit({ hookSpecificOutput: { hookEventName: "PermissionDenied", retry: true } }) }],
+  } });
+  const provider = new ScriptedProvider([response([call("one", "write_file", { path: "original.txt" })], "tool_use"), done()]);
+  const session = Session.open(root, { config: cfg });
+  try {
+    await new Agent(session, provider, [effect.tool]).run("write");
+    assert.deepEqual(effect.inputs, []);
+    const batchIndex = session.messages.findIndex(message => Array.isArray(message.content) && message.content.some(block => block.type === "tool_result"));
+    const hintIndex = session.messages.findIndex(message => message.content === "The PermissionDenied hook indicated you may retry this tool call.");
+    assert.equal(hintIndex, batchIndex + 1);
     assertBatchAdjacency(session);
   } finally { session.close(); }
 });

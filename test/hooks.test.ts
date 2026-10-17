@@ -989,6 +989,12 @@ test("event output translation retains permission, updated result and general sp
   assert.equal("suppressOriginalPrompt" in notSuppressed, false);
   const startSuppress = await runHooks({ SessionStart: [emit({ hookSpecificOutput: { hookEventName: "SessionStart", suppressOriginalPrompt: true } })] }, "SessionStart", {});
   assert.equal("suppressOriginalPrompt" in startSuppress, false);
+  const retry = await runHooks({ PermissionDenied: [emit({ hookSpecificOutput: { hookEventName: "PermissionDenied", retry: true } })] }, "PermissionDenied", {});
+  assert.equal(retry.retry, true);
+  const noRetry = await runHooks({ PermissionDenied: [emit({ hookSpecificOutput: { hookEventName: "PermissionDenied", retry: false } })] }, "PermissionDenied", {});
+  assert.equal("retry" in noRetry, false);
+  const deniedElsewhere = await runHooks({ PermissionRequest: [emit({ hookSpecificOutput: { hookEventName: "PermissionRequest", retry: true } })] }, "PermissionRequest", {});
+  assert.equal("retry" in deniedElsewhere, false);
 });
 
 test("session titles normalize like the recovered ci helper", () => {
