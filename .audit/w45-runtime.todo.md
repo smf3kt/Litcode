@@ -799,3 +799,11 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The hook runner follows the React semantics the source relies on.** All three state initializer forms, re-render after a state setter, and cleanup on a dependency change; W45-72's 11 tests still pass.
 - [x] **Behaviour was measured before it was asserted.** Five alt reasons, the refusal window, the id widths, the three probe outcomes, the single transmit, the temp-file removal and the cannot-read answer are in the probe log and in the suite.
 - [x] **Sweep.** tsc 0, copy `declared 81 / unresolved 0`, notices 0, new suite 15/15, chain family 568/568, full 1844/1844, index 58 chunks / 255,604 units, identity `7b53418e…`.
+
+## W45-77 acceptance (2026-10-17)
+
+- [x] **The leaf partition starts with the Code site component.** The leaf, the code block renderer and the diff renderer are copied whole in four modules; the `diff` package body is carried as its own copy so the renderer and the library never share a name.
+- [x] **The host boundary is named and minimal.** `plugin-chain-code-host.ts` serves the hooks and context reads the bodies make; the structured highlighters answer null because the source gates them behind a flag this host does not expose, which is the source's own unset answer.
+- [x] **The element seam follows the compiled call shape.** `Xe` serves jsx/jsxs (children in props, third argument the key) and `Tc` stays createElement; the renderers render their children instead of the key.
+- [x] **Behaviour was measured before it was asserted.** Width resolution, both truncation paths, the gutter marker, the long-line marker, the language fallback, the hunk separator and the word-level pairing are in the probe log and in the suite.
+- [x] **Sweep.** tsc 0, copies `declared 47/88/76/55 / unresolved 0`, notices 0, new suite 24/24 plus 2 element-factory tests, chain family 594/594, full 1,870/1,870, index 62 chunks / 278,059 units, identity `0baf2436…`.

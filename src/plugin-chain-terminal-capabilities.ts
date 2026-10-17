@@ -16,9 +16,43 @@
 // `answer` settles a pending capability (and records a yes), `deadline` settles every pending
 // capability at its guess with `, no answer` appended to the source, and `onSettle` follows one
 // capability the same way the probe store does.
-export {
-  i as ImageFileProbe,
-  o as CapabilityReadings,
-  s as DEFAULT_CAPABILITIES,
-  Q8n as CAPABILITY_NAMES,
-} from './plugin-chain-terminal-capabilities-source.js';
+import { i, o, s, Q8n } from './plugin-chain-terminal-capabilities-source.js';
+
+export interface ImageFileReading {
+  state: 'unasked' | 'asking' | 'settled';
+  value?: boolean;
+  source?: string;
+}
+
+export interface ImageFileProbeStore {
+  get(): ImageFileReading;
+  now(): boolean | undefined;
+  begin(): boolean;
+  unask(): void;
+  answer(reading: { value: boolean; source: string }): boolean;
+  onSettle(listener: (value: boolean) => void): () => void;
+}
+
+export interface CapabilityReading {
+  state: 'pending' | 'settled';
+  value?: boolean;
+  likely?: boolean;
+  source: string;
+}
+
+export interface CapabilityStore {
+  get(name: string): CapabilityReading;
+  now(name: string): boolean;
+  confirmed(name: string): boolean;
+  pending(): string[];
+  answer(name: string, value: boolean, source: string): boolean;
+  deadline(): void;
+  onSettle(name: string, listener: (value: boolean) => void): () => void;
+}
+
+export const ImageFileProbe = i as unknown as new (initial?: { value: boolean; source: string }) => ImageFileProbeStore;
+export const CapabilityReadings = o as unknown as new (
+  readings: Record<string, { settled?: boolean; likely?: boolean; source: string }>,
+) => CapabilityStore;
+export const DEFAULT_CAPABILITIES = s as Record<string, boolean>;
+export const CAPABILITY_NAMES = Q8n as string[];

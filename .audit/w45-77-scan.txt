@@ -1,0 +1,12 @@
+file src/plugin-chain-code-source.ts
+declared 47  imports ./plugin-chain-react-surface.js, ./plugin-chain-code-host.js, ./plugin-chain-leaf-walkers.js, ./plugin-chain-text-clamp-source.js, ./plugin-chain-code-block-source.js, ./plugin-chain-code-diff-source.js
+unresolved 0
+file src/plugin-chain-code-block-source.ts
+declared 88  imports node:path, ./plugin-chain-react-surface.js, ./tui-bundle-runtime.js, ./tui-highlight-cache.js, ./tui-component-host.js, ./tui-highlight-manager.js, ./plugin-chain-code-host.js, ./tui-markdown-host.js, ./plugin-chain-leaf-walkers.js, ./tui-color.js, ./plugin-chain-host.js, ./plugin-chain-code-diff-source.js
+unresolved 0
+file src/plugin-chain-code-diff-source.ts
+declared 76  imports ./tui-color.js, ./plugin-chain-react-surface.js, ./plugin-chain-source.js, ./plugin-chain-code-host.js, ./plugin-chain-normalize-source.js, ./tui-render-host.js, ./tui-render-engine.js, ./plugin-chain-leaf-walkers.js, ./plugin-chain-diff-source.js
+unresolved 0
+file src/plugin-chain-diff-source.ts
+declared 55  imports 
+unresolved 0

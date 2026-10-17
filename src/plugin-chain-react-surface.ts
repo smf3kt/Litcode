@@ -13,7 +13,7 @@
 // remaining hooks and terminal glue.
 export { Bo, Ce, Fo, Ko, Wo, eg, jo, nr, _o, ee } from './plugin-chain-react-surface-source.js';
 export {
-  Ae, P, R, Tc, Z, en, le, n, qt, s, tI, y, ZFt, runComponent,
+  Ae, P, R, Rt, Tc, Xe, Z, b, en, hh, km, le, n, qt, s, tI, w, y, ZFt, runComponent,
 } from './plugin-chain-react-hooks.js';
 export type {
   ComponentRun, HookRuntime, SurfaceContext, SurfaceElement, SurfaceNode,

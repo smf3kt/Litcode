@@ -1,0 +1,255 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-3qabb19b.js",
+      "sha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2"
+    },
+    {
+      "module": "chunk-04m6g9sr.js",
+      "sha256": "f9592a99f1db870e5f9dd7a4b9c28fdf71d8b7450c6ad9a5dd2715a3b91f61bc"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-3qabb19b.js",
+      "sha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
+      "range": [
+        615,
+        673
+      ],
+      "units": 58,
+      "bodySha256": "c8943c1d39754eee22be2c889ba998320247a60f7a57b02ecfec2d074f1c2463",
+      "note": "`uwe` — interleave a separator between hunks"
+    },
+    {
+      "module": "chunk-04m6g9sr.js",
+      "sha256": "f9592a99f1db870e5f9dd7a4b9c28fdf71d8b7450c6ad9a5dd2715a3b91f61bc",
+      "range": [
+        1306,
+        1319
+      ],
+      "units": 13,
+      "bodySha256": "e172f34f2de8c47be963a9169b533903b3acdeed619a6445e37f0be76ef77a35",
+      "note": "`ydn` — the longest line shown before it is truncated"
+    },
+    {
+      "module": "chunk-04m6g9sr.js",
+      "sha256": "f9592a99f1db870e5f9dd7a4b9c28fdf71d8b7450c6ad9a5dd2715a3b91f61bc",
+      "range": [
+        1319,
+        1486
+      ],
+      "units": 167,
+      "bodySha256": "45246a1be5182d489f44a3c4fa0c4caecb46288815f8ae6d34f4418374cae2cc",
+      "note": "`DXe` — truncate a long line and count the characters dropped"
+    },
+    {
+      "module": "chunk-04m6g9sr.js",
+      "sha256": "f9592a99f1db870e5f9dd7a4b9c28fdf71d8b7450c6ad9a5dd2715a3b91f61bc",
+      "range": [
+        1486,
+        1532
+      ],
+      "units": 46,
+      "bodySha256": "aa4dc5b55c31214a813e8b7984c08eb2f64a9b7fc8d4826fdf455943c8950655",
+      "note": "`dje` — the sentence that says how many characters were dropped"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        21431,
+        21770
+      ],
+      "units": 339,
+      "bodySha256": "54ddbe2c1927c25432a332c7a12102815f168696b50cca2542e0bd78146af78a",
+      "note": "`uu` — a column that may reach the left edge of the screen"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        21770,
+        22067
+      ],
+      "units": 297,
+      "bodySha256": "2b50f9eedc3d3c6b07748c35121c0994be2ffe3f5bedc3031947c66cb48583b1",
+      "note": "`DIe` — pre-rendered lines drawn as one raw ANSI element"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        1319,
+        1363
+      ],
+      "units": 44,
+      "bodySha256": "a57680294e11116e485fc9158f7806044378bb9acc6b288a66985aa503d1becd",
+      "note": "`pe` — wrap one rendered line as a Box child"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        1363,
+        1374
+      ],
+      "units": 11,
+      "bodySha256": "0432205a507e33f60427c57a54dbfa2be5f201a1df1bdc8a1715647b1c9c5449",
+      "note": "`ie` — the share of changed characters above which a word diff is not drawn"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        1374,
+        1770
+      ],
+      "units": 396,
+      "bodySha256": "83fe29b1b92b690c903b48971c92c9841337c5e118e925bfb93208a481d1e656",
+      "note": "`_` — draw a whole hunk without the structured diff"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        1770,
+        1967
+      ],
+      "units": 197,
+      "bodySha256": "047c0b89a1fbc5c840b1e8129f8f7d4239a6433d19764bb98830e81501764d92",
+      "note": "`fe` — read each hunk line's kind off its marker"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        1967,
+        2507
+      ],
+      "units": 540,
+      "bodySha256": "83208166231bba2567ee71e70ad78c1d36485d6f973301705c8f2e2820446660",
+      "note": "`le` — pair removed lines with the added lines that replaced them"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        2507,
+        2556
+      ],
+      "units": 49,
+      "bodySha256": "dc2679a00cec54c07c3ff638b936d3d6b6fd8a249ea6d285f6c6349ae694fbeb",
+      "note": "`ue` — the word diff between a removed and an added line"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        2556,
+        4173
+      ],
+      "units": 1617,
+      "bodySha256": "6742176bd9c7ccb261918ae4b268d4c6dd5e0d4a65bbae842ed12ad8b5bd050d",
+      "note": "`he` — draw one word-diffed line"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        4173,
+        5319
+      ],
+      "units": 1146,
+      "bodySha256": "da9d93b72aeaa03a57fe8c4a20a5af5f74933046466f70a8f30979c28eb317a5",
+      "note": "`U` — lay out a hunk: line numbers, markers and the wrapped text"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        5319,
+        5892
+      ],
+      "units": 573,
+      "bodySha256": "38815bacd33ef217549a095b7eb1ee7518a9a576274aa6ee1b993bf4a1f4146e",
+      "note": "`me` — number the hunk lines, keeping removed lines on one number"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        5892,
+        5999
+      ],
+      "units": 107,
+      "bodySha256": "041ce1c76fe0cb9e86e35a64f0b3b6eacace7a35052af1cfd5493754503cb0a5",
+      "note": "`oe` — the six theme slots a structured diff reads"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        5999,
+        6097
+      ],
+      "units": 98,
+      "bodySha256": "bda3afee2882a898b09bd5c1a7a84eccb90ef033e4ee4271d6d24b3299293973",
+      "note": "`X` — pick the theme slots a structured diff was given"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        6097,
+        6598
+      ],
+      "units": 501,
+      "bodySha256": "63a421ce0f2e69c874fb78ea01bb6a630778a465ab908018d993033181a218da",
+      "note": "`I` — the structured diff, cached by file, width and theme"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        6598,
+        6736
+      ],
+      "units": 138,
+      "bodySha256": "338175fefdaea719dd581628c8554b10b4695869543a9ef6e9c5ad7622b3b3a9",
+      "note": "`ee` — expand tabs in every line of a hunk before layout"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        6736,
+        7825
+      ],
+      "units": 1089,
+      "bodySha256": "f1738d52e1b06d322bc75afc488f8a2250afc2bd7d3e191577f830053a6a665c",
+      "note": "`H4` — one hunk: structured when the highlighter answers, the plain layout otherwise"
+    },
+    {
+      "module": "chunk-nnwag7zt.js",
+      "sha256": "63256421ad61e9dca4c0476f8a2bb02dd4da7d80dc56fab9d23a6d77c10a7c6f",
+      "range": [
+        7825,
+        8131
+      ],
+      "units": 306,
+      "bodySha256": "cef8af363134f63381c5a9994202499d83ede23ece6f957a6f053259c550694b",
+      "note": "`tq` — the Code block's diff renderer"
+    }
+  ],
+  "missing": []
+}

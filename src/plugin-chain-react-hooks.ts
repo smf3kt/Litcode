@@ -26,6 +26,8 @@ export interface SurfaceElement {
   type: unknown;
   props: Record<string, unknown>;
   children: unknown[];
+  /** The jsx runtime's key; absent for elements `Tc` (createElement) built. */
+  key?: string | null;
 }
 
 export interface SurfaceNode {
@@ -40,9 +42,24 @@ export interface SurfaceNode {
   children: SurfaceNode[];
 }
 
-/** Source `Tc` (React.createElement): an element is its kind, its props and its children. */
+/** Source `Tc` (React.createElement): an element is its kind, its props and its children. The source
+ *  passes children either after the props or as `props.children`; both forms are read here. */
 export function Tc(type: unknown, props?: Record<string, unknown> | null, ...children: unknown[]): SurfaceElement {
-  return { type, props: props ?? {}, children: children.flat(Infinity) };
+  const held = children.length > 0 ? children : props?.children;
+  const list = (held === undefined ? [] : [held].flat(Infinity))
+    .filter((child) => child !== null && child !== undefined && typeof child !== 'boolean')
+    .map((child) => typeof child === 'number' ? String(child) : child);
+  return { type, props: props ?? {}, children: list };
+}
+
+/** Source `e`/`r` (react/jsx-runtime `jsx`/`jsxs`): the compiler's own element factory. Children
+ *  travel inside `props.children`; the third argument is the element key, not a child. */
+export function Xe(type: unknown, props?: Record<string, unknown> | null, key?: unknown): SurfaceElement {
+  const held = props?.children;
+  const list = (held === undefined ? [] : [held].flat(Infinity))
+    .filter((child) => child !== null && child !== undefined && typeof child !== 'boolean')
+    .map((child) => typeof child === 'number' ? String(child) : child);
+  return { type, props: props ?? {}, children: list, key: key === undefined ? null : String(key) };
 }
 
 export interface EffectSlot {
@@ -128,6 +145,56 @@ export function en(effect: () => void | (() => void), deps: readonly unknown[] =
  *  beside `en` for subscriptions; both run after the commit, in the order the component queued them. */
 export function P(effect: () => void | (() => void), deps: readonly unknown[] = []): void {
   en(effect, deps);
+}
+
+/** The compiler runtime's `w` slot count and sentinel. Compiled source bodies check a cache slot
+ *  against `b` before filling it; the sentinel is React's, taken from the registry so the source's
+ *  own comparison stays exact. */
+export const b = Symbol.for('react.memo_cache_sentinel');
+
+/** Source `w` (`react/compiler-runtime` `useMemoCache`): one array of `size` slots, filled with `b`,
+ *  kept across renders. The compiled bodies write it directly. */
+export function w(size: number): unknown[] {
+  const runtime = requireRuntime();
+  return slotAt(runtime, runtime.cursor++, () => new Array(size).fill(b));
+}
+
+/** Source `km` (React.memo): this runner calls components directly, so the wrapper is the component
+ *  itself and the source body stays callable. */
+export function km<T>(component: T): T {
+  return component;
+}
+
+/** Source `Rt` (React.useSyncExternalStore): the snapshot, with the store's subscription held while
+ *  the component is mounted. A store that changes marks the runtime dirty, so the runner renders
+ *  again. */
+export function Rt<T>(subscribe: (onChange: () => void) => () => void, getSnapshot: () => T): T {
+  const runtime = requireRuntime();
+  const at = runtime.cursor++;
+  const held = runtime.slots[at] as { subscribe?: unknown; cleanup?: () => void; value?: T } | undefined;
+  const slot = held ?? { value: undefined as T | undefined };
+  if (slot.subscribe !== subscribe) {
+    if (typeof slot.cleanup === 'function') slot.cleanup();
+    slot.subscribe = subscribe;
+    slot.cleanup = subscribe(() => { runtime.dirty = true; });
+  }
+  slot.value = getSnapshot();
+  runtime.slots[at] = slot;
+  return slot.value as T;
+}
+
+/** Source `hh` (React.useReducer): one state slot; a dispatched action runs the reducer and marks
+ *  the runtime dirty when the state changed. The source's `kc` dispatches with no action. */
+export function hh<S, A>(reducer: (state: S, action: A) => S, initialArg: S, init?: (arg: S) => S): [S, (action: A) => void] {
+  const runtime = requireRuntime();
+  const initial = init === undefined ? initialArg : init(initialArg);
+  const slot = slotAt(runtime, runtime.cursor++, () => ({ value: initial }));
+  return [slot.value, (action: A) => {
+    const next = reducer(slot.value, action);
+    if (Object.is(slot.value, next)) return;
+    slot.value = next;
+    runtime.dirty = true;
+  }];
 }
 
 /** Source `le` (React.useCallback): keep the function the same while its dependencies do. The Image

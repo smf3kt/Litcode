@@ -1,0 +1,100 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        19762,
+        19789
+      ],
+      "units": 27,
+      "bodySha256": "09cd8f058a4edc93553c1598ef9a5d79b3d8b242b5e5bd6c9211b50041bd5b7c",
+      "note": "`Oe` — truncate one line to a width through the text clamp"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        19789,
+        19874
+      ],
+      "units": 85,
+      "bodySha256": "bd04607cf472c4afe035ff97edc7a9e7029041a53d1b2a6f6a334b70c9672a66",
+      "note": "`Te` — re-highlight every diff line after its marker"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        19874,
+        20000
+      ],
+      "units": 126,
+      "bodySha256": "9418099effdf13ff8fd6f7218cc92e3d22c67463a16e133df7db7f16f888d9b8",
+      "note": "`et` — truncate the lines of every hunk to a width"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        20000,
+        20154
+      ],
+      "units": 154,
+      "bodySha256": "965d7b6e3ab27b1b8d8e14ae1c6c46b62356bc5c356d5470a0e6139fddb9eb10",
+      "note": "`tt` — truncate a source to a width with the gutter allowance"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        20162,
+        20179
+      ],
+      "units": 17,
+      "bodySha256": "808c120e64889cff9349317508d4f900b3a82b7641318ef83d4801befe4ff1c1",
+      "note": "`adn` — the Code width override context"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        20179,
+        20189
+      ],
+      "units": 10,
+      "bodySha256": "08e1e573d2351e6144ffc80e20b543e1fe4f74ca820f152a6d6b97597a5a9624",
+      "note": "`rt` — the Code width default, 80"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        20189,
+        20250
+      ],
+      "units": 61,
+      "bodySha256": "f347badf2b1acf231b8bf1d618ec42137954a742feae6b7ffce39d7f76a9742e",
+      "note": "`st` — the source label a Code block highlights under"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        20250,
+        21203
+      ],
+      "units": 953,
+      "bodySha256": "e4c927c970a3a79664ee198cdd57fc4a197941e2679cbcb6efbabc858e56c784",
+      "note": "`lt` — the Code site component"
+    }
+  ],
+  "missing": []
+}
