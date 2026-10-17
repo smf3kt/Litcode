@@ -1,0 +1,103 @@
+{
+ "schema": "W82WatchPathsEvidence.v1",
+ "package": "W82-01 — hook-returned watch paths",
+ "date": "2026-10-17",
+ "question": "Are hookSpecificOutput.watchPaths collected from matching hooks and consumed by the watcher like the recovered Vln/ke path?",
+ "answer": "Yes: matching hooks contribute non-empty strings in run order to HookResult.watchPaths, the interactive FileChanged and CwdChanged raises add them through addInstructionPaths, and the watcher retains its existing bounds; the agent tool-mutation raise has no watcher consumer.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+  "unit": "UTF-16 code units",
+  "builder": {
+   "symbol": "Vln",
+   "range": [
+    2935234,
+    2935532
+   ]
+  },
+  "watcherHandler": {
+   "symbol": "ke",
+   "range": [
+    1678937,
+    1679425
+   ]
+  },
+  "merge": {
+   "symbol": "QY",
+   "range": [
+    557776,
+    557905
+   ]
+  },
+  "adapters": [
+   3050719,
+   3054588
+  ],
+  "cwdChangedHandler": {
+   "offset": 1680136
+  }
+ },
+ "behavior": {
+  "source": "hookSpecificOutput.watchPaths on an event-name-matching output",
+  "collection": "non-empty strings, accumulated across hooks in run order",
+  "consumption": "interactive FileChanged and CwdChanged call configWatch.addInstructionPaths",
+  "bounds": "existing absolute-path, 2048-entry and 64 KiB checks",
+  "notPorted": [
+   "agent tool-mutation watcher consumption",
+   "failed hook output display"
+  ]
+ },
+ "changes": [
+  {
+   "file": "src/hooks.ts",
+   "change": "HookResult.watchPaths and output parsing",
+   "sha256": "c9c4095f1606a0be24a924242aa7c524db5052a52acb0b3c09deff901ec1dc5e"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "FileChanged/CwdChanged watchPaths consumption",
+   "sha256": "114a040f99d647c355c16e5dba3b41f8020df2790175faf0ec36a4098bfc0729"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "watchPaths collection test",
+   "sha256": "73064f3cf1bd445e495f57fc4307b0e653f87e8e02bb4ee6f28c006dff5a2976"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record watchPaths",
+   "sha256": "7a62f0813867bf9776cdd30a7d7d9a74b84fb9264d1d058cc2248caa4ac97cba"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records watchPaths",
+   "sha256": "15062fe1be25ec23cc68e5ae7c8e4c184f84d5e3ce46bd15970d083d9f6da86d"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W82-01 entry",
+   "sha256": "1985da5594663e32833b24793e409ebd1e0065eab96f9e2dd979f10903028527"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W82-01 S-1..S-7 entry",
+   "sha256": "a2f66f3f3c96815bd08f475881167e9650ff0aaa0f534cf47a95a87fc15a43ac"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "hooks": "49/49",
+  "build": "exit 0",
+  "full": "2,109/2,109",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "35629d1fd49d29241f41d55d2d6d1b74f36e4580b7cd4701a6b7ff3640b3ae93"
+ },
+ "residuals": [
+  "The agent tool-mutation FileChanged raise has no watcher consumer.",
+  "Failed hook output display remains reduced to a status line.",
+  "Full consumers and script semantics remain C-6 work."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with failure-output display, full consumers and script semantics."
+}

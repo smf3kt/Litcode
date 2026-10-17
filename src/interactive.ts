@@ -180,6 +180,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             void (async () => {
               try {
                 const result = await agent().emitHook('FileChanged', { file_path: file, event }, options.signal);
+                if (result.watchPaths?.length) configWatch?.addInstructionPaths?.(result.watchPaths);
                 for (const message of result.systemMessages ?? []) options.status.write(`${message}\n`);
               } catch (error) {
                 if (!options.signal.aborted) options.status.write(`FileChanged hook error: ${String(error)}\n`);
@@ -876,7 +877,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // CwdChanged carries both directories (`ZXr`, chunk-sfn1dbxq.js
           // [2935532,2935646)); DirectoryAdded carries `directory` and `source`
           // (`lvt`, chunk-sfn1dbxq.js [2933905,2934228)).
-          await agent().emitHook('CwdChanged', { old_cwd: previousWorkspace, new_cwd: target }, options.signal);
+          const moved = await agent().emitHook('CwdChanged', { old_cwd: previousWorkspace, new_cwd: target }, options.signal);
+          if (moved.watchPaths?.length) configWatch?.addInstructionPaths?.(moved.watchPaths);
           await agent().emitHook('DirectoryAdded', { directory: target, source: 'cwd_relocation' }, options.signal);
           continue;
         }

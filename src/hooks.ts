@@ -346,6 +346,8 @@ export type HookResult = {
   updatedInput?: unknown;
   /** Context strings appended by hooks, in execution order. */
   additionalContext: string[];
+  /** Absolute paths a hook asked the file watcher to add (`hookSpecificOutput.watchPaths`). */
+  watchPaths?: string[];
   /**
    * Set only by an explicit `continue:false` output, meaning "terminate the
    * session". A Stop hook that merely requests continuation (exit 2 or a
@@ -864,6 +866,12 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   if (output.hookEventName !== event) return;
 
   result.additionalContext.push(...strings(output.additionalContext));
+  // Command and HTTP hooks may add watched paths (`hookSpecificOutput.watchPaths`;
+  // `Vln` collects them at chunk-sfn1dbxq.js [2935234,2935532)).
+  if (Array.isArray(output.watchPaths)) {
+    const paths = output.watchPaths.filter((item): item is string => typeof item === "string" && item.length > 0);
+    if (paths.length) (result.watchPaths ??= []).push(...paths);
+  }
   (result.hookSpecificOutput ??= []).push(output);
   if (event === "PostToolUse" && output.updatedToolOutput !== undefined) result.updatedToolOutput = output.updatedToolOutput;
   if (event === "UserPromptExpansion" && typeof output.updatedPrompt === "string") result.updatedPrompt = output.updatedPrompt;
