@@ -1,0 +1,765 @@
+{
+  "schema": "W151AbovePromptComponent.v1",
+  "package": "W151-above-prompt-component",
+  "date": "2026-10-18",
+  "target": {
+    "module": "chunk-24k7d6mw.js",
+    "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+    "range": [
+      456049,
+      461905
+    ],
+    "units": 5856,
+    "bodySha256": "7932cc004bd2c951cd9a8e5bc3b3c082baf2d3ace1c09764e19b331c31b1401d",
+    "symbol": "NFe"
+  },
+  "references": {
+    "total": 82,
+    "reuse": [
+      {
+        "name": "Ane",
+        "module": "chunk-24k7d6mw.js",
+        "start": 450967,
+        "end": 451155,
+        "units": 188,
+        "seam": "plugin-chain-above-prompt-seats-source.ts"
+      },
+      {
+        "name": "Ey",
+        "module": "chunk-am9mebpw.js",
+        "start": 1357,
+        "end": 1549,
+        "units": 192,
+        "seam": "plugin-chain-client-host-source.ts"
+      },
+      {
+        "name": "G1",
+        "module": "chunk-24k7d6mw.js",
+        "start": 448933,
+        "end": 449175,
+        "units": 242,
+        "seam": "plugin-chain-above-prompt-source.ts"
+      },
+      {
+        "name": "Ihe",
+        "module": "chunk-sfn1dbxq.js",
+        "start": 2336077,
+        "end": 2336117,
+        "units": 40,
+        "seam": "plugin-chain-above-prompt-select-keys-source.ts"
+      },
+      {
+        "name": "J1",
+        "module": "chunk-24k7d6mw.js",
+        "start": 449785,
+        "end": 450018,
+        "units": 233,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      },
+      {
+        "name": "K1",
+        "module": "chunk-24k7d6mw.js",
+        "start": 448295,
+        "end": 448698,
+        "units": 403,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      },
+      {
+        "name": "NI",
+        "module": "chunk-24k7d6mw.js",
+        "start": 448795,
+        "end": 448921,
+        "units": 126,
+        "seam": "plugin-chain-above-prompt-source.ts"
+      },
+      {
+        "name": "PFe",
+        "module": "chunk-24k7d6mw.js",
+        "start": 446991,
+        "end": 447118,
+        "units": 127,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      },
+      {
+        "name": "Re",
+        "module": "chunk-5b7mmg84.js",
+        "start": 758,
+        "end": 1288,
+        "units": 530,
+        "seam": "plugin-chain-hover-source.ts"
+      },
+      {
+        "name": "Ri",
+        "module": "chunk-tvdq3hrk.js",
+        "start": 2862,
+        "end": 2915,
+        "units": 53,
+        "seam": "plugin-chain-notify-fold-source.ts"
+      },
+      {
+        "name": "Rne",
+        "module": "chunk-24k7d6mw.js",
+        "start": 450018,
+        "end": 450068,
+        "units": 50,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      },
+      {
+        "name": "TFe",
+        "module": "chunk-24k7d6mw.js",
+        "start": 444675,
+        "end": 444845,
+        "units": 170,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      },
+      {
+        "name": "Tne",
+        "module": "chunk-24k7d6mw.js",
+        "start": 449175,
+        "end": 449420,
+        "units": 245,
+        "seam": "plugin-chain-above-prompt-source.ts"
+      },
+      {
+        "name": "Tp",
+        "module": "chunk-24k7d6mw.js",
+        "start": 442376,
+        "end": 443631,
+        "units": 1255,
+        "seam": "plugin-chain-above-prompt-input-source.ts"
+      },
+      {
+        "name": "VH",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 43797,
+        "end": 44099,
+        "units": 302,
+        "seam": "plugin-chain-terminal-glue-source.ts"
+      },
+      {
+        "name": "X1",
+        "module": "chunk-24k7d6mw.js",
+        "start": 450068,
+        "end": 450435,
+        "units": 367,
+        "seam": "plugin-chain-above-prompt-seats-source.ts"
+      },
+      {
+        "name": "Y4t",
+        "module": "chunk-n3ykh62m.js",
+        "start": 230179,
+        "end": 230215,
+        "units": 36,
+        "seam": "plugin-chain-notify-fold-source.ts"
+      },
+      {
+        "name": "_ne",
+        "module": "chunk-24k7d6mw.js",
+        "start": 449420,
+        "end": 449506,
+        "units": 86,
+        "seam": "plugin-chain-above-prompt-source.ts"
+      },
+      {
+        "name": "bne",
+        "module": "chunk-24k7d6mw.js",
+        "start": 448093,
+        "end": 448285,
+        "units": 192,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      },
+      {
+        "name": "cdn",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 22946,
+        "end": 22963,
+        "units": 17,
+        "seam": "plugin-chain-input-field-source.ts"
+      },
+      {
+        "name": "eK",
+        "module": "chunk-24k7d6mw.js",
+        "start": 450474,
+        "end": 450586,
+        "units": 112,
+        "seam": "plugin-chain-above-prompt-seats-source.ts"
+      },
+      {
+        "name": "fd",
+        "module": "chunk-yygmb66g.js",
+        "start": 23446,
+        "end": 23642,
+        "units": 196,
+        "seam": "plugin-chain-above-prompt-select-keys-source.ts"
+      },
+      {
+        "name": "fdn",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 23153,
+        "end": 23170,
+        "units": 17,
+        "seam": "plugin-chain-select-field-source.ts"
+      },
+      {
+        "name": "gdn",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 37331,
+        "end": 37348,
+        "units": 17,
+        "seam": "plugin-chain-select-field-source.ts"
+      },
+      {
+        "name": "hdn",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 42980,
+        "end": 43761,
+        "units": 781,
+        "seam": "plugin-chain-terminal-glue-source.ts"
+      },
+      {
+        "name": "j1",
+        "module": "chunk-24k7d6mw.js",
+        "start": 443771,
+        "end": 443978,
+        "units": 207,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      },
+      {
+        "name": "ke",
+        "module": "chunk-tz1x0g31.js",
+        "start": 715,
+        "end": 829,
+        "units": 114,
+        "seam": "plugin-chain-input-field-source.ts"
+      },
+      {
+        "name": "kj",
+        "module": "chunk-8zgs1qmk.js",
+        "start": 4043,
+        "end": 4125,
+        "units": 82,
+        "seam": "plugin-chain-press-button-source.ts"
+      },
+      {
+        "name": "kne",
+        "module": "chunk-24k7d6mw.js",
+        "start": 448698,
+        "end": 448795,
+        "units": 97,
+        "seam": "plugin-chain-above-prompt-source.ts"
+      },
+      {
+        "name": "lK",
+        "module": "chunk-24k7d6mw.js",
+        "start": 452750,
+        "end": 453585,
+        "units": 835,
+        "seam": "plugin-chain-above-prompt-select-keys-source.ts"
+      },
+      {
+        "name": "ldn",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 22992,
+        "end": 23009,
+        "units": 17,
+        "seam": "plugin-chain-select-field-source.ts"
+      },
+      {
+        "name": "nK",
+        "module": "chunk-24k7d6mw.js",
+        "start": 451598,
+        "end": 452484,
+        "units": 886,
+        "seam": "plugin-chain-above-prompt-select-keys-source.ts"
+      },
+      {
+        "name": "pdn",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 23132,
+        "end": 23149,
+        "units": 17,
+        "seam": "plugin-chain-select-field-source.ts"
+      },
+      {
+        "name": "pne",
+        "module": "chunk-24k7d6mw.js",
+        "start": 447294,
+        "end": 447421,
+        "units": 127,
+        "seam": "plugin-chain-above-prompt-source.ts"
+      },
+      {
+        "name": "uK",
+        "module": "chunk-24k7d6mw.js",
+        "start": 453950,
+        "end": 456049,
+        "units": 2099,
+        "seam": "plugin-chain-above-prompt-select-keys-source.ts"
+      },
+      {
+        "name": "udn",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 23009,
+        "end": 23128,
+        "units": 119,
+        "seam": "plugin-chain-select-field-source.ts"
+      },
+      {
+        "name": "vne",
+        "module": "chunk-24k7d6mw.js",
+        "start": 448921,
+        "end": 448933,
+        "units": 12,
+        "seam": "plugin-chain-above-prompt-source.ts"
+      },
+      {
+        "name": "w0",
+        "module": "chunk-24k7d6mw.js",
+        "start": 449506,
+        "end": 449633,
+        "units": 127,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      },
+      {
+        "name": "wFe",
+        "module": "chunk-24k7d6mw.js",
+        "start": 443631,
+        "end": 443771,
+        "units": 140,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      },
+      {
+        "name": "wFt",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 27496,
+        "end": 27679,
+        "units": 183,
+        "seam": "plugin-chain-press-button-source.ts"
+      },
+      {
+        "name": "wne",
+        "module": "chunk-24k7d6mw.js",
+        "start": 448285,
+        "end": 448295,
+        "units": 10,
+        "seam": "plugin-chain-above-prompt-source.ts"
+      },
+      {
+        "name": "y3n",
+        "module": "chunk-kjfwbh4w.js",
+        "start": 26305,
+        "end": 26322,
+        "units": 17,
+        "seam": "plugin-chain-press-button-source.ts"
+      },
+      {
+        "name": "yne",
+        "module": "chunk-24k7d6mw.js",
+        "start": 447421,
+        "end": 447615,
+        "units": 194,
+        "seam": "plugin-chain-above-prompt-source.ts"
+      },
+      {
+        "name": "z1",
+        "module": "chunk-24k7d6mw.js",
+        "start": 449633,
+        "end": 449682,
+        "units": 49,
+        "seam": "plugin-chain-above-prompt-parts-source.ts"
+      }
+    ],
+    "handReuse": [
+      {
+        "name": "$pn",
+        "module": "chunk-3xcmvqfg.js",
+        "start": 1821,
+        "end": 1885,
+        "units": 64
+      },
+      {
+        "name": "Kje",
+        "module": "chunk-3xcmvqfg.js",
+        "start": 1748,
+        "end": 1821,
+        "units": 73
+      },
+      {
+        "name": "Ys",
+        "module": "chunk-1r9zp6s1.js",
+        "start": 28445,
+        "end": 28549,
+        "units": 104
+      },
+      {
+        "name": "c9",
+        "module": "chunk-tvdq3hrk.js",
+        "start": 6071,
+        "end": 6302,
+        "units": 231
+      },
+      {
+        "name": "kc",
+        "module": "chunk-1r9zp6s1.js",
+        "start": 25001,
+        "end": 25120,
+        "units": 119
+      }
+    ],
+    "hookBindings": [
+      "Ae",
+      "P",
+      "R",
+      "Z",
+      "e",
+      "en",
+      "le",
+      "r",
+      "y"
+    ],
+    "port": [
+      {
+        "name": "A9r",
+        "module": "chunk-sfn1dbxq.js",
+        "start": 475702,
+        "end": 475813,
+        "units": 111
+      },
+      {
+        "name": "HG",
+        "module": "chunk-1r9zp6s1.js",
+        "start": 23386,
+        "end": 23672,
+        "units": 286
+      },
+      {
+        "name": "IV",
+        "module": "chunk-24k7d6mw.js",
+        "start": 299493,
+        "end": 299598,
+        "units": 105
+      },
+      {
+        "name": "Ine",
+        "module": "chunk-24k7d6mw.js",
+        "start": 453648,
+        "end": 453782,
+        "units": 134
+      },
+      {
+        "name": "PYe",
+        "module": "chunk-6ejn7q9s.js",
+        "start": 108086,
+        "end": 108477,
+        "units": 391
+      },
+      {
+        "name": "QY",
+        "module": "chunk-ejnyhzsc.js",
+        "start": 668,
+        "end": 697,
+        "units": 29
+      },
+      {
+        "name": "RFe",
+        "module": "chunk-24k7d6mw.js",
+        "start": 444994,
+        "end": 446987,
+        "units": 1993
+      },
+      {
+        "name": "Xq",
+        "module": "chunk-sfn1dbxq.js",
+        "start": 476169,
+        "end": 476191,
+        "units": 22
+      },
+      {
+        "name": "Z1",
+        "module": "chunk-24k7d6mw.js",
+        "start": 450435,
+        "end": 450470,
+        "units": 35
+      },
+      {
+        "name": "ZD",
+        "module": "chunk-bwyexfny.js",
+        "start": 3579,
+        "end": 3835,
+        "units": 256
+      },
+      {
+        "name": "Ze",
+        "module": "chunk-am9mebpw.js",
+        "start": 777,
+        "end": 1015,
+        "units": 238
+      },
+      {
+        "name": "_Fe",
+        "module": "chunk-24k7d6mw.js",
+        "start": 444845,
+        "end": 444923,
+        "units": 78
+      },
+      {
+        "name": "cK",
+        "module": "chunk-24k7d6mw.js",
+        "start": 453589,
+        "end": 453644,
+        "units": 55
+      },
+      {
+        "name": "gpr",
+        "module": "chunk-tvdq3hrk.js",
+        "start": 15201,
+        "end": 15327,
+        "units": 126
+      },
+      {
+        "name": "hro",
+        "module": "chunk-tvdq3hrk.js",
+        "start": 7723,
+        "end": 7816,
+        "units": 93
+      },
+      {
+        "name": "iZo",
+        "module": "chunk-sfn1dbxq.js",
+        "start": 2336190,
+        "end": 2338444,
+        "units": 2254
+      },
+      {
+        "name": "nn",
+        "module": "chunk-am9mebpw.js",
+        "start": 1015,
+        "end": 1357,
+        "units": 342
+      },
+      {
+        "name": "q1",
+        "module": "chunk-24k7d6mw.js",
+        "start": 447223,
+        "end": 447294,
+        "units": 71
+      },
+      {
+        "name": "s",
+        "module": "chunk-1r9zp6s1.js",
+        "start": 6827,
+        "end": 6836,
+        "units": 9
+      },
+      {
+        "name": "sZo",
+        "module": "chunk-sfn1dbxq.js",
+        "start": 2336000,
+        "end": 2336062,
+        "units": 62
+      },
+      {
+        "name": "sa",
+        "module": "chunk-pxjy4t8j.js",
+        "start": 1298,
+        "end": 1856,
+        "units": 558
+      },
+      {
+        "name": "tK",
+        "module": "chunk-24k7d6mw.js",
+        "start": 450848,
+        "end": 450963,
+        "units": 115
+      },
+      {
+        "name": "us",
+        "module": "chunk-t8vb436n.js",
+        "start": 764,
+        "end": 975,
+        "units": 211
+      },
+      {
+        "name": "vp",
+        "module": "chunk-24k7d6mw.js",
+        "start": 299367,
+        "end": 299397,
+        "units": 30
+      }
+    ],
+    "totals": {
+      "reuseExact": 44,
+      "handReuse": 5,
+      "hookBindings": 9,
+      "port": 24,
+      "portUnits": 7604
+    }
+  },
+  "portByModule": {
+    "chunk-sfn1dbxq.js": {
+      "units": 2449,
+      "names": [
+        "A9r",
+        "Xq",
+        "iZo",
+        "sZo"
+      ]
+    },
+    "chunk-1r9zp6s1.js": {
+      "units": 295,
+      "names": [
+        "HG",
+        "s"
+      ]
+    },
+    "chunk-24k7d6mw.js": {
+      "units": 2616,
+      "names": [
+        "IV",
+        "Ine",
+        "RFe",
+        "Z1",
+        "_Fe",
+        "cK",
+        "q1",
+        "tK",
+        "vp"
+      ]
+    },
+    "chunk-6ejn7q9s.js": {
+      "units": 391,
+      "names": [
+        "PYe"
+      ]
+    },
+    "chunk-ejnyhzsc.js": {
+      "units": 29,
+      "names": [
+        "QY"
+      ]
+    },
+    "chunk-bwyexfny.js": {
+      "units": 256,
+      "names": [
+        "ZD"
+      ]
+    },
+    "chunk-am9mebpw.js": {
+      "units": 580,
+      "names": [
+        "Ze",
+        "nn"
+      ]
+    },
+    "chunk-tvdq3hrk.js": {
+      "units": 219,
+      "names": [
+        "gpr",
+        "hro"
+      ]
+    },
+    "chunk-pxjy4t8j.js": {
+      "units": 558,
+      "names": [
+        "sa"
+      ]
+    },
+    "chunk-t8vb436n.js": {
+      "units": 211,
+      "names": [
+        "us"
+      ]
+    }
+  },
+  "probe": {
+    "first": {
+      "blocks": 42,
+      "units": 15668,
+      "unresolved": 21
+    },
+    "expanded": {
+      "blocks": 58,
+      "units": 19493,
+      "collision": "Identifier 'd' has already been declared (209:15)"
+    },
+    "collisionCause": "chunk-z6yhgx3x.js [817,867) declares var l,d,P,j while chunk-76anb6yt.js [664,690) declares function d and the hook seam binds P; flat concatenation of per-module bodies cannot share one top-level scope."
+  },
+  "slices": [
+    {
+      "id": "W152",
+      "title": "AbovePrompt local state",
+      "modules": {
+        "chunk-24k7d6mw.js": 2616
+      },
+      "names": [
+        "vp",
+        "IV",
+        "_Fe",
+        "RFe",
+        "q1",
+        "Z1",
+        "tK",
+        "cK",
+        "Ine"
+      ]
+    },
+    {
+      "id": "W153",
+      "title": "focus and scroll",
+      "modules": {
+        "chunk-sfn1dbxq.js": 2449,
+        "chunk-bwyexfny.js": 256,
+        "chunk-6ejn7q9s.js": 391
+      },
+      "names": [
+        "A9r",
+        "Xq",
+        "sZo",
+        "iZo",
+        "ZD",
+        "PYe"
+      ]
+    },
+    {
+      "id": "W154",
+      "title": "keybinding and registry",
+      "modules": {
+        "chunk-am9mebpw.js": 580,
+        "chunk-tvdq3hrk.js": 219,
+        "chunk-1r9zp6s1.js": 295
+      },
+      "names": [
+        "Ze",
+        "nn",
+        "hro",
+        "gpr",
+        "s",
+        "HG"
+      ]
+    },
+    {
+      "id": "W155",
+      "title": "host glue",
+      "modules": {
+        "chunk-ejnyhzsc.js": 29,
+        "chunk-pxjy4t8j.js": 558,
+        "chunk-t8vb436n.js": 211
+      },
+      "names": [
+        "QY",
+        "sa",
+        "us"
+      ]
+    },
+    {
+      "id": "W156",
+      "title": "NFe wiring",
+      "modules": {
+        "chunk-24k7d6mw.js": 5856
+      },
+      "names": [
+        "NFe"
+      ]
+    }
+  ]
+}
