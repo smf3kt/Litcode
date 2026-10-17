@@ -1,0 +1,3 @@
+2026-10-18T02:35:00Z	package	W90-01 工作树钩子载荷	CTn 2952999、Xir 2954347；WorktreeCreate 门载荷与 WorktreeRemove 事后 raise	仅 name 与 worktree_path；不含工具回显	agent-lifecycle 33/33；tsc 0；build 0；全量 2,119/2,119；链 767/767
+2026-10-18T02:37:00Z	decision	W90-01 边界	① 源中 WorktreeCreate 为钩子创建并须返回路径，本产品保留工具创建+阻断门；② WorktreeRemove 失败只记录不阻断；③ 路径取管理器确定性目标	残余：完整消费者	.audit/w90-01-full.txt
+2026-10-18T02:40:00Z	verification	W90-01 验收：agent-lifecycle 33/33、tsc 0、build 0、2,119/2,119、767/767	WorktreeCreate 载荷含 name 与事件名，无 tool_name/tool_input；WorktreeRemove 载荷含 worktree_path 与事件名，无 tool_name/tool_response	notices 0；索引 75 chunks / 323,525 单位不变；identity 8288ec96…

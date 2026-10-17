@@ -344,6 +344,9 @@ export type HookPayload = {
   /** Elicitation: the URL the person is asked to open, present only in URL mode. */
   url?: string;
   elicitation_id?: string;
+  /** WorktreeCreate: the requested worktree name. */
+  name?: string;
+  /** WorktreeRemove: the path of the worktree being removed. */
   worktree_path?: string;
   file_path?: string;
   /** Additional transition-specific fields supplied by the owning runtime. */
