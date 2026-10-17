@@ -1001,6 +1001,21 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   // screen while the stored message and what the model sees stay unchanged (source output
   // processing at chunk-sfn1dbxq.js offset 2967137).
   if (event === "MessageDisplay" && typeof output.displayContent === "string") result.displayContent = output.displayContent;
+  // `PreModelSwitch`'s schema carries only allow/deny/ask and a reason
+  // (chunk-n3ykh62m.js offset 392413). The source maps deny to a blocking
+  // error and ask to a confirmation requirement (`oXr`, chunk-sfn1dbxq.js
+  // offset 2937531); deny wins over ask across hooks because the blocking
+  // error is checked first.
+  if (event === "PreModelSwitch") {
+    const decision = output.permissionDecision;
+    if (decision === "allow" || decision === "deny" || decision === "ask") {
+      const prior = result.permissionDecision;
+      if (decision === "deny" || prior === undefined || prior === "allow") result.permissionDecision = decision;
+      const reason = asString(output.permissionDecisionReason);
+      if (reason !== undefined) result.permissionDecisionReason ??= reason;
+    }
+    return;
+  }
   if (event === "PermissionRequest") {
     const permission = output.decision;
     if (permission && typeof permission === "object" && !Array.isArray(permission)) {

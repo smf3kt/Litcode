@@ -995,6 +995,21 @@ test("event output translation retains permission, updated result and general sp
   assert.equal("retry" in noRetry, false);
   const deniedElsewhere = await runHooks({ PermissionRequest: [emit({ hookSpecificOutput: { hookEventName: "PermissionRequest", retry: true } })] }, "PermissionRequest", {});
   assert.equal("retry" in deniedElsewhere, false);
+  const switchDeny = await runHooks({ PreModelSwitch: [emit({ hookSpecificOutput: { hookEventName: "PreModelSwitch", permissionDecision: "deny", permissionDecisionReason: "no" } })] }, "PreModelSwitch", {});
+  assert.equal(switchDeny.permissionDecision, "deny");
+  assert.equal(switchDeny.permissionDecisionReason, "no");
+  assert.equal(switchDeny.blocked, false);
+  const switchAsk = await runHooks({ PreModelSwitch: [
+    emit({ hookSpecificOutput: { hookEventName: "PreModelSwitch", permissionDecision: "allow" } }),
+    emit({ hookSpecificOutput: { hookEventName: "PreModelSwitch", permissionDecision: "ask" } }),
+    emit({ hookSpecificOutput: { hookEventName: "PreModelSwitch", permissionDecision: "deny" } }),
+  ] }, "PreModelSwitch", {});
+  assert.equal(switchAsk.permissionDecision, "deny");
+  const askOnly = await runHooks({ PreModelSwitch: [emit({ hookSpecificOutput: { hookEventName: "PreModelSwitch", permissionDecision: "ask" } })] }, "PreModelSwitch", {});
+  assert.equal(askOnly.permissionDecision, "ask");
+  assert.equal("permissionDecisionReason" in askOnly, false);
+  const notModelSwitch = await runHooks({ UserPromptSubmit: [emit({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", permissionDecision: "deny" } })] }, "UserPromptSubmit", {});
+  assert.equal("permissionDecision" in notModelSwitch, false);
 });
 
 test("session titles normalize like the recovered ci helper", () => {

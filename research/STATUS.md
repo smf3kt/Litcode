@@ -2247,3 +2247,10 @@ the first request through the same one-shot hook context scan; a resume start
 does not raise the event. Focused 47/47, tsc 0, build 0, full 2,147/2,147,
 chain 767/767, identity `45cc6853…`.
 [W109 record](ports/W109-setup-context.md).
+
+W110-01 consumes PreModelSwitch `permissionDecision`. Deny blocks with the
+recovered text, ask asks the user to confirm and declining blocks with the
+recovered model-specific text, and allow records the answer without a local
+skip-confirm consumer. Focused 67/67, tsc 0, build 0, full 2,148/2,148, chain
+767/767, identity `dbe3098b…`.
+[W110 record](ports/W110-modelswitch-decision.md).

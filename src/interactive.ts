@@ -859,6 +859,20 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
             const pre = await agent().emitHook('PreModelSwitch', { from_model: config.model, to_model: model,
               requested_model: model }, options.signal);
+            // The recovered hook runner maps deny to a blocking error and ask
+            // to a confirmation requirement (`oXr`, chunk-sfn1dbxq.js offset
+            // 2937531); the user-facing texts are the `RWe`/`jU` shapes.
+            const hookReason = pre.permissionDecisionReason;
+            if (pre.permissionDecision === 'deny') {
+              throw new Error(`Model switch blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
+            }
+            if (pre.permissionDecision === 'ask') {
+              const approved = await confirm('Switch model', hookReason ?? 'A PreModelSwitch hook asked you to confirm',
+                options.signal).catch(() => false);
+              if (!approved) {
+                throw new Error(`Model switch to ${model} was blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
+              }
+            }
             if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
             config.model = model;
           } else if (prompt.startsWith('/effort ')) {
