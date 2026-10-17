@@ -461,6 +461,7 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
             ...(agentOptions.effort !== undefined ? { effort: agentOptions.effort as 'low' | 'medium' | 'high' | 'xhigh' | 'max' } : {}),
             ...(agentOptions.agentType !== undefined ? { subagent_type: agentOptions.agentType } : {}),
             ...(agentOptions.isolation !== undefined ? { isolation: agentOptions.isolation } : {}),
+            ...(agentOptions.schema !== undefined ? { structured_schema: agentOptions.schema } : {}),
           }, signal);
           onStarted?.(child.id);
           let view = child;
@@ -471,6 +472,13 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
           // recovered `kr` does for terminal child failures (chunk-hedqf2m1.js
           // offset 71400).
           if (view.status !== 'completed') return { failure: view.error ?? `agent ${view.status}` };
+          if (agentOptions.schema !== undefined) {
+            if (view.structured_output !== undefined) return { structured: view.structured_output };
+            const capped = view.structured_error?.startsWith('agent({schema}): StructuredOutput retry cap')
+              ? view.structured_error : undefined;
+            return { failure: capped
+              ?? 'agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)' };
+          }
           return view.summary;
         },
       });

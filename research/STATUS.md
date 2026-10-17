@@ -2440,3 +2440,15 @@ result fails while naming only variables. `--check` reports `baseSource`, `crede
 and `rotationRecovered`; a resumed session keeps its pinned endpoint and model. Focused tests
 18/18, tsc 0, build 0, notices 0, both owned Magpie smokes passed, identity `eac028a1…`.
 [W131 record](ports/W131-magpie-endpoint-rotation.md).
+
+W132 closes C-8's structured-output item. A workflow `agent({schema})` call refuses a
+non-object root with the source lint text and refuses an unsupported schema before any child
+exists. A valid schema appends the `StructuredOutput` tool (its API `input_schema` is the
+caller's schema) and the source `bs` system note; each call is validated, failures are tool
+errors, the fifth failure is the source retry cap, and a tool batch without a satisfying call
+gets the source `[structured-output-enforce]` nudge once. A successful call carries
+`endsTurn`, so the turn finishes without another model request, and the validated object is
+returned to the script and stored in the journal for resume. `inspectJson` now accepts plain
+records and arrays from the workflow VM realm while still rejecting class instances. Focused
+73/73, full 2223/2223, tsc 0, build 0, notices 0, both workflow smokes passed, identity
+`eaeec9c8…`. [W132 record](ports/W132-workflow-agent-schema.md).

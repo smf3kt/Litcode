@@ -1,0 +1,91 @@
+{
+ "schema": "W132WorkflowAgentSchemaEvidence.v1",
+ "package": "W132-01 — workflow agent({schema}) structured output",
+ "date": "2026-10-17",
+ "question": "How does a workflow script obtain a validated JSON object from a child agent?",
+ "answer": "Schema mode appends the StructuredOutput tool (API input_schema = the caller's schema), appends the source system note, requires an object-rooted schema before spawn, validates each call against that schema, counts failures to the source cap of 5, nudges a tool batch that did not satisfy the requirement, ends the turn on a successful call, and returns the validated object instead of the child summary.",
+ "sourcePosition": {
+  "tool": {
+   "module": "extracted-v2/modules/chunk-5wc3wh5m.js",
+   "rootLint": [21672, 22000],
+   "strictDerivation": [26712, 27000],
+   "name": 29524,
+   "toolFactory": [29842, 30100],
+   "cachedCompile": 30896
+  },
+  "constants": {
+   "retryLimit": {"module": "extracted-v2/modules/chunk-4t0s8gye.js", "offset": 812, "value": 5}
+  },
+  "workflow": {
+   "module": "extracted-v2/modules/chunk-hedqf2m1.js",
+   "systemNote": 39103,
+   "defaultPrompt": 39488,
+   "schemaBranch": [52202, 53000],
+   "retrySetting": 63606,
+   "requiresStructuredOutput": 64059,
+   "attachmentCapture": 64399,
+   "capError": 65184,
+   "reservedKeyStrip": 73056,
+   "missingCallError": 73819
+  },
+  "nudge": {
+   "module": "extracted-v2/modules/chunk-5b2hxy2e.js",
+   "userBoundary": 60792,
+   "enforcement": 68150
+  },
+  "helpers": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "toolPromptIsDescription": 823307,
+   "toolResultCarrier": 4422125,
+   "satisfaction": 4506192
+  }
+ },
+ "behavior": {
+  "toolName": "StructuredOutput",
+  "toolPrompt": "Use this tool to return your final response in the requested structured format. You MUST call this tool exactly once at the end of your response to provide the structured output.",
+  "success": "Structured output provided successfully",
+  "retryLimit": 5,
+  "rootError": "the root schema must declare type: 'object' (the API rejects any other root type for a tool input schema); wrap arrays or primitives in an object property",
+  "unusableRootText": "the API only accepts an object-rooted tool input schema, so every request would be rejected",
+  "validationErrorPrefix": "Output does not match required schema: ",
+  "missingCallError": "agent({schema}): subagent completed without calling StructuredOutput (after in-conversation nudge)",
+  "nudgePrefix": "[structured-output-enforce]",
+  "endsTurn": true
+ },
+ "changes": [
+  {"file": "src/structured-output.ts", "change": "tool surface, object-root compile, issue formatting, cross-realm JSON inspection", "sha256": "d6537dcbada598dcc2a70f79addbe697f39b8268bf479f402a7cd872477a5b2a"},
+  {"file": "src/tools.ts", "change": "endsTurn tool flag", "sha256": "e6dc29e5dc2bdca2f576c8f4abca1973758c7ec1892b6971352c411e90c88802"},
+  {"file": "src/agent.ts", "change": "endsTurn finish and required-tool nudge", "sha256": "0747cf1f9ce9d5bb43e7aaec21d47e9756afe4bf07d82c3b47e112885982041c"},
+  {"file": "src/agent-registry.ts", "change": "structured_schema launch, tool/note wiring, validation state, descriptor fields", "sha256": "e84d72fefd98d462e17833abf57268cefe9d07cd5313e77df8304112e1a99e46"},
+  {"file": "src/workflow-script.ts", "change": "schema validation, bridge result union, journal-visible structured value", "sha256": "89387d86feeb5be1c6ca1c95f7ce3a8c50138f0c40dd350ba4c9fb675cd8e43c"},
+  {"file": "src/workflow.ts", "change": "structured launch option and result mapping", "sha256": "894176a85f886db9cd64ab52ef8ac79d9e04c0d5230db9db2b7bdaab1657e14b"},
+  {"file": "test/agent-registry.test.ts", "change": "endsTurn and nudge tests", "sha256": "0edfab6b059d7a94374ea41c814b7c000c5d2f0939b47b9783b8853089bb1e9a"},
+  {"file": "test/workflow-script.test.ts", "change": "schema refusal and pass-through tests", "sha256": "de2bb55de0209c458a3efef071027c66089775ff721fac1be9917d639982d615"},
+  {"file": "test/workflow.test.ts", "change": "end-to-end workflow schema test", "sha256": "b16ff7c66b08852dc109848973ede4ff4fca2b5059f266702beb6113c2e9ed43"},
+  {"file": "research/ports/W132-workflow-agent-schema.md", "change": "package record"}
+ ],
+ "adaptations": [
+  "One shared child prompt: the source's custom-agent note `bs` is appended; the dedicated `Ss`/`ks` workflow-subagent prompt is not swapped in.",
+  "Same-name StructuredOutput definitions are replaced because this runtime's child tools are definitions, not a name-resolved pool.",
+  "The fifth failed call returns the cap error as its tool result and locks later calls; the product has no model-stream abort hook at that point.",
+  "Ajv is replaced by the existing bounded JSON Schema subset; unsupported keywords refuse at the schema check.",
+  "`ups` reserved-key stripping and the subagent-output pattern scanner are not ported; the product has no webFetchSavedFiles record."
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "73/73 (workflow-script, agent-registry, workflow)",
+  "full": "2223/2223",
+  "build": "exit 0",
+  "notices": "exit 0",
+  "workflowResumeSmoke": "passed",
+  "workflowCliSmoke": "passed",
+  "identity": "eaeec9c866bbbeab8f27a5e7cd9820d862a385a424f4aa2929cd457c4a3cfb33"
+ },
+ "residuals": [
+  "Named workflows, remote journal mirror, reattach, automatic effect replay, disallowedTools, bashCommandClamp and stallMs remain unported.",
+  "The pattern scanner behind `ups` remains a separate unported security subsystem.",
+  "Nested class-instance schemas are still rejected by inspection; cross-realm plain records are accepted."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "Continue the remaining C items in CURRENT order (C-2 interaction remainder, C-2 diff/attachments panes, C-8 remaining options)."
+}

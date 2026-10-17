@@ -157,14 +157,33 @@ test('function results are rejected and args are copied into the sandbox', async
 
 test('agent option failures surface as script errors without spawning', async () => {
   let calls = 0;
-  const result = await run(`return await agent('x', { schema: { type: 'object' } })`, async () => {
-    calls += 1; return 'ok';
-  });
+  const bridge = async () => { calls += 1; return 'ok'; };
+  const root = await run(`return await agent('x', { schema: { type: 'array', items: { type: 'string' } } })`, bridge);
   assert.equal(calls, 0);
-  assert.match(result.error?.message ?? '', /agent\(\{schema\}\) is not available/);
+  assert.match(root.error?.message ?? '', /received an unusable JSON Schema/);
+  assert.match(root.error?.message ?? '', /The subagent was not started/);
+
+  const keyword = await run(`return await agent('x', { schema: {
+    type: 'object', properties: { a: { type: 'string', format: 'uuid' } }
+  } })`, bridge);
+  assert.equal(calls, 0);
+  assert.match(keyword.error?.message ?? '', /received an invalid JSON Schema/);
 
   const remote = await run(`return await agent('x', { isolation: 'remote' })`);
   assert.match(remote.error?.message ?? '', /is not available in this build/);
+});
+
+test('schema mode passes the schema and returns the validated object', async () => {
+  const schema = { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'],
+    additionalProperties: false };
+  const seen: unknown[] = [];
+  const result = await run(`return await agent('x', { schema: args.schema })`, async (_prompt, options) => {
+    seen.push(json(options.schema));
+    return { structured: { answer: 'yes' } };
+  }, { schema });
+  assert.equal(result.error, undefined);
+  assert.deepEqual(json(result.result), { answer: 'yes' });
+  assert.deepEqual(seen, [schema]);
 });
 
 test('abort cancels a running script and timers', async () => {

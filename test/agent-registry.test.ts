@@ -66,6 +66,52 @@ test('sync launch isolates sessions and preserves child config, schemas and expl
   } finally { await f.cleanup(); }
 });
 
+test('structured schema mode ends the turn on StructuredOutput and exposes the value', async () => {
+  let calls = 0;
+  const f = fixture(async request => {
+    calls += 1;
+    assert.equal(request.tools?.some(tool => 'name' in tool && tool.name === 'StructuredOutput'), true);
+    assert.match(String(request.system), /You MUST return your final answer by calling the StructuredOutput tool exactly once/);
+    return response('', [{ type: 'tool_use', id: 'out-1', name: 'StructuredOutput',
+      input: { answer: 'yes' } } as Anthropic.ContentBlock]);
+  });
+  const registry = f.make();
+  try {
+    const child = await registry.launch({ prompt: 'return json',
+      structured_schema: { type: 'object', properties: { answer: { type: 'string' } },
+        required: ['answer'], additionalProperties: false } });
+    assert.equal(child.status, 'completed', child.error ?? undefined);
+    assert.deepEqual(child.structured_output, { answer: 'yes' });
+    assert.equal(child.structured_error, undefined);
+    // The `endsTurn` result must not trigger another model call.
+    assert.equal(calls, 1);
+  } finally { await f.cleanup(); }
+});
+
+test('structured schema mode reports a validation error and nudges once before retrying', async () => {
+  let calls = 0;
+  const f = fixture(async request => {
+    calls += 1;
+    if (calls === 1) return response('', [{ type: 'tool_use', id: 'out-bad', name: 'StructuredOutput',
+      input: { wrong: true } } as Anthropic.ContentBlock]);
+    const nudged = request.messages.some(message => Array.isArray(message.content) &&
+      message.content.some(block => block.type === 'text' && block.text.startsWith('[structured-output-enforce]')));
+    assert.equal(nudged, true);
+    return response('', [{ type: 'tool_use', id: 'out-good', name: 'StructuredOutput',
+      input: { answer: 'fixed' } } as Anthropic.ContentBlock]);
+  });
+  const registry = f.make();
+  try {
+    const child = await registry.launch({ prompt: 'return json',
+      structured_schema: { type: 'object', properties: { answer: { type: 'string' } },
+        required: ['answer'], additionalProperties: false } });
+    assert.equal(child.status, 'completed', child.error ?? undefined);
+    assert.deepEqual(child.structured_output, { answer: 'fixed' });
+    assert.equal(child.structured_error, undefined);
+    assert.equal(calls, 2);
+  } finally { await f.cleanup(); }
+});
+
 test('background launch returns immediately and caller cancellation leaves child running', async () => {
   const entered = gate(); const release = gate(); let childSignal!: AbortSignal;
   const f = fixture(async (_request, signal) => { childSignal = signal; entered.resolve(); await release.promise; return response(); });
