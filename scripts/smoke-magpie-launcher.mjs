@@ -24,6 +24,8 @@ const server = http.createServer((req, res) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}`;
 const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('LLM_') && !key.startsWith('ANTHROPIC_')));
+// Keep discovery hermetic: no real client settings or Magpie wiring may leak into the checks.
+env.HOME = tmp; env.XDG_CONFIG_HOME = path.join(tmp, '.config');
 env.ANTHROPIC_AUTH_TOKEN = 'owned-launcher-fixture'; env.ANTHROPIC_BASE_URL = base;
 async function run(args) {
   const child = spawn(process.execPath, [launcher, ...args], { cwd, env });
@@ -61,6 +63,34 @@ try {
   assert.notEqual(offOrigin.code, 0); assert.match(offOrigin.stderr, /loopback/);
   const absent = await run(['--check', '--base-url', base, '--model', 'fixture/model']);
   assert.equal(JSON.parse(absent.stdout).credentialPresent, false);
+  env.MAGPIE_ADDR = `127.0.0.1:${server.address().port}`;
+  const configured = await run(['--check', '--model', 'fixture/model']);
+  assert.equal(configured.code, 0, configured.stderr);
+  assert.equal(JSON.parse(configured.stdout).baseURL, base);
+  assert.equal(JSON.parse(configured.stdout).baseSource, 'MAGPIE_ADDR');
+  delete env.MAGPIE_ADDR;
+  const wiredHome = path.join(tmp, 'wired-home');
+  fs.mkdirSync(path.join(wiredHome, '.config', 'magpie'), { recursive: true });
+  fs.writeFileSync(path.join(wiredHome, '.config', 'magpie', 'stash.json'),
+    JSON.stringify({ 'claude.wired_at': base, 'other.wired_at': 'http://127.0.0.1:1' }));
+  env.HOME = wiredHome;
+  const wired = await run(['--check', '--model', 'fixture/model']);
+  assert.equal(wired.code, 0, wired.stderr);
+  assert.equal(JSON.parse(wired.stdout).baseURL, base);
+  assert.equal(JSON.parse(wired.stdout).baseSource, 'magpie-wiring');
+  env.HOME = tmp;
+  env.LLM_API_KEY = 'sk-magpie-revoked-smoke-key';
+  env.ANTHROPIC_BASE_URL = base;
+  const rotated = await run(['--check', '--base-url', base, '--model', 'fixture/model']);
+  assert.equal(rotated.code, 0, rotated.stderr);
+  assert.equal(JSON.parse(rotated.stdout).credentialPresent, true);
+  assert.equal(JSON.parse(rotated.stdout).credentialSource, 'ANTHROPIC_AUTH_TOKEN');
+  env.ANTHROPIC_AUTH_TOKEN = 'sk-magpie-revoked-smoke-token';
+  const allRevoked = await run(['--check', '--base-url', base, '--model', 'fixture/model']);
+  assert.notEqual(allRevoked.code, 0);
+  assert.match(allRevoked.stderr, /Revoked caller key/);
+  assert.equal((allRevoked.stdout + allRevoked.stderr).includes('sk-magpie-revoked-smoke'), false);
+  delete env.LLM_API_KEY; env.ANTHROPIC_AUTH_TOKEN = 'owned-launcher-fixture';
   const missing = await run(['--check', '--base-url', base, '--model', 'missing']);
   assert.notEqual(missing.code, 0); assert.match(missing.stderr, /absent/);
   invalid = true;

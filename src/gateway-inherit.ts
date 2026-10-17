@@ -88,6 +88,135 @@ export function sameGateway(left: string, right: string): boolean {
   return a !== undefined && a === normalize(right);
 }
 
+/** The gateway address Magpie uses when neither its environment nor its UI names one. */
+export const MAGPIE_ENDPOINT_DEFAULT = 'http://127.0.0.1:3425';
+
+export const MAGPIE_WIRING_LIMITS = {
+  fileBytes: 1024 * 1024,
+  entries: 4096,
+} as const;
+
+export type MagpieEndpointSource = 'explicit' | 'LLM_BASE_URL' | 'MAGPIE_ADDR' | 'magpie-wiring' | 'default';
+
+export interface MagpieEndpoint {
+  baseURL: string;
+  source: MagpieEndpointSource;
+  /** The file or variable the address came from; never a credential. */
+  detail?: string;
+}
+
+export interface MagpieEndpointOptions {
+  env?: NodeJS.ProcessEnv;
+  home?: string;
+  /** A value the caller already chose (for example `--base-url` or a pinned resume). */
+  explicit?: string;
+}
+
+/** A printable HTTP(S) endpoint; a bare `host:port` is read as HTTP. */
+function endpointURL(value: unknown): string | undefined {
+  const candidate = text(value, GATEWAY_INHERIT_LIMITS.urlChars);
+  if (candidate === undefined) return undefined;
+  try {
+    const url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(candidate) ? candidate : `http://${candidate}`);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return undefined;
+    if (url.username !== '' || url.password !== '' || url.search !== '' || url.hash !== '') return undefined;
+    return candidate.includes('://') ? candidate : `http://${candidate}`;
+  } catch { return undefined; }
+}
+
+function loopbackEndpoint(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.hostname === '127.0.0.1' || url.hostname === 'localhost' || url.hostname === '[::1]';
+  } catch { return false; }
+}
+
+/**
+ * Read Magpie's own wiring record: the endpoint it last wrote into a client.
+ * The application keeps it in `stash.json` under `<client>.wired_at`; only a
+ * bounded regular file and a loopback HTTP value are accepted. A malformed,
+ * oversized, linked or absent record contributes nothing.
+ */
+function readMagpieWiring(home: string): { baseURL: string; file: string } | undefined {
+  const file = path.join(home, '.config', 'magpie', 'stash.json');
+  let fd: number | undefined;
+  try {
+    const stats = fs.lstatSync(file);
+    if (!stats.isFile() || stats.isSymbolicLink() || stats.size > MAGPIE_WIRING_LIMITS.fileBytes) return undefined;
+    fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    if (!fs.fstatSync(fd).isFile()) return undefined;
+    const document: unknown = JSON.parse(fs.readFileSync(fd, 'utf8'));
+    if (typeof document !== 'object' || document === null || Array.isArray(document)) return undefined;
+    const entries = Object.entries(document as Record<string, unknown>).slice(0, MAGPIE_WIRING_LIMITS.entries);
+    const wired = entries
+      .filter(([key, value]) => /^[A-Za-z0-9_.-]{1,64}\.wired_at$/.test(key) && typeof value === 'string')
+      .map(([key, value]) => ({ key, baseURL: endpointURL(value) }))
+      .filter((entry): entry is { key: string; baseURL: string } => entry.baseURL !== undefined && loopbackEndpoint(entry.baseURL))
+      .sort((left, right) => left.key === 'claude.wired_at' ? -1 : right.key === 'claude.wired_at' ? 1
+        : left.key.localeCompare(right.key));
+    const chosen = wired[0];
+    return chosen === undefined ? undefined : { baseURL: chosen.baseURL, file };
+  } catch { return undefined; }
+  finally { if (fd !== undefined) try { fs.closeSync(fd); } catch { /* already closed */ } }
+}
+
+/**
+ * Resolve the Magpie endpoint without contacting it: an explicit value wins,
+ * then the harness environment, then Magpie's own configured address, then the
+ * endpoint Magpie last wired into a client, then the application default.
+ */
+export function resolveMagpieEndpoint(options: MagpieEndpointOptions = {}): MagpieEndpoint {
+  if (options.explicit !== undefined) return { baseURL: options.explicit, source: 'explicit' };
+  const env = options.env ?? process.env;
+  const fromEnvironment = endpointURL(env.LLM_BASE_URL);
+  if (fromEnvironment !== undefined) return { baseURL: fromEnvironment, source: 'LLM_BASE_URL', detail: 'LLM_BASE_URL' };
+  const configured = endpointURL(env.MAGPIE_ADDR);
+  if (configured !== undefined && loopbackEndpoint(configured)) return { baseURL: configured, source: 'MAGPIE_ADDR', detail: 'MAGPIE_ADDR' };
+  const wiring = readMagpieWiring(options.home ?? os.homedir());
+  if (wiring !== undefined) return { baseURL: wiring.baseURL, source: 'magpie-wiring', detail: wiring.file };
+  return { baseURL: MAGPIE_ENDPOINT_DEFAULT, source: 'default' };
+}
+
+export const MAGPIE_CALLER_KEY_PREFIX = 'sk-magpie-key-';
+export const MAGPIE_REVOKED_KEY_PREFIX = 'sk-magpie-revoked-';
+
+/** A revoked caller key carries the application's revoked marker. */
+export function isRevokedMagpieCredential(credential: Pick<InheritedCredential, 'value'>): boolean {
+  return credential.value.startsWith(MAGPIE_REVOKED_KEY_PREFIX);
+}
+
+export interface MagpieCredentialSelection {
+  credential?: InheritedCredential;
+  /** Variables whose value is a revoked caller key; no value is included. */
+  revokedSources: string[];
+  /** A revoked inherited value was re-read and replaced by a current one. */
+  rotationRecovered: boolean;
+}
+
+/**
+ * Choose a usable credential from ordered candidates. A revoked caller key is
+ * never forwarded; the next source is tried instead. When every candidate is
+ * revoked, an inherited value is re-read once so a rotation that landed after
+ * the first read can still be picked up.
+ */
+export function selectMagpieCredential(
+  candidates: ReadonlyArray<InheritedCredential | undefined>,
+  reload?: () => InheritedCredential | undefined,
+): MagpieCredentialSelection {
+  const available = candidates.filter((candidate): candidate is InheritedCredential => candidate !== undefined);
+  const revokedSources = available.filter(isRevokedMagpieCredential).map(candidate => candidate.variable);
+  const current = available.find(candidate => !isRevokedMagpieCredential(candidate));
+  if (current !== undefined) return { credential: current, revokedSources, rotationRecovered: false };
+  if (revokedSources.length > 0 && reload !== undefined) {
+    const fresh = reload();
+    if (fresh !== undefined && !isRevokedMagpieCredential(fresh)
+      && !available.some(candidate => candidate.value === fresh.value)) {
+      return { credential: fresh, revokedSources, rotationRecovered: true };
+    }
+  }
+  return { credential: undefined, revokedSources, rotationRecovered: false };
+}
+
 function nonEmpty(value: string | undefined): string | undefined {
   return value !== undefined && value.trim() !== '' ? value.trim() : undefined;
 }

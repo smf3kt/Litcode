@@ -15,8 +15,7 @@ if (options.length === 1 && options[0] === '--help' && !childArgs.length) {
   process.exit(0);
 }
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-let base = process.env.LLM_BASE_URL ?? 'http://127.0.0.1:3425';
-let model = process.env.LLM_MODEL, check = false, startApp, startCommand, startupTimeout = 15000;
+let base, baseSource, model = process.env.LLM_MODEL, check = false, startApp, startCommand, startupTimeout = 15000;
 const seen = new Set();
 for (let i = 0; i < options.length; i++) {
   const option = options[i];
@@ -25,7 +24,7 @@ for (let i = 0; i < options.length; i++) {
   if (option === '--check') check = true;
   else if (['--base-url', '--model', '--start-app', '--start-command', '--startup-timeout-ms'].includes(option) && options[i + 1]) {
     const value = options[++i];
-    if (option === '--base-url') base = value;
+    if (option === '--base-url') { base = value; baseSource = 'explicit'; }
     if (option === '--model') model = value;
     if (option === '--start-app') startApp = value;
     if (option === '--start-command') {
@@ -74,7 +73,21 @@ if (resume !== undefined) {
   if (metadata.kind !== 'metadata' || (metadata.id !== undefined && metadata.id !== resume) ||
       typeof metadata.config?.model !== 'string' || typeof metadata.config?.gateway?.baseURL !== 'string' ||
       (metadata.config.gateway.auth !== undefined && !['bearer', 'api-key'].includes(metadata.config.gateway.auth))) throw new Error('Invalid pinned session metadata');
-  base = metadata.config.gateway.baseURL; model = metadata.config.model;
+  base = metadata.config.gateway.baseURL; model = metadata.config.model; baseSource = 'resume';
+}
+// The gateway address follows the environment, then Magpie's own configuration and the
+// endpoint it last wired into a client. A configured application therefore does not need
+// the port repeated on every launch, and a rotated port is picked up from the same record.
+let inheritApi;
+try { inheritApi = await import('../dist/gateway-inherit.js'); } catch {}
+if (base === undefined) {
+  if (inheritApi?.resolveMagpieEndpoint) {
+    const endpoint = inheritApi.resolveMagpieEndpoint({ env: process.env });
+    base = endpoint.baseURL; baseSource = endpoint.source;
+  } else {
+    base = process.env.LLM_BASE_URL ?? 'http://127.0.0.1:3425';
+    baseSource = process.env.LLM_BASE_URL === undefined ? 'default' : 'LLM_BASE_URL';
+  }
 }
 let url;
 try { url = new URL(base); } catch { throw new Error('Invalid gateway origin'); }
@@ -87,14 +100,35 @@ if (!model || !model.trim()) throw new Error('Select a model with --model or LLM
 // launcher uses the same reader so both agree, and falls back to the environment alone when
 // no build is present (the reader ships compiled). Either way a borrowed credential is only
 // used for the endpoint its configuration names.
-let inherited;
+let inheritedGateway;
 try {
-  const { resolveInheritedGateway, sameGateway } = await import('../dist/gateway-inherit.js');
-  const gateway = resolveInheritedGateway({ enabled: true });
-  if (gateway?.credential && gateway.baseURL && sameGateway(gateway.baseURL, base)) inherited = gateway.credential;
+  const gateway = inheritApi?.resolveInheritedGateway({ enabled: true });
+  if (gateway?.credential && gateway.baseURL && inheritApi.sameGateway(gateway.baseURL, base)) inheritedGateway = gateway;
 } catch {}
-const credential = process.env.LLM_API_KEY ?? inherited?.value
-  ?? (process.env.ANTHROPIC_BASE_URL?.replace(/\/$/, '') === base ? process.env.ANTHROPIC_AUTH_TOKEN : undefined);
+const inherited = inheritedGateway?.credential;
+const environmentKey = process.env.LLM_API_KEY !== undefined && process.env.LLM_API_KEY.trim() !== ''
+  ? { value: process.env.LLM_API_KEY, auth: 'bearer', variable: 'LLM_API_KEY' } : undefined;
+const environmentToken = process.env.ANTHROPIC_BASE_URL?.replace(/\/$/, '') === base && process.env.ANTHROPIC_AUTH_TOKEN
+  ? { value: process.env.ANTHROPIC_AUTH_TOKEN, auth: 'bearer', variable: 'ANTHROPIC_AUTH_TOKEN' } : undefined;
+// A revoked caller key is never forwarded: the next source is tried, and a revoked inherited
+// value triggers one re-read in case Magpie rotated the key while this launch was resolving.
+const candidates = [environmentKey, inherited, environmentToken];
+let selection;
+if (inheritApi?.selectMagpieCredential) {
+  selection = inheritApi.selectMagpieCredential(candidates, () => {
+    try {
+      const gateway = inheritApi.resolveInheritedGateway({ enabled: true });
+      return gateway?.credential && gateway.baseURL && inheritApi.sameGateway(gateway.baseURL, base) ? gateway.credential : undefined;
+    } catch { return undefined; }
+  });
+} else {
+  selection = { credential: candidates.find(Boolean), revokedSources: [], rotationRecovered: false };
+}
+const credential = selection.credential?.value;
+const credentialSource = selection.credential?.variable;
+if (!credential && selection.revokedSources.length > 0) {
+  throw new Error(`Revoked caller key in ${[...new Set(selection.revokedSources)].join(', ')}; load a current key from Magpie caller-key settings (GET /api/caller-keys) and update that source. No credential was sent`);
+}
 if (!check) {
   if (!credential) throw new Error('Set LLM_API_KEY, or configure a client for this exact gateway (its own settings file or environment) so the credential can be inherited');
   if (!childArgs.length) throw new Error('Pass CLI arguments after --, or use --check');
@@ -200,12 +234,13 @@ try {
   if (!selected) throw new Error('Selected model is absent from the gateway catalog');
   if (Array.isArray(selected.native_endpoints) && !selected.native_endpoints.includes('/v1/messages')) throw new Error('Selected model does not advertise Messages');
   if (check) {
-    console.log(JSON.stringify({ launcher: 'ready', baseURL: base, gatewayVersion: discovery.version,
-      model, credentialPresent: !!credential, resumePinned: resume !== undefined, startupAction, modelCalls: 0 }));
+    console.log(JSON.stringify({ launcher: 'ready', baseURL: base, baseSource, gatewayVersion: discovery.version,
+      model, credentialPresent: !!credential, credentialSource: credentialSource ?? null,
+      rotationRecovered: selection.rotationRecovered, resumePinned: resume !== undefined, startupAction, modelCalls: 0 }));
   } else {
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('ANTHROPIC_')));
     Object.assign(env, { LLM_API_KEY: credential, LLM_BASE_URL: base, LLM_MODEL: model,
-      ...(inherited?.auth === 'api-key' ? { LLM_AUTH: 'api-key' } : {}) });
+      ...(selection.credential?.auth === 'api-key' && selection.credential.variable !== 'LLM_API_KEY' ? { LLM_AUTH: 'api-key' } : {}) });
     const child = start(process.execPath, [path.join(root, 'bin/litcode.mjs'), ...childArgs], { env, stdio: 'inherit' });
     let termination;
     const abort = () => {
