@@ -453,6 +453,23 @@ test("TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects", as
   } finally { session.close(); }
 });
 
+test("SessionStart carries the child agent type and the recorded session title", async () => {
+  const root = workspace();
+  const capture = path.join(root, "session-start.jsonl");
+  const hooks = { SessionStart: [{ command: `cat >> ${shellQuote(capture)}` }] };
+  const session = Session.open(root, { config: config(root, [], { childMode: "general", hooks }) });
+  session.append({ kind: "title", title: "Fixture title" });
+  try {
+    await new Agent(session, new ScriptedProvider([]), []).startSession("startup");
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.hook_event_name, "SessionStart");
+    assert.equal(payload.source, "startup");
+    assert.equal(payload.model, "fixture-model");
+    assert.equal(payload.agent_type, "general");
+    assert.equal(payload.session_title, "Fixture title");
+  } finally { session.close(); }
+});
+
 test("TaskCreated receives the created task's fields and a block rolls the task back", async () => {
   const root = workspace();
   const capture = path.join(root, "task-created.jsonl");

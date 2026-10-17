@@ -1,0 +1,3 @@
+2026-10-18T00:40:00Z	package	W86-01 SessionStart 载荷	t7r [2942449,2942805)、vm 4651858；HookPayload.session_title 与 startSession 载荷	agent_type 仅子会话；session_title 取最新 title 事件；无值不设	agent-lifecycle 30/30；tsc 0；build 0；全量 2,115/2,115；链 767/767
+2026-10-18T00:42:00Z	decision	W86-01 边界	① 不复刻显式标题参数与内存标题存储；② 字段缺省与源 undefined 一致；③ SubagentStart 载荷不变	残余：完整消费者与脚本语义	.audit/w86-01-full.txt
+2026-10-18T00:45:00Z	verification	W86-01 验收：agent-lifecycle 30/30、tsc 0、build 0、2,115/2,115、767/767	子会话含 title 时 payload 为 startup/fixture-model/general/Fixture title	notices 0；索引 75 chunks / 323,525 单位不变；identity 3c77f51d…

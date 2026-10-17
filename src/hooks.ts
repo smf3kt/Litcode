@@ -281,6 +281,8 @@ export type HookPayload = {
   tool_use_id?: string;
   source?: string;
   model?: string;
+  /** SessionStart: the current session title, when one was recorded. */
+  session_title?: string;
   permission_mode?: string;
   stop_hook_active?: boolean;
   last_assistant_message?: string;
