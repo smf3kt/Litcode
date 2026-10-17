@@ -90,7 +90,7 @@ SyntaxError: Identifier 'd' has already been declared (209:15)
 
 | 包 | 主题 | 模块与单位 | 名称 |
 | --- | --- | --- | --- |
-| W152 | AbovePrompt 本地状态 | `chunk-24k7d6mw.js` 2,616 | `vp`, `IV`, `_Fe`, `RFe`, `q1`, `Z1`, `tK`, `cK`, `Ine` |
+| W152 | AbovePrompt 本地状态 | `chunk-24k7d6mw.js` 2,616 | `vp`, `IV`, `q1`, `Z1`, `tK`, `cK`, `Ine`（已落地，[W152](W152-above-prompt-local.md)）；`_Fe`, `RFe` 的闭包超出单包，转入 W157 |
 | W153 | 焦点与滚动 | `chunk-sfn1dbxq.js` 2,449 + `chunk-bwyexfny.js` 256 + `chunk-6ejn7q9s.js` 391 | `A9r`, `Xq`, `sZo`, `iZo`, `ZD`, `PYe` |
 | W154 | 键绑定与注册表 | `chunk-am9mebpw.js` 580 + `chunk-tvdq3hrk.js` 219 + `chunk-1r9zp6s1.js` 295 | `Ze`, `nn`, `hro`, `gpr`, `s`, `HG` |
 | W155 | 宿主胶水 | `chunk-ejnyhzsc.js` 29 + `chunk-pxjy4t8j.js` 558 + `chunk-t8vb436n.js` 211 | `QY`, `sa`, `us` |

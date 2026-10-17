@@ -1,0 +1,348 @@
+{
+  "schema": "W152AbovePromptLocal.v1",
+  "package": "W152-above-prompt-local",
+  "date": "2026-10-18",
+  "sources": {
+    "sessionContext": {
+      "modules": [
+        {
+          "module": "chunk-z6yhgx3x.js",
+          "sha256": "0e6e72389069c31fe2414918925cfdec798d015cc0be679381982b2d426d8fff"
+        },
+        {
+          "module": "chunk-4bw62nzm.js",
+          "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713"
+        }
+      ],
+      "blocks": 4,
+      "units": 1880,
+      "ranges": [
+        {
+          "module": "chunk-z6yhgx3x.js",
+          "range": [
+            817,
+            2504
+          ],
+          "units": 1687,
+          "note": "session context/provider/hooks"
+        },
+        {
+          "module": "chunk-4bw62nzm.js",
+          "range": [
+            52959,
+            53053
+          ],
+          "units": 94,
+          "note": "no project error"
+        },
+        {
+          "module": "chunk-4bw62nzm.js",
+          "range": [
+            53128,
+            53194
+          ],
+          "units": 66,
+          "note": "session project read"
+        },
+        {
+          "module": "chunk-4bw62nzm.js",
+          "range": [
+            52926,
+            52959
+          ],
+          "units": 33,
+          "note": "error name"
+        }
+      ]
+    },
+    "appState": {
+      "modules": [
+        {
+          "module": "chunk-7n39kxwj.js",
+          "sha256": "d61cd8ea69cc56b8014df554f8d044fd9a5a98208ec9976123b13e634715d69b"
+        }
+      ],
+      "blocks": 2,
+      "units": 225,
+      "ranges": [
+        {
+          "module": "chunk-7n39kxwj.js",
+          "range": [
+            768,
+            810
+          ],
+          "units": 42,
+          "note": "app-state contexts"
+        },
+        {
+          "module": "chunk-7n39kxwj.js",
+          "range": [
+            1239,
+            1422
+          ],
+          "units": 183,
+          "note": "useAppState and selector"
+        }
+      ]
+    },
+    "abovePromptLocal": {
+      "modules": [
+        {
+          "module": "chunk-4bw62nzm.js",
+          "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+        },
+        {
+          "module": "chunk-sxm1dh4y.js",
+          "sha256": "4b99782cd2c85d7c09cfd155118e1b9d052d81501a83aa7d672cf8ed1111613e"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+        }
+      ],
+      "blocks": 15,
+      "units": 1717,
+      "ranges": [
+        {
+          "module": "chunk-4bw62nzm.js",
+          "range": [
+            56759,
+            56979
+          ],
+          "units": 220,
+          "note": "store class"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            299367,
+            299397
+          ],
+          "units": 30,
+          "note": "session selector"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            299493,
+            299598
+          ],
+          "units": 105,
+          "note": "longer input value"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            447223,
+            447294
+          ],
+          "units": 71,
+          "note": "plugin context value"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            450848,
+            450963
+          ],
+          "units": 115,
+          "note": "hotkey presses"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            453589,
+            453644
+          ],
+          "units": 55,
+          "note": "release on gone"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            453648,
+            453782
+          ],
+          "units": 134,
+          "note": "release on edit"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            450435,
+            450470
+          ],
+          "units": 35,
+          "note": "settled budget store"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            299468,
+            299493
+          ],
+          "units": 25,
+          "note": "longer input marker"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            447122,
+            447223
+          ],
+          "units": 101,
+          "note": "plugin context"
+        },
+        {
+          "module": "chunk-24k7d6mw.js",
+          "range": [
+            450686,
+            450848
+          ],
+          "units": 162,
+          "note": "hotkey press lookup"
+        },
+        {
+          "module": "chunk-sxm1dh4y.js",
+          "range": [
+            887,
+            917
+          ],
+          "units": 30,
+          "note": "store read"
+        },
+        {
+          "module": "chunk-sxm1dh4y.js",
+          "range": [
+            865,
+            887
+          ],
+          "units": 22,
+          "note": "store factory"
+        },
+        {
+          "module": "chunk-sxm1dh4y.js",
+          "range": [
+            709,
+            865
+          ],
+          "units": 156,
+          "note": "store initial"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "range": [
+            1699480,
+            1699936
+          ],
+          "units": 456,
+          "note": "record list wrapper"
+        }
+      ]
+    }
+  },
+  "totalBlocks": 21,
+  "totalUnits": 3822,
+  "seamExports": {
+    "sessionContext": [
+      "SessionProvider",
+      "HostProjectProvider",
+      "useHost",
+      "useProject",
+      "useSessionContext",
+      "useSession",
+      "useStore"
+    ],
+    "appState": [
+      "useAppState",
+      "useAppStateSelector"
+    ],
+    "abovePromptLocal": [
+      "useSessionDraftStore",
+      "sessionDraftOf",
+      "useLongerInputValue",
+      "LONGER_INPUT_MARKER",
+      "viewedAgentTaskId",
+      "useViewedAgentId",
+      "settledBudgetStore",
+      "hotkeyPresses",
+      "useHotkeyPresses",
+      "useReleaseGoneHold",
+      "useReleaseOnEdit",
+      "agentTaskSummary"
+    ]
+  },
+  "gates": {
+    "focused": "24/24",
+    "full": "2354/2354",
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "identity": "97360dc73e9aadc92b004d6f2cf466085304c3c8e791344929986d4534602a79"
+  },
+  "deferred": {
+    "package": "W157",
+    "bodies": [
+      "_Fe",
+      "RFe"
+    ],
+    "reason": "The measure/render path pulls the wheel-acceleration cluster (gbt/pbt and ~25 constants), the settings hook chain chunk-js2bhabe/hs into the chunk-bk5ct2gw schema (gf, 5,548 units), and the scroll-follow serializer xwt (405 units). Porting that inside W152 would exceed a single package.",
+    "measuredClosure": [
+      {
+        "name": "AZ",
+        "module": "chunk-24k7d6mw.js",
+        "range": [
+          126611,
+          126843
+        ],
+        "units": 232
+      },
+      {
+        "name": "gbt",
+        "module": "chunk-24k7d6mw.js",
+        "range": [
+          126204,
+          126611
+        ],
+        "units": 407
+      },
+      {
+        "name": "pbt",
+        "module": "chunk-24k7d6mw.js",
+        "range": [
+          124336,
+          126011
+        ],
+        "units": 1675
+      },
+      {
+        "name": "hs",
+        "module": "chunk-js2bhabe.js",
+        "range": [
+          1114,
+          1499
+        ],
+        "units": 385
+      },
+      {
+        "name": "gf",
+        "module": "chunk-bk5ct2gw.js",
+        "units": 5548,
+        "note": "settings schema reached through the hs chain"
+      },
+      {
+        "name": "xwt",
+        "module": "chunk-sfn1dbxq.js",
+        "range": [
+          476926,
+          477331
+        ],
+        "units": 405
+      }
+    ]
+  }
+}
