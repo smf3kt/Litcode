@@ -2268,3 +2268,11 @@ ignore it. The account memory server guard has no local analogue. Focused
 102/102, tsc 0, build 0, full 2,151/2,151, chain 767/767, identity
 `ecd38624…`.
 [W112 record](ports/W112-updated-mcp-output.md).
+
+W113-01 creates isolated child worktrees through WorktreeCreate hooks: the first
+successful hook's path (JSON field or trailing stdout line), dot-segment and
+symlink-ancestry screening, an existing-directory check, and WorktreeRemove on
+cleanup with the checkout preserved on failure. Hooks always win when
+configured; the Git manager remains the fallback. Focused 111/111, tsc 0, build
+0, full 2,154/2,154, chain 767/767, identity `2f5efec2…`.
+[W113 record](ports/W113-hook-worktree.md).

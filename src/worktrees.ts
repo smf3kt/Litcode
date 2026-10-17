@@ -73,6 +73,50 @@ const storeSchema = z.object({
 }).strict();
 type OwnedRecord = z.infer<typeof recordSchema>;
 type Store = z.infer<typeof storeSchema>;
+
+/** Source `el`: a spelling with `.` or `..` segments cannot be verified by the
+ *  symlink screen, so the WorktreeCreate consumer rejects it outright. */
+export function hasDotSegment(target: string): boolean {
+  return target.split(/[\\/]+/).some(segment => segment === "." || segment === "..");
+}
+
+export type WorktreeAncestryProblem = { component: string; kind: "symlink" | "unverifiable" };
+
+/**
+ * Source `sme` (chunk-sfn1dbxq.js [1736863,1737440)): walk from the root down to
+ * the target and refuse a component that is a symlink or cannot be inspected.
+ * A target outside the root, or one whose components do not exist yet, yields
+ * `null`; the separate directory check (`C1t`) owns existence.
+ */
+export async function screenWorktreeAncestry(target: string, root: string): Promise<WorktreeAncestryProblem | null> {
+  if (hasDotSegment(target) || hasDotSegment(root)) return { component: target, kind: "unverifiable" };
+  const relative = path.relative(root, target);
+  if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return null;
+  let current = root;
+  for (const segment of relative.split(path.sep)) {
+    current = path.join(current, segment);
+    let stat: fs.Stats;
+    try { stat = await fs.promises.lstat(current); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+      return { component: current, kind: "unverifiable" };
+    }
+    if (stat.isSymbolicLink()) return { component: current, kind: "symlink" };
+  }
+  return null;
+}
+
+/** Source `C1t` (chunk-sfn1dbxq.js [1774896,1775106)): the hook must create the
+ *  directory before echoing its path, so a missing or non-directory path fails
+ *  before any child agent starts in the parent repo. */
+export async function requireHookWorktreeDirectory(target: string): Promise<void> {
+  let isDirectory = false;
+  try { isDirectory = (await fs.promises.stat(target)).isDirectory(); }
+  catch { /* missing */ }
+  if (!isDirectory) {
+    throw new Error(`WorktreeCreate hook returned a path that is not a directory: ${target}. The hook must create the directory before echoing its path.`);
+  }
+}
 type Repository = { root: string; commonDir: string };
 type GitResult = { stdout: string; stderr: string; code: number | null };
 

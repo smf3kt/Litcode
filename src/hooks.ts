@@ -369,8 +369,22 @@ export type HookResult = {
   additionalContext: string[];
   /** Absolute paths a hook asked the file watcher to add (`hookSpecificOutput.watchPaths`). */
   watchPaths?: string[];
+  /**
+   * WorktreeCreate: the worktree path a hook supplies. Command hooks echo it on
+   * stdout; callback/HTTP hooks return `hookSpecificOutput.worktreePath`. The
+   * source's `cU` takes the first successful hook whose trailing line is
+   * non-empty (chunk-sfn1dbxq.js offset 561890).
+   */
+  worktreePath?: string;
   /** Failed hook outputs, also carried in `additionalContext`, for watcher display. */
   failures?: string[];
+  /**
+   * Number of hooks that started a run. The WorktreeCreate/WorktreeRemove
+   * consumers separate "configured but did not run" (matcher mismatch) from
+   * "ran and returned nothing" (`CTn`/`Xir`, chunk-sfn1dbxq.js offsets 2952999
+   * and 2954231).
+   */
+  executedHooks?: number;
   /**
    * PreCompact: each successful hook's trimmed stdout, joined by the caller.
    * The source treats this as `newCustomInstructions` and appends it to the
@@ -900,6 +914,13 @@ function parseHookJson(stdout: string): Record<string, unknown> | null {
   }
 }
 
+/** Source `p7n` (chunk-sfn1dbxq.js offset 561804): the last non-empty trimmed
+ *  line of a hook's output, or the empty string. `cU` (offset 561890) picks the
+ *  first successful hook whose line is non-empty as the WorktreeCreate path. */
+function lastNonEmptyLine(text: string): string {
+  return text.split("\n").map(line => line.trim()).filter(Boolean).at(-1) ?? "";
+}
+
 /**
  * Apply a parsed stdout object onto `result`.
  *
@@ -972,6 +993,14 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
     if (paths.length) (result.watchPaths ??= []).push(...paths);
   }
   (result.hookSpecificOutput ??= []).push(output);
+  // WorktreeCreate's output schema is `{hookEventName, worktreePath}` alone
+  // (chunk-n3ykh62m.js offset 396282). The HTTP and callback producers hand the
+  // path itself on as the hook output (`chunk-sfn1dbxq.js` offsets 3049056 and
+  // 3052454), so the aggregate's trailing-line rule applies to it.
+  if (event === "WorktreeCreate" && typeof output.worktreePath === "string") {
+    const candidate = lastNonEmptyLine(output.worktreePath);
+    if (candidate) result.worktreePath ??= candidate;
+  }
   if (event === "PostToolUse" && output.updatedToolOutput !== undefined) result.updatedToolOutput = output.updatedToolOutput;
   // `updatedMCPToolOutput` replaces the output only for MCP tools; the source
   // gates the yield on its MCP-tool predicate (`Sh`, chunk-sfn1dbxq.js offset
@@ -1188,6 +1217,11 @@ export async function runHooks(
       release?.();
       throw error;
     }
+    // Only the worktree events report a run count: their consumers separate
+    // "configured but did not run" from "ran and returned nothing".
+    if (event === "WorktreeCreate" || event === "WorktreeRemove") {
+      result.executedHooks = (result.executedHooks ?? 0) + 1;
+    }
     let raw: RawHookResult;
     if (definition.type === "http") raw = await runHookHttp(definition, input, timeoutMs, signal, headers!);
     else if (definition.type === "prompt" || definition.type === "agent") {
@@ -1245,6 +1279,12 @@ export async function runHooks(
         const before = result.additionalContext.length;
         applyJsonOutput(event, json, result);
         if (result.additionalContext.length > before) stopContext = true;
+      } else if (event === "WorktreeCreate") {
+        // A command hook supplies the path on stdout (`cU` over the successful
+        // records). A JSON-shaped command output takes the field from
+        // `hookSpecificOutput` above instead of its trailing line.
+        const candidate = lastNonEmptyLine(raw.stdout);
+        if (candidate) result.worktreePath ??= candidate;
       } else if (event === "PostCompact") {
         const text = raw.stdout.trim();
         if (text) result.additionalContext.push(text);

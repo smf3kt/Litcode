@@ -1,0 +1,121 @@
+{
+ "schema": "W113HookWorktreeEvidence.v1",
+ "package": "W113-01 — hook-based isolated worktrees",
+ "date": "2026-10-17",
+ "question": "How does an isolated child worktree come from a WorktreeCreate hook, and how is it verified and removed?",
+ "answer": "When a WorktreeCreate hook is configured (or a classic module hooks it) the hook supplies the checkout path on stdout or in hookSpecificOutput.worktreePath; the path is used verbatim when absolute, resolved when relative, rejected for dot segments, screened component-by-component for symlinks below the checkout root, and required to be an existing directory. Cleanup raises WorktreeRemove and keeps the checkout when that hook fails.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "selection": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offsets": [
+    2952836,
+    556297
+   ]
+  },
+  "create": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 2952999
+  },
+  "outputFold": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offsets": [
+    561804,
+    561890
+   ]
+  },
+  "schema": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 396282
+  },
+  "ancestryScreen": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 1736863
+  },
+  "directoryCheck": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 1774896
+  },
+  "remove": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 2954231
+  }
+ },
+ "behavior": {
+  "hookPrecedenceOverGit": true,
+  "absoluteVerbatim": true,
+  "dotSegmentRejected": true,
+  "symlinkAncestryScreened": true,
+  "directoryRequired": true,
+  "removalKeepsOnHookFailure": true
+ },
+ "adaptations": [
+  "The factory has no Session, so the hook payload omits session_id and transcript_path.",
+  "Failure summaries use this runtime's recorded hook failure strings.",
+  "The symlink screen root is the workspace realpath.",
+  "The Git manager path and its own not-a-repository error are unchanged when no hooks are configured."
+ ],
+ "changes": [
+  {
+   "file": "src/hooks.ts",
+   "change": "worktreePath, executedHooks, lastNonEmptyLine, command stdout fold",
+   "sha256": "cad3effd872cce5759e7ea1af62b8a531852d84672b3ac14be53f564757174ea"
+  },
+  {
+   "file": "src/worktrees.ts",
+   "change": "dot-segment, ancestry screen, directory check",
+   "sha256": "a2bc71b445881e3d70e3aa9d5afee99c3506c03e43930296159fc52d5087be1e"
+  },
+  {
+   "file": "src/runtime.ts",
+   "change": "hook-based child environment branch and removal",
+   "sha256": "a90b0e2662b97d3ff165221415dea1c3389e158f11f1c98a535caaa121c551e0"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "WorktreeCreate output channel assertions",
+   "sha256": "3fa17a4ef62d62586801ed61b593cad61f35d175482131d500b7356d4e1798d2"
+  },
+  {
+   "file": "test/agent-isolation-runtime.test.ts",
+   "change": "hook create/remove and rejection tests",
+   "sha256": "8e3845d5baaa2dfc2cc69afaf52b61603d067ed70d5847e4639cc65b578ed705"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W113",
+   "sha256": "c60868d49f1f8714cb4c0a9813037d6b8c3ce7ccd20715b7fab220ae375e7289"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W113",
+   "sha256": "521d4b2191a2f8ffe2d959e975b42f364b53c63ba003ef1f0705846b1aa56d48"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W113-01 entry",
+   "sha256": "f99c73c98111995997a8ebdc79695a8cb9418a1e51f6fb71417a19730d50dd1e"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W113-01 S-1..S-7 entry",
+   "sha256": "e7b244fce94c0dc6e9a573ca0ea9985d33bbbf34641bad692255ade426060ce0"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "111/111 (hooks, agent-isolation-runtime, subagents, agent-registry)",
+  "build": "exit 0",
+  "full": "2,154/2,154",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "2f5efec24b931b77e71dadbd6025cb0d67501f30e5b45f70d68aa4dccb59daa1"
+ },
+ "residuals": [
+  "The remaining C-6 hook output consumers and script semantics are unconsumed.",
+  "The source's not-a-git-repository advisory error is not raised before the Git manager path."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with the remaining hook output consumers."
+}
