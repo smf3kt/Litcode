@@ -391,6 +391,8 @@ export type HookResult = {
    * an internal reason such as an unrun hook or an invalid output.
    */
   suppressOriginalPrompt?: true;
+  /** PermissionDenied: the model may retry the denied tool call. */
+  retry?: true;
   /**
    * Set only by an explicit `continue:false` output, meaning "terminate the
    * session". A Stop hook that merely requests continuation (exit 2 or a
@@ -992,6 +994,9 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   if ((event === "UserPromptSubmit" || event === "UserPromptExpansion") && output.suppressOriginalPrompt === true) {
     result.suppressOriginalPrompt = true;
   }
+  // `PermissionDenied`'s schema is `{retry?: boolean}` (chunk-n3ykh62m.js
+  // offset 395412); the consumer raises the retry hint when any hook sets it.
+  if (event === "PermissionDenied" && output.retry === true) result.retry = true;
   // MessageDisplay is display-only: `hookSpecificOutput.displayContent` replaces the delta on
   // screen while the stored message and what the model sees stay unchanged (source output
   // processing at chunk-sfn1dbxq.js offset 2967137).

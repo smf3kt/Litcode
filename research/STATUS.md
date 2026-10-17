@@ -2219,3 +2219,12 @@ prompt. Both prompt events now honor a top-level `decision:"block"` like `pX`.
 Focused 88/88, tsc 0, build 0, full 2,143/2,143, chain 767/767, identity
 `3319a5a3…`.
 [W105 record](ports/W105-prompt-block.md).
+
+W106-01 consumes the PermissionDenied `retry` output. When a deny path's hook
+returns it, the recovered meta user message "The PermissionDenied hook
+indicated you may retry this tool call." is appended after the paired tool
+result batch, hidden from display and present in the next request. The source
+skips it only on `noVerdict` auto-mode classifier denials, which this build
+cannot produce. Focused 97/97, tsc 0, build 0, full 2,144/2,144, chain
+767/767, identity `ef87a5eb…`.
+[W106 record](ports/W106-permission-retry.md).
