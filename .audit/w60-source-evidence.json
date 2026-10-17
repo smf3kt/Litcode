@@ -26,10 +26,10 @@
         2326,
         2595
       ],
-      "changedSha256": "0124d343ae247a70a00de8907bb86ca523946f9fd5a27049af2dc533273988e9",
+      "changedSha256": "6b72edb8a406036b3c387b0109f68d87b97e75107413741c324a71e947559fc9",
       "changedRange": [
-        1931,
-        2246
+        1865,
+        2180
       ],
       "coordinateUnit": "utf16-half-open",
       "mode": "adapt",
