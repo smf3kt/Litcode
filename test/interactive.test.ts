@@ -23,8 +23,8 @@ function output() {
   return { stream, value: () => text };
 }
 /** A runtime with no tools, matching a session whose stored tool list is empty. */
-function stubRuntime(): Runtime {
-  return { tools: [], buildTools: () => [], close: async () => {}, limits: [] };
+function stubRuntime(overrides: Partial<Runtime> = {}): Runtime {
+  return { tools: [], buildTools: () => [], close: async () => {}, limits: [], ...overrides };
 }
 function skill(overrides: Partial<SkillInfo> = {}): SkillInfo {
   return { name: 'greet', description: 'Say hello', path: '/skills/greet/SKILL.md', body: 'Hello $ARGUMENTS',
@@ -258,6 +258,63 @@ test('/skills lists skills and /NAME runs a user-invocable skill', async () => {
       [['slash_command', 'greet', 'world', undefined, '/greet world'],
         ['slash_command', 'auto', 'z', 'projectSettings', '/auto z']]);
     assert.equal('command_source' in expansions[0]!, false);
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('expansion hook is raised once before a skill run and its context reaches the fallthrough turn', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-fork-hook-')));
+  const config = defaultConfig(workspace, []); config.model = 'test';
+  config.skills = [
+    skill({ name: 'forked', body: 'Fork body', context: 'fork', source: 'projectSettings' }),
+    skill({ name: 'runs', body: 'Runs body', command: 'echo runs', source: 'userSettings' }),
+  ];
+  const expansionLog = path.join(workspace, 'expansions.jsonl');
+  const emitExpansion = JSON.stringify(JSON.stringify({ hookSpecificOutput: { hookEventName: 'UserPromptExpansion',
+    additionalContext: 'expansion note' } }));
+  config.hooks = { UserPromptExpansion: [{ command: `printf %s ${emitExpansion}; cat >> ${JSON.stringify(expansionLog)}` }] };
+  const session = Session.open(workspace, { config });
+  const ran: string[] = [];
+  const runtime = stubRuntime({ runSkill: async (_config, _owner, target, args) => { ran.push(`${target.name}:${args}`); return 'skill result'; } });
+  const requests: Anthropic.MessageCreateParamsNonStreaming[] = [];
+  const provider: ModelProvider = {
+    count: async () => 10,
+    complete: async request => { requests.push(request); return reply('done'); },
+  };
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, provider, runtime, {
+      input: Readable.from(['/forked alpha\n', '/runs beta\n', '/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: new AbortController().signal,
+    });
+    assert.deepEqual(ran, ['forked:alpha', 'runs:beta']);
+    assert.match(stdout.value(), /skill result/);
+    const payloads = fs.readFileSync(expansionLog, 'utf8').trim().split('\n')
+      .map(line => JSON.parse(line) as { command_name?: string; command_args?: string; command_source?: string });
+    assert.deepEqual(payloads.map(payload => [payload.command_name, payload.command_args, payload.command_source]),
+      [['forked', 'alpha', 'projectSettings'], ['runs', 'beta', 'userSettings']]);
+    assert.equal(requests.length, 1);
+    assert.match(JSON.stringify(requests[0]!.messages), /expansion note/);
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('a blocked expansion prevents the skill from running', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-fork-block-')));
+  const config = defaultConfig(workspace, []); config.model = 'test';
+  config.skills = [skill({ name: 'forked', body: 'Fork body', context: 'fork' })];
+  const expansionLog = path.join(workspace, 'expansions.jsonl');
+  config.hooks = { UserPromptExpansion: [{ command: `cat >> ${JSON.stringify(expansionLog)}; printf 'denied' >&2; exit 2` }] };
+  const session = Session.open(workspace, { config });
+  const ran: string[] = [];
+  const runtime = stubRuntime({ runSkill: async (_config, _owner, target) => { ran.push(target.name); return 'skill result'; } });
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, { count: async () => 1, complete: async () => reply('done') }, runtime, {
+      input: Readable.from(['/forked alpha\n', '/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: new AbortController().signal,
+    });
+    assert.deepEqual(ran, []);
+    assert.match(stdout.value(), /UserPromptExpansion operation blocked by hook: denied/);
+    assert.match(stderr.value(), /hook_blocked/);
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 

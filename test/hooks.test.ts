@@ -1015,7 +1015,7 @@ test("permission denial survives a later allowing hook and new lifecycle gate ex
   assert.equal(result.permissionDecision, "deny");
   assert.equal(result.reason, "first block");
   assert.equal(result.blocked, true);
-  for (const event of ["SubagentStop", "TaskCompleted", "TeammateIdle", "WorktreeCreate"] as const) {
+  for (const event of ["SubagentStop", "TaskCompleted", "TeammateIdle", "WorktreeCreate", "UserPromptExpansion"] as const) {
     const gated = await runHooks({ [event]: [{ command: "exit 2" }] }, event, {});
     assert.equal(gated.blocked, true, event);
   }

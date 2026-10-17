@@ -2174,3 +2174,12 @@ the extracted modules. The submitted and expanded prompt are now authoritative;
 a hook output naming that field is kept opaque and ignored. Focused 103/103,
 tsc 0, build 0, full 2,131/2,131, chain 767/767, identity `f4fc4704…`.
 [W100 record](ports/W100-no-prompt-rewrite.md).
+
+W101-01 raises UserPromptExpansion before every execution-mode skill, not just
+plain expansions. The interactive branch calls the hook before `runSkill`, a
+blocked verdict prevents the run and reports `hook_blocked`, and the hook's
+additional context reaches fallthrough turns through a new optional
+`Agent.run` context parameter. UserPromptExpansion is now in the exit-2
+blocking set. Focused 102/102, tsc 0, build 0, full 2,133/2,133, chain
+767/767, identity `ef637462…`.
+[W101 record](ports/W101-expansion-execution.md).
