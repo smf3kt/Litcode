@@ -11,6 +11,6 @@
   reported and contribute nothing; an invalid merged policy yields no policy.
 - [x] **Explicit file unchanged.** Strict unknown-key and schema errors still throw.
 - [x] **Gates.** tsc 0, config 69/69, settings chain 15/15, build 0, full 2,092/2,092, chain
-  767/767, notices 0, index unchanged, identity `b1c74f0c…`.
+  767/767, notices 0, index unchanged, identity `f8c89d5a…` (final build).
 - [ ] Remaining C-5: remote policy (excluded), full approval flow, recursive discovery,
   provider/key policy.

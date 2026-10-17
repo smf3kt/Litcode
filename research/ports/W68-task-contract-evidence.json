@@ -1,0 +1,154 @@
+{
+ "schema": "W68TaskContractEvidence.v1",
+ "package": "W68-01 — original task tool contract disposition and W67 identity correction",
+ "date": "2026-10-17",
+ "question": "Should the original TaskGet/TaskList field, visibility and rendering contract replace the product task tool surface?",
+ "answer": "No: the source visibility rules are ported, and the remaining differences follow from the product UUID store and JSON tool transport; each divergence is recorded with its reason, and no product code changed.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-tar639dc.js",
+  "unit": "UTF-16 code units",
+  "create": {
+   "input": [
+    139849,
+    140169
+   ],
+   "output": [
+    140172,
+    140213
+   ],
+   "body": [
+    140216,
+    141450
+   ]
+  },
+  "get": {
+   "input": [
+    142239,
+    142306
+   ],
+   "output": [
+    142309,
+    142421
+   ],
+   "body": [
+    142424,
+    143539
+   ]
+  },
+  "update": {
+   "input": [
+    145886,
+    146609
+   ],
+   "output": [
+    146611,
+    146733
+   ],
+   "body": [
+    146736,
+    149722
+   ]
+  },
+  "list": {
+   "input": [
+    151469,
+    151483
+   ],
+   "output": [
+    151486,
+    151582
+   ],
+   "body": [
+    151585,
+    152664
+   ]
+  },
+  "store": {
+   "module": "extracted-v2/modules/chunk-9xs8s13r.js",
+   "kind": "sequential integer id, one JSON file per task, .highwatermark"
+  }
+ },
+ "sourceContract": {
+  "get": "{task: {id,subject,description,status,blocks,blockedBy}|null}, rendered as text",
+  "list": "{tasks:[{id,subject,status,owner?,blockedBy}]}, _internal hidden, completed blockers dropped",
+  "update": "taskId, addBlocks, addBlockedBy, status including deleted; {success,taskId,updatedFields,error?,statusChange?}",
+  "create": "{task:{id,subject}}"
+ },
+ "productContract": {
+  "store": ".agent/tasks.json, UUID ids, lock + atomic write, strict DAG",
+  "get": "task_get by UUID; full record projection with _internal hidden, completed blockers dropped, derived blocks and ready",
+  "list": "task_list with optional status filter; array of projected records including blocks/ready",
+  "update": "task_update by UUID; addBlockedBy/removeBlockedBy, addBlocks/removeBlocks, deleted:true; returns the updated record or a deletion summary",
+  "create": "task_create returns the full created record"
+ },
+ "portedRules": [
+  "metadata._internal hidden",
+  "completed blockers dropped from list projections",
+  "blocks derived from stored edges",
+  "ready = pending with zero outstanding blockers",
+  "strict DAG and gated status changes"
+ ],
+ "acceptedDivergences": [
+  "UUID identity and one JSON store instead of sequential integer ids and one file per task",
+  "JSON string tool results instead of the original renderer text",
+  "extra fields (owner, metadata, activeForm, ready) and raw Get blockedBy filtering",
+  "extra update operations (removeBlockedBy/removeBlocks/deleted:true)",
+  "unknown id throws instead of returning a null task"
+ ],
+ "reason": "The product TUI, runtime, agent isolation and task tests consume the structured UUID records; replacing them would remove working capabilities without adding source behavior. The source visibility rules are already present.",
+ "correction": {
+  "field": "W67 identity",
+  "from": "b1c74f0cd1d7691847491fd1919d64b2910fa47814b598339eb3912501f19dd9",
+  "to": "f8c89d5ad385f2e3ccd29baa1720bc6a70653c2339438bf3475678d281c51b9d",
+  "reason": "the first measurement predated the final build containing an added module comment"
+ },
+ "changes": [
+  {
+   "file": "research/ports/W68-task-contract.md",
+   "change": "disposition record",
+   "sha256": "b207b8b48c7fe2af120b98d16daaa006f8fabae801efe300396bc9decb19382d"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-7 rows record the disposition",
+   "sha256": "ba08d4bea4ab969ecfde929f6f01e0a3161d16b993a765ac46698449bcbef966"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Task CRUD row records the adaptation",
+   "sha256": "6f0ae48f71f4fd4a5bcff0aca0da48f04d206095494fd042396259da7b75e2f0"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W68-01 entry and W67 identity",
+   "sha256": "e818cbfc7aff854fbd084750e7ddc119fbdbe588fc16bdc66e903efcccc82fce"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W68-01 S-1..S-7 entry",
+   "sha256": "c74922d4098238b9ca8abbf54ae7b6b8201f60b4512a549e25bf2342b4047027"
+  },
+  {
+   "file": "research/ports/W67-os-managed-policy.md",
+   "change": "identity corrected",
+   "sha256": "0ea737cd0a9987e842e962062ef381d12f421729635aba644bfc79901c71c8af"
+  },
+  {
+   "file": "research/ports/W67-os-managed-policy-evidence.json",
+   "change": "identity corrected",
+   "sha256": "9f635fb974c879fc0af5fc183854204f632c0a08a900eb7eaee426e1b65f255d"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "tasks": "24/24",
+  "full": "W67 2,092/2,092 still describes this tree (records and comments only)",
+  "identity": "f8c89d5ad385f2e3ccd29baa1720bc6a70653c2339438bf3475678d281c51b9d"
+ },
+ "residuals": [
+  "Background fork and cross-session discovery remain C-7 work; cross-session discovery stays external.",
+  "The original numeric-id single-file task store is not ported; the local UUID store is retained."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-7 continues with background fork; cross-session discovery stays external."
+}

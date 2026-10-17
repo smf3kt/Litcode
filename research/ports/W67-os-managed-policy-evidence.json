@@ -135,7 +135,7 @@
   "chain": "767/767",
   "notices": "exit 0",
   "sourceIndex": "75 chunks, 323,525 units (unchanged)",
-  "identity": "b1c74f0cd1d7691847491fd1919d64b2910fa47814b598339eb3912501f19dd9"
+  "identity": "f8c89d5ad385f2e3ccd29baa1720bc6a70653c2339438bf3475678d281c51b9d"
  },
  "residuals": [
   "Remote/account managed policy is excluded by the local-only directive.",
@@ -143,7 +143,8 @@
   "Substitution values (onlySubstitutes / Nd floors), document-link bookkeeping and the loadState enum are not ported.",
   "Managed files must be strict JSON; comments are rejected and reported.",
   "Keys outside the four carried policy keys are reported and dropped, not enforced.",
-  "The full original approval flow and recursive configuration discovery remain C-5 work."
+  "The full original approval flow and recursive configuration discovery remain C-5 work.",
+  "The identity first recorded in this file (b1c74f0c…) was measured before the final build; W68-01 corrects it to f8c89d5a… for the committed tree."
  ],
  "recoveredEntrypointsExecuted": false,
  "next": "C-5 continues with the approval flow and recursive discovery; remote policy stays excluded."
