@@ -10,10 +10,10 @@
         11020,
         11289
       ],
-      "portSha256": "3b7466a8866d573df99c92bde1af850965848376791e139aea635ab8ee6ad52c",
+      "portSha256": "c16f1a12753d0e05143ccfe809d5b74091d0b794822ef5727da54a6bd1bc5878",
       "portRange": [
-        2864,
-        3126
+        2796,
+        3058
       ],
       "coordinateUnit": "utf16-half-open",
       "mode": "port",
