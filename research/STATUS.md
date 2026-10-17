@@ -2414,3 +2414,11 @@ reruns failed or skipped calls, and runs the first changed call and everything a
 Journal writes are best-effort and never fail the script. The remote journal mirror, named
 workflows, reattachment and automatic effect replay remain out. tsc 0, build 0, focused 64/64,
 notices 0, identity `4c2f329b…`. [W128 record](ports/W128-script-journal.md).
+
+W129-01 ports the recovered startup header. The first interactive frame now paints the source's
+16-row ASCII header above the prompt, with the 58-cell art width, the light/dark theme branches,
+the product's neutral name, and the package version from `cliVersion()`. Below 30 terminal rows
+the header collapses to the source's single line. It is shown only while the transcript is empty,
+so the first committed message removes it. The Apple_Terminal-only `V` variant remains out.
+tsc 0, build 0, focused 75/75, notices 0, source index unchanged, identity `b86d2a9d…`.
+[W129 record](ports/W129-tui-welcome.md).

@@ -671,6 +671,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     process.stderr.write(`session: ${currentSession.id}\nworkspace: ${workspace}\n`);
     if (values.interactive) {
       const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
+        version: cliVersion(),
         keybindings: currentSession.config.keybindings,
         prefersReducedMotion: currentSession.config.prefersReducedMotion,
         showTurnDuration: currentSession.config.showTurnDuration,
