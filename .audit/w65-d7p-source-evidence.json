@@ -1,0 +1,111 @@
+{
+  "before": "4a799eb",
+  "kind": "subscription constants folded out of the model-call path (no ported bodies; one module deleted with its only client)",
+  "surface": "the subscription reads in the Anthropic client's request setup (the OAuth token check, the apiKey/authToken pair, the staging baseURL), the subscriber arms of the system prompt's account_uuid, the off-switch gate, the two retry exemptions, the Pro-plan Opus error, the ant org message, the OAuth header builder in utils/http.ts, the custom-betas warning and the oauth beta header, the model-listing betas, and the Max/Team-Premium default-model and model-option surfaces",
+  "decisiveFact": "isAnthropicAuthEnabled() is `return false` (wave D step 1), so isClaudeAISubscriber() early-returns false, getOauthAccountInfo() returns undefined and getSubscriptionType()/getRateLimitTier() return null; hasProfileScope() is false for a second, independent reason — the only two OAuthTokens producers left in this build (CLAUDE_CODE_OAUTH_TOKEN and the inherited file descriptor) hardcode scopes ['user:inference']. Every arm folded here is therefore unreachable, and an API key session's request is byte-identical",
+  "evidence": [
+    {
+      "file": "services/api/bootstrap.ts",
+      "change": "removed whole (141 lines): a GET of `${BASE_API_URL}/api/claude_cli/bootstrap` (an OAuth-account endpoint) whose OAuth arm was dead under the hasProfileScope fold, persisting server-declared client_data and additional_model_options into the global config; utils/http.ts' withOAuth401Retry existed only for its call, so the wrapper went with it",
+      "sourceSha256": "cb9b231f298a54d681ff0f5d08546970892840298536c8d50ea6f5cc3a14ba6a",
+      "portSha256": null,
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/api/client.ts",
+      "change": "the OAuth token check call with its two debug lines goes and the configureApiKeyHeaders call becomes unconditional; the client config keeps only `apiKey: apiKey || getAnthropicApiKey()` — the authToken field and the ant-only staging baseURL (the last getOauthConfig reader here) go with the subscriber arm",
+      "sourceSha256": "f282d6c8f663d2cba2b45e059e536d512f66cd533e32df829fc08a541094a933",
+      "portSha256": "7276cbcca1164ac12f207659e502f754e0d9d7b8d4db3801b68f845be25052d4",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/api/claude.ts",
+      "change": "the system-prompt metadata's account_uuid folds to the empty string the ternary already produced, and the off-switch gate loses its subscriber term and the comment clause that explained it",
+      "sourceSha256": "ef400c7f310228c32bad5f62091ed9b5274651f2aee9b3f803f8499f1627cd1b",
+      "portSha256": "28e1a507a5b83775def21fdc36c12a466b64be21f8461d56bc292ed452f79de8",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/api/withRetry.ts",
+      "change": "the x-should-retry exemption loses its subscriber/enterprise disjunction, the 429 arm returns true, the 9xx fallback condition loses its subscriber term, and the 401/revoked refresh attempt goes — handleOAuth401Error returns false unconditionally in this build, so the call could only re-read the client, which the surrounding block still does",
+      "sourceSha256": "2979e19b9fdb3ab99074e140acbe5639eb286511c3b99bb5550ff74694b7f8e2",
+      "portSha256": "986417b58e56c24369329c816a90435830d2f50c239ba4b412da2288cd583c84",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/api/errors.ts",
+      "change": "the Pro-plan Opus 400 error block is deleted, the ant org message loses its orgId ternary (getOauthAccountInfo() is undefined), and the env-var org-disabled guard drops its subscriber term; hasStoredOAuth stays — an env or file-descriptor bearer can still exist and still changes which message is shown",
+      "sourceSha256": "a531a580e50d40331e3f578e8d537dc4ccd8b845b3c1f7a796dffc240e4530c1",
+      "portSha256": "ff5087bf6fe7694956aa38d7bebe396c74ba69d51b9447bde1b68f2a3a87c885",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/http.ts",
+      "change": "getAuthHeaders loses its OAuth arm and keeps the API key path, withOAuth401Retry is removed, and the imports its two deletions orphaned (axios, getClaudeAIOAuthTokens, handleOAuth401Error) go; the three user-agent helpers that are this file's live surface are untouched",
+      "sourceSha256": "4af2119ffb2afb7c85db5b623eaca23fc2314702dc5a84853ea410c63c4ad634",
+      "portSha256": "6a516e831d33c07e85f801ba33a06ea374ee1634afff4b1d5cb2ecebec6fbebd",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/betas.ts",
+      "change": "the custom-betas warning block (which could only fire for a subscriber) and the oauth beta-header push are deleted, taking the OAUTH_BETA_HEADER import with them",
+      "sourceSha256": "dbb69f408282f2064a212822ebcc685d37e18a289954d5874a5b5da3a5b1dc06",
+      "portSha256": "f78e8ee5c885ca95c68f253b5c4328fddf3512f12aad03b44715592be90aa625",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/model/modelCapabilities.ts",
+      "change": "the models.list call's betas option folds to the undefined the ternary produced",
+      "sourceSha256": "7aec505ec86493e5ba680c96c88c4b87babb84344828b75ffb7c71845d5e9039",
+      "portSha256": "d314bb671573e345d669a4cc2dd0756fefd8e5e795b29c57ca37fe3b72e1fe8c",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/model/model.ts",
+      "change": "the Max and Team-Premium default-model arms go, getClaudeAiUserDefaultModelDescription collapses to its surviving return (and loses its now-unused fastMode parameter), isOpus1mMergeEnabled loses its Pro term and the whole subscriber fail-closed guard, and modelDisplayString loses its subscriber label arm",
+      "sourceSha256": "2c939dcd48ccbab680a37b1726a87be1a759edf61c3c31c42a22211bca5f3381",
+      "portSha256": "d0dc923b2577d9209b6e361c896e5f6e26ae709432b13178e728e4473140a557",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/model/modelOptions.ts",
+      "change": "the subscriber Default option and the whole Max/Team-Premium / Pro-Team-Enterprise option block go, with the two ' · Billed as extra usage' interpolations; the four builders and prepared options that block alone read (getMaxSonnet46_1MOption, getMaxOpus46_1MOption, MaxSonnet46Option, MaxHaiku45Option) are deleted with it",
+      "sourceSha256": "67b0d99e2ef30264b2fa2bc3591485e73b2f2dd8850e4caa44e02002c1cab1c3",
+      "portSha256": "ba9b52412720c23d3a7db318d470b74fdc567d39d85e342dddc35be00507888c",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "the import and the `void fetchBootstrapData()` call with its TODO go; the prefetch block around them is untouched. The `isClaudeAISubscriber` name in this file's utils/auth.js import block had no call site already, so it goes too — the import that carried the bootstrap call was the one place it looked live",
+      "sourceSha256": "9beeaca1c8bec62a31069e00b5239cd8f9fa0cf5d0310a39922cf48c6ae13e43",
+      "portSha256": "328e44dfd779cef105617600c08146f1b7f93e0e150c772f332105c00c373de9",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "services/api/bootstrap.ts and utils/http.ts' withOAuth401Retry, whose only client it was",
+    "the OAuth token check call and the apiKey/authToken/staging-baseURL trio in the Anthropic client setup",
+    "the Pro-plan Opus 400 message, and the subscriber terms in the retry exemptions, the off-switch gate and the org-disabled guard",
+    "the OAuth arm of getAuthHeaders, the subscriber betas push, the custom-betas warning, and the models.list betas option",
+    "the Max/Team-Premium default-model arms and the four model-option builders they alone read"
+  ],
+  "kept": [
+    "the two OAuth bearer sources: getClaudeAIOAuthTokens() still returns the CLAUDE_CODE_OAUTH_TOKEN or file-descriptor token, so getAuthTokenSource, getAccountInformation, validateForceLoginOrg's shape and utils/errors.ts' hasStoredOAuth choice all keep their meaning",
+    "handleOAuth401Error, checkAndRefreshOAuthTokenIfNeeded and getClaudeAIOAuthTokensAsync as the no-op stubs wave D step 2 left — services/mcp/client.ts and utils/fastMode.ts still call them",
+    "the constants themselves in utils/auth.ts (isAnthropicAuthEnabled, isClaudeAISubscriber, getOauthAccountInfo, hasProfileScope, getSubscriptionType, the five is*Subscriber predicates, getSubscriptionName, getRateLimitTier, hasOpusAccess, isOverageProvisioningAllowed, isConsumerSubscriber): their remaining readers are the status/commands/onboarding surface a later package owns, and a predicate goes when its last reader does",
+    "withRetry.ts' 401/revoked client re-read, which survives the removed refresh attempt"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweep over the ten touched files for every subscription constant and the oauth beta header; a tree-wide sweep proving the bootstrap module and its retry wrapper left no reference; each folded site asserted as the arm the false constant produced (the unconditional configureApiKeyHeaders call, the single-term apiKey config, the empty account_uuid, the two retry arms returning true, the two-guard org-disabled condition, the API-key-only getAuthHeaders with its three surviving user-agent helpers, the constant model description, the two-term merge guard); the four builders the deleted option block alone read asserted gone while the options the PAYG path shares are asserted present; tsc clean",
+  "remaining": "the subscriber reads this package leaves for the next one: utils/status.tsx, utils/statusNoticeDefinitions.tsx, utils/logoV2Utils.ts, commands.ts, commands/cost/index.ts, components/Onboarding.tsx, components/mcp/MCPRemoteServerMenu.tsx, utils/telemetryAttributes.ts, services/tips/tipRegistry.ts, utils/fastMode.ts, hooks/useApiKeyVerification.ts and utils/planModeV2.ts, plus the claude.ai MCP connector whose scope check the same producer fact kills and the prose in services/mcp/claudeai.ts that names the two predicates. Then the ~33 in-place CLI blocks, cli/transports/, the dependency-pruning pass and the utils/filePersistence/ rename",
+  "notes": [
+    "two repair passes: the first run died on a duplicated `const billingInfo` anchor (2 occurrences, now cut with n=2) and the second on a brace a cut consumed (modelDisplayString's `} else if`, whose leading closer is now preserved), after which the script was re-run from a restored tree and reproduces the final state in one pass",
+    "utils/http.ts' getAuthHeaders had no caller in the tree before this package either — the transports carry their own getAuthHeaders option — so its removal is not this package's to make; what changed is that its body is now the API-key arm alone"
+  ]
+}
