@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isDeepStrictEqual } from 'node:util';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import { L, xg } from './plugin-chain-label-text-source.js';
 import { Zs, rPe } from './plugin-chain-normalize-source.js';
@@ -272,14 +273,50 @@ function plainObject(value: unknown): value is Record<string, unknown> {
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
 }
-function sameJson(a: unknown, b: unknown): boolean {
-  if (Object.is(a, b)) return true;
-  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((value, index) => sameJson(value, b[index]));
-  if (plainObject(a) && plainObject(b)) {
-    const keys = Object.keys(a);
-    return keys.length === Object.keys(b).length && keys.every(key => Object.hasOwn(b, key) && sameJson(a[key], b[key]));
+const CARD_ANSWER_BOUNDS = Object.freeze({ values: 20000, depth: 64, chars: 1048576 });
+interface CardAnswerWalk { values: number; depth: number; chars: number }
+interface CardAnswerContainer { container: object; level: number }
+/** Recovered `fDe`: count a value and queue object/array containers for the walk. */
+function walkCardAnswer(value: unknown, keyChars: number, level: number, state: CardAnswerWalk, pending: CardAnswerContainer[]): boolean {
+  state.values++;
+  state.chars += keyChars + (typeof value === 'string' ? value.length : 0);
+  if (typeof value === 'object' && value !== null) {
+    state.depth = Math.max(state.depth, level);
+    pending.push({ container: value, level });
   }
-  return false;
+  return state.values <= CARD_ANSWER_BOUNDS.values && state.depth <= CARD_ANSWER_BOUNDS.depth && state.chars <= CARD_ANSWER_BOUNDS.chars;
+}
+/** Recovered `sze`: breadth-first bounds walk over the answer field. */
+function cardAnswerWithinBounds(value: unknown): boolean {
+  const state: CardAnswerWalk = { values: 0, depth: 0, chars: 0 };
+  const pending: CardAnswerContainer[] = [];
+  let within = walkCardAnswer(value, 0, 1, state, pending);
+  while (within && pending.length > 0) {
+    const { container, level } = pending.pop() as CardAnswerContainer;
+    if (Array.isArray(container)) {
+      for (let index = 0; within && index < container.length; index++) {
+        within = walkCardAnswer(container[index], 0, level + 1, state, pending);
+      }
+      continue;
+    }
+    for (const key in container) {
+      if (!within) break;
+      if (Object.hasOwn(container, key)) {
+        within = walkCardAnswer((container as Record<string, unknown>)[key], key.length, level + 1, state, pending);
+      }
+    }
+  }
+  return within;
+}
+function jsonRoundtrip(value: unknown): unknown {
+  const text = JSON.stringify(value);
+  if (text === undefined) throw new TypeError('value is not JSON-serializable');
+  return JSON.parse(text);
+}
+/** Recovered `xHe`: the answer field must stay within bounds and match the shown field after a JSON roundtrip. */
+function cardFieldUnchanged(answerValue: unknown, shownValue: unknown): boolean {
+  if (!cardAnswerWithinBounds(answerValue)) return false;
+  return isDeepStrictEqual(jsonRoundtrip(answerValue), jsonRoundtrip(shownValue));
 }
 /** Recovered `qht`: comma-join, JSON-quoting parts that hold ", " or a quote. */
 function cardAnswerJoin(parts: string[]): string {
@@ -294,7 +331,7 @@ function sameQuestions(answered: unknown, shown: unknown): boolean {
     const { kind: _kind, ...rest } = question;
     return rest;
   });
-  return sameJson(answered, normalized);
+  return cardFieldUnchanged(answered, normalized);
 }
 export type CardAnswerAdmission =
   | { kind: 'admitted'; input: Record<string, unknown> }
@@ -323,7 +360,7 @@ function admitCardAnswerUnchecked(shown: AskUserQuestionRequest, answer: unknown
       continue;
     }
     if (!Object.hasOwn(shownRecord, key)) return refused('unknown_field');
-    if (!sameJson(answer[key], shownRecord[key]) &&
+    if (!cardFieldUnchanged(answer[key], shownRecord[key]) &&
         !(key === 'questions' && !Object.hasOwn(shownRecord, 'title') && sameQuestions(answer[key], shownRecord[key]))) {
       return refused('changed_shown_field');
     }

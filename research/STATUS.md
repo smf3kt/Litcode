@@ -1944,3 +1944,13 @@ is never admitted. `ln`/`cn`/`Ce` are copied verbatim and `Zs`/`xg`/`rPe`
 reuse the existing source copies. One new case, interaction-tools 31/31, tsc 0,
 full 2,102/2,102, chain 767/767, identity `a96ee3cd…`.
 [W74 record](ports/W74-preview-normalization.md).
+
+W75-01 ports the recovered shown-field comparison `xHe`. Every returned field
+is first bounds-walked on the answer side (20,000 values, depth 64, 1,048,576
+characters), then compared with the shown value after a JSON roundtrip through
+`isDeepStrictEqual`; the `de` kind allowance uses the same comparison. This
+replaces the previous plain structural check, so JSON-equivalent forms such as
+`NaN` and `null` now match, and oversized answer fields are refused. The
+source's warning is not emitted; the refusal is the effect. One new case,
+interaction-tools 32/32, tsc 0, full 2,103/2,103, chain 767/767, identity
+`b03f27a0…`. [W75 record](ports/W75-card-field-comparison.md).

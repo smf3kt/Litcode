@@ -451,6 +451,22 @@ test('card answer admission ports the recovered host contract', () => {
   assert.deepEqual(admitCardAnswer(four, { answers: { 'Q0?': 'x'.repeat(8192), 'Q1?': 'x'.repeat(8192), 'Q2?': 'x'.repeat(8192), 'Q3?': 'x'.repeat(8192) }, response: 'x' }), { kind: 'refused', rule: 'too_large' });
 });
 
+test('card field comparison follows the recovered JSON roundtrip and bounds', () => {
+  const base = { questions: [{ question: 'Which?', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false }] };
+  const shownWith = (extra: Record<string, unknown>) => ({ ...base, ...extra }) as unknown as AskUserQuestionRequest;
+  const nested = (levels: number) => {
+    const root: Record<string, unknown> = {};
+    let node = root;
+    for (let index = 1; index < levels; index++) { const next: Record<string, unknown> = {}; node.next = next; node = next; }
+    return root;
+  };
+  assert.equal(admitCardAnswer(shownWith({ collapsed: null }), { collapsed: Number.NaN }).kind, 'admitted');
+  assert.equal(admitCardAnswer(shownWith({ branch: nested(64) }), { branch: nested(64) }).kind, 'admitted');
+  assert.deepEqual(admitCardAnswer(shownWith({ branch: nested(65) }), { branch: nested(65) }), { kind: 'refused', rule: 'changed_shown_field' });
+  const wide = Array.from({ length: 20000 }, (_, index) => index);
+  assert.deepEqual(admitCardAnswer(shownWith({ wide }), { wide: wide.slice() }), { kind: 'refused', rule: 'changed_shown_field' });
+});
+
 test('card hosts answer through the admitted card contract', async () => {
   const card = (options: Partial<InteractionToolOptions> = {}) => createInteractionTools(options)
     .find(tool => tool.schema.name === 'ask_user_question')!;
