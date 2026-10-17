@@ -83,13 +83,15 @@ for (const f of [
 // 4. What survives of the scanner module is the environment-kind reader, which
 //    utils/plans.ts still imports. The declared SDK subtype stays: removing a
 //    declared contract is a separate review.
+// Step 7za later moved this module to utils/environmentKind.ts (the
+// filePersistence directory held nothing else); the body assertion follows it.
 assert.equal(
-  fs.readFileSync(`${root}/utils/filePersistence/outputsScanner.ts`, "utf8"),
+  fs.readFileSync(`${root}/utils/environmentKind.ts`, "utf8"),
   [
-    "import { logForDebugging } from '../debug.js'",
+    "import { logForDebugging } from './debug.js'",
     "",
     "// Ported from utils/teleport/environments.ts:9 — the environment-kind union",
-    "// the scanner reads out of CLAUDE_CODE_ENVIRONMENT_KIND.",
+    "// read out of CLAUDE_CODE_ENVIRONMENT_KIND.",
     "type EnvironmentKind = 'anthropic_cloud' | 'byoc' | 'bridge'",
     "",
     "export function getEnvironmentKind(): EnvironmentKind | null {",
@@ -103,7 +105,7 @@ assert.equal(
   ].join("\n"),
 )
 assert.match(fs.readFileSync(`${root}/entrypoints/sdk/coreSchemas.ts`, "utf8"), /subtype: z\.literal\('files_persisted'\)/)
-assert.match(fs.readFileSync(`${root}/utils/plans.ts`, "utf8"), /from '\.\/filePersistence\/outputsScanner\.js'/)
+assert.match(fs.readFileSync(`${root}/utils/plans.ts`, "utf8"), /from '\.\/environmentKind\.js'/)
 
 const tscText = fs.readFileSync(new URL("w65-d7n-tsc.txt", import.meta.url), "utf8")
 assert.equal(tscText, "", "tsc log is empty on success")

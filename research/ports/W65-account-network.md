@@ -948,6 +948,18 @@ tsc 0, thirty-four fixtures pass (the new `w65-d7z-verify` plus thirty-three car
 
 **Next:** the `utils/filePersistence/` rename and the analytics transports.
 
+## Follow-up: the `filePersistence` rename (`2823ec8`, landed)
+
+**The directory outlived its contents.** `utils/filePersistence/` held the ingress scanner, its types and the persistence implementation; the file-upload lane's removal took all but `outputsScanner.ts`, a four-line reader of `CLAUDE_CODE_ENVIRONMENT_KIND` whose only export is `getEnvironmentKind` and whose only user is `utils/plans.ts` (remote-session plan recovery and file snapshots). Keeping it in a directory named for persistence misdescribed it, so the module moves to `utils/environmentKind.ts` beside its reader.
+
+**The body is unchanged.** The union (`anthropic_cloud | byoc | bridge`), the two remote-kind returns and the null fallback are byte-identical; only the relative `debug.js` import path and one comment word (the removed scanner) differ. The declared SDK `files_persisted` subtype and the environment-kind contract stay.
+
+### Verification
+
+tsc 0, thirty-five fixtures pass (the new `w65-d7za-verify` plus thirty-four carried), `git diff --check` clean, the orphan scan unchanged at ten entries over 1607 files. One carried fixture was amended: `w65-d7n` read the old path and compared the module body, and now follows the rename. No historical evidence file moved. The first tsc run caught the moved module's relative import, which is now `./debug.js`.
+
+**Next:** the analytics transports.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
