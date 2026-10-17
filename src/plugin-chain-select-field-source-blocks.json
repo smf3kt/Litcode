@@ -1,0 +1,111 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22992,
+        23009
+      ],
+      "units": 17,
+      "bodySha256": "93407b63c21ded5b1e07dd72162598a254a592f08ec1035043411dc0db3f1c36",
+      "note": "`ldn` — the clicked-press context"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        23009,
+        23128
+      ],
+      "units": 119,
+      "bodySha256": "31190fa76f05719349501f199b3f6b8abdcbc87f595ce03864382f889ee5030f",
+      "note": "`udn` — the click adapter: allow the hyperlink default, run unless the activation was a stray or a window activation"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        23132,
+        23149
+      ],
+      "units": 17,
+      "bodySha256": "0a2dd0aa9ba3db1cbeef338836e710729b868477233431672e9d79c2faa3ecb8",
+      "note": "`pdn` — the focused-node ref context"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        23153,
+        23170
+      ],
+      "units": 17,
+      "bodySha256": "da4f992f7ed9d59545e4a46e079c190c9a4dba4be1998ce2809be9aed172cc8b",
+      "note": "`fdn` — the focused-press context"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        23170,
+        23378
+      ],
+      "units": 208,
+      "bodySha256": "dc31bb82cf63069b27609673e3601b68d84bbab3288bd53d67aaa36542865c56",
+      "note": "`xe` — the site-focus reader: focus flag, ref and click for one press"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        37183,
+        37192
+      ],
+      "units": 9,
+      "bodySha256": "84f180a99a4bc45950f694c6c4d437f034869802dcc0ef01b4bb6dce7dc87904",
+      "note": "`ht` — the visible option count"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        37192,
+        37323
+      ],
+      "units": 131,
+      "bodySha256": "a87dbfae74f87e2156244bd7a9e0af5e1e1df117a1c34f3e00a2cb6c02e5532c",
+      "note": "`S3n` — the option window: first index, size, hidden count, rows"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        37331,
+        37348
+      ],
+      "units": 17,
+      "bodySha256": "19bdaf07ff3e413b93e5f2f3e2bba8df1fb6d2370ba6b2cfd31cd8b1cc65aaae",
+      "note": "`gdn` — the select-fields context"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        37348,
+        38173
+      ],
+      "units": 825,
+      "bodySha256": "81fff593770f195b7d5ed5342522c38a3b0c3814bd4e7daaa02d38029022089c",
+      "note": "`sr` — the Select site component: the picked option, the open highlight window and the click"
+    }
+  ],
+  "missing": []
+}

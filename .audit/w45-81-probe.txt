@@ -1,0 +1,24 @@
+ht 8
+window empty {"first":0,"size":0,"hidden":0,"rows":0}
+window three {"first":0,"size":3,"hidden":0,"rows":3}
+window ten at 0 {"first":0,"size":8,"hidden":2,"rows":9}
+window ten at 9 {"first":2,"size":8,"hidden":0,"rows":8}
+window ten at 5 {"first":0,"size":8,"hidden":2,"rows":9}
+udn plain 1
+udn link 1 allowDefault
+udn window 0
+udn stray 0
+xe empty {"hasKeyboardFocus":false}
+xe focused {"focus":true,"ref":true,"click":"function"}
+xe click {"plugin":"p","handle":1}
+xe other {"focus":false}
+closed type Box props {"flexDirection":"column","flexShrink":0,"elementKey":"s1","elementPlugin":"p"}
+closed rows [[{"type":"Text","props":{"bold":false,"children":"Pick: "},"children":["Pick: "],"key":null},{"type":"Text","props":{"dimColor":true,"children":"none"},"children":["none"],"key":null},{"type":"Text","props":{"dimColor":true,"children":" ▾"},"children":[" ▾"],"key":null}]]
+none head [{"type":"Text","props":{"bold":false,"children":""},"children":[""],"key":null},{"type":"Text","props":{"dimColor":true,"children":"none"},"children":["none"],"key":null},{"type":"Text","props":{"dimColor":true,"children":" ▾"},"children":[" ▾"],"key":null}]
+picked head [{"type":"Text","props":{"bold":false,"children":""},"children":[""],"key":null},{"type":"Text","props":{"inverse":false,"children":"b"},"children":["b"],"key":null},{"type":"Text","props":{"dimColor":true,"children":" ▾"},"children":[" ▾"],"key":null}]
+open rows [[{"type":"Text","props":{"bold":true,"children":""},"children":[""],"key":null},{"type":"Text","props":{"dimColor":true,"children":"none"},"children":["none"],"key":null},{"type":"Text","props":{"dimColor":true,"children":" ▴"},"children":[" ▴"],"key":null}],"  Alpha","  b","  Charlie"]
+scrolled count 9 first [{"type":"Text","props":{"bold":true,"children":""},"children":[""],"key":null},{"type":"Text","props":{"inverse":false,"children":"L9"},"children":["L9"],"key":null},{"type":"Text","props":{"dimColor":true,"children":" ▴"},"children":[" ▴"],"key":null}] last "  L9"
+other open rows [[{"type":"Text","props":{"bold":false,"children":""},"children":[""],"key":null},{"type":"Text","props":{"dimColor":true,"children":"none"},"children":["none"],"key":null},{"type":"Text","props":{"dimColor":true,"children":" ▾"},"children":[" ▾"],"key":null}]]
+closed click undefined
+(node:269) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

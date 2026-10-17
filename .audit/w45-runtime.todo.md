@@ -834,3 +834,11 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The click guard is pinned.** Undeclared links, no link, ctrl/alt, window activation and the 300 ms window all leave the click to the terminal.
 - [x] **The press is delayed and cancellable.** A declared link presses after 500 ms; a selection or a second click cancels it.
 - [x] **Sweep.** tsc 0, copy `declared 37 / unresolved 0`, notices 0, new suite 14/14, chain family 644/644, full 1,920/1,920, index 65 chunks / 292,924 units, identity `da9ff72e…`.
+
+## W45-81 acceptance (2026-10-17)
+
+- [x] **The Select is ported.** The component, the eight-row window, the focus reader, the click adapter and the four contexts are copied.
+- [x] **The component is pure.** Picked value and open highlight come from the context; nothing is cached locally.
+- [x] **Focus is gated on the exact press.** `fdn` naming another handle loses the focus flag and the ref, while the click stays.
+- [x] **The window keeps the highlight visible.** The first index moves with the highlight and the hidden-count row appears only when options are cut.
+- [x] **Sweep.** tsc 0, copy `declared 34 / unresolved 0`, notices 0, new suite 12/12, chain family 656/656, full 1,932/1,932, index 65 chunks / 294,284 units, identity `e367fd4d…`.
