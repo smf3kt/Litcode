@@ -825,3 +825,12 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The normalizer's order is pinned.** A dot-dot local path collapses before the traversal checks; `Cot`/`Yoo` do not flag the plain relative form.
 - [x] **The terminal entry is asynchronous.** `TIe` answers undefined; the press lands after it and `Ohe` logs a rejection at error level.
 - [x] **Sweep.** tsc 0, copies `declared 52/29 / unresolved 0`, notices 0, new suite 16/16, chain family 630/630, full 1,906/1,906, index 64 chunks / 291,177 units, identity `485a5dd1…`.
+
+## W45-80 acceptance (2026-10-17)
+
+- [x] **The nine leaf types are complete.** The Markdown leaf is copied; the other eight were ported by earlier packages.
+- [x] **The renderer is reused, not duplicated.** `Ya` comes from the already-carried `tui-markdown-components.ts` copy of the same recovered body.
+- [x] **The host boundary is named.** `plugin-chain-markdown-host.ts` carries the clock context, the selection context and the instance map.
+- [x] **The click guard is pinned.** Undeclared links, no link, ctrl/alt, window activation and the 300 ms window all leave the click to the terminal.
+- [x] **The press is delayed and cancellable.** A declared link presses after 500 ms; a selection or a second click cancels it.
+- [x] **Sweep.** tsc 0, copy `declared 37 / unresolved 0`, notices 0, new suite 14/14, chain family 644/644, full 1,920/1,920, index 65 chunks / 292,924 units, identity `da9ff72e…`.

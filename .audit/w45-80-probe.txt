@@ -1,0 +1,34 @@
+mdn https,http,file
+vje/tun 300 500
+on no provider useClock must be used within a ClockProvider
+on with provider true true
+wC no instance {
+  copy: '',
+  copyNoClear: '',
+  text: '',
+  state: null,
+  has: false,
+  sub: 'function',
+  move: undefined
+}
+wC bound copied text { anchor: 1 } false
+oi holds 1 true
+oi after unbind 0
+hosted press {"plugin":"markdown-fixture","handle":780452067}
+plain element [Function: Ya] {"linkSchemes":{},"stripPromptTags":false,"children":"plain"}
+keyed element {"flexDirection":"column","elementKey":"k1"}
+press element {"flexDirection":"column","elementKey":"m1","elementPlugin":"markdown-fixture","onClick":"function"}
+click no link allowDefault timers 0
+click ctrl allowDefault timers 0
+click bad link allowDefault timers 0
+click window dropAsStray timers 0
+click within window dropAsStray timers 0
+click good stopImmediatePropagation timers 1 ms [ 500 ]
+press before timer 0
+press after timer {"handle":1,"argument":{"plugin":"markdown-fixture","element":"m1","component":"Fixture","requestId":"md","surface":"terminal","link":{"href":"https://example.com/a"}}}
+after selection subs 0 cancelled [ 500 ] timers 1
+press after cancel 0
+Gfe default null eE default null
+chain records []
+(node:86353) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

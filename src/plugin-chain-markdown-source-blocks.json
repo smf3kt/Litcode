@@ -1,0 +1,75 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        135682,
+        135731
+      ],
+      "units": 49,
+      "bodySha256": "7f061d92c230a5b845065acca4e8e7da664e597d42f164ce641baf518b26e03c",
+      "note": "`vje`/`tun` — the double-activation window and the press delay (the statement also declares an unused `S0`)"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        24313,
+        24354
+      ],
+      "units": 41,
+      "bodySha256": "9de0d3ab281e527a5b66230e0dbc52640a60f9607bd8c2fa8ec977a53468f93a",
+      "note": "`mdn` — the link schemes the markdown renderer keeps pressable"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        24354,
+        25250
+      ],
+      "units": 896,
+      "bodySha256": "5f7f230d84674a8f22ce63a1bee65689c77f74f74d0e98fb21128298c86ba911",
+      "note": "`Xt` — the Markdown leaf: draw the text, and on a click over a declared link press once the selection settles"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        17969,
+        18071
+      ],
+      "units": 102,
+      "bodySha256": "6febe578af91003e9eef27bbca78ae26034c4e7b601a8fcaaff9096195636872",
+      "note": "`on` — the clock hook the leaf reads `now` and `setTimeout` from"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        26659,
+        27318
+      ],
+      "units": 659,
+      "bodySha256": "c68229fe24a2e90767fa0ae80262628aedb1339d2a6912f9b53b1fd044b26ecf",
+      "note": "`wC` — the selection accessor the leaf subscribes to while a press waits"
+    }
+  ],
+  "missing": []
+}
