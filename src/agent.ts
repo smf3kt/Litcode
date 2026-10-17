@@ -3,7 +3,7 @@ import { Session, type SessionConfig, type ToolResult } from './session.js';
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
 import type { ToolDefinition, ToolContext } from './tools.js';
 import { randomUUID } from 'node:crypto';
-import { HookLifecycle, normalizeSessionTitle, runHooks, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
+import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
 import { permissionDecision } from './permissions.js';
 import path from 'node:path';
 import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
@@ -916,8 +916,12 @@ export class Agent {
         const submitted = await this.hook('UserPromptSubmit', { prompt,
           ...(sessionTitle === undefined ? {} : { session_title: sessionTitle }) }, signal);
         if (submitted.blocked) {
-          this.events.status?.(submitted.reason ?? 'UserPromptSubmit hook blocked the prompt');
-          return this.finish('hook_blocked', '', 0);
+          // The recovered consumer shows `UserPromptSubmit operation blocked by
+          // hook:` plus the original prompt unless the hook suppressed it
+          // (chunk-htgmc2p1.js offset 34121); the text is the turn's resultText.
+          const text = promptBlockMessage('UserPromptSubmit', submitted.reason ?? 'blocked', prompt,
+            submitted.suppressOriginalPrompt === true);
+          return this.finish('hook_blocked', text, 0);
         }
         // The UserPromptSubmit consumer takes the last hook-provided title and
         // commits it before the turn (`u = m.sessionTitle ?? u`).
@@ -933,7 +937,11 @@ export class Agent {
         let expansionContext: string[] = [];
         if (expansion !== undefined) {
           const expanded = await this.hook('UserPromptExpansion', { ...expansion }, signal);
-          if (expanded.blocked) return this.finish('hook_blocked', '', 0);
+          if (expanded.blocked) {
+            const text = promptBlockMessage('UserPromptExpansion', expanded.reason ?? 'blocked', expansion.prompt,
+              expanded.suppressOriginalPrompt === true);
+            return this.finish('hook_blocked', text, 0);
+          }
           expansionContext = expanded.additionalContext;
         }
         const context = [...startContext, ...hookContext, ...submitted.additionalContext, ...expansionContext];

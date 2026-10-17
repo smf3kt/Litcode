@@ -981,6 +981,14 @@ test("event output translation retains permission, updated result and general sp
   assert.equal("reloadSkills" in noReload, false);
   const submitReload = await runHooks({ UserPromptSubmit: [emit({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", reloadSkills: true } })] }, "UserPromptSubmit", {});
   assert.equal("reloadSkills" in submitReload, false);
+  const suppress = await runHooks({ UserPromptSubmit: [emit({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", suppressOriginalPrompt: true } })] }, "UserPromptSubmit", {});
+  assert.equal(suppress.suppressOriginalPrompt, true);
+  const suppressExpansion = await runHooks({ UserPromptExpansion: [emit({ hookSpecificOutput: { hookEventName: "UserPromptExpansion", suppressOriginalPrompt: true } })] }, "UserPromptExpansion", {});
+  assert.equal(suppressExpansion.suppressOriginalPrompt, true);
+  const notSuppressed = await runHooks({ UserPromptSubmit: [emit({ hookSpecificOutput: { hookEventName: "UserPromptSubmit", suppressOriginalPrompt: false } })] }, "UserPromptSubmit", {});
+  assert.equal("suppressOriginalPrompt" in notSuppressed, false);
+  const startSuppress = await runHooks({ SessionStart: [emit({ hookSpecificOutput: { hookEventName: "SessionStart", suppressOriginalPrompt: true } })] }, "SessionStart", {});
+  assert.equal("suppressOriginalPrompt" in startSuppress, false);
 });
 
 test("session titles normalize like the recovered ci helper", () => {
@@ -994,6 +1002,10 @@ test("prompt/agent hooks require explicit injected resolvers and normalize model
   const pending = await runHooks({ PreToolUse: [{ type: "prompt", prompt: "check" }] }, "PreToolUse", preTool());
   assert.equal(pending.blocked, true);
   assert.equal(pending.pendingHooks?.[0]?.type, "prompt");
+  // A block that did not come from the hook's own verdict omits the prompt.
+  const pendingSubmit = await runHooks({ UserPromptSubmit: [{ type: "prompt", prompt: "check" }] }, "UserPromptSubmit", {});
+  assert.equal(pendingSubmit.blocked, true);
+  assert.equal(pendingSubmit.suppressOriginalPrompt, true);
   const result = await runHooks({ Stop: [{ type: "agent", prompt: "verify", model: "fixture-model" }] }, "Stop", { marker: "retained" }, signal(), {
     resolveModelHook: async (definition, event, payload, hookSignal) => {
       assert.equal(definition.type, "agent");

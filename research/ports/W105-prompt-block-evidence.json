@@ -1,0 +1,130 @@
+{
+ "schema": "W105PromptBlockEvidence.v1",
+ "package": "W105-01 — suppressOriginalPrompt and prompt block messages",
+ "date": "2026-10-18",
+ "question": "How do the prompt hooks suppress the original prompt from a block message, and when does the runner suppress it itself?",
+ "answer": "The two prompt events carry suppressOriginalPrompt in their hookSpecificOutput. Their block text is \"<event> operation blocked by hook:\\n<reason>\" plus \"\\n\\nOriginal prompt: <prompt>\" unless suppressed. Internal non-run, invalid-output and truncated-stdio blocks suppress automatically; an ordinary exit 2 does not. A top-level decision block becomes a blocking error for any parsed output.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "submitSchema": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 391571
+  },
+  "expansionSchema": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 391772
+  },
+  "submitConsumer": {
+   "module": "extracted-v2/modules/chunk-htgmc2p1.js",
+   "offset": 34121
+  },
+  "expansionConsumer": {
+   "module": "extracted-v2/modules/chunk-htgmc2p1.js",
+   "offset": 39033
+  },
+  "tuiConsumer": {
+   "module": "extracted-v2/modules/chunk-ksjypbtc.js",
+   "offset": 4938
+  },
+  "formatter": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "EMe",
+   "offset": 3009974
+  },
+  "decisionMapping": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "pX",
+   "offset": 2961295
+  },
+  "internalSuppression": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "Ret",
+   "offset": 566691
+  }
+ },
+ "behavior": {
+  "events": [
+   "UserPromptSubmit",
+   "UserPromptExpansion"
+  ],
+  "suffix": "Original prompt: <prompt>",
+  "suppressedBy": [
+   "explicit output field",
+   "internal non-run or invalid-output block"
+  ],
+  "exitTwoSuppresses": false,
+  "decisionBlockHonored": true
+ },
+ "adaptations": [
+  "The source stores a warning message in the conversation and returns resultText; this runtime returns the text as the turn result and leaves the event log and model history unchanged.",
+  "Internal block paths in this runner set the suppression flag themselves, matching the source Ret behavior."
+ ],
+ "changes": [
+  {
+   "file": "src/hooks.ts",
+   "change": "field parse, renderer, decision set, auto-suppression",
+   "sha256": "0535a4783e33b2327cac6181b04823f4f35e1b829bf2cb2a082e6a30043e2c50"
+  },
+  {
+   "file": "src/agent.ts",
+   "change": "block text for both prompt events",
+   "sha256": "da92e1579618339f14bf23672472da9d52824408f5e76b2e640148654579b389"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "execution-skill block text",
+   "sha256": "db667e6175806b9aeafcfd721deb1b49285040344dbdcfdc35839c51469018fb"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "parse and auto-suppression assertions",
+   "sha256": "62fbf80bef84a689499046ee20237cca78009919dcb3bf83b475c3a3fafd6e96"
+  },
+  {
+   "file": "test/lifecycle.test.ts",
+   "change": "exact visible and suppressed texts",
+   "sha256": "4e2ee88b5a913c63b9aa7e0bbf04907cfa543d31a912bd947cb7b4b2b54e0e66"
+  },
+  {
+   "file": "test/interactive.test.ts",
+   "change": "execution-skill suffix assertions",
+   "sha256": "36277749907b2125738f4b5a361db99a248ce5dfdf9502d6f07b467538387c09"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W105",
+   "sha256": "1fc79a60a4efe33a2b929737988b33530ff0361fe3bc5befe1216fa745b5d7d8"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W105",
+   "sha256": "fa0a78865d21bf8acf959d84e3837112c88f47bbee099ceda90578dedbdf43c3"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W105-01 entry",
+   "sha256": "b6422ebb5dcea51fa74d936357363cdb2ed618695d9224d4952501b1b9af922b"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W105-01 S-1..S-7 entry",
+   "sha256": "91aed61ca890d35c50718358391d00dee989272ba401a856b89adbce2697a663"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "88/88 (hooks, lifecycle, interactive)",
+  "build": "exit 0",
+  "full": "2,143/2,143",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "3319a5a3e6cdbcca976d1bab8d2704ec3d7386c0aa27f5cf77403e9ef74bc736"
+ },
+ "residuals": [
+  "SessionStart retry and the remaining script semantics are unconsumed.",
+  "The block text is not persisted as a conversation warning message."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with SessionStart retry and the remaining script semantics."
+}

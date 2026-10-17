@@ -386,6 +386,12 @@ export type HookResult = {
   /** SessionStart: re-scan skill directories after the hooks complete. */
   reloadSkills?: true;
   /**
+   * UserPromptSubmit / UserPromptExpansion: omit `Original prompt:` from the
+   * block message. The recovered runner also sets this when it has to block for
+   * an internal reason such as an unrun hook or an invalid output.
+   */
+  suppressOriginalPrompt?: true;
+  /**
    * Set only by an explicit `continue:false` output, meaning "terminate the
    * session". A Stop hook that merely requests continuation (exit 2 or a
    * `decision:"block"` output) sets `blocked` but leaves this false, so the
@@ -425,6 +431,23 @@ export function normalizeSessionTitle(text: string): string {
     if (last >= 0xd800 && last <= 0xdbff) title = title.slice(0, -1);
   }
   return title.trim();
+}
+
+/**
+ * The user-facing block message for the two prompt events. `EMe` renders
+ * `UserPromptSubmit operation blocked by hook:\n<error>` (chunk-sfn1dbxq.js
+ * offset 3009974) and the expansion consumer uses the same shape at
+ * chunk-htgmc2p1.js offset 39033. Both append `\n\nOriginal prompt: <prompt>`
+ * unless the hook suppressed it.
+ */
+export function promptBlockMessage(
+  event: "UserPromptSubmit" | "UserPromptExpansion",
+  reason: string,
+  prompt: string,
+  suppressOriginalPrompt: boolean,
+): string {
+  const base = `${event} operation blocked by hook:\n${reason}`;
+  return suppressOriginalPrompt ? base : `${base}\n\nOriginal prompt: ${prompt}`;
 }
 
 const DEFAULT_TIMEOUT_SECONDS = 60;
@@ -476,6 +499,11 @@ const DECISION_BLOCK_EVENTS: ReadonlySet<HookEvent> = new Set([
   "TeammateIdle",
   "TaskCreated",
   "TaskCompleted",
+  // `pX` (chunk-sfn1dbxq.js offset 2961295) turns a top-level
+  // `decision:"block"` into a blocking error for any output, so the prompt
+  // consumers receive the blocks they format.
+  "UserPromptSubmit",
+  "UserPromptExpansion",
 ]);
 const PERMISSION_DECISIONS: ReadonlySet<string> = new Set(["allow", "deny", "ask", "defer"]);
 const MATCH_ALL: ReadonlySet<string> = new Set(["*", ".*"]);
@@ -957,6 +985,13 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   // sticky flag when any hook sets it true (`H7`, chunk-sfn1dbxq.js offset
   // 2482855); the schema admits only `true`.
   if (event === "SessionStart" && output.reloadSkills === true) result.reloadSkills = true;
+  // `suppressOriginalPrompt` exists on the UserPromptSubmit and
+  // UserPromptExpansion output schemas (chunk-n3ykh62m.js offsets 391571 and
+  // 391772): when the hook blocks, the original prompt is omitted from the
+  // block message (consumers at chunk-htgmc2p1.js offsets 34121 and 39033).
+  if ((event === "UserPromptSubmit" || event === "UserPromptExpansion") && output.suppressOriginalPrompt === true) {
+    result.suppressOriginalPrompt = true;
+  }
   // MessageDisplay is display-only: `hookSpecificOutput.displayContent` replaces the delta on
   // screen while the stored message and what the model sees stay unchanged (source output
   // processing at chunk-sfn1dbxq.js offset 2967137).
@@ -1035,7 +1070,7 @@ export async function runHooks(
   const input = `${JSON.stringify({ ...payload, hook_event_name: event })}\n`;
   if (Buffer.byteLength(input) > MAX_HOOK_INPUT_BYTES && definitions.length > 0) {
     result.additionalContext.push(`[${event} hook: input exceeded ${MAX_HOOK_INPUT_BYTES} byte cap; hooks were not started]`);
-    if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason = "Hook input exceeded byte cap"; }
+    if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason = "Hook input exceeded byte cap"; result.suppressOriginalPrompt = true; }
     return result;
   }
   const cwd = asString(payload.cwd) ?? process.cwd();
@@ -1075,7 +1110,7 @@ export async function runHooks(
       const reason = "model hook resolver is pending parent integration";
       (result.pendingHooks ??= []).push({ index, type: definition.type, reason });
       result.additionalContext.push(`[${event} ${definition.type} hook: ${reason}]`);
-      if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason ??= reason; }
+      if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason ??= reason; result.suppressOriginalPrompt = true; }
       continue;
     }
     if ((definition.type === "callback" && !options.resolveCallbackHook) || (definition.type === "mcp_tool" && !options.resolveMcpHook)) {
@@ -1083,14 +1118,14 @@ export async function runHooks(
       const reason = `Configure trusted HookRunOptions.${option} before running ${definition.type} hooks.`;
       (result.pendingHooks ??= []).push({ index, type: definition.type, reason });
       result.additionalContext.push(`[${event} ${definition.type} hook: ${reason}]`);
-      if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason ??= reason; }
+      if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason ??= reason; result.suppressOriginalPrompt = true; }
       continue;
     }
     if (asyncCommand && !options.startAsyncCommand) {
       const reason = "async command owner registry is pending parent integration";
       (result.pendingHooks ??= []).push({ index, type: "command", reason });
       result.additionalContext.push(`[${event} hook: ${reason}]`);
-      if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason ??= reason; }
+      if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason ??= reason; result.suppressOriginalPrompt = true; }
       continue;
     }
     let headers: Headers | undefined;
@@ -1114,7 +1149,7 @@ export async function runHooks(
     if (resolvedHook && !release) {
       const reason = "Hook resolver capacity reached (16 active stages); wait for outstanding resolvers to settle.";
       result.additionalContext.push(`[${event} hook: ${reason}]`);
-      if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason ??= reason; }
+      if (BLOCKING_EVENTS.has(event)) { result.blocked = true; result.reason ??= reason; result.suppressOriginalPrompt = true; }
       continue;
     }
     // Claim and journal in the same turn as execution, before its first await.

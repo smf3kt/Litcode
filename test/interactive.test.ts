@@ -336,8 +336,31 @@ test('a blocked expansion prevents the skill from running', async () => {
       output: stdout.stream, status: stderr.stream, signal: new AbortController().signal,
     });
     assert.deepEqual(ran, []);
-    assert.match(stdout.value(), /UserPromptExpansion operation blocked by hook: denied/);
+    assert.match(stdout.value(), /UserPromptExpansion operation blocked by hook:\ndenied/);
+    assert.match(stdout.value(), /Original prompt: \/forked alpha/);
     assert.match(stderr.value(), /hook_blocked/);
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('a suppressed expansion block omits the original prompt', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-fork-suppress-')));
+  const config = defaultConfig(workspace, []); config.model = 'test';
+  config.skills = [skill({ name: 'forked', body: 'Fork body', context: 'fork' })];
+  const blocked = JSON.stringify(JSON.stringify({ decision: 'block', reason: 'denied',
+    hookSpecificOutput: { hookEventName: 'UserPromptExpansion', suppressOriginalPrompt: true } }));
+  config.hooks = { UserPromptExpansion: [{ command: `printf %s ${blocked}` }] };
+  const session = Session.open(workspace, { config });
+  const ran: string[] = [];
+  const runtime = stubRuntime({ runSkill: async (_config, _owner, target) => { ran.push(target.name); return 'skill result'; } });
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, { count: async () => 1, complete: async () => reply('done') }, runtime, {
+      input: Readable.from(['/forked alpha\n', '/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: new AbortController().signal,
+    });
+    assert.deepEqual(ran, []);
+    assert.match(stdout.value(), /UserPromptExpansion operation blocked by hook:\ndenied/);
+    assert.doesNotMatch(stdout.value(), /Original prompt:/);
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 

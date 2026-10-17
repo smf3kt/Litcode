@@ -14,6 +14,7 @@ import { parseAttachmentCommand } from './media.js';
 import { checkpointConversation, previewRewind, applyRewind, type RewindPreview } from './rewind.js';
 import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
+import { promptBlockMessage } from './hooks.js';
 import { validateElicitationResult, type McpClientRequests, type McpElicitationResult } from './mcp-client-requests.js';
 import { captureClipboardImage } from './clipboard.js';
 import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree, restoreWorktreeArchive } from './worktree-session.js';
@@ -1064,7 +1065,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             // (`at`, chunk-htgmc2p1.js [38703,39841)); its verdict gates the skill run.
             const pre = await agent().emitHook('UserPromptExpansion', expansion, options.signal);
             if (pre.blocked) {
-              output.write(`UserPromptExpansion operation blocked by hook: ${pre.reason ?? 'blocked'}\n`);
+              output.write(`${promptBlockMessage('UserPromptExpansion', pre.reason ?? 'blocked', expansion.prompt,
+                pre.suppressOriginalPrompt === true)}\n`);
               options.status.write('finished: hook_blocked; model calls: 0\n');
               continue;
             }

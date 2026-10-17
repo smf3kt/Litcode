@@ -2209,3 +2209,13 @@ instructions stay as loaded. A legacy configuration without a skill catalog and
 a failed rescan both keep the previous state. Focused 110/110, tsc 0, build 0,
 full 2,140/2,140, chain 767/767, identity `b59db97a…`.
 [W104 record](ports/W104-skill-reload.md).
+
+W105-01 consumes `suppressOriginalPrompt` on UserPromptSubmit and
+UserPromptExpansion. Blocked prompts render the recovered
+`<event> operation blocked by hook:\n<reason>` text plus
+`Original prompt: <prompt>` unless the hook suppressed it; internal blocks
+where the hook never ran suppress automatically, and ordinary exit 2 keeps the
+prompt. Both prompt events now honor a top-level `decision:"block"` like `pX`.
+Focused 88/88, tsc 0, build 0, full 2,143/2,143, chain 767/767, identity
+`3319a5a3…`.
+[W105 record](ports/W105-prompt-block.md).
