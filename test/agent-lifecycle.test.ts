@@ -868,3 +868,17 @@ test("conditional rule sources and imports remain pinned through durable resume"
     assertBatchAdjacency(session);
   } finally { session.close(); }
 });
+
+test("SessionEnd maps close causes onto the recovered reason enum", async () => {
+  const root = workspace();
+  const captured = path.join(root, "session-end.jsonl");
+  const session = Session.open(root, { config: config(root, [], { hooks: {
+    SessionEnd: [{ command: `cat >> ${shellQuote(captured)}` }] } }) });
+  const cases = [["session_switch", "resume"], ["config_changed", "other"], ["interrupt", "other"],
+    ["clear", "clear"], ["exit", "prompt_input_exit"], ["rewind", "other"]] as const;
+  try {
+    for (const [cause] of cases) await new Agent(session, new ScriptedProvider([]), []).endSession(cause);
+    const reasons = fs.readFileSync(captured, "utf8").trim().split("\n").map(line => JSON.parse(line) as { reason?: string });
+    assert.deepEqual(reasons.map(event => event.reason), cases.map(([, reason]) => reason));
+  } finally { session.close(); }
+});

@@ -337,9 +337,18 @@ export class Agent {
   async endSession(reason = 'exit'): Promise<void> {
     if (this.ended) return;
     this.ended = true;
+    // The recovered SessionEnd reason is one of clear, resume, logout, prompt_input_exit or other
+    // (`GK`, chunk-r2vtj1kh.js [204799,204858); the builder passes it as the matcher query at
+    // chunk-sfn1dbxq.js offset 2943888). This runtime's own close causes map onto that enum:
+    // switching to a resumed session is `resume`, prompt/EOF exit is `prompt_input_exit`, and every
+    // other close (fork, configuration, cwd, rewind, interruption) is `other`.
+    const sourceReason = reason === 'clear' || reason === 'resume' || reason === 'logout' ||
+      reason === 'prompt_input_exit' ? reason
+      : reason === 'session_switch' ? 'resume'
+      : reason === 'exit' ? 'prompt_input_exit' : 'other';
     // Shutdown hooks get their own bounded signal even after task cancellation.
     const signal = AbortSignal.timeout(2_000);
-    await this.hook('SessionEnd', { reason }, signal);
+    await this.hook('SessionEnd', { reason: sourceReason }, signal);
   }
 
   private pendingHookContext(): string[] {

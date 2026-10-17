@@ -185,7 +185,7 @@ test('interactive clear, fork and exit run SessionEnd and release locks', async 
   try {
     await interactiveLoop(session, provider, stubRuntime(), { input: Readable.from(['/clear\n/fork\n/exit\n']), output: stdout.stream, status: stderr.stream, signal: new AbortController().signal });
     const ended = fs.readFileSync(marker, 'utf8').trim().split('\n').map(line => JSON.parse(line));
-    assert.deepEqual(ended.map(event => event.reason), ['clear', 'fork', 'prompt_input_exit']);
+    assert.deepEqual(ended.map(event => event.reason), ['clear', 'other', 'prompt_input_exit']);
     assert.equal(new Set(ended.map(event => event.session_id)).size, 3);
     assert.ok(listSessions(workspace).every(item => !item.active));
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }

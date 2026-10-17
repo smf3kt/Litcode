@@ -2111,3 +2111,11 @@ arm. The prior Notification raise for internal runtime event prompts is
 removed because `S0` has no such caller. `interactive` 8/8, tsc 0, build 0,
 full 2,121/2,121, chain 767/767, identity `8ff650c8…`.
 [W92 record](ports/W92-permission-notification.md).
+
+W93-01 maps SessionEnd close causes onto the recovered reason enum
+(`clear`, `resume`, `logout`, `prompt_input_exit`, `other`). The product's
+internal causes no longer reach the hook: `session_switch` is `resume`,
+`exit` is `prompt_input_exit`, and the remaining close causes are `other`.
+`agent-lifecycle` 35/35, `interactive` 8/8, tsc 0, build 0, full
+2,122/2,122, chain 767/767, identity `11df4f85…`.
+[W93 record](ports/W93-session-end-reasons.md).
