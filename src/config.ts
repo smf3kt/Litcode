@@ -44,6 +44,19 @@ export interface InstructionFile {
   path: string;
   /** Verbatim UTF-8 contents. */
   content: string;
+  /** The file that imported this one, for an `@`-include. */
+  parent?: string;
+  /** Rule patterns that selected a conditional rule. */
+  globs?: string[];
+}
+
+/** The identity fields an InstructionsLoaded raise reports; content stays out of session metadata. */
+export type InstructionSource = Pick<InstructionFile, "path" | "parent" | "globs">;
+
+export function instructionSources(files: InstructionFile[]): InstructionSource[] {
+  return files.map(({ path, parent, globs }) => ({
+    path, ...(parent === undefined ? {} : { parent }), ...(globs === undefined ? {} : { globs }),
+  }));
 }
 
 export interface ConditionalRule extends InstructionFile {
@@ -1132,7 +1145,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   function pinRuleImports(rootFile: string, body: string): InstructionFile[] {
     const pinned: InstructionFile[] = [];
     const seen = new Set<string>([tryRealpath(rootFile)!]);
-    function visit(file: string, depth: number): void {
+    function visit(file: string, depth: number, parent?: string): void {
       vetInstructionPath(file);
       const real = tryRealpath(file);
       if (real === undefined || !isRegularFile(file)) throw new ConfigError("instruction import file not found", file);
@@ -1140,13 +1153,13 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
       if (depth >= CONFIG_LIMITS.importDepth) throw new ConfigError(`instruction import exceeds depth ${CONFIG_LIMITS.importDepth}`, file);
       seen.add(real);
       const content = readTextFile(file, budget);
-      pinned.push({ path: file, content });
-      for (const target of instructionImports(parseFrontmatter(content, { full: true }).body)) visit(resolveImport(target, file), depth + 1);
+      pinned.push({ path: file, content, ...(parent === undefined ? {} : { parent }) });
+      for (const target of instructionImports(parseFrontmatter(content, { full: true }).body)) visit(resolveImport(target, file), depth + 1, file);
     }
-    for (const target of instructionImports(body)) visit(resolveImport(target, rootFile), 1);
+    for (const target of instructionImports(body)) visit(resolveImport(target, rootFile), 1, rootFile);
     return pinned;
   }
-  function appendInstruction(file: string, depth: number, rule = false): void {
+  function appendInstruction(file: string, depth: number, rule = false, parent?: string): void {
     vetInstructionPath(file);
     const real = tryRealpath(file);
     if (real === undefined || !isRegularFile(file)) throw new ConfigError("instruction import file not found", file);
@@ -1154,12 +1167,14 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     if (depth >= CONFIG_LIMITS.importDepth) throw new ConfigError(`instruction import exceeds depth ${CONFIG_LIMITS.importDepth}`, file);
     const content = readTextFile(file, budget);
     const frontmatter = parseFrontmatter(content, { full: true });
+    let globs: string[] | undefined;
     if (rule) {
       const patterns = conditionalRulePatterns(frontmatter.data, file);
       if (patterns !== undefined) {
+        globs = patterns;
         if (!conditionalSeen.has(real)) {
           conditionalSeen.add(real);
-          const pinned: ConditionalRule = { path: file, content, patterns };
+          const pinned: ConditionalRule = { path: file, content, patterns, ...(parent === undefined ? {} : { parent }) };
           if (selectedPaths !== undefined) {
             const imports = pinRuleImports(file, frontmatter.body);
             if (imports.length) pinned.imports = imports;
@@ -1170,8 +1185,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
       }
     }
     instructionSeen.add(real);
-    instructions.push({ path: file, content });
-    for (const target of instructionImports(frontmatter.body)) appendInstruction(resolveImport(target, file), depth + 1);
+    instructions.push({ path: file, content, ...(parent === undefined ? {} : { parent }), ...(globs === undefined ? {} : { globs }) });
+    for (const target of instructionImports(frontmatter.body)) appendInstruction(resolveImport(target, file), depth + 1, false, file);
   }
   for (const dir of ancestorDirs(workspaceRoot)) {
     for (const name of INSTRUCTION_FILES) {
@@ -1303,7 +1318,7 @@ export function loadPathInstructions(workspace: string, target: string, candidat
   const files: InstructionFile[] = [];
   const seen = new Set<string>();
   const watchPaths: string[] = [];
-  function visit(file: string, depth: number): void {
+  function visit(file: string, depth: number, parent?: string): void {
     vetInstructionPath(file);
     const real = tryRealpath(file);
     if (!real || !isRegularFile(file)) throw new ConfigError("nested instruction import file missing", file);
@@ -1316,8 +1331,8 @@ export function loadPathInstructions(workspace: string, target: string, candidat
     if (depth >= CONFIG_LIMITS.importDepth) throw new ConfigError("nested instruction import depth exceeds limit", file);
     seen.add(real);
     const content = readTextFile(real, budget);
-    files.push({ path: real, content });
-    for (const imported of instructionImports(parseFrontmatter(content, { full: true }).body)) visit(resolveImport(imported, real), depth + 1);
+    files.push({ path: real, content, ...(parent === undefined ? {} : { parent }) });
+    for (const imported of instructionImports(parseFrontmatter(content, { full: true }).body)) visit(resolveImport(imported, real), depth + 1, real);
   }
   let directory = root;
   const depth = isDirectory(resolved) ? parts.length : Math.max(0, parts.length - 1);

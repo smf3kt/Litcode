@@ -111,9 +111,12 @@ test("instruction and file events carry the recovered payload fields", async () 
   const captured = path.join(root, "captured");
   fs.mkdirSync(captured);
   const sink = (name: string) => [{ command: `cat > ${shellQuote(path.join(captured, name))}` }];
+  const instructionsFile = path.join(root, "HARNESS.md");
+  fs.writeFileSync(instructionsFile, "fixture instructions\n");
   const hooks = { Setup: sink("setup.json"), InstructionsLoaded: sink("instructions.json"), FileChanged: sink("filechanged.json") };
   const file = spy("write_file", false);
-  const session = Session.open(root, { config: config(root, [file.tool], { hooks }) });
+  const session = Session.open(root, { config: config(root, [file.tool], { hooks,
+    instructionSources: [{ path: instructionsFile }] }) });
   try {
     const provider = new ScriptedProvider([
       response([call("write-1", "write_file", { path: "note.txt", content: "x" })], "tool_use"),
@@ -127,13 +130,57 @@ test("instruction and file events carry the recovered payload fields", async () 
     assert.equal(setup.trigger, "init");
     const instructions = JSON.parse(fs.readFileSync(path.join(captured, "instructions.json"), "utf8"));
     assert.equal(instructions.hook_event_name, "InstructionsLoaded");
+    assert.equal(instructions.file_path, instructionsFile);
+    assert.equal(instructions.memory_type, "Project");
     assert.equal(instructions.load_reason, "session_start");
+    assert.equal("parent_file_path" in instructions, false);
     assert.equal("model" in instructions, false);
     const changed = JSON.parse(fs.readFileSync(path.join(captured, "filechanged.json"), "utf8"));
     assert.equal(changed.hook_event_name, "FileChanged");
     assert.equal(changed.file_path, path.join(root, "note.txt"));
     assert.equal(changed.event, "change");
     assert.equal("tool_name" in changed, false);
+  } finally { session.close(); }
+});
+
+test("InstructionsLoaded reports imports and the path-access reasons", async () => {
+  const root = workspace();
+  const captured = path.join(root, "instructions.jsonl");
+  const read = spy("read_file", true);
+  write(root, "src/HARNESS.md", "See @imported.md\n");
+  write(root, "src/imported.md", "IMPORTED");
+  const rulePath = path.join(root, "rule.md");
+  const importPath = path.join(root, "rule-import.md");
+  fs.writeFileSync(rulePath, "RULE");
+  fs.writeFileSync(importPath, "RULE_IMPORT");
+  const session = Session.open(root, { config: config(root, [read.tool], {
+    dynamicInstructions: true,
+    hooks: { InstructionsLoaded: [{ command: `cat >> ${shellQuote(captured)}` }] },
+    instructionSources: [{ path: path.join(root, "HARNESS.md") }],
+    conditionalRules: [{ path: rulePath, content: "RULE", patterns: ["src/**/*.ts"],
+      imports: [{ path: importPath, content: "RULE_IMPORT", parent: rulePath }] }],
+  }) });
+  try {
+    const provider = new ScriptedProvider([response([call("one", "read_file", { path: "src/a.ts" })], "tool_use"), done()]);
+    const agent = new Agent(session, provider, [read.tool]);
+    await agent.startSession("startup");
+    await agent.run("read");
+    const events = fs.readFileSync(captured, "utf8").trim().split("\n").map(line => JSON.parse(line) as Record<string, unknown>);
+    assert.deepEqual(events.map(event => [path.basename(String(event.file_path)), event.load_reason]), [
+      ["HARNESS.md", "session_start"],
+      ["HARNESS.md", "nested_traversal"],
+      ["imported.md", "include"],
+      ["rule.md", "path_glob_match"],
+      ["rule-import.md", "include"],
+    ]);
+    const [, nested, imported, rule, ruleImport] = events;
+    assert.equal(nested!.trigger_file_path, path.join(root, "src", "a.ts"));
+    assert.equal("parent_file_path" in nested!, false);
+    assert.equal(imported!.parent_file_path, path.join(root, "src", "HARNESS.md"));
+    assert.deepEqual(rule!.globs, ["src/**/*.ts"]);
+    assert.equal(rule!.trigger_file_path, path.join(root, "src", "a.ts"));
+    assert.equal(ruleImport!.parent_file_path, rulePath);
+    assert.ok(events.every(event => event.memory_type === "Project"));
   } finally { session.close(); }
 });
 function hookRequest(request: ModelRequest): boolean {

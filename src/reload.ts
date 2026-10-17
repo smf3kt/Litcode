@@ -1,5 +1,5 @@
 import { DEFAULT_SYSTEM } from "./agent.js";
-import { loadProjectConfig } from "./config.js";
+import { loadProjectConfig, instructionSources } from "./config.js";
 import { buildSystem, parseSettings } from "./runtime.js";
 import { configSchema, applyManagedPolicy, type SessionConfig } from "./session.js";
 import { loadKeybindings } from "./keybindings.js";
@@ -11,6 +11,7 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   const next = structuredClone(current);
   const overrides = current.configSources?.overrides ?? {};
   next.skills = loaded.skills;
+  next.instructionSources = instructionSources(loaded.instructions);
   next.conditionalRules = loaded.conditionalRules ?? [];
   next.agentTypes = loaded.agentTypes ?? [];
   next.features = { tasks: true, taskProjections: true, subagents: true, notebooks: true, background: true, scheduler: true,
