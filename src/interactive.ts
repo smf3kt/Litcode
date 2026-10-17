@@ -12,6 +12,7 @@ import { permissionPolicySchema } from './permissions.js';
 import { forkSession, listSessions } from './sessions.js';
 import { startBackgroundSession } from './background-session.js';
 import { parseAttachmentCommand } from './media.js';
+import { terminalAnswerAnnotation } from './interaction-tools.js';
 import { checkpointConversation, previewRewind, applyRewind, type RewindPreview } from './rewind.js';
 import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
@@ -361,8 +362,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (!answer) throw new Error('Interaction cancelled');
           return { answers: request.questions.map((question, questionIndex) => {
             const entry = answer.groups?.find(item => item.key === (question.header ?? question.question));
-            return { questionIndex, selected: entry?.selected ?? [],
-              ...(entry?.text === undefined ? {} : { other: entry.text }) };
+            const selected = entry?.selected ?? [];
+            const annotation = terminalAnswerAnnotation(question, selected);
+            return { questionIndex, selected,
+              ...(entry?.text === undefined ? {} : { other: entry.text }),
+              ...(annotation === undefined ? {} : { annotations: annotation }) };
           }) };
         }
         const answers = [];
@@ -372,7 +376,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               choices: question.options.map(option => ({ ...option, value: option.label })),
               multiple: question.multiSelect, allowText: true, maxTextChars: 4000 }, signal);
             if (!answer) throw new Error('Interaction cancelled');
-            answers.push({ questionIndex, selected: answer.selected, ...(answer.text === undefined ? {} : { other: answer.text }) });
+            const annotation = terminalAnswerAnnotation(question, answer.selected);
+            answers.push({ questionIndex, selected: answer.selected,
+              ...(answer.text === undefined ? {} : { other: answer.text }),
+              ...(annotation === undefined ? {} : { annotations: annotation }) });
             continue;
           }
           const choices = question.options.map((option, index) => {

@@ -1,0 +1,108 @@
+{
+ "schema": "W176TerminalPreviewAnnotation.v1",
+ "package": "W176 — single-select preview annotation",
+ "date": "2026-10-18",
+ "question": "When does the recovered question flow attach a preview annotation to an answer, and how is that gate applied to the product terminal ask path?",
+ "answer": "zet requires a non-multi-select question with at least one preview option. P3 attaches the selected option preview only when that option carries a full preview, and suppresses it for screen readers. The product exports terminalAnswerAnnotation with the same gate, calls it from both terminal ask paths, and the existing answer admission checks the preview against the shown options.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+  "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+  "ranges": {
+   "zet": [
+    1180104,
+    1180182
+   ],
+   "P3": [
+    1178668,
+    1179279
+   ],
+   "screenReaderGate": [
+    1178792,
+    1178820
+   ],
+   "fullPreview": [
+    1178922,
+    1178979
+   ],
+   "annotationWrite": [
+    1178979,
+    1179050
+   ]
+  }
+ },
+ "behavior": {
+  "multiSelect": false,
+  "requiresAnyPreviewOption": true,
+  "requiresSelectedOptionPreview": true,
+  "annotationField": "annotations.preview",
+  "screenReaderSuppression": "treated false in this runtime",
+  "notes": "not ported",
+  "afkTimeout": "not ported"
+ },
+ "adaptations": [
+  "The product has no question-level notes input; the dialog Other text is an answer, not notes.",
+  "Screen-reader state is absent and treated as false, matching W129 and W174 host conventions."
+ ],
+ "changes": [
+  {
+   "file": "src/interaction-tools.ts",
+   "sha256": "7a057e9573ebe290418a806c512e5bf03be39c374fa5256b2744038d96987095"
+  },
+  {
+   "file": "src/interactive.ts",
+   "sha256": "d4ecb7cee90bd26995acf09bbf30cf26003a08b3815d1ee6f99a1d5773558f44"
+  },
+  {
+   "file": "test/interaction-tools.test.ts",
+   "sha256": "afa7bb5c93a006d6741bb26a8cff5157736f4f25677b9a5940c42075cd6e898b"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "sha256": "983d98319970dea68331182697a60ea1f767516a6788683d5747643c9d9f55a0"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "sha256": "146b9890c226092461ca4010e6d6e6db28a853f3dce55b92b27051ae991f71e6"
+  },
+  {
+   "file": "research/STATUS.md",
+   "sha256": "c889c1f18a14c37094b0faebaa6de809fe704f9d47bc289deb6acd4e664b8fce"
+  },
+  {
+   "file": "research/ports/W43-tui-preview.md",
+   "sha256": "e7e104663c928390075a793d504743b2d70427f3e959bbaee9c17b35a81f0f31"
+  },
+  {
+   "file": "research/ports/W176-terminal-preview-annotation.md",
+   "sha256": "4acb3d0cc4b9eccda79b0f6cc9448d0bd897e8fff836dbcb754e5bf996b79d45"
+  }
+ ],
+ "gates": {
+  "focused": "80/80 (interaction-tools + tui)",
+  "full": "2586/2586",
+  "tsc": "exit 0",
+  "build": "exit 0",
+  "notices": "exit 0",
+  "identity": {
+   "sha256": "04faee71547d8bbe7b87eb80a4a7e47a6cf1558ec82ee3b3504137b0bab55bef",
+   "inputs": {
+    "sha256": "c9cc0da66c4ca1fb1165161146557dfaf7f31a58083c3a21fd4511b6b90aaf8b",
+    "files": 684
+   },
+   "validation": {
+    "sha256": "dc834380a90bb4f74711526a3e196e22cdfab9aa3e7749535900446afa30965b",
+    "files": 230
+   },
+   "build": {
+    "sha256": "301b25d0c6dc40c532595621449c1af9717876ff47ab421f6b5057c1f0d17243",
+    "files": 470
+   }
+  }
+ },
+ "residuals": [
+  "P3 notes from question-level textInputValue are not ported.",
+  "AFK timeout and its partial-answer submission are not ported."
+ ],
+ "recoveredEntrypointsExecuted": false
+}
