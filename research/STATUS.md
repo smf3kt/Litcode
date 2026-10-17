@@ -2055,3 +2055,13 @@ W86-01 completes the SessionStart payload. `startSession` adds
 unset, as the source's `vm` yields undefined. `agent-lifecycle` 30/30, tsc 0,
 build 0, full 2,115/2,115, chain 767/767, identity `3c77f51d…`.
 [W86 record](ports/W86-session-start-payload.md).
+
+W87-01 ports PreCompact custom instructions. The payload carries
+`custom_instructions` (the `/compact` text, or null); successful hook stdout
+collects as `newCustomInstructions`, and the summary prompt appends
+`Additional Instructions:` with hook instructions first and the user text as
+`User context:`, matching `rAe`/`wnn`/`ztt`. The raw stdout is excluded from
+the duplicate `Hook context:` block but still reaches other consumers through
+`additionalContext`. `agent-lifecycle` 31/31, tsc 0, build 0, full
+2,116/2,116, chain 767/767, identity `e3257471…`.
+[W87 record](ports/W87-precompact-instructions.md).

@@ -453,6 +453,29 @@ test("TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects", as
   } finally { session.close(); }
 });
 
+test("PreCompact receives custom instructions and hook stdout becomes Additional Instructions", async () => {
+  const root = workspace();
+  const capture = path.join(root, "pre-compact.jsonl");
+  const hooks = { PreCompact: [{ command: `cat >> ${shellQuote(capture)}; printf '%s' 'hook instruction'` }] };
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  session.append({ kind: "message", message: { role: "user", content: "hello" } });
+  session.append({ kind: "message", message: { role: "assistant", content: [{ type: "text", text: "hi" }] } });
+  session.append({ kind: "turn_end", reason: "end_turn" });
+  const provider = new ScriptedProvider([response([{ type: "text", text: "summary text" }])]);
+  try {
+    await new Agent(session, provider, []).compactContext(new AbortController().signal, "user instruction");
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.hook_event_name, "PreCompact");
+    assert.equal(payload.trigger, "manual");
+    assert.equal(payload.custom_instructions, "user instruction");
+    const last = provider.requests[0]!.messages.at(-1)!;
+    const text = typeof last.content === "string" ? last.content :
+      last.content.map(block => block.type === "text" ? block.text : "").join("");
+    assert.ok(text.includes("Additional Instructions:\nhook instruction\n\nUser context: user instruction"));
+    assert.ok(session.events.some(event => event.kind === "compact" && event.summary === "summary text"));
+  } finally { session.close(); }
+});
+
 test("SessionStart carries the child agent type and the recorded session title", async () => {
   const root = workspace();
   const capture = path.join(root, "session-start.jsonl");
