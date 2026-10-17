@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { ToolContext, ToolDefinition } from './tools.js';
+import { L, xg } from './plugin-chain-label-text-source.js';
+import { Zs, rPe } from './plugin-chain-normalize-source.js';
 
 export const INTERACTION_LIMITS = Object.freeze({
   questions: 4, options: 4, questionChars: 2000, headerChars: 80,
@@ -234,7 +236,36 @@ export function previewFragmentError(preview: string | undefined): string | null
   return null;
 }
 
-const CARD_LIMITS = Object.freeze({ answerChars: 8192, notesChars: 8192, textChars: 32768, combinedChars: 48000 });
+const CARD_LIMITS = Object.freeze({ answerChars: 8192, notesChars: 8192, textChars: 32768, combinedChars: 48000, previewChars: 2000 });
+
+// Recovered preview normalization (`pc` chain, chunk-qq2mgstr.js [8080,8503)):
+// `ln` [8080,8178) and `Ce` [8414,8503) copied whole, `cn` [8375,8414) combined
+// from the copied `L` [8178,8299); `pc(e) = Zs(Ce(e, cn))` because `ZSo` is the
+// identity. `Zs`, `xg` and `rPe` come from the existing source copies.
+function ln(code: number): boolean {
+  return code >= 8204 && code <= 8207 || code === 1564 || code >= 65024 && code <= 65039 || code >= 6155 && code <= 6159 || code === 10240;
+}
+function cn(char: string, code: number): boolean { return L(char, code) && !ln(code); }
+function Ce(value: string, predicate: (char: string, code: number) => boolean): string {
+  let out = '';
+  for (const char of value) out += predicate(char, char.codePointAt(0) ?? 0) ? '�' : char;
+  return out;
+}
+/** Recovered `pc`: fold characters the label pass rejects, then `Zs`. */
+function cardPreviewNormalized(value: string): string { return Zs(Ce(value, cn)); }
+/** Recovered `nD`: a truncated marker or a value `xg` still changes is not stable. */
+function cardPreviewUnstable(value: string): boolean {
+  const normalized = cardPreviewNormalized(value);
+  return rPe.test(normalized) || xg(normalized) !== normalized;
+}
+/** Recovered `pe`: exact shown preview first, then the normalized form within 2000 units. */
+function cardPreviewAdmitted(previews: Set<string>, preview: string): boolean {
+  if (previews.has(preview)) return true;
+  for (const shown of previews) {
+    if (shown.length <= CARD_LIMITS.previewChars && cardPreviewNormalized(shown) === preview && !cardPreviewUnstable(shown)) return true;
+  }
+  return false;
+}
 
 function plainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
@@ -356,8 +387,8 @@ function admitCardAnswerUnchecked(shown: AskUserQuestionRequest, answer: unknown
       for (const field of Object.keys(value)) {
         const fieldValue = value[field];
         if (field === 'preview') {
-          // Recovered `pe` first arm: only a preview this question showed.
-          if (typeof fieldValue !== 'string' || !info.previews.has(fieldValue)) return refused('annotations');
+          // Recovered `pe`: an exact shown preview, else its normalized form.
+          if (typeof fieldValue !== 'string' || !cardPreviewAdmitted(info.previews, fieldValue)) return refused('annotations');
           previewChars += fieldValue.length;
           entry.preview = fieldValue;
         } else if (field === 'notes') {

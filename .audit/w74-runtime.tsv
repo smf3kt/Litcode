@@ -1,0 +1,3 @@
+2026-10-17T16:10:00Z	package	W74-01 预览归一化准入	chunk-qq2mgstr.js 的 ln/L/cn/Ce/pc/nD/Ee/Gat 与 chunk-ktr9sak2.js 的 pe/ie=2000；注释预览第二支准入	cn=L&&!ln、按码点、Zs 归一、rPe/xg 不稳定、2000 上限均按源；Zs/xg/rPe 复用既有副本	interaction-tools 31/31；tsc 0；build 0；全量 2,102/2,102；链 767/767
+2026-10-17T16:12:00Z	decision	W74-01 仅补 pe 第二支	① 精确匹配支保持先判定；② 归一化形式必须等于声明预览且展示值稳定；③ 截断标记永不准入；④ 展示预览长度按 UTF-16 单位计	残余：完整渲染器、格式化宿主	.audit/w74-01-full.txt
+2026-10-17T16:15:00Z	verification	W74-01 验收：interaction-tools 31/31、tsc 0、build 0、2,102/2,102、767/767	控制字符归一后准入（含原样）；截断标记拒绝；超 2000 单位拒绝	notices 0；索引 75 chunks / 323,525 单位不变；identity a96ee3cd…（inputs 19854596…、validation a27ac89a…、build 0b36b04b…）

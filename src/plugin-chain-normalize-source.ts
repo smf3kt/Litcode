@@ -97,4 +97,4 @@ function Zs(e){return kt(e,!0)}
 function kt(e,n){let r="";for(let o of e){let s=o.codePointAt(0);if(_r(s))continue;r+=Et(s)||Rt(s)||Pr(s)?"\uFFFD":o}let i=Epe(r);return n?Lr(i):i}
 
 
-export { nPe, mCo, Epe, gGn, gCo, ht, yt, mt, Et, Rt, _r, Pr, _t, ve, bt, Ir, wt, Cr, vr, Pt, qe, Lr, Zs, kt };
+export { nPe, mCo, Epe, gGn, gCo, ht, yt, mt, Et, Rt, _r, Pr, _t, ve, rPe, bt, Ir, wt, Cr, vr, Pt, qe, Lr, Zs, kt };
