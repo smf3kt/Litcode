@@ -2734,3 +2734,14 @@ the internal stdin context are host-bound; the last carries only `internal_jediT
 12/12, full 2404/2404, tsc 0, build 0, notices 0, identity `e204a1c7…`. Next are the scroll
 dispatch `xwt` and the render host `RFe` (including the settings schema `gf`), then W156.
 [W157c record](ports/W157c-wheel-glue.md).
+
+W157d landed the pane scroll host and the `ui.scroll` dispatch (2 blocks, 2,402 UTF-16 units): `RFe`
+holds one pane's offset and follow-end flag, clamps every commit and `scrollBy` to the max offset,
+queues a move that arrives while a dispatch is in flight, files its site under `component:requestId`
+with a key-row walk over the pane content, and raises each person move through `xwt`; `xwt` runs the
+classic pre-gate, the `ui.scroll` handlers and then the site's own commit (`PY`), logging the move or
+its refusal. The wheel, key-row, props-merge and scroll-key companions are the exact W145/W146 copies
+of the same module ranges, imported rather than copied again. Focused 11/11, full 2415/2415, tsc 0,
+build 0, notices 0, identity `f8884490…`. Next is the settings schema `gf`, then the W156 `NFe`
+wiring.
+[W157d record](ports/W157d-pane-scroll.md).

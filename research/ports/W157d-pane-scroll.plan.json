@@ -1,0 +1,36 @@
+{
+  "imports": [
+    "import { R, le, en, P, hh, N } from \"./plugin-chain-react-hooks.js\";",
+    "import { fd } from \"./plugin-chain-above-prompt-select-keys-source.js\";",
+    "import { wFe, kFe, xFe, W1, PFe } from \"./plugin-chain-above-prompt-parts-source.js\";",
+    "import { vFe } from \"./plugin-chain-above-prompt-source.js\";",
+    "import { _z, ahe, PY } from \"./plugin-chain-scroll-focus.js\";",
+    "import { Ohe } from \"./plugin-chain-press-dispatch-source.js\";",
+    "import { N5t } from \"./plugin-chain-classic-raise-source.js\";",
+    "import { P0 } from \"./plugin-chain-records.js\";",
+    "import { fse } from \"./plugin-chain-above-prompt-focus-source.js\";",
+    "import { t } from \"./plugin-chain-host.js\";"
+  ],
+  "exports": [
+    "xwt",
+    "RFe"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [
+        444994,
+        446991
+      ],
+      "note": "RFe the pane scroll host"
+    },
+    {
+      "file": "chunk-sfn1dbxq.js",
+      "range": [
+        476926,
+        477331
+      ],
+      "note": "xwt the ui.scroll dispatch"
+    }
+  ]
+}
