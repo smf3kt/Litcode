@@ -22,7 +22,7 @@
       "file": "cli/print.ts",
       "change": "the tick scheduler and its two call sites, the set_proactive control-request branch, the CLAUDE_CODE_PROACTIVE fallback and the always-null module deleted; the control loop keeps its error branch",
       "sourceSha256": "61f3b93bbc0a93ed7f9987744632e620cfc625a70b8ad87968516b317ee63235",
-      "portSha256": "db075d4d5d5e136fb3887c648dd891367b0bbb4191df385bd901a3566735a3d3",
+      "portSha256": "bcf623939aadd2d66477b808cc22be16b3750855cf4d173769b64acb816d428e",
       "coordinateUnit": "utf16-half-open"
     },
     {
