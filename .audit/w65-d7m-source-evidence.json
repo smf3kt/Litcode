@@ -29,7 +29,7 @@
       "file": "commands.ts",
       "change": "BRIDGE_SAFE_COMMANDS and isBridgeSafeCommand removed — their one caller was the override block deleted here",
       "sourceSha256": "54fa9fa9844c0b50eed0339abf11f4339d26dd7a86613da35638f2af42c96066",
-      "portSha256": "6aaf20fd42b1402a9c0b3614ccb671b8dc047a63fecdb5a80b9b83af57e6d0a6",
+      "portSha256": "4c014c591bb44b609110ffe04ba26886cf35c206882d41ea205c6e6f0ad82129",
       "coordinateUnit": "utf16-half-open"
     },
     {

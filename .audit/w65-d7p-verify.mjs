@@ -105,10 +105,9 @@ const caps = read("utils/model/modelCapabilities.ts")
 assert.match(caps, /    for await \(const entry of anthropic\.models\.list\(\{\}\)\) \{\n/)
 
 const model = read("utils/model/model.ts")
-assert.match(
-  model,
-  /export function getClaudeAiUserDefaultModelDescription\(\): string \{\n  return 'Sonnet 4\.6 · Best for everyday tasks'\n\}\n/,
-)
+// Step 7q removed getClaudeAiUserDefaultModelDescription, whose last reader
+// was status.tsx's subscriber label arm; this pin retires with it.
+assert.doesNotMatch(model, /getClaudeAiUserDefaultModelDescription/)
 assert.match(
   model,
   /  if \(is1mContextDisabled\(\) \|\| getAPIProvider\(\) !== 'firstParty'\) \{\n    return false\n  \}\n  return true\n/,

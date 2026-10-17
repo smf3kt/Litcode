@@ -64,7 +64,7 @@
       "file": "utils/model/model.ts",
       "change": "the Max and Team-Premium default-model arms go, getClaudeAiUserDefaultModelDescription collapses to its surviving return (and loses its now-unused fastMode parameter), isOpus1mMergeEnabled loses its Pro term and the whole subscriber fail-closed guard, and modelDisplayString loses its subscriber label arm",
       "sourceSha256": "2c939dcd48ccbab680a37b1726a87be1a759edf61c3c31c42a22211bca5f3381",
-      "portSha256": "d0dc923b2577d9209b6e361c896e5f6e26ae709432b13178e728e4473140a557",
+      "portSha256": "780819c103344f756aef6aa2b58d78296489c9a9cc7f34bbe7be88efe78e12c3",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -78,7 +78,7 @@
       "file": "main.tsx",
       "change": "the import and the `void fetchBootstrapData()` call with its TODO go; the prefetch block around them is untouched. The `isClaudeAISubscriber` name in this file's utils/auth.js import block had no call site already, so it goes too — the import that carried the bootstrap call was the one place it looked live",
       "sourceSha256": "9beeaca1c8bec62a31069e00b5239cd8f9fa0cf5d0310a39922cf48c6ae13e43",
-      "portSha256": "328e44dfd779cef105617600c08146f1b7f93e0e150c772f332105c00c373de9",
+      "portSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd8",
       "coordinateUnit": "utf16-half-open"
     }
   ],

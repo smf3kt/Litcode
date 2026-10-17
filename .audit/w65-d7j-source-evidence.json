@@ -15,7 +15,7 @@
       "file": "screens/REPL.tsx",
       "change": "the useSyncExternalStore over the null module, the Sleep-only spinner rule, and five `if (feature('PROACTIVE') || feature('KAIROS')) { proactiveModule?.… }` blocks plus the terminalFocus spread deleted; the tools memo keeps its getTools dependency alone",
       "sourceSha256": "8e8e2ed99732883e1b5b73a83a514f0f9749e6aedcf67b422a8aee95f83584f5",
-      "portSha256": "2c6944a400e18d534de4495e1592d8c68d882aae8ef4273761f597e823f3c2c3",
+      "portSha256": "98e214092a8efc5c76e61980e5ad68307a1fe0e1d962f94c2371dc9cee88470a",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -29,7 +29,7 @@
       "file": "main.tsx",
       "change": "maybeActivateProactive with its four call sites, the --proactive option and the Proactive Mode appendSystemPrompt block removed — every one of them gated on the two false flags",
       "sourceSha256": "c76def23576ee14503353a6f0f4a4d1053bdd71a5d8bc966746d9e54d7017cea",
-      "portSha256": "328e44dfd779cef105617600c08146f1b7f93e0e150c772f332105c00c373de9",
+      "portSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd8",
       "coordinateUnit": "utf16-half-open"
     },
     {

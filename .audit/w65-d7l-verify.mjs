@@ -49,7 +49,9 @@ assert.match(store, /    footerSelection: null,\n    toolPermissionContext: \{/)
 const main = fs.readFileSync(`${root}/main.tsx`, "utf8")
 assert.doesNotMatch(main, /replBridge|remoteConnectionStatus|remoteBackgroundTaskCount|getRemoteControlAtStartup/)
 assert.match(main, /        statusLineText: undefined,\n        notifications: \{/)
-assert.match(main, /import \{ migrateSonnet45ToSonnet46 \} from '\.\/migrations\/migrateSonnet45ToSonnet46\.js'\n/)
+// Step 7q removed the Sonnet 4.5→4.6 migration this pin used as a neighbour;
+// its surviving migration siblings stand in.
+assert.match(main, /import \{ migrateLegacyOpusToCurrent \} from '\.\/migrations\/migrateLegacyOpusToCurrent\.js'\n/)
 assert.match(main, /    migrateOpusToOpus1m\(\)\n    if \(feature\('TRANSCRIPT_CLASSIFIER'\)\) \{/)
 
 const config = fs.readFileSync(`${root}/utils/config.ts`, "utf8")

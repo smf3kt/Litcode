@@ -34,7 +34,7 @@
       "file": "main.tsx",
       "change": "the --tools opt-in path, the defaultView opt-in path, the --brief option and maybeActivateBrief with its four call sites removed; initialIsBriefOnly leaves the initial state",
       "sourceSha256": "eed51a5f1462882d3890cfd3805a365fc5a0a7496614781455ebe08c901c3a0a",
-      "portSha256": "328e44dfd779cef105617600c08146f1b7f93e0e150c772f332105c00c373de9",
+      "portSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd8",
       "coordinateUnit": "utf16-half-open"
     },
     {
