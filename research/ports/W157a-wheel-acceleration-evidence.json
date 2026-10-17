@@ -1,0 +1,47 @@
+{
+  "schema": "W157aWheelAcceleration.v1",
+  "package": "W157a-wheel-acceleration",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      { "module": "chunk-z7whhrje.js", "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac" },
+      { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31" }
+    ],
+    "blocks": 7,
+    "units": 2245,
+    "ranges": [
+      { "module": "chunk-z7whhrje.js", "range": [9007, 9133], "units": 126, "note": "tgt jediTerm wheel state", "bodySha256": "a1acda18daeb2a5828b9b4a07a5c3ce0f54ba532ee58e2286cc1d18f4cd06593" },
+      { "module": "chunk-z7whhrje.js", "range": [9266, 9339], "units": 73, "note": "VNo pending arrow boost", "bodySha256": "b3731d3deb42c61c7937e0a352007362c621d9bc71386fcb719e9ac95c1c417b" },
+      { "module": "chunk-z7whhrje.js", "range": [9540, 9565], "units": 25, "note": "gLr jediTerm bypass window", "bodySha256": "62228de53d7959e20bd9eb73f177b2a5b3c933c8c800d378f1719aefd02fca5f" },
+      { "module": "chunk-24k7d6mw.js", "range": [124024, 124140], "units": 116, "note": "wheel window and flood constants", "bodySha256": "3742cd42c34dc0430db85f822807f955a42fb5d908e1847b4c00b4cb97483e24" },
+      { "module": "chunk-24k7d6mw.js", "range": [124299, 124336], "units": 37, "note": "wheel decay constants", "bodySha256": "2f55656841db06e36ac4078b9828465a5b30107899a4f2f3767b19473ef222ef" },
+      { "module": "chunk-24k7d6mw.js", "range": [124336, 126011], "units": 1675, "note": "pbt wheel step", "bodySha256": "ee800913cbcdf4658b7bf798e04d061de035b2808acf547256939fef694f08be" },
+      { "module": "chunk-24k7d6mw.js", "range": [126011, 126204], "units": 193, "note": "fbt wheel state factory", "bodySha256": "f5f62ba17eae25543944b403d75549db8a0875d16a0118641d0ad2bc5c413614" }
+    ],
+    "deferred": [
+      { "name": "AZ", "source": "chunk-24k7d6mw.js [126611,126843) 232 units", "reason": "reads the platform probe uq() and the settings hook hs()" },
+      { "name": "gbt", "source": "chunk-24k7d6mw.js [126204,126611) 407 units", "reason": "reads uq(), hs(), the log t() and mLr()" },
+      { "name": "_Fe", "source": "chunk-24k7d6mw.js [444845,444923) 78 units", "reason": "wraps AZ and CFe; waits for the platform/settings bindings" },
+      { "name": "hs", "source": "chunk-js2bhabe.js [1114,1499) 385 units", "reason": "settings source precedence over Lo()/fe() and the legacy fallback chain" }
+    ],
+    "unresolved": 0
+  },
+  "product": {
+    "sourceFile": "src/plugin-chain-wheel-acceleration-source.ts",
+    "seamFile": "src/plugin-chain-wheel-acceleration.ts",
+    "exports": ["newJediTermWheelState", "createWheelState", "wheelStep", "takeArrowBoost"]
+  },
+  "validation": {
+    "focused": { "passed": 7, "failed": 0, "file": "test/plugin-chain-wheel-acceleration.test.ts" },
+    "full": { "passed": 2381, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0
+  },
+  "identity": {
+    "sha256": "ab3d43d6b7697f5d24055f1e77c799b85043ab4e7ed08781b80a4cc39bf8224a",
+    "inputs": 595,
+    "validation": 210,
+    "build": 410
+  }
+}

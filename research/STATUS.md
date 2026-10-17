@@ -2696,3 +2696,14 @@ recorded through the host feature recorder with its raw fields. Focused 5/5, ful
 build 0, notices 0, identity `d83b46fd…`. Next is W157 (wheel acceleration / settings schema /
 scroll dispatch), then W156 (`NFe` wiring).
 [W155 record](ports/W155-host-glue.md).
+
+W157a landed the pure wheel acceleration curve (7 blocks, 2,245 UTF-16 units): the JediTerm wheel
+state `tgt`, the arrow-boost take-and-clear `VNo`, the 200 ms bypass window, the window/flood and
+decay constants, the step body `pbt` and the state factory `fbt`. The curve grows the multiplier by
+0.3 per event in window mode and by the decay formula otherwise, resets through a direction flip,
+multiplies flood steps by the base and the flood factor, and accumulates the 0.35 fraction with a
+0.008 multiplier gain on the JediTerm trackpad branch. The platform probe `uq`, the `jbBugConfirmed`
+environment check `mLr`, the settings read `hs`, the wrapper `gbt`/`AZ`/`_Fe`, the scroll dispatch
+`xwt` and the render host `RFe` remain in later W157 steps. Focused 7/7, full 2381/2381, tsc 0,
+build 0, notices 0, identity `ab3d43d6…`.
+[W157a record](ports/W157a-wheel-acceleration.md).

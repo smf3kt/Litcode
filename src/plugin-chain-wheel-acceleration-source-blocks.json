@@ -1,0 +1,93 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-z7whhrje.js",
+      "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-z7whhrje.js",
+      "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac",
+      "range": [
+        9007,
+        9133
+      ],
+      "units": 126,
+      "bodySha256": "a1acda18daeb2a5828b9b4a07a5c3ce0f54ba532ee58e2286cc1d18f4cd06593",
+      "note": "jediTerm wheel state"
+    },
+    {
+      "module": "chunk-z7whhrje.js",
+      "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac",
+      "range": [
+        9266,
+        9339
+      ],
+      "units": 73,
+      "bodySha256": "b3731d3deb42c61c7937e0a352007362c621d9bc71386fcb719e9ac95c1c417b",
+      "note": "pending arrow boost"
+    },
+    {
+      "module": "chunk-z7whhrje.js",
+      "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac",
+      "range": [
+        9540,
+        9565
+      ],
+      "units": 25,
+      "bodySha256": "62228de53d7959e20bd9eb73f177b2a5b3c933c8c800d378f1719aefd02fca5f",
+      "note": "jediTerm bypass window"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        124024,
+        124140
+      ],
+      "units": 116,
+      "bodySha256": "3742cd42c34dc0430db85f822807f955a42fb5d908e1847b4c00b4cb97483e24",
+      "note": "wheel window constants"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        124299,
+        124336
+      ],
+      "units": 37,
+      "bodySha256": "2f55656841db06e36ac4078b9828465a5b30107899a4f2f3767b19473ef222ef",
+      "note": "wheel acceleration constants"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        124336,
+        126011
+      ],
+      "units": 1675,
+      "bodySha256": "ee800913cbcdf4658b7bf798e04d061de035b2808acf547256939fef694f08be",
+      "note": "wheel step"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        126011,
+        126204
+      ],
+      "units": 193,
+      "bodySha256": "f5f62ba17eae25543944b403d75549db8a0875d16a0118641d0ad2bc5c413614",
+      "note": "wheel state factory"
+    }
+  ],
+  "missing": []
+}
