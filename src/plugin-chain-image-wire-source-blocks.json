@@ -1,0 +1,144 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        918,
+        1345
+      ],
+      "units": 427,
+      "bodySha256": "64b62b81fd1f3910b162201b091037a54c53117ae800e68a3a7a3bf6e4783f4d",
+      "note": "the SGR builders and the colour/border name tables; `hun` is the row suffix `lFo` uses"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        3919,
+        5640
+      ],
+      "units": 1721,
+      "bodySha256": "b920f180346930584365b86e73d4361d694e07d9a531047d93923600b7ff7739",
+      "note": "the wire constants: the APC introducer, the chunk size, the codepoint table `y`, the colour masks and the payload cap `L`"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        5640,
+        5801
+      ],
+      "units": 161,
+      "bodySha256": "0370b4a8616999d4e8578b4c4f728e5988f17371da97c548bd6f48f1eeddc747",
+      "note": "`u` — a positive-integer range check"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        5801,
+        5960
+      ],
+      "units": 159,
+      "bodySha256": "39c97f2a4fe73f9bd2f6400a1739bc492bc034a2659fe6354049c9d6827075f2",
+      "note": "`D` — the base64 payload check"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        5960,
+        6187
+      ],
+      "units": 227,
+      "bodySha256": "e2962bfbbf80aa7df6469b4d25dd8a9a52b5e63f27a4806a58a11429f333ee68",
+      "note": "`k` — the file/shm name check: non-empty, no NUL, at most 3072 bytes"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        6187,
+        6239
+      ],
+      "units": 52,
+      "bodySha256": "d834ae0faf7fb742d5e49c23dd346eb07c5ec756c247409bc1be672469487ec6",
+      "note": "`v` — UTF-8 to base64"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        6239,
+        6382
+      ],
+      "units": 143,
+      "bodySha256": "f207b129890c5e64377da217de1fce1b793f05b14e7a8829c78fd6c227466e7d",
+      "note": "`O` — the colour sequence: 256-colour below 256, truecolor otherwise"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        6382,
+        6440
+      ],
+      "units": 58,
+      "bodySha256": "c9a1bdb872ef813a7036a8eee520c6f4938f4859460daa8411114eb040b2f9cb",
+      "note": "`S` — the first n codepoints of the placeholder table"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        6440,
+        6571
+      ],
+      "units": 131,
+      "bodySha256": "17ff2d299b4283ba386ebaa61c9be6d927455a6bcc7199a0cbffb50278025f4e",
+      "note": "`lFo` — the alt: the colour sequence and one placeholder per row"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        6571,
+        6642
+      ],
+      "units": 71,
+      "bodySha256": "4f9e7ff0bbfd585650e9e76037a2f52ef037382c1377a719484e7b5e9f2054c7",
+      "note": "`d` — one framed wire message: the introducer, the body and the suffix"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        6642,
+        6710
+      ],
+      "units": 68,
+      "bodySha256": "4cac6d9dd33527e9580c2f6d6259af7f3d3cd644728234fe31713d1b3a5684d4",
+      "note": "`Y`/`M` — the format and medium codes"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        6710,
+        7275
+      ],
+      "units": 565,
+      "bodySha256": "2529e90104b3ad80f666d963c7f4ff1c79ebb52345b57f5ecffa6eb219df6390",
+      "note": "`cFo` — the transmit: header codes, file/shm medium, the base64 payload split at the chunk size"
+    }
+  ],
+  "missing": []
+}
