@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { permissionDecision, permissionError, permissionPolicySchema, type PermissionPolicy } from '../src/permissions.js';
+import { applyPermissionUpdates, emptySessionPermissionUpdates, permissionDecision, permissionError, permissionPolicySchema,
+  permissionUpdateListSchema, PERMISSION_UPDATES_UNAPPLIED, type PermissionPolicy, type SessionPermissionUpdates } from '../src/permissions.js';
 import type { ToolDefinition } from '../src/tools.js';
 
 function tool(name: string, readOnly = true): ToolDefinition {
@@ -195,4 +196,75 @@ test('classification re-evaluates hook-updated tool inputs against denies', () =
   const current = policy({ inputRules: [{ tool: 'write_file', path: 'private/*', decision: 'deny' }] });
   assert.equal(decide(current, 'write_file', false, { path: 'docs/readme.md' }).decision, 'allow');
   assert.equal(decide(current, 'write_file', false, { path: 'private/token' }).decision, 'deny');
+});
+
+test('permission update schema admits the source union and normalizes the retired mode name', () => {
+  assert.deepEqual(permissionUpdateListSchema.parse([
+    { type: 'addRules', rules: [{ toolName: 'write_file' }], behavior: 'allow', destination: 'session' },
+    { type: 'replaceRules', rules: [{ toolName: 'read_file', ruleContent: 'docs/*' }], behavior: 'deny', destination: 'localSettings' },
+    { type: 'removeRules', rules: [{ toolName: 'x' }], behavior: 'ask', destination: 'cliArg' },
+    { type: 'setMode', mode: 'manual', destination: 'userSettings' },
+    { type: 'addDirectories', directories: ['/tmp'], destination: 'projectSettings' },
+    { type: 'removeDirectories', directories: ['/tmp'], destination: 'session' },
+  ])[3], { type: 'setMode', mode: 'default', destination: 'userSettings' });
+  for (const bad of [[{ type: 'allow', tool: 'read_file' }], [{ type: 'setMode', mode: 'turbo', destination: 'session' }],
+    [{ type: 'addRules', rules: [{ toolName: 1 }], behavior: 'allow', destination: 'session' }],
+    [{ type: 'addRules', rules: [], behavior: 'always', destination: 'session' }]]) {
+    assert.equal(permissionUpdateListSchema.safeParse(bad).success, false, JSON.stringify(bad));
+  }
+});
+
+test('permission updates: session rules join the settings rules and satisfy the allow list', () => {
+  const empty = emptySessionPermissionUpdates();
+  assert.equal(permissionDecision(undefined, tool('write_file', false), {}, empty).decision, 'allow');
+  const denied = applyPermissionUpdates(empty, [
+    { type: 'addRules', rules: [{ toolName: 'write_file' }], behavior: 'deny', destination: 'session' },
+  ]).state;
+  assert.equal(permissionDecision(undefined, tool('write_file', false), {}, denied).decision, 'deny');
+  assert.equal(permissionDecision(undefined, tool('read_file'), {}, denied).decision, 'allow');
+  // A session allow satisfies a settings allow list that would otherwise close.
+  const locked = policy({ allow: ['read_file'] });
+  assert.equal(decide(locked, 'write_file', false).decision, 'deny');
+  const allowed: SessionPermissionUpdates = { ...empty, allow: ['write_file'] };
+  assert.equal(permissionDecision(locked, tool('write_file', false), {}, allowed).decision, 'allow');
+  // A settings deny still dominates a session allow.
+  const blocked: SessionPermissionUpdates = { ...empty, allow: ['write_file'] };
+  assert.equal(permissionDecision(policy({ deny: ['write_file'] }), tool('write_file', false), {}, blocked).decision, 'deny');
+  // A session ask makes an otherwise allowed tool ask.
+  const asked: SessionPermissionUpdates = { ...empty, ask: ['read_file'] };
+  assert.equal(permissionDecision(undefined, tool('read_file'), {}, asked).decision, 'ask');
+});
+
+test('permission updates: mode, replace and remove apply while rule content is refused or dropped', () => {
+  const empty = emptySessionPermissionUpdates();
+  const planned = applyPermissionUpdates(empty, [{ type: 'setMode', mode: 'plan', destination: 'session' }]).state;
+  assert.equal(planned.mode, 'plan');
+  assert.equal(permissionDecision(undefined, tool('write_file', false), {}, planned).decision, 'deny');
+  assert.equal(permissionDecision(undefined, tool('read_file'), {}, planned).decision, 'allow');
+  const replaced = applyPermissionUpdates(planned, [
+    { type: 'replaceRules', rules: [{ toolName: 'write_file' }], behavior: 'deny', destination: 'session' },
+    { type: 'replaceRules', rules: [{ toolName: 'read_file' }], behavior: 'deny', destination: 'session' },
+  ]).state;
+  assert.deepEqual(replaced.deny, ['read_file']);
+  const removed = applyPermissionUpdates(replaced, [
+    { type: 'removeRules', rules: [{ toolName: 'read_file' }], behavior: 'deny', destination: 'session' },
+  ]).state;
+  assert.deepEqual(removed.deny, []);
+  // A deny rule with ruleContent cannot be represented: the call is refused.
+  const refused = applyPermissionUpdates(empty, [
+    { type: 'addRules', rules: [{ toolName: 'write_file', ruleContent: 'private/*' }], behavior: 'deny', destination: 'session' },
+  ]);
+  assert.equal(refused.blocked, PERMISSION_UPDATES_UNAPPLIED);
+  // An allow rule with ruleContent and a directory update are dropped, not refused.
+  const dropped = applyPermissionUpdates(empty, [
+    { type: 'addRules', rules: [{ toolName: 'write_file', ruleContent: 'docs/*' }], behavior: 'allow', destination: 'session' },
+    { type: 'addDirectories', directories: ['/tmp'], destination: 'session' },
+  ]);
+  assert.equal(dropped.blocked, undefined);
+  assert.deepEqual(dropped.dropped, ['allow rule write_file', 'addDirectories']);
+  assert.deepEqual(dropped.state.allow, []);
+  // A mode this product cannot express is dropped rather than invented.
+  const unsupported = applyPermissionUpdates(empty, [{ type: 'setMode', mode: 'dontAsk', destination: 'session' }]);
+  assert.deepEqual(unsupported.dropped, ['setMode dontAsk']);
+  assert.equal(unsupported.state.mode, undefined);
 });

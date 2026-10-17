@@ -448,6 +448,74 @@ test("PermissionRequest deny with interrupt aborts the turn before the tool runs
   } finally { session.close(); }
 });
 
+test("PermissionRequest allow applies session permission updates before the call runs", async () => {
+  const root = workspace();
+  const effect = spy("write_file");
+  const cfg = config(root, [effect.tool], { permissions: { mode: "ask", allow: [], deny: [] }, hooks: {
+    PermissionRequest: [{ command: emit({ hookSpecificOutput: { hookEventName: "PermissionRequest",
+      decision: { behavior: "allow", updatedPermissions: [{ type: "setMode", mode: "plan", destination: "session" }] } } }) }],
+  } });
+  const provider = new ScriptedProvider([
+    response([call("one", "write_file", { path: "one.txt" })], "tool_use"),
+    response([call("two", "write_file", { path: "two.txt" })], "tool_use"),
+    done(),
+  ]);
+  const session = Session.open(root, { config: cfg });
+  try {
+    await new Agent(session, provider, [effect.tool]).run("write");
+    // The first call was allowed by the answer and the adopted plan mode then
+    // refuses the second before any hook or prompt.
+    assert.deepEqual(effect.inputs, [{ path: "one.txt" }]);
+    const batches = resultBatches(session);
+    assert.equal(batches.length, 2);
+    assert.equal(batches[0]![0]!.is_error, undefined);
+    assert.match(String(batches[1]![0]!.content), /Plan mode permits read-only tools: write_file/);
+  } finally { session.close(); }
+});
+
+test("PermissionRequest allow adds a session deny rule that survives the answer", async () => {
+  const root = workspace();
+  const write = spy("write_file");
+  const read = spy("read_file", true);
+  const cfg = config(root, [write.tool, read.tool], { permissions: { mode: "ask", allow: [], deny: [] }, hooks: {
+    PermissionRequest: [{ command: emit({ hookSpecificOutput: { hookEventName: "PermissionRequest",
+      decision: { behavior: "allow", updatedPermissions: [{ type: "addRules", rules: [{ toolName: "read_file" }],
+        behavior: "deny", destination: "session" }] } } }) }],
+  } });
+  const provider = new ScriptedProvider([
+    response([call("one", "write_file", { path: "one.txt" })], "tool_use"),
+    response([call("two", "read_file", {})], "tool_use"),
+    done(),
+  ]);
+  const session = Session.open(root, { config: cfg });
+  try {
+    await new Agent(session, provider, [write.tool, read.tool]).run("write");
+    assert.deepEqual(write.inputs, [{ path: "one.txt" }]);
+    assert.deepEqual(read.inputs, []);
+    assert.match(String(resultBatches(session)[1]![0]!.content), /Tool denied by permission rule: read_file/);
+  } finally { session.close(); }
+});
+
+test("PermissionRequest allow with an unrepresentable tightening refuses the call", async () => {
+  const root = workspace();
+  const effect = spy("write_file");
+  const cfg = config(root, [effect.tool], { permissions: { mode: "ask", allow: [], deny: [] }, hooks: {
+    PermissionRequest: [{ command: emit({ hookSpecificOutput: { hookEventName: "PermissionRequest",
+      decision: { behavior: "allow", updatedPermissions: [{ type: "addRules",
+        rules: [{ toolName: "write_file", ruleContent: "private/*" }], behavior: "deny", destination: "session" }] } } }) }],
+  } });
+  const provider = new ScriptedProvider([response([call("one", "write_file", { path: "one.txt" })], "tool_use"), done()]);
+  const session = Session.open(root, { config: cfg });
+  try {
+    await new Agent(session, provider, [effect.tool]).run("write");
+    assert.deepEqual(effect.inputs, []);
+    const result = resultBatches(session)[0]![0]!;
+    assert.equal(result.is_error, true);
+    assert.match(String(result.content), /The call was not run\./);
+    assert.match(String(result.content), /could not apply them all/);
+  } finally { session.close(); }
+});
+
 test("PermissionRequest replacement denied by input rules produces a paired error before tool effects", async () => {
   const root = workspace();
   const effect = spy("write_file");

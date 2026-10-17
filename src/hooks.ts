@@ -26,6 +26,7 @@ import { createHash } from "node:crypto";
 import { basename } from "node:path";
 import { z } from "zod";
 import { validateHookTerminalSequence } from "./hook-terminal.js";
+import { permissionUpdateListSchema, type PermissionUpdate } from "./permissions.js";
 
 /**
  * Accepted lifecycle event inventory shared by session and runtime schemas.
@@ -425,7 +426,14 @@ export type HookResult = {
    * chunk-fyhzvvp0.js offset 15633).
    */
   interrupt?: true;
-  updatedPermissions?: unknown[];
+  /**
+   * PermissionRequest: the adopted allow answer's permission updates. The
+   * recovered answer schema validates the list against `Bz`
+   * (chunk-n3ykh62m.js offset 390059); an entry that fails makes the whole
+   * stdout object malformed, so `applyJsonOutput` discards it before any field
+   * is used. Application belongs to the session's permission state, not here.
+   */
+  updatedPermissions?: PermissionUpdate[];
   updatedToolOutput?: unknown;
   /** PostToolUse: replaces the output only when the tool is an MCP tool. */
   updatedMCPToolOutput?: unknown;
@@ -954,6 +962,24 @@ function lastNonEmptyLine(text: string): string {
  * for those events and use only the returned context.
  */
 function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result: HookResult): void {
+  // The recovered stdout object is validated as a whole against the event's
+  // schema (chunk-n3ykh62m.js offset 395678): a PermissionRequest allow whose
+  // `updatedPermissions` fails the list schema makes the output malformed, and
+  // none of its fields are used.
+  const permissionOutput = event === "PermissionRequest" ? json.hookSpecificOutput : undefined;
+  if (typeof permissionOutput === "object" && permissionOutput !== null && !Array.isArray(permissionOutput)) {
+    const specific = permissionOutput as Record<string, unknown>;
+    if (specific.hookEventName === event) {
+      const decision = specific.decision;
+      if (typeof decision === "object" && decision !== null && !Array.isArray(decision)) {
+        const answer = decision as Record<string, unknown>;
+        if (answer.behavior === "allow" && answer.updatedPermissions !== undefined &&
+            !permissionUpdateListSchema.safeParse(answer.updatedPermissions).success) {
+          return;
+        }
+      }
+    }
+  }
   const sequence = validateHookTerminalSequence(json.terminalSequence);
   if (sequence !== undefined) {
     const sequences = result.terminalSequences ?? [];
@@ -1092,7 +1118,10 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
           if (adopting && decision.interrupt === true) result.interrupt = true;
         } else {
           if (decision.updatedInput !== undefined) result.updatedInput = decision.updatedInput;
-          if (Array.isArray(decision.updatedPermissions)) result.updatedPermissions = decision.updatedPermissions;
+          if (decision.updatedPermissions !== undefined) {
+            const parsed = permissionUpdateListSchema.safeParse(decision.updatedPermissions);
+            if (parsed.success && adopting) result.updatedPermissions = parsed.data;
+          }
         }
       }
     }

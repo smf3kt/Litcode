@@ -22,10 +22,12 @@ export const CLASSIC_PERMISSION_REQUEST = 'PermissionRequest';
 export const CLASSIC_PERMISSION_DENIED = 'PermissionDenied';
 
 /** Source `dze`'s answer as its consumers read it: `answer.permissionRequestResult` with a `behavior`
- *  of `allow`/`deny` and, on an allow, an optional `updatedInput` (chunk-9c5se12s.js [7120,7900),
- *  chunk-fyhzvvp0.js [15500,16250)). A deny carries `message` and `interrupt`, which the source's
- *  consumers read to abort the turn (`n2e` chunk-fyhzvvp0.js offset 15633). */
+ *  of `allow`/`deny` and, on an allow, an optional `updatedInput` and `updatedPermissions`
+ *  (chunk-9c5se12s.js [7120,7900), chunk-fyhzvvp0.js [15500,16250)). The update list is checked
+ *  by `Fr` before use (chunk-nyce03br.js [28640,29566)). A deny carries `message` and `interrupt`,
+ *  which the source's consumers read to abort the turn (`n2e` chunk-fyhzvvp0.js offset 15633). */
 export type ClassicPermissionRequestResult = { behavior?: 'allow' | 'deny'; updatedInput?: unknown;
+  updatedPermissions?: unknown;
   message?: string; interrupt?: boolean };
 
 /** One hook run as the classic chain records it (source `Rkt`/`Pkt`). */

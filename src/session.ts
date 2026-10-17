@@ -6,7 +6,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import type { GatewayConfig } from './provider.js';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { HOOK_EVENTS, hooksSchema, type HooksConfig } from './hooks.js';
-import { permissionPolicySchema, type PermissionPolicy } from './permissions.js';
+import { permissionPolicySchema, emptySessionPermissionUpdates, type PermissionPolicy, type SessionPermissionUpdates } from './permissions.js';
 import type { SkillInfo, ConditionalRule, InstructionSource } from './config.js';
 import { mcpServersSchema, type McpServerConfig } from './mcp.js';
 import { lspConfigSchema, type LspConfig } from './lsp.js';
@@ -243,6 +243,14 @@ export class Session {
   readonly config: SessionConfig;
   readonly file: string;
   readonly events: SessionEvent[];
+  /**
+   * Session-scoped permission rules and mode adopted from PermissionRequest
+   * allow answers. The source keeps these in its session permission context
+   * (`CUt` launcher arm, chunk-fyhzvvp0.js offset 3459) beside the
+   * settings-derived policy; they die with the session because this product
+   * has no settings writer.
+   */
+  permissionUpdates: SessionPermissionUpdates = emptySessionPermissionUpdates();
   private fd: number;
   private lock: string;
   private lockToken: string;
