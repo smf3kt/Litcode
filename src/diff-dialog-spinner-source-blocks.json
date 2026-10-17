@@ -1,0 +1,49 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-vew7ssxx.js",
+      "sha256": "ce2d686ede9289202e527ee56f06d3dfec2da22ae3ae301cf4ada6c158dd8994"
+    },
+    {
+      "module": "chunk-f7x3yeg4.js",
+      "sha256": "130b182b2a3b0637c3894917f00b96f593b73e16913f474ed37ae37287b7240f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-vew7ssxx.js",
+      "sha256": "ce2d686ede9289202e527ee56f06d3dfec2da22ae3ae301cf4ada6c158dd8994",
+      "range": [
+        2002,
+        2510
+      ],
+      "units": 508,
+      "bodySha256": "5765fd3a7b69fe2839d4335d7ccb0c9e1e320b8cedba5c464157ae881e0af928",
+      "note": "Mr: a spinner symbol followed by the message and an optional dim subtitle"
+    },
+    {
+      "module": "chunk-f7x3yeg4.js",
+      "sha256": "130b182b2a3b0637c3894917f00b96f593b73e16913f474ed37ae37287b7240f",
+      "range": [
+        26148,
+        26747
+      ],
+      "units": 599,
+      "bodySha256": "d4f107d9829f0fc844a867c08b6002319bf906c23da20a25ccae0a4f457a8be8",
+      "note": "ui: the spinner — a static dot under reduced motion or a screen reader, otherwise the frame at the 120 ms quantum"
+    },
+    {
+      "module": "chunk-f7x3yeg4.js",
+      "sha256": "130b182b2a3b0637c3894917f00b96f593b73e16913f474ed37ae37287b7240f",
+      "range": [
+        20212,
+        20266
+      ],
+      "units": 54,
+      "bodySha256": "f100014bae50f521d4f20bb470b8d4c132a3c09672437605069787d5ffc59542",
+      "note": "mr: the reduced-motion selector the spinner feeds to the app-state reader"
+    }
+  ],
+  "missing": []
+}

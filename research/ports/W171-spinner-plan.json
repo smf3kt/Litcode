@@ -1,0 +1,14 @@
+{
+  "imports": [
+    "import { w, b, Xe as e, Xe as r, s, n } from './plugin-chain-react-hooks.js';",
+    "import { ia, nt } from './diff-dialog-spinner-anim-source.js';",
+    "import { HIe } from './diff-dialog-spinner-frames-source.js';",
+    "import { bg, Wo } from './diff-dialog-spinner-host.js';"
+  ],
+  "exports": ["Mr", "ui", "mr"],
+  "blocks": [
+    { "file": "chunk-vew7ssxx.js", "range": [2002, 2510], "note": "Mr: a spinner symbol followed by the message and an optional dim subtitle" },
+    { "file": "chunk-f7x3yeg4.js", "range": [26148, 26747], "note": "ui: the spinner — a static dot under reduced motion or a screen reader, otherwise the frame at the 120 ms quantum" },
+    { "file": "chunk-f7x3yeg4.js", "range": [20212, 20266], "note": "mr: the reduced-motion selector the spinner feeds to the app-state reader" }
+  ]
+}

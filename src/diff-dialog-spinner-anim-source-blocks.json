@@ -1,0 +1,134 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd"
+    },
+    {
+      "module": "chunk-k1caxvem.js",
+      "sha256": "0486ac30af93e1201282a5264304b0c84a83f55ba2f901a884fbff45fbe6f3a5"
+    },
+    {
+      "module": "chunk-z9nv3z8k.js",
+      "sha256": "80a7eda1db7332eb0f201204442b37faab0dbd9fe0157f77f24a380f2208fed6"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        22075,
+        22541
+      ],
+      "units": 466,
+      "bodySha256": "f077bc9d4934d6971bf5f9a1f0d5ed8d53fadcdfc0348327c34fa5fd7f8aed7f",
+      "note": "$e: whether a node's measured box is visible inside the terminal rows, subtracting ancestor scroll"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        22541,
+        22970
+      ],
+      "units": 429,
+      "bodySha256": "34b1871a850fb91f8e8bebca8a4bdb8399a3bef455fe1c9010d27288c4b65bb5",
+      "note": "N4: the visibility hook — a ref callback, the visible flag, the initial measurement and the remeasure closure"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        22970,
+        23354
+      ],
+      "units": 384,
+      "bodySha256": "2c173c3833cba0f2aa32233c99178d46ae682e457081de728489f9cf570fae99",
+      "note": "Io and LIe (the 480 ms repaint floor under the full-repaint flag) and ia, the animation clock: quantized frame time from the mounted clock, paused while hidden or without a clock"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        19734,
+        19763
+      ],
+      "units": 29,
+      "bodySha256": "f753910dab87f48e6e52949e203929e34a743233acf1fd38447f4add4a4ca61b",
+      "note": "nt: read the accessibility context"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        174030,
+        174177
+      ],
+      "units": 147,
+      "bodySha256": "01e87dfd3772a8cd0c11f154f66d704ef6073b38324b5c6c63629589ff5ab01e",
+      "note": "vie: clamp a node's scroll offset to its content height"
+    },
+    {
+      "module": "chunk-k1caxvem.js",
+      "sha256": "0486ac30af93e1201282a5264304b0c84a83f55ba2f901a884fbff45fbe6f3a5",
+      "range": [
+        876,
+        975
+      ],
+      "units": 99,
+      "bodySha256": "a229da26646d6f8c341585636c3bd332a31f93f0b04e6d7e853b3f159eb8c3a1",
+      "note": "the terminal focus context with its default value"
+    },
+    {
+      "module": "chunk-k1caxvem.js",
+      "sha256": "0486ac30af93e1201282a5264304b0c84a83f55ba2f901a884fbff45fbe6f3a5",
+      "range": [
+        1257,
+        1375
+      ],
+      "units": 118,
+      "bodySha256": "01f7648a1db5505007a683e5728f7d55119203c340ee61373fae543e0aeff1fe",
+      "note": "d, Qc and kie: the context alias and its two readers"
+    },
+    {
+      "module": "chunk-k1caxvem.js",
+      "sha256": "0486ac30af93e1201282a5264304b0c84a83f55ba2f901a884fbff45fbe6f3a5",
+      "range": [
+        1405,
+        1497
+      ],
+      "units": 92,
+      "bodySha256": "3e98659749cfda985b18da83d1564f251055caef00b938934bc36a2864f87f33",
+      "note": "nI, Cje and T4n: the timeout helper and the no-op subscribe/read functions"
+    },
+    {
+      "module": "chunk-z9nv3z8k.js",
+      "sha256": "80a7eda1db7332eb0f201204442b37faab0dbd9fe0157f77f24a380f2208fed6",
+      "range": [
+        615,
+        656
+      ],
+      "units": 41,
+      "bodySha256": "b15fa736085c3f2f3507fe48c935d2b2d977597573f985f524b57d4b6f96ad4d",
+      "note": "eg and the timing constants; eg is the frame quantum"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        184065,
+        184136
+      ],
+      "units": 71,
+      "bodySha256": "72a411cb59f0d3df6c7afed4bda151ffc8af3ccc5d4d197dfe47abdd04a57b9b",
+      "note": "Dy and y4n: the internal accessibility context"
+    }
+  ],
+  "missing": []
+}
