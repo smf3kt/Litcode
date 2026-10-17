@@ -1,0 +1,61 @@
+{
+ "imports": [
+  "import { xAt, ZAe } from './plugin-chain-site-leaves.js';",
+  "import { IL } from './plugin-chain-raster-sites.js';",
+  "import { Mrt } from './plugin-chain-walker.js';",
+  "import { cN, rQt } from './plugin-chain-style-props.js';",
+  "import { L } from './plugin-chain-source.js';",
+  "import { vVe } from './plugin-chain-leaf-walkers.js';"
+ ],
+ "exports": ["nIn", "dno", "kur", "vur"],
+ "blocks": [
+  {
+   "file": "chunk-n3ykh62m.js",
+   "needle": "function nIn(",
+   "k": "fn",
+   "note": "Box borderStyle moves into hover, recursively; W140 sector 1"
+  },
+  {
+   "file": "chunk-n3ykh62m.js",
+   "needle": "var QPn=",
+   "k": "stmt",
+   "note": "borderStyle prop rule used by nIn"
+  },
+  {
+   "file": "chunk-n3ykh62m.js",
+   "needle": "function dno(",
+   "k": "fn",
+   "note": "drawing key removal after the key check"
+  },
+  {
+   "file": "chunk-n3ykh62m.js",
+   "needle": "function kur(",
+   "k": "fn",
+   "note": "link validation and rewrite to Text"
+  },
+  {
+   "file": "chunk-n3ykh62m.js",
+   "needle": "function vur(",
+   "k": "fn",
+   "note": "Code leaf row measurement and refused-diff cleanup"
+  },
+  {
+   "file": "chunk-n3ykh62m.js",
+   "needle": "function eIn(",
+   "k": "fn",
+   "note": "the Text a replaced Link falls back to"
+  },
+  {
+   "file": "chunk-n3ykh62m.js",
+   "needle": "function tIn(",
+   "k": "fn",
+   "note": "the link problem a non-terminal surface reports"
+  },
+  {
+   "file": "chunk-n3ykh62m.js",
+   "needle": "function ino(",
+   "k": "fn",
+   "note": "URL rules for a link drawn on a non-terminal surface"
+  }
+ ]
+}

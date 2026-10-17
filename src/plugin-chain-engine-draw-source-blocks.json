@@ -1,0 +1,100 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        267031,
+        267454
+      ],
+      "units": 423,
+      "bodySha256": "56d44faa8400a44f78d768bc1bd9eb8eadc856f2584841c13251533d97645f5b",
+      "note": "Box borderStyle moves into hover, recursively; W140 sector 1"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        247131,
+        247200
+      ],
+      "units": 69,
+      "bodySha256": "a56a4157bdc3edf85580a5eb514c5ace1634d508e8fe87998b85999a77ac73cf",
+      "note": "borderStyle prop rule used by nIn"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        270929,
+        271294
+      ],
+      "units": 365,
+      "bodySha256": "d5aefa7699f6b864389bf15830130026699d00622e3746cddd07ff71103f58b2",
+      "note": "drawing key removal after the key check"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        267903,
+        268419
+      ],
+      "units": 516,
+      "bodySha256": "675597b0b337b4fe57fc678a5383053e5fe024caf8af1e5219ffd66a915f7827",
+      "note": "link validation and rewrite to Text"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        267454,
+        267903
+      ],
+      "units": 449,
+      "bodySha256": "e23f9cfdab72d01ae34691f2d0c8da45cec597216aeb3c9fcca54551e58baccc",
+      "note": "Code leaf row measurement and refused-diff cleanup"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        260804,
+        260971
+      ],
+      "units": 167,
+      "bodySha256": "cf96d894b5759b1b3c89323201c6c7310cbb88f15bb8c4ed6ea5af972be975dc",
+      "note": "the Text a replaced Link falls back to"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        262061,
+        262308
+      ],
+      "units": 247,
+      "bodySha256": "4a568c8897ef3c5a53c0b056660693d45839987b9b62c5ad246ed1e28c62b811",
+      "note": "the link problem a non-terminal surface reports"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        261557,
+        262061
+      ],
+      "units": 504,
+      "bodySha256": "e94c100f7a6b32804b1ec4424a5c8a5a0dc2d4b8acf195db11a706de9d48fffb",
+      "note": "URL rules for a link drawn on a non-terminal surface"
+    }
+  ],
+  "missing": []
+}
