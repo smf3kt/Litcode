@@ -1,0 +1,256 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-3dnyxzpb.js",
+      "sha256": "edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4"
+    },
+    {
+      "module": "chunk-6j27z6m4.js",
+      "sha256": "37bdceea8915ebd9bf3bca43c31d259d637d89bcdcac9086ccb6d91e5eaa6aef"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    },
+    {
+      "module": "chunk-3c5vzz43.js",
+      "sha256": "347697a0ed5b1cac607d2b1f64804c5dbd13087c6d6742a53237ab21947ca54c"
+    },
+    {
+      "module": "chunk-70nf72b4.js",
+      "sha256": "fcace513f43a275080517d548c036c517b26349b41bf31c17d26c92361bbdaac"
+    },
+    {
+      "module": "chunk-6x3scwgf.js",
+      "sha256": "db830997e9e573f4e51e1bc73ab09b1f550928c0078ce2803e609951b593cac6"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-3dnyxzpb.js",
+      "sha256": "edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4",
+      "range": [
+        1324,
+        6447
+      ],
+      "units": 5123,
+      "bodySha256": "74aa4bdf820207fa7dc254b0db822a5c23e572cc0728e420e1e48b8e4e29f8da",
+      "note": "the tabs context g, the title-key/width helpers, and sS, the tab strip and its content area"
+    },
+    {
+      "module": "chunk-3dnyxzpb.js",
+      "sha256": "edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4",
+      "range": [
+        6447,
+        7321
+      ],
+      "units": 874,
+      "bodySha256": "82e47ce7da9a0080ff4359cae4e1d55822c114d6b159d8228e544b448cea6e61",
+      "note": "je, one tab header: inverse when current, padded label when hovered and current"
+    },
+    {
+      "module": "chunk-3dnyxzpb.js",
+      "sha256": "edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4",
+      "range": [
+        7321,
+        7586
+      ],
+      "units": 265,
+      "bodySha256": "d22a89e5ec54e077f1b646e821b613d04a72f9e16aec24d1c73365c8ba1f61fc",
+      "note": "Na, the tab content that renders only for the selected tab"
+    },
+    {
+      "module": "chunk-3dnyxzpb.js",
+      "sha256": "edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4",
+      "range": [
+        7909,
+        8083
+      ],
+      "units": 174,
+      "bodySha256": "81802c976242c03e270c51cfe78f50af564920af13fadeb0b2a306272f63a6e4",
+      "note": "te, the opt-in counter pair"
+    },
+    {
+      "module": "chunk-6j27z6m4.js",
+      "sha256": "37bdceea8915ebd9bf3bca43c31d259d637d89bcdcac9086ccb6d91e5eaa6aef",
+      "range": [
+        717,
+        1009
+      ],
+      "units": 292,
+      "bodySha256": "70709c5086940cd1e1ce8944a76be067bbfcea9563f55f81dafdb8639b026cde",
+      "note": "VS/nl/ns/Ffe/KXe: the viewport context and its scroll viewport and scroll box readers"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        135432,
+        135508
+      ],
+      "units": 76,
+      "bodySha256": "557e05a28a7b74d92936b5371f07dba414dade542d136b5e15d10eb7f4667ac6",
+      "note": "IU: whether a node is inside another"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        173441,
+        173541
+      ],
+      "units": 100,
+      "bodySha256": "6cda8ce8b6fdb748439062bf297613cfe1f3d8ac78454376e8dfeb211e96a35e",
+      "note": "nLr: stamp the start of a scroll commit on the root node"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        174030,
+        174177
+      ],
+      "units": 147,
+      "bodySha256": "01e87dfd3772a8cd0c11f154f66d704ef6073b38324b5c6c63629589ff5ab01e",
+      "note": "vie: clamp a node's scroll offset to its content height"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        224832,
+        224857
+      ],
+      "units": 25,
+      "bodySha256": "1c12874e540904748a39f02a21e62604b1519ad406c486fcc682ac18cfba448f",
+      "note": "S4n: the cursor-position context"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        19906,
+        20151
+      ],
+      "units": 245,
+      "bodySha256": "bee121e03cd424765cb8c05cfd8a9b27cbffd9e6727ab43eb1d902149dd36fa2",
+      "note": "Zw: report the focused node's cursor position to the hover context"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        23676,
+        23694
+      ],
+      "units": 18,
+      "bodySha256": "678ad829f18eb0bdb4927251ab2374de2f1704e9971a961c79233d76997eeba8",
+      "note": "Ze: the empty subscription"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        23694,
+        24062
+      ],
+      "units": 368,
+      "bodySha256": "98cfe9451dc5b9a5e6237a95a784386fee03315a6730775826d70d8f6e62bd4a",
+      "note": "_Ee: read the focus manager, its active element, and the focus directions"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        24066,
+        24084
+      ],
+      "units": 18,
+      "bodySha256": "7ff56b307d24be28437efc725a308d192eee81bb4a09236a74eb7a218bc8aed1",
+      "note": "Lo: the empty subscription"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        24084,
+        24236
+      ],
+      "units": 152,
+      "bodySha256": "5122a3dfaa94a966d7ac9178e052fb28a1a77b99de134ad5e0fed3c2512cfbb7",
+      "note": "eX: whether the focus manager's active element is inside a ref"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        28445,
+        28549
+      ],
+      "units": 104,
+      "bodySha256": "bd77aed10eab7c4cc66b22aeb94194cc54dad82981c06f53add1fb84a2e33dec",
+      "note": "Ys/zo: a node's computed width and height"
+    },
+    {
+      "module": "chunk-3c5vzz43.js",
+      "sha256": "347697a0ed5b1cac607d2b1f64804c5dbd13087c6d6742a53237ab21947ca54c",
+      "range": [
+        753,
+        1088
+      ],
+      "units": 335,
+      "bodySha256": "b4315237002b2e2424b6f93f11e19814ed35f2db142cb466ba457c5e75e8a4e5",
+      "note": "Xw: a padded inverse label for the current hovered tab"
+    },
+    {
+      "module": "chunk-70nf72b4.js",
+      "sha256": "fcace513f43a275080517d548c036c517b26349b41bf31c17d26c92361bbdaac",
+      "range": [
+        903,
+        957
+      ],
+      "units": 54,
+      "bodySha256": "fe9ccc9593789642a4379f50d471d7d25fcc43f6a91fdde4e2784df161933315",
+      "note": "l: whether a click is a window activation or inside the mount-settle window"
+    },
+    {
+      "module": "chunk-70nf72b4.js",
+      "sha256": "fcace513f43a275080517d548c036c517b26349b41bf31c17d26c92361bbdaac",
+      "range": [
+        957,
+        1312
+      ],
+      "units": 355,
+      "bodySha256": "b547211e174c6252a90a1cc0993850418d7528541e88058f3efc58a23eedc17e",
+      "note": "aS: the stray-click predicate the tab header consults"
+    },
+    {
+      "module": "chunk-70nf72b4.js",
+      "sha256": "fcace513f43a275080517d548c036c517b26349b41bf31c17d26c92361bbdaac",
+      "range": [
+        1391,
+        1422
+      ],
+      "units": 31,
+      "bodySha256": "dc2f497e5e1b3fdd53d8705ac661763b944be23179ce631420c53d9e010e7dcf",
+      "note": "c: the mount-settle comparison"
+    },
+    {
+      "module": "chunk-6x3scwgf.js",
+      "sha256": "db830997e9e573f4e51e1bc73ab09b1f550928c0078ce2803e609951b593cac6",
+      "range": [
+        965,
+        3956
+      ],
+      "units": 2991,
+      "bodySha256": "2f352499a7bc38098200e42ef88608b5cf3113164cb84f7578ff93420ed7ac63",
+      "note": "Se/K/OT: the scroll box component and its imperative handle"
+    }
+  ],
+  "missing": []
+}

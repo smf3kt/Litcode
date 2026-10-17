@@ -88,7 +88,7 @@ export interface SurfaceNode {
   dirty: boolean;
   yogaMarks: number;
   onRenderCalls: number;
-  yogaNode: { markDirty(): void };
+  yogaNode: { markDirty(): void; getComputedWidth(): number; getComputedHeight(): number };
   onRender(): void;
   children: SurfaceNode[];
 }
@@ -202,6 +202,33 @@ export function P(effect: () => void | (() => void), deps?: readonly unknown[]):
   en(effect, deps);
 }
 
+/** Source `fye` (chunk-kexg5hxg.js `p.H.useImperativeHandle`): publish a handle to the caller's ref
+ *  after the tree is committed. A dependency change re-publishes it; unmount clears an object ref or
+ *  calls a function ref with null, the way React does. */
+export function useImperativeHandle<T>(ref: unknown, create: () => T, deps: readonly unknown[] = []): void {
+  const runtime = requireRuntime();
+  const at = runtime.cursor++;
+  const held = runtime.slots[at] as EffectSlot | undefined;
+  if (held !== undefined && held.deps !== undefined && sameDeps(held.deps, deps)) return;
+  const slot: EffectSlot = { deps: [...deps], cleanup: held?.cleanup };
+  runtime.slots[at] = slot;
+  runtime.effects.push({
+    slot,
+    effect: () => {
+      const handle = create();
+      if (typeof ref === 'function') {
+        (ref as (value: T | null) => void)(handle);
+        return () => (ref as (value: T | null) => void)(null);
+      }
+      if (ref !== null && typeof ref === 'object') {
+        const box = ref as { current: T | null };
+        box.current = handle;
+        return () => { box.current = null; };
+      }
+    },
+  });
+}
+
 /** The compiler runtime's `w` slot count and sentinel. Compiled source bodies check a cache slot
  *  against `b` before filling it; the sentinel is React's, taken from the registry so the source's
  *  own comparison stays exact. */
@@ -310,7 +337,11 @@ function commit(element: SurfaceElement | string, parentNode: SurfaceNode | null
     dirty: false,
     yogaMarks: 0,
     onRenderCalls: 0,
-    yogaNode: { markDirty: () => { node.yogaMarks += 1; } },
+    yogaNode: {
+      markDirty: () => { node.yogaMarks += 1; },
+      getComputedWidth: () => 0,
+      getComputedHeight: () => 0,
+    },
     onRender: () => { node.onRenderCalls += 1; },
     children: [],
   };

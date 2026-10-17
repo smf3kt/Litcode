@@ -1,0 +1,86 @@
+{
+  "schema": "W169TabsView.v1",
+  "package": "W169-tabs-view",
+  "date": "2026-10-18",
+  "source": {
+    "copied": {
+      "blocks": 20,
+      "units": 11747,
+      "ranges": [
+        { "module": "chunk-3dnyxzpb.js", "sha256": "edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4", "name": "sS closure", "range": [1324, 6447], "units": 5123, "digest": "74aa4bdf820207fa7dc254b0db822a5c23e572cc0728e420e1e48b8e4e29f8da", "note": "the tabs context g, the title-key/width helpers, and sS, the tab strip and its content area" },
+        { "module": "chunk-3dnyxzpb.js", "sha256": "edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4", "name": "je", "range": [6447, 7321], "units": 874, "digest": "82e47ce7da9a0080ff4359cae4e1d55822c114d6b159d8228e544b448cea6e61", "note": "one tab header: inverse when current, padded label when hovered and current" },
+        { "module": "chunk-3dnyxzpb.js", "sha256": "edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4", "name": "Na", "range": [7321, 7586], "units": 265, "digest": "d22a89e5ec54e077f1b646e821b613d04a72f9e16aec24d1c73365c8ba1f61fc", "note": "the tab content that renders only for the selected tab" },
+        { "module": "chunk-3dnyxzpb.js", "sha256": "edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4", "name": "te", "range": [7909, 8083], "units": 174, "digest": "81802c976242c03e270c51cfe78f50af564920af13fadeb0b2a306272f63a6e4", "note": "the opt-in counter pair: whether the count is positive and the step pair" },
+        { "module": "chunk-6j27z6m4.js", "sha256": "37bdceea8915ebd9bf3bca43c31d259d637d89bcdcac9086ccb6d91e5eaa6aef", "name": "VS/nl/ns/Ffe/KXe", "range": [717, 1009], "units": 292, "digest": "70709c5086940cd1e1ce8944a76be067bbfcea9563f55f81dafdb8639b026cde", "note": "the viewport context and its scroll viewport and scroll box readers" },
+        { "module": "chunk-06azbynj.js", "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd", "name": "IU", "range": [135432, 135508], "units": 76, "digest": "557e05a28a7b74d92936b5371f07dba414dade542d136b5e15d10eb7f4667ac6", "note": "whether a node is inside another" },
+        { "module": "chunk-06azbynj.js", "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd", "name": "nLr", "range": [173441, 173541], "units": 100, "digest": "6cda8ce8b6fdb748439062bf297613cfe1f3d8ac78454376e8dfeb211e96a35e", "note": "stamp the start of a scroll commit on the root node" },
+        { "module": "chunk-06azbynj.js", "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd", "name": "vie", "range": [174030, 174177], "units": 147, "digest": "01e87dfd3772a8cd0c11f154f66d704ef6073b38324b5c6c63629589ff5ab01e", "note": "clamp a node's scroll offset to its content height" },
+        { "module": "chunk-06azbynj.js", "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd", "name": "S4n", "range": [224832, 224857], "units": 25, "digest": "1c12874e540904748a39f02a21e62604b1519ad406c486fcc682ac18cfba448f", "note": "the cursor-position context" },
+        { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "Zw", "range": [19906, 20151], "units": 245, "digest": "bee121e03cd424765cb8c05cfd8a9b27cbffd9e6727ab43eb1d902149dd36fa2", "note": "report the focused node's cursor position to the hover context" },
+        { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "Ze", "range": [23676, 23694], "units": 18, "digest": "678ad829f18eb0bdb4927251ab2374de2f1704e9971a961c79233d76997eeba8", "note": "the empty subscription" },
+        { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "_Ee", "range": [23694, 24062], "units": 368, "digest": "98cfe9451dc5b9a5e6237a95a784386fee03315a6730775826d70d8f6e62bd4a", "note": "read the focus manager, its active element, and the focus directions" },
+        { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "Lo", "range": [24066, 24084], "units": 18, "digest": "7ff56b307d24be28437efc725a308d192eee81bb4a09236a74eb7a218bc8aed1", "note": "the empty subscription" },
+        { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "eX", "range": [24084, 24236], "units": 152, "digest": "5122a3dfaa94a966d7ac9178e052fb28a1a77b99de134ad5e0fed3c2512cfbb7", "note": "whether the focus manager's active element is inside a ref" },
+        { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "Ys/zo", "range": [28445, 28549], "units": 104, "digest": "bd77aed10eab7c4cc66b22aeb94194cc54dad82981c06f53add1fb84a2e33dec", "note": "a node's computed width and height" },
+        { "module": "chunk-3c5vzz43.js", "sha256": "347697a0ed5b1cac607d2b1f64804c5dbd13087c6d6742a53237ab21947ca54c", "name": "Xw", "range": [753, 1088], "units": 335, "digest": "b4315237002b2e2424b6f93f11e19814ed35f2db142cb466ba457c5e75e8a4e5", "note": "a padded inverse label for the current hovered tab" },
+        { "module": "chunk-70nf72b4.js", "sha256": "fcace513f43a275080517d548c036c517b26349b41bf31c17d26c92361bbdaac", "name": "l", "range": [903, 957], "units": 54, "digest": "fe9ccc9593789642a4379f50d471d7d25fcc43f6a91fdde4e2784df161933315", "note": "whether a click is a window activation or inside the mount-settle window" },
+        { "module": "chunk-70nf72b4.js", "sha256": "fcace513f43a275080517d548c036c517b26349b41bf31c17d26c92361bbdaac", "name": "aS", "range": [957, 1312], "units": 355, "digest": "b547211e174c6252a90a1cc0993850418d7528541e88058f3efc58a23eedc17e", "note": "the stray-click predicate the tab header consults" },
+        { "module": "chunk-70nf72b4.js", "sha256": "fcace513f43a275080517d548c036c517b26349b41bf31c17d26c92361bbdaac", "name": "c", "range": [1391, 1422], "units": 31, "digest": "dc2f497e5e1b3fdd53d8705ac661763b944be23179ce631420c53d9e010e7dcf", "note": "the mount-settle comparison" },
+        { "module": "chunk-6x3scwgf.js", "sha256": "db830997e9e573f4e51e1bc73ab09b1f550928c0078ce2803e609951b593cac6", "name": "Se/K/OT", "range": [965, 3956], "units": 2991, "digest": "2f352499a7bc38098200e42ef88608b5cf3113164cb84f7578ff93420ed7ac63", "note": "the scroll box component and its imperative handle" }
+      ]
+    },
+    "host_adapters": [
+      { "module": "chunk-4bw62nzm.js", "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713", "name": "Qxr", "range": [85882, 85935], "units": 53, "body_sha256": "dffbcd71bbaab0403179790e8cb25110ef453f8fff185b591627030fabed2234", "product": "src/diff-dialog-tabs-host.ts", "note": "marks account presence scroll activity; the product keeps local features only, so markScrollActivity does nothing" },
+      { "module": "chunk-76anb6yt.js", "sha256": "ff777b38ca81b168ee7e0aa3caaebd7015dc72b1473071d34b97229ce12b334f", "name": "S", "range": [638, 664], "units": 26, "body_sha256": "65a65776e268960bd5cc11c861e76e3529375e2df46f70130ed18e27f72b5593", "product": "src/diff-dialog-tabs-host.ts", "note": "maps a stray-click reason; only the discarded event record reads it, so analyticsReason returns the reason" },
+      { "module": "chunk-4nygtnjw.js", "sha256": "c89ccc5e465039bc6db9bccec834cf70f485266ae17f2eaf0f9ce72adb69ebc3", "name": "i", "range": [1290, 1407], "units": 117, "body_sha256": "7f2df95e7a21ebb980f33de170d716031fa6e71b459046f55a71def4a55e662f", "product": "src/diff-dialog-tabs-host.ts", "note": "the event sink the product does not keep; analyticsEvent is a no-op" }
+    ],
+    "host_seams": [
+      { "module": "chunk-kexg5hxg.js", "name": "fye", "role": "p.H.useImperativeHandle", "product": "src/plugin-chain-react-hooks.ts", "note": "the scroll box publishes its handle through the ref; the seam re-publishes on a dependency change and clears the ref on unmount" },
+      { "module": "chunk-1r9zp6s1.js", "name": "Ys/zo", "role": "yogaNode.getComputedWidth/getComputedHeight", "product": "src/plugin-chain-react-hooks.ts", "note": "the committed node's measure stub gained both getters, returning 0 in the headless seam" }
+    ],
+    "reused": [
+      { "names": ["Xe as e", "Xe as r", "s", "n", "w", "b", "y", "R", "Rt", "Ae", "en", "Z", "hh", "le", "qt", "tI", "ZFt"], "product": "src/plugin-chain-react-surface.ts" },
+      { "names": ["Zy"], "product": "src/plugin-chain-press-button-source.ts" },
+      { "names": ["ke"], "product": "src/plugin-chain-input-field-source.ts" },
+      { "names": ["ae"], "product": "src/plugin-chain-text-clamp-source.ts" },
+      { "names": ["ld"], "product": "src/tui-primitives.ts" },
+      { "names": ["ge"], "product": "src/tui-color.ts" },
+      { "names": ["on", "vje"], "product": "src/plugin-chain-markdown-source.ts" },
+      { "names": ["nn"], "product": "src/plugin-chain-above-prompt-keybinding-source.ts" },
+      { "names": ["t"], "product": "src/plugin-chain-host.ts" }
+    ],
+    "remaining": ["Mr (ui spinner: ia/HIe/bg/Wo/mr)", "the dialog frame _e, the list Tl/Cn/Po/Bo/rx, and the si wiring with PMr/Ffe"]
+  },
+  "product": {
+    "files": [
+      "src/diff-dialog-tabs-source.ts",
+      "src/diff-dialog-tabs-source-blocks.json",
+      "src/diff-dialog-tabs-host.ts",
+      "src/diff-dialog-tabs.ts",
+      "src/plugin-chain-react-hooks.ts",
+      "src/plugin-chain-react-surface.ts",
+      "test/diff-dialog-tabs.test.ts"
+    ],
+    "exports": ["Tabs", "TabContent", "TabHeader", "ScrollBox", "TabStateContext", "ViewportContext", "tabKey", "nextTabIndex", "tabLabelWidth", "nextHeaderIndex", "previousHeaderIndex", "hasViewport", "scrollViewport", "claimScrollBox", "useOptInCounter", "useStrayClickFilter", "SOURCE_BODIES"],
+    "notes": [
+      "The strip maps one child to one header, tracks the selected index, and reads the viewport context for the scroll-box branch; without a viewport it renders the content area directly.",
+      "A controlled selectedTab wins; an unknown key falls back to the first tab.",
+      "The header is inverse and bold when current, and swaps to the padded label only when it is current, focused, colored, and the color level is non-zero.",
+      "The scroll box publishes an imperative handle with the scroll, viewport, sticky and clamp readers; the seam clears the caller's ref on unmount."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 11, "failed": 0, "file": "test/diff-dialog-tabs.test.ts", "new": 11 },
+    "full": { "passed": 2532, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": { "declared": 189, "unresolved": 0 }
+  },
+  "identity": {
+    "sha256": "f12ed8ca097ae109b602b7f7b4aadb79a585d9d87108a1a1b196f88dfddff84d",
+    "inputs": 648,
+    "validation": 225,
+    "build": 447
+  }
+}
