@@ -1,0 +1,697 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3"
+    },
+    {
+      "module": "chunk-ejnyhzsc.js",
+      "sha256": "24697cf467fb57202c5ec305d52e767e0f6693a85e3b36ba1f0bb4dbc279e8d4"
+    },
+    {
+      "module": "chunk-t4khkhyw.js",
+      "sha256": "37829ab1bd60fefe517f94567d39ccadcba5b65c566cf6691977d2b08ed7d2b0"
+    },
+    {
+      "module": "chunk-vk5xdr3b.js",
+      "sha256": "41a191e7ff311950074f2af3ba6031946387ab37cef42172cd892ab63550352f"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e"
+    },
+    {
+      "module": "chunk-pxjy4t8j.js",
+      "sha256": "523505a6cb4614eda623cc9249eeab5a0e5f398f789ac555e5c997dc1d24eef7"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        1763,
+        1787
+      ],
+      "units": 24,
+      "bodySha256": "bc793faa4ae60a0c98e89ad64b01503544f02a572fd8af8c335271383f9e473c",
+      "note": "the list timing constants _n, zn and Gn"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        1787,
+        2920
+      ],
+      "units": 1133,
+      "bodySha256": "7899d0fe94a3f134d131ad2f41cbe87c5e59394c633d823e96fd428f8a272345",
+      "note": "pe: the pressable/repeating control with its press, repeat and hover helpers"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        2920,
+        3213
+      ],
+      "units": 293,
+      "bodySha256": "47cdc9e98f989dfd5dda26b9d75bf7456ee74c127886055620720d25c3be8280",
+      "note": "zo and so: the stray-click window (1000 ms) and its pressed/dropsClick service"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        3213,
+        3232
+      ],
+      "units": 19,
+      "bodySha256": "8767176448eeac0d9a5748b4279f021cc571d2e3126d280053c270d6edbc4b52",
+      "note": "vFt: the click-dropping context, default false"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        3232,
+        3497
+      ],
+      "units": 265,
+      "bodySha256": "818327e1232e77fb3b38262f466dfe186474a542b44d026f40cfceb19ffabf76",
+      "note": "pje: the overflow hint row ('N more' with its direction arrow)"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        3501,
+        3522
+      ],
+      "units": 21,
+      "bodySha256": "f9b17e1f97b9d64008d6f2330e98eca90294e88494b5bb4b8f5fa6b710396b24",
+      "note": "je and nq: the list box/rows/reserve context and the default reserve of one row"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        3522,
+        3878
+      ],
+      "units": 356,
+      "bodySha256": "07c1ba6552d48073c9f54914ef0a6c3ad442b05ca1502f8cbea34cb4699f1758",
+      "note": "NXe: the list container provider that measures its box and rows"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        3878,
+        3906
+      ],
+      "units": 28,
+      "bodySha256": "7eaa60ba1e296abbe030d021f6ed22aa50fde35d53ac453bdfb6e1b6bd1350c3",
+      "note": "rq: read the list container context"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        3914,
+        4014
+      ],
+      "units": 100,
+      "bodySha256": "99f904a8de28a12eb8f332acea812df4e07792f8194d767926548de70a189d7e",
+      "note": "lo: the hover-tracked override or the app context's hover subscription"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        4018,
+        4027
+      ],
+      "units": 9,
+      "bodySha256": "8c3c8754403f2debd66d7e0d31c68da5047547db9bc66756891b6b682f20502f",
+      "note": "qo: the scrollbar arrow threshold"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        4027,
+        6359
+      ],
+      "units": 2332,
+      "bodySha256": "fd971803d5804ffba6a643a96cd92897522abf8f85c2deef5da65fe156d2b971",
+      "note": "Ye: the scrollbar column with its track drag, arrows and suggestion color"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        6359,
+        6609
+      ],
+      "units": 250,
+      "bodySha256": "502ae39869ceb15a819f3831892ef9831b531067ecf918a6c0204f9722f6b8e9",
+      "note": "fo: the scrollbar geometry from offset, visible, total and height"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        6609,
+        6816
+      ],
+      "units": 207,
+      "bodySha256": "7e12e2d9d3532c27cca4afa8ef69baf813e6b8301b1a203da1ecacdb2268d7ab",
+      "note": "an: the scrollbar offset from a track row"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        6816,
+        6879
+      ],
+      "units": 63,
+      "bodySha256": "05f7ca4bdd4d33f267c272c48145818641b01f58d052dbf61cf0de348c4fa632",
+      "note": "xe: repeat a glyph for N rows"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        6879,
+        7457
+      ],
+      "units": 578,
+      "bodySha256": "24f38094e5ca21896ef57975b5e9cb86742e5977bd353f5a319c0b2b489f021a",
+      "note": "Sdn: the scroll box wrapper that shows the scrollbar only while hovered"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        7627,
+        9547
+      ],
+      "units": 1920,
+      "bodySha256": "562dc8ec5d973df7789fd5c4069f87a45da1ea4ca4c534fa5b1f8e200eca1914",
+      "note": "at and mn: the empty heading set and the scroll window calculation with its marker and boundary helpers"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        9547,
+        12509
+      ],
+      "units": 2962,
+      "bodySha256": "b4ff5e1269a1cff6e42c38b8aea19b1222230565aebe97095bdfe3b1de92f41b",
+      "note": "fn: list navigation — cursor, windowing, headings, page jumps, wrap/clamp edges, wheel and scrollbar bindings"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        12509,
+        12633
+      ],
+      "units": 124,
+      "bodySha256": "8d093b9df761df8a3f96e487173e7dd288a9814f5ed5483dab987910625d5d3d",
+      "note": "oq, kt and Mt: the disabled predicate, the option builder and the row-height sum"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        12633,
+        12657
+      ],
+      "units": 24,
+      "bodySha256": "dcda7f8ba6a8c3ee38e19db8b8fafa632679e59d9823f2a6a727b772c7bbca74",
+      "note": "the list floor/ceiling constants and the selection context"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        12657,
+        12685
+      ],
+      "units": 28,
+      "bodySha256": "345ebdb641d4ea1287246fbccd450d0a1b17a36ff66ed5688d0c2a36db471e5f",
+      "note": "rx: the selection context reader"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        12685,
+        14057
+      ],
+      "units": 1372,
+      "bodySha256": "1bcca7003ca270cb673c706ead0c849509e5d1e6e90ce3c98bf0a1d7ed7d0d27",
+      "note": "Cn: the list component — the accessible branch groups headings and routes keys, the normal branch dispatches on visibleCount"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        14057,
+        15880
+      ],
+      "units": 1823,
+      "bodySha256": "869eda1d9dfcbeea5f55c68c86223a3edd120ae6b01a297c1e3c5429c840b018",
+      "note": "Eo: the visible-count layout — measured chrome, viewport rows, min/max window and overflow hint"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        15880,
+        18925
+      ],
+      "units": 3045,
+      "bodySha256": "523c4d70c68b21bc3436689c111e587a04a0f89681ab29f5afcdf6ccaaa54fcd",
+      "note": "Qe: the windowed list body — rows, headings, overflow hints, scroll box and the selection context per row"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        18925,
+        19035
+      ],
+      "units": 110,
+      "bodySha256": "4f82570944dd31c415dc935f18828f7d5b7b476215652bf92c285492161ce710",
+      "note": "Po: the list item wrapper"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        19035,
+        19145
+      ],
+      "units": 110,
+      "bodySha256": "2fc4f6259f86091651d046c8bf238a513b9c23f12993a60042382d5e9e90f55a",
+      "note": "Bo: the list heading wrapper"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        19145,
+        19186
+      ],
+      "units": 41,
+      "bodySha256": "017e8e17839905829722b6a1ce7e6ebb7bb03a417b1f87c7377491f81ef04d0d",
+      "note": "Me: whether a child is a heading"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        19186,
+        19277
+      ],
+      "units": 91,
+      "bodySha256": "aec025466c4cfac8e0052db47e5ad5309807786c7f616e3b26702b710849a65b",
+      "note": "Co: an item's line count from its declared lines"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        19277,
+        19333
+      ],
+      "units": 56,
+      "bodySha256": "8c968150aa7d61783d37f2d275f9f11491681ce268b5ee9a7ed3da75b085f19b",
+      "note": "Pn: a list item's props"
+    },
+    {
+      "module": "chunk-0wtqg4zf.js",
+      "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+      "range": [
+        19333,
+        19379
+      ],
+      "units": 46,
+      "bodySha256": "eae6ae432ca4530b7ff0fad246e9b767bbe7f27d84d0511b52c4113d8a66d5b1",
+      "note": "Tl: the list component with Item and Heading attached"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        2194,
+        2317
+      ],
+      "units": 123,
+      "bodySha256": "31206aba2869f75706723cb2e6759c9c8e02e4bf6600e9af1204b0f2092c7d3e",
+      "note": "Ma, yC and fEe: a child key, the user-message background name and the hover style resolver"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        2317,
+        2331
+      ],
+      "units": 14,
+      "bodySha256": "cd46923eb5868be91f18ac1079aa4bcb28015a78dbd43cb76c30b132aec2d3ff",
+      "note": "Xn: the window index context"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        2331,
+        2859
+      ],
+      "units": 528,
+      "bodySha256": "5b83394513c96d03c0be6691e8892420f1d5f965166293acdee2e96d4f271010",
+      "note": "mEe: wrap a window of children with their key-index context"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        2859,
+        3085
+      ],
+      "units": 226,
+      "bodySha256": "9fb3102b75b6125c3d874bf67ad23859f55824c1763104f092c9f707f942734a",
+      "note": "Sje: the hover state pair and its change callback"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        3085,
+        5388
+      ],
+      "units": 2303,
+      "bodySha256": "ec2bb6d95084be228e1df509f4f6835bc913697b35f4fb06a5942cf487643723",
+      "note": "_C: the clickable row — focus/selected styling, cursor declaration, scroll markers, hover"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        5388,
+        6284
+      ],
+      "units": 896,
+      "bodySha256": "19dc0d90fb652c9af2e414f19d1662971a7535b124f98d9dd1be5a778eb050d5",
+      "note": "ei: the row content — label, description, scroll markers and hover styling"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        6791,
+        7189
+      ],
+      "units": 398,
+      "bodySha256": "ce71df26bd819fdf2b5743ef91fc414129b2a958550b45e5c3112e303a9981c7",
+      "note": "Nu and the label/analytics accessors the select reads"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        7189,
+        7212
+      ],
+      "units": 23,
+      "bodySha256": "49d30c767a8d27b07893dde009944023c98c2ac6381581032493b3a924b6fcf0",
+      "note": "Zu: the empty state assignment"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        7212,
+        7238
+      ],
+      "units": 26,
+      "bodySha256": "dbe7de0a8d20265a23bbdac442f1c19aa2a7341072cf7dd412dcd308c127829e",
+      "note": "ed: the empty analytics accessor"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        7990,
+        8348
+      ],
+      "units": 358,
+      "bodySha256": "8eed421ecd78767f53def86ec3b52e94f5a419d9d4402c2ff35a8c3789a20ba9",
+      "note": "He, Jt and xo: the reducer-style state pair, the empty-query state and the 'a, b, or c' joiner"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        8348,
+        8412
+      ],
+      "units": 64,
+      "bodySha256": "8e835af5e504805e880180da4f26d324376df534b0507a987baa6a6d99dbac52",
+      "note": "ti and Wa: the description delay and its label accessor"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        8412,
+        8523
+      ],
+      "units": 111,
+      "bodySha256": "c05ab463a53aa5c793d63041746a4a3ab4f5ff0df800ffec8de15db90ae696b7",
+      "note": "Vs: truncate a label to its budget"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        9153,
+        13712
+      ],
+      "units": 4559,
+      "bodySha256": "648c03d35d286c42cb09c00fefdd864a5e89af9a6247794cc60e80e21361ea49",
+      "note": "ZY: the accessible select — numeric and arrow navigation, input options, label rendering and announcements"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        20093,
+        21300
+      ],
+      "units": 1207,
+      "bodySha256": "be1ac6c9d74f510180f909b6f6ed939b8e746760082f505d730d9ed71aefd0e0",
+      "note": "En: one accessible select option row"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        23446,
+        23730
+      ],
+      "units": 284,
+      "bodySha256": "df970e10ccc2e2aa50599345119a2c3efe29e330099121c4620e439811189bc5",
+      "note": "fd, kd and Md: the lazy state pair and its two function guards"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        19763,
+        19829
+      ],
+      "units": 66,
+      "bodySha256": "cf13685ead8ef25ece2f681b7df28bee4fba9feb755f43d1d8a0052ee016fa49",
+      "note": "XN: render the fallback instead of the children under a screen reader"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        21431,
+        21770
+      ],
+      "units": 339,
+      "bodySha256": "54ddbe2c1927c25432a332c7a12102815f168696b50cca2542e0bd78146af78a",
+      "note": "uu: the left-edge selectable container"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        23676,
+        24236
+      ],
+      "units": 560,
+      "bodySha256": "5240d000e812df65e13fcdf72c6cbdb4801756cd9bd9b86c4f014e76bcafd56b",
+      "note": "Ze, _Ee, Lo and eX: the focus manager reader, its directions and the active-element membership subscription"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        19906,
+        20151
+      ],
+      "units": 245,
+      "bodySha256": "bee121e03cd424765cb8c05cfd8a9b27cbffd9e6727ab43eb1d902149dd36fa2",
+      "note": "Zw: report a focused node's cursor position to the hover context"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        224832,
+        224857
+      ],
+      "units": 25,
+      "bodySha256": "1c12874e540904748a39f02a21e62604b1519ad406c486fcc682ac18cfba448f",
+      "note": "tx and S4n: the cursor-position context"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        65547,
+        65901
+      ],
+      "units": 354,
+      "bodySha256": "0df34f1cedadd87867577cb9a3150ebf7afee1d6bc169574d68f8a8ab9448785",
+      "note": "CN and IP: the up and down arrows"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        66113,
+        66385
+      ],
+      "units": 272,
+      "bodySha256": "11b7dcc1e1352aa35ee2d152f2f52cbb8ff3a193d7f0c12cee53e9182725b342",
+      "note": "Nvo and the box glyphs"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        66410,
+        66589
+      ],
+      "units": 179,
+      "bodySha256": "6909dbd3ab9b61cc2caa730d0c05399ffc7d9de697666ee5b6002a0a2afb3ce4",
+      "note": "Fw, tPs and vb: the tree and pipe glyph sets"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        200495,
+        200579
+      ],
+      "units": 84,
+      "bodySha256": "1889abe2a16280946b10f7cf20b8b4f7c21ab2777a0a2a83496493c06e79e6ba",
+      "note": "ad: clamp a number to optional bounds"
+    },
+    {
+      "module": "chunk-ejnyhzsc.js",
+      "sha256": "24697cf467fb57202c5ec305d52e767e0f6693a85e3b36ba1f0bb4dbc279e8d4",
+      "range": [
+        668,
+        697
+      ],
+      "units": 29,
+      "bodySha256": "3909e70430822bc12c426a833b26c9c2add70306f3c1858d8eb839602e2af759",
+      "note": "QY and Mmt: the owed-row and rows accessor contexts"
+    },
+    {
+      "module": "chunk-t4khkhyw.js",
+      "sha256": "37829ab1bd60fefe517f94567d39ccadcba5b65c566cf6691977d2b08ed7d2b0",
+      "range": [
+        668,
+        685
+      ],
+      "units": 17,
+      "bodySha256": "fb7ad3fa9b75f85bee093a17554fb2ff3a327b42c869cf6f8b32d0ff586c668e",
+      "note": "kFt: the hover-tracked override context"
+    },
+    {
+      "module": "chunk-vk5xdr3b.js",
+      "sha256": "41a191e7ff311950074f2af3ba6031946387ab37cef42172cd892ab63550352f",
+      "range": [
+        668,
+        862
+      ],
+      "units": 194,
+      "bodySha256": "b27457103456f042eaa1ca1916637d34222275118afd63f21ac40a3734e2e356",
+      "note": "ZP: flatten rendered children to text"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        1013,
+        1128
+      ],
+      "units": 115,
+      "bodySha256": "22089dbfdb0fe682f6d75d63d14a989c6056b9f98d2678bdae01352120ca9a74",
+      "note": "Hs: truncate a string to N units"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        3652,
+        3752
+      ],
+      "units": 100,
+      "bodySha256": "b375b94f99d76e93a299a43ef07f002f5278dd224c57de5098ed8dcb769f119e",
+      "note": "PY: normalize full-width digits"
+    },
+    {
+      "module": "chunk-pxjy4t8j.js",
+      "sha256": "523505a6cb4614eda623cc9249eeab5a0e5f398f789ac555e5c997dc1d24eef7",
+      "range": [
+        1298,
+        1856
+      ],
+      "units": 558,
+      "bodySha256": "d892e28d52fbc1c833a1a543db4e34d46f8c3b3cc90559f8e55ebc0a114922c0",
+      "note": "sa: register an active overlay in the app state while enabled"
+    }
+  ],
+  "missing": []
+}

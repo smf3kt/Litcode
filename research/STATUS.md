@@ -2970,3 +2970,17 @@ selects from the local `SpinnerSettings` context, and `a` reads `TERM` and the r
 process environment. The list and `si` wiring remain out. Focused 10/10, full 2555/2555, tsc 0,
 build 0, notices 0, scans 34/43/9 all unresolved 0, identity `358bbb79…`.
 [W171 record](ports/W171-spinner.md).
+
+W172 added the list (59 copied blocks, 31,687 UTF-16 units). `Cn` groups headings and routes them to
+the accessible select when the accessibility context and `onSelect` are present, otherwise dispatches
+on `visibleCount` to `Eo` or `Qe`. `Eo` measures the fixed chrome with `kc`, reads the terminal rows
+and container reserve, folds `maxVisibleCount` into the window and picks `none`/`glyph`/`count` for
+the overflow hint. `Qe` sums row heights, takes cursor/window/scroll bindings from `fn`, renders
+headings as unselectable rows, wraps each selectable row in the `Mo` selection context, and supports
+`rowClick:"move"`, disabled-row callbacks and the `Sdn` scroll box. `fn` handles arrows, paging,
+first/last, wheel and scrollbar drags with wrap or clamp edges and `declineHomeEnd`. `NXe` measures
+the container, `Po`/`Bo` wrap rows and headings, and `rx` reads the selection. `Wo` binds the local
+app-state context, `Mct` answers true because the local select navigates with arrows, and `$h`
+resolves the focus manager through `ix` then the mounted app context. The `si` wiring remains out.
+Focused 10/10, full 2565/2565, tsc 0, build 0, notices 0, scan 254 unresolved 0, identity
+`997d61f8…`. [W172 record](ports/W172-list.md).
