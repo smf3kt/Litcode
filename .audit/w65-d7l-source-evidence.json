@@ -15,7 +15,7 @@
       "file": "main.tsx",
       "change": "the initialState seeds for all fourteen fields, the single `const fullRemoteControl = getRemoteControlAtStartup()` read that fed replBridgeEnabled, the migration import and its call site deleted",
       "sourceSha256": "539453aed627e848075dc44576885c52dce57d654ecfeee982808d600e81bf19",
-      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
+      "portSha256": "a608dba12d176072eb6be74d6bb925ed56fc09eb9f439d7c7b38b99b8f9ba87f",
       "coordinateUnit": "utf16-half-open"
     },
     {

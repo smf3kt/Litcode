@@ -8,7 +8,7 @@
       "file": "main.tsx",
       "change": "`--sdk-url` registration, `hasSdkUrl` in the non-interactive predicate, the sdkUrl extraction with its format auto-set, the sdkUrl validation, the UUID-validation bypass (unwrapped) and the options pass-through are removed",
       "sourceSha256": "9063180982f9992828764ab5b30ce8e66ff3a0448d54ee6bd38fd55b4ef726a5",
-      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
+      "portSha256": "a608dba12d176072eb6be74d6bb925ed56fc09eb9f439d7c7b38b99b8f9ba87f",
       "coordinateUnit": "utf16-half-open"
     },
     {

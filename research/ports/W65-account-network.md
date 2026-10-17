@@ -960,6 +960,24 @@ tsc 0, thirty-five fixtures pass (the new `w65-d7za-verify` plus thirty-four car
 
 **Next:** the analytics transports.
 
+## Wave D closure — the analytics transport surface (`0a488b3`, landed)
+
+**The transports went in step 7a; the payload builders survived it.** `logEvent`/`logEventAsync` became empty functions, but two helpers kept gathering local state to hand to them: `main.tsx`'s `logStartupTelemetry` (git/worktree/gh status, sandbox flags, reduced motion, the cert-env flags) and `utils/api.ts`'s `logContextMetrics` (MCP prefetch, tool enumeration, user and system context, a ripgrep file count and token estimation on every session). Their bodies were dead work with real cost.
+
+**Their last readers close with them.** `isAnalyticsDisabled` had exactly those two callers, so `services/analytics/config.ts` goes; `getGhAuthStatus` existed only for the startup payload, so `utils/github/ghAuthStatus.ts` goes and the directory with it. Two imports lost their last reader in the pass (`hasNodeOption`, `roughTokenCountEstimation`).
+
+**The no-op API stays by the recorded step-7a decision.** `services/analytics/index.ts` keeps `logEvent`/`logEventAsync` and their marker types so the remaining ~190 call sites keep compiling; `growthbook.ts` keeps its local env/config override channels and `metadata.ts` its PII-redaction surface. No outbound telemetry path remains in the analytics directory.
+
+### Port coordinate refresh
+
+Fourteen historical evidence files moved, all by re-running their own fixtures: `w65-d7h`, `d7i`, `d7j`, `d7l`, `d7n`, `d7o`, `d7p`, `d7q`, `d7r`, `d7s`, `d7t`, `d7u`, `d7x` and `d7y`. `portSha256` only; no `sourceSha256` changed and no range moved.
+
+### Verification
+
+tsc 0, thirty-six fixtures pass (the new `w65-d7zb-verify` plus thirty-five carried), `git diff --check` clean, the orphan scan back at its ten legitimate entries over 1605 files. Eight carried fixtures were amended to the new file count (the four `160[0-8]` ranges and four exact pins). The first replay exposed the new orphan `utils/github/ghAuthStatus.ts`; it is deleted with the payload builder that was its only caller.
+
+**The 2026-10-16 local-only directive has no remaining items.**
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.

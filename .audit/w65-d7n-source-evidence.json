@@ -43,7 +43,7 @@
       "file": "main.tsx",
       "change": "the --file option, the download block, the promise it set and the await before REPL render all removed, along with the four filesApi imports; the client-type detection keeps only the entrypoint term",
       "sourceSha256": "ff9aedfcbaf7d772dd379abb53db0ca27ff9ea79d128d6fbc792617dda0cae70",
-      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
+      "portSha256": "a608dba12d176072eb6be74d6bb925ed56fc09eb9f439d7c7b38b99b8f9ba87f",
       "coordinateUnit": "utf16-half-open"
     }
   ],

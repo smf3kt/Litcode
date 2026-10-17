@@ -1,0 +1,47 @@
+{
+  "before": "2823ec8",
+  "kind": "final analytics cleanup: the two payload builders, the analytics gate and the gh probe that existed only for them",
+  "surface": "main.tsx's logStartupTelemetry (getIsGit/getWorktreeCount/getGhAuthStatus, sandbox flags, reduced motion, cert-env flags) with getCertEnvVarTelemetry and hasNodeOption, its logContextMetrics import and call; utils/api.ts's logContextMetrics (MCP prefetch, tool enumeration, user/system context, ripgrep file count, token estimation) with its imports; services/analytics/config.ts's isAnalyticsDisabled and utils/github/ghAuthStatus.ts",
+  "decisiveFact": "with the transports removed in step 7a, logEvent/logEventAsync are empty functions. These two helpers exist only to gather local state and hand it to those empty calls, so their entire body is dead work — logContextMetrics even ran an MCP prefetch and a ripgrep scan on every session. isAnalyticsDisabled's only two readers were these helpers, and getGhAuthStatus's only caller was logStartupTelemetry, so the gate and the probe close with them",
+  "changes": [
+    {
+      "file": "main.tsx",
+      "change": "logStartupTelemetry, getCertEnvVarTelemetry and the hasNodeOption/getIsGit/getWorktreeCount/getGhAuthStatus imports are removed, along with the deferred call, the logContextMetrics import and its initialization call",
+      "sourceSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
+      "portSha256": "a608dba12d176072eb6be74d6bb925ed56fc09eb9f439d7c7b38b99b8f9ba87f",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/api.ts",
+      "change": "logContextMetrics and the imports that served only it (context, MCP prefetch, tools, ignore patterns, ripgrep, tool types, token estimation, analytics gate) are removed; the function's neighbors and the remaining logEvent calls are untouched",
+      "sourceSha256": "de3e1183a65e83781bde49e1c84edf967dab32c3147b427f8ba9a64a15cfe276",
+      "portSha256": "1494ceb5094ed191a37a5264413881337005e551dcdeef09b7fc8fdd1ad07288",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "main.tsx's logStartupTelemetry and getCertEnvVarTelemetry with their call sites",
+    "utils/api.ts's logContextMetrics with its import set",
+    "services/analytics/config.ts (isAnalyticsDisabled, readerless after the two helpers)",
+    "utils/github/ghAuthStatus.ts (its only caller was the startup payload)"
+  ],
+  "kept": [
+    "services/analytics/index.ts's no-op logEvent/logEventAsync and the ~190 files that call them, per the step-7a decision",
+    "services/analytics/growthbook.ts's local env/config override channels",
+    "services/analytics/metadata.ts's PII-redaction surface used by the tool path",
+    "logSessionTelemetry and the other startup helpers that still have local effects or readers"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Base checks confirm both builders, the gate and the probe at 2823ec8; whole-tree sweeps find no residue identifier and no telemetry endpoint; survivor assertions pin the no-op API, its call-site count and the remaining analytics modules; the orphan scan stays at ten legitimate entries over 1605 files; tsc clean",
+  "remaining": "none under the 2026-10-16 local-only directive",
+  "notes": [
+    "the first replay exposed a new orphan, utils/github/ghAuthStatus.ts, which existed only for the removed startup payload; it is deleted with its directory",
+    "two imports lost their last reader with the functions (hasNodeOption, roughTokenCountEstimation) and were removed in the same pass"
+  ]
+}

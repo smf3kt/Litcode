@@ -9,7 +9,7 @@
       "file": "main.tsx",
       "change": "eleven empty statement shells and their stale comments are removed; the unused installAsciicastRecorder import goes with them; registration stubs for `claude server`, `claude connect`, `claude up`, `claude rollback` and the ant-only group are deleted; two blank-line artifacts the removal exposed are closed",
       "sourceSha256": "6c4f7679f0787cc4675ac58295cf29e514851fa3a09aab3d3f6e38f066071f6b",
-      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
+      "portSha256": "a608dba12d176072eb6be74d6bb925ed56fc09eb9f439d7c7b38b99b8f9ba87f",
       "coordinateUnit": "utf16-half-open"
     },
     {
