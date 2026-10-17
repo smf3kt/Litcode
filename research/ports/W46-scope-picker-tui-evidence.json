@@ -1,0 +1,81 @@
+{
+ "schema": "W46ScopePickerTuiEvidence.v1",
+ "package": "W46-02 — the scope-picker frame mounted in the product TUI",
+ "date": "2026-10-17",
+ "question": "Can the recovered frame render inside the product document tree, and what does the host have to supply so the picker shows the source layout?",
+ "answer": "Yes. The same six source blocks are generated a second time against the TUI runtime: the document renderer supplies the hooks, Box and Text; a host module supplies the memo cache, terminal size, focus and cursor contexts, the search hook and the visual primitives. The scoped picker calls the frame from its host component, so the frame hooks live in the document tree and the picker projects the rendered rows to text. The document tree has no focus manager, so interaction props are dropped at the host element boundary and the picker keeps routing keys itself.",
+ "measured": [
+  "The generated frame renders: title, two visible rows in direction-up order, the focused marker, the search line and the hint row. At 60x12 the hints read `Up/Down nav  Enter select  Esc cancel  Ctrl+S scope`.",
+  "At 40 columns the hint row is clipped after the escape hint, so the movement hint collapses to `↕` and the row fits the scope hint within 40 cells.",
+  "The preview height follows the row budget (`min(8, rows - 5)`), so a ten-row projection keeps the hint row visible instead of letting the bordered preview push it off.",
+  "The host search hook controls the search line: an injected `query` renders in place of the placeholder.",
+  "The scoped picker test renders the frame through `pick()`/`frame()` at 40x10: the title, the rows, `Enter select` and `Ctrl+S scope` all appear, and the empty query keeps the picker open.",
+  "The focus-manager guard fired on interaction props (`onMouseLeave`, `onWheel`, `onClick`) because the document renderer has no focus manager; the host element wrappers drop those props and the render is clean."
+ ],
+ "hostBoundary": {
+  "surfaces": [
+   "s",
+   "n",
+   "w",
+   "b",
+   "ke",
+   "Qc",
+   "nt",
+   "_y",
+   "aS",
+   "z",
+   "Se",
+   "es",
+   "rS",
+   "_C"
+  ],
+  "reason": "The product TUI runtime owns hooks and elements; the document renderer has no focus manager, so the host draws Box/Text without interaction props and the picker routes keys and clicks itself. The search hook is injected per render from the picker query, the terminal size from the picker budget, and the memo cache is one `useMemo` slot per call site with the React sentinel."
+ },
+ "changes": [
+  {
+   "file": "src/tui-scope-picker-frame-tui-source.ts",
+   "change": "the same six copied blocks, generated against the TUI runtime and the TUI host seam",
+   "portSha256": "eb4c132d176594c9e1f6b4043b40b97e4235c0d2f09f26d77c68e4c88cc1ced2",
+   "coordinateUnit": "utf16-half-open"
+  },
+  {
+   "file": "src/tui-scope-picker-frame-tui-host.ts",
+   "change": "the TUI host seam: memo cache, terminal size, focus and cursor contexts, search hook, stray-click guard and the Box/Text-backed visual primitives",
+   "portSha256": "97b5376647dfcf106eb72e33afc2bfd0fb6a2197dea318fc873e96dcdd597e88",
+   "coordinateUnit": "utf16-half-open"
+  },
+  {
+   "file": "src/tui-scope-picker-source.ts",
+   "change": "the replacement frame is gone: the picker props call the recovered frame, the query seeds it, and the scope hint and select label follow the source consumer",
+   "portSha256": "213cb3584ab0ad9dc0502b074c307f639b9aea4231941f300b773f73fb89d1f4",
+   "coordinateUnit": "utf16-half-open"
+  },
+  {
+   "file": "src/tui-scope-picker.ts",
+   "change": "the picker sets the frame size and search state before the host render mounts the frame",
+   "coordinateUnit": "utf16-half-open"
+  },
+  {
+   "file": "test/tui-scope-picker-frame-tui.test.ts",
+   "change": "five tests: layout, row order, empty state, injected query and the ten-row projection",
+   "coordinateUnit": "utf16-half-open"
+  }
+ ],
+ "validation": {
+  "tsc": {
+   "command": "node_modules/.bin/tsc --noEmit --pretty false",
+   "exitCode": 0,
+   "diagnostics": 0,
+   "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "undeclaredScan": {
+   "src/tui-scope-picker-frame-tui-source.ts": "declared 145, unresolved 0",
+   "src/tui-scope-picker-source.ts": "declared 98, unresolved 0"
+  },
+  "notices": "node scripts/dependency-notices.mjs --check exits 0",
+  "suite": "5/5 new; scope-picker 2/2; chain family 767/767; full 2,073/2,073 pass, 0 fail",
+  "sourceIndex": "75 chunks, 1,743/30,144 statements, 323,525/10,879,881 units (3.0%)",
+  "identity": "6e8c48dfaf30…"
+ },
+ "next": "C-2a is mounted: the recovered frame is the picker frame in both the TUI and text projections; keyboard routing stays with the picker."
+}

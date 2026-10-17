@@ -1,0 +1,86 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd"
+    },
+    {
+      "module": "chunk-x90vmw14.js",
+      "sha256": "2c126986038d8ecb93fd6b25b601b3455f481aaa9064ea3af815dfb1fc02ee6d"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        605350,
+        605389
+      ],
+      "units": 39,
+      "bodySha256": "16d185b089356d07fb141b42c04424940013c9e1fcb6dd43dfd85717509aea69",
+      "note": "`FLt` the empty reset handler and the frame limits `TBe`/`MBe`/`DBe`"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        605389,
+        611517
+      ],
+      "units": 6128,
+      "bodySha256": "c5fe5e4d45b38197780d1d75e9c99bb7f65ee371fb0f934f515fa29eb58839e2",
+      "note": "`gLt` the scope-picker frame: search input, windowed rows, keyboard and wheel movement, preview layout and the hint row"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        611517,
+        613200
+      ],
+      "units": 1683,
+      "bodySha256": "edd086880728544c5e264ccaa31878aa73cbdfdb393666cf940345aa2f8e8997",
+      "note": "`Vse` the row list: empty state, focus and cursor declaration, scroll markers, click and hover"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        613200,
+        613266
+      ],
+      "units": 66,
+      "bodySha256": "44d675297c9c4b795fc39627109f3b4be9d0720d1752ec0581c4f10380799022",
+      "note": "`pHe` the chord label: the first word of a select action"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        200495,
+        200579
+      ],
+      "units": 84,
+      "bodySha256": "1889abe2a16280946b10f7cf20b8b4f7c21ab2777a0a2a83496493c06e79e6ba",
+      "note": "`ad` the clamp used by the window and focus movement"
+    },
+    {
+      "module": "chunk-x90vmw14.js",
+      "sha256": "2c126986038d8ecb93fd6b25b601b3455f481aaa9064ea3af815dfb1fc02ee6d",
+      "range": [
+        757,
+        1166
+      ],
+      "units": 409,
+      "bodySha256": "b53e996f5a896fa9e001a39e7b0ce97b7c26a63d27d88a6fe5f2d50ead90ed4b",
+      "note": "`fo` the empty-state block"
+    }
+  ],
+  "missing": []
+}
