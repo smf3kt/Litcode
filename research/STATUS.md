@@ -2396,3 +2396,12 @@ cap before the source is parsed and run in the same sandbox as an inline script.
 journal/resume, reattachment and structured output remain out. Workflow family 43/43, tsc 0,
 build 0, full 2,204/2,204, chain 768/768, notices 0, identity `adad009d…`.
 [W126 record](ports/W126-script-path.md).
+
+W127-01 dispositions the unattended memory consolidation pass. The recovered trigger needs a
+cross-session transcript store, the memory items record with capped-run settlement, a
+cross-session lock/state file and a forked background query with its own permission and task
+lifecycle; this runtime has none of those layers, so the trigger is not ported. The user-facing
+function is carried by in-conversation maintenance, which `AUTO_MEMORY_INSTRUCTIONS` already
+requires and which performs memory upkeep without a separate extraction call. Marketplace,
+publish and plugin conflict/auto-discovery clauses remain open under C-9. Documentation-only
+package; identity `adad009d…`. [W127 record](ports/W127-auto-dream-disposition.md).
