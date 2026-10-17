@@ -410,7 +410,13 @@ export class Agent {
     for (let i = this.session.events.length - 1; i >= 0; i--) {
       const event = this.session.events[i]!;
       if (event.kind === 'message' || event.kind === 'compact' || event.kind === 'turn_end') break;
-      if (event.kind === 'hook_result' && event.event === 'SessionStart') context.unshift(...event.additionalContext);
+      // SubagentStart's additionalContext joins the child's context as a
+      // `hook_additional_context` attachment before its first turn
+      // (chunk-40cepjpq.js offsets 127150 and 127532); the source's
+      // `isolatedContext` exclusion has no analogue here.
+      if (event.kind === 'hook_result' && (event.event === 'SessionStart' || event.event === 'SubagentStart')) {
+        context.unshift(...event.additionalContext);
+      }
     }
     return context;
   }

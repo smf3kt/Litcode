@@ -631,6 +631,29 @@ test("Stop carries the runtime-provided background jobs and session cron tasks",
   } finally { session.close(); }
 });
 
+test("SubagentStart additional context reaches the child's first request", async () => {
+  const root = workspace();
+  const hooks = { SubagentStart: [{ command: emit({ hookSpecificOutput: { hookEventName: "SubagentStart", additionalContext: "child start context" } }) }] };
+  const child = Session.open(root, { config: config(root, [], { childMode: "general", hooks }) });
+  const childProvider = new ScriptedProvider([done()]);
+  try {
+    const agent = new Agent(child, childProvider, []);
+    await agent.startSession("startup");
+    await agent.run("hello");
+    assert.match(JSON.stringify(childProvider.requests[0]!.messages), /Hook context:\\nchild start context/);
+  } finally { child.close(); }
+  const otherRoot = workspace();
+  const top = Session.open(otherRoot, { config: config(otherRoot, [], { hooks }) });
+  const topProvider = new ScriptedProvider([done()]);
+  try {
+    const agent = new Agent(top, topProvider, []);
+    await agent.startSession("startup");
+    await agent.run("hello");
+    assert.equal(top.events.some(event => event.kind === "hook_start" && event.event === "SubagentStart"), false);
+    assert.doesNotMatch(JSON.stringify(topProvider.requests[0]!.messages), /child start context/);
+  } finally { top.close(); }
+});
+
 test("SessionStart carries the child agent type and the recorded session title", async () => {
   const root = workspace();
   const capture = path.join(root, "session-start.jsonl");
