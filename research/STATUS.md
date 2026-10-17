@@ -1840,3 +1840,11 @@ durable intent, moves the archive into `<checkout>/.agent`, and keeps the checko
 deleting moved history when a rollback cannot be proven. 5/5 worktree-session tests, interactive
 7/7, full 2,085/2,085, both smokes pass; identity `436bb75f…`.
 [W51 record](ports/W51-worktree-archive-picker.md).
+
+W52-01 serializes live store-lock contention. Acquisition still reclaims a dead owner at once and
+verifies the lock exactly as before; when the owner is live, the operation now waits in 50 ms
+steps up to `lockWaitMs` (default 30,000; 0 restores fail-fast) and honors the operation signal,
+so a second process queues behind a live create/remove instead of failing on a freshly created
+lock. The wait does not alter reason matching, the identity-bound release or the dead-owner
+policy. 30/30 worktree tests with a wait/abort case, full 2,086/2,086, both smokes pass; identity
+`9d611189…`. [W52 record](ports/W52-worktree-lock-wait.md).

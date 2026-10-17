@@ -1,0 +1,72 @@
+{
+ "schema": "W52WorktreeLockWaitEvidence.v1",
+ "package": "W52-01 — bounded wait for a live worktree store lock",
+ "date": "2026-10-17",
+ "question": "Do concurrent worktree operations have to fail when the store lock is held by a live process?",
+ "answer": "No. A live owner is awaited for a bounded, abort-aware period (default 30 s); a dead owner is still reclaimed immediately and the ownership verification is unchanged.",
+ "sourcePosition": {
+  "kind": "local scheduling extension",
+  "evidence": "dead-owner policy from W47-02 (_x/Rze/P1t/zPo in chunk-sfn1dbxq.js; Iue/Nm in chunk-3sda67c1.js); the wait itself is a local store decision."
+ },
+ "behavior": {
+  "default": "lockWaitMs 30,000 (0..120,000), 0 restores fail-fast",
+  "loop": "O_EXCL acquire; on EEXIST reclaim a dead owner and retry, otherwise wait 50 ms; abort ends the wait; deadline fails closed",
+  "unchanged": "reason format, size bound, dev/ino release check, dead-owner reclaim"
+ },
+ "changes": [
+  {
+   "file": "src/worktrees.ts",
+   "change": "lockWaitMs option, abortable pause, bounded acquisition loop",
+   "sha256": "a1a1028666dca4b7eb446771019c51a74b699f3800129fb785ea8ed39275cc10"
+  },
+  {
+   "file": "test/worktrees.test.ts",
+   "change": "wait/abort case and fail-fast lockWaitMs 0 in the two fail-closed tests",
+   "sha256": "c46dbee3d9dd86b43ca4721c061ad285fd40544b5163704ef234724edd368d37"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-4 rows record the completed lock contention work",
+   "sha256": "4f825c4d8eb40fe919402433b39d3cc30bd8118203b212a0b6f76a8bd1a4503a"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "worktree relocation row records the bounded wait",
+   "sha256": "73ac1053a75d19d2f85dbd6609ae5ee805cbc999d15f01fa76cef8a925f6e619"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W52-01 entry",
+   "sha256": "ee81c83a63e9f5c1bb9630a88fbdf08042f5802007e41835fa26ebdd51962fde"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W52-01 S-1..S-7 entry",
+   "sha256": "90c1bf9c953e4ce2570297fe8b8c48f9e4b1290b9e8f546dfc78968f89a92f72"
+  }
+ ],
+ "tests": {
+  "file": "test/worktrees.test.ts",
+  "added": "a live store lock is awaited until the owner releases it",
+  "result": "30/30 pass"
+ },
+ "gates": {
+  "tsc": "exit 0",
+  "worktrees": "30/30",
+  "build": "exit 0",
+  "full": "2,086/2,086",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "smokeSource": "exit 0",
+  "smokeCompiled": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "9d611189fa2bd7df10bd24c7b0525d3c0ea51a77ebfb15055568b6688cffdc8e"
+ },
+ "residuals": [
+  "A holder that runs longer than lockWaitMs still causes the waiter to fail closed.",
+  "There is no queue fairness; waiters race and the first successful open wins.",
+  "The wait deadline is per operation, not a global scheduler."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-4 continues with the capture-correlation crash window and power-loss/GC."
+}

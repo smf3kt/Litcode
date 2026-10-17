@@ -1,0 +1,40 @@
+(node:38498) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ factory exposes exactly create/list/remove tools with strict schemas (231.329208ms)
+✔ no-argument factory binds lazily and isolates multiple workspaces (379.675542ms)
+✔ list is read-only and preserves unusual external paths (57.726708ms)
+✔ durable ownership survives close/reopen; close preserves worktrees (220.114459ms)
+✔ creates from HEAD on any default branch and supports explicit manager/input base refs (559.700667ms)
+✔ source worktree dirty state and existing branches remain unchanged (228.507042ms)
+✔ tracked and untracked dirty files require explicit discard (238.503959ms)
+✔ ignored files require discard as well (233.059542ms)
+✔ unmerged commits require discard even on a clean worktree (256.893459ms)
+✔ merged commits permit normal removal (221.079ms)
+✔ unowned worktree inside managed container is never removed (67.347833ms)
+✔ branch mismatch, detached state, moved and locked worktrees fail ownership checks (247.76825ms)
+✔ swapped directory and gitdir backlink fail verification (238.825042ms)
+✔ existing destinations, traversal names and invalid/expanded branches are rejected (286.310791ms)
+✔ metadata, container, target and gitfile symlinks are rejected without following them (353.161125ms)
+✔ malformed/foreign metadata and concurrent ownership lock fail closed (239.87725ms)
+✔ a store lock whose owner is dead is reclaimed; live and foreign locks stay (292.283667ms)
+✔ a live store lock is awaited until the owner releases it (476.443167ms)
+✔ a creating record whose Git work landed is adopted and removable (238.644458ms)
+✔ a creating reservation whose Git work never landed is reclaimed (193.280667ms)
+✔ non-repository, subdirectory and unborn HEAD errors have no worktree side effects (59.178958ms)
+✔ pre-aborted calls and lifetime signal create no directories or branches (34.2545ms)
+✔ tool output is capped and supplied manager rejects another workspace (71.176ms)
+✔ subprocess output budget errors terminate without metadata mutations (33.822417ms)
+✔ repository checkout and status filters never execute (223.266375ms)
+✔ Git spawn errors and stderr overflow fail explicitly (299.480875ms)
+✔ timeout, abort and close kill owned Git process groups including descendants (2588.734875ms)
+✔ creation interrupted after Git registration keeps durable owned recovery state (1103.4265ms)
+✔ removal failure after directory deletion resumes using recorded commit identity (1753.777417ms)
+✔ a changed branch after partial removal is preserved unless ownership is released (1709.708791ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 13364.735709
