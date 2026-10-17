@@ -963,7 +963,8 @@ test("UserPromptExpansion is raised only for an expansion and carries its recove
     assert.equal(payload.command_source, "projectSettings");
     assert.equal(payload.prompt, "/greet world");
     const messages = JSON.stringify(provider.requests[0]!.messages);
-    assert.match(messages, /\/greet rewritten/);
+    assert.match(messages, /expanded skill body/);
+    assert.equal(messages.includes("/greet rewritten"), false);
     assert.match(messages, /expansion context/);
   } finally { session.close(); }
 });

@@ -2166,3 +2166,11 @@ loader records the settings scope that authorized each directory
 command passes it into the hook payload; a hand-built skill without a scope
 omits the optional key. Focused 170/170, tsc 0, build 0, full 2,131/2,131,
 chain 767/767, identity `e0cd9d5e…`. [W99 record](ports/W99-skill-source.md).
+
+W100-01 removes the invented `updatedPrompt` hook field. The recovered
+expansion consumer reads only blocking verdicts, continuation stops, additional
+context and messages, and the string `updatedPrompt` does not occur anywhere in
+the extracted modules. The submitted and expanded prompt are now authoritative;
+a hook output naming that field is kept opaque and ignored. Focused 103/103,
+tsc 0, build 0, full 2,131/2,131, chain 767/767, identity `f4fc4704…`.
+[W100 record](ports/W100-no-prompt-rewrite.md).
