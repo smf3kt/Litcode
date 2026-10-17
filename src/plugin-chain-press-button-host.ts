@@ -31,6 +31,11 @@ export interface KeybindingService {
     singleKey: boolean;
     fallback: boolean;
   }): () => void;
+  /** Source `Ey` (chunk-am9mebpw.js): a handler that sees every key before dispatch and answers
+   *  whether it consumed the event. */
+  registerPreDispatch?(options: {
+    handler: (key: string, event: Record<string, unknown>, context: unknown) => boolean;
+  }): () => void;
 }
 
 /** Source `u` (chunk-bwyexfny.js `var u=qt(null)`): the keybinding-service context. */

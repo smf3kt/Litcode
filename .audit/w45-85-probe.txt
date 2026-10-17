@@ -1,0 +1,56 @@
+clock early 0
+clock due 1
+(node:61272) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+interval fired true
+bo {"status":"loading"} true
+Co {"id":"","plugin":"","module":"","pointer":false,"keys":false,"snapshot":true,"frozen":true}
+acquire request {"plugin":"p","component":"Pane","requestId":"r1","surface":"terminal","key":"b1","module":"m","props":{"v":1},"clock":"function"} returns instance true
+released 1
+acquire default {"component":"AbovePrompt","requestId":"detached"}
+io boundary true resetKey is snapshot true telemetry null
+io fallback Box 0 10 3 1 hidden Text [" "]
+io mount true p true true
+mount root Box {"direction":"column","shrink":0,"width":12,"height":4,"grow":1,"overflow":"hidden","key":"b1","plugin":"p","refCurrent":true,"pointer":"function","enter":"function","leave":"function"}
+mount child Drawn {"tree":"TREE"}
+mount effects [["setProps",{"v":2}],["drawnAgain"],["laidOut"],["resize",0,0],["retain"]]
+pre allowed 1
+key focused true
+key foreign false
+key again true [["key",{"key":"a"}],["key",{"key":"a"}]]
+key escape true null
+key ctrl c undefined null
+key non-accepting false null
+pointer down ["pointer",{"type":"down","x":2,"y":1,"fine":{"x":5,"y":6},"button":"right","shift":true,"alt":true,"ctrl":true}] focus client-1
+pointer hover [["pointer",{"type":"enter","x":2,"y":1}],["pointer",{"type":"leave","x":2,"y":1}]]
+failed child [ [ 'Text', '{"dimColor":true,"wrap":"truncate-end"}', '["boom"]' ] ]
+quiet handlers undefined 0
+wo ref object
+wo focus clear null
+ey bound 1
+ey unbound 0
+ey inactive 0
+boundary state {"hasError":false,"resetKey":1}
+boundary render CHILD
+boundary fallback FALLBACK
+derived error {"hasError":true}
+derived props same null
+derived props reset {"hasError":false,"resetKey":2}
+reported without hook true
+reported attaches true MSG
+reported throwing a boundary caught a throw (message not reported)
+reported pinned true F
+onError calls 2
+kAt empty {"load":"","lead":"hooks"} one {"load":"a#e","lead":"a"} two lead {"load":"a#undefined,b#undefined","lead":"hooks"}
+i5t null
+Qrt unknown undefined
+m4n default ok
+m4n retained 1
+iZr base 1
+focus set a
+focus kept a
+focus cleared null
+c9 open {"open":[{"id":"x"}],"focusedId":"x","shownId":"x","focusRequest":null}
+c9 closed id {"open":[{"id":"x"}],"focusedId":"x","shownId":"x","focusRequest":null}
+c9 null {"open":[{"id":"x"}],"focusedId":null,"shownId":"x","focusRequest":null}
+inert acquire loading false false true
