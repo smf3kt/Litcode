@@ -1,0 +1,15 @@
+(node:29110) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ combined rewind restores changed/deleted files, removes added files and persists the branch (180.090375ms)
+✔ stale file or history preview leaves files and session identity intact (50.781042ms)
+✔ branch commit failure rolls files back and removes the uncommitted branch (127.319042ms)
+✔ durable branch proof preserves committed files through marker and cleanup failures (281.352125ms)
+✔ automatic main checkpoints deduplicate persisted boundaries and skip child snapshots (146.774542ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1077.045541

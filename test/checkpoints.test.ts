@@ -33,6 +33,9 @@ async function restore(root: string, options: Record<string, unknown> = {}): Pro
   return run("checkpoint_restore", { name: "base", expected_current_digest: preview.current_digest, dry_run: false, ...options }, root);
 }
 function digest(entries: unknown[]): string { return crypto.createHash("sha256").update(JSON.stringify(entries)).digest("hex"); }
+function stagingTag(root: string): string {
+  return crypto.createHash("sha256").update(path.join(root, ".agent/checkpoints")).digest("hex").slice(0, 12);
+}
 
 test("checkpoint tools expose permission metadata and restore confirmation contract", () => {
   assert.deepEqual([...tools.keys()], ["checkpoint_create", "checkpoint_list", "checkpoint_diff", "checkpoint_restore"]);
@@ -418,4 +421,44 @@ test("diff/list outputs paginate and cap JSON while retaining digest confirmatio
   assert.equal(parsed.current_digest, first.current_digest);
   assert.equal(parsed.checkpoint_digest, first.checkpoint_digest);
   assert.equal(parsed.truncated, true);
+});
+
+test("recovery removes this store's staging files and keeps foreign, legacy and linked ones", async () => {
+  const root = workspace(); write(root, "a", "A");
+  await run("checkpoint_create", { name: "base" }, root);
+  const objects = path.join(root, ".agent/checkpoints/objects"), tag = stagingTag(root);
+  const owned = path.join(objects, `.checkpoint-${tag}-${crypto.randomUUID()}.tmp`);
+  const foreign = path.join(objects, `.checkpoint-${"0".repeat(12)}-${crypto.randomUUID()}.tmp`);
+  const legacy = path.join(objects, `.checkpoint-${crypto.randomUUID()}.tmp`);
+  fs.writeFileSync(owned, "orphan"); fs.writeFileSync(foreign, "foreign"); fs.writeFileSync(legacy, "legacy");
+  const outside = path.join(root, "outside"); fs.writeFileSync(outside, "keep");
+  const link = path.join(objects, `.checkpoint-${tag}-${crypto.randomUUID()}.tmp`);
+  fs.symlinkSync(outside, link);
+  assert.deepEqual(recoverCheckpoint(context(root)), { recovery: "none" });
+  assert.equal(fs.existsSync(owned), false);
+  assert.equal(fs.readFileSync(foreign, "utf8"), "foreign");
+  assert.equal(fs.readFileSync(legacy, "utf8"), "legacy");
+  assert.equal(fs.readFileSync(outside, "utf8"), "keep");
+  assert.equal(fs.lstatSync(link).isSymbolicLink(), true);
+});
+
+test("a pending transaction sweeps staging files from its target directories", async () => {
+  const root = workspace(); write(root, "a", "A"); write(root, "nested/b", "B");
+  await run("checkpoint_create", { name: "base" }, root);
+  write(root, "a", "changed A"); fs.rmSync(path.join(root, "nested"), { recursive: true });
+  const current = await diff(root), mkdir = fs.mkdirSync;
+  fs.mkdirSync = ((target: fs.PathLike, ...args: any[]) => {
+    const result = (mkdir as any)(target, ...args);
+    if (String(target) === path.join(root, "nested")) throw new Error("injected after mkdir");
+    return result;
+  }) as typeof fs.mkdirSync;
+  try { await assert.rejects(run("checkpoint_restore", { name: "base", expected_current_digest: current.current_digest, dry_run: false }, root), /ownership is unknown/); }
+  finally { fs.mkdirSync = mkdir; }
+  // The crashed restore left staging beside its target; recovery keeps the transaction but removes
+  // the file because its name carries this store's tag.
+  const temporary = path.join(root, "nested", `.checkpoint-${stagingTag(root)}-${crypto.randomUUID()}.tmp`);
+  fs.writeFileSync(temporary, "orphan");
+  assert.throws(() => recoverCheckpoint(context(root)), /ownership is unknown/);
+  assert.equal(fs.existsSync(temporary), false);
+  assert.equal(fs.existsSync(path.join(root, ".agent/checkpoints/transaction.json")), true);
 });
