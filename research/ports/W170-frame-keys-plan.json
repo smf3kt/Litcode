@@ -1,0 +1,9 @@
+{
+  "imports": [
+    "import { Ke, V } from './diff-dialog-keyhint-source.js';"
+  ],
+  "exports": ["Boo", "e0n", "yn"],
+  "blocks": [
+    { "file": "chunk-6ccen3s8.js", "range": [35388, 35924], "note": "Boo lists an action's chords in a context, e0n picks the best chord (bound first, then a printable key, then the longest), and yn names the keys that rank above printable characters" }
+  ]
+}

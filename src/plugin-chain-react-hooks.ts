@@ -229,6 +229,28 @@ export function useImperativeHandle<T>(ref: unknown, create: () => T, deps: read
   });
 }
 
+/** Source `cZr` (chunk-kexg5hxg.js `p.H.useId`): one stable identity per hook slot. The recovered
+ *  focus scope keys its rendered-scope map by it. */
+export function useId(): string {
+  const runtime = requireRuntime();
+  const at = runtime.cursor++;
+  return slotAt(runtime, at, () => `:r${at}:`);
+}
+
+/** Source `To` (chunk-kexg5hxg.js `p.H.useEffectEvent`): a stable callable whose body is always the
+ *  latest render's callback. The two-press gesture keeps its confirm callback current this way. */
+export function To<T extends (...args: never[]) => unknown>(fn: T): T {
+  const runtime = requireRuntime();
+  const at = runtime.cursor++;
+  const held = slotAt(runtime, at, () => {
+    const state = { fn };
+    const call = (...args: never[]) => state.fn(...args);
+    return { state, call: call as unknown as T };
+  });
+  held.state.fn = fn;
+  return held.call;
+}
+
 /** The compiler runtime's `w` slot count and sentinel. Compiled source bodies check a cache slot
  *  against `b` before filling it; the sentinel is React's, taken from the registry so the source's
  *  own comparison stays exact. */

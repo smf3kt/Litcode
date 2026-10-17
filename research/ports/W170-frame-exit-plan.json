@@ -1,0 +1,13 @@
+{
+  "imports": [
+    "import { R, P, le, To, y, Z } from './plugin-chain-react-hooks.js';",
+    "import { on } from './plugin-chain-markdown-source.js';",
+    "import { us } from './plugin-chain-above-prompt-host-glue-source.js';",
+    "import { focusExit as bC, keyboardCohesion as ik, now as Xa } from './diff-dialog-frame-host.js';"
+  ],
+  "exports": ["Dmt", "iq"],
+  "blocks": [
+    { "file": "chunk-9pedrxny.js", "range": [1035, 1612], "note": "Dmt and its c helper: the interrupt and exit entries, the pinned key names, and the pending exit state" },
+    { "file": "chunk-am9mebpw.js", "range": [1553, 1918], "note": "iq: the two-press gesture within 800 ms, with the pending flag, confirm callback and timeout cleanup" }
+  ]
+}

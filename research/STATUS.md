@@ -2940,3 +2940,20 @@ width/height getters; `Qxr` presence activity is a no-op, `S` returns its reason
 because the product keeps local features only. The spinner `Mr`, dialog frame `_e`, list and `si`
 wiring remain out. Focused 11/11, full 2532/2532, tsc 0, build 0, notices 0, scan declared 189 /
 unresolved 0, identity `f12ed8ca…`. [W169 record](ports/W169-tabs-view.md).
+
+W170 added the DiffDialog frame and auto hints (10 copied blocks, 11,875 UTF-16 units). `_e`
+renders a bold title in the dialog color, an optional space-between end segment that truncates from
+the start, a dim subtitle, the cancel and interrupt entries, the measured header height, and the
+viewport inset; the input guide receives `{pending, keyName}` and a pending gesture renders the
+two-press confirmation, otherwise the static cancel hint or the auto hint component. `Dmt` builds
+the interrupt and exit entries and `iq` confirms a second press within 800 ms. `ov` registers the
+scope's binding entries, keys its handler dependency by their serialized form, claims focus through
+`ix` with an auto-focus fallback, and reports its chain through `bdn`; `ie`/`Be`/`e0n` collect the
+chain's entries, choose the best chord per action and format the ` · `-joined hint text with a
+`+N more` tail. `es` draws the divider and a two-cell padded column without a viewport and only the
+one-cell padded column inside one. The React seam gained `useId` and `useEffectEvent`. Host bindings:
+`g`/`f` telemetry are no-ops, `_` is plain `JSON.stringify`, `ik` parses the environment flag, `bC`
+reads the app context's `exit`, and `Xa` returns the mounted clock function with a Date.now
+fallback. The spinner `Mr`, the list and `si` wiring remain out. Focused 13/13, full 2545/2545,
+tsc 0, build 0, notices 0, scans 86/18/52/30/18 all unresolved 0, identity `45d303f4…`.
+[W170 record](ports/W170-frame.md).
