@@ -26,15 +26,11 @@ function run(body, name, scope) {
   return vm.runInNewContext(`${js}; ${name}`, context)
 }
 
+// The port-parity case for shouldUseClaudeAIAuth retires with the body: wave D
+// step 7r deleted the predicate when the claude.ai MCP connector — its last
+// reader — went. The recovered range it was ported from is still cited in the
+// W65 record; there is no current port left to compare against.
 const cases = [
-  {
-    port: "utils/auth.ts",
-    symbol: "shouldUseClaudeAIAuth",
-    source: "services/oauth/client.ts",
-    scope: {CLAUDE_AI_INFERENCE_SCOPE: "user:inference"},
-    probe: [["user:inference"], ["user:profile"], []],
-    probeAs: () => scopes => [scopes],
-  },
   {
     port: "utils/auth.ts",
     symbol: "isOAuthTokenExpired",

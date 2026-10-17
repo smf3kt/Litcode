@@ -3,25 +3,6 @@
   "evidence": [
     {
       "port": "utils/auth.ts",
-      "symbol": "shouldUseClaudeAIAuth",
-      "source": "services/oauth/client.ts",
-      "sourceSha256": "28f1a385902dcc9d73e31b2ad0adeba05dfea5831df1421fd87938338084340e",
-      "sourceRange": [
-        1080,
-        1222
-      ],
-      "portSha256": "17b7584e2330ef8a11181e5b2b6c2090f66dd6d187bef58403414e2d8dafa012",
-      "portRange": [
-        2948,
-        3083
-      ],
-      "coordinateUnit": "utf16-half-open",
-      "mode": "port",
-      "difference": "None — body and behaviour identical.",
-      "probes": 3
-    },
-    {
-      "port": "utils/auth.ts",
       "symbol": "isOAuthTokenExpired",
       "source": "services/oauth/client.ts",
       "sourceSha256": "28f1a385902dcc9d73e31b2ad0adeba05dfea5831df1421fd87938338084340e",
@@ -29,10 +10,10 @@
         11020,
         11289
       ],
-      "portSha256": "17b7584e2330ef8a11181e5b2b6c2090f66dd6d187bef58403414e2d8dafa012",
+      "portSha256": "3b7466a8866d573df99c92bde1af850965848376791e139aea635ab8ee6ad52c",
       "portRange": [
-        3166,
-        3428
+        2864,
+        3126
       ],
       "coordinateUnit": "utf16-half-open",
       "mode": "port",

@@ -22,14 +22,14 @@
       "file": "cli/print.ts",
       "change": "the tick scheduler and its two call sites, the set_proactive control-request branch, the CLAUDE_CODE_PROACTIVE fallback and the always-null module deleted; the control loop keeps its error branch",
       "sourceSha256": "61f3b93bbc0a93ed7f9987744632e620cfc625a70b8ad87968516b317ee63235",
-      "portSha256": "2328f22465cc4b82d2d4feec142bfa38c3a7aef0766bb446421c53bdbafb1f38",
+      "portSha256": "78b920fed24649c91b45c30772394ad007d12ff7dba305a29c4a6f8d5487950c",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "main.tsx",
       "change": "maybeActivateProactive with its four call sites, the --proactive option and the Proactive Mode appendSystemPrompt block removed — every one of them gated on the two false flags",
       "sourceSha256": "c76def23576ee14503353a6f0f4a4d1053bdd71a5d8bc966746d9e54d7017cea",
-      "portSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd8",
+      "portSha256": "c92abf00d38ec9d0dc46a52403004c4349ed745273079bd7ac108634bcc9407f",
       "coordinateUnit": "utf16-half-open"
     },
     {

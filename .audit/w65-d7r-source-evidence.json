@@ -1,0 +1,148 @@
+{
+  "before": "6fa308a",
+  "kind": "claude.ai MCP connector removed whole (no ported bodies; the module was a network fetch under a constant-false scope gate)",
+  "surface": "services/mcp/claudeai.ts (the memoized /v1/mcp_servers?limit=1000 fetch with an OAuth bearer, the anthropic-beta header and the user:mcp_servers scope gate, plus its cache-clear and ever-connected helpers), the claudeai-proxy config schema and transport in services/mcp/{types,config,utils,client}.ts, the two-phase claude.ai loading lane in useManageMCPConnections and the -p prefetch/merge/dedup/connect batch in main.tsx, MCPRemoteServerMenu's connector auth and clear-auth flow with the claude.ai web URLs, the connector branches in MCPSettings, MCPListPanel and ManagePlugins, the prior-connected connectivity notices, the SDK status/config schemas, and the analytics gate's claudeai-proxy arm",
+  "decisiveFact": "the connector's eligibility check required tokens.scopes to include 'user:mcp_servers', but the only two OAuthTokens producers this build retains (CLAUDE_CODE_OAUTH_TOKEN and the inherited file descriptor) hardcode scopes ['user:inference'] — the fact hasProfileScope's own comment records — so fetchClaudeAIMcpConfigsIfEligible could only return {}. No claudeai-proxy config could ever exist, making every branch keyed on that type unreachable. Independently, isAnthropicAuthEnabled() is `return false`, so isClaudeAISubscriber() was false and getOauthAccountInfo() always undefined; the connector was their last reader",
+  "evidence": [
+    {
+      "file": "services/mcp/claudeai.ts",
+      "change": "removed whole (164 lines): the memoized fetch of `${getOauthConfig().BASE_API_URL}/v1/mcp_servers?limit=1000` with `Authorization: Bearer` and `anthropic-beta: mcp-servers-2025-12-04`, gated on ENABLE_CLAUDEAI_MCP_SERVERS and the user:mcp_servers scope; it built {type:'claudeai-proxy', url, id, scope:'claudeai'} configs under collision-suffixed `claude.ai <name>` keys, with clearClaudeAIMcpConfigsCache, markClaudeAiMcpConnected and hasClaudeAiMcpEverConnected",
+      "sourceSha256": "da39c0cf0ddc16d4c9a18aea17dd5f97340a1b7b7330dac2061804e566997d96",
+      "portSha256": null,
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/mcp/types.ts",
+      "change": "the 'claudeai' ConfigScope member, McpClaudeAIProxyServerConfigSchema with its union member, and the McpClaudeAIProxyServerConfig type are deleted",
+      "sourceSha256": "2aa757b68a9ec12e9eacd2ea109e0ea51e71ce3e921356974e624aa295bb28e1",
+      "portSha256": "56d68b3ebda795e33e3db193b40588e55422dfade3f7d1a6f14b46ab488749ee",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/mcp/config.ts",
+      "change": "dedupClaudeAiMcpServers is deleted (its only callers were the connector merges), getClaudeCodeMcpConfigs loses its extraDedupTargets parameter and the spread it fed, getAllMcpConfigs becomes a bare getClaudeCodeMcpConfigs() call, the expand switch loses its claudeai-proxy arm, addMcpConfig loses its claudeai scope throw, and the comments that described the connector fetch and merge are rewritten",
+      "sourceSha256": "52d9663ad2d380323084fd34bdd7307e3f8dfba7337c4513160d59c124224828",
+      "portSha256": "91c1013da13ae3e652cc3203f8715d3be31152f98cb92f391ab045628796f287",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/mcp/utils.ts",
+      "change": "both scope switches lose their claudeai case, getMcpServerScope loses the `claude_ai_` prefix fallback (no source of such names remains), and the transport-skip comment drops claudeai-proxy",
+      "sourceSha256": "65134f0615ecca763a4ec8d513cd6baab6d7ab88eec55193e77bf5c486d35855",
+      "portSha256": "46c0805cb4bb6a31bfe98e672ddc5fd770db34b28aaf1a189b1844799bd63e24",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/mcp/client.ts",
+      "change": "createClaudeAiProxyFetch is deleted (it attached the OAuth bearer and retried a 401 through handleOAuth401Error, logging tengu_mcp_claudeai_proxy_401), the claudeai-proxy transport branch building the MCP_PROXY_URL/MCP_PROXY_PATH URL goes, handleRemoteAuthFailure narrows to sse/http, the proxy arm of the connection-failure branch goes, both markClaudeAiMcpConnected blocks go, and the four session-expiry/auth-cache comparisons fold to their http/sse terms; the auth import block drops checkAndRefreshOAuthTokenIfNeeded, getClaudeAIOAuthTokens and handleOAuth401Error",
+      "sourceSha256": "f5cfe53d342448d9fc00de42a9f922aeb10dfe900abea3ee01859d388fe6418f",
+      "portSha256": "36239383ebc0ec1f017a4feb9c2133cd3a488d1c054d28ccce0ae58cdbb498d8",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/mcp/useManageMCPConnections.ts",
+      "change": "the two-phase lane folds to one: the claudeaiPromise prefetch with its cache clear, the Phase 2 policy filter, dedup and pending-client merge all go, getClaudeCodeMcpConfigs takes the dynamic servers alone, the counts object loses its claudeai bucket, and the phase comments are rewritten",
+      "sourceSha256": "d8a7f86ba3f5dbf361477fcc905dbc8d5c7bc46e911eeb996e008a9cce9b9ef0",
+      "portSha256": "ee05425e3ecff8f665fdb59e30ad3f216eeb43b9b5b866053245d74534593a27",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "the -p claudeaiConfigPromise prefetch with its enterprise/strict/bare gate and policy warning go, the claudeaiMcpPromise prefetch and the uniqBy merge fold to the single local prefetch, and the lazy dedup + connectMcpBatch('claudeai') block with its 5s CLAUDE_AI_MCP_TIMEOUT_MS race goes; the imports only that block read (fetchClaudeAIMcpConfigsIfEligible, dedupClaudeAiMcpServers, getMcpServerSignature, clearServerCache, the two exclude helpers, pickBy, getOauthConfig) are removed",
+      "sourceSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd8",
+      "portSha256": "c92abf00d38ec9d0dc46a52403004c4349ed745273079bd7ac108634bcc9407f",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "components/mcp/MCPRemoteServerMenu.tsx",
+      "change": "the connector auth surface is deleted: the five claude.ai states, handleClaudeAIAuthComplete and handleClaudeAIClearAuthComplete, both Escape keybindings, the Enter/copy branches of useInput, handleClaudeAIAuth (which built /api/organizations/<org>/mcp/start-auth/<serverId> or /settings/connectors from getOauthConfig().CLAUDE_AI_ORIGIN) and handleClaudeAIClearAuth, the two connector render screens, the connector menu branch and its Select cases, the toggle/reconnect analytics blocks, both claudeai-proxy early returns, and the transport guard on the Auth row; the menu options now branch only on isEffectivelyAuthenticated",
+      "sourceSha256": "eac811dd38e941c14551ccf7980567f4983ff76901c8cfd670640c6fbaddd3e4",
+      "portSha256": "8e6a3961f5de04f328457d2e9a0d8e5539e538cca714d0673efd94a9f94f9c64",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "components/mcp/{MCPSettings,MCPListPanel}.tsx + commands/plugin/ManagePlugins.tsx",
+      "change": "MCPSettings loses the isClaudeAIProxy transport branch and its type import, and its defaultTab folds to 'Claude Code'; MCPListPanel loses the claude.ai filter, its memo, its items loop, its dep entry and its render section; ManagePlugins loses the claudeai-proxy detail branch, the two connector fallback assignments and the ClaudeAIServerInfo union members",
+      "sourceSha256": "7419cae92d591c49858ef893a2f603d2a880fa5c6e6a60865656a4cb33ed60a8",
+      "portSha256": "5139f310b6ca29ec966f4aa8f474c9357d9749cd94857cfd87cc2fb28490c3a0",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "hooks/notifs/useMcpConnectivityStatus.tsx",
+      "change": "the two claude.ai client filters and their notifications are deleted along with the hasClaudeAiMcpEverConnected import; the surviving local filters lose their always-true claudeai-proxy exclusions",
+      "portSha256": "5256485b003e23dc703320e981419b25d5a0fa26c3f10390b4411564535c6cce",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "entrypoints/sdk/{coreSchemas,coreTypes}.ts + cli/{print.ts,handlers/mcp.tsx}",
+      "change": "the proxy schema is deleted and McpServerStatusConfigSchema collapses to McpServerConfigForProcessTransportSchema (the scope description loses its claudeai example); print.ts loses the proxy status-config branch and the applyPluginMcpDiff exclusion; handlers/mcp.tsx loses the proxy print branch",
+      "sourceSha256": "91e0c27c262ef9f7dc4443ce96ecbe32d0c75afef5ad5df748c07d471fa88ac3",
+      "portSha256": "d1c4e99059192bf2deea1b4b8b922181872783aaf52920018d6f98eb6fb3c866",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/analytics/metadata.ts + services/tools/toolExecution.ts",
+      "change": "the analytics gate's claudeai-proxy arm and its doc bullet go, which orphans the mcpServerType parameter of isAnalyticsToolDetailsLoggingEnabled and mcpToolDetailsForAnalytics; both signatures drop it and all nine toolExecution call sites drop the argument",
+      "sourceSha256": "d71d6c7ff9f88e11207809e5ec368c2db3ae4fd11b728b5482ca612ec92bf274",
+      "portSha256": "7d1a38c1c2127be517e4facd53786f2ba5de179441a12389f71dadd1127ae35a",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/mcp/normalization.ts + tools/MCPTool/classifyForCollapse.ts + commands/commit-push-pr.ts",
+      "change": "normalizeNameForMCP loses the `claude.ai ` prefix special case (the collapse-and-trim that kept connector names clear of the __ delimiter) and becomes the single replace; the two comments that used a connector name as their example are rewritten, and the connector tool name leaves commit-push-pr's allowedTools list",
+      "sourceSha256": "afbee2dc0bf7e7521f07c1b4f6070cb7b0f59997047695d488d99c5433f63359",
+      "portSha256": "ac00fc740518499e4d167213b625aa04db35d0bf5a09ed0492a4a8b19ca62cf7",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/config.ts",
+      "change": "claudeAiMcpEverConnected (the prior-connected gate for the connector notices) is deleted together with AccountInfo and the BillingType alias — the shape the deleted getOauthAccountInfo returned, and with no writer or reader left in the tree",
+      "sourceSha256": "0c68c1a7baa6d3ba0032dbff43c60b3e08bef1ea0043b010ed05b1c1018759ad",
+      "portSha256": "0352b290233e0c5909be3e7ec2c295b002c5ea3e2b565b4f462e7360e3e9b5ed",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "constants/oauth.ts",
+      "change": "CLAUDE_AI_ORIGIN with its doc block, MCP_PROXY_URL and MCP_PROXY_PATH leave the OauthConfig type and all four config arms (prod, staging, local, custom-override); their only readers were the connector transport and the auth menu. The authorize URLs, the scope constants and every other field stay",
+      "sourceSha256": "e456760d19381a4581eaecaac2737aa20fdb4d1e123e6d89c3094df01c586b2a",
+      "portSha256": "66ac4c909f92f0a1505002db0a467310788b3dc6577ca3492c2aaf8ecf7d773c",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/auth.ts",
+      "change": "isAnthropicAuthEnabled, shouldUseClaudeAIAuth, isClaudeAISubscriber and getOauthAccountInfo are deleted — the connector was the last reader of all four — together with the now-readerless getClaudeAIOAuthTokensAsync and checkAndRefreshOAuthTokenIfNeeded stubs; handleOAuth401Error stays for utils/fastMode.ts. The AccountInfo import, the inference-scope import and the comment that named the deleted predicate are removed. Kept in full: getClaudeAIOAuthTokens with both producers, getAuthTokenSource, getAccountInformation, hasProfileScope and the API-key surface",
+      "sourceSha256": "17b7584e2330ef8a11181e5b2b6c2090f66dd6d187bef58403414e2d8dafa012",
+      "portSha256": "3b7466a8866d573df99c92bde1af850965848376791e139aea635ab8ee6ad52c",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "services/mcp/claudeai.ts and its three helpers",
+    "the claudeai-proxy config type, transport, auth-failure handling, status echo and analytics arm",
+    "the two-phase claude.ai loading lane in useManageMCPConnections and the -p prefetch/merge/dedup/connect lane in main.tsx, including the 5s connector timeout",
+    "MCPRemoteServerMenu's connector auth and clear-auth flow, the connector menu branch and its analytics events",
+    "the connector list/default-tab/detail branches in MCPSettings, MCPListPanel and ManagePlugins, and the prior-connected connectivity notices",
+    "the four auth predicates whose last reader the connector was, plus two token stubs that existed only for the MCP client",
+    "CLAUDE_AI_ORIGIN, MCP_PROXY_URL and MCP_PROXY_PATH from the OAuth config table"
+  ],
+  "kept": [
+    "the whole API-key and bearer surface: getAnthropicApiKey, the keychain and apiKeyHelper resolution, getClaudeAIOAuthTokens, getAuthTokenSource, getAccountInformation, validateForceLoginOrg and handleOAuth401Error (utils/fastMode.ts still calls it)",
+    "hasProfileScope and the SubscriptionType-typed field of OAuthTokens, which is externally supplied even though no predicate reads it any more",
+    "getAuthTokenSource's and validateForceLoginOrg's retained shapes, with the comments that named the deleted predicates rewritten",
+    "the CCR proxy URL unwrapping used by signature dedup, and getMcpServerSignature/dedupPluginMcpServers, which keep their other readers",
+    "forceLoginMethod setting, the login-method selector whose claudeai value describes the OAuth login surface, not this connector"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Tree-wide absence sweep over the connector family (module, proxy type, fetch/mark/cache helpers, ever-connected field, menu auth flow, analytics events, the `claude.ai ` normalization prefix and the `claude_ai_` name shape), over the three oauth-config fields only the connector read, and over the six auth predicates/stubs the connector kept alive; survivor assertions for every retained token/auth helper with the reader that keeps it; each host asserted as the arm the absent connector left (the single mcpPromise prefetch, the direct connectMcpBatch→headless seam, both getClaudeCodeMcpConfigs call sites, the two-member auth-failure union, the sdk→stdio transport adjacency, the folded session-expiry terms, the isEffectivelyAuthenticated menu, the constant default tab, the local-only connectivity filters, the collapsed status schema, the two-argument analytics gate); tsc clean; import-graph orphan scan stays at its ten legitimate entries with the file count down by exactly the deleted module",
+  "remaining": "utils/fastMode.ts's account-status path (hasProfileScope's last reader), the ~33 in-place CLI blocks, cli/transports/, the dependency-pruning pass (nine zero-importer dependencies) and the utils/filePersistence/ rename. The claude.ai mentions that remain are not the connector: the bridge-era prose in cli/structuredIO.ts, the retained login-method setting, the CommandAvailability comments and the product base URLs",
+  "notes": [
+    "two repair passes after the first full run: four comparison-fold sites in client.ts that strict type narrowing rejected once the union lost its member, and a normalization special case plus three comment/allowlist examples that still named connector-shaped strings; each was fixed in w65-d7r1.py and the tree was restored from HEAD before the final replay, which reproduces the final state in one pass",
+    "the connector's two interactive branches in MCPRemoteServerMenu were reachable only through its own menu, and the two MCPToolListView fallbacks that built a ClaudeAIServerInfo were reachable only from a detail branch that already excluded the type, so removing them leaves no unreachable code behind"
+  ]
+}

@@ -56,7 +56,7 @@
       "file": "hooks/useApiKeyVerification.ts",
       "change": "the source's guard `!isAnthropicAuthEnabled() || isClaudeAISubscriber()` is `true || false` = always true, so the hook's every path answered 'valid' and the API-key verification below it was unreachable. The hook keeps its interface for its three consumers and returns that arm as a constant; the record states the consequence — no key verification runs in this build",
       "sourceSha256": "4cd66b19f86c3ef96fd64190b6a3207ce468784ae22e7bf8d1e9eea1fe143701",
-      "portSha256": "9fc4a499b89a91760b3c741378e82336ecf082f2ca0fdbd3cfae340bb0baefef",
+      "portSha256": "2f3ebe39156f396a91200cfad87b04db3728f330ec79aeda1d0edc40ae3a53e3",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -84,21 +84,21 @@
       "file": "utils/auth.ts",
       "change": "twelve predicates and the SubscriptionType-consuming wrappers are deleted (getSubscriptionType, getRateLimitTier, getSubscriptionName, hasOpusAccess, isOverageProvisioningAllowed, isConsumerSubscriber, isConsumerPlan, isTeamPremiumSubscriber, isEnterpriseSubscriber, isProSubscriber, isTeamSubscriber, isMaxSubscriber); is1PApiCustomer folds to its three env terms; getOauthAccountInfo's guarded config read folds to `return undefined`. Kept: isAnthropicAuthEnabled, isClaudeAISubscriber and getOauthAccountInfo for the claude.ai connector (next step), hasProfileScope for the fast-mode account gate, and the whole bearer/API-key surface",
       "sourceSha256": "2645c7d73416e38b4d72ea195104683fe3a81a02e02727c9da951aa2521915c0",
-      "portSha256": "17b7584e2330ef8a11181e5b2b6c2090f66dd6d187bef58403414e2d8dafa012",
+      "portSha256": "3b7466a8866d573df99c92bde1af850965848376791e139aea635ab8ee6ad52c",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "utils/config.ts",
       "change": "nine dead fields go (oauthAccount, the subscription-notice quartet, the effort-callout pair, both Opus-Pro migration fields, the Sonnet 4.5→4.6 timestamp) and wouldLoseAuthState narrows to its onboarding clause and is renamed wouldLoseOnboardingState, with the test-only re-export whose name it carried deleted — nothing could write an oauthAccount, so that clause was already dead",
       "sourceSha256": "6cddc167ca7280d14ecfacfb7fd969e59a975d21b2f841ca5e4feb83736e5d40",
-      "portSha256": "0c68c1a7baa6d3ba0032dbff43c60b3e08bef1ea0043b010ed05b1c1018759ad",
+      "portSha256": "0352b290233e0c5909be3e7ec2c295b002c5ea3e2b565b4f462e7360e3e9b5ed",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "main.tsx + screens/REPL.tsx",
       "change": "both migrations leave the startup sequence with their imports; the startup telemetry payload drops its subscription field; REPL drops the callout's import, state, dialog id, selector line and render block; the numStartups comment is reworded to the logo's first-run reader",
       "sourceSha256": "328e44dfd779cef105617600c08146f1b7f93e0e150c772f332105c00c373de92c6944a400e18d534de4495e1592d8c68d882aae8ef4273761f597e823f3c2c3",
-      "portSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd898e214092a8efc5c76e61980e5ad68307a1fe0e1d962f94c2371dc9cee88470a",
+      "portSha256": "c92abf00d38ec9d0dc46a52403004c4349ed745273079bd7ac108634bcc9407f98e214092a8efc5c76e61980e5ad68307a1fe0e1d962f94c2371dc9cee88470a",
       "coordinateUnit": "utf16-half-open"
     },
     {
