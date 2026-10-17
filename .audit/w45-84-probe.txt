@@ -1,0 +1,52 @@
+Ge x false true false
+winner rank true
+winner seq true held 3
+after remove true
+later same-rank wins true
+unknown action undefined
+cleared 0
+Yt is store function function
+Ds ["Pane","Global"]
+_s 2 1 0 0
+yo ["left","middle","right",null]
+ko space {"key":"space"} named {"key":"return"} ctrl {"key":"a","ctrl":true,"meta":true} wheel undefined empty undefined
+go named [["upArrow","up"],["downArrow","down"],["leftArrow","left"]]
+Lc empty null
+Lc mounted true
+Ff empty ReferenceError: useDialogStore cannot be called outside of a DialogStoreContext provider (mounted by <AppStateProvider />)
+iv {"kind":"b"} null
+kj open true
+kj closed false
+registrations 2 [{"action":"act","context":"Pane","singleKey":true,"fallback":true,"handler":"function"},{"action":"act","context":"Global","singleKey":true,"fallback":true,"handler":"function"}]
+held entry [{"action":"act","rank":2,"plugin":"p","handle":1,"seqType":"number"}]
+handler no winner false
+held after unmount 0
+dialog open registrations 0
+no service registrations 0
+Jt returns null
+button root Box {"flexShrink":0,"alignSelf":"flex-start","elementKey":"b1","elementPlugin":"p","click":"function"}
+button children types ["ActionBox"]
+action box {"tabIndex":-1,"flexShrink":0,"alignSelf":"flex-start","action":"function","ref":true}
+label idle {"type":"Text","props":{"inverse":false,"bold":true,"dimColor":false},"children":["[ OK ]"]}
+label focused {"inverse":false,"bold":true,"dimColor":false} ["[ OK ]"] focused state {"inverse":true,"bold":true,"dimColor":false}
+label hovered {"inverse":true,"bold":true,"dimColor":false}
+label plain {"type":"Text","props":{"inverse":false,"dimColor":false},"children":["","","OK"]}
+label plain hotkey {"type":"Text","props":{"inverse":false,"dimColor":false},"children":[{"type":"Text","props":{"color":"suggestion"}},": ","OK"]}
+label held {"type":"Text","props":{"inverse":false,"bold":true,"dimColor":false},"children":["[ ","A","B"," ]"]}
+label dim {"type":"Text","props":{"inverse":false,"bold":true,"dimColor":true},"children":["[ OK ]"]}
+label primary {"type":"Text","props":{"inverse":false,"bold":true,"dimColor":false,"color":"suggestion"},"children":["[ OK ]"]}
+focused root inverse {"inverse":true,"bold":true,"dimColor":false}
+action child ["Jt","ActionBox"]
+click without active 0 stop
+click with active child 1 2
+_3n outside 1
+ix unbound Error: no focus manager is bound to this node
+hotkey calls [["k",true]]
+hotkey after unmount [["k",true],"unbind"]
+subscribed function
+outside + activation 1
+inside 1 ref type object
+default subscribe object 1
+Pg default true function
+(node:56166) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
