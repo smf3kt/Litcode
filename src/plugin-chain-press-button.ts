@@ -47,3 +47,6 @@ export { Jt as ActionKeysSeat } from './plugin-chain-press-button-source.js';
 export { y3n as HotkeySeat } from './plugin-chain-press-button-source.js';
 /** Source `ee`: the render-instance context (`{component}` drives the action-key rank). */
 export { ee as RenderInstance } from './plugin-chain-press-button-source.js';
+/** Source chunk-kjfwbh4w's export-table entry `releaseInkFocus`: `_3n` under the name the AbovePrompt
+ *  toggle reads through its module namespace (`Sc.releaseInkFocus`). */
+export { _3n as releaseInkFocus } from './plugin-chain-press-button-source.js';

@@ -1,0 +1,82 @@
+{
+ "schema": "W146AbovePromptPartsEvidence.v1",
+ "package": "W146-01 — AbovePrompt content and chrome components",
+ "date": "2026-10-18",
+ "question": "Which renderer-facing AbovePrompt pieces can land beside W145's pure core, and what do they compute?",
+ "answer": "Sixteen blocks (2,722 UTF-16 units) from chunk-24k7d6mw.js cover the content wrapper and columns context, the wheel-to-layout mapping, the held node's edges, the element-key bounds walk, props merging and the floor clamp, the raised scroll wrapper, the toggle label, the collapse handle and hidden-panel header, the focus index, list rows and the more indicator, and digit selection. The module needs only seams the product already carries: the React hook surface, the ActionBox token, pressFromTerminal, the site-columns context, the select option window and F4.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+  "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+  "totalBlocks": 16,
+  "totalUnits": 2722,
+  "ranges": {
+   "wFe": [443631, 443771],
+   "j1": [443771, 443978],
+   "kFe": [443978, 444350],
+   "TFe": [444675, 444845],
+   "xFe": [444923, 444956],
+   "W1": [444956, 444994],
+   "PFe": [446991, 447122],
+   "OI": [447619, 448084],
+   "b0": [448084, 448093],
+   "bne": [448093, 448285],
+   "K1": [448295, 448698],
+   "w0": [449506, 449633],
+   "z1": [449633, 449682],
+   "Y1": [449682, 449785],
+   "J1": [449785, 450018],
+   "Rne": [450018, 450068]
+  },
+  "bodySha256": {
+   "wFe": "0ae921809cb9b477469c74a1298f0582ed2a3cca1fe8a6a5e8018ca14120b065",
+   "j1": "7b203869def0355b4be47e3cf3cf19db5b10c433f34c91d39ba2a93501c7c7d4",
+   "kFe": "c56e05bebfd1aae5b0bba10945a71f10c593082cb05e5fbf0c51c24c7a2193fb",
+   "TFe": "b357488b6f25ae9b319b177d3ebcf93f9155ab6114209a91b96d4bdd0d8bf825",
+   "xFe": "51a725765a53540545059b266e531434ed4b842180e847b370a9c6d44769bce7",
+   "W1": "8f2735d1cec0cdc4e384a041e6508945742a031a90707440fcbabef62c619173",
+   "PFe": "3cee1570439cd3cbe7e798de72348ea082fa827bdc883d83ab7434a951a7f7b3",
+   "OI": "481f4b862bb8f6995859a79d6991dc695f48321ba037b1babe7e978df36820ed",
+   "b0": "f28971609b4c7504c36b914fd3696ff70d6c8f86a482385c89d327bf404215f9",
+   "bne": "f965ddd3440b14d2b3a9776fdbbaf523501bbb8b1bbf9302405a0a1585d375a3",
+   "K1": "ce5e53289e1275f8926f99170267f8cce8c61243e8a4928e6b157b4231497634",
+   "w0": "6c932c6aac556cb483cdd0b1514fddc2d3b22eae25aa8f46e194bfa79de6a33e",
+   "z1": "12e86433edf3c2306daeeb2e9175cb2ed36c9e8181315f1d50e578997223c47e",
+   "Y1": "2fcffc80a4bddbeeb7c8381f84ea810989760f9cd6e5822f5b24d89a2f6e893f",
+   "J1": "a248d2901c84d310f72ce2a0cc7544eaf3cd329dfdd3a45278b40976a76189fd",
+   "Rne": "520ad3deaebf03df023260950d4ef239603082801a9b5edb215d6fb817b01a72"
+  }
+ },
+ "behavior": {
+  "wheel": "wFe maps an event's col/row through the ref's cached layout offset; any missing piece yields undefined",
+  "heldEdges": "j1 returns -1 when the held node is null, the index differs, or the content is null; otherwise the node's top within the content, plus its height for the bottom",
+  "keyBounds": "kFe pops nodes depth-first from the root (root excluded) and returns the first descendant whose attributes carry the element key, and whose elementPlugin is absent or equals the requested plugin; a node outside the root yields undefined",
+  "content": "TFe is a Box with marginTop -offset, marginRight keptColumns, column direction and no shrink, wrapping the columns context around the children",
+  "raised": "PFe returns a memoized copy whose props.scroll.offset is the given offset; the memo depends on the input and the raised value",
+  "toggle": "OI draws the label in an action box; hover or held inverts it, otherwise it is dim; a click blurs the focused descendant through releaseInkFocus",
+  "chrome": "bne draws an absolute top-right Box holding the [-] toggle; K1 draws an ActionBox whose render prop shows the hidden-panel line with the shortcut; b0 is 1",
+  "focus": "w0 advances a numeric focus when a next index exists, otherwise returns null; without a numeric focus it returns 0 when there are items, 'band' for a null focus with no items, else null",
+  "indicator": "Y1 joins the non-empty up/down lines with ' · '; J1 renders it as dim Text; z1 returns 0 for a null value and otherwise the select window's row count",
+  "digit": "Rne runs the action then presses the node only when the node exists and the validity check returns true"
+ },
+ "product": {
+  "files": [
+   "src/plugin-chain-above-prompt-parts-source.ts",
+   "src/plugin-chain-above-prompt-parts-source-blocks.json",
+   "src/plugin-chain-above-prompt-parts.ts",
+   "test/plugin-chain-above-prompt-parts.test.ts"
+  ],
+  "generator": "scripts/copy-module-regions.mjs",
+  "plans": ["research/ports/W146-above-prompt-parts.plan.json"],
+  "seamExports": ["wheelPointFromLayout", "heldEdgeTop", "elementKeyBounds", "AbovePromptContent", "mergeProps", "floorClamp", "raisedScrollProps", "toggleLabel", "COLLAPSE_ICON_FLAG", "CollapseHandle", "ExpandedHeader", "nextFocusIndex", "listRowsOf", "moreIndicatorText", "MoreIndicator", "selectByDigit"],
+  "namespaceAdaptation": "the source's `Sc` is chunk-kjfwbh4w's export table; plugin-chain-press-button.ts now exports `_3n` as `releaseInkFocus` so OI's `Sc.releaseInkFocus` call stays verbatim",
+  "unresolved": 0
+ },
+ "verification": {
+  "focused": "13/13 (11 new + the two undeclared-scan gates)",
+  "full": "2296/2296",
+  "tsc": 0,
+  "notices": 0,
+  "build": 0,
+  "identity": "6d39c0c65eee398e146dd855e17b078b43527daa7a8606843476cfa88da9a581"
+ }
+}
