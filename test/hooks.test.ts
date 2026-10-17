@@ -392,7 +392,8 @@ test("PreCompact turns raw stdout into context and PostCompact appends display c
   assert.equal(rawJson.additionalContext.length, 1);
   assert.ok(rawJson.additionalContext[0]!.startsWith("{"));
 
-  // PostCompact keeps the standard structured protocol.
+  // PostCompact ignores the structured protocol: it renders each record's raw
+  // output with the source's labels and never contributes hook context.
   const post = await runHooks(
     { PostCompact: [emit({ hookSpecificOutput: { hookEventName: "PostCompact", additionalContext: "post note" } })] },
     "PostCompact",
@@ -400,11 +401,19 @@ test("PreCompact turns raw stdout into context and PostCompact appends display c
     signal(),
   );
   assert.equal(post.blocked, false);
-  assert.deepEqual(post.additionalContext, ["post note"]);
+  assert.deepEqual(post.additionalContext, []);
+  assert.match(post.userDisplayMessage!, /^PostCompact \[.+\] completed successfully: \{/);
+  assert.match(post.userDisplayMessage!, /post note/);
   const postText = await runHooks({ PostCompact: [{ command: "printf '  ordinary compact output  '" }] },
     "PostCompact", { trigger: "manual", compact_summary: "s" }, signal());
-  assert.deepEqual(postText.additionalContext, ["ordinary compact output"]);
+  assert.deepEqual(postText.additionalContext, []);
+  assert.equal(postText.userDisplayMessage,
+    "PostCompact [printf '  ordinary compact output  '] completed successfully: ordinary compact output");
   assert.equal(postText.blocked, false);
+  const postFailed = await runHooks({ PostCompact: [{ command: "printf 'boom' >&2; exit 1" }] },
+    "PostCompact", { trigger: "manual", compact_summary: "s" }, signal());
+  assert.deepEqual(postFailed.additionalContext, []);
+  assert.equal(postFailed.userDisplayMessage, "PostCompact [printf 'boom' >&2; exit 1] failed: boom");
 });
 
 // ---------------------------------------------------------------------------
@@ -434,7 +443,7 @@ test("exit code 2 blocks UserPromptSubmit", async () => {
 });
 
 test("exit code 2 never blocks the display-only feedback events", async () => {
-  const events = ["PostToolUse", "SessionStart", "SessionEnd", "StopFailure", "PostCompact"] as const;
+  const events = ["PostToolUse", "SessionStart", "SessionEnd", "StopFailure"] as const;
   for (const event of events) {
     const result = await runHooks(
       { [event]: [{ command: "echo 'late failure' 1>&2; exit 2" }] } as HooksConfig,
@@ -450,6 +459,14 @@ test("exit code 2 never blocks the display-only feedback events", async () => {
       `${event} should record a non-blocking note`,
     );
   }
+  // PostCompact instead renders the record as a failed user-facing line.
+  const post = await runHooks(
+    { PostCompact: [{ command: "echo 'late failure' 1>&2; exit 2" }] },
+    "PostCompact", {}, signal(),
+  );
+  assert.equal(post.blocked, false);
+  assert.deepEqual(post.additionalContext, []);
+  assert.equal(post.userDisplayMessage, "PostCompact [echo 'late failure' 1>&2; exit 2] failed: late failure");
 });
 
 test("exit code 2 blocks PreCompact, PostToolBatch and PostToolUseFailure", async () => {

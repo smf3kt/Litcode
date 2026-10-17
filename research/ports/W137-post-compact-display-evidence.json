@@ -1,0 +1,38 @@
+{
+ "schema": "W137PostCompactDisplayEvidence.v1",
+ "package": "W137-01 — PostCompact display-only user message",
+ "date": "2026-10-18",
+ "question": "What does the recovered PostCompact collector read from a hook record, and how does it format the user-facing message?",
+ "answer": "avt reads only cancellation state and the raw output. It skips cancelled records, labels each remaining record through Mx, and joins PostCompact [label] completed successfully|failed[: output] lines into a display-only userDisplayMessage. Structured JSON fields do not contribute.",
+ "sourcePosition": {
+  "collector": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "range": [2932807, 2933200]
+  },
+  "commandRecordOutput": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "range": [3052800, 3053200]
+  },
+  "labelMap": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 409429
+  }
+ },
+ "product": {
+  "files": ["src/hooks.ts", "src/agent.ts", "src/session.ts"],
+  "message": "PostCompact [<label>] completed successfully|failed[: <trimmed output>]",
+  "labelSources": ["command", "prompt", "URL", "server/tool", "callback", "script preview"],
+  "ignored": ["suppressOutput", "systemMessage", "hookSpecificOutput.additionalContext"],
+  "cancelled": "skipped; group stops as for other aborted runs",
+  "journalField": "hook_result.userDisplayMessage",
+  "context": "display only; never appended to model messages"
+ },
+ "verification": {
+  "focused": "136/136",
+  "full": "2238/2238",
+  "tsc": 0,
+  "build": 0,
+  "notices": 0,
+  "identity": "9e503123656d60a64abd9946c05e42eb5aa575ce09c2479538c2530264186adc"
+ }
+}

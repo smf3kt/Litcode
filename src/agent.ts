@@ -315,6 +315,7 @@ export class Agent {
       ...(result.reason ? { reason: result.reason } : {}), ...(result.stopRequested ? { stopRequested: true } : {}), additionalContext: result.additionalContext,
       ...(result.suppressOutput === undefined ? {} : { suppressOutput: result.suppressOutput }),
       ...(result.systemMessages?.length ? { systemMessages: result.systemMessages } : {}),
+      ...(result.userDisplayMessage === undefined ? {} : { userDisplayMessage: result.userDisplayMessage }),
       ...(result.terminalSequences?.length ? { terminalSequences: result.terminalSequences } : {}) });
     for (const sequence of result.terminalSequences ?? []) this.events.terminalSequence?.(sequence);
     if (!result.suppressOutput) {
@@ -333,8 +334,13 @@ export class Agent {
         budget -= overhead + end + Buffer.byteLength(suffix);
       };
       for (const message of result.systemMessages ?? []) display(message);
-      if (['SessionEnd', 'PostCompact', 'Notification', 'TeammateIdle'].includes(event)) {
+      if (['SessionEnd', 'Notification', 'TeammateIdle'].includes(event)) {
         for (const context of result.additionalContext) display(context);
+      }
+      // PostCompact's user-facing message is the source's labeled record list
+      // (`avt`); it is shown here through the same cleaned, bounded display path.
+      if (event === 'PostCompact' && result.userDisplayMessage !== undefined) {
+        for (const line of result.userDisplayMessage.split('\n')) display(line);
       }
     }
     signal.throwIfAborted();

@@ -400,6 +400,14 @@ export type HookResult = {
   /** Failed hook outputs, also carried in `additionalContext`, for watcher display. */
   failures?: string[];
   /**
+   * PostCompact: the user-facing message built from every outside-REPL hook record
+   * (`avt`, chunk-sfn1dbxq.js [2932807,2933200)): cancelled records are skipped,
+   * each remaining record contributes `PostCompact [label] completed successfully`
+   * or `PostCompact [label] failed`, with its trimmed output after a colon when
+   * non-empty. This is display-only: it never enters model context.
+   */
+  userDisplayMessage?: string;
+  /**
    * Number of hooks that started a run. The WorktreeCreate/WorktreeRemove
    * consumers separate "configured but did not run" (matcher mismatch) from
    * "ran and returned nothing" (`CTn`/`Xir`, chunk-sfn1dbxq.js offsets 2952999
@@ -594,6 +602,28 @@ function strings(value: unknown): string[] {
  * occurrence. `g4e`/`zIt` model-alias normalization stays out of this port;
  * Pre/PostModelSwitch use the requested model text as carried by the payload.
  */
+/**
+ * The display label a hook record carries (`Mx`, chunk-n3ykh62m.js offset 409429):
+ * a command (with its args), a prompt, an HTTP URL, `<server>/<tool>` or
+ * `callback`. This runtime's `mcp_tool.tool` is the namespaced tool name, so the
+ * server segment is split back out of `mcp__<server>__<tool>`.
+ */
+export function hookDisplayLabel(definition: HookDefinition): string {
+  switch (definition.type) {
+    case "http": return definition.url;
+    case "prompt":
+    case "agent": return definition.prompt;
+    case "callback": return "callback";
+    case "mcp_tool": {
+      const match = /^mcp__(.+?)__(.+)$/.exec(definition.tool);
+      return match ? `${match[1]}/${match[2]}` : definition.tool;
+    }
+    case "script":
+    case "command":
+    case undefined: return definition.command;
+  }
+}
+
 export function hookMatcherValue(event: HookEvent, payload: HookPayload): string | undefined {
   const text = (value: unknown): string | undefined => typeof value === "string" ? value : undefined;
   switch (event) {
@@ -1190,6 +1220,8 @@ export async function runHooks(
   options: HookRunOptions = {},
 ): Promise<HookResult> {
   const result: HookResult = { blocked: false, additionalContext: [] };
+  // PostCompact collects its own user-facing lines instead of hook context.
+  const displayLines: string[] = [];
   const definitions = flattenHookDefinitions(config, event);
   if (definitions.length === 0) return result;
   const lifecycle = options.lifecycle ?? new HookLifecycle();
@@ -1334,6 +1366,18 @@ export async function runHooks(
         stderr: raw.stderr, timedOut: raw.timedOut, aborted: raw.aborted });
     }
 
+    if (event === "PostCompact") {
+      // `avt` skips a cancelled record and otherwise renders the record's own
+      // output, not its structured fields: a successful hook is "completed
+      // successfully", any other exit is "failed", with the trimmed output after
+      // a colon when non-empty.
+      if (raw.aborted) break;
+      const label = hookDisplayLabel(definition);
+      const output = raw.spawnError ? raw.spawnError.message
+        : (raw.code === 0 ? raw.stdout : raw.stderr || raw.stdout).trim();
+      displayLines.push(`PostCompact [${label}] ${raw.code === 0 ? "completed successfully" : "failed"}${output ? `: ${output}` : ""}`);
+      continue;
+    }
     if (raw.aborted) {
       result.additionalContext.push(`[${event} hook: aborted, process group killed]`);
       break;
@@ -1368,9 +1412,6 @@ export async function runHooks(
         // `hookSpecificOutput` above instead of its trailing line.
         const candidate = lastNonEmptyLine(raw.stdout);
         if (candidate) result.worktreePath ??= candidate;
-      } else if (event === "PostCompact") {
-        const text = raw.stdout.trim();
-        if (text) result.additionalContext.push(text);
       }
     }
 
@@ -1404,6 +1445,7 @@ export async function runHooks(
     result.blocked = true;
     result.reason ??= "Stop hook returned additional context";
   }
+  if (displayLines.length > 0) result.userDisplayMessage = displayLines.join("\n");
 
   return result;
 }
