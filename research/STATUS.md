@@ -2367,3 +2367,11 @@ already live or held are not duplicated, and new skills are appended to the live
 re-rendered before the next request. `reloadSkills` re-reads the discovered directories after
 the static rescan. Focused 137/137, three-suite 164/164, tsc 0, build 0, full 2,194/2,194, chain
 768/768, identity `4149770c…`. [W123 record](ports/W123-dynamic-skill-discovery.md).
+
+W124-01 closes the C-10 residual list without product changes. The `anthropic-skills` reserved
+namespace and its collision naming are part of claude.ai account sync and are excluded with it;
+the citation-drops-when-redaction-changes-its-URL rule is already the `web_search` contract
+(`src/web-search.ts` line 155, recorded in W19); the recovered shell AST keeps its not-ported
+decision. The disposition is item 7 of `ports/remaining-dispositions.md`; FEATURES and the
+three C-10 rows now read as closed. Last measured gates are W123's (full 2,194/2,194) and the
+identity is unchanged at `4149770c…`. [W124 record](ports/W124-c10-dispositions.md).
