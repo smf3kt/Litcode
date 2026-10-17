@@ -1,0 +1,41 @@
+(node:2094) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ the row helpers
+  ✔ builds the render key and logs a failed site (0.71475ms)
+  ✔ clears the held rows when the content fills them or the draw changes (0.362417ms)
+  ✔ turns off into the last rows and back on for the first empty content (0.138792ms)
+  ✔ keeps the held rows across renders (0.212417ms)
+✔ the row helpers (1.784666ms)
+▶ the on-screen input
+  ✔ passes the input unchanged while not fullscreen (0.146ms)
+  ✔ attaches the on-screen range and the frame rows in fullscreen (0.122083ms)
+✔ the on-screen input (0.327209ms)
+▶ the settled render
+  ✔ subscribes only for a hooked input and returns the settled answer once cached (0.342708ms)
+  ✔ reads the render version of the terminal surface (0.1445ms)
+  ✔ merges the viewport store into the terminal input (0.10625ms)
+✔ the settled render (0.678125ms)
+▶ the tree and the boundary
+  ✔ wraps the walker in the render context (0.245666ms)
+  ✔ draws Pane without a boundary and everything else under it (0.115708ms)
+✔ the tree and the boundary (0.391042ms)
+▶ the surface node
+  ✔ draws the fallback while no hook matches the component (0.20525ms)
+  ✔ draws the settled tree under the boundary once a hook matches (0.371958ms)
+  ✔ keeps the first-run ref for one mount (0.055334ms)
+✔ the surface node (0.677125ms)
+▶ the local helpers
+  ✔ answers the descriptor input only for the same component (0.106875ms)
+  ✔ lists the candidate modules when no settled site is recorded (0.0885ms)
+  ✔ holds one render-version mount per key and releases it (0.078167ms)
+  ✔ notes a thrown render and formats the failure text (0.065208ms)
+  ✔ keeps the aliases on the source names (0.075583ms)
+✔ the local helpers (0.467334ms)
+ℹ tests 19
+ℹ suites 6
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 239.337542
