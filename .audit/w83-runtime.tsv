@@ -1,0 +1,3 @@
+2026-10-17T23:10:00Z	package	W83-01 失败钩子输出显示	ke [1678937,1679425)、CwdChanged 1680136、适配器 3054588/3050719；HookResult.failures 与 interactive 显示	spawn/timeout/非阻塞exit2/其他非零退出记失败；文本与 additionalContext 相同；先系统消息后失败	hooks 50/50；tsc 0；build 0；全量 2,110/2,110；链 767/767
+2026-10-17T23:12:00Z	decision	W83-01 边界	① 不引入逐钩子 succeeded/output 结构；② 阻塞 exit 2 不记失败；③ 仅监视器 raise 显示，其他事件消费路径不变	残余：完整消费者与脚本语义	.audit/w83-01-full.txt
+2026-10-17T23:15:00Z	verification	W83-01 验收：hooks 50/50、tsc 0、build 0、2,110/2,110、767/767	exit 3 + stderr 文本进入 failures 与上下文；成功钩子 failures 缺省	notices 0；索引 75 chunks / 323,525 单位不变；identity 53e0f27e…（inputs 3aab77f3…、validation 58131ad4…、build 47067e1a…）
