@@ -2228,3 +2228,10 @@ skips it only on `noVerdict` auto-mode classifier denials, which this build
 cannot produce. Focused 97/97, tsc 0, build 0, full 2,144/2,144, chain
 767/767, identity `ef87a5eb…`.
 [W106 record](ports/W106-permission-retry.md).
+
+W107-01 consumes SubagentStart `additionalContext`. A child session's first
+request carries the recovered `hook_additional_context` content, the same
+position the source attachment occupies; a top-level session never raises the
+event. Focused 45/45, tsc 0, build 0, full 2,145/2,145, chain 767/767,
+identity `b6d0794d…`.
+[W107 record](ports/W107-subagent-context.md).

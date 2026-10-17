@@ -1,0 +1,3 @@
+2026-10-17T20:24:00Z	package	W107-01 SubagentStart additionalContext	schema 392621（chunk-n3ykh62m.js）、附件注入 127150/127532、Jtt 3009808、消费 chunk-40cepjpq.js	仅childMode raise；仅首个请求；顶层不触发；isolatedContext无对应	agent-lifecycle 45/45；tsc 0；build 0；全量 2,145/2,145；链 767/767
+2026-10-17T20:26:00Z	decision	W107-01 本地适配	源注入hook_additional_context附件；本实现以既有Hook context行进入首请求	exit 2文本形状不同但效果相同；不使子会话启动失败	.audit/w107-01-full.txt
+2026-10-17T20:28:00Z	verification	W107-01 验收：聚焦 45/45、tsc 0、build 0、2,145/2,145、767/767	子会话首请求含上下文；顶层无SubagentStart事件	notices 0；索引 75 chunks / 323,525 单位不变；identity b6d0794d…
