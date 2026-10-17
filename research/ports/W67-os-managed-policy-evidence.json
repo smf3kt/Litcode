@@ -1,0 +1,150 @@
+{
+ "schema": "W67OsManagedPolicyEvidence.v1",
+ "package": "W67-01 — local OS-managed settings directory discovery",
+ "date": "2026-10-17",
+ "question": "Does the product read a locally deployed managed policy when no explicit policy file is given, with the source file-tier order and merge rules?",
+ "answer": "Yes: the platform managed-settings.json and non-hidden drop-ins are read in the source order, merged with the source customizer, projected onto the four carried policy keys, and reported; explicit-file strictness and managed-over-authored precedence are unchanged.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-3cynezh1.js",
+  "unit": "UTF-16 code units",
+  "fileTier": {
+   "symbol": "Lko",
+   "range": [
+    388831,
+    389776
+   ],
+   "units": 945
+  },
+  "dropInFilter": {
+   "symbol": "X$s",
+   "range": [
+    388659,
+    388726
+   ],
+   "units": 67
+  },
+  "nameRule": {
+   "symbol": "mZ",
+   "range": [
+    388597,
+    388659
+   ],
+   "units": 62
+  },
+  "mergeInto": {
+   "symbol": "Nd",
+   "range": [
+    387659,
+    388542
+   ],
+   "units": 883,
+   "mergeLine": 388440
+  },
+  "directory": {
+   "symbol": "My",
+   "range": [
+    360332,
+    360539
+   ],
+   "units": 207
+  },
+  "baseFile": {
+   "symbol": "m_",
+   "range": [
+    387272,
+    387326
+   ],
+   "units": 54
+  },
+  "wslArm": {
+   "symbol": "Eut",
+   "range": [
+    387326,
+    387659
+   ],
+   "units": 333,
+   "ported": false
+  }
+ },
+ "behavior": {
+  "discovery": "options.managedSettingsFile wins; otherwise options.managedSettingsDir (test/caller seam where source Oko is dead) or managedSettingsDir()",
+  "order": "managed-settings.json, then managed-settings.d names sorted ascending",
+  "filter": "regular file or symlink, name ends .json, name does not start with \".\"",
+  "merge": "mergeSettings(merged, document) — the source MB(..., Y3)",
+  "projection": [
+   "allowShell",
+   "permissions",
+   "features",
+   "mcpClient"
+  ],
+  "ignored": "other keys are dropped and reported once per key",
+  "errors": "missing directory/file is absence; unreadable, invalid JSON or non-object documents and schema-rejected merges are reported and contribute no policy",
+  "explicitFile": "unchanged strict path: unknown keys and schema errors throw"
+ },
+ "changes": [
+  {
+   "file": "src/config.ts",
+   "change": "managedSettingsDir option, loadManagedSettingsDirectory, report type, discovery wiring",
+   "sha256": "8abfe5e065d2432a2361f1252f0af946f65735277f8f647988bc5f262792156a"
+  },
+  {
+   "file": "test/config.test.ts",
+   "change": "two managed-directory cases",
+   "sha256": "db80881e98aa8ae5949c99e24a67489b993ec48fcf40392fdc762c45cce79490"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-5 rows record the local file tier",
+   "sha256": "01d985aac1082e7aeb6e296a1f102b0c5bb7ba88f88fc1259c050544dd507598"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "project settings and permissions rows",
+   "sha256": "dfedd299ea0f09f71ef629db781ce91ad35ed79a58f5be24d9da29e55de239d8"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W67-01 entry",
+   "sha256": "fb410ee4b54d5b27c5b3f40991fa01fa73495a1af93ca652c900fc3844f98ef8"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W67-01 S-1..S-7 entry",
+   "sha256": "6c0b8d089eba4de10e0a0e0e5210bca766af868b29008fedb0b5992d57cd091a"
+  },
+  {
+   "file": "research/ports/W08-policy-helper.md",
+   "change": "W67-01 addendum",
+   "sha256": "61cd20cfd272a3dcf92d16fcbcf37ef63bc280ddf03a0cf25b5bc08a2e415539"
+  }
+ ],
+ "tests": {
+  "file": "test/config.test.ts",
+  "added": [
+   "the OS-managed directory merges its base file and sorted drop-ins",
+   "a missing managed directory is absence and a broken document contributes nothing"
+  ],
+  "result": "config 69/69; settings chain suites 15/15"
+ },
+ "gates": {
+  "tsc": "exit 0",
+  "build": "exit 0",
+  "config": "69/69",
+  "settingsChain": "15/15",
+  "full": "2,092/2,092",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "b1c74f0cd1d7691847491fd1919d64b2910fa47814b598339eb3912501f19dd9"
+ },
+ "residuals": [
+  "Remote/account managed policy is excluded by the local-only directive.",
+  "The plist and Windows registry tiers, WSL inheritance (Eut) and the policy-helper flag protocol are not ported.",
+  "Substitution values (onlySubstitutes / Nd floors), document-link bookkeeping and the loadState enum are not ported.",
+  "Managed files must be strict JSON; comments are rejected and reported.",
+  "Keys outside the four carried policy keys are reported and dropped, not enforced.",
+  "The full original approval flow and recursive configuration discovery remain C-5 work."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-5 continues with the approval flow and recursive discovery; remote policy stays excluded."
+}

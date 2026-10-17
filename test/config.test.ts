@@ -125,6 +125,69 @@ test("explicit managed fields override authored settings without merging permiss
   });
 });
 
+test("the OS-managed directory merges its base file and sorted drop-ins", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj"), userDir = path.join(root, "user"), managed = path.join(root, "managed");
+    writeFile(path.join(workspace, ".harness/settings.json"), JSON.stringify({ allowShell: true,
+      permissions: { mode: "default", allow: ["user_tool"], deny: [] }, features: { tasks: true, media: true } }));
+    writeFile(path.join(managed, "managed-settings.json"), JSON.stringify({ allowShell: false,
+      permissions: { mode: "default", allow: ["a"], deny: ["x"] }, features: { tasks: false }, model: "ignored" }));
+    writeFile(path.join(managed, "managed-settings.d/10-allow.json"), JSON.stringify({
+      permissions: { mode: "default", allow: ["b", "a"], deny: ["y"] }, model: "ignored" }));
+    writeFile(path.join(managed, "managed-settings.d/20-shell.json"), JSON.stringify({ allowShell: true, features: { media: false } }));
+    // Excluded by the source's rule: hidden name, non-JSON name, directory named *.json.
+    writeFile(path.join(managed, "managed-settings.d/.hidden.json"), JSON.stringify({ allowShell: false }));
+    writeFile(path.join(managed, "managed-settings.d/notes.txt"), JSON.stringify({ allowShell: false }));
+    fs.mkdirSync(path.join(managed, "managed-settings.d/dir.json"));
+    // A symlink is read, as the source's `isSymbolicLink` arm requires.
+    const linked = path.join(root, "linked.json");
+    writeFile(linked, JSON.stringify({ features: { workflow: false } }));
+    fs.symlinkSync(linked, path.join(managed, "managed-settings.d/30-linked.json"));
+
+    const loaded = loadProjectConfig(workspace, { userDir, managedSettingsDir: managed });
+    assert.deepEqual(loaded.managedSettings, {
+      allowShell: true,
+      permissions: { mode: "default", allow: ["a", "b"], deny: ["x", "y"] },
+      features: { tasks: false, workflow: false, media: false },
+    });
+    // Managed permission fields replace the authored object wholesale.
+    assert.deepEqual(loaded.settings.permissions, { mode: "default", allow: ["a", "b"], deny: ["x", "y"] });
+    assert.equal(loaded.settings.allowShell, true);
+    assert.deepEqual(loaded.settings.features, { tasks: false, workflow: false, media: false });
+    assert.deepEqual(loaded.managedSettingsReport, {
+      source: "directory",
+      directory: path.resolve(managed),
+      documents: [path.join(managed, "managed-settings.json"), path.join(managed, "managed-settings.d/10-allow.json"),
+        path.join(managed, "managed-settings.d/20-shell.json"), path.join(managed, "managed-settings.d/30-linked.json")],
+      ignoredKeys: ["model"],
+      errors: [],
+    });
+  });
+});
+
+test("a missing managed directory is absence and a broken document contributes nothing", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj"), userDir = path.join(root, "user"), managed = path.join(root, "managed");
+    writeFile(path.join(workspace, ".harness/settings.json"), JSON.stringify({ allowShell: true }));
+    const absent = loadProjectConfig(workspace, { userDir, managedSettingsDir: managed });
+    assert.equal(absent.managedSettings, undefined);
+    assert.equal(absent.managedSettingsReport, undefined);
+    assert.equal(absent.settings.allowShell, true);
+
+    writeFile(path.join(managed, "managed-settings.json"), "{not json");
+    writeFile(path.join(managed, "managed-settings.d/50-valid.json"), JSON.stringify({ allowShell: false, features: { invented: true } }));
+    const broken = loadProjectConfig(workspace, { userDir, managedSettingsDir: managed });
+    // The invalid JSON document is reported and skipped; the valid document is
+    // then rejected by the policy schema, so no policy reaches the session.
+    assert.equal(broken.managedSettings, undefined);
+    assert.equal(broken.managedSettingsReport?.source, "directory");
+    assert.equal(broken.managedSettingsReport?.documents.length, 2);
+    assert.match(broken.managedSettingsReport?.errors[0].message ?? "", /invalid JSON/);
+    assert.match(broken.managedSettingsReport?.errors[1].message ?? "", /managed settings rejected/);
+    assert.equal(broken.settings.allowShell, true);
+  });
+});
+
 test("prototype keys are never merged and cannot pollute Object.prototype", () => {
   withSandbox(root => {
     const workspace = path.join(root, "proj");

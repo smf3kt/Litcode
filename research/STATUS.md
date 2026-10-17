@@ -1874,3 +1874,12 @@ real multiplexer and has an outer tmux parse the forwarded OSC 0, asserting the 
 source and compiled modes. Display delivery is dispositioned as journal-before-effect at-most-once
 with no replay; full original consumers and script semantics remain gaps. tsc 0, full 2,090/2,090,
 chain 767/767, identity `bb47c630…`. [W66 record](ports/W66-hook-mux-decode.md).
+
+W67-01 reads the local OS-managed policy directory when no explicit policy file is given. The
+ported source seams give the platform directory (`My`), base file (`m_`) and the source merge
+customizer; the new loader follows `Lko`'s file tier (base then non-hidden `.json` drop-ins by
+name, regular files and symlinks) and reports ignored keys and unreadable documents instead of
+inventing policy. Explicit-file strictness and managed-over-authored precedence are unchanged.
+Remote policy, the plist/registry and WSL tiers, substitutions and the full approval flow remain
+out of scope. tsc 0, config 69/69, settings chains 15/15, full 2,092/2,092, chain 767/767,
+identity `b1c74f0c…`. [W67 record](ports/W67-os-managed-policy.md).

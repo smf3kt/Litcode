@@ -28,6 +28,8 @@ import path from "node:path";
 import { isMap, isSeq, parseDocument } from "yaml";
 import { hooksSchema, type HooksConfig } from "./hooks.js";
 import { discoverInstalledPluginComponents, pluginConfigSchema, type PluginConfig } from "./plugins.js";
+import { mergeSettings } from "./plugin-chain-settings-merge.js";
+import { managedSettingsDir } from "./plugin-chain-settings-source.js";
 import { mcpServersSchema, type McpServerConfig } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
 import { LinkVetError, vetLinkChain } from "./link-vetting.js";
@@ -86,6 +88,8 @@ export interface SkillInfo {
 export interface LoadedConfig {
   settings: Record<string, unknown>;
   managedSettings?: Record<string, unknown>;
+  /** Origin and diagnostics of the managed policy that was read, when any. */
+  managedSettingsReport?: ManagedSettingsReport;
   /** Content roots already verified by installed/local catalog discovery. */
   watchDirectories?: string[];
   instructions: InstructionFile[];
@@ -118,10 +122,114 @@ export interface LoadProjectOptions {
   settingsFile?: string;
   /** Explicit independent policy file; parsed as bounded JSON data. */
   managedSettingsFile?: string;
+  /**
+   * Directory the OS-managed policy is read from when no explicit policy file
+   * is given. Defaults to the source's platform directory; an explicit value
+   * stands where the source's own override slot answers nothing in this build.
+   */
+  managedSettingsDir?: string;
   /** Workspace-relative or absolute paths used to select conditional rules.
    * Omission preserves the original unconditional loading behavior. */
   paths?: string[];
 }
+
+/** Where an OS-managed policy came from and what the loader had to drop. */
+export interface ManagedSettingsReport {
+  source: "explicit" | "directory";
+  /** The managed directory, for a directory read. */
+  directory?: string;
+  /** Documents that were read, in merge order (base first, drop-ins by name). */
+  documents: string[];
+  /** Keys ignored because this runtime carries no policy for them. */
+  ignoredKeys: string[];
+  /** Read, parse or validation failures. A document with an error contributes nothing. */
+  errors: { file: string; message: string }[];
+}
+
+const MANAGED_POLICY_KEYS: ReadonlySet<string> = new Set(["allowShell", "permissions", "features", "mcpClient"]);
+
+function errnoOf(error: unknown): string | undefined {
+  const own = (error as NodeJS.ErrnoException | undefined)?.code;
+  if (own !== undefined) return own;
+  return (error as { cause?: NodeJS.ErrnoException } | undefined)?.cause?.code;
+}
+
+/**
+ * Read the OS-managed policy directory the way the recovered `Lko` does:
+ * `managed-settings.json` first, then every `managed-settings.d/*.json` whose
+ * name does not start with a dot, sorted by name, regular files and symlinks
+ * only, merging each document with the source's own settings customizer.
+ *
+ * The product carries four policy keys. A document's other keys are dropped
+ * and reported rather than rejecting the whole policy: the source's schema
+ * accepts every settings key, so a foreign key there is not an error either.
+ * A missing directory or file is absence; any other read or parse failure is
+ * reported and that document contributes nothing.
+ */
+export function loadManagedSettingsDirectory(directory: string): { settings?: Record<string, unknown>; report: ManagedSettingsReport } {
+  const documents: string[] = [];
+  const ignoredKeys: string[] = [];
+  const errors: { file: string; message: string }[] = [];
+  const merged: Record<string, unknown> = {};
+  let found = false;
+  const read = (file: string): void => {
+    let text: string;
+    try {
+      const bytes = readBoundedBytes(file, CONFIG_LIMITS.settingsBytes);
+      if (bytes.overflow) throw new ConfigError(`managed settings file exceeds ${CONFIG_LIMITS.settingsBytes} byte limit`, file);
+      text = bytes.buffer.toString("utf8");
+    } catch (error) {
+      const code = errnoOf(error);
+      if (code !== "ENOENT" && code !== "ENOTDIR") errors.push({ file, message: (error as Error).message });
+      return;
+    }
+    documents.push(file);
+    if (text.trim() === "") return;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch (error) {
+      errors.push({ file, message: `invalid JSON (${(error as Error).message})` });
+      return;
+    }
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      errors.push({ file, message: "managed settings must be a JSON object" });
+      return;
+    }
+    const accepted: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (MANAGED_POLICY_KEYS.has(key)) accepted[key] = value;
+      else if (!ignoredKeys.includes(key)) ignoredKeys.push(key);
+    }
+    if (Object.keys(accepted).length === 0) return;
+    found = true;
+    mergeSettings(merged, accepted);
+  };
+  read(path.join(directory, "managed-settings.json"));
+  const dropIn = path.join(directory, "managed-settings.d");
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dropIn, { withFileTypes: true });
+  } catch (error) {
+    const code = errnoOf(error);
+    if (code !== "ENOENT" && code !== "ENOTDIR") errors.push({ file: dropIn, message: (error as Error).message });
+    entries = [];
+  }
+  const names = entries
+    .filter(entry => (entry.isFile() || entry.isSymbolicLink()) && entry.name.endsWith(".json") && !entry.name.startsWith("."))
+    .map(entry => entry.name)
+    .sort();
+  for (const name of names) read(path.join(dropIn, name));
+  const report: ManagedSettingsReport = { source: "directory", directory, documents, ignoredKeys, errors };
+  if (!found) return { report };
+  const parsed = managedPolicySchema.safeParse(cloneSafe(merged));
+  if (!parsed.success) {
+    errors.push({ file: directory, message: `managed settings rejected (${parsed.error.message})` });
+    return { report };
+  }
+  return { settings: parsed.data, report };
+}
+
 
 export interface Frontmatter {
   data: Record<string, unknown>;
@@ -912,6 +1020,12 @@ export function defaultUserDir(): string {
  * budget (`CONFIG_LIMITS.textBytesTotal`). Exceeding it raises a ConfigError
  * (carrying the offending path) before any result is returned, so a partial
  * configuration is never emitted.
+ *
+ * An explicit managed policy file is strict. Without one, the OS-managed
+ * directory is read as the recovered file tier does: the base document then
+ * the drop-ins by name, merged with the source's own customizer. Policy keys
+ * this runtime does not carry and documents it cannot read are reported in
+ * `managedSettingsReport` rather than replacing the authored settings.
  */
 /** Whether this process has ever handed the chain a plugin hooks declaration. Set on the first read
  *  that finds one, so every later read reconciles against it even when the list is empty: a removed
@@ -941,12 +1055,23 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
 
   const settings: Record<string, unknown> = {};
   let managedSettings: Record<string, unknown> | undefined;
+  let managedSettingsReport: ManagedSettingsReport | undefined;
   if (options.managedSettingsFile !== undefined) {
     const file = path.resolve(workspaceRoot, options.managedSettingsFile);
     const parsed = readSettingsLayer(file, true)!;
     const allowed = new Set(["allowShell", "permissions", "features", "mcpClient"]);
     if (Object.keys(parsed).some(key => !allowed.has(key))) throw new ConfigError("managed settings accepts only allowShell, permissions, features and mcpClient", file);
     managedSettings = managedPolicySchema.parse(cloneSafe(parsed));
+    managedSettingsReport = { source: "explicit", documents: [file], ignoredKeys: [], errors: [] };
+  } else {
+    // The OS-managed directory is read when no explicit file replaces it, as
+    // the recovered file tier does. An absent directory is absence.
+    const directory = path.resolve(options.managedSettingsDir ?? managedSettingsDir());
+    const loaded = loadManagedSettingsDirectory(directory);
+    managedSettings = loaded.settings;
+    if (loaded.report.documents.length > 0 || loaded.report.ignoredKeys.length > 0 || loaded.report.errors.length > 0) {
+      managedSettingsReport = loaded.report;
+    }
   }
   const pluginExplicitLayers: Record<string, unknown>[] = [];
   // The project-owned layers are `settings.json` and `settings.local.json`
@@ -1161,6 +1286,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     ...(Array.isArray(pluginDirs) ? (pluginDirs as string[]).map(dir => path.resolve(workspaceRoot, dir)) : [])];
   if (watchDirectories.length) result.watchDirectories = watchDirectories;
   if (managedSettings !== undefined) result.managedSettings = managedSettings;
+  if (managedSettingsReport !== undefined) result.managedSettingsReport = managedSettingsReport;
   if (memories.length) result.memories = memories;
   if (conditionalRules.length) result.conditionalRules = conditionalRules;
   if (agentCatalog.agentTypes.length) result.agentTypes = agentCatalog.agentTypes;
