@@ -297,6 +297,29 @@ test('expansion hook is raised once before a skill run and its context reaches t
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
+test('a SessionStart initial message is queued before typed input', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-initial-message-')));
+  const config = defaultConfig(workspace, []); config.model = 'test';
+  const session = Session.open(workspace, { config });
+  const requests: Anthropic.MessageCreateParamsNonStreaming[] = [];
+  const provider: ModelProvider = {
+    count: async () => 10,
+    complete: async request => { requests.push(request); return reply('done'); },
+  };
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, provider, stubRuntime(), {
+      input: Readable.from(['typed task\n', '/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: new AbortController().signal,
+      initialUserMessage: 'hook message',
+    });
+    assert.equal(requests.length, 2);
+    assert.match(JSON.stringify(requests[0]!.messages), /hook message/);
+    assert.doesNotMatch(JSON.stringify(requests[0]!.messages), /typed task/);
+    assert.match(JSON.stringify(requests[1]!.messages), /typed task/);
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test('a blocked expansion prevents the skill from running', async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-fork-block-')));
   const config = defaultConfig(workspace, []); config.model = 'test';
