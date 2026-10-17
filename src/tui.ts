@@ -1537,6 +1537,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!groups.length) { dialog.finish(answer); return; }
     const group = groups[dialog.step];
     if (group) dialog.answers.set(group.key, { key: group.key, selected: answer.selected, ...(answer.text === undefined ? {} : { text: answer.text }) });
+    // Source `qr` (chunk-24k7d6mw.js [1170529)): one non-multi-select question hides the
+    // submit tab, and its answer handler submits the whole request as soon as the answer is
+    // taken (`!Gs && Va` at [1173330)), so the review page is never reached.
+    if (groups.length === 1 && group !== undefined && !group.multiple) {
+      dialog.finish({ selected: [], groups: [dialog.answers.get(group.key)!] });
+      return;
+    }
     dialog.step += 1;
     this.resetDialogStep(dialog);
   }
@@ -1571,6 +1578,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const next = Math.max(0, Math.min(groups.length - 1, from + delta));
       // Right on the last question goes to the review page, as the last tab does.
       if (reviewing && command === 'right') return true;
+      // Source `bl` (chunk-24k7d6mw.js [1174081)): the hide-submit single question sets the
+      // next-tab bound to 0, so Right never opens a review page for it.
+      if (!reviewing && command === 'right' && groups.length === 1 && !groups[0]!.multiple) return true;
       if (!reviewing && command === 'right' && dialog.step === groups.length - 1) {
         dialog.step = groups.length; this.resetDialogStep(dialog); return true;
       }

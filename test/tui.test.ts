@@ -487,6 +487,29 @@ test('grouped questions step through each question and review before submitting'
   } finally { tui.close(); }
 });
 
+test('a single non-multi-select question submits when its answer is taken', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).map(line => line.trim()).filter(Boolean);
+  try {
+    const pending = tui.prompt({ message: '', groups: [
+      { key: 'Only', title: 'Only', message: 'Pick', choices: [{ label: 'A', value: 'A' }, { label: 'B', value: 'B' }] }] },
+    new AbortController().signal);
+    assert.equal(frame()[0], 'Only');
+    // Right does not open a review tab: the source's next-tab bound is 0 for this question.
+    key('\x1b[C');
+    assert.equal(frame()[0], 'Only');
+    key('\x1b[B\r');
+    assert.deepEqual(await pending, { selected: [], groups: [{ key: 'Only', selected: ['B'] }] });
+    assert.ok(!drawn.includes('Review your answers'));
+  } finally { tui.close(); }
+});
+
 test('a grouped question can be reopened from the review page and cancelled', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
@@ -522,8 +545,9 @@ test('a grouped question can be reopened from the review page and cancelled', as
       { key: 'First', selected: ['B'] }, { key: 'Second', selected: ['X'] }] });
     // Escape on the review page cancels the whole request.
     const cancelled = tui.prompt({ message: '', groups: [
-      { key: 'Only', title: 'Only', message: 'Pick', choices: [{ label: 'A', value: 'A' }] }] }, new AbortController().signal);
-    key('\r'); key('\x1b');
+      { key: 'Only', title: 'Only', message: 'Pick', multiple: true,
+        choices: [{ label: 'A', value: 'A' }] }] }, new AbortController().signal);
+    key(' \r'); key('\x1b');
     assert.equal(await cancelled, undefined);
   } finally { tui.close(); }
 });
