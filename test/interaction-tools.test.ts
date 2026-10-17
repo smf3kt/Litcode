@@ -451,6 +451,26 @@ test('card answer admission ports the recovered host contract', () => {
   assert.deepEqual(admitCardAnswer(four, { answers: { 'Q0?': 'x'.repeat(8192), 'Q1?': 'x'.repeat(8192), 'Q2?': 'x'.repeat(8192), 'Q3?': 'x'.repeat(8192) }, response: 'x' }), { kind: 'refused', rule: 'too_large' });
 });
 
+test('card hosts answer through the admitted card contract', async () => {
+  const card = (options: Partial<InteractionToolOptions> = {}) => createInteractionTools(options)
+    .find(tool => tool.schema.name === 'ask_user_question')!;
+  const ask = card({ cardAnswers: true, askCard: async received => {
+    assert.equal(received.questions[0].question, 'Which implementation?');
+    return { ...received, answers: { 'Which implementation?': 'A' }, response: 'ok' };
+  } });
+  const result = JSON.parse(await ask.execute(structuredClone(question), context()));
+  assert.equal(result.answers['Which implementation?'], 'A');
+  assert.equal(result.response, 'ok');
+  assert.equal(result.questions.length, 1);
+  const refusing = card({ cardAnswers: true, askCard: async received => ({ ...received, token: 'x' }) });
+  await assert.rejects(refusing.execute(structuredClone(question), context()), /card answer refused \(unknown_field\)/);
+  const missing = card({ cardAnswers: true });
+  await assert.rejects(missing.execute(structuredClone(question), context()), /askCard callback is missing/);
+  const fromContext = card({ cardAnswers: true });
+  const ctx = context({ interaction: { askCard: async received => ({ ...received, answers: { 'Which implementation?': 'B' } }) } });
+  assert.equal(JSON.parse(await fromContext.execute(structuredClone(question), ctx)).answers['Which implementation?'], 'B');
+});
+
 test('invalid queue configuration fails immediately', () => {
   for (const options of [{ timeoutMs: 0 }, { timeoutMs: Infinity }, { timeoutMs: 600_001 }, { maxPending: 0 }, { maxPending: 65 }, { maxPending: 1.5 }]) {
     assert.throws(() => createInteractionTools(options), /Invalid interaction/);

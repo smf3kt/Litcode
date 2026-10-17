@@ -1926,3 +1926,12 @@ The normalized preview arm and `xHe`'s transform remain unported with reasons, a
 no product host emits cards yet, so the default ask contract is unchanged. One new
 case, interaction-tools 29/29, tsc 0, full 2,100/2,100, chain 767/767, identity
 `21433e88…`. [W72 record](ports/W72-card-admission.md).
+
+W73-01 wires the recovered card host into `ask_user_question`. With
+`cardAnswers: true`, an `askCard` callback returns the shown input plus answers,
+annotations, response and followUp; the object is admitted through
+`admitCardAnswer` (W72's `V`/`le` port) before it becomes the tool result, and a
+refusal surfaces the source rule. The default indexed ask contract is unchanged;
+the source client host is represented by the explicit callback. One new case,
+interaction-tools 30/30, tsc 0, full 2,101/2,101, chain 767/767, identity
+`ef8f4ab4…`. [W73 record](ports/W73-card-host.md).

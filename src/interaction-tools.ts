@@ -49,6 +49,8 @@ export interface InteractionFinding {
 export interface ReportFindingsRequest { findings: InteractionFinding[] }
 export interface InteractionCallbacks {
   ask?: (request: AskUserQuestionRequest, signal: AbortSignal) => Promise<AskUserQuestionAnswer>;
+  /** Card host: returns the shown input plus answers/annotations/response/followUp. */
+  askCard?: (request: AskUserQuestionRequest, signal: AbortSignal) => Promise<unknown>;
   plan?: (request: SubmitPlanRequest, signal: AbortSignal) => Promise<SubmitPlanResult>;
   report?: (request: ReportFindingsRequest, signal: AbortSignal) => void | Promise<void>;
 }
@@ -71,6 +73,13 @@ export interface InteractionToolOptions extends InteractionCallbacks {
    * becomes `"choice"` before the host sees the request.
    */
   extendedQuestions?: boolean;
+  /**
+   * Uses the recovered card host contract: `askCard` returns the shown input
+   * plus `answers`, `annotations`, `response` and `followUp`, which is admitted
+   * by `admitCardAnswer` before it is returned. Omission keeps the indexed
+   * `ask` answer contract.
+   */
+  cardAnswers?: boolean;
 }
 
 const text = (max: number) => z.string().min(1).max(max).refine(value => value.trim().length > 0, 'Text must be nonblank');
@@ -532,9 +541,10 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
       !Number.isSafeInteger(maxPending) || maxPending < 1 || maxPending > INTERACTION_LIMITS.maxPendingLimit) {
     throw new Error('Invalid interaction timeout or queue limit');
   }
-  const callbacks = { ask: options.ask, plan: options.plan, report: options.report };
+  const callbacks = { ask: options.ask, askCard: options.askCard, plan: options.plan, report: options.report };
   const previewFormat = options.previewFormat;
   const extendedQuestions = options.extendedQuestions === true;
+  const cardAnswers = options.cardAnswers === true;
   const dispatch = createQueue(timeoutMs, maxPending);
   return [
     {
@@ -565,8 +575,18 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
           }
         }
         const ask = callbacks.ask ?? contextCallbacks(context)?.ask;
-        if (typeof ask !== 'function') throw new Error('ask_user_question: host ask callback is missing');
+        const askCard = callbacks.askCard ?? contextCallbacks(context)?.askCard;
         const expected = structuredClone(request);
+        if (cardAnswers) {
+          if (typeof askCard !== 'function') throw new Error('ask_user_question: host askCard callback is missing');
+          return dispatch(context.signal, async signal => {
+            const admitted = admitCardAnswer(expected, await askCard(request, signal));
+            checkSignal(signal);
+            if (admitted.kind === 'refused') throw new Error(`ask_user_question: card answer refused (${admitted.rule})`);
+            return output(admitted.input, context, 'ask_user_question');
+          });
+        }
+        if (typeof ask !== 'function') throw new Error('ask_user_question: host ask callback is missing');
         return dispatch(context.signal, async signal => {
           const answer = await ask(request, signal);
           checkSignal(signal);
