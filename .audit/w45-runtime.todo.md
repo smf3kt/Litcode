@@ -783,3 +783,10 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The copy is verbatim.** Two whole blocks are in the ledger with ranges and digests; the seam adds only exported names.
 - [x] **Behaviour was measured before it was asserted.** The predicates, the byte count, the four encode forms, the shm preference and the transmit integration are in the probe log and in the suite.
 - [x] **Sweep.** tsc 0, copy `declared 15 / unresolved 0`, notices 0, new suite 13/13, chain family 544/544, full 1820/1820, index 57 chunks / 248,924 units, identity `88e22d52…`.
+
+## W45-75 acceptance (2026-10-17)
+
+- [x] **The two stores are copied whole.** One contiguous block holds class `i`, the defaults `s`, the names `Q8n` and class `o`; nothing was reassembled.
+- [x] **The only external body is already carried.** `Oe()` comes from the registry-stores copy; the environment guesses and host wrappers are left to 2b-ii rather than invented here.
+- [x] **Behaviour was measured before it was asserted.** The one-shot probe transitions, the immediate-vs-subscribed listener, the default fallback for `now`, the settled-answer refusal and the deadline source suffix are in the probe log and in the suite.
+- [x] **Sweep.** tsc 0, copy `declared 10 / unresolved 0`, notices 0, new suite 9/9, chain family 553/553, full 1829/1829, index 58 chunks / 250,759 units, identity `4b7f1d22…`.

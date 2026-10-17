@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-mvsmkx6d.js",
+      "sha256": "78b6816967ea34054d2cf68f13e3baa99249fa08da96cfe43e1d080b422b9c7a"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-mvsmkx6d.js",
+      "sha256": "78b6816967ea34054d2cf68f13e3baa99249fa08da96cfe43e1d080b422b9c7a",
+      "range": [
+        947,
+        2782
+      ],
+      "units": 1835,
+      "bodySha256": "016792f46659516aaf2a2fab96f2280890962bcc94a42f8e8e82bcaa9bbe6139",
+      "note": "`i` the image-file probe store, `s`/`Q8n` the capability defaults and names, `o` the capability readings store"
+    }
+  ],
+  "missing": []
+}
