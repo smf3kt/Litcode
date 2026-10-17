@@ -1,0 +1,77 @@
+{
+  "schema": "W155AbovePromptHostGlue.v1",
+  "package": "W155-host-glue",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      { "module": "chunk-ejnyhzsc.js", "sha256": "24697cf467fb57202c5ec305d52e767e0f6693a85e3b36ba1f0bb4dbc279e8d4" },
+      { "module": "chunk-pxjy4t8j.js", "sha256": "523505a6cb4614eda623cc9249eeab5a0e5f398f789ac555e5c997dc1d24eef7" },
+      { "module": "chunk-t8vb436n.js", "sha256": "9c9120f6c661ca18e4be547045c3415ab62054a1f3fdfd09127fd9c3ba3a5324" }
+    ],
+    "blocks": 3,
+    "units": 798,
+    "ranges": [
+      {
+        "module": "chunk-ejnyhzsc.js",
+        "range": [668, 697],
+        "units": 29,
+        "note": "QY and Mmt host context tokens",
+        "bodySha256": "3909e70430822bc12c426a833b26c9c2add70306f3c1858d8eb839602e2af759"
+      },
+      {
+        "module": "chunk-pxjy4t8j.js",
+        "range": [1298, 1856],
+        "units": 558,
+        "note": "sa active overlay registration",
+        "bodySha256": "d892e28d52fbc1c833a1a543db4e34d46f8c3b3cc90559f8e55ebc0a114922c0"
+      },
+      {
+        "module": "chunk-t8vb436n.js",
+        "range": [764, 975],
+        "units": 211,
+        "note": "us keybinding display text",
+        "bodySha256": "09b6b4fb2dec67d44a6d78aa7007003ac77cedd4613683a1bcdf7acc0e47f053"
+      }
+    ],
+    "hostBindings": [
+      {
+        "name": "F",
+        "source": "chunk-pxjy4t8j.js [774,842) 68 units",
+        "sourceBody": "function F(){return oi().get(process.stdout)?.invalidatePrevFrame()}",
+        "binding": "src/plugin-chain-above-prompt-host.ts bindPrevFrameInvalidator/invalidatePrevFrame",
+        "reason": "the product's oi map holds terminal selection readers, not the render instance; the renderer's invalidate is bound by the terminal host, and an unbound invalidator is the source's own absent-instance no-op"
+      },
+      {
+        "name": "vot",
+        "source": "chunk-6ccen3s8.js [39124,39237) 113 units",
+        "sourceBody": "function vot(e,r,n,s){i(\"tengu_keybinding_fallback_used\",{action:Ae(e),context:d(r),fallback:wn(n),reason:d(s)})}",
+        "binding": "src/plugin-chain-above-prompt-host.ts recordKeybindingFallback",
+        "reason": "the analytics dispatcher and its normalizer chunk are outside the local-only scope; the event is recorded locally through the host feature recorder with the same name and raw fields"
+      }
+    ],
+    "reusedNotCopied": [
+      { "name": "sx", "seam": "src/plugin-chain-app-state.ts", "source": "chunk-7n39kxwj.js [768,810)" },
+      { "name": "Lc", "seam": "src/plugin-chain-press-button.ts", "source": "chunk-bwyexfny.js [3552,3579)" }
+    ],
+    "unresolved": 0
+  },
+  "product": {
+    "sourceFile": "src/plugin-chain-above-prompt-host-glue-source.ts",
+    "seamFile": "src/plugin-chain-above-prompt-host-glue.ts",
+    "hostFile": "src/plugin-chain-above-prompt-host.ts",
+    "exports": ["paneMeasureContext", "useActiveOverlay", "keyDisplayText", "bindPrevFrameInvalidator"]
+  },
+  "validation": {
+    "focused": { "passed": 5, "failed": 0, "file": "test/plugin-chain-above-prompt-host-glue.test.ts" },
+    "full": { "passed": 2374, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0
+  },
+  "identity": {
+    "sha256": "d83b46fdc7aebe173241db044cb8fea7ec1544a06dd4c7f53f5f617e851f9047",
+    "inputs": 592,
+    "validation": 209,
+    "build": 408
+  }
+}
