@@ -1,0 +1,164 @@
+{
+ "schema": "W125WorkflowScriptsEvidence.v1",
+ "package": "W125-01 — Workflow script API in a hardened vm sandbox",
+ "date": "2026-10-17",
+ "question": "How does the recovered workflow tool execute an original JavaScript script, and what sandbox and agent semantics does it guarantee?",
+ "answer": "The script starts with a pure-literal meta export. The body is rewritten so awaits, async returns, yields and for-await cross a promise-aware bridge, then compiled into a workflow.js vm script. The context disables code generation, removes time and randomness, freezes intrinsics and copies values across the boundary with array/depth caps. agent() spawns a child and returns its summary, or null after recording a terminal failure; parallel() and pipeline() convert failures to null and record them; the result is sanitized and JSON-validated.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "modules": {
+   "extracted-v2/modules/chunk-rk6tjv7j.js": [
+    3670
+   ],
+   "extracted-v2/modules/chunk-hedqf2m1.js": [
+    13119,
+    13422,
+    14367,
+    14418,
+    15198,
+    16762,
+    40325,
+    71400,
+    78944,
+    79758,
+    80636,
+    81501,
+    83352,
+    84200
+   ],
+   "extracted-v2/modules/chunk-nyce03br.js": [
+    128850,
+    135345,
+    135434,
+    136171,
+    139055,
+    140054,
+    140422,
+    140571,
+    140732,
+    141515,
+    141891,
+    142739,
+    142992,
+    143459
+   ]
+  },
+  "implementation": {
+   "src/workflow-script.ts": {
+    "ranges": "1-889"
+   },
+   "src/workflow.ts": {
+    "ranges": "createWorkflowTools"
+   }
+  }
+ },
+ "behavior": {
+  "metaMustBeFirstPureLiteral": true,
+  "reservedMetaKeys": [
+   "__proto__",
+   "constructor",
+   "prototype"
+  ],
+  "scriptByteCap": 524288,
+  "syncTimeoutMs": 30000,
+  "awaitAndAsyncIterationRewritten": true,
+  "dynamicImportRejected": true,
+  "codeGenerationStrings": false,
+  "codeGenerationWasm": false,
+  "dateNowDisabled": true,
+  "mathRandomDisabled": true,
+  "intrinsicsFrozen": true,
+  "globalThenRemoved": true,
+  "arrayLengthCap": 4096,
+  "depthCap": 100000,
+  "functionsDroppedInCopies": true,
+  "protoKeysSkipped": true,
+  "cyclesPreserved": true,
+  "agentCap": 1000,
+  "logCap": 1000,
+  "failedChildIsNull": true,
+  "functionResultRejected": true,
+  "resultJsonValidated": true
+ },
+ "adaptations": [
+  "The recovered runtime resolves named workflows from account storage; this runtime exposes workflow() and rejects because no saved-workflow registry exists.",
+  "No progress tree exists here; phase titles are returned in the result and logs are returned directly.",
+  "The bridge maps agent options to the local AgentRegistry (model/effort/isolation:worktree/agentType); schema, disallowedTools, bashCommandClamp and stallMs are rejected explicitly.",
+  "A failed child returns { failure } to the runner, which records [label] failed and yields null to the script, matching the recovered kr contract.",
+  "Journal/resume, scriptPath, reattachment, automatic effect replay, safety classification, rate-limit waiting and the stall watchdog are not ported."
+ ],
+ "changes": [
+  {
+   "file": "src/workflow-script.ts",
+   "change": "parser, transform, compiler, sandbox, hooks and runner",
+   "sha256": "4168af0856f84745428a811247ba2ed75d2a9c15366b2c9df2409db636077ab5"
+  },
+  {
+   "file": "src/workflow.ts",
+   "change": "script input, registry bridge and tool description",
+   "sha256": "ee88316f23d00eb7b103729f164969fa56e5ab4192cca6cf7686e96c919fb350"
+  },
+  {
+   "file": "test/workflow-script.test.ts",
+   "change": "nine script runtime tests",
+   "sha256": "2603c00ad57d75af21e0330b37595f92b6bbc6631ba967358b844be89dbc8928"
+  },
+  {
+   "file": "package.json",
+   "change": "acorn dependency and acorn-walk",
+   "sha256": "373d9f9767963fba3b6532d5b01cba81b699cffef57442e4c54af2748bc33e6e"
+  },
+  {
+   "file": "package-lock.json",
+   "change": "locked dependency graph",
+   "sha256": "37561b8f955f9eda2cdb6bd7f93096474b56ff116bc61b405ff8263148ffb586"
+  },
+  {
+   "file": "THIRD_PARTY_NOTICES.txt",
+   "change": "regenerated",
+   "sha256": "46f276dca3414377a658af8af63da39e296adb6b13985e4f1b4f29fed807c4b7"
+  },
+  {
+   "file": "research/ports/dependency-notices.json",
+   "change": "regenerated",
+   "sha256": "49788a2a67b39afe195bab27190aa61037f900b062bccab2b54c66f1a9a64898"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-8 rows record W125",
+   "sha256": "491d474d9c51ff81c28de4cf9d955a1d809cf6e1978f3394c8305e20a513d5e3"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "workflow engine row records W125",
+   "sha256": "882b5b2437d827dc8cffa9175bbcb674cb7f7be285fd9da7e7ed0140d3940d5f"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W125-01 entry",
+   "sha256": "ecb1764a10b4aad12bb98bbe950eae5937c9edd66d12dde7e524c3685e20d03a"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W125-01 S-1..S-7 entry",
+   "sha256": "9676372bffacb1bfa7e39dd671e4e3500fe9b75c4f7e78373a940c7a21a50b12"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "42/42 (workflow, workflow-resume, workflow-script, cli-gateway, agent-isolation)",
+  "build": "exit 0",
+  "full": "2,203/2,203",
+  "chain": "768/768",
+  "notices": "regenerated then --check exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "3f771f63b2d75d27bb63cd9c969f7ee55c6c2391ee4ed87a1c07604903be8271"
+ },
+ "residuals": [
+  "C-8: journal/resume replay, scriptPath and named-workflow resolution, reattachment and automatic effect replay remain out.",
+  "C-8: agent({schema}) structured output, disallowedTools, bashCommandClamp and stallMs are rejected explicitly.",
+  "C-8: progress events, safety classification, usage-limit waiting and the per-agent stall watchdog have no counterpart in this runtime."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-8 continues with journal/resume and scriptPath, or the next ready C-area cluster from CURRENT."
+}
