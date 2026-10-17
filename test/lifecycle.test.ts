@@ -268,6 +268,21 @@ test('failed tools and completed batches fire their own hooks after durable resu
   } finally { session.close(); f.cleanup(); }
 });
 
+test('PostToolBatch input carries every call with its response', async () => {
+  const f = fixture();
+  const input = path.join(f.workspace, 'batch.json');
+  f.config.hooks = { PostToolBatch: [{ command: `cat > ${JSON.stringify(input)}` }] };
+  const session = Session.open(f.workspace, { config: f.config });
+  try {
+    await new Agent(session, f.provider, [f.tool]).run('task');
+    const parsed = JSON.parse(fs.readFileSync(input, 'utf8')) as Record<string, unknown>;
+    assert.equal(parsed.hook_event_name, 'PostToolBatch');
+    assert.deepEqual(parsed.tool_calls, [{ tool_name: 'mutate', tool_input: { original: true },
+      tool_use_id: 'call-1', tool_response: 'effect saved' }]);
+    assert.equal('tool_use_ids' in parsed, false);
+  } finally { session.close(); f.cleanup(); }
+});
+
 test('PostToolBatch blocking ends only after the entire batch is paired', async () => {
   const f = fixture(); f.config.hooks = { PostToolBatch: [{ command: 'printf %s "batch stop" >&2; exit 2' }] };
   const session = Session.open(f.workspace, { config: f.config });
