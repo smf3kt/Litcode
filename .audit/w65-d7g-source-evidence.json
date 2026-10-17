@@ -1,0 +1,47 @@
+{
+  "before": "64c2520",
+  "kind": "assistant-mode tool surface removal (no ported bodies)",
+  "surface": "assistant mode's three tools (SendUserFile, PushNotification, SubscribePR) and the push-notification settings group that configured the second",
+  "evidence": [
+    {
+      "file": "tools.ts",
+      "change": "the three flag-conditional requires and their pool entries removed; the neighbouring SleepTool/MonitorTool conditions untouched",
+      "sourceSha256": "d59324ef85f2630475d918b33f41aff04c086761cd196af8c1f3115707544918",
+      "portSha256": "d6f8217c75d61e225966260d145aba00b9676f5ee785006452b250b353f5dd15",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "tools/SendUserFileTool/prompt.ts",
+      "change": "deleted — a W47 port whose three readers were the constants removed here; the recovered chunk it re-exported stays untouched",
+      "sourceSha256": "ed7f7e0301f54a1e97b04bd6a8cf3a5f2e80d447ced72355a707ffcbf015622d",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "components/Settings/Config.tsx",
+      "change": "the push-notification settings block and the notifChannel label's flag-on variant removed; the setting keeps the name its false-flag arm produced",
+      "sourceSha256": "a415aa0dfdc18b882c22d7e7f8b6a90d81a95d3318e929e4b353a4c0573c3e01",
+      "portSha256": "777948ddd4293082ee974660fca9d39367c4fac86a92959a21dada8cc61c7106",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "tools.ts: three conditional requires (SendUserFileTool, PushNotificationTool, SubscribePRTool) and their three pool spreads",
+    "tools/SendUserFileTool/prompt.ts and its directory (a W47 port re-exporting from recovered/chunk-5zy1gftc.js)",
+    "the shared name constant and its three readers: components/Messages.tsx's brief-turn filter, tools/ToolSearchTool/prompt.ts's always-available rule (which took the now-unused isReplBridgeActive import with it), utils/conversationRecovery.ts's tool_use match",
+    "the push-notification settings: three toggles in components/Settings/Config.tsx, their three entries in tools/ConfigTool/supportedSettings.ts, and the three fields plus three allowlist entries in utils/config.ts"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweeps for the flag set, the three tool names, the shared constant, the three settings keys and the label variant; the surviving arms asserted textually (the pool's neighbouring conditions, the three readers, the notifChannel label); import-graph orphan scan shows no new orphan; tsc log empty",
+  "remaining": "assistant mode's own state next (kairosEnabled and its four main.tsx sites, --assistant, the assistantModule stub, getKairosActive/setKairosActive, and the KAIROS-alone reads in BashTool, PowerShellTool, memdir, compact, attachments, StatusLine, fastMode, AgentTool and processSlashCommand), then brief mode (KAIROS || KAIROS_BRIEF across ~20 files), then PROACTIVE ticks, then KAIROS_DREAM",
+  "notes": [
+    "isReplBridgeActive now has no caller in the product; it stays with the replBridge* AppState leftovers already on the remaining list",
+    "recovered/chunk-5zy1gftc.js now has no importer; recovered/ is the research archive, not build input, so it is left as-is",
+    "two prose comments still name SendUserFile (tools/BriefTool/attachments.ts, utils/transcriptSearch.ts) as documentation of tool-arg shapes; inert, kept"
+  ]
+}

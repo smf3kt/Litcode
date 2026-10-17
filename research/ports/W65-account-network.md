@@ -524,6 +524,22 @@ tsc 0, fourteen fixtures pass, `git diff --check` clean, the orphan scan unchang
 
 **Next (step 7g):** the KAIROS assistant-mode cluster proper — `KAIROS`, `KAIROS_BRIEF` and `PROACTIVE` still read ~160 times across ~45 files, including the `--assistant` option, `memdir`'s daily-log prompt, `SendUserFileTool`, `SubscribePRTool`, the brief-mode UI (`BriefTool`, `Spinner`, `PromptInputQueuedCommands`) and the tick machinery in `screens/REPL.tsx` and `sessionStorage.ts`.
 
+## Wave D step 7g — the assistant-mode tool surface (`9825b9f`, landed)
+
+Assistant mode's three tools were registered the way the rest of the flag family is: a conditional require at the top of `tools.ts` whose target is absent from this build, then a spread into the pool. `SendUserFileTool` (deliver a file to the user as a message), `PushNotificationTool` (push to a phone) and `SubscribePRTool` (GitHub PR webhooks) each sat behind their own flag — `KAIROS`, `KAIROS || KAIROS_PUSH_NOTIFICATION`, `KAIROS_GITHUB_WEBHOOKS` — all false. 8 files, +5/−180. **Behaviour change: none.** Nothing local read the settings the third one configured, and the pool array gained nothing while the flags were false.
+
+Two things are worth recording for whoever reads this next.
+
+**The name constant's three readers each folded to their own fallback.** `SEND_USER_FILE_TOOL_NAME` was read in `components/Messages.tsx` (the brief-turn filter's tool-name set), `tools/ToolSearchTool/prompt.ts` (a rule keeping the tool out of deferred search while the REPL bridge is active) and `utils/conversationRecovery.ts` (the tool_use match that decides whether an assistant turn is a checkpoint). In all three the constant itself was flag-gated, so removing it reproduces exactly what the false flag produced: the brief set keeps only the Brief name, the de-fer rule loses its SendUserFile case, and the recovery match keeps the two Brief names. That case was also the last use of the `isReplBridgeActive` import in that file, which goes with it; the export itself now has no caller in the product and stays with the `replBridge*` AppState leftovers already on the remaining list.
+
+**A W47 port lost its last consumer.** `tools/SendUserFileTool/prompt.ts` was a named re-export of one name from the 2.1.296 shipped build (`recovered/chunk-5zy1gftc.js`), written when the dump omitted the module. Its three readers were exactly the constants removed here, so the port has no consumer left and is deleted; the recovered chunk stays untouched, since `recovered/` is the research archive rather than build input. Two prose comments elsewhere still name SendUserFile while documenting tool-arg shapes — inert, kept.
+
+### Verification
+
+tsc 0, fifteen fixtures pass, `git diff --check` clean, the orphan scan unchanged at its ten legitimate entries. Absence sweeps cover the three tool names, the three flags, the shared constant, the three settings keys and the notifChannel label variant; the surviving shapes are asserted textually (the pool's neighbouring SleepTool/MonitorTool conditions, all three readers, the label's unflagged name).
+
+**Next (step 7h):** assistant mode's own state — `kairosEnabled` in `AppStateStore` with its four `main.tsx` sites, the `--assistant` option, the `assistantModule` stub that was already null, `getKairosActive`/`setKairosActive` (whose setter has no caller at all, so the getter is permanently false), and the KAIROS-alone reads in `BashTool`, `PowerShellTool`, `memdir`, `compact`, `attachments`, `StatusLine`, `fastMode`, `AgentTool` and `processSlashCommand`.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
