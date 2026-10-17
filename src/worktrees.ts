@@ -83,6 +83,8 @@ export type WorktreeInfo = {
 };
 export type WorktreeManagerOptions = {
   workspace: string; signal?: AbortSignal; timeoutMs?: number; maxOutputBytes?: number; baseRef?: string;
+  /** How long a live store lock may be awaited before failing; 0 keeps the previous fail-fast behavior. */
+  lockWaitMs?: number;
 };
 export type CreateWorktreeInput = z.infer<typeof createSchema>;
 export type RemoveWorktreeInput = z.infer<typeof removeSchema>;
@@ -91,6 +93,14 @@ function aborted(): Error {
   const error = new Error("worktree operation aborted");
   error.name = "AbortError";
   return error;
+}
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+  checkAbort(signal);
+  return new Promise((resolve, reject) => {
+    const abort = () => { clearTimeout(timer); reject(aborted()); };
+    const timer = setTimeout(() => { signal.removeEventListener("abort", abort); resolve(); }, ms);
+    signal.addEventListener("abort", abort, { once: true });
+  });
 }
 function checkAbort(signal?: AbortSignal): void { if (signal?.aborted) throw aborted(); }
 function statOrMissing(file: string): fs.Stats | undefined {
@@ -144,6 +154,7 @@ function parsePorcelain(text: string): WorktreeInfo[] {
 export class WorktreeManager {
   readonly workspace: string;
   private readonly timeoutMs: number;
+  private readonly lockWaitMs: number;
   private readonly maxBytes: number;
   private readonly baseRef: string;
   private readonly lifetime = new AbortController();
@@ -157,9 +168,13 @@ export class WorktreeManager {
     this.workspace = fs.realpathSync(path.resolve(options.workspace));
     checkedDirectory(this.workspace);
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.lockWaitMs = options.lockWaitMs ?? 30_000;
     this.maxBytes = options.maxOutputBytes ?? MAX_BYTES;
     if (!Number.isInteger(this.timeoutMs) || this.timeoutMs < 1 || this.timeoutMs > 120_000) {
       throw new Error("worktree timeoutMs must be between 1 and 120000");
+    }
+    if (!Number.isInteger(this.lockWaitMs) || this.lockWaitMs < 0 || this.lockWaitMs > 120_000) {
+      throw new Error("worktree lockWaitMs must be between 0 and 120000");
     }
     if (!Number.isInteger(this.maxBytes) || this.maxBytes < 1 || this.maxBytes > MAX_BYTES) {
       throw new Error(`worktree maxOutputBytes must be between 1 and ${MAX_BYTES}`);
@@ -316,12 +331,18 @@ export class WorktreeManager {
     checkAbort(signal);
     const { lock } = this.paths(true);
     const open = (): number => fs.openSync(lock, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
+    const deadline = Date.now() + this.lockWaitMs;
     let fd: number | undefined;
-    for (let attempt = 0; fd === undefined; attempt++) {
+    while (fd === undefined) {
       try { fd = open(); }
       catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-        if (attempt > 0 || !reclaimStaleLock(lock)) throw new Error("worktree ownership store is locked by another operation");
+        // A dead owner is reclaimed at once; a live owner is awaited for a bounded time so two
+        // concurrent operations serialize instead of the loser failing on a freshly created lock.
+        if (reclaimStaleLock(lock)) continue;
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) throw new Error("worktree ownership store is locked by another operation");
+        await pause(Math.min(50, remaining), signal);
       }
     }
     try {

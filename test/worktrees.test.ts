@@ -269,7 +269,7 @@ test("metadata, container, target and gitfile symlinks are rejected without foll
 });
 
 test("malformed/foreign metadata and concurrent ownership lock fail closed", async () => {
-  const root = repository(); const instance = manager(root);
+  const root = repository(); const instance = manager(root, { lockWaitMs: 0 });
   await instance.create({ name: "one" });
   const file = path.join(root, ".agent", "worktrees.json");
   const backup = fs.readFileSync(file, "utf8");
@@ -288,7 +288,7 @@ test("malformed/foreign metadata and concurrent ownership lock fail closed", asy
 });
 
 test("a store lock whose owner is dead is reclaimed; live and foreign locks stay", async () => {
-  const root = repository(); const instance = manager(root);
+  const root = repository(); const instance = manager(root, { lockWaitMs: 0 });
   const file = path.join(root, ".agent", "worktrees.json");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const dead = spawnSync(process.execPath, ["-e", "0"]).pid;
@@ -308,6 +308,24 @@ test("a store lock whose owner is dead is reclaimed; live and foreign locks stay
   await assert.rejects(instance.create({ name: "range" }), /locked/);
   fs.unlinkSync(file + ".lock");
   await instance.close();
+});
+
+test("a live store lock is awaited until the owner releases it", async () => {
+  const root = repository(); const instance = manager(root, { lockWaitMs: 2_000 });
+  const file = path.join(root, ".agent", "worktrees.json");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file + ".lock", `harness worktree store (pid ${process.pid})`);
+  const release = setTimeout(() => fs.unlinkSync(file + ".lock"), 150);
+  try { await instance.create({ name: "waited" }); }
+  finally { clearTimeout(release); }
+  assert.equal(fs.existsSync(file + ".lock"), false);
+  await instance.remove({ name: "waited" });
+  // An aborted wait stops promptly instead of waiting for the deadline.
+  fs.writeFileSync(file + ".lock", `harness worktree store (pid ${process.pid})`);
+  const controller = new AbortController(), abort = setTimeout(() => controller.abort(), 100);
+  try {
+    await assert.rejects(manager(root, { lockWaitMs: 5_000 }).create({ name: "aborted" }, controller.signal), { name: "AbortError" });
+  } finally { clearTimeout(abort); fs.unlinkSync(file + ".lock"); }
 });
 
 test("a creating record whose Git work landed is adopted and removable", async () => {

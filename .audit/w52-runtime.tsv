@@ -1,0 +1,3 @@
+2026-10-17T09:44:00Z	package	W52-01 活 store 锁有界等待	WorktreeManager 增加 lockWaitMs（默认 30s，0..120s）；EEXIST 时先尝试死主回收，否则每 50ms 等待并受 signal 约束，到期失败关闭；既有快速失败用例设 0	死主策略沿用 W47-02；等待为本地调度决定	worktrees 30/30；全量 2,086/2,086；链 767/767；两模式 smoke 通过
+2026-10-17T09:47:00Z	decision	W52-01 等待不改变所有权语义	① 仅在活主持锁时等待；② 每轮仍先尝试死主回收；③ 等待受操作 signal 约束并以 deadline 失败关闭；④ lockWaitMs=0 完整保留原行为；⑤ 原因格式、dev/ino 复核与释放逻辑不变	残余：持锁操作超过 deadline 时后来者仍失败；无排队公平性	.audit/w52-01-test.txt
+2026-10-17T09:50:00Z	verification	W52-01 验收：worktrees 30/30、2,086/2,086、767/767、两模式 smoke、身份 9d611189…	活锁 150ms 后释放可获取；abort 以 AbortError 结束；快速失败用例显式设 0	tsc 0；build 0；notices 0；索引 75 chunks / 323,525 单位不变；smoke exit 0
