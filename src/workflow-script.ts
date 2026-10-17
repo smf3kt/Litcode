@@ -1,4 +1,7 @@
 import vm from 'node:vm';
+import { constants as fsConstants } from 'node:fs';
+import fs, { type FileHandle } from 'node:fs/promises';
+import nodePath from 'node:path';
 import { parse, type Node } from 'acorn';
 import * as walk from 'acorn-walk';
 
@@ -493,6 +496,47 @@ export function parseWorkflowScript(source: string): WorkflowScriptParse {
   const parsed = metaValue(literal);
   if ('error' in parsed) return parsed;
   return { meta: parsed.meta, scriptBody: bodyAfter(source, statement.end) };
+}
+
+// --- Script file loading (`Chn`, chunk-hedqf2m1.js offset 19175) -------------
+
+function scriptPathRefusal(file: string): string {
+  return `scriptPath must be a script path this tool returned, or a file you can already read `
+    + `(the working directory or a directory you have added): ${file}\n`
+    + 'Pass the whole script inline through workflow_run\'s `script` input instead.';
+}
+
+export async function loadWorkflowScriptFile(
+  file: string, workspace: string,
+): Promise<{ source: string } | { error: string }> {
+  const resolved = nodePath.resolve(workspace, file);
+  let handle: FileHandle;
+  try {
+    // O_NOFOLLOW rejects a symbolic link at resolution time; all later checks
+    // read the opened descriptor, not the path.
+    handle = await fs.open(resolved, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    return { error: code === 'ENOENT' ? `Workflow script file not found: ${file}`
+      : `Failed to read workflow script file ${file}` };
+  }
+  try {
+    const stat = await handle.stat({ bigint: true });
+    if (stat.ino === 0n || stat.nlink > 1n) return { error: scriptPathRefusal(file) };
+    if (!stat.isFile()) return { error: `Workflow script file ${file} is not a regular file` };
+    if (stat.size > BigInt(WORKFLOW_SCRIPT_MAX_BYTES)) {
+      return { error: `Workflow script file ${file} exceeds ${WORKFLOW_SCRIPT_MAX_BYTES} bytes` };
+    }
+    const bytes = await handle.readFile();
+    if (bytes.byteLength > WORKFLOW_SCRIPT_MAX_BYTES) {
+      return { error: `Workflow script file ${file} exceeds ${WORKFLOW_SCRIPT_MAX_BYTES} bytes` };
+    }
+    return { source: bytes.toString('utf8') };
+  } catch {
+    return { error: `Failed to read workflow script file ${file}` };
+  } finally {
+    await handle.close().catch(() => {});
+  }
 }
 
 // --- Transform (`Lr`) -------------------------------------------------------

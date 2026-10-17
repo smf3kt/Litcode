@@ -9,8 +9,8 @@ import { AgentRegistry } from '../src/agent-registry.js';
 import type { ModelProvider, ModelRequest } from '../src/provider.js';
 import { createTools } from '../src/tools.js';
 import { createWorkflowTools, WorkflowRegistry } from '../src/workflow.js';
-import { parseWorkflowScript, runWorkflowScript, WORKFLOW_SCRIPT_MAX_BYTES,
-  type WorkflowAgentBridge } from '../src/workflow-script.js';
+import { loadWorkflowScriptFile, parseWorkflowScript, runWorkflowScript,
+  WORKFLOW_SCRIPT_MAX_BYTES, type WorkflowAgentBridge } from '../src/workflow-script.js';
 
 const signal = () => new AbortController().signal;
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as unknown;
@@ -184,6 +184,39 @@ test('abort cancels a running script and timers', async () => {
   assert.equal(result.error?.message, 'Workflow aborted');
 });
 
+test('scriptPath accepts a regular file and refuses links, directories and oversized files', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-workflow-file-'));
+  const failure = async (file: string) => {
+    const loaded = await loadWorkflowScriptFile(file, dir);
+    return 'error' in loaded ? loaded.error : 'loaded';
+  };
+  try {
+    fs.writeFileSync(path.join(dir, 'flow.js'), meta + 'return args.value');
+    const loaded = await loadWorkflowScriptFile('flow.js', dir);
+    assert.ok(!('error' in loaded));
+    const parsedFile = parseWorkflowScript((loaded as { source: string }).source);
+    assert.ok(!('error' in parsedFile));
+    const ran = await runWorkflowScript(parsedFile, {
+      args: { value: 5 }, signal: signal(), agent: async () => 'ok',
+    });
+    assert.equal(ran.result, 5);
+
+    fs.symlinkSync(path.join(dir, 'flow.js'), path.join(dir, 'link.js'));
+    assert.match(await failure('link.js'), /Failed to read workflow script file link\.js/);
+    fs.linkSync(path.join(dir, 'flow.js'), path.join(dir, 'hard.js'));
+    assert.match(await failure('hard.js'), /scriptPath must be a script path this tool returned/);
+    // A directory carries nlink > 1, so the source's inode/link guard refuses
+    // it before the regular-file check.
+    fs.mkdirSync(path.join(dir, 'folder'));
+    assert.match(await failure('folder'), /scriptPath must be a script path this tool returned/);
+    assert.match(await failure('missing.js'), /Workflow script file not found: missing\.js/);
+    fs.writeFileSync(path.join(dir, 'huge.js'), 'a'.repeat(WORKFLOW_SCRIPT_MAX_BYTES + 1));
+    assert.match(await failure('huge.js'), new RegExp(`exceeds ${WORKFLOW_SCRIPT_MAX_BYTES} bytes`));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function response(text: string): Anthropic.Message {
   return { id: 'fixture', model: 'test', type: 'message', role: 'assistant', content: [{ type: 'text', text }],
     stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } } as Anthropic.Message;
@@ -219,6 +252,13 @@ test('workflow_run executes scripts through the child agent registry', async () 
     assert.equal(requests.length, 2);
     assert.match(String(requests[0]?.messages.at(-1)?.content), /first task/);
 
+    fs.writeFileSync(path.join(workspace, 'file-flow.js'), meta + 'return args.value');
+    const fromFile = JSON.parse(String(await workflowRun!.execute({ scriptPath: 'file-flow.js', args: { value: 11 } }, context))) as
+      { result: unknown; agent_count: number };
+    assert.equal(fromFile.result, 11);
+    assert.equal(fromFile.agent_count, 0);
+
+    await assert.rejects(workflowRun!.execute({ script: meta, scriptPath: 'file-flow.js' }, context), /exactly one/);
     await assert.rejects(workflowRun!.execute({ script: 'throw new Error("no meta")' }, context), /FIRST statement/);
     const childFailure = JSON.parse(String(await workflowRun!.execute({
       script: meta + `const value = await agent('fail task')\nreturn { value }`,
