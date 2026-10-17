@@ -5,7 +5,7 @@
 //   chunk-bk5ct2gw.js sha256 efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1
 // Each block carries its zero-based UTF-16 [start,end) range, unit count and body SHA-256.
 import { Nl } from './plugin-chain-host.js';
-import { $A, He, l, Ge, L } from './plugin-chain-source.js';
+import { $A, He, D, Ge, L } from './plugin-chain-source.js';
 
 // chunk-ed7zyzrn.js matcher context [2334,2418) 84 units sha256 d1870c3d40e6b4b3993e316eeadefdfd6d88e63b121c94b8203302be67c4d80a
 function iRe(o){let t=A(o),r=f.get()??to;return t===void 0?void 0:{table:r,paths:t}}
@@ -75,6 +75,37 @@ function TE(o,t){let r=Object.create(null);for(let[e,n]of Object.entries(o))if(e
 
 // chunk-ed7zyzrn.js prototype key name [1111,1131) 20 units sha256 dd8e00d73c293ac30d392ed2461d72dd6099f8330e549deff47fb73933c4c388
 var wQt="__proto__";
+// chunk-4xj6t50t.js server name normalization [653,790) 137 units sha256 be825a7d34dcd31f077502ec645d0f3fc1678e3818a8b77356339b33a286f297
+function In(e){let r=e.replace(/[^a-zA-Z0-9_-]/g,"_");if(e.startsWith("claude.ai "))r=r.replace(/_+/g,"_").replace(/^_|_$/g,"");return r}
+
+// chunk-z6p21rxk.js tool alias table, alias lookup, include-path expansion and reverse lookup [662,1294) 632 units sha256 b3b1ccbec1d3ad4335bdc2ffd690ce2ffd37c532a3cd1251532bb4e6b79ae1df
+var c={Task:"Agent",KillShell:"TaskStop",KillBash:"TaskStop",ListPeers:"ListAgents",Brief:"SendUserMessage",ListMcpResources:"ListMcpResourcesTool",ReadMcpResource:"ReadMcpResourceTool",ReadMcpResourceDir:"ReadMcpResourceDirTool"};function Bl(e){return Object.hasOwn(c,e)?c[e]:e}function gpe(e){let t=[];for(let[n,r]of Object.entries(c))if(r===e)t.push(n);return t}var YWn="workspace",HUe=`mcp__${YWn}__bash`,XWn=`mcp__${YWn}__web_fetch`;function _Z(e,t){let n=t&&Object.hasOwn(t,e)?t[e]:void 0;return n!==void 0&&n!==e?[e,n]:[e]}function qW(e,t){if(!t)return[];let n=[];for(let[r,o]of Object.entries(t))if(o===e)n.push(r);return n}
+
+// chunk-ed7zyzrn.js anchored regex shape [1000,1062) 62 units sha256 8bf26e8dc23327248604a9f150c589fb35ee0308d4ecf89c8ebde1982ba9ddbe
+var Twr=/^\^?(?:\((?:\?:)?)?\^?\w+\$?(?:\|\^?\w+\$?)*\)?\$?$/;
+
+// chunk-ed7zyzrn.js matcher-table root test [1062,1111) 49 units sha256 1db5973eb48407949bae3742f5cddde4f108926d5bbcb279f4c9b6c5c9bd3c38
+var I=(o)=>o?.paths.some((t)=>t.length===0)===!0;
+
+// chunk-ed7zyzrn.js matcher-table name expansion [1307,1436) 129 units sha256 f964a54b794b0c981c58eecda697465b176ce1ff41c793814e0e05a641922f9a
+function W(o,t){let r=D([t,Bl(t)].flatMap((e)=>_Z(e,o)));return D(r.concat(r.flatMap((e)=>qW(e,o))).flatMap((e)=>[e,...gpe(e)]))}
+// chunk-ed7zyzrn.js literal matcher [3547,3635) 88 units sha256 7415279a566e78407960bd8604b2dd2e97c8009d6587de9eb92b0b394b7d1510
+var S=(o,t,r)=>I(o)&&typeof t==="string"&&typeof r==="string"&&W(o.table,r).includes(t);
+
+// chunk-ed7zyzrn.js regex normalization [3989,4052) 63 units sha256 c0aeb7dbeb9acd731bc12fbbd15f82b7d05aa61b5209745d4e7efab1ecb8df2c
+var K="w";var C=(o)=>Array.from(o,(t)=>In(t)===t?K:t).join("");
+
+// chunk-ed7zyzrn.js normalized anchored regex test [4052,4239) 187 units sha256 1865adbcd4af1301eab025d863d546071edd947571f573c98bec8f5d7faeed9c
+function F(o){let t=o.source.startsWith("^(")&&o.source.endsWith(")$");return o.flags===""&&Twr.test(C(o.source))&&(t||o.source.split("|").every((r)=>r.startsWith("^")&&r.endsWith("$")))}
+
+// chunk-ed7zyzrn.js regex matcher [4239,4338) 99 units sha256 f43526cd5ebb6a8c59c6f2800cbc7da1d8d9e60deae4deaff89f205963b03791
+var z=(o,t,r)=>I(o.names)&&typeof r==="string"&&F(a(t))&&W(o.names.table,r).some((e)=>o.test(t,e));
+
+// chunk-ed7zyzrn.js nested matcher context [4338,4413) 75 units sha256 9770445029e8fdede334fb72fa1c2c7db2a7c137d978b81e6c250d65f1e2d6ce
+function G(o,t){return o.names===void 0?o:{test:o.test,names:H(o.names,t)}}
+
+// chunk-ed7zyzrn.js matcher runner [4413,4815) 402 units sha256 4f8263344333ef25cba5ec0775f5156a9fd4ed662a7d6f089a3c2943af47d8a2
+function l(o,t,r){if(Array.isArray(o))return Array.prototype.some.call(o,(e)=>l(e,t,r));if(Array.isArray(t))return Array.prototype.some.call(t,(e)=>l(o,e,r));if(typeof o!=="object"||o===null)return o===t||S(r.names,o,t);if($A(o)){if(typeof t!=="object"||!t)return!1;for(let e of Object.keys(o))if(!Object.hasOwn(t,e)||!l(o[e],t[e],G(r,e)))return!1;return!0}return i(o)&&(r.test(o,String(t))||z(r,o,t))}
 
 
 export { iRe, aUn, lUn, Slt, EQt, dho, to, HFe, Xo, uho, H, A, f, y, i, a, k, b, E, Dy, J, TE, wQt };

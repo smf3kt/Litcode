@@ -1,0 +1,26 @@
+names ui.render ui.render viewport terminal|C|r
+kVe "5\u0000\u000011"
+mIn "80\u0000false\u0000015abd7f5cc57a2dd94b7590f04ad8084273905ee33ec5cebeae62276a97f862"
+mIn shape [2,5,64]
+$H "KEY\u0000\u000011"
+Tc all "ui.render\u00005\u0000K\u00002\u0000other\u00007\u0000"
+Tc keys "5\u0000K\u00002" "5\u0000K\u00003"
+keys  live true a live a live a true a|state
+wc before [["ui.render",5],["ui.render viewport",9],["K",2],["K live",3],["S\u0000state",4],["other",7],["terminal\u0000C\u0000r\u0000state",11]]
+wc after [["ui.render",5],["ui.render viewport",9],["K",3],["K live",3],["S\u0000state",4],["other",7],["terminal\u0000C\u0000r\u0000state",11]]
+sur true true false false
+iur false false false false false false
+j3e ["UserMessage","AssistantMessage","ToolUse","ToolResult","ToolGroup","CommandOutput","TurnDuration","InfoNotice"] Ioe {"type":"engine","ref":0}
+Omt false l9 function undefined
+WPn [ 'm1' ] SVe ["m1"]
+Frt true true LAt true true
+GPn C 1 GPn D 1
+$ur {"first":1,"last":2,"of":3} null undefined undefined
+blt true false true
+at 2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881 2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881 eA true
+hno false false 015abd7f5cc57a2dd94b7590f04ad8084273905ee33ec5cebeae62276a97f862
+aliases true true true true true true true true true
+OL function true
+jDe 0 1 function
+(node:86766) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
