@@ -767,3 +767,11 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The import graph has no cycle.** The source copy imports the hooks module; the surface module re-exports both; this was forced by the first draft, where the copy imported the re-exporting module and would have hit an uninitialized `qt`.
 - [x] **Behaviour was measured before it was asserted.** The immediate first paint, the 16 ms coalescing, the `complete` no-schedule rule and the unchanged-`rawText` no-op are in the probe log and in the suite.
 - [x] **Sweep.** tsc 0, copy `unresolved 0`, notices 0, new suite 11/11, chain family 503/503, full 1779/1779, index 56 chunks / 244,587 units, identity `571df984…`.
+
+## W45-73 acceptance (2026-10-17)
+
+- [x] **The Image slice was split before either half was taken.** The wire layer is 2a; the source/decode bodies and the component are 2b, which also needs the client, settings and theme seams it reads.
+- [x] **The source bodies are copied, not re-invented.** Twelve whole blocks are in the ledger with ranges and digests; the only ported name is `hxn`, whose chunk is not in this package, and its source expression is quoted in the copy header.
+- [x] **The host boundary adds nothing.** No source-level host function was introduced; `CZ`/`PH`/`fl` come from the raster surface copy that already carries them.
+- [x] **Behaviour was measured before it was asserted.** The size-before-medium order, the base64 skip, the two colour forms, the UTF-8 byte cap and the three chunk splits are in the probe log and in the suite.
+- [x] **Sweep.** tsc 0, copy `declared 56 / unresolved 0`, notices 0, new suite 28/28, chain family 531/531, full 1807/1807, index 57 chunks / 248,370 units, identity `9c6d2d17…`.
