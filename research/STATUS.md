@@ -2871,3 +2871,15 @@ shrinking message list resets the walk. The DiffDialog component, file list/deta
 key bindings remain out. Focused 9/9, full 2489/2489, tsc 0, build 0, notices 0, scan declared
 13 / unresolved 0, identity `163ac4f3…`.
 [W164 record](ports/W164-diff-turn.md).
+
+W165 added the diff dialog's smallest primitives (2 copied blocks, 505 UTF-16 units) and
+measured the DiffDialog closure. `I` from chunk-ax7r0qj7.js selects the singular word for a
+count of one and defaults the plural to `singular + "s"`; `Ib` from chunk-a8pz28bf.js renders
+`+added`/`-removed` with the recovered diff colors, keeps the separator only when both sides are
+nonzero, and renders nothing for zero/zero. The `si` component [22672,28980) is 6,308 units with
+32 external names; I and Ib are resolved, and the remaining 30 are located by module and range
+and sliced into W166 chrome primitives (Mr/fo/z/pt/Se), W167 list (Tl/Cn/Po/Bo/rx), W168 frame
+and tabs (_e/sS/Na), W169 detail (pBe/pee/Uwe) and W170 si wiring with the local PMr adapter and
+Ht/Ffe host. Focused 5/5, full 2494/2494, tsc 0, build 0, notices 0, scan declared 16 /
+unresolved 0, identity `1686f834…`.
+[W165 record](ports/W165-diff-primitives.md).

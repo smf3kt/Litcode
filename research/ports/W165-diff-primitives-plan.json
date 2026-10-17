@@ -1,0 +1,8 @@
+{
+  "imports": ["import { Xe as r, w, n, b } from './plugin-chain-react-surface.js';"],
+  "exports": ["I", "Ib"],
+  "blocks": [
+    { "file": "chunk-ax7r0qj7.js", "range": [798, 839], "note": "I: singular/plural word selection" },
+    { "file": "chunk-a8pz28bf.js", "range": [1139, 1603], "note": "Ib: added/removed diff stat label" }
+  ]
+}
