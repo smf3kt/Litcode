@@ -1,0 +1,120 @@
+{
+ "schema": "W95UserPromptExpansionEvidence.v1",
+ "package": "W95-01 — UserPromptExpansion payload",
+ "date": "2026-10-18",
+ "question": "When is UserPromptExpansion raised and what fields does it carry?",
+ "answer": "Only from the skill-expansion path, with expansion_type, command_name, command_args and the reconstructed command text. The product now raises it only when Agent.run receives that descriptor and no longer raises it for plain prompts or /attach.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "builder": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "VYr",
+   "offset": 2947732
+  },
+  "callSite": {
+   "module": "extracted-v2/modules/chunk-htgmc2p1.js",
+   "offset": 38795
+  },
+  "schema": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "offset": 194968,
+   "expansionTypes": [
+    "slash_command",
+    "mcp_prompt"
+   ]
+  }
+ },
+ "behavior": {
+  "fields": [
+   "expansion_type",
+   "command_name",
+   "command_args",
+   "prompt"
+  ],
+  "prompt": "reconstructed /name args text",
+  "updatedPrompt": "replaces the model prompt",
+  "additionalContext": "joins the hook context"
+ },
+ "correction": {
+  "previous": "raised for every prompt with {prompt, source: \"user\"}",
+  "basis": "the source raises only from the expansion path and requires the expansion fields",
+  "updatedTests": [
+   "test/attachments.test.ts"
+  ]
+ },
+ "adaptations": [
+  "command_source is unset because the local skill catalog records no source.",
+  "A forked skill execution inside the skill runtime does not yet carry expansion metadata."
+ ],
+ "changes": [
+  {
+   "file": "src/hooks.ts",
+   "change": "expansion_type and command_args payload fields",
+   "sha256": "0bce013d6a8152041ddf4083bc2f59942060e93b1e28a02e3194b5058ca68868"
+  },
+  {
+   "file": "src/agent.ts",
+   "change": "expansion-only raise and descriptor type",
+   "sha256": "6af9d081878024187f9aff072e298e81a3961dda8f9a61a8f584b5acb1dcc021"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "slash-command expansion descriptors",
+   "sha256": "cbba831ec50ce0e648917cdf4ba27f2deffc9acc7b806c3fd0461c8b44c460dd"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "expansion payload and silence test",
+   "sha256": "5aa791d096203e5333e7238bd0701e0b433d0acf094feb203db45a4298a21eac"
+  },
+  {
+   "file": "test/interactive.test.ts",
+   "change": "greet/auto expansion assertions",
+   "sha256": "3f01bcfabba5698e100dccc01fa857bf2d2b92eaf8a141038e990e65c5e9a9da"
+  },
+  {
+   "file": "test/attachments.test.ts",
+   "change": "attach silence correction",
+   "sha256": "c4a5f95c8426324b04d244cb5e79a26a27125e683282e9aec21160d2f8fef080"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W95",
+   "sha256": "9f558b455ac36c12a38b16eb1ad468f51b4165d03287dc94a793967ebf9fde31"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W95",
+   "sha256": "5a0cd8e81c5053098eef183ce8ec9c821c9faef631938ddc3f5c4ec1ca743071"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W95-01 entry",
+   "sha256": "877607c412db0c05613e235482922ed62289674cd219b3d2e7aea3b15c923a00"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W95-01 S-1..S-7 entry",
+   "sha256": "cba622c249b3fa84cb22ced5569ba632f35165052e341a0bfbda56e3cad66184"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "lifecycle": "38/38",
+  "interactive": "8/8",
+  "attachments": "2/2",
+  "build": "exit 0",
+  "full": "2,124/2,124",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "50e588861e39fb2ae0d0a1491e95139b0d1e4a9279ece47c0cbaa9849a3906f7"
+ },
+ "residuals": [
+  "command_source is not carried.",
+  "The skill-runtime fork path does not yet raise the expansion event.",
+  "Full hook consumers remain C-6 work."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with full consumers."
+}

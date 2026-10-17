@@ -322,6 +322,9 @@ export type HookPayload = {
   server_name?: string;
   /** UserPromptExpansion: the command name that triggered the expansion. */
   command_name?: string;
+  /** UserPromptExpansion: `slash_command` or `mcp_prompt`, and the raw argument text. */
+  expansion_type?: "slash_command" | "mcp_prompt";
+  command_args?: string;
   /** InstructionsLoaded: the loaded file and why it was loaded. */
   memory_type?: string;
   load_reason?: string;

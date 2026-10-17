@@ -2127,3 +2127,12 @@ drops `reason`, and StopFailure drops `stop_reason` on both raise sites.
 no runtime registry handle. `agent-lifecycle` 36/36, tsc 0, build 0, full
 2,123/2,123, chain 767/767, identity `5ac052d1…`.
 [W94 record](ports/W94-stop-payloads.md).
+
+W95-01 ports the UserPromptExpansion payload. The event is raised only when
+`Agent.run` receives an expansion descriptor, carrying `expansion_type`,
+`command_name`, `command_args` and the reconstructed command text; the
+interactive slash-command path supplies them. The prior per-prompt
+`{prompt, source}` raise is removed, and the attachments test now asserts the
+hook stays silent for `/attach`. `agent-lifecycle` 38/38, `interactive` 8/8,
+`attachments` 2/2, tsc 0, build 0, full 2,124/2,124, chain 767/767, identity
+`50e58886…`. [W95 record](ports/W95-user-prompt-expansion.md).

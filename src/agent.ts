@@ -56,6 +56,16 @@ export function assertPaired(messages: Anthropic.MessageParam[]): void {
 }
 
 export type RunResult = { reason: string; text: string; modelCalls: number };
+
+/** The recovered UserPromptExpansion payload (`VYr`, chunk-sfn1dbxq.js offset 2947732);
+ *  this runtime has no command-source catalog, so `command_source` stays unset. */
+export type PromptExpansion = {
+  expansion_type: 'slash_command' | 'mcp_prompt';
+  command_name: string;
+  command_args: string;
+  prompt: string;
+};
+
 export type AgentEvents = { text?: (text: string) => void; status?: (status: string) => void;
   textStart?: () => void; textEnd?: () => void;
   progress?: (event: AgentProgressEvent) => void;
@@ -830,7 +840,8 @@ export class Agent {
     return this.finish(reason, text, modelCalls);
   }
 
-  async run(prompt?: string, signal = new AbortController().signal, attachment?: MediaAttachment): Promise<RunResult> {
+  async run(prompt?: string, signal = new AbortController().signal, attachment?: MediaAttachment,
+    expansion?: PromptExpansion): Promise<RunResult> {
     if (this.busy) throw new Error('Agent is already running');
     this.busy = true;
     let modelCalls = 0;
@@ -856,10 +867,17 @@ export class Agent {
           return this.finish('hook_blocked', '', 0);
         }
         prompt = submitted.updatedPrompt ?? prompt;
-        const expansion = await this.hook('UserPromptExpansion', { prompt, source: 'user' }, signal);
-        if (expansion.blocked) return this.finish('hook_blocked', '', 0);
-        prompt = expansion.updatedPrompt ?? prompt;
-        const context = [...startContext, ...submitted.additionalContext, ...expansion.additionalContext];
+        // UserPromptExpansion is an expansion event, not a per-prompt event: it carries the typed
+        // command's name, raw arguments and reconstructed command text (`VYr`, chunk-sfn1dbxq.js
+        // offset 2947732, raised from the skill-expansion path at chunk-htgmc2p1.js offset 38795).
+        let expansionContext: string[] = [];
+        if (expansion !== undefined) {
+          const expanded = await this.hook('UserPromptExpansion', { ...expansion }, signal);
+          if (expanded.blocked) return this.finish('hook_blocked', '', 0);
+          prompt = expanded.updatedPrompt ?? prompt;
+          expansionContext = expanded.additionalContext;
+        }
+        const context = [...startContext, ...submitted.additionalContext, ...expansionContext];
         if (this.session.config.autoMemory && this.session.config.features?.memory !== false && this.tools.has("memory_list") && this.tools.has("memory_read")) {
           const memory = await loadAutoMemoryContext(this.session.config.workspace, signal,
             { permissions: this.session.config.permissions, maxOutputBytes: this.session.config.maxOutputBytes });
