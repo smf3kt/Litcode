@@ -1,0 +1,18 @@
+Gt 12
+ke no provider Error: useTerminalSize must be used within an Ink App component
+ke provider {"columns":72,"rows":20}
+plain root {"type":"Box","flexDirection":"row","flexShrink":0,"elementKey":"i1","elementPlugin":"p","click":"undefined"}
+plain children [{"type":"Text","props":{"bold":false,"children":"Name: "}},{"type":"Text","props":{"dimColor":false,"wrap":"truncate-end","children":"abc"}},false]
+placeholder children [{"type":"Text","props":{"bold":false,"children":"Name: "}},{"type":"Text","props":{"dimColor":true,"wrap":"truncate-end","children":"Type here"}},false]
+empty children [false,{"type":"Text","props":{"dimColor":true,"wrap":"truncate-end","children":""}},false]
+focused root click function ref true
+focused children [{"type":"Text","props":{"bold":true,"children":"Name: ","onChange":"undefined","onChangeCursorOffset":"undefined"}},{"type":"TextEditor","props":{"value":"fromhost","onChange":"function","placeholder":"Type here","columns":25,"cursorOffset":8,"onChangeCursorOffset":"function","focus":true,"showCursor":true,"multiline":false,"disableEscapeDoublePress":true}},{"type":"Text","props":{"dimColor":true,"children":" ⏎ submit","onChange":"undefined","onChangeCursorOffset":"undefined"}}]
+edit calls [["textOf","p","i1"],["textOf","p","i1"],["edit",{"plugin":"p","handle":1,"element":"i1"},"next"]]
+value fallback {"value":"prop","columns":71,"cursorOffset":4,"focus":true,"showCursor":true,"multiline":false,"disableEscapeDoublePress":true}
+narrow width 12
+terminal width 38
+submit hint " ⏎ go"
+unfocused no host [{"type":"Text","props":{"bold":false,"children":"Name: "}},{"type":"Text","props":{"dimColor":false,"wrap":"truncate-end","children":"prop"}},false]
+cursor props {"bold":true,"children":": "}
+(node:14470) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

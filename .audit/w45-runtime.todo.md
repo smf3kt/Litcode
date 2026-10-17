@@ -842,3 +842,12 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **Focus is gated on the exact press.** `fdn` naming another handle loses the focus flag and the ref, while the click stays.
 - [x] **The window keeps the highlight visible.** The first index moves with the highlight and the hidden-count row appears only when options are cut.
 - [x] **Sweep.** tsc 0, copy `declared 34 / unresolved 0`, notices 0, new suite 12/12, chain family 656/656, full 1,932/1,932, index 65 chunks / 294,284 units, identity `e367fd4d…`.
+
+## W45-82 acceptance (2026-10-17)
+
+- [x] **The Input field is ported.** The component, the minimum width, the two contexts and the terminal-size hook are copied.
+- [x] **Value and focus are host state.** The value comes from `cdn.textOf`, edits go back through `cdn.edit`, and focus needs both `cdn` and the exact press in `fdn`.
+- [x] **The caret stays at the end.** The focused effect raises the stored offset to `Number.MAX_SAFE_INTEGER`; the drawn offset is clamped to the value length.
+- [x] **The width reserves the chrome.** `max(12, columns - width(label) - width(hint))`, with a mounted `ddn` number replacing the terminal width.
+- [x] **The editor is a host token.** `wr` is drawn with one fixed prop set; its 3,638-unit shell subsystem stays outside the site layer.
+- [x] **Sweep.** tsc 0, copy `declared 33 / unresolved 0`, notices 0, new suite 11/11, chain family 667/667, full 1,943/1,943, index 67 chunks / 295,276 units, identity `5d48dc6d…`.
