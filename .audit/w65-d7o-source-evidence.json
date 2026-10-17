@@ -57,14 +57,14 @@
       "file": "main.tsx",
       "change": "the messagingSocketPath local and its setup() argument go, the replay promotion folds to options.replayUserMessages alone, the --messaging-socket-path option is deleted, and the setup() parallelization comment loses its startUdsMessaging rationale",
       "sourceSha256": "40dc394e1240b5b0e20be922f82a74871553966c04be2c01111aadc15162cf41",
-      "portSha256": "87b29b2ab37fad88ea972480e19745095319203735949d5ee3813608c001215e",
+      "portSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "setup.ts",
       "change": "the messagingSocketPath parameter goes and the UDS server gate it widened is removed — an if whose body was already empty, since the startUdsMessaging call left in an earlier wave; the comment above the surviving skills/plugins rationale is reworded",
       "sourceSha256": "16716593702347e8e9c77bd751b7f4c713680ed546d401323a4d6e2263eae142",
-      "portSha256": "5de742b3f76e55a7a1d0a3a92bcd22a64e44bc638b35366a69648efdd9516e8b",
+      "portSha256": "c6bb2c676b2e7b51c153dc4de499a254977a1b5c968db5b08062837daa4fede1",
       "coordinateUnit": "utf16-half-open"
     }
   ],

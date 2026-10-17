@@ -1,0 +1,148 @@
+{
+  "before": "f95398a",
+  "kind": "the updater core and commands removed (no ported bodies; the core downloaded and installed a release build in place)",
+  "surface": "utils/autoUpdater.ts (release-bucket dist-tags, max-version, install of the downloaded build), utils/nativeInstaller/ (download, installer, package managers, PID locks, index), cli/update.ts, commands/install.tsx, migrations/migrateAutoUpdatesToSettings.ts and hooks/notifs/useNpmDeprecationNotification.tsx; main.tsx's `claude update`, `claude install` and `assertMinVersion`; the doctor's Updates/Version Locks sections with configInstallMethod/recommendation/autoUpdates/hasUpdatePermissions; the status panel's install warnings; setup's lockCurrentVersion and the old-version cleanup",
+  "decisiveFact": "the deleted modules exist to fetch and install a newer copy of the CLI from a vendor release bucket: dist-tag lookup, platform binary download, checksum and signature checks, version-directory installation, and PID locks that protect that install tree. None of it is needed by the local agent surface. `claude update` and `claude install` were named in the W61 deferral but are not separate account features: they exist only as entry points into this machinery, and the doctor, status and npm-deprecation messages told users to run them. The package is therefore removed whole, commands included, as recorded here",
+  "reclassified": "`claude update` and `claude install` were deferred from W61 as in-place CLI entries; this step records that they belong to the updater package rather than to the account/subscription wave, because their only implementation is the release-channel install path removed here",
+  "changes": [
+    {
+      "file": "main.tsx",
+      "change": "the isAutoUpdaterDisabled import with its telemetry field, the assertMinVersion import and call, the migration import and call, the `claude update`/`claude install` blocks, the auto-updater wording in the doctor description and the autoupdate sequencing comment are removed",
+      "sourceSha256": "87b29b2ab37fad88ea972480e19745095319203735949d5ee3813608c001215e",
+      "portSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "cli/handlers/util.tsx",
+      "change": "installHandler is removed with the `cwd` import and the header now names doctor alone",
+      "sourceSha256": "b404a91466e437f0d578f60ebaeb3488af111ca48f3eae1b3b50096d883de4c4",
+      "portSha256": "026b6951dfcb26fecf98bae4e13039a972d7907bd2e4515b7658249c6a2b5d3c",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "screens/REPL.tsx",
+      "change": "the useNpmDeprecationNotification import and call are removed",
+      "sourceSha256": "a8875c55929ba33777b82ceed0440e5770dfa5d8d63a0e1de19348dcdee922ee",
+      "portSha256": "8d47f3122f9daa0b9d442963f3301980dd858912d134cf78c71c5881aa3fdd8d",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "components/Settings/Status.tsx",
+      "change": "the buildInstallationDiagnostics import and call are removed from the status panel",
+      "sourceSha256": "828f5ca8676b5d5e334f1f22da11a3ad67ab81620e4da90d175afa7d806f607f",
+      "portSha256": "4dc09aedc66e4be8936900af261804feab11efe2e0c486ed80df96c29c81b4f9",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "screens/Doctor.tsx",
+      "change": "DistTagsDisplay, distTagsPromise, autoUpdatesChannel, versionLockInfo with its locks fetch, the Updates and Version Locks sections, the Config install method and recommendation rows, and the Suspense/use/join/lock imports they held are removed",
+      "sourceSha256": "965589854d3974836ab5ee8ae772fb29bdb77e2aa71399d03bf18ce096926709",
+      "portSha256": "bc11e0f3035deb1f7cefee749b929b52770fe045b01bf80a5487ff0eb4edd7f1",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "setup.ts",
+      "change": "the lockCurrentVersion import and its call are removed",
+      "sourceSha256": "5de742b3f76e55a7a1d0a3a92bcd22a64e44bc638b35366a69648efdd9516e8b",
+      "portSha256": "c6bb2c676b2e7b51c153dc4de499a254977a1b5c968db5b08062837daa4fede1",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/backgroundHousekeeping.ts",
+      "change": "the cleanupOldVersions import with its two call sites and the throttled variant in the ant interval are removed; the npm-cache interval and message cleanup stay",
+      "sourceSha256": "c75b6f4f63898b33b1766d88cb0ec75ba7f24f8d30c3fa3cb9b2791b5957755f",
+      "portSha256": "6a7ef3da5035b3b808e40c8dd2ca9f5b043bc40da38817c9301829ed012ffa50",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/cleanup.ts",
+      "change": "cleanupOldVersionsThrottled and the cleanupOldVersions import are removed; cache, message, paste, image, worktree and tool-result cleanup stay",
+      "sourceSha256": "bde2f021cbd1c1f8f877b32f58f934599b0a411a10d79ef5c5026bc46d0deda8",
+      "portSha256": "b3fbb0a8a6aeff98fed303989d2d922ef2f8765deae6012ce3d33178295d8e5b",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/config.ts",
+      "change": "isAutoUpdaterDisabled is removed with its last reader, and shouldSkipPluginAutoupdate now tests NODE_ENV/DISABLE_AUTOUPDATER/getEssentialTrafficOnlyReason directly instead of calling it",
+      "sourceSha256": "2e9a2179c344d08294b2cf3d8d5ed6f2eebc28cb3737fd82c034d8605c678c98",
+      "portSha256": "683c998fec889b1d3dfc1e7ff09a5b47b166600141b5258c1fb414917c0f1f17",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/deepLink/registerProtocol.ts",
+      "change": "the binary-path comment no longer names the native installer's auto-updating symlink",
+      "sourceSha256": "f71feda809f51765054430f0a4a705b210e0aca49f4190dfa28d8a589d7df58c",
+      "portSha256": "464891daabf9262fe5801cce7ae0479e145e878d487ad4b9aef3e074e4ede532",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/doctorDiagnostic.ts",
+      "change": "the autoUpdater/config helper imports, the four updater fields on DiagnosticInfo, the config-indicated native install probe, the install-method mismatch warnings, the local-installation warning, the permission check and the autoUpdates/hasUpdatePermissions/configInstallMethod result fields are removed; the package-manager import points at the relocated module",
+      "sourceSha256": "a380415a102a0c6a449abcb1a25a7ac87fcc4445ba1946116727ae1ce2afdf65",
+      "portSha256": "505d9d01871ff98f3333b8352989e9646b9da5a5c15974212b7ecb5e42837755",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/localInstaller.ts",
+      "change": "writeIfMissing, ensureLocalPackageEnvironment and installOrUpdateClaudePackage are removed with their now-unused imports; the shell-type and local-path helpers stay",
+      "sourceSha256": "0bbd3c9ab2d1c6e97fa1f4b4fe9230a8b17a2d69650b36048420686d95d28891",
+      "portSha256": "4775bbcb4aab7cde1eee6c356774d6a94e1551ad7af95045a86c95d46dd9b3aa",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/plugins/officialMarketplaceGcs.ts",
+      "change": "the bucket comment no longer names the deleted nativeInstaller/download.ts",
+      "sourceSha256": "2c668efc87d11104ab952b2d98459f148466df311017be0bd7eec7e1de369705",
+      "portSha256": "3dd87b499c45fcf7fbe3189700772a420bd3a71120bec07b0e960be3e288cf34",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/privacyLevel.ts",
+      "change": "the surface list no longer names auto-updates",
+      "sourceSha256": "45f438503d7a0319da6186cb95dcc0185e7d9b1a1493b4f5d435f8befbdb90ce",
+      "portSha256": "9b592b10339960d783ea040216e4dc7153a9dd6960fcdb52641e2cb3deebf943",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/status.tsx",
+      "change": "buildInstallationDiagnostics and the hasUpdatePermissions warning are removed; the remaining status diagnostics stay",
+      "sourceSha256": "911f724cf8e7c5a1cf9a498086fb80170aae942caf42b7119189193beaf80804",
+      "portSha256": "84f68e21bd40785eaf58f7c660261df862ef1f5eec5abe6f816bf2c9406f2f2f",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/packageManagers.ts",
+      "change": "package-manager detection moved out of the removed directory unchanged apart from its three relative import paths",
+      "sourceSha256": "0488b6256d9df6bf7a877fc8aa04fc67e40049908d123155bebf36f871c2e887",
+      "portSha256": "0a39ab9745caff13c22d2a30169a217a3e72d5d381756c00b87c1c6a2e03cc23",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "utils/autoUpdater.ts and utils/nativeInstaller/ (download, installer, package managers, PID locks, index)",
+    "cli/update.ts, commands/install.tsx, migrations/migrateAutoUpdatesToSettings.ts and hooks/notifs/useNpmDeprecationNotification.tsx",
+    "main.tsx's `claude update`/`claude install`, assertMinVersion, the auto-updater telemetry field and the migration call",
+    "the doctor Updates/Version Locks sections and the diagnostic's updater fields, the status panel's install warnings, and setup's lockCurrentVersion",
+    "cleanupOldVersions/cleanupOldVersionsThrottled and isAutoUpdaterDisabled with the local installer's install path"
+  ],
+  "kept": [
+    "the plugin-marketplace autoupdate lane (pluginAutoupdate.ts and ManageMarketplaces.tsx keep shouldSkipPluginAutoupdate, now env-only)",
+    "utils/packageManagers.ts (read-only OS package-manager detection for the doctor)",
+    "utils/localInstaller.ts's getShellType, getLocalClaudePath, isRunningFromLocalInstallation and localInstallationExists",
+    "the doctor's installation/path/search/multi-install diagnostics and every local cleanup task"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Base-commit checks confirm every deleted module, CLI block and consumer was present at f95398a; whole-tree sweeps find no updater-core token; absence assertions cover the doctor fields, status warnings, local-installer install path and cleanup hooks; survivor assertions pin the plugin lane, package-manager detection, local shell helpers and the doctor's remaining diagnostics; the config/settings/Config.tsx channel surface is pinned as the next step's residue; the orphan scanner stays at ten entries",
+  "remaining": "the config/settings/Config.tsx channel residue (autoUpdatesChannel schema and UI, getAutoUpdaterDisabledReason/format helpers, migrateConfigFields, main's channel telemetry), then the dependency-pruning pass, the utils/filePersistence/ rename and the analytics transports",
+  "notes": [
+    "`claude update` and `claude install` were deferred from W61 as in-place CLI entries; they are removed here with the machinery they alone invoke, and the reclassification is recorded in `reclassified`",
+    "utils/nativeInstaller/packageManagers.ts is not installer machinery: it probes /etc/os-release and the OS package managers for the doctor. It moves to utils/packageManagers.ts unchanged apart from its import paths",
+    "two further repair passes: setup.ts, cleanup.ts and backgroundHousekeeping.ts held lockCurrentVersion/cleanupOldVersions readers the first replay surfaced through tsc, and the moved module's untracked status makes the orphan scanner count 1607 before this step commits and 1608 after"
+  ]
+}

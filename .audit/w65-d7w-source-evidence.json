@@ -8,7 +8,7 @@
       "file": "screens/REPL.tsx",
       "change": "the autoUpdaterResult state with its notification effect, the useInstallMessages call and the two props passed to PromptInput are removed",
       "sourceSha256": "98e214092a8efc5c76e61980e5ad68307a1fe0e1d962f94c2371dc9cee88470a",
-      "portSha256": "a8875c55929ba33777b82ceed0440e5770dfa5d8d63a0e1de19348dcdee922ee",
+      "portSha256": "8d47f3122f9daa0b9d442963f3301980dd858912d134cf78c71c5881aa3fdd8d",
       "coordinateUnit": "utf16-half-open"
     },
     {

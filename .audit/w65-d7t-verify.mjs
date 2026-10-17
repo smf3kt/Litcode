@@ -80,10 +80,12 @@ assert.doesNotMatch(setup, /COMMIT_ATTRIBUTION|\bfeature\b|bun:bundle/)
 // 3. What stays, with its reader.
 assert.ok(entry.includes("// Fast-path for --worktree --tmux: exec into tmux before loading full CLI"))
 assert.ok(entry.includes("// Fast-path for --version/-v: zero module loading needed"))
-assert.match(main, /\.command\('update'\)\n    \.alias\('upgrade'\)/)
-assert.match(main, /\.command\('install \[target\]'\)/)
-assert.ok(fs.existsSync(`${root}/cli/update.ts`), "cli/update.ts stays")
-assert.match(read("cli/handlers/util.tsx"), /export async function installHandler\(/)
+// Step 7x later removed `claude update`/`claude install`, cli/update.ts and
+// installHandler with the updater core. This step's reclassification predicted
+// they would leave with that package; the prediction is asserted as fulfilled.
+assert.doesNotMatch(main, /\.command\('update'\)|\.command\('install \[target\]'\)/)
+assert.ok(!fs.existsSync(`${root}/cli/update.ts`), "cli/update.ts removed by step 7x")
+assert.doesNotMatch(read("cli/handlers/util.tsx"), /export async function installHandler\(/)
 assert.match(read("cli/handlers/util.tsx"), /export async function doctorHandler\(/)
 // The asciicast module is live for resume renames and flushes; only its
 // installer call site was absent from the base dump.
@@ -95,14 +97,16 @@ assert.match(main, /      resetAutoModeOptInForDefaultOffer\(\)\n    \}\n    sav
 assert.match(main, /    void skillChangeDetector\.initialize\(\)\n  \}\n\}/)
 assert.match(main, /      const explicitModel = options\.model \|\| process\.env\.ANTHROPIC_MODEL\n\n      \/\/ Special case the default model/)
 assert.match(main, /        initResult\n\n      if \(feature\('TRANSCRIPT_CLASSIFIER'\)/)
-assert.match(main, /assertMinVersion\(\)/)
+// assertMinVersion left with the updater core in step 7x.
+assert.doesNotMatch(main, /assertMinVersion\(\)/)
 
 // 4. No module was orphaned by the import removal.
 const orphans = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})
-// Wave D step 7u removed nine modules (RemoteIO and cli/transports/) and step
-// 7w six more (the updater UI lane), so the file count drops by fifteen while
-// the orphan set is unchanged.
-assert.match(orphans, /1617 files scanned, 10 with no importer/)
+// Wave D step 7u removed nine modules (RemoteIO and cli/transports/), step 7w
+// six more (the updater UI lane) and step 7x ten more with one relocated file;
+// the orphan set is unchanged. Step 7x's relocated module is untracked until
+// that step commits, so the count reads 1607 before and 1608 after.
+assert.match(orphans, /16(07|08) files scanned, 10 with no importer/)
 
 // 5. The gate.
 const tscText = fs.readFileSync(new URL("w65-d7t-tsc.txt", import.meta.url), "utf8")

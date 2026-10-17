@@ -50,7 +50,7 @@
       "file": "main.tsx",
       "change": "the -p claudeaiConfigPromise prefetch with its enterprise/strict/bare gate and policy warning go, the claudeaiMcpPromise prefetch and the uniqBy merge fold to the single local prefetch, and the lazy dedup + connectMcpBatch('claudeai') block with its 5s CLAUDE_AI_MCP_TIMEOUT_MS race goes; the imports only that block read (fetchClaudeAIMcpConfigsIfEligible, dedupClaudeAiMcpServers, getMcpServerSignature, clearServerCache, the two exclude helpers, pickBy, getOauthConfig) are removed",
       "sourceSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd8",
-      "portSha256": "87b29b2ab37fad88ea972480e19745095319203735949d5ee3813608c001215e",
+      "portSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -98,7 +98,7 @@
       "file": "utils/config.ts",
       "change": "claudeAiMcpEverConnected (the prior-connected gate for the connector notices) is deleted together with AccountInfo and the BillingType alias — the shape the deleted getOauthAccountInfo returned, and with no writer or reader left in the tree",
       "sourceSha256": "0c68c1a7baa6d3ba0032dbff43c60b3e08bef1ea0043b010ed05b1c1018759ad",
-      "portSha256": "2e9a2179c344d08294b2cf3d8d5ed6f2eebc28cb3737fd82c034d8605c678c98",
+      "portSha256": "683c998fec889b1d3dfc1e7ff09a5b47b166600141b5258c1fb414917c0f1f17",
       "coordinateUnit": "utf16-half-open"
     },
     {
