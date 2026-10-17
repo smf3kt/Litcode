@@ -89,8 +89,10 @@ assert.doesNotMatch(read("utils/userAgent.ts"), /cli\/transports/)
 
 // 5. No module was orphaned by the deletion.
 const orphans = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})
-// Step 7w later removed the six updater UI modules, leaving 1617 files.
-assert.match(orphans, /1617 files scanned, 10 with no importer/)
+// Step 7w later removed the six updater UI modules and step 7x the updater
+// core, leaving 1608 files once step 7x commits (1607 while its relocated
+// module is still untracked); the orphan set is unchanged.
+assert.match(orphans, /16(07|08) files scanned, 10 with no importer/)
 
 // 6. The gate.
 const tscText = fs.readFileSync(new URL("w65-d7u-tsc.txt", import.meta.url), "utf8")

@@ -898,6 +898,24 @@ The fixture's base check confirms `d66887e` carried the six files and the REPL s
 
 **Next (step 7x):** the updater core and commands — `utils/autoUpdater.ts`, `utils/nativeInstaller/`, `cli/update.ts`, `commands/install.tsx`, `main.tsx`'s `assertMinVersion` and update/install blocks, the doctor diagnostics, and the config/settings/migration residue — then the dependency-pruning pass and the `utils/filePersistence/` rename.
 
+## Wave D step 7x — the updater core and commands (`780b3fc`, landed)
+
+**The core fetched and installed a vendor release build.** `utils/autoUpdater.ts` looked up dist-tags, compared versions against the running build and drove the download; `utils/nativeInstaller/` resolved the platform binary, downloaded it, verified checksums and signatures, installed it into a versioned directory tree, and held PID locks over that tree. `cli/update.ts` composed the flow, `commands/install.tsx` exposed it as a slash command, the migration copied the legacy `autoUpdaterStatus` into settings, and `useNpmDeprecationNotification` told npm users to run the installer. None of it is needed to run the local agent.
+
+**The commands were the entry points and go with the machinery.** `claude update`/`claude install`, main.tsx's `assertMinVersion`, the doctor's Updates and Version Locks sections, the status panel's install warnings, setup's `lockCurrentVersion` and the old-version cleanup all existed to invoke or report that install path, so they are folded with it. The W61 deferral named the two commands as in-place CLI entries; this step records the reclassification — they belong to the updater package, because their only implementation is the release install path removed here.
+
+**Package-manager detection is not installer machinery.** `utils/nativeInstaller/packageManagers.ts` probes `/etc/os-release` and the OS package managers for the doctor's diagnostic row; it moves to `utils/packageManagers.ts` unchanged apart from its relative imports. The plugin-marketplace autoupdate lane is independent too — it updates marketplaces from their configured git sources — and `shouldSkipPluginAutoupdate` now tests the environment (`NODE_ENV`, `DISABLE_AUTOUPDATER`, `getEssentialTrafficOnlyReason`) directly instead of asking the removed predicate.
+
+### Port coordinate refresh
+
+Fourteen historical evidence files moved, all by re-running their own fixtures: `w65-d7b`, `d7h`, `d7i`, `d7j`, `d7l`, `d7n`, `d7o`, `d7p`, `d7q`, `d7r`, `d7s`, `d7t`, `d7u` and `d7w`. `portSha256` only; no `sourceSha256` changed and no range moved.
+
+### Verification
+
+tsc 0, thirty-two fixtures pass (the new `w65-d7x-verify` plus thirty-one carried), `git diff --check` clean, the orphan scan at its ten legitimate entries with the file count down nine to 1608 (ten modules out, the relocated detector in). Four carried fixtures were amended: 7u, 7v and 7w file counts, and 7t's "the commands stay" prediction, which this step fulfils and which now asserts their absence; 7w's own updater-core section is inverted the same way.
+
+**Next (step 7y):** the config/settings residue — `autoUpdatesChannel` in `utils/settings/types.ts` and Config.tsx with the disabled-reason dialogs and `ChannelDowngradeDialog`, `getAutoUpdaterDisabledReason`/`formatAutoUpdaterDisabledReason`/`AutoUpdaterDisabledReason`, `migrateConfigFields`, the `installMethod`/`autoUpdates` fields and defaults with their `GLOBAL_CONFIG_KEYS` entries, and main.tsx's channel telemetry — then the dependency-pruning pass and the `utils/filePersistence/` rename.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.

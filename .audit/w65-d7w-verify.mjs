@@ -76,16 +76,23 @@ assert.match(input, /<Notifications\n/)
 assert.match(footer, /<Notifications\n/)
 assert.match(repl, /usePluginAutoupdateNotification\(\)/)
 
-// 4. The updater core and commands stay for the next step.
-assert.ok(exists("utils/autoUpdater.ts"))
-assert.ok(exists("utils/nativeInstaller/installer.ts"))
-assert.ok(exists("cli/update.ts"))
-assert.ok(exists("commands/install.tsx"))
-assert.match(read("utils/nativeInstaller/index.ts"), /installLatest/)
+// 4. The updater core and commands were still present when this step landed;
+// step 7x later removed them all, so the prediction this section made is now
+// asserted as its fulfilled outcome.
+for (const f of [
+  "utils/autoUpdater.ts",
+  "utils/nativeInstaller/installer.ts",
+  "cli/update.ts",
+  "commands/install.tsx",
+]) {
+  assert.ok(!exists(f), `${f} removed by step 7x`)
+}
 
 // 5. Nothing was orphaned.
 const orphans = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})
-assert.match(orphans, /1617 files scanned, 10 with no importer/)
+// Step 7x removed the updater core (ten files, one relocated), leaving 1608
+// files once it commits (1607 while the relocated module is untracked).
+assert.match(orphans, /16(07|08) files scanned, 10 with no importer/)
 
 // 6. The gate.
 const tscText = fs.readFileSync(new URL("w65-d7w-tsc.txt", import.meta.url), "utf8")

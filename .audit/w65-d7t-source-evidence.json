@@ -9,7 +9,7 @@
       "file": "main.tsx",
       "change": "eleven empty statement shells and their stale comments are removed; the unused installAsciicastRecorder import goes with them; registration stubs for `claude server`, `claude connect`, `claude up`, `claude rollback` and the ant-only group are deleted; two blank-line artifacts the removal exposed are closed",
       "sourceSha256": "6c4f7679f0787cc4675ac58295cf29e514851fa3a09aab3d3f6e38f066071f6b",
-      "portSha256": "87b29b2ab37fad88ea972480e19745095319203735949d5ee3813608c001215e",
+      "portSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -23,7 +23,7 @@
       "file": "setup.ts",
       "change": "the empty COMMIT_ATTRIBUTION block (its dynamic import was elided in the base) and the then-unused `feature` import are deleted; every other setup step is untouched",
       "sourceSha256": "050c1823447b16c88b7e99c52d19ee8d5571364d328668fd018b6123236f2242",
-      "portSha256": "5de742b3f76e55a7a1d0a3a92bcd22a64e44bc638b35366a69648efdd9516e8b",
+      "portSha256": "c6bb2c676b2e7b51c153dc4de499a254977a1b5c968db5b08062837daa4fede1",
       "coordinateUnit": "utf16-half-open"
     }
   ],
