@@ -196,6 +196,10 @@
 
 [W170](ports/W170-frame.md)接通 diff 对话框的框架与自动键位提示：复制 **10 块 11,875 单位**（框架闭包 chunk-g6j4g5k0.js 描述表/提示组件 5,258u + `_e` 2,454u；chunk-1r9zp6s1.js `Ys`/`zo` 104u；和弦选取 chunk-6ccen3s8.js `Boo`/`e0n`/`yn` 536u；焦点作用域 chunk-apky5tj5.js `bdn`/`ov` 1,841u 与 chunk-06azbynj.js `IU` 76u、`eun`/`ix` 174u；退出条目 chunk-9pedrxny.js `Dmt`/`c` 577u 与两按手势 chunk-am9mebpw.js `iq` 365u；边框 chunk-h26phfc2.js `es` 490u）。`_e` 渲染加粗标题（`titleEnd` 时 space-between 且尾段截断）、暗色副标题、取消/中断条目、实测头部高度与视口内缩；`inputGuide` 收到 `{pending,keyName}`，待定显示二次按键确认，否则静态取消提示或自动提示。`ov` 注册键位条目、用序列化依赖判断处理器变化、`claimFocus` 时把焦点移入自身并向下报告作用域链；`ie`/`Be`/`e0n` 按作用域链选取最佳和弦并格式化。React 缝新增 `useId` 与 `useEffectEvent`；宿主适配：`g`/`f` 遥测为空操作、`_` 为普通 `JSON.stringify`、`ik` 解析环境布尔、`bC` 读应用上下文、`Xa` 返回时钟函数。`Mr`、列表与 `si` 接线仍待。聚焦 13/13、全量 2545/2545、tsc 0、build 0、notices 0、扫描 86/18/52/30/18 均 unresolved 0，身份 `45d303f4…`。
 
+## W171 旋转指示器（C-2 diff 第十一片）（2026-10-18）
+
+[W171](ports/W171-spinner.md)接通旋转指示器与消息行：复制 **14 块 3,407 单位**（消息 `Mr` chunk-vew7ssxx.js 508u；指示器 `ui` 599u、选择器 `mr` 54u；动画闭包 chunk-1r9zp6s1.js `$e` 466u、`N4` 429u、`Io`/`LIe`/`ia` 384u、`nt` 29u，chunk-06azbynj.js `vie` 147u、`Dy`/`y4n` 71u，chunk-k1caxvem.js 焦点上下文 99u、读取器 118u、空订阅 92u，chunk-z9nv3z8k.js `eg` 41u；帧集 chunk-hyshef1z.js 370u）。`ui` 在减少动效或无障碍标记下输出静态 `●`，否则按 `ia(120)` 的量化时间与 `HIe()` 的终端相关帧集取帧；`ia` 把间隔抬到 16ms 量子、`floor(now/q)*q`，间隔为 null、缺时钟或不可见时暂停，`LIe` 在完整重绘标志下把间隔下限抬到 480ms；`$e`/`N4` 以视口行数减去祖先滚动钳制判定可见性，不可测时保持原状态；`Mr` 为「符号 + 文本」行加可选暗色副标题。宿主适配：`bg` 的远程门退化为设置本身、`Wo` 改为本地 `SpinnerSettings` 上下文、`a` 由进程环境提供。列表与 `si` 接线仍待。聚焦 10/10、全量 2555/2555、tsc 0、build 0、notices 0、扫描 34/43/9 均 unresolved 0，身份 `358bbb79…`。
+
 ## 待完成清单
 
 本清单为当前唯一待办入口，取代下方按时间累积的历史排程表（那张表保留原证据，供追溯，不再作为排程依据）。每条都指回来源，来源是实测结论，不是计划。

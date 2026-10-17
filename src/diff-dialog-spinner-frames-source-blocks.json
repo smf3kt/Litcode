@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-hyshef1z.js",
+      "sha256": "285b14e1859d23bdcd2835074dfdf24fee85ae4d31b641900bb11dc96e14e7d4"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-hyshef1z.js",
+      "sha256": "285b14e1859d23bdcd2835074dfdf24fee85ae4d31b641900bb11dc96e14e7d4",
+      "range": [
+        661,
+        1031
+      ],
+      "units": 370,
+      "bodySha256": "8369e57feaac30731bb0cd19f56ef0c578b3f815f0717ed91a00690b5ab3f212",
+      "note": "the three spinner frame sets, their reversed cycles, Vdn and HIe, which pick the xterm-ghostty set from the terminal environment"
+    }
+  ],
+  "missing": []
+}

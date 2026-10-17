@@ -2957,3 +2957,16 @@ reads the app context's `exit`, and `Xa` returns the mounted clock function with
 fallback. The spinner `Mr`, the list and `si` wiring remain out. Focused 13/13, full 2545/2545,
 tsc 0, build 0, notices 0, scans 86/18/52/30/18 all unresolved 0, identity `45d303f4…`.
 [W170 record](ports/W170-frame.md).
+
+W171 added the spinner and its message (14 copied blocks, 3,407 UTF-16 units). `ui` renders the
+static `●` under reduced motion or the internal accessibility flag, otherwise one frame of the
+terminal-dependent cycle at the 120 ms quantum. `ia` rounds its interval up to the 16 ms quantum,
+floors `now()` onto that grid, and reads 0 while the interval is null, the clock is absent or the
+node is not visible; `LIe` raises any interval below 480 ms when the full-repaint flag is set.
+`$e`/`N4` measure a node against the viewport rows minus ancestor scroll clamps and keep the last
+state when the node cannot be measured. `Mr` lays the spinner and its text in a row and an optional
+dim subtitle beneath. Host bindings: `bg`'s remote gate collapses to the setting itself, `Wo`
+selects from the local `SpinnerSettings` context, and `a` reads `TERM` and the repaint flag from the
+process environment. The list and `si` wiring remain out. Focused 10/10, full 2555/2555, tsc 0,
+build 0, notices 0, scans 34/43/9 all unresolved 0, identity `358bbb79…`.
+[W171 record](ports/W171-spinner.md).

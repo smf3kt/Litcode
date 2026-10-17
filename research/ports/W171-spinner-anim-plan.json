@@ -1,0 +1,108 @@
+{
+  "imports": [
+    "import { Ae, R, Rt, le, en, qt } from './plugin-chain-react-hooks.js';",
+    "import { Zm } from './plugin-chain-input-field-source.js';",
+    "import { eE } from './plugin-chain-markdown-host.js';",
+    "import { a } from './diff-dialog-spinner-host.js';"
+  ],
+  "exports": [
+    "$e",
+    "N4",
+    "Io",
+    "LIe",
+    "ia",
+    "vie",
+    "kie",
+    "nI",
+    "Cje",
+    "eg",
+    "u",
+    "d",
+    "Qc",
+    "y4n",
+    "Dy",
+    "nt"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-1r9zp6s1.js",
+      "range": [
+        22075,
+        22541
+      ],
+      "note": "$e: whether a node's measured box is visible inside the terminal rows, subtracting ancestor scroll"
+    },
+    {
+      "file": "chunk-1r9zp6s1.js",
+      "range": [
+        22541,
+        22970
+      ],
+      "note": "N4: the visibility hook — a ref callback, the visible flag, the initial measurement and the remeasure closure"
+    },
+    {
+      "file": "chunk-1r9zp6s1.js",
+      "range": [
+        22970,
+        23354
+      ],
+      "note": "Io and LIe (the 480 ms repaint floor under the full-repaint flag) and ia, the animation clock: quantized frame time from the mounted clock, paused while hidden or without a clock"
+    },
+    {
+      "file": "chunk-1r9zp6s1.js",
+      "range": [
+        19734,
+        19763
+      ],
+      "note": "nt: read the accessibility context"
+    },
+    {
+      "file": "chunk-06azbynj.js",
+      "range": [
+        174030,
+        174177
+      ],
+      "note": "vie: clamp a node's scroll offset to its content height"
+    },
+    {
+      "file": "chunk-k1caxvem.js",
+      "range": [
+        876,
+        975
+      ],
+      "note": "the terminal focus context with its default value"
+    },
+    {
+      "file": "chunk-k1caxvem.js",
+      "range": [
+        1257,
+        1375
+      ],
+      "note": "d, Qc and kie: the context alias and its two readers"
+    },
+    {
+      "file": "chunk-k1caxvem.js",
+      "range": [
+        1405,
+        1497
+      ],
+      "note": "nI, Cje and T4n: the timeout helper and the no-op subscribe/read functions"
+    },
+    {
+      "file": "chunk-z9nv3z8k.js",
+      "range": [
+        615,
+        656
+      ],
+      "note": "eg and the timing constants; eg is the frame quantum"
+    },
+    {
+      "file": "chunk-06azbynj.js",
+      "range": [
+        184065,
+        184136
+      ],
+      "note": "Dy and y4n: the internal accessibility context"
+    }
+  ]
+}

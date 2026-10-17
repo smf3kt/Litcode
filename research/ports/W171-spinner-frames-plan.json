@@ -1,0 +1,9 @@
+{
+  "imports": [
+    "import { a } from './diff-dialog-spinner-host.js';"
+  ],
+  "exports": ["l", "p", "T", "d", "f", "y", "Vdn", "HIe"],
+  "blocks": [
+    { "file": "chunk-hyshef1z.js", "range": [661, 1031], "note": "the three spinner frame sets, their reversed cycles, Vdn and HIe, which pick the xterm-ghostty set from the terminal environment" }
+  ]
+}
