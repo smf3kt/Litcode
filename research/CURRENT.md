@@ -192,6 +192,10 @@
 
 [W169](ports/W169-tabs-view.md)接通 diff 对话框的页签条与滚动词盒：复制 **20 块 11,747 单位**（页签闭包 chunk-3dnyxzpb.js `sS` 5,123u、`je` 874u、`Na` 265u、`te` 174u；视口 chunk-6j27z6m4.js `VS`/`nl`/`ns`/`Ffe`/`KXe` 292u；滚动/焦点 chunk-06azbynj.js `IU` 76u、`nLr` 100u、`vie` 147u、`S4n` 25u 与 chunk-1r9zp6s1.js `Zw` 245u、`Ze`/`Lo` 18u×2、`_Ee` 368u、`eX` 152u、`Ys`/`zo` 104u；标签 chunk-3c5vzz43.js `Xw` 335u；迟滞点击 chunk-70nf72b4.js `l`/`aS`/`c` 54/355/31u；词盒 chunk-6x3scwgf.js `Se`/`K`/`OT` 2,991u）。`sS` 以 `id??title` 建键，受控选中优先、未知键回退首项；头部行含标题、逐页签头、补白与聚焦/键位路由，内容区在视口挂接时放入 `OT` 并按 `rows-起始行` 限高，否则按 `contentHeight`/`stableHeight` 渲染。`je` 当前项反色加粗，颜色+当前+聚焦时改用 `Xw` 加边标签，点击前经 `aS` 丢弃窗口激活与挂载 300ms 内的迟滞点击。`OT` 发布 `scrollTo`/`scrollToBottom`/`getScrollTop` 等 14 个命令并合并重绘。React 缝新增 `useImperativeHandle`，提交节点补计算宽高。宿主适配：`Qxr` 在线状态滚动活动为空操作，`S`/`i` 事件记录与汇为空操作或原样返回。`Mr`、对话框框架 `_e`、列表与 `si` 接线仍待。聚焦 11/11、全量 2532/2532、tsc 0、build 0、notices 0、扫描 declared 189/unresolved 0，身份 `f12ed8ca…`。
 
+## W170 对话框框架（C-2 diff 第十片）（2026-10-18）
+
+[W170](ports/W170-frame.md)接通 diff 对话框的框架与自动键位提示：复制 **10 块 11,875 单位**（框架闭包 chunk-g6j4g5k0.js 描述表/提示组件 5,258u + `_e` 2,454u；chunk-1r9zp6s1.js `Ys`/`zo` 104u；和弦选取 chunk-6ccen3s8.js `Boo`/`e0n`/`yn` 536u；焦点作用域 chunk-apky5tj5.js `bdn`/`ov` 1,841u 与 chunk-06azbynj.js `IU` 76u、`eun`/`ix` 174u；退出条目 chunk-9pedrxny.js `Dmt`/`c` 577u 与两按手势 chunk-am9mebpw.js `iq` 365u；边框 chunk-h26phfc2.js `es` 490u）。`_e` 渲染加粗标题（`titleEnd` 时 space-between 且尾段截断）、暗色副标题、取消/中断条目、实测头部高度与视口内缩；`inputGuide` 收到 `{pending,keyName}`，待定显示二次按键确认，否则静态取消提示或自动提示。`ov` 注册键位条目、用序列化依赖判断处理器变化、`claimFocus` 时把焦点移入自身并向下报告作用域链；`ie`/`Be`/`e0n` 按作用域链选取最佳和弦并格式化。React 缝新增 `useId` 与 `useEffectEvent`；宿主适配：`g`/`f` 遥测为空操作、`_` 为普通 `JSON.stringify`、`ik` 解析环境布尔、`bC` 读应用上下文、`Xa` 返回时钟函数。`Mr`、列表与 `si` 接线仍待。聚焦 13/13、全量 2545/2545、tsc 0、build 0、notices 0、扫描 86/18/52/30/18 均 unresolved 0，身份 `45d303f4…`。
+
 ## 待完成清单
 
 本清单为当前唯一待办入口，取代下方按时间累积的历史排程表（那张表保留原证据，供追溯，不再作为排程依据）。每条都指回来源，来源是实测结论，不是计划。

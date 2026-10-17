@@ -1,0 +1,38 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-9pedrxny.js",
+      "sha256": "fcabe4b83433a1de48b7eead9aff55c63c79666e930152fa81a7a6c19722aeb0"
+    },
+    {
+      "module": "chunk-am9mebpw.js",
+      "sha256": "5f299ffd418fdb1dc31123d44ad13270aa6fcbb68e0686709982292c7a1e3f14"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-9pedrxny.js",
+      "sha256": "fcabe4b83433a1de48b7eead9aff55c63c79666e930152fa81a7a6c19722aeb0",
+      "range": [
+        1035,
+        1612
+      ],
+      "units": 577,
+      "bodySha256": "7b508663ca9864f6dbf99ff29b1b22029418d070b2f56f77968c26e5e33dc76a",
+      "note": "Dmt and its c helper: the interrupt and exit entries, the pinned key names, and the pending exit state"
+    },
+    {
+      "module": "chunk-am9mebpw.js",
+      "sha256": "5f299ffd418fdb1dc31123d44ad13270aa6fcbb68e0686709982292c7a1e3f14",
+      "range": [
+        1553,
+        1918
+      ],
+      "units": 365,
+      "bodySha256": "5e7676ce900161925dee84aaeee90ac24a2134ef44b92f3fca5ec30a4dbb8a1b",
+      "note": "iq: the two-press gesture within 800 ms, with the pending flag, confirm callback and timeout cleanup"
+    }
+  ],
+  "missing": []
+}

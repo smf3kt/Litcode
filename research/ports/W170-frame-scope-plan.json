@@ -1,0 +1,41 @@
+{
+  "imports": [
+    "import { qt, R, le, Ae, P, en, Z, y, Xe as e, useId as cZr } from './plugin-chain-react-hooks.js';",
+    "import { Lc } from './plugin-chain-press-button-source.js';",
+    "import { ld } from './tui-primitives.js';",
+    "import { stableKey as _ } from './diff-dialog-frame-host.js';"
+  ],
+  "exports": [
+    "bdn",
+    "ov",
+    "IU",
+    "eun",
+    "ix"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-apky5tj5.js",
+      "range": [
+        935,
+        2776
+      ],
+      "note": "bdn, the rendered-scope chain context, and ov, the focus scope that registers its binding entries, claims focus with an auto-focus fallback, and reports its chain downward"
+    },
+    {
+      "file": "chunk-06azbynj.js",
+      "range": [
+        135432,
+        135508
+      ],
+      "note": "IU: whether a node is inside another"
+    },
+    {
+      "file": "chunk-06azbynj.js",
+      "range": [
+        135508,
+        135682
+      ],
+      "note": "eun/ix: walk to the node that carries the focus manager"
+    }
+  ]
+}

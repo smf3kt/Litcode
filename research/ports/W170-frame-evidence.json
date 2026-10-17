@@ -1,0 +1,99 @@
+{
+  "schema": "W170Frame.v1",
+  "package": "W170-dialog-frame",
+  "date": "2026-10-18",
+  "source": {
+    "copied": {
+      "blocks": 10,
+      "units": 11875,
+      "ranges": [
+        { "module": "chunk-g6j4g5k0.js", "sha256": "84c0b6e10b5697bb4ad3df6a1502ecddcd1911b4de5387cd206b4b1f4dc20251", "name": "Ke/fe/Oe/ie/Be/me/W", "range": [1411, 6669], "units": 5258, "digest": "e339f5a55db09d502335938003798ed8fbf37fdd467344fd7e093e5ef2880fd5", "note": "the keybinding description table Ke, its lookup fe, the hint group table Oe and limit Ie, the auto-hint component ie, its builder Be, the entry collector me, and the default cancel hint W" },
+        { "module": "chunk-g6j4g5k0.js", "sha256": "84c0b6e10b5697bb4ad3df6a1502ecddcd1911b4de5387cd206b4b1f4dc20251", "name": "_e", "range": [6669, 9123], "units": 2454, "digest": "a864ccdf7edb3f2d7411354a68f98c25b66c3b5819795b717e57eada0a1c915c", "note": "the dialog frame: title and subtitle, cancel and interrupt entries, measured header height, viewport inset, input guide, bordered focus scope" },
+        { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "Ys/zo", "range": [28445, 28549], "units": 104, "digest": "bd77aed10eab7c4cc66b22aeb94194cc54dad82981c06f53add1fb84a2e33dec", "note": "a node's computed width and height" },
+        { "module": "chunk-6ccen3s8.js", "sha256": "4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d", "name": "Boo/e0n/yn", "range": [35388, 35924], "units": 536, "digest": "1e435e31d38ecf3e5f28395ef6cb35c21dba563ec36ca161fd900b41b8b016f3", "note": "Boo lists an action's chords in a context, e0n picks the best chord, yn ranks named keys above printable characters" },
+        { "module": "chunk-apky5tj5.js", "sha256": "8906093e5cfd33a801f05ec4d4410ac56b6ba5195131d9759e7103e23e8d6e6a", "name": "bdn/ov", "range": [935, 2776], "units": 1841, "digest": "fc763f7263e84daf96867a6afb81c24a159f42659f70c4e8e1aa55aa3ae6a0cf", "note": "the rendered-scope chain context and the focus scope that registers entries, claims focus with an auto-focus fallback and reports its chain downward" },
+        { "module": "chunk-06azbynj.js", "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd", "name": "IU", "range": [135432, 135508], "units": 76, "digest": "557e05a28a7b74d92936b5371f07dba414dade542d136b5e15d10eb7f4667ac6", "note": "whether a node is inside another" },
+        { "module": "chunk-06azbynj.js", "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd", "name": "eun/ix", "range": [135508, 135682], "units": 174, "digest": "726b6c6b4fc744da3bcca0e00cb1cb89d7285793b275c2cc3da14e4770e57ec4", "note": "walk to the node that carries the focus manager" },
+        { "module": "chunk-9pedrxny.js", "sha256": "fcabe4b83433a1de48b7eead9aff55c63c79666e930152fa81a7a6c19722aeb0", "name": "Dmt/c", "range": [1035, 1612], "units": 577, "digest": "7b508663ca9864f6dbf99ff29b1b22029418d070b2f56f77968c26e5e33dc76a", "note": "the interrupt and exit entries, pinned key names, and pending exit state" },
+        { "module": "chunk-am9mebpw.js", "sha256": "5f299ffd418fdb1dc31123d44ad13270aa6fcbb68e0686709982292c7a1e3f14", "name": "iq", "range": [1553, 1918], "units": 365, "digest": "5e7676ce900161925dee84aaeee90ac24a2134ef44b92f3fca5ec30a4dbb8a1b", "note": "the two-press gesture within 800 ms, with the pending flag, confirm callback and timeout cleanup" },
+        { "module": "chunk-h26phfc2.js", "sha256": "1b48814a9bfc2f0af73eeae96ec1ab540ad25e51c0f042beef0255089e86d4fd", "name": "Jw/QP/xG/es", "range": [849, 1339], "units": 490, "digest": "52ca5b5c9fd85a587fb5dfe1a15ef3d344ff2f905feec9050ce6f5d7d4b6a620", "note": "padding constants and the dialog border: straight through under a viewport, otherwise the divider plus padded column" }
+      ]
+    },
+    "host_adapters": [
+      { "module": "chunk-2hb5361r.js", "sha256": "fd75ff86cd7b760970fd4e4f4497ff2e270d91d75ef01c6150862f3f9a6b905c", "name": "g", "range": [5466, 5529], "units": 63, "body_sha256": "7320b43f398d50f296f4bc270c118c2b74119543839ed7dcd29c30d7d546b84b", "product": "src/diff-dialog-frame-host.ts", "note": "feature_ok analytics; local builds keep no telemetry, noteFeatureOk does nothing" },
+      { "module": "chunk-2hb5361r.js", "sha256": "fd75ff86cd7b760970fd4e4f4497ff2e270d91d75ef01c6150862f3f9a6b905c", "name": "f", "range": [5613, 5697], "units": 84, "body_sha256": "ecce759d9edffb273f2ff1cfeddbed98652eab1ee34d50e337a859bbfda2ef5f", "product": "src/diff-dialog-frame-host.ts", "note": "feature_sad analytics; local builds keep no telemetry, noteFeatureSad does nothing" },
+      { "module": "chunk-gyf58rwf.js", "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad", "name": "_", "range": [59764, 59848], "units": 84, "body_sha256": "a18934a7230cb0ac4961d42de90295e79a08a02f769e56da5f2925358865066e", "product": "src/diff-dialog-frame-host.ts", "note": "Bun ih-tagged JSON.stringify; stableKey keeps the plain JSON.stringify contract" },
+      { "module": "chunk-nhnx1tam.js", "sha256": "eee1529d300ade5ea10008828d9391a99804cf82219cc1edfb17c93dfcd42aad", "name": "ik", "range": [661, 728], "units": 67, "body_sha256": "1597bf97f3d67aa4a438b1c0cb77bce5a04815f7d8d3c2bc9661117bee89d452", "product": "src/diff-dialog-frame-host.ts", "note": "the keybinding cohesion environment flag; keyboardCohesion parses the same variable as a boolean" },
+      { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "bC", "range": [23358, 23383], "units": 25, "body_sha256": "cec7fe1c3e16eee2cb2bae437ffee86c5a5b7b1d9562624116026e7c4cc5acca", "product": "src/diff-dialog-frame-host.ts", "note": "Ae(Zy), the app context the cancel gesture reads exit from; focusExit reads the same context" },
+      { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "Xa", "range": [24240, 24273], "units": 33, "body_sha256": "f2dee87c73626619b501d6e3faf73d153c415c7d80c7fafbc2bfc8cbb41f8beb", "product": "src/diff-dialog-frame-host.ts", "note": "returns the clock function (Ae(b4n) ?? Date.now); now returns the mounted eE clock's function, falling back to Date.now" }
+    ],
+    "host_seams": [
+      { "module": "chunk-kexg5hxg.js", "name": "cZr", "role": "p.H.useId", "product": "src/plugin-chain-react-hooks.ts", "note": "one stable identity per hook slot; the focus scope keys its rendered-scope map by it" },
+      { "module": "chunk-kexg5hxg.js", "name": "To", "role": "p.H.useEffectEvent", "product": "src/plugin-chain-react-hooks.ts", "note": "a stable callable whose body is the latest render's callback; the gesture keeps its confirm callback current" }
+    ],
+    "reused": [
+      { "names": ["w", "b", "y", "P", "en", "Z", "R", "Ae", "le", "s", "n", "Xe as e", "Xe as r", "qt"], "product": "src/plugin-chain-react-hooks.ts" },
+      { "names": ["VS"], "product": "src/diff-dialog-tabs-source.ts" },
+      { "names": ["nl"], "product": "src/diff-dialog-tabs-source.ts" },
+      { "names": ["Ol"], "product": "src/diff-dialog-detail-source.ts" },
+      { "names": ["Lc", "Zy"], "product": "src/plugin-chain-press-button-source.ts" },
+      { "names": ["u"], "product": "src/plugin-chain-press-button-host.ts" },
+      { "names": ["Ace"], "product": "src/plugin-chain-keys-rows-source.ts" },
+      { "names": ["w1"], "product": "src/plugin-chain-keys-source.ts" },
+      { "names": ["E1", "pt", "Se", "Ke", "V"], "product": "src/diff-dialog-keyhint-source.ts" },
+      { "names": ["JD", "z"], "product": "src/diff-dialog-chrome-source.ts" },
+      { "names": ["ae"], "product": "src/plugin-chain-text-clamp-source.ts" },
+      { "names": ["ld"], "product": "src/tui-primitives.ts" },
+      { "names": ["on", "eE"], "product": "src/plugin-chain-markdown-source.ts / src/plugin-chain-markdown-host.ts" },
+      { "names": ["us"], "product": "src/plugin-chain-above-prompt-host-glue-source.ts" }
+    ],
+    "remaining": ["Mr (ui spinner: ia/N4/HIe/bg/Wo/mr)", "the list Tl/Cn/Po/Bo/rx", "the si wiring with PMr/Ht/Ffe"]
+  },
+  "product": {
+    "files": [
+      "src/diff-dialog-frame-source.ts",
+      "src/diff-dialog-frame-source-blocks.json",
+      "src/diff-dialog-frame-keys-source.ts",
+      "src/diff-dialog-frame-keys-source-blocks.json",
+      "src/diff-dialog-frame-scope-source.ts",
+      "src/diff-dialog-frame-scope-source-blocks.json",
+      "src/diff-dialog-frame-exit-source.ts",
+      "src/diff-dialog-frame-exit-source-blocks.json",
+      "src/diff-dialog-frame-box-source.ts",
+      "src/diff-dialog-frame-box-source-blocks.json",
+      "src/diff-dialog-frame-host.ts",
+      "src/diff-dialog-frame.ts",
+      "src/plugin-chain-react-hooks.ts",
+      "src/plugin-chain-react-surface.ts",
+      "test/diff-dialog-frame.test.ts"
+    ],
+    "exports": ["DialogFrame", "AutoHint", "buildHints", "useExitEntries", "keybindingDescriptions", "keyDescription", "cancelHint", "HINT_LIMIT", "HINT_PAIRS", "SOURCE_BODIES"],
+    "notes": [
+      "The frame title is bold in the dialog color (permission by default); titleEnd renders a space-between header whose tail truncates from the start.",
+      "Subtitle presence starts the header height at 2, then the committed title column's measured height replaces it; the viewport inset is header + gap + two guide rows unless the guide is hidden.",
+      "The input guide receives the exit state; a pending gesture shows `Press <key> again to exit|cancel`; with no guide the static cancel hint is used when cancel is inactive.",
+      "The border renders the divider and a two-cell padded column without a viewport; inside a viewport it renders a one-cell padded column and no divider.",
+      "The exit entries name app:interrupt and app:exit; a second press within 800 ms confirms, and a supplied onCancel that returns truthy suppresses the gesture."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 13, "failed": 0, "file": "test/diff-dialog-frame.test.ts", "new": 13 },
+    "full": { "passed": 2545, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": [
+      { "file": "src/diff-dialog-frame-source.ts", "declared": 86, "unresolved": 0 },
+      { "file": "src/diff-dialog-frame-keys-source.ts", "declared": 18, "unresolved": 0 },
+      { "file": "src/diff-dialog-frame-scope-source.ts", "declared": 52, "unresolved": 0 },
+      { "file": "src/diff-dialog-frame-exit-source.ts", "declared": 30, "unresolved": 0 },
+      { "file": "src/diff-dialog-frame-box-source.ts", "declared": 18, "unresolved": 0 }
+    ]
+  },
+  "identity": {
+    "sha256": "45d303f4ca0deb760e2764d833a4ef3e34c9acb80fdde101036c02f3ef4e8fb7",
+    "inputs": 660,
+    "validation": 226,
+    "build": 454
+  }
+}

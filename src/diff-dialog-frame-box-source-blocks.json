@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-h26phfc2.js",
+      "sha256": "1b48814a9bfc2f0af73eeae96ec1ab540ad25e51c0f042beef0255089e86d4fd"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-h26phfc2.js",
+      "sha256": "1b48814a9bfc2f0af73eeae96ec1ab540ad25e51c0f042beef0255089e86d4fd",
+      "range": [
+        849,
+        1339
+      ],
+      "units": 490,
+      "bodySha256": "52ca5b5c9fd85a587fb5dfe1a15ef3d344ff2f905feec9050ce6f5d7d4b6a620",
+      "note": "Jw/QP/xG padding constants and es: the dialog border, straight through when no viewport is mounted, otherwise the bordered column with its padding and divider"
+    }
+  ],
+  "missing": []
+}

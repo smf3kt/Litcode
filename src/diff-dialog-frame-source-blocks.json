@@ -1,0 +1,49 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-g6j4g5k0.js",
+      "sha256": "84c0b6e10b5697bb4ad3df6a1502ecddcd1911b4de5387cd206b4b1f4dc20251"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-g6j4g5k0.js",
+      "sha256": "84c0b6e10b5697bb4ad3df6a1502ecddcd1911b4de5387cd206b4b1f4dc20251",
+      "range": [
+        1411,
+        6669
+      ],
+      "units": 5258,
+      "bodySha256": "e339f5a55db09d502335938003798ed8fbf37fdd467344fd7e093e5ef2880fd5",
+      "note": "the keybinding description table Ke, its lookup fe, the hint group table Oe, the auto-hint component ie, its builder Be, the entry collector me, and the default cancel hint W"
+    },
+    {
+      "module": "chunk-g6j4g5k0.js",
+      "sha256": "84c0b6e10b5697bb4ad3df6a1502ecddcd1911b4de5387cd206b4b1f4dc20251",
+      "range": [
+        6669,
+        9123
+      ],
+      "units": 2454,
+      "bodySha256": "a864ccdf7edb3f2d7411354a68f98c25b66c3b5819795b717e57eada0a1c915c",
+      "note": "_e, the dialog frame: title and subtitle, cancel/interrupt entries, measured header height, viewport inset, input guide, and the bordered focus scope"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        28445,
+        28549
+      ],
+      "units": 104,
+      "bodySha256": "bd77aed10eab7c4cc66b22aeb94194cc54dad82981c06f53add1fb84a2e33dec",
+      "note": "Ys/zo: a node's computed width and height"
+    }
+  ],
+  "missing": []
+}

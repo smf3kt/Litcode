@@ -1,0 +1,49 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-apky5tj5.js",
+      "sha256": "8906093e5cfd33a801f05ec4d4410ac56b6ba5195131d9759e7103e23e8d6e6a"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-apky5tj5.js",
+      "sha256": "8906093e5cfd33a801f05ec4d4410ac56b6ba5195131d9759e7103e23e8d6e6a",
+      "range": [
+        935,
+        2776
+      ],
+      "units": 1841,
+      "bodySha256": "fc763f7263e84daf96867a6afb81c24a159f42659f70c4e8e1aa55aa3ae6a0cf",
+      "note": "bdn, the rendered-scope chain context, and ov, the focus scope that registers its binding entries, claims focus with an auto-focus fallback, and reports its chain downward"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        135432,
+        135508
+      ],
+      "units": 76,
+      "bodySha256": "557e05a28a7b74d92936b5371f07dba414dade542d136b5e15d10eb7f4667ac6",
+      "note": "IU: whether a node is inside another"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        135508,
+        135682
+      ],
+      "units": 174,
+      "bodySha256": "726b6c6b4fc744da3bcca0e00cb1cb89d7285793b275c2cc3da14e4770e57ec4",
+      "note": "eun/ix: walk to the node that carries the focus manager"
+    }
+  ],
+  "missing": []
+}

@@ -1,0 +1,57 @@
+{
+  "imports": [
+    "import { w, b, y, P, en, Z, R, Ae, s, n, Xe as e, Xe as r } from './plugin-chain-react-hooks.js';",
+    "import { VS } from './diff-dialog-tabs-source.js';",
+    "import { Lc, Zy } from './plugin-chain-press-button-source.js';",
+    "import { Ace } from './plugin-chain-keys-rows-source.js';",
+    "import { w1 } from './plugin-chain-keys-source.js';",
+    "import { E1 } from './diff-dialog-keyhint-source.js';",
+    "import { pt, Se } from './diff-dialog-keyhint-source.js';",
+    "import { JD, z } from './diff-dialog-chrome-source.js';",
+    "import { ae } from './plugin-chain-text-clamp-source.js';",
+    "import { e0n } from './diff-dialog-frame-keys-source.js';",
+    "import { bdn, ov } from './diff-dialog-frame-scope-source.js';",
+    "import { Dmt } from './diff-dialog-frame-exit-source.js';",
+    "import { es } from './diff-dialog-frame-box-source.js';",
+    "import { noteFeatureOk as g, noteFeatureSad as f } from './diff-dialog-frame-host.js';"
+  ],
+  "exports": [
+    "_e",
+    "ie",
+    "Be",
+    "me",
+    "Ke",
+    "fe",
+    "W",
+    "Ie",
+    "Oe",
+    "zo",
+    "Ys"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-g6j4g5k0.js",
+      "range": [
+        1411,
+        6669
+      ],
+      "note": "the keybinding description table Ke, its lookup fe, the hint group table Oe, the auto-hint component ie, its builder Be, the entry collector me, and the default cancel hint W"
+    },
+    {
+      "file": "chunk-g6j4g5k0.js",
+      "range": [
+        6669,
+        9123
+      ],
+      "note": "_e, the dialog frame: title and subtitle, cancel/interrupt entries, measured header height, viewport inset, input guide, and the bordered focus scope"
+    },
+    {
+      "file": "chunk-1r9zp6s1.js",
+      "range": [
+        28445,
+        28549
+      ],
+      "note": "Ys/zo: a node's computed width and height"
+    }
+  ]
+}

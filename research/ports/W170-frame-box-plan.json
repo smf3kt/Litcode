@@ -1,0 +1,23 @@
+{
+  "imports": [
+    "import { w, b, Xe as e, Xe as r, s } from './plugin-chain-react-hooks.js';",
+    "import { nl } from './diff-dialog-tabs-source.js';",
+    "import { Ol } from './diff-dialog-detail-source.js';"
+  ],
+  "exports": [
+    "es",
+    "Jw",
+    "QP",
+    "xG"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-h26phfc2.js",
+      "range": [
+        849,
+        1339
+      ],
+      "note": "Jw/QP/xG padding constants and es: the dialog border, straight through when no viewport is mounted, otherwise the bordered column with its padding and divider"
+    }
+  ]
+}
