@@ -2628,3 +2628,12 @@ helper, the forget helper that clears one site's texts and picked value while bu
 generation, and the `ui.input` terminal dispatch. The select keyboard itself (`C0`/`nK`/`uK`/`lK`)
 remains for the component slice. Focused 9/9, full 2318/2318, tsc 0, build 0, notices 0, identity
 `61334785…`. [W149 record](ports/W149-above-prompt-select.md).
+
+W150 adds the AbovePrompt select keyboard and field hooks. Sixteen blocks (5,032 units) carry
+isTypedText and the control-character test, the per-site field store hook, the input-field hook
+(ref-then-state text, change/submit dispatch, duplicate-submit guard and post-answer clear), the
+field-key classifiers, the keys-ahead pre-dispatch handler, optionText and the select key handlers,
+the select-field hook (highlight wrap, pick dispatch with answered-value apply, typed-ahead prefix
+match, Ctrl+C close/clear), the terminal `ui.select` dispatch, focusableAt, and the controlled-state
+hook. `NFe` itself remains. Focused 14/14, full 2330/2330, tsc 0, build 0, notices 0, identity
+`40f60975…`. [W150 record](ports/W150-above-prompt-select-keys.md).
