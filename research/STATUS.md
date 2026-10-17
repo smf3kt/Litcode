@@ -1848,3 +1848,12 @@ so a second process queues behind a live create/remove instead of failing on a f
 lock. The wait does not alter reason matching, the identity-bound release or the dead-owner
 policy. 30/30 worktree tests with a wait/abort case, full 2,086/2,086, both smokes pass; identity
 `9d611189…`. [W52 record](ports/W52-worktree-lock-wait.md).
+
+W53-01 makes checkpoint capture and its session association one recoverable unit. The capture path
+writes a durable `.assoc-<uuid>.json` intent before publishing the manifest and clears it after the
+journal append. A resumed `Session.open` scans this session's intents under the session lock and
+appends a missing checkpoint event from the validated manifest; an intent whose manifest was never
+published, or one already represented by the same name and digest, is cleared, while foreign,
+unreadable or digest-mismatched files stay for inspection. Rewind 7/7 adds a real SIGKILL between
+capture and append; checkpoints 21/21, full 2,088/2,088, chain 767/767, both checkpoint crash smoke
+modes pass; identity `df90fb56…`. [W53 record](ports/W53-checkpoint-association.md).

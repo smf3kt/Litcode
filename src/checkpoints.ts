@@ -43,6 +43,16 @@ type Transaction = z.infer<typeof transactionSchema>;
 type FileState = z.infer<typeof fileStateSchema> | null;
 const lockSchema = z.object({ pid: z.number().int().positive(), token: z.string().uuid() }).strict();
 const transactionPath = (store: string) => path.join(store, "transaction.json");
+// A capture publishes the manifest before the session journal records the association. This intent
+// is written first so the next open of that session can append the missing association.
+const associationSchema = z.object({ version: z.literal(1), id: z.string().uuid(), session: z.string().uuid(), name: nameSchema,
+  boundary: z.number().int().min(0), pid: z.number().int().positive(), created_at: z.string().datetime() }).strict();
+type Association = z.infer<typeof associationSchema>;
+export type CheckpointAssociation = { file: string; name: string; digest: string; boundary: number };
+const ASSOCIATION = /^\.assoc-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/;
+const ASSOCIATION_CAP = 4096;
+const ASSOCIATION_SCAN_CAP = 1024;
+const associationPath = (store: string, id: string) => path.join(store, `.assoc-${id}.json`);
 
 function aborted(context: ToolContext): void {
   if (context.signal.aborted) {
@@ -66,11 +76,14 @@ function relativePath(value: string): string {
   }
   return value;
 }
-function rootFor(context: ToolContext): string {
-  aborted(context);
-  const root = fs.realpathSync(path.resolve(context.workspace));
+function canonicalRoot(workspace: string): string {
+  const root = fs.realpathSync(path.resolve(workspace));
   if (!fs.statSync(root).isDirectory()) throw new Error("Workspace must be a directory.");
   return root;
+}
+function rootFor(context: ToolContext): string {
+  aborted(context);
+  return canonicalRoot(context.workspace);
 }
 // Every existing component must be a real directory; links are never followed.
 function targetFor(root: string, relative: string, allowLeafLink = false): string {
@@ -289,6 +302,73 @@ function saveObject(store: string, bytes: Buffer, context: ToolContext): void {
   const digest = hash(bytes), target = path.join(store, "objects", digest);
   if (exists(target)) { if (hash(readBounded(target, FILE_CAP, context)) !== digest) throw new Error("Checkpoint rollback object digest mismatch."); }
   else atomicWrite(store, target, bytes, 0o600);
+}
+/** Records the session association a capture is about to publish. Callers clear the returned file
+ *  after the journal append; a crash in between leaves it for the next session open. */
+export function writeCheckpointAssociation(workspace: string, session: string, name: string, boundary: number): string {
+  const root = canonicalRoot(workspace);
+  nameSchema.parse(name);
+  z.string().uuid().parse(session);
+  if (!Number.isSafeInteger(boundary) || boundary < 0) throw new Error("Checkpoint association boundary must be a non-negative integer.");
+  const store = storeFor(root, true);
+  const intent: Association = { version: 1, id: crypto.randomUUID(), session, name, boundary, pid: process.pid, created_at: new Date().toISOString() };
+  const bytes = Buffer.from(JSON.stringify(intent));
+  if (bytes.length > ASSOCIATION_CAP) throw new Error("Checkpoint association intent exceeds metadata cap.");
+  const file = associationPath(store, intent.id);
+  atomicWrite(store, file, bytes, 0o600);
+  return file;
+}
+export function clearCheckpointAssociation(file: string): void {
+  if (!ASSOCIATION.test(path.basename(file))) throw new Error("Invalid checkpoint association path.");
+  const stat = exists(file);
+  if (!stat) return;
+  if (!stat.isFile()) throw new Error("Checkpoint association is not a regular file.");
+  fs.unlinkSync(file); syncDir(path.dirname(file));
+}
+function manifestDigest(root: string, name: string): string | undefined {
+  nameSchema.parse(name);
+  const file = path.join(root, ".agent", "checkpoints", "manifests", `${name}.json`);
+  const stat = exists(file);
+  if (!stat) return undefined;
+  if (!stat.isFile() || stat.size > MANIFEST_CAP) throw new Error(`Invalid checkpoint manifest: ${name}`);
+  const manifest = manifestSchema.parse(JSON.parse(fs.readFileSync(file, "utf8")));
+  if (manifest.workspace !== root || manifest.name !== name || manifest.digest !== fingerprint(manifest.entries)) throw new Error(`Checkpoint manifest identity or digest mismatch: ${name}`);
+  return manifest.digest;
+}
+/** Returns this session's intents that still need a journal event. Completed intents and intents
+ *  whose capture never published a manifest are cleared; unreadable or foreign files stay. */
+export function recoverCheckpointAssociations(root: string, session: string, existing: (name: string) => string | undefined): CheckpointAssociation[] {
+  const agent = path.join(root, ".agent"), store = path.join(agent, "checkpoints");
+  const agentStat = exists(agent), storeStat = exists(store);
+  if (!agentStat || !storeStat || !agentStat.isDirectory() || !storeStat.isDirectory() || agentStat.isSymbolicLink() || storeStat.isSymbolicLink()) return [];
+  const pending: CheckpointAssociation[] = [];
+  let seen = 0;
+  for (const entry of fs.readdirSync(store).sort()) {
+    if (++seen > ASSOCIATION_SCAN_CAP) break;
+    if (!ASSOCIATION.test(entry)) continue;
+    const file = path.join(store, entry);
+    let intent: Association;
+    try {
+      const stat = fs.lstatSync(file);
+      if (!stat.isFile() || stat.size > ASSOCIATION_CAP) continue;
+      intent = associationSchema.parse(JSON.parse(fs.readFileSync(file, "utf8")));
+    } catch { continue; }
+    if (intent.session !== session) continue;
+    let digest: string | undefined;
+    try { digest = manifestDigest(root, intent.name); }
+    catch { continue; }
+    if (digest === undefined) {
+      try { fs.unlinkSync(file); syncDir(store); } catch { /* retain for inspection */ }
+      continue;
+    }
+    const saved = existing(intent.name);
+    if (saved !== undefined) {
+      if (saved === digest) { try { fs.unlinkSync(file); syncDir(store); } catch { /* retain for inspection */ } }
+      continue;
+    }
+    pending.push({ file, name: intent.name, digest, boundary: intent.boundary });
+  }
+  return pending;
 }
 function branchProof(root: string, branch: CheckpointCommit, context: ToolContext): { committed: boolean; file?: string; stat?: fs.Stats } {
   const file = path.join(root, ".agent", `${branch.id}.jsonl`), stat = exists(file);

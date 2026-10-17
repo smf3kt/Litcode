@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -6,7 +8,7 @@ import { test } from "node:test";
 import { defaultConfig } from "../src/agent.js";
 import { Session } from "../src/session.js";
 import { checkpointConversation, previewRewind, applyRewind, automaticCheckpoint } from "../src/rewind.js";
-import { recoverCheckpoint } from "../src/checkpoints.js";
+import { recoverCheckpoint, writeCheckpointAssociation } from "../src/checkpoints.js";
 
 const signal = new AbortController().signal;
 function setup() {
@@ -134,14 +136,20 @@ test("automatic main checkpoints deduplicate persisted boundaries and skip child
     const orphan = fs.readdirSync(manifests)[0]!;
     const orphanBytes = fs.readFileSync(path.join(manifests, orphan));
     assert.equal(reopened.events.filter(event => event.kind === "checkpoint").length, 0);
+    const store = path.join(f.workspace, ".agent/checkpoints");
+    const intents = () => fs.readdirSync(store).filter(name => name.startsWith(".assoc-"));
+    // The failed append keeps a durable intent naming the published manifest.
+    assert.equal(intents().length, 1);
     reopened.append = append;
     f.write("file.txt", "retry state");
     const retryId = reopened.id; reopened.close(); reopened = Session.open(f.workspace, { id: retryId });
-    automaticCheckpoint(reopened, signal); automaticCheckpoint(reopened, signal);
-    assert.equal(fs.readdirSync(manifests).length, 2);
-    assert.deepEqual(fs.readFileSync(path.join(manifests, orphan)), orphanBytes);
-    assert.equal(previewRewind(reopened, 0, signal).operations.length, 0);
+    // Reopening restores the missing association instead of leaving an unreachable manifest.
+    assert.equal(intents().length, 0);
     assert.equal(reopened.events.filter(event => event.kind === "checkpoint").length, 1);
+    automaticCheckpoint(reopened, signal); automaticCheckpoint(reopened, signal);
+    assert.equal(fs.readdirSync(manifests).length, 1);
+    assert.deepEqual(fs.readFileSync(path.join(manifests, orphan)), orphanBytes);
+    assert.equal(previewRewind(reopened, 0, signal).operations.length, 1);
     reopened.append({ kind: "message", message: { role: "user", content: "task" } });
     automaticCheckpoint(reopened, signal);
     assert.equal(reopened.events.filter(event => event.kind === "checkpoint").length, 1);
@@ -155,4 +163,64 @@ test("automatic main checkpoints deduplicate persisted boundaries and skip child
     const child = Session.open(f.workspace, { config: { ...config, childMode: "general" } });
     try { automaticCheckpoint(child, signal); assert.equal(child.events.length, 1); } finally { child.close(); }
   } finally { reopened?.close(); f.close(); }
+});
+
+test("association recovery clears unprovable intents, keeps foreign evidence and is idempotent", () => {
+  const f = setup(); let reopened: Session | undefined;
+  try {
+    const store = path.join(f.workspace, ".agent/checkpoints");
+    const session = f.session.id;
+    const missing = writeCheckpointAssociation(f.workspace, session, "never-captured", 0);
+    const foreign = writeCheckpointAssociation(f.workspace, crypto.randomUUID(), "foreign", 0);
+    const invalid = path.join(store, `.assoc-${crypto.randomUUID()}.json`);
+    fs.writeFileSync(invalid, "{}");
+    f.session.close();
+    reopened = Session.open(f.workspace, { id: session });
+    // No manifest was published, so the intent has no association to restore.
+    assert.equal(fs.existsSync(missing), false);
+    // Another session and an unreadable file stay for inspection.
+    assert.equal(fs.existsSync(foreign), true);
+    assert.equal(fs.existsSync(invalid), true);
+    assert.equal(reopened.events.filter(event => event.kind === "checkpoint").length, 0);
+    const retained = fs.readdirSync(store).filter(name => name.startsWith(".assoc-")).sort();
+    checkpointConversation(reopened, "captured", signal);
+    // A successful capture clears its own intent and leaves foreign evidence untouched.
+    assert.deepEqual(fs.readdirSync(store).filter(name => name.startsWith(".assoc-")).sort(), retained);
+    const id = reopened.id; reopened.close(); reopened = Session.open(f.workspace, { id });
+    assert.equal(reopened.events.filter(event => event.kind === "checkpoint").length, 1);
+  } finally { reopened?.close(); f.close(); }
+});
+
+test("a real crash between capture and association is completed on the next open", () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "harness-rewind-crash-")));
+  try {
+    const child = spawnSync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", `
+      const { pathToFileURL } = await import("node:url");
+      const fs = (await import("node:fs")).default;
+      const path = (await import("node:path")).default;
+      const root = process.env.HARNESS_ROOT, workspace = process.env.HARNESS_WORKSPACE;
+      const { Session } = await import(pathToFileURL(path.join(root, "src/session.ts")).href);
+      const { automaticCheckpoint } = await import(pathToFileURL(path.join(root, "src/rewind.ts")).href);
+      const { defaultConfig } = await import(pathToFileURL(path.join(root, "src/agent.ts")).href);
+      const config = defaultConfig(workspace, []); config.model = "fixture"; config.automaticCheckpoints = true;
+      const session = Session.open(workspace, { config });
+      fs.writeFileSync(path.join(workspace, "file.txt"), "before");
+      const append = session.append.bind(session);
+      session.append = event => { if (event.kind === "checkpoint") process.kill(process.pid, "SIGKILL"); return append(event); };
+      automaticCheckpoint(session, new AbortController().signal);
+    `], { cwd: path.resolve("."), encoding: "utf8", timeout: 20_000,
+      env: { ...process.env, HARNESS_ROOT: path.resolve("."), HARNESS_WORKSPACE: workspace } });
+    assert.equal(child.signal, "SIGKILL", child.stderr);
+    const store = path.join(workspace, ".agent/checkpoints");
+    assert.equal(fs.readdirSync(path.join(store, "manifests")).length, 1);
+    const intents = () => fs.readdirSync(store).filter(name => name.startsWith(".assoc-"));
+    assert.equal(intents().length, 1);
+    const journal = fs.readdirSync(path.join(workspace, ".agent")).find(name => name.endsWith(".jsonl"))!;
+    const reopened = Session.open(workspace, { id: journal.slice(0, -".jsonl".length), recoverLock: true });
+    try {
+      assert.equal(reopened.events.filter(event => event.kind === "checkpoint").length, 1);
+      assert.equal(intents().length, 0);
+      assert.equal(previewRewind(reopened, 0, new AbortController().signal).operations.length, 0);
+    } finally { reopened.close(); }
+  } finally { fs.rmSync(workspace, { recursive: true, force: true }); }
 });
