@@ -9,6 +9,9 @@ import { capChildOutput, childConfig, selectChildTools, createChildHookLifecycle
   resolveChildLaunch, forkMessages, validateChildEnvironment, type ChildHookOptions, type AdvancedChildOptions,
   type ChildEnvironmentLease, type ChildLaunchOptions } from './subagents.js';
 import type Anthropic from '@anthropic-ai/sdk';
+import { compileStructuredOutputSchema, formatSchemaIssues, STRUCTURED_OUTPUT_RETRY_LIMIT, STRUCTURED_OUTPUT_SUCCESS,
+  STRUCTURED_OUTPUT_SYSTEM_NOTE, STRUCTURED_OUTPUT_TOOL_NAME, STRUCTURED_OUTPUT_TOOL_PROMPT,
+  type CompiledJsonSchema, type JsonValue } from './structured-output.js';
 
 export type AgentStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type AgentDescriptor = {
@@ -16,6 +19,7 @@ export type AgentDescriptor = {
   mode: 'explore' | 'general'; model: string; summary: string; error: string | null;
   reason: string | null; model_calls: number; queued_messages: number;
   workspace?: string; subagent_type?: string; cleanup_error?: string;
+  structured_output?: JsonValue; structured_error?: string;
 };
 export type AgentNotification = { kind: 'agent'; sequence: number; agent: AgentDescriptor;
   subscription?: { id: string; state: 'idle' | 'expired' } };
@@ -34,13 +38,15 @@ export type AgentRegistryOptions = ChildHookOptions & AdvancedChildOptions & {
 };
 export type AgentLaunch = ChildLaunchOptions & {
   prompt: string; name?: string; background?: boolean;
+  /** Workflow schema mode (`agent({schema})`): the child must return this shape. */
+  structured_schema?: unknown;
 };
 
 const launchSchema = z.object({
   prompt: z.string().refine(value => value.trim().length > 0, 'Prompt is empty'), mode: z.enum(['explore', 'general']).default('explore'),
   max_turns: z.number().int().min(1).max(30).default(10),
   name: z.string().trim().min(1).max(128).optional(), background: z.boolean().default(false),
-  model: z.string().trim().min(1).max(256).optional(),
+  model: z.string().trim().min(1).max(256).optional(), structured_schema: z.unknown().optional(),
 }).strict();
 const advancedLaunchSchema = launchSchema.extend({ mode: z.enum(['explore', 'general']).optional(),
   max_turns: z.number().int().min(1).max(30).optional(), ...advancedChildFields }).strict();
@@ -64,12 +70,44 @@ function field(text: string, limit: number): string {
   return bytes.subarray(0, end).toString('utf8');
 }
 
+type StructuredOutputState = {
+  compiled: CompiledJsonSchema; value?: JsonValue; attempts: number; lastError?: string; capError?: string;
+};
+
+/** The recovered `Ea` tool (chunk-5wc3wh5m.js): an empty internal schema, the
+ *  caller's JSON Schema as the API shape, and `endsTurn` on success. Validation
+ *  failures are tool errors, which the model retries until the source's cap. */
+function createStructuredOutputTool(schema: unknown, state: StructuredOutputState): ToolDefinition {
+  return {
+    schema: { name: STRUCTURED_OUTPUT_TOOL_NAME, description: STRUCTURED_OUTPUT_TOOL_PROMPT,
+      input_schema: schema as Anthropic.Tool['input_schema'] },
+    readOnly: true, endsTurn: true,
+    async execute(input) {
+      if (state.capError !== undefined) throw new Error(state.capError);
+      const validation = state.compiled.validate(input);
+      if (!validation.valid) {
+        state.attempts += 1;
+        state.lastError = formatSchemaIssues(validation.issues);
+        if (state.attempts >= STRUCTURED_OUTPUT_RETRY_LIMIT) {
+          state.capError = `agent({schema}): StructuredOutput retry cap (${STRUCTURED_OUTPUT_RETRY_LIMIT}) exceeded — `
+            + `${state.attempts} failed calls with no valid output — last StructuredOutput error: ${state.lastError}`;
+          throw new Error(state.capError);
+        }
+        throw new Error(`Output does not match required schema: ${state.lastError}`);
+      }
+      state.value = validation.value;
+      return STRUCTURED_OUTPUT_SUCCESS;
+    },
+  };
+}
+
 type Child = {
   view: AgentDescriptor; config: SessionConfig; tools: ToolDefinition[]; controller: AbortController;
   mailbox: string[]; mailboxBytes: number; accepted: number; session?: Session;
   agent?: Agent; hooks?: ReturnType<typeof createChildHookLifecycle>;
   worker?: Promise<void>; journalEvents: number; journalBytes: number;
   environment?: ChildEnvironmentLease; environmentClosing?: Promise<void>; fork?: boolean;
+  structured?: StructuredOutputState;
 };
 
 /** One instance belongs to one parent session; selectors never resolve outside it. */
@@ -227,6 +265,12 @@ export class AgentRegistry {
   }, conversation?: readonly Anthropic.MessageParam[]): Promise<AgentDescriptor> {
     this.assertOpen(callerSignal);
     const args: AgentLaunch = (this.options.enableAdvanced ? advancedLaunchSchema : launchSchema).parse(raw);
+    const structuredState: StructuredOutputState | undefined = args.structured_schema === undefined ? undefined : (() => {
+      try { return { compiled: compileStructuredOutputSchema(args.structured_schema), attempts: 0 }; }
+      catch (error) {
+        throw new Error(`agent({schema}) received an invalid JSON Schema: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    })();
     this.capacity();
     if (args.name && (this.reservedNames.has(args.name) || [...this.children.values()].some(child => child.view.name === args.name || child.view.id === args.name))) {
       throw new Error(`Child agent name already exists: ${args.name}`);
@@ -250,11 +294,19 @@ export class AgentRegistry {
     const allowShell = launch.mode === 'general' && parent.allowShell && (execution?.config.allowShell ?? true);
     const beforeTool = execution?.beforeTool;
     let selected = selectChildTools(supplied, launch.mode, launch.type?.tools);
+    if (structuredState !== undefined) {
+      // The source appends `Ea` when the agent's tool list lacks it and the pool
+      // resolves names to the standard definition, so replacing a same-name entry
+      // here is the same tool and keeps validation under this runtime's control.
+      selected = [...selected.filter(tool => tool.schema.name !== STRUCTURED_OUTPUT_TOOL_NAME),
+        createStructuredOutputTool(args.structured_schema, structuredState)];
+    }
     const inherited = execution ? { ...structuredClone(execution.config), workspace: parent.workspace,
       allowShell: parent.allowShell && execution.config.allowShell,
       ...(execution.beforeTool ? { permissions: { mode: 'bypass' as const, allow: [], deny: [] } } : {}),
     } : parent;
     let config = childConfig(inherited, selected, launch);
+    if (structuredState !== undefined) config = { ...config, system: config.system + STRUCTURED_OUTPUT_SYSTEM_NOTE };
     const controller = new AbortController();
     const onCallerAbort = () => controller.abort(callerSignal?.reason);
     callerSignal?.addEventListener('abort', onCallerAbort, { once: true });
@@ -314,6 +366,7 @@ export class AgentRegistry {
         // A denying PermissionRequest hook with `interrupt:true` aborts this
         // child's turn (source subagent consumer, chunk-fk088dyb.js offset 89115).
         interruptTurn: () => controller.abort(new Error('Hook interrupt')),
+        ...(structuredState ? { requiredTool: STRUCTURED_OUTPUT_TOOL_NAME } : {}),
         ...(this.options.instructionFiles ? { instructionFiles: paths => this.options.instructionFiles!(config.workspace, paths) } : {}),
         ...(this.options.terminalSequence ? { terminalSequence: sequence => this.options.terminalSequence!(childId, sequence) } : {}),
         ...(this.options.stopState ? { stopState: this.options.stopState } : {}) });
@@ -323,6 +376,7 @@ export class AgentRegistry {
           ...(this.options.enableAdvanced ? { workspace: config.workspace, ...(args.subagent_type ? { subagent_type: args.subagent_type } : {}) } : {}) },
         config: session.config, tools, controller, mailbox: [], mailboxBytes: 0,
         accepted: 0, session, agent, hooks, journalEvents: session.events.length, journalBytes: metadataBytes + seedBytes + seedBoundaryBytes,
+        ...(structuredState ? { structured: structuredState } : {}),
         ...(environment ? { environment } : {}), fork: seededFork,
       };
       this.enqueue(child, args.prompt);
@@ -435,6 +489,7 @@ export class AgentRegistry {
         const childId = child.session.id;
         child.agent = new Agent(child.session, this.options.provider, child.tools, { hookOptions: child.hooks.hookOptions,
           interruptTurn: () => child.controller.abort(new Error('Hook interrupt')),
+          ...(child.structured ? { requiredTool: STRUCTURED_OUTPUT_TOOL_NAME } : {}),
           ...(this.options.instructionFiles ? { instructionFiles: paths => this.options.instructionFiles!(child.config.workspace, paths) } : {}),
           ...(this.options.terminalSequence ? { terminalSequence: sequence => this.options.terminalSequence!(childId, sequence) } : {}),
           ...(this.options.stopState ? { stopState: this.options.stopState } : {}) });
@@ -449,6 +504,15 @@ export class AgentRegistry {
         const result = await child.agent!.run(prompt, signal);
         child.view.reason = field(result.reason, this.limits.maxOutputBytes);
         child.view.summary = field(result.text, this.limits.maxOutputBytes);
+        if (child.structured !== undefined) {
+          if (child.structured.value !== undefined) {
+            child.view.structured_output = child.structured.value;
+            delete child.view.structured_error;
+          } else {
+            const structuredError = child.structured.capError ?? child.structured.lastError;
+            if (structuredError !== undefined) child.view.structured_error = field(structuredError, this.limits.maxOutputBytes);
+          }
+        }
         child.view.model_calls += result.modelCalls;
         child.journalEvents = child.session!.events.length;
         child.journalBytes = child.session!.events.reduce((sum, event) => sum + Buffer.byteLength(JSON.stringify(event)) + 1, 0);

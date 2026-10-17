@@ -91,6 +91,27 @@ test('DAG validation rejects duplicate IDs/dependencies, unknown edges, cycles, 
   } finally { await f.cleanup(); }
 });
 
+test('workflow script schema mode returns the validated StructuredOutput object', async () => {
+  let calls = 0;
+  const f = fixture(async request => {
+    calls += 1;
+    assert.equal(request.tools?.some(tool => 'name' in tool && tool.name === 'StructuredOutput'), true);
+    return { id: 'fixture', model: 'test', type: 'message', role: 'assistant',
+      content: [{ type: 'tool_use', id: 'out-1', name: 'StructuredOutput', input: { answer: 'yes' } }],
+      stop_reason: 'tool_use', usage: { input_tokens: 1, output_tokens: 1 } } as Anthropic.Message;
+  });
+  const registry = f.make();
+  try {
+    const tools = createWorkflowTools(registry);
+    const context = { workspace: f.workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 100_000 };
+    const script = "export const meta = { name: 'schema', description: 'schema' }\n"
+      + "return await agent('json', { schema: { type: 'object', properties: { answer: { type: 'string' } }, required: ['answer'] } })";
+    const result = JSON.parse(await tools[0]!.execute({ script }, context)) as { result?: unknown };
+    assert.deepEqual(result.result, { answer: 'yes' });
+    assert.equal(calls, 1);
+  } finally { await f.cleanup(); }
+});
+
 test('failed dependencies skip downstream transitively while independent tasks finish', async () => {
   const seen: string[] = [];
   const f = fixture(async request => { const text = prompt(request); seen.push(text); if (text === 'fail') throw new Error('fixture failure'); return response('ok'); });

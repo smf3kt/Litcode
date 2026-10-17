@@ -19,6 +19,22 @@ export const JSON_SCHEMA_LIMITS: readonly string[] = [
   'Validation has schema/output byte, depth, node, issue and traversal budgets; bounded failures are explicit schema errors',
 ];
 
+// Recovered workflow schema-mode surface (chunk-5wc3wh5m.js `Ea`/`me`,
+// chunk-hedqf2m1.js offsets 38678-39487): the tool name, its model-facing
+// prompt (sent as the API tool description by `Kro`, chunk-sfn1dbxq.js offset
+// 823307), the success payload, the retry cap (`xhn` in chunk-4t0s8gye.js) and
+// the system note appended for a custom agent type (`bs`).
+export const STRUCTURED_OUTPUT_TOOL_NAME = 'StructuredOutput';
+export const STRUCTURED_OUTPUT_TOOL_PROMPT = 'Use this tool to return your final response in the requested structured format. You MUST call this tool exactly once at the end of your response to provide the structured output.';
+export const STRUCTURED_OUTPUT_SUCCESS = 'Structured output provided successfully';
+export const STRUCTURED_OUTPUT_RETRY_LIMIT = 5;
+export const STRUCTURED_OUTPUT_NUDGE = '[structured-output-enforce]';
+export const STRUCTURED_OUTPUT_SYSTEM_NOTE = `
+
+---
+
+NOTE: You are running inside a workflow script. You MUST return your final answer by calling the ${STRUCTURED_OUTPUT_TOOL_NAME} tool exactly once — the tool's input schema defines the required shape. Do your work, then call ${STRUCTURED_OUTPUT_TOOL_NAME}; do NOT put your answer in a text response (the script reads ONLY the tool call). If validation fails, read the error and call ${STRUCTURED_OUTPUT_TOOL_NAME} again with a corrected shape.`;
+
 export type SchemaIssue = { path: string; keyword: string; message: string };
 export type SchemaValidation = { valid: true; value: JsonValue } | { valid: false; issues: SchemaIssue[] };
 export type FinalSchemaError = { code: 'invalid_json' | 'schema_validation' | 'output_limit'; message: string; issues: SchemaIssue[] };
@@ -73,14 +89,20 @@ function inspectJson(value: unknown, limits: { nodes: number; depth: number; byt
     ancestors.add(item);
     let valid = true;
     if (Array.isArray(item)) {
-      if (Object.getPrototypeOf(item) !== Array.prototype || Reflect.ownKeys(item).some((key) => key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key)))) valid = false;
+      // Cross-realm arrays (a workflow script's JSON.parse and its `args` live in
+      // the VM realm) are plain arrays; only own indices may exist.
+      if (Reflect.ownKeys(item).some((key) => key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key)))) valid = false;
       else for (let i = 0; i < item.length; i++) {
         const descriptor = Object.getOwnPropertyDescriptor(item, String(i));
         if (!descriptor || !('value' in descriptor) || !visit(descriptor.value, depth + 1)) { valid = false; break; }
       }
     } else {
       const prototype = Object.getPrototypeOf(item);
-      if (prototype !== Object.prototype && prototype !== null) valid = false;
+      // A plain record's prototype is Object.prototype in its own realm, and a
+      // cross-realm Object.prototype terminates in null just as the host's does.
+      // Class instances (a further prototype above the immediate prototype) are
+      // still rejected; only own enumerable data properties are read below.
+      if (prototype !== Object.prototype && prototype !== null && Object.getPrototypeOf(prototype) !== null) valid = false;
       else for (const key of Reflect.ownKeys(item)) {
         const descriptor = Object.getOwnPropertyDescriptor(item, key);
         // Data only: even non-enumerable toJSON/accessors must never execute.
@@ -109,6 +131,23 @@ function hasType(value: JsonValue, type: JsonType): boolean {
   if (type === 'object') return record(value);
   if (type === 'integer') return typeof value === 'number' && Number.isInteger(value);
   return typeof value === type;
+}
+
+/**
+ * Compile a workflow agent's structured-output schema. The API accepts only an
+ * object-rooted tool input schema, which is the recovered root check
+ * (`ie`/`$ot` in chunk-5wc3wh5m.js).
+ */
+export function compileStructuredOutputSchema(schema: unknown): CompiledJsonSchema {
+  if (!record(schema) || schema.type !== 'object') {
+    throw new Error("the root schema must declare type: 'object' (the API rejects any other root type for a tool input schema); wrap arrays or primitives in an object property");
+  }
+  return compileJsonSchema(schema);
+}
+
+/** `Ze` (chunk-5wc3wh5m.js offset ~4700): `${instancePath || 'root'}: ${message}`. */
+export function formatSchemaIssues(issues: readonly SchemaIssue[]): string {
+  return issues.map(issue => `${issue.path || 'root'}: ${issue.message}`).join(', ');
 }
 
 export function compileJsonSchema(schema: unknown): CompiledJsonSchema {

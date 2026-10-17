@@ -19,6 +19,7 @@ import { classicPreToolUseHooked, raiseClassicPreToolUse } from './plugin-chain-
 import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_USE, CLASSIC_POST_TOOL_USE_FAILURE, classicEventRaised, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
 import type { ClassicPermissionRequestResult } from './plugin-chain-classic-raise.js';
 import { activateTouchedSkills, discoverTouchedSkills, reloadSkills } from './skill-catalog.js';
+import { STRUCTURED_OUTPUT_NUDGE } from './structured-output.js';
 
 export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
 Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
@@ -99,7 +100,11 @@ export type AgentEvents = { text?: (text: string) => void; status?: (status: str
   interruptTurn?: () => void;
   hookOptions?: HookRunOptions; interaction?: InteractionCallbacks;
   /** Live background jobs and session cron tasks for Stop/SubagentStop (`Sle`). */
-  stopState?: () => StopRuntimeState };
+  stopState?: () => StopRuntimeState;
+  /** Schema mode (`requiresStructuredOutput`): the tool whose successful call the
+   *  turn requires; an unsatisfied tool batch gets the source's enforcement nudge
+   *  (chunk-5b2hxy2e.js offset 68182). */
+  requiredTool?: string };
 
 const hookLifecycles = new WeakMap<Session, HookLifecycle>();
 
@@ -149,6 +154,8 @@ function createdTaskFields(input: unknown, content: ToolResult['content']): { id
 
 export class Agent {
   private busy = false;
+  /** Source tool result `endsTurn`: the current batch ended the turn. */
+  private endedByTool = false;
   private ended = false;
   private turnTiming: {uuid:string; startedAt:number} | undefined;
   private tools: Map<string, ToolDefinition>;
@@ -600,7 +607,63 @@ export class Agent {
     return contexts;
   }
 
+  private userText(message: Anthropic.MessageParam): string {
+    if (typeof message.content === 'string') return message.content;
+    return message.content.filter(block => block.type === 'text').map(block => (block as Anthropic.TextBlockParam).text).join('\n');
+  }
+
+  /** `Tts` (chunk-sfn1dbxq.js offset 4506192): the last call's own result decides. */
+  private requiredToolResult(messages: readonly Anthropic.MessageParam[], name: string): boolean {
+    let id: string | undefined;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i]!;
+      if (message.role !== 'assistant' || !Array.isArray(message.content)) continue;
+      const call = message.content.find(block => block.type === 'tool_use' && block.name === name);
+      if (call) { id = (call as Anthropic.ToolUseBlockParam).id; break; }
+    }
+    if (id === undefined) return false;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i]!;
+      if (message.role !== 'user' || !Array.isArray(message.content)) continue;
+      const result = message.content.find(block => block.type === 'tool_result' && block.tool_use_id === id);
+      if (result) return (result as Anthropic.ToolResultBlockParam).is_error !== true;
+    }
+    return false;
+  }
+
+  /** `Da`/`Tts` nudge gate (chunk-5b2hxy2e.js offset 68182): messages after the
+   *  last real user turn decide, and one nudge per turn is enough. */
+  private structuredNudgeNeeded(name: string): boolean {
+    const messages = this.session.messages;
+    let boundary = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i]!;
+      if (message.role !== 'user') continue;
+      // `N_` (chunk-sfn1dbxq.js offset 4422125): a tool-result carrier is not a
+      // real user turn; neither is this product's meta nudge or retry notice.
+      if (Array.isArray(message.content) && message.content.some(block => block.type === 'tool_result')) continue;
+      const text = this.userText(message);
+      if (text.includes(STRUCTURED_OUTPUT_NUDGE) || text === PERMISSION_RETRY_META) continue;
+      boundary = i; break;
+    }
+    const tail = messages.slice(boundary + 1);
+    if (this.requiredToolResult(tail, name)) return false;
+    return !tail.some(message => message.role === 'user' && this.userText(message).includes(STRUCTURED_OUTPUT_NUDGE));
+  }
+
+  private enforceRequiredTool(): void {
+    const name = this.events.requiredTool;
+    if (name === undefined || !this.structuredNudgeNeeded(name)) return;
+    // The source marks this message `isMeta:true`; this product's journal has no
+    // meta flag, so the marker prefix keeps it out of the real-user boundary and
+    // still reaches the next request.
+    this.session.append({ kind: 'message', message: { role: 'user', content: [
+      { type: 'text', text: `${STRUCTURED_OUTPUT_NUDGE} You MUST call the ${name} tool to complete this request. Call this tool now.` },
+    ] } });
+  }
+
   private async execute(calls: Anthropic.ToolUseBlockParam[], signal: AbortSignal, blocked?: string): Promise<boolean> {
+    this.endedByTool = false;
     const c = this.session.config;
     const conversation = this.session.messages;
     if (conversation.at(-1)?.role === 'assistant' && toolCalls(conversation.at(-1)!).length) conversation.pop();
@@ -701,6 +764,7 @@ export class Agent {
       // Persist the effect before running a post hook, which may itself be interrupted.
       this.session.append({ kind: 'tool_result', result });
       results.push(result);
+      if (executed && !result.is_error && this.tools.get(call.name)?.endsTurn === true) this.endedByTool = true;
       if (executed && !signal.aborted) {
         try {
           const post = await this.hook(result.is_error ? 'PostToolUseFailure' : 'PostToolUse', {
@@ -1138,6 +1202,8 @@ export class Agent {
             if (finished) return finished;
           }
           if (!proceed) return this.finish('hook_blocked', text, modelCalls);
+          if (this.endedByTool) return (await this.finishWithHooks('end_turn', text, modelCalls, signal))!;
+          this.enforceRequiredTool();
           continue;
         }
         if (response.stop_reason === 'pause_turn') continue;

@@ -5,6 +5,7 @@ import fs, { type FileHandle } from 'node:fs/promises';
 import nodePath from 'node:path';
 import { parse, type Node } from 'acorn';
 import * as walk from 'acorn-walk';
+import { compileStructuredOutputSchema, type JsonValue } from './structured-output.js';
 
 // Ported from the recovered workflow script runtime:
 //   parseWorkflowScript  <- `YS` (chunk-rk6tjv7j.js offset 3670)
@@ -45,12 +46,15 @@ export type WorkflowScriptAgentOptions = {
 // A bridge returns the child summary; `null` mirrors a skipped child, and
 // `{ failure }` mirrors a terminal child failure, which the script sees as
 // `null` after the failure is recorded (recovered `kr` at offset 71400).
-// `onStarted` reports the child session as soon as it exists, so the journal
-// can record a `started` entry before the child finishes.
+// `{ structured }` is schema mode's validated object (recovered `Ot`, returned
+// to the script instead of the summary). `onStarted` reports the child session
+// as soon as it exists, so the journal can record a `started` entry before the
+// child finishes.
+export type WorkflowAgentStructured = { structured: JsonValue };
 export type WorkflowAgentBridge = (
   prompt: string, options: WorkflowScriptAgentOptions, signal: AbortSignal,
   onStarted?: (agentId: string) => void,
-) => Promise<string | null | { failure: string }>;
+) => Promise<string | null | WorkflowAgentStructured | { failure: string }>;
 
 // Journal entries and the key chain are ported from `sn`/`Do`/`Hr`/`No`/`Qr`
 // (chunk-hedqf2m1.js 20500-23000). The key chains the previous key with the
@@ -917,7 +921,7 @@ export async function runWorkflowScript(
     return cloneValue(value) as Record<string, unknown>;
   };
   const assertUnsupportedOptions = (opts: Record<string, unknown>) => {
-    for (const key of ['schema', 'disallowedTools', 'bashCommandClamp', 'stallMs'] as const) {
+    for (const key of ['disallowedTools', 'bashCommandClamp', 'stallMs'] as const) {
       if (opts[key] !== undefined) {
         throw new Error(`agent({${key}}) is not available in this runtime yet`);
       }
@@ -948,10 +952,27 @@ export async function runWorkflowScript(
       result.agentType = opts.agentType;
     }
     if (opts.isolation === 'worktree') result.isolation = 'worktree';
+    if (opts.schema !== undefined) {
+      try { compileStructuredOutputSchema(opts.schema); }
+      catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const root = opts.schema !== null && typeof opts.schema === 'object' && !Array.isArray(opts.schema)
+          ? (opts.schema as { type?: unknown }).type : undefined;
+        if (root !== 'object') {
+          // `Fot`/the unusable-schema branch (chunk-hedqf2m1.js offset ~39000):
+          // the spawn is refused before a child exists.
+          throw new Error(`agent({schema}) received an unusable JSON Schema — the API only accepts an object-rooted `
+            + `tool input schema, so every request would be rejected: ${message}. The subagent was not started `
+            + `— fix the schema and call agent() again.`);
+        }
+        throw new Error(`agent({schema}) received an invalid JSON Schema: ${message}`);
+      }
+      result.schema = opts.schema;
+    }
     return result;
   };
 
-  const onAgent = async (promptValue: unknown, rawOptions: unknown): Promise<string | null> => {
+  const onAgent = async (promptValue: unknown, rawOptions: unknown): Promise<unknown> => {
     if (signal.aborted) throw new Error('Workflow aborted');
     agentCount += 1;
     if (agentCount > maxAgents) {
@@ -975,7 +996,7 @@ export async function runWorkflowScript(
       journalChain = key;
       if (!journalMiss) {
         const hit = journal.state.results.get(key);
-        if (hit !== undefined) return hit.result as string | null;
+        if (hit !== undefined) return hit.result;
       }
       const started = journal.state.started.get(key);
       if (!(!journalMiss && started !== undefined && started.length > 0 && !journal.state.failed.has(key))) {
@@ -990,7 +1011,7 @@ export async function runWorkflowScript(
       writes = writes.then(() => journal.append(entry)).catch(() => undefined);
     };
     let agentId: string | undefined;
-    let result: string | null | { failure: string };
+    let result: string | null | WorkflowAgentStructured | { failure: string };
     try {
       result = await options.agent(promptValue, parsedOptions, signal, id => {
         agentId = id;
@@ -1003,17 +1024,21 @@ export async function runWorkflowScript(
       await writes;
       throw error;
     }
-    if (result !== null && typeof result === 'object') {
+    const failure = result !== null && typeof result === 'object' && 'failure' in result && typeof result.failure === 'string'
+      ? result.failure : undefined;
+    if (failure !== undefined) {
       append({ type: 'failed', key: key!, agentId: agentId ?? '' });
       await writes;
-      recordFailure(`[${label}] failed: ${result.failure}`, true);
+      recordFailure(`[${label}] failed: ${failure}`, true);
       return null;
     }
+    const visible: string | JsonValue | null = result !== null && typeof result === 'object' && 'structured' in result
+      ? result.structured : result as string | null;
     if (journal !== undefined && key !== undefined) {
-      append({ type: 'result', key, agentId: agentId ?? '', result });
+      append({ type: 'result', key, agentId: agentId ?? '', result: visible });
     }
     await writes;
-    return result;
+    return visible;
   };
 
   const onPhase = (value: unknown) => {

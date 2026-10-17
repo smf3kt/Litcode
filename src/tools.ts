@@ -35,6 +35,9 @@ export type ToolDefinition = {
   execute(input: unknown, context: ToolContext): Promise<string>;
   executeBlocks?(input: unknown, context: ToolContext): Promise<Anthropic.ToolResultBlockParam['content']>;
   forChild?(): ToolDefinition;
+  /** Source tool `call` result `endsTurn: true` (chunk-5wc3wh5m.js `Ea`): a successful
+   *  call ends the turn instead of re-invoking the model. */
+  endsTurn?: boolean;
 };
 
 const READ_DEFAULT_LIMIT = 2000;
