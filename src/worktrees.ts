@@ -313,6 +313,18 @@ export class WorktreeManager {
     return result.stdout;
   }
 
+  /** Source `Pze` (chunk-sfn1dbxq.js offset 1762797): a workspace with no
+   *  repository at all takes the WorktreeCreate advisory; one inside a
+   *  repository whose root is elsewhere keeps the manager's own root error. */
+  async repositoryState(signal: AbortSignal): Promise<"none" | "root" | "elsewhere"> {
+    const result = await this.git(this.workspace, ["rev-parse", "--show-toplevel"], signal);
+    if (result.code !== 0) return "none";
+    const top = result.stdout.trimEnd();
+    if (!top) return "none";
+    try { return fs.realpathSync(top) === this.workspace ? "root" : "elsewhere"; }
+    catch { return "elsewhere"; }
+  }
+
   private async repository(signal: AbortSignal): Promise<Repository> {
     const top = (await this.checkedGit(this.workspace, ["rev-parse", "--show-toplevel"], signal)).trimEnd();
     if (fs.realpathSync(top) !== this.workspace) throw new Error("workspace must be the Git repository root");

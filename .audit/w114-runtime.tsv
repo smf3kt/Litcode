@@ -1,0 +1,3 @@
+2026-10-17T22:40:00Z	package	W114-01 non-git worktree advisory	Pze 1762797（chunk-sfn1dbxq.js）、osr 1733866	rev-parse 失败才报源告警；仓库根在别处保持管理器错误	agent-isolation/subagents/agent-registry/worktrees 88/88；tsc 0；build 0；全量 2,155/2,155；链 767/767
+2026-10-17T22:42:00Z	decision	W114-01 本地适配	采用子代理工作树 Pze 文本；osr 变体属另一入口；无磁盘/受限检查无对应	repositoryState 三态避免把嵌套工作区误报为无仓库	.audit/w114-01-full.txt
+2026-10-17T22:44:00Z	verification	W114-01 验收：聚焦 88/88、tsc 0、build 0、2,155/2,155、767/767	纯临时工作区无钩子得到源告警	notices 0；索引 75 chunks / 323,525 单位不变；identity 95c17af3…

@@ -354,6 +354,23 @@ test('WorktreeCreate hooks supply and remove the isolated child checkout outside
   } finally { await f.cleanup(); fs.rmSync(checkout, { recursive: true, force: true }); }
 });
 
+test('a non-git workspace without WorktreeCreate hooks takes the source advisory', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-plain-parent-')));
+  const provider: ModelProvider = { count: async () => 0, complete: async () => done() };
+  const config: SessionConfig = { ...defaultConfig(workspace, createTools()), model: 'fixture',
+    features: { tasks: true, subagents: true, agentTypes: true, agentMessaging: true, agentIdle: true, worktrees: true } };
+  const controller = new AbortController();
+  const runtime = await createRuntime(config, provider, controller.signal);
+  config.tools = pinToolSchemas(runtime.tools);
+  try {
+    await assert.rejects(tool(runtime.tools, 'agent').execute({ prompt: 'inspect', isolation: 'worktree' }, context(workspace)),
+      /not in a git repository and no WorktreeCreate hooks are configured/);
+  } finally {
+    await runtime.close();
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 test('WorktreeCreate hook paths with dot segments or symlink ancestors are refused', async () => {
   const dottedParent = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-parent-')));
   const dottedCheckout = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-hook-child-'));
