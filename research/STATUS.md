@@ -2602,3 +2602,13 @@ indicator and its Text, and digit selection. The source's module-namespace call
 `Sc.releaseInkFocus` keeps its shape because the pressable-button seam now exports `_3n` under that
 name; every body is otherwise verbatim. Focused 13/13, full 2296/2296, tsc 0, build 0, notices 0,
 identity `6d39c0c6…`. [W146 record](ports/W146-above-prompt-parts.md).
+
+W147 ports the prompt input's single-digit confirmation. Three blocks (1,625 units) carry the hint
+map (`& é " ' ( - § è _ ç à` to 1–0) with its NFKC fallback, the Enter pre-dispatch path, which
+proceeds only for a plain Return that resolves to `chat:submit` (or with no keybinding service),
+past the mount window, after the input changed to one character that maps to a valid digit, and
+the 400 ms debounce effect. The slice also carries the clock-now hook `Xa` (context function, else
+`Date.now`) and the due-window helper `rc`. While testing, the hook seam's effect handling was
+corrected: an effect called without a dependency array now runs after every render, as React
+defines it, which the source's handler-ref effect needs. Focused 11/11, full 2305/2305, tsc 0,
+build 0, notices 0, identity `307fee76…`. [W147 record](ports/W147-above-prompt-input.md).

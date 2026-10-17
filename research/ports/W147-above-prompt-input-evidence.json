@@ -1,0 +1,48 @@
+{
+ "schema": "W147AbovePromptInputEvidence.v1",
+ "package": "W147-01 — AbovePrompt prompt-input digit confirmation",
+ "date": "2026-10-18",
+ "question": "What does the AbovePrompt prompt input do with a single typed digit, and which seams does that path need?",
+ "answer": "Tp confirms one digit through two paths: on Enter, when the keybinding service resolves the key to chat:submit (or when no service is mounted), the input changed since mount, the mount delay passed, and the single character maps to a valid digit; otherwise a debounce effect fires 400 ms after the input becomes one valid digit. Hints map punctuation and accented characters (&, é, \", ', (, -, §, è, _, ç, à) and fall back to NFKC. The slice also carries the clock-now hook Xa and the due-window helper rc. While porting it, the hook seam's effect handling was corrected to React semantics: an effect called without a dependency array now runs after every render, which the source relies on for its handler refs.",
+ "sourcePosition": {
+  "blocks": [
+   {"module": "extracted-v2/modules/chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31", "range": [442163, 443631], "units": 1468, "bodySha256": "405d1af2952189ce4fa9363bcaf777f492162ba9e7a371f7e9c077149539938a", "symbols": ["mne", "Pm", "bFe", "h0", "Tp"]},
+   {"module": "extracted-v2/modules/chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "range": [24240, 24305], "units": 65, "bodySha256": "92683351433597bd43b884cb654b6a1d398465cd69bbc65302fb02ac67492f8b", "symbols": ["Xa", "Uo"]},
+   {"module": "extracted-v2/modules/chunk-rzab5p9a.js", "sha256": "4cd9bea9906723f903c509a9a73dd0d27967754393109c46b968244a23f2e959", "range": [714, 806], "units": 92, "bodySha256": "c92d9ea0d2f12cb2aa43215f00bd07097aeda00f0dbff7265baadaf4c40e324a", "symbols": ["IG", "Oo", "rc"]}
+  ],
+  "totalBlocks": 3,
+  "totalUnits": 1625,
+  "hostToken": "the source's `b4n` clock context (chunk-06azbynj.js) has no provider in this build; plugin-chain-above-prompt-input-host.ts declares PromptClock, and Xa's unmounted branch stays Uo/Date.now"
+ },
+ "behavior": {
+  "hints": "bFe maps & -> 1, é -> 2, \" -> 3, ' -> 4, ( -> 5, - and § -> 6, è -> 7, _ -> 8, ç -> 9, à -> 0; h0 returns the hint, else the NFKC form",
+  "delays": "mne 400 ms debounce, Pm 600 ms mount delay, IG 150 and Oo 250 due windows",
+  "clock": "Xa returns the mounted b4n clock function or Uo (Date.now); rc accepts a start whose age is in [0, windowMs), and for a start in the future requires it not to exceed the real clock",
+  "enter": "Tp's pre-dispatch handler proceeds only for Return without shift/ctrl/meta/super, enabled, not consumed once, and (when a keybinding service exists) only when the key resolves to chat:submit; it then rejects a mount window still running, an unchanged input, or an input that is not one character; the hint or NFKC digit must pass isValidDigit, after which once is consumed, onDigit receives the digit and the handler returns true",
+  "debounce": "when enabled, not consumed once, past the mount window, and the input changed to one character whose NFKC form is valid, a setTimeout(debounceMs) delivers the digit once; cleanup cancels it"
+ },
+ "product": {
+  "files": [
+   "src/plugin-chain-above-prompt-input-source.ts",
+   "src/plugin-chain-above-prompt-input-source-blocks.json",
+   "src/plugin-chain-above-prompt-input.ts",
+   "src/plugin-chain-above-prompt-input-host.ts",
+   "test/plugin-chain-above-prompt-input.test.ts",
+   "src/plugin-chain-react-hooks.ts"
+  ],
+  "generator": "scripts/copy-module-regions.mjs",
+  "plans": ["research/ports/W147-above-prompt-input.plan.json"],
+  "seamExports": ["DIGIT_HINT_MAP", "digitHint", "DIGIT_CONFIRM_DEBOUNCE_MS", "DIGIT_MOUNT_DELAY_MS", "DUE_WINDOW_MS", "DUE_WINDOW_LONG_MS", "clockNow", "systemNow", "dueWithin", "usePromptDigitConfirm"],
+  "reusedSeams": ["P", "R", "Ae", "Lc", "Ey", "on", "PromptClock"],
+  "hookSeamFix": "en/P now distinguish an omitted dependency array from an empty one; without deps the effect queues every render, matching React and the source's handler-ref effects. EffectSlot.deps is optional. Full suite still passes.",
+  "unresolved": 0
+ },
+ "verification": {
+  "focused": "11/11 (9 new + the two undeclared-scan gates)",
+  "full": "2305/2305",
+  "tsc": 0,
+  "notices": 0,
+  "build": 0,
+  "identity": "307fee76829ca9611ab61bbfb99c8cd8c2ee8a1a61af5369bc7da99126cf2206"
+ }
+}
