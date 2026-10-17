@@ -59,4 +59,4 @@
 
 - `askUserQuestionTimeout` 的本地设置界面与 60s/5m/10m/never 预设未移植。
 - 屏幕阅读器与 external racer 门控在本运行时无对应状态。
-- 题目级 notes、chat-about-design、external-editor/image-paste 与完整 React 渲染器仍属 W43 剩余项。
+- 题目级 notes 由 [W178](W178-question-notes.md) 移植；chat-about-design、external-editor/image-paste 与完整 React 渲染器仍属 W43 剩余项。

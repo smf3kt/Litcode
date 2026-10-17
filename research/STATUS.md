@@ -3024,7 +3024,8 @@ non-multi-select question whose options include a preview, and `P3` attaches the
 full preview only when that option carries one; screen-reader suppression is absent because this
 runtime has no screen-reader state. Both the grouped and sequential terminal ask paths pass their
 answers through the same helper, and the existing answer admission enforces that the annotation
-matches a preview the question showed. Question-level notes and the AFK timeout remain out.
+matches a preview the question showed. Question-level notes were later ported by W178 and the AFK
+timeout by W177.
 Focused 80/80, full 2586/2586, tsc 0, build 0, notices 0, identity `04faee71…`.
 [W176 record](ports/W176-terminal-preview-annotation.md).
 
@@ -3042,3 +3043,16 @@ New tests cover the enable gate and environment overrides, a blurred countdown w
 partial-answer submission, and a focused terminal that never triggers. Focused tui 50/50,
 interaction-tools 33/33, full 2589/2589, tsc 0, build 0, notices 0, identity `10311b2b…`.
 [W177 record](ports/W177-afk-timeout.md).
+
+W178 ports the recovered per-question notes of single-select preview questions. `zet` gates notes to
+a non-multi-select question with at least one preview option, and the source's plain `n` opens an
+editor whose Esc keeps the text and whose Enter takes the currently moved focus, else the stored
+answer, else the `(notes only)` marker. `P3` trims the per-question `textInputValue` and writes it to
+`annotations.notes`, beside `annotations.preview` when the selected option carries one. The product
+keeps notes per question in the dialog, shows a `Notes:` row, routes Enter through the same helper,
+and passes notes through the grouped answer path; multi-select and preview-less questions have no
+notes row. The notes editor is bounded to 8192 characters. The clarify `User notes:` feedback and
+the chat-about-design entry remain out. New tests cover the annotation gate and round trip, a
+notes-only answer, and a two-question flow that keeps notes across a selection. Focused
+tui 52/52, interaction-tools 34/34, full 2592/2592, tsc 0, build 0, notices 0, identity `e9c3612a…`.
+[W178 record](ports/W178-question-notes.md).

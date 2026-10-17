@@ -42,6 +42,26 @@ test('a terminal answer preview annotation follows the single-select preview gat
   assert.deepEqual(JSON.parse(await run('ask_user_question', withPreview)), answer);
 });
 
+test('terminal answer notes follow the same single-select preview gate', async () => {
+  const withPreview: AskUserQuestionRequest = { questions: [{
+    question: 'Pick', header: 'Pick', multiSelect: false,
+    options: [{ label: 'A', description: 'first', preview: 'Preview A' }, { label: 'B', description: 'second' }],
+  }] };
+  const question = withPreview.questions[0]!;
+  assert.deepEqual(terminalAnswerAnnotation(question, ['B'], '  note  '), { notes: 'note' });
+  assert.deepEqual(terminalAnswerAnnotation(question, ['A'], 'note'),
+    { preview: 'Preview A', notes: 'note' });
+  assert.deepEqual(terminalAnswerAnnotation(question, [], 'note'), { notes: 'note' });
+  assert.equal(terminalAnswerAnnotation(question, ['B'], '   '), undefined);
+  assert.equal(terminalAnswerAnnotation({ ...question, multiSelect: true }, ['A'], 'note'), undefined);
+  assert.equal(terminalAnswerAnnotation({ ...question, options: [
+    { label: 'A', description: 'first' }, { label: 'B', description: 'second' }] }, ['A'], 'note'), undefined);
+  const answer: AskUserQuestionAnswer = { answers: [{
+    questionIndex: 0, selected: ['A'], annotations: { preview: 'Preview A', notes: 'note' } }] };
+  const run = tools({ ask: async () => answer });
+  assert.deepEqual(JSON.parse(await run('ask_user_question', withPreview)), answer);
+});
+
 test('interaction catalog exposes strict schemas and read-only flags without invoking callbacks', () => {
   const result = createInteractionTools({ ask: async () => { throw new Error('unexpected'); } });
   assert.deepEqual(result.map(tool => [tool.schema.name, tool.readOnly]), [

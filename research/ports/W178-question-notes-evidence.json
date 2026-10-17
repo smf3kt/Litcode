@@ -1,0 +1,91 @@
+{
+ "schema": "W178QuestionNotes.v1",
+ "package": "W178 — question-level notes",
+ "date": "2026-10-18",
+ "question": "When do single-select preview questions offer notes, how does the editor behave, and how do notes reach the answer annotation?",
+ "answer": "zet gates notes to a non-multi-select question whose options include a preview. In a3 a plain n (no ctrl/meta) opens the notes editor; Esc exits and keeps the text, Enter saves and takes an answer in order: moved option focus, the question's stored answer, then the (notes only) marker. P3 reads the per-question textInputValue only for zet questions, trims it and writes annotations.notes beside a full preview annotation. The product implements the same gate, a per-question notes map, the Notes row and the answer order, and passes notes through the grouped terminal answer path.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+  "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+  "ranges": {
+   "a3": [1145502, 1153542],
+   "zet": [1180104, 1180182],
+   "notesKey": [1148697, 1148729],
+   "notesSubmit": [1147686, 1147789],
+   "notesRender": [1150986, 1151296],
+   "p3read": [1178828, 1178853],
+   "p3write": [1179032, 1179061],
+   "questionState": [1162199, 1162240]
+  },
+  "additionalModules": [
+   {
+    "module": "extracted-v2/modules/chunk-ktr9sak2.js",
+    "sha256": "485ac7186fe7255d928c3985b94b2e97d5f12674f228026e9f68e1f9deb67755",
+    "ranges": {"cBt": [12444, 12467]}
+   }
+  ]
+ },
+ "sourceDigests": {
+  "a3": "e5fe50b93b7228735d17e40b4712f14759a99ca6366a3ae30800282aff5e45cf",
+  "zet": "1666681dad47d5d944d49736413ca84ffb20d3c1303825e9ffd05566c092d01c",
+  "notesKey": "a848825df265fe654fb7fa9a946fbcc6d39416e8ba1d57a54193f38e553052b4",
+  "notesSubmit": "e817fb3274bd66c69a03893570adca13dbcf8df60cd15b88dc97da5210a445a2",
+  "notesRender": "cf1eb83ec77d0b52606d94e5696b68e985bbf57daa8060585bdced3d8ac9ffb6",
+  "p3read": "39a69a638e28911794e6e7c9d8675321b415b9b41a713fb6c2d08eb193a723fc",
+  "p3write": "883fb939efbc13e74d9c69f488590eb11145c88bdd9cdd13751cb0e1fc40e8cf",
+  "questionState": "7f78b34668163d483c7d80e6fa7add28d06afd975746d9cdcd933dca0b966758",
+  "cBt": "339118a9bca6bdc56d90447936c5b74d2c19a546b41f1eb91b55deae16fa4e66"
+ },
+ "behavior": {
+  "gate": "!multiSelect && options.some(option => option.preview !== undefined)",
+  "open": "plain n on the option list, no ctrl or meta modifier",
+  "escape": "exit the editor and keep the text",
+  "enterOrder": ["moved option focus", "stored answer for the question", "(notes only) when notes are non-empty", "exit editor without an answer"],
+  "storage": "per question, kept across step changes and review navigation",
+  "annotation": "trimmed notes under annotations.notes, beside annotations.preview when the selected option carries a full preview",
+  "previewAndNotes": true,
+  "limit": "8192 characters in the product editor; the source path sets no hard cap"
+ },
+ "adaptations": [
+  "Notes render as a dedicated Notes: row below the options and Other, with the edited value shown in the dialog answer row; the source renders the editor inside the question body.",
+  "The product treats n as ordinary text while the Other row has focus; the source preview component has no Other row, so the notes key only applies on option focus.",
+  "A notes-only answer is carried as other: \"(notes only)\" because the host answer contract requires exactly one selection for a single-select question.",
+  "The product caps notes at 8192 characters, matching the recovered annotation limit; the source editor itself sets no cap on this path.",
+  "The review page does not show notes, matching the source review component; clarify feedback's User notes: text is not ported."
+ ],
+ "changes": [
+  {"file": "src/tui.ts", "sha256": "9795f8f28bb5f7ff25fd62f808fc3cf25c3f2307f0516785d7c142f6cd583779"},
+  {"file": "src/terminal.ts", "sha256": "ee9ca1c0d4da40ae614846a2f20cce110ea6dac41f6aa0757dacbfc8131d143e"},
+  {"file": "src/interaction-tools.ts", "sha256": "1f65e211afecec15958d4b657573b5e308f540555034b36bcf3c0d1297f7631a"},
+  {"file": "src/interactive.ts", "sha256": "cd95fe4549e105ac37755e313ced6462895ea18d22108c05b29ac00e942d9f6f"},
+  {"file": "test/tui.test.ts", "sha256": "5021b4330e9b7093daaf08ac397056e40b4da96e3a47eee66647ed1865e389ab"},
+  {"file": "test/interaction-tools.test.ts", "sha256": "4910d1e82c7fd65fb5d4f76ad8bcf50e1f8e9a6be7d071f7c50bbf5d2aedaa1f"},
+  {"file": "research/ports/W178-question-notes.md", "sha256": "4516f316df63a8af1c024462c503a7c1edf67cee1e44d8acf430001b1468b129"},
+  {"file": "research/ports/W43-tui-preview.md", "sha256": "18575be3935f311029ccf4b840b994407af306418cca3c0ab500ea31c47f1397"},
+  {"file": "research/ports/W176-terminal-preview-annotation.md", "sha256": "4310e17e70ca1f8ea359445feda29050fa6b949b2d2e3aab37c574c6a2170d31"},
+  {"file": "research/ports/W177-afk-timeout.md", "sha256": "313c00278d0d9a2763970177a2cd8059b438912918919cbf2ca7249fc203fcf0"},
+  {"file": "research/CURRENT.md", "sha256": "2f1c3fe62eaf4d4309761bd2c8273f9127e987c40ed4c08bca06f3b2aa2c963c"},
+  {"file": "research/FEATURES.md", "sha256": "c1a4a5f7606a4e40362ec1f84a2ce0f8a53be159baaeda9e67b8de351b51f726"},
+  {"file": "research/STATUS.md", "sha256": "89de80da956b3e927344170928e6f1fa0f8e84f9aff47e2765bd07b27fa8b732"}
+ ],
+ "gates": {
+  "focused": {"tui": "52/52", "interactionTools": "34/34"},
+  "full": "2592/2592",
+  "tsc": "exit 0",
+  "build": "exit 0",
+  "notices": {"exit": 0, "sha256": "46f276dca3414377a658af8af63da39e296adb6b13985e4f1b4f29fed807c4b7"},
+  "identity": {
+   "sha256": "e9c3612ac3855f604f44d3957a8d571ac41d6d4e8f217e5b159be958cdde1366",
+   "inputs": {"sha256": "3421358db9420bf4f7668f38ebbf3dfed363b4ed961758c266a68966b4dd80af", "files": 685},
+   "validation": {"sha256": "adb2c1949320197e3ba4c5656d1c7276f112c98b6f2820603579a1e76b94b2db", "files": 230},
+   "build": {"sha256": "da8f2a4961d980e862f13679707373c1c65a4cb35c5c8cadfba7c90a40aee073", "files": 471}
+  }
+ },
+ "residuals": [
+  "Clarify feedback's User notes: text (Qet/nmo) is not ported.",
+  "The chat-about-design entry is not ported.",
+  "External-editor/image-paste and the full React renderer remain W43 work."
+ ],
+ "recoveredEntrypointsExecuted": false
+}

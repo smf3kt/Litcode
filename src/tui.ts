@@ -138,6 +138,16 @@ interface ActiveDialog {
   step: number;
   /** One entry per completed group, keyed by the group's key. */
   answers: Map<string, TerminalPromptGroupAnswer>;
+  /**
+   * Recovered `a3` notes: per-question free text drawn under the choices and
+   * attached to the answer annotation. Kept apart from the Other answer text.
+   */
+  notes: Map<string, string>;
+  notesEditor: EditorState;
+  notesUndo: InputUndo;
+  notesEditing: boolean;
+  /** Source `ko`: the option focus moved during this step. */
+  optionTouched: boolean;
   finish(answer?: TerminalPromptAnswer): void;
 }
 
@@ -157,6 +167,8 @@ interface DialogAfk {
 }
 
 const SEPARATOR = '─';
+/** Recovered `J` annotation notes bound, shared with the answer admission. */
+const NOTES_MAX_CHARS = 8192;
 
 export class TuiTerminal extends EventEmitter<TuiEvents> {
   readonly isTTY: boolean;
@@ -748,7 +760,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const choices = first.choices?.length ?? 0;
       const dialog: ActiveDialog = { request: snapshot, editor: createEditorState(), undo: new InputUndo(),
         index: Math.max(0, Math.min(first.defaultIndex ?? 0, Math.max(0, choices - 1))),
-        selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(), finish };
+        selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(),
+        notes: new Map(), notesEditor: createEditorState(), notesUndo: new InputUndo(),
+        notesEditing: false, optionTouched: false, finish };
       this.dialog = dialog;
       this.screen = 'dialog'; signal.addEventListener('abort', cancelled, { once: true });
       if (signal.aborted) cancelled();
@@ -1108,6 +1122,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     const command = action.type === 'key' ? action.command : action.type;
     const sequence = action.type === 'key' ? action.sequence : '';
+    // Recovered `a3`: the notes input owns keys while it is open; Esc exits it,
+    // and Enter saves the text and takes the focused/stored answer when present.
+    if (dialog.notesEditing) { this.handleNotesAction(dialog, action, command, sequence); return; }
     if (command === 'interrupt' || command === 'eof' || sequence === '\x1b') { dialog.finish(); return; }
     // The review page owns its keys before any per-question handling, because
     // it has no choices of its own and would otherwise fall into text entry.
@@ -1115,6 +1132,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const step = this.dialogStep(dialog);
     const choices = step?.choices ?? [];
     const textEntry = choices.length === 0 || dialog.index === choices.length;
+    // Source `a3` binds plain `n` on the choice list to the notes input.
+    if (!textEntry && action.type === 'insert' && action.text === 'n' && this.notesAvailable(dialog, step)) {
+      this.enterNotes(dialog); return;
+    }
     if (sequence === '\x1b[5~' || sequence === '\x1b[6~') {
       dialog.scroll = Math.max(0, dialog.scroll + (sequence === '\x1b[5~' ? -1 : 1) * Math.max(1, (this.options.output.rows ?? 24) - 4));
       dialog.followFocus = false; this.render(); return;
@@ -1122,12 +1143,16 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (choices.length && (command === 'up' || command === 'down' || sequence === '\t' || sequence === '\x1b[Z')) {
       const count = choices.length + (step?.allowText ? 1 : 0);
       const delta = command === 'up' || sequence === '\x1b[Z' ? -1 : 1;
+      const before = dialog.index;
       dialog.index = (dialog.index + delta + count) % count;
+      if (dialog.index !== before) dialog.optionTouched = true;
       dialog.followFocus = true; this.previewDialogTheme(); this.render(); return;
     }
     if (choices.length && !textEntry && (command === 'home' || command === 'end'
       || command === 'logicalHome' || command === 'logicalEnd')) {
+      const before = dialog.index;
       dialog.index = command === 'home' || command === 'logicalHome' ? 0 : choices.length - 1;
+      if (dialog.index !== before) dialog.optionTouched = true;
       dialog.followFocus = true; this.previewDialogTheme(); this.render(); return;
     }
     if (command === 'submit') {
@@ -1559,7 +1584,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const groups = dialog.request.groups ?? [];
     if (!groups.length) { dialog.finish(answer); return; }
     const group = groups[dialog.step];
-    if (group) dialog.answers.set(group.key, { key: group.key, selected: answer.selected, ...(answer.text === undefined ? {} : { text: answer.text }) });
+    if (group) {
+      const notes = dialog.notes.get(group.key)?.trim();
+      dialog.answers.set(group.key, { key: group.key, selected: answer.selected,
+        ...(answer.text === undefined ? {} : { text: answer.text }),
+        ...(notes ? { notes } : {}) });
+    }
     // Source `qr` (chunk-24k7d6mw.js [1170529)): one non-multi-select question hides the
     // submit tab, and its answer handler submits the whole request as soon as the answer is
     // taken (`!Gs && Va` at [1173330)), so the review page is never reached.
@@ -1581,7 +1611,92 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     dialog.editor = createEditorState();
     dialog.index = Math.max(0, Math.min(source.defaultIndex ?? 0, Math.max(0, choices - 1)));
     dialog.selected = new Set();
+    dialog.notesEditing = false; dialog.notesEditor = createEditorState(); dialog.notesUndo.clear();
+    dialog.optionTouched = false;
     dialog.scroll = 0; dialog.followFocus = true; dialog.error = undefined;
+    this.render();
+  }
+
+  /** The group whose notes UI is active, if the dialog is on a question step. */
+  private notesStep(dialog: ActiveDialog): TerminalPromptGroup | undefined {
+    const groups = dialog.request.groups ?? [];
+    return dialog.step < groups.length ? groups[dialog.step] : undefined;
+  }
+
+  /** `zet`: notes exist only for a single-select question that shows a preview. */
+  private notesAvailable(dialog: ActiveDialog, step: TerminalPromptRequest | TerminalPromptGroup | undefined): boolean {
+    if (!(dialog.request.groups ?? []).length || step === undefined || step.multiple === true) return false;
+    return (step.choices ?? []).some(choice => choice.preview !== undefined);
+  }
+
+  private enterNotes(dialog: ActiveDialog): void {
+    const key = this.notesStep(dialog)?.key;
+    if (key === undefined) return;
+    const value = dialog.notes.get(key) ?? '';
+    dialog.notesEditing = true;
+    dialog.notesEditor = { ...createEditorState(), text: value, cursor: value.length };
+    dialog.notesUndo.clear();
+    dialog.error = undefined;
+    this.render();
+  }
+
+  /** Source `Le(co,{textInputValue})`: notes live outside the answer text. */
+  private storeNotes(dialog: ActiveDialog): void {
+    const key = this.notesStep(dialog)?.key;
+    if (key === undefined) return;
+    if (dialog.notesEditor.text.trim()) dialog.notes.set(key, dialog.notesEditor.text);
+    else dialog.notes.delete(key);
+  }
+
+  private handleNotesAction(dialog: ActiveDialog, action: EditorAction,
+    command: string | undefined, sequence: string): void {
+    // Source `onExit`: Esc closes only the notes input; Ctrl+C still cancels.
+    if (sequence === '\x1b' || command === 'escape') {
+      this.storeNotes(dialog); dialog.notesEditing = false; this.render(); return;
+    }
+    if (command === 'interrupt' || command === 'eof') { dialog.finish(); return; }
+    if (command === 'submit') { this.submitNotes(dialog); return; }
+    const editorAction = action.type === 'key' ? command ? { type: command } as EditorAction
+      : sequence === '\t' ? { type: 'insert', text: '    ' } as EditorAction : undefined : action;
+    if (!editorAction) { this.render(); return; }
+    const policy = { ...this.options, maxPasteBytes: 32 * 1024,
+      navigationColumns: Math.max(20, this.options.output.columns ?? 80) - 2 };
+    const next = editorAction.type === 'undo'
+      ? reduceEditorWithUndo(dialog.notesEditor, editorAction, policy, dialog.notesUndo)
+      : reduceEditor(dialog.notesEditor, editorAction, policy);
+    if (next.state.text.length > NOTES_MAX_CHARS || Buffer.byteLength(next.state.text) > 32 * 1024
+      || next.effects.some(effect => effect.type === 'pasteRejected')) {
+      dialog.error = `Notes exceed ${NOTES_MAX_CHARS} characters`; this.render(); return;
+    }
+    if (editorAction.type !== 'undo' && next.state.text !== dialog.notesEditor.text) {
+      dialog.notesUndo.record(dialog.notesEditor.text, dialog.notesEditor.cursor);
+    }
+    dialog.notesEditor = next.state; dialog.error = undefined;
+    this.storeNotes(dialog);
+    this.render();
+  }
+
+  /**
+   * Source `ir` after the notes input closes: a moved option focus wins, then
+   * the answer already stored for this question, then notes-only (the source
+   * marker `cBt`, "(notes only)"); with neither, only the notes text is kept.
+   */
+  private submitNotes(dialog: ActiveDialog): void {
+    this.storeNotes(dialog);
+    dialog.notesEditing = false;
+    const step = this.notesStep(dialog);
+    const key = step?.key;
+    if (!step || key === undefined) { this.render(); return; }
+    const choices = step.choices ?? [];
+    if (dialog.optionTouched && choices[dialog.index]) {
+      this.advanceDialog(dialog, { selected: [choices[dialog.index]!.value] }); return;
+    }
+    const previous = dialog.answers.get(key)?.selected[0];
+    const stored = previous === undefined ? undefined : choices.find(choice => choice.value === previous);
+    if (stored) { this.advanceDialog(dialog, { selected: [stored.value] }); return; }
+    if (dialog.notes.get(key)?.trim()) {
+      this.advanceDialog(dialog, { selected: [], text: '(notes only)' }); return;
+    }
     this.render();
   }
 
@@ -1760,6 +1875,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (choices.length && active.allowText) {
       offsets.push(body.length); body.push(`${dialog.index === choices.length ? '>' : ' '} Other`);
     }
+    const notesKey = group?.key;
+    if (notesKey !== undefined && this.notesAvailable(dialog, active)) {
+      const notes = dialog.notes.get(notesKey) ?? '';
+      body.push('');
+      body.push(dialog.notesEditing ? 'Notes:' : `Notes: ${oneLine(notes) || 'press n to add notes'}`);
+    }
     const themeRows = new Map<number, string>();
     if (dialog.request.themePreview) {
       this.documentRenderer ??= new TuiDocumentRenderer();
@@ -1791,12 +1912,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const visible = body.slice(dialog.scroll, dialog.scroll + height);
     while (visible.length < height) visible.push('');
     const textEntry = choices.length === 0 || dialog.index === choices.length;
-    const answer = '> ' + (layoutInput(dialog.editor, columns - 2, 1).lines[0] ?? '');
+    const answer = '> ' + (layoutInput(dialog.notesEditing ? dialog.notesEditor : dialog.editor,
+      columns - 2, 1).lines[0] ?? '');
     const progress = groups.length ? `Question ${dialog.step + 1} of ${groups.length}` : undefined;
-    const hint = active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'
-      : 'Enter next / Esc cancel / PgUp/PgDn';
+    const hint = dialog.notesEditing ? 'Notes · Enter save / Esc exit'
+      : active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'
+        : 'Enter next / Esc cancel / PgUp/PgDn';
     return [oneLine(title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
-      textEntry ? answer : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
+      textEntry || dialog.notesEditing ? answer : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
       dialog.error ?? (progress ? `${progress} · ${hint}` : hint),
       ...(countdown === undefined ? [] : [countdown])].map((line, row) =>
         row > 0 && row <= height ? themeRows.get(dialog.scroll + row - 1) ?? pad(line, columns) : pad(line, columns));
@@ -1865,7 +1988,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const active = reviewing ? undefined : groups[this.dialog.step] ?? this.dialog.request;
       const choices = active?.choices ?? [];
       const afkRows = this.afkRows();
-      if (reviewing || !choices.length || this.dialog.index === choices.length) {
+      if (this.dialog.notesEditing) {
+        const cursor = layoutInput(this.dialog.notesEditor, columns - 2, 1).cursorColumn + 2;
+        this.drawFrame(frame, columns, rows, rows - 2 - afkRows, cursor, true);
+      } else if (reviewing || !choices.length || this.dialog.index === choices.length) {
         const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;
         this.drawFrame(frame, columns, rows, rows - 2 - afkRows, cursor, true);
       } else this.drawFrame(frame, columns, rows, rows - 1 - afkRows, 0, false);
