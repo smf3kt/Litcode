@@ -192,6 +192,12 @@ export class WorkflowStore {
     }
   }
 
+  /** One session-owned directory per workflow script run (`rL`). */
+  journalDirectory(runId: string): string {
+    if (!/^wf_[0-9a-f]{8}-[0-9a-f]{3}$/.test(runId)) throw new Error('Invalid workflow run ID');
+    return path.join(this.directory, 'journals', runId);
+  }
+
   private syncDirectory(): void {
     this.checkDirectories();
     const fd = fs.openSync(this.directory, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);

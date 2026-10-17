@@ -2405,3 +2405,12 @@ function is carried by in-conversation maintenance, which `AUTO_MEMORY_INSTRUCTI
 requires and which performs memory upkeep without a separate extraction call. Marketplace,
 publish and plugin conflict/auto-discovery clauses remain open under C-9. Documentation-only
 package; identity `adad009d…`. [W127 record](ports/W127-auto-dream-disposition.md).
+
+W128-01 ports the workflow script journal and `resumeFromRunId`. Each script run now owns a
+`journal.jsonl` under the session workflow directory, with the recovered v2 chained key over the
+previous key, the prompt and the execution options. A resumed run reuses completed agent() results
+for the longest unchanged prefix, reruns a call that has a `started` entry but no `failed` entry,
+reruns failed or skipped calls, and runs the first changed call and everything after it live.
+Journal writes are best-effort and never fail the script. The remote journal mirror, named
+workflows, reattachment and automatic effect replay remain out. tsc 0, build 0, focused 64/64,
+notices 0, identity `4c2f329b…`. [W128 record](ports/W128-script-journal.md).

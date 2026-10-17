@@ -5,8 +5,9 @@ import { capChildOutput } from './subagents.js';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import { WorkflowStore, workflowTaskSchema, workflowDefinitionSchema, workflowDigest, workflowInputDigest,
   type WorkflowDefinition } from './workflow-store.js';
-import { loadWorkflowScriptFile, parseWorkflowScript, runWorkflowScript,
-  WORKFLOW_SCRIPT_MAX_BYTES } from './workflow-script.js';
+import { loadWorkflowScriptFile, loadWorkflowScriptJournal, openWorkflowScriptJournal,
+  parseWorkflowScript, runWorkflowScript, WORKFLOW_SCRIPT_MAX_BYTES,
+  type WorkflowScriptJournal } from './workflow-script.js';
 
 // Owned declarative DAG orchestration; workflow input is data, never JavaScript.
 const taskSchema = workflowTaskSchema;
@@ -70,6 +71,7 @@ export class WorkflowRegistry {
   private closed = false;
   private closing?: Promise<void>;
   private readonly store?: WorkflowStore;
+  private readonly scriptRuns = new Set<string>();
   private readonly onAbort = () => { void this.close(); };
 
   constructor(private readonly options: WorkflowRegistryOptions) {
@@ -94,6 +96,20 @@ export class WorkflowRegistry {
 
   // The script runtime shares this registry's child-agent capacity and lifecycle.
   get agents(): AgentRegistry { return this.options.agents; }
+  get journaling(): boolean { return this.store !== undefined; }
+  scriptJournalDirectory(runId: string): string {
+    if (!this.store) throw new Error('Workflow script persistence requires workspace and session owner options');
+    return this.store.journalDirectory(runId);
+  }
+  beginScriptRun(runId: string, resume: boolean): void {
+    if (this.scriptRuns.has(runId)) {
+      throw new Error(resume
+        ? `Workflow ${runId} is still running; wait for it to finish before resuming.`
+        : `Workflow ${runId} is already running.`);
+    }
+    this.scriptRuns.add(runId);
+  }
+  endScriptRun(runId: string): void { this.scriptRuns.delete(runId); }
 
   private now(): number { return this.options.now?.() ?? Date.now(); }
   private snapshot(workflow: Workflow): WorkflowView { return structuredClone(workflow.view); }
@@ -382,6 +398,9 @@ const scriptSchema = z.object({
   script: z.string().min(1).max(WORKFLOW_SCRIPT_MAX_BYTES).optional(),
   scriptPath: z.string().trim().min(1).max(4096).optional(),
   args: z.unknown().optional(),
+  // Same shape as the recovered `resumeFromRunId` schema
+  // (chunk-a7gk0710.js offset 59981).
+  resumeFromRunId: z.string().regex(/^wf_[a-z0-9-]{6,}$/).optional(),
 }).strict().refine(value => (value.script === undefined) !== (value.scriptPath === undefined),
   'Provide exactly one of script or scriptPath');
 
@@ -389,6 +408,9 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
   const output = (value: unknown, context: ToolContext) => capChildOutput(JSON.stringify(value), Math.min(context.maxOutputBytes, registry.limits.maxOutputBytes));
   const runScript = async (raw: unknown, context: ToolContext) => {
     const args = scriptSchema.parse(raw);
+    if (args.resumeFromRunId !== undefined && !options.persistent) {
+      throw new Error('Workflow script resume is not enabled for this session');
+    }
     let source = args.script;
     if (source === undefined) {
       const loaded = await loadWorkflowScriptFile(args.scriptPath!, context.workspace);
@@ -397,40 +419,70 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
     }
     const parsed = parseWorkflowScript(source);
     if ('error' in parsed) throw new Error(parsed.error);
-    const labels = new Map<string, number>();
-    return runWorkflowScript(parsed, {
-      args: args.args, signal: context.signal,
-      agent: async (prompt, agentOptions, signal) => {
-        let name: string | undefined;
-        if (agentOptions.label !== undefined) {
-          const seen = labels.get(agentOptions.label) ?? 0;
-          labels.set(agentOptions.label, seen + 1);
-          name = seen === 0 ? agentOptions.label : `${agentOptions.label.slice(0, 60)} #${seen + 1}`;
+    const resume = args.resumeFromRunId;
+    // Recovered run ids are `wf_` plus the first 12 characters of a UUID
+    // (chunk-a7gk0710.js offset 70009).
+    const runId = resume ?? `wf_${randomUUID().slice(0, 12)}`;
+    const journaling = options.persistent && registry.journaling;
+    if (resume !== undefined && !journaling) {
+      throw new Error('Workflow script resume requires workspace and session owner persistence options');
+    }
+    registry.beginScriptRun(runId, resume !== undefined);
+    try {
+      let journal: WorkflowScriptJournal | undefined;
+      if (journaling) {
+        const directory = registry.scriptJournalDirectory(runId);
+        const state = await loadWorkflowScriptJournal(directory);
+        if (resume !== undefined && state === undefined) {
+          // Local adaptation of the recovered refusal: there is no remote
+          // session mirror to restore a missing journal from.
+          throw new Error(`The journal for workflow run ${runId} is not on disk, so there is nothing to resume. `
+            + 'To run the workflow from the start, call workflow_run again without resumeFromRunId.');
         }
-        const child = await registry.agents.launch({
-          prompt, background: true,
-          ...(name !== undefined ? { name } : {}),
-          ...(agentOptions.model !== undefined ? { model: agentOptions.model } : {}),
-          ...(agentOptions.effort !== undefined ? { effort: agentOptions.effort as 'low' | 'medium' | 'high' | 'xhigh' | 'max' } : {}),
-          ...(agentOptions.agentType !== undefined ? { subagent_type: agentOptions.agentType } : {}),
-          ...(agentOptions.isolation !== undefined ? { isolation: agentOptions.isolation } : {}),
-        }, signal);
-        let view = child;
-        while (view.status === 'queued' || view.status === 'running') {
-          view = await registry.agents.get(child.id, { waitMs: 30_000, signal });
+        journal = openWorkflowScriptJournal(directory, state);
+        if (resume === undefined) {
+          try { await journal.append({ type: 'launched' }); } catch { /* journal writes are best-effort */ }
         }
-        // A failed or cancelled child is reported to the script as null, as the
-        // recovered `kr` does for terminal child failures (chunk-hedqf2m1.js
-        // offset 71400).
-        if (view.status !== 'completed') return { failure: view.error ?? `agent ${view.status}` };
-        return view.summary;
-      },
-    });
+      }
+      const labels = new Map<string, number>();
+      const result = await runWorkflowScript(parsed, {
+        args: args.args, signal: context.signal, journal,
+        agent: async (prompt, agentOptions, signal, onStarted) => {
+          let name: string | undefined;
+          if (agentOptions.label !== undefined) {
+            const seen = labels.get(agentOptions.label) ?? 0;
+            labels.set(agentOptions.label, seen + 1);
+            name = seen === 0 ? agentOptions.label : `${agentOptions.label.slice(0, 60)} #${seen + 1}`;
+          }
+          const child = await registry.agents.launch({
+            prompt, background: true,
+            ...(name !== undefined ? { name } : {}),
+            ...(agentOptions.model !== undefined ? { model: agentOptions.model } : {}),
+            ...(agentOptions.effort !== undefined ? { effort: agentOptions.effort as 'low' | 'medium' | 'high' | 'xhigh' | 'max' } : {}),
+            ...(agentOptions.agentType !== undefined ? { subagent_type: agentOptions.agentType } : {}),
+            ...(agentOptions.isolation !== undefined ? { isolation: agentOptions.isolation } : {}),
+          }, signal);
+          onStarted?.(child.id);
+          let view = child;
+          while (view.status === 'queued' || view.status === 'running') {
+            view = await registry.agents.get(child.id, { waitMs: 30_000, signal });
+          }
+          // A failed or cancelled child is reported to the script as null, as the
+          // recovered `kr` does for terminal child failures (chunk-hedqf2m1.js
+          // offset 71400).
+          if (view.status !== 'completed') return { failure: view.error ?? `agent ${view.status}` };
+          return view.summary;
+        },
+      });
+      return { ...result, run_id: runId };
+    } finally {
+      registry.endScriptRun(runId);
+    }
   };
   return [{
     readOnly: false,
     schema: { name: 'workflow_run', description: options.persistent
-      ? 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. With session-owned workspace persistence, resume_from reuses completed tasks only for an identical full DAG/settings digest. Failed/cancelled/skipped tasks rerun; crashed running tasks require explicit retry_interrupted. Effects are not rolled back. Script (inline `script` or a `scriptPath` file): `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value. Script runs are not persisted or resumable.'
+      ? 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. With session-owned workspace persistence, resume_from reuses completed tasks only for an identical full DAG/settings digest. Failed/cancelled/skipped tasks rerun; crashed running tasks require explicit retry_interrupted. Effects are not rolled back. Script (inline `script` or a `scriptPath` file): `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value. Script runs are journaled under the session workspace; resumeFromRunId reuses completed agent() results for the longest unchanged prefix (prompt and execution options are chained into each key), reruns started-but-unfinished calls, and runs the first changed call and everything after it live. Effects are not replayed.'
       : 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. Script (inline `script` or a `scriptPath` file): `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value.',
       input_schema: { type: 'object', properties: {
         tasks: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'object', properties: {
@@ -443,7 +495,8 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
         script: { type: 'string', maxLength: WORKFLOW_SCRIPT_MAX_BYTES },
         scriptPath: { type: 'string', minLength: 1, maxLength: 4096 },
         args: {},
-        ...(options.persistent ? { resume_from: { type: 'string', format: 'uuid' }, retry_interrupted: { type: 'boolean' } } : {}),
+        ...(options.persistent ? { resume_from: { type: 'string', format: 'uuid' }, retry_interrupted: { type: 'boolean' },
+          resumeFromRunId: { type: 'string', pattern: '^wf_[a-z0-9-]{6,}$' } } : {}),
       }, anyOf: [{ required: ['tasks'] }, { required: ['script'] }, { required: ['scriptPath'] }], additionalProperties: false } },
     async execute(raw, context) {
       context.signal.throwIfAborted();
