@@ -1087,7 +1087,7 @@ export interface TerminalPromptAnswer {
   /** Present for grouped requests: one answer per group, in group order. */
   groups?: readonly TerminalPromptGroupAnswer[];
 }
-export interface TerminalPromptGroupAnswer { key: string; selected: string[]; text?: string }
+export interface TerminalPromptGroupAnswer { key: string; selected: string[]; text?: string; notes?: string }
 
 /** Shared line/full-screen surface; modal support is optional for legacy hosts. */
 export interface TerminalSurface {

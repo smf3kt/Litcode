@@ -583,6 +583,61 @@ test('AFK stays at full while the terminal is focused', async (context) => {
   } finally { tui.close(); context.mock.timers.reset(); }
 });
 
+test('notes alone answer a preview question with the source notes-only marker', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).map(line => line.trim()).filter(Boolean);
+  try {
+    const pending = tui.prompt({ message: '', groups: [
+      { key: 'Design', title: 'Design', message: 'Pick a design', choices: [
+        { label: 'A', value: 'A', preview: 'Preview A' },
+        { label: 'B', value: 'B', preview: 'Preview B' }] }] }, new AbortController().signal);
+    assert.ok(frame().includes('Notes: press n to add notes'));
+    key('n');
+    assert.match(frame().at(-1)!, /Notes · Enter save \/ Esc exit/);
+    assert.ok(frame().includes('Notes:'));
+    key('note');
+    key('\r');
+    assert.deepEqual(await pending, { selected: [], groups: [{
+      key: 'Design', selected: [], text: '(notes only)', notes: 'note' }] });
+  } finally { tui.close(); }
+});
+
+test('notes persist when an option is taken and stay off non-preview questions', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).map(line => line.trim()).filter(Boolean);
+  try {
+    const pending = tui.prompt({ message: '', groups: [
+      { key: 'Design', title: 'Design', message: 'Pick a design', choices: [
+        { label: 'A', value: 'A', preview: 'Preview A' },
+        { label: 'B', value: 'B', preview: 'Preview B' }] },
+      { key: 'Extra', title: 'Extra', message: 'Pick many', multiple: true, choices: [
+        { label: 'X', value: 'X' }, { label: 'Y', value: 'Y' }] },
+    ] }, new AbortController().signal);
+    key('n'); key('note'); key('\x1b');
+    await delay(60);          // The standalone escape is held briefly by the decoder.
+    assert.ok(frame().includes('Notes: note'));
+    key('\x1b[B\r');          // move to B and take it; the note rides along.
+    assert.equal(frame()[0], 'Extra');
+    assert.ok(!frame().some(line => line.startsWith('Notes:')), 'multi-select has no notes row');
+    key(' \r');
+    assert.equal(frame()[0], 'Review your answers');
+    key('\r');
+    assert.deepEqual(await pending, { selected: [], groups: [
+      { key: 'Design', selected: ['B'], notes: 'note' },
+      { key: 'Extra', selected: ['X'] }] });
+  } finally { tui.close(); }
+});
+
 test('a grouped question can be reopened from the review page and cancelled', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};

@@ -363,7 +363,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           return { answers: request.questions.map((question, questionIndex) => {
             const entry = answer.groups?.find(item => item.key === (question.header ?? question.question));
             const selected = entry?.selected ?? [];
-            const annotation = terminalAnswerAnnotation(question, selected);
+            const annotation = terminalAnswerAnnotation(question, selected, entry?.notes);
             return { questionIndex, selected,
               ...(entry?.text === undefined ? {} : { other: entry.text }),
               ...(annotation === undefined ? {} : { annotations: annotation }) };

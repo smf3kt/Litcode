@@ -516,19 +516,23 @@ function createQueue(timeoutMs: number, maxPending: number) {
 
 /**
  * Recovered `zet` + `P3` annotation block (chunk-24k7d6mw.js [1180104,1180182) and
- * [1178668,1178979)): a preview is attached only for a single-select question that shows a
- * preview, and only when the selected option itself carries the full preview. The source
+ * [1178668,1178979)): annotations exist only for a single-select question that shows a
+ * preview. A preview is attached when the selected option itself carries the full preview;
+ * notes are the trimmed question-level notes text and need no selected option. The source
  * suppresses the annotation for screen readers; this runtime has no screen-reader mode.
  */
 export function terminalAnswerAnnotation(
   question: InteractionQuestion,
   selected: readonly string[],
-): { preview: string } | undefined {
+  notes?: string,
+): { preview?: string; notes?: string } | undefined {
   if (question.multiSelect || !question.options.some(option => option.preview !== undefined)) return undefined;
   const label = selected[0];
-  if (label === undefined) return undefined;
-  const option = question.options.find(option => option.label === label);
-  return option?.preview === undefined ? undefined : { preview: option.preview };
+  const option = label === undefined ? undefined : question.options.find(option => option.label === label);
+  const preview = option?.preview === undefined ? undefined : { preview: option.preview };
+  const trimmed = notes?.trim();
+  if (preview === undefined && !trimmed) return undefined;
+  return { ...preview, ...(trimmed ? { notes: trimmed } : {}) };
 }
 
 function validAnswer(input: unknown, request: AskUserQuestionRequest): AskUserQuestionAnswer {

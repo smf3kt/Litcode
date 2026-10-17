@@ -23,7 +23,7 @@
 ## 宿主适配
 
 - 产品终端问答回调在 `src/interactive.ts` 的两条路径（分组多题与逐题）都调用 `terminalAnswerAnnotation`，把结果放入答案的 `annotations.preview`；`validAnswer` 既有的准入检查要求 preview 必须精确等于该题展示过的 preview。
-- `P3` 的 `notes` 来自题目级 `textInputValue`；产品对话框没有独立的 notes 输入，`other` 文本是答案而非注释，故本包只接 preview，notes 保持未移植。
+- `P3` 的 `notes` 来自题目级 `textInputValue`；产品对话框没有独立的 notes 输入，`other` 文本是答案而非注释，故本包只接 preview；题目级 notes 后由 [W178](W178-question-notes.md) 移植。
 - AFK 超时（`ywe`/`Zbe`/`P3` 的 `afkTimeoutMs`）不属于本包。
 
 ## 测试
