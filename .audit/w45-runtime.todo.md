@@ -816,3 +816,12 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **Behaviour was measured before it was asserted.** Hosting, handle reuse, per-element filtering, option admission, the release sequence and every site refusal message are in the probe log and the suite.
 - [x] **Scope split recorded.** `BPn`/`TIe`/`Ohe` and the `mxn` URL graph move to W45-79; `Xt` Markdown to W45-80.
 - [x] **Sweep.** tsc 0, copies `declared 75/16 / unresolved 0`, notices 0, new suite 20/20, chain family 614/614, full 1,890/1,890, index 62 chunks / 286,430 units, identity `eb114e4a…`.
+
+## W45-79 acceptance (2026-10-17)
+
+- [x] **The press pipeline closes.** The dispatch, its terminal entry, the settle wrapper and the whole link-normalizer graph are copied; the store from W45-78 supplies the held press.
+- [x] **The cwd boundary is named.** `plugin-chain-press-url-host.ts` binds node path/url and answers `se()` with the process cwd, the source's own fallback without a session store.
+- [x] **The dispatch's differences from the input dispatch are pinned.** `BPn` has no full-key fallback, refuses a Markdown press dispatched as a Button, and logs the exact miss sentences.
+- [x] **The normalizer's order is pinned.** A dot-dot local path collapses before the traversal checks; `Cot`/`Yoo` do not flag the plain relative form.
+- [x] **The terminal entry is asynchronous.** `TIe` answers undefined; the press lands after it and `Ohe` logs a rejection at error level.
+- [x] **Sweep.** tsc 0, copies `declared 52/29 / unresolved 0`, notices 0, new suite 16/16, chain family 630/630, full 1,906/1,906, index 64 chunks / 291,177 units, identity `485a5dd1…`.

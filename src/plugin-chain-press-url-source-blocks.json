@@ -1,0 +1,387 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        46149,
+        46315
+      ],
+      "units": 166,
+      "bodySha256": "f7b8c5922a21c9fcb8e366eece6d96d49a010d9892e86c8064cdb57cf0be0811",
+      "note": "`IF` — absolute path to a file URL, refusing a UNC, dangerous or encoded-traversal path"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        46315,
+        46756
+      ],
+      "units": 441,
+      "bodySha256": "ef5d82c5c28ee7057fa1232e8c277d2b7aa87d7f5dad22e9d0c4694d563bd6c6",
+      "note": "`mxn` — normalize a local href to a file URL, keeping the query and fragment"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        46756,
+        46855
+      ],
+      "units": 99,
+      "bodySha256": "9644676c7ed2b68f1a47192658d785753055a2ce6e93885e2c7d1f3089b2b3d3",
+      "note": "`An` — strip a leading slash before a Windows drive letter"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        7436,
+        7484
+      ],
+      "units": 48,
+      "bodySha256": "0cb9af02d0d6dd6042509d464440b555e562472c866d5a91df344df552b4b3e6",
+      "note": "`Bn` — whether a path is a UNC or extended-length path"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        22769,
+        22836
+      ],
+      "units": 67,
+      "bodySha256": "d605d6e55755cd8073fdecac05d2793f41769c534f0d8d09b358d5b45e3eb8e9",
+      "note": "`zN` — whether a path is an extended-length path after normalization"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        22836,
+        22861
+      ],
+      "units": 25,
+      "bodySha256": "8b68dda0adc5783173149a1075e35d52617263cf6cbc25bfac86edb046a1d428",
+      "note": "`zt` — the extended-length path prefix"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        22861,
+        22916
+      ],
+      "units": 55,
+      "bodySha256": "c66fb84c6fa92680c8f30c8ee39c603d3873fa9d70759c96ae066815745c60bc",
+      "note": "`Xt` — normalize a path with the Windows rules"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        14875,
+        15025
+      ],
+      "units": 150,
+      "bodySha256": "2cc266b2e773a747761ea086d3848b906b135b6cabcca1a9639fc714acfeaee2",
+      "note": "`lA` — strip the extended-length prefix"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        11681,
+        11730
+      ],
+      "units": 49,
+      "bodySha256": "a1ef7566d730b862d332c82c4c742d5856c8edf590571e100039461e32205a71",
+      "note": "`tl` — whether a posix path is dangerous"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        11361,
+        11389
+      ],
+      "units": 28,
+      "bodySha256": "26d0cf49ce2baf85f5d1cc4a5c5a7e6144949e4adcffb829f71d4412cb139919",
+      "note": "`fa` — whether a path names a device"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        12953,
+        12981
+      ],
+      "units": 28,
+      "bodySha256": "294c1dcd6267030db307e8fee78d4336f860dee7b0e0420ef48ced9a2820175e",
+      "note": "`qP` — whether a path is a Windows device path"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        8134,
+        8430
+      ],
+      "units": 296,
+      "bodySha256": "e0d33d95aae667fdb6f15e90160445fae5a79a513a859b4bb356bf49673e09cf",
+      "note": "`aw` — whether a path escapes through a dot-dot segment"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        11855,
+        12015
+      ],
+      "units": 160,
+      "bodySha256": "db0ca5399d41f0cc1dd882c3b72a0e80344d195dffb1021235b9344cbd0c4460",
+      "note": "`QPe` — the cached posix path parse"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        11779,
+        11815
+      ],
+      "units": 36,
+      "bodySha256": "20f934ed9febf3c4b094be4afff897291ac3164913af3d1e9c1332f49d28a260",
+      "note": "`qa` — whether the posix parser found anything"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        12414,
+        12612
+      ],
+      "units": 198,
+      "bodySha256": "0b4dad4616331a2b2c940812e1736d099e67a10e639ddcf38c92770294b9afff",
+      "note": "`GS` — the posix path danger scan"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        12612,
+        12768
+      ],
+      "units": 156,
+      "bodySha256": "0b2b40c15fee71b9a3da6cddf82dccbd0d7f4d4e1860d55010e6fc9953130e01",
+      "note": "`qO` — the posix path segment scan"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        12768,
+        12953
+      ],
+      "units": 185,
+      "bodySha256": "ae2d793b23f969646b4a45d68a6d706ba3e8bbdab116510b2c01ec848ffb6f7d",
+      "note": "`Mt` — the posix path parse"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        8635,
+        8745
+      ],
+      "units": 110,
+      "bodySha256": "645391b17f19980122f8148f31cfbcbc96e838705a529383cd05ec110f0ab2ff",
+      "note": "`C` — one posix path segment check"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        8993,
+        9108
+      ],
+      "units": 115,
+      "bodySha256": "d104be4ed5b5a98f9b2ddaf558be293b37142fd509816691c5e40c2756145af5",
+      "note": "`YR` — whether a posix path is absolute"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        12015,
+        12176
+      ],
+      "units": 161,
+      "bodySha256": "8316fff200862d351d23d68c54da443a4639a67d379ea07582d7e05a4bfcc885",
+      "note": "`Lt` — the posix path parser"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        12981,
+        13030
+      ],
+      "units": 49,
+      "bodySha256": "c4fea66b3fec196075dd7a7c15984ea69f684f59cfd99c8d710687c191f48134",
+      "note": "`_m` — whether a posix path is dangerous"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        11815,
+        11855
+      ],
+      "units": 40,
+      "bodySha256": "5cd509e8813f7a905d1be88428656187308f5572d555377e1a79a07b47fe9fd7",
+      "note": "`Bt`/`Gt`/`I`/`k` — the path parse cache bounds and tables"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        896,
+        994
+      ],
+      "units": 98,
+      "bodySha256": "b120282b2711ff96cfadee8b8da5a86cf99408e865c262447187654f6f0a0873",
+      "note": "`vfr` — whether a file URL path is dangerous, after percent decoding"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        1010,
+        1091
+      ],
+      "units": 81,
+      "bodySha256": "44b1f1ff9a98d4fc543673f8073d7fe30bf6b50b4283bb3c3bc5a465297985fc",
+      "note": "`Cot` — whether a path names a dot-dot traversal"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        1163,
+        1227
+      ],
+      "units": 64,
+      "bodySha256": "5533337c79fc885316d518646307db2fe34ac7fac52fc14eb1d3eb0ce7a6ffa1",
+      "note": "`Yoo` — whether a file URL names a traversal"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        1284,
+        1560
+      ],
+      "units": 276,
+      "bodySha256": "d5044d50183b5cfd7193d70c6398bb2d3454be600c32be7b9d91a56935ee390d",
+      "note": "`Xoo` — percent-decode a path for the traversal checks"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        1560,
+        1640
+      ],
+      "units": 80,
+      "bodySha256": "606e06a0c7302db18c0ff1a26e478e5831cb96f1cfda29ddc99f0dabad49dec2",
+      "note": "`s` — percent bytes of one escape"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        857,
+        896
+      ],
+      "units": 39,
+      "bodySha256": "d6c290ec5614ec335778d28ff9a69012dd4a4a0db09e04910beeaaec5015e58c",
+      "note": "`Koo` — strip leading invisible characters"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        1091,
+        1163
+      ],
+      "units": 72,
+      "bodySha256": "38f330d0c327f38522b05e24172e4cad8b268b2fe9f06a97e8a2ad56ccf71ea7",
+      "note": "`l` — whether a normalized posix path leaves its root"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        741,
+        857
+      ],
+      "units": 116,
+      "bodySha256": "81a0c29675bb7450cba340aa1a601f70ed17dd35ba495fa9ece0914403f18fa5",
+      "note": "`c` — the leading invisible-character pattern"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        1227,
+        1284
+      ],
+      "units": 57,
+      "bodySha256": "459d0142b78d9482495e7020719eb9deb77c3e7593400fdb1f6cbf5007210db9",
+      "note": "`i`/`f` — the percent-escape pattern and the leading-escape test"
+    },
+    {
+      "module": "chunk-d1ctn2b7.js",
+      "sha256": "70bbf5260219e26bc052c1de6725be60ff84458e4552c79757ace16c9f616bfd",
+      "range": [
+        994,
+        1010
+      ],
+      "units": 16,
+      "bodySha256": "8e3468104606ca02b4d2e382bb5264531d94c0e60e64551e628fa646450c1441",
+      "note": "`u` — the leading dot-dot pattern"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        5178,
+        5245
+      ],
+      "units": 67,
+      "bodySha256": "932e6769362f1fccc91d80ad0e41abf23798ff2abcd62f8794e573972f156c88",
+      "note": "`uG` — the control-character pattern"
+    }
+  ],
+  "missing": []
+}
