@@ -1,0 +1,60 @@
+{
+ "schema": "W142EngineBudgetHandlersEvidence.v1",
+ "package": "W142-01 — engine drawn-budget clip and noted handlers (gno slice 2)",
+ "date": "2026-10-18",
+ "question": "How does the engine spend its drawn-character budget, clip a tree to it, and report the resulting plain-text and prop rewrites?",
+ "answer": "Thirty-two verbatim blocks implement it: Rur's written/drawn counters, Tur's tree clip, Nss's cut report, zss's prop clip with own/cut reports, the five noted-warning handlers over DAt/JAe keys, and the source problem-text builders. The copy runs behind a typed seam with no gno caller yet.",
+ "sourcePosition": {
+  "modules": [
+   {"module": "extracted-v2/modules/chunk-n3ykh62m.js", "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac", "blocks": 29},
+   {"module": "extracted-v2/modules/chunk-nyce03br.js", "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f", "blocks": 3}
+  ],
+  "totalBlocks": 32,
+  "totalUnits": 5827,
+  "ranges": {
+   "Rur": [270375, 270825],
+   "Tur": [268980, 270363],
+   "Nss": [270825, 270929],
+   "zss": [281200, 281622],
+   "Wss": [280306, 280532],
+   "Gss": [280532, 280596],
+   "qss": [283066, 283212],
+   "Uss": [279544, 279688],
+   "Bss": [279688, 279850],
+   "iIn": [280080, 280198],
+   "DAt": [279366, 279544],
+   "JAe": [231541, 231570],
+   "fIn": [282863, 283066],
+   "iD": [6678, 6770],
+   "eIt": [43074, 43275],
+   "Iws": [88707, 88772]
+  }
+ },
+ "semantics": {
+  "Rur": "isHeld spends and answers fit; field returns the possibly cut text; shown cuts at the boundary with a one-shot tail; markOf reports that tail once; any shortfall sets isCut",
+  "Tur": "Code/Markdown text, Client key/module/props, Button/Select labels, Svg/Image/Input props, Box keys and Link hrefs spend against the budget; children walk with identity preserved",
+  "Nss": "reports written/drawn only when the budget cut",
+  "zss": "rewrites a drawn prop only when it differs from and costs more than the input's; own values over OAt revert and report through own; an exhausted budget reports through cut",
+  "handlers": "qss/Uss/Bss note borderStyle/plain Code/plain Link through DAt keys and Iye; Wss/Gss note own props/text cut through iIn's [load, component, detail] key; s5t makes each keyed note one-shot",
+  "constants": {"Mur": 256, "t5t": 200, "OAt": 100000}
+ },
+ "product": {
+  "files": [
+   "src/plugin-chain-engine-budget-source.ts",
+   "src/plugin-chain-engine-budget.ts",
+   "test/plugin-chain-engine-budget.test.ts"
+  ],
+  "generator": "scripts/copy-module-regions.mjs",
+  "plan": "research/ports/W142-engine-draw-budget-handlers.plan.json",
+  "importedHelpers": ["ZAe", "IL", "Nrt", "y$", "Q4t", "cN", "rQt", "ESe", "Ro", "Dt", "B", "$A", "ne", "it", "GPn", "j3e", "kAt", "Iye", "s5t", "sIn"],
+  "caller": "none yet; gno wiring and Eur validation remain later slices"
+ },
+ "verification": {
+  "focused": "10/10",
+  "full": "2255/2255",
+  "tsc": 0,
+  "build": 0,
+  "notices": 0,
+  "identity": "46284acf2e2e7ea846da588854291bbcf33d38b0e807fbafc170d452cb11e9b0"
+ }
+}
