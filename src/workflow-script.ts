@@ -503,8 +503,71 @@ function bodyAfter(source: string, end: number): string {
   return source.slice(end).replace(/^[;\s]*\n/, '').trimStart();
 }
 
-export function parseWorkflowScript(source: string): WorkflowScriptParse {
+// The recovered `YS` (chunk-rk6tjv7j.js offset 3670) takes `{validateBody: false}`
+// and, on the fast path, reads only the meta literal without parsing the body.
+// Discovery uses that path so a workflow with a broken body is still listed.
+const META_HEAD = /^export\s+const\s+meta\s*=\s*(?=\{)/;
+
+// Returns the index just past the meta object literal, or undefined when the
+// text is not a brace-balanced literal. Template interpolation is rejected
+// because `pureLiteral` rejects it anyway; comments and quoted strings are
+// skipped so a brace inside either does not close the object early.
+function metaLiteralEnd(source: string, start: number): number | undefined {
+  let depth = 0;
+  for (let index = start; index < source.length; index += 1) {
+    const char = source[index]!;
+    if (char === '"' || char === '\'' || char === '`') {
+      const quote = char;
+      for (index += 1; index < source.length; index += 1) {
+        if (source[index] === '\\') index += 1;
+        else if (source[index] === quote) break;
+        else if (quote === '`' && source[index] === '$' && source[index + 1] === '{') return undefined;
+      }
+      if (index >= source.length) return undefined;
+      continue;
+    }
+    if (char === '/' && source[index + 1] === '/') {
+      const newline = source.indexOf('\n', index + 2);
+      if (newline < 0) return undefined;
+      index = newline;
+      continue;
+    }
+    if (char === '/' && source[index + 1] === '*') {
+      const close = source.indexOf('*/', index + 2);
+      if (close < 0) return undefined;
+      index = close + 1;
+      continue;
+    }
+    if (char === '{') depth += 1;
+    else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return index + 1;
+    }
+  }
+  return undefined;
+}
+
+export function parseWorkflowScript(
+  source: string, options: { validateBody?: boolean } = {},
+): WorkflowScriptParse {
   if (source.length > WORKFLOW_SCRIPT_MAX_BYTES) return { error: `Script exceeds ${WORKFLOW_SCRIPT_MAX_BYTES} bytes` };
+  if (options.validateBody === false) {
+    const head = META_HEAD.exec(source);
+    const end = head ? metaLiteralEnd(source, head[0].length) : undefined;
+    if (end !== undefined) {
+      try {
+        const expression = (parse(`(${source.slice(head![0].length, end)})`, {
+          ecmaVersion: 'latest', sourceType: 'module',
+        }) as unknown as AcornNode).body[0] as AcornNode;
+        const literal = pureLiteral((expression as AcornNode & { expression: AcornNode }).expression);
+        const parsed = metaValue(literal as Record<string, unknown>);
+        if ('error' in parsed) return parsed;
+        return { meta: parsed.meta, scriptBody: bodyAfter(source, end) };
+      } catch {
+        // Fall through to the full parse, which reports the real error.
+      }
+    }
+  }
   let program: AcornNode;
   try {
     program = parse(source, {
