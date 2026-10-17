@@ -61,3 +61,11 @@ The atomic writer now tags staging names with the store path digest
 (`.checkpoint-<12hex>-<uuid>.tmp`), and recovery sweeps this store's tags under the checkpoint
 lock in the store directories and in a pending transaction's target directories. The residual
 above still applies to the pre-W48 untagged names, which stay visible. [W48 record](W48-checkpoint-staging.md).
+
+
+## W53-01 capture association (2026-10-17)
+
+Capture now writes a durable association intent before publishing the manifest, and a resumed
+`Session.open` appends the missing checkpoint event under the session lock. The intent is cleared
+once the event is durable; intents with no published manifest are cleared, while foreign,
+unreadable or digest-mismatched files stay for inspection. [W53 record](W53-checkpoint-association.md).

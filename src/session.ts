@@ -15,6 +15,7 @@ import type { Keybindings } from './terminal.js';
 import { webSearchConfigSchema, type WebSearchConfig } from './web-search.js';
 import { pluginConfigSchema, type PluginConfig } from './plugins.js';
 import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
+import { clearCheckpointAssociation, recoverCheckpointAssociations } from './checkpoints.js';
 import { spinnerVerbsSchema } from './tui-progress-settings.js';
 import { statusLineSchema } from './tui-statusline-schema.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
@@ -306,6 +307,23 @@ export class Session {
         fd = fs.openSync(file, fs.constants.O_RDWR | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
         // An unterminated final record was never durably committed. Preserve all complete records.
         if (boundary !== bytes.length) { fs.ftruncateSync(fd, boundary); fs.fsyncSync(fd); }
+        // A crash between checkpoint capture and this journal's association leaves an intent.
+        // The manifest is already durable, so append the missing event under the session lock.
+        const journal = fd;
+        try {
+          for (const pending of recoverCheckpointAssociations(root, id, (name) => {
+            const saved = events.findLast((event) => event.kind === 'checkpoint' && event.name === name);
+            return saved?.kind === 'checkpoint' ? saved.digest : undefined;
+          })) {
+            try {
+              const event = eventSchema.parse({ kind: 'checkpoint', name: pending.name, digest: pending.digest, boundary: pending.boundary }) as SessionEvent;
+              Session.writeAll(journal, Buffer.from(JSON.stringify(event) + '\n'));
+              fs.fsyncSync(journal);
+              events.push(event);
+              clearCheckpointAssociation(pending.file);
+            } catch { /* retain the intent for inspection; opening still succeeds */ }
+          }
+        } catch { /* checkpoint association recovery is best-effort */ }
       } else {
         if (!options.config) throw new Error('New session requires config');
         configSchema.parse(options.config);

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { Session } from "./session.js";
-import { captureCheckpoint, previewCheckpoint, restoreCheckpoint } from "./checkpoints.js";
+import { captureCheckpoint, clearCheckpointAssociation, previewCheckpoint, restoreCheckpoint, writeCheckpointAssociation } from "./checkpoints.js";
 import type { ToolContext } from "./tools.js";
 
 function context(session: Session, signal: AbortSignal): ToolContext {
@@ -23,9 +23,19 @@ function historyDigest(session: Session): string {
 export function checkpointConversation(session: Session, name: string, signal: AbortSignal) {
   if (session.config.features?.checkpoints === false) throw new Error("Checkpoints are disabled in this session");
   if (session.awaitingResponse) throw new Error("Finish or continue the current turn first");
-  const boundary = session.events.findLastIndex(event => event.kind === "turn_end");
-  const captured = captureCheckpoint(name, context(session, signal));
-  session.append({ kind: "checkpoint", name, digest: captured.checkpoint_digest, boundary: Math.max(0, boundary) });
+  const boundary = Math.max(0, session.events.findLastIndex(event => event.kind === "turn_end"));
+  // The intent makes capture and association one recoverable unit: a crash after the manifest is
+  // published but before the journal append is completed by the next Session.open.
+  const intent = writeCheckpointAssociation(session.config.workspace, session.id, name, boundary);
+  let captured: ReturnType<typeof captureCheckpoint>;
+  try { captured = captureCheckpoint(name, context(session, signal)); }
+  catch (error) {
+    try { clearCheckpointAssociation(intent); } catch { /* preserve the capture error */ }
+    throw error;
+  }
+  // A failed append keeps the intent; the manifest is durable and the next open restores the event.
+  session.append({ kind: "checkpoint", name, digest: captured.checkpoint_digest, boundary });
+  try { clearCheckpointAssociation(intent); } catch { /* a later open clears a completed intent */ }
   return { ...captured, turn: session.events.filter(event => event.kind === "turn_end").length };
 }
 

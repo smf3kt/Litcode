@@ -1,0 +1,93 @@
+{
+ "schema": "W53CheckpointAssociationEvidence.v1",
+ "package": "W53-01 — checkpoint capture and session association recover together",
+ "date": "2026-10-17",
+ "question": "Can a crash between publishing a checkpoint manifest and recording its session association lose or strand the checkpoint?",
+ "answer": "No. The intent is durable before capture, so the next session open appends the missing event from the validated manifest; a manifest that was never published is cleared instead of leaving a blocked name.",
+ "sourcePosition": {
+  "kind": "local extension; recovered durable checkpoint transaction not established",
+  "evidence": "W04 records the local rewrite; zPo (chunk-sfn1dbxq.js [1801370,1802540), UTF-8 bytes) supplies the observe-and-prove policy."
+ },
+ "behavior": {
+  "intent": "<store>/.assoc-<uuid>.json {version, id, session, name, boundary, pid, created_at}, atomic write before capture",
+  "success": "journal append durably writes the checkpoint event, then the intent is cleared",
+  "captureFailure": "the intent is cleared; a crash leaves it for recovery",
+  "reopen": "under the session lock, a validated manifest with no matching event appends the recorded boundary and clears the intent",
+  "cleared": "missing manifest; existing association with the same name and digest",
+  "retained": "foreign session, unreadable intent, manifest digest mismatch"
+ },
+ "changes": [
+  {
+   "file": "src/checkpoints.ts",
+   "change": "association schema/io, manifest digest validation, recovery scan",
+   "sha256": "683d5781facf8966d2c190cc5d1d53211bb1cf0410dd230323a5faf2f4529a5d"
+  },
+  {
+   "file": "src/rewind.ts",
+   "change": "intent around capture and journal append",
+   "sha256": "fc2ccb677a046a78c91a52dedc431171c0573a4a23020da83b059505c91caa03"
+  },
+  {
+   "file": "src/session.ts",
+   "change": "resumed open completes pending associations",
+   "sha256": "f48064f62424ecb9cede71022f2d696b119dc77643a7bbbf977669eb4383ef1b"
+  },
+  {
+   "file": "test/rewind.test.ts",
+   "change": "recovery rules and real SIGKILL crash case",
+   "sha256": "d6eaee99b5af3652043eb1dcc8f0d3d51ad9c555c3fedb3e31306de370e1e202"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-4 rows record the completed window",
+   "sha256": "1b88b66c09420707178e0790bc25a8f2149d2b2dfddf7ecd54eb69ca01761a58"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "checkpoint row records the association intent",
+   "sha256": "712bffca5ece488fa3ddc6720b068fcd2609868dc17b9bc2e830af2d5520ac72"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W53-01 entry",
+   "sha256": "3d604a8f924b7f8a9656915501c42a2f1c735811b9cc481313fba40081405dc7"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W53-01 S-1..S-7 entry",
+   "sha256": "5d7be5c7d048e67e3cf5cafd7c880f49fc9919e9389a8e98f660c7f27091b37f"
+  },
+  {
+   "file": "research/ports/W04-crash-recovery.md",
+   "change": "W53-01 addendum",
+   "sha256": "9e915c749a191c4ed154ddec1c92c3df04c92518eb841ff13d14a103bf166b07"
+  }
+ ],
+ "tests": {
+  "file": "test/rewind.test.ts",
+  "added": [
+   "association recovery clears unprovable intents, keeps foreign evidence and is idempotent",
+   "a real crash between capture and association is completed on the next open"
+  ],
+  "result": "7/7 pass; checkpoints 21/21"
+ },
+ "gates": {
+  "tsc": "exit 0",
+  "rewind": "7/7",
+  "checkpoints": "21/21",
+  "build": "exit 0",
+  "full": "2,088/2,088",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "crashSmoke": "exit 0 (source and compiled, eight cutpoints)",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "df90fb5663e8f8b1eeb48e4458579bf23c59c83f2e7a2a497e3d78534ba32f57"
+ },
+ "residuals": [
+  "A synchronous append failure leaves the intent until the next open; the current process does not retry it.",
+  "Intents have no expiry; an intent for a session that is never reopened stays until that session opens.",
+  "A manifest lost after publication would make its intent be cleared as unpublished; the object files remain."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-4 continues with power-loss/GC."
+}
