@@ -2119,3 +2119,11 @@ internal causes no longer reach the hook: `session_switch` is `resume`,
 `agent-lifecycle` 35/35, `interactive` 8/8, tsc 0, build 0, full
 2,122/2,122, chain 767/767, identity `11df4f85…`.
 [W93 record](ports/W93-session-end-reasons.md).
+
+W94-01 aligns the Stop-family payloads. Stop and SubagentStop send the trimmed
+last message only when present, SubagentStop adds `agent_transcript_path` and
+drops `reason`, and StopFailure drops `stop_reason` on both raise sites.
+`background_tasks` and `session_crons` remain omitted because the agent has
+no runtime registry handle. `agent-lifecycle` 36/36, tsc 0, build 0, full
+2,123/2,123, chain 767/767, identity `5ac052d1…`.
+[W94 record](ports/W94-stop-payloads.md).
