@@ -6,6 +6,7 @@ import nodePath from 'node:path';
 import { parse, type Node } from 'acorn';
 import * as walk from 'acorn-walk';
 import { compileStructuredOutputSchema, type JsonValue } from './structured-output.js';
+import { normalizeBashCommandClamp, normalizeDisallowedTools } from './agent-tool-restrictions.js';
 
 // Ported from the recovered workflow script runtime:
 //   parseWorkflowScript  <- `YS` (chunk-rk6tjv7j.js offset 3670)
@@ -40,7 +41,7 @@ export type WorkflowScriptParse = ParsedWorkflowScript | { error: string };
 
 export type WorkflowScriptAgentOptions = {
   label?: string; phase?: string; model?: string; effort?: string; isolation?: 'worktree';
-  agentType?: string; schema?: unknown; disallowedTools?: unknown; bashCommandClamp?: unknown;
+  agentType?: string; schema?: unknown; disallowedTools?: string[]; bashCommandClamp?: string[][];
   stallMs?: unknown;
 };
 // A bridge returns the child summary; `null` mirrors a skipped child, and
@@ -921,10 +922,8 @@ export async function runWorkflowScript(
     return cloneValue(value) as Record<string, unknown>;
   };
   const assertUnsupportedOptions = (opts: Record<string, unknown>) => {
-    for (const key of ['disallowedTools', 'bashCommandClamp', 'stallMs'] as const) {
-      if (opts[key] !== undefined) {
-        throw new Error(`agent({${key}}) is not available in this runtime yet`);
-      }
+    if (opts.stallMs !== undefined) {
+      throw new Error('agent({stallMs}) is not available in this runtime yet');
     }
     if (opts.isolation === 'remote') {
       throw new Error("agent({isolation:'remote'}) is not available in this build");
@@ -952,6 +951,14 @@ export async function runWorkflowScript(
       result.agentType = opts.agentType;
     }
     if (opts.isolation === 'worktree') result.isolation = 'worktree';
+    if (opts.disallowedTools !== undefined) {
+      const normalized = normalizeDisallowedTools(opts.disallowedTools);
+      if (normalized !== undefined) result.disallowedTools = normalized;
+    }
+    if (opts.bashCommandClamp !== undefined) {
+      const normalized = normalizeBashCommandClamp(opts.bashCommandClamp);
+      if (normalized !== undefined) result.bashCommandClamp = normalized;
+    }
     if (opts.schema !== undefined) {
       try { compileStructuredOutputSchema(opts.schema); }
       catch (error) {

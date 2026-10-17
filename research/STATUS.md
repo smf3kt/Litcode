@@ -2452,3 +2452,16 @@ returned to the script and stored in the journal for resume. `inspectJson` now a
 records and arrays from the workflow VM realm while still rejecting class instances. Focused
 73/73, full 2223/2223, tsc 0, build 0, notices 0, both workflow smokes passed, identity
 `eaeec9c8…`. [W132 record](ports/W132-workflow-agent-schema.md).
+
+W133 closes C-8's tool-narrowing item. `agent({disallowedTools})` and
+`agent({bashCommandClamp})` are validated with the recovered rule grammar before a child
+exists: unpadded non-empty names, `Bash(<command or prefix>)` entries, dedupe and sort. Denies
+are applied to the child pool by exact name and MCP scope; case mismatches, empty or wildcard
+MCP segments and wildcards outside MCP refuse the spawn. A clamp adds an implicit `mcp__*`
+deny, refuses a schema spawn whose `StructuredOutput` is denied, and refuses a pool with no
+shell tool. At execution the child permission gate checks every `shellReadings` reading against
+every inherited clamp group, admits exact and `prefix:*` rules (including `xargs` forms),
+refuses prefix matches for compound readings, and fails closed on an incomplete reading set
+with the source denial text. Focused 111/111, full 2235/2235, tsc 0, build 0, notices 0, both
+workflow smokes passed, identity `eff677d0…`.
+[W133 record](ports/W133-workflow-agent-tool-restrictions.md).

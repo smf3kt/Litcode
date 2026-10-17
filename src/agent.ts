@@ -5,6 +5,7 @@ import type { ToolDefinition, ToolContext } from './tools.js';
 import { randomUUID } from 'node:crypto';
 import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
 import { applyPermissionUpdates, permissionDecision, permissionUpdateListSchema } from './permissions.js';
+import { bashCommandClampDenial, checkBashCommandClamp, CLAMPED_SHELL_TOOLS } from './agent-tool-restrictions.js';
 import path from 'node:path';
 import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
 import type { InteractionCallbacks } from './interaction-tools.js';
@@ -446,6 +447,21 @@ export class Agent {
   }
 
   private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal): Promise<{ input: unknown; denied?: string; retry?: boolean }> {
+    const clamp = this.session.config.bashCommandClamp;
+    if (clamp !== undefined && CLAMPED_SHELL_TOOLS.has(tool.schema.name)) {
+      const command = typeof input === 'object' && input !== null
+        ? Object.getOwnPropertyDescriptor(input, 'command')?.value : undefined;
+      const failure = typeof command === 'string'
+        ? checkBashCommandClamp(command, clamp)
+        : { kind: 'unverifiable' as const, span: '', group: clamp[0] ?? [] };
+      if (failure !== null) {
+        const denied = bashCommandClampDenial(tool.schema.name, typeof command === 'string' ? command : '', failure);
+        // The source's shell permission check returns a deny; the product's
+        // deny path also raises the one PermissionDenied hook.
+        const deniedHook = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: denied }, signal);
+        return { input, denied, retry: deniedHook.retry === true };
+      }
+    }
     const decision = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates);
     // `classic.PermissionDenied` is deliberately not raised here, and nowhere else in this product: the
     // source raises it from exactly one body (`I9r` chunk-sfn1dbxq.js [3063491,3063858)), whose single

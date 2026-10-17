@@ -112,6 +112,24 @@ test('workflow script schema mode returns the validated StructuredOutput object'
   } finally { await f.cleanup(); }
 });
 
+test('workflow agent() tool restrictions reach the spawned child pool', async () => {
+  const f = fixture(async request => {
+    const names = request.tools?.map(tool => 'name' in tool ? tool.name : '') ?? [];
+    assert.equal(names.includes('read_file'), false);
+    assert.equal(names.includes('search'), true);
+    return response('done');
+  });
+  const registry = f.make();
+  try {
+    const tools = createWorkflowTools(registry);
+    const context = { workspace: f.workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 100_000 };
+    const script = "export const meta = { name: 'narrow', description: 'narrow' }\n"
+      + "return await agent('work', { disallowedTools: ['read_file'] })";
+    const result = JSON.parse(await tools[0]!.execute({ script }, context)) as { result?: unknown };
+    assert.equal(result.result, 'done');
+  } finally { await f.cleanup(); }
+});
+
 test('failed dependencies skip downstream transitively while independent tasks finish', async () => {
   const seen: string[] = [];
   const f = fixture(async request => { const text = prompt(request); seen.push(text); if (text === 'fail') throw new Error('fixture failure'); return response('ok'); });

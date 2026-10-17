@@ -5,6 +5,8 @@ import { Session, fingerprint, type SessionConfig } from './session.js';
 import type { ModelProvider } from './provider.js';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import { permissionDecision } from './permissions.js';
+import { CLAMPED_SHELL_TOOLS, normalizeBashCommandClamp, normalizeDisallowedTools, toolNameDenied,
+  validateDisallowedTools } from './agent-tool-restrictions.js';
 import { capChildOutput, childConfig, selectChildTools, createChildHookLifecycle, advancedChildFields, advancedChildProperties,
   resolveChildLaunch, forkMessages, validateChildEnvironment, type ChildHookOptions, type AdvancedChildOptions,
   type ChildEnvironmentLease, type ChildLaunchOptions } from './subagents.js';
@@ -40,6 +42,8 @@ export type AgentLaunch = ChildLaunchOptions & {
   prompt: string; name?: string; background?: boolean;
   /** Workflow schema mode (`agent({schema})`): the child must return this shape. */
   structured_schema?: unknown;
+  /** Workflow tool narrowing (`agent({disallowedTools, bashCommandClamp})`). */
+  disallowed_tools?: unknown; bash_command_clamp?: unknown;
 };
 
 const launchSchema = z.object({
@@ -47,6 +51,7 @@ const launchSchema = z.object({
   max_turns: z.number().int().min(1).max(30).default(10),
   name: z.string().trim().min(1).max(128).optional(), background: z.boolean().default(false),
   model: z.string().trim().min(1).max(256).optional(), structured_schema: z.unknown().optional(),
+  disallowed_tools: z.unknown().optional(), bash_command_clamp: z.unknown().optional(),
 }).strict();
 const advancedLaunchSchema = launchSchema.extend({ mode: z.enum(['explore', 'general']).optional(),
   max_turns: z.number().int().min(1).max(30).optional(), ...advancedChildFields }).strict();
@@ -271,6 +276,10 @@ export class AgentRegistry {
         throw new Error(`agent({schema}) received an invalid JSON Schema: ${error instanceof Error ? error.message : String(error)}`);
       }
     })();
+    // The source validates these options before it creates any child
+    // (chunk-hedqf2m1.js [77200,80100)); bad entries refuse the spawn.
+    const disallowedTools = args.disallowed_tools === undefined ? undefined : normalizeDisallowedTools(args.disallowed_tools);
+    const bashCommandClamp = args.bash_command_clamp === undefined ? undefined : normalizeBashCommandClamp(args.bash_command_clamp);
     this.capacity();
     if (args.name && (this.reservedNames.has(args.name) || [...this.children.values()].some(child => child.view.name === args.name || child.view.id === args.name))) {
       throw new Error(`Child agent name already exists: ${args.name}`);
@@ -294,18 +303,38 @@ export class AgentRegistry {
     const allowShell = launch.mode === 'general' && parent.allowShell && (execution?.config.allowShell ?? true);
     const beforeTool = execution?.beforeTool;
     let selected = selectChildTools(supplied, launch.mode, launch.type?.tools);
+    // A clamp also denies every MCP tool, as the source merges `mcp__*` into
+    // the spawn's disallowed list when a clamp is present.
+    const mergedDenies = bashCommandClamp !== undefined
+      ? [...(disallowedTools ?? []), 'mcp__*']
+      : disallowedTools;
+    if (mergedDenies !== undefined) {
+      validateDisallowedTools(mergedDenies, selected.map(tool => tool.schema.name));
+      selected = selected.filter(tool => !toolNameDenied(tool.schema.name, mergedDenies));
+    }
     if (structuredState !== undefined) {
+      if (mergedDenies !== undefined && toolNameDenied(STRUCTURED_OUTPUT_TOOL_NAME, mergedDenies)) {
+        throw new Error(`agent() schema mode needs the ${STRUCTURED_OUTPUT_TOOL_NAME} tool, but the spawn's merged disallowedTools deny it — `
+          + 'refusing the spawn instead of running an agent that cannot return its structured output.');
+      }
       // The source appends `Ea` when the agent's tool list lacks it and the pool
       // resolves names to the standard definition, so replacing a same-name entry
       // here is the same tool and keeps validation under this runtime's control.
       selected = [...selected.filter(tool => tool.schema.name !== STRUCTURED_OUTPUT_TOOL_NAME),
         createStructuredOutputTool(args.structured_schema, structuredState)];
     }
+    if (bashCommandClamp !== undefined && !selected.some(tool => CLAMPED_SHELL_TOOLS.has(tool.schema.name))) {
+      throw new Error(`agent() opts.bashCommandClamp can bind nothing: the spawned agent's resolved tool pool has no Bash-equivalent shell tool `
+        + `(${[...CLAMPED_SHELL_TOOLS].join('/')}) — it was removed by this spawn's disallowedTools, the agent definition's denies, or it is `
+        + 'absent from the session pool. A clamp on a Bash-less agent means the commands it was meant to keep are unavailable — refusing the '
+        + 'spawn rather than running a blind agent. Drop the clamp or the Bash deny.');
+    }
     const inherited = execution ? { ...structuredClone(execution.config), workspace: parent.workspace,
       allowShell: parent.allowShell && execution.config.allowShell,
       ...(execution.beforeTool ? { permissions: { mode: 'bypass' as const, allow: [], deny: [] } } : {}),
     } : parent;
     let config = childConfig(inherited, selected, launch);
+    if (bashCommandClamp !== undefined) config = { ...config, bashCommandClamp };
     if (structuredState !== undefined) config = { ...config, system: config.system + STRUCTURED_OUTPUT_SYSTEM_NOTE };
     const controller = new AbortController();
     const onCallerAbort = () => controller.abort(callerSignal?.reason);

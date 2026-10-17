@@ -461,6 +461,8 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
             ...(agentOptions.effort !== undefined ? { effort: agentOptions.effort as 'low' | 'medium' | 'high' | 'xhigh' | 'max' } : {}),
             ...(agentOptions.agentType !== undefined ? { subagent_type: agentOptions.agentType } : {}),
             ...(agentOptions.isolation !== undefined ? { isolation: agentOptions.isolation } : {}),
+            ...(agentOptions.disallowedTools !== undefined ? { disallowed_tools: agentOptions.disallowedTools } : {}),
+            ...(agentOptions.bashCommandClamp !== undefined ? { bash_command_clamp: agentOptions.bashCommandClamp } : {}),
             ...(agentOptions.schema !== undefined ? { structured_schema: agentOptions.schema } : {}),
           }, signal);
           onStarted?.(child.id);
