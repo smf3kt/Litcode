@@ -2858,3 +2858,16 @@ becomes a controller and the uxn session/branch sources are not carried (working
 both are recorded. Focused 13/13, full 2480/2480, tsc 0, build 0, notices 0, scan declared 9 /
 unresolved 0, identity `7d53b94a…`.
 [W163 record](ports/W163-git-diff-data.md).
+
+W164 added the per-turn diff history (7 copied blocks, 1,271 UTF-16 units from
+chunk-twzxjzbk.js), with the ne memo hook adapted to TurnDiffAccumulator. Rt recognizes a tool
+result carrying a file path plus a structured patch or created content; St covers the
+create/update types; Mt counts plus and minus hunk lines; Ct builds the 30-character prompt
+preview; we settles turn stats; ri wraps a turn as a source entry; Ie converts a turn to the
+dialog diff shape with sorted files and a path-keyed hunk map. A non-meta user message with no
+tool result opens a turn, diff results fold by path, an empty create patch synthesizes one hunk
+from the content lines at oldStart 0/newStart 1, completed turns return newest first, and a
+shrinking message list resets the walk. The DiffDialog component, file list/detail rendering and
+key bindings remain out. Focused 9/9, full 2489/2489, tsc 0, build 0, notices 0, scan declared
+13 / unresolved 0, identity `163ac4f3…`.
+[W164 record](ports/W164-diff-turn.md).

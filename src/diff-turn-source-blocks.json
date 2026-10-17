@@ -1,0 +1,89 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        17903,
+        18122
+      ],
+      "units": 219,
+      "bodySha256": "c05038de700be85b05a1bb0a768c0d1cecec1cddd7ca6a53921a8f6823190f43",
+      "note": "Rt: recognize a diff tool result carrying a file path plus a structured patch or created content"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        18122,
+        18194
+      ],
+      "units": 72,
+      "bodySha256": "84c6edca5f36148376a37c09c7851cbdf8e18b1da1271140eb90d16bdd89784f",
+      "note": "St: recognize the create/update tool result types"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        18194,
+        18338
+      ],
+      "units": 144,
+      "bodySha256": "734cad18730adf37b10e48afe9a9be545c3e99b81e13c1ee9b9e098b8b53c6f6",
+      "note": "Mt: count added and removed hunk lines"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        18338,
+        18487
+      ],
+      "units": 149,
+      "bodySha256": "d5e3d1b5ca99f6fb8b35ddf481d66b81dcbd5415182c030235f49d593118b83f",
+      "note": "Ct: 30-character user prompt preview"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        18487,
+        18642
+      ],
+      "units": 155,
+      "bodySha256": "4e55593ee62f8dc3ed3076a908925499154269352e4173a6e1021588938a9c0c",
+      "note": "we: settle turn stats from its file rows"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        22140,
+        22184
+      ],
+      "units": 44,
+      "bodySha256": "0450a351d7fb3c351188e35ab8981bcd892c1395c40402e13ddb8224a19b26bd",
+      "note": "ri: wrap a completed turn as a turn source"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        22184,
+        22672
+      ],
+      "units": 488,
+      "bodySha256": "d76f518aa5bf036c60a32efc35495d41fbcf50e7ae3e42c63fcc34d897b58c34",
+      "note": "Ie: turn files and hunks to the dialog diff data shape"
+    }
+  ],
+  "missing": []
+}
