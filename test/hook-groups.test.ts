@@ -43,8 +43,10 @@ test("group and inner matchers intersect for exact, regex, wildcard and absent s
   ] };
   const matched = await runHooks(config, "SubagentStart", { agent_type: "researcher" });
   assert.deepEqual(matched.additionalContext, ["hit"]);
+  // A missing selector means every configured matcher matches (`y5e`
+  // returns undefined and the recovered predicate then accepts the hook).
   const noSelector = await runHooks(config, "SubagentStart", {});
-  assert.deepEqual(noSelector.additionalContext, []);
+  assert.deepEqual(noSelector.additionalContext, ["hit", "other", "invalid regex"]);
   const missing = await runHooks({ SessionStart: [{ matcher: ".*", hooks: [context("all")] }] }, "SessionStart");
   assert.deepEqual(missing.additionalContext, ["all"]);
 });

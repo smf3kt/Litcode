@@ -320,7 +320,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     formActive = true;
     const controller = new AbortController(); formController = controller;
     signal = AbortSignal.any([signal, controller.signal]);
-    const payload = { server_name: context.serverName, request_id: context.requestId,
+    // Elicitation carries the server as `mcp_server_name` (`cvt`,
+    // chunk-sfn1dbxq.js [2934222,2934736)).
+    const payload = { mcp_server_name: context.serverName, request_id: context.requestId,
       prompt: params.message, mode: params.mode === 'url' ? 'url' as const : 'form' as const,
       ...(params.mode === 'url' ? { url: params.url, elicitation_id: params.elicitationId } : { requested_schema: params.requestedSchema }) };
     try {
@@ -811,6 +813,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (prompt.startsWith('/cwd ') || /^\/worktree(?:\s|$)/.test(prompt) || /^\/worktree-exit(?:\s|$)/.test(prompt)) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           if (!activeRuntime.reconfigure) throw new Error('Runtime workspace relocation is unavailable');
+          const previousWorkspace = session.config.workspace;
           let target: string;
           let worktreeReturn: string | null | undefined;
           let removal: { config: SessionConfig; discard: boolean } | undefined;
@@ -848,8 +851,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               output.write(`Removed owned worktree; branch deleted: ${removed.branchDeleted}; history: ${removed.archive ?? 'none'}\n`);
             } catch (error) { options.status.write(`Worktree removal error after return: ${error instanceof Error ? error.message : String(error)}\n`); }
           }
-          await agent().emitHook('CwdChanged', { cwd: target }, options.signal);
-          await agent().emitHook('DirectoryAdded', { directory_path: target, source: 'cwd_relocation' }, options.signal);
+          // CwdChanged carries both directories (`ZXr`, chunk-sfn1dbxq.js
+          // [2935532,2935646)); DirectoryAdded carries `directory` and `source`
+          // (`lvt`, chunk-sfn1dbxq.js [2933905,2934228)).
+          await agent().emitHook('CwdChanged', { old_cwd: previousWorkspace, new_cwd: target }, options.signal);
+          await agent().emitHook('DirectoryAdded', { directory: target, source: 'cwd_relocation' }, options.signal);
           continue;
         }
         if (prompt === '/checkpoint-recover') {

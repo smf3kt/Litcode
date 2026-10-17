@@ -1981,3 +1981,15 @@ name with the recovered `gl` before the replacement alternation, so dotted,
 plus and non-ASCII names substitute correctly; the session schema accepts the
 same form. `config`+`session` 70/70, tsc 0, full 2,105/2,105, chain 767/767,
 identity `1c2b556a…`. [W78 record](ports/W78-argument-names.md).
+
+W79-01 ports the recovered hook selector table. `hookMatcherValue` follows
+`y5e`: tool events select `tool_name`, DirectoryAdded and ConfigChange select
+`source`, InstructionsLoaded selects `load_reason`, Setup selects `trigger`,
+FileChanged selects the file basename, and an event outside the table has no
+selector, so its configured matchers accept every occurrence as `zze` does.
+CwdChanged now carries `old_cwd`/`new_cwd`, DirectoryAdded carries
+`directory`/`source`, FileChanged carries `file_path`/`event`,
+InstructionsLoaded carries `load_reason`, Setup carries `trigger: "init"`,
+and Elicitation carries `mcp_server_name`. `hooks` 48/48,
+`agent-lifecycle` 25/25, tsc 0, full 2,107/2,107, chain 767/767, identity
+`fd3b6906…`. [W79 record](ports/W79-hook-selectors.md).

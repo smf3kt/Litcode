@@ -23,6 +23,7 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { createHash } from "node:crypto";
+import { basename } from "node:path";
 import { z } from "zod";
 import { validateHookTerminalSequence } from "./hook-terminal.js";
 
@@ -289,8 +290,8 @@ export type HookPayload = {
   error?: string;
   /** PostToolUseFailure: true when the call was interrupted rather than failed. */
   is_interrupt?: boolean;
-  /** PreCompact / PostCompact: how compaction was started. */
-  trigger?: "manual" | "auto";
+  /** PreCompact / PostCompact: how compaction was started; Setup: its dispatch kind. */
+  trigger?: string;
   /** PostCompact: the summary produced by compaction. */
   compact_summary?: string;
   /** SessionEnd: why the session is ending. */
@@ -303,7 +304,28 @@ export type HookPayload = {
   task_subject?: string;
   teammate_name?: string;
   notification_type?: string;
+  /** Elicitation / ElicitationResult: the MCP server asking. */
+  mcp_server_name?: string;
   server_name?: string;
+  /** UserPromptExpansion: the command name that triggered the expansion. */
+  command_name?: string;
+  /** InstructionsLoaded: the loaded file and why it was loaded. */
+  memory_type?: string;
+  load_reason?: string;
+  globs?: unknown;
+  trigger_file_path?: string;
+  parent_file_path?: string;
+  /** CwdChanged: the workspace directory before and after the change. */
+  old_cwd?: string;
+  new_cwd?: string;
+  /** DirectoryAdded: the directory and the source that added it. */
+  directory?: string;
+  /** FileChanged: the change kind, one of add, change or unlink. */
+  event?: string;
+  /** PreModelSwitch / PostModelSwitch: the models that participated. */
+  from_model?: string;
+  to_model?: string;
+  requested_model?: string;
   /** Elicitation / ElicitationResult: which request form the server used. */
   mode?: "form" | "url";
   /** Elicitation: the URL the person is asked to open, present only in URL mode. */
@@ -311,7 +333,6 @@ export type HookPayload = {
   elicitation_id?: string;
   worktree_path?: string;
   file_path?: string;
-  directory_path?: string;
   /** Additional transition-specific fields supplied by the owning runtime. */
   [field: string]: unknown;
 };
@@ -407,18 +428,78 @@ function strings(value: unknown): string[] {
 }
 
 /**
- * Match a hook matcher against a tool name. Matched alternatives are exact
+ * Select the transition field a matcher is tested against. Ports `y5e`
+ * (chunk-sfn1dbxq.js, UTF-16 [2984225,2985215)): each event has one selector
+ * field, FileChanged matches the file's basename, and an event outside the
+ * selector table has no value, which means its configured matchers match every
+ * occurrence. `g4e`/`zIt` model-alias normalization stays out of this port;
+ * Pre/PostModelSwitch use the requested model text as carried by the payload.
+ */
+export function hookMatcherValue(event: HookEvent, payload: HookPayload): string | undefined {
+  const text = (value: unknown): string | undefined => typeof value === "string" ? value : undefined;
+  switch (event) {
+    case "PreToolUse":
+    case "PostToolUse":
+    case "PostToolUseFailure":
+    case "PermissionRequest":
+    case "PermissionDenied":
+      return text(payload.tool_name);
+    case "UserPromptExpansion":
+      return text(payload.command_name);
+    case "SessionStart":
+      return text(payload.source);
+    case "Setup":
+      return text(payload.trigger);
+    case "PreCompact":
+    case "PostCompact":
+      return text(payload.trigger);
+    case "PreModelSwitch":
+    case "PostModelSwitch":
+      return text(payload.to_model) ?? text(payload.model);
+    case "Notification":
+      return text(payload.notification_type);
+    case "SessionEnd":
+      return text(payload.reason);
+    case "StopFailure":
+      return text(payload.error);
+    case "SubagentStart":
+    case "SubagentStop":
+      return text(payload.agent_type);
+    case "TeammateIdle":
+    case "TaskCreated":
+    case "TaskCompleted":
+      return undefined;
+    case "Elicitation":
+    case "ElicitationResult":
+      return text(payload.mcp_server_name) ?? text(payload.server_name);
+    case "ConfigChange":
+      return text(payload.source);
+    case "DirectoryAdded":
+      return text(payload.source);
+    case "InstructionsLoaded":
+      return text(payload.load_reason);
+    case "FileChanged": {
+      const file = text(payload.file_path);
+      return file === undefined ? undefined : basename(file);
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Match a hook matcher against a selector value. Matched alternatives are exact
  * string equality first, then a full-string regular expression so a plain name
  * ("Bash") behaves as an exact match while "Edit|Write" or "mcp__.*" also work.
  * An invalid regex falls back to exact-only and never throws.
  */
-function matcherMatches(matcher: string | undefined, toolName: string | undefined): boolean {
+function matcherMatches(matcher: string | undefined, value: string | undefined): boolean {
   if (matcher === undefined || matcher.trim() === "") return true;
   const pattern = matcher.trim();
   if (MATCH_ALL.has(pattern)) return true;
-  if (toolName === undefined) return false;
-  if (pattern === toolName) return true;
-  try { return new RegExp(`^(?:${pattern})$`).test(toolName); }
+  if (value === undefined) return false;
+  if (pattern === value) return true;
+  try { return new RegExp(`^(?:${pattern})$`).test(value); }
   catch { return false; }
 }
 
@@ -850,7 +931,7 @@ export async function runHooks(
   const definitions = flattenHookDefinitions(config, event);
   if (definitions.length === 0) return result;
   const lifecycle = options.lifecycle ?? new HookLifecycle();
-  const toolName = asString(payload.tool_name) ?? asString(payload.matcher_value) ?? asString(payload.agent_type) ?? asString(payload.notification_type) ?? asString(payload.source) ?? asString(payload.server_name) ?? asString(payload.file_path);
+  const matcherValue = hookMatcherValue(event, payload);
   // True once any hook's stdout JSON contributed context. A Stop hook that adds
   // context is a continuation request (handled after the loop); diagnostic notes
   // such as timeout/abort must not count.
@@ -875,7 +956,7 @@ export async function runHooks(
       continue;
     }
     const definition = parsed.data;
-    if (!flattened.matches(toolName)) continue;
+    if (matcherValue !== undefined && !flattened.matches(matcherValue)) continue;
     if (definition.once && lifecycle.has(flattened.identity.key)) continue;
     if (signal.aborted) {
       result.additionalContext.push(`[${event} hook: not run, cancelled before start]`);
