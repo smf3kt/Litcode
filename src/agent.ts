@@ -768,7 +768,11 @@ export class Agent {
         if (event.kind === 'hook_start' && event.event === 'StopFailure') { alreadyStarted = true; break; }
       }
       if (!alreadyStarted) {
-        const failure = await this.hook('StopFailure', { error: reason, stop_reason: reason, last_assistant_message: text }, signal);
+        // StopFailure carries `{error, error_details?, last_assistant_message?}` (`Gze`, chunk-sfn1dbxq.js
+        // offset 2945292; schema at chunk-r2vtj1kh.js offset 198098); no stop_reason field exists.
+        const lastMessage = text.trim() === '' ? undefined : text.trim();
+        const failure = await this.hook('StopFailure', { error: reason,
+          ...(lastMessage === undefined ? {} : { last_assistant_message: lastMessage }) }, signal);
         for (const context of failure.additionalContext) this.events.status?.(`hook: ${context}`);
       }
       return this.finish(reason, text, modelCalls);
@@ -792,8 +796,12 @@ export class Agent {
         if (event.kind === 'turn_end') break;
         if (event.kind === 'hook_result' && event.event === stopEvent && event.blocked && !event.stopRequested) { active = true; break; }
       }
-      stop = await this.hook(stopEvent, { stop_hook_active: active, last_assistant_message: text,
-        ...(this.session.config.childMode ? { agent_id: this.session.id, agent_type: this.session.config.childMode, reason } : {}),
+      stop = await this.hook(stopEvent, { stop_hook_active: active,
+        ...(text.trim() === '' ? {} : { last_assistant_message: text.trim() }),
+        // SubagentStop adds the child identity and its transcript path (chunk-sfn1dbxq.js offset
+        // 2946104); Stop carries only the two common fields in this runtime.
+        ...(this.session.config.childMode ? { agent_id: this.session.id,
+          agent_transcript_path: this.session.file, agent_type: this.session.config.childMode } : {}),
       }, signal);
     }
     if (stop.stopRequested) return this.finish('hook_blocked', text, modelCalls);
@@ -918,7 +926,8 @@ export class Agent {
         catch (error) {
           if (!signal.aborted) {
             try {
-              const failure = await this.hook('StopFailure', { error: error instanceof Error ? error.message : String(error), stop_reason: 'model_error' }, signal);
+              const failure = await this.hook('StopFailure', { error: error instanceof Error ? error.message : String(error),
+                ...(text.trim() === '' ? {} : { last_assistant_message: text.trim() }) }, signal);
               for (const context of failure.additionalContext) this.events.status?.(`hook: ${context}`);
             } catch (hookError) { this.events.status?.(`StopFailure hook error: ${hookError instanceof Error ? hookError.message : String(hookError)}`); }
           }

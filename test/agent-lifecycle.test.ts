@@ -725,6 +725,9 @@ test("child SubagentStop block continues with active marker and respects maxTurn
     const inputs = fs.readFileSync(capture, "utf8").trim().split("\n").map(line => JSON.parse(line));
     assert.deepEqual(inputs.map(input => input.stop_hook_active), [false, true, true]);
     assert.ok(inputs.every(input => input.agent_id === session.id && input.agent_type === "general"));
+    assert.ok(inputs.every(input => input.agent_transcript_path === session.file));
+    assert.ok(inputs.every(input => !("reason" in input)));
+    assert.ok(inputs.every(input => input.last_assistant_message === "done"));
     assert.equal(session.awaitingResponse, false);
     assertBatchAdjacency(session);
   } finally { session.close(); }
@@ -880,5 +883,21 @@ test("SessionEnd maps close causes onto the recovered reason enum", async () => 
     for (const [cause] of cases) await new Agent(session, new ScriptedProvider([]), []).endSession(cause);
     const reasons = fs.readFileSync(captured, "utf8").trim().split("\n").map(line => JSON.parse(line) as { reason?: string });
     assert.deepEqual(reasons.map(event => event.reason), cases.map(([, reason]) => reason));
+  } finally { session.close(); }
+});
+
+test("StopFailure carries the recovered error fields without stop_reason", async () => {
+  const root = workspace();
+  const captured = path.join(root, "stop-failure.jsonl");
+  const session = Session.open(root, { config: config(root, [], { hooks: {
+    StopFailure: [{ command: `cat >> ${shellQuote(captured)}` }] } }) });
+  try {
+    const provider = new ScriptedProvider([response([{ type: "text", text: "partial text" }], "max_tokens")]);
+    const result = await new Agent(session, provider, []).run("fail");
+    assert.equal(result.reason, "max_tokens");
+    const payload = JSON.parse(fs.readFileSync(captured, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.error, "max_tokens");
+    assert.equal(payload.last_assistant_message, "partial text");
+    assert.equal("stop_reason" in payload, false);
   } finally { session.close(); }
 });

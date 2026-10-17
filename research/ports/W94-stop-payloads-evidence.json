@@ -1,0 +1,94 @@
+{
+ "schema": "W94StopPayloadsEvidence.v1",
+ "package": "W94-01 — Stop-family payloads",
+ "date": "2026-10-18",
+ "question": "Which fields do Stop, SubagentStop and StopFailure carry, and which product fields were invented?",
+ "answer": "Stop carries stop_hook_active and the trimmed last message; SubagentStop adds agent_id, agent_transcript_path and agent_type; StopFailure carries error and the trimmed last message. The product now matches those and no longer sends reason or stop_reason; the optional runtime registries remain unwired.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+  "stopSchema": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "offset": 197403
+  },
+  "subagentStopSchema": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "offset": 198320
+  },
+  "stopFailureSchema": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "offset": 198098
+  },
+  "sharedBuilder": {
+   "offset": 2946104
+  },
+  "stopFailureBuilder": {
+   "symbol": "Gze",
+   "offset": 2945292
+  }
+ },
+ "behavior": {
+  "lastAssistantMessage": "trimmed; omitted when empty",
+  "subagentStop": [
+   "agent_id",
+   "agent_transcript_path",
+   "agent_type"
+  ],
+  "removed": [
+   "reason (SubagentStop)",
+   "stop_reason (StopFailure)"
+  ],
+  "unwired": [
+   "background_tasks",
+   "session_crons"
+  ]
+ },
+ "changes": [
+  {
+   "file": "src/agent.ts",
+   "change": "stop-family payloads",
+   "sha256": "0ac76af6ac090241c297af7f5ca4e7783e94a1808591cdc0757af898699a19b7"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "payload assertions and StopFailure test",
+   "sha256": "1fbc6460725acd7fd5a0ee25afa6e403eb1798d0a6de1d1168b311b5fb69d39d"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W94",
+   "sha256": "317c1817dd7c68f92be7e53ac419ea273795f979c5ba6775384c67414b27004b"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W94",
+   "sha256": "b9561bbce3713ac7a05e22f0b551377911a32c6606bbeaf52888e00ad5275f8d"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W94-01 entry",
+   "sha256": "44a1fd982edfa2b3af043fadfe3024f53a6c060a96480a5d66907c74ea63ce09"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W94-01 S-1..S-7 entry",
+   "sha256": "b69f12a272c21bf9c82119f4c1403efab5dcac873d26eeb58ba11c0652da5062"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "lifecycle": "36/36",
+  "build": "exit 0",
+  "full": "2,123/2,123",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "5ac052d12cdffe3ff800fb621da119918d647ecc46a63c8c3b17b9741412182c"
+ },
+ "residuals": [
+  "background_tasks and session_crons stay omitted until the agent can read the runtime registries.",
+  "Full hook consumers remain C-6 work."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with full consumers."
+}
