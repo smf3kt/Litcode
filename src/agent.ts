@@ -304,7 +304,19 @@ export class Agent {
     if (source === 'startup') await this.hook('Setup', { trigger: 'init' }, signal);
     await this.hook('InstructionsLoaded', { load_reason: 'session_start' }, signal);
     if (this.session.config.childMode) await this.hook('SubagentStart', { agent_id: this.session.id, agent_type: this.session.config.childMode }, signal);
-    const result = await this.hook('SessionStart', { source, model: this.session.config.model }, signal);
+    // Recovered payload (`t7r`, chunk-sfn1dbxq.js [2942449,2942805)) carries the agent type and the
+    // session title in addition to source and model; `vm` resolves the current session's title, which
+    // this runtime records as a `title` event, and yields undefined when none was set.
+    let sessionTitle: string | undefined;
+    for (let i = this.session.events.length - 1; i >= 0; i--) {
+      const event = this.session.events[i]!;
+      if (event.kind === 'title') { sessionTitle = event.title; break; }
+    }
+    const result = await this.hook('SessionStart', {
+      source, model: this.session.config.model,
+      ...(this.session.config.childMode === undefined ? {} : { agent_type: this.session.config.childMode }),
+      ...(sessionTitle === undefined ? {} : { session_title: sessionTitle }),
+    }, signal);
     if (result.blocked) throw new Error(result.reason ?? 'SessionStart hook stopped continuation');
   }
 

@@ -2048,3 +2048,10 @@ and `teammate_name`. The per-task completion trigger stays as the existing
 adaptation; `team_name` has no local source. `agent-lifecycle` 29/29,
 `hooks` 50/50, tsc 0, build 0, full 2,114/2,114, chain 767/767, identity
 `6b50f209…`. [W85 record](ports/W85-task-completed-payload.md).
+
+W86-01 completes the SessionStart payload. `startSession` adds
+`agent_type` for child sessions and `session_title` from the latest recorded
+`title` event, matching `t7r`; a session without a title leaves the field
+unset, as the source's `vm` yields undefined. `agent-lifecycle` 30/30, tsc 0,
+build 0, full 2,115/2,115, chain 767/767, identity `3c77f51d…`.
+[W86 record](ports/W86-session-start-payload.md).
