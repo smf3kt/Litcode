@@ -709,8 +709,13 @@ export class Agent {
               worktree_path: path.join(c.workspace, WORKTREE_DIRECTORY, String((input as { name?: unknown }).name ?? '')),
             }, signal);
           }
-          if (post.updatedToolOutput !== undefined) {
-            result = this.result(call.id, typeof post.updatedToolOutput === 'string' ? post.updatedToolOutput : JSON.stringify(post.updatedToolOutput), result.is_error === true);
+          // `updatedMCPToolOutput` applies only to MCP tools (`Sh`,
+          // chunk-sfn1dbxq.js offset 2233390; this product's MCP tools are the
+          // `mcp__` namespace) and wins over `updatedToolOutput` there.
+          const replacement = call.name.startsWith('mcp__') && post.updatedMCPToolOutput !== undefined
+            ? post.updatedMCPToolOutput : post.updatedToolOutput;
+          if (replacement !== undefined) {
+            result = this.result(call.id, typeof replacement === 'string' ? replacement : JSON.stringify(replacement), result.is_error === true);
             this.session.append({ kind: 'tool_output', result });
             results[results.length - 1] = result;
           }

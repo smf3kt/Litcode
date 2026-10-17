@@ -404,6 +404,8 @@ export type HookResult = {
   permissionDecisionReason?: string;
   updatedPermissions?: unknown[];
   updatedToolOutput?: unknown;
+  /** PostToolUse: replaces the output only when the tool is an MCP tool. */
+  updatedMCPToolOutput?: unknown;
   suppressOutput?: boolean;
   systemMessages?: string[];
   /** Validated terminal side effects, in execution order and independent of text suppression. */
@@ -971,6 +973,10 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   }
   (result.hookSpecificOutput ??= []).push(output);
   if (event === "PostToolUse" && output.updatedToolOutput !== undefined) result.updatedToolOutput = output.updatedToolOutput;
+  // `updatedMCPToolOutput` replaces the output only for MCP tools; the source
+  // gates the yield on its MCP-tool predicate (`Sh`, chunk-sfn1dbxq.js offset
+  // 2233390) and drops rewrites of the account memory server.
+  if (event === "PostToolUse" && output.updatedMCPToolOutput !== undefined) result.updatedMCPToolOutput = output.updatedMCPToolOutput;
   // `sessionTitle` exists only on the SessionStart and UserPromptSubmit output
   // schemas (chunk-n3ykh62m.js offsets 391440 and 391966); the last hook that
   // provides one wins in the recovered consumer loops.

@@ -955,6 +955,22 @@ test("Stop block counter survives interrupted feedback commit and child tool wor
   } finally { session.close(); }
 });
 
+test("PostToolUse updatedMCPToolOutput rewrites only namespaced MCP tools", async () => {
+  const run = async (name: string) => {
+    const root = workspace();
+    const effect = spy(name);
+    const cfg = config(root, [effect.tool], { hooks: { PostToolUse: [{ command: emit({ hookSpecificOutput: { hookEventName: "PostToolUse", updatedMCPToolOutput: "mcp replacement" } }) }] } });
+    const provider = new ScriptedProvider([response([call("one", name, {})], "tool_use"), done()]);
+    const session = Session.open(root, { config: cfg });
+    try {
+      await new Agent(session, provider, [effect.tool]).run("task");
+      return String(resultBatches(session)[0]![0]!.content);
+    } finally { session.close(); }
+  };
+  assert.equal(await run("mcp__fixture__read"), "mcp replacement");
+  assert.equal(await run("mutate"), "original tool output");
+});
+
 test("durable transformed tool_output replays after interruption without rerunning tool or hook", async () => {
   const root = workspace();
   const effect = spy("mutate");
