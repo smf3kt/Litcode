@@ -2637,3 +2637,14 @@ the select-field hook (highlight wrap, pick dispatch with answered-value apply, 
 match, Ctrl+C close/clear), the terminal `ui.select` dispatch, focusableAt, and the controlled-state
 hook. `NFe` itself remains. Focused 14/14, full 2330/2330, tsc 0, build 0, notices 0, identity
 `40f60975…`. [W150 record](ports/W150-above-prompt-select-keys.md).
+
+W151 measured the `NFe` AbovePrompt component closure without changing product code. The body is
+5,856 UTF-16 units at `[456049,461905)` in `chunk-24k7d6mw.js`; its 82 direct references split into
+44 exact seam-ledger hits across twelve existing seams, nine hook bindings, five hand-written host
+seams (`kc`, `Ys`, `c9`, `Kje`, `$pn`), and 24 new bodies totalling 7,604 units in ten modules. A
+flat probe grew from 42 blocks/15,668 units to 58 blocks/19,493 units and then failed to parse:
+`chunk-z6yhgx3x.js [817,867)` declares `var l,d,P,j` while `chunk-76anb6yt.js [664,690)` declares
+`function d` and the hook seam binds `P`, so multi-module bodies cannot share one top-level scope.
+The port is therefore split into W152 (local state, 2,616u), W153 (focus/scroll, 3,096u), W154
+(keybinding/registry, 1,094u), W155 (host glue, 798u), and W156 (`NFe` wiring, 5,856u).
+[W151 record](ports/W151-above-prompt-component.md).
