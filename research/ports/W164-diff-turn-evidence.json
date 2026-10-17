@@ -1,0 +1,69 @@
+{
+  "schema": "W164DiffTurn.v1",
+  "package": "W164-diff-turn",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      {
+        "module": "chunk-twzxjzbk.js",
+        "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+        "length": 29006,
+        "copied": {
+          "blocks": 7,
+          "units": 1271,
+          "ranges": [
+            { "name": "Rt", "range": [17903, 18122], "units": 219, "note": "recognize a diff tool result with a file path and structured patch or created content" },
+            { "name": "St", "range": [18122, 18194], "units": 72, "note": "recognize the create/update result types" },
+            { "name": "Mt", "range": [18194, 18338], "units": 144, "note": "count added and removed hunk lines" },
+            { "name": "Ct", "range": [18338, 18487], "units": 149, "note": "30-character user prompt preview" },
+            { "name": "we", "range": [18487, 18642], "units": 155, "note": "settle turn stats from file rows" },
+            { "name": "ri", "range": [22140, 22184], "units": 44, "note": "wrap a completed turn as a turn source" },
+            { "name": "Ie", "range": [22184, 22672], "units": 488, "note": "turn files and hunks to the dialog diff data shape" }
+          ]
+        },
+        "adapted_not_copied": [
+          { "name": "ne", "range": [18642, 20073], "units": 1431, "note": "React memo/ref hook walking messages into completed turns; adapted to TurnDiffAccumulator" }
+        ]
+      }
+    ],
+    "rewrite": [
+      {
+        "source": "ne React-style memo hook using R/Z render primitives",
+        "reason": "this runtime has no React render loop to host a memo hook",
+        "replacement": "TurnDiffAccumulator keeps the last processed index, turn counter, shrinking-list reset, per-turn settlement and reverse() ordering; it walks only messages added since the previous call"
+      }
+    ]
+  },
+  "product": {
+    "files": [
+      "src/diff-turn-source.ts",
+      "src/diff-turn-source-blocks.json",
+      "src/diff-turn.ts",
+      "test/diff-turn.test.ts"
+    ],
+    "exports": [
+      "TurnDiffAccumulator", "turnToDiffData", "turnSource", "settleTurnStats",
+      "turnPromptPreview", "countTurnHunkLines", "isTurnDiffResult", "isCreatedOrUpdatedResult"
+    ],
+    "notes": [
+      "A create result with an empty structured patch synthesizes one hunk from its content lines, each prefixed with +, at oldStart 0/newStart 1.",
+      "A message list shorter than the last processed index resets the walk.",
+      "The result is newest-first; the same open turn object is reused when it later completes.",
+      "The DiffDialog component, file list/detail rendering and key bindings remain out."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 9, "failed": 0, "file": "test/diff-turn.test.ts", "new": 9 },
+    "full": { "passed": 2489, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": { "declared": 13, "unresolved": 0 }
+  },
+  "identity": {
+    "sha256": "163ac4f3a04365d7b612fcbd4f5d16a44c0d46d0debba72ca51245b005510d39",
+    "inputs": 628,
+    "validation": 220,
+    "build": 433
+  }
+}

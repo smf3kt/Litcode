@@ -1,0 +1,13 @@
+{
+  "imports": [],
+  "exports": ["Rt", "St", "Mt", "Ct", "we", "ri", "Ie"],
+  "blocks": [
+    { "file": "chunk-twzxjzbk.js", "range": [17903, 18122], "note": "Rt: recognize a diff tool result carrying a file path plus a structured patch or created content" },
+    { "file": "chunk-twzxjzbk.js", "range": [18122, 18194], "note": "St: recognize the create/update tool result types" },
+    { "file": "chunk-twzxjzbk.js", "range": [18194, 18338], "note": "Mt: count added and removed hunk lines" },
+    { "file": "chunk-twzxjzbk.js", "range": [18338, 18487], "note": "Ct: 30-character user prompt preview" },
+    { "file": "chunk-twzxjzbk.js", "range": [18487, 18642], "note": "we: settle turn stats from its file rows" },
+    { "file": "chunk-twzxjzbk.js", "range": [22140, 22184], "note": "ri: wrap a completed turn as a turn source" },
+    { "file": "chunk-twzxjzbk.js", "range": [22184, 22672], "note": "Ie: turn files and hunks to the dialog diff data shape" }
+  ]
+}
