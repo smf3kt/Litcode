@@ -2336,3 +2336,15 @@ job registry, snapshot copy, worktree briefing and carry-over counts have no
 local counterpart. Focused 50/50, extended 86/86, tsc 0, build 0, full
 2,177/2,177, chain 768/768, identity `5824092a…`.
 [W120 record](ports/W120-background-fork.md).
+
+W121-01 gives skill inline shell spans an independent durable effect journal. Each span is
+identified by the skill, the authored span index and the SHA-256 of the expanded command; a
+`started` record is fsynced before the spawn and a `finished` or `failed` record follows it.
+A start without a terminal record means the process died after the effect began: the next run of
+that skill reports it once with the local interrupted-effect sentence and acknowledges it with an
+`unknown` record only after the rerun returns, so a failed rerun keeps the warning. Torn trailing
+appends are discarded; complete malformed records and journals over 4 MiB fail closed. The
+recovered source reaches the same ordering through a synthetic tool-use id and the tool runtime;
+local spans have no model tool id, so they use `.agent/skill-effects/<owner>.jsonl` instead.
+Focused 35/35, extended 86/86, tsc 0, build 0, full 2,184/2,184, chain 768/768, identity
+`04147ee3…`. [W121 record](ports/W121-skill-effect-journal.md).

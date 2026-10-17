@@ -1,0 +1,47 @@
+(node:73981) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ a start and its terminal record close the effect without storing the command (11.060583ms)
+✔ a start without a terminal record is unresolved until acknowledged (8.824958ms)
+✔ a torn trailing append is discarded and a malformed complete line fails closed (4.306708ms)
+✔ the owner must be a session id and the journal is bounded (1.784708ms)
+(node:73982) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ plain skills return expanded text and invocation eligibility remains explicit (1.601625ms)
+✔ fork skill agent routing intersects type tools and applies pinned body/model/effort (23.685833ms)
+✔ fork pins model and tools in an isolated child and leaves parent config untouched (18.597709ms)
+✔ fork skill snapshots paired history, drops bound thinking and persists seeds before startup without replay (56.903333ms)
+✔ fork skill failed provider resume retains seed history without replaying parent effects (37.04325ms)
+✔ conversation is ignored by plain and metadata-only skills and absent fork snapshots remain compatible (76.245583ms)
+✔ fork skill rejects unpaired, oversized and over-context snapshots before creating a journal or provider call (15.596375ms)
+✔ skill effort alone forks and sends the pinned effort without changing parent configuration (104.416709ms)
+✔ skills without effort inherit only explicitly configured parent effort (41.38875ms)
+✔ parent schema intersection excludes executor definitions outside the pinned parent tool set (20.952208ms)
+✔ skill command grants restrict inputs and preserve parent deny policy (43.834459ms)
+✔ block-output skill tools enforce parent path deny and skill grants before any file reads (97.018875ms)
+✔ block-output skill tools recheck the actual input rewritten by PreToolUse (75.160667ms)
+✔ scoped tool grants isolate invocation and parent ask prompts once per executed input (32.552084ms)
+✔ inline shell remains literal unless invocation metadata opts into expansion (8.779625ms)
+✔ fenced shell blocks run once and skip spans they already contain (11.485ms)
+✔ inline shell asks without a policy and substitutes once with bounded output (3.461625ms)
+✔ argument and command output directives never create another shell-expansion pass (6.75ms)
+✔ inline command preflight denies later commands before executing any earlier one (0.340291ms)
+✔ inline commands journal a started and a terminal record around every effect (31.021958ms)
+✔ an interrupted command is reported once before the skill runs again (28.945333ms)
+✔ a failed rerun still reports the earlier interrupted command and keeps it unresolved (14.094542ms)
+✔ inline shell output overflow, nonzero exit, timeout and cancellation terminate the command (62.427542ms)
+✔ skill hook overlays are approved, isolated and keep parent hooks in order (37.1695ms)
+✔ synchronous skill async command hooks start in an owned registry and are reaped before session close (483.404084ms)
+✔ skill HTTP hook overlay uses the local configured transport without shell and stays isolated (38.356709ms)
+✔ prompt and agent skill hooks use bounded provider calls without recursive hook dispatch (31.595375ms)
+✔ background skill model hook overlay uses the registry provider and completes before task request (30.293041ms)
+✔ background skills require supplied registry and pin invocation tools and model (18.864625ms)
+✔ background fork skill seeds through trusted execution options in legacy and advanced registries (114.877625ms)
+✔ background command grants are enforced by registry beforeTool without altering executor provenance (30.126209ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1919.26175

@@ -10,6 +10,7 @@ import { AgentRegistry } from '../src/agent-registry.js';
 import type { SkillInfo } from '../src/config.js';
 import type { ModelProvider, ModelRequest } from '../src/provider.js';
 import { executeSkill, skillRequiresExecution, type SkillExecutionOptions } from '../src/skill-runtime.js';
+import { SkillEffectJournal } from '../src/skill-effects.js';
 import { Session } from '../src/session.js';
 import { listSessions } from '../src/sessions.js';
 import { createTools, type ToolDefinition } from '../src/tools.js';
@@ -406,6 +407,50 @@ test('inline command preflight denies later commands before executing any earlie
       requestPermission: async (_tool, input) => ({ decision: (input as { command: string }).command === 'echo denied' ? 'deny' : 'allow' }),
     }), /permission deny/);
     assert.equal(fs.existsSync(marker), false);
+  });
+});
+
+test('inline commands journal a started and a terminal record around every effect', async () => {
+  await fixture(async options => {
+    options.config.allowShell = true; options.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+    const journal = new SkillEffectJournal(options.config.workspace, 'journal-session');
+    assert.equal(await executeSkill(skill({ shell: '/bin/sh', body: '!`printf A` !`printf B`' }), '', { ...options, effectJournal: journal }), 'A B');
+    const records = fs.readFileSync(journal.file, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line) as { phase: string; index: number });
+    assert.deepEqual(records.map(record => [record.phase, record.index]),
+      [['started', 0], ['finished', 0], ['started', 1], ['finished', 1]]);
+    assert.equal(fs.readFileSync(journal.file, 'utf8').includes('printf'), false, 'commands are identified by digest only');
+    assert.deepEqual(journal.unresolved('fixture'), []);
+    await assert.rejects(executeSkill(skill({ shell: '/bin/sh', body: '!`exit 3`' }), '', { ...options, effectJournal: journal }), /exited with 3/);
+    const failed = fs.readFileSync(journal.file, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line) as { phase: string });
+    assert.deepEqual(failed.map(record => record.phase).slice(-2), ['started', 'failed']);
+    assert.deepEqual(journal.unresolved('fixture'), []);
+  });
+});
+
+test('an interrupted command is reported once before the skill runs again', async () => {
+  await fixture(async options => {
+    options.config.allowShell = true; options.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+    const journal = new SkillEffectJournal(options.config.workspace, 'recovery-session');
+    journal.start('fixture', 2, 'touch marker');
+    const recovered = await executeSkill(skill({ shell: '/bin/sh', body: '!`printf ok`' }), '', { ...options, effectJournal: journal });
+    assert.match(recovered, /^\[skill effect recovery: command #2 in "fixture"\] Execution was interrupted after it started\. Its effect is unknown\. Inspect workspace state before deciding whether to repeat it\.\n/);
+    assert.ok(recovered.endsWith('ok'));
+    assert.deepEqual(journal.unresolved('fixture'), [], 'the report is acknowledged after the run');
+    assert.equal(await executeSkill(skill({ shell: '/bin/sh', body: '!`printf ok`' }), '', { ...options, effectJournal: journal }), 'ok');
+  });
+});
+
+test('a failed rerun still reports the earlier interrupted command and keeps it unresolved', async () => {
+  await fixture(async options => {
+    options.config.allowShell = true; options.config.permissions = { mode: 'bypass', allow: [], deny: [] };
+    const journal = new SkillEffectJournal(options.config.workspace, 'failure-session');
+    journal.start('fixture', 1, 'touch marker');
+    await assert.rejects(executeSkill(skill({ shell: '/bin/sh', body: '!`exit 3`' }), '', { ...options, effectJournal: journal }), error => {
+      assert.match(String(error), /command #1 in "fixture"/);
+      assert.match(String(error), /exited with 3/);
+      return true;
+    });
+    assert.equal(journal.unresolved('fixture').length, 1, 'the warning is retried after a failed run');
   });
 });
 

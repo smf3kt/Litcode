@@ -42,6 +42,7 @@ import { createMediaTools } from './media.js';
 import { createPluginTools, pluginConfigSchema, type PluginConfig } from './plugins.js';
 import { createInteractionTools } from './interaction-tools.js';
 import { executeSkill, skillRequiresExecution } from './skill-runtime.js';
+import { SkillEffectJournal } from './skill-effects.js';
 import { WorkflowRegistry, createWorkflowTools } from './workflow.js';
 import { AgentRegistry, createAgentRegistryTools } from './agent-registry.js';
 import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
@@ -636,6 +637,7 @@ export async function createRuntime(
       hookOptions: () => callbackHooks(),
       terminalSequence: childTerminal,
       instructionFiles: childInstructions,
+      effectJournal: new SkillEffectJournal(current.workspace, owner),
     })));
     if (current.features?.notebooks) tools.push(...createNotebookTools());
     if (current.features?.web) tools.push(...createWebTools());
@@ -1084,7 +1086,7 @@ export async function createRuntime(
         return executeSkill(skill, args, { config: current, provider, tools, signal: invocationSignal,
           source: 'user', registry: agentAccessors.get(tools)?.(), requestPermission, conversation, hookOptions: () => callbackHooks(),
           terminalSequence: childTerminalCallbacks.get(tools), instructionFiles: childInstructionCallbacks.get(tools),
-          stopState: () => stopStateForOwner(owner) });
+          stopState: () => stopStateForOwner(owner), effectJournal: new SkillEffectJournal(current.workspace, owner) });
       },
       taskRecords(current) {if (closed) return []; return current.features?.tasks ? readTaskRecords(current.workspace) : [];},
       stopState(owner) { return stopStateForOwner(owner); },
