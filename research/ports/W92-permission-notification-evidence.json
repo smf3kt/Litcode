@@ -1,0 +1,91 @@
+{
+ "schema": "W92PermissionNotificationEvidence.v1",
+ "package": "W92-01 — permission-prompt Notification",
+ "date": "2026-10-18",
+ "question": "When does the recovered build raise Notification for a permission prompt, and did the product raise it anywhere the source does not?",
+ "answer": "It raises after 6000 ms with message and notification_type permission_prompt, cancellable and disabled by CLAUDE_CODE_DISABLE_PERMISSION_PROMPT_NOTIFY_HOOKS. The product now ports that and removes its raise for internal runtime event prompts, which has no source caller.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "permissionTimer": {
+   "module": "extracted-v2/modules/chunk-fyhzvvp0.js",
+   "symbol": "O9n",
+   "offset": 4925
+  },
+  "callSite": {
+   "module": "extracted-v2/modules/chunk-fyhzvvp0.js",
+   "offset": 10393
+  },
+  "delay": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "constant": "aVt",
+   "offset": 2915839,
+   "milliseconds": 6000
+  },
+  "builder": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "S0",
+   "offset": 2941901,
+   "fields": [
+    "message",
+    "title",
+    "notification_type"
+   ]
+  }
+ },
+ "behavior": {
+  "delayMs": 6000,
+  "notificationType": "permission_prompt",
+  "cancellation": "the returned clearTimeout runs when the prompt resolves",
+  "disableFlag": "CLAUDE_CODE_DISABLE_PERMISSION_PROMPT_NOTIFY_HOOKS",
+  "message": "Permission needed to use <tool> (neutral adaptation)",
+  "removed": "the internal runtime event-prompt raise and its queue notification flag"
+ },
+ "changes": [
+  {
+   "file": "src/interactive.ts",
+   "change": "permission notification and runtime raise removal",
+   "sha256": "37debe3ffb21f176a34097a4c72835e2c7d6ce0354250ad97004d5e02000d8bc"
+  },
+  {
+   "file": "test/interactive.test.ts",
+   "change": "timer, cancel and disable-flag test",
+   "sha256": "05e78ce8e5643600e5a63df41efc3978c29b7824265037252b6ec86c1df881ae"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W92",
+   "sha256": "9f0060b46171439d7d4523cf4b731f4e299d46e889356c88b0e2c9814b72abc3"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W92",
+   "sha256": "127055de0b5852b6a509e4847434a533eee6719b57a4396dcb1b4284144b9430"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W92-01 entry",
+   "sha256": "143ce0f3db7aa121ff429b9598c8f3c9695b55ee52f8a267e3520bcda61c414e"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W92-01 S-1..S-7 entry",
+   "sha256": "643f2c9d01b81dd6ceefa82e67f8447aa4fbcef8e82c8a6e6ac71f9116921903"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "interactive": "8/8",
+  "build": "exit 0",
+  "full": "2,121/2,121",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "8ff650c88f8e4edc7547c6d94f884a8df978be457ed4bbc4fa96451fa51a60e8"
+ },
+ "residuals": [
+  "Elicitation response/completion and plugin notification raises remain unported.",
+  "Full hook consumers remain C-6 work."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with full consumers."
+}

@@ -2102,3 +2102,12 @@ per loaded file (`file_path`, `memory_type`, `load_reason`, optional
 file reports `Project`; later eager reasons are not tracked.
 `agent-lifecycle` 34/34, tsc 0, build 0, full 2,120/2,120, chain 767/767,
 identity `87bbcc5c…`. [W91 record](ports/W91-instructions-loaded.md).
+
+W92-01 ports the permission-prompt Notification. While a prompt is pending,
+`notifyPermissionPrompt` arms the source's unref'd six-second timer and
+raises `{message, notification_type: "permission_prompt"}`; an answer cancels
+it and `CLAUDE_CODE_DISABLE_PERMISSION_PROMPT_NOTIFY_HOOKS` suppresses the
+arm. The prior Notification raise for internal runtime event prompts is
+removed because `S0` has no such caller. `interactive` 8/8, tsc 0, build 0,
+full 2,121/2,121, chain 767/767, identity `8ff650c8…`.
+[W92 record](ports/W92-permission-notification.md).

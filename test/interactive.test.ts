@@ -6,7 +6,7 @@ import { Readable, Writable } from 'node:stream';
 import { test } from 'node:test';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, defaultConfig } from '../src/agent.js';
-import { interactiveLoop } from '../src/interactive.js';
+import { interactiveLoop, notifyPermissionPrompt } from '../src/interactive.js';
 import type { ModelProvider } from '../src/provider.js';
 import type { Runtime } from '../src/runtime.js';
 import { Session } from '../src/session.js';
@@ -248,4 +248,26 @@ test('/skills lists skills and /NAME runs a user-invocable skill', async () => {
     assert.match(stderr.value(), /not user-invocable/);
     assert.match(stderr.value(), /Unknown command/);
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('a pending permission prompt notifies after six seconds and can be cancelled', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const emitted: Array<{ message: string; notification_type: string }> = [];
+  const cancel = notifyPermissionPrompt('write_file', payload => emitted.push(payload));
+  t.mock.timers.tick(5_999);
+  assert.equal(emitted.length, 0);
+  t.mock.timers.tick(1);
+  assert.equal(emitted.length, 1);
+  assert.equal(emitted[0]?.message, 'Permission needed to use write_file');
+  assert.equal(emitted[0]?.notification_type, 'permission_prompt');
+  const cancelled = notifyPermissionPrompt('read_file', payload => emitted.push(payload));
+  cancelled();
+  t.mock.timers.tick(6_000);
+  assert.equal(emitted.length, 1);
+  process.env.CLAUDE_CODE_DISABLE_PERMISSION_PROMPT_NOTIFY_HOOKS = '1';
+  try {
+    notifyPermissionPrompt('read_file', payload => emitted.push(payload));
+    t.mock.timers.tick(6_000);
+    assert.equal(emitted.length, 1);
+  } finally { delete process.env.CLAUDE_CODE_DISABLE_PERMISSION_PROMPT_NOTIFY_HOOKS; }
 });
