@@ -1,0 +1,85 @@
+{
+ "schema": "W51WorktreeArchivePickerEvidence.v1",
+ "package": "W51-01 — preserved worktree histories listed and restored by original name",
+ "date": "2026-10-17",
+ "question": "Can preserved worktree histories be browsed and brought back into a usable checkout?",
+ "answer": "Yes. Archives are listed from their session metadata and restored into a fresh owned worktree at the original name, so archived session workspaces remain valid; ambiguous or occupied restores are refused.",
+ "sourcePosition": {
+  "kind": "local extension; archive layout has no recovered body",
+  "evidence": "recovered zPo (chunk-sfn1dbxq.js [1801370,1802540), UTF-8 bytes) reconciles stale state only from provable facts; listSessionDirectory is the existing session reader."
+ },
+ "behavior": {
+  "list": "scan .agent/worktree-history for real <worktree>-<uuid> directories; report name, created, sessions, newest title",
+  "surface": "/worktree-history lists up to 20; /worktree-history restore ARCHIVE accepts an exact name or unique prefix",
+  "restore": "create a fresh owned worktree at the original name, write the W50 durable intent, rename the archive into <checkout>/.agent, clear the intent",
+  "refusal": "occupied name/path/branch, existing checkout .agent, ambiguous selector, or an active worktree session",
+  "rollback": "move the archive back before removing a created checkout; keep the checkout when the move back cannot be proven"
+ },
+ "changes": [
+  {
+   "file": "src/sessions.ts",
+   "change": "extract listSessionDirectory; listSessions delegates",
+   "sha256": "e31b86a6104dbbb349db5d8f29170b093311024516f1f2d3c22730d3cd58fbf4"
+  },
+  {
+   "file": "src/worktree-session.ts",
+   "change": "listWorktreeArchives and restoreWorktreeArchive",
+   "sha256": "0f935d5a2c82aa3fc94701b0baaa19cdb433c3ebbcb847ad0b4bd6cad223be61"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "/worktree-history list/restore handler and help line",
+   "sha256": "d9f5231501fd93a6947475faa5d712789255bb9c8e98d5668bb5ab1325a552dd"
+  },
+  {
+   "file": "test/worktree-session.test.ts",
+   "change": "list/restore case",
+   "sha256": "c942a674c2d4469c74cdf38656d90724a87eb7b0e98bf97c3290349ede655801"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-4 rows record the completed picker",
+   "sha256": "52cf2c49f02ab85953bcfcc373806e2c05fa8b28ba78517440bf8da3400ec5ba"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "worktree relocation row records the picker",
+   "sha256": "11f22736edd350c3872466b61d9a68646d4f9ae7da4275069aebd2f2befc3911"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W51-01 entry",
+   "sha256": "7a01df071269feb901359d084116865dda298ae3bfa0a19efb1ab27659580949"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W51-01 S-1..S-7 entry",
+   "sha256": "cd2f40979d473362e8710916dfff0b9afd5b7970eeec21e2a357a8854418c76b"
+  }
+ ],
+ "tests": {
+  "file": "test/worktree-session.test.ts",
+  "added": "preserved histories are listed and restored to their original name",
+  "result": "5/5 pass; interactive 7/7"
+ },
+ "gates": {
+  "tsc": "exit 0",
+  "worktreeSession": "5/5",
+  "interactive": "7/7",
+  "build": "exit 0",
+  "full": "2,085/2,085",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "smokeSource": "exit 0, locksReleased true",
+  "smokeCompiled": "exit 0, locksReleased true, compiledCLI true",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "436bb75fafcdf546432e9348b2938964fa5899a3867637b952b3f99784185a2d"
+ },
+ "residuals": [
+  "Restore recreates the checkout at HEAD; the removed dirty or committed file state is only recoverable through checkpoints stored in the archive.",
+  "A crash after creating the checkout but before the intent leaves an empty owned worktree; it can be removed with the normal removal path.",
+  "Archives whose original branch still exists cannot be restored until that branch is removed."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-4 continues with the concurrent new-lock race, the capture-correlation crash window and power-loss/GC."
+}

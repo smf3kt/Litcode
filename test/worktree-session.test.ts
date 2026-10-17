@@ -10,7 +10,7 @@ import { test } from "node:test";
 import { defaultConfig } from "../src/agent.js";
 import { Session, fingerprint } from "../src/session.js";
 import { relocateSession } from "../src/workspace-session.js";
-import { recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree } from "../src/worktree-session.js";
+import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree, restoreWorktreeArchive } from "../src/worktree-session.js";
 import { WORKTREE_DIRECTORY } from "../src/worktrees.js";
 
 const fixtureEnv = { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))),
@@ -182,5 +182,34 @@ test("an archive intent left by a power loss is reconciled on the next start", a
     assert.equal(fs.existsSync(completedArchive), true);
     assert.ok(result.warnings.some((warning) => warning.includes("still running")));
     await removeExitedWorktree({ ...config, workspace: checkout, worktreeReturn: root }, true);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test("preserved histories are listed and restored to their original name", async () => {
+  const root = repository();
+  try {
+    const config = { ...defaultConfig(root, []), model: "fixture/worktree" };
+    const entry = await resolveWorktreeEntry(config, "hist");
+    const active = { ...config, workspace: entry.path, worktreeReturn: root };
+    const session = Session.open(entry.path, { config: active });
+    session.append({ kind: "title", title: "preserved fixture" });
+    session.close();
+    const removed = await removeExitedWorktree(active, true), archive = removed.archive!;
+    const listed = listWorktreeArchives(root);
+    assert.equal(listed.length, 1);
+    assert.equal(listed[0]!.name, "hist");
+    assert.equal(listed[0]!.sessions, 1);
+    assert.equal(listed[0]!.title, "preserved fixture");
+    // The archived session metadata names its original workspace, so the original name is required.
+    const replacement = await resolveWorktreeEntry(config, "hist");
+    await assert.rejects(restoreWorktreeArchive(root, path.basename(archive)), /already owned/);
+    await removeExitedWorktree({ ...config, workspace: replacement.path, worktreeReturn: root }, true);
+    const restored = await restoreWorktreeArchive(root, path.basename(archive));
+    assert.equal(restored.name, "hist");
+    assert.equal(restored.path, entry.path);
+    assert.equal(fs.existsSync(archive), false);
+    assert.equal(fs.existsSync(path.join(entry.path, ".agent", path.basename(session.file))), true);
+    assert.deepEqual(listWorktreeArchives(root), []);
+    await removeExitedWorktree({ ...config, workspace: entry.path, worktreeReturn: root }, true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

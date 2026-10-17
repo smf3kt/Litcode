@@ -1,0 +1,17 @@
+(node:1383) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ interactive tasks, compact, fork and clear keep history and release every lock (79.553709ms)
+✔ context and effort commands count paired history and pin the new request effort (66.587375ms)
+✔ thinking commands pin new sessions and preserve paired history for subsequent requests (59.209042ms)
+✔ interactive rewind branches at a completed turn and preserves the original log (59.80825ms)
+✔ interactive clear, fork and exit run SessionEnd and release locks (297.415459ms)
+✔ fork blocks an unfinished turn and copies completed history into an independent log (39.475833ms)
+✔ /skills lists skills and /NAME runs a user-invocable skill (27.224542ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 946.047333

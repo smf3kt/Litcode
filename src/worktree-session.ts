@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import type { SessionConfig } from "./session.js";
+import { listSessionDirectory } from "./sessions.js";
 import { WorktreeManager, WORKTREE_DIRECTORY, type WorktreeInfo } from "./worktrees.js";
 
 export type WorktreeEntry = { path: string; origin: string; name: string; created: boolean };
@@ -98,6 +99,65 @@ export function recoverWorktreeArchives(workspace: string): { recovered: string[
     result.recovered.push(intent.archive);
   }
   return result;
+}
+
+export type WorktreeArchive = { archive: string; name: string; created: string; sessions: number; latest?: string; title?: string };
+const ARCHIVE = /^(.+)-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+/** Reads preserved histories without mutating them. The archive name is `<worktree>-<uuid>`, so the
+ *  original name (and therefore the checkout path a restore can use) is recovered from the name. */
+export function listWorktreeArchives(workspace: string): WorktreeArchive[] {
+  const origin = fs.realpathSync(path.resolve(workspace));
+  const parent = path.join(origin, ".agent", "worktree-history");
+  if (!fs.existsSync(parent)) return [];
+  if (!realDirectory(parent)) throw new Error("Worktree archive directory must be a real directory");
+  const result: WorktreeArchive[] = [];
+  for (const entry of fs.readdirSync(parent).sort()) {
+    const match = ARCHIVE.exec(entry);
+    if (!match) continue;
+    const archive = path.join(parent, entry);
+    if (!realDirectory(archive)) continue;
+    const sessions = listSessionDirectory(archive), stat = fs.lstatSync(archive);
+    result.push({ archive, name: match[1]!, created: stat.mtime.toISOString(), sessions: sessions.length,
+      ...(sessions[0] ? { latest: sessions[0].updated, ...(sessions[0].title === undefined ? {} : { title: sessions[0].title }) } : {}) });
+  }
+  return result.sort((left, right) => right.created.localeCompare(left.created));
+}
+/** Restores an archive into a fresh owned worktree at its original name. Session metadata keeps the
+ *  original workspace path, so the restored name is required rather than chosen. The move reuses
+ *  the archive intent, which makes a crash between checkout creation and the move recoverable. */
+export async function restoreWorktreeArchive(workspace: string, selector: string, signal?: AbortSignal): Promise<{ archive: string; name: string; path: string; sessions: number }> {
+  if (!selector || selector.length > 200) throw new Error("Use a preserved archive name");
+  const origin = fs.realpathSync(path.resolve(workspace));
+  const matches = listWorktreeArchives(origin).filter((item) => path.basename(item.archive) === selector || path.basename(item.archive).startsWith(selector));
+  if (matches.length !== 1) throw new Error(matches.length ? "Archive selector is ambiguous" : "No matching preserved worktree history");
+  const archive = matches[0]!;
+  const manager = new WorktreeManager({ workspace: origin, signal });
+  let created: WorktreeInfo | undefined, intent: string | undefined;
+  let moved = false, restoredBack = false;
+  try {
+    created = await manager.create({ name: archive.name });
+    const checkout = created.path, history = path.join(checkout, ".agent"), parent = path.dirname(archive.archive);
+    if (fs.existsSync(history)) throw new Error("Restored checkout already has session history");
+    const stat = fs.lstatSync(checkout);
+    intent = path.join(parent, `.pending-${randomUUID()}.json`);
+    writeIntent(intent, { version: 1, id: path.basename(intent).slice(8, -5), origin, checkout, history, archive: archive.archive,
+      dev: stat.dev, ino: stat.ino, pid: process.pid, created_at: new Date().toISOString() });
+    fs.renameSync(archive.archive, history);
+    syncDirectory(parent);
+    moved = true;
+    removeIntent(intent); intent = undefined;
+    return { archive: archive.archive, name: archive.name, path: checkout, sessions: archive.sessions };
+  } catch (error) {
+    if (created && moved) {
+      try { fs.renameSync(path.join(created.path, ".agent"), archive.archive); syncDirectory(path.dirname(archive.archive)); restoredBack = true; }
+      catch { /* keep the checkout so the moved history is not deleted */ }
+    }
+    if (created && (!moved || restoredBack)) {
+      try { await manager.remove({ name: created.name!, discard_changes: true }); } catch { /* retained for inspection */ }
+    }
+    if (intent) { try { removeIntent(intent); } catch { /* retained for the next recovery */ } }
+    throw error;
+  } finally { await manager.close(); }
 }
 
 function verifiedCheckout(item: WorktreeInfo, origin: string): string {

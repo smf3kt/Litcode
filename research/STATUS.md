@@ -1829,3 +1829,14 @@ checkout, clears a completed or already-home intent, and retains ambiguous state
 successful removal and an in-process restore both clear their intent. 4/4 worktree-session tests,
 full 2,084/2,084, both smokes pass; identity `6fb4abe8…`.
 [W50 record](ports/W50-worktree-archive-intent.md).
+
+W51-01 lists and restores preserved worktree histories. `listWorktreeArchives` scans
+`.agent/worktree-history` for `<worktree>-<uuid>` directories and reads each as a session
+directory through the extracted `listSessionDirectory`, reporting name, creation time, session
+count and newest title. `/worktree-history` lists up to 20; `/worktree-history restore ARCHIVE`
+accepts an exact name or unique prefix and restores into a fresh owned worktree at the original
+name, because archived session metadata names its original workspace. The restore reuses the W50
+durable intent, moves the archive into `<checkout>/.agent`, and keeps the checkout rather than
+deleting moved history when a rollback cannot be proven. 5/5 worktree-session tests, interactive
+7/7, full 2,085/2,085, both smokes pass; identity `436bb75f…`.
+[W51 record](ports/W51-worktree-archive-picker.md).
