@@ -1,0 +1,3 @@
+2026-10-17T13:40:00Z	package	W69-01 HTML 预览片段门控	Ae [19624,20102) 三条消息与 validateInput [16528,16776) 门控；uPr [98437,98515) 读宿主 questionPreviewFormat；产品以 previewFormat:"html" 承载	分发前逐选项校验；未声明 html 保持不透明；宿主设置存储未移植（记录适配）	interaction-tools 23/23；tsc 0；build 0；全量 2,094/2,094；链 767/767
+2026-10-17T13:42:00Z	decision	W69-01 用显式 previewFormat 选项承载宿主声明	① 本 harness 无 launchOptions 存储与 pPr setter；② 显式选项让门控可离线测试；③ 错误保留源消息形状但按产品统一抛错；④ 不声明 html 时不改变现有预览行为	残余：完整渲染器、格式化宿主、notes/annotations、扩展问题类型	.audit/w69-01-full.txt
+2026-10-17T13:44:00Z	verification	W69-01 验收：interaction-tools 23/23、tsc 0、build 0、2,094/2,094、767/767	整文档/script/style/无标记三类拒绝；合法片段放行且宿主仅调用一次；不透明路径保持原行为	notices 0；索引 75 chunks / 323,525 单位不变；identity dc4f6cce…（inputs f6c114b5…、build 053dd2b2…）

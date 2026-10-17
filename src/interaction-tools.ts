@@ -44,6 +44,12 @@ export interface InteractionToolOptions extends InteractionCallbacks {
   timeoutMs?: number;
   /** Includes the active host callback, even if it ignores cancellation. */
   maxPending?: number;
+  /**
+   * The host's preview format. `"html"` applies the recovered fragment rules:
+   * a preview must contain markup and must not be a full document or carry
+   * script/style tags. Omission leaves previews opaque text.
+   */
+  previewFormat?: 'html';
 }
 
 const text = (max: number) => z.string().min(1).max(max).refine(value => value.trim().length > 0, 'Text must be nonblank');
@@ -121,6 +127,20 @@ function parse<T>(shape: z.ZodType<T>, input: unknown, tool: string): T {
     throw new Error(`${tool}: data exceeds its byte budget`);
   }
   return result.data;
+}
+
+/**
+ * Recovered `Ae`: when the host declares HTML previews, a preview must be a
+ * self-contained fragment — no full document, no script/style, and at least
+ * one markup tag. `undefined` means the preview is opaque text and is not
+ * checked.
+ */
+export function previewFragmentError(preview: string | undefined): string | null {
+  if (preview === undefined) return null;
+  if (/<\s*(html|body|!doctype)\b/i.test(preview)) return 'preview must be an HTML fragment, not a full document (no <html>, <body>, or <!DOCTYPE>)';
+  if (/<\s*(script|style)\b/i.test(preview)) return 'preview must not contain <script> or <style> tags. Use inline styles via the style attribute if needed.';
+  if (!/<[a-z][^>]*>/i.test(preview)) return 'preview must contain HTML (previewFormat is set to "html"). Wrap content in a tag like <div> or <pre>.';
+  return null;
 }
 
 function output(value: unknown, context: ToolContext, tool: string): string {
@@ -218,6 +238,7 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
     throw new Error('Invalid interaction timeout or queue limit');
   }
   const callbacks = { ask: options.ask, plan: options.plan, report: options.report };
+  const previewFormat = options.previewFormat;
   const dispatch = createQueue(timeoutMs, maxPending);
   return [
     {
@@ -254,6 +275,12 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
       async execute(input, context) {
         checkSignal(context.signal);
         const request = parse(askShape, input, 'ask_user_question');
+        if (previewFormat === 'html') {
+          for (const question of request.questions) for (const option of question.options) {
+            const error = previewFragmentError(option.preview);
+            if (error !== null) throw new Error(`ask_user_question: Option "${option.label}" in question "${question.question}": ${error}`);
+          }
+        }
         const ask = callbacks.ask ?? contextCallbacks(context)?.ask;
         if (typeof ask !== 'function') throw new Error('ask_user_question: host ask callback is missing');
         const expected = structuredClone(request);

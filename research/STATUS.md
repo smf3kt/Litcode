@@ -1892,3 +1892,11 @@ identity, JSON transport, richer fields and the extra update operations remain d
 adaptations with the reason recorded. No product code changed; task suites 24/24 and tsc 0. The
 same record corrects the W67 identity to `f8c89d5a…` (the value first recorded predated the final
 build). [W68 record](ports/W68-task-contract.md).
+
+W69-01 ports the recovered HTML preview fragment gate. `Ae` (chunk-ktr9sak2.js UTF-16
+[19624,20102)) rejects a full document, script/style tags and markup-free text with three exact
+messages, gated by the host's `questionPreviewFormat` (`uPr`, chunk-4bw62nzm.js [98437,98515)).
+The product exposes the same gate as `previewFormat: "html"` on the interaction tools and applies
+it to every option preview before dispatch; the host launch-option store is replaced by that
+explicit option, recorded as the local adaptation. Two new cases, interaction-tools 23/23, tsc 0,
+full 2,094/2,094, chain 767/767, identity `dc4f6cce…`. [W69 record](ports/W69-preview-gating.md).
