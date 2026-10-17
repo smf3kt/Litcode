@@ -1,0 +1,36 @@
+(node:61804) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ legacy schemas and JSON stay exact when reciprocal projections are absent or false (86.852ms)
+✔ reciprocal edges derive durable projections and commit graph edits atomically (320.90625ms)
+(node:61805) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ createTaskTools exposes exactly the four task tools with correct flags (0.832541ms)
+✔ create → get → list round-trip with durable fields (22.971208ms)
+✔ the store is durable across a reopen (fresh tool set reads the same data) (23.599375ms)
+✔ the canonical workspace is captured in the closure, not the context (26.530375ms)
+✔ update rejects a missing dependency (27.369208ms)
+✔ update rejects a self dependency (34.795333ms)
+✔ update rejects a dependency cycle (73.1615ms)
+✔ marking in_progress/completed requires every dependency completed (149.06375ms)
+✔ input is validated strictly by zod (24.619292ms)
+✔ task_get rejects an unknown id (0.804208ms)
+✔ metadata shallow-merges and a null value deletes a key (37.170917ms)
+✔ read tools hide metadata._internal and drop completed dependencies (49.621667ms)
+✔ task_list filters by status and caps output (35.403667ms)
+✔ activeForm can be updated (24.414917ms)
+✔ deleted true removes the task and unlinks it from dependents (49.860125ms)
+✔ a pre-aborted signal prevents all effects (0.623791ms)
+✔ an existing lock blocks a mutation and is released on success and failure (31.242ms)
+✔ a symlinked .agent directory is refused without touching the target (0.6635ms)
+✔ a symlinked store file is refused on read (0.867959ms)
+✔ a symlinked lock file is refused (0.725958ms)
+✔ an oversized store file is refused before parsing (3.963542ms)
+✔ mutations leave no temporary files behind (13.759458ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 796.028708

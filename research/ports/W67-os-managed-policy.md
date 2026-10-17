@@ -47,4 +47,4 @@ recorded in W45 is preserved.
 `config` 69/69 including two new cases (base + sorted drop-ins with symlink, hidden/non-JSON/
 directory exclusions and report; missing directory plus a broken document that contributes
 nothing). Settings chain suites 15/15; tsc 0; build 0; full 2,092/2,092; chain 767/767; notices 0;
-source index unchanged; identity `b1c74f0c…`.
+source index unchanged; identity `f8c89d5a…` (the first measurement, `b1c74f0c…`, predated the rebuild that included the added module comment; `f8c89d5a…` is the committed build identity).

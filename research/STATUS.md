@@ -1882,4 +1882,13 @@ name, regular files and symlinks) and reports ignored keys and unreadable docume
 inventing policy. Explicit-file strictness and managed-over-authored precedence are unchanged.
 Remote policy, the plist/registry and WSL tiers, substitutions and the full approval flow remain
 out of scope. tsc 0, config 69/69, settings chains 15/15, full 2,092/2,092, chain 767/767,
-identity `b1c74f0c…`. [W67 record](ports/W67-os-managed-policy.md).
+identity `f8c89d5a…` (corrected after the final build; W68-01 records it). [W67 record](ports/W67-os-managed-policy.md).
+
+W68-01 dispositions the original TaskGet/TaskList contract against the local task store. The
+recovered shapes (`Dr`/`Ur` and their schemas in chunk-tar639dc.js, UTF-16 ranges in the record)
+are compared field by field: the source's visibility rules are already ported (hidden
+`_internal`, completed blockers dropped in List, derived `blocks`, strict DAG), while UUID
+identity, JSON transport, richer fields and the extra update operations remain deliberate
+adaptations with the reason recorded. No product code changed; task suites 24/24 and tsc 0. The
+same record corrects the W67 identity to `f8c89d5a…` (the value first recorded predated the final
+build). [W68 record](ports/W68-task-contract.md).
