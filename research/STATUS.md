@@ -2261,3 +2261,10 @@ for startup via `initialWatchPaths` and for every later start from the return
 value. Focused 63/63, tsc 0, build 0, full 2,150/2,150, chain 767/767,
 identity `ec6093d6…`.
 [W111 record](ports/W111-sessionstart-watch-paths.md).
+
+W112-01 consumes PostToolUse `updatedMCPToolOutput`. The MCP-only rewrite
+applies to `mcp__` tools and wins over `updatedToolOutput` there; other tools
+ignore it. The account memory server guard has no local analogue. Focused
+102/102, tsc 0, build 0, full 2,151/2,151, chain 767/767, identity
+`ecd38624…`.
+[W112 record](ports/W112-updated-mcp-output.md).

@@ -1,0 +1,3 @@
+2026-10-17T21:40:00Z	package	W112-01 updatedMCPToolOutput	schema 394888/395073（chunk-n3ykh62m.js）、消费 2233204、MCP 判定 2233390（chunk-sfn1dbxq.js）	仅PostToolUse；仅mcp__工具；MCP字段优先；账户记忆守卫无对应	hooks/agent-lifecycle 102/102；tsc 0；build 0；全量 2,151/2,151；链 767/767
+2026-10-17T21:42:00Z	decision	W112-01 本地适配	源用Sh判定MCP并守卫账户记忆服务器；本产品用mcp__前缀且无该服务器	非MCP工具忽略updatedMCPToolOutput	.audit/w112-01-full.txt
+2026-10-17T21:44:00Z	verification	W112-01 验收：聚焦 102/102、tsc 0、build 0、2,151/2,151、767/767	MCP工具输出被替换；非MCP保持原输出	notices 0；索引 75 chunks / 323,525 单位不变；identity ecd38624…
