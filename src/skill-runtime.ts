@@ -7,6 +7,7 @@ import { HOOK_EVENTS, flattenHookDefinitions, hooksSchema, type HooksConfig } fr
 import { permissionDecision, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
 import { Session, type SessionConfig } from './session.js';
+import type { SkillEffectJournal } from './skill-effects.js';
 import { capChildOutput, childConfig, createChildHookLifecycle, forkMessages, selectChildTools, resolveChildLaunch, type ChildHookOptions } from './subagents.js';
 import type { ToolDefinition } from './tools.js';
 
@@ -25,6 +26,8 @@ export interface SkillExecutionOptions {
   terminalSequence?: ChildHookOptions['terminalSequence'];
   instructionFiles?: ChildHookOptions['instructionFiles'];
   stopState?: ChildHookOptions['stopState'];
+  /** Durable journal for the body's inline shell spans (see ./skill-effects.ts). */
+  effectJournal?: SkillEffectJournal;
 }
 
 function skillConversation(skill: SkillInfo, options: SkillExecutionOptions): Anthropic.MessageParam[] | undefined {
@@ -161,23 +164,48 @@ async function expandedBody(skill: SkillInfo, args: string, options: SkillExecut
   const commands = skillCommands(body);
   if (!commands.length || (skill.shell === undefined && skill.command === undefined && options.config.features?.skillInlineCommands !== true)) return withArguments;
   const shell = skill.shell ?? '/bin/sh';
+  const expandedCommands = commands.map(entry => expand(entry.command));
   // Preflight every command before any side effect, including later denied commands.
-  for (const entry of commands) {
-    const command = expand(entry.command);
+  for (const command of expandedCommands) {
     if (!grant(skill, commandTool, { command })) throw new Error('Skill command is outside allowed-tools');
     await approve(commandTool, { command }, options, true);
   }
-  let out = ''; let start = 0;
-  for (const entry of commands) {
-    out += expand(body.slice(start, entry.at)) + await shellOutput(expand(entry.command), shell, options);
+  const journal = options.effectJournal;
+  // A started span with no terminal record belongs to a process that died after
+  // the spawn began. Report it exactly once (the terminal `unknown` record is
+  // committed only after this run returns), and never claim the effect did or
+  // did not happen.
+  const pending = journal?.unresolved(skill.name) ?? [];
+  const recovery = pending.map(record =>
+    `[skill effect recovery: command #${record.index} in "${skill.name}"] ` +
+    'Execution was interrupted after it started. Its effect is unknown. Inspect workspace state before deciding whether to repeat it.\n').join('');
+  try {
+    let out = ''; let start = 0;
+    for (const [index, entry] of commands.entries()) {
+      const command = expandedCommands[index]!;
+      const effect = journal?.start(skill.name, index, command);
+      let output: string;
+      try { output = await shellOutput(command, shell, options); }
+      catch (error) {
+        if (effect) journal!.finish(effect, 'failed');
+        throw error;
+      }
+      if (effect) journal!.finish(effect, 'finished');
+      out += expand(body.slice(start, entry.at)) + output;
+      if (Buffer.byteLength(out) > options.config.maxOutputBytes) throw new Error('Expanded skill output byte limit exceeded');
+      start = entry.at + entry.raw.length;
+    }
+    out += expand(body.slice(start));
+    // Append only to instructions; fallback text must never extend a shell command.
+    out += withArguments.slice(expanded.length);
     if (Buffer.byteLength(out) > options.config.maxOutputBytes) throw new Error('Expanded skill output byte limit exceeded');
-    start = entry.at + entry.raw.length;
+    if (journal && pending.length) journal.acknowledge(pending);
+    return recovery + out;
+  } catch (error) {
+    // A failed run still owes the person the warning it had already found.
+    if (recovery) throw new Error(recovery + (error instanceof Error ? error.message : String(error)));
+    throw error;
   }
-  out += expand(body.slice(start));
-  // Append only to instructions; fallback text must never extend a shell command.
-  out += withArguments.slice(expanded.length);
-  if (Buffer.byteLength(out) > options.config.maxOutputBytes) throw new Error('Expanded skill output byte limit exceeded');
-  return out;
 }
 
 function overlayHooks(parent: HooksConfig | undefined, extra: HooksConfig | undefined): HooksConfig | undefined {

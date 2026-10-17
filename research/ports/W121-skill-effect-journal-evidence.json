@@ -1,0 +1,98 @@
+{
+ "schema": "W121SkillEffectJournalEvidence.v1",
+ "package": "W121-01 — Skill inline effect journal",
+ "date": "2026-10-17",
+ "question": "How does this runtime make an interrupted skill inline shell effect recoverable?",
+ "answer": "Each expanded span is journaled by skill, span index and SHA-256 in an append-only per-owner file under .agent/skill-effects. A started record is fsynced before the spawn and a finished or failed record follows it. A start without a terminal record means the process died after the effect began; the next run of that skill reports it once with the local interrupted-effect sentence and acknowledges it with an unknown record only after the rerun returns. Torn trailing appends are discarded, complete malformed records and journals over 4 MiB fail closed.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+  "offsets": [
+   3369204,
+   3370268,
+   3370821,
+   434915
+  ]
+ },
+ "behavior": {
+  "startedBeforeSpawn": true,
+  "terminalAfterReturn": true,
+  "commandTextStored": false,
+  "commandDigest": "sha256",
+  "recoveryReportedOnce": true,
+  "acknowledgeOnlyAfterSuccess": true,
+  "failedRerunKeepsWarning": true,
+  "tornTailDiscarded": true,
+  "malformedRecordFailsClosed": true,
+  "journalLimitBytes": 4194304
+ },
+ "adaptations": [
+  "The source reaches durability through a synthetic tool-use id and the tool runtime; local inline spans have no model tool id, so a dedicated journal file replaces the tool-call pair.",
+  "The owner is the runtime owner; a child runtime created without an owner shares initial.jsonl, so an interrupted child span can conservatively warn a later session in the same workspace.",
+  "The source promptShellHandOff path for denied spans has no local surface and is unchanged.",
+  "A skill re-invocation always runs its body again; the journal only reports the earlier unknown effect."
+ ],
+ "changes": [
+  {
+   "file": "src/skill-effects.ts",
+   "change": "append-only effect journal",
+   "sha256": "a6f3082d5a61ea720ce35de1fb6dce01d64bf6bda19a360c08f01841148872c9"
+  },
+  {
+   "file": "src/skill-runtime.ts",
+   "change": "journal the spans and report interrupted effects",
+   "sha256": "6d3f9eba7298941676c9e8d9f4145a02d26aa322dabc3ffeacb2fc7574013b8d"
+  },
+  {
+   "file": "src/runtime.ts",
+   "change": "construct the per-owner journal at both skill call sites",
+   "sha256": "8d73811a05ba97ef7d4d3ccb126eabc8bd9e5dc658c8abc4c207b9ba3c302a19"
+  },
+  {
+   "file": "test/skill-effects.test.ts",
+   "change": "journal pairing, recovery and bounds tests",
+   "sha256": "25ac326cd30503a6a4fecad25fd889fad9fca8d47fbcd61e21aa45378b24bf53"
+  },
+  {
+   "file": "test/skill-runtime.test.ts",
+   "change": "inline journal and recovery tests",
+   "sha256": "077d99938c867e030fab5bf89fba1f35fc398aebde29604ab79b978350dbe945"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-10 rows record W121",
+   "sha256": "a280ee4c214890356bc37da8e7340e55ea9c0a12cb505ddfc6e9780e1583c1e9"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Skills rows record W121",
+   "sha256": "6af87c00a6794fd642c2f805de156c4d18612033c0ce01b8c3506c51b246b884"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W121-01 entry",
+   "sha256": "cee03be95e5013abafb97781231647363dd8bdb29aa2a63ba80b2cb4ca4a5bfb"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W121-01 S-1..S-7 entry",
+   "sha256": "6a3c0f4922be42929844b262ffccaef6e725f70bea2dc47113ae7c6a1cd2f272"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "35/35 (skill-effects, skill-runtime)",
+  "extended": "86/86",
+  "build": "exit 0",
+  "full": "2,184/2,184",
+  "chain": "768/768",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "04147ee35348cf2faa2764504a790bbaac486305cd8f71ce7fea8b8870f85145"
+ },
+ "residuals": [
+  "C-10 source precedence and dynamic discovery remain open."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-10 continues with source precedence and dynamic discovery."
+}
