@@ -654,6 +654,25 @@ test("SubagentStart additional context reaches the child's first request", async
   } finally { top.close(); }
 });
 
+test("Setup additional context reaches the startup request", async () => {
+  const root = workspace();
+  const hooks = { Setup: [{ command: emit({ hookSpecificOutput: { hookEventName: "Setup", additionalContext: "setup context" } }) }] };
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  const provider = new ScriptedProvider([done()]);
+  try {
+    const agent = new Agent(session, provider, []);
+    await agent.startSession("startup");
+    await agent.run("hello");
+    assert.match(JSON.stringify(provider.requests[0]!.messages), /Hook context:\\nsetup context/);
+  } finally { session.close(); }
+  const otherRoot = workspace();
+  const resumed = Session.open(otherRoot, { config: config(otherRoot, [], { hooks }) });
+  try {
+    await new Agent(resumed, new ScriptedProvider([]), []).startSession("resume");
+    assert.equal(resumed.events.some(event => event.kind === "hook_start" && event.event === "Setup"), false);
+  } finally { resumed.close(); }
+});
+
 test("PostModelSwitch additional context reaches exactly the next request", async () => {
   const root = workspace();
   const hooks = { PostModelSwitch: [{ command: emit({ hookSpecificOutput: { hookEventName: "PostModelSwitch", additionalContext: "model switched context" } }) }] };

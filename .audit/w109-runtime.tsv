@@ -1,0 +1,3 @@
+2026-10-17T20:52:00Z	package	W109-01 Setup additionalContext	schema 392333（chunk-n3ykh62m.js）、GZo 2483675、附件 2484520（chunk-sfn1dbxq.js）	仅startup；resume不raise；exit 2文本随上下文进入首请求	agent-lifecycle 47/47；tsc 0；build 0；全量 2,147/2,147；链 767/767
+2026-10-17T20:54:00Z	decision	W109-01 本地适配	源以hook_additional_context附件进入启动消息列表；本实现以Hook context文本进入首请求	文本等价；不新增附件类型	.audit/w109-01-full.txt
+2026-10-17T20:56:00Z	verification	W109-01 验收：聚焦 47/47、tsc 0、build 0、2,147/2,147、767/767	startup首请求含上下文；resume无Setup事件	notices 0；索引 75 chunks / 323,525 单位不变；identity 45cc6853…

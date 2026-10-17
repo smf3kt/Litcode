@@ -2241,3 +2241,9 @@ staged in the event log and the next request carries it once as
 `Hook context:`; later requests see it only as ordinary history. Focused
 46/46, tsc 0, build 0, full 2,146/2,146, chain 767/767, identity `1e2c779c…`.
 [W108 record](ports/W108-modelswitch-context.md).
+
+W109-01 consumes Setup `additionalContext`. Startup-only Setup results reach
+the first request through the same one-shot hook context scan; a resume start
+does not raise the event. Focused 47/47, tsc 0, build 0, full 2,147/2,147,
+chain 767/767, identity `45cc6853…`.
+[W109 record](ports/W109-setup-context.md).
