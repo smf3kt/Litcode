@@ -2566,3 +2566,18 @@ bounds Raster cells and Image bytes; Box key problems reach `note` without faili
 now exports `QPn`/`eIn`/`tIn`. Focused 12/12, full 2265/2265, tsc 0, notices 0, build 0,
 identity `6960bd86…`.
 [W143 record](ports/W143-engine-tree-validation.md).
+
+W144 wires the engine's render pipeline. `gno` (chunk-n3ykh62m.js [283212,284410)) raises the
+tool record, wraps the budgeted drawing as the `core` handler and dispatches the render argument
+through the hooks chain with the `ui.render` site; a tracked, live request flushes its version
+readers (at most 4000), the answer is copied (`ilt`) and validated (`Eur`), a refusal is recorded
+and answered with the engine sentinel (`Ioe`), and a valid tree goes through the border/key
+transforms, link validation and code-row measure before the descriptor and trace tables are
+written. The final slice also ports the previously missing site: `ga`, `ilt`, the envelope check,
+the component prop table and its ten validators, and the prop-cost helpers (30 nyce blocks,
+4,796 units) beside the 16 n3 blocks (3,392 units). `ls`/`tIt` are reused so the dispatch store
+stays single; the generated pipeline imports the site module first so registration precedes
+`Ito`, and the typed seam installs `runEnginePipeline` as `RenderAnswerHost`. The end-to-end
+probe draws `{type:'engine',ref:1}` with the original input as its descriptor. Focused 34/34,
+full 2273/2273, tsc 0, build 0, notices 0, identity `e6ede94c…`.
+[W144 record](ports/W144-gno-pipeline.md).

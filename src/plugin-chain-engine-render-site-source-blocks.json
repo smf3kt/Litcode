@@ -1,0 +1,342 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        7275,
+        7339
+      ],
+      "units": 64,
+      "bodySha256": "e7424e29ef3c6a32da84a48bce60397d41473420f74c06a9e550259ae5f333ab",
+      "note": "unwrap the dispatch answer"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        44236,
+        44263
+      ],
+      "units": 27,
+      "bodySha256": "792e6149e14582dad9ae778a02a983ae1e8beaea6d7cbfea3ff09896b1a378df",
+      "note": "the permission component"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        44263,
+        44317
+      ],
+      "units": 54,
+      "bodySha256": "4e791d495e13021546afc14731f593f26efed247b74b10df7db08fd7966cf608",
+      "note": "render envelope keys"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        44317,
+        44342
+      ],
+      "units": 25,
+      "bodySha256": "166e0fbf7a59c01328ba0bd715e37768a71ee98e794a48d963eb7df5ac2a687a",
+      "note": "envelope check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        43725,
+        43763
+      ],
+      "units": 38,
+      "bodySha256": "9a9da2a87743be72b8295ad227e2c71a77daa163790cf6dd773b6d835ebbe8b9",
+      "note": "object/null/missing kinds"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        43763,
+        44236
+      ],
+      "units": 473,
+      "bodySha256": "97fd31282ae81812469f306e90d7ab6d02c91cdaa3e28311cad8466e588d7d79",
+      "note": "component prop specs"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        42756,
+        42774
+      ],
+      "units": 18,
+      "bodySha256": "fa398af15993e8835b5fc7964ecc437c000e90ffae50b3b435c3622e26ec808a",
+      "note": "any-kind marker"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        86978,
+        87140
+      ],
+      "units": 162,
+      "bodySha256": "071e9610ea65f201514471aff8dd7b8903033978ab16533ac08e7eee5b9eb2df",
+      "note": "kind name"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        90267,
+        90312
+      ],
+      "units": 45,
+      "bodySha256": "f6f1d44969932bbccbf945aa03a89af15a95d6fa8ab3b561ee6d34110696fc7a",
+      "note": "UserMessage prop names"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        42774,
+        42865
+      ],
+      "units": 91,
+      "bodySha256": "f0260d2d10dc68c504a1bf7037a844a613221bc65bb0235e2b9318da893e804c",
+      "note": "tool call id"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        42865,
+        42925
+      ],
+      "units": 60,
+      "bodySha256": "d4c91ab5493e0ca9aa968b0f6ab7ec2af54dda6995740f43e2dc6e48a8380603",
+      "note": "tool call list"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        43275,
+        43324
+      ],
+      "units": 49,
+      "bodySha256": "c18e5d943a00deb8c6f3e18b7762d2c660d6e66786db723c91648b79d1f03da6",
+      "note": "a prop's character cost"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        5093,
+        5183
+      ],
+      "units": 90,
+      "bodySha256": "b1e6951f924975e78f817564499434210006b4d437dfc18eda8829e1c412ac92",
+      "note": "one character's cost"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        43324,
+        43356
+      ],
+      "units": 32,
+      "bodySha256": "df6c2a62a0164a14c2c3382f00b36b8cf5989b59ba0ce2c075cabdbe21fb0769",
+      "note": "whether a prop grew"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        5322,
+        5363
+      ],
+      "units": 41,
+      "bodySha256": "14cb82e91457836aae9e6a1f6d1c0cd3cf3b1d3641ed1245f0432b568e30dcf2",
+      "note": "escape pattern"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        5411,
+        5457
+      ],
+      "units": 46,
+      "bodySha256": "a9bbbcc6ae8445da8066e1eabf1e8c551e50247ae8f8f736f6beb099df7e61d1",
+      "note": "placeholder pattern"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        5363,
+        5411
+      ],
+      "units": 48,
+      "bodySha256": "6bca6ab7009c963415491289f15b829472db7bd24331b5720b04598d7f5e7097",
+      "note": "lone-surrogate pattern"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        43356,
+        43725
+      ],
+      "units": 369,
+      "bodySha256": "716eada5cd9aee86da1ba2c37161603d8d1e4335909782dba766be5113616518",
+      "note": "prop validator en"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        90312,
+        90596
+      ],
+      "units": 284,
+      "bodySha256": "8f86edd6bc903b21af0be51520fa54361b95fed5caeed5b84e0917c2091d8fd5",
+      "note": "prop validator Tn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        90833,
+        91090
+      ],
+      "units": 257,
+      "bodySha256": "6cc6716400bb4172a58884cc3a02a037e5569678b9a6704a6264d869b393e4e7",
+      "note": "prop validator bn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        89856,
+        90040
+      ],
+      "units": 184,
+      "bodySha256": "c020fa75ea23268208f4dc601ed68cbf3fc5abfc6d85bb8abd7bccf0c1a5f20d",
+      "note": "prop validator hn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        44484,
+        44811
+      ],
+      "units": 327,
+      "bodySha256": "f459a8c006dead04e776692be4d14bfe6494cadc669dbe5db7542b13e24996aa",
+      "note": "prop validator nn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        89441,
+        89656
+      ],
+      "units": 215,
+      "bodySha256": "f0fc9028d1100682041ec700fabd5d8421122d19e4a4c80091d7033fe8202827",
+      "note": "prop validator gn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        89656,
+        89856
+      ],
+      "units": 200,
+      "bodySha256": "11b8ae452d2c7be73b7f7f9d013f1eeb26061519effa64b3c58d26efd89d03b9",
+      "note": "prop validator xn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        90040,
+        90267
+      ],
+      "units": 227,
+      "bodySha256": "a33b84847dd56d9b21747cf3cc65c00742cd21af8244d9e3e5786bfc80c8d086",
+      "note": "prop validator kn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        90596,
+        90833
+      ],
+      "units": 237,
+      "bodySha256": "25f0f769d37b0e7fc79a8f7721aa938bc70d63bc7720d93d9b8548482338e1f0",
+      "note": "prop validator En"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        89170,
+        89441
+      ],
+      "units": 271,
+      "bodySha256": "016d0e2724225541836ad4b2ac4351dd0955189b130758fc2dec909fb76ba33f",
+      "note": "prop validator yn"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        91090,
+        91576
+      ],
+      "units": 486,
+      "bodySha256": "1a34eccffad98f6d7b3cc5dee942c3975a348b440b93a86227a9b586080ebacc",
+      "note": "component props check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        92104,
+        92135
+      ],
+      "units": 31,
+      "bodySha256": "055c3213be5385d5422aecb1e9252468379e7a009ab7a5cc8dad4e9be8f129e0",
+      "note": "site argument check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        93643,
+        93988
+      ],
+      "units": 345,
+      "bodySha256": "01e73169c60fd423f71b4cd10a8950f8c94effc6fedcb621852eb4ee254d5a0f",
+      "note": "the ui.render site descriptor"
+    }
+  ],
+  "missing": []
+}

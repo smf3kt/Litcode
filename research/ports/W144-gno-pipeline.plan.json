@@ -1,0 +1,42 @@
+{
+ "imports": [
+  "import './plugin-chain-engine-render-site.js';",
+  "import { ilt } from './plugin-chain-engine-render-site.js';",
+  "import { MF, SVe, Ioe, s_, renderEventName as vA } from './plugin-chain-render-keys.js';",
+  "import { kFe } from './plugin-chain-leaf-walkers.js';",
+  "import { ls } from './plugin-chain-host-call-source.js';",
+  "import { OL, jf } from './plugin-chain-notify-fold-source.js';",
+  "import { aP } from './plugin-chain-source.js';",
+  "import { P0, aJ } from './plugin-chain-records.js';",
+  "import { bVe, Lur, Vss, cce, CK } from './plugin-chain-terminal.js';",
+  "import { t, zd } from './plugin-chain-host.js';",
+  "import { Nss, qss, Bss, Uss, Wss, Gss, zss, JAe } from './plugin-chain-engine-budget-source.js';",
+  "import { nIn, dno, kur, vur } from './plugin-chain-engine-draw-source.js';",
+  "import { validateDrawnTree as Eur, DIALOG_COMPONENT as B3e } from './plugin-chain-engine-validate.js';",
+  "import { AK, vAt, XPt, FM, BM } from './plugin-chain-press.js';",
+  "import { Ci } from './plugin-chain-notify-store-runtime.js';",
+  "import { RFe } from './plugin-chain-tool-raise-source.js';",
+  "import { sIt, Ge } from './plugin-chain-source.js';",
+  "import { Oe } from './plugin-chain-registry-stores-source.js';",
+  "import { aCe } from './plugin-chain-records.js';"
+ ],
+ "exports": ["gno", "Pto", "AAt", "HD", "Mf", "Ito", "Pb", "jss", "M_", "ki", "I_", "Ai", "Yf", "Gf", "Xf", "uno"],
+ "blocks": [
+  {"file": "chunk-n3ykh62m.js", "needle": "async function gno(", "k": "fn", "note": "the ui.render engine pipeline"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var Pto=", "k": "stmt", "note": "the core handler that wraps the drawing function"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var AAt=", "k": "stmt", "note": "the row metrics store"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var HD=", "k": "stmt", "note": "the drawing instance"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var Mf=", "k": "stmt", "note": "the dispatch lifecycle"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var Ito=", "k": "stmt", "note": "the ui.render site"},
+  {"file": "chunk-n3ykh62m.js", "needle": "function Pb(", "k": "fn", "note": "flush the drawing's version reads"},
+  {"file": "chunk-n3ykh62m.js", "needle": "function jss(", "k": "fn", "note": "note an invalid tree"},
+  {"file": "chunk-n3ykh62m.js", "needle": "function M_(", "k": "fn", "note": "the row metrics store body"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var ki=", "k": "stmt", "note": "client row key"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var I_=", "k": "stmt", "note": "request entry cap"},
+  {"file": "chunk-n3ykh62m.js", "needle": "function Ai(", "k": "fn", "note": "detach an instance's readers"},
+  {"file": "chunk-n3ykh62m.js", "needle": "function Yf(", "k": "fn", "note": "drop an unmounted instance"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var Xf=", "k": "stmt", "note": "reader count cap"},
+  {"file": "chunk-n3ykh62m.js", "range": [273149, 273315], "note": "reset the instance's version reads"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var uno=", "k": "stmt", "note": "invalid tree problem text"}
+ ]
+}

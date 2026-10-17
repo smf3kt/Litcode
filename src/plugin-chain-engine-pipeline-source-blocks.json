@@ -1,0 +1,188 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        283212,
+        284410
+      ],
+      "units": 1198,
+      "bodySha256": "5a6860301a5d71f6be05e58489f99955dbcf0b0c88823128a6c68cfd3a0d8c39",
+      "note": "the ui.render engine pipeline"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        231570,
+        231688
+      ],
+      "units": 118,
+      "bodySha256": "9148ef4ad13115b063ca4a5302f5388699a2a1af7869783ecdc4ad242563c624",
+      "note": "the core handler that wraps the drawing function"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        232412,
+        232444
+      ],
+      "units": 32,
+      "bodySha256": "64609968523e95288051e0e812b098d3551e559b2f16d611fa6ae6ec9758630b",
+      "note": "the row metrics store"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        232444,
+        232604
+      ],
+      "units": 160,
+      "bodySha256": "7cd272b2fb6c9925fa419e4b7f6146b50ee72a251eac13124af23cbdd1a4de20",
+      "note": "the drawing instance"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        232817,
+        232852
+      ],
+      "units": 35,
+      "bodySha256": "3249b75c8e74c8a34e8c88c451992586108c047e98a594e3a2b666d653ff69e3",
+      "note": "the dispatch lifecycle"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        232979,
+        233003
+      ],
+      "units": 24,
+      "bodySha256": "439adff18e5d0f6701792b94fd409db834560bccdb7a2c825a56fae2f3a3ad0b",
+      "note": "the ui.render site"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        276273,
+        276688
+      ],
+      "units": 415,
+      "bodySha256": "da63323c8e974d83da64db775058c15ab937520dbf78cb485b83d66b5467c92e",
+      "note": "flush the drawing's version reads"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        279923,
+        280080
+      ],
+      "units": 157,
+      "bodySha256": "25fde3e1ece864bc1c4df26c802ab2bd82210077426a29d57a73cb1fb46d1685",
+      "note": "note an invalid tree"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        231733,
+        232412
+      ],
+      "units": 679,
+      "bodySha256": "d4cb80d6cefd3538cbd98e6bec84291393da03ecc6b4ef74cedc818ed693ecc8",
+      "note": "the row metrics store body"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        231688,
+        231723
+      ],
+      "units": 35,
+      "bodySha256": "fcfa7b7e90eb64b20819167cf2ba3c8988b2fc81b62840adfba7bff1eae8ff92",
+      "note": "client row key"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        231723,
+        231733
+      ],
+      "units": 10,
+      "bodySha256": "96dcf27cee2eb0bea5e9dd55448087b5d4d3e53654cd01e58ac2fd75a6e1e443",
+      "note": "request entry cap"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        275983,
+        276166
+      ],
+      "units": 183,
+      "bodySha256": "33a408b32f14d392dae0a55db976ed99cf098d8a7707a543190e8e0c702f35de",
+      "note": "detach an instance's readers"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        276166,
+        276261
+      ],
+      "units": 95,
+      "bodySha256": "389f65a05d064d79d57cf493848173c69b35f7f4a060eeeceaa69e56fe99a132",
+      "note": "drop an unmounted instance"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        276261,
+        276273
+      ],
+      "units": 12,
+      "bodySha256": "160c6afe4029598cfee60e20f4197058a6cec503cb8b1cbb0ac90ba11e2033ab",
+      "note": "reader count cap"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        273149,
+        273315
+      ],
+      "units": 166,
+      "bodySha256": "a458f981fef6959dd821c3672a51a5ea0d88be58a2493e8c6373e0f3a6ac34e5",
+      "note": "reset the instance's version reads"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        279850,
+        279923
+      ],
+      "units": 73,
+      "bodySha256": "e609b4c8cada1408a8a019345cf2e180d0372487635816fab5a7e7a1b4f70acf",
+      "note": "invalid tree problem text"
+    }
+  ],
+  "missing": []
+}
