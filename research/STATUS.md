@@ -1819,3 +1819,13 @@ record whose Git work never landed is dropped when its unchanged empty directory
 the branch is absent; anything unverifiable is retained. `list` stays read-only. Two new worktree
 tests, 29/29 worktree, full 2,083/2,083, both smokes pass; identity `92d4ad84…`.
 [W49 record](ports/W49-worktree-reservation.md).
+
+W50-01 makes worktree removal power-loss recoverable. Before renaming the checkout history into
+`.agent/worktree-history`, removal writes and fsyncs a `.pending-<uuid>.json` intent with the
+origin, checkout, history, archive, checkout dev/ino and pid. `recoverWorktreeArchives` runs at
+interactive start and before each removal: it restores an archived history into an unchanged
+checkout, clears a completed or already-home intent, and retains ambiguous states with a warning
+(history and archive both present, changed checkout identity, live owner, invalid paths). A
+successful removal and an in-process restore both clear their intent. 4/4 worktree-session tests,
+full 2,084/2,084, both smokes pass; identity `6fb4abe8…`.
+[W50 record](ports/W50-worktree-archive-intent.md).

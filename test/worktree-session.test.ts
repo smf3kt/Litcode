@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { getEventListeners } from "node:events";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -9,7 +10,7 @@ import { test } from "node:test";
 import { defaultConfig } from "../src/agent.js";
 import { Session, fingerprint } from "../src/session.js";
 import { relocateSession } from "../src/workspace-session.js";
-import { resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree } from "../src/worktree-session.js";
+import { recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree } from "../src/worktree-session.js";
 import { WORKTREE_DIRECTORY } from "../src/worktrees.js";
 
 const fixtureEnv = { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_"))),
@@ -139,5 +140,47 @@ test("exit removal archives unlocked journals, preserves dirty checkout on failu
     assert.equal(result.branchDeleted, true); assert.equal(fs.existsSync(entry.path), false);
     assert.deepEqual(fs.readFileSync(path.join(result.archive!, path.basename(session.file))), before);
     assert.equal(git(root, "branch", "--list", "harness/remove"), "");
+    assert.deepEqual(fs.readdirSync(path.join(root, ".agent", "worktree-history")).filter((name) => name.startsWith(".pending-")), []);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test("an archive intent left by a power loss is reconciled on the next start", async () => {
+  const root = repository();
+  try {
+    const config = { ...defaultConfig(root, []), model: "fixture/worktree" };
+    const entry = await resolveWorktreeEntry(config, "restore");
+    const checkout = entry.path, history = path.join(checkout, ".agent");
+    fs.mkdirSync(history, { recursive: true }); fs.writeFileSync(path.join(history, "marker"), "history");
+    const parent = path.join(root, ".agent", "worktree-history");
+    fs.mkdirSync(parent, { recursive: true });
+    const archive = path.join(parent, `restore-${crypto.randomUUID()}`);
+    fs.renameSync(history, archive);
+    const stat = fs.lstatSync(checkout), dead = spawnSync(process.execPath, ["-e", "0"]).pid!;
+    const intent = (id: string, value: Record<string, unknown>) =>
+      fs.writeFileSync(path.join(parent, `.pending-${id}.json`), JSON.stringify(value));
+    const base = { version: 1, origin: root, checkout, history, archive, dev: stat.dev, ino: stat.ino,
+      created_at: new Date().toISOString() };
+    const pending = crypto.randomUUID();
+    intent(pending, { ...base, id: pending, pid: dead });
+    // A live owner is skipped; a missing checkout means the removal already completed.
+    const live = crypto.randomUUID(), liveArchive = path.join(parent, `live-${crypto.randomUUID()}`);
+    fs.mkdirSync(liveArchive);
+    intent(live, { ...base, id: live, pid: process.pid, checkout: path.join(root, WORKTREE_DIRECTORY, "live"),
+      history: path.join(root, WORKTREE_DIRECTORY, "live", ".agent"), archive: liveArchive });
+    const completed = crypto.randomUUID(), completedArchive = path.join(parent, `done-${crypto.randomUUID()}`);
+    fs.mkdirSync(completedArchive);
+    intent(completed, { ...base, id: completed, pid: dead, checkout: path.join(root, WORKTREE_DIRECTORY, "done"),
+      history: path.join(root, WORKTREE_DIRECTORY, "done", ".agent"), archive: completedArchive });
+    const result = recoverWorktreeArchives(root);
+    assert.deepEqual(result.recovered, [archive]);
+    assert.equal(fs.readFileSync(path.join(history, "marker"), "utf8"), "history");
+    assert.equal(fs.existsSync(archive), false);
+    assert.equal(fs.existsSync(path.join(parent, `.pending-${pending}.json`)), false);
+    assert.equal(fs.existsSync(path.join(parent, `.pending-${live}.json`)), true);
+    assert.equal(fs.existsSync(liveArchive), true);
+    assert.equal(fs.existsSync(path.join(parent, `.pending-${completed}.json`)), false);
+    assert.equal(fs.existsSync(completedArchive), true);
+    assert.ok(result.warnings.some((warning) => warning.includes("still running")));
+    await removeExitedWorktree({ ...config, workspace: checkout, worktreeReturn: root }, true);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
