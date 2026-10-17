@@ -1,0 +1,101 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    },
+    {
+      "module": "chunk-rwv4cv93.js",
+      "sha256": "023846209f55eae2677fb05ee2c565c76872a820cbc13dd47ddf64934afbf6e1"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1657226,
+        1657289
+      ],
+      "units": 63,
+      "bodySha256": "97ee7960df45ee575f190902c79e1887dd68991efa0c7eae14dc3d31c2ea1a41",
+      "note": "Uwe: a file path sanitized and collapsed to one line for the detail header"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1657326,
+        1657515
+      ],
+      "units": 189,
+      "bodySha256": "7991ff6a5f231e6cee08e223fda7d679e4d4ec642c46545f59324f9b6ddb3592",
+      "note": "Sj: the parenthesized dim badge, hidden when its when prop is false"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1657515,
+        1657527
+      ],
+      "units": 12,
+      "bodySha256": "aad2b4b85f40ead59d5c3b4142a314cb3be533e4cc8db6b441639980207646fb",
+      "note": "ypt: the 1 MB file read limit"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1657527,
+        1661848
+      ],
+      "units": 4321,
+      "bodySha256": "4c8536f6f4104f51f20370a0db80257185f5e4702a2b6d192e2e9e44d61fa4fa",
+      "note": "pBe: the diff dialog detail view, one file's header, divider, hunks, and state notes"
+    },
+    {
+      "module": "chunk-rwv4cv93.js",
+      "sha256": "023846209f55eae2677fb05ee2c565c76872a820cbc13dd47ddf64934afbf6e1",
+      "range": [
+        902,
+        2099
+      ],
+      "units": 1197,
+      "bodySha256": "3eef08fefa3738e5fb277a220246f748a5872985c3371685c7eef53039926b4d",
+      "note": "Ol: the divider row, optional centered title between repeated characters"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        19763,
+        19829
+      ],
+      "units": 66,
+      "bodySha256": "cf13685ead8ef25ece2f681b7df28bee4fba9feb755f43d1d8a0052ee016fa49",
+      "note": "XN: children, or the fallback when a screen reader is active"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        66071,
+        66113
+      ],
+      "units": 42,
+      "bodySha256": "1eca74506ecca03a84c6c878bdca0507d98a2b2e4faa51a40f4416b751e48e15",
+      "note": "yV: the box drawing character the divider repeats"
+    }
+  ],
+  "missing": []
+}

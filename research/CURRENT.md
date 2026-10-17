@@ -184,6 +184,10 @@
 
 [W167](ports/W167-key-hints.md)接通 diff 对话框的键位提示：复制 **8 块 2,109 单位**（chunk-6ccen3s8.js `je`/`de`/`E1` 645u、`A9t` 176u、`Ke` 150u、`V` 133u、`eLe` 129u；chunk-z3f0m1q8.js `ma` 230u；chunk-nh8hd3rr.js `pt` 244u；chunk-fz2251t0.js `y`/`C`/`Se` 402u）。`ma` 从 `Lc().bindings` 按动作+上下文取和弦：后出现的同上下文同和弦绑定遮蔽先前动作（返回空串），未绑定返回 fallback 并经 `vot` 只报一次 `action_not_found`/`no_context`；`E1` 把键记录数组用空格连接（`alt`/`meta` 别名、已知键名与方向箭头）。`pt` 把结果显示为 W166 和弦提示；`Se` 过滤空子项、用暗色 ` · ` 连接并以 fragment 分组，全空返回 null。React 侧新增来源符号 `fragment`、`earlyReturn`、`Children`、`isValidElement` 宿主导出。`Mr` 仍待动画子系统（`ia`/`HIe`/`bg`）。聚焦 8/8、全量 2509/2509、tsc 0、build 0、notices 0、扫描 declared 39/unresolved 0，身份 `fd02b3a0…`。
 
+## W168 diff 明细视图（C-2 diff 第八片）（2026-10-18）
+
+[W168](ports/W168-detail-view.md)接通 diff 对话框的单文件明细：复制 **8 块 11,770 单位**（明细源 7 块 5,890u：chunk-24k7d6mw.js `Uwe` 63u、`Sj` 189u、`ypt` 12u、`pBe` 4,321u；chunk-rwv4cv93.js `Ol` 1,197u；chunk-1r9zp6s1.js `XN` 66u；chunk-3cynezh1.js `yV` 42u；清洗闭包 chunk-9f9hx2aq.js `__e` 5,880u）。`pBe` 按 restricted→untracked→binary→large→正常 的顺序渲染标题、分隔行与状态注记；正常分支经 `resolve(cwd,filePath)` 与 1 MB 上限读取文件，首个行与全文交给逐 hunk 的 `H4`，空 hunks 给 `No diff content`，截断给徽标与页脚；读取失败或超限退化为 `firstLine:null`。`Uwe` 清洗路径并折叠空白；`Ol` 重复 `─` 并居中标题；`XN` 在读屏关闭时返回子项。宿主适配：`r8e` 的 Bun `fs.readBoundedSync` 模板内建改为 Node 有界读取（保留打开标志/常规文件检查/分块与超限拒绝），`Ht` 因仅保留本地功能恒为 false。`Mr`、对话框框架 `_e`、页签、列表与 `si` 接线仍待。聚焦 12/12、全量 2521/2521、tsc 0、build 0、notices 0、扫描明细 declared 79/unresolved 0、清洗 70/0，身份 `881169c5…`。
+
 ## 待完成清单
 
 本清单为当前唯一待办入口，取代下方按时间累积的历史排程表（那张表保留原证据，供追溯，不再作为排程依据）。每条都指回来源，来源是实测结论，不是计划。

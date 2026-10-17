@@ -2907,3 +2907,19 @@ the source fragment and early-return symbols, `Children` and `isValidElement`. T
 spinner `Mr` still waits on the animation subsystem. Focused 8/8, full 2509/2509, tsc 0,
 build 0, notices 0, scan declared 39 / unresolved 0, identity `fd02b3a0…`.
 [W167 record](ports/W167-key-hints.md).
+
+W168 added the DiffDialog single-file detail view (8 copied blocks, 11,770 UTF-16 units: 7 detail
+blocks at 5,890 units plus the `__e` sanitizer closure at 5,880). `pBe` takes the terminal columns
+and project cwd, cleans the path through `Uwe`, and renders restricted, untracked, binary, large
+and normal files in that order. Only a readable local file is read, through `resolve(cwd, path)`
+and a 1 MB bound; the first line and full content go to one `H4` per hunk, an empty hunk list
+renders `No diff content`, and a truncated file adds the `(truncated)` badge and the truncation
+footer. A failed or oversized read degrades to `firstLine: null`. `Ol` repeats `─` and centers a
+title between equal runs; `XN` falls back under a screen reader; `Sj` renders the dim parenthesized
+badge. `__e` removes control, bidi, zero-width and selector characters and reports counts by
+class. Host bindings: `readFileBounded` replaces the Bun `fs.readBoundedSync` template builtin,
+keeping the open flags, regular-file check, 8192-byte reads and over-limit refusal; `isRemoteSession`
+answers false because the product keeps local features only. The spinner `Mr`, dialog frame `_e`,
+tabs, list and `si` wiring remain out. Focused 12/12, full 2521/2521, tsc 0, build 0, notices 0,
+scan detail declared 79 / unresolved 0 and sanitize 70 / unresolved 0, identity `881169c5…`.
+[W168 record](ports/W168-detail-view.md).
