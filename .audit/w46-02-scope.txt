@@ -1,0 +1,12 @@
+(node:31139) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ source picker scans scopes lazily, cycles everywhere/session/project, caps by counted units and ranks exact before fuzzy (122.800291ms)
+✔ picker and prompt-line search close their readers and releases bind before rebind, close and pending exit (82.981417ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 523.188542

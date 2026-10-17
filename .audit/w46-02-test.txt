@@ -1,0 +1,21 @@
+(node:31236) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ source picker scans scopes lazily, cycles everywhere/session/project, caps by counted units and ranks exact before fuzzy (121.302709ms)
+✔ picker and prompt-line search close their readers and releases bind before rebind, close and pending exit (80.776834ms)
+(node:31237) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ the TUI-bound frame
+  ✔ draws the title, the windowed rows and the hint row (7.963708ms)
+  ✔ draws the first rows in source order for a down direction (1.352958ms)
+  ✔ draws the empty state when no row is visible (1.560292ms)
+  ✔ reads the query and cursor from the host search seam (0.89625ms)
+  ✔ keeps the frame height inside the supplied terminal rows (0.821625ms)
+✔ the TUI-bound frame (13.014166ms)
+ℹ tests 7
+ℹ suites 1
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 787.027583

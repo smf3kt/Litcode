@@ -9,6 +9,7 @@ import { en } from './tui-react-runtime.js';
 import { jsx } from './tui-jsx.js';
 import { s, n } from './tui-base-components.js';
 import { cellWidth } from './terminal.js';
+import { setFrameSize, setSearchInputHook } from './tui-scope-picker-frame-tui-host.js';
 import type { InputHistoryEntry, InputHistoryTimestampedEntry } from './tui-input-history.js';
 
 export type PickerScope = 'session' | 'project' | 'everywhere';
@@ -303,6 +304,15 @@ export class ScopePicker {
   private frameElement(): unknown {
     const state = this.last;
     const scope = (state.scope ?? 'everywhere') as PickerScope;
+    // The recovered frame reads the terminal size and the search state through host seams; the
+    // picker supplies both before the host render mounts the frame.
+    setFrameSize({ columns: this.columns, rows: this.rows });
+    setSearchInputHook(() => ({
+      query: this.filterQuery,
+      cursorOffset: this.queryCursor,
+      handleKeyDown: () => {},
+      handlePaste: () => {},
+    }));
     return scopePickerFramePropsFor(this.source, {
       scope, status: state.status, label: state.items.length.toLocaleString(), query: state.query,
       text: '',

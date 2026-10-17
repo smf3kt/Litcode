@@ -48,3 +48,26 @@ scan declared 145 / unresolved 0, notices 0, chain family 767/767, full 2,068/2,
 chunks / 323,525 units (3.0%), identity `ea5a3a68…`.
 
 Next: mount this frame in the product picker (C-2a integration) and rerun the picker entry tests.
+
+## W46-02 mounted the frame in the product TUI (2026-10-17)
+
+The same six blocks are generated a second time against the product runtime:
+`tui-scope-picker-frame-tui-source.ts` imports hooks from `tui-react-runtime.js`, elements from
+`tui-jsx.js`, and Box/Text plus the host seam from `tui-scope-picker-frame-tui-host.ts`.
+
+Host seams: `w`/`b` keep the compiler memo cache in one `useMemo` slot per call site with the React
+sentinel; `ke` returns the picker's current column/row budget; `Qc` and `nt` are focus and
+declare-cursor contexts; `_y` is injectable and the picker injects its query and caret before each
+host render; `aS` is the 300ms stray-click guard. The visual primitives (`z`, `Se`, `es`, `rS`,
+`_C`) draw with Box/Text and drop interaction props, because the document renderer's tree has no
+focus manager and the picker routes keys itself. The hint row uses compact labels (`Enter select`,
+`Esc cancel`, `Ctrl+S scope`, and `↕` for movement) so it fits a 40-column projection.
+
+The picker integration: `pickerFrameProps` now calls the recovered frame with the source consumer's
+props (draft query, scope reset key, `select` action, scope hint), and `ScopePicker.frameElement`
+sets the frame size and the search hook before the host render. The preview height follows the row
+budget (`min(8, rows - 5)`) so a ten-row projection keeps the hint row.
+
+Verified: `test/tui-scope-picker-frame-tui.test.ts` 5/5, `test/scope-picker.test.ts` 2/2, full
+2,073/2,073, chain 767/767, tsc 0, both generated copies unresolved 0, notices 0, identity
+`6e8c48df…`.
