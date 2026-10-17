@@ -851,3 +851,11 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The width reserves the chrome.** `max(12, columns - width(label) - width(hint))`, with a mounted `ddn` number replacing the terminal width.
 - [x] **The editor is a host token.** `wr` is drawn with one fixed prop set; its 3,638-unit shell subsystem stays outside the site layer.
 - [x] **Sweep.** tsc 0, copy `declared 33 / unresolved 0`, notices 0, new suite 11/11, chain family 667/667, full 1,943/1,943, index 67 chunks / 295,276 units, identity `5d48dc6d…`.
+
+## W45-83 acceptance (2026-10-17)
+
+- [x] **The hover group is ported.** The store accessor, the count adjuster, the member handle, the key/override helpers, the scope context, the resolver, the two components and the selector hook are copied.
+- [x] **The group is a count.** Members count in and out by key and a member holds one group at a time; the key is plugin and scope.
+- [x] **The scope provider is the source's.** `qt` carries `Provider` pointing at the context itself, so `$t` builds the source element; values still come from the render's contexts.
+- [x] **Overrides resolve group-then-scope.** A grouped site follows its group, an ungrouped one the enclosing scope, and every color is normalized through the named-color table.
+- [x] **Sweep.** tsc 0, copy `declared 43 / unresolved 0`, notices 0, new suite 10/10, chain family 677/677, full 1,953/1,953, index 68 chunks / 297,516 units, identity `92f69502…`.
