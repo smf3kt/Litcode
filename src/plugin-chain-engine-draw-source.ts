@@ -35,4 +35,4 @@ function tIn(e,n){if(!ZAe(e))return`is ${typeof e==="string"?"blank":e===void 0?
 function ino(e){if(/[^!-~]/.test(e))return"holds a character outside printable ASCII";if(!URL.canParse(e))return"is not a URL";let{protocol:n,hostname:r,username:s,password:h,href:y}=new URL(e);if(!(n==="https:"||n==="http:"&&r==="localhost"))return"is not https: (or http://localhost)";if(s!==""||h!=="")return"carries credentials (user@host)";if(e.includes("@"))return"holds a raw @";let w=e.replace(/^(https?:\/\/[^/?#]+)(?=[?#]|$)/,"$1/");return y===e||y===w?void 0:`is not in canonical form (${y})`}
 
 
-export { nIn, dno, kur, vur };
+export { nIn, dno, kur, vur, QPn, eIn, tIn };

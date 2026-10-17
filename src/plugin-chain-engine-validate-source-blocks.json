@@ -1,0 +1,236 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        262627,
+        266967
+      ],
+      "units": 4340,
+      "bodySha256": "c0bb5ccd0f238ef82d62ddea605d179c93775602e26c944d9790e62fda4fdaf7",
+      "note": "tree validation"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        239381,
+        239459
+      ],
+      "units": 78,
+      "bodySha256": "46d8d9bb00bc14199d24988e25c9e7a4d326ff52dce942b11a8402a36e793fcd",
+      "note": "which field makes a value a node"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        239033,
+        239044
+      ],
+      "units": 11,
+      "bodySha256": "bcc32c96bfadccefd5ab5c883aeea661b83d92beb37d4a17c997f64d35d8ce27",
+      "note": "hover scope name limit"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        239044,
+        239321
+      ],
+      "units": 277,
+      "bodySha256": "96dd1e1b290677a04c36da7e6cbb256ef56b838330c26c3f9666eb57a49146ae",
+      "note": "hover scope validation"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        235650,
+        235711
+      ],
+      "units": 61,
+      "bodySha256": "f61741c3bec5d19c871a6bfa9e189d9e85005d56dc9bcbeaee297db81c7d6bb4",
+      "note": "a plugin origin check"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        239321,
+        239381
+      ],
+      "units": 60,
+      "bodySha256": "6e9c3a365a1318355497ff003dbfdbfd9b49b87d4e1b76ee7d708d8fa26514c1",
+      "note": "the fields $to reads"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        238438,
+        238618
+      ],
+      "units": 180,
+      "bodySha256": "6355b13b43dfa7a4c922a162eeaec714bbb9fa58265f79b612ce00dae7629a7a",
+      "note": "block/inline element table"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        246804,
+        246937
+      ],
+      "units": 133,
+      "bodySha256": "73ea85a619379d6fcedac451fac5f9948b778c62fd8c566b4043d7bf77cbfe8f",
+      "note": "elements that take no children"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        246937,
+        246992
+      ],
+      "units": 55,
+      "bodySha256": "7572bacbf1663e34a3f41c87a00440a995abd9221a4ed7c52ba6422b47bce54d",
+      "note": "element-name check"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        260971,
+        260987
+      ],
+      "units": 16,
+      "bodySha256": "1470382a07da80543a78a60603f8077c3cae6733a3dabce7a7c3f2631ffa6494",
+      "note": "hover text limit"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        260987,
+        261002
+      ],
+      "units": 15,
+      "bodySha256": "8b3fd1584ea80a92da0698495cf2fd7f58d35a40a948c96f491aeff8f4743431",
+      "note": "text budget limit"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        239459,
+        241244
+      ],
+      "units": 1785,
+      "bodySha256": "898a0b3b429f909056eee3517564478e6cbe006d0e4e67e443fd3f7d9a1a6337",
+      "note": "hover, group and client validation"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2198,
+        2208
+      ],
+      "units": 10,
+      "bodySha256": "4bf9efa7b8001307c452b68e5985351096480cb1561566165822f1631e1facd6",
+      "note": "minimum gap"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        3407,
+        4004
+      ],
+      "units": 597,
+      "bodySha256": "eeecd0348a2ad961285fcffa1b7036dc4c280a8e7497f414bbe2f94b5a503913",
+      "note": "allowed props per element"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        4075,
+        4140
+      ],
+      "units": 65,
+      "bodySha256": "b83de0eeffd56747da916140b564b1e5cad884fa3809d1591ab45a50dda72c0f",
+      "note": "display/overflow/position props"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2288,
+        2523
+      ],
+      "units": 235,
+      "bodySha256": "6724150ffebb4879277fb30a909caa4cdb1ee7a0a8a1e29fd09054ecb4c2def7",
+      "note": "background/border props per element"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        4987,
+        5093
+      ],
+      "units": 106,
+      "bodySha256": "a6e29302f053931256a710dc8092a1e8e4c7b085e410a28d5a589f841b6658e4",
+      "note": "spacing defaults"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        5990,
+        6016
+      ],
+      "units": 26,
+      "bodySha256": "a20dfdbcb12a1140608bd2eb9a76dc6cd5098e877bb57bfaea5e27d4220992dc",
+      "note": "the client component sentinel"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        38157,
+        38216
+      ],
+      "units": 59,
+      "bodySha256": "b269e637c894e10f55a53c46d0a0382aabe7cade529bd8ad2cab1c0632fc6c01",
+      "note": "nonnegative integer check"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        84644,
+        84984
+      ],
+      "units": 340,
+      "bodySha256": "9b527c030d5c501d4bf64a9bd38ab572aa12a0220895f3dd034aa93996b532b4",
+      "note": "element names per surface"
+    }
+  ],
+  "missing": []
+}

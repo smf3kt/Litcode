@@ -1,0 +1,37 @@
+{
+ "imports": [
+  "import { AFe, ESe, cN, oQt, olt, sQt } from './plugin-chain-style-props.js';",
+  "import { L, $A } from './plugin-chain-source.js';",
+  "import { ZAe } from './plugin-chain-site-leaves.js';",
+  "import { IL } from './plugin-chain-raster-sites.js';",
+  "import { Mrt, X4t } from './plugin-chain-walker.js';",
+  "import { IAt, ano, kFe, lQt, ono, tno } from './plugin-chain-leaf-walkers.js';",
+  "import { sno } from './plugin-chain-leaves.js';",
+  "import { QT } from './plugin-chain-ui-blit-source.js';",
+  "import { B_ } from './plugin-chain-image-model.js';",
+  "import { QPn, eIn, tIn } from './plugin-chain-engine-draw-source.js';"
+ ],
+ "exports": ["Eur", "lur", "$to", "Fto", "Drt", "Wto", "dur", "hur", "yur", "aur", "Nto", "EVe", "Ago", "Pgo", "Igo", "Tgo", "Ogo", "B3e", "h$", "w3"],
+ "blocks": [
+  {"file": "chunk-n3ykh62m.js", "needle": "function Eur(", "k": "fn", "note": "tree validation"},
+  {"file": "chunk-n3ykh62m.js", "needle": "function $to(", "k": "fn", "note": "which field makes a value a node"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var aur=", "k": "stmt", "note": "hover scope name limit"},
+  {"file": "chunk-n3ykh62m.js", "needle": "function Nto(", "k": "fn", "note": "hover scope validation"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var EVe=", "k": "stmt", "note": "a plugin origin check"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var Fto=", "k": "stmt", "note": "the fields $to reads"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var Drt=", "k": "stmt", "note": "block/inline element table"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var Wto=", "k": "stmt", "note": "elements that take no children"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var dur=", "k": "stmt", "note": "element-name check"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var hur=", "k": "stmt", "note": "hover text limit"},
+  {"file": "chunk-n3ykh62m.js", "needle": "var yur=", "k": "stmt", "note": "text budget limit"},
+  {"file": "chunk-n3ykh62m.js", "needle": "function lur(", "k": "fn", "note": "hover, group and client validation"},
+  {"file": "chunk-nyce03br.js", "needle": "var Ago=", "k": "stmt", "note": "minimum gap"},
+  {"file": "chunk-nyce03br.js", "needle": "var Pgo=", "k": "stmt", "note": "allowed props per element"},
+  {"file": "chunk-nyce03br.js", "needle": "var Igo=", "k": "stmt", "note": "display/overflow/position props"},
+  {"file": "chunk-nyce03br.js", "needle": "var Tgo=", "k": "stmt", "note": "background/border props per element"},
+  {"file": "chunk-nyce03br.js", "needle": "var Ogo=", "k": "stmt", "note": "spacing defaults"},
+  {"file": "chunk-nyce03br.js", "needle": "var B3e=", "k": "stmt", "note": "the client component sentinel"},
+  {"file": "chunk-nyce03br.js", "needle": "var h$=", "k": "stmt", "note": "nonnegative integer check"},
+  {"file": "chunk-nyce03br.js", "needle": "var w3=", "k": "stmt", "note": "element names per surface"}
+ ]
+}
