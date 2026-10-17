@@ -1,0 +1,50 @@
+{
+ "schema": "W149AbovePromptSelectEvidence.v1",
+ "package": "W149-01 — AbovePrompt field/select state layer",
+ "date": "2026-10-18",
+ "question": "Which per-site stores and terminal dispatch does the AbovePrompt select keyboard depend on, and what are their source semantics?",
+ "answer": "Eight blocks (491 units) carry the field/select state layer: three single-slot stores keyed per site (field texts, picked values, site generations), the `${plugin}\\0${element}` site key, a generation read defaulting to 0, a map-copy helper that removes keys, a forget helper that clears one site's texts and picked value while bumping its generation, and the ui.input terminal dispatch. The names are the source export table's: fieldTexts, pickedValues, siteGenerations, siteKey, siteGeneration, withoutKeys, forgetSiteFields, inputFromTerminal. The select keyboard itself (C0/nK/uK/lK) remains for the component slice.",
+ "sourcePosition": {
+  "blocks": [
+   {"module": "extracted-v2/modules/chunk-tvdq3hrk.js", "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5", "range": [2954, 2990], "units": 36, "bodySha256": "c6d1ce98de6ab8069070f8a0fbdb79ee20affd4b8dd41bda8ab32cf14cbd8776", "symbol": "A5t", "publicName": "fieldTexts"},
+   {"module": "extracted-v2/modules/chunk-tvdq3hrk.js", "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5", "range": [2990, 3026], "units": 36, "bodySha256": "404c586a16c9288d43ed6b5f9cad835da9819ffe5540cbf054fe86acdd7ece4b", "symbol": "C5t", "publicName": "pickedValues"},
+   {"module": "extracted-v2/modules/chunk-tvdq3hrk.js", "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5", "range": [3026, 3062], "units": 36, "bodySha256": "3e21d94983d677181b78c9004ec850c4fb355819b833c4d124e048d53c3a0eac", "symbol": "T5t", "publicName": "siteGenerations"},
+   {"module": "extracted-v2/modules/chunk-tvdq3hrk.js", "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5", "range": [3062, 3092], "units": 30, "bodySha256": "9a245126dd02f499d633c1e91d58cb122571bb6868cfdc0c0d7aaaf973092250", "symbol": "qAt", "publicName": "siteKey"},
+   {"module": "extracted-v2/modules/chunk-tvdq3hrk.js", "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5", "range": [3092, 3145], "units": 53, "bodySha256": "465559e19353491f0c78f421c56f87500314fdb8d04af168952a667aecf32411", "symbol": "KAt", "publicName": "siteGeneration"},
+   {"module": "extracted-v2/modules/chunk-tvdq3hrk.js", "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5", "range": [3145, 3216], "units": 71, "bodySha256": "404ba177f36534acf28562e5c66e59232372a84ce6f7190d932cbde3149e840f", "symbol": "Xrt", "publicName": "withoutKeys"},
+   {"module": "extracted-v2/modules/chunk-tvdq3hrk.js", "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5", "range": [3216, 3373], "units": 157, "bodySha256": "403928f4482d1ab5a132296f57753c7f63e7dd14e6a780e7c02e60fe9b8f5e5f", "symbol": "mro", "publicName": "forgetSiteFields"},
+   {"module": "extracted-v2/modules/chunk-kjfwbh4w.js", "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858", "range": [45567, 45639], "units": 72, "bodySha256": "73cdfcb5f27e3ab77b2e911adf1afdf0e46c3896e84ca3c09276d887b8647035", "symbol": "nDr", "publicName": "inputFromTerminal"}
+  ],
+  "totalBlocks": 8,
+  "totalUnits": 491
+ },
+ "behavior": {
+  "stores": "A5t/C5t/T5t are bs() single-slot holders; Ge is the identity memo in this build, so their (e) => e.set(void 0) initializer never runs and they start undefined",
+  "siteKey": "qAt joins plugin and element with a NUL",
+  "siteGeneration": "KAt reads T5t's map at the site key and defaults to 0 when absent",
+  "withoutKeys": "Xrt copies the map, deletes each listed key, and returns the copy; the source map is unchanged",
+  "forgetSiteFields": "mro computes the site key, reads current+1 as the next generation, removes that key from A5t and C5t (an undefined store becomes an empty map), and writes the bumped generation into a new T5t map; R5t (pane close) also calls it as mro(\"Pane\", e)",
+  "inputFromTerminal": "nDr settles Ohe(`ui.input ${plugin}`, UPn({...request, surface:\"terminal\"})): dispatch through the ui.input site for the held element, terminal surface forced, rejection logged and swallowed"
+ },
+ "product": {
+  "files": [
+   "src/plugin-chain-above-prompt-select-source.ts",
+   "src/plugin-chain-above-prompt-select-source-blocks.json",
+   "src/plugin-chain-above-prompt-select.ts",
+   "test/plugin-chain-above-prompt-select.test.ts"
+  ],
+  "generator": "scripts/copy-module-regions.mjs",
+  "plans": ["research/ports/W149-above-prompt-select.plan.json"],
+  "seamExports": ["fieldTexts", "pickedValues", "siteGenerations", "siteKey", "siteGeneration", "withoutKeys", "forgetSiteFields", "inputFromTerminal"],
+  "reusedSeams": ["Ge", "bs", "Ohe", "UPn"],
+  "unresolved": 0
+ },
+ "verification": {
+  "focused": "9/9 (7 new + the two undeclared-scan gates)",
+  "full": "2318/2318",
+  "tsc": 0,
+  "notices": 0,
+  "build": 0,
+  "identity": "61334785e54c04ba44f6d925934077f53e277b6d97ed2d78a87362faa0d3a430"
+ }
+}
