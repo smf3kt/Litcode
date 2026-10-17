@@ -32,7 +32,7 @@
       "file": "cli/print.ts",
       "change": "the three flag-conditional requires, the scheduler block and its `cronScheduler?.stop()` cleanup line deleted; the WORKLOAD_CRON import term went with the only queue item that carried it",
       "sourceSha256": "1e8f87d47d5c476924206e0971dc204391453f708545db44140c2a9520782493",
-      "portSha256": "78b920fed24649c91b45c30772394ad007d12ff7dba305a29c4a6f8d5487950c",
+      "portSha256": "db075d4d5d5e136fb3887c648dd891367b0bbb4191df385bd901a3566735a3d3",
       "coordinateUnit": "utf16-half-open"
     },
     {

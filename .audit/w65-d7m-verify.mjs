@@ -98,7 +98,8 @@ assert.match(
   fs.readFileSync(`${root}/entrypoints/agentSdkTypes.ts`, "utf8"),
   /  bridgeSessionId: string/,
 )
-assert.equal(fs.existsSync(`${root}/cli/transports/ccrClient.ts`), true)
+// The transport lane was pinned as retained here; wave D step 7u removed it.
+assert.equal(fs.existsSync(`${root}/cli/transports/ccrClient.ts`), false)
 assert.match(
   fs.readFileSync(`${root}/tools/SendMessageTool/prompt.ts`, "utf8"),
   /Broadcast to all teammates — expensive \(linear in team size\)/,
