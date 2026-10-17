@@ -1,0 +1,78 @@
+{
+ "schema": "W124C10DispositionsEvidence.v1",
+ "package": "W124-01 — C-10 residual dispositions",
+ "date": "2026-10-17",
+ "question": "What remains open in C-10 after conditional skills and dynamic directory discovery?",
+ "answer": "Nothing that can be ported locally. Reserved names and collision naming only protect the anthropic-skills namespace created by claude.ai account sync, which this product excludes. The citation-drops-when-redaction-changes-its-URL rule is already implemented in web search. The recovered shell AST keeps its prior not-ported decision.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "modules": {
+   "extracted-v2/modules/chunk-mven2c2x.js": [
+    619
+   ],
+   "extracted-v2/modules/chunk-xrjhyksm.js": [
+    2913,
+    3550,
+    3588,
+    3817,
+    3950
+   ],
+   "extracted-v2/modules/chunk-sfn1dbxq.js": [
+    3372867,
+    3373292,
+    3373506,
+    4697
+   ]
+  },
+  "implementation": {
+   "src/web-search.ts": {
+    "line": 155
+   }
+  }
+ },
+ "behavior": {
+  "reservedNames": [
+   "anthropic-skills"
+  ],
+  "reservedNamespaceBasis": "claude.ai account sync",
+  "accountSyncShipped": false,
+  "localSkillWithReservedNameLoads": true,
+  "urlInvalidationAlreadyShipped": true,
+  "shellAstPorted": false
+ },
+ "changes": [
+  {
+   "file": "research/ports/remaining-dispositions.md",
+   "change": "item 7 reserved names",
+   "sha256": "35ba0ec9d862eb74f48172257115e23472ddbc92ac26420c95ebee13208948c7"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-10 rows closed",
+   "sha256": "81cf9fa7b2f1ab5570b4d2c7cddcda19ea800ebc2e40601b067aea08e902598c"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Skills row close-out",
+   "sha256": "689ffc536678d2a0b437f34b96b084aeb4c1b06140f8d9068eef1aa2a1a22a04"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W124-01 entry",
+   "sha256": "e4e445cabc53d40c6809c5d92c37e89b479ef831bfedf5b5ddb64e44fd830f55"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W124-01 entry",
+   "sha256": "a5dbf14aab9caf2a4cb4338f1019a918083ee3ca2336b089c81b6cebb64a130a"
+  }
+ ],
+ "gates": {
+  "codeChange": "none (documentation only)",
+  "lastMeasured": "W123: focused 137/137, three-suite 164/164, tsc 0, build 0, full 2,194/2,194, chain 768/768",
+  "identity": "4149770c592b2f237117295d04a5829e3f61f956e227bd3d59528dd06568aa3a"
+ },
+ "residuals": [],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-10 is closed; continue with the next ready C-area cluster from CURRENT."
+}
