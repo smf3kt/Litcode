@@ -901,3 +901,29 @@ test("StopFailure carries the recovered error fields without stop_reason", async
     assert.equal("stop_reason" in payload, false);
   } finally { session.close(); }
 });
+
+test("UserPromptExpansion is raised only for an expansion and carries its recovered fields", async () => {
+  const root = workspace();
+  const captured = path.join(root, "expansions.jsonl");
+  const rewrite = JSON.stringify({ hookSpecificOutput: { hookEventName: "UserPromptExpansion",
+    updatedPrompt: "/greet rewritten", additionalContext: "expansion context" } });
+  const session = Session.open(root, { config: config(root, [], { hooks: {
+    UserPromptExpansion: [{ command: `cat >> ${shellQuote(captured)}; printf '%s' ${shellQuote(rewrite)}` }] } }) });
+  try {
+    await new Agent(session, new ScriptedProvider([done()]), []).run("plain prompt");
+    assert.equal(fs.existsSync(captured), false);
+    const provider = new ScriptedProvider([done()]);
+    await new Agent(session, provider, []).run("expanded skill body",
+      new AbortController().signal, undefined, { expansion_type: "slash_command",
+        command_name: "greet", command_args: "world", prompt: "/greet world" });
+    const payload = JSON.parse(fs.readFileSync(captured, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.expansion_type, "slash_command");
+    assert.equal(payload.command_name, "greet");
+    assert.equal(payload.command_args, "world");
+    assert.equal(payload.prompt, "/greet world");
+    assert.equal("command_source" in payload, false);
+    const messages = JSON.stringify(provider.requests[0]!.messages);
+    assert.match(messages, /\/greet rewritten/);
+    assert.match(messages, /expansion context/);
+  } finally { session.close(); }
+});

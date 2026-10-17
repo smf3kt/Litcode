@@ -17,10 +17,11 @@ const reply = (): Anthropic.Message => ({ id: "fixture", model: "fixture", role:
   usage: { input_tokens: 1, output_tokens: 1 } } as Anthropic.Message);
 const sink = () => new Writable({ write(_chunk, _encoding, done) { done(); } });
 
-test("interactive quoted PNG task passes expansion hooks and survives journal reopen", async () => {
+test("interactive quoted PNG task preserves its attachment and survives journal reopen", async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "attach-image-")));
   fs.writeFileSync(path.join(workspace, "screen shot.png"), png);
   const config = defaultConfig(workspace, []); config.model = "fixture";
+  // A configured expansion hook must stay silent: /attach is not an expansion event.
   const hook = { hookSpecificOutput: { hookEventName: "UserPromptExpansion", updatedPrompt: "rewritten task", additionalContext: "extra context" } };
   config.hooks = { UserPromptExpansion: [{ command: `printf %s ${JSON.stringify(JSON.stringify(hook))}` }] };
   const session = Session.open(workspace, { config });
@@ -34,10 +35,10 @@ test("interactive quoted PNG task passes expansion hooks and survives journal re
       output: sink(), status: sink(), signal: new AbortController().signal,
     });
     assert.ok(Array.isArray(content));
-    assert.deepEqual(content[0], { type: "text", text: "rewritten task" });
+    assert.deepEqual(content[0], { type: "text", text: "inspect screenshot" });
     const image = content.find(block => block.type === "image"); assert.ok(image && image.source.type === "base64");
     assert.deepEqual(Buffer.from(image.source.data, "base64"), png);
-    assert.ok(content.some(block => block.type === "text" && block.text.includes("extra context")));
+    assert.equal(content.some(block => block.type === "text" && block.text.includes("extra context")), false);
     const reopened = Session.open(workspace, { id: session.id });
     try { assert.deepEqual(reopened.messages[0]!.content, content); }
     finally { reopened.close(); }

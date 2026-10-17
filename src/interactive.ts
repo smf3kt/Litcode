@@ -1002,6 +1002,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const parsed = parseSlashCommand(prompt);
           const skill = parsed ? findSkill(session.config.skills, parsed.name) : undefined;
           if (!parsed || !skill) throw new Error('Unknown command; use /help');
+          // The expansion payload names the canonical command and the typed arguments; `prompt` is
+          // the command text the source reconstructs (`VYr`, chunk-sfn1dbxq.js offset 2947732).
+          const expansion = { expansion_type: 'slash_command' as const, command_name: skill.name,
+            command_args: parsed.args, prompt: parsed.args === '' ? `/${skill.name}` : `/${skill.name} ${parsed.args}` };
           if (skillRequiresExecution(skill, session.config) && activeRuntime.runSkill) {
             const result = await withTurn(signal => activeRuntime.runSkill!(session.config, session.id, skill, parsed.args, signal,
               async (tool, input, decision) => {
@@ -1015,11 +1019,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (skill.context === 'fork' || skill.model || skill.effort || skill.background || skill.hooks || skill.allowedTools) {
               output.write(result + '\n'); continue;
             }
-            const completed = await withTurn(signal => agent().run(result, signal));
+            const completed = await withTurn(signal => agent().run(result, signal, undefined, expansion));
             output.write('\n'); options.status.write(`finished: ${completed.reason}; model calls: ${completed.modelCalls}\n`); continue;
           }
           const expanded = expandUserSkill(skill, parsed.args, session.config);
-          const result = await withTurn(signal => agent().run(expanded, signal));
+          const result = await withTurn(signal => agent().run(expanded, signal, undefined, expansion));
           if (result.modelCalls === 0 && result.text) output.write(result.text);
           output.write('\n');
           options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
