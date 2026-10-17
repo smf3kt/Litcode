@@ -1081,7 +1081,17 @@ export async function runHooks(
     } else if (definition.type === "mcp_tool") {
       raw = await runResolvedHook(definition, event, payload, signal, timeoutMs, options.resolveMcpHook!, "MCP", release!);
     } else if (definition.type === "script") {
-      raw = await runHookCommand(definition.command, cwd, timeoutMs, input, signal);
+      // This build refuses script hooks: `ito` throws "script hooks are not available in this
+      // build" (chunk-n3ykh62m.js offset 409142). The adapter catches it, reports the message as
+      // the failure output and marks it blocking only for the PreToolUse/PermissionRequest set
+      // (`SV`, chunk-3cynezh1.js offset 109855; catch at chunk-sfn1dbxq.js offset 3054829).
+      const message = "script hooks are not available in this build";
+      fail(`[${event} hook: ${message}]`);
+      if (event === "PreToolUse" || event === "PermissionRequest") {
+        result.blocked = true;
+        result.reason ??= message;
+      }
+      continue;
     } else if (definition.async) {
       try {
         const id = await options.startAsyncCommand!({ definition, event, payload, input, cwd, timeoutMs, signal });

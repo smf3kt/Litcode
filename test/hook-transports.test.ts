@@ -10,7 +10,7 @@ import {
 
 const signal = () => new AbortController().signal;
 
-test("transport schemas retain absent fields and scripts use synchronous bounded shell contracts", async () => {
+test("transport schemas retain absent fields and script hooks are refused without execution", async () => {
   const callback: CallbackHookDefinition = { type: "callback", name: "check" };
   const mcp: McpHookDefinition = { type: "mcp_tool", tool: "mcp__fixture__read", arguments: { id: 1 } };
   const definitions = [{ command: "true" }, callback, mcp, { type: "script", command: "true", once: true }];
@@ -32,31 +32,21 @@ test("transport schemas retain absent fields and scripts use synchronous bounded
 
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "ccrev-hook-transports-"));
   try {
-    const lifecycle = new HookLifecycle();
     const config: HooksConfig = { PreToolUse: [{ matcher: "Read|Write", hooks: [{
-      type: "script", matcher: "Read", once: true,
-      command: "IFS= read -r line; printf \"%s\\n\" \"$line\" > payload.json; printf \"%s\" \"$PWD\" > cwd.txt; printf \"%s\" '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"updatedInput\":{\"path\":\"changed\"}}}'",
+      type: "script", matcher: "Read",
+      command: "IFS= read -r line; printf \"%s\\n\" \"$line\" > payload.json; printf \"%s\" \"$PWD\" > cwd.txt",
     }] }] };
-    assert.deepEqual(await runHooks(config, "PreToolUse", { cwd, tool_name: "Write" }, signal(), { lifecycle }),
+    assert.deepEqual(await runHooks(config, "PreToolUse", { cwd, tool_name: "Write" }, signal()),
       { blocked: false, additionalContext: [] });
-    assert.deepEqual(lifecycle.snapshot(), []);
-    const result = await runHooks(config, "PreToolUse", { cwd, tool_name: "Read" }, signal(), { lifecycle });
-    assert.equal(result.permissionDecision, "allow");
-    assert.deepEqual(result.updatedInput, { path: "changed" });
-    assert.equal(result.consumedOnce?.length, 1);
-    assert.equal(fs.readFileSync(path.join(cwd, "cwd.txt"), "utf8"), fs.realpathSync(cwd));
-    const input = fs.readFileSync(path.join(cwd, "payload.json"), "utf8");
-    assert.ok(input.endsWith("\n"));
-    assert.deepEqual(JSON.parse(input), { cwd, tool_name: "Read", hook_event_name: "PreToolUse" });
-    assert.deepEqual(await runHooks(config, "PreToolUse", { cwd, tool_name: "Read" }, signal(), { lifecycle }),
-      { blocked: false, additionalContext: [] });
-    const blocked = await runHooks({ PreToolUse: [{ type: "script", command: "printf reason >&2; exit 2" }] }, "PreToolUse", { cwd });
-    assert.equal(blocked.blocked, true);
-    assert.equal(blocked.reason, "reason");
-    const capped = await runHooks({ SessionStart: [{ type: "script", command: "yes x | head -c 70000" }] }, "SessionStart", { cwd });
-    assert.ok(capped.additionalContext.some(text => text.includes("output truncated")));
-    const timed = await runHooks({ PreToolUse: [{ type: "script", command: "sleep 10", timeout: 0.01 }] }, "PreToolUse", { cwd });
-    assert.ok(timed.additionalContext.some(text => text.includes("timed out")));
+    const refused = await runHooks(config, "PreToolUse", { cwd, tool_name: "Read" }, signal());
+    assert.equal(refused.blocked, true);
+    assert.equal(refused.reason, "script hooks are not available in this build");
+    assert.ok(refused.additionalContext.some(text => text.includes("script hooks are not available in this build")));
+    assert.equal(fs.existsSync(path.join(cwd, "payload.json")), false);
+    assert.equal(fs.existsSync(path.join(cwd, "cwd.txt")), false);
+    const passive = await runHooks({ SessionStart: [{ type: "script", command: "printf ran" }] }, "SessionStart", { cwd });
+    assert.equal(passive.blocked, false);
+    assert.ok(passive.additionalContext.some(text => text.includes("script hooks are not available in this build")));
   } finally { fs.rmSync(cwd, { recursive: true, force: true }); }
 });
 

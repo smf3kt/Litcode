@@ -1011,6 +1011,19 @@ test("permission denial survives a later allowing hook and new lifecycle gate ex
   assert.equal(display.blocked, false);
 });
 
+test("script hooks are refused without executing their command", async () => {
+  const marker = path.join(tmpDir(), "script-ran");
+  const command = `printf ran > ${JSON.stringify(marker)}`;
+  const blocked = await runHooks({ PreToolUse: [{ type: "script", command }] }, "PreToolUse", {}, signal());
+  assert.equal(blocked.blocked, true);
+  assert.equal(blocked.reason, "script hooks are not available in this build");
+  assert.ok(blocked.additionalContext.some(text => text.includes("script hooks are not available in this build")));
+  const passive = await runHooks({ PostToolUse: [{ type: "script", command }] }, "PostToolUse", {}, signal());
+  assert.equal(passive.blocked, false);
+  assert.ok(passive.additionalContext.some(text => text.includes("script hooks are not available in this build")));
+  assert.equal(fs.existsSync(marker), false);
+});
+
 test("async command hooks explicitly require an owned registry and return registered task ids", async () => {
   const dir = tmpDir();
   const marker = path.join(dir, "async-marker");

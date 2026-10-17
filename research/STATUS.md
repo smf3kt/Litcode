@@ -2074,3 +2074,12 @@ stored message and model view keep the original. Per-token delta rewriting is
 not replicated; the whole completed text is the single final delta.
 `agent-lifecycle` 32/32, tsc 0, build 0, full 2,117/2,117, chain 767/767,
 identity `9088606a…`. [W88 record](ports/W88-message-display.md).
+
+W89-01 corrects script-hook handling from the recovered build. `ito` throws
+"script hooks are not available in this build" before anything runs, and the
+adapter catch records that as the failure, blocking only for PreToolUse and
+PermissionRequest. `runHooks` now refuses script hooks the same way instead of
+executing the command; the transport test asserts the refusal and that no
+command ran. `hooks` 51/51, `hook-transports` 3/3, tsc 0, build 0, full
+2,118/2,118, chain 767/767, identity `f7a620b6…`.
+[W89 record](ports/W89-script-hooks.md).
