@@ -1,0 +1,89 @@
+{
+  "imports": [
+    "import { isAbsolute as Fe, win32 as Ft } from 'node:path';",
+    "const F = 50; // source chunk-j8hqhz0c.js `F=50`: the per-file diff-list cap"
+  ],
+  "exports": ["gkt", "Kt", "re", "xcr", "Yt", "N3t"],
+  "blocks": [
+    {
+      "file": "chunk-gyf58rwf.js",
+      "range": [9236, 9345],
+      "note": "Mt and qy: the hidden/control character class the diff-path guard tests"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [18883, 18976],
+      "note": "L3t: control, format, separator and default-ignorable class"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [19011, 19028],
+      "note": "Ct: lone surrogate class"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [18976, 19011],
+      "note": "Ccr: hidden or control characters"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [19028, 19070],
+      "note": "N3t: hidden characters or lone surrogates"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [25545, 26152],
+      "note": "gkt: parse git --raw --numstat output into stats and per-file stats"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [26152, 26206],
+      "note": "zt: raw status letter to status name"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [26206, 26496],
+      "note": "Kt: pair a raw status line with its numstat path"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [26496, 26671],
+      "note": "re: reject unsafe or hidden diff paths"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [26671, 26824],
+      "note": "xcr: within-root path guard"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [26824, 27662],
+      "note": "Yt: split a rename/copy display path"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [27662, 27760],
+      "note": "ee: closing quote of a C-quoted path"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [27760, 27801],
+      "note": "Pcr: replacement-character and hidden-class test"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [27801, 28189],
+      "note": "RAe: decode a C-quoted git path"
+    },
+    {
+      "file": "chunk-ax7r0qj7.js",
+      "range": [3561, 3652],
+      "note": "Lt: occurrence counter"
+    },
+    {
+      "file": "chunk-2bcyxj9q.js",
+      "range": [152766, 152948],
+      "note": "j2: reduce a path segment's trailing spaces and dots"
+    }
+  ]
+}

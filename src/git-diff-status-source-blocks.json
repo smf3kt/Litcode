@@ -1,0 +1,200 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        9236,
+        9345
+      ],
+      "units": 109,
+      "bodySha256": "a55c495f2fcf11bea607ccd8c3d8b8ed1b1c7b4e8a1d2174ccdbcb6202cb7d9f",
+      "note": "Mt and qy: the hidden/control character class the diff-path guard tests"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        18883,
+        18976
+      ],
+      "units": 93,
+      "bodySha256": "01139c3c0f8dfd08a66bc8dacd3dc7f6762f90e767ce0640df5565f8f589d1c4",
+      "note": "L3t: control, format, separator and default-ignorable class"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        19011,
+        19028
+      ],
+      "units": 17,
+      "bodySha256": "3a95bb3edd492f41453f66ca060ba1cdb6c4643e17690e6c5ca50c3020c2df9b",
+      "note": "Ct: lone surrogate class"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        18976,
+        19011
+      ],
+      "units": 35,
+      "bodySha256": "fcdad685fc17577221dbcf329d605f9d82f5b687369f00e1c95109a0944de513",
+      "note": "Ccr: hidden or control characters"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        19028,
+        19070
+      ],
+      "units": 42,
+      "bodySha256": "2c56b27c801e0fb42a9b5957b85e6d6f13e65acbc28ae23caefca9400574f308",
+      "note": "N3t: hidden characters or lone surrogates"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        25545,
+        26152
+      ],
+      "units": 607,
+      "bodySha256": "5048402834bcde7f2584fcae5cea0c833a99b08d229e651a816de9640f9585c7",
+      "note": "gkt: parse git --raw --numstat output into stats and per-file stats"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        26152,
+        26206
+      ],
+      "units": 54,
+      "bodySha256": "cb8cb8c95f0f8843aabd3c2bb27d71eaf630b95744dbad3acfc800305c698b99",
+      "note": "zt: raw status letter to status name"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        26206,
+        26496
+      ],
+      "units": 290,
+      "bodySha256": "d8536cfd096ed3143eca3bda24a3c0fa6da7e79866fe815b9e588a49ca49fe02",
+      "note": "Kt: pair a raw status line with its numstat path"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        26496,
+        26671
+      ],
+      "units": 175,
+      "bodySha256": "8dfa8e5190cda8870ecc8172763d804f8e6e27b24779074acae5e9eab5f00d79",
+      "note": "re: reject unsafe or hidden diff paths"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        26671,
+        26824
+      ],
+      "units": 153,
+      "bodySha256": "3efb6d8f296be353409e12afe672447202f1d8dd656e0a2b9218eba71a191b37",
+      "note": "xcr: within-root path guard"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        26824,
+        27662
+      ],
+      "units": 838,
+      "bodySha256": "562e11ecef387bf4ec0f8cf8ee62624ceec0857bfd50a9eb9b172d9b10ad7222",
+      "note": "Yt: split a rename/copy display path"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        27662,
+        27760
+      ],
+      "units": 98,
+      "bodySha256": "3ac1cecd5bb9d8e5f94ac156d9f6c43e1de213bea03de02cf4c583e4d8b0da65",
+      "note": "ee: closing quote of a C-quoted path"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        27760,
+        27801
+      ],
+      "units": 41,
+      "bodySha256": "13e4f1abf333a99f858d8ead4d8864dd96691e2f1212614161d24b9405f75591",
+      "note": "Pcr: replacement-character and hidden-class test"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        27801,
+        28189
+      ],
+      "units": 388,
+      "bodySha256": "7a93f568f98d3ace3ce64fb708de5fc4eee7b70410c4d9d4a931604fb2bf3f51",
+      "note": "RAe: decode a C-quoted git path"
+    },
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        3561,
+        3652
+      ],
+      "units": 91,
+      "bodySha256": "f2d166a2dc29276ed4cfdc6420711b6f00ff1b565d208f3693098bcfc55c7714",
+      "note": "Lt: occurrence counter"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        152766,
+        152948
+      ],
+      "units": 182,
+      "bodySha256": "edbaa67f4b5ba81128a8acdca633d5f49ce32a302eb46da854821881bebdb503",
+      "note": "j2: reduce a path segment's trailing spaces and dots"
+    }
+  ],
+  "missing": []
+}
