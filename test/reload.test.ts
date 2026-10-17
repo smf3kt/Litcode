@@ -3,9 +3,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { defaultConfig } from "../src/agent.js";
+import { defaultConfig, DEFAULT_SYSTEM } from "../src/agent.js";
 import { loadPathInstructions } from "../src/config.js";
 import { reloadConfig } from "../src/reload.js";
+import { buildSystem } from "../src/runtime.js";
+import { reloadSkills } from "../src/skill-catalog.js";
 
 test("nested instructions follow accessed ancestors and bounded workspace imports", () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "nested-instructions-")));
@@ -85,5 +87,40 @@ test("reload refreshes local catalogs and policy without mutating pinned provide
     fs.writeFileSync(path.join(root, ".harness/settings.json"), "{");
     assert.throws(() => reloadConfig(current), /JSON/);
     assert.equal(JSON.stringify(current), before);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test("a skill reload rescans directories in place without reloading settings", () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "reload-skills-")));
+  const user = path.join(root, "user");
+  try {
+    fs.mkdirSync(user);
+    for (const name of ["keep", "removed"]) fs.mkdirSync(path.join(root, ".harness/skills", name), { recursive: true });
+    fs.writeFileSync(path.join(root, ".harness/skills/keep/SKILL.md"), "---\nname: keep\ndescription: kept skill\n---\nKeep body");
+    fs.writeFileSync(path.join(root, ".harness/skills/removed/SKILL.md"), "---\nname: removed\ndescription: removed skill\n---\nRemoved body");
+    const config = defaultConfig(root, []);
+    config.model = "pinned";
+    config.configSources = { userDir: user };
+    config.skills = [
+      { name: "keep", description: "kept skill", path: path.join(root, ".harness/skills/keep/SKILL.md"), body: "Keep body", userInvocable: true, disableModelInvocation: false },
+      { name: "removed", description: "removed skill", path: path.join(root, ".harness/skills/removed/SKILL.md"), body: "Removed body", userInvocable: true, disableModelInvocation: false },
+    ];
+    config.system = buildSystem(DEFAULT_SYSTEM, [], config.skills);
+    const live = config.skills;
+    fs.writeFileSync(path.join(root, ".harness/settings.json"), JSON.stringify({ model: "other" }));
+    fs.rmSync(path.join(root, ".harness/skills/removed"), { recursive: true });
+    fs.mkdirSync(path.join(root, ".harness/skills/added"), { recursive: true });
+    fs.writeFileSync(path.join(root, ".harness/skills/added/SKILL.md"), "---\nname: added\ndescription: added skill\n---\nAdded body");
+    reloadSkills(config);
+    // The skill tool captured this array; the rescan must keep the reference.
+    assert.equal(config.skills, live);
+    assert.deepEqual([...live.map(skill => skill.name)].sort(), ["added", "keep"]);
+    assert.equal(config.model, "pinned");
+    assert.match(config.system, /added skill/);
+    assert.match(config.system, /kept skill/);
+    assert.doesNotMatch(config.system, /removed skill/);
+    config.skills = undefined;
+    reloadSkills(config);
+    assert.equal(config.skills, undefined);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

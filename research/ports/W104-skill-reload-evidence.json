@@ -1,0 +1,126 @@
+{
+ "schema": "W104SkillReloadEvidence.v1",
+ "package": "W104-01 — SessionStart reloadSkills",
+ "date": "2026-10-18",
+ "question": "What does the SessionStart reloadSkills output change, and what is the equivalent when this product has no derived skill caches?",
+ "answer": "Any SessionStart output setting reloadSkills true makes the hook loop re-scan skill directories after the hooks complete. This product replaces the live skills array in place and rewrites the system prompt's catalog section, leaving settings, hooks, permissions and instructions as loaded.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "description": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 392149
+  },
+  "schema": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "offset": 205984
+  },
+  "consumer": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 2482855
+  },
+  "invalidation": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "bM",
+   "offset": 1675968
+  },
+  "sentNamesReset": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "$5",
+   "offset": 3689254
+  },
+  "changeSignal": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "i1",
+   "offset": 2478788
+  }
+ },
+ "behavior": {
+  "events": [
+   "SessionStart"
+  ],
+  "value": true,
+  "sticky": true,
+  "runsAfterHooks": true,
+  "reloadsSettings": false
+ },
+ "adaptations": [
+  "The source invalidates derived command/skill cache tables; this product keeps a live skills array and a rendered system-prompt section, so it replaces the array contents in place and rewrites the section.",
+  "The sent-skill-name reset and the skills-changed signal have no counterparts in this product.",
+  "A legacy configuration with skills undefined keeps its catalog untouched because it has no skill tool.",
+  "A failed rescan keeps the previous catalog and reports through the status stream; the rescan also validates settings because it uses loadProjectConfig.",
+  "SKILL_TOOL_NAME moved to skill-catalog.ts and is re-exported from runtime.ts."
+ ],
+ "changes": [
+  {
+   "file": "src/hooks.ts",
+   "change": "SessionStart-only reloadSkills parse",
+   "sha256": "a3a99a61f5b067bf2db9dfeb7307d2202ffd5d7de0590bc23350025dd601adf4"
+  },
+  {
+   "file": "src/agent.ts",
+   "change": "post-hook rescan with reported failure",
+   "sha256": "d3a1079091329d6787db4766dcf90d10d26b3cdbf24d7e65983ef497d67ef707"
+  },
+  {
+   "file": "src/skill-catalog.ts",
+   "change": "catalog section and in-place rescan",
+   "sha256": "686c5a55daf92c5515470b5451140a1503b0ce46cd417b36a0ee8e485c037264"
+  },
+  {
+   "file": "src/runtime.ts",
+   "change": "shared skillsSection and constant re-export",
+   "sha256": "b07dc0be4ca8b122e20707058393ddc061effc12411ae26f6598708fe8578b61"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "reloadSkills parse assertions",
+   "sha256": "44bbdff5ac29797043c9ec66c8647cf145a9cb8866ecaa79e0b31b07f2326bc2"
+  },
+  {
+   "file": "test/reload.test.ts",
+   "change": "rescan behavior test",
+   "sha256": "4523f56f3c7d4b5f02f8b1f87476a48cbd0781706abf5c0f0442af7eed34ce03"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "hook-driven catalog refresh test",
+   "sha256": "8c2eded38802c9613b9d347115494bb3036b6dae6bf10e64cf51b2f4e756c559"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W104",
+   "sha256": "bfdfb24ea300183922fe56aba19ea1b61b9bfdd1ac38a574ad291a540d4c6c89"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W104",
+   "sha256": "2bd5d6477468e7760146709e18bdf6838db4da3249cc78d50e85d8932cbdd998"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W104-01 entry",
+   "sha256": "0248b447c3133e52e84adcbc2c83ecd1fd6c30a4dd31ed677da3c14d0722e263"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W104-01 S-1..S-7 entry",
+   "sha256": "bc91fddbe8c2f0b1b4238ef428ca7367807d01d7bdd31f31e9d0a618dc3e57aa"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "110/110 (hooks, reload, agent-lifecycle, runtime-resources)",
+  "build": "exit 0",
+  "full": "2,140/2,140",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "b59db97a6c6c6d0588161be424feafcb2ca3777f054847882c5ac886f781f327"
+ },
+ "residuals": [
+  "suppressOriginalPrompt and retry SessionStart outputs remain unconsumed.",
+  "The rescan is an in-memory catalog refresh; the journal keeps the config snapshot from session open, and a resumed session re-runs its SessionStart hooks."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with suppressOriginalPrompt, retry and the remaining script semantics."
+}

@@ -677,6 +677,27 @@ test("SessionStart initialUserMessage is returned for the caller to queue", asyn
   } finally { session.close(); }
 });
 
+test("SessionStart reloadSkills refreshes the live skill catalog", async () => {
+  const root = workspace();
+  const user = path.join(root, "user");
+  fs.mkdirSync(user);
+  const skillDir = path.join(root, ".harness/skills/hooked");
+  const command = `mkdir -p ${shellQuote(skillDir)} && printf %s ` +
+    `${shellQuote("---\nname: hooked\ndescription: Hooked skill\n---\nHooked body")} > ${shellQuote(path.join(skillDir, "SKILL.md"))} && ` +
+    emit({ hookSpecificOutput: { hookEventName: "SessionStart", reloadSkills: true } });
+  const hooks = { SessionStart: [{ command }] };
+  const session = Session.open(root, { config: config(root, [], { hooks, skills: [], configSources: { userDir: user } }) });
+  try {
+    const live = session.config.skills;
+    assert.ok(live);
+    await new Agent(session, new ScriptedProvider([done()]), []).startSession("startup");
+    // The skill tool captured the original array; it now sees the installed skill.
+    assert.equal(session.config.skills, live);
+    assert.deepEqual(live.map(target => target.name), ["hooked"]);
+    assert.match(session.config.system, /Hooked skill/);
+  } finally { session.close(); }
+});
+
 test("TaskCreated receives the created task's fields and a block rolls the task back", async () => {
   const root = workspace();
   const capture = path.join(root, "task-created.jsonl");

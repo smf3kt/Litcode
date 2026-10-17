@@ -18,6 +18,7 @@ import type { AgentProgressEvent } from './tui-progress.js';
 import { classicPreToolUseHooked, raiseClassicPreToolUse } from './plugin-chain-tool-raise.js';
 import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_USE, CLASSIC_POST_TOOL_USE_FAILURE, classicEventRaised, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
 import type { ClassicPermissionRequestResult } from './plugin-chain-classic-raise.js';
+import { reloadSkills } from './skill-catalog.js';
 
 export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
 Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
@@ -357,6 +358,17 @@ export class Agent {
     if ((source === 'startup' || source === 'resume' || source === 'fork') && result.sessionTitle !== undefined) {
       const title = normalizeSessionTitle(result.sessionTitle);
       if (title !== '' && title !== this.currentSessionTitle()) this.session.append({ kind: 'title', title });
+    }
+    // The recovered hook loop re-scans the skill tables after the SessionStart
+    // hooks complete when any output asked for it (`bM`/`$5`/`i1.emit`,
+    // chunk-sfn1dbxq.js offset 2482855); settings stay as loaded. A rescan
+    // failure leaves the previous catalog in place, like a failed on-demand
+    // re-scan in the source.
+    if (result.reloadSkills === true) {
+      try { reloadSkills(this.session.config); }
+      catch (error) {
+        this.events.status?.(`Skill reload failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
     }
     // The recovered prologue drains the staged value with `OXr`
     // (chunk-sfn1dbxq.js offset 2480020) and prepends it to the user input

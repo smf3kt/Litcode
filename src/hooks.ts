@@ -383,6 +383,8 @@ export type HookResult = {
   sessionTitle?: string;
   /** SessionStart: a user message the session starts with, last one wins. */
   initialUserMessage?: string;
+  /** SessionStart: re-scan skill directories after the hooks complete. */
+  reloadSkills?: true;
   /**
    * Set only by an explicit `continue:false` output, meaning "terminate the
    * session". A Stop hook that merely requests continuation (exit 2 or a
@@ -950,6 +952,11 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   if (event === "SessionStart" && typeof output.initialUserMessage === "string" && output.initialUserMessage !== "") {
     result.initialUserMessage = output.initialUserMessage;
   }
+  // `reloadSkills` is the SessionStart output that asks for a post-hook skill
+  // rescan (chunk-n3ykh62m.js offset 392149). The recovered consumer keeps a
+  // sticky flag when any hook sets it true (`H7`, chunk-sfn1dbxq.js offset
+  // 2482855); the schema admits only `true`.
+  if (event === "SessionStart" && output.reloadSkills === true) result.reloadSkills = true;
   // MessageDisplay is display-only: `hookSpecificOutput.displayContent` replaces the delta on
   // screen while the stored message and what the model sees stay unchanged (source output
   // processing at chunk-sfn1dbxq.js offset 2967137).
