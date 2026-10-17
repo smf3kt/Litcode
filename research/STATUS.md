@@ -2136,3 +2136,11 @@ interactive slash-command path supplies them. The prior per-prompt
 hook stays silent for `/attach`. `agent-lifecycle` 38/38, `interactive` 8/8,
 `attachments` 2/2, tsc 0, build 0, full 2,124/2,124, chain 767/767, identity
 `50e58886…`. [W95 record](ports/W95-user-prompt-expansion.md).
+
+W96-01 corrects ConfigChange. The event is watcher-driven with the recovered
+five-value `source` and `file_path`; the settings and skills watchers gate
+their reload fan-out on it, `policy_settings` never blocks, and exit 2 blocks.
+The invented synchronous raises for theme, editor, model-family config,
+reload and MCP reconnect are removed. `config-watch` 4/4, `hooks` 52/52,
+`interactive` 9/9, tsc 0, build 0, full 2,127/2,127, chain 767/767, identity
+`6443354c…`. [W96 record](ports/W96-config-change.md).

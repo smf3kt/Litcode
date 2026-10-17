@@ -19,7 +19,7 @@ import { captureClipboardImage } from './clipboard.js';
 import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree, restoreWorktreeArchive } from './worktree-session.js';
 import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
-import { loadProjectConfig } from './config.js';
+import { defaultUserDir, loadProjectConfig } from './config.js';
 import { saveThemeSetting, saveEditorMode } from './theme-settings.js';
 import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
 import type { EditorMode } from './tui-vim.js';
@@ -30,6 +30,39 @@ import {
   parseSlashCommand,
   type Runtime,
 } from './runtime.js';
+
+export type ConfigChangeSource = 'user_settings' | 'project_settings' | 'local_settings' | 'policy_settings' | 'skills';
+
+/**
+ * The recovered ConfigChange builder raises only from the settings and skill
+ * watchers (`QXr`, chunk-sfn1dbxq.js [2933599,2933905)) and maps each watched
+ * settings scope through `Uc` (chunk-2bcyxj9q.js [42936,43157)). The skills
+ * watcher gates skill, command and agent files with the `skills` source
+ * (`re`, chunk-zkxek575.js [4471,4606)); instruction files and session-only
+ * settings raise nothing.
+ */
+export function configChangeSource(file: string, workspace: string, sources: {
+  userDir?: string; settingsFile?: string; managedSettingsFile?: string; contentDirectories?: readonly string[];
+}): ConfigChangeSource | undefined {
+  const target = path.resolve(file);
+  const root = path.resolve(workspace);
+  if (sources.managedSettingsFile !== undefined &&
+      target === path.resolve(root, sources.managedSettingsFile)) return 'policy_settings';
+  if (target === path.join(root, '.harness', 'settings.json') ||
+      (sources.settingsFile !== undefined && target === path.resolve(root, sources.settingsFile))) return 'project_settings';
+  if (target === path.join(root, '.harness', 'settings.local.json')) return 'local_settings';
+  const userDir = path.resolve(sources.userDir ?? defaultUserDir());
+  if (target === path.join(userDir, 'settings.json')) return 'user_settings';
+  const within = (directory: string): boolean => {
+    const relative = path.relative(path.resolve(directory), target);
+    return relative !== '' && !relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative);
+  };
+  const skillRoots = ['.harness/skills', '.harness/commands', '.harness/agents', '.harness/plugins']
+    .map(relative => path.join(root, relative))
+    .concat(['skills', 'commands', 'agents'].map(name => path.join(userDir, name)));
+  if (skillRoots.some(within) || (sources.contentDirectories ?? []).some(within)) return 'skills';
+  return undefined;
+}
 
 export const COMMAND_HELP = `/help       Show commands
 /status     Show session, model, context settings and usage
@@ -185,19 +218,32 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       try {
         configWatch = watchProjectConfig(session.config.workspace, { ...session.config.configSources,
           instructionPaths: [...new Set([...instructionPaths, ...dynamicWatchPaths])], contentDirectories,
-          // The recovered FileChanged payload is watcher-driven (`e7r`,
-          // chunk-sfn1dbxq.js [2935646,2935767)); the config watcher reports
-          // the named file and kind, and the hook result stays non-blocking.
+          // FileChanged is watcher-driven (`e7r`, chunk-sfn1dbxq.js
+          // [2935646,2935767)). A settings or skill change first raises
+          // ConfigChange with the recovered source and path; a blocking result
+          // skips the reload fan-out (`oi`, chunk-2bcyxj9q.js [39334,39473)).
           onFileChange: (file, event) => {
-            void (async () => {
+            const source = configChangeSource(file, session.config.workspace, {
+              ...session.config.configSources, contentDirectories });
+            return (async () => {
+              let blocked = false;
               try {
+                if (source !== undefined) {
+                  const decision = await agent().emitHook('ConfigChange', { source, file_path: file }, options.signal);
+                  // `policy_settings` results are never blocking (`QXr`).
+                  if (source !== 'policy_settings' && (decision.blocked || decision.stopRequested)) {
+                    blocked = true;
+                    options.status.write(`ConfigChange hook blocked change to ${file}\n`);
+                  }
+                }
                 const result = await agent().emitHook('FileChanged', { file_path: file, event }, options.signal);
                 if (result.watchPaths?.length) configWatch?.addInstructionPaths?.(result.watchPaths);
                 for (const message of result.systemMessages ?? []) options.status.write(`${message}\n`);
                 for (const failure of result.failures ?? []) options.status.write(`${failure}\n`);
               } catch (error) {
-                if (!options.signal.aborted) options.status.write(`FileChanged hook error: ${String(error)}\n`);
+                if (!options.signal.aborted) options.status.write(`Config change hook error: ${String(error)}\n`);
               }
+              return !blocked;
             })();
           } },
           () => { configDirty = true; awaken(); },
@@ -459,16 +505,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (switchingModel) {
       await agent().emitHook('PostModelSwitch', { from_model: previousModel, to_model: config.model,
         requested_model: config.model }, signal);
-    } else {
-      await agent().emitHook('ConfigChange', { model: config.model,
-        permission_mode: config.permissions?.mode, thinking: config.thinking }, signal);
     }
   };
   const selectTheme = async (theme: ThemeSetting, signal: AbortSignal) => {
     signal.throwIfAborted();
     const config = structuredClone(session.config);
-    const decision = await agent().emitHook('ConfigChange', { source: 'theme', theme }, signal);
-    if (decision.blocked || decision.stopRequested) throw new Error(decision.reason ?? 'ConfigChange hook blocked the change');
+    // The settings write is gated by the watcher-raised ConfigChange event, not
+    // by a synchronous hook here (`QXr`, chunk-sfn1dbxq.js [2933599,2933905)).
     signal.throwIfAborted();
     saveThemeSetting(theme, config.configSources?.userDir);
     config.theme = theme;
@@ -647,8 +690,6 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const server = prompt.slice('/mcp-reconnect '.length).trim();
           if (!server || !Object.hasOwn(session.config.mcpServers ?? {}, server)) throw new Error('Use /mcp-reconnect SERVER with a configured server name');
           if (!activeRuntime.reconnectMcp) throw new Error('Runtime MCP reconnect is unavailable');
-          const decision = await agent().emitHook('ConfigChange', { source: 'mcp_reconnect', server_name: server }, options.signal);
-          if (decision.blocked || decision.stopRequested) throw new Error(decision.reason ?? 'ConfigChange hook blocked reconnect');
           const status = await withTurn(signal => activeRuntime.reconnectMcp!(server, signal));
           options.status.write(`MCP server ${server} reconnected; generation ${status.generation}; published schemas retained.\n`);
           continue;
@@ -659,8 +700,6 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const reconnect = prompt === '/mcp-reconnect';
           if (reconnect && !Object.keys(session.config.mcpServers ?? {}).length) throw new Error('No configured MCP servers to reconnect');
           const config = reconnect ? structuredClone(session.config) : reloadConfig(session.config);
-          const decision = await agent().emitHook('ConfigChange', { source: reconnect ? 'mcp_reconnect' : 'reload' }, options.signal);
-          if (decision.blocked || decision.stopRequested) throw new Error(decision.reason ?? 'ConfigChange hook blocked reload');
           let nextRuntime = await activeRuntime.reconfigure(config);
           let next: Session | undefined;
           try {
@@ -787,8 +826,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if(!row.options.includes(value))throw new Error('Use /config editor=normal|vim');picked=value;
           }
           const mode=picked as EditorMode;
-          const decision=await agent().emitHook('ConfigChange',{source:'editor',editorMode:mode},options.signal);
-          if(decision.blocked||decision.stopRequested)throw new Error(decision.reason??'ConfigChange hook blocked the change');
+          // The user-settings write is gated by the watcher-raised ConfigChange
+          // event, not by a synchronous hook here (`QXr`).
           options.signal.throwIfAborted();row.onChange(mode);config.editorMode=mode;
           await applyConfig(config,false,options.signal);options.status.write(`Editor mode: ${mode}\n`);continue;
         }

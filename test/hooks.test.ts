@@ -198,6 +198,18 @@ test("failed hook output is reported for watcher display without leaving context
   assert.equal(clean.failures, undefined);
 });
 
+test("ConfigChange exit 2 blocks the settings and skill reload gate", async () => {
+  // `Zge`/`hX` make exit 2 blocking for ConfigChange; the watcher reloads only
+  // when the gate does not block.
+  const blocked = await runHooks({ ConfigChange: [{ command: "printf 'stop reload' >&2; exit 2" }] },
+    "ConfigChange", { source: "user_settings", file_path: "/u/settings.json" });
+  assert.equal(blocked.blocked, true);
+  assert.equal(blocked.reason, "stop reload");
+  const allowed = await runHooks({ ConfigChange: [{ command: "true" }] },
+    "ConfigChange", { source: "skills", file_path: "/u/skills/x/SKILL.md" });
+  assert.equal(allowed.blocked, false);
+});
+
 test("transition matchers follow the recovered per-event selector fields", async () => {
   const context = (text: string): HookDefinition => emit({ additionalContext: text });
   const run = (event: HookEvent, matcher: string, payload: HookPayload) =>

@@ -427,6 +427,10 @@ const BLOCKING_EVENTS: ReadonlySet<HookEvent> = new Set([
   "TaskCompleted",
   "Elicitation",
   "WorktreeCreate",
+  // `Zge` includes ConfigChange and `hX` (offset 2980890) excludes only
+  // PostToolBatch, TaskCreated and PreCompact, so exit 2 blocks it. The
+  // settings and skill watchers require that verdict before reloading.
+  "ConfigChange",
 ]);
 // `Zge` (chunk-sfn1dbxq.js offset 564884) also includes TaskCreated, so a
 // top-level `decision:"block"` from that event becomes a blocking error.

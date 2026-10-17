@@ -11,9 +11,12 @@ export type ConfigWatchSources = Pick<LoadProjectOptions, "userDir" | "settingsF
   /**
    * Reports one relevant watcher event for the file it names. `add` and
    * `unlink` come from a rename whose target does or does not exist; every
-   * other event is `change`.
+   * other event is `change`. Returning `false` (or a promise resolving to it)
+   * suppresses the debounced reload fan-out for that event, as the recovered
+   * gated watchers do (`oi`, chunk-2bcyxj9q.js [39334,39473); `re`,
+   * chunk-zkxek575.js [4471,4606)).
    */
-  onFileChange?: (filePath: string, event: "add" | "change" | "unlink") => void;
+  onFileChange?: (filePath: string, event: "add" | "change" | "unlink") => void | boolean | Promise<boolean>;
 };
 export interface ConfigWatcher { close(): void; addInstructionPaths?(paths: readonly string[]): void }
 
@@ -239,13 +242,23 @@ export function watchProjectConfig(workspace: string, sourcesOrChange: ConfigWat
             }
           });
           if (!relevant) return;
+          let outcome: void | boolean | Promise<boolean> | undefined;
           if (name && sources?.onFileChange) {
             const target = path.join(directory, name);
             const kind = event === "rename" ? (fs.existsSync(target) ? "add" : "unlink") : "change";
-            try { sources.onFileChange(target, kind); } catch (error) { report(error); }
+            try { outcome = sources.onFileChange(target, kind); } catch (error) { report(error); outcome = true; }
+          }
+          // A pending gate delays the reload fan-out; `false` skips it. The
+          // recovered settings and skill watchers only fan out after the
+          // ConfigChange result is known (`oi`, `re` above).
+          if (outcome !== undefined && typeof (outcome as PromiseLike<boolean>).then === "function") {
+            void (outcome as Promise<boolean>).then(proceed => { if (proceed !== false) notify(); },
+              error => { report(error); notify(); });
+            if (event === "rename" || !name) refresh();
+            return;
           }
           if (event === "rename" || !name) refresh();
-          notify();
+          if (outcome !== false) notify();
         });
         watcher.on("error", error => { report(error); });
         watches.set(directory, { ...item, watcher });
