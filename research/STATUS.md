@@ -2620,3 +2620,11 @@ per-plugin registry whose unbind removes one seat, and the change watch that rep
 value changed under the same plugin/element. The select keyboard itself (`C0`/`nK`) is deferred
 because it needs the `ui.input` dispatcher. Focused 8/8, full 2311/2311, tsc 0, build 0, notices 0,
 identity `8f0b66ab…`. [W148 record](ports/W148-above-prompt-seats.md).
+
+W149 adds the AbovePrompt field/select state layer. Eight blocks (491 units) carry the three
+per-site stores the select keyboard reads (field texts, picked values, site generations), the
+`${plugin}\0${element}` site key, the generation read defaulting to zero, a copy-without-keys
+helper, the forget helper that clears one site's texts and picked value while bumping its
+generation, and the `ui.input` terminal dispatch. The select keyboard itself (`C0`/`nK`/`uK`/`lK`)
+remains for the component slice. Focused 9/9, full 2318/2318, tsc 0, build 0, notices 0, identity
+`61334785…`. [W149 record](ports/W149-above-prompt-select.md).
