@@ -775,3 +775,11 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The host boundary adds nothing.** No source-level host function was introduced; `CZ`/`PH`/`fl` come from the raster surface copy that already carries them.
 - [x] **Behaviour was measured before it was asserted.** The size-before-medium order, the base64 skip, the two colour forms, the UTF-8 byte cap and the three chunk splits are in the probe log and in the suite.
 - [x] **Sweep.** tsc 0, copy `declared 56 / unresolved 0`, notices 0, new suite 28/28, chain family 531/531, full 1807/1807, index 57 chunks / 248,370 units, identity `9c6d2d17…`.
+
+## W45-74 acceptance (2026-10-17)
+
+- [x] **The Image slice's source model was separated from its component.** 2b-i is the shape and encode layer; 2b-ii is `No`/`Ao` and the seams it reads.
+- [x] **Nothing already carried was copied twice.** The validators and `ds` stay in the W45-58 ui.blit copy; this package copies only the two statements the component calls and imports `ds` from that copy.
+- [x] **The copy is verbatim.** Two whole blocks are in the ledger with ranges and digests; the seam adds only exported names.
+- [x] **Behaviour was measured before it was asserted.** The predicates, the byte count, the four encode forms, the shm preference and the transmit integration are in the probe log and in the suite.
+- [x] **Sweep.** tsc 0, copy `declared 15 / unresolved 0`, notices 0, new suite 13/13, chain family 544/544, full 1820/1820, index 57 chunks / 248,924 units, identity `88e22d52…`.

@@ -1,0 +1,34 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        242804,
+        242947
+      ],
+      "units": 143,
+      "bodySha256": "b47bf3f48a76ae4d9541b905bf43f77a32ba6a7ec4b51d182c2d958471dfb4c3",
+      "note": "`ac`, `Z4t` and `B_` — the png and file/shm shape tests and the decoded byte size"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        245185,
+        245596
+      ],
+      "units": 411,
+      "bodySha256": "d864eb7ae6c35c67d24cc68355f207504f35a302662f04314bd9921f289da035",
+      "note": "`Uto` and `Dss` — the shm test and the encoder from a source to the transmit shape"
+    }
+  ],
+  "missing": []
+}
