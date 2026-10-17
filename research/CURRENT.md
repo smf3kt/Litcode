@@ -16,6 +16,10 @@
 
 [W129](ports/W129-tui-welcome.md)按原文搬运 `Hee` 的启动头部：宽度58、少于30行折叠为单行、主题分支（light/light-daltonized/light-ansi 用浅色艺术，其余用深色艺术）、16行正文与 claude/clawd_body/clawd_background 颜色；产品名中性化为 "Welcome to LiTcode"，版本取自包；头部仅在 transcript 为空时显示，首条消息提交后消失。Apple_Terminal 专用 `V` 变体未移植。tsc 0、build 0、聚焦75/75、120x40 与 80x24 PTY 及首条消息清除验证通过，身份 `b86d2a9d…`。
 
+## W130 Apple Terminal 启动头部（2026-10-17）
+
+[W130](ports/W130-welcome-apple-terminal.md)补齐 `Hee` 的 Apple_Terminal 变体 `V`：浅色/深色均复用通用艺术前12行，第13行起改用 `▗`/`▖`、clawd_body 背景与九格腹带；`TERM_PROGRAM=Apple_Terminal` 选择该分支，其余终端保持通用艺术。新增双主题测试；聚焦76/76、tsc 0、build 0、notices 0、索引不变，身份 `21ac3022…`；120x40 PTY 实测分支切换。
+
 ## 待完成清单
 
 本清单为当前唯一待办入口，取代下方按时间累积的历史排程表（那张表保留原证据，供追溯，不再作为排程依据）。每条都指回来源，来源是实测结论，不是计划。

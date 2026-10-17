@@ -4,10 +4,10 @@ import { jsx } from '../src/tui-jsx.js';
 import { TuiDocumentRenderer } from '../src/tui-document-renderer.js';
 import { Welcome, WELCOME_ART_WIDTH, WELCOME_MIN_ROWS } from '../src/tui-welcome.js';
 
-function render(theme: string, version: string, compact: boolean): string[] {
+function render(theme: string, version: string, compact: boolean, appleTerminal = false): string[] {
   const renderer = new TuiDocumentRenderer();
   try {
-    return renderer.renderElement(jsx(Welcome, { theme, version, compact }, undefined), 120,
+    return renderer.renderElement(jsx(Welcome, { theme, version, compact, appleTerminal }, undefined), 120,
       { theme }).map(row => row.ansi);
   } finally { renderer.close(); }
 }
@@ -27,6 +27,15 @@ test('light themes use the starless light art', () => {
   assert.equal(rows.length, 16);
   assert.match(rows[0]!, /Welcome to LiTcode v9\.9\.9/);
   assert.equal(rows.some(row => row.includes('*')), false);
+});
+
+test('Apple Terminal uses the V art in both themes', () => {
+  for (const theme of ['dark', 'light']) {
+    const rows = render(theme, '9.9.9', false, true);
+    assert.equal(rows.length, 16);
+    assert.ok(rows.some(row => row.includes('▗')));
+    assert.equal(rows.some(row => row.includes('██▄█████▄██')), false);
+  }
 });
 
 test('the compact branch is a single line', () => {
