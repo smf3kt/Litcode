@@ -2038,3 +2038,13 @@ decision-block sets, matching `Zge`. Team fields stay unset because the tool
 path has no team identity. `agent-lifecycle` 27/27, `hooks` 50/50, tsc 0,
 build 0, full 2,112/2,112, chain 767/767, identity `081a61bf…`.
 [W84 record](ports/W84-task-created-hooks.md).
+
+W85-01 aligns the TaskCompleted and TeammateIdle payloads. The TaskCompleted
+gate reads the target record and sends `task_id`, `task_subject`,
+`task_description` and `teammate_name` from its `owner`, falling back to the
+tool fields only when the record is absent; WorktreeCreate is unchanged. The
+interactive TeammateIdle raise drops its local `source` and keeps `agent_id`
+and `teammate_name`. The per-task completion trigger stays as the existing
+adaptation; `team_name` has no local source. `agent-lifecycle` 29/29,
+`hooks` 50/50, tsc 0, build 0, full 2,114/2,114, chain 767/767, identity
+`6b50f209…`. [W85 record](ports/W85-task-completed-payload.md).

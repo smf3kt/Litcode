@@ -1,0 +1,3 @@
+2026-10-18T00:10:00Z	package	W85-01 TaskCompleted/TeammateIdle 载荷	pvt [2947228,2947575)、qir [2946651,2946909)、$d [2958255,2958860)、空闲调用点 74688、Ua 60370；readTaskRecord 与载荷构造	TaskCompleted 取记录字段，teammate_name=owner，缺失时回退工具字段；TeammateIdle 去 source 保留 agent_id/teammate_name	agent-lifecycle 29/29；hooks 50/50；tsc 0；build 0；全量 2,114/2,114；链 767/767
+2026-10-18T00:12:00Z	decision	W85-01 边界	① 保持逐任务完成门控；② 不复刻空闲时按 owner 遍历 in_progress；③ team_name 无本地来源	残余：完整消费者与脚本语义	.audit/w85-01-full.txt
+2026-10-18T00:15:00Z	verification	W85-01 验收：agent-lifecycle 29/29、hooks 50/50、tsc 0、build 0、2,114/2,114、767/767	阻断门控含 task_id/subject/description 且无工具字段、任务保持 pending；owner=alice 时 teammate_name=alice 且完成	notices 0；索引 75 chunks / 323,525 单位不变；identity 6b50f209…
