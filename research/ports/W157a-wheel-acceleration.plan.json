@@ -1,0 +1,67 @@
+{
+  "imports": [],
+  "exports": [
+    "pbt",
+    "fbt",
+    "VNo",
+    "tgt"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-z7whhrje.js",
+      "range": [
+        9007,
+        9133
+      ],
+      "note": "jediTerm wheel state"
+    },
+    {
+      "file": "chunk-z7whhrje.js",
+      "range": [
+        9266,
+        9339
+      ],
+      "note": "pending arrow boost"
+    },
+    {
+      "file": "chunk-z7whhrje.js",
+      "range": [
+        9540,
+        9565
+      ],
+      "note": "jediTerm bypass window"
+    },
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [
+        124024,
+        124140
+      ],
+      "note": "wheel window constants"
+    },
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [
+        124299,
+        124336
+      ],
+      "note": "wheel acceleration constants"
+    },
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [
+        124336,
+        126011
+      ],
+      "note": "wheel step"
+    },
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [
+        126011,
+        126204
+      ],
+      "note": "wheel state factory"
+    }
+  ]
+}
