@@ -300,9 +300,12 @@ export type HookPayload = {
   stop_reason?: string;
   agent_id?: string;
   agent_type?: string;
+  /** TaskCreated / TaskCompleted: the task's own metadata, not the tool echo. */
   task_id?: string;
   task_subject?: string;
+  task_description?: string;
   teammate_name?: string;
+  team_name?: string;
   notification_type?: string;
   /** Elicitation / ElicitationResult: the MCP server asking. */
   mcp_server_name?: string;
@@ -396,10 +399,13 @@ const BLOCKING_EVENTS: ReadonlySet<HookEvent> = new Set([
   "PermissionRequest",
   "SubagentStop",
   "TeammateIdle",
+  "TaskCreated",
   "TaskCompleted",
   "Elicitation",
   "WorktreeCreate",
 ]);
+// `Zge` (chunk-sfn1dbxq.js offset 564884) also includes TaskCreated, so a
+// top-level `decision:"block"` from that event becomes a blocking error.
 // A top-level `decision:"block"` is honored only for these events. PreToolUse
 // uses `hookSpecificOutput.permissionDecision` instead, and the display-only
 // events ignore a top-level decision entirely.
@@ -410,6 +416,7 @@ const DECISION_BLOCK_EVENTS: ReadonlySet<HookEvent> = new Set([
   "PostToolUseFailure",
   "SubagentStop",
   "TeammateIdle",
+  "TaskCreated",
   "TaskCompleted",
 ]);
 const PERMISSION_DECISIONS: ReadonlySet<string> = new Set(["allow", "deny", "ask", "defer"]);

@@ -391,6 +391,33 @@ function withLock<T>(root: string, fn: () => T): T {
   }
 }
 
+/** Remove one task and unlink it from every dependent's blockedBy. Caller holds the lock. */
+function deleteTaskRecord(store: TaskStore, id: string): boolean {
+  const index = store.tasks.findIndex((candidate) => candidate.id === id);
+  if (index < 0) return false;
+  store.tasks.splice(index, 1);
+  for (const other of store.tasks) {
+    other.blockedBy = other.blockedBy.filter((dep) => dep !== id);
+  }
+  validateGraph(store.tasks);
+  return true;
+}
+
+/**
+ * Hook rollback path: remove a task the current turn created when its
+ * TaskCreated hook blocks. Not exposed as a tool. Mirrors the recovered
+ * `XCt` delete-and-unlink behavior (chunk-9xs8s13r.js).
+ */
+export function removeTask(workspace: string, id: string): boolean {
+  const root = canonicalWorkspace(workspace);
+  return withLock(root, () => {
+    const store = readStore(root);
+    if (!deleteTaskRecord(store, id)) return false;
+    writeStore(root, store);
+    return true;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Dependency graph validation
 // ---------------------------------------------------------------------------
@@ -705,14 +732,7 @@ function taskUpdateTool(root: string, reciprocal: boolean): ToolDefinition {
         if (parsed.deleted === true) {
           // Deleting a task unlinks it from every dependent's blockedBy so the
           // graph stays acyclic and referentially intact (reciprocal cleanup).
-          const index = store.tasks.findIndex((candidate) => candidate.id === task.id);
-          store.tasks.splice(index, 1);
-          for (const other of store.tasks) {
-            if (other.blockedBy.includes(task.id)) {
-              other.blockedBy = other.blockedBy.filter((dep) => dep !== task.id);
-            }
-          }
-          validateGraph(store.tasks);
+          deleteTaskRecord(store, task.id);
           writeStore(root, store);
           return capOutput(
             JSON.stringify({ deleted: true, id: task.id }, null, 2),
