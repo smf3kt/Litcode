@@ -1,0 +1,42 @@
+(node:17007) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ hook display fields persist across resume and suppression preserves model context (37.411375ms)
+✔ instruction and file events carry the recovered payload fields (72.511459ms)
+✔ prompt model hook stays a single counted call with no workspace tools (15.797583ms)
+✔ agent model hook reads real workspace evidence through exactly the read-tool allowlist (31.105208ms)
+✔ agent hook pairs denied read input and attempted write as errors without effects (14.974625ms)
+✔ Agent main loop invokes configured model hook read loop and keeps hook tools out of durable batches (40.09ms)
+✔ agent hook accepts exactly 32 tool calls and counts the paired context again (15.737708ms)
+✔ agent hook context budget is counted before any model request or tool effect (16.028625ms)
+✔ agent hook stops at eight counted calls even when model keeps requesting reads (17.053833ms)
+✔ agent hook rejects batches beyond 32 tool calls before executing any tool (16.014ms)
+✔ prompt hook unexpected tool request terminates its single call without execution (14.667375ms)
+✔ PermissionRequest allowing updatedInput executes the replacement and exposes it to PreToolUse (67.381791ms)
+✔ PermissionRequest replacement denied by input rules produces a paired error before tool effects (57.690041ms)
+✔ approval callback exceptions leave every call paired and later calls still execute (34.327792ms)
+✔ PreToolUse ask resolves through interactive approval true (45.684208ms)
+✔ PreToolUse ask resolves through interactive approval false (41.779375ms)
+✔ PreToolUse defer resolves through interactive approval true (44.933042ms)
+✔ PreToolUse defer resolves through interactive approval false (44.905834ms)
+✔ TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects (61.072125ms)
+✔ MessageDisplay receives the recovered delta fields and rewrites only the displayed text (34.8745ms)
+✔ PreCompact receives custom instructions and hook stdout becomes Additional Instructions (39.6705ms)
+✔ SessionStart carries the child agent type and the recorded session title (26.209458ms)
+✔ TaskCreated receives the created task's fields and a block rolls the task back (80.169583ms)
+✔ TaskCreated additional context leaves the created task in place (64.978375ms)
+✔ TaskCompleted receives the task metadata and blocks before the update (56.873417ms)
+✔ TaskCompleted teammate_name follows the task owner (88.952208ms)
+✔ child SubagentStop block continues with active marker and respects maxTurns (76.013208ms)
+✔ Stop block counter survives interrupted feedback commit and child tool work resets it (103.851125ms)
+✔ durable transformed tool_output replays after interruption without rerunning tool or hook (53.834834ms)
+✔ conditional read rules match actual tool path and append context after the full result batch (35.99775ms)
+✔ first mutable rule match returns retry context before write and the next informed call executes (45.443166ms)
+✔ conditional rule sources and imports remain pinned through durable resume (59.58175ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1790.89875

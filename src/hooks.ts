@@ -296,6 +296,12 @@ export type HookPayload = {
   trigger?: string;
   /** PreCompact: user-supplied compaction instructions, or null when none were given. */
   custom_instructions?: string | null;
+  /** MessageDisplay: the turn, message, delta index and displayed delta (`zir`). */
+  turn_id?: string;
+  message_id?: string;
+  index?: number;
+  final?: boolean;
+  delta?: string;
   /** PostCompact: the summary produced by compaction. */
   compact_summary?: string;
   /** SessionEnd: why the session is ending. */
@@ -363,6 +369,8 @@ export type HookResult = {
    * compaction prompt rather than ordinary hook context.
    */
   newCustomInstructions?: string[];
+  /** MessageDisplay: replacement text for the displayed delta; storage is untouched. */
+  displayContent?: string;
   /**
    * Set only by an explicit `continue:false` output, meaning "terminate the
    * session". A Stop hook that merely requests continuation (exit 2 or a
@@ -894,6 +902,10 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   (result.hookSpecificOutput ??= []).push(output);
   if (event === "PostToolUse" && output.updatedToolOutput !== undefined) result.updatedToolOutput = output.updatedToolOutput;
   if (event === "UserPromptExpansion" && typeof output.updatedPrompt === "string") result.updatedPrompt = output.updatedPrompt;
+  // MessageDisplay is display-only: `hookSpecificOutput.displayContent` replaces the delta on
+  // screen while the stored message and what the model sees stay unchanged (source output
+  // processing at chunk-sfn1dbxq.js offset 2967137).
+  if (event === "MessageDisplay" && typeof output.displayContent === "string") result.displayContent = output.displayContent;
   if (event === "PermissionRequest") {
     const permission = output.decision;
     if (permission && typeof permission === "object" && !Array.isArray(permission)) {

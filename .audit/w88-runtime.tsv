@@ -1,0 +1,3 @@
+2026-10-18T01:40:00Z	package	W88-01 MessageDisplay 契约	zir [2936136,2936500)、输出处理 2967137、WHo 100801、字段说明；HookPayload.delta 系列与 displayContent	完成消息一次 final delta；displayContent 仅替换回合显示文本	agent-lifecycle 32/32；tsc 0；build 0；全量 2,117/2,117；链 767/767
+2026-10-18T01:42:00Z	decision	W88-01 边界	① 不复刻逐 token 重写；② 流式输出保持原文；③ 空文本不触发 raise	残余：完整消费者与脚本语义	.audit/w88-01-full.txt
+2026-10-18T01:45:00Z	verification	W88-01 验收：agent-lifecycle 32/32、tsc 0、build 0、2,117/2,117、767/767	payload 含四个 delta 字段；result.text=rewritten display；session.messages 仅 original text	notices 0；索引 75 chunks / 323,525 单位不变；identity 9088606a…
