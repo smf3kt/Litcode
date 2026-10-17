@@ -2798,3 +2798,20 @@ Bun child realm is replaced by the Node vm boundary and the cross-realm spawn me
 deferred; both are recorded. Focused 10/10, full 2447/2447, tsc 0, build 0, notices 0, identity
 `14a9b2cc…`.
 [W159 record](ports/W159-nested-workflow.md).
+
+W160 carried the composer's alt+w workflow-keyword toggle (2 blocks, 493 UTF-16 units:
+`jl` and `ul` in chunk-24k7d6mw.js; gates `dg`/`$uo`/`C7t` in chunk-c5zwk83v.js add
+3 blocks, 529 units). With non-empty `Art` keyword runs the toggle flips the per-draft
+dismissal, suppresses the existing keyword highlight, and shows the source
+`workflow-keyword-ignored` notice (`Ultracode keyword ignored for this prompt · alt+w to
+undo`, 5000ms) on the status row; a second press restores the runs, and editing until the
+runs disappear clears the dismissal exactly as the source input subscription does. The
+source's managed/org/plan gates and boolean `CLAUDE_CODE_WORKFLOWS` identity checks have no
+surface in this runtime, so `workflowsAvailable` keeps the disable switch and the
+`enableWorkflows` setting (default on); `workflowKeywordTriggerEnabled` defaults on, and both
+settings thread through the strict schema, parseSettings, the CLI merge, session config,
+reload and `setWorkflowKeywordSettings`. The single status row carries only the dismissal
+notice (the highlight carries the active state), and the fixed TUI binding supplies the
+`alt+w` label; both are recorded. Focused 82/82, full 2450/2450, tsc 0, build 0, notices 0,
+identity `b2c11915…`.
+[W160 record](ports/W160-workflow-keyword.md).

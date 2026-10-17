@@ -105,6 +105,8 @@ export type ParsedRuntimeSettings = {
   vimInsertModeRemaps?: Record<string,unknown>;
   maxProseWidth?: number;
   syntaxHighlightingDisabled?: boolean;
+  enableWorkflows?: boolean;
+  workflowKeywordTriggerEnabled?: boolean;
   theme?: ThemeSetting;
   statusLine?: import('./tui-statusline.js').StatusLineSetting;
   promptCaching?: boolean;
@@ -207,6 +209,8 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   const proseWidth = z.number().int().min(40).optional().catch(undefined).parse(settings.maxProseWidth);
   if (proseWidth !== undefined) out.maxProseWidth = proseWidth;
   if (settings.syntaxHighlightingDisabled !== undefined) out.syntaxHighlightingDisabled = settingBoolean(settings, 'syntaxHighlightingDisabled');
+  if (settings.enableWorkflows !== undefined) out.enableWorkflows = settingBoolean(settings, 'enableWorkflows');
+  if (settings.workflowKeywordTriggerEnabled !== undefined) out.workflowKeywordTriggerEnabled = settingBoolean(settings, 'workflowKeywordTriggerEnabled');
   if (settings.statusLine !== undefined) out.statusLine = statusLineSchema.parse(settings.statusLine);
   const theme = parseTheme(settings.theme);
   if (theme !== undefined) out.theme = theme;

@@ -130,7 +130,9 @@ test('trusted callback hooks reach child and skill lifecycles with independent o
 test('parseSettings maps known runtime fields and ignores unknown keys', () => {
   const parsed = parseSettings({
     model: 'magpie-x', baseURL: 'http://127.0.0.1:9', auth: 'api-key', tokenCounting: 'api',
-    thinking: true, prefersReducedMotion: true, maxProseWidth: 40, syntaxHighlightingDisabled: true, promptCaching: true, eagerToolInput: true, allowShell: true,
+    thinking: true, prefersReducedMotion: true, maxProseWidth: 40, syntaxHighlightingDisabled: true,
+    enableWorkflows: false, workflowKeywordTriggerEnabled: false,
+    promptCaching: true, eagerToolInput: true, allowShell: true,
     maxTurns: 5, maxTokens: 10, contextTokens: 11, compactAt: 12, maxOutputBytes: 13,
     hooks: {
       PreToolUse: [{ command: 'echo hi', matcher: 'Write', timeout: 1.5 }],
@@ -159,6 +161,14 @@ test('parseSettings maps known runtime fields and ignores unknown keys', () => {
   assert.equal(parseSettings({ syntaxHighlightingDisabled: false }).syntaxHighlightingDisabled, false);
   assert.equal(parseSettings({}).syntaxHighlightingDisabled, undefined);
   assert.equal(parseSettings({ syntaxHighlightingDisabled: undefined }).syntaxHighlightingDisabled, undefined);
+  assert.equal(parsed.enableWorkflows, false);
+  assert.equal(parseSettings({ enableWorkflows: true }).enableWorkflows, true);
+  assert.equal(parseSettings({}).enableWorkflows, undefined);
+  assert.throws(() => parseSettings({ enableWorkflows: 'yes' }), /settings\.enableWorkflows must be true or false/);
+  assert.equal(parsed.workflowKeywordTriggerEnabled, false);
+  assert.equal(parseSettings({ workflowKeywordTriggerEnabled: true }).workflowKeywordTriggerEnabled, true);
+  assert.equal(parseSettings({}).workflowKeywordTriggerEnabled, undefined);
+  assert.throws(() => parseSettings({ workflowKeywordTriggerEnabled: 1 }), /settings\.workflowKeywordTriggerEnabled must be true or false/);
   assert.equal(parsed.maxOutputBytes, 13);
   assert.deepEqual(parsed.permissions, { mode: 'plan', allow: ['read_*'], deny: ['run_command'] });
   assert.deepEqual(parsed.mcpServers, { srv: { command: 'node', args: ['-e', 'x'] } });

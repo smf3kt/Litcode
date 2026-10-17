@@ -22,9 +22,9 @@
 //
 // The three gates are host configuration in the source, so they arrive as inputs. Their defaults are the
 // source's own: `Goe()` is `k("tengu_turtle_carbon", !0)` and so is on, `vz()` needs the ultraplan flag
-// and so is off. The `dg()&&!Zi` pair belongs to the workflow-keyword UI (its alt+w toggle and the
-// `tengu_workflow_keyword_dismiss` notice), which this product does not carry, so its call site passes
-// the gate off; the keyword runs themselves are copied and one flag away.
+// and so is off. `dg()&&!Zi` is the workflow-keyword gate: `dg()` is workflow availability and `Zi` the
+// per-draft dismissal the alt+w toggle sets. The keyword runs are `Art` over `Qp`/`IE` and stay off until
+// the host passes `workflowKeyword` true.
 //
 // A span's `shimmerColor` is the source's animated variant of its color. `w9r` clears it when a chain run
 // supplies a color, and the input's glimmer path is what reads it; this product renders the static
@@ -32,6 +32,20 @@
 import { Art, d3n, ewe, fB, j5r, pue, vMe, YIt } from './tui-input-highlights-source.js';
 import { w9r } from './plugin-chain-decorations-source.js';
 import type { DecorationRun } from './tui-input-decorations.js';
+
+/**
+ * The local half of the composer's workflow gates. The source's `dg()` at chunk-c5zwk83v.js offset 2239
+ * (`function dg(){return $uo()===void 0}`) reduces to `$uo()`'s unavailable reasons: org policy, plan
+ * availability, the `CLAUDE_CODE_DISABLE_WORKFLOWS` switch and the `enableWorkflows` user setting. This
+ * runtime has no org or plan surface, so the gate keeps the switch and the setting; the availability
+ * default is on, which is what the source resolves to for a locally enabled build. `C7t()` at offset 2849
+ * reads `settings.workflowKeywordTriggerEnabled ?? true` and is passed in by the caller.
+ */
+export function workflowsAvailable(enableWorkflows?: boolean, env: NodeJS.ProcessEnv = process.env): boolean {
+  const disabled = env.CLAUDE_CODE_DISABLE_WORKFLOWS;
+  if (disabled !== undefined && disabled !== '') return false;
+  return enableWorkflows ?? true;
+}
 
 /** A highlight span as the composer pushes it, before `pue` merges the marks in. */
 export interface HighlightSpan extends DecorationRun {

@@ -42,6 +42,10 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   else delete next.maxProseWidth;
   if (settings.syntaxHighlightingDisabled !== undefined) next.syntaxHighlightingDisabled = settings.syntaxHighlightingDisabled;
   else delete next.syntaxHighlightingDisabled;
+  if (settings.enableWorkflows !== undefined) next.enableWorkflows = settings.enableWorkflows;
+  else delete next.enableWorkflows;
+  if (settings.workflowKeywordTriggerEnabled !== undefined) next.workflowKeywordTriggerEnabled = settings.workflowKeywordTriggerEnabled;
+  else delete next.workflowKeywordTriggerEnabled;
   if (settings.theme !== undefined) next.theme = settings.theme;
   else delete next.theme;
   if (settings.statusLine !== undefined) next.statusLine = settings.statusLine;
