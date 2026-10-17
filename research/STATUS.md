@@ -1935,3 +1935,12 @@ refusal surfaces the source rule. The default indexed ask contract is unchanged;
 the source client host is represented by the explicit callback. One new case,
 interaction-tools 30/30, tsc 0, full 2,101/2,101, chain 767/767, identity
 `ef8f4ab4…`. [W73 record](ports/W73-card-host.md).
+
+W74-01 ports the recovered normalized preview arm of `pe`. A claimed annotation
+preview may differ from the shown preview only through the source normalization
+(`Ce` with the `cn` predicate, `Zs`, then the `Ee`/`rPe` stability test), and
+only when the shown preview is at most 2000 UTF-16 units; the truncation marker
+is never admitted. `ln`/`cn`/`Ce` are copied verbatim and `Zs`/`xg`/`rPe`
+reuse the existing source copies. One new case, interaction-tools 31/31, tsc 0,
+full 2,102/2,102, chain 767/767, identity `a96ee3cd…`.
+[W74 record](ports/W74-preview-normalization.md).

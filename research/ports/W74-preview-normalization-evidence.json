@@ -1,0 +1,118 @@
+{
+ "schema": "W74PreviewNormalizationEvidence.v1",
+ "package": "W74-01 — normalized preview admission",
+ "date": "2026-10-17",
+ "question": "Does annotation admission carry the recovered normalized-equivalent preview arm, including its character predicate, stability test and 2000-unit bound?",
+ "answer": "Yes: cardPreviewAdmitted admits the exact shown preview, else the normalized form of a shown preview of at most 2000 units when the shown value is stable under the rPe/xg test; ln/cn/Ce are ported verbatim and Zs/xg/rPe reuse the existing source copies.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-qq2mgstr.js",
+  "unit": "UTF-16 code units",
+  "ln": [
+   8080,
+   8178
+  ],
+  "L": [
+   8178,
+   8299
+  ],
+  "cn": [
+   8375,
+   8414
+  ],
+  "Ce": [
+   8414,
+   8503
+  ],
+  "pc": [
+   8706,
+   8741
+  ],
+  "nD": [
+   15431,
+   15484
+  ],
+  "Ee": [
+   15517,
+   15549
+  ],
+  "Gat": [
+   16278,
+   16350
+  ],
+  "previewAdmission": {
+   "module": "extracted-v2/modules/chunk-ktr9sak2.js",
+   "symbol": "pe",
+   "range": [
+    4720,
+    4845
+   ]
+  },
+  "bound": {
+   "module": "extracted-v2/modules/chunk-ktr9sak2.js",
+   "symbol": "ie",
+   "position": 2056,
+   "value": 2000
+  },
+  "identity": "ZSo is identity in chunk-qq2mgstr.js, so Gat = pc"
+ },
+ "behavior": {
+  "normalization": "Zs(Ce(value, cn)); Ce iterates code points and replaces a character when L(char, code) && !ln(code)",
+  "stability": "nD(value) = rPe.test(normalized) || xg(normalized) !== normalized",
+  "admission": "exact shown preview, else shown.length <= 2000 && normalized(shown) === claimed && !unstable(shown)",
+  "reuse": "Zs/rPe from plugin-chain-normalize-source.ts; xg from plugin-chain-label-text-source.ts"
+ },
+ "changes": [
+  {
+   "file": "src/interaction-tools.ts",
+   "change": "cardPreviewNormalized/Unstable/Admitted and previewChars 2000",
+   "sha256": "3a2b8e6e9139fc358fa6e936411997942beaed763fd7186c70e3ee1df4aeab38"
+  },
+  {
+   "file": "src/plugin-chain-normalize-source.ts",
+   "change": "export list adds rPe (bodies unchanged)",
+   "sha256": "fc66eb4795aad211827727187dab9c260a47719153a8345f8f081da9ad0361e1"
+  },
+  {
+   "file": "test/interaction-tools.test.ts",
+   "change": "one normalized preview case",
+   "sha256": "1548704f955c7c118ec0f46153044a2d43d6fec99f6fff63536b39132d2fb627"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-11 rows record normalized previews",
+   "sha256": "5be1ba8356eac9e7d8b6b539619bbc04ae98f43c766e3eb951020ed556b1cbd5"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Question/plan/findings row records normalized previews",
+   "sha256": "fe5217c8ebcfb74f565fde8bc52ceec2cd362af59db0923862eae9337b833012"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W74-01 entry",
+   "sha256": "2734fac51d34ad015249b42bd3bdbdd53c435347556cba6bd80bb9c3fa300256"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W74-01 S-1..S-7 entry",
+   "sha256": "242c36b25547ebe4703fe84d2f53dc93ee652cd9f05df7d52ec65d4887dd5026"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "interactionTools": "31/31",
+  "build": "exit 0",
+  "full": "2,102/2,102",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "a96ee3cdff38e087013d8d239f09a7b9616e03d2644b7fc459fc38faa8e51e2b"
+ },
+ "residuals": [
+  "The full renderer and formatting host remain C-11 work.",
+  "xHe compares shown and returned values through a transform; this runtime compares plain JSON structurally.",
+  "The annotation map is carried on the indexed answer rather than keyed by question text."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-11 continues with the full renderer and formatting host."
+}

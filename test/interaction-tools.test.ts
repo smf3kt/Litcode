@@ -471,6 +471,18 @@ test('card hosts answer through the admitted card contract', async () => {
   assert.equal(JSON.parse(await fromContext.execute(structuredClone(question), ctx)).answers['Which implementation?'], 'B');
 });
 
+test('card previews admit the recovered normalized form within its bounds', () => {
+  const shownFor = (preview: string) => ({ questions: [{ question: 'Q?', options: [{ label: 'A', description: 'a', preview }, { label: 'B', description: 'b' }], multiSelect: false }] });
+  const card = (preview: string) => ({ annotations: { 'Q?': { preview } } });
+  const raw = 'a\u0007b';
+  assert.equal(admitCardAnswer(shownFor(raw), card('a�b')).kind, 'admitted');
+  assert.equal(admitCardAnswer(shownFor(raw), card(raw)).kind, 'admitted');
+  const truncated = 'a\u0007b… [+3 graphemes]';
+  assert.deepEqual(admitCardAnswer(shownFor(truncated), card('a�b… [+3 graphemes]')), { kind: 'refused', rule: 'annotations' });
+  const long = 'a' + 'x'.repeat(1999) + '\u0007';
+  assert.deepEqual(admitCardAnswer(shownFor(long), card('a' + 'x'.repeat(1999) + '�')), { kind: 'refused', rule: 'annotations' });
+});
+
 test('invalid queue configuration fails immediately', () => {
   for (const options of [{ timeoutMs: 0 }, { timeoutMs: Infinity }, { timeoutMs: 600_001 }, { maxPending: 0 }, { maxPending: 65 }, { maxPending: 1.5 }]) {
     assert.throws(() => createInteractionTools(options), /Invalid interaction/);
