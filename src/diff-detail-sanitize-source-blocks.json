@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-9f9hx2aq.js",
+      "sha256": "cacbc870e67f6ae0cb55ceafb4448aa38a7ec671513a13d441d79600de6b2b10"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-9f9hx2aq.js",
+      "sha256": "cacbc870e67f6ae0cb55ceafb4448aa38a7ec671513a13d441d79600de6b2b10",
+      "range": [
+        1025,
+        6905
+      ],
+      "units": 5880,
+      "bodySha256": "0bafbbfc01da2434abc55e59c4f253debe6cfbccdfc8b13b4f2a88de80bbbd43",
+      "note": "__e: the text sanitizer, its script tables, grapheme and class helpers, and the emoji/selector ranges; the closure resolves to one import, hf"
+    }
+  ],
+  "missing": []
+}

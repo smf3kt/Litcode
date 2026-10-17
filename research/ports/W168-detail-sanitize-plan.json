@@ -1,0 +1,9 @@
+{
+  "imports": [
+    "import { hf } from './plugin-chain-host-call-source.js';"
+  ],
+  "exports": ["__e"],
+  "blocks": [
+    { "file": "chunk-9f9hx2aq.js", "range": [1025, 6905], "note": "__e: the text sanitizer, its script tables, grapheme and class helpers, and the emoji/selector ranges; the closure resolves to one import, hf" }
+  ]
+}

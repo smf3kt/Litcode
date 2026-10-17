@@ -1,0 +1,25 @@
+{
+  "imports": [
+    "import { Xe as e, Xe as r, w, s, n, b } from './plugin-chain-react-surface.js';",
+    "import { Do, nt } from './tui-base-components.js';",
+    "import { ae, Ar } from './plugin-chain-text-clamp-source.js';",
+    "import { ke } from './plugin-chain-input-field-source.js';",
+    "import { sv } from './plugin-chain-session-context-source.js';",
+    "import { H4 } from './plugin-chain-code-diff-source.js';",
+    "import { fo } from './diff-dialog-chrome-source.js';",
+    "import { pn } from './tui-ansi-strip.js';",
+    "import { readFileBounded as r8e, isRemoteSession as Ht } from './diff-dialog-detail-host.js';",
+    "import { resolve as hpt } from 'node:path';",
+    "import { __e } from './diff-detail-sanitize-source.js';"
+  ],
+  "exports": ["Uwe", "Sj", "pBe", "Ol", "XN", "yV"],
+  "blocks": [
+    { "file": "chunk-24k7d6mw.js", "range": [1657226, 1657289], "note": "Uwe: a file path sanitized and collapsed to one line for the detail header" },
+    { "file": "chunk-24k7d6mw.js", "range": [1657326, 1657515], "note": "Sj: the parenthesized dim badge, hidden when its when prop is false" },
+    { "file": "chunk-24k7d6mw.js", "range": [1657515, 1657527], "note": "ypt: the 1 MB file read limit" },
+    { "file": "chunk-24k7d6mw.js", "range": [1657527, 1661848], "note": "pBe: the diff dialog detail view, one file's header, divider, hunks, and state notes" },
+    { "file": "chunk-rwv4cv93.js", "range": [902, 2099], "note": "Ol: the divider row, optional centered title between repeated characters" },
+    { "file": "chunk-1r9zp6s1.js", "range": [19763, 19829], "note": "XN: children, or the fallback when a screen reader is active" },
+    { "file": "chunk-3cynezh1.js", "range": [66071, 66113], "note": "yV: the box drawing character the divider repeats" }
+  ]
+}

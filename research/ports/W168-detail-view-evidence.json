@@ -1,0 +1,69 @@
+{
+  "schema": "W168DetailView.v1",
+  "package": "W168-detail-view",
+  "date": "2026-10-18",
+  "source": {
+    "copied": {
+      "blocks": 8,
+      "units": 11770,
+      "ranges": [
+        { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31", "name": "Uwe", "range": [1657226, 1657289], "units": 63, "digest": "97ee7960df45ee575f190902c79e1887dd68991efa0c7eae14dc3d31c2ea1a41", "note": "a file path sanitized and collapsed to one line for the detail header" },
+        { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31", "name": "Sj", "range": [1657326, 1657515], "units": 189, "digest": "7991ff6a5f231e6cee08e223fda7d679e4d4ec642c46545f59324f9b6ddb3592", "note": "the parenthesized dim badge, hidden when its when prop is false" },
+        { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31", "name": "ypt", "range": [1657515, 1657527], "units": 12, "digest": "aad2b4b85f40ead59d5c3b4142a314cb3be533e4cc8db6b441639980207646fb", "note": "the 1 MB file read limit" },
+        { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31", "name": "pBe", "range": [1657527, 1661848], "units": 4321, "digest": "4c8536f6f4104f51f20370a0db80257185f5e4702a2b6d192e2e9e44d61fa4fa", "note": "the diff dialog detail view: header, divider, hunks, and the restricted/untracked/binary/large/truncated/empty notes" },
+        { "module": "chunk-rwv4cv93.js", "sha256": "023846209f55eae2677fb05ee2c565c76872a820cbc13dd47ddf64934afbf6e1", "name": "Ol", "range": [902, 2099], "units": 1197, "digest": "3eef08fefa3738e5fb277a220246f748a5872985c3371685c7eef53039926b4d", "note": "the divider row, an optional centered title between repeated characters" },
+        { "module": "chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "name": "XN", "range": [19763, 19829], "units": 66, "digest": "cf13685ead8ef25ece2f681b7df28bee4fba9feb755f43d1d8a0052ee016fa49", "note": "children, or the fallback when a screen reader is active" },
+        { "module": "chunk-3cynezh1.js", "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3", "name": "yV", "range": [66071, 66113], "units": 42, "digest": "1eca74506ecca03a84c6c878bdca0507d98a2b2e4faa51a40f4416b751e48e15", "note": "the box drawing character the divider repeats" },
+        { "module": "chunk-9f9hx2aq.js", "sha256": "cacbc870e67f6ae0cb55ceafb4448aa38a7ec671513a13d441d79600de6b2b10", "name": "__e", "range": [1025, 6905], "units": 5880, "digest": "0bafbbfc01da2434abc55e59c4f253debe6cfbccdfc8b13b4f2a88de80bbbd43", "note": "the text sanitizer closure: script/extend tables, grapheme helpers, class ranges, and the sanitizer; resolves to one import, hf" }
+      ]
+    },
+    "host_adapters": [
+      { "module": "chunk-f606a53w.js", "sha256": "dd0a1dc61be769e7ea2ec7f4345b3b4f88996150d4d219b8ada90f03e89dd033", "name": "r8e", "range": [5314, 5397], "units": 83, "body_sha256": "f7220b7e04a6119f7acc2d58c5aa7d0f57a531984430170bd630a95fd652d3cc", "product": "src/diff-dialog-detail-host.ts", "note": "the source body opens through `ih`fs.readBoundedSync(...)`, a Bun runtime template builtin unavailable on this host; readFileBounded keeps the open flags, regular-file check, 8192-byte reads and over-limit refusal" },
+      { "module": "chunk-qr9z1wer.js", "sha256": "7c4094d82563f8ebbee3405c7ba3cdb48d5eb7701e274c48c111eb1aefc587a3", "name": "Ht", "range": [1303, 1342], "units": 39, "body_sha256": "44668f063e24edb161db9540bcb530e71f24e1f78921432706ec53837c4ecf3c", "product": "src/diff-dialog-detail-host.ts", "note": "remote/control-channel check; the product keeps local features only, so isRemoteSession answers false and every copied branch takes its local wording" }
+    ],
+    "reused": [
+      { "names": ["e", "r", "w", "s", "n", "b"], "product": "src/plugin-chain-react-surface.ts" },
+      { "names": ["Do", "nt"], "product": "src/tui-base-components.ts" },
+      { "names": ["ae", "Ar"], "product": "src/plugin-chain-text-clamp-source.ts" },
+      { "names": ["ke"], "product": "src/plugin-chain-input-field-source.ts" },
+      { "names": ["sv"], "product": "src/plugin-chain-session-context-source.ts" },
+      { "names": ["H4"], "product": "src/plugin-chain-code-diff-source.ts" },
+      { "names": ["fo"], "product": "src/diff-dialog-chrome-source.ts" },
+      { "names": ["pn"], "product": "src/tui-ansi-strip.ts" },
+      { "names": ["hf"], "product": "src/plugin-chain-host-call-source.ts" }
+    ],
+    "remaining": ["Mr (ui spinner: ia/HIe/bg/Wo/mr)", "the dialog frame _e, tabs sS/Na, list Tl/Cn/Po/Bo/rx, and the si wiring with PMr/Ffe"]
+  },
+  "product": {
+    "files": [
+      "src/diff-detail-sanitize-source.ts",
+      "src/diff-detail-sanitize-source-blocks.json",
+      "src/diff-dialog-detail-source.ts",
+      "src/diff-dialog-detail-source-blocks.json",
+      "src/diff-dialog-detail-host.ts",
+      "src/diff-dialog-detail.ts",
+      "test/diff-dialog-detail.test.ts"
+    ],
+    "exports": ["DiffFileDetail", "DiffDivider", "detailHeading", "sanitizeText", "SOURCE_BODIES"],
+    "notes": [
+      "The detail header is the sanitized path; Sj renders only when the host renders elements, so the badge text comes from the source children and the badge component is asserted by identity.",
+      "A readable file is resolved against the project cwd, read through the 1 MB bound, and rendered as one H4 per hunk with the first line and full content; a missing or oversized file degrades to firstLine null and fileContent undefined.",
+      "Restricted, untracked, binary and large files never read the file; untracked adds the local git add hint because isRemoteSession is false.",
+      "The divider repeats yV and centers a title as `<left> <title> <right>`, falling back to children when the screen reader is off."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 12, "failed": 0, "file": "test/diff-dialog-detail.test.ts", "new": 12 },
+    "full": { "passed": 2521, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": { "detail": { "declared": 79, "unresolved": 0 }, "sanitize": { "declared": 70, "unresolved": 0 } }
+  },
+  "identity": {
+    "sha256": "881169c59c51bfa6b4127dea3c51a2bd483aa57b028b392e3b3beaa2383c53ae",
+    "inputs": 644,
+    "validation": 224,
+    "build": 444
+  }
+}
