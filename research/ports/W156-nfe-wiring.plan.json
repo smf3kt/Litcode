@@ -1,0 +1,38 @@
+{
+  "imports": [
+    "import { Xe as e, Xe as r, s, R, P, Z, en, le, y, Ae } from \"./plugin-chain-react-hooks.js\";",
+    "import { paneMeasureContext as QY, useActiveOverlay as sa, keyDisplayText as us } from \"./plugin-chain-above-prompt-host-glue.js\";",
+    "import { ke, cdn } from \"./plugin-chain-input-field-source.js\";",
+    "import { G1, NI, Tne, _ne, kne, pne, vne, wne, yne } from \"./plugin-chain-above-prompt-source.js\";",
+    "import { j1, PFe, TFe, Rne, w0, wFe, bne, K1, J1, z1 } from \"./plugin-chain-above-prompt-parts-source.js\";",
+    "import { IV, Ine, Z1, cK, q1, tK, vp } from \"./plugin-chain-above-prompt-local-source.js\";",
+    "import { Ihe, fd, lK, nK, uK } from \"./plugin-chain-above-prompt-select-keys-source.js\";",
+    "import { A9r, PYe, Xq, ZD, iZo, sZo } from \"./plugin-chain-above-prompt-focus-source.js\";",
+    "import { Ane, X1, eK } from \"./plugin-chain-above-prompt-seats-source.js\";",
+    "import { Tp } from \"./plugin-chain-above-prompt-input-source.js\";",
+    "import { HG, Ze, gpr, hro, nn } from \"./plugin-chain-above-prompt-keybinding-source.js\";",
+    "import { fdn, gdn, ldn, pdn, udn } from \"./plugin-chain-select-field-source.js\";",
+    "import { VH, hdn } from \"./plugin-chain-terminal-glue-source.js\";",
+    "import { kj, wFt, y3n } from \"./plugin-chain-press-button-source.js\";",
+    "import { Ey } from \"./plugin-chain-client-host-source.js\";",
+    "import { $pn, Kje, c9 } from \"./plugin-chain-client-host.js\";",
+    "import { Ri, Y4t } from \"./plugin-chain-notify-fold-source.js\";",
+    "import { Re } from \"./plugin-chain-hover-source.js\";",
+    "import { Ys, kc } from \"./plugin-chain-code-host.js\";",
+    "import { RFe } from \"./plugin-chain-pane-scroll-source.js\";",
+    "import { _Fe } from \"./plugin-chain-wheel-glue-source.js\";"
+  ],
+  "exports": [
+    "NFe"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [
+        456049,
+        461905
+      ],
+      "note": "NFe the AbovePrompt component"
+    }
+  ]
+}

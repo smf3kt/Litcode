@@ -2757,3 +2757,16 @@ tables are host inputs; the source seeds the latter from the legacy tables this 
 carry, so the lazy state starts with empty objects. Focused 16/16, full 2431/2431, tsc 0, build 0,
 notices 0, identity `f8831570…`. Next is the W156 `NFe` wiring.
 [W157e record](ports/W157e-settings-schema.md).
+
+W156 wired the AbovePrompt component (1 block, 5,856 UTF-16 units): `NFe` renders the six provider
+values (null, node capture, graph handle, select-field slices, dialog slices, seat report), sizes
+the outer Box from the pane measurement clamped to the terminal rows or the settled-budget store
+when the measurement is absent, debounces that settled value through `HG`, hands the inner Box the
+wheel handler when a cue is present, and draws `TFe` at the terminal columns minus the five-column
+fold handle with the `RFe` site's offset. The Chat toggle and focus actions register and answer
+false while nothing is drawn; the three context handler tables register only while their context
+holds focus; the digit confirmation hook and the hold-band callback are wired as the source does.
+All 82 direct names come from existing seams or exact copies; the measurement getter, terminal
+size, app state, session, dialog store, clock and keybinding service are host-mounted inputs.
+Focused 6/6, full 2437/2437, tsc 0, build 0, notices 0, identity `386a9933…`.
+[W156 record](ports/W156-nfe-wiring.md).

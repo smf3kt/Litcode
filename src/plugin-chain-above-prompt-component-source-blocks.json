@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        456049,
+        461905
+      ],
+      "units": 5856,
+      "bodySha256": "7932cc004bd2c951cd9a8e5bc3b3c082baf2d3ace1c09764e19b331c31b1401d",
+      "note": "NFe the AbovePrompt component"
+    }
+  ],
+  "missing": []
+}
