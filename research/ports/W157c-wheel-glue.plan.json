@@ -1,0 +1,56 @@
+{
+  "imports": [
+    "import { R, Ae } from \"./plugin-chain-react-hooks.js\";",
+    "import { Gfe, Lo, w_, ce, wR, ten, DOt, lbe } from \"./plugin-chain-wheel-glue-host.js\";",
+    "import { fe } from \"./plugin-chain-settings-store.js\";",
+    "import { terminalEnvironment as uq } from \"./plugin-chain-terminal-environment.js\";",
+    "import { pbt, fbt } from \"./plugin-chain-wheel-acceleration-source.js\";",
+    "import { t } from \"./plugin-chain-host.js\";"
+  ],
+  "exports": [
+    "hs",
+    "mLr",
+    "gbt",
+    "AZ",
+    "CFe",
+    "QO",
+    "_Fe"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-js2bhabe.js",
+      "range": [777, 1499],
+      "note": "lSe the legacy keys and hs the settings read with source precedence"
+    },
+    {
+      "file": "chunk-z7whhrje.js",
+      "range": [9339, 9540],
+      "note": "mLr the jbBugConfirmed environment check"
+    },
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [126204, 126611],
+      "note": "gbt the wheel acceleration state announcement and factory call"
+    },
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [126611, 126843],
+      "note": "AZ the wheel state hook"
+    },
+    {
+      "file": "chunk-wz8v981w.js",
+      "range": [1438, 1463],
+      "note": "QO the internal jediTerm input context reader"
+    },
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [444563, 444675],
+      "note": "CFe the wheel event dispatch"
+    },
+    {
+      "file": "chunk-24k7d6mw.js",
+      "range": [444845, 444923],
+      "note": "_Fe the wheel handler factory"
+    }
+  ]
+}
