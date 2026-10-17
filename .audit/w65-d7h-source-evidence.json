@@ -34,7 +34,7 @@
       "file": "bootstrap/state.ts",
       "change": "the kairosActive field, its default and both accessors removed — the accessors had no caller left once the ten readers folded",
       "sourceSha256": "7271d3454726fa40be154fd9bb5465fadfc1362e9fc9137fba9d010aa2a40ece",
-      "portSha256": "f633f321f4e4f89a69bfc53b63ca774270c455bee5aa4a3ba16ea880e8699321",
+      "portSha256": "77accb31a666acf74076a3db66d04c3aab6f5e3c4406a88cddf7edc329910fb2",
       "coordinateUnit": "utf16-half-open"
     }
   ],

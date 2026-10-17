@@ -89,9 +89,11 @@ assert.match(textInput, /export type QueuePriority = 'now' \| 'next' \| 'later'/
 const xml = fs.readFileSync(`${root}/constants/xml.ts`, "utf8")
 assert.doesNotMatch(xml, /TICK_TAG/)
 
-// 3. The cron/AGENT_TRIGGERS surface is a later wave and stays intact here.
-assert.match(fs.readFileSync(`${root}/tools/ScheduleCronTool/prompt.ts`, "utf8"), /export function isKairosCronEnabled\(\): boolean \{/)
-assert.equal(fs.existsSync(`${root}/hooks/useScheduledTasks.ts`), true)
+// 3. The cron/AGENT_TRIGGERS surface was left intact by this step as a later
+//    wave; step 7k then removed it (the flag is false, so the tools, the skill
+//    and the scheduler were all unreachable).
+assert.equal(fs.existsSync(`${root}/tools/ScheduleCronTool`), false)
+assert.equal(fs.existsSync(`${root}/hooks/useScheduledTasks.ts`), false)
 
 const tscText = fs.readFileSync(new URL("w65-d7j-tsc.txt", import.meta.url), "utf8")
 assert.equal(tscText, "", "tsc log is empty on success")
