@@ -1,0 +1,41 @@
+{
+ "schema": "W139PostCompactTerminalSequenceEvidence.v1",
+ "package": "W139-01 — PostCompact terminalSequence side effect",
+ "date": "2026-10-18",
+ "question": "Does PostCompact's recovered path apply terminalSequence even though its collector reads no structured field?",
+ "answer": "Yes. The shared per-hook generator emits terminalSequence while each record settles, before b0 returns the records avt formats. The product now applies the same effect for PostCompact while keeping every other structured field unread.",
+ "sourcePosition": {
+  "perHookGenerator": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 3018155,
+   "terminalSequenceRead": 3041266
+  },
+  "emitter": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 619331
+  },
+  "collector": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 3046416
+  },
+  "postCompactCollector": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "range": [2932807, 2933200]
+  }
+ },
+ "product": {
+  "files": ["src/hooks.ts", "test/hooks.test.ts"],
+  "helper": "applyTerminalSequence",
+  "postCompact": "parses stdout only for the terminalSequence side effect; display line unchanged",
+  "stillIgnored": ["additionalContext", "systemMessage", "suppressOutput", "hookSpecificOutput"],
+  "delivery": "journal-before-effect on hook_result, emitted after runHooks (product-wide adaptation)"
+ },
+ "verification": {
+  "focused": "139/139",
+  "full": "2241/2241",
+  "tsc": 0,
+  "build": 0,
+  "notices": 0,
+  "identity": "a118ac44f41612af092975ea85f950a70c53ccd6e44a5ee3b22ff088db288549"
+ }
+}

@@ -1011,6 +1011,19 @@ function lastNonEmptyLine(text: string): string {
  * `blocked`/`stopRequested` here; the caller is documented to ignore those flags
  * for those events and use only the returned context.
  */
+function applyTerminalSequence(json: Record<string, unknown>, result: HookResult): void {
+  const sequence = validateHookTerminalSequence(json.terminalSequence);
+  if (sequence !== undefined) {
+    const sequences = result.terminalSequences ?? [];
+    const bytes = sequences.reduce((total, item) => total + Buffer.byteLength(item, "utf8"), 0);
+    if (sequences.length >= MAX_TERMINAL_SEQUENCES || bytes + Buffer.byteLength(sequence, "utf8") > MAX_TERMINAL_OUTPUT_BYTES) {
+      const diagnostic = `Hook terminalSequence aggregate exceeded ${MAX_TERMINAL_SEQUENCES} entries or ${MAX_TERMINAL_OUTPUT_BYTES} bytes; excess sequence dropped.`;
+      const messages = result.systemMessages ??= [];
+      if (!messages.includes(diagnostic)) messages.push(diagnostic);
+    } else (result.terminalSequences ??= []).push(sequence);
+  }
+}
+
 function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result: HookResult): void {
   // The recovered stdout object is validated as a whole against the event's
   // schema (chunk-n3ykh62m.js offset 395678): a PermissionRequest allow whose
@@ -1030,16 +1043,7 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
       }
     }
   }
-  const sequence = validateHookTerminalSequence(json.terminalSequence);
-  if (sequence !== undefined) {
-    const sequences = result.terminalSequences ?? [];
-    const bytes = sequences.reduce((total, item) => total + Buffer.byteLength(item, "utf8"), 0);
-    if (sequences.length >= MAX_TERMINAL_SEQUENCES || bytes + Buffer.byteLength(sequence, "utf8") > MAX_TERMINAL_OUTPUT_BYTES) {
-      const diagnostic = `Hook terminalSequence aggregate exceeded ${MAX_TERMINAL_SEQUENCES} entries or ${MAX_TERMINAL_OUTPUT_BYTES} bytes; excess sequence dropped.`;
-      const messages = result.systemMessages ??= [];
-      if (!messages.includes(diagnostic)) messages.push(diagnostic);
-    } else (result.terminalSequences ??= []).push(sequence);
-  }
+  applyTerminalSequence(json, result);
   if (event === "PreCompact") {
     if (json.decision === "block") {
       result.blocked = true;
@@ -1382,6 +1386,13 @@ export async function runHooks(
       // successfully", any other exit is "failed", with the trimmed output after
       // a colon when non-empty.
       if (raw.aborted) break;
+      // The source's terminalSequence side effect is applied by the shared hook
+      // runner while each record settles (chunk-sfn1dbxq.js offset 3041266), so
+      // it still runs even though `avt` reads no other structured field here.
+      if (!raw.spawnError) {
+        const json = parseHookJson(raw.stdout);
+        if (json) applyTerminalSequence(json, result);
+      }
       const label = hookDisplayLabel(definition);
       const output = raw.spawnError ? raw.spawnError.message
         : (raw.code === 0 ? raw.stdout : raw.stderr || raw.stdout).trim();

@@ -469,6 +469,16 @@ test("exit code 2 never blocks the display-only feedback events", async () => {
   assert.equal(post.userDisplayMessage, "PostCompact [echo 'late failure' 1>&2; exit 2] failed: late failure");
 });
 
+test("PostCompact keeps the terminalSequence side effect", async () => {
+  const sequence = "\u001b]2;title\u0007";
+  const command = `printf '%s' '${JSON.stringify({ terminalSequence: sequence, additionalContext: "ctx", systemMessage: "msg" })}'`;
+  const result = await runHooks({ PostCompact: [{ command }] }, "PostCompact", {}, signal());
+  assert.deepEqual(result.terminalSequences, ["\u001b]2;title\u001b\\"]);
+  assert.deepEqual(result.additionalContext, []);
+  assert.equal(result.systemMessages, undefined);
+  assert.equal(result.userDisplayMessage, `PostCompact [${command}] completed successfully: ${JSON.stringify({ terminalSequence: sequence, additionalContext: "ctx", systemMessage: "msg" })}`);
+});
+
 test("SessionEnd keeps the source's failed-record output lines", async () => {
   const stderrCommand = "printf boom 1>&2; exit 3";
   const silentCommand = "printf stdout-only; exit 2";
