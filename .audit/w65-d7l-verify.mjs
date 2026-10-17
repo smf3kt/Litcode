@@ -110,10 +110,13 @@ assert.match(
 //    was asserted present here as the next wave's surface; step 7m removed it,
 //    as this file's `remaining` predicted.
 assert.doesNotMatch(config, /remoteControlSpawnMode/)
+// The transport lane was pinned as retained here; wave D step 7u removed the
+// whole lane (transportUtils + RemoteIO), so the pin is retired in favour of
+// absence.
 assert.equal(
   fs.existsSync(`${root}/cli/transports/ccrClient.ts`),
-  true,
-  "the retained SDK transport lane stays",
+  false,
+  "the transport lane was removed by step 7u",
 )
 assert.match(
   fs.readFileSync(`${root}/components/DesktopUpsell/DesktopUpsellStartup.tsx`, "utf8"),

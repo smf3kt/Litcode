@@ -832,6 +832,28 @@ The fixture's base check confirms `8c8d201` carried every shell, the current-tre
 
 **Next (step 7u):** `cli/transports/` with `--sdk-url`, then the dependency-pruning pass (nine zero-importer dependencies), the `utils/filePersistence/` rename, and the auto-updater surface.
 
+## Wave D step 7u — the SDK transport lane (`e864296`, landed)
+
+**RemoteIO was a second I/O implementation, not a helper.** `--sdk-url` passed a session URL to `new RemoteIO(url, inputStream, replayUserMessages)`, which opened a WebSocket (or SSE with `CLAUDE_CODE_USE_CCR_V2`, or WS-reads/POST-writes with `CLAUDE_CODE_POST_FOR_SESSION_INGRESS_V2`) to that URL, streamed control traffic over it, and under CCR v2 registered the internal-event reader/writer plus the session-state, session-metadata and command-lifecycle listeners against `CCRClient`. The nine files under `cli/remoteIO.ts` and `cli/transports/` exist for that connection alone.
+
+**The local path is StructuredIO, and it does not need any of it.** `getStructuredIO` had exactly two arms; the second was plain `StructuredIO` over the same `inputStream`, and every local print-mode feature — `replayUserMessages`, control_request/response handling, SDK MCP servers, elicitation — is implemented on `StructuredIO` itself. With the RemoteIO arm gone, the function returns `StructuredIO` unconditionally, and `--sdk-url`'s only justification (auto-setting stream-json, verbose and print, skipping UUID validation for server-assigned tagged IDs) disappears with the option. The option registration, `hasSdkUrl` in the early non-interactive predicate, the extraction, the format auto-set, the validation block and the pass-through all go; the session-ID validation is unwrapped back to unconditional.
+
+**Every survivor is local.** `services/mcp/SdkControlTransport.ts` (the in-process SDK control channel), `utils/mcpWebSocketTransport.ts` (the MCP client's own WebSocket transport, imported by `services/mcp/client.ts`), `--init-only` and the non-TTY term of the interactive predicate stay. Four comments that named the removed classes were reworded: `gracefulShutdown`'s SIGINT note, `cliHighlight`'s DOM-types note, `caCertsConfig`'s bundle-size note and `userAgent`'s dependency-free note.
+
+**What the transports fed is now producerless and waits for 7v.** `setSessionStateChangedListener`/`setSessionMetadataChangedListener` had RemoteIO as their only caller, and the CCR v2 branch of print-mode `--resume` reaches `hydrateFromCCRv2InternalEvents` only after RemoteIO registered a reader. Those, `structuredIO.restoredWorkerState`, `externalMetadataToAppState` and the URL arm of `--resume` are recorded as the next cut rather than folded here, because each needs its own source read.
+
+### Port coordinate refresh
+
+Thirteen historical evidence files moved, all by re-running their own fixtures: `w65-d7f`, `w65-d7h`, `w65-d7i`, `w65-d7j`, `w65-d7k`, `w65-d7l`, `w65-d7n`, `w65-d7o`, `w65-d7p`, `w65-d7q`, `w65-d7r`, `w65-d7s` and `w65-d7t`. `portSha256` only; no `sourceSha256` changed and no range moved. `w65-d7n`'s ccrClient port coordinate becomes null with the file.
+
+### Verification
+
+tsc 0, twenty-nine fixtures pass (the new `w65-d7u-verify` plus twenty-eight carried), `git diff --check` clean, the orphan scan at its ten legitimate entries with the file count down by nine to 1623. Four carried fixtures were amended, each a pin this step supersedes: `w65-d7l`, `w65-d7m` and `w65-d7n` pinned the transport lane as retained (7n's whole no-headers section becomes an absence assertion, and its ccrClient port coordinate is retired), and `w65-d7t` pinned the 1632 file count, now 1623 with the orphan set unchanged.
+
+The fixture's base check confirms `19bce58` carried all nine files and the option; the current tree has no `--sdk-url`/`sdkUrl` token, no `remoteIO` import, and a direct `StructuredIO` return; survivor assertions pin `replayUserMessages`, the MCP WebSocket transport, the SDK control transport and `--init-only`, and the four rewritten comments. Two repair passes: the first cut matched `sdkUrl: string | undefined` twice in `print.ts` (the print options type and `getStructuredIO`'s narrowed parameter), so the type cut is anchored on the preceding field; the `userAgent` comment was found after a complete pass, so every touched and deleted file was restored from `HEAD` and the script replayed to reproduce the final state in one pass.
+
+**Next (step 7v):** the CCR v2 session-state residue (the two listener setters, the sessionStorage internal-event writer/reader with `hydrateFromCCRv2InternalEvents`, `structuredIO.restoredWorkerState`, `externalMetadataToAppState` and the URL arm of `--resume`), then the auto-updater surface, the dependency-pruning pass and the `utils/filePersistence/` rename.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.

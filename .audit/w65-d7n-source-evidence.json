@@ -27,9 +27,9 @@
     },
     {
       "file": "cli/transports/ccrClient.ts",
-      "change": "the auth default becomes no headers (which makes initialize raise no_auth_headers, its own documented failure), the JWT-expiry short-circuit goes, and the decodeJwtPayload/decodeJwtExpiry pair — a port from bridge/jwtUtils.ts:22-58 whose only caller was that check — is deleted with it",
+      "change": "the auth default becomes no headers (which makes initialize raise no_auth_headers, its own documented failure), the JWT-expiry short-circuit goes, and the decodeJwtPayload/decodeJwtExpiry pair — a port from bridge/jwtUtils.ts:22-58 whose only caller was that check — is deleted with it; wave D step 7u later removed the file whole, so the port coordinate is retired",
       "sourceSha256": "d04679d27adc793ac74dc5e51724fb95c153b38cdd5bdf18759b04b236370cb9",
-      "portSha256": "216db827727d09291802932479faa2f0908b0d463bb0fc709313902050f7a26e",
+      "portSha256": null,
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -43,7 +43,7 @@
       "file": "main.tsx",
       "change": "the --file option, the download block, the promise it set and the await before REPL render all removed, along with the four filesApi imports; the client-type detection keeps only the entrypoint term",
       "sourceSha256": "ff9aedfcbaf7d772dd379abb53db0ca27ff9ea79d128d6fbc792617dda0cae70",
-      "portSha256": "9063180982f9992828764ab5b30ce8e66ff3a0448d54ee6bd38fd55b4ef726a5",
+      "portSha256": "87b29b2ab37fad88ea972480e19745095319203735949d5ee3813608c001215e",
       "coordinateUnit": "utf16-half-open"
     }
   ],
@@ -54,7 +54,7 @@
     "the JWT decoder pair in ccrClient.ts — a port from bridge/jwtUtils.ts:22-58 whose only caller was the expiry check on the ingress token"
   ],
   "kept": [
-    "cli/transports/ and cli/remoteIO.ts as the retained SDK transport lane: they keep their option-supplied auth header path, their refreshHeaders callback (now the runner-version read alone) and their no-headers failure modes",
+    "cli/transports/ and cli/remoteIO.ts as the retained SDK transport lane at the time of this cut: they kept their option-supplied auth header path, their refreshHeaders callback (the runner-version read alone) and their no-headers failure modes; wave D step 7u removed the lane whole, so this entry records history, not the current tree",
     "entrypoints/sdk/coreSchemas.ts' declared files_persisted subtype and entrypoints/agentSdkTypes.ts' declarations — declared contracts wait for the SDK review",
     "utils/filePersistence/outputsScanner.ts' getEnvironmentKind, which utils/plans.ts imports, and the CLAUDE_CODE_ENVIRONMENT_KIND contract cli/remoteIO.ts and that reader share",
     "cli/structuredIO.ts' update_environment_variables handler — the stdin contract is general, only its comment's example named the token"

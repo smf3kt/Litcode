@@ -65,35 +65,20 @@ const print = fs.readFileSync(`${root}/cli/print.ts`, "utf8")
 assert.doesNotMatch(print, /FILE_PERSISTENCE|executeFilePersistence|turnStartTime/)
 assert.match(print, /          abortController = createAbortController\(\)\n\n          headlessProfilerCheckpoint\('before_ask'\)/)
 
-const remoteIO = fs.readFileSync(`${root}/cli/remoteIO.ts`, "utf8")
-assert.doesNotMatch(remoteIO, /sessionToken|Authorization/)
-assert.match(remoteIO, /    const headers: Record<string, string> = \{\}\n/)
-
-// 3. The transport lane stays, with its auth default folded to no headers —
-//    the value getSessionIngressAuthHeaders() already returned without a token.
-for (const [file, re] of [
-  ["cli/transports/SSETransport.ts", /    this\.getAuthHeaders = getAuthHeaders \?\? \(\(\) => \(\{\}\)\)\n/],
-  ["cli/transports/ccrClient.ts", /    this\.getAuthHeaders = opts\?\.getAuthHeaders \?\? \(\(\) => \(\{\}\)\)\n/],
+// 3. This step pinned the transport lane as retained with its auth default
+//    folded to no headers. Wave D step 7u then removed the whole lane
+//    (RemoteIO and cli/transports/: WebSocket/SSE/Hybrid transports and the
+//    CCR v2 client), so the pins are retired in favour of absence. The
+//    environment-kind contract the lane shared with the scanner reader
+//    survives in section 4.
+for (const f of [
+  "cli/remoteIO.ts",
+  "cli/transports/ccrClient.ts",
+  "cli/transports/HybridTransport.ts",
+  "cli/transports/SSETransport.ts",
 ]) {
-  const text = fs.readFileSync(`${root}/${file}`, "utf8")
-  assert.match(text, re)
-  assert.match(text, /Omit to send no auth headers\./)
+  assert.equal(fs.existsSync(`${root}/${f}`), false, `${f} was removed by step 7u`)
 }
-const ccr = fs.readFileSync(`${root}/cli/transports/ccrClient.ts`, "utf8")
-assert.doesNotMatch(ccr, /decodeJwt|valid-looking token/)
-assert.match(ccr, /        \/\/ A 401 with valid headers is a server-side condition — possible\n/)
-assert.match(ccr, /    if \(Object\.keys\(this\.getAuthHeaders\(\)\)\.length === 0\) \{\n      throw new CCRInitError\('no_auth_headers'\)/)
-
-const hybrid = fs.readFileSync(`${root}/cli/transports/HybridTransport.ts`, "utf8")
-assert.doesNotMatch(hybrid, /from 'axios'|POST_TIMEOUT_MS|Bearer/)
-assert.match(
-  hybrid,
-  /  private async postOnce\(events: StdoutMessage\[\]\): Promise<void> \{\n    logForDebugging\('HybridTransport: No auth headers available for POST'\)\n    logForDiagnosticsNoPII\('warn', 'cli_hybrid_post_no_token'\)\n  \}/,
-)
-
-const sse = fs.readFileSync(`${root}/cli/transports/SSETransport.ts`, "utf8")
-assert.match(sse, /      logForDebugging\('SSETransport: No auth headers available for POST'\)\n/)
-assert.doesNotMatch(sse, /Bearer/)
 
 // 4. What survives of the scanner module is the environment-kind reader, which
 //    utils/plans.ts still imports. The declared SDK subtype stays: removing a
@@ -170,9 +155,9 @@ fs.writeFileSync(
       },
       {
         file: "cli/transports/ccrClient.ts",
-        change: "the auth default becomes no headers (which makes initialize raise no_auth_headers, its own documented failure), the JWT-expiry short-circuit goes, and the decodeJwtPayload/decodeJwtExpiry pair — a port from bridge/jwtUtils.ts:22-58 whose only caller was that check — is deleted with it",
+        change: "the auth default becomes no headers (which makes initialize raise no_auth_headers, its own documented failure), the JWT-expiry short-circuit goes, and the decodeJwtPayload/decodeJwtExpiry pair — a port from bridge/jwtUtils.ts:22-58 whose only caller was that check — is deleted with it; wave D step 7u later removed the file whole, so the port coordinate is retired",
         sourceSha256: digests["cli/transports/ccrClient.ts"],
-        portSha256: digest(ccr),
+        portSha256: null,
         coordinateUnit: "utf16-half-open",
       },
       {
@@ -197,7 +182,7 @@ fs.writeFileSync(
       "the JWT decoder pair in ccrClient.ts — a port from bridge/jwtUtils.ts:22-58 whose only caller was the expiry check on the ingress token"
     ],
     kept: [
-      "cli/transports/ and cli/remoteIO.ts as the retained SDK transport lane: they keep their option-supplied auth header path, their refreshHeaders callback (now the runner-version read alone) and their no-headers failure modes",
+      "cli/transports/ and cli/remoteIO.ts as the retained SDK transport lane at the time of this cut: they kept their option-supplied auth header path, their refreshHeaders callback (the runner-version read alone) and their no-headers failure modes; wave D step 7u removed the lane whole, so this entry records history, not the current tree",
       "entrypoints/sdk/coreSchemas.ts' declared files_persisted subtype and entrypoints/agentSdkTypes.ts' declarations — declared contracts wait for the SDK review",
       "utils/filePersistence/outputsScanner.ts' getEnvironmentKind, which utils/plans.ts imports, and the CLAUDE_CODE_ENVIRONMENT_KIND contract cli/remoteIO.ts and that reader share",
       "cli/structuredIO.ts' update_environment_variables handler — the stdin contract is general, only its comment's example named the token",

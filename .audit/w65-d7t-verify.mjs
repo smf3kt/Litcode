@@ -99,7 +99,9 @@ assert.match(main, /assertMinVersion\(\)/)
 
 // 4. No module was orphaned by the import removal.
 const orphans = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})
-assert.match(orphans, /1632 files scanned, 10 with no importer/)
+// Wave D step 7u removed nine modules (RemoteIO and cli/transports/), so the
+// file count drops by nine while the orphan set is unchanged.
+assert.match(orphans, /1623 files scanned, 10 with no importer/)
 
 // 5. The gate.
 const tscText = fs.readFileSync(new URL("w65-d7t-tsc.txt", import.meta.url), "utf8")
