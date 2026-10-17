@@ -2511,3 +2511,12 @@ lines, displays them unprefixed through the cleaned bounded status path and outs
 `suppressOutput` gate, and stops displaying successful SessionEnd context, which the source
 never shows. Focused 138/138, full 2240/2240, tsc 0, build 0, notices 0, identity `23bfdb9f…`.
 [W138 record](ports/W138-session-end-failure-display.md).
+
+W139 keeps PostCompact's runner-side `terminalSequence` effect. The shared per-hook generator
+applies `terminalSequence` while each record settles (chunk-sfn1dbxq.js 3018155, read at
+3041266, emitter `LLe` at 619331), before `b0` returns the records `avt` formats, so the
+effect is not among the structured fields W137 made unread. The terminal-sequence handling is
+now a helper shared by the JSON protocol and the PostCompact branch, which parses stdout only
+for that effect; context, system message, suppression and hook-specific output stay unread.
+Focused 139/139, full 2241/2241, tsc 0, build 0, notices 0, identity `a118ac44…`.
+[W139 record](ports/W139-postcompact-terminal-sequence.md).
