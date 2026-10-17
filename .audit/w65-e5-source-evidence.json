@@ -58,25 +58,15 @@
       "mode": "port",
       "difference": "None — body and behaviour identical.",
       "probes": 8
-    },
+    }
+  ],
+  "removedPorts": [
     {
       "port": "cli/transports/ccrClient.ts",
       "symbol": "decodeJwtExpiry",
       "source": "bridge/jwtUtils.ts",
-      "sourceSha256": "0510d42414b6fb16f8b362146074f4c73cdf10d7cfc1e08696fee3e4993bc592",
-      "sourceRange": [
-        1361,
-        1641
-      ],
-      "portSha256": "d04679d27adc793ac74dc5e51724fb95c153b38cdd5bdf18759b04b236370cb9",
-      "portRange": [
-        34362,
-        34635
-      ],
-      "coordinateUnit": "utf16-half-open",
-      "mode": "port",
-      "difference": "None — body and behaviour identical.",
-      "probes": 4
+      "removedBy": "W65 wave D step 7n",
+      "reason": "Its only caller was the session-ingress JWT expiry check, which left with the bearer; the body was otherwise unreachable."
     }
   ],
   "tsc": {
@@ -87,5 +77,5 @@
     "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
   },
   "validation": "Ported bodies compared textually and behaviourally against the recovered source; deleted-file inventory and live-import sweep bound the removal",
-  "remaining": "replBridge* AppState fields, cli/transports and the session-ingress bearer surface remain for later waves"
+  "remaining": "replBridge* AppState fields and cli/transports remain for later waves; the session-ingress bearer surface this file's jwtUtils port belonged to was removed by W65 wave D step 7n (see removedPorts)"
 }

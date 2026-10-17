@@ -19,7 +19,7 @@
       "file": "cli/print.ts",
       "change": "handleChannelEnable and reregisterChannelHandlerAfterReconnect deleted (each was `if (!(feature('KAIROS') || feature('KAIROS_CHANNELS'))) return`, so the source's fallback was the early return); the `capabilities` field survives at the value a filtered-out server produced",
       "sourceSha256": "b75ca8968ab1f5c18988e077c48e40a488fc8bfa7a880def11590da57f1bd590",
-      "portSha256": "eaea336c97d62471fdbfa7276538bf8812555c04ad47f0126f57284b70a5cfea",
+      "portSha256": "2328f22465cc4b82d2d4feec142bfa38c3a7aef0766bb446421c53bdbafb1f38",
       "coordinateUnit": "utf16-half-open"
     },
     {

@@ -32,14 +32,14 @@
       "file": "cli/print.ts",
       "change": "the three flag-conditional requires, the scheduler block and its `cronScheduler?.stop()` cleanup line deleted; the WORKLOAD_CRON import term went with the only queue item that carried it",
       "sourceSha256": "1e8f87d47d5c476924206e0971dc204391453f708545db44140c2a9520782493",
-      "portSha256": "eaea336c97d62471fdbfa7276538bf8812555c04ad47f0126f57284b70a5cfea",
+      "portSha256": "2328f22465cc4b82d2d4feec142bfa38c3a7aef0766bb446421c53bdbafb1f38",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "bootstrap/state.ts",
       "change": "scheduledTasksEnabled with both accessors, and sessionCronTasks with its type and three functions, deleted — the scheduler and CronCreateTool were their only writers",
       "sourceSha256": "f633f321f4e4f89a69bfc53b63ca774270c455bee5aa4a3ba16ea880e8699321",
-      "portSha256": "fa9d53bf5a142769af35277780b1b49044fd45a384a590d458010d2d60cdb332",
+      "portSha256": "a81fa03d603a1a81c5800f4d9cdc1eed3dc80198e679e83369829fb127f7d2e3",
       "coordinateUnit": "utf16-half-open"
     }
   ],
