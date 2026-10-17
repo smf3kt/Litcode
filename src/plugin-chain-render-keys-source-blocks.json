@@ -1,0 +1,274 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f"
+    },
+    {
+      "module": "chunk-t175a0ke.js",
+      "sha256": "743ee68151cc52a1f5f56c3651071b4c6a0ab41f84954ddbea0c145fef56e0e8"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7"
+    },
+    {
+      "module": "chunk-zf8k2z6n.js",
+      "sha256": "d3477e51bfc1e8466543153a59429d8dd473c35ab45b6b137ae0df67ad70c5fa"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230241,
+        230260
+      ],
+      "units": 19,
+      "bodySha256": "77249665e984ef6a39d5e60a301ec6cf33fa1839ed1fe1c5fa57dab9e8d72424",
+      "note": "`vA` — the render event name, `ui.render`"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        230295,
+        230559
+      ],
+      "units": 264,
+      "bodySha256": "40ab9a29233eeec30f631cb52c08eda08b7983377a465fe3b774c7672fb027e4",
+      "note": "`rur`/`WPn`/`SVe` — match a loading module by event and component, the modules that hook the event, and their names"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        231248,
+        231336
+      ],
+      "units": 88,
+      "bodySha256": "acc68cb656cfad998edf6e40de9f9b4f88fe754536feb33130744216d1d91aa2",
+      "note": "`GPn` — the hooks that hook the render event and match one component"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        238618,
+        238917
+      ],
+      "units": 299,
+      "bodySha256": "81447d13a8ddd473d3e8a15be0ffe34cd8add7dc43a8797fda915120bb6bb409",
+      "note": "`sur`/`iur` — whether props hold a position or offset, and whether a drawn value draws anything (a Box/Text/Link, recursively)"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        271971,
+        272059
+      ],
+      "units": 88,
+      "bodySha256": "66a9275891aba4545713d41996bd2057435dbaa8d5a98bb3b1b60aa79ef48f8e",
+      "note": "`wc` — bump one store key"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        272105,
+        272197
+      ],
+      "units": 92,
+      "bodySha256": "8b6cf12ac21f0aca600b5c3497b85f493cd88bcd61d9e9736eda463e9ca5cb7f",
+      "note": "`kc`/`wH`/`kH`/`xc` — the live-key suffix and the steady/live key choice"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        272964,
+        272991
+      ],
+      "units": 27,
+      "bodySha256": "c7a7918dec7ed26f16f60777e88f0830ffec5e17f644fe92a5b3b4cf52cd58ee",
+      "note": "`Rb` — whether a store key is a version key"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        273333,
+        273358
+      ],
+      "units": 25,
+      "bodySha256": "045541a9e6504dc03472ad29eabbfde73a7bb330cd05092496059e4c83ac259e",
+      "note": "`oIn` — the viewport store key, `ui.render viewport`"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        273378,
+        273603
+      ],
+      "units": 225,
+      "bodySha256": "a75e563131a89889c458a141f2bcc5741313581a0bc90d4af01521fde226a8bd",
+      "note": "`Tc` — the render version: the event counter and every key’s version, or the whole visible map when the key list is absent"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        273714,
+        273791
+      ],
+      "units": 77,
+      "bodySha256": "344ba36e55de7b562d8814f6a20e5fc76f423bda9fd46997a79ac7f3bb26ec46",
+      "note": "`$H` — suffix a drawing key with its version"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        273934,
+        273997
+      ],
+      "units": 63,
+      "bodySha256": "003356e9922f81e229412cba73c694e97e35d6b27982ccc061532457a02173e3",
+      "note": "`MF` — the render key: surface, component and request id"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        273997,
+        274025
+      ],
+      "units": 28,
+      "bodySha256": "cdedf15b4f7eb535a9eb4fe5539863bb9038f3f5849f3fe7973724683f71eefa",
+      "note": "`s_` — the registry’s plugin state"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        284410,
+        284770
+      ],
+      "units": 360,
+      "bodySha256": "7701701a7051a814a9416661298555e77391ff3548baf3cd5efcc0a0b7637179",
+      "note": "`hno`/`yno`/`mIn`/`kVe` — the memoized JSON id, the props key (viewport columns, fullscreen, props) and the render key with its version"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        284974,
+        285279
+      ],
+      "units": 305,
+      "bodySha256": "56d57b080a1c4f8f11891730cb7f94939af8e9d6d6af8ed8790250c9291fe6ca",
+      "note": "`$ur` — the on-screen range a drawing reported, or null"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        308406,
+        308573
+      ],
+      "units": 167,
+      "bodySha256": "5d2546c2207a35db33ae6d233f57bd171a0bd100c8147aecd9246279d7f7ebe2",
+      "note": "`Frt`/`LAt` — whether any loaded module hooks the render event, and whether one hooks it and matches this component"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        2766,
+        2815
+      ],
+      "units": 49,
+      "bodySha256": "88c3633b9085741880764e6c932d63e4dc0369805da6d3dbf2f02d0b4d4d4b8b",
+      "note": "`olt` — the offset prop names (top, left, right, bottom)"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        6172,
+        6303
+      ],
+      "units": 131,
+      "bodySha256": "63c9ea5ca919ca9fd6d6bb1cb2859f89203dd3deb231c0e7c88ff052ebcc4455",
+      "note": "`j3e` — the message types a site answers"
+    },
+    {
+      "module": "chunk-nyce03br.js",
+      "sha256": "6a5164eba0f55eaa3a7122eaefb51a98b369a2422284bf6062b22cf91fab855f",
+      "range": [
+        25632,
+        25662
+      ],
+      "units": 30,
+      "bodySha256": "23c6112f555c9b5f112b7c21dd076f7f3675ff9dacf846d0ece1ba0fb3c3877a",
+      "note": "`Ioe` — the engine sentinel the glue draws when a render failed"
+    },
+    {
+      "module": "chunk-t175a0ke.js",
+      "sha256": "743ee68151cc52a1f5f56c3651071b4c6a0ab41f84954ddbea0c145fef56e0e8",
+      "range": [
+        961,
+        976
+      ],
+      "units": 15,
+      "bodySha256": "502e08507f1ca178ee6c982cf17eb5cd5b65a6653fdd871d658f3c4d427d767d",
+      "note": "`Omt` — the static-frame store"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        7979,
+        8014
+      ],
+      "units": 35,
+      "bodySha256": "8f5e96ecf9f3ab4e10ed7f8688dce0d024642012c83aafa9741ef77fe40b0880",
+      "note": "`l9` — the viewport store"
+    },
+    {
+      "module": "chunk-ed7zyzrn.js",
+      "sha256": "4754249b16c2900a23735b1a90afb10583cde0e9c816f3d46b2c13c33fbfc2c7",
+      "range": [
+        8524,
+        8564
+      ],
+      "units": 40,
+      "bodySha256": "8636b6eec45222996eea7dc61cb21fb74824cb5c33f283a45017c68fcbf02930",
+      "note": "`blt` — one matcher field check"
+    },
+    {
+      "module": "chunk-zf8k2z6n.js",
+      "sha256": "d3477e51bfc1e8466543153a59429d8dd473c35ab45b6b137ae0df67ad70c5fa",
+      "range": [
+        651,
+        891
+      ],
+      "units": 240,
+      "bodySha256": "56588a89aa5cb712ddae2cae10f46b0a8a906b457c8cc1221ae6d1be476be537",
+      "note": "`eA`/`at` — the sha256 shape and the sha256 id the props memo uses"
+    }
+  ],
+  "missing": []
+}

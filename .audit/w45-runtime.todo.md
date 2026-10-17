@@ -883,3 +883,12 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **Box keys name one scope.** The first admitted key per parent is live and keyed; a repeat or an unusable key is drawn without a scope and reported once with its exact message.
 - [x] **Containers split inline and block.** Inline types keep string children, block types walk them into Text; a hovered Box or Text draws through `Ut` with its group.
 - [x] **Sweep.** tsc 0, copy `declared 44 / unresolved 0`, notices 0, new suite 13/13, chain family 723/723, full 1,999/1,999, index 72 chunks / 307,819 units, identity `14255a2d…`.
+
+## W45-87 acceptance (2026-10-17)
+
+- [x] **The render key is stable and versioned.** `MF` builds surface/component/request; `$H` appends the stored version of the state-suffixed key and nothing when absent.
+- [x] **The visible map is versioned by steady keys.** `Tc` skips the viewport key and every live or state-suffixed duplicate; `kVe` composes the event counter with the versioned request key.
+- [x] **The drawing tests answer for the terminal glue.** `sur` sees a position or offset, `iur` draws a Box with one and recurses into Box children only, `$ur` reads a well-typed range.
+- [x] **The stores and sentinels are exposed.** `Omt` starts false, `l9` starts empty, `Ioe` is the engine sentinel and `j3e` is the message list.
+- [x] **The matcher runner is recovered.** `l` is the recovered runner again: scalar mismatches are false, object matchers are partial, aliases expand and regex matchers test the value.
+- [x] **Sweep.** tsc 0, copies `declared 55 / unresolved 0` and `declared 54 / unresolved 0`, notices 0, new suite 25/25, chain family 748/748, full 2,024/2,024, index 74 chunks / 310,408 units, identity `f1522ee4…`.
