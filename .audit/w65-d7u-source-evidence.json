@@ -15,7 +15,7 @@
       "file": "cli/print.ts",
       "change": "the RemoteIO import, the sdkUrl option field, `isUsingSdkUrl`, the stdio permission-prompt override and the RemoteIO arm of getStructuredIO are removed; getStructuredIO now always returns StructuredIO",
       "sourceSha256": "78b920fed24649c91b45c30772394ad007d12ff7dba305a29c4a6f8d5487950c",
-      "portSha256": "db075d4d5d5e136fb3887c648dd891367b0bbb4191df385bd901a3566735a3d3",
+      "portSha256": "bcf623939aadd2d66477b808cc22be16b3750855cf4d173769b64acb816d428e",
       "coordinateUnit": "utf16-half-open"
     },
     {

@@ -1,0 +1,77 @@
+{
+  "before": "e864296",
+  "kind": "the CCR v2 session-state residue removed (no ported bodies; the hooks' only producer was RemoteIO)",
+  "surface": "the state/metadata listener setters with their listener slots and the external_metadata mirroring in notifySessionStateChanged, notifySessionMetadataChanged with its three call sites, SessionExternalMetadata and externalMetadataToAppState, StructuredIO's restoredWorkerState plus its no-op flushInternalEvents/internalEventsPending, the sessionStorage internal-event writer/reader with hydrateFromCCRv2InternalEvents, the print-mode CCR v2 resume branch, and the URL arm of parseSessionIdentifier",
+  "decisiveFact": "every deleted hook was registered by RemoteIO under CLAUDE_CODE_USE_CCR_V2 — the route that only existed through the transport lane removed in step 7u. Without a registration the listeners can never fire, the internal-event readers never exist, and the CCR resume branch can only take its no-reader arm",
+  "changes": [
+    {
+      "file": "utils/sessionState.ts",
+      "change": "both listener setters, their slots, the external_metadata mirroring and notifySessionMetadataChanged are removed; notifySessionStateChanged takes the state alone and keeps its currentState tracking plus the opt-in SDK event; the permission-mode listener and notifyPermissionModeChanged stay",
+      "sourceSha256": "010af86333b3aec7a44c446089ff6a1e03c6fadf270ee3303a3ca61e0f5869d8",
+      "portSha256": "4649074865d366bfb55cba0c8127f85f04bbdf22234edc97ba19b76d841fdf7a",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "state/onChangeAppState.ts",
+      "change": "externalMetadataToAppState and its PermissionMode imports are removed; the mode-change block keeps notifyPermissionModeChanged alone, with the comment rewritten to name only the SDK status stream",
+      "sourceSha256": "259bb5a90c9d08dcac2bd55a463b27e21e2a761687642acc99e1f72114214d72",
+      "portSha256": "b09eb8d24c9fd1502a9589bb43d99d73327a4c5f5f29120114318d0501cc7799",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "cli/structuredIO.ts",
+      "change": "the restoredWorkerState field and the two no-op internal-event methods are removed; the requires_action details and the onPermissionPrompt contract stay",
+      "sourceSha256": "e87cb4ebeeee1915267bc59bafa4bc282042801c0551ac6a1f5b92dec479f668",
+      "portSha256": "eda0bcdaf27cbf86eb9933e342d33af8abae08c6e94988473e838dab3d5ac2b7",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "cli/print.ts",
+      "change": "the CCR resume branch, the restoredWorkerState option and pass, the empty-resume URL/CCR arm, both notifySessionMetadataChanged calls, and the internal-event flush with its two run phases are removed; the local resume error arm is now the only empty-result path",
+      "sourceSha256": "db075d4d5d5e136fb3887c648dd891367b0bbb4191df385bd901a3566735a3d3",
+      "portSha256": "bcf623939aadd2d66477b808cc22be16b3750855cf4d173769b64acb816d428e",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/sessionStorage.ts",
+      "change": "the internal-event writer/reader types, registration setters, project fields and accessors, the fast flush interval, persistToRemote with its call site and hydrateFromCCRv2InternalEvents are removed; local transcript writes, loaders and the compaction machinery stay",
+      "sourceSha256": "f6b90819bce0942aa8edfeba2de105271921ad308f8f3e557c2becc4a5a0862d",
+      "portSha256": "ef7ee3ce15bdcf3b6c790ca710e816f0ac1072bfc7c8c347429735708c5b4b3a",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/sessionUrl.ts",
+      "change": "the URL arm and the ingressUrl/isUrl fields are removed; parseSessionIdentifier keeps the JSONL path and plain UUID arms",
+      "sourceSha256": "eb1aa4c21d6fdd4519ded36f450a6e2f0ad4146f7f83f73db0c5841733e50a22",
+      "portSha256": "d1e8f7866916fc94f1402e3efcc1be1a62f0f5e16503fd950074ba40a46bdefd",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "setSessionStateChangedListener/setSessionMetadataChangedListener with their slots and the external_metadata mirroring",
+    "notifySessionMetadataChanged and its call sites in print.ts and onChangeAppState",
+    "SessionExternalMetadata and externalMetadataToAppState",
+    "structuredIO.restoredWorkerState, flushInternalEvents and internalEventsPending",
+    "the sessionStorage internal-event writer/reader, persistToRemote and hydrateFromCCRv2InternalEvents",
+    "the print-mode CCR v2 resume branch, the URL arm of --resume and the runPhase finally_flush/finally_post_flush states"
+  ],
+  "kept": [
+    "the SDK status stream: notifySessionStateChanged with its opt-in session_state_changed event, getSessionState and the permission-mode listener",
+    "RequiresActionDetails with buildRequiresActionDetails and the onPermissionPrompt callback — the SDK control protocol's own contract",
+    "local transcript persistence (enqueueWrite/recordTranscript/flush and the loaders)",
+    "--resume with a plain UUID or a .jsonl path"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Base-commit checks confirm every producer and consumer was present at e864296; a whole-tree sweep finds no residue token for any removed name; absence assertions cover the listener slots, SessionExternalMetadata, the sessionStorage machinery and the URL arm; survivor assertions pin the SDK state event, the permission-mode choke point, RequiresActionDetails with its builder and callback, local transcript writes and UUID/JSONL resume; the orphan scanner stays at ten entries over 1623 files; tsc clean",
+  "remaining": "the auto-updater surface (update/install commands with utils/autoUpdater.ts and its UI), the dependency-pruning pass (nine zero-importer dependencies), the utils/filePersistence/ rename, and the analytics transports",
+  "notes": [
+    "the first cut passed the retained end anchor twice in the persistToRemote removal and produced a duplicate class close; the script now uses the plain cut_between form and the tree was restored from HEAD before the replay",
+    "three imports lost their last reader with the machinery (asSessionId, logForDiagnosticsNoPII, isShuttingDown) and were removed in the same pass"
+  ]
+}

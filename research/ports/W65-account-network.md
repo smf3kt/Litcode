@@ -854,6 +854,28 @@ The fixture's base check confirms `19bce58` carried all nine files and the optio
 
 **Next (step 7v):** the CCR v2 session-state residue (the two listener setters, the sessionStorage internal-event writer/reader with `hydrateFromCCRv2InternalEvents`, `structuredIO.restoredWorkerState`, `externalMetadataToAppState` and the URL arm of `--resume`), then the auto-updater surface, the dependency-pruning pass and the `utils/filePersistence/` rename.
 
+## Wave D step 7v — the CCR v2 session-state residue (`d66887e`, landed)
+
+**Every hook removed here had one producer, and it left in 7u.** `RemoteIO` registered `setSessionStateChangedListener` and `setSessionMetadataChangedListener` on `CCRClient`, and under `CLAUDE_CODE_USE_CCR_V2` it registered the sessionStorage internal-event reader and writer. Nothing else in the tree calls those setters. Without a registration the listeners can never fire, `hydrateFromCCRv2InternalEvents` only ever takes its no-reader arm, and the print-mode CCR resume branch is unreachable except through an env var that can no longer change the outcome.
+
+**The local surface is what remains.** `notifySessionStateChanged` keeps its `currentState` tracking and the opt-in `session_state_changed` SDK event, now taking the state alone; the pending-action and task-summary external_metadata mirrors go with the metadata listener. `notifyPermissionModeChanged` and the print.ts listener stay: that is the SDK status stream's single choke point, and `onChangeAppState`'s mode diff folds to it (the externalized-mode comparison and `notifySessionMetadataChanged` are gone, so `toExternalPermissionMode` leaves this file with its last reader here). `SessionExternalMetadata` and `externalMetadataToAppState` leave with the restore path. `RequiresActionDetails` stays: it is the SDK control protocol's `can_use_tool` context, built by `buildRequiresActionDetails` and carried by `onPermissionPrompt`, and its only deleted use was the external_metadata mirror.
+
+**Session persistence folds to the local file.** `persistToRemote` had one arm — the internal-event writer — so it and its call site are deleted, along with the writer/reader types and accessors, the fast flush interval and `hydrateFromCCRv2InternalEvents`. `recordTranscript`, `enqueueWrite`, `flushSessionStorage` and the loaders are untouched; the transcript was always written locally, the remote path was the mirror.
+
+**Resume keeps its local arms.** `parseSessionIdentifier` drops the URL arm and the `ingressUrl`/`isUrl` fields; a JSONL path and a plain UUID remain. The print-mode empty-result branch loses its `isUrl || CLAUDE_CODE_USE_CCR_V2` case, so a resume with no transcript reports `No conversation found` and exits 1 — the source's own error path, now the only one. The `runPhase` states `finally_flush`/`finally_post_flush` and the `internal_events_pending` log field go with the flush; the other phases and `worker_status` stay.
+
+### Port coordinate refresh
+
+Four historical evidence files moved, all by re-running their own fixtures: `w65-d7f`, `w65-d7j`, `w65-d7k` and `w65-d7u`. `portSha256` only; no `sourceSha256` changed and no range moved.
+
+### Verification
+
+tsc 0, thirty fixtures pass (the new `w65-d7v-verify` plus twenty-nine carried), `git diff --check` clean, the orphan scan at its ten legitimate entries with the file count unchanged (1623 — this step deletes no module). No carried fixture needed amendment: none of them pinned the removed hooks.
+
+The fixture's base check confirms `e864296` carried every producer and consumer; a whole-tree sweep finds no residue token for any removed name; absence assertions cover the listener slots, `SessionExternalMetadata`, the sessionStorage machinery and the URL arm; survivor assertions pin the SDK state event, the permission-mode choke point, `RequiresActionDetails` with its builder and callback, local transcript writes and UUID/JSONL resume. One repair pass: the first cut passed the retained end anchor as both `new` and `end` in the `persistToRemote` removal and produced a duplicate class close (`TS1005` at `sessionStorage.ts:1157`); the script now uses the plain `cut_between` form, and all six files were restored from `HEAD` before the replay. Three imports lost their last reader with the machinery (`asSessionId`, `logForDiagnosticsNoPII`, `isShuttingDown`) and were removed in the same pass.
+
+**Next (step 7w):** the auto-updater surface (the update/install commands with `utils/autoUpdater.ts` and its UI), then the dependency-pruning pass (nine zero-importer dependencies), the `utils/filePersistence/` rename and the analytics transports.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
