@@ -2984,3 +2984,17 @@ app-state context, `Mct` answers true because the local select navigates with ar
 resolves the focus manager through `ix` then the mounted app context. The `si` wiring remains out.
 Focused 10/10, full 2565/2565, tsc 0, build 0, notices 0, scan 254 unresolved 0, identity
 `997d61f8…`. [W172 record](ports/W172-list.md).
+
+W173 wired the diff dialog (6 copied blocks, 8,741 UTF-16 units). `si` builds its source list from
+the current working tree and every completed turn; the current source reads the local diff view
+through `PMr`, a turn source is converted by `Ie`. List mode renders the seven-row file list `K`
+and enters detail on select; detail mode renders `pBe` and runs eight scroll actions through the
+`Ffe` viewport handle. The title names the source, the subtitle carries the turn prompt or the
+working-tree/branch comparison, and the stats line carries the files count and the added/removed
+label. Empty states distinguish a turn with no changes, a notice, too many files and no changes;
+loading shows the `Mr` message. The tab strip hides for one source, the hint strip switches by
+mode, and cancel returns to the list from detail or dismisses with the source text. `Ht` answers
+false for the local-only build, `PMr` binds the W163 diff view through `DiffDataContext`, `ne`
+reuses the W164 accumulator, and `Fvn` is a telemetry no-op. The C-2 diff chain (W161-W173) is
+complete. Focused 11/11, full 2576/2576, tsc 0, build 0, notices 0, scan 130 unresolved 0,
+identity `ada4a1c6…`. [W173 record](ports/W173-dialog.md).

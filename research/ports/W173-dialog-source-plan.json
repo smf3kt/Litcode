@@ -1,0 +1,27 @@
+{
+  "imports": [
+    "import { Xe as e, Xe as r, n, s, w, b, y, P } from './plugin-chain-react-surface.js';",
+    "import { z, fo } from './diff-dialog-chrome-source.js';",
+    "import { pt, Se } from './diff-dialog-keyhint-source.js';",
+    "import { _e } from './diff-dialog-frame-source.js';",
+    "import { sS, Na, Ffe } from './diff-dialog-tabs-source.js';",
+    "import { pBe, Uwe } from './diff-dialog-detail-source.js';",
+    "import { rx, Tl, sa } from './diff-dialog-list-source.js';",
+    "import { I, Ib } from './diff-dialog-primitives-source.js';",
+    "import { Mr } from './diff-dialog-spinner-source.js';",
+    "import { ri, Ie } from './diff-turn-source.js';",
+    "import { nn } from './plugin-chain-above-prompt-keybinding-source.js';",
+    "import { ZD } from './plugin-chain-above-prompt-focus-source.js';",
+    "import { hs } from './plugin-chain-wheel-glue-source.js';",
+    "import { Ht, PMr, ne, Fvn } from './diff-dialog-dialog-host.js';"
+  ],
+  "exports": ["Et", "Vt", "ve", "K", "oe", "le", "si", "rMe", "pee"],
+  "blocks": [
+    { "file": "chunk-twzxjzbk.js", "range": [20073, 20163], "note": "Et and Vt with the file-list window size ve: the no-op edge handler and a file row wrapping oe in Tl.Item" },
+    { "file": "chunk-twzxjzbk.js", "range": [20163, 20640], "note": "K: the file list — empty hint, file rows, fixed visible count and list navigation" },
+    { "file": "chunk-twzxjzbk.js", "range": [20640, 21165], "note": "oe: one file row — formatted path with selection color plus the stat cell" },
+    { "file": "chunk-twzxjzbk.js", "range": [21165, 22140], "note": "le: the file stat cell — untracked/binary/large markers, added/removed label and truncation note" },
+    { "file": "chunk-twzxjzbk.js", "range": [22672, 28980], "note": "si: the diff dialog — sources, list/detail modes, scrolling, key actions, title/empty text, tabs and frame" },
+    { "file": "chunk-24k7d6mw.js", "range": [130997, 131363], "note": "rMe and pee: jump to bottom by the auto-scroll setting and scroll by a delta within the clamped range" }
+  ]
+}
