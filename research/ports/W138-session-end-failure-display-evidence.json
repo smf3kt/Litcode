@@ -1,0 +1,50 @@
+{
+ "schema": "W138SessionEndFailureDisplayEvidence.v1",
+ "package": "W138-01 — SessionEnd failed-record output lines",
+ "date": "2026-10-18",
+ "question": "What does the recovered SessionEnd collector display from its hook records?",
+ "answer": "It discards the answer and writes one stderr line per failed record whose output is non-empty: SessionEnd hook [<label>] failed: <output>. Successful records and structured fields are never displayed.",
+ "sourcePosition": {
+  "collector": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 2943770,
+   "writeOffset": 2944201
+  },
+  "recordBuilder": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "range": [3052300, 3055000]
+  },
+  "disklessProbe": {
+   "module": "extracted-v2/modules/chunk-4bw62nzm.js",
+   "range": [108175, 108201]
+  }
+ },
+ "recordSemantics": {
+  "label": "Mx display label (same mapping as W137)",
+  "succeeded": "status === 0 only",
+  "output": {
+   "status0": "stdout",
+   "decisionBlock": "reason, falling back to stderr",
+   "otherNonzero": "stderr",
+   "abortedOrTimeout": "Hook cancelled",
+   "spawnOrHttpFailure": "error message",
+   "scriptNotRun": "script hook did not run (...)"
+  },
+  "displayCondition": "!succeeded && output non-empty && !Te()"
+ },
+ "product": {
+  "files": ["src/hooks.ts", "src/agent.ts"],
+  "line": "SessionEnd hook [<label>] failed: <output>",
+  "channel": "cleaned, UTF-8-bounded status display without the hook-event prefix",
+  "suppressOutput": "ignored for these lines, as in the source",
+  "successfulContext": "no longer displayed; SessionEnd left the additionalContext display list"
+ },
+ "verification": {
+  "focused": "138/138",
+  "full": "2240/2240",
+  "tsc": 0,
+  "build": 0,
+  "notices": 0,
+  "identity": "23bfdb9f4fa27533c88c955960c69aeb1335caf8f24135ddb9413c79abe73b55"
+ }
+}

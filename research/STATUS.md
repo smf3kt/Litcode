@@ -2501,3 +2501,13 @@ builds that same message with the source's label mapping (`Mx`), journals it on 
 recovered caller; non-command transports use their own labels. Focused 136/136, full
 2238/2238, tsc 0, build 0, notices 0, identity `9e503123…`.
 [W137 record](ports/W137-post-compact-display.md).
+
+W138 closes the SessionEnd display difference. The recovered `uvt` collector discards the
+answer and, after the shutdown runner, writes one line per failed record whose output is
+non-empty: `SessionEnd hook [<label>] failed: <output>`. The label is the same `Mx` mapping
+used for PostCompact; status 2 takes the decision-block reason when present, other non-zero
+statuses take stderr, and timeout/abort records `Hook cancelled`. The product now builds those
+lines, displays them unprefixed through the cleaned bounded status path and outside the
+`suppressOutput` gate, and stops displaying successful SessionEnd context, which the source
+never shows. Focused 138/138, full 2240/2240, tsc 0, build 0, notices 0, identity `23bfdb9f…`.
+[W138 record](ports/W138-session-end-failure-display.md).

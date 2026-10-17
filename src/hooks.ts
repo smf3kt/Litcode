@@ -1242,10 +1242,20 @@ export async function runHooks(
   // Failure text stays in additionalContext for the model and is also kept
   // separately so a watcher can display it like the recovered failed-hook
   // output (`ke`, chunk-sfn1dbxq.js [1678937,1679425)).
-  const fail = (message: string): void => {
+  const fail = (message: string, displayMessage: string | null = message): void => {
     result.additionalContext.push(message);
-    (result.failures ??= []).push(message);
+    if (displayMessage !== null) (result.failures ??= []).push(displayMessage);
   };
+  // Source `uvt` (chunk-sfn1dbxq.js [2943770,…)) writes one stderr line per
+  // failed SessionEnd record whose output is non-empty:
+  // `SessionEnd hook [<label>] failed: <output>`. It reads no structured field
+  // and skips the write in a diskless session; this runtime is never diskless
+  // (`Te()` in ./plugin-chain-host.ts is the loader-surface port), so the line
+  // is always produced. Other events keep the generic failure text.
+  const sessionEndFailure = (definition: HookDefinition, output: string): string | null | undefined =>
+    event === "SessionEnd"
+      ? (output.length > 0 ? `SessionEnd hook [${hookDisplayLabel(definition)}] failed: ${output}` : null)
+      : undefined;
 
   for (const [index, flattened] of definitions.entries()) {
     const stored = flattened.definition;
@@ -1347,7 +1357,7 @@ export async function runHooks(
       // the failure output and marks it blocking only for the PreToolUse/PermissionRequest set
       // (`SV`, chunk-3cynezh1.js offset 109855; catch at chunk-sfn1dbxq.js offset 3054829).
       const message = "script hooks are not available in this build";
-      fail(`[${event} hook: ${message}]`);
+      fail(`[${event} hook: ${message}]`, sessionEndFailure(definition, message));
       if (event === "PreToolUse" || event === "PermissionRequest") {
         result.blocked = true;
         result.reason ??= message;
@@ -1379,11 +1389,15 @@ export async function runHooks(
       continue;
     }
     if (raw.aborted) {
-      result.additionalContext.push(`[${event} hook: aborted, process group killed]`);
+      // An aborted record is the source's cancelled outcome: output
+      // "Hook cancelled", succeeded false (`chunk-sfn1dbxq.js` [3052800,…)).
+      if (event === "SessionEnd") fail(`[${event} hook: aborted, process group killed]`, sessionEndFailure(definition, "Hook cancelled"));
+      else result.additionalContext.push(`[${event} hook: aborted, process group killed]`);
       break;
     }
     if (raw.spawnError) {
-      fail(`[${event} hook: failed to launch: ${raw.spawnError.message}]`);
+      fail(`[${event} hook: failed to launch: ${raw.spawnError.message}]`,
+        sessionEndFailure(definition, raw.spawnError.message));
       continue;
     }
 
@@ -1416,7 +1430,10 @@ export async function runHooks(
     }
 
     if (raw.timedOut) {
-      fail(`[${event} hook: timed out after ${timeoutMs}ms, process group killed]`);
+      // The source's timeout path aborts the run, which records the same
+      // cancelled outcome as an external abort.
+      fail(`[${event} hook: timed out after ${timeoutMs}ms, process group killed]`,
+        sessionEndFailure(definition, "Hook cancelled"));
       continue;
     }
     if (raw.code === BLOCKING_EXIT_CODE) {
@@ -1427,13 +1444,20 @@ export async function runHooks(
       } else {
         // Display-only events (SessionStart/PostToolUse/PostCompact/StopFailure/
         // SessionEnd) must never block: record the failure, do not gate.
+        // The source record's output for status 2 is the block reason when the
+        // stdout object carries `decision:"block"`, and stderr otherwise.
+        const json = parseHookJson(raw.stdout);
+        const blockReason = json && json.decision === "block" && typeof json.reason === "string" && json.reason.length > 0
+          ? json.reason : undefined;
         fail(
           `[${event} hook: exit code 2 is non-blocking for this event]${raw.stderr.trim() ? ` ${raw.stderr.trim()}` : ""}`,
+          sessionEndFailure(definition, blockReason ?? raw.stderr),
         );
       }
     } else if (raw.code !== 0) {
       fail(
         `[${event} hook: exit code ${raw.code ?? "null"}]${raw.stderr.trim() ? ` ${raw.stderr.trim()}` : ""}`,
+        sessionEndFailure(definition, raw.stderr),
       );
     }
   }

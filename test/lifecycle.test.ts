@@ -409,6 +409,23 @@ test('model errors fire StopFailure and keep the interrupted turn resumable', as
   } finally { session.close(); f.cleanup(); }
 });
 
+test('SessionEnd displays failed hook output and not successful context', async () => {
+  const f = fixture();
+  const failing = "printf late 1>&2; exit 3";
+  f.config.hooks = { SessionEnd: [
+    { command: command({ additionalContext: 'cleanup' }) },
+    { command: failing },
+  ] };
+  const session = Session.open(f.workspace, { config: f.config });
+  const statuses: string[] = [];
+  try {
+    const agent = new Agent(session, f.provider, [f.tool], { status: line => statuses.push(line) });
+    await agent.endSession('other');
+    assert.equal(statuses.some(line => line.includes('cleanup')), false);
+    assert.ok(statuses.includes(`SessionEnd hook [${failing}] failed: late`), statuses.join('\n'));
+  } finally { session.close(); f.cleanup(); }
+});
+
 test('SessionEnd runs once even after the task signal was cancelled', async () => {
   const f = fixture(); f.config.hooks = { SessionEnd: [{ command: command({ additionalContext: 'cleanup' }) }] };
   const session = Session.open(f.workspace, { config: f.config });

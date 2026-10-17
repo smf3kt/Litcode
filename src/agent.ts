@@ -318,23 +318,23 @@ export class Agent {
       ...(result.userDisplayMessage === undefined ? {} : { userDisplayMessage: result.userDisplayMessage }),
       ...(result.terminalSequences?.length ? { terminalSequences: result.terminalSequences } : {}) });
     for (const sequence of result.terminalSequences ?? []) this.events.terminalSequence?.(sequence);
+    let budget = this.session.config.maxOutputBytes;
+    const display = (text: string, prefixed = true) => {
+      if (budget <= 0) return;
+      const prefix = prefixed ? `hook ${event}: ` : '';
+      const overhead = Buffer.byteLength(prefix) + 1;
+      if (budget <= overhead) return;
+      const bytes = Buffer.from(text.replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, ' '));
+      const room = budget - overhead;
+      const suffix = bytes.length > room && room >= 12 ? ' [truncated]' : '';
+      let end = Math.min(bytes.length, room - Buffer.byteLength(suffix));
+      while (end < bytes.length && end > 0 && (bytes[end]! & 0xc0) === 0x80) end--;
+      this.events.status?.(`${prefix}${bytes.subarray(0, end).toString('utf8')}${suffix}`);
+      budget -= overhead + end + Buffer.byteLength(suffix);
+    };
     if (!result.suppressOutput) {
-      let budget = this.session.config.maxOutputBytes;
-      const display = (text: string) => {
-        if (budget <= 0) return;
-        const prefix = `hook ${event}: `;
-        const overhead = Buffer.byteLength(prefix) + 1;
-        if (budget <= overhead) return;
-        const bytes = Buffer.from(text.replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, ' '));
-        const room = budget - overhead;
-        const suffix = bytes.length > room && room >= 12 ? ' [truncated]' : '';
-        let end = Math.min(bytes.length, room - Buffer.byteLength(suffix));
-        while (end < bytes.length && end > 0 && (bytes[end]! & 0xc0) === 0x80) end--;
-        this.events.status?.(`${prefix}${bytes.subarray(0, end).toString('utf8')}${suffix}`);
-        budget -= overhead + end + Buffer.byteLength(suffix);
-      };
       for (const message of result.systemMessages ?? []) display(message);
-      if (['SessionEnd', 'Notification', 'TeammateIdle'].includes(event)) {
+      if (['Notification', 'TeammateIdle'].includes(event)) {
         for (const context of result.additionalContext) display(context);
       }
       // PostCompact's user-facing message is the source's labeled record list
@@ -342,6 +342,12 @@ export class Agent {
       if (event === 'PostCompact' && result.userDisplayMessage !== undefined) {
         for (const line of result.userDisplayMessage.split('\n')) display(line);
       }
+    }
+    // Source `uvt` writes SessionEnd's failed-record lines to stderr after the
+    // shutdown runner, independently of suppressOutput and with no display
+    // prefix. They are shown here through the same cleaned, bounded path.
+    if (event === 'SessionEnd') {
+      for (const failure of result.failures ?? []) display(failure, false);
     }
     signal.throwIfAborted();
     return result;
