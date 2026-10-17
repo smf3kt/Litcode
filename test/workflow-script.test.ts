@@ -411,7 +411,10 @@ test('workflow_run executes scripts through the child agent registry', async () 
     assert.equal(fromFile.result, 11);
     assert.equal(fromFile.agent_count, 0);
 
-    await assert.rejects(workflowRun!.execute({ script: meta, scriptPath: 'file-flow.js' }, context), /exactly one/);
+    const inlineWins = JSON.parse(String(await workflowRun!.execute({
+      script: meta + 'return 7', scriptPath: 'file-flow.js',
+    }, context))) as { result: unknown };
+    assert.equal(inlineWins.result, 7);
     await assert.rejects(workflowRun!.execute({ script: 'throw new Error("no meta")' }, context), /FIRST statement/);
     const childFailure = JSON.parse(String(await workflowRun!.execute({
       script: meta + `const value = await agent('fail task')\nreturn { value }`,

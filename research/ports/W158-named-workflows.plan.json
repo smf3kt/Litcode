@@ -1,0 +1,54 @@
+{
+  "imports": [
+    "import { parseWorkflowScript as YS } from \"./workflow-script.js\";",
+    "import { it, xr, cn, br, ojt, RUn, be, a7, Xs, db, $pe, ie, t, g, m, f, a } from \"./workflow-named-host.js\";"
+  ],
+  "exports": ["GJe", "kyt", "LOe", "rjt", "yXn"],
+  "blocks": [
+    {
+      "file": "chunk-9r54k71g.js",
+      "range": [1448, 8633],
+      "note": "named workflow discovery, precedence merge and lookup"
+    },
+    {
+      "file": "chunk-qm4226vk.js",
+      "range": [3319, 3438],
+      "note": "pQ cache and fQ key"
+    },
+    {
+      "file": "chunk-3ph567jx.js",
+      "range": [4032, 4069],
+      "note": "UDn invalidation"
+    },
+    {
+      "file": "chunk-rk6tjv7j.js",
+      "range": [4573, 4614],
+      "note": "lzo parse check"
+    },
+    {
+      "file": "chunk-886tf6ja.js",
+      "range": [7299, 7391],
+      "note": "xs errno check"
+    },
+    {
+      "file": "chunk-wdffj3z9.js",
+      "range": [615, 1006],
+      "note": "Yf page cap and Wi storage pager"
+    },
+    {
+      "file": "chunk-2bcyxj9q.js",
+      "range": [149852, 149878],
+      "note": "wE workflow file limit"
+    },
+    {
+      "file": "chunk-64ag51qf.js",
+      "range": [1282, 1420],
+      "note": "Yk regular file read"
+    },
+    {
+      "file": "chunk-2bcyxj9q.js",
+      "range": [150665, 150712],
+      "note": "Vce CRLF normalization"
+    }
+  ]
+}

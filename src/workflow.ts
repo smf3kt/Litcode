@@ -8,6 +8,7 @@ import { WorkflowStore, workflowTaskSchema, workflowDefinitionSchema, workflowDi
 import { loadWorkflowScriptFile, loadWorkflowScriptJournal, openWorkflowScriptJournal,
   parseWorkflowScript, runWorkflowScript, WORKFLOW_SCRIPT_MAX_BYTES,
   type WorkflowScriptJournal } from './workflow-script.js';
+import { listNamedWorkflows, resolveNamedWorkflow } from './workflow-named.js';
 
 // Owned declarative DAG orchestration; workflow input is data, never JavaScript.
 const taskSchema = workflowTaskSchema;
@@ -396,13 +397,14 @@ export class WorkflowRegistry {
 
 const scriptSchema = z.object({
   script: z.string().min(1).max(WORKFLOW_SCRIPT_MAX_BYTES).optional(),
+  name: z.string().trim().min(1).max(256).optional(),
   scriptPath: z.string().trim().min(1).max(4096).optional(),
   args: z.unknown().optional(),
   // Same shape as the recovered `resumeFromRunId` schema
   // (chunk-a7gk0710.js offset 59981).
   resumeFromRunId: z.string().regex(/^wf_[a-z0-9-]{6,}$/).optional(),
-}).strict().refine(value => (value.script === undefined) !== (value.scriptPath === undefined),
-  'Provide exactly one of script or scriptPath');
+}).strict().refine(value => value.script !== undefined || value.name !== undefined || value.scriptPath !== undefined,
+  'Provide script, name, or scriptPath');
 
 export function createWorkflowTools(registry: WorkflowRegistry, options: { persistent?: boolean } = {}): ToolDefinition[] {
   const output = (value: unknown, context: ToolContext) => capChildOutput(JSON.stringify(value), Math.min(context.maxOutputBytes, registry.limits.maxOutputBytes));
@@ -411,12 +413,25 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
     if (args.resumeFromRunId !== undefined && !options.persistent) {
       throw new Error('Workflow script resume is not enabled for this session');
     }
+    // Recovered input resolution (`Rr`, chunk-a7gk0710.js offset 65393):
+    // scriptPath takes precedence over name, a supplied script beats the
+    // named workflow's script, and a missing name lists the catalog.
     let source = args.script;
-    if (source === undefined) {
-      const loaded = await loadWorkflowScriptFile(args.scriptPath!, context.workspace);
-      if ('error' in loaded) throw new Error(loaded.error);
-      source = loaded.source;
+    if (args.scriptPath !== undefined) {
+      if (source === undefined) {
+        const loaded = await loadWorkflowScriptFile(args.scriptPath, context.workspace);
+        if ('error' in loaded) throw new Error(loaded.error);
+        source = loaded.source;
+      }
+    } else if (args.name !== undefined) {
+      const named = await resolveNamedWorkflow(args.name, context.workspace);
+      if (named === undefined) {
+        const available = (await listNamedWorkflows(context.workspace)).map(entry => entry.name).join(', ');
+        throw new Error(`Workflow "${args.name}" not found. Available: ${available || '(none)'}`);
+      }
+      source ??= named.script;
     }
+    if (source === undefined) throw new Error('Must provide script, name, or scriptPath');
     const parsed = parseWorkflowScript(source);
     if ('error' in parsed) throw new Error(parsed.error);
     const resume = args.resumeFromRunId;
@@ -493,8 +508,8 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
   return [{
     readOnly: false,
     schema: { name: 'workflow_run', description: options.persistent
-      ? 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. With session-owned workspace persistence, resume_from reuses completed tasks only for an identical full DAG/settings digest. Failed/cancelled/skipped tasks rerun; crashed running tasks require explicit retry_interrupted. Effects are not rolled back. Script (inline `script` or a `scriptPath` file): `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value. Script runs are journaled under the session workspace; resumeFromRunId reuses completed agent() results for the longest unchanged prefix (prompt and execution options are chained into each key), reruns started-but-unfinished calls, and runs the first changed call and everything after it live. Effects are not replayed.'
-      : 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. Script (inline `script` or a `scriptPath` file): `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value.',
+      ? 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. With session-owned workspace persistence, resume_from reuses completed tasks only for an identical full DAG/settings digest. Failed/cancelled/skipped tasks rerun; crashed running tasks require explicit retry_interrupted. Effects are not rolled back. Named workflows: pass `name` to resolve a predefined workflow from the bundled, plugin, user (`.harness/workflows` under the user directory) or project (`.harness/workflows` at the workspace or an ancestor) providers; `scriptPath` takes precedence, and an explicit `script` overrides the named script. Script (inline `script` or a `scriptPath` file): `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value. Script runs are journaled under the session workspace; resumeFromRunId reuses completed agent() results for the longest unchanged prefix (prompt and execution options are chained into each key), reruns started-but-unfinished calls, and runs the first changed call and everything after it live. Effects are not replayed.'
+      : 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. Named workflows: pass `name` to resolve a predefined workflow from the bundled, plugin, user (`.harness/workflows` under the user directory) or project (`.harness/workflows` at the workspace or an ancestor) providers; `scriptPath` takes precedence, and an explicit `script` overrides the named script. Script (inline `script` or a `scriptPath` file): `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value.',
       input_schema: { type: 'object', properties: {
         tasks: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'object', properties: {
           id: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_.-]{0,63}$' }, prompt: { type: 'string' },
@@ -504,14 +519,15 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
         max_parallel: { type: 'integer', minimum: 1, maximum: 8 }, background: { type: 'boolean' },
         timeout_ms: { type: 'integer', minimum: 1, maximum: 1_800_000 },
         script: { type: 'string', maxLength: WORKFLOW_SCRIPT_MAX_BYTES },
+        name: { type: 'string', minLength: 1, maxLength: 256 },
         scriptPath: { type: 'string', minLength: 1, maxLength: 4096 },
         args: {},
         ...(options.persistent ? { resume_from: { type: 'string', format: 'uuid' }, retry_interrupted: { type: 'boolean' },
           resumeFromRunId: { type: 'string', pattern: '^wf_[a-z0-9-]{6,}$' } } : {}),
-      }, anyOf: [{ required: ['tasks'] }, { required: ['script'] }, { required: ['scriptPath'] }], additionalProperties: false } },
+      }, anyOf: [{ required: ['tasks'] }, { required: ['script'] }, { required: ['name'] }, { required: ['scriptPath'] }], additionalProperties: false } },
     async execute(raw, context) {
       context.signal.throwIfAborted();
-      if (raw !== null && typeof raw === 'object' && ('script' in raw || 'scriptPath' in raw)) {
+      if (raw !== null && typeof raw === 'object' && ('script' in raw || 'name' in raw || 'scriptPath' in raw)) {
         return output(await runScript(raw, context), context);
       }
       return output(await registry.run((options.persistent ? runSchema : workflowDefinitionSchema).parse(raw), context.signal), context);

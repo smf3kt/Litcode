@@ -2770,3 +2770,18 @@ All 82 direct names come from existing seams or exact copies; the measurement ge
 size, app state, session, dialog store, clock and keybinding service are host-mounted inputs.
 Focused 6/6, full 2437/2437, tsc 0, build 0, notices 0, identity `386a9933…`.
 [W156 record](ports/W156-nfe-wiring.md).
+
+W158 ported the named-workflow catalog (9 blocks, 8,076 UTF-16 units): discovery reads
+`.js` files from `<userDir>/workflows` and from `.harness/workflows` at the workspace and each
+ancestor below the home directory, rejecting non-files, symbolic-link targets already visited,
+files above 524,288 bytes, and invalid meta; meta-only parsing lists a workflow whose body does
+not parse, while an override is kept only when its full script parses. Project directories are
+applied outermost first so the inner copy wins, then the merged catalog is ordered bundled,
+plugin, and user/project with the recovered parse guard. The per-workspace cache and its
+`name-only` and `bundled-only` gates are host inputs, and plugin and bundled workflows are
+supplied by the host (empty by default). `workflow_run` accepts `name`: scriptPath takes
+precedence, an explicit script overrides the named script, and a missing name lists the catalog.
+The account storage branch reads the local filesystem instead, and the script-global nested
+named-workflow runner remains deferred. Focused 8/8, full 2445/2445, tsc 0, build 0, notices 0,
+scan declared 65 / unresolved 0, identity `d68c7b23…`.
+[W158 record](ports/W158-named-workflows.md).
