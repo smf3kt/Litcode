@@ -2482,3 +2482,11 @@ the resolved batch and its `tool_result` content. The independent transport now 
 shape and shares the same array with the classic chain event; `tool_use_ids` is no longer
 emitted. Focused 83/83, full 2238/2238, tsc 0, build 0, notices 0, identity `8066539f…`.
 [W135 record](ports/W135-post-tool-batch-input.md).
+
+W136 closes the StopFailure consumer difference. The recovered caller awaits the outside-REPL
+hook run and reads none of its answer. Both StopFailure raise paths here (a failed model
+request and `finishWithHooks` for a non-clean stop) still run and journal the hook, but no
+longer display `additionalContext` or carry it into context. `error_details` is not sent
+because local error values carry no such detail object. Focused 136/136, full 2238/2238,
+tsc 0, build 0, notices 0, identity `1d28148b…`.
+[W136 record](ports/W136-stop-failure-discard.md).

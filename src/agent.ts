@@ -1052,10 +1052,11 @@ export class Agent {
       if (!alreadyStarted) {
         // StopFailure carries `{error, error_details?, last_assistant_message?}` (`Gze`, chunk-sfn1dbxq.js
         // offset 2945292; schema at chunk-r2vtj1kh.js offset 198098); no stop_reason field exists.
+        // `Gze` awaits the outside-REPL hook run and discards its answer: no additionalContext is
+        // displayed or carried into the next request.
         const lastMessage = text.trim() === '' ? undefined : text.trim();
-        const failure = await this.hook('StopFailure', { error: reason,
+        await this.hook('StopFailure', { error: reason,
           ...(lastMessage === undefined ? {} : { last_assistant_message: lastMessage }) }, signal);
-        for (const context of failure.additionalContext) this.events.status?.(`hook: ${context}`);
       }
       return this.finish(reason, text, modelCalls);
     }
@@ -1248,9 +1249,8 @@ export class Agent {
         catch (error) {
           if (!signal.aborted) {
             try {
-              const failure = await this.hook('StopFailure', { error: error instanceof Error ? error.message : String(error),
+              await this.hook('StopFailure', { error: error instanceof Error ? error.message : String(error),
                 ...(text.trim() === '' ? {} : { last_assistant_message: text.trim() }) }, signal);
-              for (const context of failure.additionalContext) this.events.status?.(`hook: ${context}`);
             } catch (hookError) { this.events.status?.(`StopFailure hook error: ${hookError instanceof Error ? hookError.message : String(hookError)}`); }
           }
           throw error;
