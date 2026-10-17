@@ -6,10 +6,10 @@
       "file": "services/analytics/metadata.ts",
       "change": "everything from the EnvContext type to the end of the file removed (the environment builder, the process-metrics sampler, the agent-identification helper, getEventMetadata, the 1P snake_case formatter and their types); the import block cut from twenty-one bindings to four",
       "sourceSha256": "c97676a48ef02fbc2797c5251287f5fa336d8e5ca8a42c92e26a1e7752bd366e",
-      "portSha256": "d71d6c7ff9f88e11207809e5ec368c2db3ae4fd11b728b5482ca612ec92bf274",
+      "portSha256": "7d1a38c1c2127be517e4facd53786f2ba5de179441a12389f71dadd1127ae35a",
       "coordinateUnit": "utf16-half-open",
       "sourceBytes": 31655,
-      "portBytes": 11852
+      "portBytes": 11621
     }
   ],
   "removed": [

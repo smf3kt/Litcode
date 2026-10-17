@@ -36,14 +36,14 @@
       "file": "services/mcp/client.ts",
       "change": "the ingress Authorization dropped from both the WebSocket headers and the HTTP requestInit, and the hasOAuthTokens probe it was paired with deleted; the authProvider's own OAuth Authorization stays as the source's comment says it should",
       "sourceSha256": "168a104c09d20bc1b0957aa3bf5e2002c50f99a97e6023df18f30e7c9627d90e",
-      "portSha256": "f5cfe53d342448d9fc00de42a9f922aeb10dfe900abea3ee01859d388fe6418f",
+      "portSha256": "36239383ebc0ec1f017a4feb9c2133cd3a488d1c054d28ccce0ae58cdbb498d8",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "main.tsx",
       "change": "the --file option, the download block, the promise it set and the await before REPL render all removed, along with the four filesApi imports; the client-type detection keeps only the entrypoint term",
       "sourceSha256": "ff9aedfcbaf7d772dd379abb53db0ca27ff9ea79d128d6fbc792617dda0cae70",
-      "portSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd8",
+      "portSha256": "c92abf00d38ec9d0dc46a52403004c4349ed745273079bd7ac108634bcc9407f",
       "coordinateUnit": "utf16-half-open"
     }
   ],

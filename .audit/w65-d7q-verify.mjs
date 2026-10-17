@@ -52,23 +52,19 @@ for (const name of [
   assert.equal(rg(`\\b${name}\\b`), "", `${name} still appears in the tree`)
 }
 
-// 2. The survivors: the three names the claude.ai connector still reads, and
-//    hasProfileScope, whose only reader is the fast-mode account gate.
+// 2. The survivors: the bearer surface and hasProfileScope, whose only reader
+//    is the fast-mode account gate. The three names the claude.ai connector
+//    still read at this step (isAnthropicAuthEnabled, isClaudeAISubscriber,
+//    getOauthAccountInfo) retired with the connector in step 7r, as this
+//    file's own `remaining` predicted; their pins go with them.
 const auth = read("utils/auth.ts")
 for (const keep of [
-  "export function isAnthropicAuthEnabled(): boolean {",
-  "export function isClaudeAISubscriber(): boolean {",
-  "export function getOauthAccountInfo(): AccountInfo | undefined {",
   "export function hasProfileScope(): boolean {",
   "export const getClaudeAIOAuthTokens = memoize((): OAuthTokens | null => {",
   "export function getAccountInformation() {",
 ]) {
   assert.ok(auth.includes(keep), `${keep} survives this step`)
 }
-assert.match(
-  auth,
-  /export function getOauthAccountInfo\(\): AccountInfo \| undefined \{\n  \/\/ No account is persisted in this build, so the guarded config read the\n  \/\/ source performed could only have answered undefined\.\n  return undefined\n\}\n/,
-)
 // is1PApiCustomer keeps its two tip readers and folds to its env terms.
 assert.match(
   auth,
