@@ -679,7 +679,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         syntaxHighlightingDisabled: currentSession.config.syntaxHighlightingDisabled,
         theme: currentSession.config.theme, userDir: currentSession.config.configSources?.userDir,
         workspace: currentSession.config.workspace, plugins: currentSession.config.plugins }) : undefined;
-      await new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {
+      const started = await new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {
         stopState: () => currentRuntime.stopState?.(currentSession.id) ?? { background_tasks: [], session_crons: [] },
         status: text => { if (tui) tui.setStatus(text); else process.stderr.write(`${text}\n`); },
         ...(tui ? { terminalSequence: (sequence: string) => tui.writeTerminalSequence(sequence) }
@@ -691,6 +691,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       }).startSession(values.resume ? 'resume' : 'startup', controller.signal);
       await interactiveLoop(currentSession, provider, currentRuntime, { input: process.stdin, output: process.stdout,
         status: tui ? tui.statusStream : process.stderr, signal: controller.signal,
+        ...(started.initialUserMessage === undefined ? {} : { initialUserMessage: started.initialUserMessage }),
         ...(tui ? { terminal: tui } : {}) });
       if (controller.signal.aborted) process.exitCode = 130;
       return;
@@ -703,7 +704,11 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       stopState: () => currentRuntime.stopState?.(currentSession.id) ?? { background_tasks: [], session_crons: [] },
     });
     // Run SessionStart hooks once, for startup or resume.
-    await agent.startSession(values.resume ? 'resume' : 'startup', controller.signal);
+    const started = await agent.startSession(values.resume ? 'resume' : 'startup', controller.signal);
+    // The recovered headless prologue prepends the hook's initial user message
+    // to the input queue (`OXr`/`prependUserMessage`, chunk-rx2nah4x.js offset
+    // 472137), so it runs as the first turn ahead of the typed prompt.
+    if (started.initialUserMessage !== undefined) await agent.run(started.initialUserMessage, controller.signal);
     const rawPrompt = positionals.join(' ');
     const slash = parseSlashCommand(rawPrompt);
     const selectedSkill = slash ? findSkill(currentSession.config.skills, slash.name) : undefined;

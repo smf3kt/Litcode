@@ -381,6 +381,8 @@ export type HookResult = {
   displayContent?: string;
   /** SessionStart / UserPromptSubmit: a hook-provided session title, last one wins. */
   sessionTitle?: string;
+  /** SessionStart: a user message the session starts with, last one wins. */
+  initialUserMessage?: string;
   /**
    * Set only by an explicit `continue:false` output, meaning "terminate the
    * session". A Stop hook that merely requests continuation (exit 2 or a
@@ -941,6 +943,13 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   // schemas (chunk-n3ykh62m.js offsets 391440 and 391966); the last hook that
   // provides one wins in the recovered consumer loops.
   if ((event === "SessionStart" || event === "UserPromptSubmit") && typeof output.sessionTitle === "string") result.sessionTitle = output.sessionTitle;
+  // `initialUserMessage` is a SessionStart-only output field (chunk-n3ykh62m.js
+  // offset 391966). The recovered consumer stages each truthy value and lets the
+  // last hook win (`H7`, chunk-sfn1dbxq.js offset 2482643); an empty string is
+  // ignored by the same truthiness check.
+  if (event === "SessionStart" && typeof output.initialUserMessage === "string" && output.initialUserMessage !== "") {
+    result.initialUserMessage = output.initialUserMessage;
+  }
   // MessageDisplay is display-only: `hookSpecificOutput.displayContent` replaces the delta on
   // screen while the stored message and what the model sees stay unchanged (source output
   // processing at chunk-sfn1dbxq.js offset 2967137).

@@ -1,0 +1,3 @@
+2026-10-18T12:10:00Z	package	W103-01 SessionStart initialUserMessage	schema 391966、暂存 2482643、排空 2480020、prepend 472137/584530、late 378598	仅SessionStart解析；空串忽略；last-wins；以首个用户轮次入队而非单独message	hooks/agent-lifecycle/interactive 107/107；tsc 0；build 0；全量 2,138/2,138；链 767/767
+2026-10-18T12:13:00Z	decision	W103-01 本地适配	本运行时没有源中的共享暂存器；startSession 将值返回给持有输入队列的前端	写入独立 message 事件会置 awaitingResponse=true 并阻止首个 run	.audit/w103-01-full.txt
+2026-10-18T12:16:00Z	verification	W103-01 验收：聚焦 107/107、tsc 0、build 0、2,138/2,138、767/767	headless 先运行钩子消息；interactive 置于输入之前；clear/fork 入队；中途 resume 不排空	notices 0；索引 75 chunks / 323,525 单位不变；identity b4860f22…

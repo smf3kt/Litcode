@@ -319,7 +319,7 @@ export class Agent {
     return await this.hook(event, payload, signal);
   }
 
-  async startSession(source: 'startup' | 'resume' | 'clear' | 'fork', signal = new AbortController().signal): Promise<void> {
+  async startSession(source: 'startup' | 'resume' | 'clear' | 'fork', signal = new AbortController().signal): Promise<{ initialUserMessage?: string }> {
     // Setup carries `trigger` and the process-startup dispatch passes "init"
     // (`n7r`, chunk-sfn1dbxq.js [2943161,2943444); dispatch trigger at
     // chunk-9shw4xrd.js offset 143466). InstructionsLoaded carries the eager
@@ -358,6 +358,13 @@ export class Agent {
       const title = normalizeSessionTitle(result.sessionTitle);
       if (title !== '' && title !== this.currentSessionTitle()) this.session.append({ kind: 'title', title });
     }
+    // The recovered prologue drains the staged value with `OXr`
+    // (chunk-sfn1dbxq.js offset 2480020) and prepends it to the user input
+    // queue (`prependUserMessage`, chunk-rx2nah4x.js offset 472137), so it
+    // becomes the first queued user turn instead of an unfinished turn. The
+    // local front ends queue it at the same point; returning it keeps that
+    // value out of the transcript until the caller starts the turn.
+    return result.initialUserMessage === undefined ? {} : { initialUserMessage: result.initialUserMessage };
   }
 
   async endSession(reason = 'exit'): Promise<void> {

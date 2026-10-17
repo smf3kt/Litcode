@@ -658,6 +658,25 @@ test("a clear start ignores the SessionStart hook title", async () => {
   } finally { session.close(); }
 });
 
+test("SessionStart initialUserMessage is returned for the caller to queue", async () => {
+  const root = workspace();
+  const hooks = { SessionStart: [
+    { command: emit({ hookSpecificOutput: { hookEventName: "SessionStart", initialUserMessage: "first message" } }) },
+    { command: emit({ hookSpecificOutput: { hookEventName: "SessionStart", initialUserMessage: "second message" } }) },
+  ] };
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  try {
+    const agent = new Agent(session, new ScriptedProvider([done()]), []);
+    assert.deepEqual(await agent.startSession("startup"), { initialUserMessage: "second message" });
+    // The value stays out of the transcript until the caller starts the turn;
+    // a lone stored user message would make the session look unfinished.
+    assert.equal(session.events.some(event => event.kind === "message"), false);
+    assert.equal(session.awaitingResponse, false);
+    await agent.run("typed prompt");
+    assert.equal(session.awaitingResponse, false);
+  } finally { session.close(); }
+});
+
 test("TaskCreated receives the created task's fields and a block rolls the task back", async () => {
   const root = workspace();
   const capture = path.join(root, "task-created.jsonl");

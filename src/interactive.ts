@@ -124,6 +124,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   input: Readable; output: Writable; status: Writable; signal: AbortSignal;
   /** A full-screen interaction layer to drive instead of the built-in line editor. */
   terminal?: TerminalSurface;
+  /** SessionStart `initialUserMessage`, queued ahead of the first typed input. */
+  initialUserMessage?: string;
 }): Promise<void> {
   let session = initial;
   try {
@@ -155,6 +157,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   options.signal.addEventListener('abort', abort, { once: true });
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null } }[] = [];
+  // The recovered prologue prepends the SessionStart message to the user input
+  // queue (`prependUserMessage`, chunk-rx2nah4x.js offset 472137), so it runs
+  // before anything typed or piped at startup.
+  if (options.initialUserMessage !== undefined) queue.push({ prompt: options.initialUserMessage, source: 'user' });
   let editorWork: Promise<import('./external-editor.js').ExternalEditorResult> | undefined;
   let inputClosed = false;
   let approval: ((value: string | undefined) => void) | undefined;
@@ -447,9 +453,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       return { action: 'cancel' };
     } finally { if (formController === controller) formController = undefined; formActive = false; }
   };
-  // A new session (clear or fork) runs its SessionStart hooks once.
+  // A new session (clear or fork) runs its SessionStart hooks once. A hook
+  // message is prepended to the queue like the recovered claim path
+  // (chunk-rx2nah4x.js offset 584530).
   const startAgentSession = async (source: 'clear' | 'fork') => {
-    await agent().startSession(source, options.signal);
+    const started = await agent().startSession(source, options.signal);
+    if (started?.initialUserMessage !== undefined) queue.unshift({ prompt: started.initialUserMessage, source: 'user' });
   };
   const announce = () => options.status.write(`session: ${session.id}\n`);
   const bindNext = async (candidate: Runtime, next: Session): Promise<Runtime> => {

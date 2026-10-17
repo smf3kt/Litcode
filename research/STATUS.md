@@ -2191,3 +2191,12 @@ runs become a space, 200 code points, trimmed). The session list and later
 UserPromptSubmit payloads now read the recorded title. Focused 94/94, tsc 0,
 build 0, full 2,136/2,136, chain 767/767, identity `6c6de060…`.
 [W102 record](ports/W102-session-title.md).
+
+W103-01 consumes the SessionStart `initialUserMessage`. The last non-empty
+value is returned by `startSession` and queued by the front end as the session's
+first user turn: headless runs it before the typed prompt, interactive puts it
+ahead of typed or piped input, and clear/fork restarts unshift it. It is never
+stored as a lone message event, so the first `run()` is not blocked by an
+unfinished turn. Focused 107/107, tsc 0, build 0, full 2,138/2,138, chain
+767/767, identity `b4860f22…`.
+[W103 record](ports/W103-initial-message.md).

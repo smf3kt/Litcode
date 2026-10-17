@@ -1,0 +1,126 @@
+{
+ "schema": "W103InitialUserMessageEvidence.v1",
+ "package": "W103-01 — SessionStart initialUserMessage",
+ "date": "2026-10-18",
+ "question": "What does the SessionStart initialUserMessage output do, and how can a front end deliver it without blocking the first turn?",
+ "answer": "The hook loop stages the last truthy initialUserMessage; the headless prologue and claim path drain it and prepend it to the user input queue, making it the first queued user turn. This runtime returns the value from startSession and each front end queues it at the same point; it is never stored as a lone message event.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "schema": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 391966
+  },
+  "stageAndLastWins": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 2482643
+  },
+  "drain": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "OXr",
+   "offset": 2480020
+  },
+  "headlessPrepend": {
+   "module": "extracted-v2/modules/chunk-rx2nah4x.js",
+   "offset": 472137
+  },
+  "claimPrepend": {
+   "module": "extracted-v2/modules/chunk-rx2nah4x.js",
+   "offset": 584530
+  },
+  "lateDelivery": {
+   "module": "extracted-v2/modules/chunk-rx2nah4x.js",
+   "offset": 378598
+  }
+ },
+ "behavior": {
+  "events": [
+   "SessionStart"
+  ],
+  "lastTruthyWins": true,
+  "emptyIgnored": true,
+  "delivery": "prepended user turn",
+  "ignoredForLatePlugins": true,
+  "drainSites": [
+   "headless prologue",
+   "claim path"
+  ]
+ },
+ "adaptations": [
+  "Local startSession returns the value; the front end that owns the input queue performs the prepend, because this runtime has no shared app-state pending slot.",
+  "A lone message event would set awaitingResponse and block the next run(), so the value is queued as a turn by the caller instead.",
+  "Mid-session resume starts do not drain it, matching the source drain points; overdue-hook late delivery and newPluginsOnly warnings are not applicable here."
+ ],
+ "changes": [
+  {
+   "file": "src/hooks.ts",
+   "change": "SessionStart-only parse with last-wins",
+   "sha256": "1955a47489d2d735d9c33f4048dddef19f813156e6e62b40d0217eda83cbbeb6"
+  },
+  {
+   "file": "src/agent.ts",
+   "change": "startSession returns initialUserMessage",
+   "sha256": "8a11e4008e33f467df268ffa572a3e8bc72a550e14a482799e1545eb89e51266"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "startup and clear/fork queueing",
+   "sha256": "3475a940d3fa4e1ed93df70f48fdddb0911b8d62309ed799596e64ad2be3a633"
+  },
+  {
+   "file": "src/cli.ts",
+   "change": "headless first turn and interactive handoff",
+   "sha256": "6ea49762807bc3aba840d699024a7e5e4e6b49558af5980317a212a5ca71f660"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "parse, skip and ignore assertions",
+   "sha256": "eaf0f62b3f1a42cf9295de4a8d65ef513e463676ed74cb8a894feb14ed595530"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "return value and transcript assertions",
+   "sha256": "905af249bcc64149249b0ce1f2da02ab028a5e3885e9537cb1c71acbdcac67f0"
+  },
+  {
+   "file": "test/interactive.test.ts",
+   "change": "queue-ahead assertion",
+   "sha256": "26ce96efe862584f38b062c43e8533a238e30a7a7b25fa4f61ce0240878cb49e"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W103",
+   "sha256": "006f63fd8c3d47e7b4759b5308d88219a06bc4e1779f4bb4c5f948a3803219fa"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W103",
+   "sha256": "e457be27c6eb5be06a2365231f9cfc8e9d9c0457f5df2f063c89815b31bad77d"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W103-01 entry",
+   "sha256": "10e80fe5a06ad40b605f20c2616402665a3c2cfedab1800384500ee522f2d5fc"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W103-01 S-1..S-7 entry",
+   "sha256": "6bee193afd7ff3607ea1fad3bab413bf35b741b21b70db575cfdf4ecaec71f4e"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "107/107 (hooks, agent-lifecycle, interactive)",
+  "build": "exit 0",
+  "full": "2,138/2,138",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "b4860f2258c8eb0a01cb36d70f14c780ab58b12bbcdcb8b28935c5ab7a7cc373"
+ },
+ "residuals": [
+  "reloadSkills SessionStart output remains unconsumed.",
+  "Overdue-hook late initial messages are not modeled because startSession awaits hooks synchronously."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with reloadSkills and the remaining script semantics."
+}
