@@ -58,7 +58,7 @@
       "file": "main.tsx",
       "change": "the startup prefetch block (throttle, kill switch, cache resolution, startupPrefetchedAt write, both log lines) is deleted together with the two fastMode imports and the growthbook import only it used; the settings-dialog block is followed directly by the example-command prefetch",
       "sourceSha256": "c92abf00d38ec9d0dc46a52403004c4349ed745273079bd7ac108634bcc9407f",
-      "portSha256": "6c4f7679f0787cc4675ac58295cf29e514851fa3a09aab3d3f6e38f066071f6b",
+      "portSha256": "9063180982f9992828764ab5b30ce8e66ff3a0448d54ee6bd38fd55b4ef726a5",
       "coordinateUnit": "utf16-half-open"
     },
     {

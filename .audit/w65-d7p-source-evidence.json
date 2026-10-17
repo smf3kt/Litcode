@@ -78,7 +78,7 @@
       "file": "main.tsx",
       "change": "the import and the `void fetchBootstrapData()` call with its TODO go; the prefetch block around them is untouched. The `isClaudeAISubscriber` name in this file's utils/auth.js import block had no call site already, so it goes too — the import that carried the bootstrap call was the one place it looked live",
       "sourceSha256": "9beeaca1c8bec62a31069e00b5239cd8f9fa0cf5d0310a39922cf48c6ae13e43",
-      "portSha256": "6c4f7679f0787cc4675ac58295cf29e514851fa3a09aab3d3f6e38f066071f6b",
+      "portSha256": "9063180982f9992828764ab5b30ce8e66ff3a0448d54ee6bd38fd55b4ef726a5",
       "coordinateUnit": "utf16-half-open"
     }
   ],

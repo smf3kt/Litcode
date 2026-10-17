@@ -50,7 +50,7 @@
       "file": "main.tsx",
       "change": "the -p claudeaiConfigPromise prefetch with its enterprise/strict/bare gate and policy warning go, the claudeaiMcpPromise prefetch and the uniqBy merge fold to the single local prefetch, and the lazy dedup + connectMcpBatch('claudeai') block with its 5s CLAUDE_AI_MCP_TIMEOUT_MS race goes; the imports only that block read (fetchClaudeAIMcpConfigsIfEligible, dedupClaudeAiMcpServers, getMcpServerSignature, clearServerCache, the two exclude helpers, pickBy, getOauthConfig) are removed",
       "sourceSha256": "8bafeada1c30e29dd93fe3e32d71647f20a50f81133d7639f28c5cae74a8ccd8",
-      "portSha256": "6c4f7679f0787cc4675ac58295cf29e514851fa3a09aab3d3f6e38f066071f6b",
+      "portSha256": "9063180982f9992828764ab5b30ce8e66ff3a0448d54ee6bd38fd55b4ef726a5",
       "coordinateUnit": "utf16-half-open"
     },
     {
