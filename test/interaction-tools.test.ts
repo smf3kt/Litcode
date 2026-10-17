@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  createInteractionTools, INTERACTION_LIMITS, previewFragmentError,
+  createInteractionTools, INTERACTION_LIMITS, previewFragmentError, admitCardAnswer,
   type AskUserQuestionAnswer, type AskUserQuestionRequest, type InteractionCallbacks, type InteractionToolOptions,
 } from '../src/interaction-tools.js';
 import type { ToolContext } from '../src/tools.js';
@@ -408,6 +408,47 @@ test('host answer annotations carry a shown preview and bounded notes', async ()
   await assert.rejects(answerWith({ notes: 'x', token: 'y' })('ask_user_question', request), /invalid data/);
   await assert.rejects(answerWith({ notes: 'x'.repeat(INTERACTION_LIMITS.annotationNotesChars + 1) })('ask_user_question', request), /invalid data/);
   assert.deepEqual(JSON.parse(await answerWith({ notes: '' })('ask_user_question', request)).answers[0].annotations, { notes: '' });
+});
+
+test('card answer admission ports the recovered host contract', () => {
+  const shown: AskUserQuestionRequest = { title: 'Pick', questions: [
+    { question: 'Style?', options: [{ label: 'A', description: 'a', preview: '<div>A</div>' }, { label: 'B', description: 'b' }], multiSelect: false, kind: 'choice' },
+    { question: 'Tags?', options: [{ label: 'X', description: 'x' }, { label: 'Y', description: 'y' }], multiSelect: true, kind: 'choice' },
+  ] };
+  const card = {
+    title: 'Pick', questions: shown.questions,
+    answers: { 'Style?': 'A', 'Tags?': ['X', 'Y'] },
+    annotations: { 'Style?': { preview: '<div>A</div>', notes: 'keep' } },
+    response: 'done', followUp: true,
+  };
+  const admitted = admitCardAnswer(shown, card);
+  assert.equal(admitted.kind, 'admitted');
+  if (admitted.kind === 'admitted') {
+    assert.deepEqual({ ...(admitted.input.answers as object) }, { 'Style?': 'A', 'Tags?': 'X, Y' });
+    assert.deepEqual({ ...(admitted.input.annotations as object) }, { 'Style?': { preview: '<div>A</div>', notes: 'keep' } });
+    assert.equal(admitted.input.response, 'done');
+    assert.equal(admitted.input.followUp, true);
+    assert.deepEqual(admitted.input.questions, shown.questions);
+  }
+  assert.equal(admitCardAnswer(shown, { ...card, answers: { 'Tags?': ['X', 'Y'] } }).kind, 'admitted');
+  const joined = admitCardAnswer(shown, { answers: { 'Tags?': ['X, Y'] } });
+  assert.equal(joined.kind, 'admitted');
+  if (joined.kind === 'admitted') assert.deepEqual({ ...(joined.input.answers as object) }, { 'Tags?': '"X, Y"' });
+  assert.deepEqual(admitCardAnswer(shown, { ...card, afkTimeoutMs: 1 }), { kind: 'refused', rule: 'host_field' });
+  assert.deepEqual(admitCardAnswer(shown, { ...card, token: 'x' }), { kind: 'refused', rule: 'unknown_field' });
+  assert.deepEqual(admitCardAnswer(shown, { ...card, title: 'Other' }), { kind: 'refused', rule: 'changed_shown_field' });
+  assert.deepEqual(admitCardAnswer(shown, { ...card, answers: { 'Style?': ['A'] } }), { kind: 'refused', rule: 'answers' });
+  assert.deepEqual(admitCardAnswer(shown, { ...card, answers: { Unknown: 'A' } }), { kind: 'refused', rule: 'answers' });
+  assert.deepEqual(admitCardAnswer(shown, { ...card, annotations: { 'Style?': { preview: '<div>B</div>' } } }), { kind: 'refused', rule: 'annotations' });
+  const choiceShown = { questions: [{ question: 'Which?', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false, kind: 'choice' as const }] };
+  const withoutKind = { question: 'Which?', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false };
+  assert.equal(admitCardAnswer(choiceShown, { questions: [withoutKind] }).kind, 'admitted');
+  const untagged = { questions: [{ question: 'Which?', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false }] };
+  assert.deepEqual(admitCardAnswer(untagged, { ...untagged, followUp: true }), { kind: 'refused', rule: 'follow_up' });
+  assert.deepEqual(admitCardAnswer(untagged, { questions: [{ ...untagged.questions[0], kind: 'choice' as const }] }), { kind: 'refused', rule: 'changed_shown_field' });
+  assert.deepEqual(admitCardAnswer(shown, []), { kind: 'refused', rule: 'not_an_object' });
+  const four = { questions: Array.from({ length: 4 }, (_, index) => ({ question: `Q${index}?`, options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false })) };
+  assert.deepEqual(admitCardAnswer(four, { answers: { 'Q0?': 'x'.repeat(8192), 'Q1?': 'x'.repeat(8192), 'Q2?': 'x'.repeat(8192), 'Q3?': 'x'.repeat(8192) }, response: 'x' }), { kind: 'refused', rule: 'too_large' });
 });
 
 test('invalid queue configuration fails immediately', () => {
