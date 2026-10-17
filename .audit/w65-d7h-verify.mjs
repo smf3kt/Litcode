@@ -47,7 +47,9 @@ const store = fs.readFileSync(`${root}/state/AppStateStore.ts`, "utf8")
 assert.doesNotMatch(store, /kairosEnabled|Assistant mode fully enabled/)
 
 const main = fs.readFileSync(`${root}/main.tsx`, "utf8")
-assert.match(main, /const fullRemoteControl = getRemoteControlAtStartup\(\)\n/)
+// Step 7l removed this line, as this file's `remaining` predicted; the
+// assertion below records that the bridge lane was intact at step 7h.
+assert.doesNotMatch(main, /fullRemoteControl/)
 assert.match(main, /teamContext: computeInitialTeamContext\?\.\(\),/)
 
 const fastMode = fs.readFileSync(`${root}/utils/fastMode.ts`, "utf8")

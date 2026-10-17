@@ -29,7 +29,7 @@
       "file": "main.tsx",
       "change": "maybeActivateProactive with its four call sites, the --proactive option and the Proactive Mode appendSystemPrompt block removed — every one of them gated on the two false flags",
       "sourceSha256": "c76def23576ee14503353a6f0f4a4d1053bdd71a5d8bc966746d9e54d7017cea",
-      "portSha256": "539453aed627e848075dc44576885c52dce57d654ecfeee982808d600e81bf19",
+      "portSha256": "db775b7ab07644df62a66ce7be55e1505308c9e1b101996dd8936d42f8ee9666",
       "coordinateUnit": "utf16-half-open"
     },
     {

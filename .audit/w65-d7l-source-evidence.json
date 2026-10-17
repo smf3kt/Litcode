@@ -1,0 +1,69 @@
+{
+  "before": "e6a4caf",
+  "kind": "replBridge / Remote Control leftover removal (no ported bodies)",
+  "surface": "the AppState field family the bridge owned (replBridgeEnabled/Explicit/OutboundOnly/Connected/SessionActive/Reconnecting/ConnectUrl/SessionUrl/EnvironmentId/SessionId/Error/InitialName), the two `claude assistant` viewer counters (remoteConnectionStatus, remoteBackgroundTaskCount), the Remote Control config setting with its resolver and migration, the readerless callout/backoff/oauth-dead config keys, the ant-only replBridgeActive bootstrap flag, the direct-connect server URL and its logo suffix, and the four comments that named the removed modules or the removed writeSdkMessages path",
+  "decisiveFact": "no module in this build reads or writes any of these slots — useReplBridge, the bridge dialog, initReplBridge and the CCR ingress are all absent — and the one config row (remoteControlAtStartup) sat behind feature('BRIDGE_MODE'), which is false",
+  "evidence": [
+    {
+      "file": "state/AppStateStore.ts",
+      "change": "the twelve replBridge* fields with their comments and the two viewer counters deleted from the AppState type and from getDefaultAppState; no reader existed in the tree",
+      "sourceSha256": "3c6c70cfe760395a09259a4550ce8bfe2822c702aee83d98399df405167c18f7",
+      "portSha256": "638e17c1d640cd727f38bfd6fbb22aa02b61cb70eaf3b51ec527a9e9fb361fed",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "the initialState seeds for all fourteen fields, the single `const fullRemoteControl = getRemoteControlAtStartup()` read that fed replBridgeEnabled, the migration import and its call site deleted",
+      "sourceSha256": "539453aed627e848075dc44576885c52dce57d654ecfeee982808d600e81bf19",
+      "portSha256": "db775b7ab07644df62a66ce7be55e1505308c9e1b101996dd8936d42f8ee9666",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/config.ts",
+      "change": "remoteControlAtStartup with getRemoteControlAtStartup() and its two GLOBAL_CONFIG_KEYS entries, remoteDialogSeen, and the bridgeOauthDead backoff pair deleted; desktopUpsellSeenCount, which has a live reader, stays",
+      "sourceSha256": "6b50958e415b0877f2cade69ba14cb64b252ddab1371b51fb9b825ed109143af",
+      "portSha256": "e935eb443ad985e2c521d99b38217e630e2e1e224c61710be3ce752c13e151cc",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "tools/ConfigTool",
+      "change": "the remoteControlAtStartup setting row (already unreachable behind the false BRIDGE_MODE gate) and the tool's two AppState sync blocks — the default-unset branch and the general-set branch — removed",
+      "sourceSha256": "e67f26fb88f73093b3dc1e22230fef7a4ae7aeaddf382d2d08651f1d2aec4128",
+      "portSha256": "6e182febbb73838ce41d6d2ad540078b53b165c93e51fee76133a6c6ee13627b",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "bootstrap/state.ts",
+      "change": "the ant-only replBridgeActive field with isReplBridgeActive() (no readers), and directConnectServerUrl with its getter/setter (the setter had no callers, so the logo suffix folded to the bare display path)",
+      "sourceSha256": "77accb31a666acf74076a3db66d04c3aab6f5e3c4406a88cddf7edc329910fb2",
+      "portSha256": "2ca65b37dd13b117de215975a43757beb78e5f94cf5a0adf0fb616fc0a0272b5",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "the AppState family: twelve replBridge* fields (type + default), remoteConnectionStatus and remoteBackgroundTaskCount, their main.tsx initialState values, and the four Config.tsx snapshot/restore lines that existed to revert a bridge toggle",
+    "the config surface: remoteControlAtStartup with getRemoteControlAtStartup() and its GLOBAL_CONFIG_KEYS entry, the supportedSettings row behind feature('BRIDGE_MODE'), ConfigTool's two AppState sync blocks, Config.tsx's Remote Control change label, and migrations/migrateReplBridgeEnabledToRemoteControlAtStartup.ts with its main.tsx import and call",
+    "the readerless keys: remoteDialogSeen, bridgeOauthDeadExpiresAt and bridgeOauthDeadFailCount",
+    "the bootstrap state: replBridgeActive with its ant-only init and isReplBridgeActive(), directConnectServerUrl with getDirectConnectServerUrl/setDirectConnectServerUrl, and the logo header's URL suffix",
+    "hooks/useMergedTools' two already-stubbed false locals and their memo dependencies"
+  ],
+  "kept": [
+    "the /remote-control command family (commands.ts, processUserInput's unavailability message, messages.ts' activation notice, SystemTextMessage's banner, utils/concurrentSessions.ts) and utils/config.ts' remoteControlSpawnMode — the next wave",
+    "entrypoints/agentSdkTypes.ts' remote-control bridge declaration, the retained cli/transports/ + cli/remoteIO.ts SDK lane, and the SendMessageTool's bridge: recipient prose",
+    "desktopUpsellSeenCount / desktopUpsellDismissed, which have live readers in components/DesktopUpsell",
+    "the recovered-source references in retained files (cli/transports/*.ts, utils/controlMessageCompat.ts, commands/rename/generateSessionName.ts) that document where the upstream bridge called into those transports"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweep over both spellings of the whole family plus the migration name; each carrier asserted clean with its neighbouring statements intact (main.tsx' statusLineText→notifications seam and migration list, config.ts' key list and getCustomApiKeyStatus, ConfigTool's finalValue and logEvent, Config.tsx' two settings pairs, useMergedTools' memo tail, bootstrap's isRemoteMode block, logoV2Utils' folded cwd); the four rewritten comments asserted verbatim; the next wave's surface asserted still present; import-graph orphan scan stays at its 10 legitimate entries with the file count down by exactly one",
+  "remaining": "the /remote-control command family with remoteControlSpawnMode, the session-ingress bearer surface, the model-call seams (which must not be removed wholesale — API-key auth is the retained path), utils/fastMode.ts's remaining gates, the ~33 in-place CLI blocks, cli/transports/, and the dependency-pruning pass",
+  "notes": [
+    "the AppState type had already lost the reader stubs in an earlier wave: hooks/useMergedTools still carried two locals hard-coded to false, which is what this step removes rather than a second fold",
+    "utils/logoV2Utils.ts' displayPath existed only to be suffixed, so the fold renamed it to cwd instead of keeping a one-use alias"
+  ]
+}

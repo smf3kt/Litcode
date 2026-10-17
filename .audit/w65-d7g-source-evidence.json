@@ -20,7 +20,7 @@
       "file": "components/Settings/Config.tsx",
       "change": "the push-notification settings block and the notifChannel label's flag-on variant removed; the setting keeps the name its false-flag arm produced",
       "sourceSha256": "a415aa0dfdc18b882c22d7e7f8b6a90d81a95d3318e929e4b353a4c0573c3e01",
-      "portSha256": "21351bda27f9aa50b33441284cebf94bec214ad4ab9b4ae0ef58be25361c9e2a",
+      "portSha256": "eaa485a2dbc4df8c6eadf0756c8f0700e697eb1476c7832a897e8f63fd99545e",
       "coordinateUnit": "utf16-half-open"
     }
   ],
