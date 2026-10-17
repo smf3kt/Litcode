@@ -1,0 +1,131 @@
+{
+ "schema": "W128ScriptJournalEvidence.v1",
+ "package": "W128-01 — Workflow script journal and resume",
+ "date": "2026-10-17",
+ "question": "How does the recovered workflow script runtime journal agent calls and resume an interrupted run, and which parts can be ported locally?",
+ "answer": "It appends line entries (launched/started/result/failed) to journal.jsonl, keyed by a v2 chain of sha256(previous key, prompt, canonical options). A resumed run reuses results for the unchanged prefix, respawns a call that started but never finished while still reusing later completed calls, and never reuses failed or skipped calls. The local port keeps those semantics, the run-id shape and the collision/missing-journal refusals; the account-backed remote mirror is absent and is replaced by an explicit local refusal.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "modules": {
+   "extracted-v2/modules/chunk-hedqf2m1.js": [
+    20500,
+    21490,
+    21965,
+    22270,
+    22680,
+    47494,
+    47753,
+    47913,
+    48046,
+    83820
+   ],
+   "extracted-v2/modules/chunk-a7gk0710.js": [
+    59981,
+    65391,
+    69003,
+    70009,
+    73879
+   ]
+  },
+  "implementation": {
+   "src/workflow-script.ts": {
+    "ranges": "journal section and onAgent journal branch"
+   },
+   "src/workflow.ts": {
+    "ranges": "runScript, registry journal methods"
+   },
+   "src/workflow-store.ts": {
+    "ranges": "journalDirectory"
+   }
+  }
+ },
+ "behavior": {
+  "journalFile": "journal.jsonl",
+  "keyFormat": "v2:sha256(previousKey \\0 prompt \\0 canonicalOptionsJSON)",
+  "canonicalOptionKeys": [
+   "schema",
+   "model",
+   "effort",
+   "isolation",
+   "agentType",
+   "disallowedTools",
+   "bashCommandClamp"
+  ],
+  "reusesUnchangedPrefix": true,
+  "respawnsStartedWithoutResult": true,
+  "cachesFailedCalls": false,
+  "runIdPattern": "^wf_[0-9a-f]{8}-[0-9a-f]{3}$",
+  "refusesActiveRun": true,
+  "refusesMissingJournal": true,
+  "remoteMirrorPorted": false,
+  "journalMaxBytes": 2097152
+ },
+ "adaptations": [
+  "The remote session journal mirror is absent; a missing local journal is refused instead of restored.",
+  "resumeFromRunId is exposed only when the workflow tool is created with session persistence.",
+  "Script journals live under the owner workflow directory in a journals/ subdirectory.",
+  "Journal writes are best-effort and never fail the script, as the recovered runtime only warns.",
+  "Script text is not part of the key chain, matching the recovered runtime."
+ ],
+ "changes": [
+  {
+   "file": "src/workflow-script.ts",
+   "change": "journal entries, key, loader and cache branch",
+   "sha256": "1756bfb35072f912c8c6ece533202175324c2f274f97bac7da5c08896444803d"
+  },
+  {
+   "file": "src/workflow-store.ts",
+   "change": "journalDirectory",
+   "sha256": "a45539b637d9de0bcd68d5f8f0fcf49e42e6c58428c8092aab29866c4d310fa7"
+  },
+  {
+   "file": "src/workflow.ts",
+   "change": "resumeFromRunId, run ids, registry journal methods, onStarted bridge",
+   "sha256": "45d2a77bcf3a57cbe34517a23fb4b80d8ec923f72f4133b5d8104dc36dacffaf"
+  },
+  {
+   "file": "test/workflow-script.test.ts",
+   "change": "journal and resume tests",
+   "sha256": "93439efbc77e727b857d18e8e9eccc2ac509217ff00b6b645866300cb5c6fa46"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-8 rows record W128",
+   "sha256": "a3283eb7ff693bec916dbd7f84277de4b7164d0543d018ba9853e65d1e9e0dc5"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "workflow row records W128",
+   "sha256": "c1f0272e6075634ffad41eb723a6ecd60dc424fcd6dbe440ad65d2858212910e"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W128-01 entry",
+   "sha256": "3bb0656e6a4773c7798c0ca3b8642bc046eabbb13e64c36621e8f0492afea111"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W128-01 S-1..S-7 entry",
+   "sha256": "d78923ffdd0baa3780df7796c05dcbc9da4c4c4e484c7cc73dbe10c4d534025d"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "64/64 (workflow family, agent-isolation, cli-gateway, migration-integration)",
+  "workflowFamily": "29/29",
+  "build": "exit 0",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "4c2f329b452cae54acdfc836873c2972c954cf5a57ed32de4dcd393e3c1da053",
+  "fullSuite": "not rerun (interrupted); focused set covers every test referencing workflow_run",
+  "pluginChain": "not rerun (unrelated to the workflow surface)"
+ },
+ "residuals": [
+  "C-8: named workflows remain out.",
+  "C-8: the remote journal mirror and reattachment remain out.",
+  "C-8: automatic effect replay remains out.",
+  "C-8: agent({schema}) structured output, disallowedTools, bashCommandClamp and stallMs remain rejected explicitly."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-8 continues with named workflows or structured output, or the next ready C-area cluster from CURRENT."
+}

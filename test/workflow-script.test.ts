@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -9,8 +10,9 @@ import { AgentRegistry } from '../src/agent-registry.js';
 import type { ModelProvider, ModelRequest } from '../src/provider.js';
 import { createTools } from '../src/tools.js';
 import { createWorkflowTools, WorkflowRegistry } from '../src/workflow.js';
-import { loadWorkflowScriptFile, parseWorkflowScript, runWorkflowScript,
-  WORKFLOW_SCRIPT_MAX_BYTES, type WorkflowAgentBridge } from '../src/workflow-script.js';
+import { loadWorkflowScriptFile, loadWorkflowScriptJournal, openWorkflowScriptJournal,
+  parseWorkflowScript, runWorkflowScript, WORKFLOW_SCRIPT_MAX_BYTES,
+  type WorkflowAgentBridge } from '../src/workflow-script.js';
 
 const signal = () => new AbortController().signal;
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as unknown;
@@ -217,6 +219,113 @@ test('scriptPath accepts a regular file and refuses links, directories and overs
   }
 });
 
+test('the journal reuses the unchanged prefix and reruns changed calls', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-workflow-journal-'));
+  const journalRun = async (body: string, agent: WorkflowAgentBridge) => {
+    const state = await loadWorkflowScriptJournal(dir);
+    return runWorkflowScript(parsed(body), {
+      agent, signal: signal(), journal: openWorkflowScriptJournal(dir, state),
+    });
+  };
+  const lines = () => fs.readFileSync(path.join(dir, 'journal.jsonl'), 'utf8').trim().split('\n')
+    .map(line => JSON.parse(line) as { type: string; key?: string; result?: unknown });
+  try {
+    const calls: string[] = [];
+    const bridge: WorkflowAgentBridge = async (prompt, _options, _signal, onStarted) => {
+      onStarted?.(randomUUID());
+      calls.push(prompt);
+      return `${prompt}-out`;
+    };
+    const body = `const a = await agent('alpha')\nconst b = await agent('beta', { model: 'm' })\nreturn [a, b]`;
+    const first = await journalRun(body, bridge);
+    assert.deepEqual(json(first.result), ['alpha-out', 'beta-out']);
+    assert.deepEqual(calls, ['alpha', 'beta']);
+    assert.equal(lines().filter(line => line.type === 'started').length, 2);
+    assert.equal(lines().filter(line => line.type === 'result').length, 2);
+
+    calls.length = 0;
+    const again = await journalRun(body, bridge);
+    assert.deepEqual(calls, []);
+    assert.equal(again.agent_count, 2);
+    assert.deepEqual(json(again.result), ['alpha-out', 'beta-out']);
+
+    // Changing only the second call's options reruns that call; the first
+    // stays cached. Labels are not part of the key.
+    calls.length = 0;
+    const changed = await journalRun(
+      `const a = await agent('alpha')\nconst b = await agent('beta', { model: 'other' })\nreturn [a, b]`, bridge);
+    assert.deepEqual(calls, ['beta']);
+    assert.deepEqual(json(changed.result), ['alpha-out', 'beta-out']);
+    calls.length = 0;
+    const relabelled = await journalRun(
+      `const a = await agent('alpha')\nconst b = await agent('beta', { model: 'other', label: 'renamed' })\nreturn [a, b]`, bridge);
+    assert.deepEqual(calls, []);
+    assert.deepEqual(json(relabelled.result), ['alpha-out', 'beta-out']);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a started-without-result call reruns while earlier results stay cached', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-workflow-journal-respawn-'));
+  const journalRun = async (agent: WorkflowAgentBridge) => {
+    const state = await loadWorkflowScriptJournal(dir);
+    return runWorkflowScript(parsed(`const a = await agent('alpha')\nconst b = await agent('beta')\nreturn [a, b]`), {
+      agent, signal: signal(), journal: openWorkflowScriptJournal(dir, state),
+    });
+  };
+  try {
+    const first = await journalRun(async (prompt, _options, _signal, onStarted) => {
+      onStarted?.(randomUUID());
+      return `${prompt}-out`;
+    });
+    assert.deepEqual(json(first.result), ['alpha-out', 'beta-out']);
+    const entries = fs.readFileSync(path.join(dir, 'journal.jsonl'), 'utf8').trim().split('\n')
+      .map(line => JSON.parse(line) as { type: string; key?: string });
+    const results = entries.filter(entry => entry.type === 'result');
+    const secondKey = results.at(-1)!.key!;
+    // Simulate a crash after the second call started but before it finished.
+    const kept = entries.filter(entry => !(entry.type === 'result' && entry.key === secondKey));
+    fs.writeFileSync(path.join(dir, 'journal.jsonl'), kept.map(entry => `${JSON.stringify(entry)}\n`).join(''));
+
+    const calls: string[] = [];
+    const resumed = await journalRun(async prompt => { calls.push(prompt); return `${prompt}-again`; });
+    assert.deepEqual(calls, ['beta']);
+    assert.deepEqual(json(resumed.result), ['alpha-out', 'beta-again']);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('failed calls are not cached and malformed journal lines are skipped', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-workflow-journal-failed-'));
+  const body = `const a = await agent('alpha')\nconst b = await agent('beta')\nreturn [a, b]`;
+  const journalRun = async (agent: WorkflowAgentBridge) => {
+    const state = await loadWorkflowScriptJournal(dir);
+    return runWorkflowScript(parsed(body), { agent, signal: signal(), journal: openWorkflowScriptJournal(dir, state) });
+  };
+  try {
+    const failed = await journalRun(async (prompt, _options, _signal, onStarted) => {
+      onStarted?.(randomUUID());
+      return prompt === 'beta' ? { failure: 'boom' } : 'alpha-out';
+    });
+    assert.deepEqual(json(failed.result), ['alpha-out', null]);
+    assert.match(failed.failures[0] ?? '', /^\[agent 2\] failed: boom/);
+    fs.appendFileSync(path.join(dir, 'journal.jsonl'), 'not json\n{"type":"result","key":"bad","agentId":"x"}\n');
+
+    const calls: string[] = [];
+    const resumed = await journalRun(async (prompt, _options, _signal, onStarted) => {
+      onStarted?.(randomUUID());
+      calls.push(prompt);
+      return `${prompt}-out`;
+    });
+    assert.deepEqual(calls, ['beta']);
+    assert.deepEqual(json(resumed.result), ['alpha-out', 'beta-out']);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 function response(text: string): Anthropic.Message {
   return { id: 'fixture', model: 'test', type: 'message', role: 'assistant', content: [{ type: 'text', text }],
     stop_reason: 'end_turn', usage: { input_tokens: 1, output_tokens: 1 } } as Anthropic.Message;
@@ -271,6 +380,42 @@ test('workflow_run executes scripts through the child agent registry', async () 
       { result: unknown; error?: { message: string } };
     assert.equal(rejected.result, null);
     assert.equal(rejected.error?.message, 'workflow result cannot be a function');
+  } finally {
+    await workflows.close(); await agents.close(); fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('workflow_run journals a script run and resumes its cached agents', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-workflow-journal-tool-')));
+  const requests: ModelRequest[] = [];
+  const provider: ModelProvider = { count: async () => 0,
+    complete: async request => {
+      requests.push(structuredClone(request));
+      return response('child result');
+    } };
+  const tools = createTools(); const config = defaultConfig(workspace, tools); config.model = 'test';
+  const agents = new AgentRegistry({ source: config, tools, provider });
+  const workflows = new WorkflowRegistry({ agents, workspace, owner: randomUUID(), settingsDigest: 'a'.repeat(64) });
+  const source = meta + `const one = await agent('first task', { label: 'alpha' })\nreturn one`;
+  try {
+    const [workflowRun] = createWorkflowTools(workflows, { persistent: true });
+    const context = { workspace, signal: signal(), allowShell: false, maxOutputBytes: 24_000 };
+    const first = JSON.parse(String(await workflowRun!.execute({ script: source }, context))) as
+      { result: string; run_id: string; agent_count: number };
+    assert.match(first.run_id, /^wf_[0-9a-f]{8}-[0-9a-f]{3}$/);
+    assert.equal(first.result, 'child result');
+    assert.equal(requests.length, 1);
+
+    const resumed = JSON.parse(String(await workflowRun!.execute(
+      { script: source, resumeFromRunId: first.run_id }, context))) as
+      { result: string; run_id: string; agent_count: number };
+    assert.equal(resumed.run_id, first.run_id);
+    assert.equal(resumed.result, 'child result');
+    assert.equal(resumed.agent_count, 1);
+    assert.equal(requests.length, 1);
+
+    await assert.rejects(workflowRun!.execute(
+      { script: source, resumeFromRunId: 'wf_deadbeef-000' }, context), /is not on disk, so there is nothing to resume/);
   } finally {
     await workflows.close(); await agents.close(); fs.rmSync(workspace, { recursive: true, force: true });
   }

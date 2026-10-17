@@ -1,4 +1,5 @@
 import vm from 'node:vm';
+import { createHash } from 'node:crypto';
 import { constants as fsConstants } from 'node:fs';
 import fs, { type FileHandle } from 'node:fs/promises';
 import nodePath from 'node:path';
@@ -11,11 +12,15 @@ import * as walk from 'acorn-walk';
 //   compileWorkflowScript<- `qie` (chunk-hedqf2m1.js offset 16762)
 //   runWorkflowScript    <- `lr`/`lXn`/`ir` (chunk-hedqf2m1.js 81000-86100;
 //                           helpers in chunk-nyce03br.js)
-// The wrapper, hardening, copy generator and error projection keep the source
-// semantics; the account/progress/journal layers of the original are not part
-// of this local runtime.
+// The run journal is `sn`/`Do`/`Hr`/`No`/`Qr` (chunk-hedqf2m1.js
+// 20500-23000): a session-owned journal.jsonl whose chained keys reuse the
+// unchanged prefix of agent() calls on resume. The wrapper, hardening, copy
+// generator, journal and error projection keep the source semantics; the
+// account/progress/remote-mirror layers of the original are not part of this
+// local runtime.
 
 export const WORKFLOW_SCRIPT_MAX_BYTES = 524_288;
+export const WORKFLOW_JOURNAL_MAX_BYTES = 2 * 1024 * 1024;
 const ARRAY_LENGTH_CAP = 4096;
 const DEPTH_CAP = 100_000;
 const SYNC_TIMEOUT_MS = 30_000;
@@ -40,11 +45,34 @@ export type WorkflowScriptAgentOptions = {
 // A bridge returns the child summary; `null` mirrors a skipped child, and
 // `{ failure }` mirrors a terminal child failure, which the script sees as
 // `null` after the failure is recorded (recovered `kr` at offset 71400).
+// `onStarted` reports the child session as soon as it exists, so the journal
+// can record a `started` entry before the child finishes.
 export type WorkflowAgentBridge = (
   prompt: string, options: WorkflowScriptAgentOptions, signal: AbortSignal,
+  onStarted?: (agentId: string) => void,
 ) => Promise<string | null | { failure: string }>;
+
+// Journal entries and the key chain are ported from `sn`/`Do`/`Hr`/`No`/`Qr`
+// (chunk-hedqf2m1.js 20500-23000). The key chains the previous key with the
+// prompt and the execution options, so the longest unchanged prefix of
+// agent() calls is reused and the first changed call invalidates everything
+// after it.
+export type WorkflowScriptJournalEntry =
+  | { type: 'launched' }
+  | { type: 'started'; key: string; agentId: string; label?: string; phase?: string }
+  | { type: 'result'; key: string; agentId: string; result: unknown }
+  | { type: 'failed'; key: string; agentId: string };
+export type WorkflowScriptJournalState = {
+  results: Map<string, { agentId: string; result: unknown }>;
+  started: Map<string, { agentId: string }[]>;
+  failed: Set<string>;
+};
+export type WorkflowScriptJournal = {
+  directory: string; state: WorkflowScriptJournalState;
+  append(entry: WorkflowScriptJournalEntry): Promise<void>;
+};
 export type RunWorkflowScriptOptions = {
-  args?: unknown; signal: AbortSignal; agent: WorkflowAgentBridge;
+  args?: unknown; signal: AbortSignal; agent: WorkflowAgentBridge; journal?: WorkflowScriptJournal;
   maxAgents?: number; logLimit?: number; syncTimeoutMs?: number;
 };
 export type WorkflowScriptError = { name: string; message: string; stack?: string };
@@ -539,6 +567,151 @@ export async function loadWorkflowScriptFile(
   }
 }
 
+// --- Run journal (`sn`/`Do`/`Hr`/`No`/`Qr`) ---------------------------------
+
+const JOURNAL_KEY = /^v\d+:[0-9a-f]{64}$/;
+const JOURNAL_AGENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function journalPromptText(value: unknown): string {
+  if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return String(value);
+  return `[${typeof value}]`;
+}
+
+// `Hr`: options are copied with sorted keys and functions dropped.
+function journalOptionsValue(value: unknown): unknown {
+  if (typeof value === 'function') return undefined;
+  if (Array.isArray(value)) {
+    const length = Number.isSafeInteger(value.length) ? value.length : 0;
+    const copy: unknown[] = [];
+    for (let index = 0; index < length; index++) copy[index] = journalOptionsValue(value[index]);
+    return copy;
+  }
+  if (value !== null && typeof value === 'object') {
+    const copy: Record<string, unknown> = {};
+    for (const key of Object.keys(value).sort()) {
+      if (key === '__proto__') continue;
+      copy[key] = journalOptionsValue((value as Record<string, unknown>)[key]);
+    }
+    return copy;
+  }
+  return value;
+}
+
+/** `No`: chain the previous key, the prompt and the execution options. */
+export function workflowAgentJournalKey(
+  previous: string, prompt: unknown, options: WorkflowScriptAgentOptions,
+): string {
+  const selected: Record<string, unknown> = {};
+  for (const key of ['schema', 'model', 'effort', 'isolation', 'agentType', 'disallowedTools', 'bashCommandClamp'] as const) {
+    const value = options[key];
+    if (value === undefined || typeof value === 'function') continue;
+    selected[key] = value;
+  }
+  const digest = createHash('sha256')
+    .update(previous).update('\0')
+    .update(journalPromptText(prompt)).update('\0')
+    .update(JSON.stringify(journalOptionsValue(selected) ?? {}))
+    .digest('hex');
+  return `v2:${digest}`;
+}
+
+function journalState(entries: WorkflowScriptJournalEntry[]): WorkflowScriptJournalState {
+  const results: WorkflowScriptJournalState['results'] = new Map();
+  const started: WorkflowScriptJournalState['started'] = new Map();
+  const failed = new Set<string>();
+  for (const entry of entries) {
+    if (entry.type === 'result') results.set(entry.key, { agentId: entry.agentId, result: entry.result });
+    else if (entry.type === 'started') {
+      const list = started.get(entry.key);
+      if (list) list.push({ agentId: entry.agentId });
+      else started.set(entry.key, [{ agentId: entry.agentId }]);
+    } else if (entry.type === 'failed') failed.add(entry.key);
+  }
+  return { results, started, failed };
+}
+
+// `Qr`: only well-formed entries participate. A failed entry written before a
+// child existed carries an empty agent id and is ignored on reload, as in the
+// recovered validator.
+function journalEntry(value: unknown): WorkflowScriptJournalEntry | undefined {
+  if (value === null || typeof value !== 'object') return undefined;
+  const entry = value as Record<string, unknown>;
+  if (entry.type === 'launched') return { type: 'launched' };
+  if (typeof entry.key !== 'string' || !JOURNAL_KEY.test(entry.key)) return undefined;
+  if (typeof entry.agentId !== 'string' || !JOURNAL_AGENT_ID.test(entry.agentId)) return undefined;
+  switch (entry.type) {
+    case 'started':
+      return { type: 'started', key: entry.key, agentId: entry.agentId,
+        ...(typeof entry.label === 'string' ? { label: entry.label } : {}),
+        ...(typeof entry.phase === 'string' ? { phase: entry.phase } : {}) };
+    case 'result':
+      return 'result' in entry ? { type: 'result', key: entry.key, agentId: entry.agentId, result: entry.result } : undefined;
+    case 'failed':
+      return { type: 'failed', key: entry.key, agentId: entry.agentId };
+    default:
+      return undefined;
+  }
+}
+
+export function emptyWorkflowScriptJournalState(): WorkflowScriptJournalState {
+  return journalState([]);
+}
+
+/** Read `journal.jsonl`; an absent file means there is nothing to resume. */
+export async function loadWorkflowScriptJournal(directory: string): Promise<WorkflowScriptJournalState | undefined> {
+  const file = nodePath.join(directory, 'journal.jsonl');
+  let handle: FileHandle;
+  try {
+    handle = await fs.open(file, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT' || code === 'ENOTDIR') return undefined;
+    throw error;
+  }
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile()) throw new Error('Workflow journal must be a regular file');
+    if (stat.size > WORKFLOW_JOURNAL_MAX_BYTES) {
+      throw new Error(`Workflow journal exceeds ${WORKFLOW_JOURNAL_MAX_BYTES} bytes`);
+    }
+    const text = await handle.readFile('utf8');
+    const entries: WorkflowScriptJournalEntry[] = [];
+    for (const line of text.split('\n')) {
+      if (line === '') continue;
+      try {
+        const entry = journalEntry(JSON.parse(line));
+        if (entry !== undefined) entries.push(entry);
+      } catch { /* unparseable lines are skipped, as the recovered loader does */ }
+    }
+    return journalState(entries);
+  } finally {
+    await handle.close().catch(() => {});
+  }
+}
+
+async function appendWorkflowScriptJournal(directory: string, entry: WorkflowScriptJournalEntry): Promise<void> {
+  await fs.mkdir(directory, { recursive: true, mode: 0o700 });
+  const file = nodePath.join(directory, 'journal.jsonl');
+  const handle = await fs.open(file,
+    fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_APPEND | fsConstants.O_NOFOLLOW, 0o600);
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile()) throw new Error('Workflow journal must be a regular file');
+    await handle.writeFile(`${JSON.stringify(entry)}\n`, 'utf8');
+  } finally {
+    await handle.close().catch(() => {});
+  }
+}
+
+export function openWorkflowScriptJournal(
+  directory: string, state?: WorkflowScriptJournalState,
+): WorkflowScriptJournal {
+  return {
+    directory, state: state ?? emptyWorkflowScriptJournalState(),
+    append: entry => appendWorkflowScriptJournal(directory, entry),
+  };
+}
+
 // --- Transform (`Lr`) -------------------------------------------------------
 
 function enclosingFunction(ancestors: AcornNode[]): AcornNode | undefined {
@@ -645,6 +818,12 @@ export async function runWorkflowScript(
   const phases: string[] = [];
   const seenPhases = new Set<string>();
   let agentCount = 0;
+  // Journal cache state is per run: `journalChain` is the rolling key and
+  // `journalMiss` becomes true at the first call without a cached result, so
+  // only the unchanged prefix is reused.
+  const journal = options.journal;
+  let journalChain = '';
+  let journalMiss = false;
   let currentPhase: string | undefined;
   const recordPhase = (title: string) => {
     if (!seenPhases.has(title)) { seenPhases.add(title); phases.push(title); }
@@ -790,11 +969,50 @@ export async function runWorkflowScript(
       parsedOptions.phase = currentPhase;
     }
     const label = parsedOptions.label ?? `agent ${agentCount}`;
-    const result = await options.agent(promptValue, parsedOptions, signal);
+    let key: string | undefined;
+    if (journal !== undefined) {
+      key = workflowAgentJournalKey(journalChain, promptValue, parsedOptions);
+      journalChain = key;
+      if (!journalMiss) {
+        const hit = journal.state.results.get(key);
+        if (hit !== undefined) return hit.result as string | null;
+      }
+      const started = journal.state.started.get(key);
+      if (!(!journalMiss && started !== undefined && started.length > 0 && !journal.state.failed.has(key))) {
+        journalMiss = true;
+      }
+    }
+    // Appends run in order and never fail the script; the recovered runtime
+    // only warns when a journal write fails.
+    let writes = Promise.resolve();
+    const append = (entry: WorkflowScriptJournalEntry) => {
+      if (journal === undefined || key === undefined) return;
+      writes = writes.then(() => journal.append(entry)).catch(() => undefined);
+    };
+    let agentId: string | undefined;
+    let result: string | null | { failure: string };
+    try {
+      result = await options.agent(promptValue, parsedOptions, signal, id => {
+        agentId = id;
+        append({ type: 'started', key: key!, agentId: id,
+          ...(parsedOptions.label !== undefined ? { label: parsedOptions.label } : {}),
+          ...(parsedOptions.phase !== undefined ? { phase: parsedOptions.phase } : {}) });
+      });
+    } catch (error) {
+      append({ type: 'failed', key: key!, agentId: agentId ?? '' });
+      await writes;
+      throw error;
+    }
     if (result !== null && typeof result === 'object') {
+      append({ type: 'failed', key: key!, agentId: agentId ?? '' });
+      await writes;
       recordFailure(`[${label}] failed: ${result.failure}`, true);
       return null;
     }
+    if (journal !== undefined && key !== undefined) {
+      append({ type: 'result', key, agentId: agentId ?? '', result });
+    }
+    await writes;
     return result;
   };
 
