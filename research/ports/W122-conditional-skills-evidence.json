@@ -1,0 +1,136 @@
+{
+ "schema": "W122ConditionalSkillsEvidence.v1",
+ "package": "W122-01 — Conditional skills by frontmatter paths",
+ "date": "2026-10-17",
+ "question": "How does the recovered runtime keep a path-scoped skill out of the catalog until the model touches a matching file?",
+ "answer": "The loader normalizes frontmatter paths (comma/brace split, trailing /** trim, lone ** means unconditional) and stores path-scoped skills in a conditional list instead of the returned catalog. A touched workspace-relative path is tested with the same gitignore matcher the source bundles; the first match moves the skill into the live catalog and re-renders the system-prompt section before the next model request. Non-string paths fail config load; absolute or escaping targets never activate.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "modules": {
+   "extracted-v2/modules/chunk-sfn1dbxq.js": [
+    3376365,
+    3374436,
+    3392751,
+    3398872,
+    3399649,
+    739846,
+    3547532,
+    4167540,
+    425241
+   ],
+   "extracted-v2/modules/chunk-zm79vshj.js": [
+    8785
+   ],
+   "extracted-v2/modules/chunk-2bcyxj9q.js": [
+    152393
+   ]
+  }
+ },
+ "behavior": {
+  "heldUntilTouched": true,
+  "normalizationStripsTrailingGlobstar": true,
+  "loneGlobstarUnconditional": true,
+  "nonStringPathThrows": true,
+  "matcher": "ignore@7.0.5 (gitignore semantics)",
+  "workspaceEscapeSkipped": true,
+  "absoluteTargetsMadeRelative": true,
+  "catalogArrayIdentityPreserved": true,
+  "systemPromptRerenderedOnActivation": true,
+  "activationIdempotent": true
+ },
+ "adaptations": [
+  "The source triggers activation from the read, write and edit tools only; this runtime applies the same test to every path-bearing tool ruleContext already covers (read_media, notebook_read, notebook_edit, lsp, search, list_files). The test is idempotent and strictly additive.",
+  "Dynamic directory discovery (dAr/E3t scanning .claude/skills beside the touched path) is not ported; only the conditional-skill half is covered.",
+  "Reserved-name refusal and collision naming remain open under C-10.",
+  "ignore@7.0.5 is added as a direct dependency because the recovered bundle uses the same library; notices were regenerated."
+ ],
+ "changes": [
+  {
+   "file": "src/config.ts",
+   "change": "parse paths, split conditional skills, activation matcher",
+   "sha256": "54973e221d9410ecf4d97d4a1a4d55a7c9b4a2fadff57a565331e27419b76030"
+  },
+  {
+   "file": "src/skill-catalog.ts",
+   "change": "held list and in-place catalog activation",
+   "sha256": "dd16328a32e67385a9861553778b7cdc032e4bdb807bb76cc74d956d45252f86"
+  },
+  {
+   "file": "src/session.ts",
+   "change": "heldSkills config field and schema",
+   "sha256": "af45a13c8e684b555e91ff26ceb203ec5609bee6675c58b51924ca17475816c8"
+  },
+  {
+   "file": "src/agent.ts",
+   "change": "touch trigger before path tools",
+   "sha256": "7da3ae8f05fc7bdd44a22fd5b3aabb27cec7d97e6b40520665b3c4ce5ae6d66b"
+  },
+  {
+   "file": "src/cli.ts",
+   "change": "install held list at startup",
+   "sha256": "fd1a9f5f3bddad62a292b6f919e143a757b46c2d4c64a36aec641c8996f4d4f5"
+  },
+  {
+   "file": "src/reload.ts",
+   "change": "install held list on reload",
+   "sha256": "7bd3044ac51e469089f64b963d0ec47c699c3ece20a4cce6734f7deaead245c6"
+  },
+  {
+   "file": "package.json",
+   "change": "ignore dependency",
+   "sha256": "92c2b309b3bdf821222738f5b0503a2f58bb8566386ae9ad874e589e7ae0a001"
+  },
+  {
+   "file": "test/config.test.ts",
+   "change": "normalization and activation tests",
+   "sha256": "8601dd0bc07fd1c236f6041c00d79672d32cf4a57cb543a5309f741533c9eab9"
+  },
+  {
+   "file": "test/skill-runtime.test.ts",
+   "change": "catalog activation test",
+   "sha256": "d581a368d1d96a2e74252a28678a7b7cc8175b85989e875750c6e1358627ec88"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "touch trigger tests",
+   "sha256": "1c9b929b671fa81c6122df6d4fc6cdb89793c60d682c682c0d0ea6b2bfa932de"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-10 rows record W122",
+   "sha256": "1a1cc2502b9f9b02d639034b7c817b43b3f373905ebba7cdb51725ce20e8085e"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Skills row records W122",
+   "sha256": "9fd91d961f09f1569e929dace1a7a44d5432c145d17c1fc6c7ae7f26a93b1581"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W122-01 entry",
+   "sha256": "0ed8a43d92b107266be482961a98026411f6cdeb4271940e83e1a4ad8bf4efd5"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W122-01 S-1..S-7 entry",
+   "sha256": "89133ea41baef6f523e28d21f148f664f8dc44d60b0d47477fc1155c15f47189"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "134/134 (config, skill-runtime, skill-effects, reload, runtime)",
+  "lifecycle": "55/55",
+  "build": "exit 0",
+  "full": "2,190/2,190",
+  "chain": "768/768",
+  "notices": "exit 0 (ignore@7.0.5 retained)",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "03e2bef19ddd1d8bad7278b77cbfc94701772c1268bf2cead9d2b9cb6b547657"
+ },
+ "residuals": [
+  "C-10 dynamic directory discovery (dAr/E3t) remains open.",
+  "C-10 reserved-name refusal and collision naming remain open."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-10 continues with dynamic directory discovery."
+}

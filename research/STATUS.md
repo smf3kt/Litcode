@@ -2348,3 +2348,13 @@ recovered source reaches the same ordering through a synthetic tool-use id and t
 local spans have no model tool id, so they use `.agent/skill-effects/<owner>.jsonl` instead.
 Focused 35/35, extended 86/86, tsc 0, build 0, full 2,184/2,184, chain 768/768, identity
 `04147ee3…`. [W121 record](ports/W121-skill-effect-journal.md).
+
+W122-01 ports conditional skills. A skill whose frontmatter names `paths` is held out of the
+loaded catalog; `loadProjectConfig` returns it separately and `SessionConfig.heldSkills` keeps
+the live list. Every path-bearing tool call runs the recovered activation test: the touched path
+is made workspace-relative, patterns are matched with the same gitignore library the source
+bundles, and the first match moves the skill into the captured catalog array and re-renders the
+system-prompt section before the next request. `src/**` normalizes to `src`, a lone `**` leaves
+the skill unconditional, a non-string pattern is a config error, and paths outside the workspace
+never activate. Dynamic directory discovery remains open. Focused 134/134, lifecycle 55/55, tsc 0,
+build 0, full 2,190/2,190, chain 768/768, identity `03e2bef1…`. [W122 record](ports/W122-conditional-skills.md).

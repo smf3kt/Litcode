@@ -10,6 +10,8 @@ import { AgentRegistry } from '../src/agent-registry.js';
 import type { SkillInfo } from '../src/config.js';
 import type { ModelProvider, ModelRequest } from '../src/provider.js';
 import { executeSkill, skillRequiresExecution, type SkillExecutionOptions } from '../src/skill-runtime.js';
+import { activateTouchedSkills } from '../src/skill-catalog.js';
+import { buildSystem, createSkillTool } from '../src/runtime.js';
 import { SkillEffectJournal } from '../src/skill-effects.js';
 import { Session } from '../src/session.js';
 import { listSessions } from '../src/sessions.js';
@@ -657,4 +659,23 @@ test('background command grants are enforced by registry beforeTool without alte
     assert.equal(result.is_error, true); assert.match(String(result.content), /outside allowed-tools/);
     return response([{ type: 'text', text: 'Summary' }]);
   });
+});
+
+test('a conditional skill is held out of the catalog until a matching path is touched', () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-skill-paths-')));
+  try {
+    const config = defaultConfig(workspace, []);
+    config.skills = [skill({ name: 'greet', description: 'Say hello' })];
+    config.heldSkills = [skill({ name: 'scoped', description: 'Scoped', paths: ['src'] })];
+    config.system = buildSystem('BASE', [], config.skills);
+    const tool = createSkillTool(config);
+    assert.match(config.system, /- greet: Say hello/);
+    assert.doesNotMatch(config.system, /- scoped:/);
+    assert.equal(activateTouchedSkills(config, [path.join(workspace, 'src/a.ts')]).length, 1);
+    // The tool captured the catalog array reference, so it sees the new skill.
+    assert.deepEqual(config.skills.map(entry => entry.name), ['greet', 'scoped']);
+    assert.equal(config.heldSkills, undefined);
+    assert.match(config.system, /- scoped: Scoped/);
+    assert.match(String(tool.schema.description), /Load an available skill/);
+  } finally { fs.rmSync(workspace, { recursive: true, force: true }); }
 });

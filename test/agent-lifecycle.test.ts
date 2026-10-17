@@ -879,6 +879,48 @@ test("SessionStart reloadSkills refreshes the live skill catalog", async () => {
   } finally { session.close(); }
 });
 
+test("a touched path activates a held conditional skill before the next request", async () => {
+  const root = workspace();
+  write(root, "src/a.ts", "content\n");
+  const read = spy("read_file", true);
+  const scoped = { name: "scoped", description: "Scoped skill", path: path.join(root, ".harness/skills/scoped/SKILL.md"),
+    body: "Scoped body", userInvocable: true, disableModelInvocation: false, paths: ["src"] };
+  const cfg = config(root, [read.tool], { skills: [], heldSkills: [scoped] });
+  const provider = new ScriptedProvider([
+    response([call("one", "read_file", { path: "src/a.ts" })], "tool_use"),
+    request => {
+      // The activation reached the live catalog and the rendered prompt before this request.
+      assert.deepEqual(session.config.skills?.map(skill => skill.name), ["scoped"]);
+      assert.equal(session.config.heldSkills, undefined);
+      assert.match(String(request.system), /Scoped skill/);
+      return done();
+    },
+  ]);
+  const session = Session.open(root, { config: cfg });
+  const live = session.config.skills;
+  try {
+    await new Agent(session, provider, [read.tool]).run("read a source file");
+    assert.deepEqual(read.inputs, [{ path: "src/a.ts" }]);
+    assert.equal(session.config.skills, live, "the catalog array keeps its identity");
+  } finally { session.close(); }
+});
+
+test("a touch outside a held skill's paths leaves it conditional", async () => {
+  const root = workspace();
+  write(root, "notes/a.txt", "content\n");
+  const read = spy("read_file", true);
+  const scoped = { name: "scoped", description: "Scoped skill", path: path.join(root, ".harness/skills/scoped/SKILL.md"),
+    body: "Scoped body", userInvocable: true, disableModelInvocation: false, paths: ["src"] };
+  const cfg = config(root, [read.tool], { skills: [], heldSkills: [scoped] });
+  const provider = new ScriptedProvider([
+    response([call("one", "read_file", { path: "notes/a.txt" })], "tool_use"),
+    request => { assert.doesNotMatch(String(request.system), /Scoped skill/); assert.equal(session.config.heldSkills?.length, 1); return done(); },
+  ]);
+  const session = Session.open(root, { config: cfg });
+  try { await new Agent(session, provider, [read.tool]).run("read a note"); }
+  finally { session.close(); }
+});
+
 test("TaskCreated receives the created task's fields and a block rolls the task back", async () => {
   const root = workspace();
   const capture = path.join(root, "task-created.jsonl");
