@@ -1,0 +1,47 @@
+{
+ "schema": "W141EngineDrawEvidence.v1",
+ "package": "W141-01 — engine draw transforms (gno slice 1)",
+ "date": "2026-10-18",
+ "question": "What do the engine's pre-paint draw transforms do, and can their exact bodies run in the product?",
+ "answer": "Yes. Eight verbatim blocks from chunk-n3ykh62m.js implement borderStyle dispatch, key removal, link validation and Code diff cleanup over the same identity-preserving Box/Text/Link walk. The copy runs unchanged behind a typed seam; no caller is wired until the later gno slices land.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+  "moduleSha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+  "blocks": [
+   {"name": "nIn", "range": [267031, 267454], "units": 423, "sha256": "56d44faa8400a44f78d768bc1bd9eb8eadc856f2584841c13251533d97645f5b"},
+   {"name": "QPn", "range": [247131, 247200], "units": 69, "sha256": "a56a4157bdc3edf85580a5eb514c5ace1634d508e8fe87998b85999a77ac73cf"},
+   {"name": "dno", "range": [270929, 271294], "units": 365, "sha256": "d5aefa7699f6b864389bf15830130026699d00622e3746cddd07ff71103f58b2"},
+   {"name": "kur", "range": [267903, 268419], "units": 516, "sha256": "675597b0b337b4fe57fc678a5383053e5fe024caf8af1e5219ffd66a915f7827"},
+   {"name": "vur", "range": [267454, 267903], "units": 449, "sha256": "e23f9cfdab72d01ae34691f2d0c8da45cec597216aeb3c9fcca54551e58baccc"},
+   {"name": "eIn", "range": [260804, 260971], "units": 167, "sha256": "cf96d894b5759b1b3c89323201c6c7310cbb88f15bb8c4ed6ea5af972be975dc"},
+   {"name": "tIn", "range": [262061, 262308], "units": 247, "sha256": "4a568c8897ef3c5a53c0b056660693d45839987b9b62c5ad246ed1e28c62b811"},
+   {"name": "ino", "range": [261557, 262061], "units": 504, "sha256": "e94c100f7a6b32804b1ec4424a5c8a5a0dc2d4b8acf195db11a706de9d48fffb"}
+  ],
+  "totalUnits": 2740
+ },
+ "semantics": {
+  "nIn": "Box/Text/Link walk with identity-preserving children rebuild; a Box borderStyle outside the rQt table is removed from props, dispatched to the callback, and removed from hover; a table name leaves the node untouched",
+  "dno": "engine nodes return as-is; a Box key xAt reports a problem for is removed; a usable key leaves the node untouched",
+  "kur": "every Link numbered from 1 in draw order; tIn reports a non-string/blank/absent href or the ino URL rules for a non-terminal surface; a refused Link becomes the Text eIn builds; problems delivered once only when non-empty",
+  "vur": "every Code numbered from 1; a diff vVe refuses is reported with IL-shortened path and loses format/startLine, keeping the source"
+ },
+ "product": {
+  "files": [
+   "src/plugin-chain-engine-draw-source.ts",
+   "src/plugin-chain-engine-draw.ts",
+   "test/plugin-chain-engine-draw.test.ts"
+  ],
+  "generator": "scripts/copy-module-regions.mjs",
+  "plan": "research/ports/W141-engine-draw-blocks.plan.json",
+  "importedHelpers": ["xAt", "ZAe", "IL", "Mrt", "cN", "rQt", "L", "vVe"],
+  "caller": "none yet; gno default RenderAnswerHost wiring lands in a later slice"
+ },
+ "verification": {
+  "focused": "8/8",
+  "full": "2247/2247",
+  "tsc": 0,
+  "build": 0,
+  "notices": 0,
+  "identity": "3edf8eca0531c075b7411d8c3d8469b382ce3e282969b0467631c9e7e9fc8afb"
+ }
+}

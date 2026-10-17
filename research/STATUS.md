@@ -2530,3 +2530,15 @@ excluded from the plan. The slices are draw transforms, handler dispatch, valida
 default `RenderAnswerHost` wiring. Identity stays `a118ac44…`; baseline 139/139 focused and
 2241/2241 full.
 [W140 record](ports/W140-gno-engine-recon.md).
+
+W141 lands the first `gno` slice, the engine's pre-paint draw transforms. Eight verbatim blocks
+from chunk-n3ykh62m.js (2,740 UTF-16 units) cover `nIn`/`QPn` borderStyle dispatch (`nIn`
+[267031,267454), `QPn` [247131,247200): a value outside the `rQt` table leaves props and hover
+and reaches the callback, a table name stays), `dno` key removal (the `xAt` problem predicate
+decides), `kur` link validation (every Link ordinal, `tIn`/`ino` rules, a refused Link becomes
+the `eIn` Text, problems delivered once only when non-empty) and `vur` Code handling (every
+Code ordinal, a `vVe`-refused diff loses `format`/`startLine` and is reported with the
+`IL`-shortened path). The generated copy imports existing package helpers only and sits behind
+a typed seam; no `gno` caller is wired until the handler and validation slices. Focused 8/8,
+full 2247/2247, tsc 0, build 0, notices 0, identity `3edf8eca…`.
+[W141 record](ports/W141-engine-draw.md).
