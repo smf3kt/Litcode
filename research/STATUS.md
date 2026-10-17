@@ -2429,3 +2429,14 @@ the first 12 rows stay the generic art, and every other terminal keeps W129's re
 variant is selected through `TuiOptions.termProgram`, cached with the header, and covered by a
 two-theme test. Focused TUI/terminal tests 76/76, tsc 0, build 0, notices 0, source index
 unchanged, identity `21ac3022…`. [W130 record](ports/W130-welcome-apple-terminal.md).
+
+W131-01 completes C-1's local side. Without an explicit base, the launcher now resolves
+`LLM_BASE_URL`, then a loopback `MAGPIE_ADDR`, then Magpie's `stash.json` wiring record
+(`claude.wired_at`, bounded regular file, symlinks rejected, deterministic fallback across
+`*.wired_at`), then `http://127.0.0.1:3425`, so a rotated port does not need repeating on each
+run. A `sk-magpie-revoked-` caller key is never forwarded: the next source is used, an
+all-revoked selection re-reads the client settings once for a rotated key, and a still-revoked
+result fails while naming only variables. `--check` reports `baseSource`, `credentialSource`
+and `rotationRecovered`; a resumed session keeps its pinned endpoint and model. Focused tests
+18/18, tsc 0, build 0, notices 0, both owned Magpie smokes passed, identity `eac028a1…`.
+[W131 record](ports/W131-magpie-endpoint-rotation.md).
