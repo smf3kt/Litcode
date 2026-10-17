@@ -2083,3 +2083,12 @@ executing the command; the transport test asserts the refusal and that no
 command ran. `hooks` 51/51, `hook-transports` 3/3, tsc 0, build 0, full
 2,118/2,118, chain 767/767, identity `f7a620b6…`.
 [W89 record](ports/W89-script-hooks.md).
+
+W90-01 aligns the worktree hook payloads. WorktreeCreate sends only the
+requested `name` (`CTn`, chunk-sfn1dbxq.js offset 2952999) and WorktreeRemove
+sends only `worktree_path` (`Xir`, offset 2954347), the manager's own
+deterministic target; the tool echo is gone from both. The source's hook-owned
+WorktreeCreate creation and informational WorktreeRemove failures stay
+recorded adaptations. `agent-lifecycle` 33/33, tsc 0, build 0, full
+2,119/2,119, chain 767/767, identity `8288ec96…`.
+[W90 record](ports/W90-worktree-hooks.md).

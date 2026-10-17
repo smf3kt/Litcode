@@ -434,11 +434,12 @@ for (const decision of ["ask", "defer"] as const) for (const approved of [true, 
 
 test("TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects", async () => {
   const root = workspace();
+  const capture = path.join(root, "worktree-create.jsonl");
   const task = spy("task_update");
   const worktree = spy("worktree_create");
   const tools = [task.tool, worktree.tool];
   const provider = new ScriptedProvider([response([call("complete", "task_update", { status: "completed" }), call("tree", "worktree_create", { name: "worker" }), call("progress", "task_update", { status: "in_progress" })], "tool_use"), done()]);
-  const session = Session.open(root, { config: config(root, tools, { hooks: { TaskCompleted: [{ command: "printf task-block >&2; exit 2" }], WorktreeCreate: [{ command: "printf tree-block >&2; exit 2" }] } }) });
+  const session = Session.open(root, { config: config(root, tools, { hooks: { TaskCompleted: [{ command: "printf task-block >&2; exit 2" }], WorktreeCreate: [{ command: `cat >> ${shellQuote(capture)}; printf tree-block >&2; exit 2` }] } }) });
   try {
     await new Agent(session, provider, tools).run("lifecycle gates");
     assert.deepEqual(task.inputs, [{ status: "in_progress" }]);
@@ -450,6 +451,30 @@ test("TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects", as
     assert.equal(batch[1]!.is_error, true);
     assert.deepEqual(session.events.filter(event => event.kind === "tool_start").map(event => event.id), ["progress"]);
     assertBatchAdjacency(session);
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.name, "worker");
+    assert.equal(payload.hook_event_name, "WorktreeCreate");
+    assert.equal("tool_name" in payload, false);
+    assert.equal("tool_input" in payload, false);
+  } finally { session.close(); }
+});
+
+test("WorktreeRemove receives the removed worktree path only", async () => {
+  const root = workspace();
+  const capture = path.join(root, "worktree-remove.jsonl");
+  const remove = spy("worktree_remove");
+  const tools = [remove.tool];
+  const provider = new ScriptedProvider([response([call("prune", "worktree_remove", { name: "worker" })], "tool_use"), done()]);
+  const session = Session.open(root, { config: config(root, tools, { hooks: {
+    WorktreeRemove: [{ command: `cat >> ${shellQuote(capture)}` }] } }) });
+  try {
+    await new Agent(session, provider, tools).run("worktree removal");
+    assert.deepEqual(remove.inputs, [{ name: "worker" }]);
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.worktree_path, path.join(root, ".harness-worktrees", "worker"));
+    assert.equal(payload.hook_event_name, "WorktreeRemove");
+    assert.equal("tool_name" in payload, false);
+    assert.equal("tool_response" in payload, false);
   } finally { session.close(); }
 });
 
