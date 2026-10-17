@@ -2648,3 +2648,16 @@ flat probe grew from 42 blocks/15,668 units to 58 blocks/19,493 units and then f
 The port is therefore split into W152 (local state, 2,616u), W153 (focus/scroll, 3,096u), W154
 (keybinding/registry, 1,094u), W155 (host glue, 798u), and W156 (`NFe` wiring, 5,856u).
 [W151 record](ports/W151-above-prompt-component.md).
+
+W152 landed the session/app-state context layer and the AbovePrompt local state across three
+seams (21 blocks, 3,822 UTF-16 units). `plugin-chain-session-context` copies the z6yhgx3x session
+providers and hooks plus the 4bw62nzm missing-project error (4 blocks, 1,880u);
+`plugin-chain-app-state` copies the 7n39kxwj context tokens and selector hook (2 blocks, 225u);
+`plugin-chain-above-prompt-local` copies the draft store registry, long-input marker, viewed-agent
+selectors, settled-budget store, press-table lookup/pre-dispatch and the two release effects
+(15 blocks, 1,717u). The session draft store is weak-keyed by the session root and seeded with the
+source draft state; `useLongerInputValue` returns the marker past one character; `Att` normalizes
+both agent task kinds. Focused 24/24, full 2354/2354, tsc 0, build 0, notices 0, identity
+`97360dc7…`. The `_Fe`/`RFe` measure/render closure exceeds one package (wheel acceleration, the
+`hs` settings schema at 5,548 units, and the `xwt` scroll dispatch) and moves to W157.
+[W152 record](ports/W152-above-prompt-local.md).

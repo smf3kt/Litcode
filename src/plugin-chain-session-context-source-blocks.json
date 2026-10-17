@@ -1,0 +1,60 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-z6yhgx3x.js",
+      "sha256": "0e6e72389069c31fe2414918925cfdec798d015cc0be679381982b2d426d8fff"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-z6yhgx3x.js",
+      "sha256": "0e6e72389069c31fe2414918925cfdec798d015cc0be679381982b2d426d8fff",
+      "range": [
+        817,
+        2504
+      ],
+      "units": 1687,
+      "bodySha256": "f10a6df023a13bc7b93562319358e1ae55fd2fd0d45dbe08b93047d676f6a692",
+      "note": "session context/provider/hooks"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        52959,
+        53053
+      ],
+      "units": 94,
+      "bodySha256": "42066d9d15b37d9a482c3b2ddaba3ff5407ead8c341277c2389b8a6f3e09f0c2",
+      "note": "no project error"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        53128,
+        53194
+      ],
+      "units": 66,
+      "bodySha256": "9efecb56f96aae72753854d975ec42f9b06c63cf5e5d4f05d1e8c71e85eef616",
+      "note": "session project read"
+    },
+    {
+      "module": "chunk-4bw62nzm.js",
+      "sha256": "1a8788672a623975dc4a807604528e46b128f16b5ec159495c0ec2370f805713",
+      "range": [
+        52926,
+        52959
+      ],
+      "units": 33,
+      "bodySha256": "e3dea4501c64137fefce9d210e455ea643a453fdb8fef291e4855580f0caa97f",
+      "note": "error name"
+    }
+  ],
+  "missing": []
+}
