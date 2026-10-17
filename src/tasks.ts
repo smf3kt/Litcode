@@ -256,6 +256,12 @@ export function readTaskRecords(workspace: string): TaskRecord[] {
   return structuredClone(readStore(canonicalWorkspace(workspace)).tasks);
 }
 
+/** Read one task for a hook payload; an absent id yields undefined. */
+export function readTaskRecord(workspace: string, id: string): TaskRecord | undefined {
+  const task = readStore(canonicalWorkspace(workspace)).tasks.find((candidate) => candidate.id === id);
+  return task === undefined ? undefined : structuredClone(task);
+}
+
 /** Atomic writes notify immediately; the directory watch includes other local processes. */
 export function subscribeTaskChanges(workspace: string, listener: () => void): () => void {
   const root = canonicalWorkspace(workspace);

@@ -521,8 +521,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 await agent().emitHook('Notification', { source: 'runtime', prompt }, signal);
               }
               if (item.idle) {
+                // Recovered payload (`qir`, chunk-sfn1dbxq.js [2946651,2946915)) carries the teammate
+                // name and team name plus the common agent fields; this runtime has no team name.
                 const hook = await agent().emitHook('TeammateIdle', { agent_id: item.idle.id,
-                  teammate_name: item.idle.name ?? item.idle.id, source: 'local_idle_subscription' }, signal);
+                  teammate_name: item.idle.name ?? item.idle.id }, signal);
                 if (hook.blocked || hook.stopRequested) { options.status.write('TeammateIdle hook suppressed this idle notification turn.\n'); return { reason: 'hook_blocked', text: "", modelCalls: 0 }; }
               }
               return agent().run(prompt, signal);

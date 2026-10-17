@@ -12,7 +12,7 @@ import { boundToolContent } from './tool-output.js';
 import { mediaInputSchema, readMedia, type MediaAttachment } from './media.js';
 import { AUTO_MEMORY_INSTRUCTIONS, loadAutoMemoryContext } from './auto-memory.js';
 import { automaticCheckpoint } from './rewind.js';
-import { removeTask } from './tasks.js';
+import { readTaskRecord, removeTask } from './tasks.js';
 import type { AgentProgressEvent } from './tui-progress.js';
 import { classicPreToolUseHooked, raiseClassicPreToolUse } from './plugin-chain-tool-raise.js';
 import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_USE, CLASSIC_POST_TOOL_USE_FAILURE, classicEventRaised, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
@@ -489,7 +489,15 @@ export class Agent {
             (input as { status?: string }).status === 'completed' ? 'TaskCompleted' :
             call.name === 'worktree_create' ? 'WorktreeCreate' : undefined;
           if (gate) {
-            const lifecycle = await this.hook(gate, { tool_name: call.name, tool_input: input, tool_use_id: call.id }, signal);
+            // Recovered TaskCompleted payload (`pvt`, chunk-sfn1dbxq.js [2947228,2947575)) carries the
+            // task's own fields and the owning teammate; the idle call site selects in-progress tasks
+            // by owner (chunk-5b2hxy2e.js offset 74688). WorktreeCreate keeps the tool fields.
+            const task = gate === 'TaskCompleted'
+              ? readTaskRecord(c.workspace, String((input as { id?: unknown }).id ?? '')) : undefined;
+            const lifecycle = await this.hook(gate, task === undefined
+              ? { tool_name: call.name, tool_input: input, tool_use_id: call.id }
+              : { task_id: task.id, task_subject: task.subject, task_description: task.description,
+                  ...(task.owner === undefined ? {} : { teammate_name: task.owner }) }, signal);
             extra.push(...lifecycle.additionalContext);
             if (lifecycle.blocked) throw new Error(lifecycle.reason ?? `Blocked by ${gate} hook`);
           }

@@ -9,7 +9,7 @@ import { loadProjectConfig } from "../src/config.js";
 import { Session, type SessionConfig, type ToolResult } from "../src/session.js";
 import type { ModelProvider, ModelRequest } from "../src/provider.js";
 import { createTools, type ToolDefinition } from "../src/tools.js";
-import { createTaskTools, readTaskRecords } from "../src/tasks.js";
+import { createTaskTools, readTaskRecord, readTaskRecords } from "../src/tasks.js";
 
 const roots: string[] = [];
 function workspace(): string {
@@ -506,6 +506,69 @@ test("TaskCreated additional context leaves the created task in place", async ()
     const texts = session.messages.flatMap(message => typeof message.content === "string" ? [] :
       message.content.filter(block => block.type === "text").map(block => block.text));
     assert.ok(texts.includes("Hook context:\ncreated-context"));
+    assertBatchAdjacency(session);
+  } finally { session.close(); }
+});
+
+async function createDirectTask(root: string, subject: string, description: string): Promise<string> {
+  const create = createTaskTools(root)[0]!;
+  const content = await create.execute({ subject, description }, {
+    workspace: root, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 100_000,
+  });
+  return (JSON.parse(content) as { id: string }).id;
+}
+
+test("TaskCompleted receives the task metadata and blocks before the update", async () => {
+  const root = workspace();
+  const capture = path.join(root, "task-completed.jsonl");
+  const tools = createTaskTools(root);
+  const id = await createDirectTask(root, "Done subject", "Done description");
+  const provider = new ScriptedProvider([
+    response([call("complete", "task_update", { id, status: "completed" })], "tool_use"),
+    done(),
+  ]);
+  const hooks = { TaskCompleted: [{ command: `cat >> ${shellQuote(capture)}; printf done-block >&2; exit 2` }] };
+  const session = Session.open(root, { config: config(root, tools, { hooks }) });
+  try {
+    await new Agent(session, provider, tools).run("complete it");
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.hook_event_name, "TaskCompleted");
+    assert.equal(payload.task_id, id);
+    assert.equal(payload.task_subject, "Done subject");
+    assert.equal(payload.task_description, "Done description");
+    assert.equal("teammate_name" in payload, false);
+    assert.equal("tool_name" in payload, false);
+    assert.equal("tool_input" in payload, false);
+    assert.equal(readTaskRecord(root, id)?.status, "pending");
+    const result = resultBatches(session)[0]![0]!;
+    assert.equal(result.is_error, true);
+    assert.match(String(result.content), /done-block/);
+    assertBatchAdjacency(session);
+  } finally { session.close(); }
+});
+
+test("TaskCompleted teammate_name follows the task owner", async () => {
+  const root = workspace();
+  const capture = path.join(root, "task-completed-owner.jsonl");
+  const tools = createTaskTools(root);
+  const id = await createDirectTask(root, "Owned subject", "Owned description");
+  await tools[3]!.execute({ id, owner: "alice" }, {
+    workspace: root, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 100_000,
+  });
+  const provider = new ScriptedProvider([
+    response([call("complete", "task_update", { id, status: "completed" })], "tool_use"),
+    done(),
+  ]);
+  const hooks = { TaskCompleted: [{ command: `cat >> ${shellQuote(capture)}` }] };
+  const session = Session.open(root, { config: config(root, tools, { hooks }) });
+  try {
+    await new Agent(session, provider, tools).run("complete it");
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.task_id, id);
+    assert.equal(payload.task_subject, "Owned subject");
+    assert.equal(payload.task_description, "Owned description");
+    assert.equal(payload.teammate_name, "alice");
+    assert.equal(readTaskRecord(root, id)?.status, "completed");
     assertBatchAdjacency(session);
   } finally { session.close(); }
 });
