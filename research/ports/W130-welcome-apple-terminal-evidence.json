@@ -1,0 +1,96 @@
+{
+ "schema": "W130AppleTerminalWelcomeEvidence.v1",
+ "package": "W130-01 — Apple Terminal welcome art",
+ "date": "2026-10-17",
+ "question": "How does the recovered startup header render on Apple Terminal, and how is that variant selected?",
+ "answer": "The recovered V component keeps the generic art for the first 12 rows and replaces the body with quarter-block rows; light and dark themes differ only in the body styling. The product selects it when TERM_PROGRAM is Apple_Terminal, ports the rows exactly, and keeps the generic art for every other terminal.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "modules": {
+   "extracted-v2/modules/chunk-9c78dh5n.js": [
+    960,
+    15899
+   ]
+  },
+  "implementation": {
+   "src/tui-welcome.ts": {
+    "ranges": "appleArt, appleLightArt, appleDarkArt"
+   },
+   "src/tui.ts": {
+    "ranges": "termProgram option and selection"
+   },
+   "src/cli.ts": {
+    "ranges": "TERM_PROGRAM pass-through"
+   }
+  }
+ },
+ "behavior": {
+  "selectedWhen": "TERM_PROGRAM === \"Apple_Terminal\"",
+  "sharedRows": 12,
+  "variantRows": 4,
+  "lightThemeBody": "quarter blocks with clawd_body background",
+  "darkThemeBody": "quarter blocks plus bold star",
+  "compactBranchPrecedesVariant": true
+ },
+ "adaptations": [
+  "The variant is selected from process.env.TERM_PROGRAM, matching the recovered detector for this branch.",
+  "The welcome message stays the neutral product name."
+ ],
+ "changes": [
+  {
+   "file": "src/tui-welcome.ts",
+   "change": "V light/dark art",
+   "sha256": "aa5f535bfa2a6cb96be18ecf41aa647e3c24627353835944e9ce641c6900316b"
+  },
+  {
+   "file": "src/tui.ts",
+   "change": "termProgram option and cache key",
+   "sha256": "8c02443b24beb3ff4c8028b87c2b9911c3382573d414627592d147df9ab3398d"
+  },
+  {
+   "file": "src/cli.ts",
+   "change": "TERM_PROGRAM pass-through",
+   "sha256": "1ea050a95ec6bad46b1dab9904cc92ebe6f11890894246e23cb841088182cc81"
+  },
+  {
+   "file": "test/tui-welcome.test.ts",
+   "change": "Apple Terminal test",
+   "sha256": "767492db16095eac96cf8cc3ffaa37a3a25829a444f6c6382c1d0eac9f6f4448"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "W130 section",
+   "sha256": "deca2c1444fd19fef77340763cdbdad436f68beed79b01cb04cbf65f4b35855a"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "terminal row records W130",
+   "sha256": "17a0b61e02ea457ae80183a0b5be749d38fe55937b6819af54d92e4254c5aca7"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W130-01 entry",
+   "sha256": "a3860b199aa5900625cb1b9353b81f27ca1ea47d7da8cc64f598ce6bdf0a2aeb"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W130-01 S-1..S-7 entry",
+   "sha256": "b289c0cef103f6b076d277dfb75a8b87f8734528e1f6ffc2274f38a66184823d"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "76/76 (tui-welcome, tui, terminal)",
+  "build": "exit 0",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 1743/30144 statements, 323525 units (unchanged)",
+  "identity": "21ac3022efd501dd2ac18afb838cf5d683194f89cb4ebb23620a64423aeabf3b",
+  "livePty": "120x40 with TERM_PROGRAM=Apple_Terminal shows the V body; without it the generic art stays",
+  "fullSuite": "not rerun; focused set covers the rendered TUI and terminal lifecycle"
+ },
+ "residuals": [
+  "Other terminal-specific welcome variants are not present in the recovered component."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "Continue the TUI parity work requested by the user before the remaining C-area items."
+}
