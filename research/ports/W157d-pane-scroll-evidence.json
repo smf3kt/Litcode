@@ -1,0 +1,76 @@
+{
+  "schema": "W157dPaneScroll.v1",
+  "package": "W157d-pane-scroll",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31" },
+      { "module": "chunk-sfn1dbxq.js", "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da" }
+    ],
+    "blocks": 2,
+    "units": 2402,
+    "ranges": [
+      { "module": "chunk-24k7d6mw.js", "range": [444994, 446991], "units": 1997, "note": "RFe the pane scroll host", "bodySha256": "5e399249f3f7fe2a6f8c2029c9311683eb12c7f0c6cbb73c2933fe919d403f73" },
+      { "module": "chunk-sfn1dbxq.js", "range": [476926, 477331], "units": 405, "note": "xwt the ui.scroll dispatch", "bodySha256": "2962f441652bec31cb733ec329f642020c015f95eff9f16a9b0b95d8dd099954" }
+    ],
+    "reused": [
+      { "name": "wFe", "module": "chunk-24k7d6mw.js", "range": [443631, 443771], "product": "src/plugin-chain-above-prompt-parts-source.ts", "note": "W146 exact copy, imported" },
+      { "name": "j1", "module": "chunk-24k7d6mw.js", "range": [443771, 443978], "product": "src/plugin-chain-above-prompt-parts-source.ts", "note": "W146 exact copy, imported by the generated file" },
+      { "name": "kFe", "module": "chunk-24k7d6mw.js", "range": [443978, 444350], "product": "src/plugin-chain-above-prompt-parts-source.ts", "note": "W146 exact copy, imported" },
+      { "name": "vFe", "module": "chunk-24k7d6mw.js", "range": [444350, 444563], "product": "src/plugin-chain-above-prompt-source.ts", "note": "W145/W146 exact copy, imported" },
+      { "name": "xFe", "module": "chunk-24k7d6mw.js", "range": [444923, 444956], "product": "src/plugin-chain-above-prompt-parts-source.ts", "note": "W146 exact copy, imported by RFe" },
+      { "name": "W1", "module": "chunk-24k7d6mw.js", "range": [444956, 444994], "product": "src/plugin-chain-above-prompt-parts-source.ts", "note": "W146 exact copy, imported by RFe" },
+      { "name": "PFe", "module": "chunk-24k7d6mw.js", "range": [446991, 447122], "product": "src/plugin-chain-above-prompt-parts-source.ts", "note": "W146 exact copy, imported" },
+      { "name": "fd", "module": "chunk-yygmb66g.js", "range": [23446, 23642], "product": "src/plugin-chain-above-prompt-select-keys-source.ts", "note": "W150 exact copy, imported by RFe" },
+      { "name": "PY/_z/ahe", "module": "chunk-sfn1dbxq.js", "product": "src/plugin-chain-scroll-focus.ts", "note": "the scroll-site registry and its commit road, already ported by W45-71" },
+      { "name": "N5t", "module": "chunk-2kdsvp3x.js", "product": "src/plugin-chain-classic-raise-source.ts", "note": "the classic-raise pre-gate, already ported" },
+      { "name": "P0", "module": "chunk-2kdsvp3x.js", "product": "src/plugin-chain-records.ts", "note": "the handler collection, already ported" },
+      { "name": "fse", "module": "chunk-sfn1dbxq.js", "product": "src/plugin-chain-above-prompt-focus-source.ts", "note": "the hookable dispatch bottom, already ported by W153" },
+      { "name": "Ohe", "module": "chunk-sfn1dbxq.js", "product": "src/plugin-chain-press-dispatch-source.ts", "note": "the quiet dispatch settler, already ported" },
+      { "name": "t", "module": "chunk-gyf58rwf.js", "product": "src/plugin-chain-host.ts", "note": "the product log sink" }
+    ],
+    "hostBound": [],
+    "deferred": [
+      { "name": "gf", "source": "chunk-24k7d6mw.js settings schema", "reason": "the render host wiring NFe needs the settings schema; not part of the pane scroll seam" },
+      { "name": "NFe", "source": "chunk-24k7d6mw.js [456049,461905)", "reason": "W156 component wiring, which consumes RFe/PFe" }
+    ],
+    "unresolved": 0
+  },
+  "product": {
+    "sourceFile": "src/plugin-chain-pane-scroll-source.ts",
+    "seamFile": "src/plugin-chain-pane-scroll.ts",
+    "exports": [
+      "dispatchScroll",
+      "paneScrollHost",
+      "paneScrollProps",
+      "wheelPointerOptions",
+      "scrollKeyMap",
+      "keyRows"
+    ],
+    "types": [
+      "PaneScrollInput",
+      "WheelPointerOptions",
+      "ScrollKeyMap",
+      "ScrollDispatchRequest"
+    ],
+    "notes": [
+      "RFe follows the end while the reader stays there (offset answers maxOffset), clamps every commit and scrollBy to maxOffset, raises person moves through xwt with origin kind person, and files the registry entry under component:requestId; the entry's keyRows walks the pane content through kFe.",
+      "scrollBy queues a move that arrives while one dispatch is in flight and replays it after the promise settles; the class of that replay is the source's own .finally body.",
+      "xwt runs the classic-raise pre-gate, then the ui.scroll handlers, then the site's own commit (PY); the log line names component, requestId, origin kind, delta and target offset, and ends moved or denied (reason)."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 11, "failed": 0, "file": "test/plugin-chain-pane-scroll.test.ts" },
+    "full": { "passed": 2415, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": { "blocks": 2, "missing": 0, "units": 2402, "unresolved": 0 }
+  },
+  "identity": {
+    "sha256": "f888449094e3ecdc9cfc49fd9f0f4e45e9bd4a0abc9707543f4498d23c0ede49",
+    "inputs": 606,
+    "validation": 213,
+    "build": 418
+  }
+}
