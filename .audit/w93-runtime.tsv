@@ -1,0 +1,3 @@
+2026-10-18T04:15:00Z	package	W93-01 SessionEnd 原因枚举	GK [204799,204858)、构造 2943888、resume 调用 348193；endSession 映射	session_switch→resume；exit→prompt_input_exit；fork/配置/rewind/interrupt→other	agent-lifecycle 35/35；interactive 8/8；tsc 0；build 0；全量 2,122/2,122；链 767/767
+2026-10-18T04:17:00Z	decision	W93-01 纠正	内部原因（fork/config_changed/session_switch/config_reload/cwd_changed/rewind/interrupt/exit）不在源枚举内，改为 raise 前映射	残余：完整消费者	.audit/w93-01-full.txt
+2026-10-18T04:20:00Z	verification	W93-01 验收：agent-lifecycle 35/35、interactive 8/8、tsc 0、build 0、2,122/2,122、767/767	六种关闭原因按序产出映射值；/clear、/fork、/exit 产出 clear、other、prompt_input_exit	notices 0；索引 75 chunks / 323,525 单位不变；identity 11df4f85…
