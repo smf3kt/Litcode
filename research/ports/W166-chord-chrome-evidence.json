@@ -1,0 +1,53 @@
+{
+  "schema": "W166ChordChrome.v1",
+  "package": "W166-chord-chrome",
+  "date": "2026-10-18",
+  "source": {
+    "copied": {
+      "blocks": 2,
+      "units": 4367,
+      "ranges": [
+        { "module": "chunk-x90vmw14.js", "sha256": "2c126986038d8ecb93fd6b25b601b3455f481aaa9064ea3af815dfb1fc02ee6d", "name": "fo", "range": [757, 1166], "units": 409, "digest": "b53e996f5a896fa9e001a39e7b0ce97b7c26a63d27d88a6fe5f2d50ead90ed4b", "note": "dim empty text with an optional second hint line" },
+        { "module": "chunk-0qkpwgr4.js", "sha256": "470fcab1f965a43d7ec6a08213a15a49218e65d7e2cc8b4bef21d8c4622335a6", "name": "chord formatter closure", "range": [904, 4862], "units": 3958, "digest": "45fa533d764b5ff76d57468556883a4a8635b73decc3b2f4f47641b77e019e14", "note": "L defaults and D merge, t4n and key/modifier tables, z chord hint, JD action text, v platform, P tokenizing" }
+      ]
+    },
+    "host_adapters": [
+      { "module": "chunk-6ccen3s8.js", "name": "BF", "range": [34816, 34980], "units": 164, "note": "platform with the iTerm2/Apple_Terminal/iTerm.app macOS branches; O is already ported" }
+    ],
+    "reused": [
+      { "names": ["w", "e", "r", "s", "n", "b"], "product": "src/plugin-chain-react-surface.ts" },
+      { "names": ["kd"], "product": "src/tui-text.ts" },
+      { "names": ["h9"], "product": "src/plugin-chain-keys-editor.ts" }
+    ],
+    "remaining": ["Mr (ui spinner)", "pt (ma/A9t/E1 key lookup)", "Se (bn/xy/C/X)"]
+  },
+  "product": {
+    "files": [
+      "src/diff-dialog-chrome-source.ts",
+      "src/diff-dialog-chrome-source-blocks.json",
+      "src/diff-dialog-chrome.ts",
+      "src/diff-dialog-chord-host.ts",
+      "test/diff-dialog-chrome.test.ts"
+    ],
+    "exports": ["formatChord", "formatChordTokens", "formatActionHint", "ChordHint", "HintText", "SOURCE_BODIES"],
+    "notes": [
+      "Chords format with default/compact/symbol styles; meta displays as alt; known keys use the source table.",
+      "Multiple chords join with / when each has several keys; JD appends ' to ' or a space with terse.",
+      "z renders nothing for an unformattable chord; fo renders one dim line or a two-line column."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 7, "failed": 0, "file": "test/diff-dialog-chrome.test.ts", "new": 7 },
+    "full": { "passed": 2501, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": { "declared": 49, "unresolved": 0 }
+  },
+  "identity": {
+    "sha256": "c16a1aa999d1cda24dd83dce12c49e9c854fa5c642f07c7bbaed3544adefb1b2",
+    "inputs": 635,
+    "validation": 222,
+    "build": 438
+  }
+}

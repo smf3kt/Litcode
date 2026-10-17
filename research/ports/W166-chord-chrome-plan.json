@@ -1,0 +1,13 @@
+{
+  "imports": [
+    "import { Xe as e, Xe as r, w, s, n, b } from './plugin-chain-react-surface.js';",
+    "import { kd } from './tui-text.js';",
+    "import { h9 } from './plugin-chain-keys-editor.js';",
+    "import { BF } from './diff-dialog-chord-host.js';"
+  ],
+  "exports": ["fo", "t4n", "z", "JD", "P", "v"],
+  "blocks": [
+    { "file": "chunk-x90vmw14.js", "range": [757, 1166], "note": "fo: dim empty text with an optional second hint line" },
+    { "file": "chunk-0qkpwgr4.js", "range": [904, 4862], "note": "chord formatter closure: L defaults and D merge, t4n and key/modifier tables, z chord hint, JD action text, v platform and P tokenizing" }
+  ]
+}
