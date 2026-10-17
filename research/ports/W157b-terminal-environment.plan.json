@@ -1,0 +1,29 @@
+{
+  "imports": [
+    "import { a } from \"./tui-markdown-host.js\";",
+    "import { Nx } from \"./tui-text-style.js\";",
+    "import { q } from \"./plugin-chain-local-store-source.js\";",
+    "import { DT, Su, B } from \"./plugin-chain-terminal-environment-host.js\";"
+  ],
+  "exports": [
+    "uq",
+    "s$t"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-z7whhrje.js",
+      "range": [1978, 3336],
+      "note": "terminal environment probe: class E, the per-host singleton S, uq, fLr, oe, v4n, ie and the invalidator s$t"
+    },
+    {
+      "file": "chunk-yvnhkg35.js",
+      "range": [6703, 6878],
+      "note": "Fse the JetBrains terminal names"
+    },
+    {
+      "file": "chunk-mvsmkx6d.js",
+      "range": [6611, 6789],
+      "note": "U1t the terminal version name and jg the xterm.js test"
+    }
+  ]
+}

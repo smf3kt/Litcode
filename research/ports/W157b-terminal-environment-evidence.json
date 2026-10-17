@@ -1,0 +1,56 @@
+{
+  "schema": "W157bTerminalEnvironment.v1",
+  "package": "W157b-terminal-environment",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      { "module": "chunk-z7whhrje.js", "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac" },
+      { "module": "chunk-yvnhkg35.js", "sha256": "ce3689687897e987959f19ab07f98d79e5c925a8b15620dce02d29ba4943348d" },
+      { "module": "chunk-mvsmkx6d.js", "sha256": "78b6816967ea34054d2cf68f13e3baa99249fa08da96cfe43e1d080b422b9c7a" }
+    ],
+    "blocks": 3,
+    "units": 1711,
+    "ranges": [
+      { "module": "chunk-z7whhrje.js", "range": [1978, 3336], "units": 1358, "note": "class E, singleton S, uq, fLr, oe, v4n, ie, s$t", "bodySha256": "01e7404f7dba411971308820508fd250e249a48925a5c0b46926319f5faf5eba" },
+      { "module": "chunk-yvnhkg35.js", "range": [6703, 6878], "units": 175, "note": "Fse JetBrains terminal names", "bodySha256": "e438d074de73affe798a6fb75ccc976e429aa421ce075c4d7cb3b63ef18f5fcd" },
+      { "module": "chunk-mvsmkx6d.js", "range": [6611, 6789], "units": 178, "note": "U1t terminal version name and jg xterm.js test", "bodySha256": "74385dacdf95c2bb1940c001d7cd6eac2e7825f8ee74cc19f7a5519e26e653d9" }
+    ],
+    "reused": [
+      { "name": "q", "module": "chunk-4bw62nzm.js", "range": [10003, 10147], "product": "src/plugin-chain-local-store-source.ts", "note": "same per-host WeakMap singleton class, already ported in W45-53" },
+      { "name": "Nx", "module": "chunk-5dxmnnh1.js", "range": [814, 1981], "product": "src/tui-text-style.ts", "note": "same host environment class, ported with the terminal text style" },
+      { "name": "a", "module": "chunk-yvnhkg35.js", "product": "src/tui-markdown-host.ts", "note": "the environment proxy is read-only here; the host exposes process.env as W44 established" }
+    ],
+    "hostBound": [
+      { "name": "B", "module": "chunk-4bw62nzm.js", "source": "function B(){return n()}", "reason": "the product has no session store; the host supplies a stable per-host key object, preserving S's memoization semantics" },
+      { "name": "Su", "module": "chunk-4bw62nzm.js", "source": "function Su(){return n().surfaceCapabilities.attacherCaps()}", "reason": "attacher capabilities belong to the attaching surface; unbound answers undefined, the source's no-attacher answer" },
+      { "name": "DT", "module": "chunk-mvsmkx6d.js", "source": "function DT(){return v.of(B().host)}", "reason": "the source record class f carries the capability and image-file getters, and the capability getter builds the terminal capability defaults through the unported d() cluster; the probe reads only xtversionName, so the host exposes the record and the defaults subsystem keeps its getters" }
+    ],
+    "deferred": [
+      { "name": "hs", "source": "chunk-js2bhabe.js [1114,1499)", "reason": "settings precedence over Lo()/w_()/fe() and the legacy global-config chain; next W157 step" },
+      { "name": "gbt", "source": "chunk-24k7d6mw.js [126204,126611)", "reason": "wraps uq()/hs()/mLr() and fbt; waits for the settings binding" },
+      { "name": "AZ", "source": "chunk-24k7d6mw.js [126611,126843)", "reason": "reads uq() identity and the internal_jediTermInput context" },
+      { "name": "_Fe", "source": "chunk-24k7d6mw.js [444845,444923)", "reason": "wraps AZ and the wheel dispatch CFe" },
+      { "name": "mLr", "source": "chunk-z7whhrje.js [9339,9540)", "reason": "the jbBugConfirmed environment check used by gbt" }
+    ],
+    "unresolved": 0
+  },
+  "product": {
+    "sourceFile": "src/plugin-chain-terminal-environment-source.ts",
+    "hostFile": "src/plugin-chain-terminal-environment-host.ts",
+    "seamFile": "src/plugin-chain-terminal-environment.ts",
+    "exports": ["terminalEnvironment", "invalidateTerminalEnvironment", "bindTerminalEnvironmentHost"]
+  },
+  "validation": {
+    "focused": { "passed": 11, "failed": 0, "file": "test/plugin-chain-terminal-environment.test.ts" },
+    "full": { "passed": 2392, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0
+  },
+  "identity": {
+    "sha256": "8ae9bc13b12cc6aa4d930de64a97f9044949540ce3cac87f665a2c3ebacad61a",
+    "inputs": 599,
+    "validation": 211,
+    "build": 413
+  }
+}

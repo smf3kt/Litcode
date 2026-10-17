@@ -1,0 +1,53 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-z7whhrje.js",
+      "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac"
+    },
+    {
+      "module": "chunk-yvnhkg35.js",
+      "sha256": "ce3689687897e987959f19ab07f98d79e5c925a8b15620dce02d29ba4943348d"
+    },
+    {
+      "module": "chunk-mvsmkx6d.js",
+      "sha256": "78b6816967ea34054d2cf68f13e3baa99249fa08da96cfe43e1d080b422b9c7a"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-z7whhrje.js",
+      "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac",
+      "range": [
+        1978,
+        3336
+      ],
+      "units": 1358,
+      "bodySha256": "01e7404f7dba411971308820508fd250e249a48925a5c0b46926319f5faf5eba",
+      "note": "terminal environment probe: class E, the per-host singleton S, uq, fLr, oe, v4n, ie and the invalidator s$t"
+    },
+    {
+      "module": "chunk-yvnhkg35.js",
+      "sha256": "ce3689687897e987959f19ab07f98d79e5c925a8b15620dce02d29ba4943348d",
+      "range": [
+        6703,
+        6878
+      ],
+      "units": 175,
+      "bodySha256": "e438d074de73affe798a6fb75ccc976e429aa421ce075c4d7cb3b63ef18f5fcd",
+      "note": "Fse the JetBrains terminal names"
+    },
+    {
+      "module": "chunk-mvsmkx6d.js",
+      "sha256": "78b6816967ea34054d2cf68f13e3baa99249fa08da96cfe43e1d080b422b9c7a",
+      "range": [
+        6611,
+        6789
+      ],
+      "units": 178,
+      "bodySha256": "74385dacdf95c2bb1940c001d7cd6eac2e7825f8ee74cc19f7a5519e26e653d9",
+      "note": "U1t the terminal version name and jg the xterm.js test"
+    }
+  ],
+  "missing": []
+}
