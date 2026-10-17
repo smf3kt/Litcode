@@ -22,6 +22,9 @@ function output() {
   const stream = new Writable({ write(chunk, _encoding, callback) { text += String(chunk); callback(); } });
   return { stream, value: () => text };
 }
+function emitHookValue(value: unknown): string {
+  return `printf '%s' '${JSON.stringify(value).replaceAll("'", `'\\''`)}'`;
+}
 /** A runtime with no tools, matching a session whose stored tool list is empty. */
 function stubRuntime(overrides: Partial<Runtime> = {}): Runtime {
   return { tools: [], buildTools: () => [], close: async () => {}, limits: [], ...overrides };
@@ -124,6 +127,54 @@ test('context and effort commands count paired history and pin the new request e
     assert.equal(post.to_model, 'second-model');
     assert.equal(post.requested_model, 'second-model');
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('PreModelSwitch deny and declined ask keep the model; an accepted ask switches it', async () => {
+  const setup = (hook: Record<string, unknown>) => {
+    const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-model-hook-')));
+    const config = defaultConfig(workspace, []); config.model = 'fixture';
+    config.hooks = { PreModelSwitch: [{ command: emitHookValue({ hookSpecificOutput: { hookEventName: 'PreModelSwitch', ...hook } }) }] };
+    const session = Session.open(workspace, { config });
+    const requests: unknown[] = [];
+    const provider: ModelProvider = { count: async () => 1,
+      complete: async request => { requests.push(request); return reply('done'); } };
+    const stdout = output(), stderr = output();
+    return { workspace, session, requests, provider, stdout, stderr,
+      cleanup: () => { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); } };
+  };
+  const models = (requests: unknown[]) => requests.map(item => (item as { model?: string }).model);
+  const waitFor = async (check: () => boolean, label: string) => {
+    const deadline = Date.now() + 5000;
+    while (!check()) { if (Date.now() > deadline) assert.fail(`wait expired: ${label}`); await new Promise(resolve => setTimeout(resolve, 5)); }
+  };
+  const denied = setup({ permissionDecision: 'deny', permissionDecisionReason: 'not allowed' });
+  try {
+    await interactiveLoop(denied.session, denied.provider, stubRuntime(), {
+      input: Readable.from(['/model second-model\n', 'verify model switch\n', '/exit\n']),
+      output: denied.stdout.stream, status: denied.stderr.stream, signal: new AbortController().signal,
+    });
+    assert.deepEqual(models(denied.requests), ['fixture']);
+    assert.match(denied.stderr.value(), /Model switch blocked by a PreModelSwitch hook: not allowed/);
+  } finally { denied.cleanup(); }
+  for (const [line, switched] of [['n', false], ['y', true]] as const) {
+    const run = setup({ permissionDecision: 'ask', permissionDecisionReason: 'sure?' });
+    const input = new Readable({ read() {} });
+    const loop = interactiveLoop(run.session, run.provider, stubRuntime(), {
+      input, output: run.stdout.stream, status: run.stderr.stream, signal: new AbortController().signal,
+    });
+    try {
+      input.push('/model second-model\n');
+      await waitFor(() => run.stdout.value().includes('Switch model? [y/N]'), 'confirmation prompt');
+      input.push(`${line}\n`);
+      await waitFor(() => switched ? true : run.stderr.value().includes('blocked by a PreModelSwitch hook: sure?'), 'ask verdict');
+      input.push('verify model switch\n');
+      await waitFor(() => run.requests.length === 1, 'prompt after ask');
+      input.push('/exit\n');
+      input.push(null);
+      await loop;
+      assert.deepEqual(models(run.requests), [switched ? 'second-model' : 'fixture']);
+    } finally { run.cleanup(); }
+  }
 });
 
 test('thinking commands pin new sessions and preserve paired history for subsequent requests', async () => {

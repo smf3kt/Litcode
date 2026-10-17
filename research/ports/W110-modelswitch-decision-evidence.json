@@ -1,0 +1,111 @@
+{
+ "schema": "W110ModelSwitchDecisionEvidence.v1",
+ "package": "W110-01 — PreModelSwitch permissionDecision",
+ "date": "2026-10-17",
+ "question": "How do PreModelSwitch hook allow, deny and ask decisions affect a model switch?",
+ "answer": "Deny becomes a blocking error with the hook reason or \"Blocked by hook\"; block wins over ask when both appear. Ask records the reason and requires confirmation, declining yields the model-specific blocked text. Allow records the answer and skips the expensive-model confirmation when one exists.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "schema": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 392413
+  },
+  "runner": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "oXr",
+   "offset": 2937531
+  },
+  "blockedText": {
+   "module": "extracted-v2/modules/chunk-hh0bresc.js",
+   "symbol": "RWe",
+   "offset": 9514
+  },
+  "switchBlockedText": {
+   "module": "extracted-v2/modules/chunk-hh0bresc.js",
+   "symbol": "jU",
+   "offset": 9782
+  },
+  "confirmText": {
+   "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+   "offset": 859352
+  },
+  "askBranch": {
+   "module": "extracted-v2/modules/chunk-f5wjy38g.js",
+   "offset": 21336
+  }
+ },
+ "behavior": {
+  "event": "PreModelSwitch",
+  "decisions": [
+   "allow",
+   "deny",
+   "ask"
+  ],
+  "denyWins": true,
+  "defaultReason": "Blocked by hook",
+  "askRequiresConfirmation": true
+ },
+ "adaptations": [
+  "skipConfirm from an allow feeds an expensive-model confirmation dialog this runtime does not have.",
+  "Command and SDK flows turn ask into a block with a parenthetical; this runtime has only the interactive surface, so it confirms.",
+  "Deny is not marked blocked in the hook result; the switch consumer renders the recovered prefix, keeping the raw reason for other callers."
+ ],
+ "changes": [
+  {
+   "file": "src/hooks.ts",
+   "change": "PreModelSwitch decision parse",
+   "sha256": "c97d88bdad1d33a84be4db8b5d0ff1cc94448d09450bec7dc6741b53a8fb1959"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "deny text, ask confirmation, decline text",
+   "sha256": "93cf02dbb505450c4a5162dedbe13b25c4b3baac618b97731063cfb5552c076f"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "parse and precedence assertions",
+   "sha256": "948f3a696a85defaa477c63571e1fb88dc9c54f0cbc25e333f1e85d724b5fc19"
+  },
+  {
+   "file": "test/interactive.test.ts",
+   "change": "deny/decline/accept switch assertions",
+   "sha256": "dca4e9b79d0f5232d5eb7681a8d039cc1cf2db8436c5d36b44f998fa123acb92"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W110",
+   "sha256": "d1083429365d21f3d95285f1628e1313f66e3083b7774527ec0ba5702d43bf42"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W110",
+   "sha256": "94912926baed04f5d5f0f8972aa2a4e2931d359bfd91083b8913401563680293"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W110-01 entry",
+   "sha256": "e24fae8af6d1b965e1d8d7aa5ede1c036349c16fcfaed10d309a4d3460de1648"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W110-01 S-1..S-7 entry",
+   "sha256": "067ab857dbd1f71c5ed9a515cae9b0d2524e3faf5939388e329ddbe00133f53e"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "67/67 (hooks, interactive)",
+  "build": "exit 0",
+  "full": "2,148/2,148",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "dbe3098bc7e710e3e7fae0553c4e9d9f5db5598407d2fe0c06aec9b5152dc9aa"
+ },
+ "residuals": [
+  "The remaining C-6 script semantics are unconsumed.",
+  "skipConfirm and the command/SDK ask-blocking flows have no local analogue."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with the remaining script semantics."
+}

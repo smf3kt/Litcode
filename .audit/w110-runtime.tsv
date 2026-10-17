@@ -1,0 +1,3 @@
+2026-10-17T21:08:00Z	package	W110-01 PreModelSwitch permissionDecision	schema 392413、oXr 2937531、RWe 9514、jU 9782、确认文案 859352、ask 分支 21336	deny优先；缺省reason=Blocked by hook；ask确认；拒绝用jU文案；allow不阻断	hooks/interactive 67/67；tsc 0；build 0；全量 2,148/2,148；链 767/767
+2026-10-17T21:10:00Z	decision	W110-01 本地适配	源allow的skipConfirm无本地昂贵模型确认消费者；命令/SDK流的ask阻断文案不适用	仅交互切换面，走picker的确认分支	.audit/w110-01-full.txt
+2026-10-17T21:12:00Z	verification	W110-01 验收：聚焦 67/67、tsc 0、build 0、2,148/2,148、767/767	deny与拒绝ask保持模型并显示恢复文案；接受ask切换	notices 0；索引 75 chunks / 323,525 单位不变；identity dbe3098b…
