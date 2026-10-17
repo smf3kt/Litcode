@@ -1,0 +1,115 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-am9mebpw.js",
+      "sha256": "5f299ffd418fdb1dc31123d44ad13270aa6fcbb68e0686709982292c7a1e3f14"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        3241,
+        4161
+      ],
+      "units": 920,
+      "bodySha256": "9aaf964a73699ff825405b990e1874a69a6683d9aa14e06aaa22621ed9390e8f",
+      "note": "`Vo`+`XD` — the boundary message and the error boundary: reset on a new key, report a throw once, draw the fallback"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        28121,
+        28534
+      ],
+      "units": 413,
+      "bodySha256": "2589f2b75c71ce336a98140937a92465d1aae8028fbf55be31d32d5fa82165e8",
+      "note": "`wo` — the hosted client: its ref, click subscription, focus effects and key dispatch"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        28534,
+        29637
+      ],
+      "units": 1103,
+      "bodySha256": "afe9477db8169889d505128aa65dddd1ddd6a4aab050c05cc40fb1a073c47442",
+      "note": "`To` — the terminal mount: props, layout, redraw, resize, pointer and key events, the drawn tree"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        29641,
+        29858
+      ],
+      "units": 217,
+      "bodySha256": "4cd1c97ece1282275c49ec726324c2eaefbad70001e29ddf72d0398b4e70422e",
+      "note": "`Ro` — the clock adapter: interval fallback or the clock keep-alive subscription"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        29858,
+        29899
+      ],
+      "units": 41,
+      "bodySha256": "26fb39a668adb38dc2c5d3b99e7a28847da30ea3b93adbdf5a7a7cafe31d46fe",
+      "note": "`bo` — the loading snapshot"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        29899,
+        30201
+      ],
+      "units": 302,
+      "bodySha256": "fde8615035310a6fe08d13f2c49d7d2edccdbd4e495463125742591d67ba3a8b",
+      "note": "`Co` — the inert client instance (the source no-client default)"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        30219,
+        30538
+      ],
+      "units": 319,
+      "bodySha256": "ad15e00595005ecaf534813eab19b36b5abb89b4a6d679e7f51c5d3ae19250b6",
+      "note": "`So` — acquire the plugin client for the element and release it on unmount"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        30538,
+        30927
+      ],
+      "units": 389,
+      "bodySha256": "9dd9997c5d85558cc3d83de1db90d8c7e0c26d4d9e980c5b3bda1b4f8234b73f",
+      "note": "`Io` — the Client host: acquire, subscribe to the snapshot and mount `To` under the boundary"
+    },
+    {
+      "module": "chunk-am9mebpw.js",
+      "sha256": "5f299ffd418fdb1dc31123d44ad13270aa6fcbb68e0686709982292c7a1e3f14",
+      "range": [
+        1357,
+        1549
+      ],
+      "units": 192,
+      "bodySha256": "d26733e90f51ccb89dfe4fa7b3f29697817a9826a04aa81718718fa7ce3f0c2b",
+      "note": "`Ey` — register a pre-dispatch key handler while mounted and active"
+    }
+  ],
+  "missing": []
+}
