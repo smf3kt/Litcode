@@ -103,10 +103,11 @@ assert.match(
   / \* Zero-initialized usage object\. Extracted from logging\.ts so importers avoid/,
 )
 
-// 4. The next wave's surface is untouched: the `/remote-control` command
-//    family, the spawn-mode config key, the retained SDK transport, and the
-//    desktop-upsell counter that has a live reader.
-assert.match(config, /  remoteControlSpawnMode\?: 'same-dir' \| 'worktree'/)
+// 4. The next wave's surface is untouched: the retained SDK transport and the
+//    desktop-upsell counter that has a live reader. `remoteControlSpawnMode`
+//    was asserted present here as the next wave's surface; step 7m removed it,
+//    as this file's `remaining` predicted.
+assert.doesNotMatch(config, /remoteControlSpawnMode/)
 assert.equal(
   fs.existsSync(`${root}/cli/transports/ccrClient.ts`),
   true,
