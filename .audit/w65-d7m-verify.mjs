@@ -89,18 +89,20 @@ const sysText = fs.readFileSync(`${root}/components/messages/SystemTextMessage.t
 assert.doesNotMatch(sysText, /BridgeStatus|from '\.\.\/design-system\/ThemedText\.js'|\/ink\/components\/Link\.js/)
 assert.match(sysText, /  if \(message\.subtype === 'scheduled_task_fire'\) \{/)
 
-// 4. The declared SDK surface and the retained transport lane stay. The
-//    SendMessageTool's `bridge:` row is untouched here: it sits in the false
-//    arm of `feature('UDS_INBOX')` and belongs to the peer-messaging lane.
+// 4. The declared SDK surface and the retained transport lane stay. This step
+//    pinned tools/SendMessageTool/prompt.ts as byte-identical: its `uds:`/
+//    `bridge:` rows sat in the false arm of feature('UDS_INBOX') and belonged to
+//    the peer-messaging lane, which wave D step 7o then removed — so the pin is
+//    retired in favour of the teammate table that survives that cut.
 assert.match(
   fs.readFileSync(`${root}/entrypoints/agentSdkTypes.ts`, "utf8"),
   /  bridgeSessionId: string/,
 )
 assert.equal(fs.existsSync(`${root}/cli/transports/ccrClient.ts`), true)
-assert.equal(
-  digest(execFileSync("git", ["-C", root, "show", `${before}:tools/SendMessageTool/prompt.ts`], {encoding: "utf8"})),
-  digest(fs.readFileSync(`${root}/tools/SendMessageTool/prompt.ts`, "utf8")),
-  "the peer-messaging prompt is not this step's business",
+assert.match(
+  fs.readFileSync(`${root}/tools/SendMessageTool/prompt.ts`, "utf8"),
+  /Broadcast to all teammates — expensive \(linear in team size\)/,
+  "the teammate table survives the peer-messaging lane cut (step 7o)",
 )
 
 const tscText = fs.readFileSync(new URL("w65-d7m-tsc.txt", import.meta.url), "utf8")

@@ -1,0 +1,109 @@
+{
+  "before": "34b8444",
+  "kind": "UDS_INBOX peer-messaging lane removal (no ported bodies; one module deleted with its last consumer)",
+  "surface": "the cross-session send surface: the ListPeers tool slot in tools.ts, SendMessageTool's uds:/bridge: recipient row, its two cross-session validation branches and its peer-grammar check, the prompt's uds row and Cross-session section, the init message's hidden messaging_socket_path, the PID registry's messagingSocketPath field, main.tsx' --messaging-socket-path option with its setup() plumbing and stream-json replay promotion, setup()'s emptied UDS server gate, and the transcript renderer's stranded cross-session comment",
+  "decisiveFact": "every one of these sites is gated by feature('UDS_INBOX'), which shims/bun-bundle.ts returns false for; the modules the gated requires name — tools/ListPeersTool/ListPeersTool.js, ../udsMessaging.js and the peerRegistry.ts utils/peerAddress.ts is split out to avoid — are absent from the build, so each gated arm already resolved to nothing and each doc row already rendered as empty",
+  "evidence": [
+    {
+      "file": "utils/peerAddress.ts",
+      "change": "removed whole (19 lines): parseAddress's two consumers were the cross-session branches in SendMessageTool; with them folded the module had no importer",
+      "sourceSha256": "a35063b27ab8e51971c09b2404a3441c5607dd3d1a36c0d06be97b7e483e2874",
+      "portSha256": null,
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "tools.ts",
+      "change": "the ListPeersTool require ternary deleted (its module directory does not exist) together with its entry in the tool pool; getSendMessageTool's own slot and the swarm gate beside it are untouched",
+      "sourceSha256": "ca09431ca1962c36df30d3abc26241828676855fc473b6ba5018b6f11f2c4910",
+      "portSha256": "e88ef7db5c1a207bd2fc58a430d831cd2c583dab7d6cd05bf1b3396c1d331051",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "tools/SendMessageTool/SendMessageTool.ts",
+      "change": "the input schema's recipient describe folds to its off string, both cross-session validation branches go, the peer-grammar empty-target check goes with the module it parsed, and the now-unused bun:bundle import is dropped; the teammate/broadcast path is byte-identical",
+      "sourceSha256": "af2705772519eb74f00af9f6ad353c716d420ecea5b307ad7490cbf824b8d728",
+      "portSha256": "0484862a6059510fb0a4777896adda5fcf954f459a74e84b4b6407ad005db8df",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "tools/SendMessageTool/prompt.ts",
+      "change": "the uds row and the Cross-session section fold to the empty strings their own ternary produced, the two interpolations go, and the feature import is dropped; the protocol-response section is untouched",
+      "sourceSha256": "5e4c2edb7d2f778f1ba0dc4413f19e1d249ddc6a66386262a387740edb760b1d",
+      "portSha256": "0efeaeeacc54831982192c3ec4c3e4898b42d3d42f721e3ae37ff2bfae780532",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/messages/systemInit.ts",
+      "change": "the hidden messaging_socket_path field — a require of an absent module — is deleted with the ant-only comment above it and the feature import",
+      "sourceSha256": "6b7d5611dca00fed8bbd0246370c554bc869cece8d743b667d39dc7fa5d7c43d",
+      "portSha256": "f5274f4cc1a61ebf535701aea9f74e50777b4129dccf91734370345fdef55f22",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/concurrentSessions.ts",
+      "change": "the PID file's messagingSocketPath spread goes (the env var it read is never set anywhere in the build); updatePidFile's doc comment loses the ListPeers clause but keeps its best-effort contract",
+      "sourceSha256": "b46e3570750d65d28492e111058388d7d16faa9b658538bc4e50c1bc3a25f170",
+      "portSha256": "89da005d8d20514e9b59502c9b72cc2bacbbcd370ffda8c63035efc5ef04a13c",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "components/messages/UserTextMessage.tsx",
+      "change": "the stranded cross-session comment (its branch was removed in an earlier wave) is deleted; the fork-boilerplate comment above it and the UserPromptMessage arm below are untouched",
+      "sourceSha256": "284e7f1b986554a02f83caeefdb77f694bf61698fb54b148a8b9d49b8219c0b4",
+      "portSha256": "be864cfe878052cad88cbaeb3db3bf52cf7a76d354d24f02e62445a1ebbae37f",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "the messagingSocketPath local and its setup() argument go, the replay promotion folds to options.replayUserMessages alone, the --messaging-socket-path option is deleted, and the setup() parallelization comment loses its startUdsMessaging rationale",
+      "sourceSha256": "40dc394e1240b5b0e20be922f82a74871553966c04be2c01111aadc15162cf41",
+      "portSha256": "9beeaca1c8bec62a31069e00b5239cd8f9fa0cf5d0310a39922cf48c6ae13e43",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "setup.ts",
+      "change": "the messagingSocketPath parameter goes and the UDS server gate it widened is removed — an if whose body was already empty, since the startUdsMessaging call left in an earlier wave; the comment above the surviving skills/plugins rationale is reworded",
+      "sourceSha256": "16716593702347e8e9c77bd751b7f4c713680ed546d401323a4d6e2263eae142",
+      "portSha256": "050c1823447b16c88b7e99c52d19ee8d5571364d328668fd018b6123236f2242",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "tools.ts' ListPeersTool slot: the require ternary and the tool-pool entry",
+    "SendMessageTool's cross-session surface: the recipient describe arm, both feature-gated validateInput branches, the peer-grammar empty-target check, and the feature import",
+    "the prompt's uds row and Cross-session section (both already empty strings)",
+    "utils/messages/systemInit.ts' messaging_socket_path field and its require('../udsMessaging.js')",
+    "utils/concurrentSessions.ts' messagingSocketPath field and the ListPeers clause in updatePidFile's comment",
+    "main.tsx' --messaging-socket-path option, its messagingSocketPath local, its setup() argument, and the stream-json replay promotion it drove",
+    "setup.ts' messagingSocketPath parameter and the emptied UDS server gate",
+    "components/messages/UserTextMessage.tsx' stranded cross-session comment",
+    "utils/peerAddress.ts — parseAddress's last consumer was the branch pair above"
+  ],
+  "adaptations": [
+    {
+      "site": "tools/SendMessageTool/SendMessageTool.ts validateInput",
+      "change": "the peer-grammar empty-target check (const addr = parseAddress(input.to); if (addr.scheme === 'uds' && addr.target.trim().length === 0) …) is deleted although it was not feature-gated",
+      "reason": "parseAddress's scheme is decided by the address string alone, but the only shapes that reach the 'uds' arm are 'uds:<target>' and a bare '/'-prefixed socket path — the grammar the deleted prompt rows were the only documentation of. Every `to` the retained tool documents (a teammate name or '*') takes the 'other' arm, so the check's only remaining effect would be a bespoke error for input the product no longer advertises. The empty-name check directly above it and teammate resolution still reject malformed recipients; keeping the module alive for this one branch would retain the lane it belongs to."
+    }
+  ],
+  "kept": [
+    "SendMessageTool's teammate and broadcast path in full: the schema, the summary requirement, the structured-message rules, the shutdown_response recipient check, and the '@' format rejection",
+    "the prompt's teammate table, its protocol-response section and the broadcast cost warning",
+    "utils/concurrentSessions.ts' PID registry as a whole (writePidFile, updatePidFile, onSessionSwitch) and the BG_SESSIONS fields beside the removed spread",
+    "setup.ts' teammate-snapshot gate and its SIMPLE-mode rationale, and main.tsx' setup()/getCommands() parallelism with its worktree rationale",
+    "hooks/useInboxPoller.ts, screens/REPL.tsx' useInboxPoller call and the teammates/mailbox surface — that lane is gated by isAgentSwarmsEnabled(), not by UDS_INBOX"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweep over the lane's full vocabulary (the flag, the tool name, both module names, the peer parser, the socket env var and the option in both spellings) plus an existence check on the four paths it lived in; each folded site asserted as the arm the false flag produced with its surviving sibling expression asserted beside it (getSendMessageTool's pool slot, the '@' rejection, the structured-message rules, the BG_SESSIONS spread, the teammate-snapshot gate, options.replayUserMessages); the three dropped bun:bundle imports asserted gone; tsc clean",
+  "remaining": "the model-call seams (which must not be removed wholesale — API-key auth is the retained path), utils/fastMode.ts' remaining gates, the ~33 in-place CLI blocks, the cli/transports/ package, the dependency-pruning pass, and the stale utils/filePersistence/ directory name (it now holds one environment-kind reader)",
+  "notes": [
+    "the first cut attempt left one tsc error (TS2304 parseAddress at SendMessageTool.ts:591): the peer-grammar check was the third consumer of the module and the only one not wrapped in the flag. The script was extended with that cut, the nine touched paths restored from HEAD, and the whole step re-run from the restored tree, so the script reproduces the final state in one pass.",
+    "the module's absence was the fold's justification, not an assumption: tools/ListPeersTool/, utils/udsMessaging.ts and utils/peerRegistry.ts were each checked for on disk before the requires were called dead"
+  ]
+}
