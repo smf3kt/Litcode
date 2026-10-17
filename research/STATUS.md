@@ -2465,3 +2465,13 @@ refuses prefix matches for compound readings, and fails closed on an incomplete 
 with the source denial text. Focused 111/111, full 2235/2235, tsc 0, build 0, notices 0, both
 workflow smokes passed, identity `eff677d0…`.
 [W133 record](ports/W133-workflow-agent-tool-restrictions.md).
+
+W134 closes C-8's stall option. `agent({stallMs})` is read in the spawn options and carried
+through the child session config; a positive finite window arms a per-attempt timer, text or
+thinking progress restarts it under `min(stallMs*0.1,1000)`ms throttling, a silent window
+aborts the attempt with `DOMException('stalled','AbortError')`, and five retries precede the
+source failure text for six stalled attempts. Without the option the model request path is
+unchanged; the source's stream-watchdog default and whole-query retry are not ported, so a
+retry restarts the request and does not replay executed tools. Focused 87/87, full 2237/2237,
+tsc 0, build 0, notices 0, both workflow smokes passed, identity `0d0226fa…`.
+[W134 record](ports/W134-workflow-agent-stall.md).

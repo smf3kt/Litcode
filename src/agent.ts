@@ -39,6 +39,10 @@ Do not automatically add co-author trailers, vendor attribution, promotional tex
 // here is eligible.
 const PERMISSION_RETRY_META = 'The PermissionDenied hook indicated you may retry this tool call.';
 
+// Source `tr` (chunk-hedqf2m1.js offset 66584): a stalled workflow attempt is
+// retried five times, so the final failure names six attempts.
+const STALL_RETRIES = 5;
+
 export function defaultConfig(workspace: string, tools: ToolDefinition[]): SessionConfig {
   return {
     model: '', system: DEFAULT_SYSTEM, gateway: { ...DEFAULT_GATEWAY },
@@ -444,6 +448,63 @@ export class Agent {
       }
     }
     return context;
+  }
+
+  /**
+   * `agent({stallMs})`: the source's per-query stall timer (`_0t` in `vr`,
+   * chunk-hedqf2m1.js [105825,106060)) aborts a request that makes no progress
+   * for the window; the run loop retries a stalled attempt up to `tr`=5 times
+   * and then fails with `agent stalled on all N attempts`. This runtime has no
+   * stream-watchdog stack, so the window applies only when the option is a
+   * positive finite number; without it the request path is unchanged. Progress
+   * is the provider's text/thinking stream, throttled like the source
+   * (`min(stallMs * 0.1, 1000)`ms between restarts).
+   */
+  private async completeModel(request: Anthropic.MessageCreateParamsNonStreaming, signal: AbortSignal,
+    onText: (text: string) => void, onThinking: () => void): Promise<Anthropic.Message> {
+    const stallMs = this.session.config.stallMs;
+    if (stallMs === undefined || !Number.isFinite(stallMs) || stallMs <= 0) {
+      return this.provider.complete(request, signal, onText, onThinking);
+    }
+    for (let attempt = 0; attempt <= STALL_RETRIES; attempt++) {
+      const controller = new AbortController();
+      const forward = () => controller.abort(signal.reason);
+      signal.addEventListener('abort', forward, { once: true });
+      if (signal.aborted) controller.abort(signal.reason);
+      let stalled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const arm = () => {
+        if (timer !== undefined) clearTimeout(timer);
+        timer = setTimeout(() => {
+          stalled = true;
+          controller.abort(new DOMException('stalled', 'AbortError'));
+        }, stallMs);
+        timer.unref?.();
+      };
+      let lastProgress = 0;
+      const progress = () => {
+        const now = Date.now();
+        if (now - lastProgress < Math.min(stallMs * 0.1, 1000)) return;
+        lastProgress = now;
+        arm();
+      };
+      try {
+        arm();
+        return await this.provider.complete(request, controller.signal,
+          text => { progress(); onText(text); },
+          () => { progress(); onThinking(); });
+      } catch (error) {
+        if (!stalled || signal.aborted) throw error;
+        if (attempt === STALL_RETRIES) {
+          throw new Error(`agent stalled on all ${STALL_RETRIES + 1} attempts (no progress for ${stallMs}ms each)`);
+        }
+        this.events.status?.(`[stall] retrying (${attempt + 1}/${STALL_RETRIES})`);
+      } finally {
+        if (timer !== undefined) clearTimeout(timer);
+        signal.removeEventListener('abort', forward);
+      }
+    }
+    throw new Error('agent stalled');
   }
 
   private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal): Promise<{ input: unknown; denied?: string; retry?: boolean }> {
@@ -1175,7 +1236,7 @@ export class Agent {
         try {
           this.events.textStart?.();
           this.events.progress?.({kind:'phase', mode:'requesting'});
-          try { response = await this.provider.complete(request, signal, text => {
+          try { response = await this.completeModel(request, signal, text => {
             this.events.progress?.({kind:'phase', mode:'responding'}); this.events.text?.(text);
           }, () => this.events.progress?.({kind:'phase', mode:'thinking'})); }
           finally { this.events.textEnd?.(); }

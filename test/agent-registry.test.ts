@@ -66,6 +66,48 @@ test('sync launch isolates sessions and preserves child config, schemas and expl
   } finally { await f.cleanup(); }
 });
 
+test('stall watchdog retries a silent child and fails with the source message', async () => {
+  let calls = 0;
+  const f = fixture((_request, signal) => {
+    calls++;
+    return new Promise<Anthropic.Message>((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    });
+  });
+  const registry = f.make();
+  try {
+    const failed = await registry.launch({ prompt: 'work', stall_ms: 20 });
+    assert.equal(failed.status, 'failed');
+    assert.equal(failed.error, 'agent stalled on all 6 attempts (no progress for 20ms each)');
+    assert.equal(calls, 6);
+    await assert.rejects(registry.launch({ prompt: 'work', stall_ms: 'never' }), /must be a finite number/);
+    assert.equal(calls, 6);
+  } finally { await f.cleanup(); }
+});
+
+test('stall watchdog restarts on provider progress and completes in one request', async () => {
+  let calls = 0;
+  const f = fixture((_request, signal, onText) => {
+    calls++;
+    return new Promise<Anthropic.Message>((resolve, reject) => {
+      let ticks = 0;
+      const timer = setInterval(() => {
+        ticks++;
+        onText?.('working ');
+        if (ticks === 5) { clearInterval(timer); resolve(response('finished')); }
+      }, 10);
+      signal.addEventListener('abort', () => { clearInterval(timer); reject(signal.reason); }, { once: true });
+    });
+  });
+  const registry = f.make();
+  try {
+    const child = await registry.launch({ prompt: 'work', stall_ms: 50 });
+    assert.equal(child.status, 'completed');
+    assert.equal(child.summary, 'finished');
+    assert.equal(calls, 1);
+  } finally { await f.cleanup(); }
+});
+
 test('structured schema mode ends the turn on StructuredOutput and exposes the value', async () => {
   let calls = 0;
   const f = fixture(async request => {

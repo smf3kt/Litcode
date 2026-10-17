@@ -1,0 +1,70 @@
+{
+ "schema": "W134WorkflowAgentStallEvidence.v1",
+ "package": "W134-01 — workflow agent({stallMs})",
+ "date": "2026-10-18",
+ "question": "How does agent({stallMs}) bound a child that stops making progress?",
+ "answer": "The option sets a per-attempt stall window; text or thinking progress restarts the window under min(stallMs*0.1,1000)ms throttling, a silent window aborts that attempt with a DOMException('stalled','AbortError'), and the child retries up to 5 times before failing with 'agent stalled on all 6 attempts (no progress for Nms each)'. Without a positive finite option the request path is unchanged.",
+ "sourcePosition": {
+  "workflow": {
+   "module": "extracted-v2/modules/chunk-hedqf2m1.js",
+   "optionRead": [47679, 47717],
+   "progressThrottle": [62398, 62423],
+   "timerArm": [62423, 62470],
+   "stallAbort": 81203,
+   "retryLoop": [71019, 71300],
+   "retryBudget": 40311,
+   "finalMessage": [72470, 72730]
+  },
+  "default": {
+   "module": "extracted-v2/modules/chunk-40cepjpq.js",
+   "fn": [104266, 104430],
+   "env": "CLAUDE_ASYNC_AGENT_STALL_TIMEOUT_MS",
+   "streamWatchdogDefaultMs": 600000
+  }
+ },
+ "behavior": {
+  "stallMs": {
+   "type": "positive finite number",
+   "default": "off in this runtime (source default depends on the unported stream watchdog)",
+   "progress": "provider text/thinking chunks restart the timer",
+   "restartThrottle": "min(stallMs*0.1, 1000)ms",
+   "abort": "DOMException('stalled','AbortError') on the attempt controller",
+   "retries": 5,
+   "attempts": 6,
+   "failure": "agent stalled on all 6 attempts (no progress for <stallMs>ms each)"
+  },
+  "passthrough": [
+   "non-finite stallMs refuses before spawn",
+   "absent or non-positive stallMs leaves the provider call unchanged",
+   "caller abort is forwarded and rethrown",
+   "non-stall provider errors are rethrown immediately"
+  ]
+ },
+ "product": {
+  "files": [
+   "src/agent.ts",
+   "src/agent-registry.ts",
+   "src/session.ts",
+   "src/workflow-script.ts",
+   "src/workflow.ts"
+  ],
+  "configField": "stallMs",
+  "launchField": "stall_ms",
+  "journalSchema": "z.number().finite().optional()"
+ },
+ "adaptations": [
+  "the source retries a whole query; this runtime retries one model request and does not replay tool calls",
+  "the source pauses the timer for in-flight tools; this runtime has no such tracking and uses stream progress only",
+  "stalledReason, replyLost and user-retry variants are not ported",
+  "the source default is not ported because the stream-watchdog stack is absent"
+ ],
+ "verification": {
+  "focused": "87/87",
+  "full": "2237/2237",
+  "tsc": 0,
+  "build": 0,
+  "notices": 0,
+  "smokes": ["smoke:workflow-resume", "smoke:workflow-cli"],
+  "identity": "0d0226fad4affa974f0a8a6b7f74590b36e6f13f7f6f592b360a70928ac46e40"
+ }
+}
