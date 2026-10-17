@@ -1791,3 +1791,12 @@ W46-02: the W46-01 frame is generated again against the product TUI runtime and 
 W46-03: the recovered frame becomes the ScopedPicker frame used by both terminal hosts. The frame owns focus and window; the host captures its search-field key handler so the picker drives the source movement (up is focus+1 under direction up), onFocus mirrors the focus into the picker cursor, and a query/scope change remounts the host component as the source reset. A fresh item slice per render keeps the identity-based frame memo in step with the in-place scan. 5/5 new tests, picker entry 2/2, full 2,078/2,078; tsc 0; both smokes pass; identity `e8177e84…`. [W46 record](ports/W46-scope-picker.md).
 
 W47-01 closes the MCP lifecycle row as a decision rather than a port. The four listed items already had verified coordinates and dispositions: next-turn background redial is off by default upstream and is superseded by this runtime's bounded recovery, explicit reconnect and stdio next-use re-dial; the parked refetch is driven by a `subscriptions/listen` stream this runtime does not implement, and refresh-on-replacement plus dirty-at-use cover the guarantee; an update lost while the stream is down is unrecoverable upstream too, so it is reported stale-known with the event-id GET resume path; full pixel decoding needs the Bun.Image codec this project does not carry, so the size/byte caps and over-target annotation stay. CURRENT and FEATURES now cite [remaining-dispositions.md](ports/remaining-dispositions.md) items 1/2/5/7 instead of listing the items as gaps. No behavior changed and no recovered entrypoint ran.
+
+W47-02 reclaims a worktree ownership-store lock left by a dead owner. The store lock now records
+`harness worktree store (pid N)` and fsyncs it; on EEXIST the lock is read with O_NOFOLLOW under a
+512-byte bound, its reason must match the runtime format and name a dead pid (integer in
+`(1, 2147483647]` whose `kill(pid, 0)` reports ESRCH), and the same dev/inode must still be
+present before unlink. One reclaim-and-retry is allowed; empty, foreign, own-pid and live locks
+stay fail-closed. Ported from `_x`/`Rze`/`P1t`/`zPo` in chunk-sfn1dbxq.js and `Iue`/`Nm` in
+chunk-3sda67c1.js. 27/27 worktree tests, tsc 0, full 2,079/2,079, chain 767/767, both smokes
+pass; identity `2732f49a…`. [W47-02 record](ports/W47-worktree-stale-lock.md).

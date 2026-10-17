@@ -9,6 +9,45 @@ import type { ToolContext, ToolDefinition } from "./tools.js";
 export const WORKTREE_DIRECTORY = ".harness-worktrees";
 const STORE_FILE = "worktrees.json";
 const MAX_BYTES = 4 * 1024 * 1024;
+/** Ported from `_x`/`Rze` in chunk-sfn1dbxq.js [1759186,1759662), `P1t` [1801260,1801370) and the
+ *  sweep `zPo` [1801370,1802540) (UTF-8 bytes): a worktree lock is reclaimed only when its reason
+ *  names a dead process, using the integer bound of `Iue` [2547,2601) and the ESRCH check of `Nm`
+ *  [2601,2715) in chunk-3sda67c1.js. The reason names this runtime's store instead of
+ *  `claude agent|session`; as in `U1t`, an own-pid lock is never reclaimed. */
+const LOCK_REASON = /^harness worktree store \(pid ([1-9][0-9]{0,9})\)$/;
+const LOCK_REASON_MAX = 512;
+function lockReason(): string { return `harness worktree store (pid ${process.pid})`; }
+/** Source `Nm`: a pid is dead only when `kill(pid, 0)` reports ESRCH. */
+function deadPid(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 1 || pid > 2147483647) return false;
+  try { process.kill(pid, 0); return false; }
+  catch (error) { return (error as NodeJS.ErrnoException).code === "ESRCH"; }
+}
+/** Source `Rze` adapted to the store lock: only a bounded reason in this process's format that names
+ *  a dead owner is safe to remove. A foreign or empty file stays, preserving the fail-closed contract. */
+function reclaimStaleLock(lock: string): boolean {
+  let fd: number;
+  try { fd = fs.openSync(lock, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW); }
+  catch (error) {
+    // The owner released the lock between the failed create and this read: retry the acquire.
+    return (error as NodeJS.ErrnoException).code === "ENOENT";
+  }
+  let identity: fs.Stats;
+  let text: string;
+  try {
+    identity = fs.fstatSync(fd);
+    if (!identity.isFile() || identity.size > LOCK_REASON_MAX) return false;
+    text = fs.readFileSync(fd, "utf8");
+  } finally { fs.closeSync(fd); }
+  const match = LOCK_REASON.exec(text);
+  if (!match) return false;
+  const pid = Number(match[1]);
+  if (pid === process.pid || !deadPid(pid)) return false;
+  const present = statOrMissing(lock);
+  if (!present || !present.isFile() || present.dev !== identity.dev || present.ino !== identity.ino) return false;
+  fs.unlinkSync(lock);
+  return true;
+}
 const nameSchema = z.string().min(1).max(100).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/)
   .refine((name) => name !== "." && name !== ".." && !name.endsWith(".lock"), "invalid worktree name");
 const refSchema = z.string().min(1).max(1024).refine(
@@ -276,12 +315,19 @@ export class WorktreeManager {
   private async locked<T>(repo: Repository, signal: AbortSignal, action: (store: Store) => Promise<T>): Promise<T> {
     checkAbort(signal);
     const { lock } = this.paths(true);
-    let fd: number;
-    try { fd = fs.openSync(lock, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600); }
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new Error("worktree ownership store is locked by another operation");
-      throw error;
+    const open = (): number => fs.openSync(lock, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
+    let fd: number | undefined;
+    for (let attempt = 0; fd === undefined; attempt++) {
+      try { fd = open(); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+        if (attempt > 0 || !reclaimStaleLock(lock)) throw new Error("worktree ownership store is locked by another operation");
+      }
     }
+    try {
+      fs.writeFileSync(fd, lockReason());
+      fs.fsyncSync(fd);
+    } catch (error) { fs.closeSync(fd); throw error; }
     const identity = fs.fstatSync(fd);
     try { return await action(this.readStore(repo)); }
     finally {

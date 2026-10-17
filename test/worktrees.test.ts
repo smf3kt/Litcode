@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -285,6 +285,29 @@ test("malformed/foreign metadata and concurrent ownership lock fail closed", asy
   assert.equal(fs.readFileSync(file + ".lock", "utf8"), "another owner");
   fs.unlinkSync(file + ".lock");
   await instance.remove({ name: "one" });
+});
+
+test("a store lock whose owner is dead is reclaimed; live and foreign locks stay", async () => {
+  const root = repository(); const instance = manager(root);
+  const file = path.join(root, ".agent", "worktrees.json");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const dead = spawnSync(process.execPath, ["-e", "0"]).pid;
+  assert.ok(dead !== undefined && dead > 1);
+  // The recovered sweep releases a lock whose reason names a dead pid (P1t/Rze); the store lock
+  // carries the same owner identity so a crash mid-operation does not wedge the next session.
+  fs.writeFileSync(file + ".lock", `harness worktree store (pid ${dead})`);
+  await instance.create({ name: "reclaimed" });
+  assert.equal(fs.existsSync(file + ".lock"), false);
+  await instance.remove({ name: "reclaimed" });
+  // A live owner (this process) or a pid outside the ported integer bound fails closed.
+  fs.writeFileSync(file + ".lock", `harness worktree store (pid ${process.pid})`);
+  await assert.rejects(instance.create({ name: "live" }), /locked/);
+  assert.match(fs.readFileSync(file + ".lock", "utf8"), /harness worktree store/);
+  fs.unlinkSync(file + ".lock");
+  fs.writeFileSync(file + ".lock", "harness worktree store (pid 4000000000)");
+  await assert.rejects(instance.create({ name: "range" }), /locked/);
+  fs.unlinkSync(file + ".lock");
+  await instance.close();
 });
 
 test("non-repository, subdirectory and unborn HEAD errors have no worktree side effects", async () => {
