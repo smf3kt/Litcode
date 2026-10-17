@@ -173,6 +173,21 @@ test("matcher selects by tool_name with exact, alternation and wildcard forms", 
   assert.deepEqual(noSelector.additionalContext, ["any"]);
 });
 
+test("watchPaths are collected from matching hookSpecificOutput entries in order", async () => {
+  const hook = (name: string, paths: unknown[]) => ({
+    command: `printf '%s' '${JSON.stringify({ hookSpecificOutput: { hookEventName: name, watchPaths: paths } })}'`,
+  });
+  const result = await runHooks({ FileChanged: [
+    hook("FileChanged", ["/a", "", 3, "/b"]),
+    hook("PostToolUse", ["/wrong"]),
+    hook("FileChanged", ["/c"]),
+  ] }, "FileChanged", { file_path: "/w/f.md", event: "change" });
+  assert.deepEqual(result.watchPaths, ["/a", "/b", "/c"]);
+  const absent = await runHooks({ FileChanged: [{ command: `printf '%s' '{"additionalContext":"note"}'` }] },
+    "FileChanged", { file_path: "/w/f.md", event: "change" });
+  assert.equal(absent.watchPaths, undefined);
+});
+
 test("transition matchers follow the recovered per-event selector fields", async () => {
   const context = (text: string): HookDefinition => emit({ additionalContext: text });
   const run = (event: HookEvent, matcher: string, payload: HookPayload) =>

@@ -2011,3 +2011,11 @@ result's `systemMessages` like `ke` does. Hook-returned `watchPaths` and the
 source failure-output display stay residual. `config-watch` 3/3, tsc 0, build
 0, full 2,108/2,108, chain 767/767, identity `700a4af5…`.
 [W81 record](ports/W81-file-watcher-events.md).
+
+W82-01 ports hook-returned watch paths. `HookResult.watchPaths` collects
+`hookSpecificOutput.watchPaths` from hooks whose event name matches, in run
+order; the interactive FileChanged and CwdChanged raises add the collected
+paths to the config watcher, which applies its existing absolute-path, count
+and byte bounds. The agent's tool-mutation FileChanged raise has no watcher
+consumer and ignores them. `hooks` 49/49, tsc 0, build 0, full 2,109/2,109,
+chain 767/767, identity `35629d1f…`. [W82 record](ports/W82-watch-paths.md).
