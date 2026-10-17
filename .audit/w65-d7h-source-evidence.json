@@ -1,0 +1,63 @@
+{
+  "before": "9825b9f",
+  "kind": "assistant-mode state removal (no ported bodies)",
+  "surface": "assistant mode's own state: the bootstrap kairosActive bit with its two accessors and ten readers, the AppState kairosEnabled field, the --assistant option, the assistantModule stub, the assistant/assistantName settings, the cron scheduler's assistantMode bypass, and the two tools' auto-background plumbing",
+  "decisiveFact": "setKairosActive has no call site (only the main.tsx import) and main.tsx's `let kairosEnabled = false` is never reassigned, so both values are permanently false and every read is a constant fold",
+  "evidence": [
+    {
+      "file": "utils/processUserInput/processSlashCommand.tsx",
+      "change": "the 97-line fire-and-forget block deleted (its guard was `feature('KAIROS') && (await getAppState()).kairosEnabled`), leaving the synchronous forked path the false flag already took; the six imports only that block used were pruned",
+      "sourceSha256": "83ff84a57d56c33e40e91dce2fde3810fe455589eac5a95eb788dc23ea9003cf",
+      "portSha256": "2df46b1751e6b731f13349ec56a73733a2bfeaacc8f992204dd944b73f2054c2",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "tools/BashTool/BashTool.tsx",
+      "change": "the auto-background block deleted with the budget constant, the schema field, the result plumbing and the message branch it fed; the surviving branch is the unchanged `if (backgroundedByUser)`",
+      "sourceSha256": "41cfabdeacb9afae91c565efd3cbdfe418a736a2947b2c3efc91d7c66987cdbc",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "memdir/memdir.ts",
+      "change": "the KAIROS daily-log block deleted, and with it buildAssistantDailyLogPrompt (54 lines) whose only caller it was; WHAT_NOT_TO_SAVE_SECTION and ENTRYPOINT_NAME keep other users",
+      "sourceSha256": "244cd4a01a4c82660dbeffe6f60808a45a12482d6342601f2b640542604f3e7c",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "the --assistant option, the assistantModule stub, `let kairosEnabled`, the headless-state spread, the remote-control fold, the initialState field, the teamContext ternary and the assistant-mode comment block removed",
+      "sourceSha256": "3f7184cabf268d8306d5496ca1ab8437882b86554bc0c34cb476539ceb09b77e",
+      "portSha256": "eed51a5f1462882d3890cfd3805a365fc5a0a7496614781455ebe08c901c3a0a",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "bootstrap/state.ts",
+      "change": "the kairosActive field, its default and both accessors removed — the accessors had no caller left once the ten readers folded",
+      "sourceSha256": "7271d3454726fa40be154fd9bb5465fadfc1362e9fc9137fba9d010aa2a40ece",
+      "portSha256": "359021687c9bfd6cefca48caf04070b54cedd905766e9f932710a8878034965c",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "state: bootstrap/state.ts kairosActive + getKairosActive/setKairosActive; state/AppStateStore.ts kairosEnabled and its default",
+    "readers folded to their false arm: autoDream's isGateOpen line, memdir's daily-log block (with its prompt builder), BashTool/PowerShellTool's auto-background blocks, fastMode's SDK guard term, attachments' date-change flush, StatusLine's hide rule, and the single `getKairosActive() ||` terms in Spinner, UserPromptMessage and BriefTool (isBriefEntitled, isBriefEnabled)",
+    "hangs off the AppState field: REPL's assistantMode read, the useScheduledTasks assistantMode prop and its effect dep, and the cronScheduler assistantMode bypass (two sites plus the option and its doc)",
+    "compact.ts and attachments.ts sessionTranscriptModule (both ternary arms were null) with their three call sites and the pragma pair compact.ts no longer needed",
+    "AgentTool's KAIROS schema ternary and assistantForceAsync; main.tsx's --assistant option, assistantModule stub, kairosEnabled local, headless spread, remote-control term, initialState field, teamContext preference and the two assistant-mode paragraphs above it",
+    "settings/types.ts assistant/assistantName; skills/bundled/index.ts's KAIROS_DREAM require of the absent ./dream.js",
+    "the auto-background plumbing: assistantAutoBackgrounded in both tools (schema, destructure, result field, early-return objects) and in ShellCommand's ExecResult, plus ASSISTANT_BLOCKING_BUDGET_MS in both"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweeps for both bits, both accessors, the three field names, the budget constant, KAIROS_DREAM, assistantModule/assistantName, --assistant and sessionTranscriptModule; the folded arms asserted textually (the four `||`-term expressions, the cron and fastMode guards, the tools' surviving branch, AgentTool's schema, the hook signature); import-graph orphan scan shows no new orphan; tsc log empty",
+  "remaining": "brief mode next (feature('KAIROS') || feature('KAIROS_BRIEF') across ~20 files), then PROACTIVE ticks, then the replBridge* AppState leftovers with getRemoteControlAtStartup(), the session-ingress bearer surface, the model-call seams (which must not be removed wholesale — API-key auth is the retained path), utils/fastMode.ts's remaining gates, the ~33 in-place CLI blocks, cli/transports/, and the dependency-pruning pass",
+  "notes": [
+    "no module was deleted in this step, so there is no quarantine set",
+    "the two comment paragraphs above main.tsx's `const {` documented the removed activation path and were removed with it"
+  ]
+}
