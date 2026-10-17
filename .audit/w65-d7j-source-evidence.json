@@ -1,0 +1,69 @@
+{
+  "before": "f1b8fb1",
+  "kind": "PROACTIVE tick machinery removal (no ported bodies)",
+  "surface": "the proactive tick mechanism: the proactiveModule handles and the whole activation API (activate/deactivate/pause/resume/setContextBlocked/getNextTickAt), the tick system-prompt section and the simple-proactive prompt path, the Sleep tool with its prompt module and both settings, the tick loop in print.ts with the set_proactive control branch, the --proactive option and CLAUDE_CODE_PROACTIVE entry points, the footer countdown, and the four tick-tag readers",
+  "decisiveFact": "feature('PROACTIVE') and feature('KAIROS') are both false and this build contains no proactive/ directory, so every proactiveModule was null, every isProactiveActive() read was a constant false, and tools/SleepTool/ held only a prompt module whose tool file does not exist",
+  "evidence": [
+    {
+      "file": "constants/prompts.ts",
+      "change": "the simple-proactive prompt path (a whole return-branch of getSimpleSystemPrompt) and getProactiveSection deleted, along with the proactiveModule require and the TICK_TAG import it used",
+      "sourceSha256": "9e2bc759c2cf75eea4fa791489c0a924fdbee0a977ac21db0a26f56652bbdd18",
+      "portSha256": "5156725749e99dd9cbac77d38ab0565be4c23017da77a90f99505569e0e0440f",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "screens/REPL.tsx",
+      "change": "the useSyncExternalStore over the null module, the Sleep-only spinner rule, and five `if (feature('PROACTIVE') || feature('KAIROS')) { proactiveModule?.… }` blocks plus the terminalFocus spread deleted; the tools memo keeps its getTools dependency alone",
+      "sourceSha256": "8e8e2ed99732883e1b5b73a83a514f0f9749e6aedcf67b422a8aee95f83584f5",
+      "portSha256": "336de0880de04a97fdd8e388165c2941b87e65beb968044904c0a429e74024f0",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "cli/print.ts",
+      "change": "the tick scheduler and its two call sites, the set_proactive control-request branch, the CLAUDE_CODE_PROACTIVE fallback and the always-null module deleted; the control loop keeps its error branch",
+      "sourceSha256": "61f3b93bbc0a93ed7f9987744632e620cfc625a70b8ad87968516b317ee63235",
+      "portSha256": "1e8f87d47d5c476924206e0971dc204391453f708545db44140c2a9520782493",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "maybeActivateProactive with its four call sites, the --proactive option and the Proactive Mode appendSystemPrompt block removed — every one of them gated on the two false flags",
+      "sourceSha256": "c76def23576ee14503353a6f0f4a4d1053bdd71a5d8bc966746d9e54d7017cea",
+      "portSha256": "539453aed627e848075dc44576885c52dce57d654ecfeee982808d600e81bf19",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/systemPrompt.ts",
+      "change": "the module was `feature(…) ? null : null`, so isProactiveActive_SAFE_TO_CALL_ANYWHERE() was constant false and its one reader — the agent-instructions append branch — folded away",
+      "sourceSha256": "ee4d34a5f269b3fe23b01783d2238c53c8b977569217522a55250c6e442ed861",
+      "portSha256": "dd78e9e5c7c8b53702f66bc0d2ddb6696a4c315b14a5f96de1f01d33beaf3ed2",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "the module handles: proactiveModule in constants/prompts.ts, utils/systemPrompt.ts, services/compact/prompt.ts, cli/print.ts, screens/REPL.tsx, components/Messages.tsx, components/PromptInput/PromptInputFooterLeftSide.tsx, components/PromptInput/usePromptInputPlaceholder.ts; the useProactive require in REPL.tsx with no caller",
+    "the tool: tools/SleepTool/prompt.ts (the tool module itself was never in the build) and its two settings minSleepDurationMs/maxSleepDurationMs; SLEEP_TOOL_NAME's four readers — tools.ts' gate, query.ts' drain-threshold upgrade, REPL's Sleep-only spinner rule, classifierDecision's auto-mode allowlist",
+    "the tick loop: cli/print.ts scheduleProactiveTick with both call sites, the set_proactive control branch, the CLAUDE_CODE_PROACTIVE fallback; TICK_TAG itself and its four readers (constants/prompts.ts, utils/log.ts's resume-title fallback, UserTextMessage's hide rule, MessageSelector's transcript filter)",
+    "the prompt surface: the simple-proactive return branch of getSimpleSystemPrompt, getProactiveSection (67 lines), the Proactive Mode appendSystemPrompt block in main.tsx",
+    "the activation API: maybeActivateProactive with four call sites, --proactive, commands/clear/conversation.ts' setContextBlocked reset, REPL's pause/resume/setContextBlocked calls, the terminalFocus user-context spread, and the /compact and partial-compact both folded to their unchanged tails",
+    "the UI: ProactiveCountdown with the footer's nextTickAt/hasNextTick pair, Messages.tsx' terminal-progress gate, usePromptInputPlaceholder's example-command gate"
+  ],
+  "kept": [
+    "the cron/AGENT_TRIGGERS surface (ScheduleCronTool, isKairosCronEnabled, useScheduledTasks, the /loop skill) — a separate wave",
+    "SUGGEST_BG_PR_NOOP and the coordinator gates in REPL.tsx and the footer, which are other lanes",
+    "the neutral uses of the word in prose (services/mcp/auth.ts' token refresh, compact's reactive/proactive autocompact, BashTool's 'too proactive' instruction)"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweep for every module handle, activation call, tick symbol and Sleep name; the folded arms asserted textually (query.ts' drain call, log.ts' title fallback, systemPrompt's tail return, Messages' progress gate, the placeholder's example gate, the footer's else-if chain, REPL's tools memo); the cron surface asserted still intact; import-graph orphan scan stays at its 10 legitimate entries with the file count down by exactly one",
+  "remaining": "the AGENT_TRIGGERS/cron wave (isKairosCronEnabled and its four callers, the three ScheduleCronTool modules, the /loop skill), then the replBridge* AppState leftovers with getRemoteControlAtStartup(), the session-ingress bearer surface, the model-call seams (which must not be removed wholesale — API-key auth is the retained path), utils/fastMode.ts's remaining gates, the ~33 in-place CLI blocks, cli/transports/, and the dependency-pruning pass",
+  "notes": [
+    "no queued-work name survives the wave: the queue priorities 'now' | 'next' | 'later' keep their semantics with the Sleep clauses dropped from their doc comment, and their one remaining producer is the cron scheduler",
+    "constants/xml.ts lost TICK_TAG, the last tag that no producer could emit"
+  ]
+}

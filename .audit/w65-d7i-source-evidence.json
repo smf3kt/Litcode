@@ -20,7 +20,7 @@
       "file": "components/Messages.tsx",
       "change": "filterForBriefTool and dropTextInBriefTurns deleted (130 lines) with the three-tier filtering they fed, leaving the unfiltered list; the isBriefOnly prop and its two streaming suppressions removed",
       "sourceSha256": "87f8d905c08055c868057343a1f77b9361ed6a5a767a888f6cf133ac9d6ccdbb",
-      "portSha256": "36fe23c507c77b794bf4e87bdae93020f85317a822172c185b4b95e33828f420",
+      "portSha256": "306c3ddceeb34b303a077f8497a669ec7a56b8e0d14874bfafc91208ac803b9f",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -34,7 +34,7 @@
       "file": "main.tsx",
       "change": "the --tools opt-in path, the defaultView opt-in path, the --brief option and maybeActivateBrief with its four call sites removed; initialIsBriefOnly leaves the initial state",
       "sourceSha256": "eed51a5f1462882d3890cfd3805a365fc5a0a7496614781455ebe08c901c3a0a",
-      "portSha256": "c76def23576ee14503353a6f0f4a4d1053bdd71a5d8bc966746d9e54d7017cea",
+      "portSha256": "539453aed627e848075dc44576885c52dce57d654ecfeee982808d600e81bf19",
       "coordinateUnit": "utf16-half-open"
     },
     {

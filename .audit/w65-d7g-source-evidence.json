@@ -7,7 +7,7 @@
       "file": "tools.ts",
       "change": "the three flag-conditional requires and their pool entries removed; the neighbouring SleepTool/MonitorTool conditions untouched",
       "sourceSha256": "d59324ef85f2630475d918b33f41aff04c086761cd196af8c1f3115707544918",
-      "portSha256": "a7c3d316cd1198e5461e4555d66e237953e59ac722cfa025abe9f8a1d9ecadf9",
+      "portSha256": "a2b5329a234b89a9e8c84618aa01c59ae6880ea05eae7ae46baf7c607462dc4e",
       "coordinateUnit": "utf16-half-open"
     },
     {

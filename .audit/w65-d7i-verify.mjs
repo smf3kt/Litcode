@@ -65,7 +65,9 @@ for (const line of briefProse) {
 // 2. The startup paths and the option are gone.
 const main = fs.readFileSync(`${root}/main.tsx`, "utf8")
 assert.doesNotMatch(main, /BriefTool|userMsgOptIn|--brief/)
-assert.match(main, /const proactivePrompt = `[^`]*The user will see any text you output\.`/)
+// This step left the Proactive Mode prompt block alone (a different lane); step
+// 7j removed it with the rest of the PROACTIVE surface.
+assert.doesNotMatch(main, /Proactive Mode/)
 const state = fs.readFileSync(`${root}/bootstrap/state.ts`, "utf8")
 assert.doesNotMatch(state, /userMsgOptIn/)
 const store = fs.readFileSync(`${root}/state/AppStateStore.ts`, "utf8")
@@ -90,7 +92,9 @@ assert.doesNotMatch(spinner, /SpinnerWithVerbInner|isEnvTruthy|ASSISTANT|brief/)
 const repl = fs.readFileSync(`${root}/screens/REPL.tsx`, "utf8")
 assert.match(repl, /import \{ SpinnerWithVerb, type SpinnerMode \} from '\.\.\/components\/Spinner\.js'/)
 assert.doesNotMatch(repl, /BriefIdleStatus|isBriefOnly/)
-assert.match(repl, /\[toolPermissionContext, proactiveActive\],/)
+// This step kept the tools memo's proactiveActive dependency (a different
+// lane); step 7j removed the store it read and left `[toolPermissionContext]`.
+assert.match(repl, /    \[toolPermissionContext\],\n/)
 const upm = fs.readFileSync(`${root}/components/messages/UserPromptMessage.tsx`, "utf8")
 assert.doesNotMatch(upm, /useBriefLayout|timestamp|useAppState|isEnvTruthy/)
 assert.match(upm, /isSelected \? 'messageActionsBackground' : 'userMessageBackground'/)

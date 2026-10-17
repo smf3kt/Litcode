@@ -87,7 +87,10 @@ assert.doesNotMatch(fs.readFileSync(`${root}/utils/ShellCommand.ts`, "utf8"), /a
 //    and its shouldRunAsync chain lost only the term.
 const agent = fs.readFileSync(`${root}/tools/AgentTool/AgentTool.tsx`, "utf8")
 assert.match(agent, /const schema = fullInputSchema\(\)\.omit\(\{ cwd: true \}\)\n/)
-assert.match(agent, /isCoordinator \|\|\n        forceAsync \|\|/)
+// Step 7h left a `false` term (with its explanatory comment) at the end of this
+// chain for the folded KAIROS term; step 7j removed the term with the whole
+// PROACTIVE surface it read.
+assert.match(agent, /isCoordinator \|\|\n        forceAsync\) &&/)
 
 // 6. processSlashCommand keeps the synchronous path, whose imports the
 //    fire-and-forget block had added for itself.

@@ -41,7 +41,9 @@ for (const pattern of [
 // tools are untouched.
 const tools = fs.readFileSync(`${root}/tools.ts`, "utf8")
 assert.doesNotMatch(tools, /SendUserFileTool|PushNotificationTool|SubscribePRTool|SleepTool'\)/)
-assert.match(tools, /const SleepTool =\n  feature\('PROACTIVE'\) \|\| feature\('KAIROS'\)/)
+// The SleepTool condition this step deliberately left standing was removed by
+// step 7j, which took the whole PROACTIVE surface including the Sleep tool.
+assert.doesNotMatch(tools, /SleepTool/)
 assert.match(tools, /const MonitorTool = feature\('MONITOR_TOOL'\)/)
 
 // Each reader keeps the arm the false flag produced. Two of the three were
