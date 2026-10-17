@@ -15,7 +15,7 @@
       "file": "main.tsx",
       "change": "the initialState seeds for all fourteen fields, the single `const fullRemoteControl = getRemoteControlAtStartup()` read that fed replBridgeEnabled, the migration import and its call site deleted",
       "sourceSha256": "539453aed627e848075dc44576885c52dce57d654ecfeee982808d600e81bf19",
-      "portSha256": "ff9aedfcbaf7d772dd379abb53db0ca27ff9ea79d128d6fbc792617dda0cae70",
+      "portSha256": "40dc394e1240b5b0e20be922f82a74871553966c04be2c01111aadc15162cf41",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -36,7 +36,7 @@
       "file": "bootstrap/state.ts",
       "change": "the ant-only replBridgeActive field with isReplBridgeActive() (no readers), and directConnectServerUrl with its getter/setter (the setter had no callers, so the logo suffix folded to the bare display path)",
       "sourceSha256": "77accb31a666acf74076a3db66d04c3aab6f5e3c4406a88cddf7edc329910fb2",
-      "portSha256": "fa9d53bf5a142769af35277780b1b49044fd45a384a590d458010d2d60cdb332",
+      "portSha256": "a81fa03d603a1a81c5800f4d9cdc1eed3dc80198e679e83369829fb127f7d2e3",
       "coordinateUnit": "utf16-half-open"
     }
   ],

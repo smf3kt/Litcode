@@ -1,0 +1,75 @@
+{
+  "before": "47b5ef3",
+  "kind": "session-ingress bearer surface removal (no ported bodies; one port deleted with its last consumer)",
+  "surface": "utils/sessionIngressAuth.ts (the bearer reader: env var, file descriptor, well-known file, with its bootstrap cache and its Cookie-vs-Bearer header builder), the four modules whose only credential it was (utils/filePersistence/filePersistence.ts, utils/filePersistence/types.ts, services/api/filesApi.ts and main.tsx' --file download block), and the token reads at the remote-MCP client, the MCP settings dialog and the four SDK transport files",
+  "decisiveFact": "the bearer authenticates the CCR/session-ingress API, and every consumer of it is that API's client: the MCP transports attach it as an extra Authorization, the settings dialog counts it as 'authenticated', main.tsx' --file block cannot proceed without it, and file persistence's own enable gate it is a term of — so nothing survives the bearer as a working feature",
+  "evidence": [
+    {
+      "file": "utils/sessionIngressAuth.ts",
+      "change": "the module removed whole (140 lines): the three-source reader, its bootstrap cache, the Cookie/Bearer header builder and the in-process env-var updater",
+      "sourceSha256": "d1b4b95fc96bf83e4080d7a2d217313960512fa9d55da6dd8e468d3746e51a37",
+      "portSha256": null,
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/api/filesApi.ts",
+      "change": "removed whole (748 lines) — its two importers were main.tsx' --file block and file persistence, both bearer-gated",
+      "sourceSha256": "ddaa05ca82dae569715b47f61b8a79b934aa8f8c5462801899269ea2ff4a2d00",
+      "portSha256": null,
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/filePersistence/filePersistence.ts",
+      "change": "removed whole (287 lines) with types.ts; outputsScanner.ts survives as the environment-kind reader utils/plans.ts imports, and the declared files_persisted SDK subtype stays",
+      "sourceSha256": "3857698344b2acf2aefae6a943227bebdd6a5a844e5294f1c1acbf0aa43b9bd6",
+      "portSha256": null,
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "cli/transports/ccrClient.ts",
+      "change": "the auth default becomes no headers (which makes initialize raise no_auth_headers, its own documented failure), the JWT-expiry short-circuit goes, and the decodeJwtPayload/decodeJwtExpiry pair — a port from bridge/jwtUtils.ts:22-58 whose only caller was that check — is deleted with it",
+      "sourceSha256": "d04679d27adc793ac74dc5e51724fb95c153b38cdd5bdf18759b04b236370cb9",
+      "portSha256": "216db827727d09291802932479faa2f0908b0d463bb0fc709313902050f7a26e",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "services/mcp/client.ts",
+      "change": "the ingress Authorization dropped from both the WebSocket headers and the HTTP requestInit, and the hasOAuthTokens probe it was paired with deleted; the authProvider's own OAuth Authorization stays as the source's comment says it should",
+      "sourceSha256": "168a104c09d20bc1b0957aa3bf5e2002c50f99a97e6023df18f30e7c9627d90e",
+      "portSha256": "f5cfe53d342448d9fc00de42a9f922aeb10dfe900abea3ee01859d388fe6418f",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "the --file option, the download block, the promise it set and the await before REPL render all removed, along with the four filesApi imports; the client-type detection keeps only the entrypoint term",
+      "sourceSha256": "ff9aedfcbaf7d772dd379abb53db0ca27ff9ea79d128d6fbc792617dda0cae70",
+      "portSha256": "40dc394e1240b5b0e20be922f82a74871553966c04be2c01111aadc15162cf41",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "the bearer module and its bootstrap cache (getSessionIngressToken/setSessionIngressToken plus the sessionIngressToken field and default)",
+    "the file surface: main.tsx' --file option with its download block, promise and await; utils/filePersistence/filePersistence.ts and types.ts; services/api/filesApi.ts; cli/print.ts' executeFilePersistence call and its turnStartTime gate",
+    "the token reads: services/mcp/client.ts (two header spreads, the log field and the hasOAuthTokens probe), components/mcp/MCPSettings.tsx' hasSessionAuth arm, and the four transport files' auth default",
+    "the JWT decoder pair in ccrClient.ts — a port from bridge/jwtUtils.ts:22-58 whose only caller was the expiry check on the ingress token"
+  ],
+  "kept": [
+    "cli/transports/ and cli/remoteIO.ts as the retained SDK transport lane: they keep their option-supplied auth header path, their refreshHeaders callback (now the runner-version read alone) and their no-headers failure modes",
+    "entrypoints/sdk/coreSchemas.ts' declared files_persisted subtype and entrypoints/agentSdkTypes.ts' declarations — declared contracts wait for the SDK review",
+    "utils/filePersistence/outputsScanner.ts' getEnvironmentKind, which utils/plans.ts imports, and the CLAUDE_CODE_ENVIRONMENT_KIND contract cli/remoteIO.ts and that reader share",
+    "cli/structuredIO.ts' update_environment_variables handler — the stdin contract is general, only its comment's example named the token"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweep over every removed name plus the three env vars; each consumer asserted as the arm a missing token produced (the transport defaults as arrow functions, ccrClient's no_auth_headers guard still reachable, HybridTransport's postOnce reduced to its two log lines, remoteIO's headers and refresh callback, MCPSettings' isAuthenticated expression, main.tsx' entrypoint-only client detection, print.ts' abortController-to-profiler seam); the surviving scanner module asserted byte-for-byte against its intended text; the declared SDK subtype and the agents/plans importers asserted present; import-graph orphan scan stays at its 10 legitimate entries with the file count down by exactly the four deleted modules (1643 → 1639)",
+  "remaining": "the peer-messaging lane (feature('UDS_INBOX') is false), the model-call seams (which must not be removed wholesale — API-key auth is the retained path), utils/fastMode.ts's remaining gates, the ~33 in-place CLI blocks, the cli/transports/ package, the dependency-pruning pass, and the stale utils/filePersistence/ directory name (it now holds one environment-kind reader)",
+  "notes": [
+    "the fold target here is a documented arm, not a new behaviour: HybridTransport's own doc comment already listed 'no token' among the permanent failures postOnce returns on, and SSETransport/ccrClient each already had an empty-auth guard",
+    "three prose sites named the token after the code was gone (structuredIO's env-update rationale, WebSocketTransport's 4003 retry rationale, print.ts' turnStartTime comment) and were reworded to keep the why without the name"
+  ]
+}

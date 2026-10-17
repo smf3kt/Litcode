@@ -74,15 +74,21 @@ const cases = [
 // A synthetic session-ingress JWT: sk-ant-si- prefix + three base64url segments.
 const jwtPayload = Buffer.from(JSON.stringify({exp: 1893456000, sub: "s"})).toString("base64url")
 const token = `sk-ant-si-${Buffer.from(JSON.stringify({alg: "HS256"})).toString("base64url")}.${jwtPayload}.sig`
-cases.push({
-  port: "cli/transports/ccrClient.ts",
-  symbol: "decodeJwtExpiry",
-  source: "bridge/jwtUtils.ts",
-  scope: {jsonParse: JSON.parse, Buffer},
-  probe: [token, "not-a-jwt", `sk-ant-si-a.b.c`, "a.b.c"],
-  // decodeJwtExpiry is a thin wrapper over this sibling in both copies.
-  also: "decodeJwtPayload",
-})
+// The bridge/jwtUtils.ts port into cli/transports/ccrClient.ts that this file
+// used to verify (decodeJwtExpiry + its decodeJwtPayload sibling) is gone:
+// step 7n removed the session-ingress bearer, and the expiry check on that
+// token was the pair's only caller. Recorded here because this fixture is
+// where the port's provenance line lived.
+const removedPorts = [
+  {
+    port: "cli/transports/ccrClient.ts",
+    symbol: "decodeJwtExpiry",
+    source: "bridge/jwtUtils.ts",
+    removedBy: "W65 wave D step 7n",
+    reason:
+      "Its only caller was the session-ingress JWT expiry check, which left with the bearer; the body was otherwise unreachable.",
+  },
+]
 
 const evidence = []
 for (const entry of cases) {
@@ -174,6 +180,7 @@ fs.writeFileSync(
     original,
     deletedFiles: deleted.length,
     evidence,
+    removedPorts,
     tsc: {
       command: "node_modules/.bin/tsc --noEmit --pretty false",
       cwd: root,
@@ -184,7 +191,7 @@ fs.writeFileSync(
     validation:
       "Ported bodies compared textually and behaviourally against the recovered source; deleted-file inventory and live-import sweep bound the removal",
     remaining:
-      "replBridge* AppState fields, cli/transports and the session-ingress bearer surface remain for later waves",
+      "replBridge* AppState fields and cli/transports remain for later waves; the session-ingress bearer surface this file's jwtUtils port belonged to was removed by W65 wave D step 7n (see removedPorts)",
   }, null, 2) + "\n",
 )
 console.log(`PASS ${evidence.length} ports match recovered bodies; ${deleted.length} files deleted; no live bridge imports; tsc log empty`)
