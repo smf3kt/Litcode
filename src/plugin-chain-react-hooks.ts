@@ -70,7 +70,7 @@ export function Xe(type: unknown, props?: Record<string, unknown> | null, key?: 
 }
 
 export interface EffectSlot {
-  deps: readonly unknown[];
+  deps?: readonly unknown[];
   cleanup?: () => void;
 }
 
@@ -140,20 +140,22 @@ export function R<T>(value: T): { current: T } {
 
 /** Source `en` (React.useEffect): queue the effect on mount or a dependency change. It runs after the
  *  element tree is committed, so a ref already points at its node; a dependency change runs the
- *  previous effect's cleanup first, the way React does. */
-export function en(effect: () => void | (() => void), deps: readonly unknown[] = []): void {
+ *  previous effect's cleanup first, the way React does. An effect called without a dependency array
+ *  runs after every render, as React defines it — the source relies on that for its handler refs
+ *  (`en(()=>{t.handler=e})`). */
+export function en(effect: () => void | (() => void), deps?: readonly unknown[]): void {
   const runtime = requireRuntime();
   const at = runtime.cursor++;
   const held = runtime.slots[at] as EffectSlot | undefined;
-  if (held !== undefined && sameDeps(held.deps, deps)) return;
-  const slot: EffectSlot = { deps: [...deps], cleanup: held?.cleanup };
+  if (deps !== undefined && held !== undefined && held.deps !== undefined && sameDeps(held.deps, deps)) return;
+  const slot: EffectSlot = { deps: deps === undefined ? undefined : [...deps], cleanup: held?.cleanup };
   runtime.slots[at] = slot;
   runtime.effects.push({ slot, effect });
 }
 
 /** Source `P` (React.useEffect): queue an effect on mount or a dependency change. The source uses it
  *  beside `en` for subscriptions; both run after the commit, in the order the component queued them. */
-export function P(effect: () => void | (() => void), deps: readonly unknown[] = []): void {
+export function P(effect: () => void | (() => void), deps?: readonly unknown[]): void {
   en(effect, deps);
 }
 

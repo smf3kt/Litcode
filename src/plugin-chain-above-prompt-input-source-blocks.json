@@ -1,0 +1,53 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    },
+    {
+      "module": "chunk-rzab5p9a.js",
+      "sha256": "4cd9bea9906723f903c509a9a73dd0d27967754393109c46b968244a23f2e959"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        442163,
+        443631
+      ],
+      "units": 1468,
+      "bodySha256": "405d1af2952189ce4fa9363bcaf777f492162ba9e7a371f7e9c077149539938a",
+      "note": "digit hint map and prompt input"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        24240,
+        24305
+      ],
+      "units": 65,
+      "bodySha256": "92683351433597bd43b884cb654b6a1d398465cd69bbc65302fb02ac67492f8b",
+      "note": "clock now hook and fallback"
+    },
+    {
+      "module": "chunk-rzab5p9a.js",
+      "sha256": "4cd9bea9906723f903c509a9a73dd0d27967754393109c46b968244a23f2e959",
+      "range": [
+        714,
+        806
+      ],
+      "units": 92,
+      "bodySha256": "c92d9ea0d2f12cb2aa43215f00bd07097aeda00f0dbff7265baadaf4c40e324a",
+      "note": "due-window helper"
+    }
+  ],
+  "missing": []
+}

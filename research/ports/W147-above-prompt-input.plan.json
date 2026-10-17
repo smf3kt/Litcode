@@ -1,0 +1,15 @@
+{
+ "imports": [
+  "import { P, R, Ae } from './plugin-chain-react-hooks.js';",
+  "import { Lc } from './plugin-chain-press-button.js';",
+  "import { Ey } from './plugin-chain-client.js';",
+  "import { on } from './plugin-chain-markdown.js';",
+  "import { PromptClock as b4n } from './plugin-chain-above-prompt-input-host.js';"
+ ],
+ "exports": ["mne", "Pm", "bFe", "h0", "Tp", "Xa", "Uo", "IG", "Oo", "rc"],
+ "blocks": [
+  {"file": "chunk-24k7d6mw.js", "range": [442163, 443631], "note": "digit hint map and prompt input"},
+  {"file": "chunk-1r9zp6s1.js", "range": [24240, 24305], "note": "clock now hook and fallback"},
+  {"file": "chunk-rzab5p9a.js", "range": [714, 806], "note": "due-window helper"}
+ ]
+}
