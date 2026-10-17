@@ -2923,3 +2923,20 @@ answers false because the product keeps local features only. The spinner `Mr`, d
 tabs, list and `si` wiring remain out. Focused 12/12, full 2521/2521, tsc 0, build 0, notices 0,
 scan detail declared 79 / unresolved 0 and sanitize 70 / unresolved 0, identity `881169c5…`.
 [W168 record](ports/W168-detail-view.md).
+
+W169 added the DiffDialog tab strip and scroll box (20 copied blocks, 11,747 UTF-16 units). `sS`
+keys each child by `id ?? title`, honors a controlled `selectedTab` and falls back to the first tab
+for an unknown key, and renders a header row (title, one `je` per child, full-width padding) only
+when not hidden; the content area sits in the scroll box when a viewport attaches, sized to the
+rows left after the measured header and banner, and otherwise renders directly with the recorded
+`contentHeight`/`stableHeight` behavior. `je` renders the current tab inverse and bold, uses the
+padded inverse label only when the tab is current, focused and colored at a non-zero color level,
+reports the cursor position through `Zw`, and drops a click through `aS` when it is a window
+activation or arrives within 300 ms of mount. `OT` publishes the scroll, sticky and measurement
+commands through the caller's ref and coalesces renders through `tI`/`nLr`/`ZFt`. The focus reader
+`_Ee`, containment test `eX`, viewport context, scroll clamp and computed-size helpers are copied
+verbatim. The React seam gained `useImperativeHandle` and the committed node gained the computed
+width/height getters; `Qxr` presence activity is a no-op, `S` returns its reason and `i` is a no-op
+because the product keeps local features only. The spinner `Mr`, dialog frame `_e`, list and `si`
+wiring remain out. Focused 11/11, full 2532/2532, tsc 0, build 0, notices 0, scan declared 189 /
+unresolved 0, identity `f12ed8ca…`. [W169 record](ports/W169-tabs-view.md).

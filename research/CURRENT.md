@@ -188,6 +188,10 @@
 
 [W168](ports/W168-detail-view.md)接通 diff 对话框的单文件明细：复制 **8 块 11,770 单位**（明细源 7 块 5,890u：chunk-24k7d6mw.js `Uwe` 63u、`Sj` 189u、`ypt` 12u、`pBe` 4,321u；chunk-rwv4cv93.js `Ol` 1,197u；chunk-1r9zp6s1.js `XN` 66u；chunk-3cynezh1.js `yV` 42u；清洗闭包 chunk-9f9hx2aq.js `__e` 5,880u）。`pBe` 按 restricted→untracked→binary→large→正常 的顺序渲染标题、分隔行与状态注记；正常分支经 `resolve(cwd,filePath)` 与 1 MB 上限读取文件，首个行与全文交给逐 hunk 的 `H4`，空 hunks 给 `No diff content`，截断给徽标与页脚；读取失败或超限退化为 `firstLine:null`。`Uwe` 清洗路径并折叠空白；`Ol` 重复 `─` 并居中标题；`XN` 在读屏关闭时返回子项。宿主适配：`r8e` 的 Bun `fs.readBoundedSync` 模板内建改为 Node 有界读取（保留打开标志/常规文件检查/分块与超限拒绝），`Ht` 因仅保留本地功能恒为 false。`Mr`、对话框框架 `_e`、页签、列表与 `si` 接线仍待。聚焦 12/12、全量 2521/2521、tsc 0、build 0、notices 0、扫描明细 declared 79/unresolved 0、清洗 70/0，身份 `881169c5…`。
 
+## W169 对话框页签条（C-2 diff 第九片）（2026-10-18）
+
+[W169](ports/W169-tabs-view.md)接通 diff 对话框的页签条与滚动词盒：复制 **20 块 11,747 单位**（页签闭包 chunk-3dnyxzpb.js `sS` 5,123u、`je` 874u、`Na` 265u、`te` 174u；视口 chunk-6j27z6m4.js `VS`/`nl`/`ns`/`Ffe`/`KXe` 292u；滚动/焦点 chunk-06azbynj.js `IU` 76u、`nLr` 100u、`vie` 147u、`S4n` 25u 与 chunk-1r9zp6s1.js `Zw` 245u、`Ze`/`Lo` 18u×2、`_Ee` 368u、`eX` 152u、`Ys`/`zo` 104u；标签 chunk-3c5vzz43.js `Xw` 335u；迟滞点击 chunk-70nf72b4.js `l`/`aS`/`c` 54/355/31u；词盒 chunk-6x3scwgf.js `Se`/`K`/`OT` 2,991u）。`sS` 以 `id??title` 建键，受控选中优先、未知键回退首项；头部行含标题、逐页签头、补白与聚焦/键位路由，内容区在视口挂接时放入 `OT` 并按 `rows-起始行` 限高，否则按 `contentHeight`/`stableHeight` 渲染。`je` 当前项反色加粗，颜色+当前+聚焦时改用 `Xw` 加边标签，点击前经 `aS` 丢弃窗口激活与挂载 300ms 内的迟滞点击。`OT` 发布 `scrollTo`/`scrollToBottom`/`getScrollTop` 等 14 个命令并合并重绘。React 缝新增 `useImperativeHandle`，提交节点补计算宽高。宿主适配：`Qxr` 在线状态滚动活动为空操作，`S`/`i` 事件记录与汇为空操作或原样返回。`Mr`、对话框框架 `_e`、列表与 `si` 接线仍待。聚焦 11/11、全量 2532/2532、tsc 0、build 0、notices 0、扫描 declared 189/unresolved 0，身份 `f12ed8ca…`。
+
 ## 待完成清单
 
 本清单为当前唯一待办入口，取代下方按时间累积的历史排程表（那张表保留原证据，供追溯，不再作为排程依据）。每条都指回来源，来源是实测结论，不是计划。

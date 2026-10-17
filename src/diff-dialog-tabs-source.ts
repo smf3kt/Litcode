@@ -1,0 +1,84 @@
+// @ts-nocheck
+// Exact source bodies, copied verbatim; provenance: research/ports/W45-chain-runner-copies.json.
+// Modules:
+//   chunk-3dnyxzpb.js sha256 edad32e3e3c52e48115ffcd78457c8bd5b74de1fe220e32065ad21c474a29da4
+//   chunk-6j27z6m4.js sha256 37bdceea8915ebd9bf3bca43c31d259d637d89bcdcac9086ccb6d91e5eaa6aef
+//   chunk-06azbynj.js sha256 5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd
+//   chunk-1r9zp6s1.js sha256 444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e
+//   chunk-3c5vzz43.js sha256 347697a0ed5b1cac607d2b1f64804c5dbd13087c6d6742a53237ab21947ca54c
+//   chunk-70nf72b4.js sha256 fcace513f43a275080517d548c036c517b26349b41bf31c17d26c92361bbdaac
+//   chunk-6x3scwgf.js sha256 db830997e9e573f4e51e1bc73ab09b1f550928c0078ce2803e609951b593cac6
+// Each block carries its zero-based UTF-16 [start,end) range, unit count and body SHA-256.
+import { Xe as e, Xe as r, s, n, w, b, y, R, Rt, Ae, en, Z, hh, le, qt, tI, ZFt, useImperativeHandle as fye } from './plugin-chain-react-surface.js';
+import { Zy } from './plugin-chain-press-button-source.js';
+import { ke } from './plugin-chain-input-field-source.js';
+import { ae } from './plugin-chain-text-clamp-source.js';
+import { ld } from './tui-primitives.js';
+import { ge } from './tui-color.js';
+import { on, vje } from './plugin-chain-markdown-source.js';
+import { nn } from './plugin-chain-above-prompt-keybinding-source.js';
+import { t } from './plugin-chain-host.js';
+import { markScrollActivity as Qxr, analyticsReason as S, analyticsEvent as i } from './diff-dialog-tabs-host.js';
+
+// chunk-3dnyxzpb.js the tabs context g, the title-key/width helpers, and sS, the tab strip and its content area [1324,6447) 5123 units sha256 74aa4bdf820207fa7dc254b0db822a5c23e572cc0728e420e1e48b8e4e29f8da
+function ko(dt){return[dt.props.id??dt.props.title,dt.props.title]}function xo(Qo){return Qo+1}function To(Xo,d){let[,xn]=d;return Xo+(xn?ae(xn):0)+2+1}function Fo(T){return T+1}function Co(H){return H-1}var g=qt({selectedTab:void 0,width:void 0,headerFocused:!1,focusHeader:()=>{},blurHeader:()=>{},registerOptIn:()=>()=>{},registerNavigationOwner:()=>()=>{}});function sS(d){let h=w(52),{title:l,color:a,defaultTab:c,children:u,hidden:t,useFullWidth:p,selectedTab:T,onTabChange:H,banner:k,disableNavigation:pe,initialHeaderFocused:S,contentHeight:I,stableHeight:ne,navFromContent:Ge}=d,L=S===void 0?!0:S,m=ne===void 0?!1:ne,jt=Ge===void 0?!1:Ge,{columns:me}=ke(),v=u.map(ko),ve=c?v.findIndex((oe)=>c===oe[0]):0,Ue=T!==void 0,[Ho,Ro]=y(ve!==-1?ve:0),Gt=Ue?v.findIndex((yo)=>yo[0]===T):-1,D=Ue?Gt!==-1?Gt:0:Ho,we=Ae(VS),O=Ffe(),M=KXe(),Ye=R(null),[xe,So]=y(0),re=R(null),[Te,Io]=y(1),Ut;if(h[0]!==xe||h[1]!==Te)Ut=()=>{let Yt=Ye.current?Ys(Ye.current).height:0;if(Yt!==xe)So(Yt);let _t=re.current?Math.max(1,Ys(re.current).height):1;if(_t!==Te)Io(_t)},h[0]=xe,h[1]=Te,h[2]=Ut;else Ut=h[2];en(Ut);let ie=(t?0:Te+1)+xe,zt,Jt;if(h[3]!==M||h[4]!==ie)zt=()=>{if(!M){return}return M(ie),()=>M(null)},Jt=[M,ie],h[3]=M,h[4]=ie,h[5]=zt,h[6]=Jt;else zt=h[5],Jt=h[6];en(zt,Jt);let Qt;if(h[7]===b)Qt={rows:0,columns:0},h[7]=Qt;else Qt=h[7];let{rows:Do}=ns(Qt),W=M!==null&&O!==null,_e=O?.attach,Fe=W?Do-ie:void 0,Xt;if(h[8]!==we||h[9]!==W)Xt=we&&W?{...we,claimScrollBox:null}:null,h[8]=we,h[9]=W,h[10]=Xt;else Xt=h[10];let qe=Xt,wr=!0,de=R(null),ze=R(null),{focus:B,activeElement:j,focusDirection:Je,blur:Qe}=_Ee(),[G,se]=y(L),Zt;if(h[11]!==j||h[12]!==B)Zt=()=>{if(!0&&re.current)B(re.current);else if(!1&&de.current){if(j&&j!==de.current&&IU(j,de.current))ze.current=j;B(de.current)}se(!0)},h[11]=j,h[12]=B,h[13]=Zt;else Zt=h[13];let $t=Zt,tn;if(h[14]!==Qe||h[15]!==B)tn=(on)=>{if(!0&&on)B(on);else Qe();ze.current=null,se(!1)},h[14]=Qe,h[15]=B,h[16]=tn;else tn=h[16];let No=tn,[E,Oo]=te(),[Mo,Wo]=te(),A=pe||Mo,rn=G||!E,Xe=R(null),Bo=eX(Xe),Eo=!0&&!E?!Bo:rn,[an,Ao]=hh(xo,0),ln=R(null),dn;if(h[17]===b)dn=()=>{ze.current=null},h[17]=dn;else dn=h[17];en(dn,[D]);let un=(Ze,sn)=>{let Po=sn===void 0?!1:sn;ln.current={epoch:an,index:Ze},Ao();let cn=v[Ze]?.[0];if(Ue&&H&&cn)H(cn);else Ro(Ze);if(Po){return}$t()},Ce=(Vo,hn)=>{let Ko=hn===void 0?!1:hn;let fn=ln.current;let Lo=fn?.epoch===an?fn.index:D;un((Lo+v.length+Vo)%v.length,Ko)};const $e=!t&&!A&&rn;let bn;if(h[18]!==$e)bn={context:"Tabs",isActive:$e},h[18]=$e,h[19]=bn;else bn=h[19];nn({"tabs:next":()=>Ce(1),"tabs:previous":()=>Ce(-1)},bn);let pn;if(h[20]!==A||h[21]!==Je||h[22]!==G||h[23]!==t||h[24]!==E)pn=(f)=>{if(t||A){return}if(!G){if(f.key==="left"||f.key==="right"||f.key==="tab"||E&&(f.key==="up"||f.key==="down"))f.preventDefault();return}if(f.key==="left"||f.key==="right"||f.key==="tab")f.preventDefault();else if(f.key==="down"&&E)f.preventDefault(),Je("down"),se(!1)},h[20]=A,h[21]=Je,h[22]=G,h[23]=t,h[24]=E,h[25]=pn;else pn=h[25];let mn=pn;const et=jt&&!G&&E&&!t&&!A;let gn;if(h[26]!==et)gn={context:"Tabs",isActive:et},h[26]=et,h[27]=gn;else gn=h[27];nn({"tabs:next":()=>Ce(1,!0),"tabs:previous":()=>Ce(-1,!0)},gn);let jo=l?ae(l)+1:0,Go=v.reduce(To,0),Uo=jo+Go,vn=p?Math.max(0,me-Uo):0,ce=p?me:void 0;const Yo={selectedTab:v[D][0],width:ce,headerFocused:G,focusHeader:$t,blurHeader:No,registerOptIn:Oo,registerNavigationOwner:Wo},tt=s,nt=!0?void 0:de,_o="column",ot=!0?void 0:0,rt=!0?void 0:L,it=!0?void 0:mn,at=O?0:void 0,lt=!t&&r(s,{ref:re,tabIndex:!0?0:void 0,autoFocus:!0?L:void 0,onFocus:!0?()=>se(!0):void 0,onBlur:!0?()=>se(!1):void 0,onKeyDown:!0?mn:void 0,flexDirection:"row",flexWrap:"wrap",columnGap:1,flexShrink:O?0:void 0,alignSelf:!0&&!p?"flex-start":void 0,children:[l!==null&&e(s,{flexShrink:0,children:e(n,{bold:!0,color:a,children:l})}),v.map((qo,wn)=>{let[zo,Jo]=qo;return e(je,{title:Jo,isCurrent:D===wn,headerFocused:Eo&&!A,color:a??(!0?"suggestion":void 0),onClick:A?void 0:()=>un(wn)},zo)}),vn>0&&e(n,{children:" ".repeat(vn)})]});let He;if(h[28]!==k)He=k!=null&&e(s,{ref:Ye,flexDirection:"column",flexShrink:0,children:k}),h[28]=k,h[29]=He;else He=h[29];let Re;if(h[30]!==_e||h[31]!==qe||h[32]!==u||h[33]!==I||h[34]!==ce||h[35]!==t||h[36]!==O||h[37]!==W||h[38]!==Fe||h[39]!==D||h[40]!==m)Re=W?e(s,{ref:Xe,width:ce,marginTop:t?0:1,flexShrink:0,children:e(OT,{ref:_e,flexDirection:"column",flexShrink:0,height:m?Fe:void 0,maxHeight:m?void 0:Fe,stickyScroll:!1,children:e(VS,{value:qe,children:u})},D)}):e(s,{ref:Xe,width:ce,marginTop:t?0:1,height:m?void 0:I,minHeight:m?I:void 0,overflowY:I!==void 0&&!m?"hidden":void 0,flexShrink:O?0:void 0,children:u}),h[30]=_e,h[31]=qe,h[32]=u,h[33]=I,h[34]=ce,h[35]=t,h[36]=O,h[37]=W,h[38]=Fe,h[39]=D,h[40]=m,h[41]=Re;else Re=h[41];let kn;if(h[42]!==tt||h[43]!==nt||h[44]!==ot||h[45]!==rt||h[46]!==it||h[47]!==at||h[48]!==lt||h[49]!==He||h[50]!==Re)kn=r(tt,{ref:nt,flexDirection:_o,tabIndex:ot,autoFocus:rt,onKeyDown:it,flexShrink:at,children:[lt,He,Re]}),h[42]=tt,h[43]=nt,h[44]=ot,h[45]=rt,h[46]=it,h[47]=at,h[48]=lt,h[49]=He,h[50]=Re,h[51]=kn;else kn=h[51];return e(g.Provider,{value:Yo,children:kn})}
+
+// chunk-3dnyxzpb.js je, one tab header: inverse when current, padded label when hovered and current [6447,7321) 874 units sha256 82e47ce7da9a0080ff4359cae4e1d55822c114d6b159d8228e544b448cea6e61
+function je(d){let S=w(18),{title:l,isCurrent:a,headerFocused:c,color:u,onClick:t}=d,[p,T]=y(!1),H=aS(),k=t!==void 0;const pe=a&&c;let I;if(S[0]!==pe)I={line:0,column:1,active:pe},S[0]=pe,S[1]=I;else I=S[1];let ne=Zw(I),Ge=ge.level===0,L=u&&a&&c&&!Ge,m;if(S[2]!==t||S[3]!==H)m=t===void 0?void 0:(jt)=>{if(H(jt)){return}t()},S[2]=t,S[3]=H,S[4]=m;else m=S[4];let me,v;if(S[5]===b)me=()=>T(!0),v=()=>T(!1),S[5]=me,S[6]=v;else me=S[5],v=S[6];let oe;if(S[7]!==k||S[8]!==u||S[9]!==L||S[10]!==p||S[11]!==a||S[12]!==l)oe=L?e(Xw,{color:u,bold:!0,padded:!0,children:l}):r(n,{inverse:a,bold:a,underline:p&&k,children:[" ",l," "]}),S[7]=k,S[8]=u,S[9]=L,S[10]=p,S[11]=a,S[12]=l,S[13]=oe;else oe=S[13];let ve;if(S[14]!==ne||S[15]!==m||S[16]!==oe)ve=e(s,{ref:ne,flexShrink:0,onClick:m,onMouseEnter:me,onMouseLeave:v,children:oe}),S[14]=ne,S[15]=m,S[16]=oe,S[17]=ve;else ve=S[17];return ve}
+
+// chunk-3dnyxzpb.js Na, the tab content that renders only for the selected tab [7321,7586) 265 units sha256 d22a89e5ec54e077f1b646e821b613d04a72f9e16aec24d1c73365c8ba1f61fc
+function Na(d){let H=w(4),{title:l,id:a,children:c}=d,{selectedTab:u,width:t}=Ae(g),p=nl();if(u!==(a??l)){return null}const T=p?0:void 0;let k;if(H[0]!==c||H[1]!==T||H[2]!==t)k=e(s,{width:t,flexShrink:T,children:c}),H[0]=c,H[1]=T,H[2]=t,H[3]=k;else k=H[3];return k}
+
+// chunk-3dnyxzpb.js te, the opt-in counter pair [7909,8083) 174 units sha256 81802c976242c03e270c51cfe78f50af564920af13fadeb0b2a306272f63a6e4
+function te(){let a=w(3),[d,l]=y(0),c;if(a[0]===b)c=()=>(l(Fo),()=>l(Co)),a[0]=c;else c=a[0];let u=c;const t=d>0;let p;if(a[1]!==t)p=[t,u],a[1]=t,a[2]=p;else p=a[2];return p}
+
+// chunk-6j27z6m4.js VS/nl/ns/Ffe/KXe: the viewport context and its scroll viewport and scroll box readers [717,1009) 292 units sha256 70709c5086940cd1e1ce8944a76be067bbfcea9563f55f81dafdb8639b026cde
+var VS=qt(null);function nl(){return Ae(VS)!==null}function ns(o){let c=w(3),l=Ae(VS),n;if(c[0]!==l||c[1]!==o)n=l?{rows:l.rows,columns:l.columns}:o,c[0]=l,c[1]=o,c[2]=n;else n=c[2];return n}function Ffe(){return Ae(VS)?.scrollViewport??null}function KXe(){return Ae(VS)?.claimScrollBox??null}
+
+// chunk-06azbynj.js IU: whether a node is inside another [135432,135508) 76 units sha256 557e05a28a7b74d92936b5371f07dba414dade542d136b5e15d10eb7f4667ac6
+function IU(n,u){let f=n;while(f){if(f===u)return!0;f=f.parentNode}return!1}
+
+// chunk-06azbynj.js nLr: stamp the start of a scroll commit on the root node [173441,173541) 100 units sha256 6cda8ce8b6fdb748439062bf297613cfe1f3d8ac78454376e8dfeb211e96a35e
+function nLr(n){let u=n;while(u.parentNode)u=u.parentNode;u.scrollCommitStartedAt=performance.now()}
+
+// chunk-06azbynj.js vie: clamp a node's scroll offset to its content height [174030,174177) 147 units sha256 01e87dfd3772a8cd0c11f154f66d704ef6073b38324b5c6c63629589ff5ab01e
+function vie(n){let u=n.scrollTop??0;if(n.scrollHeight===void 0)return u;return Math.min(u,Math.max(0,n.scrollHeight-(n.scrollViewportHeight??0)))}
+
+// chunk-06azbynj.js S4n: the cursor-position context [224832,224857) 25 units sha256 1c12874e540904748a39f02a21e62604b1519ad406c486fcc682ac18cfba448f
+var tx=qt(()=>{}),S4n=tx;
+
+// chunk-1r9zp6s1.js Zw: report the focused node's cursor position to the hover context [19906,20151) 245 units sha256 bee121e03cd424765cb8c05cfd8a9b27cbffd9e6727ab43eb1d902149dd36fa2
+function Zw({line:o,column:r,active:l,visible:u=!1}){let c=Ae(S4n),p=R(null),m=le((C)=>{p.current=C},[]);return en(()=>{let C=p.current;if(l&&C)c({relativeX:r,relativeY:o,node:C,visible:u});else c(null,C)}),en(()=>()=>{c(null,p.current)},[c]),m}
+
+// chunk-1r9zp6s1.js Ze: the empty subscription [23676,23694) 18 units sha256 678ad829f18eb0bdb4927251ab2374de2f1704e9971a961c79233d76997eeba8
+var Ze=()=>()=>{};
+
+// chunk-1r9zp6s1.js _Ee: read the focus manager, its active element, and the focus directions [23694,24062) 368 units sha256 98cfe9451dc5b9a5e6237a95a784386fee03315a6730775826d70d8f6e62bd4a
+function _Ee(){let{focusManager:o,rootNode:r}=Ae(Zy),l=Rt(o?.subscribe??Ze,()=>o?.activeElement??null);return Z(()=>({activeElement:l,focusNext:()=>{if(o&&r)o.focusNext(r)},focusPrevious:()=>{if(o&&r)o.focusPrevious(r)},focusDirection:(u)=>{if(o&&r)return o.focusDirection(u,r);return!1},focus:(u)=>o?.focus(u),blur:()=>o?.blur(),subscribe:o?.subscribe??Ze}),[l,o,r])}
+
+// chunk-1r9zp6s1.js Lo: the empty subscription [24066,24084) 18 units sha256 7ff56b307d24be28437efc725a308d192eee81bb4a09236a74eb7a218bc8aed1
+var Lo=()=>()=>{};
+
+// chunk-1r9zp6s1.js eX: whether the focus manager's active element is inside a ref [24084,24236) 152 units sha256 5122a3dfaa94a966d7ac9178e052fb28a1a77b99de134ad5e0fed3c2512cfbb7
+function eX(o){let{focusManager:r}=Ae(Zy);return Rt(r?.subscribe??Lo,()=>{let l=o.current,u=r?.activeElement;if(!l||!u)return!1;return IU(u,l)},()=>!1)}
+
+// chunk-1r9zp6s1.js Ys/zo: a node's computed width and height [28445,28549) 104 units sha256 bd77aed10eab7c4cc66b22aeb94194cc54dad82981c06f53add1fb84a2e33dec
+var zo=(o)=>({width:o.yogaNode?.getComputedWidth()??0,height:o.yogaNode?.getComputedHeight()??0}),Ys=zo;
+
+// chunk-3c5vzz43.js Xw: a padded inverse label for the current hovered tab [753,1088) 335 units sha256 b4315237002b2e2424b6f93f11e19814ed35f2db142cb466ba457c5e75e8a4e5
+function Xw(b){let R=w(7),{children:t,color:o,textColor:x,padded:T,bold:d,wrap:l}=b,e=T?" ":"";const p=x??(o?"inverseText":void 0);let s;if(R[0]!==d||R[1]!==t||R[2]!==o||R[3]!==e||R[4]!==p||R[5]!==l)s=r(n,{backgroundColor:o,color:p,bold:d,wrap:l,children:[e,t,e]}),R[0]=d,R[1]=t,R[2]=o,R[3]=e,R[4]=p,R[5]=l,R[6]=s;else s=R[6];return s}
+
+// chunk-70nf72b4.js l: whether a click is a window activation or inside the mount-settle window [903,957) 54 units sha256 fe9ccc9593789642a4379f50d471d7d25fcc43f6a91fdde4e2784df161933315
+function l(o,n,r){return o.isWindowActivation||c(n,r)}
+
+// chunk-70nf72b4.js aS: the stray-click predicate the tab header consults [957,1312) 355 units sha256 b547211e174c6252a90a1cc0993850418d7528541e88058f3efc58a23eedc17e
+function aS(){let o=on(),[n]=y(()=>o.now());return le((r)=>{let e=o.now();if(!l(r,n,e))return!1;let u=r.isWindowActivation?S("window_activation"):S("mount_settle");return t(`Select: dropped stray click (${r.isWindowActivation?"window-activation click":`${e-n}ms after mount`})`),i("tengu_select_stray_click_dropped",{reason:u}),r.dropAsStray(),!0},[o,n])}
+
+// chunk-70nf72b4.js c: the mount-settle comparison [1391,1422) 31 units sha256 dc2f497e5e1b3fdd53d8705ac661763b944be23179ce631420c53d9e010e7dcf
+function c(o,n){return n-o<vje}
+
+// chunk-6x3scwgf.js Se/K/OT: the scroll box component and its imperative handle [965,3956) 2991 units sha256 2f352499a7bc38098200e42ef88608b5cf3113164cb84f7578ff93420ed7ac63
+function Se(Te){return Te+1}function K(A){let o=w(28),M,S,L,c,f;if(o[0]!==A)({children:M,ref:L,stickyScroll:c,followGrowth:S,...f}=A),o[0]=A,o[1]=M,o[2]=S,o[3]=L,o[4]=c,o[5]=f;else M=o[1],S=o[2],L=o[3],c=o[4],f=o[5];let r=R(null),[,be]=y(0),U;if(o[6]===b)U=new Set,o[6]=U;else U=o[6];let P=R(U),j=R(!1),Z;if(o[7]===b)Z=()=>{for(const xe of P.current)xe()},o[7]=Z;else Z=o[7];let _=Z,ee;if(o[8]===b)ee=function x(Q){if(Qxr(),tI(Q),nLr(Q),_(),j.current){return}j.current=!0,queueMicrotask(()=>{j.current=!1,ZFt(Q)})},o[8]=ee;else ee=o[8];let x=ee,le,re;if(o[9]!==c)le=()=>({scrollTo(we,Re){let u=r.current;if(!u){return}if(u.stickyScroll=!1,!Re?.preserveHwm)u.scrollHeightHwm=void 0;u.pendingScrollDelta=void 0,u.scrollAnchor=void 0,u.scrollTop=Math.max(0,Math.floor(we)),x(u)},scrollToElement(ke,p,He){let ve=p===void 0?0:p;let h=r.current;if(!h){return}h.stickyScroll=!1,h.scrollHeightHwm=void 0,h.pendingScrollDelta=void 0,h.scrollAnchor={el:ke,offset:ve,block:He?.block??"start"},x(h)},scrollBy(Me){let s=r.current;if(!s){return}s.stickyScroll=!1,s.scrollHeightHwm=void 0,s.scrollTop=vie(s),s.scrollAnchor=void 0,s.pendingScrollDelta=(s.pendingScrollDelta??0)+Math.floor(Me),x(s)},scrollToBottom(){let i=r.current;if(!i){return}if(i.pendingScrollDelta=void 0,c===!1){i.scrollAnchor=void 0,i.scrollTop=Math.max(0,(i.scrollHeight??0)-(i.scrollViewportHeight??0)),x(i);return}i.stickyScroll=!0,tI(i),_(),be(Se)},getScrollTop(){return r.current?.scrollTop??0},getPendingDelta(){return r.current?.pendingScrollDelta??0},getScrollHeight(){return r.current?.scrollHeight??0},getFreshScrollHeight(){return r.current?.childNodes[0]?.yogaNode?.getComputedHeight()??r.current?.scrollHeight??0},getViewportHeight(){return r.current?.scrollViewportHeight??0},getViewportTop(){return r.current?.scrollViewportTop??0},isSticky(){let W=r.current;if(!W){return!1}return W.stickyScroll??Boolean(W.attributes.stickyScroll)},subscribe(oe){return P.current.add(oe),()=>P.current.delete(oe)},setClampBounds(te,ne){let g=r.current;if(!g){return}if(g.scrollClampMin===te&&g.scrollClampMax===ne){return}g.scrollClampMin=te,g.scrollClampMax=ne,tI(g)},getDomElement(){return r.current}}),re=[c],o[9]=c,o[10]=le,o[11]=re;else le=o[10],re=o[11];fye(L,le,re);const p=f.flexDirection??"row",F=f.flexGrow??0,X=f.flexShrink??1;let T;if(o[12]!==f||o[13]!==p||o[14]!==F||o[15]!==X)T={flexWrap:"nowrap",flexDirection:p,flexGrow:F,flexShrink:X,selectionScope:!0,...f,overflowX:"scroll",overflowY:"scroll"},o[12]=f,o[13]=p,o[14]=F,o[15]=X,o[16]=T;else T=o[16];let D;if(o[17]!==c)D=c!==void 0&&{stickyScroll:c},o[17]=c,o[18]=D;else D=o[18];let B;if(o[19]!==S)B=S!==void 0&&{followGrowth:S},o[19]=S,o[20]=B;else B=o[20];let E;if(o[21]!==M)E=e(ld,{flexDirection:"column",flexGrow:1,flexShrink:0,width:"100%",children:M}),o[21]=M,o[22]=E;else E=o[22];let ce;if(o[23]!==D||o[24]!==B||o[25]!==E||o[26]!==T)ce=e("ink-box",{ref:r,style:T,...D,...B,children:E}),o[23]=D,o[24]=B,o[25]=E,o[26]=T,o[27]=ce;else ce=o[27];return ce}var OT=K;
+
+
+export { g, ko, xo, To, Fo, Co, sS, je, Na, te, aS, VS, nl, ns, Ffe, KXe, OT };

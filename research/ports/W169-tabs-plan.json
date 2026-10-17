@@ -1,0 +1,37 @@
+{
+  "imports": [
+    "import { Xe as e, Xe as r, s, n, w, b, y, R, Rt, Ae, en, Z, hh, le, qt, tI, ZFt, useImperativeHandle as fye } from './plugin-chain-react-surface.js';",
+    "import { Zy } from './plugin-chain-press-button-source.js';",
+    "import { ke } from './plugin-chain-input-field-source.js';",
+    "import { ae } from './plugin-chain-text-clamp-source.js';",
+    "import { ld } from './tui-primitives.js';",
+    "import { ge } from './tui-color.js';",
+    "import { on, vje } from './plugin-chain-markdown-source.js';",
+    "import { nn } from './plugin-chain-above-prompt-keybinding-source.js';",
+    "import { t } from './plugin-chain-host.js';",
+    "import { markScrollActivity as Qxr, analyticsReason as S, analyticsEvent as i } from './diff-dialog-tabs-host.js';"
+  ],
+  "exports": ["g", "ko", "xo", "To", "Fo", "Co", "sS", "je", "Na", "te", "aS", "VS", "nl", "ns", "Ffe", "KXe", "OT"],
+  "blocks": [
+    { "file": "chunk-3dnyxzpb.js", "range": [1324, 6447], "note": "the tabs context g, the title-key/width helpers, and sS, the tab strip and its content area" },
+    { "file": "chunk-3dnyxzpb.js", "range": [6447, 7321], "note": "je, one tab header: inverse when current, padded label when hovered and current" },
+    { "file": "chunk-3dnyxzpb.js", "range": [7321, 7586], "note": "Na, the tab content that renders only for the selected tab" },
+    { "file": "chunk-3dnyxzpb.js", "range": [7909, 8083], "note": "te, the opt-in counter pair" },
+    { "file": "chunk-6j27z6m4.js", "range": [717, 1009], "note": "VS/nl/ns/Ffe/KXe: the viewport context and its scroll viewport and scroll box readers" },
+    { "file": "chunk-06azbynj.js", "range": [135432, 135508], "note": "IU: whether a node is inside another" },
+    { "file": "chunk-06azbynj.js", "range": [173441, 173541], "note": "nLr: stamp the start of a scroll commit on the root node" },
+    { "file": "chunk-06azbynj.js", "range": [174030, 174177], "note": "vie: clamp a node's scroll offset to its content height" },
+    { "file": "chunk-06azbynj.js", "range": [224832, 224857], "note": "S4n: the cursor-position context" },
+    { "file": "chunk-1r9zp6s1.js", "range": [19906, 20151], "note": "Zw: report the focused node's cursor position to the hover context" },
+    { "file": "chunk-1r9zp6s1.js", "range": [23676, 23694], "note": "Ze: the empty subscription" },
+    { "file": "chunk-1r9zp6s1.js", "range": [23694, 24062], "note": "_Ee: read the focus manager, its active element, and the focus directions" },
+    { "file": "chunk-1r9zp6s1.js", "range": [24066, 24084], "note": "Lo: the empty subscription" },
+    { "file": "chunk-1r9zp6s1.js", "range": [24084, 24236], "note": "eX: whether the focus manager's active element is inside a ref" },
+    { "file": "chunk-1r9zp6s1.js", "range": [28445, 28549], "note": "Ys/zo: a node's computed width and height" },
+    { "file": "chunk-3c5vzz43.js", "range": [753, 1088], "note": "Xw: a padded inverse label for the current hovered tab" },
+    { "file": "chunk-70nf72b4.js", "range": [903, 957], "note": "l: whether a click is a window activation or inside the mount-settle window" },
+    { "file": "chunk-70nf72b4.js", "range": [957, 1312], "note": "aS: the stray-click predicate the tab header consults" },
+    { "file": "chunk-70nf72b4.js", "range": [1391, 1422], "note": "c: the mount-settle comparison" },
+    { "file": "chunk-6x3scwgf.js", "range": [965, 3956], "note": "Se/K/OT: the scroll box component and its imperative handle" }
+  ]
+}
