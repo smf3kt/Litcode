@@ -2358,3 +2358,12 @@ system-prompt section before the next request. `src/**` normalizes to `src`, a l
 the skill unconditional, a non-string pattern is a config error, and paths outside the workspace
 never activate. Dynamic directory discovery remains open. Focused 134/134, lifecycle 55/55, tsc 0,
 build 0, full 2,190/2,190, chain 768/768, identity `03e2bef1…`. [W122 record](ports/W122-conditional-skills.md).
+
+W123-01 ports dynamic skill directory discovery. Every path-bearing tool call walks from the
+touched file's directory up to the workspace and records each `<dir>/.harness/skills` candidate
+once per session. A candidate that exists and is not ignored by `git check-ignore` is loaded
+with the project skill rules; malformed entries are skipped rather than failing the tool, names
+already live or held are not duplicated, and new skills are appended to the live catalog and
+re-rendered before the next request. `reloadSkills` re-reads the discovered directories after
+the static rescan. Focused 137/137, three-suite 164/164, tsc 0, build 0, full 2,194/2,194, chain
+768/768, identity `4149770c…`. [W123 record](ports/W123-dynamic-skill-discovery.md).

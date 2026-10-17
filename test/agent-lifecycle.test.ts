@@ -921,6 +921,30 @@ test("a touch outside a held skill's paths leaves it conditional", async () => {
   finally { session.close(); }
 });
 
+test("a touched path loads a nested skill directory before the next request", async () => {
+  const root = workspace();
+  write(root, "nested/a.ts", "content\n");
+  write(root, "nested/.harness/skills/local/SKILL.md", "---\nname: local\ndescription: Local skill\n---\nLocal body\n");
+  const read = spy("read_file", true);
+  const cfg = config(root, [read.tool], { skills: [] });
+  const provider = new ScriptedProvider([
+    response([call("one", "read_file", { path: "nested/a.ts" })], "tool_use"),
+    request => {
+      // Discovery reached the live catalog and the rendered prompt before this request.
+      assert.deepEqual(session.config.skills?.map(skill => skill.name), ["local"]);
+      assert.match(String(request.system), /Local skill/);
+      return done();
+    },
+  ]);
+  const session = Session.open(root, { config: cfg });
+  const live = session.config.skills;
+  try {
+    await new Agent(session, provider, [read.tool]).run("read a nested file");
+    assert.equal(session.config.skills, live, "the catalog array keeps its identity");
+    assert.ok(session.config.dynamicSkillDirs?.includes(path.join(root, "nested", ".harness", "skills")));
+  } finally { session.close(); }
+});
+
 test("TaskCreated receives the created task's fields and a block rolls the task back", async () => {
   const root = workspace();
   const capture = path.join(root, "task-created.jsonl");

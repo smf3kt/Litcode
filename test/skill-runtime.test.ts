@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, assertPaired, defaultConfig } from '../src/agent.js';
@@ -10,7 +11,7 @@ import { AgentRegistry } from '../src/agent-registry.js';
 import type { SkillInfo } from '../src/config.js';
 import type { ModelProvider, ModelRequest } from '../src/provider.js';
 import { executeSkill, skillRequiresExecution, type SkillExecutionOptions } from '../src/skill-runtime.js';
-import { activateTouchedSkills } from '../src/skill-catalog.js';
+import { activateTouchedSkills, discoverTouchedSkills } from '../src/skill-catalog.js';
 import { buildSystem, createSkillTool } from '../src/runtime.js';
 import { SkillEffectJournal } from '../src/skill-effects.js';
 import { Session } from '../src/session.js';
@@ -677,5 +678,49 @@ test('a conditional skill is held out of the catalog until a matching path is to
     assert.equal(config.heldSkills, undefined);
     assert.match(config.system, /- scoped: Scoped/);
     assert.match(String(tool.schema.description), /Load an available skill/);
+  } finally { fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('a touched path discovers nested skill directories once and only within the workspace', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-dynamic-skills-')));
+  try {
+    const dir = path.join(workspace, 'nested', '.harness', 'skills', 'local');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), '---\nname: local\ndescription: Local\n---\nLocal body\n');
+    const config = defaultConfig(workspace, []);
+    config.skills = [skill({ name: 'greet', description: 'Say hello' })];
+    config.system = buildSystem('BASE', [], config.skills);
+    const loaded = await discoverTouchedSkills(config, [path.join(workspace, 'nested', 'a.ts')]);
+    assert.deepEqual(loaded.map(entry => entry.name), ['local']);
+    assert.deepEqual(config.skills.map(entry => entry.name), ['greet', 'local']);
+    assert.match(config.system, /- local: Local/);
+    // Both the nested candidate and the workspace-level candidate are recorded
+    // before they are checked, and the nested one was loaded.
+    assert.deepEqual(config.dynamicSkillDirs, [
+      path.join(workspace, 'nested', '.harness', 'skills'),
+      path.join(workspace, '.harness', 'skills'),
+    ]);
+    // A second touch under the same ancestor does not rescan known directories.
+    assert.deepEqual(await discoverTouchedSkills(config, [path.join(workspace, 'nested', 'b.ts')]), []);
+    // Paths outside the workspace discover nothing.
+    assert.deepEqual(await discoverTouchedSkills(config, ['../outside/a.ts']), []);
+  } finally { fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('a gitignored skills directory is not loaded', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-dynamic-ignored-')));
+  try {
+    execFileSync('git', ['init', '-q'], { cwd: workspace });
+    fs.writeFileSync(path.join(workspace, '.gitignore'), 'nested/\n');
+    const dir = path.join(workspace, 'nested', '.harness', 'skills', 'hidden');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), '---\nname: hidden\ndescription: Hidden\n---\nHidden body\n');
+    const config = defaultConfig(workspace, []);
+    config.skills = [];
+    config.system = buildSystem('BASE', [], config.skills);
+    assert.deepEqual(await discoverTouchedSkills(config, [path.join(workspace, 'nested', 'a.ts')]), []);
+    assert.deepEqual(config.skills, []);
+    // The candidate is recorded, so a later touch does not re-check it.
+    assert.ok(config.dynamicSkillDirs?.includes(path.join(workspace, 'nested', '.harness', 'skills')));
   } finally { fs.rmSync(workspace, { recursive: true, force: true }); }
 });

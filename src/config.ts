@@ -291,7 +291,10 @@ export const CONFIG_LIMITS = Object.freeze({
 
 const INSTRUCTION_FILES = ["HARNESS.md", "AGENTS.md"] as const;
 const SKILL_MANIFEST = "SKILL.md";
-const HARNESS_DIR = ".harness";
+/** Project configuration directory name; dynamic skill discovery looks for
+ *  the same directory beside a touched path (`dAr`, chunk-sfn1dbxq.js offset
+ *  3396597, scans `.claude/skills` in the recovered product). */
+export const HARNESS_DIR = ".harness";
 
 // Keys that must never be merged as ordinary data: assigning or recursing into
 // them can mutate an object's prototype chain.
@@ -1015,12 +1018,13 @@ function loadSkill(skillDir: string, skillManifest: string, into: Map<string, Sk
  * realpaths de-duplicates symlinked or repeated entries across directories.
  * Every loaded SKILL.md draws from the shared aggregate byte budget.
  */
-function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillInfo>, budget: ByteBudget, source: SkillSource, namespace?: string): void {
+function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillInfo>, budget: ByteBudget, source: SkillSource, namespace?: string, tolerant = false): void {
   if (!isDirectory(baseDir)) return;
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(baseDir, { withFileTypes: true });
   } catch (error) {
+    if (tolerant) return;
     throw new ConfigError("cannot read skills directory", baseDir, { cause: error });
   }
   if (entries.length > CONFIG_LIMITS.dirEntries) {
@@ -1038,8 +1042,32 @@ function scanSkills(baseDir: string, seen: Set<string>, into: Map<string, SkillI
     if (seen.has(manifestReal)) continue;
     seen.add(real);
     seen.add(manifestReal);
-    loadSkill(skillDir, skillManifest, into, budget, source, namespace);
+    try {
+      loadSkill(skillDir, skillManifest, into, budget, source, namespace);
+    } catch (error) {
+      // The recovered directory scanner logs a failed entry and keeps the rest
+      // of the directory (`mO`, chunk-sfn1dbxq.js offset 3384052); the initial
+      // configuration load stays strict.
+      if (!tolerant || !(error instanceof ConfigError)) throw error;
+    }
   }
+}
+
+/**
+ * Load skills from directories discovered beside a touched path. Each
+ * directory is scanned with the project loader's rules; a malformed entry is
+ * skipped rather than failing the tool call, and a name already present in
+ * `existing` is not returned (`E3t` merges dynamic skills under the live ones,
+ * chunk-sfn1dbxq.js offset 3397667). Dynamic skills join the catalog directly,
+ * including any `paths` they declare: the recovered `E3t` stores them in
+ * `dynamicSkills` without the load-time conditional split.
+ */
+export function loadSkillsFromDirectories(dirs: readonly string[], existing: ReadonlySet<string>): SkillInfo[] {
+  const budget: ByteBudget = { remaining: CONFIG_LIMITS.textBytesTotal, text: new Map() };
+  const seen = new Set<string>();
+  const into = new Map<string, SkillInfo>();
+  for (const dir of dirs) scanSkills(dir, seen, into, budget, "projectSettings", undefined, true);
+  return [...into.values()].filter(skill => !existing.has(skill.name));
 }
 
 // ---------------------------------------------------------------------------

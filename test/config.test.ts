@@ -11,6 +11,7 @@ import {
   argumentNamesFrom,
   expandSkill,
   loadProjectConfig,
+  loadSkillsFromDirectories,
   matchesConditionalRule,
   parseFrontmatter,
   readBoundedBytes,
@@ -1321,4 +1322,22 @@ test("activation matches gitignore-style patterns against workspace-relative tou
     assert.deepEqual(activateConditionalSkills(outside, workspace, ["../escape"]), []);
     assert.deepEqual(activateConditionalSkills(outside, workspace, [path.join(root, "proj/src/a.ts")]).map(skill => skill.name), ["x"]);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test("dynamic directory loading skips malformed entries and names already in the catalog", () => {
+  withSandbox(root => {
+    const dir = path.join(root, "nested", ".harness", "skills");
+    writeFile(path.join(dir, "local", "SKILL.md"),
+      "---\nname: local\ndescription: Local\n---\nLocal body\n");
+    writeFile(path.join(dir, "broken", "SKILL.md"),
+      "---\nname: broken\ncontext: nope\n---\nBroken body\n");
+    writeFile(path.join(dir, "taken", "SKILL.md"),
+      "---\nname: taken\ndescription: Taken\n---\nTaken body\n");
+    const loaded = loadSkillsFromDirectories([dir], new Set(["taken"]));
+    assert.deepEqual(loaded.map(skill => skill.name), ["local"]);
+    assert.equal(loaded[0]?.source, "projectSettings");
+    assert.equal(loaded[0]?.body, "Local body\n");
+    // A directory that vanished between discovery and loading is a no-op.
+    assert.deepEqual(loadSkillsFromDirectories([path.join(root, "absent")], new Set()), []);
+  });
 });
