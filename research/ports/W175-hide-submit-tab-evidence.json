@@ -1,0 +1,115 @@
+{
+ "schema": "W175HideSubmitTab.v1",
+ "package": "W175 — single-question hide-submit rule",
+ "date": "2026-10-18",
+ "question": "What does the recovered hideSubmitTab rule do for a single non-multi-select question, and how is it applied to the product grouped-question flow?",
+ "answer": "hwe derives qr = questions.length===1 && !questions[0].multiSelect. That hides the submit tab, sets the next-tab bound to 0 so Right never opens the review page, and the answer handler submits the whole request as soon as a non-array answer is taken. The product derives the same condition from groups.length===1 && !group.multiple: advanceDialog records the group answer and finishes immediately, and the review Right branch is inert.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+  "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+  "ranges": {
+   "qr": [
+    1170529,
+    1170566
+   ],
+   "Va": [
+    1173330,
+    1173350
+   ],
+   "bl": [
+    1174081,
+    1174118
+   ],
+   "Ab": [
+    1143017,
+    1145502
+   ],
+   "hwe": [
+    1168121,
+    1177646
+   ],
+   "f3": [
+    1153793,
+    1159815
+   ],
+   "b3": [
+    1159815,
+    1161789
+   ]
+  }
+ },
+ "behavior": {
+  "hideSubmitTab": "questions.length===1 && !questions[0].multiSelect",
+  "nextTabBound": 0,
+  "rightOpensReview": false,
+  "answerSubmitsImmediately": "non-array answer && single question",
+  "multiSelectSingleQuestionKeepsReview": true,
+  "multiQuestionFlowUnchanged": true
+ },
+ "adaptations": [
+  "The product models recovered tabs as groups data (W42); the rule is derived from groups instead of a request field.",
+  "Immediate settlement uses the same answer shape as the review page submit."
+ ],
+ "changes": [
+  {
+   "file": "src/tui.ts",
+   "sha256": "cefd8acca7868dc5637326ab326b69bec69dd7bd4c7a3d6b911ce6fc37acdcd5"
+  },
+  {
+   "file": "test/tui.test.ts",
+   "sha256": "3b084ae7ab8a48c7dbf8c0835861bde8cf0c416998ae8bfd898d0d42f39e2f54"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "sha256": "1dc561cef440cfe6ed893bff4bd91d20c0dbd1cff941a9af97a4422521689513"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "sha256": "926d0be0807269a729306c207c254a8200616cc77e72c2d863dd444c90701ed6"
+  },
+  {
+   "file": "research/STATUS.md",
+   "sha256": "d7ac4bb28f5122aba75bf48db7d2b444ff4457626ae745bc5fe1e6b26b0000ec"
+  },
+  {
+   "file": "research/ports/W42-tui-groups.md",
+   "sha256": "294420bb05e5afa1d4fc44943478016edb139dbe26ccb398181dc9713dff2712"
+  },
+  {
+   "file": "research/ports/W43-tui-preview.md",
+   "sha256": "d83319a0283fea882f48e5f35c335b69e8e0eb25723d59e30fe9008bf0ea2313"
+  },
+  {
+   "file": "research/ports/W175-hide-submit-tab.md",
+   "sha256": "570d321f6c399892bf8f22eb739cf452ea5ab4d17d02a49c20bc9c74e47f7801"
+  }
+ ],
+ "gates": {
+  "focused": "47/47 (test/tui.test.ts)",
+  "full": "2585/2585",
+  "tsc": "exit 0",
+  "build": "exit 0",
+  "notices": "exit 0",
+  "identity": {
+   "sha256": "304b061ed78f34e67027e01f5a02ff65ac128b15822155a8c22cf1f9bed3b8e2",
+   "inputs": {
+    "sha256": "d7276213dd7a21f8c448bd21b43ae475182da82b8daea9d9300ccee020646e5f",
+    "files": 684
+   },
+   "validation": {
+    "sha256": "b86f0bdb3ff12a9e3b1bd3613ff54da3c03be568417d99368f5b80f7f4f763d9",
+    "files": 230
+   },
+   "build": {
+    "sha256": "5d5e27fc6f269b5b916131f00624483cc54eec16a9dac6ef21e8c7b624be75f3",
+    "files": 470
+   }
+  }
+ },
+ "residuals": [
+  "The React component bodies Ab/f3/b3/hwe are still not copied; the product keeps the W42 data-driven renderer.",
+  "AFK timeout, image paste, external editor and chat-about-design remain out."
+ ],
+ "recoveredEntrypointsExecuted": false
+}

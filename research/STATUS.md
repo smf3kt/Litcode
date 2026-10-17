@@ -3010,3 +3010,11 @@ completion path with the source reserved key `webFetchSavedFiles`. Host bindings
 NFKC/NFKD, a Map memoize, the configuration fallback, the empty-prototype environment and a lazy
 `RRs(Kkr())` lead. Focused 55/55, full 2584/2584, tsc 0, build 0, notices 0, scans 73/99/47
 unresolved 0, identity `73a647f3…`. [W174 record](ports/W174-scrub.md).
+
+W175 ports the recovered hide-submit rule for a single question. When the flow has exactly one
+question and it is not multi-select, the source derives `hideSubmitTab` (`qr`), sets the next-tab
+bound to 0 so Right cannot open the review page, and submits the whole request as soon as the
+answer is taken. The product derives the same condition from its groups data: `advanceDialog`
+finishes immediately with the recorded group answer, and the review Right path is inert. The
+review-cancel test now uses a multi-select single question so that path stays covered. Focused
+47/47, full 2585/2585, tsc 0, build 0, notices 0, identity `304b061e…`. [W175 record](ports/W175-hide-submit-tab.md).
