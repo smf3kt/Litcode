@@ -1,0 +1,69 @@
+{
+  "schema": "W165DiffPrimitives.v1",
+  "package": "W165-diff-primitives",
+  "date": "2026-10-18",
+  "source": {
+    "copied": {
+      "blocks": 2,
+      "units": 505,
+      "ranges": [
+        { "module": "chunk-ax7r0qj7.js", "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e", "name": "I", "range": [798, 839], "units": 41, "digest": "49db02fcab0494d90ecfc8e3faf29e5b634fe87c6485070c069b39f24946888a", "note": "singular/plural word selection" },
+        { "module": "chunk-a8pz28bf.js", "sha256": "f9c6096cc6bc2515885e7c00fbd8ee4d10a5844e4375ea0923205dd4bc3b1f58", "name": "Ib", "range": [1139, 1603], "units": 464, "digest": "f4cba6359e71151590517bcc7598fdd21dab4632996b46d2b7d3cb2d2d4324e6", "note": "added/removed diff stat label" }
+      ]
+    },
+    "dialog_closure": {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "component": "si",
+      "range": [22672, 28980],
+      "units": 6308,
+      "external_names": 32,
+      "resolved_here": ["I", "Ib"],
+      "remaining": [
+        { "name": "Ht", "module": "chunk-qr9z1wer.js", "range": [1303, 1342], "units": 39, "note": "session/remote predicate" },
+        { "name": "Ffe", "module": "chunk-6j27z6m4.js", "range": [907, 958], "units": 51, "note": "scroll viewport handle context" },
+        { "name": "fo", "module": "chunk-x90vmw14.js", "range": [757, 1166], "units": 409, "note": "empty/hint text" },
+        { "name": "Se", "module": "chunk-fz2251t0.js", "range": [998, 1269], "units": 271, "note": "key hint row" },
+        { "name": "z", "module": "chunk-0qkpwgr4.js", "range": [3890, 4537], "units": 647, "note": "key chord fragment" },
+        { "name": "pt", "module": "chunk-nh8hd3rr.js", "range": [800, 1044], "units": 244, "note": "key action hint" },
+        { "name": "Mr", "module": "chunk-vew7ssxx.js", "range": [2002, 2510], "units": 508, "note": "loading/empty message" },
+        { "name": "_e", "module": "chunk-g6j4g5k0.js", "range": [6669, 9123], "units": 2454, "note": "dialog frame" },
+        { "name": "sS", "module": "chunk-3dnyxzpb.js", "range": [1686, 6447], "units": 4761, "note": "tabbed dialog container" },
+        { "name": "Na", "module": "chunk-3dnyxzpb.js", "range": [7321, 7586], "units": 265, "note": "tab item" },
+        { "name": "Tl", "module": "chunk-0wtqg4zf.js", "range": [19333, 19379], "units": 46, "note": "list component; depends on Cn/Po/Bo" },
+        { "name": "rx", "module": "chunk-0wtqg4zf.js", "range": [12657, 12685], "units": 28, "note": "focused-item context" },
+        { "name": "Uwe", "module": "chunk-24k7d6mw.js", "range": [1657226, 1657289], "units": 63, "note": "single-line path formatter; depends on __e/pn" },
+        { "name": "pBe", "module": "chunk-24k7d6mw.js", "range": [1657527, 1661848], "units": 4321, "note": "file diff detail renderer" },
+        { "name": "pee", "module": "chunk-24k7d6mw.js", "range": [131148, 131363], "units": 215, "note": "page/full-page scrolling" }
+      ],
+      "existing_seams": ["PMr via W163/W164 data layer", "sa overlay store", "nn keybinding source", "ZD focus source", "e r n s w b y P Z react surface"]
+    }
+  },
+  "product": {
+    "files": [
+      "src/diff-dialog-primitives-source.ts",
+      "src/diff-dialog-primitives-source-blocks.json",
+      "src/diff-dialog-primitives.ts",
+      "test/diff-dialog-primitives.test.ts"
+    ],
+    "exports": ["pluralize", "DiffStatLabel", "SOURCE_BODIES"],
+    "notes": [
+      "DiffStatLabel inserts the separator only when both sides are nonzero and renders nothing for zero/zero.",
+      "The dialog closure is measured; slices W166-W170 cover chrome primitives, list, frame/tabs, detail and the si wiring."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 5, "failed": 0, "file": "test/diff-dialog-primitives.test.ts", "new": 5 },
+    "full": { "passed": 2494, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": { "declared": 16, "unresolved": 0 }
+  },
+  "identity": {
+    "sha256": "1686f83422646498a715517b807b5077fcdd56c771ccc131aec1c2bce43f6192",
+    "inputs": 631,
+    "validation": 221,
+    "build": 435
+  }
+}

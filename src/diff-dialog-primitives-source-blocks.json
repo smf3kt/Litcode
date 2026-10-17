@@ -1,0 +1,38 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e"
+    },
+    {
+      "module": "chunk-a8pz28bf.js",
+      "sha256": "f9c6096cc6bc2515885e7c00fbd8ee4d10a5844e4375ea0923205dd4bc3b1f58"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        798,
+        839
+      ],
+      "units": 41,
+      "bodySha256": "49db02fcab0494d90ecfc8e3faf29e5b634fe87c6485070c069b39f24946888a",
+      "note": "I: singular/plural word selection"
+    },
+    {
+      "module": "chunk-a8pz28bf.js",
+      "sha256": "f9c6096cc6bc2515885e7c00fbd8ee4d10a5844e4375ea0923205dd4bc3b1f58",
+      "range": [
+        1139,
+        1603
+      ],
+      "units": 464,
+      "bodySha256": "f4cba6359e71151590517bcc7598fdd21dab4632996b46d2b7d3cb2d2d4324e6",
+      "note": "Ib: added/removed diff stat label"
+    }
+  ],
+  "missing": []
+}
