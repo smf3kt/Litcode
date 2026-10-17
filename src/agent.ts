@@ -18,7 +18,7 @@ import type { AgentProgressEvent } from './tui-progress.js';
 import { classicPreToolUseHooked, raiseClassicPreToolUse } from './plugin-chain-tool-raise.js';
 import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_USE, CLASSIC_POST_TOOL_USE_FAILURE, classicEventRaised, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
 import type { ClassicPermissionRequestResult } from './plugin-chain-classic-raise.js';
-import { activateTouchedSkills, reloadSkills } from './skill-catalog.js';
+import { activateTouchedSkills, discoverTouchedSkills, reloadSkills } from './skill-catalog.js';
 
 export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
 Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
@@ -559,6 +559,10 @@ export class Agent {
     activateTouchedSkills(this.session.config, [target]);
     const relative = path.relative(this.session.config.workspace, path.resolve(this.session.config.workspace, target));
     if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) return [];
+    // `MU` also discovers `.harness/skills` directories beside the touched path
+    // and loads them before the access (chunk-sfn1dbxq.js offsets 3399649 and
+    // 3397667); the next request's prompt carries the new catalog entries.
+    await discoverTouchedSkills(this.session.config, [target]);
     const contexts: string[] = [];
     const triggerPath = path.resolve(this.session.config.workspace, target);
     if (this.session.config.dynamicInstructions) {

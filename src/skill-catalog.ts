@@ -17,7 +17,10 @@
 // model touches a matching file (`emn`, chunk-sfn1dbxq.js offset 3398872); this
 // product keeps the same held list on the session config, so it travels with the
 // session and re-renders the catalog section after an activation.
-import { activateConditionalSkills, loadProjectConfig, type SkillInfo } from './config.js';
+import { execFile } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { HARNESS_DIR, activateConditionalSkills, loadProjectConfig, loadSkillsFromDirectories, type SkillInfo } from './config.js';
 import type { SessionConfig } from './session.js';
 
 export const SKILL_TOOL_NAME = 'skill';
@@ -56,6 +59,10 @@ export function reloadSkills(current: SessionConfig): void {
   current.skills.splice(0, current.skills.length, ...loaded.skills);
   setHeldSkills(current, loaded.conditionalSkills);
   current.system = replaceSkillsSection(current.system, current.skills);
+  // Dynamic directories survive the rescan: the recovered reload re-reads the
+  // directories already discovered in this session (`WRn` → `E3t(...,
+  // {replace: true})`, chunk-sfn1dbxq.js offset 3399649).
+  appendDynamicSkills(current, current.dynamicSkillDirs ?? []);
 }
 
 /** Install the held list a load produced; a reload replaces it wholesale. */
@@ -80,4 +87,76 @@ export function activateTouchedSkills(current: SessionConfig, touched: readonly 
   setHeldSkills(current, [...held.values()]);
   current.system = replaceSkillsSection(current.system, current.skills);
   return activated;
+}
+
+function isDirectory(target: string): boolean {
+  try {
+    return fs.statSync(target).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `git check-ignore -- <directory>` in the workspace (`KAr`, called from `dAr`
+ * at chunk-sfn1dbxq.js offset 3396597). Exit 0 means ignored; any other exit,
+ * missing repository, or timeout means not ignored. The directory argument is
+ * the one that would contain the harness directory, matching the recovered
+ * call.
+ */
+function gitIgnored(directory: string, cwd: string): Promise<boolean> {
+  return new Promise(resolve => {
+    execFile('git', ['check-ignore', '--', directory], { cwd, timeout: 2000, windowsHide: true },
+      error => resolve(error === null));
+  });
+}
+
+function appendDynamicSkills(current: SessionConfig, dirs: readonly string[]): SkillInfo[] {
+  if (current.skills === undefined || dirs.length === 0) return [];
+  const existing = new Set([
+    ...current.skills.map(skill => skill.name),
+    ...(current.heldSkills ?? []).map(skill => skill.name),
+  ]);
+  const loaded = loadSkillsFromDirectories(dirs, existing);
+  if (loaded.length === 0) return [];
+  current.skills.push(...loaded);
+  current.system = replaceSkillsSection(current.system, current.skills);
+  return loaded;
+}
+
+/**
+ * Discover `<dir>/<HARNESS_DIR>/skills` beside a touched path and every
+ * workspace ancestor, then append the new skills to the live catalog. The
+ * recovered `dAr` walks upward from the touched file's directory to the
+ * workspace base, records every candidate directory in a session set before
+ * checking it (so a directory is examined at most once), skips directories
+ * ignored by git, and loads the survivors with the project source (`MU` at
+ * chunk-sfn1dbxq.js offset 3399649). Absolute paths and paths outside the
+ * workspace never discover anything.
+ */
+export async function discoverTouchedSkills(current: SessionConfig, touched: readonly string[]): Promise<SkillInfo[]> {
+  if (current.skills === undefined) return [];
+  const root = path.resolve(current.workspace);
+  const known = new Set(current.dynamicSkillDirs ?? []);
+  const previous = known.size;
+  const found: string[] = [];
+  for (const target of touched) {
+    if (typeof target !== 'string' || target === '') continue;
+    const resolved = path.resolve(root, target);
+    if (resolved !== root && !resolved.startsWith(root + path.sep)) continue;
+    let dir = path.dirname(resolved);
+    while (dir === root || dir.startsWith(root + path.sep)) {
+      const candidate = path.join(dir, HARNESS_DIR, 'skills');
+      if (!known.has(candidate)) {
+        known.add(candidate);
+        if (isDirectory(candidate) && !(await gitIgnored(dir, root))) found.push(candidate);
+      }
+      if (dir === root) break;
+      const parent = path.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+  }
+  if (known.size !== previous) current.dynamicSkillDirs = [...known];
+  return appendDynamicSkills(current, found);
 }

@@ -48,6 +48,11 @@ export type SessionConfig = {
    *  list, and activation survives a reload because the list is replaced from
    *  the new load. */
   heldSkills?: SkillInfo[];
+  /** `<HARNESS_DIR>/skills` directories discovered beside a touched path.
+   *  The recovered `dAr` keeps the same per-session set and never rescans a
+   *  candidate (chunk-sfn1dbxq.js offset 3396597); the set is journaled with
+   *  the session so a resume keeps its discovered catalogs. */
+  dynamicSkillDirs?: string[];
   /** Instruction files loaded for the eager InstructionsLoaded raise. */
   instructionSources?: InstructionSource[];
   conditionalRules?: ConditionalRule[];
@@ -165,6 +170,7 @@ export const configSchema = z.object({
     aliases: z.array(z.string()).optional(),
     hooks: hooksSchema.optional(), command: z.string().optional(), shell: z.string().optional(), metadata: z.record(z.unknown()).optional(), limitations: z.array(z.string()).optional(),
   }).strict()).optional(),
+  dynamicSkillDirs: z.array(z.string().min(1)).optional(),
   keybindings: keybindingsSchema.optional(),
   prefersReducedMotion: z.boolean().optional(),
   showTurnDuration: z.boolean().optional(),

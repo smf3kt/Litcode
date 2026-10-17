@@ -1,0 +1,121 @@
+{
+ "schema": "W123DynamicSkillDiscoveryEvidence.v1",
+ "package": "W123-01 — Dynamic skill directory discovery",
+ "date": "2026-10-17",
+ "question": "How does the recovered runtime discover and load skills from a directory beside a touched path?",
+ "answer": "A touch walks from the file directory up to the workspace base. Each <dir>/.claude/skills candidate is recorded in a session set before it is checked, so it is examined once; a candidate is loaded only when it exists and git check-ignore reports it is not ignored. The project loader scans the directory, keeps prompt skills in a dynamic map under the live catalog, and a rescan re-reads the recorded directories with replacement.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "modules": {
+   "extracted-v2/modules/chunk-sfn1dbxq.js": [
+    3399634,
+    3396591,
+    3397661,
+    3384052,
+    3399814,
+    739846,
+    3547532,
+    4167540
+   ],
+   "extracted-v2/modules/chunk-x0dc37w9.js": [
+    4806
+   ]
+  }
+ },
+ "behavior": {
+  "ancestorWalkToWorkspace": true,
+  "candidateRecordedBeforeCheck": true,
+  "checkedOncePerSession": true,
+  "requiresExistingDirectory": true,
+  "gitignoreSkipViaCheckIgnore": true,
+  "loadsWithProjectSource": true,
+  "malformedEntrySkipped": true,
+  "existingNamesNotDuplicated": true,
+  "catalogAppendedInPlace": true,
+  "systemPromptRerendered": true,
+  "reloadReReadsDiscoveredDirectories": true,
+  "outsideWorkspaceDiscovered": false
+ },
+ "adaptations": [
+  "The recovered product scans .claude/skills; this product uses its neutral .harness/skills configuration directory.",
+  "The recovered tool path queues directories on dynamicSkillDirTriggers and drains them at request assembly; this runtime awaits discovery and loading inside the touch trigger.",
+  "Duplicate names: E3t keeps a separate dynamic map merged at request time; this flat catalog filters names already live or held.",
+  "Dynamic skills carrying frontmatter paths join the catalog directly, matching E3t which stores every prompt skill in dynamicSkills without the conditional split.",
+  "Diskless, policy-base and sync-owned gates have no counterpart in this runtime.",
+  "Reserved-name refusal and collision naming remain open under C-10."
+ ],
+ "changes": [
+  {
+   "file": "src/config.ts",
+   "change": "tolerant directory scan and loadSkillsFromDirectories",
+   "sha256": "f55674a8288778a4e38c1553a73036db760cb11c15b872dc2b10912cc4c9f451"
+  },
+  {
+   "file": "src/skill-catalog.ts",
+   "change": "ancestor discovery, gitignore check, catalog append, reload",
+   "sha256": "107e4b593696d23c1420de12c20faec93ec03adcf977f057fa53423e53c105ea"
+  },
+  {
+   "file": "src/session.ts",
+   "change": "dynamicSkillDirs field and schema",
+   "sha256": "0ea7e14bacaeedc9c4bec5328120b6d284668cf258a2282f35e6f65336c31136"
+  },
+  {
+   "file": "src/agent.ts",
+   "change": "discovery from the touch trigger",
+   "sha256": "5f8f881ebcc9c47bef8f5d9138e3e21b0ce3c25e31e0b49bda2151f8c0d38bcb"
+  },
+  {
+   "file": "test/config.test.ts",
+   "change": "tolerant directory loader test",
+   "sha256": "a54a8bd8359426d644b0cdf37c3276c3e49dfb9a2bc71ccbf067856e1334d905"
+  },
+  {
+   "file": "test/skill-runtime.test.ts",
+   "change": "discovery and gitignore tests",
+   "sha256": "c126e458d2519746c9d58434b08521064eeff3c129c976f8ca99ad2e0fff0e62"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "nested discovery integration test",
+   "sha256": "8ebc975f8cc4896da5955599d1e00d584b6995eaf6a4a1093d554d0c1585f77f"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-10 rows record W123",
+   "sha256": "e57ebe211dbeb30dfebffe91ad02563728d088631e46e86a75f39ff9ce8596dc"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Skills row records W123",
+   "sha256": "473aed7ce3807ed6f173e74aff81a1fc426495da08b4d3373dd2e41dda89dc10"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W123-01 entry",
+   "sha256": "3443aaafc8cdbedf8b4a650295133e5389864de6cffc4af962ebf2cc866521a9"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W123-01 S-1..S-7 entry",
+   "sha256": "e09128a81e527c46ea5194d8ecbc3f6ec268d131fa49a0765623fcea2e52fa1e"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "137/137 (config, skill-runtime, skill-effects, reload, runtime)",
+  "threeSuite": "164/164 (config, skill-runtime, agent-lifecycle)",
+  "build": "exit 0",
+  "full": "2,194/2,194",
+  "chain": "768/768",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "4149770c592b2f237117295d04a5829e3f61f956e227bd3d59528dd06568aa3a"
+ },
+ "residuals": [
+  "C-10 reserved-name refusal and collision naming remain open.",
+  "C-10 referenced-URL invalidation and the shell AST disposition remain open."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-10 continues with reserved-name refusal and collision naming."
+}
