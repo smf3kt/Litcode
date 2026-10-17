@@ -2592,3 +2592,13 @@ handlers; the pane key merge, which aliases pane scrolling to AbovePrompt next/p
 outside inputs; and the 5-column handle and 150 ms settle constants. `NFe` itself (5,856 units, 82
 unresolved names) stays for the next slice. Focused 14/14, full 2285/2285, tsc 0, build 0,
 notices 0, identity `b8af8bb6…`. [W145 record](ports/W145-above-prompt-core.md).
+
+W146 adds the AbovePrompt pane's content and chrome. Sixteen blocks (2,722 units) port the content
+wrapper with its columns context and negative offset, the wheel-to-layout mapping, the held node's
+top and bottom edges, the element-key bounds walk (root excluded, plugin strict), the raised scroll
+wrapper, props merge and floor clamp, the toggle label, the absolute `[-]` collapse handle, the
+hidden-panel header, the focus index, list rows against the select window, the `↑ n more · ↓ m more`
+indicator and its Text, and digit selection. The source's module-namespace call
+`Sc.releaseInkFocus` keeps its shape because the pressable-button seam now exports `_3n` under that
+name; every body is otherwise verbatim. Focused 13/13, full 2296/2296, tsc 0, build 0, notices 0,
+identity `6d39c0c6…`. [W146 record](ports/W146-above-prompt-parts.md).

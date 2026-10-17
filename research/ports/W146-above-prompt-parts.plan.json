@@ -1,0 +1,30 @@
+{
+ "imports": [
+  "import { Xe as e, s, n, N, R, Z, w, b } from './plugin-chain-react-hooks.js';",
+  "import * as Sc from './plugin-chain-press-button.js';",
+  "import { KH } from './plugin-chain-press-button-host.js';",
+  "import { TIe } from './plugin-chain-press-dispatch-source.js';",
+  "import { ddn } from './plugin-chain-input-field-source.js';",
+  "import { S3n } from './plugin-chain-select-field-source.js';",
+  "import { F4 } from './plugin-chain-above-prompt-source.js';"
+ ],
+ "exports": ["wFe", "j1", "kFe", "TFe", "xFe", "W1", "PFe", "w0", "z1", "Y1", "J1", "Rne", "bne", "K1", "OI", "b0"],
+ "blocks": [
+  {"file": "chunk-24k7d6mw.js", "range": [443631, 443771], "note": "wheel handler factory"},
+  {"file": "chunk-24k7d6mw.js", "range": [443771, 443978], "note": "held top/bottom"},
+  {"file": "chunk-24k7d6mw.js", "range": [443978, 444350], "note": "element key bounds walk"},
+  {"file": "chunk-24k7d6mw.js", "range": [444675, 444845], "note": "content wrapper component"},
+  {"file": "chunk-24k7d6mw.js", "range": [444923, 444956], "note": "props merge"},
+  {"file": "chunk-24k7d6mw.js", "range": [444956, 444994], "note": "floor clamp"},
+  {"file": "chunk-24k7d6mw.js", "range": [446991, 447122], "note": "raised offset wrapper"},
+  {"file": "chunk-24k7d6mw.js", "range": [447619, 448084], "note": "toggle label component"},
+  {"file": "chunk-24k7d6mw.js", "range": [448084, 448093], "note": "toggle icon flag"},
+  {"file": "chunk-24k7d6mw.js", "range": [448093, 448285], "note": "collapse handle component"},
+  {"file": "chunk-24k7d6mw.js", "range": [448295, 448698], "note": "expanded header component"},
+  {"file": "chunk-24k7d6mw.js", "range": [449506, 449633], "note": "focus index computation"},
+  {"file": "chunk-24k7d6mw.js", "range": [449633, 449682], "note": "highlight rows"},
+  {"file": "chunk-24k7d6mw.js", "range": [449682, 449785], "note": "more indicator text"},
+  {"file": "chunk-24k7d6mw.js", "range": [449785, 450018], "note": "more indicator component"},
+  {"file": "chunk-24k7d6mw.js", "range": [450018, 450068], "note": "digit select"}
+ ]
+}
