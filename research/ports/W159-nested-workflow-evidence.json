@@ -1,0 +1,64 @@
+{
+  "schema": "W159NestedWorkflow.v1",
+  "package": "W159-nested-workflow",
+  "date": "2026-10-18",
+  "source": {
+    "module": "chunk-hedqf2m1.js",
+    "sha256": "01fea1c4f8ed9442ca18c30704c8533a1f037b800cc4faae2b4ecaaa273f5a56",
+    "blocks": 5,
+    "units": 3635,
+    "ranges": [
+      { "name": "kjr", "range": [28921, 29977], "units": 1056, "note": "resolve a name or {scriptPath} and parse the child body" },
+      { "name": "Ajr", "range": [29977, 31050], "units": 1073, "note": "child context builder" },
+      { "name": "Cjr", "range": [31050, 31247], "units": 197, "note": "one-level nesting rejection" },
+      { "name": "Tjr", "range": [31247, 31360], "units": 113, "note": "child phase-name counter" },
+      { "name": "Go", "range": [31360, 32556], "units": 1196, "note": "nested workflow runner" }
+    ],
+    "reused": [
+      { "names": ["qie"], "product": "src/workflow-script.ts compileWorkflowScript", "note": "child body compilation" },
+      { "names": ["YS"], "product": "src/workflow-script.ts parseWorkflowScript", "note": "full child parse in the resolver" },
+      { "names": ["Chn"], "product": "src/workflow-script.ts loadWorkflowScriptFile", "note": "scriptPath child loading" },
+      { "names": ["rjt", "LOe"], "product": "src/workflow-named.ts", "note": "named child resolution and the available-name list" },
+      { "names": ["createVmBoundary", "hostAsync", "hostSync", "projectError", "logText", "makeConsole"], "product": "src/workflow-script.ts", "note": "the existing script runtime boundary, wrappers and projections" }
+    ],
+    "rewrite": [
+      {
+        "source": "Ajr child realm (En.createContext with cwr/dwr/IFe cross-realm helpers)",
+        "reason": "the recovered child realm is a Bun-owned context with cross-realm helpers this runtime does not carry; the product executes scripts in Node vm",
+        "replacement": "createVmBoundary() plus child-realm JSON args, a prefixed console/log, phase noop, shared budget/timers and the same agent bridge; control flow and user-visible strings follow Go/kjr/Ajr"
+      },
+      {
+        "source": "CLAUDE_WORKFLOW_NAME_ONLY in the scriptPath refusal",
+        "reason": "the product gate reads the neutral local variable",
+        "replacement": "HARNESS_WORKFLOW_NAME_ONLY in the message"
+      }
+    ],
+    "deferred": [
+      { "name": "cross-realm childSpawnMemo", "reason": "the source memo is passed to child agent calls; the product agent bridge and journal remain the reuse mechanism" }
+    ]
+  },
+  "product": {
+    "files": ["src/workflow-script.ts", "src/workflow.ts", "src/workflow-named.ts"],
+    "exports": ["WorkflowChildResolution", "isNamedWorkflowNameOnly"],
+    "notes": [
+      "workflow(name) resolves the local catalog; a missing name reports `workflow('name'): no workflow with that name. Available: ...`.",
+      "workflow({scriptPath}) loads through the same readable-path loader, rejects when the name-only gate is set, and reports the source-prefixed load/parse errors.",
+      "The child runs in a fresh hardened context with the parent's budget, timers and agent bridge; agent calls are forced onto the child phase, logs and console are prefixed with the child name, phase() is a noop and meta phases are not recorded.",
+      "The reserved phase is `▸ name`, with ` #N` for a repeated name; `▸ running dynamic workflow name` is logged before the run and `▸ name done`/`▸ name failed: ...` after it.",
+      "A child's workflow() rejects with the source one-level message; resolution failures are recorded against the reserved phase and rethrown to the parent script."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 10, "failed": 0, "file": "test/workflow-named.test.ts", "new": 2 },
+    "full": { "passed": 2447, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0
+  },
+  "identity": {
+    "sha256": "14a9b2cc556f13746b15112188ace97273eeac9f12163db23ac2bb61d574d40b",
+    "inputs": 616,
+    "validation": 216,
+    "build": 425
+  }
+}

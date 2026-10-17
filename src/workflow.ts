@@ -8,7 +8,7 @@ import { WorkflowStore, workflowTaskSchema, workflowDefinitionSchema, workflowDi
 import { loadWorkflowScriptFile, loadWorkflowScriptJournal, openWorkflowScriptJournal,
   parseWorkflowScript, runWorkflowScript, WORKFLOW_SCRIPT_MAX_BYTES,
   type WorkflowScriptJournal } from './workflow-script.js';
-import { listNamedWorkflows, resolveNamedWorkflow } from './workflow-named.js';
+import { isNamedWorkflowNameOnly, listNamedWorkflows, resolveNamedWorkflow } from './workflow-named.js';
 
 // Owned declarative DAG orchestration; workflow input is data, never JavaScript.
 const taskSchema = workflowTaskSchema;
@@ -459,9 +459,39 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
           try { await journal.append({ type: 'launched' }); } catch { /* journal writes are best-effort */ }
         }
       }
+      // Nested `workflow(name | {scriptPath})` resolution (`kjr`,
+      // chunk-hedqf2m1.js [28921,29977)). The catalog and script-path reader
+      // stay local; the child body is parsed before it reaches the runtime.
+      const resolveChildWorkflow = async (request: unknown) => {
+        if (typeof request === 'string') {
+          const found = await resolveNamedWorkflow(request, context.workspace);
+          if (found === undefined) {
+            const available = (await listNamedWorkflows(context.workspace)).map(entry => entry.name).join(', ');
+            throw new Error(`workflow('${request}'): no workflow with that name. Available: ${available || '(none)'}`);
+          }
+          const child = parseWorkflowScript(found.script);
+          if ('error' in child) throw new Error(`workflow('${request}'): ${child.error}`);
+          return { name: found.name, scriptBody: child.scriptBody };
+        }
+        if (request !== null && typeof request === 'object' && 'scriptPath' in request
+          && typeof (request as { scriptPath?: unknown }).scriptPath === 'string') {
+          const scriptPath = (request as { scriptPath: string }).scriptPath;
+          if (isNamedWorkflowNameOnly()) {
+            throw new Error("workflow({scriptPath}): this session restricts workflows to "
+              + "named bundled workflows (HARNESS_WORKFLOW_NAME_ONLY is set) — "
+              + "nest with workflow('<name>') instead.");
+          }
+          const loaded = await loadWorkflowScriptFile(scriptPath, context.workspace);
+          if ('error' in loaded) throw new Error(`workflow({scriptPath: '${scriptPath}'}): ${loaded.error}`);
+          const child = parseWorkflowScript(loaded.source);
+          if ('error' in child) throw new Error(`workflow({scriptPath: '${scriptPath}'}): ${child.error}`);
+          return { name: child.meta.name, scriptBody: child.scriptBody };
+        }
+        throw new TypeError('workflow() expects a workflow name (string) or {scriptPath: string}');
+      };
       const labels = new Map<string, number>();
       const result = await runWorkflowScript(parsed, {
-        args: args.args, signal: context.signal, journal,
+        args: args.args, signal: context.signal, journal, resolveWorkflow: resolveChildWorkflow,
         agent: async (prompt, agentOptions, signal, onStarted) => {
           let name: string | undefined;
           if (agentOptions.label !== undefined) {

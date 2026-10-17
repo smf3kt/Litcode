@@ -76,10 +76,19 @@ export type WorkflowScriptJournal = {
   directory: string; state: WorkflowScriptJournalState;
   append(entry: WorkflowScriptJournalEntry): Promise<void>;
 };
+export type WorkflowChildResolution = { name: string; scriptBody: string };
 export type RunWorkflowScriptOptions = {
   args?: unknown; signal: AbortSignal; agent: WorkflowAgentBridge; journal?: WorkflowScriptJournal;
   maxAgents?: number; logLimit?: number; syncTimeoutMs?: number;
+  // Nested `workflow()`: `kjr` [28921,29977), `Go` [31360,32556), with the
+  // child context builder `Ajr` [29977,31050), the one-level rejection `Cjr`
+  // [31050,31247) and the phase-name counter `Tjr` [31247,31360) from
+  // chunk-hedqf2m1.js. The host resolves a name or {scriptPath} to a parsed
+  // child body; the child context carries the rejection instead of a resolver.
+  resolveWorkflow?: (request: unknown) => Promise<WorkflowChildResolution>;
 };
+const NESTED_WORKFLOW_MESSAGE = 'workflow() cannot be called from within a child workflow '
+  + '— nesting is limited to one level. Inline the inner script or call its agents directly.';
 export type WorkflowScriptError = { name: string; message: string; stack?: string };
 export type WorkflowScriptResult = {
   result: unknown; agent_count: number; logs: string[]; failures: string[]; phases: string[];
@@ -367,6 +376,36 @@ function projectError(value: unknown): ProjectedError {
     if (typeof s === 'string') stack = s;
   } catch { /* keep undefined */ }
   return stack === undefined ? { name, message } : { name, message, stack };
+}
+
+type VmBoundary = {
+  context: ReturnType<typeof vm.createContext>;
+  clone: VmCopy; sanitize: VmCopy; settle: VmSettle; call: VmCall;
+  snapshot: VmSnapshot; getProp: VmGetProp; vmString: VmString;
+  vmJson: (value: unknown) => string | undefined;
+};
+
+// One hardened context per executing script (`lr`'s parent context and the
+// nested `Ajr` child context both go through this shape).
+function createVmBoundary(): VmBoundary {
+  const context = vm.createContext(Object.create(null) as object, {
+    codeGeneration: { strings: false, wasm: false },
+  });
+  vm.runInContext(DATE_SHIM, context);
+  vm.runInContext(HARDEN_SOURCE, context);
+  vm.runInContext(`Object.defineProperty(globalThis, ${JSON.stringify(RESOLVE)}, {
+    value: Promise.resolve.bind(Promise),
+    writable: false, enumerable: false, configurable: false,
+  })`, context);
+  const clone = vm.runInContext(`(() => {'use strict';\n${copySource(false)}\n})()`, context) as VmCopy;
+  const sanitize = vm.runInContext(`(() => {'use strict';\n${copySource(true)}\n})()`, context) as VmCopy;
+  const settle = vm.runInContext('(async v => ({__proto__: null, v: await v}))', context) as VmSettle;
+  const call = vm.runInContext('((fn, ...args) => fn(...args))', context) as VmCall;
+  const snapshot = vm.runInContext(SNAPSHOT_SOURCE, context) as VmSnapshot;
+  const getProp = vm.runInContext('((o, k) => { try { return o == null ? undefined : o[k] } catch { return undefined } })', context) as VmGetProp;
+  const vmString = vm.runInContext('((v) => { try { return String(v) } catch { return "<unprintable>" } })', context) as VmString;
+  const vmJson = vm.runInContext('((v) => JSON.stringify(v))', context) as (value: unknown) => string | undefined;
+  return { context, clone, sanitize, settle, call, snapshot, getProp, vmString, vmJson };
 }
 
 function vmError(value: unknown): unknown {
@@ -893,6 +932,7 @@ export async function runWorkflowScript(
   let journalChain = '';
   let journalMiss = false;
   let currentPhase: string | undefined;
+  const childPhaseCounts = new Map<string, number>();
   const recordPhase = (title: string) => {
     if (!seenPhases.has(title)) { seenPhases.add(title); phases.push(title); }
   };
@@ -908,51 +948,36 @@ export async function runWorkflowScript(
   const onAbort = () => clearTimers();
   signal.addEventListener('abort', onAbort, { once: true });
 
-  const context = vm.createContext(Object.create(null) as object, {
-    codeGeneration: { strings: false, wasm: false },
-  });
-  vm.runInContext(DATE_SHIM, context);
-  vm.runInContext(HARDEN_SOURCE, context);
-  vm.runInContext(`Object.defineProperty(globalThis, ${JSON.stringify(RESOLVE)}, {
-    value: Promise.resolve.bind(Promise),
-    writable: false, enumerable: false, configurable: false,
-  })`, context);
-  const clone = vm.runInContext(`(() => {'use strict';\n${copySource(false)}\n})()`, context) as VmCopy;
-  const sanitize = vm.runInContext(`(() => {'use strict';\n${copySource(true)}\n})()`, context) as VmCopy;
-  const settle = vm.runInContext('(async v => ({__proto__: null, v: await v}))', context) as VmSettle;
-  const call = vm.runInContext('((fn, ...args) => fn(...args))', context) as VmCall;
-  const snapshot = vm.runInContext(SNAPSHOT_SOURCE, context) as VmSnapshot;
-  const getProp = vm.runInContext('((o, k) => { try { return o == null ? undefined : o[k] } catch { return undefined } })', context) as VmGetProp;
-  const vmString = vm.runInContext('((v) => { try { return String(v) } catch { return "<unprintable>" } })', context) as VmString;
-  const vmJson = vm.runInContext('((v) => JSON.stringify(v))', context) as (value: unknown) => string | undefined;
+  const { context, clone, sanitize, settle, call, snapshot, getProp, vmString, vmJson } = createVmBoundary();
 
-  const consoleObject = (() => {
-    const format = (value: unknown): string => {
-      if (typeof value === 'string') return value;
-      if (value === null || (typeof value !== 'object' && typeof value !== 'function')) {
-        try { return JSON.stringify(value) ?? `[${typeof value}]`; } catch { return `[${typeof value}]`; }
-      }
-      let fallback: string;
-      try {
-        const text = vmJson(sanitize(value));
-        if (text !== undefined && text !== '{}') return text;
-        fallback = text ?? `[${typeof value}]`;
-      } catch (error) {
-        const message = (error as { message?: unknown } | null)?.message;
-        const capped = typeof message === 'string' && message.includes('exceeds the maximum');
-        return capped ? `[${typeof value}: array exceeds the ${ARRAY_LENGTH_CAP}-element logging cap]` : `[${typeof value}]`;
-      }
-      const text = vmString(value);
-      return text === '[object Object]' || text === '<unprintable>' ? fallback : text;
-    };
+  const formatValue = (value: unknown): string => {
+    if (typeof value === 'string') return value;
+    if (value === null || (typeof value !== 'object' && typeof value !== 'function')) {
+      try { return JSON.stringify(value) ?? `[${typeof value}]`; } catch { return `[${typeof value}]`; }
+    }
+    let fallback: string;
+    try {
+      const text = vmJson(sanitize(value));
+      if (text !== undefined && text !== '{}') return text;
+      fallback = text ?? `[${typeof value}]`;
+    } catch (error) {
+      const message = (error as { message?: unknown } | null)?.message;
+      const capped = typeof message === 'string' && message.includes('exceeds the maximum');
+      return capped ? `[${typeof value}: array exceeds the ${ARRAY_LENGTH_CAP}-element logging cap]` : `[${typeof value}]`;
+    }
+    const text = vmString(value);
+    return text === '[object Object]' || text === '<unprintable>' ? fallback : text;
+  };
+  const makeConsole = (scope: string) => {
     const method = (prefix: string) => hostSync((...args: unknown[]) => {
-      pushLog(prefix + args.map(format).join(' '));
+      pushLog(scope + prefix + args.map(formatValue).join(' '));
     });
     return Object.freeze({
       __proto__: null, log: method(''), info: method(''), debug: method(''),
       error: method('[error] '), warn: method('[warn] '),
     });
-  })();
+  };
+  const consoleObject = makeConsole('');
 
   const budget = Object.freeze({
     __proto__: null, total: null,
@@ -1176,11 +1201,85 @@ export async function runWorkflowScript(
     return clone(mapped);
   };
 
-  // The recovered top-level `workflow()` resolves saved workflows from account
-  // storage; this runtime has no saved-workflow registry, so the API exists
-  // and rejects explicitly instead of leaving a ReferenceError.
-  const onWorkflow = async (): Promise<never> => {
-    throw new Error('workflow() is not available in this runtime: named workflows are not ported');
+  // Nested `workflow()` runner adapted from `Go` [31360,32556) with `kjr`
+  // [28921,29977) resolution, `Ajr` [29977,31050) child context, `Cjr`
+  // [31050,31247) one-level rejection and `Tjr` [31247,31360) phase names
+  // (chunk-hedqf2m1.js). The source's Bun child realm (`En.createContext` and
+  // the cross-realm helpers) is replaced by a Node `vm` boundary; the child
+  // gets this run's budget, timers, agent bridge and failure/log sinks.
+  const onWorkflow = async (request: unknown, argsValue: unknown): Promise<unknown> => {
+    if (options.resolveWorkflow === undefined) {
+      throw new Error('workflow() is not available in this runtime');
+    }
+    const child = await options.resolveWorkflow(request);
+    const compiled = compileWorkflowScript(child.scriptBody);
+    if (!compiled.ok) throw new Error(`workflow('${child.name}'): ${compiled.error}`);
+    const seen = (childPhaseCounts.get(child.name) ?? 0) + 1;
+    childPhaseCounts.set(child.name, seen);
+    const phase = seen > 1 ? `▸ ${child.name} #${seen}` : `▸ ${child.name}`;
+    recordPhase(phase);
+    pushLog(`▸ running dynamic workflow ${child.name}`);
+    const childVm = createVmBoundary();
+    const childAgent = hostAsync((prompt: unknown, raw: unknown) => {
+      let withPhase = raw;
+      if (raw !== null && raw !== undefined && typeof raw === 'object') {
+        const copy = childVm.clone(raw) as Record<string, unknown>;
+        copy.phase = phase;
+        withPhase = copy;
+      } else if (raw === undefined || raw === null) {
+        withPhase = { phase };
+      }
+      return onAgent(prompt, withPhase);
+    });
+    const rejectNested = hostAsync(() => Promise.reject(new Error(NESTED_WORKFLOW_MESSAGE)));
+    const childLog = hostSync((value: unknown) => { pushLog(`[${child.name}] ${logText(value)}`); });
+    const childPhase = hostSync(() => {});
+    for (const [name, fn] of [['agent', childAgent], ['parallel', hostAsync(onParallel)],
+      ['pipeline', hostAsync(onPipeline)], ['workflow', rejectNested], ['log', childLog],
+      ['phase', childPhase]] as const) {
+      Object.defineProperty(childVm.context, name, {
+        value: fn, writable: true, enumerable: true, configurable: true,
+      });
+    }
+    Object.defineProperty(childVm.context, 'console', {
+      value: makeConsole(`[${child.name}] `), writable: true, enumerable: true, configurable: true,
+    });
+    Object.defineProperty(childVm.context, 'budget', {
+      value: budget, writable: true, enumerable: true, configurable: true,
+    });
+    Object.defineProperty(childVm.context, 'setTimeout', {
+      value: timers.setTimeout, writable: true, enumerable: true, configurable: true,
+    });
+    Object.defineProperty(childVm.context, 'clearTimeout', {
+      value: timers.clearTimeout, writable: true, enumerable: true, configurable: true,
+    });
+    Object.defineProperty(childVm.context, 'args', {
+      value: argsValue === undefined
+        ? undefined
+        : vm.runInContext(`JSON.parse(${JSON.stringify(JSON.stringify(argsValue))})`, childVm.context),
+      writable: true, enumerable: true, configurable: true,
+    });
+    try {
+      const execution = compiled.script.runInContext(childVm.context, {
+        timeout: options.syncTimeoutMs ?? SYNC_TIMEOUT_MS,
+      }) as unknown;
+      const raced = await Promise.race([
+        childVm.settle(execution),
+        new Promise<never>((_resolve, reject) => {
+          const abort = () => reject(new Error('Workflow aborted'));
+          if (signal.aborted) abort();
+          else signal.addEventListener('abort', abort, { once: true });
+        }),
+      ]);
+      const value = childVm.sanitize(raced.v);
+      pushLog(`▸ ${child.name} done`);
+      return value;
+    } catch (error) {
+      const projected = projectError(error);
+      recordFailure(`${phase}: ${projected.message}`, false);
+      pushLog(`▸ ${child.name} failed: ${projected.message}`);
+      throw new Error(projected.message);
+    }
   };
   for (const [name, fn] of [['agent', onAgent], ['parallel', onParallel], ['pipeline', onPipeline],
     ['workflow', onWorkflow], ['log', onLog], ['phase', onPhase]] as const) {

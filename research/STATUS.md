@@ -2785,3 +2785,16 @@ The account storage branch reads the local filesystem instead, and the script-gl
 named-workflow runner remains deferred. Focused 8/8, full 2445/2445, tsc 0, build 0, notices 0,
 scan declared 65 / unresolved 0, identity `d68c7b23…`.
 [W158 record](ports/W158-named-workflows.md).
+
+W159 wired the script-global `workflow(name | {scriptPath}, args)` (5 blocks, 3,635 UTF-16
+units, `kjr`/`Ajr`/`Cjr`/`Tjr`/`Go` in chunk-hedqf2m1.js). A name resolves through the local
+catalog and lists the available names when missing; a scriptPath child loads through the same
+readable-path loader and is refused under the name-only gate. The child runs in a fresh
+hardened Node vm context with the parent's budget, timers and agent bridge, a defined `args`,
+phase forced onto the child, prefixed logs and console, a no-op phase(), and no child meta
+phases. Child phases are `▸ name` with ` #N` on repeats, the running/done/failed log lines
+match the source, and a child's own workflow() rejects with the one-level message. The source's
+Bun child realm is replaced by the Node vm boundary and the cross-realm spawn memo stays
+deferred; both are recorded. Focused 10/10, full 2447/2447, tsc 0, build 0, notices 0, identity
+`14a9b2cc…`.
+[W159 record](ports/W159-nested-workflow.md).

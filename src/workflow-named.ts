@@ -1,4 +1,4 @@
-import { LOe, rjt, yXn } from './plugin-chain-workflow-named-source.js';
+import { GJe, LOe, rjt, yXn } from './plugin-chain-workflow-named-source.js';
 import {
   configureNamedWorkflowHost,
   type NamedWorkflowHostOptions,
@@ -31,6 +31,11 @@ export async function resolveNamedWorkflow(
 
 export function clearNamedWorkflowCache(): void {
   yXn();
+}
+
+// `GJe`: the recovered name-only gate (HARNESS_WORKFLOW_NAME_ONLY).
+export function isNamedWorkflowNameOnly(): boolean {
+  return Boolean(GJe());
 }
 
 export function configureNamedWorkflows(options: NamedWorkflowHostOptions = {}): void {

@@ -172,3 +172,79 @@ test('workflow_run resolves a name, lists alternatives, and lets an explicit scr
   }, context))) as { result: unknown };
   assert.equal(overridden.result, 2);
 });
+
+async function runnableTools(workspace: string) {
+  const agents = { limits: { maxMessageBytes: 32 * 1024, maxOutputBytes: 24_000 } } as unknown as AgentRegistry;
+  const [workflowRun] = createWorkflowTools(new WorkflowRegistry({ agents }));
+  const context = { workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24_000 };
+  return { workflowRun: workflowRun!, context };
+}
+
+test('a script can nest a named workflow with args, logs, phases and the one-level limit', async () => {
+  const root = await temporaryRoot();
+  const workspace = path.join(root, 'repo');
+  const projectDir = path.join(workspace, '.harness', 'workflows');
+  await fs.mkdir(projectDir, { recursive: true });
+  await fs.writeFile(path.join(projectDir, 'child.js'),
+    `${meta('child')}\nlog('hello')\nphase('hidden')\nreturn { ok: args === undefined ? null : args.value }\n`);
+  await fs.writeFile(path.join(projectDir, 'nested.js'),
+    `${meta('nested')}\ntry { await workflow('child') } catch (error) { return error.message }\n`);
+  const { workflowRun, context } = await runnableTools(workspace);
+
+  const child = JSON.parse(String(await workflowRun.execute({
+    script: `${meta('parent')}\nphase('parent')\nreturn await workflow('child', { value: 4 })`,
+  }, context))) as { result: { ok: number }; logs: string[]; phases: string[] };
+  assert.deepEqual(child.result, { ok: 4 });
+  assert.ok(child.logs.includes('[child] hello'));
+  assert.ok(child.phases.includes('▸ child'));
+  assert.ok(child.phases.includes('parent'));
+  assert.ok(!child.phases.includes('hidden'));
+
+  const nested = JSON.parse(String(await workflowRun.execute({
+    script: `${meta('parent')}\nreturn await workflow('nested')`,
+  }, context))) as { result: string };
+  assert.equal(nested.result, 'workflow() cannot be called from within a child workflow '
+    + '— nesting is limited to one level. Inline the inner script or call its agents directly.');
+});
+
+test('nested workflow resolution reports missing names, bad requests and scriptPath children', async () => {
+  const root = await temporaryRoot();
+  const workspace = path.join(root, 'repo');
+  const projectDir = path.join(workspace, '.harness', 'workflows');
+  await fs.mkdir(projectDir, { recursive: true });
+  await fs.writeFile(path.join(projectDir, 'leaf.js'), `${meta('leaf')}\nreturn 9\n`);
+  await fs.writeFile(path.join(workspace, 'path-child.js'), `${meta('path-child')}\nreturn 11\n`);
+  const { workflowRun, context } = await runnableTools(workspace);
+
+  const missing = JSON.parse(String(await workflowRun.execute({
+    script: `${meta('parent')}\nawait workflow('absent')`,
+  }, context))) as { error: { message: string } };
+  assert.match(missing.error.message, /workflow\('absent'\): no workflow with that name\. Available: leaf/);
+
+  const bad = JSON.parse(String(await workflowRun.execute({
+    script: `${meta('parent')}\nawait workflow(42)`,
+  }, context))) as { error: { message: string } };
+  assert.equal(bad.error.message, 'workflow() expects a workflow name (string) or {scriptPath: string}');
+
+  const fromPath = JSON.parse(String(await workflowRun.execute({
+    script: `${meta('parent')}\nreturn await workflow({ scriptPath: 'path-child.js' })`,
+  }, context))) as { result: number };
+  assert.equal(fromPath.result, 11);
+
+  process.env.HARNESS_WORKFLOW_NAME_ONLY = '1';
+  try {
+    const nameOnly = JSON.parse(String(await workflowRun.execute({
+      script: `${meta('parent')}\nawait workflow({ scriptPath: 'path-child.js' })`,
+    }, context))) as { error: { message: string } };
+    assert.match(nameOnly.error.message, /HARNESS_WORKFLOW_NAME_ONLY is set/);
+  } finally {
+    delete process.env.HARNESS_WORKFLOW_NAME_ONLY;
+  }
+
+  const twice = JSON.parse(String(await workflowRun.execute({
+    script: `${meta('parent')}\nawait workflow('leaf')\nreturn await workflow('leaf')`,
+  }, context))) as { result: number; phases: string[] };
+  assert.equal(twice.result, 9);
+  assert.ok(twice.phases.includes('▸ leaf'));
+  assert.ok(twice.phases.includes('▸ leaf #2'));
+});
