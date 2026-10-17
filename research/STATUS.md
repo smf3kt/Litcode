@@ -2254,3 +2254,10 @@ recovered model-specific text, and allow records the answer without a local
 skip-confirm consumer. Focused 67/67, tsc 0, build 0, full 2,148/2,148, chain
 767/767, identity `dbe3098b…`.
 [W110 record](ports/W110-modelswitch-decision.md).
+
+W111-01 consumes SessionStart `watchPaths`. The merged paths return from
+`startSession`; the interactive loop registers them with the config watcher
+for startup via `initialWatchPaths` and for every later start from the return
+value. Focused 63/63, tsc 0, build 0, full 2,150/2,150, chain 767/767,
+identity `ec6093d6…`.
+[W111 record](ports/W111-sessionstart-watch-paths.md).

@@ -129,6 +129,21 @@ test('context and effort commands count paired history and pin the new request e
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
+test('startup SessionStart watch paths register with the config watcher', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-watch-paths-')));
+  const config = defaultConfig(workspace, []); config.model = 'fixture'; config.watchConfig = true;
+  const session = Session.open(workspace, { config });
+  const provider: ModelProvider = { count: async () => 1, complete: async () => reply('done') };
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, provider, stubRuntime(), {
+      input: Readable.from(['/exit\n']), output: stdout.stream, status: stderr.stream,
+      signal: new AbortController().signal, initialWatchPaths: ['/tmp/watched.md'],
+    });
+    assert.ok(session.events.some(event => event.kind === 'instruction_watch' && event.paths.includes('/tmp/watched.md')));
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test('PreModelSwitch deny and declined ask keep the model; an accepted ask switches it', async () => {
   const setup = (hook: Record<string, unknown>) => {
     const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-model-hook-')));

@@ -127,6 +127,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   terminal?: TerminalSurface;
   /** SessionStart `initialUserMessage`, queued ahead of the first typed input. */
   initialUserMessage?: string;
+  /** SessionStart `watchPaths` from the startup hooks run before this loop. */
+  initialWatchPaths?: string[];
 }): Promise<void> {
   let session = initial;
   try {
@@ -190,6 +192,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     }
     configWatch?.addInstructionPaths?.(added);
   };
+  // `Kjt` registers the SessionStart hook's watchPaths with the file watcher
+  // (chunk-sfn1dbxq.js offset 2483234, helpers at 1680634); the startup run
+  // happened before this loop, so its paths arrive as an option.
+  if (options.initialWatchPaths?.length) addInstructionPaths(options.initialWatchPaths);
   const bindConfigWatch = () => {
     configWatch?.close(); configWatch = undefined; configDirty = false;
     if (watchedWorkspace !== session.config.workspace) { dynamicWatchPaths.clear(); watchedWorkspace = session.config.workspace; }
@@ -460,6 +466,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const startAgentSession = async (source: 'clear' | 'fork') => {
     const started = await agent().startSession(source, options.signal);
     if (started?.initialUserMessage !== undefined) queue.unshift({ prompt: started.initialUserMessage, source: 'user' });
+    if (started?.watchPaths?.length) addInstructionPaths(started.watchPaths);
   };
   const announce = () => options.status.write(`session: ${session.id}\n`);
   const bindNext = async (candidate: Runtime, next: Session): Promise<Runtime> => {
@@ -512,7 +519,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const nextRuntime = await bindNext(activeRuntime, next);
     try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
     await acceptNext(next, nextRuntime);
-    announce(); await agent().startSession('resume', signal);
+    announce();
+    const resumed = await agent().startSession('resume', signal);
+    if (resumed?.watchPaths?.length) addInstructionPaths(resumed.watchPaths);
     // Pre/PostModelSwitch carry from_model, to_model and requested_model
     // (`oXr`, chunk-sfn1dbxq.js [2937531,2939081); `sXr`, [2939454,2940852)).
     if (switchingModel) {
@@ -659,7 +668,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           try { await agent().endSession('session_switch'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
           await acceptNext(next, nextRuntime);
-          announce(); await agent().startSession('resume', options.signal);
+          announce();
+          const resumed = await agent().startSession('resume', options.signal);
+          if (resumed?.watchPaths?.length) addInstructionPaths(resumed.watchPaths);
           options.status.write(session.awaitingResponse ? 'Session has an unfinished turn; use /continue.\n' : 'Session resumed.\n');
           continue;
         }
@@ -744,7 +755,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           try { await agent().endSession('config_reload'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
           await acceptNext(next, nextRuntime);
-          announce(); await agent().startSession('resume', options.signal);
+          announce();
+          const resumed = await agent().startSession('resume', options.signal);
+          if (resumed?.watchPaths?.length) addInstructionPaths(resumed.watchPaths);
           options.status.write(reconnect ? 'MCP servers reconnected; pinned settings retained and tool schemas refreshed.\n' : 'Local configuration reloaded; model, gateway and invocation budgets retained.\n');
           continue;
         }
@@ -949,7 +962,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           try { await agent().endSession('cwd_changed'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
           await acceptNext(next, nextRuntime);
-          announce(); await agent().startSession('resume', options.signal);
+          announce();
+          const resumed = await agent().startSession('resume', options.signal);
+          if (resumed?.watchPaths?.length) addInstructionPaths(resumed.watchPaths);
           if (removal) {
             try {
               const removed = await withTurn(signal => removeExitedWorktree(removal.config, removal.discard, signal));

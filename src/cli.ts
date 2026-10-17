@@ -692,6 +692,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       await interactiveLoop(currentSession, provider, currentRuntime, { input: process.stdin, output: process.stdout,
         status: tui ? tui.statusStream : process.stderr, signal: controller.signal,
         ...(started.initialUserMessage === undefined ? {} : { initialUserMessage: started.initialUserMessage }),
+        ...(started.watchPaths === undefined ? {} : { initialWatchPaths: started.watchPaths }),
         ...(tui ? { terminal: tui } : {}) });
       if (controller.signal.aborted) process.exitCode = 130;
       return;

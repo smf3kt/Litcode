@@ -1,0 +1,3 @@
+2026-10-17T21:24:00Z	package	W111-01 SessionStart watchPaths	schema 392062、输出映射 387382、注册 2483234/2483221、watcher 绑定 1680634	所有SessionStart结果合并；沿用addInstructionPaths界限；headless无watcher忽略	agent-lifecycle/interactive 63/63；tsc 0；build 0；全量 2,150/2,150；链 767/767
+2026-10-17T21:26:00Z	decision	W111-01 本地适配	源区分update/add（插件晚到）；本构建无插件晚到SessionStart	统一走增量注册；startup路径经initialWatchPaths转入循环	.audit/w111-01-full.txt
+2026-10-17T21:28:00Z	verification	W111-01 验收：聚焦 63/63、tsc 0、build 0、2,150/2,150、767/767	startSession返回合并路径；startup路径生成instruction_watch事件	notices 0；索引 75 chunks / 323,525 单位不变；identity ec6093d6…

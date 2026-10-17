@@ -329,7 +329,7 @@ export class Agent {
     return await this.hook(event, payload, signal);
   }
 
-  async startSession(source: 'startup' | 'resume' | 'clear' | 'fork', signal = new AbortController().signal): Promise<{ initialUserMessage?: string }> {
+  async startSession(source: 'startup' | 'resume' | 'clear' | 'fork', signal = new AbortController().signal): Promise<{ initialUserMessage?: string; watchPaths?: string[] }> {
     // Setup carries `trigger` and the process-startup dispatch passes "init"
     // (`n7r`, chunk-sfn1dbxq.js [2943161,2943444); dispatch trigger at
     // chunk-9shw4xrd.js offset 143466). InstructionsLoaded carries the eager
@@ -385,7 +385,14 @@ export class Agent {
     // becomes the first queued user turn instead of an unfinished turn. The
     // local front ends queue it at the same point; returning it keeps that
     // value out of the transcript until the caller starts the turn.
-    return result.initialUserMessage === undefined ? {} : { initialUserMessage: result.initialUserMessage };
+    // The recovered consumer registers SessionStart hook watchPaths with the
+    // file watcher (`Kjt`/`Vjt`, chunk-sfn1dbxq.js offsets 2483234 and
+    // 1680634); the front ends receive them with the initial message because
+    // the startup run precedes the loop that owns the watcher.
+    return {
+      ...(result.initialUserMessage === undefined ? {} : { initialUserMessage: result.initialUserMessage }),
+      ...(result.watchPaths?.length ? { watchPaths: result.watchPaths } : {}),
+    };
   }
 
   async endSession(reason = 'exit'): Promise<void> {

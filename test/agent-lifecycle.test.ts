@@ -631,6 +631,16 @@ test("Stop carries the runtime-provided background jobs and session cron tasks",
   } finally { session.close(); }
 });
 
+test("SessionStart watchPaths are returned for the front-end watcher", async () => {
+  const root = workspace();
+  const hooks = { SessionStart: [{ command: emit({ hookSpecificOutput: { hookEventName: "SessionStart", watchPaths: ["/tmp/one.md", "/tmp/two.md"] } }) }] };
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  try {
+    const started = await new Agent(session, new ScriptedProvider([]), []).startSession("startup");
+    assert.deepEqual(started.watchPaths, ["/tmp/one.md", "/tmp/two.md"]);
+  } finally { session.close(); }
+});
+
 test("SubagentStart additional context reaches the child's first request", async () => {
   const root = workspace();
   const hooks = { SubagentStart: [{ command: emit({ hookSpecificOutput: { hookEventName: "SubagentStart", additionalContext: "child start context" } }) }] };
