@@ -2612,3 +2612,11 @@ the 400 ms debounce effect. The slice also carries the clock-now hook `Xa` (cont
 corrected: an effect called without a dependency array now runs after every render, as React
 defines it, which the source's handler-ref effect needs. Focused 11/11, full 2305/2305, tsc 0,
 build 0, notices 0, identity `307fee76…`. [W147 record](ports/W147-above-prompt-input.md).
+
+W148 adds the AbovePrompt focus-seat layer. Five blocks (956 units) carry the NUL seat key, the
+prompt key handlers (next and previous wrap by modulo, press dispatches a held Button through
+pressFromTerminal or submits a held Input), the memoized seat index by plugin/handle, the
+per-plugin registry whose unbind removes one seat, and the change watch that reports keys whose
+value changed under the same plugin/element. The select keyboard itself (`C0`/`nK`) is deferred
+because it needs the `ui.input` dispatcher. Focused 8/8, full 2311/2311, tsc 0, build 0, notices 0,
+identity `8f0b66ab…`. [W148 record](ports/W148-above-prompt-seats.md).
