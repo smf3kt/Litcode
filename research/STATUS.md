@@ -2422,3 +2422,10 @@ the header collapses to the source's single line. It is shown only while the tra
 so the first committed message removes it. The Apple_Terminal-only `V` variant remains out.
 tsc 0, build 0, focused 75/75, notices 0, source index unchanged, identity `b86d2a9d…`.
 [W129 record](ports/W129-tui-welcome.md).
+
+W130-01 ports the Apple Terminal welcome variant `V`. When `TERM_PROGRAM` is
+`Apple_Terminal`, the startup header now uses the source's quarter-block body in both themes;
+the first 12 rows stay the generic art, and every other terminal keeps W129's rendering. The
+variant is selected through `TuiOptions.termProgram`, cached with the header, and covered by a
+two-theme test. Focused TUI/terminal tests 76/76, tsc 0, build 0, notices 0, source index
+unchanged, identity `21ac3022…`. [W130 record](ports/W130-welcome-apple-terminal.md).

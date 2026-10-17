@@ -672,6 +672,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     if (values.interactive) {
       const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
         version: cliVersion(),
+        termProgram: process.env.TERM_PROGRAM,
         keybindings: currentSession.config.keybindings,
         prefersReducedMotion: currentSession.config.prefersReducedMotion,
         showTurnDuration: currentSession.config.showTurnDuration,
