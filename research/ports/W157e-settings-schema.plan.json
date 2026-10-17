@@ -1,0 +1,27 @@
+{
+  "imports": [
+    "import { Oe } from \"./plugin-chain-registry-stores-source.js\";"
+  ],
+  "exports": [
+    "gf",
+    "Hh"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-bk5ct2gw.js",
+      "range": [
+        549808,
+        555356
+      ],
+      "note": "gf the settings config manager state"
+    },
+    {
+      "file": "chunk-qpxbyxy2.js",
+      "range": [
+        849,
+        1269
+      ],
+      "note": "n drain attempt count and Hh the per-key write queue"
+    }
+  ]
+}
