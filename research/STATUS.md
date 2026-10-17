@@ -2291,3 +2291,10 @@ the action while keeping the person's content when the hook supplies none.
 Focused 97/97, tsc 0, build 0, full 2,158/2,158, chain 767/767, identity
 `82dd4570…`.
 [W115 record](ports/W115-elicitation-hooks.md).
+
+W116-01 raises DirectoryAdded with the documented slash_command producer on a
+workspace relocation and displays each failed hook output after the system
+messages. The local CLI has no /add-dir or register_repo_root, so relocation
+commands stand in for the source's registration triggers. Focused 71/71, tsc 0,
+build 0, full 2,159/2,159, chain 767/767, identity `7b5c2d92…`.
+[W116 record](ports/W116-directory-added.md).
