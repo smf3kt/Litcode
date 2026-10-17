@@ -1,0 +1,65 @@
+{
+  "schema": "W157eSettingsSchema.v1",
+  "package": "W157e-settings-schema",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      { "module": "chunk-bk5ct2gw.js", "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1" },
+      { "module": "chunk-qpxbyxy2.js", "sha256": "f9f559cdc5ed22076ae8e4c42bef7f772add2a23150edfe1175e740e1784c4fd" }
+    ],
+    "blocks": 2,
+    "units": 5968,
+    "ranges": [
+      { "module": "chunk-bk5ct2gw.js", "range": [549808, 555356], "units": 5548, "note": "gf the settings config manager state", "bodySha256": "10d189a4e5f4679d5218dd0e29eb7eb85827681832b7c1b35d1b7e7c256494d6" },
+      { "module": "chunk-qpxbyxy2.js", "range": [849, 1269], "units": 420, "note": "n drain attempt count and Hh the per-key write queue", "bodySha256": "c7752822ee51b620c806b9c209298c4ab62078287da281750b8400eb622667f3" }
+    ],
+    "reused": [
+      { "name": "Oe", "module": "chunk-fdxhcr6b.js", "range": [1196, 1457], "product": "src/plugin-chain-registry-stores-source.ts", "note": "the change signal the installed field is built from" }
+    ],
+    "hostBound": [
+      { "name": "now", "reason": "the clock is a constructor argument in the source; the seam's lazy instance passes Date.now and tests pass a controlled clock" },
+      { "name": "testGlobalConfig/testProjectConfig", "reason": "the source singleton seeds them from the legacy setting tables wR/bue; those tables are not carried in this package, so the seam's default state starts with empty objects and a caller with the real tables passes them to the factory" }
+    ],
+    "deferred": [
+      { "name": "config manager read/write path", "reason": "the file reads, schema parse, freshness watcher and settings-source merge that call this state belong to the settings subsystem; this package carries the state record and its write queue" }
+    ],
+    "unresolved": 0
+  },
+  "product": {
+    "sourceFile": "src/plugin-chain-settings-schema-source.ts",
+    "seamFile": "src/plugin-chain-settings-schema.ts",
+    "exports": [
+      "createSettingsConfigState",
+      "createSettingsWriteQueue",
+      "settingsConfigState",
+      "bindSettingsConfigState"
+    ],
+    "types": [
+      "SettingsConfigState",
+      "SettingsConfigWriteQueue",
+      "SettingsConfigStateOptions"
+    ],
+    "notes": [
+      "readCache counts hits and misses; takeCacheStats answers and resets both counters.",
+      "installDiskRead and writeThrough emit installed; writeThrough and advanceFreshnessCursor advance writeGeneration; writeThrough and advanceFreshnessCursor clear lastReadFileStats.",
+      "enable caches the opener's promise and its outcome: settled without an error resolves, settled with one rejects with that value; reloadThroughStorageOnce spends the owed flag exactly once and answers the same promise afterwards.",
+      "beginPendingWrite/endPendingWrite keep a per-file account; an end without a begin answers 0 (the source's ?? 1 fallback).",
+      "bootPhaseStillOpen closes at the deadline and stays closed; claimParseErrorLog dedups until clearParseErrorDedup; remoteControlMachineIdOnceFrom computes once until cleared.",
+      "Hh chains work per key, removes the key when its chain settles, and drain waits at most five rounds so work queued while running is picked up."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 16, "failed": 0, "file": "test/plugin-chain-settings-schema.test.ts" },
+    "full": { "passed": 2431, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": { "blocks": 2, "missing": 0, "units": 5968, "unresolved": 0 }
+  },
+  "identity": {
+    "sha256": "f8831570601e349176ed5f4ae5e1db48c83753d7f4195be2d83b48a4f803a65a",
+    "inputs": 609,
+    "validation": 214,
+    "build": 420
+  }
+}

@@ -2745,3 +2745,15 @@ of the same module ranges, imported rather than copied again. Focused 11/11, ful
 build 0, notices 0, identity `f8884490…`. Next is the settings schema `gf`, then the W156 `NFe`
 wiring.
 [W157d record](ports/W157d-pane-scroll.md).
+
+W157e landed the settings config manager state and its per-key write queue (2 blocks, 5,968 UTF-16
+units): the parsed-config cache with hit/miss counters and the `installed` change signal, the
+one-shot enable gate with its settled-error outcome, the owed storage reload, per-file pending-write
+counts, the freshness-watcher flags and resubscribe claim, parse-error dedup, the boot-phase window,
+the generated user/machine/summon ids, the remote-control machine id cache, the client-data slots
+and the test config surfaces; `Hh` serializes work per key over a promise chain and drains in at
+most five rounds so work queued while running is picked up. The clock and the two test config
+tables are host inputs; the source seeds the latter from the legacy tables this product does not
+carry, so the lazy state starts with empty objects. Focused 16/16, full 2431/2431, tsc 0, build 0,
+notices 0, identity `f8831570…`. Next is the W156 `NFe` wiring.
+[W157e record](ports/W157e-settings-schema.md).
