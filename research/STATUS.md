@@ -2842,3 +2842,19 @@ checks are replaced by `execFile` with the shared Git isolation; the dialog and 
 remain out. Focused 7/7, full 2467/2467, tsc 0, build 0, notices 0, scan declared 23 /
 unresolved 0, identity `9d4ebe67…`.
 [W162 record](ports/W162-git-diff-hunks.md).
+
+W163 added the diff data hook seam (2 copied blocks, 341 UTF-16 units from
+chunk-xmvfy87k.js: the j/jKn/de/I constants and the prime store z), with K, Wcn and WKn adapted
+to a plain controller. `diffRevision` maps noCommits to `--cached`, a branch source to its
+baseRef and everything else to `HEAD`; the collector reads W161 stats first, skips hunks for an
+empty diff and otherwise reads W162 hunks, answering null on abort, failure or throw. The prime
+store keeps its 2000ms TTL and baseMode guard, and a failed prime still counts as loaded for its
+refresh key. File rows sort by path, carry the skippedLarge flag, mark non-large non-binary files
+above 400 changed lines as truncated, and pass untracked and pre-session flags through. The
+controller keeps the source effect order: one-shot prime take, same-key suppression, abort of
+the previous collection, a 150ms debounce once data exists or the key is nonzero, previous-hunk
+retention when collection failed for the same revision, and abort on disable. The React hook
+becomes a controller and the uxn session/branch sources are not carried (working tree only);
+both are recorded. Focused 13/13, full 2480/2480, tsc 0, build 0, notices 0, scan declared 9 /
+unresolved 0, identity `7d53b94a…`.
+[W163 record](ports/W163-git-diff-data.md).
