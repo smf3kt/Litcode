@@ -8,6 +8,7 @@ import { after, test } from "node:test";
 import {
   HOOK_EVENTS,
   hookDefinitionSchema,
+  hookMatcherValue,
   hooksSchema,
   runHooks,
   type HookDefinition,
@@ -161,14 +162,42 @@ test("matcher selects by tool_name with exact, alternation and wildcard forms", 
   );
   assert.deepEqual(regex.additionalContext, ["mcp"]);
 
-  // A tool matcher is not applied to event types that carry no tool_name.
-  const noTool = await runHooks(
-    { UserPromptSubmit: [{ ...context("nope"), matcher: "Bash" }] },
+  // An event outside the recovered selector table has no matcher value, so
+  // its configured matchers match every occurrence (`y5e` default branch).
+  const noSelector = await runHooks(
+    { UserPromptSubmit: [{ ...context("any"), matcher: "Bash" }] },
     "UserPromptSubmit",
     { prompt: "hi" },
     signal(),
   );
-  assert.deepEqual(noTool.additionalContext, []);
+  assert.deepEqual(noSelector.additionalContext, ["any"]);
+});
+
+test("transition matchers follow the recovered per-event selector fields", async () => {
+  const context = (text: string): HookDefinition => emit({ additionalContext: text });
+  const run = (event: HookEvent, matcher: string, payload: HookPayload) =>
+    runHooks({ [event]: [{ ...context("hit"), matcher }] } as HooksConfig, event, payload, signal());
+
+  // FileChanged selects the file's basename (`h5e`, the path basename).
+  assert.deepEqual((await run("FileChanged", "notes\\.md", { file_path: "/w/docs/notes.md" })).additionalContext, ["hit"]);
+  assert.deepEqual((await run("FileChanged", "docs\\.md", { file_path: "/w/docs/notes.md" })).additionalContext, []);
+  // DirectoryAdded and ConfigChange select `source`, not the directory.
+  assert.deepEqual((await run("DirectoryAdded", "cwd_relocation", { directory: "/w", source: "cwd_relocation" })).additionalContext, ["hit"]);
+  assert.deepEqual((await run("DirectoryAdded", "/w", { directory: "/w", source: "cwd_relocation" })).additionalContext, []);
+  // InstructionsLoaded selects the load reason; Setup selects the trigger.
+  assert.deepEqual((await run("InstructionsLoaded", "session_start", { load_reason: "session_start" })).additionalContext, ["hit"]);
+  assert.deepEqual((await run("InstructionsLoaded", "startup", { load_reason: "session_start" })).additionalContext, []);
+  assert.deepEqual((await run("Setup", "init", { trigger: "init" })).additionalContext, ["hit"]);
+  // CwdChanged has no selector, so a configured matcher matches it.
+  assert.deepEqual((await run("CwdChanged", "never", { old_cwd: "/a", new_cwd: "/b" })).additionalContext, ["hit"]);
+  // TaskCreated also has no selector, even when a tool name is present.
+  assert.deepEqual((await run("TaskCreated", "Bash", { tool_name: "Bash" })).additionalContext, ["hit"]);
+
+  assert.equal(hookMatcherValue("FileChanged", { file_path: "/w/a/b.md" }), "b.md");
+  assert.equal(hookMatcherValue("Notification", { notification_type: "plugin_notification" }), "plugin_notification");
+  assert.equal(hookMatcherValue("Elicitation", { mcp_server_name: "server" }), "server");
+  assert.equal(hookMatcherValue("SessionEnd", { reason: "exit" }), "exit");
+  assert.equal(hookMatcherValue("TaskCreated", { tool_name: "Bash" }), undefined);
 });
 
 // ---------------------------------------------------------------------------

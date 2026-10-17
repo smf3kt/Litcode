@@ -75,6 +75,23 @@ function hookLifecycle(session: Session): HookLifecycle {
   return lifecycle;
 }
 
+/**
+ * Resolve the file a mutation tool changed. The recovered FileChanged payload
+ * (`e7r`, chunk-sfn1dbxq.js [2935646,2935767)) is raised by its file watcher
+ * with an absolute path and one of `add`, `change` or `unlink`; this runtime
+ * raises the event after its own mutation tools, so it supplies the absolute
+ * path here and reports the mutation as `change`.
+ */
+function changedFilePath(toolName: string, input: unknown, workspace: string): string | undefined {
+  if (typeof input !== 'object' || input === null) return undefined;
+  const record = input as { path?: unknown; name?: unknown };
+  if (toolName === 'memory_write') {
+    return typeof record.name === 'string' && record.name !== ''
+      ? path.join(workspace, '.harness', 'memory', `${record.name}.md`) : undefined;
+  }
+  return typeof record.path === 'string' && record.path !== '' ? path.resolve(workspace, record.path) : undefined;
+}
+
 export class Agent {
   private busy = false;
   private ended = false;
@@ -262,8 +279,13 @@ export class Agent {
   }
 
   async startSession(source: 'startup' | 'resume' | 'clear' | 'fork', signal = new AbortController().signal): Promise<void> {
-    if (source === 'startup') await this.hook('Setup', { source }, signal);
-    await this.hook('InstructionsLoaded', { source, model: this.session.config.model }, signal);
+    // Setup carries `trigger` and the process-startup dispatch passes "init"
+    // (`n7r`, chunk-sfn1dbxq.js [2943161,2943444); dispatch trigger at
+    // chunk-9shw4xrd.js offset 143466). InstructionsLoaded carries the eager
+    // load reason, initialized to "session_start" (`KZn`,
+    // chunk-sfn1dbxq.js [672828,672967); state default at offset 654708).
+    if (source === 'startup') await this.hook('Setup', { trigger: 'init' }, signal);
+    await this.hook('InstructionsLoaded', { load_reason: 'session_start' }, signal);
     if (this.session.config.childMode) await this.hook('SubagentStart', { agent_id: this.session.id, agent_type: this.session.config.childMode }, signal);
     const result = await this.hook('SessionStart', { source, model: this.session.config.model }, signal);
     if (result.blocked) throw new Error(result.reason ?? 'SessionStart hook stopped continuation');
@@ -501,7 +523,8 @@ export class Agent {
           }
           if (!result.is_error && call.name === 'task_create') await this.hook('TaskCreated', { tool_name: call.name, tool_input: input, tool_response: result.content }, signal);
           if (!result.is_error && (call.name === 'write_file' || call.name === 'edit_file' || call.name === 'notebook_edit' || call.name === 'memory_write')) {
-            await this.hook('FileChanged', { tool_name: call.name, tool_input: input }, signal);
+            const filePath = changedFilePath(call.name, input, c.workspace);
+            if (filePath !== undefined) await this.hook('FileChanged', { file_path: filePath, event: 'change' }, signal);
           }
           if (!result.is_error && call.name === 'worktree_remove') {
             await this.hook('WorktreeRemove', { tool_name: call.name, tool_input: input, tool_response: result.content }, signal);

@@ -105,6 +105,36 @@ test("hook display fields persist across resume and suppression preserves model 
     } finally { reopened.close(); }
   } finally { session.close(); }
 });
+test("instruction and file events carry the recovered payload fields", async () => {
+  const root = workspace();
+  const captured = path.join(root, "captured");
+  fs.mkdirSync(captured);
+  const sink = (name: string) => [{ command: `cat > ${shellQuote(path.join(captured, name))}` }];
+  const hooks = { Setup: sink("setup.json"), InstructionsLoaded: sink("instructions.json"), FileChanged: sink("filechanged.json") };
+  const file = spy("write_file", false);
+  const session = Session.open(root, { config: config(root, [file.tool], { hooks }) });
+  try {
+    const provider = new ScriptedProvider([
+      response([call("write-1", "write_file", { path: "note.txt", content: "x" })], "tool_use"),
+      done(),
+    ]);
+    const agent = new Agent(session, provider, [file.tool], {});
+    await agent.startSession("startup");
+    await agent.run("write");
+    const setup = JSON.parse(fs.readFileSync(path.join(captured, "setup.json"), "utf8"));
+    assert.equal(setup.hook_event_name, "Setup");
+    assert.equal(setup.trigger, "init");
+    const instructions = JSON.parse(fs.readFileSync(path.join(captured, "instructions.json"), "utf8"));
+    assert.equal(instructions.hook_event_name, "InstructionsLoaded");
+    assert.equal(instructions.load_reason, "session_start");
+    assert.equal("model" in instructions, false);
+    const changed = JSON.parse(fs.readFileSync(path.join(captured, "filechanged.json"), "utf8"));
+    assert.equal(changed.hook_event_name, "FileChanged");
+    assert.equal(changed.file_path, path.join(root, "note.txt"));
+    assert.equal(changed.event, "change");
+    assert.equal("tool_name" in changed, false);
+  } finally { session.close(); }
+});
 function hookRequest(request: ModelRequest): boolean {
   return typeof request.system === "string" && request.system.startsWith("Evaluate the configured lifecycle hook.");
 }
