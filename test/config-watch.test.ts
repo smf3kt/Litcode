@@ -105,12 +105,45 @@ test("real config changes debounce, discover directories, survive replacement an
   } finally { watcher.close(); fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test("a file change gate delays or suppresses the reload fan-out", async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "config-watch-gate-")));
+  const workspace = path.join(root, "project");
+  fs.mkdirSync(workspace);
+  let count = 0;
+  const gates: Array<(proceed: boolean) => void> = [];
+  const errors: Error[] = [];
+  const settle = (proceed: boolean): void => { while (gates.length) gates.shift()!(proceed); };
+  const watcher = watchProjectConfig(workspace,
+    { onFileChange: () => new Promise<boolean>(resolve => { gates.push(resolve); }) },
+    () => count++, error => errors.push(error));
+  try {
+    await delay(100);
+    write(path.join(workspace, "AGENTS.md"), "one");
+    await waitFor(() => gates.length > 0);
+    await delay(350);
+    assert.equal(count, 0);
+    settle(true);
+    await waitFor(() => count === 1);
+    const held = count;
+    write(path.join(workspace, "AGENTS.md"), "two");
+    await waitFor(() => gates.length > 0);
+    settle(false);
+    await delay(400);
+    assert.equal(count, held);
+    write(path.join(workspace, "AGENTS.md"), "three");
+    await waitFor(() => gates.length > 0);
+    settle(true);
+    await waitFor(() => count > held);
+    assert.deepEqual(errors, []);
+  } finally { watcher.close(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test("watcher reports each relevant file event with its path and kind", async () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "config-watch-events-")));
   const workspace = path.join(root, "project");
   fs.mkdirSync(workspace);
   const events: { file: string; kind: string }[] = [];
-  const watcher = watchProjectConfig(workspace, { onFileChange: (file, kind) => events.push({ file, kind }) },
+  const watcher = watchProjectConfig(workspace, { onFileChange: (file, kind) => { events.push({ file, kind }); } },
     () => {});
   try {
     await delay(100);

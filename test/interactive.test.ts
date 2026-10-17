@@ -6,7 +6,7 @@ import { Readable, Writable } from 'node:stream';
 import { test } from 'node:test';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, defaultConfig } from '../src/agent.js';
-import { interactiveLoop, notifyPermissionPrompt } from '../src/interactive.js';
+import { configChangeSource, interactiveLoop, notifyPermissionPrompt } from '../src/interactive.js';
 import type { ModelProvider } from '../src/provider.js';
 import type { Runtime } from '../src/runtime.js';
 import { Session } from '../src/session.js';
@@ -254,6 +254,24 @@ test('/skills lists skills and /NAME runs a user-invocable skill', async () => {
     assert.deepEqual(expansions.map(event => [event.expansion_type, event.command_name, event.command_args, event.prompt]),
       [['slash_command', 'greet', 'world', '/greet world'], ['slash_command', 'auto', 'z', '/auto z']]);
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('config change sources follow the recovered settings and skill scopes', () => {
+  const workspace = '/w', userDir = '/u';
+  assert.equal(configChangeSource('/w/.harness/settings.json', workspace, { userDir }), 'project_settings');
+  assert.equal(configChangeSource('/w/custom/settings.json', workspace, { userDir, settingsFile: 'custom/settings.json' }), 'project_settings');
+  assert.equal(configChangeSource('/w/.harness/settings.local.json', workspace, { userDir }), 'local_settings');
+  assert.equal(configChangeSource('/u/settings.json', workspace, { userDir }), 'user_settings');
+  assert.equal(configChangeSource('/w/policy.json', workspace, { userDir, managedSettingsFile: 'policy.json' }), 'policy_settings');
+  assert.equal(configChangeSource('/u/skills/example/SKILL.md', workspace, { userDir }), 'skills');
+  assert.equal(configChangeSource('/w/.harness/skills/nested/example/SKILL.md', workspace, { userDir }), 'skills');
+  assert.equal(configChangeSource('/w/.harness/commands/greet.md', workspace, { userDir }), 'skills');
+  assert.equal(configChangeSource('/u/agents/reviewer.md', workspace, { userDir }), 'skills');
+  assert.equal(configChangeSource('/plugin/skills/example/SKILL.md', workspace, { userDir, contentDirectories: ['/plugin'] }), 'skills');
+  // Instruction files and non-skill catalogs do not raise ConfigChange.
+  assert.equal(configChangeSource('/w/AGENTS.md', workspace, { userDir }), undefined);
+  assert.equal(configChangeSource('/w/.harness/rules/style.md', workspace, { userDir }), undefined);
+  assert.equal(configChangeSource('/w/notes/settings.json', workspace, { userDir }), undefined);
 });
 
 test('a pending permission prompt notifies after six seconds and can be cancelled', t => {
