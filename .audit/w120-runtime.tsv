@@ -1,0 +1,3 @@
+2026-10-18T01:45:00Z	package	W120-01 background session fork	_1s 38204、fBe 51242、gft 38766（chunk-24k7d6mw.js）、TF/zg/rb/N_（chunk-sfn1dbxq.js）、ne（chunk-ax7r0qj7.js）、O$（chunk-r2vtj1kh.js）	种子选择与跳过；intent 200/detail 120；先fork后spawn；detached headless --resume；失败删除fork	background-session 6/6；聚焦50/50；扩展86/86；tsc 0；build 0；全量2,177/2,177；链768/768
+2026-10-18T01:48:00Z	decision	W120-01 本地适配	本地始终持久化；无会话后台job registry、快照复制、工作树简报与结转计数	子进程为普通detached headless CLI；fork点固定为完成历史；不转发权限快照/allowed-tools/hooks	.audit/w120-01-full.txt
+2026-10-18T01:51:00Z	verification	W120-01 验收：聚焦50/50、扩展86/86、tsc 0、build 0、2,177/2,177、768/768	种子取最新真实用户文本与assistant行；/background拒绝运行中回合；日志与resume命令输出	notices 0；索引 75 chunks / 323,525 单位不变；identity 5824092a…

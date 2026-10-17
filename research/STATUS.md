@@ -2325,3 +2325,14 @@ event prompt. Broken-install detection, its dedupe and the trusted-plugin JSON
 summary have no local surface. Focused 103/103, extended 226/226, tsc 0,
 build 0, full 2,171/2,171, chain 768/768, identity `06c37dbf…`.
 [W119 record](ports/W119-async-rewake.md).
+
+W120-01 adds `/background [PROMPT]`. The seed port follows `fBe`: the latest
+real user text (or the explicit prompt) as intent, the latest assistant line as
+detail, with tool results, command records and the two local meta kinds
+skipped. The command writes the fork journal before spawning a detached
+headless child on `--resume <forkId> <task>` with output under
+`.agent/background/<forkId>.log`; a failed spawn removes the fork. The source's
+job registry, snapshot copy, worktree briefing and carry-over counts have no
+local counterpart. Focused 50/50, extended 86/86, tsc 0, build 0, full
+2,177/2,177, chain 768/768, identity `5824092a…`.
+[W120 record](ports/W120-background-fork.md).
