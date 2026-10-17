@@ -1,0 +1,30 @@
+(node:35470) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+constants = {"xi":24,"hi":4,"yi":384,"gi":["EAGAIN","EBUSY","EINTR","EMFILE","ENFILE","ENOSPC"]}
+E = ["EAGAIN",null,null]
+uFo = "\u001b_Gi=7,s=1,v=1,a=q,t=f,f=32;L3RtcC94LnJnYmE=\u001b\\"
+Eo no root = "the Image is not drawn under a terminal root"
+Eo no placeholders = "the Image draws its alt here: the terminal draws no placeholder images (probe: none)"
+Eo no id = "the Image draws its alt here: every 8-bit image id is in use"
+Eo files unasked = "the terminal has not yet said whether it reads files on this machine; asked now, blit again"
+Eo files yes = undefined
+Eo files no = "the Image draws its alt here: this terminal cannot read files on this machine (probe: no reply); a { file } or { shm } source shows nothing, bytes still draw"
+Eo inline with files no = undefined
+Ho records = ["Image \"k\" (plug) in req: the terminal refused its source: one","Image \"k\" (plug) in req: the terminal refused its source: two"]
+or inline = "\u001b_Ga=T,U=1,q=2,f=100,i=5,c=2,r=1;TQ==\u001b\\"
+or file = "\u001b_Ga=T,U=1,q=1,f=100,t=f,i=6,c=1,r=1;L2EucG5n\u001b\\"
+vo = {"l2":8,"l3":24}
+Mo row = {"images":1,"mount":{"plugin":"plug","requestId":"req","key":"k","columns":2,"rows":1,"swapType":"function"}}
+Mo after unmount = undefined
+Oo initial = {"state":"unasked"}
+dt ok = {"reading":{"state":"settled","value":true,"source":"probe: file query answered OK"},"requestPrefix":"\u001b_Gi=9,s=1,v=1,a=q,t=f,f=32;L3","allocatedWidth":[24]}
+dt no reply = {"state":"settled","value":false,"source":"probe: no reply to the file query"}
+No inline root = {"type":"Box","props":{"flexShrink":0,"width":2,"height":1,"overflow":"hidden","elementKey":"k","elementPlugin":"plug"},"child":{"type":"ink-raw-ansi","rawText":"\u001b[38;5;9m􎻮̅̅􎻮̅̍\u001b[39m","rawWidth":2,"rawHeight":1}}
+No inline expected alt = "\u001b[38;5;9m􎻮̅̅􎻮̅̍\u001b[39m"
+No inline sends = [{"id":9,"resend":true,"built":"\u001b_Ga=T,U=1,q=2,f=100,i=9,c=2,r=1;TQ==\u001b\\"}]
+No inline alt callback = undefined
+No inline freed = [9]
+No file root = {"type":"Text","props":{"dimColor":true}}
+No file alt callback = "the Image draws its alt here: this terminal cannot read files on this machine (probe: no reply to the file query); a { file } or { shm } source shows nothing, bytes still draw"
+No clientless root = {"type":"Text","props":{"dimColor":true},"children":["ALT"]}
+ge after reset = 0

@@ -1,0 +1,119 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-886tf6ja.js",
+      "sha256": "593e2ed1380725f871cb3ad6b60ab6fb270bd985462dd6ee3bf5128e003fd30b",
+      "range": [
+        4814,
+        4913
+      ],
+      "units": 99,
+      "bodySha256": "a84ab0a2488aed5689416393c679dde4e7f4b29aa980e121bd56b25ab3e7b5e4",
+      "note": "`E` — the error code reader the probe reports"
+    },
+    {
+      "module": "chunk-fzk4rpqy.js",
+      "sha256": "bb2b14f95b2e509e9a2992709435d6e6e6841de2e5782960061c3721d61b38ae",
+      "range": [
+        7397,
+        7472
+      ],
+      "units": 75,
+      "bodySha256": "08a5b7ba9931666f2bd4e2ec0b6d696cefd7c1c10696740748eb405149da2762",
+      "note": "`uFo` — the file-read probe query"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        30935,
+        31632
+      ],
+      "units": 697,
+      "bodySha256": "07f81816c1b724107909c891ebef9d4825b31f7c765403afc9036f18b7c14d30",
+      "note": "`Eo` — why the Image draws its alt instead of the source"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        31686,
+        33428
+      ],
+      "units": 1742,
+      "bodySha256": "38ea03a0d915394f37ee8e726accabd8c476f54707e4160c5234f75e374ab8d5",
+      "note": "the probe constants, `Lo`, `tr`, `rr`, `dt`, `or`, `Po`, `Ho` and the tracker `xt`"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        33432,
+        33644
+      ],
+      "units": 212,
+      "bodySha256": "ec10b57bd0fb71a5078831895b5b4af326829e7df5914d8e13f8930688904c78",
+      "note": "`Ke` — the image id widths by capability level"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        33648,
+        33834
+      ],
+      "units": 186,
+      "bodySha256": "1e3189080c5e6a6df9462b6283f8ed0830aed6dfcf716f3de563dd9a38b68d34",
+      "note": "`Mo` — the mount writer the alt answer registers through"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        33838,
+        34038
+      ],
+      "units": 200,
+      "bodySha256": "fc0ec59d878a3076c3b1ac6d0a50bb55b1ebeabdd607b945012229ef8be1bea1",
+      "note": "`Oo` — the file-read answer the resolver subscribes to"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        34038,
+        35448
+      ],
+      "units": 1410,
+      "bodySha256": "d450cefbaddff32c3d86dc4ba57f3f6e1b986974f5e8d183cfa2791e0477973b",
+      "note": "`Ao` — the resolver: allocate, transmit, track, register the alt"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        35448,
+        35771
+      ],
+      "units": 323,
+      "bodySha256": "fe3eeeaba43b046cc0ab4994e3e85f11b806883a833754ffcf7bbcd275d56278",
+      "note": "`No` — the Image site component"
+    }
+  ],
+  "missing": []
+}
