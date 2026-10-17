@@ -122,7 +122,7 @@ test('agent, parallel and pipeline mirror the recovered semantics', async () => 
   const promises = await run('return await parallel([() => 1, 1])');
   assert.match(promises.error?.message ?? '', /not promises/);
   const nested = await run("return await workflow('saved')");
-  assert.match(nested.error?.message ?? '', /named workflows are not ported/);
+  assert.match(nested.error?.message ?? '', /workflow\(\) is not available in this runtime/);
 });
 
 test('script-visible helpers keep values and logs JSON-safe', async () => {
