@@ -222,11 +222,10 @@ export function inProcessEnvironmentHost(): ChainEnvironmentHost {
     /** Source `press(environmentId, handle, e)` in `vJt`: run the environment's press and hand back
      *  what it returned. The held handle is this product's own — the loader's teardown forgets a
      *  plugin's presses whole, and `releasePresses` drops the ones it names. */
-    async press(environmentId: number, name: string, argument: unknown) {
+    async press(environmentId: number, handle: number, argument: unknown) {
       const { module } = environmentOf(environmentId);
-      const handle = { environmentId, name, argument };
-      AK.hold(module.name, handle);
-      return await module.press?.(name, argument);
+      AK.hold(module.name, { environmentId, name: handle, argument });
+      return await module.press?.(handle, argument);
     },
 
     /** Source `releasePresses(environmentId, handles)`: drop the presses this environment handed out.
