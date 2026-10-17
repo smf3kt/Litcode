@@ -2387,3 +2387,12 @@ AgentRegistry, a failed child records `[label] failed: …` and returns null, an
 remain out. Workflow family 42/42, tsc 0, build 0, full 2,203/2,203, chain 768/768, notices
 checked, index unchanged, identity `3f771f63…`.
 [W125 record](ports/W125-workflow-scripts.md).
+
+W126-01 adds `scriptPath` to `workflow_run`. A workflow script can now be read from a file:
+the path resolves against the session workspace, opens with `O_RDONLY|O_NOFOLLOW`, and the
+opened descriptor is checked for `ino === 0`/`nlink > 1`, regular-file type and the 524,288-byte
+cap before the source is parsed and run in the same sandbox as an inline script. Exactly one of
+`script`/`scriptPath` is required and neither composes with `tasks`. Named workflows,
+journal/resume, reattachment and structured output remain out. Workflow family 43/43, tsc 0,
+build 0, full 2,204/2,204, chain 768/768, notices 0, identity `adad009d…`.
+[W126 record](ports/W126-script-path.md).

@@ -5,7 +5,8 @@ import { capChildOutput } from './subagents.js';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import { WorkflowStore, workflowTaskSchema, workflowDefinitionSchema, workflowDigest, workflowInputDigest,
   type WorkflowDefinition } from './workflow-store.js';
-import { parseWorkflowScript, runWorkflowScript, WORKFLOW_SCRIPT_MAX_BYTES } from './workflow-script.js';
+import { loadWorkflowScriptFile, parseWorkflowScript, runWorkflowScript,
+  WORKFLOW_SCRIPT_MAX_BYTES } from './workflow-script.js';
 
 // Owned declarative DAG orchestration; workflow input is data, never JavaScript.
 const taskSchema = workflowTaskSchema;
@@ -378,14 +379,23 @@ export class WorkflowRegistry {
 }
 
 const scriptSchema = z.object({
-  script: z.string().min(1).max(WORKFLOW_SCRIPT_MAX_BYTES), args: z.unknown().optional(),
-}).strict();
+  script: z.string().min(1).max(WORKFLOW_SCRIPT_MAX_BYTES).optional(),
+  scriptPath: z.string().trim().min(1).max(4096).optional(),
+  args: z.unknown().optional(),
+}).strict().refine(value => (value.script === undefined) !== (value.scriptPath === undefined),
+  'Provide exactly one of script or scriptPath');
 
 export function createWorkflowTools(registry: WorkflowRegistry, options: { persistent?: boolean } = {}): ToolDefinition[] {
   const output = (value: unknown, context: ToolContext) => capChildOutput(JSON.stringify(value), Math.min(context.maxOutputBytes, registry.limits.maxOutputBytes));
   const runScript = async (raw: unknown, context: ToolContext) => {
     const args = scriptSchema.parse(raw);
-    const parsed = parseWorkflowScript(args.script);
+    let source = args.script;
+    if (source === undefined) {
+      const loaded = await loadWorkflowScriptFile(args.scriptPath!, context.workspace);
+      if ('error' in loaded) throw new Error(loaded.error);
+      source = loaded.source;
+    }
+    const parsed = parseWorkflowScript(source);
     if ('error' in parsed) throw new Error(parsed.error);
     const labels = new Map<string, number>();
     return runWorkflowScript(parsed, {
@@ -420,8 +430,8 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
   return [{
     readOnly: false,
     schema: { name: 'workflow_run', description: options.persistent
-      ? 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. With session-owned workspace persistence, resume_from reuses completed tasks only for an identical full DAG/settings digest. Failed/cancelled/skipped tasks rerun; crashed running tasks require explicit retry_interrupted. Effects are not rolled back. Script: `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value. Script runs are not persisted or resumable.'
-      : 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. Script: `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value.',
+      ? 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. With session-owned workspace persistence, resume_from reuses completed tasks only for an identical full DAG/settings digest. Failed/cancelled/skipped tasks rerun; crashed running tasks require explicit retry_interrupted. Effects are not rolled back. Script (inline `script` or a `scriptPath` file): `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value. Script runs are not persisted or resumable.'
+      : 'Run a finite declarative DAG of child agent tasks, or a sandboxed JavaScript workflow script. DAG: dependencies provide untrusted task data; downstream tasks are skipped when a dependency fails. Default waits; background returns metadata. Script (inline `script` or a `scriptPath` file): `export const meta = { name, description, phases }` must be first; the body runs in a restricted vm context with agent/parallel/pipeline/phase/log/console/budget/timers/args and returns one JSON value.',
       input_schema: { type: 'object', properties: {
         tasks: { type: 'array', minItems: 1, maxItems: 32, items: { type: 'object', properties: {
           id: { type: 'string', pattern: '^[A-Za-z][A-Za-z0-9_.-]{0,63}$' }, prompt: { type: 'string' },
@@ -431,12 +441,13 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
         max_parallel: { type: 'integer', minimum: 1, maximum: 8 }, background: { type: 'boolean' },
         timeout_ms: { type: 'integer', minimum: 1, maximum: 1_800_000 },
         script: { type: 'string', maxLength: WORKFLOW_SCRIPT_MAX_BYTES },
+        scriptPath: { type: 'string', minLength: 1, maxLength: 4096 },
         args: {},
         ...(options.persistent ? { resume_from: { type: 'string', format: 'uuid' }, retry_interrupted: { type: 'boolean' } } : {}),
-      }, anyOf: [{ required: ['tasks'] }, { required: ['script'] }], additionalProperties: false } },
+      }, anyOf: [{ required: ['tasks'] }, { required: ['script'] }, { required: ['scriptPath'] }], additionalProperties: false } },
     async execute(raw, context) {
       context.signal.throwIfAborted();
-      if (raw !== null && typeof raw === 'object' && 'script' in raw) {
+      if (raw !== null && typeof raw === 'object' && ('script' in raw || 'scriptPath' in raw)) {
         return output(await runScript(raw, context), context);
       }
       return output(await registry.run((options.persistent ? runSchema : workflowDefinitionSchema).parse(raw), context.signal), context);

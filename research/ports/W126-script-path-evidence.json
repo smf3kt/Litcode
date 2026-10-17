@@ -1,0 +1,98 @@
+{
+ "schema": "W126ScriptPathEvidence.v1",
+ "package": "W126-01 — Workflow scriptPath file loading",
+ "date": "2026-10-17",
+ "question": "How does the recovered workflow tool load a script from disk, and which file checks does it enforce?",
+ "answer": "It resolves the path, opens it O_RDONLY|O_NOFOLLOW, checks the opened descriptor for ino 0 or nlink > 1, requires a regular file, rejects a size over 524288 bytes, reads from the descriptor, and only then parses the meta/source. The port keeps those checks and resolves relative paths against the session workspace; the recovered session permission/read-tool gate has no counterpart, and the workflow tool permission decision governs the call instead.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "modules": {
+   "extracted-v2/modules/chunk-hedqf2m1.js": [
+    18614,
+    18913,
+    19175
+   ],
+   "extracted-v2/modules/chunk-a7gk0710.js": [
+    "workflow tool schema refinement"
+   ]
+  },
+  "implementation": {
+   "src/workflow-script.ts": {
+    "ranges": "loadWorkflowScriptFile"
+   },
+   "src/workflow.ts": {
+    "ranges": "scriptSchema and runScript"
+   }
+  }
+ },
+ "behavior": {
+  "noFollowOpen": true,
+  "rejectsInoZero": true,
+  "rejectsHardLinks": true,
+  "requiresRegularFile": true,
+  "scriptByteCap": 524288,
+  "readsFromDescriptor": true,
+  "parsesMetaAfterLoad": true,
+  "exactlyOneOfScriptAndPath": true,
+  "composesWithTasks": false,
+  "missingFileText": "Workflow script file not found: <path>"
+ },
+ "adaptations": [
+  "Relative paths resolve against the session workspace instead of the process cwd.",
+  "The recovered loader gates the path through session tool permissions and an added-directory read check; this runtime relies on the workflow tool permission decision and keeps the link/inode/regular-file/size refusals.",
+  "Named workflows, resumeFromRunId, journal replay and reattachment remain out."
+ ],
+ "changes": [
+  {
+   "file": "src/workflow-script.ts",
+   "change": "loadWorkflowScriptFile",
+   "sha256": "4d46863db889814a02d78f5134026ea9284a3b06e89497042db7b554dad77cb6"
+  },
+  {
+   "file": "src/workflow.ts",
+   "change": "scriptPath schema and branch",
+   "sha256": "5275a5a7670b2fd117118b575dbe3347c559421466897ef834854d19fe92ba6d"
+  },
+  {
+   "file": "test/workflow-script.test.ts",
+   "change": "file loader and tool-level scriptPath tests",
+   "sha256": "0f4cfe4ee7465439d7b53883f90abffa17c09eeeb55388f13e001c41edc9d6f9"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-8 rows record W126",
+   "sha256": "b0d1f0929a87f1e957f59cbed7c15605eeae8063aa85828ca7f99c3e4e8e28da"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "workflow row records scriptPath",
+   "sha256": "0fb99724fae2e68d8da664a3ae3aab944149e7c1e23b17142b17e281f847dbe6"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W126-01 entry",
+   "sha256": "03d1eb71f97c6a4635dbee69a767af6f762a1ac187e29c9a8cca775f0c92aefd"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W126-01 S-1..S-7 entry",
+   "sha256": "a994eb3e65d49ef8dfe7a0848de701b75fcd6b6ea0210b8cf03d599d99a2e976"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "43/43 (workflow family)",
+  "build": "exit 0",
+  "full": "2,204/2,204",
+  "chain": "768/768",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "adad009d1eaf9d37bbdb15437a080d84baf0155a1deea979e3d5faefb0719e08"
+ },
+ "residuals": [
+  "C-8: named workflows, resumeFromRunId, journal/resume replay, reattachment and automatic effect replay remain out.",
+  "C-8: agent({schema}) structured output, disallowedTools, bashCommandClamp and stallMs remain rejected explicitly."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-8 continues with named workflows or journal/resume, or the next ready C-area cluster from CURRENT."
+}
