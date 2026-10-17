@@ -91,14 +91,14 @@
       "file": "utils/config.ts",
       "change": "nine dead fields go (oauthAccount, the subscription-notice quartet, the effort-callout pair, both Opus-Pro migration fields, the Sonnet 4.5→4.6 timestamp) and wouldLoseAuthState narrows to its onboarding clause and is renamed wouldLoseOnboardingState, with the test-only re-export whose name it carried deleted — nothing could write an oauthAccount, so that clause was already dead",
       "sourceSha256": "6cddc167ca7280d14ecfacfb7fd969e59a975d21b2f841ca5e4feb83736e5d40",
-      "portSha256": "683c998fec889b1d3dfc1e7ff09a5b47b166600141b5258c1fb414917c0f1f17",
+      "portSha256": "50a7fb000a93fc732b0ced9e2728f33481cc2249ad0fb2dbefe0fea3efb148a0",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "main.tsx + screens/REPL.tsx",
       "change": "both migrations leave the startup sequence with their imports; the startup telemetry payload drops its subscription field; REPL drops the callout's import, state, dialog id, selector line and render block; the numStartups comment is reworded to the logo's first-run reader",
       "sourceSha256": "328e44dfd779cef105617600c08146f1b7f93e0e150c772f332105c00c373de92c6944a400e18d534de4495e1592d8c68d882aae8ef4273761f597e823f3c2c3",
-      "portSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece8d47f3122f9daa0b9d442963f3301980dd858912d134cf78c71c5881aa3fdd8d",
+      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc68d47f3122f9daa0b9d442963f3301980dd858912d134cf78c71c5881aa3fdd8d",
       "coordinateUnit": "utf16-half-open"
     },
     {

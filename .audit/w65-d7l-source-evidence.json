@@ -15,14 +15,14 @@
       "file": "main.tsx",
       "change": "the initialState seeds for all fourteen fields, the single `const fullRemoteControl = getRemoteControlAtStartup()` read that fed replBridgeEnabled, the migration import and its call site deleted",
       "sourceSha256": "539453aed627e848075dc44576885c52dce57d654ecfeee982808d600e81bf19",
-      "portSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece",
+      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "utils/config.ts",
       "change": "remoteControlAtStartup with getRemoteControlAtStartup() and its two GLOBAL_CONFIG_KEYS entries, remoteDialogSeen, and the bridgeOauthDead backoff pair deleted; desktopUpsellSeenCount, which has a live reader, stays",
       "sourceSha256": "6b50958e415b0877f2cade69ba14cb64b252ddab1371b51fb9b825ed109143af",
-      "portSha256": "683c998fec889b1d3dfc1e7ff09a5b47b166600141b5258c1fb414917c0f1f17",
+      "portSha256": "50a7fb000a93fc732b0ced9e2728f33481cc2249ad0fb2dbefe0fea3efb148a0",
       "coordinateUnit": "utf16-half-open"
     },
     {

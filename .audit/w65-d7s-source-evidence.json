@@ -51,14 +51,14 @@
       "file": "utils/config.ts",
       "change": "penguinModeOrgEnabled and startupPrefetchedAt leave the global config; the probe and its startup throttle were their only writer and reader",
       "sourceSha256": "0352b290233e0c5909be3e7ec2c295b002c5ea3e2b565b4f462e7360e3e9b5ed",
-      "portSha256": "683c998fec889b1d3dfc1e7ff09a5b47b166600141b5258c1fb414917c0f1f17",
+      "portSha256": "50a7fb000a93fc732b0ced9e2728f33481cc2249ad0fb2dbefe0fea3efb148a0",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "main.tsx",
       "change": "the startup prefetch block (throttle, kill switch, cache resolution, startupPrefetchedAt write, both log lines) is deleted together with the two fastMode imports and the growthbook import only it used; the settings-dialog block is followed directly by the example-command prefetch",
       "sourceSha256": "c92abf00d38ec9d0dc46a52403004c4349ed745273079bd7ac108634bcc9407f",
-      "portSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece",
+      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
       "coordinateUnit": "utf16-half-open"
     },
     {

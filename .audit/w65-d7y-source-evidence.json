@@ -1,0 +1,68 @@
+{
+  "before": "780b3fc",
+  "kind": "the auto-update channel configuration residue removed (no ported bodies; the fields steered only the removed updater)",
+  "surface": "ReleaseChannel and InstallMethod, the global config's installMethod/autoUpdates/autoUpdatesProtectedForNative fields with their defaults, GLOBAL_CONFIG_KEYS entries and test config, migrateConfigFields with its three call sites, getAutoUpdaterDisabledReason/formatAutoUpdaterDisabledReason/AutoUpdaterDisabledReason; the settings schema's autoUpdatesChannel and minimumVersion; Config.tsx's channel row, enable dialog and downgrade dialog with components/ChannelDowngradeDialog.tsx; main.tsx's channel telemetry; two changeDetector comments naming the updater",
+  "decisiveFact": "every removed reader belonged to the release-channel install path deleted in step 7x: the channel selected which dist-tag the updater fetched, minimumVersion pinned a build during a stable-channel switch, and the global install-method/autoUpdates fields were written by the updater's own enable flow and read by its disabled-reason helper. Nothing else reads them; the plugin-marketplace lane's shouldSkipPluginAutoupdate is environment-only and stays",
+  "changes": [
+    {
+      "file": "utils/config.ts",
+      "change": "the release-channel and install-method types, the three global-config fields with their defaults, keys and test override, migrateConfigFields with its three call sites (the watcher and both loader paths now construct/get the config directly), and the disabled-reason type and helpers are removed",
+      "sourceSha256": "683c998fec889b1d3dfc1e7ff09a5b47b166600141b5258c1fb414917c0f1f17",
+      "portSha256": "50a7fb000a93fc732b0ced9e2728f33481cc2249ad0fb2dbefe0fea3efb148a0",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/settings/types.ts",
+      "change": "the autoUpdatesChannel and minimumVersion schema entries are removed; the surrounding settings schema is untouched",
+      "sourceSha256": "498270e232d7e539a227a502733e5e154ec7fcd51625a250c1b71917db1af317",
+      "portSha256": "9a4e302f3f4857a015194fd1458ea66056746e92854c67560057a026ca6245fc",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "components/Settings/Config.tsx",
+      "change": "the two auto-update imports, the channel row, the change summary, the revert entries, the toggle branch with its channel-change telemetry, the Enable Auto-Updates dialog, the ChannelDowngrade branch and the disabled-value row rendering are removed",
+      "sourceSha256": "eaa485a2dbc4df8c6eadf0756c8f0700e697eb1476c7832a897e8f63fd99545e",
+      "portSha256": "d81d25998711554107af97136fb6ec7c61609152383138c14c1322caf07d34e4",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "the autoUpdatesChannel telemetry field is removed; the surrounding telemetry object is untouched",
+      "sourceSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece",
+      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/settings/changeDetector.ts",
+      "change": "the two comments that named auto-updaters now describe an external writer / another session",
+      "sourceSha256": "0d7f3c77e6481a30690910bf36c03df780a295c55361852061730dd5b35ba5d2",
+      "portSha256": "7646ec5886333dddb311eac400b585433e512f1c0305054d64cd8b5d3aad26fb",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "ReleaseChannel, InstallMethod, the installMethod/autoUpdates/autoUpdatesProtectedForNative config fields with defaults, keys and test override",
+    "migrateConfigFields and its three call sites; getAutoUpdaterDisabledReason/formatAutoUpdaterDisabledReason/AutoUpdaterDisabledReason",
+    "the autoUpdatesChannel and minimumVersion settings-schema fields",
+    "the Config panel's channel row, enable dialog, downgrade dialog and disabled-value rendering, plus components/ChannelDowngradeDialog.tsx",
+    "main.tsx's autoUpdatesChannel telemetry"
+  ],
+  "kept": [
+    "shouldSkipPluginAutoupdate (environment-only) with its plugin-marketplace readers",
+    "the rest of the settings schema, the Config panel's other rows and its settings write/revert flow",
+    "the global config's remaining fields, defaults, keys and loader paths"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Base-commit checks confirm every field, helper, dialog and call site was present at 780b3fc; a whole-tree sweep finds no auto-update channel token; absence assertions cover the settings schema, the config fields and the Config panel branches; survivor assertions pin the plugin-marketplace gate, the remaining schema entries and the settings write flow; the orphan scanner stays at ten entries over 1607 files; tsc clean",
+  "remaining": "the dependency-pruning pass (nine zero-importer dependencies), the utils/filePersistence/ rename and the analytics transports",
+  "notes": [
+    "minimumVersion was a channel-switch companion field: its only readers were the downgrade dialog and the channel toggle, both removed here, so it leaves with them",
+    "the Config panel's two identical dep-array lines and the duplicate disabled-reason argument required n=2 anchors; the first run asserted at the second occurrence and every touched file was restored from HEAD before the replay"
+  ]
+}

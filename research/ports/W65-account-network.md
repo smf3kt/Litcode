@@ -916,6 +916,24 @@ tsc 0, thirty-two fixtures pass (the new `w65-d7x-verify` plus thirty-one carrie
 
 **Next (step 7y):** the config/settings residue — `autoUpdatesChannel` in `utils/settings/types.ts` and Config.tsx with the disabled-reason dialogs and `ChannelDowngradeDialog`, `getAutoUpdaterDisabledReason`/`formatAutoUpdaterDisabledReason`/`AutoUpdaterDisabledReason`, `migrateConfigFields`, the `installMethod`/`autoUpdates` fields and defaults with their `GLOBAL_CONFIG_KEYS` entries, and main.tsx's channel telemetry — then the dependency-pruning pass and the `utils/filePersistence/` rename.
 
+## Wave D step 7y — the auto-update channel configuration residue (`51f7625`, landed)
+
+**The channel settings steered the updater and nothing else.** `autoUpdatesChannel` chose which dist-tag the removed updater fetched; `minimumVersion` pinned the running build while a stable-channel switch waited; the global config's `installMethod`/`autoUpdates`/`autoUpdatesProtectedForNative` were written by the updater's enable flow and read by its disabled-reason helper; `migrateConfigFields` translated the legacy `autoUpdaterStatus` into those fields. With step 7x gone, every one of them is readerless.
+
+**The panel was the channel's only UI.** Config.tsx rendered the channel row, the Enable Auto-Updates dialog (which wrote both the settings field and the global config) and the stable-channel `ChannelDowngradeDialog` (which set `minimumVersion`), and the change summary and revert path echoed the field. They are removed with `components/ChannelDowngradeDialog.tsx`, the `ChannelDowngrade`/`EnableAutoUpdates` submenu states, the channel-change and auto-update-enable telemetry, and main.tsx's `autoUpdatesChannel` telemetry field. Two `changeDetector` comments that named the updater now describe an external writer.
+
+**What stays is the plugin lane and the config surface.** `shouldSkipPluginAutoupdate` is environment-only and still gates marketplace autoupdate; the remaining settings schema, config fields and the panel's other rows and write/revert flow are untouched.
+
+### Port coordinate refresh
+
+Fifteen historical evidence files moved, all by re-running their own fixtures: `w65-d7b`, `d7g`, `d7h`, `d7i`, `d7j`, `d7l`, `d7n`, `d7o`, `d7p`, `d7q`, `d7r`, `d7s`, `d7t`, `d7u` and `d7x`. `portSha256` only; no `sourceSha256` changed and no range moved.
+
+### Verification
+
+tsc 0, thirty-three fixtures pass (the new `w65-d7y-verify` plus thirty-two carried), `git diff --check` clean, the orphan scan at its ten legitimate entries with the file count down one to 1607. One carried fixture was amended: `w65-d7x` pinned this residue as the next step's surface, and its assertions now record the removal. The first cut run stopped on the duplicated disabled-reason dep line; the script uses `n=2` and every touched file was restored from `HEAD` before the replay.
+
+**Next:** the dependency-pruning pass (nine zero-importer dependencies), the `utils/filePersistence/` rename and the analytics transports.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.
