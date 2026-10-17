@@ -1,0 +1,15 @@
+(node:97774) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ entry/exit relocates and resumes completed history while preserving HEAD, dirty checkout and owned branch (329.304917ms)
+✔ invalid, nested, disabled, unowned, tampered, foreign and cancelled resolutions preserve checkouts (268.061708ms)
+✔ exit removal archives unlocked journals, preserves dirty checkout on failure and removes only with explicit discard (535.5115ms)
+✔ an archive intent left by a power loss is reconciled on the next start (338.263375ms)
+✔ preserved histories are listed and restored to their original name (759.99525ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2511.819958

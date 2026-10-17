@@ -2,9 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Session, type SessionEvent } from './session.js';
 
-export function listSessions(workspace: string): { id: string; model: string; updated: string; active: boolean; title?: string;
-  parent?: { id: string; workspace: string; boundary: number; reason: string } }[] {
-  const dir = path.join(fs.realpathSync(workspace), '.agent');
+export type SessionSummary = { id: string; model: string; updated: string; active: boolean; title?: string;
+  parent?: { id: string; workspace: string; boundary: number; reason: string } };
+export function listSessions(workspace: string): SessionSummary[] {
+  return listSessionDirectory(path.join(fs.realpathSync(workspace), '.agent'));
+}
+export function listSessionDirectory(dir: string): SessionSummary[] {
   if (!fs.existsSync(dir)) return [];
   if (fs.lstatSync(dir).isSymbolicLink() || !fs.statSync(dir).isDirectory()) throw new Error('Invalid session directory');
   return fs.readdirSync(dir).filter(name => /^[0-9a-f-]{36}\.jsonl$/.test(name)).flatMap(name => {

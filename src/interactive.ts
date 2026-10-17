@@ -16,7 +16,7 @@ import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
 import { validateElicitationResult, type McpClientRequests, type McpElicitationResult } from './mcp-client-requests.js';
 import { captureClipboardImage } from './clipboard.js';
-import { recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree } from './worktree-session.js';
+import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree, restoreWorktreeArchive } from './worktree-session.js';
 import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
 import { loadProjectConfig } from './config.js';
@@ -62,6 +62,7 @@ export const COMMAND_HELP = `/help       Show commands
 /cwd DIR    Relocate completed conversation into an existing workspace
 /worktree NAME  Create/enter an owned checkout and relocate completed history
 /worktree-exit [--remove [--discard-changes]]  Return; optionally archive history and remove owned checkout/branch
+/worktree-history [restore ARCHIVE]  List preserved worktree histories; restore one to its original name
 /model [ID] Choose or enter a model, then start a session with completed history
 /theme [NAME] Preview, choose and save a terminal theme
 /thinking [on|off] Toggle or set thinking in a new session with completed history
@@ -787,6 +788,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           await applyConfig(config, switchingModel, options.signal);
           if (switchingModel) options.status.write(`Model: ${config.model}\n`);
           else if (/^\/thinking(?:\s|$)/.test(prompt)) options.status.write(`Thinking: ${config.thinking ? 'on' : 'off'}\n`);
+          continue;
+        }
+        if (/^\/worktree-history(?:\s|$)/.test(prompt)) {
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          if (session.config.worktreeReturn !== undefined) throw new Error('Exit the active worktree before using /worktree-history');
+          const rest = prompt.slice('/worktree-history'.length).trim();
+          if (!rest) {
+            const archives = listWorktreeArchives(session.config.workspace);
+            if (!archives.length) { options.status.write('No preserved worktree histories.\n'); continue; }
+            const lines = archives.slice(0, 20).map((item, index) =>
+              `${index + 1}. ${path.basename(item.archive)} | ${item.sessions} session${item.sessions === 1 ? '' : 's'} | ${item.created}${item.title ? ` | ${item.title}` : ''}`);
+            options.status.write(`Preserved worktree histories${archives.length > 20 ? ' (first 20; restore by name)' : ''}:\n${lines.join('\n')}\n`);
+            continue;
+          }
+          const match = /^restore (\S+)$/.exec(rest);
+          if (!match) throw new Error('Use /worktree-history [restore ARCHIVE]');
+          const restored = await withTurn(signal => restoreWorktreeArchive(session.config.workspace, match[1]!, signal));
+          output.write(`Restored worktree history ${path.basename(restored.archive)} to ${restored.path} (${restored.sessions} session${restored.sessions === 1 ? '' : 's'})\n`);
           continue;
         }
         if (prompt.startsWith('/cwd ') || /^\/worktree(?:\s|$)/.test(prompt) || /^\/worktree-exit(?:\s|$)/.test(prompt)) {
