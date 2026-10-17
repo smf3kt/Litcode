@@ -1,0 +1,80 @@
+{
+ "schema": "W50WorktreeArchiveIntentEvidence.v1",
+ "package": "W50-01 — durable worktree archive intent and power-loss recovery",
+ "date": "2026-10-17",
+ "question": "Can a power loss between the archive rename and the worktree removal be reconciled later?",
+ "answer": "Yes. A durable intent written before the rename lets the next start or removal restore the archived history into an unchanged checkout, clear a completed removal, and retain anything ambiguous.",
+ "sourcePosition": {
+  "kind": "local extension; archive layout has no recovered body",
+  "evidence": "recovered zPo (chunk-sfn1dbxq.js [1801370,1802540), UTF-8 bytes) reconciles stale state at observation time and retains what it cannot prove."
+ },
+ "behavior": {
+  "write": "before the history rename: fsync .agent/worktree-history/.pending-<uuid>.json with origin, checkout, history, archive, checkout dev/ino, pid, created_at",
+  "success": "successful removal deletes the intent",
+  "rollback": "an in-process restore deletes the intent; an intent is kept when the archive remains and the checkout still exists",
+  "recovery": "interactive start and every removal run recoverWorktreeArchives: restore into an unchanged checkout, clear completed/already-home intents, retain ambiguous states with warnings"
+ },
+ "changes": [
+  {
+   "file": "src/worktree-session.ts",
+   "change": "intent schema/writer/sweeper and removeExitedWorktree integration",
+   "sha256": "c5f15651dc59896ee1e4633e7eb7d24a35b348aeb94c5dbc470ce0d63fe4cf0c"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "startup recovery and status reporting",
+   "sha256": "8aca095c984d4aed1241e5a81d107b7652b116e4aab728721ea463d4ea797536"
+  },
+  {
+   "file": "test/worktree-session.test.ts",
+   "change": "power-loss recovery case and no-pending assertions",
+   "sha256": "0d7dd3cfc2aa60cb53d1b5c9016d57fca7d1ffafe57e1333dd7233c89f976de4"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-4 rows record the completed archive recovery",
+   "sha256": "c35abcb3056c5f364423e6517ba0fa6da410d5bb0f16301159a0fac8a2d2480a"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "worktree relocation row records the intent and recovery",
+   "sha256": "26fea380705dcee6b3fb054e4a50daf01df83020cba2bd6393e13ad9331277ab"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W50-01 entry",
+   "sha256": "d2e4c8a5c38a4abc7dc201b029196533820ed1e58f0c0f3ab9bbd96f50e9a4ba"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W50-01 S-1..S-7 entry",
+   "sha256": "e5716a7e3368ba1592a4d78e59274167b76905ad43dc987d86160f34abb819c6"
+  }
+ ],
+ "tests": {
+  "file": "test/worktree-session.test.ts",
+  "added": "an archive intent left by a power loss is reconciled on the next start",
+  "result": "4/4 pass"
+ },
+ "gates": {
+  "tsc": "exit 0",
+  "worktreeSession": "4/4",
+  "worktrees": "29/29",
+  "build": "exit 0",
+  "full": "2,084/2,084",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "smokeSource": "exit 0, locksReleased true",
+  "smokeCompiled": "exit 0, locksReleased true, compiledCLI true",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "6fb4abe8cc8cd3128c298b43da78f7b3a0fe5bf1fef22678cee0cafc3509fe08"
+ },
+ "residuals": [
+  "A crash before the intent rename leaves a .pending-<uuid>.json.<uuid>.tmp file; recovery ignores it because it carries no owner.",
+  "Ambiguous states (history and archive both present, changed checkout identity, invalid intent) are retained for inspection.",
+  "Headless single-shot runs do not reconcile archives until an interactive start or another removal in that workspace.",
+  "The scan is capped at 100 intents per workspace."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-4 continues with the worktree archive picker, the concurrent new-lock race and the capture-correlation crash window."
+}

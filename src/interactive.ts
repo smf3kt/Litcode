@@ -16,7 +16,7 @@ import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
 import { validateElicitationResult, type McpClientRequests, type McpElicitationResult } from './mcp-client-requests.js';
 import { captureClipboardImage } from './clipboard.js';
-import { resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree } from './worktree-session.js';
+import { recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree } from './worktree-session.js';
 import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
 import { loadProjectConfig } from './config.js';
@@ -80,6 +80,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   terminal?: TerminalSurface;
 }): Promise<void> {
   let session = initial;
+  try {
+    const archives = recoverWorktreeArchives(initial.config.workspace);
+    for (const restored of archives.recovered) options.status.write(`Restored worktree history after an interrupted removal: ${restored}\n`);
+    for (const warning of archives.warnings) options.status.write(`Worktree history recovery: ${warning}\n`);
+  } catch (error) { options.status.write(`Worktree history recovery skipped: ${String(error)}\n`); }
   let activeRuntime = runtime;
   const terminal: TerminalSurface | undefined = options.terminal ??
     ((options.input as Readable & { isTTY?: boolean }).isTTY &&
