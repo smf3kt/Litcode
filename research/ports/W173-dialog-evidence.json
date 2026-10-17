@@ -1,0 +1,112 @@
+{
+  "schema": "W173Dialog.v1",
+  "package": "W173-dialog",
+  "date": "2026-10-18",
+  "source": {
+    "copied": {
+      "blocks": 6,
+      "units": 8741,
+      "modules": [
+        { "module": "chunk-twzxjzbk.js", "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b", "blocks": 5, "units": 8375 },
+        { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31", "blocks": 1, "units": 366 }
+      ],
+      "ranges": [
+        { "module": "chunk-twzxjzbk.js", "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b", "name": "Et/Vt/ve", "range": [20073, 20163], "units": 90, "digest": "98c6502f", "note": "the no-op edge handler, a file row wrapping oe in Tl.Item, and the file-list window size ve=7" },
+        { "module": "chunk-twzxjzbk.js", "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b", "name": "K", "range": [20163, 20640], "units": 477, "digest": "d035b22a", "note": "the file list — empty hint, file rows, fixed visible count and list navigation" },
+        { "module": "chunk-twzxjzbk.js", "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b", "name": "oe", "range": [20640, 21165], "units": 525, "digest": "f28d386a", "note": "one file row — formatted path with selection color plus the stat cell" },
+        { "module": "chunk-twzxjzbk.js", "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b", "name": "le", "range": [21165, 22140], "units": 975, "digest": "085bae40", "note": "the file stat cell — untracked/binary/large markers, added/removed label and truncation note" },
+        { "module": "chunk-twzxjzbk.js", "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b", "name": "si", "range": [22672, 28980], "units": 6308, "digest": "d3e08b4c", "note": "the diff dialog — sources, list/detail modes, scrolling, key actions, title/empty text, tabs and frame" },
+        { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31", "name": "rMe/pee", "range": [130997, 131363], "units": 366, "digest": "dc8ee78b", "note": "jump to bottom by the auto-scroll setting and scroll by a delta within the clamped range" }
+      ]
+    },
+    "host_adapters": [
+      {
+        "module": "chunk-qr9z1wer.js",
+        "sha256": "7c4094d82563f8ebbee3405c7ba3cdb48d5eb7701e274c48c111eb1aefc587a3",
+        "name": "Ht",
+        "range": [1303, 1342],
+        "units": 39,
+        "body_sha256": "44668f063e24edb161db9540bcb530e71f24e1f78921432706ec53837c4ecf3c",
+        "product": "src/diff-dialog-dialog-host.ts",
+        "note": "remote session or control channel; this build keeps local features only and answers false"
+      },
+      {
+        "module": "chunk-xmvfy87k.js",
+        "sha256": "fabe23b454accb5fcb9390965e13cd815400518e90b86cb9550d55aae113ade0",
+        "name": "PMr",
+        "range": [5796, 5868],
+        "units": 72,
+        "body_sha256": "82a6fec62394fd5ed976da67030af3c5377737c4def9f0738fc3911046b26302",
+        "product": "src/diff-dialog-dialog-host.ts",
+        "note": "the local branch returns W163's diff view through DiffDataContext with a null notice"
+      },
+      {
+        "module": "chunk-twzxjzbk.js",
+        "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+        "name": "ne",
+        "range": [18642, 20073],
+        "units": 1431,
+        "body_sha256": "5c48c36f4bb1f26dee8727eff738d9b01059f63538ab1b943f29621c4b30cdd1",
+        "product": "src/diff-dialog-dialog-host.ts",
+        "note": "W164's TurnDiffAccumulator fed the whole message list; same completed-turn answer as the memo"
+      },
+      {
+        "module": "chunk-sfn1dbxq.js",
+        "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+        "name": "Fvn",
+        "range": [91100, 91145],
+        "units": 45,
+        "body_sha256": "38218af13730b2db8d14645306d603d674d6b7dc2a3978c695975c5f48f6506d",
+        "product": "src/diff-dialog-dialog-host.ts",
+        "note": "a reachedScrollbackCap telemetry counter; telemetry is a host no-op"
+      }
+    ],
+    "reused": [
+      { "names": ["Xe as e", "Xe as r", "n", "s", "w", "b", "y", "P"], "product": "src/plugin-chain-react-surface.ts" },
+      { "names": ["z", "fo"], "product": "src/diff-dialog-chrome-source.ts" },
+      { "names": ["pt", "Se"], "product": "src/diff-dialog-keyhint-source.ts" },
+      { "names": ["_e"], "product": "src/diff-dialog-frame-source.ts" },
+      { "names": ["sS", "Na", "Ffe"], "product": "src/diff-dialog-tabs-source.ts" },
+      { "names": ["pBe", "Uwe"], "product": "src/diff-dialog-detail-source.ts" },
+      { "names": ["rx", "Tl", "sa"], "product": "src/diff-dialog-list-source.ts" },
+      { "names": ["I", "Ib"], "product": "src/diff-dialog-primitives-source.ts" },
+      { "names": ["Mr"], "product": "src/diff-dialog-spinner-source.ts" },
+      { "names": ["ri", "Ie"], "product": "src/diff-turn-source.ts" },
+      { "names": ["nn"], "product": "src/plugin-chain-above-prompt-keybinding-source.ts" },
+      { "names": ["ZD"], "product": "src/plugin-chain-above-prompt-focus-source.ts" },
+      { "names": ["hs"], "product": "src/plugin-chain-wheel-glue-source.ts" }
+    ],
+    "remaining": ["C-5 provider/key policy", "C-6 remaining consumers", "C-9 marketplace collisions", "C-11 formatter differences", "C-12 remaining plugin-chain work"]
+  },
+  "product": {
+    "files": [
+      "src/diff-dialog-dialog-source.ts",
+      "src/diff-dialog-dialog-source-blocks.json",
+      "src/diff-dialog-dialog-host.ts",
+      "src/diff-dialog-dialog.ts",
+      "test/diff-dialog-dialog.test.ts"
+    ],
+    "exports": ["DiffDialog", "DiffDialogDataContext", "EMPTY_DIFF_DIALOG_DATA", "SOURCE_BODIES"],
+    "notes": [
+      "si builds the source list from the current working-tree data and every completed turn, then renders the frame with the tab strip, the file list and the detail view.",
+      "List mode shows the file rows with a fixed window of seven; detail mode shows pBe and routes eight scroll actions through Ffe's scroll handle.",
+      "The title is the current diff or the selected turn; the subtitle carries the turn prompt, the branch comparison or the working-tree base; the empty message distinguishes turn, notice, too-many-files and no-changes.",
+      "Cancel returns to the list from detail and otherwise dismisses with the source text and system display.",
+      "Tab pages are hidden when there is one source; per-tab content keeps the list/detail view."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 11, "failed": 0, "file": "test/diff-dialog-dialog.test.ts", "new": 11 },
+    "full": { "passed": 2576, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": [{ "file": "src/diff-dialog-dialog-source.ts", "declared": 130, "unresolved": 0 }]
+  },
+  "identity": {
+    "sha256": "ada4a1c6aa239e73ac1913adfb38f3f903e45c7e3a635b0cf668ebda6f3d5526",
+    "inputs": 676,
+    "validation": 229,
+    "build": 465
+  }
+}

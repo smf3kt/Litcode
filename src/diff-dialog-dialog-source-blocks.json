@@ -1,0 +1,82 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        20073,
+        20163
+      ],
+      "units": 90,
+      "bodySha256": "98c6502fb61da93d91b05e922cf86e82fbcbcd9ed6fdd24dbcee31943db63611",
+      "note": "Et and Vt with the file-list window size ve: the no-op edge handler and a file row wrapping oe in Tl.Item"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        20163,
+        20640
+      ],
+      "units": 477,
+      "bodySha256": "d035b22a51ffcd5ac2926015325a997d6862a3d1c12c91ae0338ac53863a3a5c",
+      "note": "K: the file list — empty hint, file rows, fixed visible count and list navigation"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        20640,
+        21165
+      ],
+      "units": 525,
+      "bodySha256": "f28d386a573a56472dfba7401ed6f8d72e57cc4e0ee78ff025e02e8650d8c6ef",
+      "note": "oe: one file row — formatted path with selection color plus the stat cell"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        21165,
+        22140
+      ],
+      "units": 975,
+      "bodySha256": "085bae40f1ecfc2a28be5662f2535f6f7a5658603a1f64ee65ffda748ac0237b",
+      "note": "le: the file stat cell — untracked/binary/large markers, added/removed label and truncation note"
+    },
+    {
+      "module": "chunk-twzxjzbk.js",
+      "sha256": "84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b",
+      "range": [
+        22672,
+        28980
+      ],
+      "units": 6308,
+      "bodySha256": "d3e08b4c7ce5c8aff9a75baf651cc5f531095532598fe12043a1967b183699d1",
+      "note": "si: the diff dialog — sources, list/detail modes, scrolling, key actions, title/empty text, tabs and frame"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        130997,
+        131363
+      ],
+      "units": 366,
+      "bodySha256": "dc8ee78b39fe76d8e77f005484990a43786f76e4f21a90c047dd356ed5473266",
+      "note": "rMe and pee: jump to bottom by the auto-scroll setting and scroll by a delta within the clamped range"
+    }
+  ],
+  "missing": []
+}
