@@ -416,6 +416,15 @@ export type HookResult = {
   stopRequested?: boolean;
   permissionDecision?: "allow" | "deny" | "ask" | "defer";
   permissionDecisionReason?: string;
+  /**
+   * PermissionRequest: the adopted denying hook set `interrupt:true`. The
+   * consumer aborts the turn's controller after recording the denial (deny arm
+   * schema at chunk-n3ykh62m.js offset 395657; consumer
+   * chunk-rx2nah4x.js offset 660913). The first non-allow hook is the adopted
+   * decision, so a later deny cannot add an interrupt (`n2e`,
+   * chunk-fyhzvvp0.js offset 15633).
+   */
+  interrupt?: true;
   updatedPermissions?: unknown[];
   updatedToolOutput?: unknown;
   /** PostToolUse: replaces the output only when the tool is an MCP tool. */
@@ -1074,11 +1083,13 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
     if (permission && typeof permission === "object" && !Array.isArray(permission)) {
       const decision = permission as Record<string, unknown>;
       if (decision.behavior === "allow" || decision.behavior === "deny") {
-        if (!result.permissionDecision || result.permissionDecision === "allow") result.permissionDecision = decision.behavior;
+        const adopting = !result.permissionDecision || result.permissionDecision === "allow";
+        if (adopting) result.permissionDecision = decision.behavior;
         result.permissionDecisionReason ??= asString(decision.message) ?? asString(decision.reason);
         if (decision.behavior === "deny") {
           result.blocked = true;
           result.reason ??= result.permissionDecisionReason ?? "PermissionRequest hook denied the request";
+          if (adopting && decision.interrupt === true) result.interrupt = true;
         } else {
           if (decision.updatedInput !== undefined) result.updatedInput = decision.updatedInput;
           if (Array.isArray(decision.updatedPermissions)) result.updatedPermissions = decision.updatedPermissions;

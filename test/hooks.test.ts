@@ -1109,6 +1109,25 @@ test("oversized hook input prevents every transport from starting", async () => 
   assert.ok(result.additionalContext.some(text => text.includes("input exceeded")));
 });
 
+test("PermissionRequest interrupt is adopted only with the denying decision", async () => {
+  const denied = await runHooks({ PermissionRequest: [emit({ hookSpecificOutput: { hookEventName: "PermissionRequest",
+    decision: { behavior: "deny", message: "stop", interrupt: true } } })] }, "PermissionRequest", {});
+  assert.equal(denied.blocked, true);
+  assert.equal(denied.reason, "stop");
+  assert.equal(denied.interrupt, true);
+  // The source returns at the first non-allow result (`n2e`), so a later deny
+  // cannot add an interrupt to the decision that was already adopted.
+  const later = await runHooks({ PermissionRequest: [
+    emit({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "deny", message: "first" } } }),
+    emit({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "deny", message: "second", interrupt: true } } }),
+  ] }, "PermissionRequest", {});
+  assert.equal(later.reason, "first");
+  assert.equal("interrupt" in later, false);
+  const allowed = await runHooks({ PermissionRequest: [emit({ hookSpecificOutput: { hookEventName: "PermissionRequest",
+    decision: { behavior: "allow", interrupt: true } } })] }, "PermissionRequest", {});
+  assert.equal("interrupt" in allowed, false);
+});
+
 test("permission denial survives a later allowing hook and new lifecycle gate exit statuses work", async () => {
   const result = await runHooks({ PermissionRequest: [
     emit({ hookSpecificOutput: { hookEventName: "PermissionRequest", decision: { behavior: "deny", message: "first block" } } }),

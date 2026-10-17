@@ -214,6 +214,37 @@ test('classic permission: PermissionRequest joins the approval path on the sourc
   assert.equal(prompts, 1);
 });
 
+test('classic permission: a deny carrying interrupt aborts the turn', async () => {
+  const workspace = tmpDir();
+  const tools = [probeTool(async () => 'ran')];
+  clearChainRecords();
+  const seen = tempFile('interrupt.jsonl');
+  const chainRun = createChainRun();
+  const loaded = await loadChainModuleFileInto(chainRun, { pluginName: 'fixture-interrupt',
+    modulePath: moduleFile('classic.PermissionRequest',
+      "{permissionRequestResult: {behavior: 'deny', message: 'stop it', interrupt: true}}", seen) });
+  const session = Session.open(workspace, { config: askConfig(workspace, tools) });
+  const turn = new AbortController();
+  const statuses: string[] = [];
+  try {
+    const agent = new Agent(session, new FakeProvider([
+      serverMessage([{ type: 'tool_use', id: 't1', name: 'probe', input: { x: '1' } }], 'tool_use'),
+      serverMessage([{ type: 'text', text: 'done' }], 'end_turn'),
+    ]), tools, { permission: async () => { throw new Error('the hook answers before the prompt'); },
+      interruptTurn: () => turn.abort(new Error('Hook interrupt')), status: text => statuses.push(text) });
+    const result = await agent.run('go', turn.signal);
+    assert.equal(result.reason, 'aborted');
+    // The turn ends before another model request, so the denied batch is the
+    // last message.
+    assert.deepEqual(session.messages.at(-1), { role: 'user', content: [
+      { type: 'tool_result', tool_use_id: 't1', content: 'stop it', is_error: true },
+    ] });
+    assert.ok(statuses.includes('Hook interrupt: tool=probe hookMessage=stop it'));
+  } finally {
+    loaded.unload();
+  }
+});
+
 test('classic permission: a permission-rule denial raises nothing, whatever hooks the event', async () => {
   const workspace = tmpDir();
   const tools = [probeTool(async () => 'ran')];

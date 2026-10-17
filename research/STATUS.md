@@ -2298,3 +2298,10 @@ messages. The local CLI has no /add-dir or register_repo_root, so relocation
 commands stand in for the source's registration triggers. Focused 71/71, tsc 0,
 build 0, full 2,159/2,159, chain 767/767, identity `7b5c2d92…`.
 [W116 record](ports/W116-directory-added.md).
+
+W117-01 consumes PermissionRequest's deny `interrupt`. The adopted denying hook
+(regular or classic chain) logs `Hook interrupt: tool=… hookMessage=…` and
+aborts the turn's owned controller; the denial is still the tool result and the
+turn finishes aborted before any post hook. Focused 214/214, tsc 0, build 0,
+full 2,162/2,162, chain 768/768, identity `1c73f452…`.
+[W117 record](ports/W117-permission-interrupt.md).

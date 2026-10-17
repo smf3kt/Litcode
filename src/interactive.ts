@@ -393,6 +393,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     text: text => { if (terminal?.writeAssistantText) terminal.writeAssistantText(text); else output.write(text); },
     textEnd: () => terminal?.endAssistantMessage?.(),
     status: text => { options.status.write(`${text}\n`); },
+    // A PermissionRequest deny with `interrupt:true` aborts the turn's
+    // controller (chunk-rx2nah4x.js offset 660913); `authorize` receives the
+    // turn signal but does not own the controller, so the loop supplies it.
+    interruptTurn: () => { turnController?.abort(new Error('Hook interrupt')); },
     instructionFiles: addInstructionPaths,
     ...(terminal?.isTTY ? { terminalSequence: (sequence: string) => terminal.writeTerminalSequence(sequence) } : {}),
     hookOptions: activeRuntime.hookOptions?.(session.config, session.id),
