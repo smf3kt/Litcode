@@ -2276,3 +2276,10 @@ cleanup with the checkout preserved on failure. Hooks always win when
 configured; the Git manager remains the fallback. Focused 111/111, tsc 0, build
 0, full 2,154/2,154, chain 767/767, identity `2f5efec2…`.
 [W113 record](ports/W113-hook-worktree.md).
+
+W114-01 reports the recovered advisory when an isolated child runs in a
+workspace with no Git repository and no WorktreeCreate hook, instead of the Git
+manager's failure. A workspace inside a repository whose root is elsewhere
+still takes the manager's own root error. Focused 88/88, tsc 0, build 0, full
+2,155/2,155, chain 767/767, identity `95c17af3…`.
+[W114 record](ports/W114-worktree-advisory.md).

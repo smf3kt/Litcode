@@ -768,6 +768,9 @@ export async function createRuntime(
       try {
         if (hookBased) checkout = await createHookWorktree();
         else {
+          if (await manager!.repositoryState(request.signal) === 'none') {
+            throw new Error('Cannot create a worktree: not in a git repository and no WorktreeCreate hooks are configured. Configure WorktreeCreate/WorktreeRemove hooks in settings.json to use worktree isolation with other VCS systems.');
+          }
           const created = await serializeWorktree(() => manager!.create({ name }, request.signal));
           checkout = created.path;
           if (!created.owned || created.state !== 'ready') throw new Error('Child worktree ownership verification failed');
