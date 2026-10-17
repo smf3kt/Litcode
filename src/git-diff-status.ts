@@ -30,6 +30,27 @@ export interface GitDiffStats {
 /** Source `F=50`: the parser keeps at most this many per-file entries. */
 export const GIT_DIFF_FILE_LIMIT = 50;
 
+/** The source `Cn`+`dxn`+`LCo`+`Z_` prefix every diff command carries. */
+export const GIT_DIFF_BASE_ARGS = [
+  '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=',
+  '--no-optional-locks', '-c', 'diff.relative=false', 'diff',
+  '--no-color', '--src-prefix=a/', '--dst-prefix=b/', '--submodule=short',
+  '--ignore-submodules=dirty',
+] as const;
+
+/** The Git environment both collectors share: inherited routing and config are shut out. */
+export function gitDiffEnvironment(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')),
+  );
+  Object.assign(env, {
+    LC_ALL: 'C', GIT_TERMINAL_PROMPT: '0', GIT_CONFIG_NOSYSTEM: '1',
+    GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null',
+    GIT_REFERENCE_BACKEND: 'files', GIT_OPTIONAL_LOCKS: '0',
+  });
+  return env;
+}
+
 /** Source `gkt`: parse `git diff --raw --numstat` output into totals and per-file stats. */
 export function parseGitDiffStats(output: string, limit = GIT_DIFF_FILE_LIMIT,
   scope: GitDiffPathScope = 'all'): GitDiffStats {
@@ -46,20 +67,8 @@ export function parseGitDiffStats(output: string, limit = GIT_DIFF_FILE_LIMIT,
  * Git isolation, and a nonzero exit still answers null.
  */
 export async function readGitDiffStats(cwd: string, signal?: AbortSignal): Promise<GitDiffStats | null> {
-  const env: NodeJS.ProcessEnv = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')),
-  );
-  Object.assign(env, {
-    LC_ALL: 'C', GIT_TERMINAL_PROMPT: '0', GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null',
-    GIT_REFERENCE_BACKEND: 'files', GIT_OPTIONAL_LOCKS: '0',
-  });
-  const args = [
-    '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=',
-    '--no-optional-locks', '-c', 'diff.relative=false', 'diff',
-    '--no-color', '--src-prefix=a/', '--dst-prefix=b/', '--submodule=short',
-    '--ignore-submodules=dirty', '--raw', '--numstat',
-  ];
+  const env = gitDiffEnvironment();
+  const args = [...GIT_DIFF_BASE_ARGS, '--raw', '--numstat'];
   try {
     const stdout = await new Promise<string>((resolve, reject) => {
       execFile('git', args, {

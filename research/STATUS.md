@@ -2829,3 +2829,16 @@ with bounded output and recorded Git isolation; the diff dialog and hunk model r
 Focused 10/10, full 2460/2460, tsc 0, build 0, notices 0, scan declared 42 / unresolved 0,
 identity `8a18b3f1…`.
 [W161 record](ports/W161-git-diff-status.md).
+
+W162 added the unified-diff hunk slice (2 copied blocks, 1,438 UTF-16 units: `ZQr` and `pxn`
+in chunk-j8hqhz0c.js). The header match resolves plain `a/x b/x`, quoted and rename forms to
+the new side and decodes C-quoted UTF-8 through the W161 copy; a section above 1,000,000
+units is recorded in `skippedLarge`, the file cap is 50 and each hunk keeps at most 400
+marker-preserving lines, including empty ones. `parseGitShortStat` reads plural, singular and
+one-sided totals. `readGitDiffHunks` mirrors `Tns`: a shortstat above 500 files answers an
+empty result, the patch runs with `--no-ext-diff --no-textconv` against the revision, and
+`--cached` drops paths that still carry unstaged changes. The recovered runner and repository
+checks are replaced by `execFile` with the shared Git isolation; the dialog and navigation
+remain out. Focused 7/7, full 2467/2467, tsc 0, build 0, notices 0, scan declared 23 /
+unresolved 0, identity `9d4ebe67…`.
+[W162 record](ports/W162-git-diff-hunks.md).

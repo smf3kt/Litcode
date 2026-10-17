@@ -1,0 +1,73 @@
+{
+  "schema": "W162GitDiffHunks.v1",
+  "package": "W162-git-diff-hunks",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      {
+        "module": "chunk-j8hqhz0c.js",
+        "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+        "blocks": 2,
+        "units": 1438,
+        "ranges": [
+          { "name": "ZQr", "range": [28189, 29373], "units": 1184, "digest": "dd10cc022f7f05e75cb47c958bd3de682475792b57b27328bdb13ff388b19c9c", "note": "unified diff to per-file hunks, with the 50-file cap, 400-line hunk cap and 1e6 oversized-section set" },
+          { "name": "pxn", "range": [32005, 32259], "units": 254, "digest": "b8cc9854a1350bdff4101f0d88babdbff1372853cdc5dcc8db1e9cabd536b652", "note": "git --shortstat totals" },
+          { "name": "Tns", "range": [24607, 25087], "units": 480, "digest": "5fc11d7a04e5f01d3518361a611b343cc006d90f8269b1889be0bf70a67d1b2c", "note": "hunk collector semantics; host-adapted, not copied" }
+        ]
+      }
+    ],
+    "constants": [
+      { "name": "F", "value": 50, "note": "files kept per diff (shared with the W161 parser)" },
+      { "name": "Tcr", "value": 1000000, "note": "oversized diff section" },
+      { "name": "F3t", "value": 400, "note": "lines kept per hunk" },
+      { "name": "L", "value": 500, "note": "shortstat file count above which hunk collection is skipped" }
+    ],
+    "reused": [
+      { "names": ["RAe"], "source": "chunk-j8hqhz0c.js [27801,28189)", "product": "src/git-diff-status-source.ts", "note": "quoted header decoding; the W161 copy now exports it" },
+      { "names": ["readGitDiffStats", "GIT_DIFF_BASE_ARGS", "gitDiffEnvironment"], "product": "src/git-diff-status.ts", "note": "the --cached cleanup and the shared command prefix and environment" }
+    ],
+    "rewrite": [
+      {
+        "source": "Tns process runner j/st, repo check Rcr, abort check Ue and environment N",
+        "reason": "the recovered runner and repository services are host inputs this runtime does not carry",
+        "replacement": "readGitDiffHunks uses execFile with the source shortstat and patch argument lists, the source 5s timeout, a 4 MiB output bound and the shared Git isolation; the shortstat >500-file bail-out and --cached unstaged-path removal keep the source semantics"
+      }
+    ]
+  },
+  "product": {
+    "files": [
+      "src/git-diff-hunks-source.ts",
+      "src/git-diff-hunks-source-blocks.json",
+      "src/git-diff-hunks.ts",
+      "src/git-diff-status-source.ts",
+      "src/git-diff-status-source-blocks.json",
+      "src/git-diff-status.ts",
+      "test/git-diff-hunks.test.ts"
+    ],
+    "exports": [
+      "parseGitDiffHunks", "parseGitShortStat", "readGitDiffHunks",
+      "GIT_DIFF_HUNK_FILE_LIMIT", "GIT_DIFF_HUNK_LINE_LIMIT", "GIT_DIFF_LARGE_FILE_COUNT"
+    ],
+    "notes": [
+      "Header paths resolve to the new side and decode C-quoted UTF-8; plain a/x b/x headers use the shared path.",
+      "Metadata before the first hunk is ignored; hunk lines keep their space, plus or minus marker and empty lines are retained.",
+      "The file cap counts parsed and oversized files together; the hunk cap is 400 lines.",
+      "readGitDiffHunks bails out to an empty result when shortstat reports more than 500 files, and drops staged paths that still have unstaged changes.",
+      "The diff dialog and its navigation remain out."
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 7, "failed": 0, "file": "test/git-diff-hunks.test.ts", "new": 7 },
+    "full": { "passed": 2467, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": { "declared": 23, "unresolved": 0 }
+  },
+  "identity": {
+    "sha256": "9d4ebe67bdc8d29ba1c032e24636cc72fe5d39ee6cfcaec44530a406cdb2f605",
+    "inputs": 622,
+    "validation": 218,
+    "build": 429
+  }
+}

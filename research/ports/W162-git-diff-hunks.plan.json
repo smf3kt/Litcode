@@ -1,0 +1,19 @@
+{
+  "imports": [
+    "const F = 50, Tcr = 1e6, F3t = 400; // source chunk-j8hqhz0c.js diff caps",
+    "import { RAe } from './git-diff-status-source.js';"
+  ],
+  "exports": ["ZQr", "pxn"],
+  "blocks": [
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [28189, 29373],
+      "note": "ZQr: parse a unified diff into per-file hunks, with the file cap, oversized-section set and per-hunk line cap"
+    },
+    {
+      "file": "chunk-j8hqhz0c.js",
+      "range": [32005, 32259],
+      "note": "pxn: parse git --shortstat totals"
+    }
+  ]
+}

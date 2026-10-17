@@ -3,7 +3,7 @@
     "import { isAbsolute as Fe, win32 as Ft } from 'node:path';",
     "const F = 50; // source chunk-j8hqhz0c.js `F=50`: the per-file diff-list cap"
   ],
-  "exports": ["gkt", "Kt", "re", "xcr", "Yt", "N3t"],
+  "exports": ["gkt", "Kt", "re", "xcr", "Yt", "N3t", "RAe"],
   "blocks": [
     {
       "file": "chunk-gyf58rwf.js",
