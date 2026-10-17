@@ -1,0 +1,107 @@
+{
+ "schema": "W111SessionStartWatchPathsEvidence.v1",
+ "package": "W111-01 — SessionStart watchPaths",
+ "date": "2026-10-17",
+ "question": "What happens to the SessionStart hook watchPaths output?",
+ "answer": "The runner collects every hook watchPaths entry and registers them with the file watcher, replacing the set normally and adding when the session was overtaken or the hook came from a plugin loaded after start.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "schema": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 392062
+  },
+  "translation": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 387382
+  },
+  "collectAndRegister": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offsets": [
+    2483221,
+    2483234
+   ]
+  },
+  "watcherBinding": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offset": 1680634
+  }
+ },
+ "behavior": {
+  "event": "SessionStart",
+  "field": "hookSpecificOutput.watchPaths",
+  "mergedAcrossHooks": true,
+  "registeredWith": "config file watcher",
+  "modes": [
+   "updateWatchPaths",
+   "addWatchPaths"
+  ]
+ },
+ "adaptations": [
+  "This runtime has no plugin-late SessionStart concept, so every result uses the additive registration path.",
+  "A headless run has no config watcher and ignores the returned paths.",
+  "Startup paths cross into the loop as initialWatchPaths because the startup hook run precedes the loop that owns the watcher."
+ ],
+ "changes": [
+  {
+   "file": "src/agent.ts",
+   "change": "startSession returns merged watchPaths",
+   "sha256": "32585130998e9205fb0831b3966953d910c7510c6f73868304d4ec948c1b1eb4"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "initialWatchPaths and start-time registration",
+   "sha256": "d296bea8f27b74f1dbdadec9f31a5c92aea6eb6e632fe6fc582f994f3e2a7f24"
+  },
+  {
+   "file": "src/cli.ts",
+   "change": "passes initialWatchPaths",
+   "sha256": "ba1a95b5a6d4eb4a17784909a8a9b3654639ba2b7ae65964c386f32ffb0f8bf4"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "returned paths assertion",
+   "sha256": "42e5dbff90aa264391827bac7fe717a357822348e7c7b3fa6a62da30e366ae7c"
+  },
+  {
+   "file": "test/interactive.test.ts",
+   "change": "instruction_watch assertion",
+   "sha256": "486651043611af4b8aaafb2a198b1513b8a12c47ff60d6e0510e7bda36c9f59a"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W111",
+   "sha256": "45a7e58bd2fc14aeb3d76fead9daed07fe2c4e03ddc41ca29cfa1ce1888fa761"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W111",
+   "sha256": "63a0787d83161b2b5e3c8a1f2c92707831e43fcb99f3c9ce5d411992dc93f795"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W111-01 entry",
+   "sha256": "101f91dacbb43c23f2c4acc9c84f88a7fc2cc7cd195938a12625707f4fa1fb87"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W111-01 S-1..S-7 entry",
+   "sha256": "c7ad6e800f2dcc79e4d198ecf09f1df2ff5137d1d9c9641c1f62c7dbd4e0ddb4"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "63/63 (agent-lifecycle, interactive)",
+  "build": "exit 0",
+  "full": "2,150/2,150",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "ec6093d643195af8d008d0a16af050eff84d5df42524d697d21dbb70ad758521"
+ },
+ "residuals": [
+  "The remaining C-6 script semantics are unconsumed.",
+  "The source replace mode for plugin-late hooks has no local analogue."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with the remaining script semantics."
+}
