@@ -1,0 +1,3 @@
+2026-10-17T11:32:00Z	package	W66-01 真实 tmux/screen 解码	smoke-hook-mux.mjs：外层 tmux 面板内启动内层真实 tmux(allow-passthrough all)/screen，产品 formatter 生成 OSC 0，外层 tmux 回读 pane title；源码/编译两模式	恢复源 OI/K3t 逐字核对；zellij 未移植	两模式 smoke 通过；tsc 0；全量 2,090/2,090；链 767/767
+2026-10-17T11:35:00Z	decision	W66-01 崩溃安全投递判定为 at-most-once	① interactive drain 先 append hook_terminal 再写 TTY；② resume 只恢复记录不重放；③ 日志后、写前崩溃丢失该次显示效果，日志前崩溃无记录无效果；④ 终端无 ack，exactly-once 不可证明	残余：完整原始消费者/脚本语义仍为缺口；zellij 检测未移植	.audit/w66-01-smoke.txt
+2026-10-17T11:38:00Z	verification	W66-01 验收：两模式 smoke、2,090/2,090、767/767、身份 bb47c630…	tmux 与 screen 的 pane title 均等于本次唯一标题；tmux 字节前缀 ESC Ptmux;，screen 前缀 ESC P 且含双 ESC	tsc 0；notices 0；索引 75 chunks / 323,525 单位不变；首次并发 4 的全量因主机负载在无关 worktree 用例超时，并发 2 隔离重跑通过
