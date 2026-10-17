@@ -14,7 +14,7 @@
 export { Bo, Ce, Fo, Ko, Wo, eg, jo, nr, _o, ee } from './plugin-chain-react-surface-source.js';
 export {
   Ae, Children, P, R, Rt, Tc, Xe, Z, b, earlyReturn, en, fragment, hh, isValidElement,
-  km, le, n, qt, s, tI, w, y, ZFt, runComponent, useImperativeHandle, useId, To,
+  km, le, n, qt, s, tI, w, y, ZFt, N, runComponent, useImperativeHandle, useId, To,
 } from './plugin-chain-react-hooks.js';
 export type {
   ComponentRun, HookRuntime, SurfaceContext, SurfaceElement, SurfaceNode,

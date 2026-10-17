@@ -200,6 +200,10 @@
 
 [W171](ports/W171-spinner.md)接通旋转指示器与消息行：复制 **14 块 3,407 单位**（消息 `Mr` chunk-vew7ssxx.js 508u；指示器 `ui` 599u、选择器 `mr` 54u；动画闭包 chunk-1r9zp6s1.js `$e` 466u、`N4` 429u、`Io`/`LIe`/`ia` 384u、`nt` 29u，chunk-06azbynj.js `vie` 147u、`Dy`/`y4n` 71u，chunk-k1caxvem.js 焦点上下文 99u、读取器 118u、空订阅 92u，chunk-z9nv3z8k.js `eg` 41u；帧集 chunk-hyshef1z.js 370u）。`ui` 在减少动效或无障碍标记下输出静态 `●`，否则按 `ia(120)` 的量化时间与 `HIe()` 的终端相关帧集取帧；`ia` 把间隔抬到 16ms 量子、`floor(now/q)*q`，间隔为 null、缺时钟或不可见时暂停，`LIe` 在完整重绘标志下把间隔下限抬到 480ms；`$e`/`N4` 以视口行数减去祖先滚动钳制判定可见性，不可测时保持原状态；`Mr` 为「符号 + 文本」行加可选暗色副标题。宿主适配：`bg` 的远程门退化为设置本身、`Wo` 改为本地 `SpinnerSettings` 上下文、`a` 由进程环境提供。列表与 `si` 接线仍待。聚焦 10/10、全量 2555/2555、tsc 0、build 0、notices 0、扫描 34/43/9 均 unresolved 0，身份 `358bbb79…`。
 
+## W172 列表（C-2 diff 第十二片）（2026-10-18）
+
+[W172](ports/W172-list.md)接通 diff 对话框的列表：复制 **59 块 31,687 单位**（列表本体 chunk-0wtqg4zf.js `pe` 1,133u、`NXe` 356u、`Ye` 2,332u、`fn` 2,962u、`Cn` 1,372u、`Eo` 1,823u、`Qe` 3,045u、`Po`/`Bo`/`Me`/`Co`/`Pn`/`Tl` 等；chunk-yygmb66g.js 行与选择 `_C` 2,303u、`ei` 896u、`ZY` 4,559u、`En` 1,207u 等；chunk-1r9zp6s1.js 焦点读取与容器 1,210u；另有符号、箭头、悬停、截断与宽度归一化依赖）。`Cn` 在无障碍上下文且提供 `onSelect` 时把标题分组后交给 `ZY`，否则按 `visibleCount` 分派 `Eo`/`Qe`；`Eo` 用 `kc` 测量固定开销、`ns` 读终端行数，经容器保留与 `maxVisibleCount` 得到窗口，溢出提示按 1 行/`$e` 阈值选 `none`/`glyph`/`count`；`Qe` 汇总行高、经 `fn` 得光标/窗口/滚动绑定，窗口内标题为不可选 `_C`，可选行逐行提供 `Mo` 选中上下文并支持 `rowClick:"move"`、禁用行回调与 `Sdn` 滚动盒；`fn` 统一处理方向/翻页/首尾/滚轮/滚动条，`wrap` 回绕、`clamp` 停放、`declineHomeEnd` 拒绝 Home/End；`Po`/`Bo` 为片段包装，`rx` 读取选中。宿主适配：`Wo` 绑定本地 `sx` 应用状态、`Mct` 因本构建方向键导航而返回真、`$h` 先走 `ix` 再退回挂载应用上下文（钩子运行器提交的元素无 FocusManagerProvider）。`si` 接线仍待。聚焦 10/10、全量 2565/2565、tsc 0、build 0、notices 0、扫描 254 unresolved 0，身份 `997d61f8…`。
+
 ## 待完成清单
 
 本清单为当前唯一待办入口，取代下方按时间累积的历史排程表（那张表保留原证据，供追溯，不再作为排程依据）。每条都指回来源，来源是实测结论，不是计划。
