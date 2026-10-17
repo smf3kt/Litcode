@@ -8,6 +8,12 @@ export type ConfigWatchSources = Pick<LoadProjectOptions, "userDir" | "settingsF
   instructionPaths?: readonly string[];
   /** Verified plugin/catalog roots; bytes remain data until reload validation. */
   contentDirectories?: readonly string[];
+  /**
+   * Reports one relevant watcher event for the file it names. `add` and
+   * `unlink` come from a rename whose target does or does not exist; every
+   * other event is `change`.
+   */
+  onFileChange?: (filePath: string, event: "add" | "change" | "unlink") => void;
 };
 export interface ConfigWatcher { close(): void; addInstructionPaths?(paths: readonly string[]): void }
 
@@ -233,6 +239,11 @@ export function watchProjectConfig(workspace: string, sourcesOrChange: ConfigWat
             }
           });
           if (!relevant) return;
+          if (name && sources?.onFileChange) {
+            const target = path.join(directory, name);
+            const kind = event === "rename" ? (fs.existsSync(target) ? "add" : "unlink") : "change";
+            try { sources.onFileChange(target, kind); } catch (error) { report(error); }
+          }
           if (event === "rename" || !name) refresh();
           notify();
         });

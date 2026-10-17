@@ -172,7 +172,20 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       } catch (error) { options.status.write(`Config watch source error: ${String(error)}\n`); }
       try {
         configWatch = watchProjectConfig(session.config.workspace, { ...session.config.configSources,
-          instructionPaths: [...new Set([...instructionPaths, ...dynamicWatchPaths])], contentDirectories },
+          instructionPaths: [...new Set([...instructionPaths, ...dynamicWatchPaths])], contentDirectories,
+          // The recovered FileChanged payload is watcher-driven (`e7r`,
+          // chunk-sfn1dbxq.js [2935646,2935767)); the config watcher reports
+          // the named file and kind, and the hook result stays non-blocking.
+          onFileChange: (file, event) => {
+            void (async () => {
+              try {
+                const result = await agent().emitHook('FileChanged', { file_path: file, event }, options.signal);
+                for (const message of result.systemMessages ?? []) options.status.write(`${message}\n`);
+              } catch (error) {
+                if (!options.signal.aborted) options.status.write(`FileChanged hook error: ${String(error)}\n`);
+              }
+            })();
+          } },
           () => { configDirty = true; awaken(); },
           error => options.status.write(`Config watch error: ${error.message}\n`));
       } catch (error) { options.status.write(`Config watch error: ${String(error)}\n`); }
