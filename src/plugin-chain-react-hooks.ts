@@ -45,12 +45,24 @@ export function Tc(type: unknown, props?: Record<string, unknown> | null, ...chi
   return { type, props: props ?? {}, children: children.flat(Infinity) };
 }
 
+export interface EffectSlot {
+  deps: readonly unknown[];
+  cleanup?: () => void;
+}
+
+export interface QueuedEffect {
+  slot: EffectSlot;
+  effect: () => void | (() => void);
+}
+
 export interface HookRuntime {
   contexts: ReadonlyMap<unknown, unknown>;
   slots: unknown[];
-  effects: Array<() => void | (() => void)>;
+  effects: QueuedEffect[];
   cursor: number;
   nodes: SurfaceNode[];
+  /** Set by a state setter whose value changed; the runner renders one more pass after the effects. */
+  dirty: boolean;
 }
 
 let active: HookRuntime | undefined;
@@ -69,11 +81,17 @@ function sameDeps(a: readonly unknown[] | undefined, b: readonly unknown[]): boo
   return a !== undefined && a.length === b.length && a.every((value, at) => Object.is(value, b[at]));
 }
 
-/** Source `y` (React.useState): one slot, the initializer run once, a setter that keeps the value. */
-export function y<T>(init: () => T): [T, (next: T) => void] {
+/** Source `y` (React.useState): one slot, an initializer run once when the source passes a function,
+ *  the value itself otherwise (`y(!1)` and `y()` are the source's other two forms), and a setter. */
+export function y<T>(init?: (() => T) | T): [T, (next: T) => void] {
   const runtime = requireRuntime();
-  const slot = slotAt(runtime, runtime.cursor++, () => ({ value: init() }));
-  return [slot.value, (next: T) => { slot.value = next; }];
+  const initial = typeof init === 'function' ? (init as () => T)() : init as T;
+  const slot = slotAt(runtime, runtime.cursor++, () => ({ value: initial }));
+  return [slot.value, (next: T) => {
+    if (Object.is(slot.value, next)) return;
+    slot.value = next;
+    runtime.dirty = true;
+  }];
 }
 
 /** Source `Z` (React.useMemo): recompute when a dependency changes, keep the value otherwise. */
@@ -94,14 +112,34 @@ export function R<T>(value: T): { current: T } {
 }
 
 /** Source `en` (React.useEffect): queue the effect on mount or a dependency change. It runs after the
- *  element tree is committed, so a ref already points at its node. */
+ *  element tree is committed, so a ref already points at its node; a dependency change runs the
+ *  previous effect's cleanup first, the way React does. */
 export function en(effect: () => void | (() => void), deps: readonly unknown[] = []): void {
   const runtime = requireRuntime();
   const at = runtime.cursor++;
-  const held = runtime.slots[at] as { deps: readonly unknown[] } | undefined;
+  const held = runtime.slots[at] as EffectSlot | undefined;
   if (held !== undefined && sameDeps(held.deps, deps)) return;
-  runtime.slots[at] = { deps: [...deps] };
-  runtime.effects.push(effect);
+  const slot: EffectSlot = { deps: [...deps], cleanup: held?.cleanup };
+  runtime.slots[at] = slot;
+  runtime.effects.push({ slot, effect });
+}
+
+/** Source `P` (React.useEffect): queue an effect on mount or a dependency change. The source uses it
+ *  beside `en` for subscriptions; both run after the commit, in the order the component queued them. */
+export function P(effect: () => void | (() => void), deps: readonly unknown[] = []): void {
+  en(effect, deps);
+}
+
+/** Source `le` (React.useCallback): keep the function the same while its dependencies do. The Image
+ *  resolver hands the result to the mount writer, whose effect compares it by identity. */
+export function le<T extends (...args: never[]) => unknown>(fn: T, deps: readonly unknown[] = []): T {
+  const runtime = requireRuntime();
+  const at = runtime.cursor++;
+  const held = runtime.slots[at] as { deps: readonly unknown[]; value: T } | undefined;
+  if (held === undefined || !sameDeps(held.deps, deps)) {
+    runtime.slots[at] = { deps: [...deps], value: fn };
+  }
+  return (runtime.slots[at] as { value: T }).value;
 }
 
 /** Source `Ae` (React.useContext): the mounted value, or the context's own default. */
@@ -165,7 +203,10 @@ export interface ComponentRun<T> {
   unmount(): void;
 }
 
-/** Render one source component with the hook seam: slots fresh, effects after the commit. */
+/** Render one source component with the hook seam: slots fresh, then per pass one render, one commit
+ *  (which is what binds every `ref`), and the effects queued by that pass. A state setter marks the
+ *  runtime dirty and the runner renders again, the way React re-renders after an effect; the limit
+ *  stops a component that would update forever. */
 export function runComponent<T>(
   render: () => T,
   options: { contexts?: ReadonlyMap<unknown, unknown> } = {},
@@ -176,31 +217,44 @@ export function runComponent<T>(
     effects: [],
     cursor: 0,
     nodes: [],
+    dirty: false,
   };
   const previous = active;
-  active = runtime;
   let result: T;
-  try {
-    result = render();
-  } finally {
-    active = previous;
+  let root: SurfaceElement | undefined;
+  for (let pass = 0; pass < 50; pass += 1) {
+    runtime.cursor = 0;
+    runtime.dirty = false;
+    active = runtime;
+    try {
+      result = render();
+    } finally {
+      active = previous;
+    }
+    root = typeof result === 'object' && result !== null && 'type' in result
+      ? result as unknown as SurfaceElement
+      : undefined;
+    if (root !== undefined) runtime.nodes[0] = commit(root, null);
+    const effects = runtime.effects;
+    runtime.effects = [];
+    for (const { slot, effect } of effects) {
+      if (typeof slot.cleanup === 'function') slot.cleanup();
+      slot.cleanup = undefined;
+      const cleanup = effect();
+      if (typeof cleanup === 'function') slot.cleanup = cleanup;
+    }
+    if (!runtime.dirty) break;
   }
-  const root = typeof result === 'object' && result !== null && 'type' in result
-    ? result as unknown as SurfaceElement
-    : undefined;
-  if (root !== undefined) runtime.nodes.push(commit(root, null));
-  const cleanups: Array<() => void> = [];
-  for (const effect of runtime.effects) {
-    const cleanup = effect();
-    if (typeof cleanup === 'function') cleanups.push(cleanup);
-  }
-  runtime.effects.length = 0;
   return {
-    result,
+    result: result!,
     root,
     runtime,
     unmount: () => {
-      for (const cleanup of cleanups.reverse()) cleanup();
+      for (let at = runtime.slots.length - 1; at >= 0; at -= 1) {
+        const slot = runtime.slots[at] as EffectSlot | undefined;
+        if (typeof slot?.cleanup === 'function') slot.cleanup();
+        if (slot !== undefined) slot.cleanup = undefined;
+      }
     },
   };
 }

@@ -1,0 +1,3 @@
+file src/plugin-chain-image-component-source.ts
+declared 81  imports node:fs/promises, ./plugin-chain-image-wire.js, ./plugin-chain-image-model.js, ./plugin-chain-raster-mount.js, ./plugin-chain-react-surface.js, ./plugin-chain-source.js, ./plugin-chain-host.js, ./plugin-chain-image-host.js, ./plugin-chain-image-wire-source.js
+unresolved 0

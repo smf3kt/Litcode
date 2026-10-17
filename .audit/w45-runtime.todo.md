@@ -790,3 +790,12 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The only external body is already carried.** `Oe()` comes from the registry-stores copy; the environment guesses and host wrappers are left to 2b-ii rather than invented here.
 - [x] **Behaviour was measured before it was asserted.** The one-shot probe transitions, the immediate-vs-subscribed listener, the default fallback for `now`, the settled-answer refusal and the deadline source suffix are in the probe log and in the suite.
 - [x] **Sweep.** tsc 0, copy `declared 10 / unresolved 0`, notices 0, new suite 9/9, chain family 553/553, full 1829/1829, index 58 chunks / 250,759 units, identity `4b7f1d22…`.
+
+## W45-76 acceptance (2026-10-17)
+
+- [x] **The Image slice is closed in four bounded packages.** Wire layer (W45-73), source model (W45-74), capability and probe stores (W45-75), component and resolver (W45-76); the evidence records the four.
+- [x] **The bodies are copied whole.** Nine blocks with ranges and digests; the only hand-written product code is the host boundary and the hook-runner extension it required.
+- [x] **The host boundary is named and minimal.** `LT`/`Z8n`/`aWo`/`$1t` read the W45-75 stores; `bC`/`QO` are fixture contexts that default to null, the source's own absent value; `ge` and `lPe` are the colour level and temp path.
+- [x] **The hook runner follows the React semantics the source relies on.** All three state initializer forms, re-render after a state setter, and cleanup on a dependency change; W45-72's 11 tests still pass.
+- [x] **Behaviour was measured before it was asserted.** Five alt reasons, the refusal window, the id widths, the three probe outcomes, the single transmit, the temp-file removal and the cannot-read answer are in the probe log and in the suite.
+- [x] **Sweep.** tsc 0, copy `declared 81 / unresolved 0`, notices 0, new suite 15/15, chain family 568/568, full 1844/1844, index 58 chunks / 255,604 units, identity `7b53418e…`.
