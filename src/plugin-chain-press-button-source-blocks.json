@@ -1,0 +1,281 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f"
+    },
+    {
+      "module": "chunk-bwyexfny.js",
+      "sha256": "35fae44d02574c1e366e2c50484d2ce75e87a0b017d91b0e5a8a6ca4bc8ff647"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd"
+    },
+    {
+      "module": "chunk-8zgs1qmk.js",
+      "sha256": "023321c4663c081a393179a5f1ff9d533af036d7c78c366d2b31ab0657647dcb"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        25258,
+        25316
+      ],
+      "units": 58,
+      "bodySha256": "361726a04380e17c58cb7bc8809cae7e26600dcbed3175868ecfcb588d285552",
+      "note": "`co` — the action-key rank/sequence comparator"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        25316,
+        25578
+      ],
+      "units": 262,
+      "bodySha256": "88c8462077c56f0991615c92b3f784e296e58455c6faf4dbf79012f194132731",
+      "note": "`xo` — the action-key store: add/remove/winnerOf/held/clear"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        25578,
+        25609
+      ],
+      "units": 31,
+      "bodySha256": "9a02018e83c25c64576445cc9fb08a2632baa048ffdb8ecb68cb68e6d203d7f9",
+      "note": "`Yt` — the store the seats register in"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        25609,
+        25674
+      ],
+      "units": 65,
+      "bodySha256": "c454314978c340482c211c483e7d505328909f12a87b3360400ed3a55bebad8f",
+      "note": "`Ds` — the binding contexts an action is bound in"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        25674,
+        25721
+      ],
+      "units": 47,
+      "bodySha256": "77c671c64a9a6f8b2df08dda8d8ad2af105d76e6a054d818d49a23f9d8c50fc3",
+      "note": "`_s` — the component rank: Pane 2, AbovePrompt 1, else 0"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        25725,
+        25741
+      ],
+      "units": 16,
+      "bodySha256": "7badedaa3d787f83cfb981e6288ee361aea2d6aa619cb07a725ddbd067feced3",
+      "note": "`ee` — the render-instance context"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        25741,
+        26268
+      ],
+      "units": 527,
+      "bodySha256": "8f2fb818a54d672a62318750e5576baef5333943b33ddc2807464725b98d2f79",
+      "note": "`Qt` — the action-key seat: register one handler per bound context, dispatching the winning held press"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        26268,
+        26301
+      ],
+      "units": 33,
+      "bodySha256": "50266d0e1b409c47d91d687ad0487fa2a46f1ec733f8937b0ecf7d19d586988f",
+      "note": "`Jt` — the seat as a childless component"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        26305,
+        26322
+      ],
+      "units": 17,
+      "bodySha256": "0adbacd7406d2da10ea3dfef481bc07dfb60ccdb7e5a795ccb66f020fe09e010",
+      "note": "`y3n` — the hotkey seat context"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        26322,
+        26437
+      ],
+      "units": 115,
+      "bodySha256": "c89f837d51c1bb306122b3ad2b7d4761962d0f0e311ab50611f0e932d650b079",
+      "note": "`_3n` — blur the focused descendant of a pressed button"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        26437,
+        27368
+      ],
+      "units": 931,
+      "bodySha256": "a167d4c5377de326ea1f777d95fda855b8f407a894495e5754289c35c137c8df",
+      "note": "`Zt` — the Button: click box, action-key seat, focusable action box and the label/hotkey/held render prop"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        27380,
+        27488
+      ],
+      "units": 108,
+      "bodySha256": "b5fa25dd318600be981b9d1a7753cb60f6c04e780e0e3f3262de9f78fc7892fb",
+      "note": "`yo` — the alignment name of a position"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        27496,
+        27679
+      ],
+      "units": 183,
+      "bodySha256": "60c66cbfcb0f76ac3b9ca9df74c1d19b813e10f9095e692eff0bbf5fb8c4a352",
+      "note": "`wFt` — the click subscriber: fire unless the press landed inside the ref or was a window activation"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        27679,
+        27924
+      ],
+      "units": 245,
+      "bodySha256": "a21d00e683d7a6ba71af5cef88ee028e48c118110809227b497c253fdbcf0001",
+      "note": "`go` — the named-key table"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        27924,
+        28121
+      ],
+      "units": 197,
+      "bodySha256": "48c0ccdac1c1ae9d5eacce9fb426d9a35a0324f2bd2a0a2ae0cfecaae0505a09",
+      "note": "`ko` — one key event as a `{key, ctrl, shift, meta}` binding, ignoring wheel events"
+    },
+    {
+      "module": "chunk-ae84tp6z.js",
+      "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+      "range": [
+        5355,
+        5381
+      ],
+      "units": 26,
+      "bodySha256": "19b806bd3a5d4fe86648ae7621ec8e85d8be7064bd1d0fa8af9c627de5f30f90",
+      "note": "`Ge` — the identity wrapper around the action-key store"
+    },
+    {
+      "module": "chunk-bwyexfny.js",
+      "sha256": "35fae44d02574c1e366e2c50484d2ce75e87a0b017d91b0e5a8a6ca4bc8ff647",
+      "range": [
+        3552,
+        3579
+      ],
+      "units": 27,
+      "bodySha256": "5c8237bd48369fc065f3dad7dc2e98fb31a4649b11d2e190361f4d34f5261256",
+      "note": "`Lc` — the keybinding service from its context"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        224520,
+        224782
+      ],
+      "units": 262,
+      "bodySha256": "78635f7becabb38e2998861d40ad93953716b1ddb9c486e3fd3276248278aeac",
+      "note": "`Pg` — the default app context: the no-op click/layout/frame subscriptions the click subscriber falls back to"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        224818,
+        224828
+      ],
+      "units": 10,
+      "bodySha256": "fc632a8527b56e1c428e8b7b3c51e599ebef5d77830fad7e14275ccb40ddbcb2",
+      "note": "`Zy` — the alias the click subscriber reads the app context as"
+    },
+    {
+      "module": "chunk-8zgs1qmk.js",
+      "sha256": "023321c4663c081a393179a5f1ff9d533af036d7c78c366d2b31ab0657647dcb",
+      "range": [
+        3768,
+        3784
+      ],
+      "units": 16,
+      "bodySha256": "b8317be7a1e5c5cc77b187ae859bc3e196a0aa51c2a0f75f14ac5bfe8d7456c2",
+      "note": "`aq` — the dialog-store context"
+    },
+    {
+      "module": "chunk-8zgs1qmk.js",
+      "sha256": "023321c4663c081a393179a5f1ff9d533af036d7c78c366d2b31ab0657647dcb",
+      "range": [
+        3784,
+        3957
+      ],
+      "units": 173,
+      "bodySha256": "85bb54cee80fd2b7de2e5d042b3a78e43a165d48f564c2da56a2134f170b9790",
+      "note": "`Ff` — the dialog store, throwing the source message outside a provider"
+    },
+    {
+      "module": "chunk-8zgs1qmk.js",
+      "sha256": "023321c4663c081a393179a5f1ff9d533af036d7c78c366d2b31ab0657647dcb",
+      "range": [
+        911,
+        976
+      ],
+      "units": 65,
+      "bodySha256": "8d2f9629934544f76d669e8727c7720beae8061548b42714243a14b8610a1ad1",
+      "note": "`iv` — the last open non-user dialog"
+    },
+    {
+      "module": "chunk-8zgs1qmk.js",
+      "sha256": "023321c4663c081a393179a5f1ff9d533af036d7c78c366d2b31ab0657647dcb",
+      "range": [
+        4043,
+        4125
+      ],
+      "units": 82,
+      "bodySha256": "cf920fc425a46d32f5398bbbe47d0727f704fc72ffefd4b617f0259347b66148",
+      "note": "`kj` — whether a dialog is open (the action-key registration gate)"
+    }
+  ],
+  "missing": []
+}
