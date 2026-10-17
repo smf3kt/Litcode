@@ -1,0 +1,115 @@
+{
+ "schema": "W75CardFieldComparisonEvidence.v1",
+ "package": "W75-01 — recovered shown-field comparison",
+ "date": "2026-10-17",
+ "question": "Does card admission compare returned fields with the recovered xHe semantics, including the answer-side bounds walk and the JSON-roundtrip deep equality?",
+ "answer": "Yes: cardFieldUnchanged bounds-walks the answer field (20000 values, depth 64, 1048576 characters), then compares both JSON roundtrips with isDeepStrictEqual; the de kind allowance shares it, and an out-of-bounds field refuses with changed_shown_field.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+  "unit": "UTF-16 code units",
+  "xHe": [
+   501668,
+   501915
+  ],
+  "sze": [
+   502534,
+   502843
+  ],
+  "fDe": [
+   502843,
+   503039
+  ],
+  "pDe": [
+   503039,
+   503092
+  ],
+  "bounds": {
+   "position": 501639,
+   "values": 20000,
+   "depth": 64,
+   "chars": 1048576
+  },
+  "aliases": {
+   "stringify": {
+    "module": "extracted-v2/modules/chunk-gyf58rwf.js",
+    "symbol": "_",
+    "position": 59764
+   },
+   "parse": {
+    "module": "extracted-v2/modules/chunk-gyf58rwf.js",
+    "symbol": "Y",
+    "position": 60056
+   },
+   "deepEqual": {
+    "module": "node:util",
+    "symbol": "isDeepStrictEqual",
+    "importPosition": 501599
+   }
+  },
+  "callSite": {
+   "module": "extracted-v2/modules/chunk-ktr9sak2.js",
+   "call": "xHe(t[f], e[f])",
+   "position": 2446
+  },
+  "kindAllowance": {
+   "module": "extracted-v2/modules/chunk-ktr9sak2.js",
+   "symbol": "de",
+   "position": 4711
+  }
+ },
+ "behavior": {
+  "walk": "root at level 1; objects queue; key length and string length count as characters; values/depth/chars capped",
+  "comparison": "isDeepStrictEqual(JSON.parse(JSON.stringify(answer)), JSON.parse(JSON.stringify(shown)))",
+  "outOfBounds": "refused as changed_shown_field (the source warning has no channel here)",
+  "kindAllowance": "same comparison after stripping a choice kind the answer omitted"
+ },
+ "changes": [
+  {
+   "file": "src/interaction-tools.ts",
+   "change": "cardAnswerWithinBounds/cardFieldUnchanged replace sameJson",
+   "sha256": "3504657c14adee03938278a632bbbb05b8c6b41ce64436622d76e4022b52d853"
+  },
+  {
+   "file": "test/interaction-tools.test.ts",
+   "change": "one comparison case",
+   "sha256": "a8e6097ea1aa199e173e384dbf044dbee4772132955ad4106b06cd389f871f67"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-11 rows record the field comparison",
+   "sha256": "f1bb7dff2cad4a1ae4d68ffe8793cc1192c2683d9fe4c2f189eb3872bee20c6c"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Question/plan/findings row records the field comparison",
+   "sha256": "0cab765e227313a1345fa989f328e3633698a6757e73886706bfd9555c325c64"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W75-01 entry",
+   "sha256": "2c16b8322e36fc770c3d6cae51af3e14a18f7b77f29485d3630799c80fd4ba66"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W75-01 S-1..S-7 entry",
+   "sha256": "a75c83016ec77c659d0daae08cc3c46e65e557ab48de70861c5863b320b67bdf"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "interactionTools": "32/32",
+  "build": "exit 0",
+  "full": "2,103/2,103",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "b03f27a0b16494d0b72a256f679b8288b21cd6e7a5a97e3764d7c40f9c5dc679"
+ },
+ "residuals": [
+  "The source out-of-bounds warning is not emitted; refusal is the effect.",
+  "The full renderer and formatting host remain C-11 work.",
+  "The annotation map is carried on the indexed answer rather than keyed by question text."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-11 continues with the full renderer and formatting host."
+}

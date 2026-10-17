@@ -1,0 +1,3 @@
+2026-10-17T17:10:00Z	package	W75-01 展示字段比较	xHe [501668,501915)、sze [502534,502843)、fDe [502843,503039)、pDe [503039,503092)；F8n/$8n/B8n；_=stringify、Y=parse、N8n=isDeepStrictEqual	答案侧边界遍历+JSON往返+深比较均按源；越界告警无通道，以拒绝为可观察效果	interaction-tools 32/32；tsc 0；build 0；全量 2,103/2,103；链 767/767
+2026-10-17T17:12:00Z	decision	W75-01 替换既有结构比较	① 每个返回字段按源调用 xHe(答案,展示)；② de 的 kind 省略路径共用；③ NaN/null 等 JSON 等价形式按源接受；④ 越界字段拒绝为 changed_shown_field	残余：完整渲染器、格式化宿主	.audit/w75-01-full.txt
+2026-10-17T17:15:00Z	verification	W75-01 验收：interaction-tools 32/32、tsc 0、build 0、2,103/2,103、767/767	NaN/null 往返相等；64 层准入；65 层与 20000 元素拒绝	notices 0；索引 75 chunks / 323,525 单位不变；identity b03f27a0…（inputs 38845f1d…、validation 9a40d4f6…、build 070f93fc…）
