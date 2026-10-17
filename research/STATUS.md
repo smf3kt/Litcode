@@ -2721,3 +2721,16 @@ are host bindings, and the `DT` capability/image-file getters stay with the capa
 subsystem. Focused 11/11, full 2392/2392, tsc 0, build 0, notices 0, identity `8ae9bc13…`. Next are
 the settings read `hs`, `gbt`/`AZ`/`_Fe`/`mLr`, the scroll dispatch `xwt` and the render host `RFe`.
 [W157b record](ports/W157b-terminal-environment.md).
+
+W157c landed the settings read and the wheel glue around the probe (7 blocks, 1,777 UTF-16 units):
+the source-ordered settings read with the legacy fallback and its warning text, the JetBrains
+environment check that latches on the wheel state, the acceleration announcement with its
+`accelDisabled` marker, the state hook that rebuilds when the probe object changes, the internal
+JediTerm input reader, and the wheel event dispatch with its handler factory. Two name collisions
+were checked rather than assumed: this package's `CFe` is the wheel dispatch closure, not the
+hook-origin record in `plugin-chain-source`, and its `w_` is the project/user settings file
+identity test, not the home realpath. The source order, the legacy store and its schema parse, and
+the internal stdin context are host-bound; the last carries only `internal_jediTermInput`. Focused
+12/12, full 2404/2404, tsc 0, build 0, notices 0, identity `e204a1c7…`. Next are the scroll
+dispatch `xwt` and the render host `RFe` (including the settings schema `gf`), then W156.
+[W157c record](ports/W157c-wheel-glue.md).

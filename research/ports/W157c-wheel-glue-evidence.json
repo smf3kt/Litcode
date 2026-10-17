@@ -1,0 +1,72 @@
+{
+  "schema": "W157cWheelGlue.v1",
+  "package": "W157c-wheel-glue",
+  "date": "2026-10-18",
+  "source": {
+    "modules": [
+      { "module": "chunk-js2bhabe.js", "sha256": "f196bcf7599a185ad08c73d32ce68b25130ce9db48d781138b1899a3f6e786de" },
+      { "module": "chunk-z7whhrje.js", "sha256": "3dca9fb572e08c43b779dd32b44d21858a177e021557bacb2a126e4ed268a3ac" },
+      { "module": "chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31" },
+      { "module": "chunk-wz8v981w.js", "sha256": "c7add42e02a826600b00d2f4b850e50d8eaf2672df33b515fa5f914ee3801323" }
+    ],
+    "blocks": 7,
+    "units": 1777,
+    "ranges": [
+      { "module": "chunk-js2bhabe.js", "range": [777, 1499], "units": 722, "note": "lSe legacy keys and hs settings read", "bodySha256": "03c90abf38f3d5c55f4521f2ed4826d6fb7b456e8f8263165bea97254d0915dd" },
+      { "module": "chunk-z7whhrje.js", "range": [9339, 9540], "units": 201, "note": "mLr jbBugConfirmed check", "bodySha256": "f47f7b68f07cb935907019b736ee5f3ae9bb8c1399408a9de7cb4891fb6b9e79" },
+      { "module": "chunk-24k7d6mw.js", "range": [126204, 126611], "units": 407, "note": "gbt announcement and state factory call", "bodySha256": "41a265b321acdf484c32d7c0dc3a80cdc0cc3a2fff8f227bc1343a8803528f8f" },
+      { "module": "chunk-24k7d6mw.js", "range": [126611, 126843], "units": 232, "note": "AZ wheel state hook", "bodySha256": "80eec85b0e84642f42fc17f9373c5e09cd21acd79448f9772445fd208f8f4c7f" },
+      { "module": "chunk-wz8v981w.js", "range": [1438, 1463], "units": 25, "note": "QO internal jediTerm input reader", "bodySha256": "8283159965298e4ce8b87528db1b3e9b88874c228a5c81ec3512b29319786dc7" },
+      { "module": "chunk-24k7d6mw.js", "range": [444563, 444675], "units": 112, "note": "CFe wheel event dispatch", "bodySha256": "b3bc8d050f4922664e91b5a534c60be6c4d07f8e15b2b5bd02b91b7f4bf77b1a" },
+      { "module": "chunk-24k7d6mw.js", "range": [444845, 444923], "units": 78, "note": "_Fe wheel handler factory", "bodySha256": "23987b1f2ac032d8a71bf32b4cd2228888158a644bd1d368e6f21074caf7fe7d" }
+    ],
+    "reused": [
+      { "name": "fe", "module": "chunk-x0dc37w9.js", "product": "src/plugin-chain-settings-store.ts", "note": "the product settings store's per-source read, bound by bindSettingsStore" },
+      { "name": "uq", "module": "chunk-z7whhrje.js", "product": "src/plugin-chain-terminal-environment.ts", "note": "W157b seam, imported under the source spelling" },
+      { "name": "pbt/fbt", "module": "chunk-24k7d6mw.js", "product": "src/plugin-chain-wheel-acceleration-source.ts", "note": "W157a step and factory bodies" },
+      { "name": "t", "module": "chunk-gyf58rwf.js", "product": "src/plugin-chain-host.ts", "note": "the product log sink" }
+    ],
+    "hostBound": [
+      { "name": "Lo", "source": "chunk-wtch2p0g.js function Lo()", "reason": "the enabled source order comes from the --setting-sources flag surface this product does not carry; the app binds the order it reads, and an unbound read refuses rather than guess precedence" },
+      { "name": "w_", "source": "chunk-x0dc37w9.js function w_()", "reason": "whether project settings resolve to the user settings file needs the settings file resolver; bound with Lo, unbound refuses" },
+      { "name": "ce/wR", "source": "chunk-bk5ct2gw.js global config and defaults", "reason": "the legacy ~/.claude.json store is a separate subsystem; the host supplies the current values, unbound answers the fresh-config answer ({})" },
+      { "name": "yw", "source": "chunk-bk5ct2gw.js function yw(e,n)", "reason": "the per-key legacy schema registry TN is not ported; parseLegacySetting binds the parse, while ten/lbe/DOt keep the source bodies and warning text" },
+      { "name": "Gfe", "source": "chunk-z7whhrje.js the internal stdin context", "reason": "the source default carries stdin, an EventEmitter and the querier; the wheel reader takes only internal_jediTermInput, so the token carries that field and the source display name" }
+    ],
+    "deferred": [
+      { "name": "xwt", "source": "chunk-z7whhrje.js [476926,477331)", "reason": "scroll dispatch used by the render host" },
+      { "name": "RFe", "source": "chunk-z7whhrje.js [444994,446987)", "reason": "render host wiring; needs the settings schema gf and the remaining prompt host" },
+      { "name": "NFe", "source": "chunk-24k7d6mw.js [456049,461905)", "reason": "W156 component wiring" }
+    ],
+    "unresolved": 0
+  },
+  "product": {
+    "sourceFile": "src/plugin-chain-wheel-glue-source.ts",
+    "hostFile": "src/plugin-chain-wheel-glue-host.ts",
+    "seamFile": "src/plugin-chain-wheel-glue.ts",
+    "exports": [
+      "readSetting",
+      "jbBugConfirmed",
+      "wheelStateFor",
+      "useWheelState",
+      "useInternalJediTermInput",
+      "wheelDispatch",
+      "wheelHandler",
+      "bindWheelSettingsHost",
+      "Gfe"
+    ]
+  },
+  "validation": {
+    "focused": { "passed": 12, "failed": 0, "file": "test/plugin-chain-wheel-glue.test.ts" },
+    "full": { "passed": 2404, "failed": 0 },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0
+  },
+  "identity": {
+    "sha256": "e204a1c77c0dcaeb691098e1ff6f8f26fd65d0c3bc00e95d628f11a15a6479bf",
+    "inputs": 603,
+    "validation": 212,
+    "build": 416
+  }
+}
