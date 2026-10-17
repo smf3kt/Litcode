@@ -1,0 +1,1 @@
+{"cli":"passed","entry":true,"exit":true,"reentry":true,"checkoutAndBranchKept":true,"explicitRemove":true,"historyArchived":true,"dirtyFailureReturned":true,"dirtyHistoryRestored":true,"explicitDiscard":true,"sourceEditKept":true,"localHEAD":true,"modelCalls":0,"locksReleased":true,"compiledCLI":true}
