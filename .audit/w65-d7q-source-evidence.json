@@ -98,7 +98,7 @@
       "file": "main.tsx + screens/REPL.tsx",
       "change": "both migrations leave the startup sequence with their imports; the startup telemetry payload drops its subscription field; REPL drops the callout's import, state, dialog id, selector line and render block; the numStartups comment is reworded to the logo's first-run reader",
       "sourceSha256": "328e44dfd779cef105617600c08146f1b7f93e0e150c772f332105c00c373de92c6944a400e18d534de4495e1592d8c68d882aae8ef4273761f597e823f3c2c3",
-      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc68d47f3122f9daa0b9d442963f3301980dd858912d134cf78c71c5881aa3fdd8d",
+      "portSha256": "a608dba12d176072eb6be74d6bb925ed56fc09eb9f439d7c7b38b99b8f9ba87f8d47f3122f9daa0b9d442963f3301980dd858912d134cf78c71c5881aa3fdd8d",
       "coordinateUnit": "utf16-half-open"
     },
     {

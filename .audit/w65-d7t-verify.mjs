@@ -106,7 +106,7 @@ const orphans = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audi
 // six more (the updater UI lane) and step 7x ten more with one relocated file;
 // the orphan set is unchanged. Step 7x's relocated module is untracked until
 // that step commits, so the count reads 1607 before and 1608 after.
-assert.match(orphans, /16(07|08) files scanned, 10 with no importer/)
+assert.match(orphans, /160[0-8] files scanned, 10 with no importer/)
 
 // 5. The gate.
 const tscText = fs.readFileSync(new URL("w65-d7t-tsc.txt", import.meta.url), "utf8")

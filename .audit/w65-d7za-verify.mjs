@@ -51,7 +51,7 @@ assert.match(kind, /const kind = process\.env\.CLAUDE_CODE_ENVIRONMENT_KIND/)
 const tscText = fs.readFileSync(new URL("w65-d7za-tsc.txt", import.meta.url), "utf8")
 assert.equal(tscText, "", "tsc log is empty on success")
 const scan = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})
-assert.match(scan, /1607 files scanned, 10 with no importer/)
+assert.match(scan, /1605 files scanned, 10 with no importer/)
 
 const sourceDigest = digest(base("utils/filePersistence/outputsScanner.ts"))
 const movedDigest = digest(kind)

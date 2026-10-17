@@ -9,7 +9,7 @@
       "file": "main.tsx",
       "change": "the isAutoUpdaterDisabled import with its telemetry field, the assertMinVersion import and call, the migration import and call, the `claude update`/`claude install` blocks, the auto-updater wording in the doctor description and the autoupdate sequencing comment are removed",
       "sourceSha256": "87b29b2ab37fad88ea972480e19745095319203735949d5ee3813608c001215e",
-      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
+      "portSha256": "a608dba12d176072eb6be74d6bb925ed56fc09eb9f439d7c7b38b99b8f9ba87f",
       "coordinateUnit": "utf16-half-open"
     },
     {

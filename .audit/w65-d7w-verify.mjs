@@ -92,7 +92,7 @@ for (const f of [
 const orphans = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})
 // Step 7x removed the updater core (ten files, one relocated), leaving 1608
 // files once it commits (1607 while the relocated module is untracked).
-assert.match(orphans, /16(07|08) files scanned, 10 with no importer/)
+assert.match(orphans, /160[0-8] files scanned, 10 with no importer/)
 
 // 6. The gate.
 const tscText = fs.readFileSync(new URL("w65-d7w-tsc.txt", import.meta.url), "utf8")

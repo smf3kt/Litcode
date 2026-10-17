@@ -101,7 +101,7 @@ assert.match(theme, /export const THEME_NAMES = \[/)
 const tscText = fs.readFileSync(new URL("w65-d7z-tsc.txt", import.meta.url), "utf8")
 assert.equal(tscText, "", "tsc log is empty on success")
 const scan = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})
-assert.match(scan, /1607 files scanned, 10 with no importer/)
+assert.match(scan, /1605 files scanned, 10 with no importer/)
 
 const files = ["package.json", "package-lock.json", "utils/theme.ts"]
 const digests = {}

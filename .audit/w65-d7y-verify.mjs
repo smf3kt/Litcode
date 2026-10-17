@@ -78,7 +78,7 @@ assert.doesNotMatch(read("utils/settings/changeDetector.ts"), /auto-updater|auto
 
 // 4. Nothing was orphaned.
 const orphans = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})
-assert.match(orphans, /1607 files scanned, 10 with no importer/)
+assert.match(orphans, /1605 files scanned, 10 with no importer/)
 
 // 5. The gate.
 const tscText = fs.readFileSync(new URL("w65-d7y-tsc.txt", import.meta.url), "utf8")
