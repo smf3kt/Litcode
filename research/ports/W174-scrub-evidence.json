@@ -1,0 +1,703 @@
+{
+  "schema": "W174Scrub.v1",
+  "package": "W174-scrub",
+  "date": "2026-10-18",
+  "source": {
+    "copied": {
+      "blocks": 40,
+      "units": 44268,
+      "modules": [
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33"
+        },
+        {
+          "module": "chunk-phm7wwmz.js",
+          "sha256": "40e46cb899d8e325ee27e23dca0b298833a9b246ca314a282f860e768e6baf12"
+        },
+        {
+          "module": "chunk-gsnbskq4.js",
+          "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9"
+        }
+      ],
+      "ranges": [
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "confusable latin letter map I used by RB",
+          "range": [
+            723,
+            24080
+          ],
+          "units": 23357,
+          "digest": "91d8642e",
+          "body_sha256": "91d8642e3734d51ea60be72c4d7bfd341ba8047bc576dcc26402062effd4a74f",
+          "note": "confusable latin letter map I used by RB"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "invisible/combining/quote/punctuation classes and the tag delimiter table b",
+          "range": [
+            24502,
+            26432
+          ],
+          "units": 1930,
+          "digest": "c9f0811a",
+          "body_sha256": "c9f0811aae5cc94fde5578a2c1be5f318dc8eec54ba8db56b71869ff739717d8",
+          "note": "invisible/combining/quote/punctuation classes and the tag delimiter table b"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "xdt invisible pattern",
+          "range": [
+            26432,
+            26473
+          ],
+          "units": 41,
+          "digest": "5511b39f",
+          "body_sha256": "5511b39f4520e608249296698eb8f18a386498684ff420d9cd805aa60660f050",
+          "note": "xdt invisible pattern"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "J$e lookahead wrapper",
+          "range": [
+            26521,
+            26571
+          ],
+          "units": 50,
+          "digest": "797883fc",
+          "body_sha256": "797883fc1e963f96ec5503f697cd770e635622963649e162f975bb6c267c76a0",
+          "note": "J$e lookahead wrapper"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "$0t fill run lookahead",
+          "range": [
+            26571,
+            26605
+          ],
+          "units": 34,
+          "digest": "ef4ff11f",
+          "body_sha256": "ef4ff11f87a38a952de40ae770171b898179dd920005df90dd12cd858f8123ab",
+          "note": "$0t fill run lookahead"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "tag pattern cache x and its bound eu",
+          "range": [
+            26605,
+            26625
+          ],
+          "units": 20,
+          "digest": "87d09643",
+          "body_sha256": "87d096436c4a4e2d583c87ebb2f79ed276c9df33682c33cc4d163fbdf1407f7c",
+          "note": "tag pattern cache x and its bound eu"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "w cached single-tag pattern",
+          "range": [
+            26625,
+            26831
+          ],
+          "units": 206,
+          "digest": "e7085f58",
+          "body_sha256": "e7085f5875ab672bf57cbc84302e72cabcc1837563854969a29a5419a0ab33ee",
+          "note": "w cached single-tag pattern"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "K tag-pattern builder",
+          "range": [
+            26831,
+            27150
+          ],
+          "units": 319,
+          "digest": "9782808c",
+          "body_sha256": "9782808c5d6b75372753cf6f85b12f62a24aaa41b136dfa4ac98307a48d48949",
+          "note": "K tag-pattern builder"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "confusable table M and fu",
+          "range": [
+            27528,
+            29579
+          ],
+          "units": 2051,
+          "digest": "8b0bcb6f",
+          "body_sha256": "8b0bcb6f5b6693d1913cac08732abd752fd7fc6974ab9e9b2e1e3daa57d2b82e",
+          "note": "confusable table M and fu"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "XQ NFKC + confusable fold",
+          "range": [
+            29579,
+            29676
+          ],
+          "units": 97,
+          "digest": "b304fcd2",
+          "body_sha256": "b304fcd268b788e40c0c1ec796461c18a0611069f902c63209e91b6e4075c91c",
+          "note": "XQ NFKC + confusable fold"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "nu NFKD + mark strip",
+          "range": [
+            29676,
+            29728
+          ],
+          "units": 52,
+          "digest": "f5977706",
+          "body_sha256": "f59777060c8dbfa11b359a8af6d8f0341812e446dec21333a1cf3deb0ba08e48",
+          "note": "nu NFKD + mark strip"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "PAr ascii alphabet",
+          "range": [
+            29728,
+            29765
+          ],
+          "units": 37,
+          "digest": "1030c49e",
+          "body_sha256": "1030c49e1602c4da2d4154a9b25f56a6c39f13e0cf9db6907faec9b2d760f79b",
+          "note": "PAr ascii alphabet"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "RB latin letter confusable class",
+          "range": [
+            29765,
+            29900
+          ],
+          "units": 135,
+          "digest": "9530f3f8",
+          "body_sha256": "9530f3f886501d72757d00a2c984826d2846d549831372d4dfbf7217b9f8e106",
+          "note": "RB latin letter confusable class"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "EO tag matcher",
+          "range": [
+            29900,
+            30245
+          ],
+          "units": 345,
+          "digest": "f36579d6",
+          "body_sha256": "f36579d62d2484c6b53dc7f3d90d7e1b9d88bc3c095cd2d492da580b3bb0de9a",
+          "note": "EO tag matcher"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "wxe neutralize",
+          "range": [
+            30245,
+            30276
+          ],
+          "units": 31,
+          "digest": "358db364",
+          "body_sha256": "358db364adb547fed029664da8e45b4efe5b096d3eb9fc93d569faf0bf2e9c6f",
+          "note": "wxe neutralize"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "f2n channel tag pattern",
+          "range": [
+            30276,
+            30318
+          ],
+          "units": 42,
+          "digest": "c4c8ca1d",
+          "body_sha256": "c4c8ca1d276c0042846a5c3d23a6cc61bc4f1d8f126c445dc5c600d155fe7fbb",
+          "note": "f2n channel tag pattern"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "Uwo source-assignment tail",
+          "range": [
+            30318,
+            30528
+          ],
+          "units": 210,
+          "digest": "c398518e",
+          "body_sha256": "c398518e418bd3e68c2faa1faef156555e97be69169eb63e3509f87e50973c1c",
+          "note": "Uwo source-assignment tail"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "Bwo antml tag name",
+          "range": [
+            30528,
+            30544
+          ],
+          "units": 16,
+          "digest": "0cbac296",
+          "body_sha256": "0cbac296e71fe140a0ecc92115d04d0c03e11d8c19394f79f6a95ade10d74472",
+          "note": "Bwo antml tag name"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "m2n model-layer tag pattern",
+          "range": [
+            30544,
+            30598
+          ],
+          "units": 54,
+          "digest": "4628f0b1",
+          "body_sha256": "4628f0b1da39040fa0b6f8a0182da19028719e00c5df364846be9f5aaff2b1ac",
+          "note": "m2n model-layer tag pattern"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "bracket classes, fillers, separators and the tag-name bound Z",
+          "range": [
+            33610,
+            34257
+          ],
+          "units": 647,
+          "digest": "edc744e4",
+          "body_sha256": "edc744e4ccf386333aa0d60913724895f7536d84fef4eb4522cca2ee559ef414",
+          "note": "bracket classes, fillers, separators and the tag-name bound Z"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "$u bracket-fill lookahead",
+          "range": [
+            34257,
+            34370
+          ],
+          "units": 113,
+          "digest": "0f80008c",
+          "body_sha256": "0f80008c55a5bcfeae62fda02b01372efbe81478fbbbe10124adbd8ee40ada97",
+          "note": "$u bracket-fill lookahead"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "lead filler mu and the lead token symbols",
+          "range": [
+            34370,
+            34565
+          ],
+          "units": 195,
+          "digest": "8cc52d3c",
+          "body_sha256": "8cc52d3c0351574364af027f179427ba903a350058678d130bc512258086ab1f",
+          "note": "lead filler mu and the lead token symbols"
+        },
+        {
+          "module": "chunk-ts42ykgs.js",
+          "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+          "name": "RRs bracketed lead pattern builder",
+          "range": [
+            34565,
+            35638
+          ],
+          "units": 1073,
+          "digest": "006d5206",
+          "body_sha256": "006d5206c4f54f13f1c1e4343263d806fe662d192f78858a8dc23e4783b3229d",
+          "note": "RRs bracketed lead pattern builder"
+        },
+        {
+          "module": "chunk-phm7wwmz.js",
+          "sha256": "40e46cb899d8e325ee27e23dca0b298833a9b246ca314a282f860e768e6baf12",
+          "name": "Kkr artifact lead table",
+          "range": [
+            31823,
+            32868
+          ],
+          "units": 1045,
+          "digest": "727052ce",
+          "body_sha256": "727052ce833aa49c89ee36627b801a96c5d2b81f8838536b79a749cb4cd1fbc1",
+          "note": "Kkr artifact lead table"
+        },
+        {
+          "module": "chunk-gsnbskq4.js",
+          "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee",
+          "name": "artifact content envelope markers",
+          "range": [
+            866,
+            1032
+          ],
+          "units": 166,
+          "digest": "87952f94",
+          "body_sha256": "87952f94b10af071534bf6994f1cbb532d9df950ce9b4d0440dd4e56805c5c43",
+          "note": "artifact content envelope markers"
+        },
+        {
+          "module": "chunk-gsnbskq4.js",
+          "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee",
+          "name": "artifact tag names and instruction texts, including pwe, cpt, m1e, g1e and OMt",
+          "range": [
+            2222,
+            8719
+          ],
+          "units": 6497,
+          "digest": "fd3eb051",
+          "body_sha256": "fd3eb0511974bde582b39156873b80e60bea1892ad8104e015bfe89641120bdc",
+          "note": "artifact tag names and instruction texts, including pwe, cpt, m1e, g1e and OMt"
+        },
+        {
+          "module": "chunk-gsnbskq4.js",
+          "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee",
+          "name": "command, hook and notification tags, task ids and w8e",
+          "range": [
+            8719,
+            9180
+          ],
+          "units": 461,
+          "digest": "36905e14",
+          "body_sha256": "36905e14d008320bf64a0660faff2ce89dfe40f27c8b9f9d480020c74903be7d",
+          "note": "command, hook and notification tags, task ids and w8e"
+        },
+        {
+          "module": "chunk-gsnbskq4.js",
+          "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee",
+          "name": "harness signal tag names PD and y1e, and the control tag list d4",
+          "range": [
+            9436,
+            10314
+          ],
+          "units": 878,
+          "digest": "2d467680",
+          "body_sha256": "2d467680696a6c5017668e5ba8dc5b80c6620f91716c0a193cc6cadc65769b22",
+          "note": "harness signal tag names PD and y1e, and the control tag list d4"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "eTe feature-flag gate for the frame-prefix forgery pattern",
+          "range": [
+            4651,
+            4764
+          ],
+          "units": 113,
+          "digest": "95f6989a",
+          "body_sha256": "95f6989a454960678203b59a06054ab5229a1d185a1ae9c278a37cecd1352650",
+          "note": "eTe feature-flag gate for the frame-prefix forgery pattern"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "A enabled predicate",
+          "range": [
+            5590,
+            5643
+          ],
+          "units": 53,
+          "digest": "91a99780",
+          "body_sha256": "91a99780c51bd6b0f6c01dacaf48cf25b47e63fa6052021373e86083164ef05a",
+          "note": "A enabled predicate"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "line boundary b and the harness marker word",
+          "range": [
+            5643,
+            5722
+          ],
+          "units": 79,
+          "digest": "c229d7ba",
+          "body_sha256": "c229d7bab9dd2cd001143b54c797e783db5195a6145f77d4d4eadd4c5d0cd594",
+          "note": "line boundary b and the harness marker word"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "E marker-prefix matcher",
+          "range": [
+            5722,
+            5908
+          ],
+          "units": 186,
+          "digest": "08f469d0",
+          "body_sha256": "08f469d02d787fab904320a8684f1847e525415f4afc4b44e1869c20deb4813e",
+          "note": "E marker-prefix matcher"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "C max-turns note matcher",
+          "range": [
+            5908,
+            6160
+          ],
+          "units": 252,
+          "digest": "d8356072",
+          "body_sha256": "d8356072a9e9a81b3b0ea97c69c0805f99a9cfdbc727cf12380079f60fe1f1c7",
+          "note": "C max-turns note matcher"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "control-tag pattern table m, its cached copy cps, w and the turn marker R",
+          "range": [
+            6160,
+            7707
+          ],
+          "units": 1547,
+          "digest": "202b3899",
+          "body_sha256": "202b38990b3ab0223e53bea8d5e4b6212a5b3a30fa9b42a1e7fb503062acd4e2",
+          "note": "control-tag pattern table m, its cached copy cps, w and the turn marker R"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "escalation patterns P and the finding prefix F",
+          "range": [
+            7853,
+            8580
+          ],
+          "units": 727,
+          "digest": "bb074b79",
+          "body_sha256": "bb074b79ebc78ae6cdc4ea982f99e42c18ebbf5a4ce1b100e4418ff3d1e5ee79",
+          "note": "escalation patterns P and the finding prefix F"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "ups",
+          "range": [
+            9158,
+            9387
+          ],
+          "units": 229,
+          "digest": "77087047",
+          "body_sha256": "77087047c4baa52d4efc430397bd14b52fd0a4bfe5e0c93163946c87cf5c7154",
+          "note": "ups"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "p recursive scrub",
+          "range": [
+            9387,
+            9789
+          ],
+          "units": 402,
+          "digest": "b756bbf7",
+          "body_sha256": "b756bbf7b1b9078d24055551ef4380ed25e63a3f3cbfa2a203c609c1f2092064",
+          "note": "p recursive scrub"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "_ string scrub",
+          "range": [
+            9789,
+            9895
+          ],
+          "units": 106,
+          "digest": "1c9318fa",
+          "body_sha256": "1c9318fa941deb6332ed6aa0c7659f2be6604eb21736ea3ba0d552aacc6b2fd7",
+          "note": "_ string scrub"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "T reserved-key normalizer",
+          "range": [
+            9895,
+            9984
+          ],
+          "units": 89,
+          "digest": "9339d223",
+          "body_sha256": "9339d22343f604afc88665d3210698fd120eda2a648b3806875de9dfba551bec",
+          "note": "T reserved-key normalizer"
+        },
+        {
+          "module": "chunk-nvcqkjfn.js",
+          "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+          "name": "y pattern application and findings",
+          "range": [
+            9984,
+            10367
+          ],
+          "units": 383,
+          "digest": "f4bb6448",
+          "body_sha256": "f4bb644894138cc8d64a0369ebfeb1d157821eb3d35d363c309b236f52d0248c",
+          "note": "y pattern application and findings"
+        }
+      ]
+    },
+    "host_adapters": [
+      {
+        "module": "chunk-gyf58rwf.js",
+        "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+        "name": "Bt",
+        "range": [
+          8018,
+          8260
+        ],
+        "units": 242,
+        "body_sha256": "a007fde67f3ddae3c0ec9ead57dd2b82e88d79f941c5bcb37adcfbd3ea84a026",
+        "product": "src/subagent-output-scrub-host.ts",
+        "note": "chunked NFKC/NFKD; the carried trailing cluster is the only part that can combine across a chunk boundary, so whole-string normalize is equivalent"
+      },
+      {
+        "module": "chunk-ae84tp6z.js",
+        "sha256": "901937cc8e68c765b7dddc4875578a6b1759f5e9a2535bee85829bea8ace200f",
+        "name": "V",
+        "range": [
+          5058,
+          5334
+        ],
+        "units": 276,
+        "body_sha256": "e94d62288f048e7b4d9ccb7b48fd3785ae53bf193b9af952387e4643b842a293",
+        "product": "src/subagent-output-scrub-host.ts",
+        "note": "lodash memoize; keys here are undefined or a joined string, so Map is equivalent"
+      },
+      {
+        "module": "chunk-bk5ct2gw.js",
+        "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+        "name": "k",
+        "range": [
+          528733,
+          528770
+        ],
+        "units": 37,
+        "body_sha256": "40c5f5e7df976e5f90bdfd3f34dbaf9e1fa53196f9986305c7c1fceba4870d53",
+        "product": "src/subagent-output-scrub-host.ts",
+        "note": "configuration read with fallback; this build has no remote configuration and returns the fallback"
+      },
+      {
+        "module": "chunk-yvnhkg35.js",
+        "sha256": "ce3689687897e987959f19ab07f98d79e5c925a8b15620dce02d29ba4943348d",
+        "name": "Yn",
+        "range": [
+          68762,
+          68887
+        ],
+        "units": 125,
+        "body_sha256": "24a14e49b38d2bef3642f23262a6b1b97cdbd72496827673ac40aba5f7839b86",
+        "product": "src/subagent-output-scrub-host.ts",
+        "note": "TPe({},null) defines getters only for given keys, so every read is undefined"
+      },
+      {
+        "module": "chunk-d2vt7d7f.js",
+        "sha256": "21ad41ecb752dc19cd0e977037c3aea9c020e84b9bb5ec6bc80aa2432248514b",
+        "name": "DTe",
+        "range": [
+          1044,
+          1082
+        ],
+        "units": 38,
+        "body_sha256": "896f28731a70b136532edb3c4957b30f63c33548e3ee74eed2175a5c2ba84d46",
+        "product": "src/subagent-output-scrub-host.ts",
+        "note": "the max-turns note opening text; the other declarators in statement [688,1463) are unused"
+      },
+      {
+        "module": "chunk-phm7wwmz.js",
+        "sha256": "40e46cb899d8e325ee27e23dca0b298833a9b246ca314a282f860e768e6baf12",
+        "name": "Pbo",
+        "range": [
+          33184,
+          33216
+        ],
+        "units": 32,
+        "body_sha256": "c9e5a4ff91b1e261f3fd634eb08ed498f0f4dba2d2ca5cf27fe0e55ceca968d6",
+        "product": "src/subagent-output-scrub-host.ts",
+        "note": "the lead getter is RRs(Kkr()); the host binds that lazy expression without re()/te page and envelope state"
+      }
+    ],
+    "reused": [],
+    "remaining": [
+      "C-5 full approval flow and recursive provider/key policy",
+      "C-6 remaining consumers",
+      "C-9 marketplace collisions",
+      "C-11 formatter differences"
+    ]
+  },
+  "product": {
+    "files": [
+      "src/subagent-output-scrub-tags-source.ts",
+      "src/subagent-output-scrub-tags-source-blocks.json",
+      "src/subagent-output-scrub-names-source.ts",
+      "src/subagent-output-scrub-names-source-blocks.json",
+      "src/subagent-output-scrub-scan-source.ts",
+      "src/subagent-output-scrub-scan-source-blocks.json",
+      "src/subagent-output-scrub-host.ts",
+      "src/subagent-output-scrub.ts",
+      "test/subagent-output-scrub.test.ts",
+      "test/agent-registry.test.ts"
+    ],
+    "exports": [
+      "scrubSubagentOutput",
+      "SubagentOutputScrubResult",
+      "SubagentOutputScrubFinding"
+    ],
+    "notes": [
+      "ups walks the structured value, drops reserved keys at every depth, renames colliding scrubbed keys, and rewrites strings and keys through the control-tag, forgery and escalation tables.",
+      "The registry applies the scrub only on the schema-mode completion path with the source reserved key webFetchSavedFiles.",
+      "Pbo is bound to RRs(Kkr()) after both copied sources load."
+    ]
+  },
+  "validation": {
+    "focused": {
+      "passed": 55,
+      "failed": 0,
+      "files": [
+        "test/subagent-output-scrub.test.ts",
+        "test/agent-registry.test.ts"
+      ],
+      "new": 8
+    },
+    "full": {
+      "passed": 2584,
+      "failed": 0
+    },
+    "tsc": 0,
+    "build": 0,
+    "notices": 0,
+    "scan": [
+      {
+        "file": "src/subagent-output-scrub-tags-source.ts",
+        "declared": 73,
+        "unresolved": 0
+      },
+      {
+        "file": "src/subagent-output-scrub-names-source.ts",
+        "declared": 99,
+        "unresolved": 0
+      },
+      {
+        "file": "src/subagent-output-scrub-scan-source.ts",
+        "declared": 47,
+        "unresolved": 0
+      }
+    ]
+  },
+  "identity": {
+    "sha256": "73a647f3ed08fb87a8872760d8667cc99c1972b0df44fc56ae8a1caa00c6983e",
+    "inputs": 684,
+    "validation": 230,
+    "build": 470
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "imports": [
+    "import { PD, y1e, d4 } from './subagent-output-scrub-names-source.js';",
+    "import { $0t, EO, J$e, N5e, Pdt, RB, X$e, XQ, f2n, m2n, wxe, xdt } from './subagent-output-scrub-tags-source.js';",
+    "import { DTe, Pbo, Yn, k, po } from './subagent-output-scrub-host.js';"
+  ],
+  "exports": ["ups"],
+  "blocks": [
+    { "file": "chunk-nvcqkjfn.js", "range": [4651, 4764], "note": "eTe feature-flag gate for the frame-prefix forgery pattern" },
+    { "file": "chunk-nvcqkjfn.js", "range": [5590, 5643], "note": "A enabled predicate" },
+    { "file": "chunk-nvcqkjfn.js", "range": [5643, 5722], "note": "line boundary b and the harness marker word" },
+    { "file": "chunk-nvcqkjfn.js", "range": [5722, 5908], "note": "E marker-prefix matcher" },
+    { "file": "chunk-nvcqkjfn.js", "range": [5908, 6160], "note": "C max-turns note matcher" },
+    { "file": "chunk-nvcqkjfn.js", "range": [6160, 7707], "note": "control-tag pattern table m, its cached copy cps, w and the turn marker R" },
+    { "file": "chunk-nvcqkjfn.js", "range": [7853, 8580], "note": "escalation patterns P and the finding prefix F" },
+    { "file": "chunk-nvcqkjfn.js", "range": [9158, 9387], "note": "ups" },
+    { "file": "chunk-nvcqkjfn.js", "range": [9387, 9789], "note": "p recursive scrub" },
+    { "file": "chunk-nvcqkjfn.js", "range": [9789, 9895], "note": "_ string scrub" },
+    { "file": "chunk-nvcqkjfn.js", "range": [9895, 9984], "note": "T reserved-key normalizer" },
+    { "file": "chunk-nvcqkjfn.js", "range": [9984, 10367], "note": "y pattern application and findings" }
+  ]
+}
