@@ -1,0 +1,89 @@
+{
+ "schema": "W108ModelSwitchContextEvidence.v1",
+ "package": "W108-01 — PostModelSwitch additional context",
+ "date": "2026-10-17",
+ "question": "Where does the PostModelSwitch hook additionalContext go?",
+ "answer": "The switch consumer stages additionalContexts per session and target model; the model-request loop drains entries whose target is the landed model, dedupes them and yields them as attachments before the next request. They are not injected again.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "schema": {
+   "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+   "offset": 392672
+  },
+  "stage": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "sXr",
+   "offset": 2939454
+  },
+  "drain": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "symbol": "gZo",
+   "offset": 2940920
+  },
+  "injection": {
+   "module": "extracted-v2/modules/chunk-5b2hxy2e.js",
+   "offset": 139177
+  }
+ },
+ "behavior": {
+  "event": "PostModelSwitch",
+  "field": "hookSpecificOutput.additionalContext",
+  "target": "next model request",
+  "drainedOnce": true,
+  "landedModelFilter": true,
+  "deduped": true
+ },
+ "adaptations": [
+  "The source waits for in-flight switch hooks; this runtime raises the event synchronously after the switch applies, so no wait exists.",
+  "Failed hook output arrives as Hook context text rather than a typed attachment.",
+  "The landed-model filter is vacuous because the event is only raised after a successful switch."
+ ],
+ "changes": [
+  {
+   "file": "src/agent.ts",
+   "change": "pendingHookContext includes PostModelSwitch",
+   "sha256": "9f26103e23e4b2ccfd13c2a5384435932c7bde3a00c781ba3fa918435f315306"
+  },
+  {
+   "file": "test/agent-lifecycle.test.ts",
+   "change": "one-shot injection assertion",
+   "sha256": "83bd166f5bffed4b875f3e64f36ee140100d0b302b0c76d8e4568d344167e110"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record W108",
+   "sha256": "2bcbc1b795989ee0392d0b3c4d0c18c1ee25d2a45063b359d0669e6d659b31a5"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records W108",
+   "sha256": "fe49bd7c0c186b0d25ee842cd2bb8c1f772a5e8945e60cc64523062d122f88ea"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W108-01 entry",
+   "sha256": "acefc8ca2ccc97e2cdb54736fec9c34037e260eb00147836ae5f8e9d19fbc2dc"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W108-01 S-1..S-7 entry",
+   "sha256": "49c1cb70141840fce67657f9c4c5faeb5430877156ee01e665db8de2c87d8b47"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "46/46 (agent-lifecycle)",
+  "build": "exit 0",
+  "full": "2,146/2,146",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "1e2c779cf1a69506d6033a4e1d4b509c4c4d2edb6a9a980550d1e9899db162fb"
+ },
+ "residuals": [
+  "The remaining C-6 script semantics are unconsumed.",
+  "Successful hook stdout is not staged as hook_success content, only additionalContext."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with the remaining script semantics."
+}

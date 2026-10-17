@@ -654,6 +654,21 @@ test("SubagentStart additional context reaches the child's first request", async
   } finally { top.close(); }
 });
 
+test("PostModelSwitch additional context reaches exactly the next request", async () => {
+  const root = workspace();
+  const hooks = { PostModelSwitch: [{ command: emit({ hookSpecificOutput: { hookEventName: "PostModelSwitch", additionalContext: "model switched context" } }) }] };
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  const provider = new ScriptedProvider([done(), done()]);
+  try {
+    const agent = new Agent(session, provider, []);
+    await agent.emitHook("PostModelSwitch", { from_model: "a", to_model: "b", requested_model: "b" });
+    await agent.run("first");
+    assert.match(JSON.stringify(provider.requests[0]!.messages), /Hook context:\\nmodel switched context/);
+    await agent.run("second");
+    assert.equal(JSON.stringify(provider.requests[1]!.messages).split("model switched context").length - 1, 1);
+  } finally { session.close(); }
+});
+
 test("SessionStart carries the child agent type and the recorded session title", async () => {
   const root = workspace();
   const capture = path.join(root, "session-start.jsonl");
