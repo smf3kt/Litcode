@@ -413,8 +413,12 @@ export class Agent {
       // SubagentStart's additionalContext joins the child's context as a
       // `hook_additional_context` attachment before its first turn
       // (chunk-40cepjpq.js offsets 127150 and 127532); the source's
-      // `isolatedContext` exclusion has no analogue here.
-      if (event.kind === 'hook_result' && (event.event === 'SessionStart' || event.event === 'SubagentStart')) {
+      // `isolatedContext` exclusion has no analogue here. PostModelSwitch
+      // stages its contexts for the next request (`sXr`/`gZo`,
+      // chunk-sfn1dbxq.js offsets 2939454 and 2940920) and drops them once
+      // that request drains them, so the same one-shot scan applies.
+      if (event.kind === 'hook_result' && (event.event === 'SessionStart' ||
+        event.event === 'SubagentStart' || event.event === 'PostModelSwitch')) {
         context.unshift(...event.additionalContext);
       }
     }

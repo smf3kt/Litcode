@@ -2235,3 +2235,9 @@ position the source attachment occupies; a top-level session never raises the
 event. Focused 45/45, tsc 0, build 0, full 2,145/2,145, chain 767/767,
 identity `b6d0794d…`.
 [W107 record](ports/W107-subagent-context.md).
+
+W108-01 consumes PostModelSwitch `additionalContext`. The hook result is
+staged in the event log and the next request carries it once as
+`Hook context:`; later requests see it only as ordinary history. Focused
+46/46, tsc 0, build 0, full 2,146/2,146, chain 767/767, identity `1e2c779c…`.
+[W108 record](ports/W108-modelswitch-context.md).
