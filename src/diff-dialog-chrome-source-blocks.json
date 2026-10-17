@@ -1,0 +1,38 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-x90vmw14.js",
+      "sha256": "2c126986038d8ecb93fd6b25b601b3455f481aaa9064ea3af815dfb1fc02ee6d"
+    },
+    {
+      "module": "chunk-0qkpwgr4.js",
+      "sha256": "470fcab1f965a43d7ec6a08213a15a49218e65d7e2cc8b4bef21d8c4622335a6"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-x90vmw14.js",
+      "sha256": "2c126986038d8ecb93fd6b25b601b3455f481aaa9064ea3af815dfb1fc02ee6d",
+      "range": [
+        757,
+        1166
+      ],
+      "units": 409,
+      "bodySha256": "b53e996f5a896fa9e001a39e7b0ce97b7c26a63d27d88a6fe5f2d50ead90ed4b",
+      "note": "fo: dim empty text with an optional second hint line"
+    },
+    {
+      "module": "chunk-0qkpwgr4.js",
+      "sha256": "470fcab1f965a43d7ec6a08213a15a49218e65d7e2cc8b4bef21d8c4622335a6",
+      "range": [
+        904,
+        4862
+      ],
+      "units": 3958,
+      "bodySha256": "45fa533d764b5ff76d57468556883a4a8635b73decc3b2f4f47641b77e019e14",
+      "note": "chord formatter closure: L defaults and D merge, t4n and key/modifier tables, z chord hint, JD action text, v platform and P tokenizing"
+    }
+  ],
+  "missing": []
+}

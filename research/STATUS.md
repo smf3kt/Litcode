@@ -2883,3 +2883,14 @@ and tabs (_e/sS/Na), W169 detail (pBe/pee/Uwe) and W170 si wiring with the local
 Ht/Ffe host. Focused 5/5, full 2494/2494, tsc 0, build 0, notices 0, scan declared 16 /
 unresolved 0, identity `1686f834…`.
 [W165 record](ports/W165-diff-primitives.md).
+
+W166 added the chord formatter closure and dim hint text (2 copied blocks, 4,367 UTF-16 units).
+chunk-0qkpwgr4.js [904,4862) carries the L defaults and D merge, t4n, the key and modifier
+tables, z, JD, v and P: empty chords answer "", multiple chords join with / when each has several
+keys, meta displays as alt, known keys use the source table, and the default/compact/symbol
+styles change casing and separators. z renders nothing for an unformattable chord; JD joins the
+chord and action with " to " or a space under terse; fo renders one dim line or a two-line
+column. BF is host glue over the already-ported O with the three macOS terminal branches. Mr,
+pt and Se still need their ui/ma/bn dependencies. Focused 7/7, full 2501/2501, tsc 0, build 0,
+notices 0, scan declared 49 / unresolved 0, identity `c16a1aa9…`.
+[W166 record](ports/W166-chord-chrome.md).
