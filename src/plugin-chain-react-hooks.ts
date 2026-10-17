@@ -11,11 +11,18 @@
 // chunk-06azbynj.js, so no statement range holds them alone. The source text is quoted above each.
 
 /** Source `qt` (React.createContext): the context token the focus/request value travels in. */
+/** Source `qt` (chunk-kexg5hxg.js, `qt=function(e){return e={$$typeof:Pt,_currentValue:e,…,
+ *  Provider:null,…},e.Provider=e,e.Consumer={…},e}`): a context is its own provider, so copied
+ *  bodies that write `X.Provider` build the same element the source does. The runner resolves a
+ *  context's value from the render's `contexts` map; a provider element in the tree is structural. */
 export interface SurfaceContext<T> {
   readonly defaultValue: T;
+  readonly Provider: SurfaceContext<T>;
 }
 export function qt<T>(defaultValue: T): SurfaceContext<T> {
-  return { defaultValue };
+  const context = { defaultValue } as { defaultValue: T; Provider: SurfaceContext<T> };
+  context.Provider = context as SurfaceContext<T>;
+  return context;
 }
 
 /** Source `s` and `n`: the Box and Text element kinds, kept as tokens the host renderer paints. */

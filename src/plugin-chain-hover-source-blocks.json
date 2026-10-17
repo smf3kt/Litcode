@@ -1,0 +1,185 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-5b7mmg84.js",
+      "sha256": "05f8803b1d7dea53e80b234ff14f162653a7ea46e889dfe05d364b7d13e7646b"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        21290,
+        21318
+      ],
+      "units": 28,
+      "bodySha256": "5dd47c17e36de060b4fa83a21c82f5877f7f8e3ca616dd4fb84da684ffc279a3",
+      "note": "`Fe` — the hover-group store accessor"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        21318,
+        21425
+      ],
+      "units": 107,
+      "bodySha256": "21dc635991ffa56338a67abc33dd8b58586b4aa143a12dfca008d52468f29847",
+      "note": "`mt` — adjust one key's hover count, dropping the key at zero"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        21425,
+        21619
+      ],
+      "units": 194,
+      "bodySha256": "ba8f7de68504ca0afb1b337faa86f76cedae9fffb30ccc6388990b15f9b84678",
+      "note": "`_t` — one group member's enter/leave/regroup, counting at most one group at a time"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        21619,
+        21707
+      ],
+      "units": 88,
+      "bodySha256": "d3927efd43dc8bf7ae3bea91d6cb65ecc6f7a59cd557a1ba252ae537d563538c",
+      "note": "`Bt` — the `{plugin, scope}` group key of a site"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        21707,
+        21751
+      ],
+      "units": 44,
+      "bodySha256": "52a8f395bfe3e69b872d8b807125021ff888834b020a30da12254ddfdd8b550b",
+      "note": "`ft` — the hover overrides with `scope` removed"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        21755,
+        22010
+      ],
+      "units": 255,
+      "bodySha256": "281f07a8eb1d51a1a841d03ed941a4a34d78f4a230eadd76165be3e1d4fbf2af",
+      "note": "`ut` — subscribe to one group key: `isHot` and the enter/leave handlers"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22014,
+        22063
+      ],
+      "units": 49,
+      "bodySha256": "338ec5d36bddbe02ae3ef75a3e497f3e59a16761e4efbe174fe40a630433e398",
+      "note": "`Kt` — the three color props the overrides normalize"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22063,
+        22203
+      ],
+      "units": 140,
+      "bodySha256": "a43a8248c9a009097df984fd57ac4e8d9e1e189774bfa8947302f11f1b101055",
+      "note": "`De` — copy the props, mapping named colors to hex"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22207,
+        22221
+      ],
+      "units": 14,
+      "bodySha256": "8dc5ca35524d6ef8f5e5c358c69d2bec303877b59a4efce5cb8e8f8c6e7663b1",
+      "note": "`_e` — the scope-hovered context"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22221,
+        22436
+      ],
+      "units": 215,
+      "bodySha256": "938c29226208d0ed85a50af61c5f224bf9b4fd1a1fec1101824ee419641c53e9",
+      "note": "`jt` — the overrides and handlers for one site: group hot, or the enclosing scope"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22436,
+        22764
+      ],
+      "units": 328,
+      "bodySha256": "a3f7a00eebe022b90fb1d4d7b0cd9c5b1b2f613ee25dab36b5c631cabf2a58d6",
+      "note": "`$t` — HoverScope: own hover state, group subscription, provider and layout merge"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        22768,
+        22928
+      ],
+      "units": 160,
+      "bodySha256": "93944592108a840238a06dcd89759d009f7cbf21766c2a393d498f50f2806f1c",
+      "note": "`Ut` — HoverStyled: a Text or Box carrying the resolved overrides and handlers"
+    },
+    {
+      "module": "chunk-5b7mmg84.js",
+      "sha256": "05f8803b1d7dea53e80b234ff14f162653a7ea46e889dfe05d364b7d13e7646b",
+      "range": [
+        720,
+        758
+      ],
+      "units": 38,
+      "bodySha256": "cf06a0ac58966759e97457fcf9ad0419eba14a038d4fa7a2b0d11245852d5f04",
+      "note": "`u4n`/`c` — the no-op subscribe and the constant `undefined` source `Re` falls back to"
+    },
+    {
+      "module": "chunk-5b7mmg84.js",
+      "sha256": "05f8803b1d7dea53e80b234ff14f162653a7ea46e889dfe05d364b7d13e7646b",
+      "range": [
+        758,
+        1288
+      ],
+      "units": 530,
+      "bodySha256": "d4649217ba34eb09e5bd80e2af2009b8e82122cecdfaaac0782e65b40d821183",
+      "note": "`Re` — the store selector hook over `getSnapshot`/`subscribe`"
+    },
+    {
+      "module": "chunk-p16hdq43.js",
+      "sha256": "0876812e3099d9038f2c1c8eaf18b9f878583ce15621d5867f58b46e91050c38",
+      "range": [
+        2431,
+        2481
+      ],
+      "units": 50,
+      "bodySha256": "9539d585a63dc894b132cdb4ff4074807613a8e948b842814940317366d15f44",
+      "note": "`Dbr` — the `plugin\\0scope\\0scope` store key"
+    }
+  ],
+  "missing": []
+}

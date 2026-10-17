@@ -257,6 +257,9 @@ export interface PluginRegistryState {
   pluginState: PluginStateStore | null;
   toastClock: ToastClockHandle | null;
   renderVersions: RegistryStore<Map<string, number>> | null;
+  /** The hover-group counts (`hoverGroups: gs(new Map)` in the source's literal, chunk-3ph567jx.js):
+   *  keyed by `plugin\0scope\0scope` (`Dbr`) and adjusted by `mt`; `Fe` hands the store to `Re`. */
+  hoverGroups: RegistryStore<Map<string, number>> | null;
   panes: RegistryStore<{ shownId?: string | null }> | null;
   loadedModules: ChainModuleRecord[];
   moduleSeats: Map<string, string>;

@@ -1,0 +1,33 @@
+Dbr "p\u0000scope\u0000s" true
+Bt both {"plugin":"p","scope":"s"}
+Bt no scope undefined no plugin undefined empty scope undefined
+ft {"color":"red","bold":true}
+De named {"color":"#e5484d","backgroundColor":"#3e63dd","borderColor":"bogus","bold":true}
+De hex stays {"color":"#abc"} De null null De undefined null
+Kt ["color","backgroundColor","borderColor"]
+Fe is store true
+mt add [["k",1]]
+mt remove 0
+member enter a [["a",1]]
+member enter b [["a",1]]
+member leave 0
+member regroup [["b",1]]
+ut cold {"hot":false,"enter":"function","leave":"function"}
+ut after enter count 1
+ut hot true
+ut after leave count 1
+ut entered count 1
+ut unmount count 1
+ut no group hot false
+jt no group cold {"overrides":{},"handlers":{}}
+jt scope hot {"overrides":{"color":"#e5484d","bold":true},"handlers":{}}
+jt group hot {"overrides":{"color":"#e5484d"},"handlers":["onMouseEnter","onMouseLeave","hoverFollowsPaint"],"enter":"function"}
+jt group cold {"overrides":{},"handlers":{"hoverFollowsPaint":true}}
+scope type true value false
+scope box props {"flexDirection":"row","color":"#e5484d","bold":true,"elementKey":"e1","hoverFollowsPaint":true,"onMouseEnter":"function","onMouseLeave":"function"}
+styled type Box props {"color":"#46a758","onMouseEnter":"function","hoverFollowsPaint":true}
+inline type Text props {"onMouseEnter":"function","hoverFollowsPaint":true}
+Re value 1 paced 1
+Re value after set (same run) true snapshot read 2
+(node:42000) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
