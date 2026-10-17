@@ -2092,3 +2092,13 @@ WorktreeCreate creation and informational WorktreeRemove failures stay
 recorded adaptations. `agent-lifecycle` 33/33, tsc 0, build 0, full
 2,119/2,119, chain 767/767, identity `8288ec96…`.
 [W90 record](ports/W90-worktree-hooks.md).
+
+W91-01 ports the per-file InstructionsLoaded payload. The loader records each
+file's importing parent and a rule's patterns; `startSession` raises one event
+per loaded file (`file_path`, `memory_type`, `load_reason`, optional
+`globs`/`parent_file_path`), and path access raises
+`nested_traversal`/`include`/`path_glob_match` with
+`trigger_file_path`. This runtime has one project instruction tier, so every
+file reports `Project`; later eager reasons are not tracked.
+`agent-lifecycle` 34/34, tsc 0, build 0, full 2,120/2,120, chain 767/767,
+identity `87bbcc5c…`. [W91 record](ports/W91-instructions-loaded.md).

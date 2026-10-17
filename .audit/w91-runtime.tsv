@@ -1,0 +1,3 @@
+2026-10-18T03:05:00Z	package	W91-01 InstructionsLoaded 逐文件载荷	kTn 2935767、急切循环 672482、KZn [672828,672967)、路径访问 3671285、字段枚举 202907；config 指令父级/规则 globs、instructionSources、startSession 与 ruleContext	逐文件 raise；四种原因映射；路径访问带 trigger_file_path	agent-lifecycle 34/34；tsc 0；build 0；全量 2,120/2,120；链 767/767
+2026-10-18T03:07:00Z	decision	W91-01 边界	① 本地仅 Project 指令层；② startSession 固定 session_start，compaction/directory_added 未跟踪；③ 源按已配置钩子门控，本产品由 runHooks 空转等价	残余：完整消费者	.audit/w91-01-full.txt
+2026-10-18T03:10:00Z	verification	W91-01 验收：agent-lifecycle 34/34、tsc 0、build 0、2,120/2,120、767/767	急切文件含 file_path/Project/session_start 且无 parent；路径访问依次 nested_traversal、include、path_glob_match、include	notices 0；索引 75 chunks / 323,525 单位不变；identity 87bbcc5c…

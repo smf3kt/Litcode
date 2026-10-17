@@ -13,7 +13,7 @@ import { createTuiTerminal } from './tui.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { listSessions } from './sessions.js';
-import { loadProjectConfig, defaultUserDir, type LoadedConfig } from './config.js';
+import { loadProjectConfig, defaultUserDir, instructionSources, type LoadedConfig } from './config.js';
 import { refuseBypassUnderRoot } from './bypass-guard.js';
 import { heldMcpServerNotice, mcpServerFingerprint, readMcpApprovals, recordMcpApprovals, resolveMcpServers, workspaceApprovalKey } from './mcp-approval.js';
 import { loadKeybindings } from './keybindings.js';
@@ -328,6 +328,7 @@ function newConfig(
     config.system = buildSystem(DEFAULT_SYSTEM, [...loaded.instructions,
       ...(config.autoMemory || settings.features?.memory === false ? [] : loaded.memories ?? [])], loaded.skills);
     config.skills = loaded.skills;
+    config.instructionSources = instructionSources(loaded.instructions);
     if (loaded.conditionalRules?.length) config.conditionalRules = structuredClone(loaded.conditionalRules);
     config.features = {
       tasks: (values.tasks as boolean | undefined) ?? settings.features?.tasks ?? true,

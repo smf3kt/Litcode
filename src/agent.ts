@@ -303,7 +303,20 @@ export class Agent {
     // load reason, initialized to "session_start" (`KZn`,
     // chunk-sfn1dbxq.js [672828,672967); state default at offset 654708).
     if (source === 'startup') await this.hook('Setup', { trigger: 'init' }, signal);
-    await this.hook('InstructionsLoaded', { load_reason: 'session_start' }, signal);
+    // The eager instruction load raises one InstructionsLoaded per file with the file's own type and
+    // `include` for an imported file (`KZn` chunk-sfn1dbxq.js [672828,672967) and the loop at offset
+    // 672482; `kTn` at offset 2935767 builds `{file_path, memory_type, load_reason, globs,
+    // trigger_file_path, parent_file_path}`). This runtime has one project instruction tier, so every
+    // file reports `Project`; the user/local/managed instruction tiers are absent.
+    for (const file of this.session.config.instructionSources ?? []) {
+      await this.hook('InstructionsLoaded', {
+        file_path: file.path,
+        memory_type: 'Project',
+        load_reason: file.parent === undefined ? 'session_start' : 'include',
+        ...(file.globs === undefined ? {} : { globs: file.globs }),
+        ...(file.parent === undefined ? {} : { parent_file_path: file.parent }),
+      }, signal);
+    }
     if (this.session.config.childMode) await this.hook('SubagentStart', { agent_id: this.session.id, agent_type: this.session.config.childMode }, signal);
     // Recovered payload (`t7r`, chunk-sfn1dbxq.js [2942449,2942805)) carries the agent type and the
     // session title in addition to source and model; `vm` resolves the current session's title, which
@@ -409,7 +422,7 @@ export class Agent {
       ? { input } : { input, denied: 'Permission declined' };
   }
 
-  private ruleContext(toolName: string, input: unknown): string[] {
+  private async ruleContext(toolName: string, input: unknown, signal: AbortSignal): Promise<string[]> {
     if (!['read_file', 'write_file', 'edit_file', 'read_media', 'notebook_read', 'notebook_edit', 'lsp', 'search', 'list_files'].includes(toolName) ||
         typeof input !== 'object' || input === null) return [];
     const target = (input as { path?: unknown }).path;
@@ -417,17 +430,36 @@ export class Agent {
     const relative = path.relative(this.session.config.workspace, path.resolve(this.session.config.workspace, target));
     if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) return [];
     const contexts: string[] = [];
+    const triggerPath = path.resolve(this.session.config.workspace, target);
     if (this.session.config.dynamicInstructions) {
       let candidates: string[] = [];
       const files = loadPathInstructions(this.session.config.workspace, target, paths => { candidates = paths; });
       this.events.instructionFiles?.([...new Set([...files.map(file => file.path), ...candidates])]);
       for (const file of files) {
+        // The path-access load raises with the accessed path as trigger and `nested_traversal` for
+        // an ancestor file or `include` for an import (`kTn`, chunk-sfn1dbxq.js offset 3671285).
+        await this.hook('InstructionsLoaded', {
+          file_path: file.path, memory_type: 'Project',
+          load_reason: file.parent === undefined ? 'nested_traversal' : 'include',
+          trigger_file_path: triggerPath,
+          ...(file.parent === undefined ? {} : { parent_file_path: file.parent }),
+        }, signal);
         contexts.push(`Path-scoped instructions from ${file.path} for ${relative}:\n${file.content}`);
       }
     }
     for (const rule of this.session.config.conditionalRules ?? []) {
       if (!matchesConditionalRule(rule, [relative.split(path.sep).join('/')])) continue;
       for (const file of [rule, ...(rule.imports ?? [])]) {
+        // A selected rule reports `path_glob_match` with its patterns; an imported file reports
+        // `include` (same call site).
+        const isRule = file === rule;
+        await this.hook('InstructionsLoaded', {
+          file_path: file.path, memory_type: 'Project',
+          load_reason: isRule ? 'path_glob_match' : 'include',
+          trigger_file_path: triggerPath,
+          ...(isRule ? { globs: rule.patterns } : {}),
+          ...(file.parent === undefined ? {} : { parent_file_path: file.parent }),
+        }, signal);
         contexts.push(`Path-scoped instructions from ${file.path} for ${relative}:\n${file.content}`);
       }
     }
@@ -493,7 +525,7 @@ export class Agent {
             input = updated.input;
             if (updated.denied) throw new Error(updated.denied);
           }
-          const rules = this.ruleContext(call.name, input).filter(text => !this.session.messages.some(message =>
+          const rules = (await this.ruleContext(call.name, input, signal)).filter(text => !this.session.messages.some(message =>
             message.role === 'user' && Array.isArray(message.content) && message.content.some(block =>
               block.type === 'text' && block.text === `Hook context:\n${text}`)));
           extra.push(...rules.filter(text => !extra.includes(text)));

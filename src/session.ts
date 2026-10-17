@@ -7,7 +7,7 @@ import type { GatewayConfig } from './provider.js';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { HOOK_EVENTS, hooksSchema, type HooksConfig } from './hooks.js';
 import { permissionPolicySchema, type PermissionPolicy } from './permissions.js';
-import type { SkillInfo, ConditionalRule } from './config.js';
+import type { SkillInfo, ConditionalRule, InstructionSource } from './config.js';
 import { mcpServersSchema, type McpServerConfig } from './mcp.js';
 import { lspConfigSchema, type LspConfig } from './lsp.js';
 import { keybindingsSchema } from './keybindings.js';
@@ -43,6 +43,8 @@ export type SessionConfig = {
     features?: Partial<NonNullable<SessionConfig['features']>>; mcpClient?: SessionConfig['mcpClient'] };
   policyHelper?: { path: string; intervalMs?: number; defaultPolicy?: SessionConfig['managedPolicy'] };
   skills?: SkillInfo[];
+  /** Instruction files loaded for the eager InstructionsLoaded raise. */
+  instructionSources?: InstructionSource[];
   conditionalRules?: ConditionalRule[];
   keybindings?: Keybindings;
   prefersReducedMotion?: boolean;
@@ -167,8 +169,10 @@ export const configSchema = z.object({
   plugins: pluginConfigSchema.optional(),
   agentTypes: z.lazy(() => agentTypesSchema).optional(),
   conditionalRules: z.array(z.object({ path: z.string(), content: z.string(), patterns: z.array(z.string()),
-    imports: z.array(z.object({ path: z.string(), content: z.string() }).strict()).optional(),
+    imports: z.array(z.object({ path: z.string(), content: z.string(), parent: z.string().optional() }).strict()).optional(),
   }).strict()).optional(),
+  instructionSources: z.array(z.object({ path: z.string(), parent: z.string().optional(),
+    globs: z.array(z.string()).optional() }).strict()).optional(),
   mcpServers: mcpServersSchema.optional(),
   heldMcpServers: z.array(z.object({ name: z.string().min(1).max(256), fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
     reason: z.enum(['unapproved', 'declaration-changed']) }).strict()).optional(),
