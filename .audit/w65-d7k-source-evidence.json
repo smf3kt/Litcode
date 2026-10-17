@@ -39,7 +39,7 @@
       "file": "bootstrap/state.ts",
       "change": "scheduledTasksEnabled with both accessors, and sessionCronTasks with its type and three functions, deleted — the scheduler and CronCreateTool were their only writers",
       "sourceSha256": "f633f321f4e4f89a69bfc53b63ca774270c455bee5aa4a3ba16ea880e8699321",
-      "portSha256": "2ca65b37dd13b117de215975a43757beb78e5f94cf5a0adf0fb616fc0a0272b5",
+      "portSha256": "fa9d53bf5a142769af35277780b1b49044fd45a384a590d458010d2d60cdb332",
       "coordinateUnit": "utf16-half-open"
     }
   ],

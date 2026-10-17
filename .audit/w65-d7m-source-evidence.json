@@ -1,0 +1,67 @@
+{
+  "before": "627859b",
+  "kind": "bridge-origin command gate and bridge-owned slot removal (no ported bodies)",
+  "surface": "the two bridge-only QueuedCommand fields (skipSlashCommands, bridgeOrigin) with every gate written on them, the bridge command allowlist (BRIDGE_SAFE_COMMANDS, isBridgeSafeCommand), the bridge status message (constructor, subtype member, type alias, renderer), the remote-control spawn-mode config key, the bridge-session pid write, and the session-source tag",
+  "decisiveFact": "both QueuedCommand fields are written only by the absent bridge inbound path — the tree's three queue producers (handlePromptSubmit's two enqueue sites and the cmd literal it builds) never set them — so `!skipSlashCommands` is constant true, the bridgeOrigin override block is unreachable, and createBridgeStatusMessage, remoteControlSpawnMode, updateSessionBridgeId and sessionSource have no caller or reader at all",
+  "evidence": [
+    {
+      "file": "utils/handlePromptSubmit.ts",
+      "change": "the option threaded through four layers, its two `!skipSlashCommands &&` gates (the exit-word list and the local-jsx immediate dispatch) and the two reads of the QueuedCommand fields deleted",
+      "sourceSha256": "843a00b8689def758645906dc10cb9ebb12b1d0286b0891bf1e6c2c59cd2a624",
+      "portSha256": "54fdd79d0a709ae705f361671779be3697055ecd29781845f6ffd4a2756b6309",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/processUserInput/processUserInput.ts",
+      "change": "the bridgeOrigin override block and the now-constant effectiveSkipSlash deleted; the attachment gate keeps its other two terms and the slash-command gate becomes a plain startsWith test",
+      "sourceSha256": "588254a604acc91f58f8f435aa2367bc1e87319cc774f4b390d382b4e6c12763",
+      "portSha256": "a92991f5649f61e6e5eef8e7e46adbc2360d85307009fa770d23ebf23a4a196d",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/messageQueueManager.ts",
+      "change": "isSlashCommand's third term dropped; it now answers exactly the question its doc comment names",
+      "sourceSha256": "1e23a34855031ade3f22f0371871208bb8721ee9849e8245dba2c896a5696cc6",
+      "portSha256": "bfa6417983e8f521ffb522cfb51384e73ea2042ca4918ce89af2040f18c99844",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "commands.ts",
+      "change": "BRIDGE_SAFE_COMMANDS and isBridgeSafeCommand removed — their one caller was the override block deleted here",
+      "sourceSha256": "54fa9fa9844c0b50eed0339abf11f4339d26dd7a86613da35638f2af42c96066",
+      "portSha256": "6aaf20fd42b1402a9c0b3614ccb671b8dc047a63fecdb5a80b9b83af57e6d0a6",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/messages.ts",
+      "change": "createBridgeStatusMessage removed with its type and its renderer; the subtype member left SystemSubtype in the same commit so no message type can be constructed",
+      "sourceSha256": "6f3a6d75c1aebfe155de24020c10e47e2f75a96d6e8b981f2649801dcc6a84e1",
+      "portSha256": "f69853783f3c1700317c2a4aef534d96b9419734d86f1f6e0584bcce7e6e9ec3",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "the bridge command gate: BRIDGE_SAFE_COMMANDS, isBridgeSafeCommand, and the processUserInput block that was their only caller (with the `/x isn't available over Remote Control.` short-circuit it produced)",
+    "the two input-path fields: skipSlashCommands and bridgeOrigin on QueuedCommand and on processUserInput's and handlePromptSubmit's option objects, plus the three gates and two pass-throughs they reached",
+    "the bridge status message: createBridgeStatusMessage, SystemBridgeStatusMessage, the 'bridge_status' union member, the SystemTextMessage renderer, and the Link/ThemedText imports it was the only user of",
+    "the readerless slots: remoteControlSpawnMode (config), updateSessionBridgeId (the pid write no peer enumeration could read back) and sessionSource with its getter, setter and the CLAUDE_CODE_ENVIRONMENT_KIND branch in main.tsx that was its only writer"
+  ],
+  "kept": [
+    "entrypoints/agentSdkTypes.ts' bridgeSessionId and its remote-control bridge declaration — a declared SDK contract with no producer, the same call waves C and 7k made",
+    "CLAUDE_CODE_ENVIRONMENT_KIND itself: cli/remoteIO.ts' isBridge and filePersistence' outputs scanner are live users of the same variable",
+    "the retained cli/transports/ + cli/remoteIO.ts lane, and SendMessageTool's `bridge:<session-id>` recipient prose, which belongs to the peer-messaging lane"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweep over every removed name; each folded gate asserted as the arm the falsy value produced (isSlashCommand's single-expression body, the attachment gate's two remaining terms, the two handlePromptSubmit gates without their leading term, the destructure and both object literals losing their field); the message surface asserted gone from all four carriers at once; the declared SDK field, the environment-kind variable and the peer-messaging prose asserted still present; import-graph orphan scan stays at its 10 legitimate entries with the file count unchanged, since this step deletes no module",
+  "remaining": "the session-ingress bearer surface (utils/sessionIngressAuth.ts and its eight importers), then the peer-messaging lane — SendMessageTool's `uds:` and `bridge:` recipient rows and its Cross-session section sit in the false arm of `feature('UDS_INBOX')`, so the whole peer surface is constant there, including `ListPeers` — then the model-call seams (which must not be removed wholesale — API-key auth is the retained path), utils/fastMode.ts's remaining gates, the ~33 in-place CLI blocks, cli/transports/, and the dependency-pruning pass",
+  "notes": [
+    "this is the first package in wave D that removes a *producer-less field* rather than a gate: the writes exist but no read can observe them, so the statements go without a caller rewrite",
+    "the two SystemTextMessage imports went in the same commit as the component that used them, because tsc accepts an unused import under strict:false"
+  ]
+}
