@@ -399,9 +399,11 @@ test('model errors fire StopFailure and keep the interrupted turn resumable', as
   const f = fixture(); f.config.hooks = { StopFailure: [{ command: command({ additionalContext: 'service diagnostic' }) }] };
   f.provider.complete = async () => { throw new Error('model fixture failed'); };
   const session = Session.open(f.workspace, { config: f.config });
+  const statuses: string[] = [];
   try {
-    await assert.rejects(new Agent(session, f.provider, [f.tool]).run('task'), /model fixture failed/);
+    await assert.rejects(new Agent(session, f.provider, [f.tool], { status: line => statuses.push(line) }).run('task'), /model fixture failed/);
     assert.ok(session.events.some(event => event.kind === 'hook_result' && event.event === 'StopFailure'));
+    assert.equal(statuses.some(line => line.includes('service diagnostic')), false);
     assert.equal(session.awaitingResponse, true);
   } finally { session.close(); f.cleanup(); }
 });

@@ -1,0 +1,31 @@
+{
+ "schema": "W136StopFailureDiscardEvidence.v1",
+ "package": "W136-01 — StopFailure answer is discarded",
+ "date": "2026-10-18",
+ "question": "Does the recovered StopFailure path consume the hook answer?",
+ "answer": "No. Gze builds the source payload, awaits the outside-REPL hook executor and reads none of its result. The product now does the same on both raise paths: the transports still run, but additionalContext is neither displayed nor injected.",
+ "sourcePosition": {
+  "caller": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "range": [2945048, 2945292]
+  },
+  "schema": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "offset": 198098
+  }
+ },
+ "product": {
+  "files": ["src/agent.ts", "test/lifecycle.test.ts"],
+  "raiseSites": ["failed model request", "finishWithHooks non-clean stop"],
+  "discarded": "additionalContext",
+  "kept": ["error", "last_assistant_message", "hook run and journal"]
+ },
+ "verification": {
+  "focused": "136/136",
+  "full": "2238/2238",
+  "tsc": 0,
+  "build": 0,
+  "notices": 0,
+  "identity": "1d28148bb2b3672bbfd06d59b30611ea0d2ff6b29d2a386d34dca1c9ad6b7596"
+ }
+}
