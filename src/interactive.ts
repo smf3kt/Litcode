@@ -325,6 +325,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     return /^(y|yes)$/i.test((await readAnswer(`\n${message}\n${title}? [y/N] `, signal)).trim());
   };
   const agent = () => activeAgent ??= new Agent(session, provider, activeRuntime.buildTools(session.config, session.id), {
+    // Stop/SubagentStop carry the live background jobs and session cron tasks
+    // (`Sle`, chunk-sfn1dbxq.js [2946002,2946104)).
+    stopState: () => activeRuntime.stopState?.(session.id) ?? { background_tasks: [], session_crons: [] },
     interaction: {
       ask: async (request, signal) => {
         // One grouped request runs every question and then a review page, which

@@ -66,13 +66,24 @@ export type PromptExpansion = {
   prompt: string;
 };
 
+/** Stop/SubagentStop `background_tasks` entry (`sdn`, chunk-sfn1dbxq.js [2944321,2944915)). */
+export type StopBackgroundTask = {
+  id: string; type: string; status: string; description: string;
+  command?: string; agent_type?: string;
+};
+/** Stop/SubagentStop `session_crons` entry (`idn`, chunk-sfn1dbxq.js [2944915,2945080)). */
+export type StopSessionCron = { id: string; schedule: string; recurring: boolean; prompt: string };
+export type StopRuntimeState = { background_tasks: StopBackgroundTask[]; session_crons: StopSessionCron[] };
+
 export type AgentEvents = { text?: (text: string) => void; status?: (status: string) => void;
   textStart?: () => void; textEnd?: () => void;
   progress?: (event: AgentProgressEvent) => void;
   terminalSequence?: (sequence: string) => void;
   instructionFiles?: (paths: string[]) => void;
   permission?: (request: { tool: string; input: unknown; reason: string; signal: AbortSignal }) => Promise<boolean>;
-  hookOptions?: HookRunOptions; interaction?: InteractionCallbacks };
+  hookOptions?: HookRunOptions; interaction?: InteractionCallbacks;
+  /** Live background jobs and session cron tasks for Stop/SubagentStop (`Sle`). */
+  stopState?: () => StopRuntimeState };
 
 const hookLifecycles = new WeakMap<Session, HookLifecycle>();
 
@@ -802,10 +813,14 @@ export class Agent {
         if (event.kind === 'turn_end') break;
         if (event.kind === 'hook_result' && event.event === stopEvent && event.blocked && !event.stopRequested) { active = true; break; }
       }
+      // The recovered builder always includes the live background jobs and session cron
+      // tasks (`ke`, chunk-sfn1dbxq.js [2946002,2946104)); SubagentStop adds the child
+      // identity and its transcript path.
+      const runtimeState = this.events.stopState?.() ?? { background_tasks: [], session_crons: [] };
       stop = await this.hook(stopEvent, { stop_hook_active: active,
         ...(text.trim() === '' ? {} : { last_assistant_message: text.trim() }),
-        // SubagentStop adds the child identity and its transcript path (chunk-sfn1dbxq.js offset
-        // 2946104); Stop carries only the two common fields in this runtime.
+        background_tasks: runtimeState.background_tasks,
+        session_crons: runtimeState.session_crons,
         ...(this.session.config.childMode ? { agent_id: this.session.id,
           agent_transcript_path: this.session.file, agent_type: this.session.config.childMode } : {}),
       }, signal);

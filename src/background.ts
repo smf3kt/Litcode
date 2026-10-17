@@ -466,6 +466,16 @@ export class BackgroundRegistry {
   }
 
   /** Immediate snapshot of a job; throws for an unknown (or evicted) id. */
+  /** Active jobs that count as background work; finished jobs stay out. */
+  active(): Array<Pick<BackgroundJobView, "id" | "kind" | "state" | "command" | "description">> {
+    const jobs: Array<Pick<BackgroundJobView, "id" | "kind" | "state" | "command" | "description">> = [];
+    for (const job of this.jobs.values()) {
+      if (job.state !== "running") continue;
+      jobs.push({ id: job.id, kind: job.kind, state: job.state, command: job.command, description: job.description });
+    }
+    return jobs;
+  }
+
   snapshot(id: string): BackgroundJobView {
     const job = this.jobs.get(id);
     if (!job) throw new Error(`unknown background task: ${id}`);

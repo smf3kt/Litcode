@@ -312,7 +312,8 @@ export class AgentRegistry {
       const childId = session.id;
       const agent = new Agent(session, this.options.provider, tools, { hookOptions: hooks.hookOptions,
         ...(this.options.instructionFiles ? { instructionFiles: paths => this.options.instructionFiles!(config.workspace, paths) } : {}),
-        ...(this.options.terminalSequence ? { terminalSequence: sequence => this.options.terminalSequence!(childId, sequence) } : {}) });
+        ...(this.options.terminalSequence ? { terminalSequence: sequence => this.options.terminalSequence!(childId, sequence) } : {}),
+        ...(this.options.stopState ? { stopState: this.options.stopState } : {}) });
       child = {
         view: { id: session.id, session_id: session.id, name: args.name ?? null, status: 'queued',
           mode: launch.mode, model: config.model, summary: '', error: null, reason: null, model_calls: 0, queued_messages: 0,
@@ -431,7 +432,8 @@ export class AgentRegistry {
         const childId = child.session.id;
         child.agent = new Agent(child.session, this.options.provider, child.tools, { hookOptions: child.hooks.hookOptions,
           ...(this.options.instructionFiles ? { instructionFiles: paths => this.options.instructionFiles!(child.config.workspace, paths) } : {}),
-          ...(this.options.terminalSequence ? { terminalSequence: sequence => this.options.terminalSequence!(childId, sequence) } : {}) });
+          ...(this.options.terminalSequence ? { terminalSequence: sequence => this.options.terminalSequence!(childId, sequence) } : {}),
+          ...(this.options.stopState ? { stopState: this.options.stopState } : {}) });
       }
       this.boundJournal(child);
       child.view.status = 'running'; this.changed();

@@ -586,6 +586,30 @@ test("UserPromptSubmit omits source and carries the recorded session title", asy
   } finally { session.close(); }
 });
 
+test("Stop carries the runtime-provided background jobs and session cron tasks", async () => {
+  const root = workspace();
+  const capture = path.join(root, "stop-runtime-state.jsonl");
+  const hooks = { Stop: [{ command: `cat >> ${shellQuote(capture)}` }] };
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  const cronPrompt = "x".repeat(1001);
+  const agentEvents = { stopState: () => ({
+    background_tasks: [{ id: "job-1", type: "shell", status: "running", description: "tail", command: "sleep 60" }],
+    session_crons: [{ id: "cron-1", schedule: "*/5 * * * *", recurring: true, prompt: cronPrompt }],
+  }) };
+  try {
+    await new Agent(session, new ScriptedProvider([done()]), [], agentEvents).run("hello");
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.deepEqual(payload.background_tasks,
+      [{ id: "job-1", type: "shell", status: "running", description: "tail", command: "sleep 60" }]);
+    const crons = payload.session_crons as Array<Record<string, unknown>>;
+    assert.equal(crons.length, 1);
+    assert.equal(crons[0]!.id, "cron-1");
+    assert.equal(crons[0]!.schedule, "*/5 * * * *");
+    assert.equal(crons[0]!.recurring, true);
+    assert.equal(crons[0]!.prompt, cronPrompt);
+  } finally { session.close(); }
+});
+
 test("SessionStart carries the child agent type and the recorded session title", async () => {
   const root = workspace();
   const capture = path.join(root, "session-start.jsonl");

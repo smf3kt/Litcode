@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Agent, assertPaired } from './agent.js';
+import { Agent, assertPaired, type StopRuntimeState } from './agent.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { AgentTypeInfo } from './agent-types.js';
 import { Session, type SessionConfig } from './session.js';
@@ -13,6 +13,8 @@ export type ChildHookOptions = {
   onHookCompletion?: (sessionId: string, completion: AsyncHookCompletion) => void;
   terminalSequence?: (sessionId: string, sequence: string) => void;
   instructionFiles?: (workspace: string, paths: string[]) => void;
+  /** Stop/SubagentStop live background jobs and session cron tasks. */
+  stopState?: () => StopRuntimeState;
 };
 
 export type ChildEnvironmentLease = {
@@ -228,7 +230,8 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
         hooks = createChildHookLifecycle(session, options);
         agent = new Agent(session, provider, selected, { hookOptions: hooks.hookOptions,
           ...(options.instructionFiles ? { instructionFiles: paths => options.instructionFiles!(session!.config.workspace, paths) } : {}),
-          ...(options.terminalSequence ? { terminalSequence: sequence => options.terminalSequence!(session!.id, sequence) } : {}) });
+          ...(options.terminalSequence ? { terminalSequence: sequence => options.terminalSequence!(session!.id, sequence) } : {}),
+          ...(options.stopState ? { stopState: options.stopState } : {}) });
         await agent.startSession(launch.fork ? 'fork' : 'startup', context.signal);
         const result = await agent.run(args.prompt, context.signal);
         output = { session_id: session.id, reason: result.reason, text: result.text, model_calls: result.modelCalls,

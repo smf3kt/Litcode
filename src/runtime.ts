@@ -47,6 +47,7 @@ import { createCheckpointTools } from './checkpoints.js';
 import { WorktreeManager, createWorktreeTools } from './worktrees.js';
 import { permissionPolicySchema, type PermissionPolicy, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
+import type { StopRuntimeState } from './agent.js';
 import { configSchema, fingerprint as sessionFingerprint } from './session.js';
 import type { Session, SessionConfig } from './session.js';
 import { mcpSubscriptionState, commitMcpSubscription } from './mcp-session-subscriptions.js';
@@ -61,6 +62,18 @@ import { LocalScheduler, createSchedulerTools, type LocalSchedulerOptions } from
 
 export const SKILL_TOOL_NAME = 'skill';
 export const AGENT_TOOL_NAME = 'agent';
+
+/**
+ * `_c` (chunk-ax7r0qj7.js [4917,5100)) caps a Stop/SubagentStop string at 1000
+ * code units, drops a dangling high surrogate and appends the dropped count.
+ */
+export function truncateHookText(text: string, limit = 1000): string {
+  if (text.length <= limit) return text;
+  let kept = text.slice(0, limit);
+  const last = kept.charCodeAt(kept.length - 1);
+  if (last >= 0xd800 && last <= 0xdbff) kept = kept.slice(0, -1);
+  return `${kept}… [+${text.length - kept.length} chars]`;
+}
 
 // ---------------------------------------------------------------------------
 // Settings mapping (strict known runtime fields)
@@ -392,6 +405,8 @@ export type Runtime = {
   subscribe?(listener: (owner: string) => void): () => void;
   taskRecords?(config: SessionConfig): TaskRecord[];
   subscribeTasks?(config: SessionConfig, listener: () => void): () => void;
+  /** Stop/SubagentStop background jobs and session cron tasks (`Sle`). */
+  stopState?(owner: string): StopRuntimeState;
   releaseSession?(owner: string): Promise<void>;
   runSkill?(config: SessionConfig, owner: string, skill: SkillInfo, args: string, signal: AbortSignal,
     requestPermission?: (tool: ToolDefinition, input: unknown, decision: PermissionDecision) => Promise<PermissionDecision>,
@@ -537,6 +552,19 @@ export async function createRuntime(
       owners.set(owner, resources);
     }
     return resources;
+  };
+  // `sdn`/`idn` project the live registry only; finished jobs stay out (`Vg`
+  // keeps running/pending tasks) and the scheduler list is a copy.
+  const stopStateForOwner = (owner: string): StopRuntimeState => {
+    const resources = resourcesFor(owner, scopeFor(owner));
+    const tasks: StopRuntimeState['background_tasks'] = [];
+    for (const job of resources.background?.active() ?? []) {
+      tasks.push({ id: job.id, type: job.kind === 'run' ? 'shell' : 'monitor', status: job.state,
+        description: truncateHookText(job.description),
+        ...(job.kind === 'run' ? { command: truncateHookText(job.command) } : {}) });
+    }
+    return { background_tasks: tasks, session_crons: (resources.scheduler?.list() ?? []).map(job => ({
+      id: job.id, schedule: job.cron, recurring: job.recurring === true, prompt: truncateHookText(job.prompt) })) };
   };
   // Factories close over registries but access them only on execution. Bind methods
   // to their real instance lazily so constructing schemas installs no resources.
@@ -696,6 +724,7 @@ export async function createRuntime(
       hookOptions: () => callbackHooks(),
       terminalSequence: childTerminal,
       instructionFiles: childInstructions,
+      stopState: () => stopStateForOwner(owner),
       enableAdvanced: current.features?.agentTypes === true, agentTypes: current.agentTypes, childEnvironmentFactory,
       onNotification: event => {
         if (ownerScopes.get(owner) !== scope) return;
@@ -799,6 +828,7 @@ export async function createRuntime(
         hookOptions: () => callbackHooks(),
         terminalSequence: childTerminal,
         instructionFiles: childInstructions,
+        stopState: () => stopStateForOwner(owner),
         enableAdvanced: current.features?.agentTypes === true, agentTypes: current.agentTypes, childEnvironmentFactory,
       }));
     }
@@ -972,9 +1002,11 @@ export async function createRuntime(
         const tools = buildTools(current, owner);
         return executeSkill(skill, args, { config: current, provider, tools, signal: invocationSignal,
           source: 'user', registry: agentAccessors.get(tools)?.(), requestPermission, conversation, hookOptions: () => callbackHooks(),
-          terminalSequence: childTerminalCallbacks.get(tools), instructionFiles: childInstructionCallbacks.get(tools) });
+          terminalSequence: childTerminalCallbacks.get(tools), instructionFiles: childInstructionCallbacks.get(tools),
+          stopState: () => stopStateForOwner(owner) });
       },
       taskRecords(current) {if (closed) return []; return current.features?.tasks ? readTaskRecords(current.workspace) : [];},
+      stopState(owner) { return stopStateForOwner(owner); },
       subscribeTasks(current, listener) {
         if (closed || !current.features?.tasks) return () => {};
         const unsubscribe = subscribeTaskChanges(current.workspace, () => {if (!closed) listener();});
