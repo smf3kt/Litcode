@@ -1,0 +1,41 @@
+{
+ "schema": "W140GnoEngineReconEvidence.v1",
+ "package": "W140-01 — gno engine pipeline closure measurement",
+ "date": "2026-10-18",
+ "question": "How large is the recovered engine pipeline gno's dependency closure, and how should it be sliced?",
+ "answer": "204 top-level statements / 40,767 UTF-16 units in chunk-n3ykh62m.js, with 9 imported seams. The unported core is tree validation (Eur, 4,340 units), draw/link/row transforms (nIn, dno, kur, vur), and the handler cluster (qss, zss, Wss, Uss, Bss, Gss, Nss). Slicing starts with pure draw transforms, then handler dispatch, then validation, then pipeline wiring.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-n3ykh62m.js",
+  "gno": [283212, 284410],
+  "largest": {
+   "Eur": [262627, 266967],
+   "lur": [239459, 241244],
+   "M_": [231733, 232412],
+   "kur": [267903, 268419],
+   "vur": [267454, 267903]
+  }
+ },
+ "method": {
+  "parser": "acorn 8.15.0",
+  "sourceType": "module",
+  "closure": "transitive top-level function/variable declarations in the same module; imports reported as seams, not followed",
+  "coordinateUnit": "UTF-16 code units"
+ },
+ "totals": {
+  "statements": 204,
+  "units": 40767,
+  "importedSeams": ["P0", "aP", "RFe", "aJ", "sIt", "ilt", "t", "Ioe", "B3e"]
+ },
+ "slicePlan": [
+  "draw/base transforms: nIn, dno, kur, vur, FM, BM, HD, M_",
+  "handler dispatch: qss, zss, Wss, Uss, Bss, Gss, Nss, Pto, jss",
+  "validation: Eur and its table closure",
+  "pipeline wiring: gno, Pb, Mf, ls as the default RenderAnswerHost"
+ ],
+ "verification": {
+  "focused": "139/139",
+  "full": "2241/2241",
+  "identity": "a118ac44f41612af092975ea85f950a70c53ccd6e44a5ee3b22ff088db288549",
+  "productChange": "none"
+ }
+}

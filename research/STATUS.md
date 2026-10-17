@@ -2520,3 +2520,13 @@ now a helper shared by the JSON protocol and the PostCompact branch, which parse
 for that effect; context, system message, suppression and hook-specific output stay unread.
 Focused 139/139, full 2241/2241, tsc 0, build 0, notices 0, identity `a118ac44…`.
 [W139 record](ports/W139-postcompact-terminal-sequence.md).
+
+W140 measures the next C-12 subsystem, the engine pipeline `gno`, without changing the product.
+An acorn top-level closure over chunk-n3ykh62m.js finds 204 statements / 40,767 UTF-16 units:
+`gno` is 1,198 units with nine imported seams, and the unported core is tree validation `Eur`
+(4,340), the draw/link/row transforms `nIn`/`dno`/`kur`/`vur`, and the handler cluster
+`qss`/`zss`/`Wss`/`Uss`/`Bss`/`Gss`/`Nss`. Render-layer names already carried by W45-86..88 are
+excluded from the plan. The slices are draw transforms, handler dispatch, validation, then the
+default `RenderAnswerHost` wiring. Identity stays `a118ac44…`; baseline 139/139 focused and
+2241/2241 full.
+[W140 record](ports/W140-gno-engine-recon.md).
