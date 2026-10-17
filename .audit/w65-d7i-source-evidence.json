@@ -1,0 +1,69 @@
+{
+  "before": "98e4ff1",
+  "kind": "brief-mode surface removal (no ported bodies)",
+  "surface": "brief mode: the SendUserMessage tool (BriefTool), its prompt text, UI and attachment resolver, the three startup opt-in paths, the /config view picker, the ctrl+shift+b toggle, the transcript filters, and the chat-style view branch it drove",
+  "decisiveFact": "BriefTool.isEnabled() returned isBriefEnabled(), whose body is the same `feature('KAIROS') || feature('KAIROS_BRIEF')` ternary, so the tool is never enabled in this build and every reader is a constant fold",
+  "evidence": [
+    {
+      "file": "tools/BriefTool/BriefTool.ts",
+      "change": "deleted with prompt.ts, UI.tsx and attachments.ts (405 lines): the tool, its input/output schemas, the entitlement and activation gates whose ternary arms were already false, and the logEvent its activation emitted",
+      "sourceSha256": "5d55184c44c6a457b68d4b7eb73fe32dd07a5531f8b31ca7391104d275f3db18",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "constants/prompts.ts",
+      "change": "the brief system-prompt section removed (the conditional require pair, the systemPromptSection('brief') spread, getBriefSection(), and the proactive section's trailing interpolation, whose false arm was the empty string)",
+      "sourceSha256": "50897e9d8bec1a2fa9abfcdc7ea3ee5d3d5e1dbef71414aa1e4c1696e0604f08",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "components/Messages.tsx",
+      "change": "filterForBriefTool and dropTextInBriefTurns deleted (130 lines) with the three-tier filtering they fed, leaving the unfiltered list; the isBriefOnly prop and its two streaming suppressions removed",
+      "sourceSha256": "87f8d905c08055c868057343a1f77b9361ed6a5a767a888f6cf133ac9d6ccdbb",
+      "portSha256": "36fe23c507c77b794bf4e87bdae93020f85317a822172c185b4b95e33828f420",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "components/Spinner.tsx",
+      "change": "the brief branch removed from the SpinnerWithVerb wrapper (the wrapper's inner component takes its name), and BriefSpinner with BriefIdleStatus (139 lines) deleted; five imports only they used were pruned",
+      "sourceSha256": "c1a7ba047bc79dec408f12d74443ae9785f9c3c85e51e4aefcca0b4397b5d891",
+      "portSha256": "64ecfe77d10c558d223164549283697e260a844cc7c6c9e3bd62f87896bbaf62",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "main.tsx",
+      "change": "the --tools opt-in path, the defaultView opt-in path, the --brief option and maybeActivateBrief with its four call sites removed; initialIsBriefOnly leaves the initial state",
+      "sourceSha256": "eed51a5f1462882d3890cfd3805a365fc5a0a7496614781455ebe08c901c3a0a",
+      "portSha256": "c76def23576ee14503353a6f0f4a4d1053bdd71a5d8bc966746d9e54d7017cea",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/conversationRecovery.ts",
+      "change": "the resume classifier loses isTerminalToolResult, which asked whether the last tool_result came from SendUserMessage — both names null, so its answer was always false and its caller folds to the interrupted-turn arm",
+      "sourceSha256": "648e8f9b608b09d8e3854efafb7dbe756e4cd0eace5563d93d5f8a5be7ce345a",
+      "portSha256": "dd07e35cb487dcac927b01e61e1fad047069f9f98e78483315d78463e6d9b127",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "modules: tools/BriefTool/ (BriefTool.ts, prompt.ts, UI.tsx, attachments.ts) and utils/formatBriefTimestamp.ts; the UI.tsx.w54bak copy was quarantined to .audit/w65-d7i-baks/ before deletion",
+    "state: bootstrap/state.ts userMsgOptIn with both accessors; state/AppStateStore.ts isBriefOnly with its default; Tool.ts's isBriefOnly render option and UserToolSuccessMessage's pass-through",
+    "startup: main.tsx's --tools listing opt-in, the defaultView:'chat' opt-in, --brief, maybeActivateBrief (its guard was `if (!(feature('KAIROS') || feature('KAIROS_BRIEF'))) return`, so the function goes with its callers), and the proactive prompt's briefVisibility ternary",
+    "settings/keybindings: the defaultView schema entry, the /config view picker with its userMsgOptIn snapshot and Escape restore, the ctrl+shift+b binding, its action id and its handler (with ctrl+o's stuck-state escape hatch)",
+    "readers that named the tool by string: the transcript filters, the resume classifier, the permission-rule alias, the tool-search deferral bypass, and the two todo/task nags that suppressed themselves when it was present",
+    "the view: the chat-style 'You' label branch in HighlightedThinkingText with its timestamp formatter, the queue's brief padding (useBriefLayout through QueuedMessageContext), the brief gap/margin rules in PromptInput, the brief-only spinner and idle status, and the two theme keys (briefLabelYou, briefLabelClaude) with their 12 values"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweeps for the flag, the name constants, the opt-in state, the view symbols, the theme keys and the CLI option; the folded arms asserted textually (the spinner signature, the REPL import and deps, UserPromptMessage's JSX, HighlightedThinkingText's props, the queue padding, PromptInput's marginTop, Notifications' unwrapped TokenWarning, Messages' two streaming conditions, the resume classifier's body); import-graph orphan scan shows no new orphan; tsc log empty",
+  "remaining": "the PROACTIVE tick machinery next (feature('PROACTIVE') || feature('KAIROS') across ~15 files: the tick prompt, ScheduleCronTool/SleepTool enablement, sessionStorage's tick handling, the footer's next-tick display, print.ts's tick loop), then the replBridge* AppState leftovers with getRemoteControlAtStartup(), the session-ingress bearer surface, the model-call seams, the ~33 in-place CLI blocks, cli/transports/, and the dependency-pruning pass",
+  "notes": [
+    "the two `file`-command hits for --brief (BashTool/PowerShellTool readOnlyValidation) are GNU file's own flag, not this CLI's option, and stay",
+    "three prose comments still name the tool while documenting attachment and meta-message shapes (utils/messages/mappers.ts, utils/imagePaste.ts, utils/messages.ts); inert, kept"
+  ]
+}

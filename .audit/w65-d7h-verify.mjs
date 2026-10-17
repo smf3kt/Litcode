@@ -64,14 +64,15 @@ assert.match(fs.readFileSync(`${root}/screens/REPL.tsx`, "utf8"), /useScheduledT
 // 3. The `||` terms dropped as single terms; each expression keeps the rest of
 //    its shape.
 const spinner = fs.readFileSync(`${root}/components/Spinner.tsx`, "utf8")
-assert.match(spinner, /\(briefEnvEnabled \|\|\n      getFeatureValue_CACHED_MAY_BE_STALE\('tengu_kairos_brief', false\)\) &&\n    !viewingAgentTaskId\n  \) \{/)
+// The three `||`-term folds this step made in brief-mode readers (Spinner,
+// UserPromptMessage, BriefTool's two gates) were superseded by step 7i, which
+// removed the whole brief surface — one of the three files is gone and the other
+// two no longer carry the expression. Recorded here as the prediction step 7i
+// fulfilled; what stays checkable is that the folded terms stay absent.
+assert.doesNotMatch(spinner, /getKairosActive|briefEnvEnabled|getUserMsgOptIn/)
 const upm = fs.readFileSync(`${root}/components/messages/UserPromptMessage.tsx`, "utf8")
-assert.match(upm, /\? getUserMsgOptIn\(\) &&\n        \(briefEnvEnabled \|\|\n/)
-assert.match(upm, /isBriefOnly &&\n        !isTranscriptMode &&\n        !viewingAgentTaskId\n      : false/)
-const brief = fs.readFileSync(`${root}/tools/BriefTool/BriefTool.ts`, "utf8")
-assert.match(brief, /return feature\('KAIROS'\) \|\| feature\('KAIROS_BRIEF'\)\n    \? isEnvTruthy\(process\.env\.CLAUDE_CODE_BRIEF\) \|\|/)
-assert.match(brief, /\? getUserMsgOptIn\(\) && isBriefEntitled\(\)/)
-assert.doesNotMatch(brief, /kairosActive/)
+assert.doesNotMatch(upm, /getKairosActive|useBriefLayout|getUserMsgOptIn/)
+assert.equal(fs.existsSync(`${root}/tools/BriefTool/BriefTool.ts`), false, "step 7i removed the brief tool")
 
 // 4. The tools lost the budget constant, the schema field, the plumbing and the
 //    message branch; the ordering of the surviving branch is unchanged.

@@ -44,14 +44,16 @@ assert.doesNotMatch(tools, /SendUserFileTool|PushNotificationTool|SubscribePRToo
 assert.match(tools, /const SleepTool =\n  feature\('PROACTIVE'\) \|\| feature\('KAIROS'\)/)
 assert.match(tools, /const MonitorTool = feature\('MONITOR_TOOL'\)/)
 
-// Each reader keeps the arm the false flag produced.
+// Each reader keeps the arm the false flag produced. Two of the three were
+// themselves removed by step 7i with the whole brief surface (conversationRecovery's
+// matcher and ToolSearchTool's bypass both went with it), so what is checkable
+// here is the constant's absence from the one surviving reader.
 const messages = fs.readFileSync(`${root}/components/Messages.tsx`, "utf8")
-assert.match(messages, /const briefToolNames = \[BRIEF_TOOL_NAME\]\.filter\(/)
+assert.doesNotMatch(messages, /SEND_USER_FILE_TOOL_NAME|briefToolNames/)
 const recovery = fs.readFileSync(`${root}/utils/conversationRecovery.ts`, "utf8")
-assert.match(recovery, /return b\.name === BRIEF_TOOL_NAME \|\| b\.name === LEGACY_BRIEF_TOOL_NAME/)
+assert.doesNotMatch(recovery, /SEND_USER_FILE_TOOL_NAME/)
 const toolSearch = fs.readFileSync(`${root}/tools/ToolSearchTool/prompt.ts`, "utf8")
-assert.doesNotMatch(toolSearch, /isReplBridgeActive/)
-assert.match(toolSearch, /tool\.name === BRIEF_TOOL_NAME/)
+assert.doesNotMatch(toolSearch, /isReplBridgeActive|SEND_USER_FILE_TOOL_NAME/)
 
 // The notifChannel setting keeps its other (unflagged) name.
 const config = fs.readFileSync(`${root}/components/Settings/Config.tsx`, "utf8")

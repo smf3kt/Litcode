@@ -7,7 +7,7 @@
       "file": "tools.ts",
       "change": "the three flag-conditional requires and their pool entries removed; the neighbouring SleepTool/MonitorTool conditions untouched",
       "sourceSha256": "d59324ef85f2630475d918b33f41aff04c086761cd196af8c1f3115707544918",
-      "portSha256": "d6f8217c75d61e225966260d145aba00b9676f5ee785006452b250b353f5dd15",
+      "portSha256": "a7c3d316cd1198e5461e4555d66e237953e59ac722cfa025abe9f8a1d9ecadf9",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -20,7 +20,7 @@
       "file": "components/Settings/Config.tsx",
       "change": "the push-notification settings block and the notifChannel label's flag-on variant removed; the setting keeps the name its false-flag arm produced",
       "sourceSha256": "a415aa0dfdc18b882c22d7e7f8b6a90d81a95d3318e929e4b353a4c0573c3e01",
-      "portSha256": "777948ddd4293082ee974660fca9d39367c4fac86a92959a21dada8cc61c7106",
+      "portSha256": "21351bda27f9aa50b33441284cebf94bec214ad4ab9b4ae0ef58be25361c9e2a",
       "coordinateUnit": "utf16-half-open"
     }
   ],
