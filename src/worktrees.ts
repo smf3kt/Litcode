@@ -373,6 +373,39 @@ export class WorktreeManager {
     return gitDir;
   }
 
+  /** A `creating` reservation read under the store lock cannot belong to a live operation: every
+   *  create holds that lock across its Git mutations. The same cleanup as create's failure path
+   *  applies here. Git may already have registered the recorded directory (adopt it), or the work
+   *  may never have landed (drop the reservation when the recorded empty directory is unchanged and
+   *  the branch is absent). Everything else is retained for inspection. */
+  private async reclaimCreating(store: Store, repo: Repository, signal: AbortSignal): Promise<void> {
+    let changed = false;
+    const inventory = await this.inventory(signal);
+    for (const record of [...store.records]) {
+      if (record.state !== "creating") continue;
+      const target = this.target(record.name);
+      const item = inventory.find((entry) => entry.path === target);
+      if (item) {
+        if (item.branch !== record.branch) continue;
+        try { record.gitDir = await this.verify(record, item, repo, signal); record.state = "ready"; changed = true; }
+        catch { /* retain an unverifiable reservation */ }
+        continue;
+      }
+      if (inventory.some((entry) => entry.branch === record.branch)) continue;
+      const branch = await this.git(this.workspace, ["show-ref", "--verify", "--quiet", record.branch], signal);
+      if (branch.code !== 1) continue;
+      const remaining = statOrMissing(target);
+      if (remaining) {
+        if (!remaining.isDirectory() || remaining.dev !== record.directory.dev || remaining.ino !== record.directory.ino ||
+          fs.readdirSync(target).length) continue;
+        fs.rmdirSync(target);
+      }
+      store.records = store.records.filter((entry) => entry !== record);
+      changed = true;
+    }
+    if (changed) this.saveStore(store);
+  }
+
   async create(input: CreateWorktreeInput, signal?: AbortSignal): Promise<WorktreeInfo> {
     return this.operation(signal, async (active) => {
       const request = createSchema.parse(input);
@@ -386,6 +419,7 @@ export class WorktreeManager {
       const baseCommit = (await this.checkedGit(this.workspace,
         ["rev-parse", "--verify", "--end-of-options", `${baseRef}^{commit}`], active)).trim();
       return this.locked(repo, active, async (store) => {
+        await this.reclaimCreating(store, repo, active);
         const target = this.target(request.name);
         if (store.records.some((record) => record.name === request.name || record.branch === fullRef)) throw new Error("worktree name or branch is already owned");
         if (statOrMissing(target)) throw new Error("worktree destination already exists");
@@ -458,6 +492,7 @@ export class WorktreeManager {
       const request = removeSchema.parse(input);
       const repo = await this.repository(active);
       return this.locked(repo, active, async (store) => {
+        await this.reclaimCreating(store, repo, active);
         const record = store.records.find((entry) => entry.name === request.name);
         if (!record) throw new Error("worktree is not owned by this manager");
         const target = this.target(record.name);

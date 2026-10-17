@@ -1810,3 +1810,12 @@ the W04 residual for tagged staging while leaving the pre-W48 untagged files vis
 recovered durable checkpoint transaction is unobtainable (W04), this remains a recorded local
 extension. 21/21 checkpoint tests, full 2,081/2,081, both crash smokes pass with no staging
 residue; identity `f3419f9c…`. [W48 record](ports/W48-checkpoint-staging.md).
+
+W49-01 reconciles an interrupted create's reservation. A `creating` record cannot belong to a live
+operation when it is read under the store lock, because every create holds that lock across its Git
+mutations. `create` and `remove` now run the same cleanup create's failure path uses: a record
+whose directory Git registered under the recorded branch is verified and restored to `ready`; a
+record whose Git work never landed is dropped when its unchanged empty directory can be removed and
+the branch is absent; anything unverifiable is retained. `list` stays read-only. Two new worktree
+tests, 29/29 worktree, full 2,083/2,083, both smokes pass; identity `92d4ad84…`.
+[W49 record](ports/W49-worktree-reservation.md).

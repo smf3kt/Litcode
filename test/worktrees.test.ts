@@ -310,6 +310,37 @@ test("a store lock whose owner is dead is reclaimed; live and foreign locks stay
   await instance.close();
 });
 
+test("a creating record whose Git work landed is adopted and removable", async () => {
+  const root = repository(); const instance = manager(root);
+  await instance.create({ name: "adopt" });
+  const file = path.join(root, ".agent", "worktrees.json");
+  const store = JSON.parse(fs.readFileSync(file, "utf8"));
+  store.records[0].state = "creating"; store.records[0].gitDir = null;
+  fs.writeFileSync(file, JSON.stringify(store));
+  // A crash after `git worktree add` but before the final save leaves this shape; the next locked
+  // operation verifies the registration and restores the ready state instead of wedging the name.
+  await assert.rejects(instance.create({ name: "adopt" }), /already owned/);
+  assert.equal(state(root).records[0]!.state, "ready");
+  await instance.remove({ name: "adopt" });
+});
+
+test("a creating reservation whose Git work never landed is reclaimed", async () => {
+  const root = repository(); const instance = manager(root);
+  await instance.create({ name: "seed" });
+  const file = path.join(root, ".agent", "worktrees.json");
+  const store = JSON.parse(fs.readFileSync(file, "utf8"));
+  const ghost = tree(root, "ghost");
+  fs.mkdirSync(ghost, { mode: 0o700 });
+  const stat = fs.lstatSync(ghost);
+  store.records.push({ ...store.records[0], name: "ghost", branch: "refs/heads/harness/ghost",
+    directory: { dev: stat.dev, ino: stat.ino }, gitDir: null, state: "creating" });
+  fs.writeFileSync(file, JSON.stringify(store));
+  await instance.create({ name: "ghost" });
+  const records = state(root).records;
+  assert.deepEqual(records.map((record) => record.name).sort(), ["ghost", "seed"]);
+  assert.equal(records.find((record) => record.name === "ghost")!.state, "ready");
+});
+
 test("non-repository, subdirectory and unborn HEAD errors have no worktree side effects", async () => {
   const plain = temp();
   await assert.rejects(manager(plain).create({ name: "one" }), /failed/);
