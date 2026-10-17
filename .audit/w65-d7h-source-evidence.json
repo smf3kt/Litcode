@@ -27,14 +27,14 @@
       "file": "main.tsx",
       "change": "the --assistant option, the assistantModule stub, `let kairosEnabled`, the headless-state spread, the remote-control fold, the initialState field, the teamContext ternary and the assistant-mode comment block removed",
       "sourceSha256": "3f7184cabf268d8306d5496ca1ab8437882b86554bc0c34cb476539ceb09b77e",
-      "portSha256": "eed51a5f1462882d3890cfd3805a365fc5a0a7496614781455ebe08c901c3a0a",
+      "portSha256": "c76def23576ee14503353a6f0f4a4d1053bdd71a5d8bc966746d9e54d7017cea",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "bootstrap/state.ts",
       "change": "the kairosActive field, its default and both accessors removed — the accessors had no caller left once the ten readers folded",
       "sourceSha256": "7271d3454726fa40be154fd9bb5465fadfc1362e9fc9137fba9d010aa2a40ece",
-      "portSha256": "359021687c9bfd6cefca48caf04070b54cedd905766e9f932710a8878034965c",
+      "portSha256": "f633f321f4e4f89a69bfc53b63ca774270c455bee5aa4a3ba16ea880e8699321",
       "coordinateUnit": "utf16-half-open"
     }
   ],

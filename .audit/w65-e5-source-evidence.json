@@ -30,10 +30,10 @@
         1863,
         2043
       ],
-      "portSha256": "c1a7ba047bc79dec408f12d74443ae9785f9c3c85e51e4aefcca0b4397b5d891",
+      "portSha256": "64ecfe77d10c558d223164549283697e260a844cc7c6c9e3bd62f87896bbaf62",
       "portRange": [
-        23494,
-        23660
+        16299,
+        16465
       ],
       "coordinateUnit": "utf16-half-open",
       "mode": "port",
@@ -49,10 +49,10 @@
         2432,
         3391
       ],
-      "portSha256": "c1a7ba047bc79dec408f12d74443ae9785f9c3c85e51e4aefcca0b4397b5d891",
+      "portSha256": "64ecfe77d10c558d223164549283697e260a844cc7c6c9e3bd62f87896bbaf62",
       "portRange": [
-        23878,
-        24830
+        16683,
+        17635
       ],
       "coordinateUnit": "utf16-half-open",
       "mode": "port",
