@@ -2375,3 +2375,15 @@ the citation-drops-when-redaction-changes-its-URL rule is already the `web_searc
 decision. The disposition is item 7 of `ports/remaining-dispositions.md`; FEATURES and the
 three C-10 rows now read as closed. Last measured gates are W123's (full 2,194/2,194) and the
 identity is unchanged at `4149770c…`. [W124 record](ports/W124-c10-dispositions.md).
+
+W125-01 ports the original workflow script API. `workflow_run` now accepts `script` + `args`
+beside `tasks`: the first statement must be a pure-literal `meta` export, the body is
+await/yield/for-await rewritten, and it runs in a vm context with code generation disabled,
+Date/Math.random removed, intrinsics frozen and a copy generator at the boundary. Scripts call
+agent/parallel/pipeline/phase/log/console/budget/timers/args; agents spawn through the same
+AgentRegistry, a failed child records `[label] failed: …` and returns null, and the result is
+`{ result, agent_count, logs, failures, phases, duration_ms, error? }`. Journal/resume,
+`scriptPath`/named workflows, reattachment, automatic effect replay and `agent({schema})`
+remain out. Workflow family 42/42, tsc 0, build 0, full 2,203/2,203, chain 768/768, notices
+checked, index unchanged, identity `3f771f63…`.
+[W125 record](ports/W125-workflow-scripts.md).
