@@ -1,0 +1,204 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        6302,
+        6379
+      ],
+      "units": 77,
+      "bodySha256": "e8bc67b0b32e1e7d8099f5981f91919a476c779ce6a9eba9d058f6f90e40b890",
+      "note": "typed-text regex"
+    },
+    {
+      "module": "chunk-tvdq3hrk.js",
+      "sha256": "d425ee99ec3ed8d974bc6559b8483cf045cb98a23309866d96ed43e41cf433c5",
+      "range": [
+        6379,
+        6403
+      ],
+      "units": 24,
+      "bodySha256": "45866e299d7206b1edebec9ad0a0ba68ca25d4c16611269195ee4500071b0ca0",
+      "note": "typed-text test"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        450586,
+        450686
+      ],
+      "units": 100,
+      "bodySha256": "76e84c52f55de5fb7c667b49fcdc463c40e560d35fdc218459c657d668e6250c",
+      "note": "isTypedText"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        451414,
+        451598
+      ],
+      "units": 184,
+      "bodySha256": "449dbde890d7d3b5a8c87bdc7d306445f3472e1a60c36ccf88cb02e661dd9e59",
+      "note": "useSiteFields"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        451598,
+        452484
+      ],
+      "units": 886,
+      "bodySha256": "841c2f5cd0b349814b949410e29fa9676d2d7943e6fafcddfe608fc88e449e5b",
+      "note": "useInputFields"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        452484,
+        452663
+      ],
+      "units": 179,
+      "bodySha256": "a27abc4f73a77f3bda1ef8f1256b4a192d5302b73a426c5afa5b4649feff5c9d",
+      "note": "isFieldOwnKey"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        452663,
+        452750
+      ],
+      "units": 87,
+      "bodySha256": "9f26ab57ee144c9ee5298696e158bf660077cf5383aaf7a3f1854dbd07dfeb20",
+      "note": "isFieldText"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        452750,
+        453585
+      ],
+      "units": 835,
+      "bodySha256": "2e924c85bd2be001c007d1458cbaad758c65933f19ae7910e8f1662a0f48b362",
+      "note": "useKeysAheadOfRender"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        453782,
+        453812
+      ],
+      "units": 30,
+      "bodySha256": "2f993924f101083b7f89a7ef7414e15872c3460f99cbc57fcdbc660fbd6349fa",
+      "note": "optionText"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        453812,
+        453946
+      ],
+      "units": 134,
+      "bodySha256": "d9f3909d7fc93f50a858c1596b947c4fb3a5c7423bab58f98f7af60016d7f637",
+      "note": "select key handlers"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        453950,
+        456049
+      ],
+      "units": 2099,
+      "bodySha256": "565230dadea493602fe92d62eb95731248ca9e21ebce9f2f65cf6f4e3c4bdd88",
+      "note": "useSelectFields"
+    },
+    {
+      "module": "chunk-kjfwbh4w.js",
+      "sha256": "67018559b1d682a322cc8191a5a7f7fe1137ea8bd16e7f56c7a294e8af2c9858",
+      "range": [
+        45639,
+        45712
+      ],
+      "units": 73,
+      "bodySha256": "58ff7f54b4084fb987573a043d0c5920c4c409a722e02b4bcf7d1f2102538990",
+      "note": "selectFromTerminal"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        2336077,
+        2336117
+      ],
+      "units": 40,
+      "bodySha256": "6b0f20891fae1a29db9ef536e51a5e4752dd6c95f1a3f00775fac9859aa3aec2",
+      "note": "focusableAt"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        23446,
+        23642
+      ],
+      "units": 196,
+      "bodySha256": "a15599ef64585e91266f39fca7bc4b750a69e1767d97d272ba49e16f7dade9ff",
+      "note": "useControlledState"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        23642,
+        23686
+      ],
+      "units": 44,
+      "bodySha256": "c94d07cc00bdbbd8d2f9e3dfbe4cf6bdb3db4a13f958c2f7173c534777e9aae0",
+      "note": "function test"
+    },
+    {
+      "module": "chunk-yygmb66g.js",
+      "sha256": "93220b26616034b337ff622aa95b4125688626cc0a1a883c473f2703565d60b0",
+      "range": [
+        23686,
+        23730
+      ],
+      "units": 44,
+      "bodySha256": "5646f2409cf94018b4328118e51c56e437cf0d4b7c374ec361f714495cde63b8",
+      "note": "function test (updater)"
+    }
+  ],
+  "missing": []
+}
