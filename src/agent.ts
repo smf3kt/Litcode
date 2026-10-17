@@ -880,8 +880,17 @@ export class Agent {
         const calls = toolCalls(message);
         if (new Set(calls.map((call) => call.id)).size !== calls.length) throw new Error('Model returned duplicate tool call IDs');
         this.session.append({ kind: 'message', message, response });
-        await this.hook('MessageDisplay', { message: response.content, model: response.model }, signal);
-        text = response.content.filter((block) => block.type === 'text').map((block) => block.text).join('\n');
+        // Recovered MessageDisplay payload (`zir`, chunk-sfn1dbxq.js [2936136,2936500)) is
+        // `{turn_id, message_id, index, final, delta}`; the completed-message path raises one
+        // final delta (`WHo`, chunk-6ejn7q9s.js offset 100801) and `hookSpecificOutput.displayContent`
+        // replaces only what is displayed. This runtime has no per-token rewrite, so the whole
+        // completed text is the single final delta.
+        const originalText = response.content.filter((block) => block.type === 'text').map((block) => block.text).join('\n');
+        const display = originalText === '' ? undefined : await this.hook('MessageDisplay', {
+          turn_id: this.turnTiming?.uuid ?? this.session.id, message_id: randomUUID(),
+          index: 0, final: true, delta: originalText,
+        }, signal);
+        text = display?.displayContent ?? originalText;
         if (response.stop_reason === 'refusal') this.recordRefusal(response);
         if (calls.length) {
           if (this.session.config.stopHookBlockCap !== undefined && this.session.config.stopHookBlockCap > 0) {

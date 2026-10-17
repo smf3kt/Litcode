@@ -453,6 +453,28 @@ test("TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects", as
   } finally { session.close(); }
 });
 
+test("MessageDisplay receives the recovered delta fields and rewrites only the displayed text", async () => {
+  const root = workspace();
+  const capture = path.join(root, "message-display.jsonl");
+  const hooks = { MessageDisplay: [{ command: `cat >> ${shellQuote(capture)}; ${emit({ hookSpecificOutput: {
+    hookEventName: "MessageDisplay", displayContent: "rewritten display" } })}` }] };
+  const provider = new ScriptedProvider([response([{ type: "text", text: "original text" }])]);
+  const session = Session.open(root, { config: config(root, [], { hooks }) });
+  try {
+    const result = await new Agent(session, provider, []).run("say something");
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.hook_event_name, "MessageDisplay");
+    assert.match(String(payload.turn_id), /^[0-9a-f-]{36}$/);
+    assert.match(String(payload.message_id), /^[0-9a-f-]{36}$/);
+    assert.equal(payload.index, 0);
+    assert.equal(payload.final, true);
+    assert.equal(payload.delta, "original text");
+    assert.equal(result.text, "rewritten display");
+    assert.match(JSON.stringify(session.messages), /original text/);
+    assert.doesNotMatch(JSON.stringify(session.messages), /rewritten display/);
+  } finally { session.close(); }
+});
+
 test("PreCompact receives custom instructions and hook stdout becomes Additional Instructions", async () => {
   const root = workspace();
   const capture = path.join(root, "pre-compact.jsonl");

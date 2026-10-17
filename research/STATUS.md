@@ -2065,3 +2065,12 @@ the duplicate `Hook context:` block but still reaches other consumers through
 `additionalContext`. `agent-lifecycle` 31/31, tsc 0, build 0, full
 2,116/2,116, chain 767/767, identity `e3257471…`.
 [W87 record](ports/W87-precompact-instructions.md).
+
+W88-01 ports the MessageDisplay contract. The agent raises
+`{turn_id, message_id, index: 0, final: true, delta}` once per completed
+message (the source's completed-message path), and
+`hookSpecificOutput.displayContent` replaces the turn's displayed text while the
+stored message and model view keep the original. Per-token delta rewriting is
+not replicated; the whole completed text is the single final delta.
+`agent-lifecycle` 32/32, tsc 0, build 0, full 2,117/2,117, chain 767/767,
+identity `9088606a…`. [W88 record](ports/W88-message-display.md).
