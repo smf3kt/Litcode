@@ -29,6 +29,50 @@ export function qt<T>(defaultValue: T): SurfaceContext<T> {
 export const s = 'Box';
 export const n = 'Text';
 
+/** Source `X` (chunk-d5st5fww.js) and `Zc` (chunk-kexg5hxg.js): `Symbol.for("react.fragment")`,
+ *  the transparent group a component returns around sibling children. */
+export const fragment = Symbol.for('react.fragment');
+
+/** Source `bn` (chunk-txt1tvjz.js): `Symbol.for("react.early_return_sentinel")`, the marker a
+ *  component uses to distinguish "memo is empty" from the value it computed. */
+export const earlyReturn = Symbol.for('react.early_return_sentinel');
+
+/** Source `em` (chunk-kexg5hxg.js `D`): whether a value is a rendered element. Elements here are
+ *  the `{type, props, children}` records `Xe`/`Tc` build. */
+export function isValidElement(value: unknown): value is SurfaceElement {
+  return typeof value === 'object' && value !== null && 'type' in value && 'props' in value;
+}
+
+function flattenChildren(children: unknown): unknown[] {
+  return (children === undefined ? [] : [children].flat(Infinity))
+    .filter((child) => child !== null && child !== undefined && typeof child !== 'boolean')
+    .map((child) => typeof child === 'number' ? String(child) : child);
+}
+
+/** Source `xy` (chunk-kexg5hxg.js `Wt`): `React.Children`. `toArray` flattens the child tree and
+ *  drops the entries React does not render; the elements already carry the keys `Xe` assigned, so
+ *  no key prefixing is needed here. */
+export const Children = {
+  toArray(children: unknown): unknown[] {
+    return flattenChildren(children);
+  },
+  map<T>(children: unknown, fn: (child: unknown, index: number) => T): T[] {
+    return flattenChildren(children).map(fn);
+  },
+  forEach(children: unknown, fn: (child: unknown, index: number) => void, thisArg?: unknown): void {
+    flattenChildren(children).forEach((child, index) => fn.call(thisArg, child, index));
+  },
+  count(children: unknown): number {
+    return flattenChildren(children).length;
+  },
+  only(children: unknown): SurfaceElement {
+    if (!isValidElement(children)) {
+      throw new Error('React.Children.only expected to receive a single React element child.');
+    }
+    return children;
+  },
+};
+
 export interface SurfaceElement {
   type: unknown;
   props: Record<string, unknown>;
@@ -53,20 +97,19 @@ export interface SurfaceNode {
  *  passes children either after the props or as `props.children`; both forms are read here. */
 export function Tc(type: unknown, props?: Record<string, unknown> | null, ...children: unknown[]): SurfaceElement {
   const held = children.length > 0 ? children : props?.children;
-  const list = (held === undefined ? [] : [held].flat(Infinity))
-    .filter((child) => child !== null && child !== undefined && typeof child !== 'boolean')
-    .map((child) => typeof child === 'number' ? String(child) : child);
-  return { type, props: props ?? {}, children: list };
+  return { type, props: props ?? {}, children: flattenChildren(held) };
 }
 
 /** Source `e`/`r` (react/jsx-runtime `jsx`/`jsxs`): the compiler's own element factory. Children
  *  travel inside `props.children`; the third argument is the element key, not a child. */
 export function Xe(type: unknown, props?: Record<string, unknown> | null, key?: unknown): SurfaceElement {
   const held = props?.children;
-  const list = (held === undefined ? [] : [held].flat(Infinity))
-    .filter((child) => child !== null && child !== undefined && typeof child !== 'boolean')
-    .map((child) => typeof child === 'number' ? String(child) : child);
-  return { type, props: props ?? {}, children: list, key: key === undefined ? null : String(key) };
+  return {
+    type,
+    props: props ?? {},
+    children: flattenChildren(held),
+    key: key === undefined ? null : String(key),
+  };
 }
 
 export interface EffectSlot {

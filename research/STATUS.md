@@ -2894,3 +2894,16 @@ column. BF is host glue over the already-ported O with the three macOS terminal 
 pt and Se still need their ui/ma/bn dependencies. Focused 7/7, full 2501/2501, tsc 0, build 0,
 notices 0, scan declared 49 / unresolved 0, identity `c16a1aa9…`.
 [W166 record](ports/W166-chord-chrome.md).
+
+W167 added the DiffDialog key hints (8 copied blocks, 2,109 UTF-16 units). `ma` from
+chunk-z3f0m1q8.js resolves an action and context against `Lc().bindings` through `A9t`; a later
+binding of the same context and chord shadows the earlier action and displays "", an unbound
+action answers the fallback and reports one `action_not_found` or `no_context` event through
+`vot`. `E1` (with `je`/`de`) joins the key records with spaces, aliasing alt and meta and naming
+known keys and arrows; `Ke`, `V` and `eLe` are the duplicate and equality tests. `pt` renders the
+resolved chord through the W166 chord hint, and `Se` filters empty children, joins the rest with
+a dim middle dot and returns a fragment, or null when every child is empty. The React seam gained
+the source fragment and early-return symbols, `Children` and `isValidElement`. The loading
+spinner `Mr` still waits on the animation subsystem. Focused 8/8, full 2509/2509, tsc 0,
+build 0, notices 0, scan declared 39 / unresolved 0, identity `fd02b3a0…`.
+[W167 record](ports/W167-key-hints.md).
