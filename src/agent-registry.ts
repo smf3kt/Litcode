@@ -10,6 +10,7 @@ import { CLAMPED_SHELL_TOOLS, normalizeBashCommandClamp, normalizeDisallowedTool
 import { capChildOutput, childConfig, selectChildTools, createChildHookLifecycle, advancedChildFields, advancedChildProperties,
   resolveChildLaunch, forkMessages, validateChildEnvironment, type ChildHookOptions, type AdvancedChildOptions,
   type ChildEnvironmentLease, type ChildLaunchOptions } from './subagents.js';
+import { scrubSubagentOutput } from './subagent-output-scrub.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import { compileStructuredOutputSchema, formatSchemaIssues, STRUCTURED_OUTPUT_RETRY_LIMIT, STRUCTURED_OUTPUT_SUCCESS,
   STRUCTURED_OUTPUT_SYSTEM_NOTE, STRUCTURED_OUTPUT_TOOL_NAME, STRUCTURED_OUTPUT_TOOL_PROMPT,
@@ -547,7 +548,11 @@ export class AgentRegistry {
         child.view.summary = field(result.text, this.limits.maxOutputBytes);
         if (child.structured !== undefined) {
           if (child.structured.value !== undefined) {
-            child.view.structured_output = child.structured.value;
+            // Source `ups` call site (chunk-hedqf2m1.js [73056)): reserved-key strip and scrub
+            // before the structured result is exposed.
+            child.view.structured_output = scrubSubagentOutput(child.structured.value, {
+              reservedKeys: ['webFetchSavedFiles'],
+            }).value;
             delete child.view.structured_error;
           } else {
             const structuredError = child.structured.capError ?? child.structured.lastError;

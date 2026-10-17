@@ -1,0 +1,280 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33"
+    },
+    {
+      "module": "chunk-phm7wwmz.js",
+      "sha256": "40e46cb899d8e325ee27e23dca0b298833a9b246ca314a282f860e768e6baf12"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        723,
+        24080
+      ],
+      "units": 23357,
+      "bodySha256": "91d8642e3734d51ea60be72c4d7bfd341ba8047bc576dcc26402062effd4a74f",
+      "note": "confusable latin letter map I used by RB"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        24502,
+        26432
+      ],
+      "units": 1930,
+      "bodySha256": "c9f0811aae5cc94fde5578a2c1be5f318dc8eec54ba8db56b71869ff739717d8",
+      "note": "invisible/combining/quote/punctuation classes and the tag delimiter table b"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        26432,
+        26473
+      ],
+      "units": 41,
+      "bodySha256": "5511b39f4520e608249296698eb8f18a386498684ff420d9cd805aa60660f050",
+      "note": "xdt invisible pattern"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        26521,
+        26571
+      ],
+      "units": 50,
+      "bodySha256": "797883fc1e963f96ec5503f697cd770e635622963649e162f975bb6c267c76a0",
+      "note": "J$e lookahead wrapper"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        26571,
+        26605
+      ],
+      "units": 34,
+      "bodySha256": "ef4ff11f87a38a952de40ae770171b898179dd920005df90dd12cd858f8123ab",
+      "note": "$0t fill run lookahead"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        26605,
+        26625
+      ],
+      "units": 20,
+      "bodySha256": "87d096436c4a4e2d583c87ebb2f79ed276c9df33682c33cc4d163fbdf1407f7c",
+      "note": "tag pattern cache x and its bound eu"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        26625,
+        26831
+      ],
+      "units": 206,
+      "bodySha256": "e7085f5875ab672bf57cbc84302e72cabcc1837563854969a29a5419a0ab33ee",
+      "note": "w cached single-tag pattern"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        26831,
+        27150
+      ],
+      "units": 319,
+      "bodySha256": "9782808c5d6b75372753cf6f85b12f62a24aaa41b136dfa4ac98307a48d48949",
+      "note": "K tag-pattern builder"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        27528,
+        29579
+      ],
+      "units": 2051,
+      "bodySha256": "8b0bcb6f5b6693d1913cac08732abd752fd7fc6974ab9e9b2e1e3daa57d2b82e",
+      "note": "confusable table M and fu"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        29579,
+        29676
+      ],
+      "units": 97,
+      "bodySha256": "b304fcd268b788e40c0c1ec796461c18a0611069f902c63209e91b6e4075c91c",
+      "note": "XQ NFKC + confusable fold"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        29676,
+        29728
+      ],
+      "units": 52,
+      "bodySha256": "f59777060c8dbfa11b359a8af6d8f0341812e446dec21333a1cf3deb0ba08e48",
+      "note": "nu NFKD + mark strip"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        29728,
+        29765
+      ],
+      "units": 37,
+      "bodySha256": "1030c49e1602c4da2d4154a9b25f56a6c39f13e0cf9db6907faec9b2d760f79b",
+      "note": "PAr ascii alphabet"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        29765,
+        29900
+      ],
+      "units": 135,
+      "bodySha256": "9530f3f886501d72757d00a2c984826d2846d549831372d4dfbf7217b9f8e106",
+      "note": "RB latin letter confusable class"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        29900,
+        30245
+      ],
+      "units": 345,
+      "bodySha256": "f36579d62d2484c6b53dc7f3d90d7e1b9d88bc3c095cd2d492da580b3bb0de9a",
+      "note": "EO tag matcher"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        30245,
+        30276
+      ],
+      "units": 31,
+      "bodySha256": "358db364adb547fed029664da8e45b4efe5b096d3eb9fc93d569faf0bf2e9c6f",
+      "note": "wxe neutralize"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        30276,
+        30318
+      ],
+      "units": 42,
+      "bodySha256": "c4c8ca1d276c0042846a5c3d23a6cc61bc4f1d8f126c445dc5c600d155fe7fbb",
+      "note": "f2n channel tag pattern"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        30318,
+        30528
+      ],
+      "units": 210,
+      "bodySha256": "c398518e418bd3e68c2faa1faef156555e97be69169eb63e3509f87e50973c1c",
+      "note": "Uwo source-assignment tail"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        30528,
+        30544
+      ],
+      "units": 16,
+      "bodySha256": "0cbac296e71fe140a0ecc92115d04d0c03e11d8c19394f79f6a95ade10d74472",
+      "note": "Bwo antml tag name"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        30544,
+        30598
+      ],
+      "units": 54,
+      "bodySha256": "4628f0b1da39040fa0b6f8a0182da19028719e00c5df364846be9f5aaff2b1ac",
+      "note": "m2n model-layer tag pattern"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        33610,
+        34257
+      ],
+      "units": 647,
+      "bodySha256": "edc744e4ccf386333aa0d60913724895f7536d84fef4eb4522cca2ee559ef414",
+      "note": "bracket classes, fillers, separators and the tag-name bound Z"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        34257,
+        34370
+      ],
+      "units": 113,
+      "bodySha256": "0f80008c55a5bcfeae62fda02b01372efbe81478fbbbe10124adbd8ee40ada97",
+      "note": "$u bracket-fill lookahead"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        34370,
+        34565
+      ],
+      "units": 195,
+      "bodySha256": "8cc52d3c0351574364af027f179427ba903a350058678d130bc512258086ab1f",
+      "note": "lead filler mu and the lead token symbols"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        34565,
+        35638
+      ],
+      "units": 1073,
+      "bodySha256": "006d5206c4f54f13f1c1e4343263d806fe662d192f78858a8dc23e4783b3229d",
+      "note": "RRs bracketed lead pattern builder"
+    },
+    {
+      "module": "chunk-phm7wwmz.js",
+      "sha256": "40e46cb899d8e325ee27e23dca0b298833a9b246ca314a282f860e768e6baf12",
+      "range": [
+        31823,
+        32868
+      ],
+      "units": 1045,
+      "bodySha256": "727052ce833aa49c89ee36627b801a96c5d2b81f8838536b79a749cb4cd1fbc1",
+      "note": "Kkr artifact lead table"
+    }
+  ],
+  "missing": []
+}

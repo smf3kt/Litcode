@@ -2998,3 +2998,15 @@ false for the local-only build, `PMr` binds the W163 diff view through `DiffData
 reuses the W164 accumulator, and `Fvn` is a telemetry no-op. The C-2 diff chain (W161-W173) is
 complete. Focused 11/11, full 2576/2576, tsc 0, build 0, notices 0, scan 130 unresolved 0,
 identity `ada4a1c6…`. [W173 record](ports/W173-dialog.md).
+
+W174 ported the structured subagent output scrub (40 copied blocks, 44,268 UTF-16 units). `ups`
+normalizes reserved keys, removes them from every object and counts them, renames colliding scrubbed
+keys with `_2`, and runs every string and key through the control-tag table (`system-reminder`, the
+harness envelope/signal tags, channel source tags, marker/max-turns/frame-prefix forgery, the bound
+`RRs(Kkr())` artifact lead and the model-layer tag), the escalation patterns and the silent
+`Human:`/`Assistant:` turn marker. `flag` reports without rewriting, `neutralize` rewrites, and
+`neutralize-silent` rewrites without reporting. The registry applies the scrub on the schema-mode
+completion path with the source reserved key `webFetchSavedFiles`. Host bindings use whole-string
+NFKC/NFKD, a Map memoize, the configuration fallback, the empty-prototype environment and a lazy
+`RRs(Kkr())` lead. Focused 55/55, full 2584/2584, tsc 0, build 0, notices 0, scans 73/99/47
+unresolved 0, identity `73a647f3…`. [W174 record](ports/W174-scrub.md).

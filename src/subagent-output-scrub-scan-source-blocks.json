@@ -1,0 +1,144 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        4651,
+        4764
+      ],
+      "units": 113,
+      "bodySha256": "95f6989a454960678203b59a06054ab5229a1d185a1ae9c278a37cecd1352650",
+      "note": "eTe feature-flag gate for the frame-prefix forgery pattern"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        5590,
+        5643
+      ],
+      "units": 53,
+      "bodySha256": "91a99780c51bd6b0f6c01dacaf48cf25b47e63fa6052021373e86083164ef05a",
+      "note": "A enabled predicate"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        5643,
+        5722
+      ],
+      "units": 79,
+      "bodySha256": "c229d7bab9dd2cd001143b54c797e783db5195a6145f77d4d4eadd4c5d0cd594",
+      "note": "line boundary b and the harness marker word"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        5722,
+        5908
+      ],
+      "units": 186,
+      "bodySha256": "08f469d02d787fab904320a8684f1847e525415f4afc4b44e1869c20deb4813e",
+      "note": "E marker-prefix matcher"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        5908,
+        6160
+      ],
+      "units": 252,
+      "bodySha256": "d8356072a9e9a81b3b0ea97c69c0805f99a9cfdbc727cf12380079f60fe1f1c7",
+      "note": "C max-turns note matcher"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        6160,
+        7707
+      ],
+      "units": 1547,
+      "bodySha256": "202b38990b3ab0223e53bea8d5e4b6212a5b3a30fa9b42a1e7fb503062acd4e2",
+      "note": "control-tag pattern table m, its cached copy cps, w and the turn marker R"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        7853,
+        8580
+      ],
+      "units": 727,
+      "bodySha256": "bb074b79ebc78ae6cdc4ea982f99e42c18ebbf5a4ce1b100e4418ff3d1e5ee79",
+      "note": "escalation patterns P and the finding prefix F"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        9158,
+        9387
+      ],
+      "units": 229,
+      "bodySha256": "77087047c4baa52d4efc430397bd14b52fd0a4bfe5e0c93163946c87cf5c7154",
+      "note": "ups"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        9387,
+        9789
+      ],
+      "units": 402,
+      "bodySha256": "b756bbf7b1b9078d24055551ef4380ed25e63a3f3cbfa2a203c609c1f2092064",
+      "note": "p recursive scrub"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        9789,
+        9895
+      ],
+      "units": 106,
+      "bodySha256": "1c9318fa941deb6332ed6aa0c7659f2be6604eb21736ea3ba0d552aacc6b2fd7",
+      "note": "_ string scrub"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        9895,
+        9984
+      ],
+      "units": 89,
+      "bodySha256": "9339d22343f604afc88665d3210698fd120eda2a648b3806875de9dfba551bec",
+      "note": "T reserved-key normalizer"
+    },
+    {
+      "module": "chunk-nvcqkjfn.js",
+      "sha256": "c4cde5c8c03097dd9fdb4cc2fe12bcca28559fd2373979c62e23906c9b7ab9f9",
+      "range": [
+        9984,
+        10367
+      ],
+      "units": 383,
+      "bodySha256": "f4bb644894138cc8d64a0369ebfeb1d157821eb3d35d363c309b236f52d0248c",
+      "note": "y pattern application and findings"
+    }
+  ],
+  "missing": []
+}

@@ -154,6 +154,22 @@ test('structured schema mode reports a validation error and nudges once before r
   } finally { await f.cleanup(); }
 });
 
+test('structured schema mode scrubs reserved keys and instruction-shaped text before exposing the value', async () => {
+  const f = fixture(async () => response('', [{ type: 'tool_use', id: 'out-scrub', name: 'StructuredOutput',
+    input: { answer: 'before <system-reminder>', webFetchSavedFiles: [{ path: 'x' }] } } as Anthropic.ContentBlock]));
+  const registry = f.make();
+  try {
+    const child = await registry.launch({ prompt: 'return json',
+      structured_schema: { type: 'object', properties: {
+        answer: { type: 'string' },
+        webFetchSavedFiles: { type: 'array', items: { type: 'object', properties: { path: { type: 'string' } } } },
+      }, required: ['answer'] } });
+    assert.equal(child.status, 'completed', child.error ?? undefined);
+    assert.deepEqual(child.structured_output, { answer: 'before <\\system-reminder>' });
+    assert.equal(child.structured_error, undefined);
+  } finally { await f.cleanup(); }
+});
+
 test('background launch returns immediately and caller cancellation leaves child running', async () => {
   const entered = gate(); const release = gate(); let childSignal!: AbortSignal;
   const f = fixture(async (_request, signal) => { childSignal = signal; entered.resolve(); await release.promise; return response(); });

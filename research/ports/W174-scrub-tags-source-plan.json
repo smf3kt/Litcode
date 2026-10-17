@@ -1,0 +1,32 @@
+{
+  "imports": [
+    "import { normalizeNfkc as $Z, normalizeNfkd as D0s } from './subagent-output-scrub-host.js';"
+  ],
+  "exports": ["$0t", "EO", "J$e", "N5e", "Pdt", "RB", "X$e", "XQ", "f2n", "m2n", "wxe", "xdt", "RRs", "Kkr"],
+  "blocks": [
+    { "file": "chunk-ts42ykgs.js", "range": [723, 24080], "note": "confusable latin letter map I used by RB" },
+    { "file": "chunk-ts42ykgs.js", "range": [24502, 26432], "note": "invisible/combining/quote/punctuation classes and the tag delimiter table b" },
+    { "file": "chunk-ts42ykgs.js", "range": [26432, 26473], "note": "xdt invisible pattern" },
+    { "file": "chunk-ts42ykgs.js", "range": [26521, 26571], "note": "J$e lookahead wrapper" },
+    { "file": "chunk-ts42ykgs.js", "range": [26571, 26605], "note": "$0t fill run lookahead" },
+    { "file": "chunk-ts42ykgs.js", "range": [26605, 26625], "note": "tag pattern cache x and its bound eu" },
+    { "file": "chunk-ts42ykgs.js", "range": [26625, 26831], "note": "w cached single-tag pattern" },
+    { "file": "chunk-ts42ykgs.js", "range": [26831, 27150], "note": "K tag-pattern builder" },
+    { "file": "chunk-ts42ykgs.js", "range": [27528, 29579], "note": "confusable table M and fu" },
+    { "file": "chunk-ts42ykgs.js", "range": [29579, 29676], "note": "XQ NFKC + confusable fold" },
+    { "file": "chunk-ts42ykgs.js", "range": [29676, 29728], "note": "nu NFKD + mark strip" },
+    { "file": "chunk-ts42ykgs.js", "range": [29728, 29765], "note": "PAr ascii alphabet" },
+    { "file": "chunk-ts42ykgs.js", "range": [29765, 29900], "note": "RB latin letter confusable class" },
+    { "file": "chunk-ts42ykgs.js", "range": [29900, 30245], "note": "EO tag matcher" },
+    { "file": "chunk-ts42ykgs.js", "range": [30245, 30276], "note": "wxe neutralize" },
+    { "file": "chunk-ts42ykgs.js", "range": [30276, 30318], "note": "f2n channel tag pattern" },
+    { "file": "chunk-ts42ykgs.js", "range": [30318, 30528], "note": "Uwo source-assignment tail" },
+    { "file": "chunk-ts42ykgs.js", "range": [30528, 30544], "note": "Bwo antml tag name" },
+    { "file": "chunk-ts42ykgs.js", "range": [30544, 30598], "note": "m2n model-layer tag pattern" },
+    { "file": "chunk-ts42ykgs.js", "range": [33610, 34257], "note": "bracket classes, fillers, separators and the tag-name bound Z" },
+    { "file": "chunk-ts42ykgs.js", "range": [34257, 34370], "note": "$u bracket-fill lookahead" },
+    { "file": "chunk-ts42ykgs.js", "range": [34370, 34565], "note": "lead filler mu and the lead token symbols" },
+    { "file": "chunk-ts42ykgs.js", "range": [34565, 35638], "note": "RRs bracketed lead pattern builder" },
+    { "file": "chunk-phm7wwmz.js", "range": [31823, 32868], "note": "Kkr artifact lead table" }
+  ]
+}

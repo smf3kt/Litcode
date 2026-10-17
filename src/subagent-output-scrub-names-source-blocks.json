@@ -1,0 +1,56 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-gsnbskq4.js",
+      "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-gsnbskq4.js",
+      "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee",
+      "range": [
+        866,
+        1032
+      ],
+      "units": 166,
+      "bodySha256": "87952f94b10af071534bf6994f1cbb532d9df950ce9b4d0440dd4e56805c5c43",
+      "note": "artifact content envelope markers"
+    },
+    {
+      "module": "chunk-gsnbskq4.js",
+      "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee",
+      "range": [
+        2222,
+        8719
+      ],
+      "units": 6497,
+      "bodySha256": "fd3eb0511974bde582b39156873b80e60bea1892ad8104e015bfe89641120bdc",
+      "note": "artifact tag names and instruction texts, including pwe, cpt, m1e, g1e and OMt"
+    },
+    {
+      "module": "chunk-gsnbskq4.js",
+      "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee",
+      "range": [
+        8719,
+        9180
+      ],
+      "units": 461,
+      "bodySha256": "36905e14d008320bf64a0660faff2ce89dfe40f27c8b9f9d480020c74903be7d",
+      "note": "command, hook and notification tags, task ids and w8e"
+    },
+    {
+      "module": "chunk-gsnbskq4.js",
+      "sha256": "d3a5291c4b2208b78602b8cfe03d071dfd32c076a70bbd9cbe0276068ca300ee",
+      "range": [
+        9436,
+        10314
+      ],
+      "units": 878,
+      "bodySha256": "2d467680696a6c5017668e5ba8dc5b80c6620f91716c0a193cc6cadc65769b22",
+      "note": "harness signal tag names PD and y1e, and the control tag list d4"
+    }
+  ],
+  "missing": []
+}

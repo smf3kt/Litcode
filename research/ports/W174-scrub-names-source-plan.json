@@ -1,0 +1,10 @@
+{
+  "imports": [],
+  "exports": ["PD", "y1e", "d4"],
+  "blocks": [
+    { "file": "chunk-gsnbskq4.js", "range": [866, 1032], "note": "artifact content envelope markers" },
+    { "file": "chunk-gsnbskq4.js", "range": [2222, 8719], "note": "artifact tag names and instruction texts, including pwe, cpt, m1e, g1e and OMt" },
+    { "file": "chunk-gsnbskq4.js", "range": [8719, 9180], "note": "command, hook and notification tags, task ids and w8e" },
+    { "file": "chunk-gsnbskq4.js", "range": [9436, 10314], "note": "harness signal tag names PD and y1e, and the control tag list d4" }
+  ]
+}
