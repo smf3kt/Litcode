@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { permissionPolicySchema } from './permissions.js';
 import { forkSession, listSessions } from './sessions.js';
+import { startBackgroundSession } from './background-session.js';
 import { parseAttachmentCommand } from './media.js';
 import { checkpointConversation, previewRewind, applyRewind, type RewindPreview } from './rewind.js';
 import { recoverCheckpoint } from './checkpoints.js';
@@ -88,6 +89,7 @@ export const COMMAND_HELP = `/help       Show commands
 /continue   Resume an interrupted turn
 /compact    Summarize completed history
 /fork       Fork completed history into a new session
+/background [PROMPT]  Fork this session into a detached background task
 /rewind N   Branch conversation at completed turn N (files stay as they are)
 /checkpoint NAME  Associate a file snapshot with the current completed turn
 /checkpoint-recover  Resolve a proven interrupted restore; changed files stay preserved
@@ -1072,6 +1074,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
           await acceptNext(next, nextRuntime); announce();
           await startAgentSession(prompt === '/clear' ? 'clear' : 'fork');
+          continue;
+        }
+        if (/^\/background(?:\s|$)/.test(prompt)) {
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          const task = prompt.slice('/background'.length).trim();
+          const started = startBackgroundSession({ session, prompt: task });
+          output.write(`Backgrounded session ${started.sessionId}${started.pid === undefined ? '' : ` (pid ${started.pid})`}.\n`);
+          output.write(`Log: ${started.log}\nResume it with: litcode --resume ${started.sessionId}\n`);
           continue;
         }
         if (/^\/compact(?:\s|$)/.test(prompt)) {

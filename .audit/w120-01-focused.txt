@@ -1,0 +1,67 @@
+(node:31686) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ background seed takes the latest real user text and assistant line (0.741584ms)
+✔ background seed skips tool results, command records and local meta messages (0.085042ms)
+✔ background seed truncates in UTF-16 units without splitting a pair (0.089625ms)
+✔ startBackgroundSession forks the journal before spawning a detached headless child (104.686375ms)
+✔ a failed spawn removes the unused fork and reports the source failure text (136.288958ms)
+✔ an empty conversation without a prompt is refused with the source gate text (46.171083ms)
+(node:31687) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ interactive tasks, compact, fork and clear keep history and release every lock (276.993459ms)
+✔ context and effort commands count paired history and pin the new request effort (299.402167ms)
+✔ startup SessionStart watch paths register with the config watcher (53.201667ms)
+✔ PreModelSwitch deny and declined ask keep the model; an accepted ask switches it (237.294375ms)
+✔ thinking commands pin new sessions and preserve paired history for subsequent requests (181.119ms)
+✔ interactive rewind branches at a completed turn and preserves the original log (143.252833ms)
+✔ interactive clear, fork and exit run SessionEnd and release locks (308.498125ms)
+✔ fork blocks an unfinished turn and copies completed history into an independent log (40.682083ms)
+✔ /skills lists skills and /NAME runs a user-invocable skill (52.256542ms)
+✔ expansion hook is raised once before a skill run and its context reaches the fallthrough turn (45.818625ms)
+✔ a SessionStart initial message is queued before typed input (30.919334ms)
+✔ a blocked expansion prevents the skill from running (23.20275ms)
+✔ a suppressed expansion block omits the original prompt (21.873458ms)
+✔ config change sources follow the recovered settings and skill scopes (0.528833ms)
+✔ a pending permission prompt notifies after six seconds and can be cancelled (0.617042ms)
+✔ workspace relocation raises DirectoryAdded as a documented slash_command hook and displays its failure (54.381958ms)
+(node:31688) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ external journal preserves actual workspace config and real read/write tool routing (169.239834ms)
+✔ same id and storageRoot resume pinned actual workspace history and subsequent file tools (289.412541ms)
+✔ resume rejects another actual workspace even when its config and shared storage are supplied (89.074875ms)
+✔ resume checks original config fingerprint for model system tool schemas and runtime settings (117.926959ms)
+✔ external journal metadata fingerprint is independently validated on resume (39.980291ms)
+✔ storageRoot directory symlink uses its canonical anchor and resumes through either spelling (54.734916ms)
+▶ external storage rejects real and dangling .agent symlinks and non-directory .agent paths
+  ✔ symlink (18.481833ms)
+  ✔ dangling (14.725791ms)
+  ✔ file (7.194834ms)
+✔ external storage rejects real and dangling .agent symlinks and non-directory .agent paths (41.516ms)
+✔ missing or file storage roots fail before new-session or resume journal effects (41.351667ms)
+✔ external storage still requires canonical actual workspace config (62.756042ms)
+✔ a missing actual workspace is rejected before creating external storage metadata (10.213375ms)
+✔ external storage requires actual workspace to remain a directory (24.68875ms)
+✔ external storage grants no file-tool access through traversal absolute paths or symlinks (264.224417ms)
+✔ external journal records bounded real read output (83.884667ms)
+✔ omitted storageRoot keeps legacy checkout journal placement and resume behavior (26.907208ms)
+(node:31689) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ relocation copies completed epochs and records old/new path context without changing source (128.167834ms)
+✔ model, pinned instructions, token settings and feature configuration survive relocation (104.57325ms)
+✔ tools are rebuilt for target and pinned independently; subsequent files stay in target (95.392458ms)
+✔ compaction epochs and assistant response metadata are preserved (164.855208ms)
+✔ completed tool/hook effects remain history and never replay as journals or calls (162.832625ms)
+✔ unfinished conversations, tools, hooks and unpaired calls are rejected before builder or target writes (123.343292ms)
+✔ builder failures, duplicate schemas and invalid compaction budgets leave no target locks (30.68075ms)
+✔ history append failure releases new session lock and removes partial journal (71.030583ms)
+✔ canonical target aliases succeed and same/missing/file/symlink metadata targets fail (56.3635ms)
+✔ relocated journal resumes with pinned configuration and independent mutable history (160.4545ms)
+✔ source pinned configuration changes fail before relocation (33.915416ms)
+ℹ tests 50
+ℹ suites 0
+ℹ pass 50
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2207.361333

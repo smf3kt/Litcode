@@ -1,0 +1,124 @@
+{
+ "schema": "W120BackgroundForkEvidence.v1",
+ "package": "W120-01 — Background session fork",
+ "date": "2026-10-18",
+ "question": "How does the interactive command fork a session into a background task?",
+ "answer": "The seed walks the conversation backward for the latest real user text (or the explicit prompt) and the latest assistant line, skipping tool results, command records and local meta messages. The command writes a fork journal first, then spawns a detached headless child on --resume <forkId> <task> with stdout/stderr under .agent/background/<forkId>.log. A failed spawn removes the unused fork.",
+ "sourcePosition": {
+  "unit": "UTF-16 code units",
+  "handler": {
+   "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+   "offsets": [
+    38204
+   ]
+  },
+  "seed": {
+   "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+   "offsets": [
+    51242
+   ]
+  },
+  "spawnCore": {
+   "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+   "offsets": [
+    38766
+   ]
+  },
+  "helpers": {
+   "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+   "offsets": [
+    4432714,
+    4432935,
+    4433793,
+    4422125
+   ]
+  },
+  "truncate": {
+   "module": "extracted-v2/modules/chunk-ax7r0qj7.js",
+   "offsets": [
+    1128
+   ]
+  },
+  "commandTags": {
+   "module": "extracted-v2/modules/chunk-r2vtj1kh.js",
+   "offsets": [
+    164599
+   ]
+  }
+ },
+ "behavior": {
+  "explicitPromptWins": true,
+  "intentCap": 200,
+  "detailCap": 120,
+  "toolResultMessagesSkipped": true,
+  "commandRecordsSkipped": true,
+  "localMetaSkipped": true,
+  "forkWrittenBeforeSpawn": true,
+  "detachedHeadlessChild": true,
+  "failedSpawnRemovesFork": true,
+  "sessionJobRegistry": false,
+  "snapshotV5Copy": false,
+  "worktreeForkBriefing": false,
+  "carryOverCounts": false
+ },
+ "adaptations": [
+  "Local sessions always persist, so the source disabled-persistence gate and its text are unreachable.",
+  "No session background-job registry: the child is an ordinary detached headless CLI; no queued restart/adoption, job directory or snapshot copy.",
+  "No bgIsolation worktree briefing, carry-over counts or confirmation dialog.",
+  "The fork point is the completed history; the source accepts a transcript leaf uuid.",
+  "The child receives only the local CLI arguments; permission snapshots, allowed-tool lists, hooks and effort switches are not forwarded."
+ ],
+ "changes": [
+  {
+   "file": "src/background-session.ts",
+   "change": "seed port and fork-then-spawn module",
+   "sha256": "6cb2691fab071aaf681ee20e3976ca6ea42cbaeb70693b34d5a5f637b26310a9"
+  },
+  {
+   "file": "src/interactive.ts",
+   "change": "/background command and help line",
+   "sha256": "538ec4a8930110ed0cb1a97d0ec28251c29aac6b1fd8f37014c0cb71642e16c5"
+  },
+  {
+   "file": "test/background-session.test.ts",
+   "change": "seed, lineage, spawn and gate tests",
+   "sha256": "7f586e75f56507eeb1cdf3729ab10775982cfbb32f812764bdfd299181a78650"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-7 rows record W120",
+   "sha256": "d8f9c6800d1742813bf58d95f4961ef6830b5c2afceb196f8beb56b71b698a2e"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Session row records W120",
+   "sha256": "a84e768370462935131f8b2d2d2380cb939c015666560325f291e6dfb1f5a927"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W120-01 entry",
+   "sha256": "d35a802372776b0e73a881ce586a72adf15df7e163343d75cbdfba31ae9c6702"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W120-01 S-1..S-7 entry",
+   "sha256": "6f7660d70aa98fc6d9b3d38bb0a0ef59d6924ded101e521db2bdc1a09798ad55"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "focused": "50/50 (background-session, interactive, session-storage, workspace-session)",
+  "extended": "86/86",
+  "build": "exit 0",
+  "full": "2,177/2,177",
+  "chain": "768/768",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "5824092ad22db8938248dfd95e6fe3084bb74459da31358563656b95bfb986c4"
+ },
+ "residuals": [
+  "Cross-session discovery remains external."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-7 cross-session discovery remains external; the next ready local item is C-8 or C-10."
+}
