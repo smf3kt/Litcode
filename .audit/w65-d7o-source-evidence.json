@@ -57,7 +57,7 @@
       "file": "main.tsx",
       "change": "the messagingSocketPath local and its setup() argument go, the replay promotion folds to options.replayUserMessages alone, the --messaging-socket-path option is deleted, and the setup() parallelization comment loses its startUdsMessaging rationale",
       "sourceSha256": "40dc394e1240b5b0e20be922f82a74871553966c04be2c01111aadc15162cf41",
-      "portSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece",
+      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
       "coordinateUnit": "utf16-half-open"
     },
     {

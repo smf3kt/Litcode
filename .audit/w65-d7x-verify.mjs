@@ -120,11 +120,12 @@ assert.match(read("commands/plugin/ManageMarketplaces.tsx"), /!shouldSkipPluginA
 assert.match(main, /\.command\('doctor'\)/)
 assert.match(main, /\.command\('mcp'\)|\.command\('plugin'\)/)
 
-// 5. The config/settings/Config.tsx residue is the next step's surface.
-assert.match(config, /export function getAutoUpdaterDisabledReason/)
-assert.match(read("utils/settings/types.ts"), /autoUpdatesChannel: z/)
-assert.match(read("components/Settings/Config.tsx"), /getAutoUpdaterDisabledReason/)
-assert.match(main, /autoUpdatesChannel: \(getInitialSettings\(\)\.autoUpdatesChannel/)
+// 5. The config/settings/Config.tsx residue was the next step's surface; step
+// 7y later removed it, so the prediction is asserted as fulfilled.
+assert.doesNotMatch(config, /getAutoUpdaterDisabledReason|autoUpdatesChannel/)
+assert.doesNotMatch(read("utils/settings/types.ts"), /autoUpdatesChannel|minimumVersion/)
+assert.doesNotMatch(read("components/Settings/Config.tsx"), /getAutoUpdaterDisabledReason|autoUpdatesChannel/)
+assert.doesNotMatch(main, /autoUpdatesChannel/)
 
 // 6. Nothing was orphaned.
 const orphans = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})

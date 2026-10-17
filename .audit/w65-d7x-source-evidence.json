@@ -9,7 +9,7 @@
       "file": "main.tsx",
       "change": "the isAutoUpdaterDisabled import with its telemetry field, the assertMinVersion import and call, the migration import and call, the `claude update`/`claude install` blocks, the auto-updater wording in the doctor description and the autoupdate sequencing comment are removed",
       "sourceSha256": "87b29b2ab37fad88ea972480e19745095319203735949d5ee3813608c001215e",
-      "portSha256": "0169bb4c666ae7d0d9cfce4820e9b44284097c5bfa52839f716c42487b337ece",
+      "portSha256": "caadd5c479cce0c4623097bbf1b310b02f5c92b0cea79a2282385e264c118cc6",
       "coordinateUnit": "utf16-half-open"
     },
     {
@@ -65,7 +65,7 @@
       "file": "utils/config.ts",
       "change": "isAutoUpdaterDisabled is removed with its last reader, and shouldSkipPluginAutoupdate now tests NODE_ENV/DISABLE_AUTOUPDATER/getEssentialTrafficOnlyReason directly instead of calling it",
       "sourceSha256": "2e9a2179c344d08294b2cf3d8d5ed6f2eebc28cb3737fd82c034d8605c678c98",
-      "portSha256": "683c998fec889b1d3dfc1e7ff09a5b47b166600141b5258c1fb414917c0f1f17",
+      "portSha256": "50a7fb000a93fc732b0ced9e2728f33481cc2249ad0fb2dbefe0fea3efb148a0",
       "coordinateUnit": "utf16-half-open"
     },
     {
