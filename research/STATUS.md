@@ -1972,3 +1972,12 @@ An empty shown object with an empty answer is therefore admitted, and answer
 keys against an empty map refuse as `answers`. Three assertions added,
 interaction-tools 32/32, tsc 0, full 2,104/2,104, chain 767/767, identity
 `13f00168…`. [W77 record](ports/W77-question-map.md).
+
+W78-01 ports the recovered permissive skill argument names. `argumentNamesFrom`
+follows `$oe`: any non-empty string that is not all digits, from a
+whitespace-split string or an array, with duplicates kept; non-strings and other
+shapes are dropped. `expandSkill` filters names through it and escapes every
+name with the recovered `gl` before the replacement alternation, so dotted,
+plus and non-ASCII names substitute correctly; the session schema accepts the
+same form. `config`+`session` 70/70, tsc 0, full 2,105/2,105, chain 767/767,
+identity `1c2b556a…`. [W78 record](ports/W78-argument-names.md).

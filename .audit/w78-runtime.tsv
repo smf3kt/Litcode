@@ -1,0 +1,3 @@
+2026-10-17T20:10:00Z	package	W78-01 许可名/转义形式	$oe [435233,435431)、uHe [435534,436487)、QP 偏移 423443、gl [677,739)；argumentNamesFrom/escapeRegExp	非空非纯数字、空白切分/数组过滤、重复保留、最长优先+逐名转义；静默丢弃无效形状	config+session 70/70；tsc 0；build 0；全量 2,105/2,105；链 767/767
+2026-10-17T20:12:00Z	decision	W78-01 放宽名字并保留产品展开器	① 名字过滤按 $oe 而非标识符正则；② 展开前 gl 转义；③ 重复名取首次位置；④ 保留既有引号分词与单遍替换	残余：来源优先级、动态发现、效果日志崩溃恢复	.audit/w78-01-full.txt
+2026-10-17T20:15:00Z	verification	W78-01 验收：config+session 70/70、tsc 0、build 0、2,105/2,105、767/767	点号/加号/非 ASCII 名替换；重复名首位置；纯数字与空名丢弃；frontmatter 接受重复与许可名	notices 0；索引 75 chunks / 323,525 单位不变；identity 1c2b556a…（inputs c02b333c…、validation 8b0656ce…、build 51087c21…）

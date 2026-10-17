@@ -7,6 +7,7 @@ import { test } from "node:test";
 import {
   CONFIG_LIMITS,
   ConfigError,
+  argumentNamesFrom,
   expandSkill,
   loadProjectConfig,
   matchesConditionalRule,
@@ -669,6 +670,12 @@ test("expandSkill substitutes $ARGUMENTS and $1..$9 without re-scanning", () => 
   assert.equal(expandSkill(named, "alpha 'beta gamma'", quoted), "alpha|beta gamma|$targetSuffix|$target[0]|$target|alpha 'beta gamma'");
   assert.equal(expandSkill({ body: "$target_long", argumentNames: named.argumentNames }, "alpha", append), "");
   assert.equal(expandSkill({ body: "$target", argumentNames: ["target"] }, "$1", extended), "$1");
+  assert.deepEqual(argumentNamesFrom("a.b  2 x+y 名前"), ["a.b", "x+y", "名前"]);
+  assert.deepEqual(argumentNamesFrom(["1", "", "a.b", 5, null]), ["a.b"]);
+  assert.deepEqual(argumentNamesFrom({ name: "a" }), []);
+  assert.equal(expandSkill({ body: "$a.b|$a_b|$a+b|$名前", argumentNames: ["a.b", "a_b", "a+b", "名前"] }, "X Y Z W"),
+    "X|Y|Z|W");
+  assert.equal(expandSkill({ body: "$x", argumentNames: ["x", "x"] }, "A B"), "A");
 });
 
 // ---------------------------------------------------------------------------
@@ -720,7 +727,7 @@ test("skills retain optional invocation fields and validated flat command hooks 
 });
 
 test("known malformed skill fields fail with the manifest path", () => {
-  for (const header of ["aliases: [quick, quick]", "aliases: [bad::alias]", "aliases: [1]", "arguments: [target, target]", "arguments: [1]", "arguments: [bad.name]", "allowed-tools: [1]", "model: [x]", "effort: 3", "effort: extreme", "context: shared", "background: maybe", "user-invocable: 1", "metadata: [x]", "hooks:\n  Stop:\n    - unsupported-field: command\n      command: x"]) {
+  for (const header of ["aliases: [quick, quick]", "aliases: [bad::alias]", "aliases: [1]", "allowed-tools: [1]", "model: [x]", "effort: 3", "effort: extreme", "context: shared", "background: maybe", "user-invocable: 1", "metadata: [x]", "hooks:\n  Stop:\n    - unsupported-field: command\n      command: x"]) {
     withSandbox(root => {
       const workspace = path.join(root, "proj");
       const manifest = path.join(workspace, ".harness", "skills", "bad", "SKILL.md");
@@ -728,6 +735,22 @@ test("known malformed skill fields fail with the manifest path", () => {
       assert.throws(() => loadProjectConfig(workspace, { userDir: path.join(root, "user") }), (error: unknown) => error instanceof ConfigError && error.path === manifest);
     });
   }
+});
+
+test("skill argument names follow the recovered permissive filter", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj");
+    const manifest = path.join(workspace, ".harness", "skills", "names", "SKILL.md");
+    for (const [header, expected] of [
+      ["arguments: [target, target]", ["target", "target"]],
+      ["arguments: [1]", []],
+      ["arguments: [bad.name, 名前, a-b]", ["bad.name", "名前", "a-b"]],
+      ["arguments: 2", []],
+    ] as const) {
+      writeFile(manifest, `---\n${header}\n---\nBody`);
+      assert.deepEqual(loadProjectConfig(workspace, { userDir: path.join(root, "user") }).skills[0]!.argumentNames ?? [], expected);
+    }
+  });
 });
 
 test("scalar skill tool grants and quoted booleans remain compatible", () => {

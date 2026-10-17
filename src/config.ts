@@ -918,13 +918,7 @@ function loadSkill(skillDir: string, skillManifest: string, into: Map<string, Sk
     }
     skill.aliases = aliases.filter(value => value !== name);
   }
-  if (data.arguments !== undefined) {
-    const names = typeof data.arguments === "string" ? data.arguments.split(/\s+/).filter(Boolean) : data.arguments;
-    if (!Array.isArray(names) || names.length > 128 || names.some(value => typeof value !== "string" || !/^[A-Za-z_][A-Za-z0-9_-]{0,127}$/.test(value)) || new Set(names).size !== names.length) {
-      throw new ConfigError("skill arguments must contain up to128 unique identifier names", skillManifest);
-    }
-    skill.argumentNames = names;
-  }
+  if (data.arguments !== undefined) skill.argumentNames = argumentNamesFrom(data.arguments);
   if (data["allowed-tools"] !== undefined) {
     const raw = data["allowed-tools"];
     const values = typeof raw === "string" ? raw.split(",").map(value => value.trim()).filter(Boolean) : raw;
@@ -1371,6 +1365,18 @@ function quotedSkillArguments(value: string): string[] | undefined {
   return result;
 }
 
+/** Recovered `$oe` (chunk-sfn1dbxq.js [435233,435431)): names are non-empty non-digit strings. */
+export function argumentNamesFrom(value: unknown): string[] {
+  const valid = (item: unknown): item is string => typeof item === "string" && item.trim() !== "" && !/^\d+$/.test(item);
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(valid);
+  if (typeof value === "string") return value.split(/\s+/).filter(valid);
+  return [];
+}
+/** Recovered `gl` (chunk-ax7r0qj7.js [677,739)): escape a name for the replacement pattern. */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 /** Replace raw, zero-based indexed and one-based legacy forms in a single pass. */
 export function expandSkill(skill: string | { body: string; argumentNames?: readonly string[] }, args: string, options: { quotedArguments?: boolean; appendUnusedArguments?: boolean; extendedArguments?: boolean; argumentNames?: readonly string[] } = {}): string {
   const body = typeof skill === "string" ? skill : typeof skill?.body === "string" ? skill.body : "";
@@ -1380,10 +1386,10 @@ export function expandSkill(skill: string | { body: string; argumentNames?: read
   const fallback = trimmed === "" ? [] : trimmed.split(/\s+/);
   const positional = options.quotedArguments ? quotedSkillArguments(rawArgs) ?? fallback : fallback;
   let consumed = false;
-  const names = options.argumentNames ?? (typeof skill === "string" ? [] : skill.argumentNames ?? []);
-  if (names.length > 128 || names.some(value => !/^[A-Za-z_][A-Za-z0-9_-]{0,127}$/.test(value)) || new Set(names).size !== names.length) throw new Error("Invalid skill argument names");
-  const namedPositions = new Map(names.map((name, index) => [name, index]));
-  const named = [...names].sort((a, b) => b.length - a.length).join("|");
+  const names = argumentNamesFrom(options.argumentNames ?? (typeof skill === "string" ? [] : skill.argumentNames ?? []));
+  const namedPositions = new Map<string, number>();
+  names.forEach((name, index) => { if (!namedPositions.has(name)) namedPositions.set(name, index); });
+  const named = [...names].sort((a, b) => b.length - a.length).map(escapeRegExp).join("|");
   const basic = options.extendedArguments
     ? /(?<!\\)\\\$(?=\d|ARGUMENTS)|\$ARGUMENTS\[(\d+)\]|\$ARGUMENTS|\$(\d+)(?!\w)/g
     : /\$ARGUMENTS\[(\d+)\]|\$ARGUMENTS|\$([1-9])(?!\d)/g;
