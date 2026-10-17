@@ -395,6 +395,21 @@ test('report observers are cancellable and their failures surface', async () => 
   await assert.rejects(tools({ report: () => { throw new Error('observer failed'); } })('report_findings', findings), /observer failed/);
 });
 
+test('host answer annotations carry a shown preview and bounded notes', async () => {
+  const request = structuredClone(question);
+  request.questions[0].options[0].preview = '<div>A</div>';
+  request.questions[0].options[1].preview = '<div>B</div>';
+  const annotated: AskUserQuestionAnswer = { answers: [{
+    questionIndex: 0, selected: ['A'], annotations: { preview: '<div>A</div>', notes: '  keep the gutter  ' },
+  }] };
+  assert.deepEqual(JSON.parse(await tools({ ask: async () => annotated })('ask_user_question', request)), annotated);
+  const answerWith = (annotations: unknown) => tools({ ask: async () => ({ answers: [{ questionIndex: 0, selected: ['A'], annotations }] }) as AskUserQuestionAnswer });
+  await assert.rejects(answerWith({ preview: '<div>C</div>' })('ask_user_question', request), /annotation preview does not match a question preview/);
+  await assert.rejects(answerWith({ notes: 'x', token: 'y' })('ask_user_question', request), /invalid data/);
+  await assert.rejects(answerWith({ notes: 'x'.repeat(INTERACTION_LIMITS.annotationNotesChars + 1) })('ask_user_question', request), /invalid data/);
+  assert.deepEqual(JSON.parse(await answerWith({ notes: '' })('ask_user_question', request)).answers[0].annotations, { notes: '' });
+});
+
 test('invalid queue configuration fails immediately', () => {
   for (const options of [{ timeoutMs: 0 }, { timeoutMs: Infinity }, { timeoutMs: 600_001 }, { maxPending: 0 }, { maxPending: 65 }, { maxPending: 1.5 }]) {
     assert.throws(() => createInteractionTools(options), /Invalid interaction/);

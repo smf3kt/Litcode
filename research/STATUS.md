@@ -1908,3 +1908,11 @@ UTF-16 [8434,9556)), number min/max and defaultValue bounds, optional title, and
 to `"choice"` before dispatch (`K` [12694,12893)); `Q.check`'s unique-question-text rule applies
 in both modes, and custom schema messages now reach the caller. Four new cases, interaction-tools
 27/27, tsc 0, full 2,098/2,098, chain 767/767, identity `054cdd94…`. [W70 record](ports/W70-extended-questions.md).
+
+W71-01 ports per-answer annotations. A host answer may now carry `annotations: {preview?,
+notes?}`: notes are capped at 8192 (source `te`), unknown fields are refused, and a preview must
+exactly match one the question showed (the first `pe` arm). The source's normalized-equivalent
+preview arm depends on renderer helpers and stays with the renderer port; the source keys
+annotations by question text while the product carries them on the indexed answer. One new case,
+interaction-tools 28/28, tsc 0, full 2,099/2,099, chain 767/767, identity `3ed12d16…`.
+[W71 record](ports/W71-answer-annotations.md).
