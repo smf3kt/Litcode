@@ -35,7 +35,7 @@ test('interaction catalog exposes strict schemas and read-only flags without inv
 });
 
 test('ask delivers full questions and validates single, multiple and Other text answers', async () => {
-  const request: AskUserQuestionRequest = { questions: [question.questions[0], { ...question.questions[0], multiSelect: true }] };
+  const request: AskUserQuestionRequest = { questions: [question.questions[0], { ...question.questions[0], question: 'Which secondary implementation?', multiSelect: true }] };
   const result: AskUserQuestionAnswer = { answers: [
     { questionIndex: 0, selected: [], other: '  Custom choice\nwith details  ' },
     { questionIndex: 1, selected: ['B', 'A'], other: 'Additional preference' },
@@ -101,6 +101,69 @@ test('the html preview format rejects invalid fragments before host dispatch', a
   const plain = structuredClone(question);
   plain.questions[0].options[0].preview = 'plain text';
   await opaque('ask_user_question', plain);
+});
+
+test('extended questions forward text and number kinds with the source defaults', async () => {
+  const run = tools({ extendedQuestions: true, ask: async received => {
+    assert.equal(received.title, 'Deck setup');
+    assert.deepEqual(received.questions.map(item => item.kind), ['text', 'number', 'choice']);
+    assert.deepEqual(received.questions[0].options, []);
+    assert.equal(received.questions[0].placeholder, 'e.g. retro');
+    assert.equal(received.questions[1].min, 1);
+    assert.equal(received.questions[1].max, 10);
+    assert.equal(received.questions[1].step, 2);
+    assert.equal(received.questions[1].defaultValue, 3);
+    assert.equal(received.questions[1].unit, 'slides');
+    assert.equal(received.questions[2].multiSelect, false);
+    return { answers: [
+      { questionIndex: 0, selected: [], other: 'retro' },
+      { questionIndex: 1, selected: [], other: '3' },
+      { questionIndex: 2, selected: ['A'] },
+    ] };
+  } });
+  const result = JSON.parse(await run('ask_user_question', {
+    title: 'Deck setup',
+    questions: [
+      { question: 'What style?', kind: 'text', placeholder: 'e.g. retro' },
+      { question: 'How many slides?', kind: 'number', min: 1, max: 10, step: 2, defaultValue: 3, unit: 'slides' },
+      { question: 'Which approach?', options: [{ label: 'A', description: 'First' }, { label: 'B', description: 'Second' }] },
+    ],
+  }));
+  assert.deepEqual(result.answers.map((item: { other?: string; selected: string[] }) => item.other ?? item.selected), ['retro', '3', ['A']]);
+});
+
+test('extended questions enforce the recovered per-kind rules with their messages', async () => {
+  const run = tools({ extendedQuestions: true, ask: async () => { throw new Error('host must not run'); } });
+  const ask = (item: unknown) => run('ask_user_question', { questions: [item] });
+  await assert.rejects(ask({ question: 'Q?', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], placeholder: 'x' }),
+    /placeholder applies only to "text" questions\./);
+  await assert.rejects(ask({ question: 'Q?', options: [{ label: 'A', description: 'a' }] }),
+    /A choice question needs 2-4 options; use kind "text" for an open-ended question\./);
+  await assert.rejects(ask({ question: 'Q?', kind: 'text', options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }] }),
+    /A "text" question takes no options; remove them or omit kind to ask a choice question\./);
+  await assert.rejects(ask({ question: 'Q?', kind: 'text', multiSelect: true }),
+    /multiSelect applies only to choice questions, not "text"\./);
+  await assert.rejects(ask({ question: 'Q?', kind: 'number', max: 10 }),
+    /A number question needs numeric min and max with min < max\./);
+  await assert.rejects(ask({ question: 'Q?', kind: 'number', min: 5, max: 5 }),
+    /A number question needs numeric min and max with min < max\./);
+  await assert.rejects(ask({ question: 'Q?', kind: 'number', min: 1, max: 10, defaultValue: 11 }),
+    /defaultValue must lie within min\.\.max\./);
+  await assert.rejects(ask({ question: 'Q?', kind: 'number', min: 1, max: 10, step: 0 }),
+    /invalid data at questions\.0\.step/);
+});
+
+test('extended fields and titles stay rejected unless the host enables them', async () => {
+  const run = tools({ ask: async () => answer });
+  await assert.rejects(run('ask_user_question', { title: 'Heading', questions: [question.questions[0]] }), /invalid data/);
+  await assert.rejects(run('ask_user_question', { questions: [{ ...question.questions[0], kind: 'text' }] }), /invalid data/);
+});
+
+test('question texts must be unique across a call, as the recovered check requires', async () => {
+  const run = tools({ ask: async () => answer });
+  const repeated = { ...question.questions[0] };
+  await assert.rejects(run('ask_user_question', { questions: [repeated, repeated] }),
+    /Question texts must be unique, option labels must be unique within each question/);
 });
 
 test('context callbacks are used when factory callbacks are absent', async () => {
@@ -193,7 +256,7 @@ test('host answers must match question coverage, labels and selection mode', asy
   }
   const multi = { questions: [{ ...question.questions[0], multiSelect: true }] };
   await assert.rejects(tools({ ask: async () => ({ answers: [{ questionIndex: 0, selected: ['A', 'A'] }] }) })('ask_user_question', multi));
-  const two = { questions: [question.questions[0], question.questions[0]] };
+  const two = { questions: [question.questions[0], { ...question.questions[0], question: 'Which second approach?' }] };
   await assert.rejects(tools({ ask: async () => ({ answers: [answer.answers[0], answer.answers[0]] }) })('ask_user_question', two), /exactly once/);
 });
 

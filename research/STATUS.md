@@ -1900,3 +1900,11 @@ The product exposes the same gate as `previewFormat: "html"` on the interaction 
 it to every option preview before dispatch; the host launch-option store is replaced by that
 explicit option, recorded as the local adaptation. Two new cases, interaction-tools 23/23, tsc 0,
 full 2,094/2,094, chain 767/767, identity `dc4f6cce…`. [W69 record](ports/W69-preview-gating.md).
+
+W70-01 ports the recovered extended question kinds. Behind `extendedQuestions` (the product
+counterpart of the host `extendedQuestionsEnabled` launch option), questions accept `kind:
+"choice" | "text" | "number"` with the recovered per-kind field rules and messages (`me`,
+UTF-16 [8434,9556)), number min/max and defaultValue bounds, optional title, and `kind` defaulted
+to `"choice"` before dispatch (`K` [12694,12893)); `Q.check`'s unique-question-text rule applies
+in both modes, and custom schema messages now reach the caller. Four new cases, interaction-tools
+27/27, tsc 0, full 2,098/2,098, chain 767/767, identity `054cdd94…`. [W70 record](ports/W70-extended-questions.md).
