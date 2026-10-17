@@ -1,0 +1,3 @@
+2026-10-17T14:40:00Z	package	W71-01 答案注释	V [2142,2202)、le [2202,4005)、pe 4720、J [9560,9925)：notes≤8192、未知字段拒绝、preview 精确等于展示预览；产品作为 QuestionAnswer.annotations	归一化等价预览分支（Gat/nD/pc/ZSo）保留给渲染器；卡片映射不移植	interaction-tools 28/28；tsc 0；build 0；全量 2,099/2,099；链 767/767
+2026-10-17T14:42:00Z	decision	W71-01 注释随 questionIndex 承载	① 源按问题文本键，产品答案按索引；② 仅接受精确展示预览，不做近似匹配；③ 空 notes 合法（源只检查类型与长度）；④ 未知注释字段整体拒绝	残余：完整渲染器、格式化宿主、卡片答案合同	.audit/w71-01-full.txt
+2026-10-17T14:45:00Z	verification	W71-01 验收：interaction-tools 28/28、tsc 0、build 0、2,099/2,099、767/767	展示预览+notes 往返；未展示预览拒绝；未知字段与超长 notes 拒绝；空 notes 保留	notices 0；索引 75 chunks / 323,525 单位不变；identity 3ed12d16…（inputs 6c4d63e4…、build 65fddcaf…）

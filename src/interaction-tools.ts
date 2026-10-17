@@ -4,6 +4,7 @@ import type { ToolContext, ToolDefinition } from './tools.js';
 export const INTERACTION_LIMITS = Object.freeze({
   questions: 4, options: 4, questionChars: 2000, headerChars: 80,
   labelChars: 100, descriptionChars: 2000, previewChars: 8000, otherChars: 4000,
+  annotationNotesChars: 8192,
   planChars: 128 * 1024, findings: 100, fileChars: 4096, summaryChars: 4000,
   payloadBytes: 256 * 1024, outputBytes: 100_000,
   timeoutMs: 300_000, maxTimeoutMs: 600_000, maxPending: 16, maxPendingLimit: 64,
@@ -32,6 +33,8 @@ export interface QuestionAnswer {
   questionIndex: number;
   selected: string[];
   other?: string;
+  /** Recovered `J`: the host may attach the selected preview and free-text notes. */
+  annotations?: { preview?: string; notes?: string };
 }
 export interface AskUserQuestionAnswer { answers: QuestionAnswer[] }
 export interface SubmitPlanRequest { plan: string }
@@ -138,10 +141,15 @@ const extendedAskShape = z.object({
   title: z.string().optional(),
   questions: z.array(extendedQuestionShape).min(1).max(INTERACTION_LIMITS.questions),
 }).strict().superRefine(uniqueQuestionTexts);
+const annotationShape = z.object({
+  preview: z.string().optional(),
+  notes: z.string().max(INTERACTION_LIMITS.annotationNotesChars).optional(),
+}).strict();
 const answerShape = z.object({ answers: z.array(z.object({
   questionIndex: z.number().int().min(0).max(INTERACTION_LIMITS.questions - 1),
   selected: z.array(text(INTERACTION_LIMITS.labelChars)).max(INTERACTION_LIMITS.options),
   other: text(INTERACTION_LIMITS.otherChars).optional(),
+  annotations: annotationShape.optional(),
 }).strict()).min(1).max(INTERACTION_LIMITS.questions) }).strict();
 const planShape = z.object({ plan: text(INTERACTION_LIMITS.planChars) }).strict();
 const approvalShape = z.object({ approved: z.boolean() }).strict();
@@ -293,6 +301,11 @@ function validAnswer(input: unknown, request: AskUserQuestionRequest): AskUserQu
         new Set(answer.selected).size !== answer.selected.length ||
         answer.selected.some(label => !question.options.some(option => option.label === label))) {
       throw new Error('ask_user_question: host answer does not match the question choices');
+    }
+    // Recovered admission (`pe`): an annotated preview must be one this question showed.
+    if (answer.annotations?.preview !== undefined &&
+        !question.options.some(option => option.preview === answer.annotations!.preview)) {
+      throw new Error('ask_user_question: host answer annotation preview does not match a question preview');
     }
   }
   return result;
