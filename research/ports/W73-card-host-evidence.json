@@ -1,0 +1,86 @@
+{
+ "schema": "W73CardHostEvidence.v1",
+ "package": "W73-01 — card host wiring",
+ "date": "2026-10-17",
+ "question": "Can a card host use the recovered answer contract through ask_user_question, with the answer admitted before it is returned?",
+ "answer": "Yes: cardAnswers selects an askCard callback whose returned object is admitted by admitCardAnswer and returned; a refusal surfaces the source rule, and the default indexed ask contract is unchanged.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-ktr9sak2.js",
+  "unit": "UTF-16 code units",
+  "validateInput": [
+   16528,
+   16776
+  ],
+  "admission": {
+   "symbol": "V",
+   "range": [
+    2142,
+    2202
+   ]
+  },
+  "contract": {
+   "symbol": "le",
+   "range": [
+    2202,
+    4005
+   ]
+  }
+ },
+ "behavior": {
+  "option": "InteractionToolOptions.cardAnswers",
+  "callback": "InteractionCallbacks.askCard (factory, then context.interaction)",
+  "admission": "admitCardAnswer against the structured clone of the shown request",
+  "refusal": "ask_user_question: card answer refused (<rule>)",
+  "output": "the admitted input object",
+  "default": "indexed questionIndex/selected/other contract unchanged"
+ },
+ "changes": [
+  {
+   "file": "src/interaction-tools.ts",
+   "change": "askCard callback, cardAnswers option and execution branch",
+   "sha256": "1dc2621153a1d5ea62a0690cc3871595919bbced28229ec566277d632625c12e"
+  },
+  {
+   "file": "test/interaction-tools.test.ts",
+   "change": "one card host case",
+   "sha256": "1b31106d39b6a5b073efc6ed10d0d46e4b0f5be5c6da57850f3384e66b4e7258"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-11 rows record card host wiring",
+   "sha256": "39d8c0047c9900995d7b140609943ee9cb884b52af198c1edfd07ac44f668e82"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Question/plan/findings row records card host wiring",
+   "sha256": "b066382b606c112f88e77b759c4fbf16edd09d6352409aee028bcdbdde6b08ac"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W73-01 entry",
+   "sha256": "65153b5e3bfa12ab56cb9cb4351a2c37137a780c78a9ef5195dc171f80379fb0"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W73-01 S-1..S-7 entry",
+   "sha256": "e9753943632f654cee64f9000d6e7eb70fd3fb08deff9bb0f5d5a53a99407291"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "interactionTools": "30/30",
+  "build": "exit 0",
+  "full": "2,101/2,101",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "ef8f4ab408cba1590ed191ff2c269b975c9893f892dcdb02a1dbe66ae82f3bac"
+ },
+ "residuals": [
+  "The original client card UI is not ported; the host is an explicit callback.",
+  "Normalized-equivalent previews and xHe transforms remain unported.",
+  "The full renderer and formatting host remain C-11 work."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-11 continues with the full renderer, formatting host and annotation normalization."
+}
