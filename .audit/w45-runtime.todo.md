@@ -859,3 +859,27 @@ Tool selection: existing copy generator, Acorn/TypeScript static AST APIs and co
 - [x] **The scope provider is the source's.** `qt` carries `Provider` pointing at the context itself, so `$t` builds the source element; values still come from the render's contexts.
 - [x] **Overrides resolve group-then-scope.** A grouped site follows its group, an ungrouped one the enclosing scope, and every color is normalized through the named-color table.
 - [x] **Sweep.** tsc 0, copy `declared 43 / unresolved 0`, notices 0, new suite 10/10, chain family 677/677, full 1,953/1,953, index 68 chunks / 297,516 units, identity `92f69502…`.
+
+## W45-84 acceptance (2026-10-17)
+
+- [x] **The Button and its action keys are ported.** The store and comparator, the seats, the hotkey context, the blur, the button, the click subscriber, the key normalization, the keybinding service, the dialog store and the default app context are copied.
+- [x] **The Button owns no press state.** Actionable presses are entries in the shared store; the seat registers one handler per bound context and dispatches the rank/sequence winner.
+- [x] **The host bindings are explicit.** `u` answers null without a mounted service (the source no-service path), `ix` binds a focus manager per committed node and throws when unbound, and `KH` is the action-box token.
+- [x] **Every label variant and click path is measured.** Bracketed, focused/hovered, plain, plain+hotkey, held, dim and primary; blur only for a descendant; immediate propagation stopped; the subscriber ignores window activations and inside presses.
+- [x] **Sweep.** tsc 0, copy `declared 67 / unresolved 0`, notices 0, new suite 13/13, chain family 690/690, full 1,966/1,966, index 70 chunks / 300,970 units, identity `b6c1c882…`.
+
+## W45-85 acceptance (2026-10-17)
+
+- [x] **The Client host is ported.** The acquisition hook, the terminal mount, the input binding, the clock adapter, the loading and inert shapes, the host component, the error boundary and the pre-dispatch hook are copied.
+- [x] **Acquisition owns the lifecycle.** One client per element keyed by plugin/component/request/surface/key/module, released on unmount; the component defaults to AbovePrompt and the request id to detached.
+- [x] **The mount only forwards.** Props, redraw, layout, resize, pointer and key events go to the instance; the drawn tree comes from the host rebuild and a failure draws its text.
+- [x] **Focus is shared.** Pressing a client clears the pane focus, a pane taking focus clears the client, and the key path consumes only for the focused client (escape and ctrl+c/d drop focus first).
+- [x] **Sweep.** tsc 0, copy `declared 67 / unresolved 0`, notices 0, new suite 20/20, chain family 710/710, full 1,986/1,986, index 71 chunks / 304,866 units, identity `dee1094f…`.
+
+## W45-86 acceptance (2026-10-17)
+
+- [x] **The walker is ported.** One recursive dispatch on `type`: strings become Text, an engine node draws itself, every site type becomes its component with the press handle it carries.
+- [x] **Links have two encodings.** The URL is `Nrt(href)`; the display text is `Mrt(href)`, which percent-encodes controls and bidi marks and leaves printable text alone; the host link token `Wt` keeps the fallback child.
+- [x] **Box keys name one scope.** The first admitted key per parent is live and keyed; a repeat or an unusable key is drawn without a scope and reported once with its exact message.
+- [x] **Containers split inline and block.** Inline types keep string children, block types walk them into Text; a hovered Box or Text draws through `Ut` with its group.
+- [x] **Sweep.** tsc 0, copy `declared 44 / unresolved 0`, notices 0, new suite 13/13, chain family 723/723, full 1,999/1,999, index 72 chunks / 307,819 units, identity `14255a2d…`.
