@@ -1,0 +1,17 @@
+{
+ "imports": [],
+ "exports": ["pne", "yne", "wne", "kne", "NI", "vne", "G1", "Tne", "_ne", "vFe", "F4"],
+ "blocks": [
+  {"file": "chunk-24k7d6mw.js", "range": [444350, 444563], "note": "scroll key handlers"},
+  {"file": "chunk-24k7d6mw.js", "range": [447294, 447421], "note": "pane key merge"},
+  {"file": "chunk-24k7d6mw.js", "range": [447421, 447615], "note": "window/cue computation"},
+  {"file": "chunk-24k7d6mw.js", "range": [448285, 448295], "note": "collapse handle columns"},
+  {"file": "chunk-24k7d6mw.js", "range": [448698, 448795], "note": "autofocus index"},
+  {"file": "chunk-24k7d6mw.js", "range": [448795, 448921], "note": "input/select context name"},
+  {"file": "chunk-24k7d6mw.js", "range": [448921, 448933], "note": "row settle debounce"},
+  {"file": "chunk-24k7d6mw.js", "range": [448933, 449175], "note": "hotkey map"},
+  {"file": "chunk-24k7d6mw.js", "range": [449175, 449420], "note": "cue fully laid out check"},
+  {"file": "chunk-24k7d6mw.js", "range": [449420, 449506], "note": "plugin overlap check"},
+  {"file": "chunk-1r9zp6s1.js", "range": [28549, 28670], "note": "yoga absolute top"}
+ ]
+}

@@ -1,0 +1,76 @@
+{
+ "schema": "W145AbovePromptCoreEvidence.v1",
+ "package": "W145-01 — AbovePrompt pane layout and key core",
+ "date": "2026-10-18",
+ "question": "Which part of the never-ported AbovePrompt pane can land as a pure, testable slice, and what does it compute?",
+ "answer": "Eleven blocks (1,473 UTF-16 units) carry the pane's pure core: the window/cue computation, autofocus index, Input/Select key-context naming, hotkey map, cue fully-laid-out check, plugin overlap check, pane key merge, six scroll handlers, the yoga absolute-top walk, and the two constants (5 collapse columns, 150 ms settle debounce). The React component NFe remains the next slice; these blocks import nothing and are exercised through test/plugin-chain-above-prompt.test.ts.",
+ "sourcePosition": {
+  "modules": [
+   {"module": "extracted-v2/modules/chunk-24k7d6mw.js", "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31", "blocks": 10, "units": 1352},
+   {"module": "extracted-v2/modules/chunk-1r9zp6s1.js", "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e", "blocks": 1, "units": 121}
+  ],
+  "totalBlocks": 11,
+  "totalUnits": 1473,
+  "ranges": {
+   "vFe": [444350, 444563],
+   "pne": [447294, 447421],
+   "yne": [447421, 447615],
+   "wne": [448285, 448295],
+   "kne": [448698, 448795],
+   "NI": [448795, 448921],
+   "vne": [448921, 448933],
+   "G1": [448933, 449175],
+   "Tne": [449175, 449420],
+   "_ne": [449420, 449506],
+   "F4": [28549, 28670]
+  },
+  "components": {
+   "module": "chunk-24k7d6mw.js",
+   "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+   "note": "NFe [456049,461905) is the renderer-facing component and the next slice; measured at 5,856 units with 82 unresolved names, so it was not forced into this package"
+  },
+  "bodySha256": {
+   "vFe": "20e50bd1c8d2aaae80a95da0d0611321fc13a138d75a1485d211068e436c23b3",
+   "pne": "0d480a9c4a6794c371282dd8389c5e23fbe04219e803e800940bcd829333806e",
+   "yne": "4c81a2eded2373cd5cdd48b5917a045ca1e9d9acf986618b3a64206830cc4695",
+   "wne": "0d591bba4a3f21bb8d290a1e09261076b99aa782ff85658e637ab11221ccca9f",
+   "kne": "1c6f9954a68a20003b78c1db68ef4eefaa0f28d8ed9d9651e635fef7e7937a93",
+   "NI": "23379a426d33cf9a605e535dc088f917db52c5c136c1f8290268da6986be8017",
+   "vne": "6b186ecff64fc484925456e7a24f5b4865f35959a90f141925c514f231eacc1e",
+   "G1": "d089fdd8e1c86965bdef48867b5dd3b82f30e52a81c697e173760f7f74072da6",
+   "Tne": "f2dfe2ad06253cd1b0be82558e0229832ccda7f62ad0d27596fb560977f13747",
+   "_ne": "77438696d389800c45d34fcfa3850021d0874dd7fdac09ef288370f4845a9265",
+   "F4": "f3cd3d0549af9039786cf616cab8230e7848113496a5720f548548f83286ae71"
+  }
+ },
+ "behavior": {
+  "window": "yne clamps the budget at 0; the tree overflows only when treeRows exceeds that budget; on overflow one row is reserved for the cue and maxOffset is treeRows minus the window; bodyRows is settledBudget minus 1, floored at 0",
+  "autofocus": "kne returns null only for an empty list, otherwise the first isAutoFocus index or 0",
+  "contextName": "NI maps an Input tag to AbovePromptInput and a Select tag to AbovePromptSelect, else the caller's fallback",
+  "hotkeys": "G1 collects hotkey->press from every Button that has a hotkey, then stops at Buttons (no recursion into them) and skips engine subtrees; string children are ignored",
+  "cueLayout": "Tne is true without a cue; with a cue it is false when content is null or the laid-out set is empty; every node must have positive height and satisfy offset <= top and top+height <= offset+windowRows, with top summed from the node up to but excluding the content root; a node outside the root yields -1 and fails",
+  "overlap": "_ne is true only when both lists are non-empty and no content plugin appears among the plugins",
+  "paneKeys": "vFe binds pane:scrollUp/Down to scrollBy(-1/1), pageUp/Down to -/+bodyRows, top/bottom to -/+contentRows; pne spreads the bindings, then the scroll handlers, then (outside inputs only) replaces pane:scrollUp/Down with abovePrompt:previous/next",
+  "constants": "wne is 5 (collapse handle columns); vne is 150 (row settle debounce, ms)"
+ },
+ "product": {
+  "files": [
+   "src/plugin-chain-above-prompt-source.ts",
+   "src/plugin-chain-above-prompt-source-blocks.json",
+   "src/plugin-chain-above-prompt.ts",
+   "test/plugin-chain-above-prompt.test.ts"
+  ],
+  "generator": "scripts/copy-module-regions.mjs",
+  "plans": ["research/ports/W145-above-prompt-core.plan.json"],
+  "seam": "plugin-chain-above-prompt.ts exposes paneWindow, autofocusIndex, promptContextName, hotkeyBindings, nodeTopWithin, cueFullyDrawn, pluginsOverlap, scrollKeyHandlers, paneKeyBindings, COLLAPSE_HANDLE_COLUMNS and ROW_SETTLE_DEBOUNCE_MS",
+  "unresolved": 0
+ },
+ "verification": {
+  "focused": "14/14",
+  "full": "2285/2285",
+  "tsc": 0,
+  "notices": 0,
+  "build": 0,
+  "identity": "b8af8bb64c8f6c54a839134efd67e151c1875599737958264ba5d21d88de9cc2"
+ }
+}

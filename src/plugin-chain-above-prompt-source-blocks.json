@@ -1,0 +1,137 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        444350,
+        444563
+      ],
+      "units": 213,
+      "bodySha256": "20e50bd1c8d2aaae80a95da0d0611321fc13a138d75a1485d211068e436c23b3",
+      "note": "scroll key handlers"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        447294,
+        447421
+      ],
+      "units": 127,
+      "bodySha256": "0d480a9c4a6794c371282dd8389c5e23fbe04219e803e800940bcd829333806e",
+      "note": "pane key merge"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        447421,
+        447615
+      ],
+      "units": 194,
+      "bodySha256": "4c81a2eded2373cd5cdd48b5917a045ca1e9d9acf986618b3a64206830cc4695",
+      "note": "window/cue computation"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        448285,
+        448295
+      ],
+      "units": 10,
+      "bodySha256": "0d591bba4a3f21bb8d290a1e09261076b99aa782ff85658e637ab11221ccca9f",
+      "note": "collapse handle columns"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        448698,
+        448795
+      ],
+      "units": 97,
+      "bodySha256": "1c6f9954a68a20003b78c1db68ef4eefaa0f28d8ed9d9651e635fef7e7937a93",
+      "note": "autofocus index"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        448795,
+        448921
+      ],
+      "units": 126,
+      "bodySha256": "23379a426d33cf9a605e535dc088f917db52c5c136c1f8290268da6986be8017",
+      "note": "input/select context name"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        448921,
+        448933
+      ],
+      "units": 12,
+      "bodySha256": "6b186ecff64fc484925456e7a24f5b4865f35959a90f141925c514f231eacc1e",
+      "note": "row settle debounce"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        448933,
+        449175
+      ],
+      "units": 242,
+      "bodySha256": "d089fdd8e1c86965bdef48867b5dd3b82f30e52a81c697e173760f7f74072da6",
+      "note": "hotkey map"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        449175,
+        449420
+      ],
+      "units": 245,
+      "bodySha256": "f2dfe2ad06253cd1b0be82558e0229832ccda7f62ad0d27596fb560977f13747",
+      "note": "cue fully laid out check"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        449420,
+        449506
+      ],
+      "units": 86,
+      "bodySha256": "77438696d389800c45d34fcfa3850021d0874dd7fdac09ef288370f4845a9265",
+      "note": "plugin overlap check"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        28549,
+        28670
+      ],
+      "units": 121,
+      "bodySha256": "f3cd3d0549af9039786cf616cab8230e7848113496a5720f548548f83286ae71",
+      "note": "yoga absolute top"
+    }
+  ],
+  "missing": []
+}
