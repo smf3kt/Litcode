@@ -1,0 +1,3 @@
+2026-10-18T11:00:00Z	package	W101-01 执行型技能的 UserPromptExpansion	at [38703,39841)、调用点 33172/35257、Zge 564884、帮助文本 3461	命令输入即提升；阻断先于执行；fallthrough 上下文经 Agent.run hookContext	interactive/hooks/agent-lifecycle 102/102；tsc 0；build 0；全量 2,133/2,133；链 767/767
+2026-10-18T11:03:00Z	decision	W101-01 边界	自带 fork/background/终态的技能没有父模型回合，附加上下文无处落地	阻断仍生效；上下文丢弃记录为残余，不发明注入机制	.audit/w101-01-full.txt
+2026-10-18T11:06:00Z	verification	W101-01 验收：聚焦 102/102、tsc 0、build 0、2,133/2,133、767/767	每命令一次提升；两种执行路径均运行；阻断时不调用 runSkill；上下文进入模型请求	notices 0；索引 75 chunks / 323,525 单位不变；identity ef637462…

@@ -428,6 +428,9 @@ const BLOCKING_EVENTS: ReadonlySet<HookEvent> = new Set([
   "TaskCompleted",
   "Elicitation",
   "WorktreeCreate",
+  // `Zge` (chunk-sfn1dbxq.js offset 564884) lists UserPromptExpansion, the help
+  // text says exit 2 blocks the expansion, and `at` consumes the blocking error.
+  "UserPromptExpansion",
   // `Zge` includes ConfigChange and `hX` (offset 2980890) excludes only
   // PostToolBatch, TaskCreated and PreCompact, so exit 2 blocks it. The
   // settings and skill watchers require that verdict before reloading.

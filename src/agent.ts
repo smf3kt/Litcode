@@ -863,7 +863,7 @@ export class Agent {
   }
 
   async run(prompt?: string, signal = new AbortController().signal, attachment?: MediaAttachment,
-    expansion?: PromptExpansion): Promise<RunResult> {
+    expansion?: PromptExpansion, hookContext: readonly string[] = []): Promise<RunResult> {
     if (this.busy) throw new Error('Agent is already running');
     this.busy = true;
     let modelCalls = 0;
@@ -904,7 +904,7 @@ export class Agent {
           if (expanded.blocked) return this.finish('hook_blocked', '', 0);
           expansionContext = expanded.additionalContext;
         }
-        const context = [...startContext, ...submitted.additionalContext, ...expansionContext];
+        const context = [...startContext, ...hookContext, ...submitted.additionalContext, ...expansionContext];
         if (this.session.config.autoMemory && this.session.config.features?.memory !== false && this.tools.has("memory_list") && this.tools.has("memory_read")) {
           const memory = await loadAutoMemoryContext(this.session.config.workspace, signal,
             { permissions: this.session.config.permissions, maxOutputBytes: this.session.config.maxOutputBytes });

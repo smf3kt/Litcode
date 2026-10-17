@@ -1051,6 +1051,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             command_args: parsed.args, ...(skill.source === undefined ? {} : { command_source: skill.source }),
             prompt: parsed.args === '' ? `/${skill.name}` : `/${skill.name} ${parsed.args}` };
           if (skillRequiresExecution(skill, session.config) && activeRuntime.runSkill) {
+            // The expansion hook is raised when the command is typed, before any execution mode
+            // (`at`, chunk-htgmc2p1.js [38703,39841)); its verdict gates the skill run.
+            const pre = await agent().emitHook('UserPromptExpansion', expansion, options.signal);
+            if (pre.blocked) {
+              output.write(`UserPromptExpansion operation blocked by hook: ${pre.reason ?? 'blocked'}\n`);
+              options.status.write('finished: hook_blocked; model calls: 0\n');
+              continue;
+            }
             const result = await withTurn(signal => activeRuntime.runSkill!(session.config, session.id, skill, parsed.args, signal,
               async (tool, input, decision) => {
                 if (inputClosed || signal.aborted) return { decision: 'deny', reason: 'Input closed' };
@@ -1063,7 +1071,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (skill.context === 'fork' || skill.model || skill.effort || skill.background || skill.hooks || skill.allowedTools) {
               output.write(result + '\n'); continue;
             }
-            const completed = await withTurn(signal => agent().run(result, signal, undefined, expansion));
+            const completed = await withTurn(signal => agent().run(result, signal, undefined, undefined, pre.additionalContext));
             output.write('\n'); options.status.write(`finished: ${completed.reason}; model calls: ${completed.modelCalls}\n`); continue;
           }
           const expanded = expandUserSkill(skill, parsed.args, session.config);
