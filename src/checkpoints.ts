@@ -11,6 +11,11 @@ const ENTRY_CAP = 2000;
 const MANIFEST_CAP = 2 * 1024 * 1024;
 const RESERVED = new Set([".agent", ".git", "node_modules", ".harness-worktrees"]);
 const HASH = /^[a-f0-9]{64}$/;
+// Staging names carry the store tag so a sweep can prove ownership from the name alone. W04 records
+// that the recovered durable checkpoint transaction was never established, so this is the local
+// writer's own contract: the tag is the checkpoint store path's digest prefix.
+const STAGING = /^\.checkpoint-([a-f0-9]{12})-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/;
+const STAGING_SCAN_CAP = 10_000;
 const NAME = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const nameSchema = z.string().regex(NAME, "Use 1-64 ASCII letters, digits, underscores or hyphens.");
 const pageSchema = { offset: z.number().int().min(0).default(0), limit: z.number().int().min(1).max(200).default(100) };
@@ -161,8 +166,33 @@ function syncDir(target: string): void {
   const fd = fs.openSync(target, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
   try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
 }
-function atomicWrite(target: string, bytes: Buffer, mode: number, verify?: () => void, committed?: () => void): void {
-  const temporary = path.join(path.dirname(target), `.checkpoint-${crypto.randomUUID()}.tmp`);
+function stagingName(store: string): string {
+  return `.checkpoint-${hash(store).slice(0, 12)}-${crypto.randomUUID()}.tmp`;
+}
+/** Removes staging files this store left behind. Every checkpoint writer holds the store lock for
+ *  its whole operation, so under that lock a tagged staging file has no live owner; files tagged
+ *  for another store or carrying the old untagged name are left for inspection. */
+function sweepStaging(directory: string, tag: string): void {
+  let handle: fs.Dir;
+  try { handle = fs.opendirSync(directory); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+  try {
+    for (let seen = 0, entry = handle.readSync(); entry; entry = handle.readSync()) {
+      if (++seen > STAGING_SCAN_CAP) return;
+      const match = STAGING.exec(entry.name);
+      if (!match || match[1] !== tag) continue;
+      const target = path.join(directory, entry.name);
+      let stat: fs.Stats;
+      try { stat = fs.lstatSync(target); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") continue; throw error; }
+      if (!stat.isFile()) continue;
+      try { fs.unlinkSync(target); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    }
+  } finally { handle.closeSync(); }
+}
+function atomicWrite(store: string, target: string, bytes: Buffer, mode: number, verify?: () => void, committed?: () => void): void {
+  const temporary = path.join(path.dirname(target), stagingName(store));
   let fd: number | undefined;
   try {
     fd = fs.openSync(temporary, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
@@ -253,12 +283,12 @@ function equalState(left: FileState, right: FileState): boolean { return JSON.st
 function saveTransaction(store: string, transaction: Transaction): void {
   const bytes = Buffer.from(JSON.stringify(transaction));
   if (bytes.length > MANIFEST_CAP) throw new Error("Checkpoint transaction exceeds metadata cap.");
-  atomicWrite(transactionPath(store), bytes, 0o600);
+  atomicWrite(store, transactionPath(store), bytes, 0o600);
 }
 function saveObject(store: string, bytes: Buffer, context: ToolContext): void {
   const digest = hash(bytes), target = path.join(store, "objects", digest);
   if (exists(target)) { if (hash(readBounded(target, FILE_CAP, context)) !== digest) throw new Error("Checkpoint rollback object digest mismatch."); }
-  else atomicWrite(target, bytes, 0o600);
+  else atomicWrite(store, target, bytes, 0o600);
 }
 function branchProof(root: string, branch: CheckpointCommit, context: ToolContext): { committed: boolean; file?: string; stat?: fs.Stats } {
   const file = path.join(root, ".agent", `${branch.id}.jsonl`), stat = exists(file);
@@ -294,6 +324,15 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
     }
   }
   if (beforeTotal > TOTAL_CAP || afterTotal > TOTAL_CAP) throw new Error("Checkpoint transaction exceeds total byte cap.");
+  // The crashed writer held the store lock, so its staging files in the target directories are
+  // orphans; sweeping them first also lets a recorded directory that must be removed come empty.
+  const tag = hash(store).slice(0, 12), swept = new Set<string>();
+  for (const operation of transaction.operations) {
+    const directory = path.dirname(targetFor(root, operation.path));
+    if (swept.has(directory)) continue;
+    swept.add(directory);
+    sweepStaging(directory, tag);
+  }
   const branch = transaction.branch ? branchProof(root, transaction.branch, context) : undefined;
   // History proof remains authoritative when publishing the commit marker fails.
   const committed = branch?.committed === true || (!forceRollback && transaction.state === "committed");
@@ -328,7 +367,7 @@ function recoverTransaction(root: string, store: string, context: ToolContext, f
       if (equalState(current, operation.before)) continue;
       const target = targetFor(root, operation.path);
       const verify = () => { if (!equalState(fileState(root, operation.path, context), operation.after)) throw new Error(`Checkpoint recovery conflict during rollback: ${operation.path}`); };
-      if (operation.before) atomicWrite(target, buffers.get(operation.before.sha256)!, operation.before.mode, verify);
+      if (operation.before) atomicWrite(store, target, buffers.get(operation.before.sha256)!, operation.before.mode, verify);
       else { verify(); fs.unlinkSync(target); syncDir(path.dirname(target)); }
     }
     if (conflicts.length) throw new Error(`Checkpoint recovery conflict: ${conflicts.join(", ")}; transaction retained.`);
@@ -358,7 +397,11 @@ export function recoverCheckpoint(context: ToolContext): { recovery: "none" | "r
   const root = rootFor(context), agent = path.join(root, ".agent"), store = path.join(agent, "checkpoints");
   if (!exists(agent) || !exists(store)) return { recovery: "none" };
   storeFor(root);
-  return lock(store, () => ({ recovery: recoverTransaction(root, store, context) }));
+  return lock(store, () => {
+    const tag = hash(store).slice(0, 12);
+    for (const directory of [store, path.join(store, "objects"), path.join(store, "manifests")]) sweepStaging(directory, tag);
+    return { recovery: recoverTransaction(root, store, context) };
+  });
 }
 function manifestFor(root: string, name: string, context: ToolContext): { store: string; manifest: Manifest; contents: Map<string, Buffer> } {
   const store = storeFor(root);
@@ -509,7 +552,7 @@ export function restoreCheckpoint(input: unknown, context: ToolContext, commit?:
           fs.unlinkSync(target);
           applied.add(operation.path);
           syncDir(path.dirname(target));
-        } else atomicWrite(target, contents.get(operation.entry!.sha256)!, operation.entry!.mode, verify, () => applied.add(operation.path));
+        } else atomicWrite(store, target, contents.get(operation.entry!.sha256)!, operation.entry!.mode, verify, () => applied.add(operation.path));
       }
       commit?.();
       transaction.state = "committed";
@@ -547,12 +590,12 @@ export function captureCheckpoint(name: string, context: ToolContext) {
       const object = path.join(store, "objects", digest);
       if (exists(object)) {
         if (hash(readBounded(object, FILE_CAP, context)) !== digest) throw new Error("Checkpoint existing content digest mismatch.");
-      } else atomicWrite(object, bytes, 0o600);
+      } else atomicWrite(store, object, bytes, 0o600);
     }
     aborted(context);
     storeFor(root);
     if (snapshot(root, context).digest !== captured.digest) throw new Error("Checkpoint conflict: workspace changed during snapshot.");
-    atomicWrite(target, encoded, 0o600);
+    atomicWrite(store, target, encoded, 0o600);
     return { name, behavior: "filesystem_rewind", checkpoint_digest: captured.digest, entries: captured.entries.length,
       files: captured.entries.filter(entry => entry.kind === "file").length, created_at: manifest.created_at };
   });

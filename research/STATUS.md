@@ -1800,3 +1800,13 @@ present before unlink. One reclaim-and-retry is allowed; empty, foreign, own-pid
 stay fail-closed. Ported from `_x`/`Rze`/`P1t`/`zPo` in chunk-sfn1dbxq.js and `Iue`/`Nm` in
 chunk-3sda67c1.js. 27/27 worktree tests, tsc 0, full 2,079/2,079, chain 767/767, both smokes
 pass; identity `2732f49a…`. [W47-02 record](ports/W47-worktree-stale-lock.md).
+
+W48-01 tags checkpoint staging files with the owning store and reclaims them during recovery. The
+atomic writer now names temporaries `.checkpoint-<12hex store tag>-<uuid>.tmp`; under the
+checkpoint store lock, `recoverCheckpoint` sweeps the store, objects and manifests directories,
+and a pending transaction's recovery sweeps each target directory once before its ownership and
+conflict checks. Foreign tags, untagged legacy staging, directories and symlinks stay. This closes
+the W04 residual for tagged staging while leaving the pre-W48 untagged files visible. Since the
+recovered durable checkpoint transaction is unobtainable (W04), this remains a recorded local
+extension. 21/21 checkpoint tests, full 2,081/2,081, both crash smokes pass with no staging
+residue; identity `f3419f9c…`. [W48 record](ports/W48-checkpoint-staging.md).

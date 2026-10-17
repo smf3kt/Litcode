@@ -1,0 +1,31 @@
+(node:29093) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ checkpoint tools expose permission metadata and restore confirmation contract (0.583833ms)
+✔ checkpoint snapshots hidden files and .harness, excluding reserved trees and symlink contents (51.12475ms)
+✔ incremental checkpoints survive new tool instances and restore modified/deleted bytes and modes (190.868208ms)
+✔ selected paths scope effects and removal requires explicit diff paths (106.505333ms)
+✔ stale digest catches unrelated changes and permissions before restore effects (46.966125ms)
+✔ corrupt manifest and content are checked in full even for a selected good file (49.686625ms)
+✔ structurally invalid rehashed manifests reject traversal and symlink parents (40.279625ms)
+✔ metadata symlinks at .agent, checkpoint directories, manifest and objects are rejected (29.866583ms)
+✔ restore never follows leaf/ancestor symlinks or replaces captured symlink metadata (66.435333ms)
+✔ invalid names and paths produce no workspace effects (141.934042ms)
+✔ pre-aborted tools leave checkpoint storage and workspace untouched (28.624833ms)
+✔ snapshot byte/count caps fail before checkpoint publication (169.392417ms)
+✔ exclusive locks and duplicate checkpoint names preserve existing snapshots (51.051667ms)
+✔ a later filesystem failure rolls back earlier writes and newly created directories (130.943291ms)
+✔ mid-restore cancellation rolls back committed bytes and explicit removals (112.11825ms)
+✔ a target edit during atomic staging survives the conflict and earlier effects roll back (206.551417ms)
+✔ recovery preserves active and invalid lock owners and validates legacy PID locks (49.403083ms)
+✔ mkdir before inode publication preserves an explicit ownership residual (103.406208ms)
+✔ diff/list outputs paginate and cap JSON while retaining digest confirmation (36.497042ms)
+✔ recovery removes this store's staging files and keeps foreign, legacy and linked ones (31.949125ms)
+✔ a pending transaction sweeps staging files from its target directories (97.779167ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1976.414084
