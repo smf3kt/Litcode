@@ -7,6 +7,7 @@ import { test } from "node:test";
 import {
   CONFIG_LIMITS,
   ConfigError,
+  activateConditionalSkills,
   argumentNamesFrom,
   expandSkill,
   loadProjectConfig,
@@ -1254,4 +1255,70 @@ test("a missing workspace directory is an error", () => {
       (error: unknown) => error instanceof ConfigError && /workspace directory not found/.test(error.message),
     );
   });
+});
+
+// ---------------------------------------------------------------------------
+// Conditional skills (`paths`)
+// ---------------------------------------------------------------------------
+
+test("skill paths normalize like the recovered loader and hold the skill out of the catalog", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj");
+    const userDir = path.join(root, "user");
+    writeFile(path.join(workspace, ".harness", "skills", "scoped", "SKILL.md"),
+      "---\nname: scoped\ndescription: Scoped\npaths:\n  - src/**\n  - docs/**\n---\nScoped body\n");
+    writeFile(path.join(workspace, ".harness", "skills", "broad", "SKILL.md"),
+      "---\nname: broad\ndescription: Broad\npaths: ['**']\n---\nBroad body\n");
+    writeFile(path.join(workspace, ".harness", "skills", "plain", "SKILL.md"),
+      "---\nname: plain\ndescription: Plain\n---\nPlain body\n");
+    const cfg = loadProjectConfig(workspace, { userDir });
+    assert.deepEqual(cfg.skills.map(skill => skill.name).sort(), ["broad", "plain"]);
+    assert.deepEqual(cfg.conditionalSkills?.map(skill => skill.name), ["scoped"]);
+    // `/**` is trimmed and `**` alone never makes a skill conditional.
+    assert.deepEqual(cfg.conditionalSkills?.[0]?.paths, ["src", "docs"]);
+    assert.equal(cfg.skills.find(skill => skill.name === "broad")?.paths, undefined);
+  });
+});
+
+test("a string paths value and an empty list behave like the source", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj");
+    const userDir = path.join(root, "user");
+    writeFile(path.join(workspace, ".harness", "skills", "one", "SKILL.md"),
+      "---\nname: one\ndescription: One\npaths: src/**\n---\nOne\n");
+    writeFile(path.join(workspace, ".harness", "skills", "none", "SKILL.md"),
+      "---\nname: none\ndescription: None\npaths: []\n---\nNone\n");
+    const cfg = loadProjectConfig(workspace, { userDir });
+    assert.deepEqual(cfg.skills.map(skill => skill.name), ["none"]);
+    assert.deepEqual(cfg.conditionalSkills?.map(skill => [skill.name, skill.paths]), [["one", ["src"]]]);
+    // A non-string pattern is a configuration error, not a silently dropped skill.
+    writeFile(path.join(workspace, ".harness", "skills", "bad2", "SKILL.md"),
+      "---\nname: bad2\ndescription: Bad\npaths:\n  - 3\n---\nBad\n");
+    assert.throws(() => loadProjectConfig(workspace, { userDir }), /paths must be a string or array of strings/);
+  });
+});
+
+test("activation matches gitignore-style patterns against workspace-relative touches", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "harness-skill-paths-"));
+  try {
+    const workspace = path.join(root, "proj");
+    fs.mkdirSync(workspace, { recursive: true });
+    const held = new Map<string, { name: string; description: string; path: string; body: string;
+      userInvocable: boolean; disableModelInvocation: boolean; paths: string[] }>([
+      ["src", { name: "src", description: "", path: "s", body: "", userInvocable: true, disableModelInvocation: false, paths: ["src"] }],
+      ["docs", { name: "docs", description: "", path: "d", body: "", userInvocable: true, disableModelInvocation: false, paths: ["docs/*.md"] }],
+      ["any", { name: "any", description: "", path: "a", body: "", userInvocable: true, disableModelInvocation: false, paths: ["**"] }],
+    ]);
+    // A directory pattern covers everything under it; a `*.md` pattern stays one level.
+    assert.deepEqual(activateConditionalSkills(held, workspace, ["src/deep/a.ts"]).map(skill => skill.name), ["src", "any"]);
+    assert.deepEqual([...held.keys()], ["docs"]);
+    assert.deepEqual(activateConditionalSkills(held, workspace, ["docs/sub/a.md"]), []);
+    assert.deepEqual(activateConditionalSkills(held, workspace, ["docs/a.md"]).map(skill => skill.name), ["docs"]);
+    // A path outside the workspace and an absolute path never activate anything.
+    const outside = new Map<string, { name: string; description: string; path: string; body: string;
+      userInvocable: boolean; disableModelInvocation: boolean; paths: string[] }>([
+      ["x", { name: "x", description: "", path: "x", body: "", userInvocable: true, disableModelInvocation: false, paths: ["**"] }]]);
+    assert.deepEqual(activateConditionalSkills(outside, workspace, ["../escape"]), []);
+    assert.deepEqual(activateConditionalSkills(outside, workspace, [path.join(root, "proj/src/a.ts")]).map(skill => skill.name), ["x"]);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

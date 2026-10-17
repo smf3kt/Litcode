@@ -25,6 +25,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import ignore from "ignore";
 import { isMap, isSeq, parseDocument } from "yaml";
 import { hooksSchema, type HooksConfig } from "./hooks.js";
 import { discoverInstalledPluginComponents, pluginConfigSchema, type PluginConfig } from "./plugins.js";
@@ -88,6 +89,14 @@ export interface SkillInfo {
   userInvocable: boolean;
   /** Frontmatter `disable-model-invocation`; defaults to false. */
   disableModelInvocation: boolean;
+  /**
+   * Normalized frontmatter `paths`: the skill stays out of the catalog until the
+   * model touches a matching workspace path. The recovered loader trims a
+   * trailing `/**` and drops the field when nothing meaningful remains (`smn`,
+   * chunk-sfn1dbxq.js offset 3374436); only skills with a non-empty list are
+   * conditional (`sAr` assembly at 3392751, `emn` activation at 3398872).
+   */
+  paths?: string[];
   allowedTools?: string[];
   argumentNames?: string[];
   aliases?: string[];
@@ -113,7 +122,14 @@ export interface LoadedConfig {
   /** Content roots already verified by installed/local catalog discovery. */
   watchDirectories?: string[];
   instructions: InstructionFile[];
+  /** Skills that are live at load time; a skill with `paths` is not here. */
   skills: SkillInfo[];
+  /**
+   * Skills whose frontmatter `paths` hold them back until a matching workspace
+   * path is touched. The caller owns the live state and calls
+   * `activateConditionalSkills` to move them into the catalog.
+   */
+  conditionalSkills?: SkillInfo[];
   /** Local memory documents are cataloged separately from project instructions. */
   memories?: InstructionFile[];
   conditionalRules?: ConditionalRule[];
@@ -896,6 +912,25 @@ function stringField(data: Record<string, unknown>, field: string, file: string)
   return value;
 }
 
+/**
+ * Normalize a skill's frontmatter `paths` the way the recovered loader does
+ * (`smn`, chunk-sfn1dbxq.js offset 3374436): split the string or array, drop a
+ * trailing `/**`, drop empty entries, and return undefined when nothing but
+ * `**` remains, so an unconditional pattern never makes the skill conditional.
+ */
+function skillPathPatterns(data: Record<string, unknown>, file: string): string[] | undefined {
+  const value = data.paths;
+  if (value === undefined) return undefined;
+  const values = typeof value === "string" ? [value] : value;
+  if (!Array.isArray(values) || values.some(item => typeof item !== "string")) {
+    throw new ConfigError("skill paths must be a string or array of strings", file);
+  }
+  const patterns = [...new Set((values as string[]).map(item => item.trim()).filter(item => item !== "")
+    .map(item => item.endsWith("/**") ? item.slice(0, -3) : item).filter(item => item !== ""))];
+  if (patterns.length === 0 || patterns.every(item => item === "**")) return undefined;
+  return patterns;
+}
+
 function loadSkill(skillDir: string, skillManifest: string, into: Map<string, SkillInfo>, budget: ByteBudget, source: SkillSource, namespace?: string): void {
   const text = readTextFile(skillManifest, budget);
   const frontmatter = parseFrontmatter(text, { full: true });
@@ -911,6 +946,8 @@ function loadSkill(skillDir: string, skillManifest: string, into: Map<string, Sk
     userInvocable: toBoolean(data["user-invocable"], true, "user-invocable", skillManifest),
     disableModelInvocation: toBoolean(data["disable-model-invocation"], false, "disable-model-invocation", skillManifest),
   };
+  const paths = skillPathPatterns(data, skillManifest);
+  if (paths !== undefined) skill.paths = paths;
   for (const field of ["model", "command", "shell"] as const) {
     const value = stringField(data, field, skillManifest);
     if (value !== undefined) skill[field] = value;
@@ -1299,6 +1336,14 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     }
   }
   const result: LoadedConfig = { settings, instructions, skills: [...skills.values()] };
+  // A skill with `paths` is held back from the catalog until a touched path
+  // matches (the recovered assembler's conditional split). Keep the held list
+  // beside the live one so a caller can activate it without re-scanning.
+  const heldSkills = result.skills.filter(skill => isConditionalSkill(skill));
+  if (heldSkills.length > 0) {
+    result.skills = result.skills.filter(skill => !isConditionalSkill(skill));
+    result.conditionalSkills = heldSkills;
+  }
   const watchDirectories = [...installedComponents.map(item => item.directory),
     ...(Array.isArray(pluginDirs) ? (pluginDirs as string[]).map(dir => path.resolve(workspaceRoot, dir)) : [])];
   if (watchDirectories.length) result.watchDirectories = watchDirectories;
@@ -1311,6 +1356,50 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   if (Object.keys(projectMcpServers).length) result.projectMcpServers = projectMcpServers;
   if (approveAllProjectMcpServers) result.approveAllProjectMcpServers = true;
   return result;
+}
+
+/**
+ * The catalog split the recovered assembler performs after it has de-duplicated
+ * by file (`sAr`, chunk-sfn1dbxq.js offset 3392751): a skill with `paths` is
+ * held back until a touched path matches, and only the rest are loaded. A skill
+ * already activated in the live session state is not held back again.
+ */
+export function isConditionalSkill(skill: Pick<SkillInfo, "paths">): boolean {
+  return skill.paths !== undefined && skill.paths.length > 0;
+}
+
+/**
+ * Activate every held conditional skill whose `paths` match one of the touched
+ * workspace-relative paths (`emn`, chunk-sfn1dbxq.js offset 3398872). Patterns
+ * use gitignore semantics, so a directory pattern covers everything under it
+ * and a `!` pattern re-includes. The loader's trailing `/**` was already
+ * trimmed by `skillPathPatterns`, matching the source's own normalization.
+ * Absolute paths are made relative to `workspace`; paths outside it, and
+ * patterns the matcher cannot compile, are skipped rather than guessed.
+ * Returns the activated skills in catalog order and mutates `held` in place.
+ */
+export function activateConditionalSkills(held: Map<string, SkillInfo>, workspace: string, touched: readonly string[]): SkillInfo[] {
+  if (held.size === 0 || touched.length === 0) return [];
+  const root = path.resolve(workspace);
+  const candidates: string[] = [];
+  for (const target of touched) {
+    if (typeof target !== "string" || target === "") continue;
+    const relative = path.relative(root, path.resolve(root, target));
+    if (relative === "" || relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) continue;
+    candidates.push(relative.split(path.sep).join("/"));
+  }
+  if (candidates.length === 0) return [];
+  const activated: SkillInfo[] = [];
+  for (const [name, skill] of held) {
+    const matcher = ignore();
+    try { matcher.add(skill.paths!); }
+    catch { continue; }
+    if (candidates.some(candidate => matcher.ignores(candidate))) {
+      held.delete(name);
+      activated.push(skill);
+    }
+  }
+  return activated;
 }
 
 /** Discover instructions along the accessed path without scanning sibling trees. */

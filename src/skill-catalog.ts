@@ -11,7 +11,13 @@
 // as the session config's `skills` array and renders it as the system prompt's
 // final section; the model-facing skill tool captures the array reference, so a
 // rescan replaces the array's contents in place.
-import { loadProjectConfig, type SkillInfo } from './config.js';
+//
+// A skill whose frontmatter names `paths` is not in that catalog yet. The
+// recovered assembler keeps it in `conditionalSkills` and activates it when the
+// model touches a matching file (`emn`, chunk-sfn1dbxq.js offset 3398872); this
+// product keeps the same held list on the session config, so it travels with the
+// session and re-renders the catalog section after an activation.
+import { activateConditionalSkills, loadProjectConfig, type SkillInfo } from './config.js';
 import type { SessionConfig } from './session.js';
 
 export const SKILL_TOOL_NAME = 'skill';
@@ -48,5 +54,30 @@ export function reloadSkills(current: SessionConfig): void {
   if (current.skills === undefined) return;
   const loaded = loadProjectConfig(current.workspace, { ...current.configSources, paths: [] });
   current.skills.splice(0, current.skills.length, ...loaded.skills);
-  current.system = replaceSkillsSection(current.system, loaded.skills);
+  setHeldSkills(current, loaded.conditionalSkills);
+  current.system = replaceSkillsSection(current.system, current.skills);
+}
+
+/** Install the held list a load produced; a reload replaces it wholesale. */
+export function setHeldSkills(current: SessionConfig, skills: readonly SkillInfo[] | undefined): void {
+  if (skills === undefined || skills.length === 0) delete current.heldSkills;
+  else current.heldSkills = [...skills];
+}
+
+/**
+ * Activate the conditional skills whose `paths` match a touched workspace path
+ * and append them to the live catalog in place, so the skill tool (which holds
+ * the array reference) sees them. The system prompt section is re-rendered only
+ * when something activated; the recovered path emits the same change signal and
+ * leaves the prompt untouched otherwise. Returns the activated skills.
+ */
+export function activateTouchedSkills(current: SessionConfig, touched: readonly string[]): SkillInfo[] {
+  if (current.skills === undefined || current.heldSkills === undefined || current.heldSkills.length === 0) return [];
+  const held = new Map(current.heldSkills.map(skill => [skill.name, skill]));
+  const activated = activateConditionalSkills(held, current.workspace, touched);
+  if (activated.length === 0) return [];
+  current.skills.push(...activated);
+  setHeldSkills(current, [...held.values()]);
+  current.system = replaceSkillsSection(current.system, current.skills);
+  return activated;
 }

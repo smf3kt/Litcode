@@ -12,6 +12,7 @@ import { interactiveLoop } from './interactive.js';
 import { createTuiTerminal } from './tui.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
+import { setHeldSkills } from './skill-catalog.js';
 import { listSessions } from './sessions.js';
 import { loadProjectConfig, defaultUserDir, instructionSources, type LoadedConfig } from './config.js';
 import { refuseBypassUnderRoot } from './bypass-guard.js';
@@ -328,6 +329,7 @@ function newConfig(
     config.system = buildSystem(DEFAULT_SYSTEM, [...loaded.instructions,
       ...(config.autoMemory || settings.features?.memory === false ? [] : loaded.memories ?? [])], loaded.skills);
     config.skills = loaded.skills;
+    setHeldSkills(config, loaded.conditionalSkills);
     config.instructionSources = instructionSources(loaded.instructions);
     if (loaded.conditionalRules?.length) config.conditionalRules = structuredClone(loaded.conditionalRules);
     config.features = {

@@ -43,6 +43,11 @@ export type SessionConfig = {
     features?: Partial<NonNullable<SessionConfig['features']>>; mcpClient?: SessionConfig['mcpClient'] };
   policyHelper?: { path: string; intervalMs?: number; defaultPolicy?: SessionConfig['managedPolicy'] };
   skills?: SkillInfo[];
+  /** Conditional skills held back by `paths`; activation moves them into `skills`.
+   *  Journaled with the session metadata: a resumed session keeps the same held
+   *  list, and activation survives a reload because the list is replaced from
+   *  the new load. */
+  heldSkills?: SkillInfo[];
   /** Instruction files loaded for the eager InstructionsLoaded raise. */
   instructionSources?: InstructionSource[];
   conditionalRules?: ConditionalRule[];
@@ -149,8 +154,15 @@ export const configSchema = z.object({
     intervalMs: z.number().int().positive().max(86_400_000).optional(),
     defaultPolicy: managedPolicySchema.optional() }).strict().optional(),
   skills: z.array(z.object({ name: z.string().min(1), description: z.string(), path: z.string(), body: z.string(), source: z.enum(['userSettings', 'projectSettings', 'plugin']).optional(), userInvocable: z.boolean(), disableModelInvocation: z.boolean(),
+    paths: z.array(z.string()).optional(),
     allowedTools: z.array(z.string()).optional(), argumentNames: z.array(z.string().refine(name => name.trim() !== '' && !/^\d+$/.test(name), 'argument names must be non-empty and not all digits')).optional(), model: z.string().optional(), effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(), context: z.literal('fork').optional(), agent: z.string().trim().min(1).max(128).optional(), background: z.boolean().optional(),
     aliases: z.array(z.string().min(1).max(128).regex(/^[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)*$/)).max(32).refine(names => new Set(names).size === names.length).optional(),
+    hooks: hooksSchema.optional(), command: z.string().optional(), shell: z.string().optional(), metadata: z.record(z.unknown()).optional(), limitations: z.array(z.string()).optional(),
+  }).strict()).optional(),
+  heldSkills: z.array(z.object({ name: z.string().min(1), description: z.string(), path: z.string(), body: z.string(), source: z.enum(['userSettings', 'projectSettings', 'plugin']).optional(), userInvocable: z.boolean(), disableModelInvocation: z.boolean(),
+    paths: z.array(z.string()).min(1),
+    allowedTools: z.array(z.string()).optional(), argumentNames: z.array(z.string()).optional(), model: z.string().optional(), effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(), context: z.literal('fork').optional(), agent: z.string().trim().min(1).max(128).optional(), background: z.boolean().optional(),
+    aliases: z.array(z.string()).optional(),
     hooks: hooksSchema.optional(), command: z.string().optional(), shell: z.string().optional(), metadata: z.record(z.unknown()).optional(), limitations: z.array(z.string()).optional(),
   }).strict()).optional(),
   keybindings: keybindingsSchema.optional(),
