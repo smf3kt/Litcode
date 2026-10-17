@@ -1,0 +1,3 @@
+2026-10-17T19:10:00Z	package	W77-01 问题映射容错	ce [4005,4482) 与 I [4988,5042)；le 经 I(e,"questions") 取列表；cardQuestionMap/own 移植	缺省/非数组→空映射 extended=false；字段自有属性读取；空展示对象+空答案可准入	interaction-tools 32/32；tsc 0；build 0；全量 2,104/2,104；链 767/767
+2026-10-17T19:12:00Z	decision	W77-01 容错不改变准入规则	① 只替换问题映射构建；② 空映射下答案键按源拒绝；③ 非纯对象/非字符串 kind 的 extended 处理按源顺序；④ 重复问题文本 Map 覆盖	残余：完整渲染器、格式化宿主	.audit/w77-01-full.txt
+2026-10-17T19:15:00Z	verification	W77-01 验收：interaction-tools 32/32、tsc 0、build 0、2,104/2,104、767/767	空对象准入；questions:5 准入；空映射答案键拒绝	notices 0；索引 75 chunks / 323,525 单位不变；identity 13f00168…（inputs 71e2696c…、validation 4a58d6a6…、build 54cbf4ba…）

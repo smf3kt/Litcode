@@ -1963,3 +1963,12 @@ become U+FFFD instead of withholding the preview, and the W74 admission helpers
 move to a shared `preview-sanitize` module. One new case, terminal 28/28,
 interaction-tools 32/32, tsc 0, full 2,104/2,104, chain 767/767, identity
 `27613f94…`. [W76 record](ports/W76-preview-display-sanitation.md).
+
+W77-01 ports the recovered question-map tolerance. `cardQuestionMap` follows
+`ce`: an absent or non-array shown list yields an empty map with `extended:
+false`, non-plain questions and non-string kinds clear `extended`, and every
+shown-question field is read through the recovered own-property helper `I`.
+An empty shown object with an empty answer is therefore admitted, and answer
+keys against an empty map refuse as `answers`. Three assertions added,
+interaction-tools 32/32, tsc 0, full 2,104/2,104, chain 767/767, identity
+`13f00168…`. [W77 record](ports/W77-question-map.md).
