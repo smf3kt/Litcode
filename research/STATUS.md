@@ -2672,3 +2672,14 @@ non-kept handlers so they call `act(value)`; `ZD` registers the keybinding conte
 registry `focusSites`/`focusSiteDraws` is reused, not recopied. Focused 8/8, full 2362/2362,
 tsc 0, build 0, notices 0, identity `774e46e1…`. Next is W154 (keybinding/registry).
 [W153 record](ports/W153-above-prompt-focus.md).
+
+W154 landed the AbovePrompt keybinding/registry seam (6 blocks, 1,177 UTF-16 units) in
+`plugin-chain-above-prompt-keybinding`. `Ze` keeps the latest handler in a ref and registers one
+action keyed by action, context and service; `nn` registers a handler table under a sorted key
+signature and removes every registration on unmount; `hro` answers the pane after the focused one;
+`gpr` accepts a pending focus request through `c9` or clears it; `HG` debounces on the clock
+context's timer, with `cancel` and unmount cleanup (its `Rt(p,T4n)` is the source's unsubscribe
+cleanup trick, not a store read). The product already carries the same `Lc`, `Ri`/`c9`, `eE` clock
+context and themed Box `s`, so those are reused rather than duplicated. Focused 7/7, full
+2369/2369, tsc 0, build 0, notices 0, identity `96434b80…`. Next is W155 (host glue).
+[W154 record](ports/W154-keybinding-registry.md).

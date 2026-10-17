@@ -1,0 +1,65 @@
+{
+  "imports": [
+    "import { y, en, P, Ae, R, le, Rt, Z } from \"./plugin-chain-react-hooks.js\";",
+    "import { Lc } from \"./plugin-chain-press-button.js\";",
+    "import { Ri, c9 } from \"./plugin-chain-client-host.js\";",
+    "import { eE } from \"./plugin-chain-markdown-host.js\";"
+  ],
+  "exports": [
+    "Ze",
+    "nn",
+    "hro",
+    "gpr",
+    "HG"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-am9mebpw.js",
+      "range": [
+        777,
+        1015
+      ],
+      "note": "useKeybinding hook"
+    },
+    {
+      "file": "chunk-am9mebpw.js",
+      "range": [
+        1015,
+        1357
+      ],
+      "note": "useKeybindings hook"
+    },
+    {
+      "file": "chunk-tvdq3hrk.js",
+      "range": [
+        7723,
+        7816
+      ],
+      "note": "next open pane id"
+    },
+    {
+      "file": "chunk-tvdq3hrk.js",
+      "range": [
+        15201,
+        15327
+      ],
+      "note": "consume focus request"
+    },
+    {
+      "file": "chunk-k1caxvem.js",
+      "range": [
+        1405,
+        1497
+      ],
+      "note": "default timer and external-store no-ops"
+    },
+    {
+      "file": "chunk-1r9zp6s1.js",
+      "range": [
+        23386,
+        23672
+      ],
+      "note": "debounced callback"
+    }
+  ]
+}
