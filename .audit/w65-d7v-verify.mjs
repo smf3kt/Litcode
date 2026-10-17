@@ -85,7 +85,8 @@ assert.match(print, /parseSessionIdentifier\(/)
 
 // 4. Nothing was orphaned.
 const orphans = execFileSync("node", ["/Users/mant1ssa/Projects/cc_reverse/.audit/w65-orphans.mjs"], {encoding: "utf8"})
-assert.match(orphans, /1623 files scanned, 10 with no importer/)
+// Step 7w later removed the six updater UI modules, leaving 1617 files.
+assert.match(orphans, /1617 files scanned, 10 with no importer/)
 
 // 5. The gate.
 const tscText = fs.readFileSync(new URL("w65-d7v-tsc.txt", import.meta.url), "utf8")
