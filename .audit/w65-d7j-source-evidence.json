@@ -15,14 +15,14 @@
       "file": "screens/REPL.tsx",
       "change": "the useSyncExternalStore over the null module, the Sleep-only spinner rule, and five `if (feature('PROACTIVE') || feature('KAIROS')) { proactiveModule?.… }` blocks plus the terminalFocus spread deleted; the tools memo keeps its getTools dependency alone",
       "sourceSha256": "8e8e2ed99732883e1b5b73a83a514f0f9749e6aedcf67b422a8aee95f83584f5",
-      "portSha256": "336de0880de04a97fdd8e388165c2941b87e65beb968044904c0a429e74024f0",
+      "portSha256": "2c6944a400e18d534de4495e1592d8c68d882aae8ef4273761f597e823f3c2c3",
       "coordinateUnit": "utf16-half-open"
     },
     {
       "file": "cli/print.ts",
       "change": "the tick scheduler and its two call sites, the set_proactive control-request branch, the CLAUDE_CODE_PROACTIVE fallback and the always-null module deleted; the control loop keeps its error branch",
       "sourceSha256": "61f3b93bbc0a93ed7f9987744632e620cfc625a70b8ad87968516b317ee63235",
-      "portSha256": "1e8f87d47d5c476924206e0971dc204391453f708545db44140c2a9520782493",
+      "portSha256": "eaea336c97d62471fdbfa7276538bf8812555c04ad47f0126f57284b70a5cfea",
       "coordinateUnit": "utf16-half-open"
     },
     {

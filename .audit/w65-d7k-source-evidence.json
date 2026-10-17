@@ -1,0 +1,72 @@
+{
+  "before": "6014abf",
+  "kind": "AGENT_TRIGGERS/cron surface removal (no ported bodies)",
+  "surface": "the cron scheduler cluster behind feature('AGENT_TRIGGERS'): the three ScheduleCronTool modules with their prompt and UI, the scheduler with its task store, lock and jitter config, the cron expression parser, the REPL hook and the print-mode scheduler, the /loop skill and its tip, the CRON_* tool names, and the session state (scheduledTasksEnabled, sessionCronTasks)",
+  "decisiveFact": "feature('AGENT_TRIGGERS') is false, so isKairosCronEnabled() — its only gate — is constant false: the tools never enter the pool, the skill is never enabled, the REPL hook and print-mode scheduler are never constructed, and the *.json sentinel was never watched",
+  "evidence": [
+    {
+      "file": "tools/ScheduleCronTool/CronCreateTool.ts",
+      "change": "the whole tool directory deleted (create/delete/list tools with buildCron*Prompt, the shared prompt module and the UI); its only entry was tools.ts' flag-conditional require, which is gone",
+      "sourceSha256": "8aa5485769d379242ecb0e61a889e844f84e911fe2e882094e82f32a5437afa3",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "utils/cronScheduler.ts",
+      "change": "the scheduler deleted with the task store, the per-directory lock and the jitter config it read; its two constructors (the REPL hook and print.ts' block) are both behind the same false flag",
+      "sourceSha256": "4e8d2c56e9f5042639e99c3857b06745dafe5d7ebde7464bdae0a2fc5a628a32",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "hooks/useScheduledTasks.ts",
+      "change": "the REPL hook deleted; REPL's require was `feature('AGENT_TRIGGERS') ? require(...) : null` and its single call site sat in the matching `if`, so the `useScheduledTasks!` non-null assertion went with both",
+      "sourceSha256": "541be4499f7a3181c1fed69e14f5edd2056b74e9c5404141147450daba2f65ed",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "skills/bundled/loop.ts",
+      "change": "the /loop skill deleted with its registration block; its isEnabled was isKairosCronEnabled itself, so registration and gate were both constant",
+      "sourceSha256": "76774d64cacf1f9c5465aa9f0682d1966f79608ae707ab80149784633dace3e0",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "cli/print.ts",
+      "change": "the three flag-conditional requires, the scheduler block and its `cronScheduler?.stop()` cleanup line deleted; the WORKLOAD_CRON import term went with the only queue item that carried it",
+      "sourceSha256": "1e8f87d47d5c476924206e0971dc204391453f708545db44140c2a9520782493",
+      "portSha256": "eaea336c97d62471fdbfa7276538bf8812555c04ad47f0126f57284b70a5cfea",
+      "coordinateUnit": "utf16-half-open"
+    },
+    {
+      "file": "bootstrap/state.ts",
+      "change": "scheduledTasksEnabled with both accessors, and sessionCronTasks with its type and three functions, deleted — the scheduler and CronCreateTool were their only writers",
+      "sourceSha256": "f633f321f4e4f89a69bfc53b63ca774270c455bee5aa4a3ba16ea880e8699321",
+      "portSha256": "77accb31a666acf74076a3db66d04c3aab6f5e3c4406a88cddf7edc329910fb2",
+      "coordinateUnit": "utf16-half-open"
+    }
+  ],
+  "removed": [
+    "the tool cluster: tools/ScheduleCronTool/ (CronCreateTool, CronDeleteTool, CronListTool, prompt.ts, UI.tsx) plus the three CRON_* names in constants/tools.ts' agent-disallowed set",
+    "the engine: utils/cronTasks.ts, utils/cronScheduler.ts, utils/cronTasksLock.ts, utils/cron.ts, utils/cronJitterConfig.ts",
+    "the hosts: REPL's require and its if-wrapped call site, print.ts' three requires with the scheduler block, skills/bundled/index.ts' registration, services/tips/tipRegistry.ts' loop-command-nudge entry",
+    "the session state: bootstrap/state.ts' scheduledTasksEnabled (field, default, both accessors) and sessionCronTasks (field, default, SessionCronTask type, three functions)",
+    "WORKLOAD_CRON and the Workload type, whose only producer was the cron queue item; the sanitizer constraint the type documented moved to runWithWorkload, which is still called for SDK-supplied workload tags",
+    "four prose sites re-worded with the code they described (the queued-commands hide rule, handlePromptSubmit's provenance note, textInputTypes' workload field, workloadContext's ALS rationale)"
+  ],
+  "kept": [
+    "entrypoints/agentSdkTypes.ts' CronTask/ScheduledTaskEvent/ScheduledTasksHandle types with the two throwing stubs — a declared SDK contract with no producer, the same call wave C made for rate_limit_event. Named in the fixture so the absence sweep stays honest about it",
+    "utils/workloadContext.ts itself: runWithWorkload/getWorkload still carry SDK-supplied tags, and --workload is still a CLI option",
+    "the QueuePriority union, whose three levels the LocalShellTask and the turn drain still use"
+  ],
+  "tsc": {
+    "command": "node_modules/.bin/tsc --noEmit --pretty false",
+    "cwd": "/Users/mant1ssa/Projects/cc-base-2188",
+    "exitCode": 0,
+    "diagnostics": 0,
+    "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "validation": "Absence sweep for the flag, every module name, every tool name and the two state fields, with the SDK declaration file excluded explicitly and asserted separately; the folded sites asserted textually (tools.ts' neighbouring pool lines, constants/tools.ts' surviving set, REPL's neighbouring hooks, skills/bundled/index.ts' neighbouring registrations, the tips array's next entry, print.ts' surviving runWithWorkload call, state.ts' neighbouring field); the deleted paths asserted absent; import-graph orphan scan stays at its 10 legitimate entries with the file count down by exactly the twelve deleted modules",
+  "remaining": "the replBridge* AppState leftovers with getRemoteControlAtStartup(), the session-ingress bearer surface, the model-call seams (which must not be removed wholesale — API-key auth is the retained path), utils/fastMode.ts's remaining gates, the ~33 in-place CLI blocks, cli/transports/, and the dependency-pruning pass",
+  "notes": [
+    "one quarantine ran first: tools/ScheduleCronTool/UI.tsx.w54bak was copied to .audit/w65-d7k-baks/ and byte-compared before the directory was removed",
+    "the scheduler's own gate is isKairosCronEnabled, whose body is `feature('AGENT_TRIGGERS') ? !isEnvTruthy(CLAUDE_CODE_DISABLE_CRON) && getFeatureValue_CACHED_WITH_REFRESH('tengu_kairos_cron', true, …) : false` — the GrowthBook term and the env kill switch are both unreachable behind the build flag"
+  ]
+}

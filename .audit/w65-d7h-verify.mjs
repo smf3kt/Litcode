@@ -53,13 +53,13 @@ assert.match(main, /teamContext: computeInitialTeamContext\?\.\(\),/)
 const fastMode = fs.readFileSync(`${root}/utils/fastMode.ts`, "utf8")
 assert.match(fastMode, /getIsNonInteractiveSession\(\) &&\n    preferThirdPartyAuthentication\(\)\n  \) \{/)
 
-const cron = fs.readFileSync(`${root}/utils/cronScheduler.ts`, "utf8")
-assert.match(cron, /if \(isLoading\(\)\) return\n/)
-assert.match(cron, /if \(!getScheduledTasksEnabled\(\) && hasCronTasksSync\(\)\) \{/)
-const hook = fs.readFileSync(`${root}/hooks/useScheduledTasks.ts`, "utf8")
-assert.match(hook, /export function useScheduledTasks\(\{\n  isLoading,\n  setMessages,\n\}: Props\): void \{/)
-assert.match(hook, /\}, \[\]\)\n\}/)
-assert.match(fs.readFileSync(`${root}/screens/REPL.tsx`, "utf8"), /useScheduledTasks!\(\{ isLoading, setMessages \}\)/)
+// The cron scheduler's assistantMode bypass this step folded lived in
+// utils/cronScheduler.ts, which step 7k removed with the whole AGENT_TRIGGERS
+// cluster (the flag is false, so the scheduler was never constructed). What
+// stays checkable here is that neither file remains.
+assert.equal(fs.existsSync(`${root}/utils/cronScheduler.ts`), false)
+assert.equal(fs.existsSync(`${root}/hooks/useScheduledTasks.ts`), false)
+assert.doesNotMatch(fs.readFileSync(`${root}/screens/REPL.tsx`, "utf8"), /useScheduledTasks/)
 
 // 3. The `||` terms dropped as single terms; each expression keeps the rest of
 //    its shape.
