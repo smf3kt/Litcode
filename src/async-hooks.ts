@@ -3,7 +3,9 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { HOOK_EVENTS, hookDefinitionSchema, runHooks, type AsyncHookRequest, type HookEvent, type HookPayload, type HookResult } from "./hooks.js";
+import { redactCredentialShapes } from "./credential-shapes.js";
+import { HOOK_EVENTS, hookDefinitionSchema, runHooks, type AsyncHookRequest, type CommandHookExecution,
+  type HookEvent, type HookPayload, type HookResult } from "./hooks.js";
 
 const MAX_ACTIVE = 16;
 const MAX_HISTORY = 100;
@@ -12,6 +14,11 @@ const MAX_INPUT_BYTES = 1024 * 1024;
 const CALLBACK_GRACE_MS = 200;
 
 export type AsyncHookState = "running" | "completed" | "blocked" | "failed" | "cancelled" | "timed_out";
+/** What an asyncRewake hook asks the host to deliver when its run exits 2
+ *  (`m5e`, chunk-sfn1dbxq.js offset 2956018): a one-line summary and the body
+ *  the model reads, whose default prefix is `Stop hook blocking error from
+ *  command "…":` followed by stderr (else stdout). */
+export type AsyncHookRewake = { summary: string; body: string };
 export type AsyncHookCompletion = {
   id: string;
   event: HookEvent;
@@ -21,6 +28,8 @@ export type AsyncHookCompletion = {
   state: Exclude<AsyncHookState, "running">;
   started_at: number;
   completed_at: number;
+  /** Present only when this job's definition set asyncRewake and it exited 2. */
+  rewake?: AsyncHookRewake;
 };
 export type AsyncHookDescriptor = {
   id: string;
@@ -85,6 +94,24 @@ function terminalState(result: HookResult, signal: AbortSignal): Exclude<AsyncHo
   if (result.additionalContext.some(text => text.includes("hook: exit code") || text.includes("failed to launch") || text.includes("invalid definition"))) return "failed";
   return "completed";
 }
+type RewakeDefinition = { command: string; rewakeMessage?: string; rewakeSummary?: string };
+type RewakeSource = { definition: RewakeDefinition; raw?: CommandHookExecution };
+/** `UT` over `Ait` (chunk-sfn1dbxq.js offset 632948, `Ait` in chunk-hwpb27as.js):
+ *  hook output must not open or close the reminder channel that carries it. */
+function escapeReminderText(text: string): string {
+  return text.replace(/<(?=\s*(?:\/\s*)?system-reminder\b)/gi, "&lt;").replace(/<(?=\s*(?:\/\s*)?$)/, "&lt;");
+}
+/** The wake `m5e` queues for an exit-2 asyncRewake run: the configured prefix
+ *  followed by stderr (else stdout), and the configured summary. */
+function rewakeFor(source: RewakeSource): AsyncHookRewake | undefined {
+  const raw = source.raw;
+  if (!raw || raw.code !== 2 || raw.timedOut || raw.aborted) return undefined;
+  const prefix = source.definition.rewakeMessage ?? `Stop hook blocking error from command "${source.definition.command}":`;
+  return {
+    summary: redactCredentialShapes(source.definition.rewakeSummary ?? "Stop hook feedback"),
+    body: redactCredentialShapes(escapeReminderText(`${prefix} ${raw.stderr || raw.stdout}`)),
+  };
+}
 
 export class AsyncHookRegistry {
   readonly workspace: string;
@@ -134,9 +161,20 @@ export class AsyncHookRegistry {
     const job: Job = { descriptor, controller, done, settled: false };
     this.jobs.set(id, job);
     // The caller's per-call signal is intentionally detached after ownership.
-    const config = { [request.event]: [{ ...definition, async: false, timeout }] };
-    void runHooks(config, request.event, forwarded, controller.signal).then(
-      result => this.finish(job, result, correlation, complete),
+    // asyncRewake implies async; the forwarded run must not re-enter the registry.
+    const { asyncRewake: _asyncRewake, ...foreground } = definition as typeof definition & { asyncRewake?: boolean };
+    const config = { [request.event]: [{ ...foreground, async: false, timeout }] };
+    const wakeFields = "asyncRewake" in definition ? definition : undefined;
+    const wake = wakeFields?.asyncRewake === true
+      ? { definition: { command: wakeFields.command,
+          ...(wakeFields.rewakeMessage !== undefined ? { rewakeMessage: wakeFields.rewakeMessage } : {}),
+          ...(wakeFields.rewakeSummary !== undefined ? { rewakeSummary: wakeFields.rewakeSummary } : {}) } }
+      : undefined;
+    let execution: CommandHookExecution | undefined;
+    void runHooks(config, request.event, forwarded, controller.signal, {
+      onCommandResult: raw => { execution = raw; },
+    }).then(
+      result => this.finish(job, result, correlation, complete, undefined, wake ? { definition: wake.definition, raw: execution } : undefined),
       () => this.finish(job, { blocked: false, additionalContext: ["[async hook: execution failed]"] }, correlation, complete, "failed"),
     );
     return id;
@@ -168,10 +206,13 @@ export class AsyncHookRegistry {
     return this.closing;
   }
 
-  private async finish(job: Job, raw: HookResult, payload: HookPayload, complete: (value: AsyncHookCompletion) => void, failed?: "failed"): Promise<void> {
+  private async finish(job: Job, raw: HookResult, payload: HookPayload, complete: (value: AsyncHookCompletion) => void,
+    failed?: "failed", wake?: RewakeSource): Promise<void> {
     const result = boundedResult(raw);
     const state = failed ?? terminalState(raw, job.controller.signal);
-    const completion: AsyncHookCompletion = { id: job.descriptor.id, event: job.descriptor.event, payload, result, state, started_at: job.descriptor.started_at, completed_at: Date.now() };
+    const rewake = wake ? rewakeFor(wake) : undefined;
+    const completion: AsyncHookCompletion = { id: job.descriptor.id, event: job.descriptor.event, payload, result, state,
+      started_at: job.descriptor.started_at, completed_at: Date.now(), ...(rewake ? { rewake } : {}) };
     job.descriptor.state = state;
     job.descriptor.completed_at = completion.completed_at;
     if (this.onResult) {
