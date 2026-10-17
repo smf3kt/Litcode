@@ -1866,3 +1866,11 @@ four durable writers (intent, object, manifest, transaction) share `atomicWrite`
 fsync directory, with the manifest published last and the transaction before effects. Checkpoints
 23/23, rewind 7/7, full 2,090/2,090, chain 767/767, both crash smoke modes pass; identity
 `6eaa8c28…`. [W54 record](ports/W54-checkpoint-gc.md).
+
+W66-01 verifies real multiplexer decoding of the hook terminal wrapper. The recovered `OI` body
+(chunk-kexg5hxg.js UTF-8 [8488,8667), detection `K3t` [7526,7656)) doubles ESC inside DCS for tmux
+and screen; the port matches. `scripts/smoke-hook-mux.mjs` runs the product formatter inside each
+real multiplexer and has an outer tmux parse the forwarded OSC 0, asserting the pane title, in
+source and compiled modes. Display delivery is dispositioned as journal-before-effect at-most-once
+with no replay; full original consumers and script semantics remain gaps. tsc 0, full 2,090/2,090,
+chain 767/767, identity `bb47c630…`. [W66 record](ports/W66-hook-mux-decode.md).
