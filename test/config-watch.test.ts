@@ -105,6 +105,28 @@ test("real config changes debounce, discover directories, survive replacement an
   } finally { watcher.close(); fs.rmSync(root, { recursive: true, force: true }); }
 });
 
+test("watcher reports each relevant file event with its path and kind", async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "config-watch-events-")));
+  const workspace = path.join(root, "project");
+  fs.mkdirSync(workspace);
+  const events: { file: string; kind: string }[] = [];
+  const watcher = watchProjectConfig(workspace, { onFileChange: (file, kind) => events.push({ file, kind }) },
+    () => {});
+  try {
+    await delay(100);
+    const target = path.join(workspace, "AGENTS.md");
+    write(target, "one");
+    await waitFor(() => events.some(item => item.file === target && item.kind === "add"));
+    events.length = 0;
+    write(target, "two");
+    await waitFor(() => events.some(item => item.file === target && (item.kind === "change" || item.kind === "add")));
+    events.length = 0;
+    fs.unlinkSync(target);
+    await waitFor(() => events.some(item => item.file === target && item.kind === "unlink"));
+    assert.ok(events.every(item => item.file === target));
+  } finally { watcher.close(); fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test("watch bounds, symlink confinement, missing roots and optional error reporting", async t => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "config-watch-bounds-")));
   const workspace = path.join(root, "project"), userDir = path.join(root, "missing/user");

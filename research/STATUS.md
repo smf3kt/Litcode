@@ -2002,3 +2002,12 @@ captured before `applyConfig` replaces the session. The selector reads
 unported. `interactive` 7/7 with both payloads captured from real hooks,
 `hooks` 48/48, tsc 0, full 2,107/2,107, chain 767/767, identity `560f098a…`.
 [W80 record](ports/W80-model-switch-payloads.md).
+
+W81-01 wires the recovered watcher-driven FileChanged raise. `watchProjectConfig`
+reports each relevant Node watcher event as `(filePath, add|change|unlink)`
+(rename is add or unlink by existence), and the interactive loop raises
+FileChanged with the recovered `{file_path, event}` payload, displaying the
+result's `systemMessages` like `ke` does. Hook-returned `watchPaths` and the
+source failure-output display stay residual. `config-watch` 3/3, tsc 0, build
+0, full 2,108/2,108, chain 767/767, identity `700a4af5…`.
+[W81 record](ports/W81-file-watcher-events.md).

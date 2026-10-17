@@ -1,0 +1,3 @@
+2026-10-17T22:10:00Z	package	W81-01 监视器 FileChanged	ke [1678937,1679425)、e7r [2935646,2935767)；watchProjectConfig onFileChange；interactive raise	rename按存在性映射add/unlink；其余change；绝对路径；systemMessages显示；非阻塞	config-watch 3/3；tsc 0；build 0；全量 2,108/2,108；链 767/767
+2026-10-17T22:12:00Z	decision	W81-01 边界	① 复用既有配置/指令/内容监视根；② 不追随钩子返回的watchPaths（结果无该字段）；③ 失败输出降为状态行；④ 事件逐条raise，reload仍按既有debounce	残余：watchPaths、失败输出语义、完整消费者与脚本语义	.audit/w81-01-full.txt
+2026-10-17T22:15:00Z	verification	W81-01 验收：config-watch 3/3、tsc 0、build 0、2,108/2,108、767/767	新增/改写/删除分别报告 add、change(add)、unlink 与绝对路径	notices 0；索引 75 chunks / 323,525 单位不变；identity 700a4af5…（inputs b9f4b540…、validation 0ab9ad33…、build 95e80070…）
