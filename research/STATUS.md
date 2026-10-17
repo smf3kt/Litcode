@@ -2815,3 +2815,17 @@ notice (the highlight carries the active state), and the fixed TUI binding suppl
 `alt+w` label; both are recorded. Focused 82/82, full 2450/2450, tsc 0, build 0, notices 0,
 identity `b2c11915…`.
 [W160 record](ports/W160-workflow-keyword.md).
+
+W161 added the diff data slice (16 copied blocks, 3,213 UTF-16 units from chunk-j8hqhz0c.js,
+chunk-gyf58rwf.js, chunk-ax7r0qj7.js and chunk-2bcyxj9q.js). `parseGitDiffStats` reads the
+combined `git diff --raw --numstat` stream: raw and numstat lines pair by index only when
+their counts match, the per-file map stops at the source 50-file cap while totals keep
+counting, `within-root` drops absolute, drive, escaping and hidden paths, and rename displays
+split plain, brace and C-quoted forms with UTF-8 octal decoding. `readGitDiffStats` runs the
+source argument list (`--no-optional-locks`, `diff.relative=false`, `LCo`, submodule and
+`--ignore-submodules=dirty`, `--raw --numstat`) with the source 5s timeout and within-root
+scope; nonzero exits answer null. The recovered runner/environment is replaced by `execFile`
+with bounded output and recorded Git isolation; the diff dialog and hunk model remain out.
+Focused 10/10, full 2460/2460, tsc 0, build 0, notices 0, scan declared 42 / unresolved 0,
+identity `8a18b3f1…`.
+[W161 record](ports/W161-git-diff-status.md).
