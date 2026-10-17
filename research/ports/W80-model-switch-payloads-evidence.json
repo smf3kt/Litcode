@@ -1,0 +1,106 @@
+{
+ "schema": "W80ModelSwitchPayloadsEvidence.v1",
+ "package": "W80-01 — model-switch hook payloads",
+ "date": "2026-10-17",
+ "question": "Do PreModelSwitch and PostModelSwitch carry the recovered from_model/to_model/requested_model fields and select matchers by to_model?",
+ "answer": "Yes: both raise sites send the three recovered fields, the prior model is captured before the configuration branch, and the selector reads to_model; alias normalization and the source/flag fields remain unported.",
+ "sourcePosition": {
+  "module": "extracted-v2/modules/chunk-sfn1dbxq.js",
+  "unit": "UTF-16 code units",
+  "preModelSwitch": {
+   "symbol": "oXr",
+   "range": [
+    2937531,
+    2939081
+   ]
+  },
+  "postModelSwitch": {
+   "symbol": "sXr",
+   "range": [
+    2939454,
+    2940852
+   ]
+  },
+  "selectorNormalization": {
+   "module": "extracted-v2/modules/chunk-bk5ct2gw.js",
+   "offsets": [
+    383071,
+    383141
+   ],
+   "symbols": [
+    "g4e",
+    "zIt"
+   ]
+  }
+ },
+ "behavior": {
+  "pre": "from_model, to_model and requested_model before the configuration changes",
+  "post": "the same fields after the branch, with from_model captured before applyConfig",
+  "selector": "to_model only",
+  "notPorted": [
+   "model alias normalization",
+   "source field",
+   "zWe model-flag spread"
+  ]
+ },
+ "changes": [
+  {
+   "file": "src/interactive.ts",
+   "change": "Pre/Post payloads and previousModel capture",
+   "sha256": "0038542668d16eefd4718f47b20922e3fe1361494137b30f39020e8aeba80a63"
+  },
+  {
+   "file": "src/hooks.ts",
+   "change": "model-switch selector reads to_model only",
+   "sha256": "3041ceec1129719c8f610144b51c8860f6a64ef9812a32c57502f5ab4bd8ce2a"
+  },
+  {
+   "file": "test/interactive.test.ts",
+   "change": "captured model-switch payload assertions",
+   "sha256": "f145e8074f8dfb6244c6b3143dd6c498453df407d9cc363058cb3f48ebca41b7"
+  },
+  {
+   "file": "test/hooks.test.ts",
+   "change": "to_model selector assertions",
+   "sha256": "e455cd1242bf9dc01e31085dc7781c5fbc4eb43531fa74d93ae82474e9022c6f"
+  },
+  {
+   "file": "research/CURRENT.md",
+   "change": "three C-6 rows record model-switch payloads",
+   "sha256": "f313b546c0c6a10992960a46f3e123773da3fbe6c7769479befd5789f1a8927e"
+  },
+  {
+   "file": "research/FEATURES.md",
+   "change": "Lifecycle hooks row records model-switch payloads",
+   "sha256": "828e61181e5980daf9d6146b030df12f61a3a20f32e20e5b4251ced4a9a4f6a3"
+  },
+  {
+   "file": "research/STATUS.md",
+   "change": "W80-01 entry",
+   "sha256": "1c2100b852c1d7b0fdbaa15e9725585c4523a4a3aecdf94196935267fb446fcb"
+  },
+  {
+   "file": "research/coding-standard.md",
+   "change": "W80-01 S-1..S-7 entry",
+   "sha256": "6a8cf68921c2146f8762d5fb89449da5935c0e62ee867547aedcbb2095b74e1a"
+  }
+ ],
+ "gates": {
+  "tsc": "exit 0",
+  "interactive": "7/7",
+  "hooks": "48/48",
+  "build": "exit 0",
+  "full": "2,107/2,107",
+  "chain": "767/767",
+  "notices": "exit 0",
+  "sourceIndex": "75 chunks, 323,525 units (unchanged)",
+  "identity": "560f098a0027484157f437d47d9828065a9566b3788038bf3a5c0b10c57fb03f"
+ },
+ "residuals": [
+  "Model-alias normalization for the selector remains unported.",
+  "The recovered source field and model-flag spread are absent.",
+  "FileChanged per-file watcher raise and per-file instruction loading remain C-6 work."
+ ],
+ "recoveredEntrypointsExecuted": false,
+ "next": "C-6 continues with the full hook consumers, script semantics and per-file watcher/instruction raises."
+}

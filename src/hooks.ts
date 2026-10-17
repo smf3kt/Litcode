@@ -455,7 +455,7 @@ export function hookMatcherValue(event: HookEvent, payload: HookPayload): string
       return text(payload.trigger);
     case "PreModelSwitch":
     case "PostModelSwitch":
-      return text(payload.to_model) ?? text(payload.model);
+      return text(payload.to_model);
     case "Notification":
       return text(payload.notification_type);
     case "SessionEnd":

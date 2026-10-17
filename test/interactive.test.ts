@@ -79,6 +79,12 @@ test('interactive tasks, compact, fork and clear keep history and release every 
 test('context and effort commands count paired history and pin the new request effort', async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-context-')));
   const config = defaultConfig(workspace, []); config.model = 'fixture';
+  const captured = path.join(workspace, 'payloads');
+  fs.mkdirSync(captured);
+  config.hooks = {
+    PreModelSwitch: [{ command: `cat > ${JSON.stringify(path.join(captured, 'pre.json'))}` }],
+    PostModelSwitch: [{ command: `cat > ${JSON.stringify(path.join(captured, 'post.json'))}` }],
+  };
   const session = Session.open(workspace, { config });
   const requests: Anthropic.MessageCreateParamsNonStreaming[] = [];
   const provider: ModelProvider = { count: async () => 123, complete: async request => {
@@ -107,6 +113,16 @@ test('context and effort commands count paired history and pin the new request e
     const branches = listSessions(workspace).filter(item => item.parent);
     assert.equal(branches.length, 2); assert.ok(branches.every(item => item.parent?.reason === 'configuration'));
     assert.ok(listSessions(workspace).every(item => !item.active));
+    const pre = JSON.parse(fs.readFileSync(path.join(captured, 'pre.json'), 'utf8'));
+    assert.equal(pre.hook_event_name, 'PreModelSwitch');
+    assert.equal(pre.from_model, 'fixture');
+    assert.equal(pre.to_model, 'second-model');
+    assert.equal(pre.requested_model, 'second-model');
+    const post = JSON.parse(fs.readFileSync(path.join(captured, 'post.json'), 'utf8'));
+    assert.equal(post.hook_event_name, 'PostModelSwitch');
+    assert.equal(post.from_model, 'fixture');
+    assert.equal(post.to_model, 'second-model');
+    assert.equal(post.requested_model, 'second-model');
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
