@@ -1,0 +1,3 @@
+2026-10-17T10:52:00Z	package	W54-01 checkpoint GC 与断电写序	recoverCheckpoint 在 store 锁内、事务恢复后清扫无引用对象与死主无 manifest 的 intent；不可读/未知/链接/超限保留；atomicWrite 顺序逐点核对	本地构造（W04）；观察时核对沿用 zPo	checkpoints 23/23；rewind 7/7；全量 2,090/2,090；链 767/767；两模式 crash smoke 通过
+2026-10-17T10:55:00Z	decision	W54-01 只做可证明的清扫	① 对象仅在全部 manifest 可验证且引用集完整时删除；② intent 仅在创建者已死且 manifest 缺失时删除；③ 活创建者可能仍在捕获，保留；④ 符号链接、未知文件名与超出 cap 的 store 一律不删；⑤ 在事务恢复之后执行，避免删掉回滚对象	残余：硬件级断电等价（设备缓存/撕裂写）不可本地测量；孤儿 manifest 不自动删除	.audit/w54-01-test.txt
+2026-10-17T10:58:00Z	verification	W54-01 验收：checkpoints 23/23、rewind 7/7、2,090/2,090、767/767、两模式 crash smoke、身份 6eaa8c28…	无引用对象删除；外部文件、非摘要名、链接、被引用对象保留；死主 intent 删除、活主保留；无效 manifest 时全部保留	tsc 0；build 0；notices 0；索引 75 chunks / 323,525 单位不变；smoke exit 0

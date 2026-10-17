@@ -52,6 +52,7 @@ export type CheckpointAssociation = { file: string; name: string; digest: string
 const ASSOCIATION = /^\.assoc-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/;
 const ASSOCIATION_CAP = 4096;
 const ASSOCIATION_SCAN_CAP = 1024;
+const OBJECT_SCAN_CAP = 100_000;
 const associationPath = (store: string, id: string) => path.join(store, `.assoc-${id}.json`);
 
 function aborted(context: ToolContext): void {
@@ -370,6 +371,58 @@ export function recoverCheckpointAssociations(root: string, session: string, exi
   }
   return pending;
 }
+/** Sweeps only garbage this store can prove, under its lock and after transaction recovery:
+ *  content-addressed objects no manifest references, and intents whose creator died before any
+ *  manifest was published. An unreadable manifest, an unknown file or a cap retains the set. */
+function sweepStore(root: string, store: string): void {
+  let entries: string[];
+  try { entries = fs.readdirSync(store).sort(); } catch { return; }
+  for (const [seen, name] of entries.entries()) {
+    if (seen >= ASSOCIATION_SCAN_CAP) break;
+    if (!ASSOCIATION.test(name)) continue;
+    const file = path.join(store, name);
+    let intent: Association;
+    try {
+      const stat = fs.lstatSync(file);
+      if (!stat.isFile() || stat.size > ASSOCIATION_CAP) continue;
+      intent = associationSchema.parse(JSON.parse(fs.readFileSync(file, "utf8")));
+    } catch { continue; }
+    if (alive(intent.pid)) continue;
+    try {
+      if (manifestDigest(root, intent.name) === undefined) { fs.unlinkSync(file); syncDir(store); }
+    } catch { /* an unreadable manifest retains its intent */ }
+  }
+  const manifests = path.join(store, "manifests");
+  let names: string[];
+  try { names = fs.readdirSync(manifests).sort(); } catch { return; }
+  if (names.length > ENTRY_CAP) return;
+  const referenced = new Set<string>();
+  for (const file of names) {
+    const name = file.endsWith(".json") ? file.slice(0, -5) : "";
+    if (!NAME.test(name)) return;
+    let manifest: Manifest;
+    try {
+      const target = path.join(manifests, file), stat = fs.lstatSync(target);
+      if (!stat.isFile() || stat.size > MANIFEST_CAP) return;
+      manifest = manifestSchema.parse(JSON.parse(fs.readFileSync(target, "utf8")));
+    } catch { return; }
+    if (manifest.workspace !== root || manifest.name !== name || manifest.digest !== fingerprint(manifest.entries)) return;
+    for (const entry of manifest.entries) if (entry.kind === "file") referenced.add(entry.sha256);
+  }
+  const objects = path.join(store, "objects");
+  let files: string[];
+  try { files = fs.readdirSync(objects).sort(); } catch { return; }
+  if (files.length > OBJECT_SCAN_CAP) return;
+  let removed = false;
+  for (const file of files) {
+    if (!HASH.test(file) || referenced.has(file)) continue;
+    const target = path.join(objects, file);
+    const stat = exists(target);
+    if (!stat || !stat.isFile() || stat.isSymbolicLink()) continue;
+    fs.unlinkSync(target); removed = true;
+  }
+  if (removed) syncDir(objects);
+}
 function branchProof(root: string, branch: CheckpointCommit, context: ToolContext): { committed: boolean; file?: string; stat?: fs.Stats } {
   const file = path.join(root, ".agent", `${branch.id}.jsonl`), stat = exists(file);
   if (!stat) return { committed: false };
@@ -480,7 +533,9 @@ export function recoverCheckpoint(context: ToolContext): { recovery: "none" | "r
   return lock(store, () => {
     const tag = hash(store).slice(0, 12);
     for (const directory of [store, path.join(store, "objects"), path.join(store, "manifests")]) sweepStaging(directory, tag);
-    return { recovery: recoverTransaction(root, store, context) };
+    const recovery = recoverTransaction(root, store, context);
+    sweepStore(root, store);
+    return { recovery };
   });
 }
 function manifestFor(root: string, name: string, context: ToolContext): { store: string; manifest: Manifest; contents: Map<string, Buffer> } {

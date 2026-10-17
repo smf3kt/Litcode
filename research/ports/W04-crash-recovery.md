@@ -69,3 +69,11 @@ Capture now writes a durable association intent before publishing the manifest, 
 `Session.open` appends the missing checkpoint event under the session lock. The intent is cleared
 once the event is durable; intents with no published manifest are cleared, while foreign,
 unreadable or digest-mismatched files stay for inspection. [W53 record](W53-checkpoint-association.md).
+
+
+## W54-01 garbage collection and write order (2026-10-17)
+
+Recovery now sweeps content-addressed objects no valid manifest references and association intents
+whose creator died before publishing a manifest, under the store lock and only when the whole
+reference set is provable. The durable writers share one order: fsync the file, rename, fsync the
+directory; the manifest is published last and the transaction before effects. [W54 record](W54-checkpoint-gc.md).

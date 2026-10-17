@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -461,4 +462,40 @@ test("a pending transaction sweeps staging files from its target directories", a
   assert.throws(() => recoverCheckpoint(context(root)), /ownership is unknown/);
   assert.equal(fs.existsSync(temporary), false);
   assert.equal(fs.existsSync(path.join(root, ".agent/checkpoints/transaction.json")), true);
+});
+
+test("recovery sweeps unreferenced objects and intents whose creator died before capture", async () => {
+  const root = workspace(); write(root, "a", "A");
+  await run("checkpoint_create", { name: "base" }, root);
+  const store = path.join(root, ".agent/checkpoints"), objects = path.join(store, "objects");
+  const referenced = fs.readdirSync(objects)[0]!;
+  const orphan = "a".repeat(64), foreign = "not-a-digest", linked = "b".repeat(64);
+  fs.writeFileSync(path.join(objects, orphan), "orphan");
+  fs.writeFileSync(path.join(objects, foreign), "foreign");
+  const outside = path.join(root, "outside"); fs.writeFileSync(outside, "keep");
+  fs.symlinkSync(outside, path.join(objects, linked));
+  const dead = spawnSync(process.execPath, ["-e", "0"]).pid!;
+  const intent = (id: string, pid: number) => fs.writeFileSync(path.join(store, `.assoc-${id}.json`),
+    JSON.stringify({ version: 1, id, session: crypto.randomUUID(), name: "never-captured", boundary: 0, pid, created_at: new Date().toISOString() }));
+  const deadIntent = crypto.randomUUID(), liveIntent = crypto.randomUUID();
+  intent(deadIntent, dead); intent(liveIntent, process.pid);
+  assert.deepEqual(recoverCheckpoint(context(root)), { recovery: "none" });
+  // Only content-addressed files no manifest references are removed.
+  assert.equal(fs.existsSync(path.join(objects, orphan)), false);
+  assert.equal(fs.readFileSync(path.join(objects, foreign), "utf8"), "foreign");
+  assert.equal(fs.lstatSync(path.join(objects, linked)).isSymbolicLink(), true);
+  assert.equal(fs.existsSync(path.join(objects, referenced)), true);
+  // A dead creator with no manifest cannot restore an association; a live one may still capture.
+  assert.equal(fs.existsSync(path.join(store, `.assoc-${deadIntent}.json`)), false);
+  assert.equal(fs.existsSync(path.join(store, `.assoc-${liveIntent}.json`)), true);
+});
+
+test("an unreadable manifest retains every otherwise unreferenced object", async () => {
+  const root = workspace(); write(root, "a", "A");
+  await run("checkpoint_create", { name: "base" }, root);
+  fs.writeFileSync(manifestPath(root), "{}");
+  const orphan = "c".repeat(64), objects = path.join(root, ".agent/checkpoints/objects");
+  fs.writeFileSync(path.join(objects, orphan), "orphan");
+  assert.deepEqual(recoverCheckpoint(context(root)), { recovery: "none" });
+  assert.equal(fs.existsSync(path.join(objects, orphan)), true);
 });
