@@ -2028,3 +2028,13 @@ messages, as `ke` does with unsuccessful results. Blocking exit-2 events keep
 their existing block behavior. `hooks` 50/50, tsc 0, build 0, full
 2,110/2,110, chain 767/767, identity `53e0f27e…`.
 [W83 record](ports/W83-failed-hook-output.md).
+
+W84-01 ports the TaskCreated payload and its rollback. The raise sends the
+created task's own `task_id`, `task_subject` and `task_description` rather than
+the tool echo; a blocking hook deletes the task through the new internal
+`removeTask` (unlinks it from dependents' `blockedBy`), and the tool result
+becomes `TaskCreated hook feedback:`. TaskCreated joins the blocking and
+decision-block sets, matching `Zge`. Team fields stay unset because the tool
+path has no team identity. `agent-lifecycle` 27/27, `hooks` 50/50, tsc 0,
+build 0, full 2,112/2,112, chain 767/767, identity `081a61bf…`.
+[W84 record](ports/W84-task-created-hooks.md).

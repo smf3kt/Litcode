@@ -9,6 +9,7 @@ import { loadProjectConfig } from "../src/config.js";
 import { Session, type SessionConfig, type ToolResult } from "../src/session.js";
 import type { ModelProvider, ModelRequest } from "../src/provider.js";
 import { createTools, type ToolDefinition } from "../src/tools.js";
+import { createTaskTools, readTaskRecords } from "../src/tasks.js";
 
 const roots: string[] = [];
 function workspace(): string {
@@ -448,6 +449,63 @@ test("TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects", as
     assert.equal(batch[0]!.is_error, true);
     assert.equal(batch[1]!.is_error, true);
     assert.deepEqual(session.events.filter(event => event.kind === "tool_start").map(event => event.id), ["progress"]);
+    assertBatchAdjacency(session);
+  } finally { session.close(); }
+});
+
+test("TaskCreated receives the created task's fields and a block rolls the task back", async () => {
+  const root = workspace();
+  const capture = path.join(root, "task-created.jsonl");
+  const tools = createTaskTools(root);
+  const provider = new ScriptedProvider([
+    response([call("create", "task_create", { subject: "Created subject", description: "Created description" })], "tool_use"),
+    done(),
+  ]);
+  const hooks = { TaskCreated: [{ command: `cat >> ${shellQuote(capture)}; printf created-block >&2; exit 2` }] };
+  const session = Session.open(root, { config: config(root, tools, { hooks }) });
+  try {
+    await new Agent(session, provider, tools).run("create a task");
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.hook_event_name, "TaskCreated");
+    assert.match(String(payload.task_id), /^[0-9a-f-]{36}$/);
+    assert.equal(payload.task_subject, "Created subject");
+    assert.equal(payload.task_description, "Created description");
+    assert.equal("tool_name" in payload, false);
+    assert.equal("tool_input" in payload, false);
+    assert.equal("tool_response" in payload, false);
+    assert.deepEqual(readTaskRecords(root), []);
+    const result = resultBatches(session)[0]![0]!;
+    assert.equal(result.is_error, true);
+    assert.match(String(result.content), /TaskCreated hook feedback:\ncreated-block/);
+    assertBatchAdjacency(session);
+  } finally { session.close(); }
+});
+
+test("TaskCreated additional context leaves the created task in place", async () => {
+  const root = workspace();
+  const tools = createTaskTools(root);
+  const provider = new ScriptedProvider([
+    response([call("create", "task_create", { subject: "Kept subject", description: "Kept description" })], "tool_use"),
+    done(),
+  ]);
+  const capture = path.join(root, "task-created-context.jsonl");
+  const hooks = { TaskCreated: [{ command: `cat >> ${shellQuote(capture)}; ${emit({ hookSpecificOutput: { hookEventName: "TaskCreated", additionalContext: "created-context" } })}` }] };
+  const session = Session.open(root, { config: config(root, tools, { hooks }) });
+  try {
+    await new Agent(session, provider, tools).run("create a task");
+    const payload = JSON.parse(fs.readFileSync(capture, "utf8").trim()) as Record<string, unknown>;
+    assert.equal(payload.task_subject, "Kept subject");
+    assert.equal(payload.task_description, "Kept description");
+    const records = readTaskRecords(root);
+    assert.equal(records.length, 1);
+    assert.equal(records[0]!.subject, "Kept subject");
+    assert.equal(records[0]!.status, "pending");
+    const batch = resultBatches(session)[0]![0]!;
+    assert.equal(batch.is_error, undefined);
+    assert.match(String(batch.content), /Kept subject/);
+    const texts = session.messages.flatMap(message => typeof message.content === "string" ? [] :
+      message.content.filter(block => block.type === "text").map(block => block.text));
+    assert.ok(texts.includes("Hook context:\ncreated-context"));
     assertBatchAdjacency(session);
   } finally { session.close(); }
 });

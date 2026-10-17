@@ -12,6 +12,7 @@ import { boundToolContent } from './tool-output.js';
 import { mediaInputSchema, readMedia, type MediaAttachment } from './media.js';
 import { AUTO_MEMORY_INSTRUCTIONS, loadAutoMemoryContext } from './auto-memory.js';
 import { automaticCheckpoint } from './rewind.js';
+import { removeTask } from './tasks.js';
 import type { AgentProgressEvent } from './tui-progress.js';
 import { classicPreToolUseHooked, raiseClassicPreToolUse } from './plugin-chain-tool-raise.js';
 import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_USE, CLASSIC_POST_TOOL_USE_FAILURE, classicEventRaised, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
@@ -90,6 +91,22 @@ function changedFilePath(toolName: string, input: unknown, workspace: string): s
       ? path.join(workspace, '.harness', 'memory', `${record.name}.md`) : undefined;
   }
   return typeof record.path === 'string' && record.path !== '' ? path.resolve(workspace, record.path) : undefined;
+}
+
+/**
+ * Read the fields a TaskCreated hook receives from the task this turn created.
+ * The recovered tool raises `Kir(taskId, subject, description, teammate, team)`
+ * from the record it just wrote (chunk-tar639dc.js [140910,141200)); this runtime
+ * has the validated input and the tool's own JSON result, whose `id` is the
+ * first key even when the result was capped, so it does not re-read the store.
+ */
+function createdTaskFields(input: unknown, content: ToolResult['content']): { id?: string; subject: string; description: string } | undefined {
+  if (typeof input !== 'object' || input === null) return undefined;
+  const record = input as { subject?: unknown; description?: unknown };
+  if (typeof record.subject !== 'string' || typeof record.description !== 'string') return undefined;
+  const text = typeof content === 'string' ? content : JSON.stringify(content);
+  const id = /"id"\s*:\s*"([0-9a-fA-F-]{36})"/.exec(text)?.[1];
+  return { ...(id === undefined ? {} : { id }), subject: record.subject, description: record.description };
 }
 
 export class Agent {
@@ -521,7 +538,26 @@ export class Agent {
             }
             if (raised.block !== undefined) { post.blocked = true; post.reason ??= raised.block; }
           }
-          if (!result.is_error && call.name === 'task_create') await this.hook('TaskCreated', { tool_name: call.name, tool_input: input, tool_response: result.content }, signal);
+          if (!result.is_error && call.name === 'task_create') {
+            // Recovered payload and rollback: `Kir` builds `{task_id, task_subject, task_description,
+            // teammate_name, team_name}` (chunk-sfn1dbxq.js [2946915,2947222)) and the tool deletes the
+            // just-created task before surfacing the blocking error (chunk-tar639dc.js [140910,141200)).
+            // This runtime has no team identity in the tool path, so the two team fields stay unset.
+            const created = createdTaskFields(input, result.content);
+            if (created !== undefined) {
+              const createdHook = await this.hook('TaskCreated', {
+                ...(created.id === undefined ? {} : { task_id: created.id }),
+                task_subject: created.subject, task_description: created.description,
+              }, signal);
+              extra.push(...createdHook.additionalContext);
+              if (createdHook.blocked) {
+                if (created.id !== undefined) removeTask(c.workspace, created.id);
+                result = this.result(call.id, `TaskCreated hook feedback:\n${createdHook.reason ?? 'blocked'}`, true);
+                this.session.append({ kind: 'tool_output', result });
+                results[results.length - 1] = result;
+              }
+            }
+          }
           if (!result.is_error && (call.name === 'write_file' || call.name === 'edit_file' || call.name === 'notebook_edit' || call.name === 'memory_write')) {
             const filePath = changedFilePath(call.name, input, c.workspace);
             if (filePath !== undefined) await this.hook('FileChanged', { file_path: filePath, event: 'change' }, signal);

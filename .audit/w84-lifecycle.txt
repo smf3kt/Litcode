@@ -1,0 +1,68 @@
+(node:45948) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✔ hook display fields persist across resume and suppression preserves model context (38.330917ms)
+✔ instruction and file events carry the recovered payload fields (68.384625ms)
+✔ prompt model hook stays a single counted call with no workspace tools (16.786291ms)
+✔ agent model hook reads real workspace evidence through exactly the read-tool allowlist (31.216916ms)
+✔ agent hook pairs denied read input and attempted write as errors without effects (15.730625ms)
+✔ Agent main loop invokes configured model hook read loop and keeps hook tools out of durable batches (37.362959ms)
+✔ agent hook accepts exactly 32 tool calls and counts the paired context again (14.72925ms)
+✔ agent hook context budget is counted before any model request or tool effect (14.912666ms)
+✔ agent hook stops at eight counted calls even when model keeps requesting reads (15.91425ms)
+✔ agent hook rejects batches beyond 32 tool calls before executing any tool (15.463584ms)
+✔ prompt hook unexpected tool request terminates its single call without execution (15.828917ms)
+✔ PermissionRequest allowing updatedInput executes the replacement and exposes it to PreToolUse (67.811042ms)
+✔ PermissionRequest replacement denied by input rules produces a paired error before tool effects (53.026708ms)
+✔ approval callback exceptions leave every call paired and later calls still execute (33.867709ms)
+✔ PreToolUse ask resolves through interactive approval true (45.99925ms)
+✔ PreToolUse ask resolves through interactive approval false (41.9335ms)
+✔ PreToolUse defer resolves through interactive approval true (45.819166ms)
+✔ PreToolUse defer resolves through interactive approval false (42.098209ms)
+✔ TaskCompleted and WorktreeCreate exit 2 gate tools before spy effects (66.950833ms)
+✖ TaskCreated receives the created task's fields and a block rolls the task back (68.125125ms)
+✔ TaskCreated additional context leaves the created task in place (62.697667ms)
+✔ child SubagentStop block continues with active marker and respects maxTurns (66.715875ms)
+✔ Stop block counter survives interrupted feedback commit and child tool work resets it (98.106833ms)
+✔ durable transformed tool_output replays after interruption without rerunning tool or hook (53.772167ms)
+✔ conditional read rules match actual tool path and append context after the full result batch (40.086083ms)
+✔ first mutable rule match returns retry context before write and the next informed call executes (42.154916ms)
+✔ conditional rule sources and imports remain pinned through durable resume (55.811917ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 26
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1497.963708
+
+✖ failing tests:
+
+test at test/agent-lifecycle.test.ts:1:22528
+✖ TaskCreated receives the created task's fields and a block rolls the task back (68.125125ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+  + [
+  +   {
+  +     blockedBy: [],
+  +     description: 'Created description',
+  +     id: '21a5777f-2453-45a7-98ce-98376a2d6e9e',
+  +     metadata: {},
+  +     status: 'pending',
+  +     subject: 'Created subject'
+  +   }
+  + ]
+  - []
+
+      at TestContext.<anonymous> (/Users/mant1ssa/Projects/cc_reverse/test/agent-lifecycle.test.ts:476:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { id: '21a5777f-2453-45a7-98ce-98376a2d6e9e', subject: 'Created subject', description: 'Created description', metadata: {}, status: 'pending', blockedBy: [] } ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
