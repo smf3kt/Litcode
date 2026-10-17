@@ -61,11 +61,11 @@ test('ctrl+r opens the scoped picker in both terminal modes and only a selection
     try{
       await terminal.bindInputHistory(session);terminal.start();terminal.setKeybindings({'\u0012':'search'});
       input.emit('data','my draft');input.emit('data','\u0012');await until(()=>frame().includes('Search prompts · everywhere'));
-      assert.match(frame(),/Enter select · Ctrl\+S scope · Esc cancel/);assert.equal(submitted.length,0);
+      assert.match(frame(),/Enter select/);assert.match(frame(),/Ctrl\+S scope/);assert.match(frame(),/Esc cancel/);assert.equal(submitted.length,0);
       const entry=picker();
       // Source `_y` seeds query and caret from the consumer's `initialQuery` (the draft), so the
       // picker opens pre-filtered by the prompt and the caret sits at the end of that query.
-      assert.ok(frame().includes('Filter history… my draft'),`the draft opens as the picker query (${mode})`);
+      assert.ok(frame().split('\n').includes('my draft'),`the draft opens as the picker query (${mode})`);
       assert.ok(!frame().includes('LOCAL Needle row'),`the draft query filters the list on open (${mode})`);
       assert.equal(entry.queryCursor,'my draft'.length,`the caret starts at the end of the draft (${mode})`);
       entry.query('');await delay(120);
@@ -76,8 +76,11 @@ test('ctrl+r opens the scoped picker in both terminal modes and only a selection
       assert.ok(!frame().includes('PRIOR Needle'),'session scope keeps only this session');
       entry.cycleScope();await delay(500);
       assert.equal(entry.scope,'project');
-      assert.ok(frame().includes('PRIOR Needle one'),'project scope shows the earlier session\'s rows');
-      entry.cycleScope();await until(()=>entry.scope==='everywhere'&&frame().includes('PRIOR Needle one'));
+      // The recovered frame shows its visible window only (rows-10, at least 2), so the newest
+      // earlier-session row is on screen first; moving up reveals the older one.
+      assert.ok(frame().includes('PRIOR Needle two'),'project scope shows the earlier session\'s rows');
+      input.emit('data','\u001b[A\u001b[A');await until(()=>frame().includes('PRIOR Needle one'));
+      entry.cycleScope();await until(()=>entry.scope==='everywhere'&&frame().includes('PRIOR Needle two'));
       // Typing filters through the same query path the picker exposes, then cancel restores the draft.
       entry.query('zzzz-no-such-row');await delay(400);
       assert.ok(frame().includes('No matching prompts'),'empty state reports no matches for a typed query');
