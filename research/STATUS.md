@@ -2542,3 +2542,15 @@ Code ordinal, a `vVe`-refused diff loses `format`/`startLine` and is reported wi
 a typed seam; no `gno` caller is wired until the handler and validation slices. Focused 8/8,
 full 2247/2247, tsc 0, build 0, notices 0, identity `3edf8eca…`.
 [W141 record](ports/W141-engine-draw.md).
+
+W142 adds the engine's drawn-budget slice. `Rur` (chunk-n3ykh62m.js [270375,270825)) spends one
+character budget through `isHeld`/`field`/`shown`/`markOf` and records `written`/`drawn` plus
+`isCut`; `Tur` ([268980,270363)) clips Code/Markdown text, a Client's key/module/props, Button and
+Select labels, Svg/Image/Input props, Box keys and Link hrefs while preserving node identity;
+`Nss` reports the counters only when something was cut. `zss` ([281200,281622)) rewrites a drawn
+prop only when it differs from and costs more than the input's, reverts values whose own cost
+exceeds `OAt`, and reports exhausted budgets. The five noted handlers (`qss`, `Uss`, `Bss`, `Wss`,
+`Gss`) use the `DAt`/`JAe` keys and the terminal seam's one-shot `s5t`/`Iye`; `fIn`, `Sur`, `bur`,
+`wur` and `pno` keep the source wording. Three value helpers (`iD`, `eIt`, `Iws`) come from
+chunk-nyce03br.js. Focused 10/10, full 2255/2255, tsc 0, build 0, notices 0, identity `46284acf…`.
+[W142 record](ports/W142-engine-draw-budget-handlers.md).
