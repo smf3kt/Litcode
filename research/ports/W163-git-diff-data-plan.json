@@ -1,0 +1,16 @@
+{
+  "imports": [],
+  "exports": ["j", "jKn", "de", "I", "z"],
+  "blocks": [
+    {
+      "file": "chunk-xmvfy87k.js",
+      "range": [1818, 1883],
+      "note": "diff data constants: 400-line truncation threshold, 150ms debounce, 2000ms prime TTL and the empty hunks value"
+    },
+    {
+      "file": "chunk-xmvfy87k.js",
+      "range": [2290, 2566],
+      "note": "prime store z: set/take with the TTL and base-mode guards"
+    }
+  ]
+}

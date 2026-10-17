@@ -1,0 +1,34 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-xmvfy87k.js",
+      "sha256": "fabe23b454accb5fcb9390965e13cd815400518e90b86cb9550d55aae113ade0"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-xmvfy87k.js",
+      "sha256": "fabe23b454accb5fcb9390965e13cd815400518e90b86cb9550d55aae113ade0",
+      "range": [
+        1818,
+        1883
+      ],
+      "units": 65,
+      "bodySha256": "f17d77398e4a93d20bbd236ddbd1471e18d8c1f863d0c8d73ab555d1d97a3ae5",
+      "note": "diff data constants: 400-line truncation threshold, 150ms debounce, 2000ms prime TTL and the empty hunks value"
+    },
+    {
+      "module": "chunk-xmvfy87k.js",
+      "sha256": "fabe23b454accb5fcb9390965e13cd815400518e90b86cb9550d55aae113ade0",
+      "range": [
+        2290,
+        2566
+      ],
+      "units": 276,
+      "bodySha256": "f782bdb8d05f2787ff399b42852f566fe18665170e2bcaa8f24299717212cb71",
+      "note": "prime store z: set/take with the TTL and base-mode guards"
+    }
+  ],
+  "missing": []
+}
