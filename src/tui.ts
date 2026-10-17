@@ -43,6 +43,7 @@ import { layoutEngine } from './tui-layout.js';
 import { renderPreviewMarkdown } from './tui-markdown.js';
 import { TuiRenderer, type PromptLine } from './tui-renderer.js';
 import { TuiDocumentRenderer } from './tui-document-renderer.js';
+import { Welcome, WELCOME_MIN_ROWS } from './tui-welcome.js';
 import { clt, tLo } from './tui-stream-preview.js';
 import { Zqn, l$t } from './tui-preview-visibility.js';
 import { layoutInput } from './tui-input-navigation.js';
@@ -100,6 +101,8 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   maxProseWidth?: number;
   syntaxHighlightingDisabled?: boolean;
   theme?: ThemeSetting;
+  /** Version shown by the startup header. */
+  version?: string;
   userDir?: string;
   workspace?: string;
   plugins?: import('./plugins.js').PluginConfig;
@@ -146,6 +149,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private readonly modes: TerminalModeController;
   private renderer: TuiRenderer | undefined;
   private documentRenderer: TuiDocumentRenderer | undefined;
+  private welcomeRenderer: TuiDocumentRenderer | undefined;
+  private welcomeRows: string[] = [];
+  private welcomeKey = '';
   private readonly messageRows = new WeakMap<TranscriptEntry, { columns: number; maxProseWidth?: number;
     syntaxHighlightingDisabled?: boolean; theme: BuiltinTheme; themeGeneration: number; progressGeneration: number; rows: RenderedRow[] }>();
   private readonly renderEntryRows = (entry: TranscriptEntry, columns: number): RenderedRow[] => {
@@ -698,6 +704,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.stashedDraft = undefined; this.searchDraft = {text:'',cursor:0,pastedContents:{}};
     this.progress.close(); this.progressRenderer?.close();
     this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
+    this.welcomeRenderer?.close(); this.welcomeRenderer = undefined; this.welcomeRows = []; this.welcomeKey = '';
     this.assistantMessage = undefined;
     this.previewCoalescer.dispose();
     this.previewStore.setRaw(null);
@@ -1717,11 +1724,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const progressRows = this.renderProgress(columns, rows, Math.max(0, rows - prompt.lines.length - 4 - statusRows.length));
     const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - progressRows.length - statusRows.length);
     const viewport = layoutTranscript(this.transcript, columns, transcriptRows, this.renderEntryRows);
+    const welcome = this.transcript.entries.length === 0 ? this.renderWelcome(columns, rows) : [];
 
     const frame: string[] = [];
     for (let row = 0; row < transcriptRows; row++) {
       const rendered = viewport.rows[row];
-      frame.push(rendered?.ansi ?? pad(rendered?.text ?? '', columns));
+      frame.push(welcome[row] ?? rendered?.ansi ?? pad(rendered?.text ?? '', columns));
     }
     const target = transcriptRows + progressRows.length + 1 + prompt.cursorRow;
     this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true);
@@ -1730,6 +1738,24 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows);
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
+  }
+
+  /**
+   * The startup header (`Hee`) is shown only while the transcript is empty.
+   * Below 30 terminal rows the source collapses it to one line.
+   */
+  private renderWelcome(columns: number, rows: number): string[] {
+    const compact = rows < WELCOME_MIN_ROWS;
+    const version = this.options.version ?? '';
+    const key = JSON.stringify([columns, compact, version, this.theme.current, this.theme.overrides]);
+    if (key !== this.welcomeKey) {
+      this.welcomeRenderer ??= new TuiDocumentRenderer();
+      this.welcomeRows = this.welcomeRenderer.renderElement(
+        jsx(Welcome, { theme: this.theme.current, version, compact }, undefined), columns,
+        { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
+      this.welcomeKey = key;
+    }
+    return this.welcomeRows;
   }
 
   private renderStatusLine(columns: number, rows: number, maximum: number): string[] {
