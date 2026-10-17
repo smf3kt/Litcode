@@ -449,6 +449,9 @@ test('card answer admission ports the recovered host contract', () => {
   assert.deepEqual(admitCardAnswer(shown, []), { kind: 'refused', rule: 'not_an_object' });
   const four = { questions: Array.from({ length: 4 }, (_, index) => ({ question: `Q${index}?`, options: [{ label: 'A', description: 'a' }, { label: 'B', description: 'b' }], multiSelect: false })) };
   assert.deepEqual(admitCardAnswer(four, { answers: { 'Q0?': 'x'.repeat(8192), 'Q1?': 'x'.repeat(8192), 'Q2?': 'x'.repeat(8192), 'Q3?': 'x'.repeat(8192) }, response: 'x' }), { kind: 'refused', rule: 'too_large' });
+  assert.deepEqual(admitCardAnswer({} as AskUserQuestionRequest, {}), { kind: 'admitted', input: {} });
+  assert.deepEqual(admitCardAnswer({ questions: 5 } as unknown as AskUserQuestionRequest, {}), { kind: 'admitted', input: { questions: 5 } });
+  assert.deepEqual(admitCardAnswer({} as AskUserQuestionRequest, { answers: { 'Q?': 'A' } }), { kind: 'refused', rule: 'answers' });
 });
 
 test('card field comparison follows the recovered JSON roundtrip and bounds', () => {

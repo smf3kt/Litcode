@@ -251,6 +251,10 @@ function cardPreviewAdmitted(previews: Set<string>, preview: string): boolean {
   return false;
 }
 
+/** Recovered `I`: an own field or undefined. */
+function own(record: Record<string, unknown>, key: string): unknown {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
+}
 function plainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
@@ -316,6 +320,28 @@ function sameQuestions(answered: unknown, shown: unknown): boolean {
   });
   return cardFieldUnchanged(answered, normalized);
 }
+interface CardQuestionInfo { multiSelect: boolean; optionCount: number; previews: Set<string> }
+/** Recovered `ce`: the shown question map, tolerating a non-array or absent list. */
+function cardQuestionMap(value: unknown): { questions: Map<string, CardQuestionInfo>; extended: boolean } {
+  const questions = new Map<string, CardQuestionInfo>();
+  if (!Array.isArray(value)) return { questions, extended: false };
+  let extended = value.length > 0;
+  for (const question of value) {
+    if (!plainObject(question)) { extended = false; continue; }
+    if (typeof own(question, 'kind') !== 'string') extended = false;
+    const text = own(question, 'question');
+    if (typeof text !== 'string') continue;
+    const optionsValue = own(question, 'options');
+    const options = Array.isArray(optionsValue) ? optionsValue : [];
+    const previews = new Set<string>();
+    for (const option of options) {
+      const preview = plainObject(option) ? own(option, 'preview') : undefined;
+      if (typeof preview === 'string') previews.add(preview);
+    }
+    questions.set(text, { multiSelect: own(question, 'multiSelect') === true, optionCount: options.length, previews });
+  }
+  return { questions, extended };
+}
 export type CardAnswerAdmission =
   | { kind: 'admitted'; input: Record<string, unknown> }
   | { kind: 'refused'; rule: string };
@@ -348,20 +374,7 @@ function admitCardAnswerUnchecked(shown: AskUserQuestionRequest, answer: unknown
       return refused('changed_shown_field');
     }
   }
-  const questions = new Map<string, { multiSelect: boolean; optionCount: number; previews: Set<string> }>();
-  let extended = Array.isArray(shown.questions) && shown.questions.length > 0;
-  for (const question of shown.questions as unknown[]) {
-    if (!plainObject(question)) { extended = false; continue; }
-    if (typeof question.kind !== 'string') extended = false;
-    if (typeof question.question !== 'string') continue;
-    const options = Array.isArray(question.options) ? question.options : [];
-    const previews = new Set<string>();
-    for (const option of options) {
-      const preview = plainObject(option) ? option.preview : undefined;
-      if (typeof preview === 'string') previews.add(preview);
-    }
-    questions.set(question.question, { multiSelect: question.multiSelect === true, optionCount: options.length, previews });
-  }
+  const { questions, extended } = cardQuestionMap(own(shownRecord, 'questions'));
   const input: Record<string, unknown> = { ...shownRecord };
   let textChars = 0;
   let previewChars = 0;
