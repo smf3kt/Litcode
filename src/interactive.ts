@@ -75,6 +75,18 @@ export const COMMAND_HELP = `/help       Show commands
 /exit       Close the interactive session
 Other text is sent as a task.`;
 
+/** Recovered `O9n` (chunk-fyhzvvp0.js offset 5041): a pending permission prompt
+ *  raises Notification after `aVt` = 6000 ms (chunk-sfn1dbxq.js offset
+ *  2915839) with `notification_type: "permission_prompt"`; the disable flag
+ *  skips it and the returned function cancels a prompt answered in time. The
+ *  source message names its product; this runtime keeps the neutral text. */
+export function notifyPermissionPrompt(tool: string, emit: (payload: { message: string; notification_type: string }) => void, delayMs = 6_000): () => void {
+  if (process.env.CLAUDE_CODE_DISABLE_PERMISSION_PROMPT_NOTIFY_HOOKS !== undefined) return () => {};
+  const timer = setTimeout(() => emit({ message: `Permission needed to use ${tool}`, notification_type: 'permission_prompt' }), delayMs);
+  timer.unref();
+  return () => clearTimeout(timer);
+}
+
 export async function interactiveLoop(initial: Session, provider: ModelProvider, runtime: Runtime, options: {
   input: Readable; output: Writable; status: Writable; signal: AbortSignal;
   /** A full-screen interaction layer to drive instead of the built-in line editor. */
@@ -109,7 +121,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     } finally { unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false); }
   };
   options.signal.addEventListener('abort', abort, { once: true });
-  const queue: { prompt: string; source: 'user' | 'event'; notification?: boolean; idle?: { id: string; name: string | null } }[] = [];
+  const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null } }[] = [];
   let editorWork: Promise<import('./external-editor.js').ExternalEditorResult> | undefined;
   let inputClosed = false;
   let approval: ((value: string | undefined) => void) | undefined;
@@ -324,9 +336,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     hookOptions: activeRuntime.hookOptions?.(session.config, session.id),
     permission: async request => {
       if (inputClosed || request.signal.aborted) return false;
+      const cancelNotification = notifyPermissionPrompt(request.tool, payload => {
+        void agent().emitHook('Notification', payload, request.signal).catch(() => {});
+      });
       try {
         return await confirm('Allow once', `${request.reason}\n${request.tool}: ${JSON.stringify(request.input).slice(0, 2000)}`, request.signal);
       } catch { return false; }
+      finally { cancelNotification(); }
     },
   });
   let formActive = false;
@@ -496,7 +512,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const oldest = queue.findIndex(item => item.source === 'event'); queue.splice(oldest, 1);
             options.status.write('Event queue full; dropped the oldest event.\n');
           }
-          queue.push({ prompt: event.prompt, source: 'event', notification: event.kind === 'notification',
+          queue.push({ prompt: event.prompt, source: 'event',
             ...(event.kind === 'teammate_idle' ? { idle: { id: event.agentId, name: event.name } } : {}) });
         }
       }
@@ -517,9 +533,6 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         else {
           try {
             const result = await withTurn(async signal => {
-              if (item.notification) {
-                await agent().emitHook('Notification', { source: 'runtime', prompt }, signal);
-              }
               if (item.idle) {
                 // Recovered payload (`qir`, chunk-sfn1dbxq.js [2946651,2946915)) carries the teammate
                 // name and team name plus the common agent fields; this runtime has no team name.
