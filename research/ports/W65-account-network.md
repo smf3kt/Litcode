@@ -812,6 +812,26 @@ One repair pass: `w65-d7s1.py`'s first `cut_between` retained its end anchor whi
 
 **Next (step 7t):** the ~33 in-place CLI blocks, `cli/transports/`, the dependency-pruning pass (nine zero-importer dependencies) and the `utils/filePersistence/` rename.
 
+## Wave D step 7t — the stranded in-place CLI blocks (`19bce58`, landed)
+
+**What remained of the W61 list was shells, not bodies.** W61 recorded 33 in-place CLI subcommand blocks for later packages; the feature packages consumed the auth, ssh, teleport/remote, assistant, brief and proactive entries. `git log -S` on the survivors shows why they are empty: the recorder install call, the event-loop stall detector and the other bodies were absent from the first compilable-base commit (`2148015`), which elided them and left an empty statement, a comment, or a whitespace-only line behind. The cut deletes eleven `{}` statements and their stale comments in `main.tsx`, the `claude server`/`claude connect`/`claude up`/`claude rollback`/ant-only registration stubs, the six absent-command fast-path comments in `entrypoints/cli.tsx` (daemon worker, daemon, ps/logs/attach/kill, template jobs, environment-runner, self-hosted-runner), and `setup.ts`'s empty `COMMIT_ATTRIBUTION` block with its then-unused `feature` import. The unchecked `installAsciicastRecorder` import goes with its shell.
+
+**The live install/update blocks are reclassified, not removed.** The W61 deferral named `claude install` and `claude update`, and they are live: `cli/update.ts` runs the npm/native update path and `installHandler` reaches `commands/install.ts`, while `utils/autoUpdater.ts` still fetches the release bucket and its min-version, doctor and npm-deprecation messages tell users to run these exact commands. That surface is software distribution rather than account/subscription network handling; cutting the commands alone would leave the live updater advertising commands the tree no longer has. It stays with the updater package, which must take the commands, the background updater, its UI and those messages together.
+
+**No behaviour changes.** Every removed statement was empty and every removed comment described a body the base dump had already elided. `utils/asciicast.ts` stays whole because REPL and ResumeConversation still read `renameRecordingForSession` and the flush path stays wired; only the base dump's absent installer call is recorded. `assertMinVersion`, the migration tail, the deferred-prefetch tail, the advisor option, the teammate flags and the SDK URL option are untouched.
+
+### Port coordinate refresh
+
+Ten historical evidence files moved, all by re-running their own fixtures: `w65-d7h`, `w65-d7i`, `w65-d7j`, `w65-d7l`, `w65-d7n`, `w65-d7o`, `w65-d7p`, `w65-d7q`, `w65-d7r` and `w65-d7s`. `portSha256` only; no `sourceSha256` changed and no range moved.
+
+### Verification
+
+tsc 0, twenty-eight fixtures pass (the new `w65-d7t-verify` plus twenty-seven carried), `git diff --check` clean, the orphan scan at its ten legitimate entries with the file count unchanged (1632). No carried fixture needed amendment: this step removes no exported symbol a fixture pinned.
+
+The fixture's base check confirms `8c8d201` carried every shell, the current-tree sweep asserts no empty statement remains in `main.tsx` and no absent-command residue in the entrypoint or setup, and the survivor assertions pin the reclassified install/update blocks with both handlers, the asciicast module with its live readers, and the migration/deferred-prefetch tails as the shapes the removals left. One repair pass: the first cut anchored a stub block with empty lines where the source has whitespace-only lines; the cut now uses `cut_between` anchored on surrounding live code, and the tree was restored from `HEAD` before the replay.
+
+**Next (step 7u):** `cli/transports/` with `--sdk-url`, then the dependency-pruning pass (nine zero-importer dependencies), the `utils/filePersistence/` rename, and the auto-updater surface.
+
 ## Protocol slip (recorded)
 
 The three wave-A directories were removed with `rm -rf` **before** the `*.w*bak` quarantine step that every earlier package ran. Baks are gitignored, so their loss is not recoverable from history. Bounded afterwards: of the 12 files, exactly one (`services/remoteManagedSettings/securityCheck.tsx`) carried an inline `sourceMappingURL` in its dump text and so was a candidate for a W54-generation bak; the other 11 never had one. The dump-state text of all 12 — which for that one file still embeds its original TypeScript source — was extracted from the dump commit `bd958088` into `.audit/w65-source-baks/` as a substitute record, and the file content of all 12 is recoverable exactly from `453b8e3`. Measured base rate for context: 682 baks across 1,832 source files, and a 40-file sample showed 16 byte-identical to their dump-commit text, so an intermediate-generation bak cannot be ruled out for the one candidate.

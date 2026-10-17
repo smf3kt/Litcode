@@ -27,7 +27,7 @@
       "file": "main.tsx",
       "change": "the --assistant option, the assistantModule stub, `let kairosEnabled`, the headless-state spread, the remote-control fold, the initialState field, the teamContext ternary and the assistant-mode comment block removed",
       "sourceSha256": "3f7184cabf268d8306d5496ca1ab8437882b86554bc0c34cb476539ceb09b77e",
-      "portSha256": "6c4f7679f0787cc4675ac58295cf29e514851fa3a09aab3d3f6e38f066071f6b",
+      "portSha256": "9063180982f9992828764ab5b30ce8e66ff3a0448d54ee6bd38fd55b4ef726a5",
       "coordinateUnit": "utf16-half-open"
     },
     {
