@@ -214,3 +214,84 @@ test("interactive URL elicitation shows the URL, answers with no content and rep
     assert.deepEqual(asynchronousFailures, []); assert.deepEqual(remote.failures, []);
   } finally { input.destroy(); session.close(); await runtime.close(); await remote.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
+
+test("Elicitation hooks answer the form without a dialog", { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "mcp-hook-elicit-")));
+  const input = new PassThrough();
+  const remote = await fixture((res, id) => { void remote.answer.promise.then(() => finishCall(res, id)); });
+  let calls = 0, stdout = "", stderr = "";
+  const provider: ModelProvider = { count: async () => 1, complete: async () => {
+    calls++;
+    if (calls === 1) return message([{ type: "tool_use", id: "choose", name: "mcp__fixture__choose", input: {} }], "tool_use");
+    return message([{ type: "text", text: "done" }], "end_turn");
+  } };
+  const lifetime = AbortSignal.timeout(5000);
+  const config = { ...defaultConfig(workspace, []), model: "fixture",
+    mcpClient: { elicitation: true }, mcpServers: { fixture: { type: "http" as const, url: remote.url } },
+    hooks: { Elicitation: [{ hooks: [{ type: "command" as const,
+      command: "printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"Elicitation\",\"action\":\"accept\",\"content\":{\"label\":\"hook\"}}}'" }] }] } };
+  const runtime = await createRuntime(config, provider, lifetime);
+  config.tools = runtime.buildTools(config, "schema").map((tool) => ({ ...tool.schema, eager_input_streaming: true }));
+  const session = Session.open(workspace, { config });
+  const output = new Writable({ write(chunk, _encoding, done) { stdout += String(chunk); done(); } });
+  const status = new Writable({ write(chunk, _encoding, done) {
+    stderr += String(chunk);
+    if (stderr.includes("finished: end_turn")) setImmediate(() => input.end("/exit\n"));
+    done();
+  } });
+  try {
+    const loop = interactiveLoop(session, provider, runtime, { input, output, status, signal: lifetime });
+    input.write("use the form\n");
+    await loop;
+    assert.deepEqual((await remote.answer.promise).result, { action: "accept", content: { label: "hook" } });
+    assert.doesNotMatch(stdout, /Enter a JSON object/);
+    assert.equal(calls, 2);
+    assert.match(stderr, /finished: end_turn/);
+    assert.doesNotMatch(stderr, /Another interaction|MCP form error/);
+    assert.deepEqual(remote.failures, []);
+  } finally { input.destroy(); session.close(); await runtime.close(); await remote.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test("ElicitationResult hooks override the person's action and content", { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "mcp-hook-result-")));
+  const input = new PassThrough();
+  const remote = await fixture((res, id) => { void remote.answer.promise.then(() => finishCall(res, id)); });
+  let calls = 0, stdout = "", stderr = "", formShown = false;
+  const provider: ModelProvider = { count: async () => 1, complete: async () => {
+    calls++;
+    if (calls === 1) return message([{ type: "tool_use", id: "choose", name: "mcp__fixture__choose", input: {} }], "tool_use");
+    return message([{ type: "text", text: "done" }], "end_turn");
+  } };
+  const lifetime = AbortSignal.timeout(5000);
+  const config = { ...defaultConfig(workspace, []), model: "fixture",
+    mcpClient: { elicitation: true }, mcpServers: { fixture: { type: "http" as const, url: remote.url } },
+    hooks: { ElicitationResult: [{ hooks: [{ type: "command" as const,
+      command: "printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"ElicitationResult\",\"action\":\"accept\",\"content\":{\"label\":\"hook-result\"}}}'" }] }] } };
+  const runtime = await createRuntime(config, provider, lifetime);
+  config.tools = runtime.buildTools(config, "schema").map((tool) => ({ ...tool.schema, eager_input_streaming: true }));
+  const session = Session.open(workspace, { config });
+  const output = new Writable({ write(chunk, _encoding, done) {
+    stdout += String(chunk);
+    if (!formShown && stdout.includes("Enter a JSON object")) {
+      formShown = true;
+      setImmediate(() => input.write('{"label":"user"}\n'));
+    }
+    done();
+  } });
+  const status = new Writable({ write(chunk, _encoding, done) {
+    stderr += String(chunk);
+    if (stderr.includes("finished: end_turn")) setImmediate(() => input.end("/exit\n"));
+    done();
+  } });
+  try {
+    const loop = interactiveLoop(session, provider, runtime, { input, output, status, signal: lifetime });
+    input.write("use the form\n");
+    await loop;
+    assert.equal(formShown, true, JSON.stringify({ stdout, stderr }));
+    assert.deepEqual((await remote.answer.promise).result, { action: "accept", content: { label: "hook-result" } });
+    assert.equal(calls, 2);
+    assert.match(stderr, /finished: end_turn/);
+    assert.doesNotMatch(stderr, /Another interaction|MCP form error/);
+    assert.deepEqual(remote.failures, []);
+  } finally { input.destroy(); session.close(); await runtime.close(); await remote.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});

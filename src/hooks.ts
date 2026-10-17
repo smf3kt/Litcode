@@ -420,6 +420,13 @@ export type HookResult = {
   updatedToolOutput?: unknown;
   /** PostToolUse: replaces the output only when the tool is an MCP tool. */
   updatedMCPToolOutput?: unknown;
+  /**
+   * Elicitation / ElicitationResult: a hook's answer to the MCP request. The
+   * recovered extractor (`f7r`, chunk-sfn1dbxq.js offset 3055929) needs an
+   * `action` on the matching `hookSpecificOutput`; the last hook with one wins
+   * (`cvt`/`dvt` loops, offsets 2934418 and 2934736).
+   */
+  elicitationResponse?: { action: "accept" | "decline" | "cancel"; content?: unknown };
   suppressOutput?: boolean;
   systemMessages?: string[];
   /** Validated terminal side effects, in execution order and independent of text suppression. */
@@ -1036,6 +1043,17 @@ function applyJsonOutput(event: HookEvent, json: Record<string, unknown>, result
   // screen while the stored message and what the model sees stay unchanged (source output
   // processing at chunk-sfn1dbxq.js offset 2967137).
   if (event === "MessageDisplay" && typeof output.displayContent === "string") result.displayContent = output.displayContent;
+  // Elicitation/ElicitationResult responses answer the MCP request directly
+  // (`f7r` at chunk-sfn1dbxq.js offset 3055929): the action is required and the
+  // output schema admits string or record content. A later hook overwrites an
+  // earlier response, and `decline` is the source's blocking answer.
+  if ((event === "Elicitation" || event === "ElicitationResult") &&
+      (output.action === "accept" || output.action === "decline" || output.action === "cancel")) {
+    const content = output.content;
+    result.elicitationResponse = typeof content === "string" ||
+      (typeof content === "object" && content !== null && !Array.isArray(content))
+      ? { action: output.action, content } : { action: output.action };
+  }
   // `PreModelSwitch`'s schema carries only allow/deny/ask and a reason
   // (chunk-n3ykh62m.js offset 392413). The source maps deny to a blocking
   // error and ask to a confirmation requirement (`oXr`, chunk-sfn1dbxq.js

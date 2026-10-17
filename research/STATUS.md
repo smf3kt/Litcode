@@ -2283,3 +2283,11 @@ manager's failure. A workspace inside a repository whose root is elsewhere
 still takes the manager's own root error. Focused 88/88, tsc 0, build 0, full
 2,155/2,155, chain 767/767, identity `95c17af3…`.
 [W114 record](ports/W114-worktree-advisory.md).
+
+W115-01 consumes Elicitation and ElicitationResult hook answers. The
+Elicitation answer replaces the MCP dialog (and skips the result hooks); after
+a dialog answer, a blocking ElicitationResult declines and an answer overrides
+the action while keeping the person's content when the hook supplies none.
+Focused 97/97, tsc 0, build 0, full 2,158/2,158, chain 767/767, identity
+`82dd4570…`.
+[W115 record](ports/W115-elicitation-hooks.md).

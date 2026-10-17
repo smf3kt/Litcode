@@ -422,7 +422,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       const pre = await agent().emitHook('Elicitation', payload, signal);
       let result: McpElicitationResult = { action: 'cancel' };
       if (pre.blocked || pre.stopRequested) result = { action: 'decline' };
-      else if (params.mode === 'url') {
+      else if (pre.elicitationResponse) {
+        // `Zgn` (chunk-nejdhvxk.js offset 2367): a hook answer replaces the
+        // dialog entirely, so the ElicitationResult hooks do not run.
+        return pre.elicitationResponse.content === undefined
+          ? { action: pre.elicitationResponse.action }
+          : { action: pre.elicitationResponse.action,
+              content: pre.elicitationResponse.content as McpElicitationResult['content'] };
+      } else if (params.mode === 'url') {
         // The recovered host hands the URL to its window, which opens it. This terminal surface
         // shows the URL instead and the person opens it, so the answer is only accept/decline/cancel
         // and no form content is collected.
@@ -453,7 +460,20 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           } catch { output.write('Answer does not match the requested form.\n'); }
         }
       }
-      await agent().emitHook('ElicitationResult', { ...payload, elicitation_result: result }, signal);
+      const after = await agent().emitHook('ElicitationResult', { ...payload, elicitation_result: result }, signal);
+      // `ehn` (chunk-nejdhvxk.js offset 2849): a blocking result declines, and
+      // an answer overrides the action while keeping the person's content when
+      // the hook supplies none. The source's response notice has no local
+      // notification surface.
+      if (after.blocked || after.stopRequested) return { action: 'decline' };
+      if (after.elicitationResponse) {
+        return {
+          action: after.elicitationResponse.action,
+          ...(after.elicitationResponse.content !== undefined
+            ? { content: after.elicitationResponse.content as McpElicitationResult['content'] }
+            : result.content === undefined ? {} : { content: result.content }),
+        };
+      }
       return result;
     } catch (error) {
       if (!signal.aborted) options.status.write(`MCP form error: ${error instanceof Error ? error.message : String(error)}\n`);

@@ -1036,6 +1036,22 @@ test("WorktreeCreate reads worktreePath from hook JSON or command stdout only", 
   assert.equal("worktreePath" in elsewhere, false);
 });
 
+test("Elicitation hooks answer with the last action and admit string or record content", async () => {
+  const accept = await runHooks({ Elicitation: [emit({ hookSpecificOutput: { hookEventName: "Elicitation", action: "accept", content: { choice: "hook" } } })] }, "Elicitation", {});
+  assert.deepEqual(accept.elicitationResponse, { action: "accept", content: { choice: "hook" } });
+  const text = await runHooks({ Elicitation: [emit({ hookSpecificOutput: { hookEventName: "Elicitation", action: "accept", content: "note" } })] }, "Elicitation", {});
+  assert.deepEqual(text.elicitationResponse, { action: "accept", content: "note" });
+  const last = await runHooks({ Elicitation: [
+    emit({ hookSpecificOutput: { hookEventName: "Elicitation", action: "accept", content: { choice: "first" } } }),
+    emit({ hookSpecificOutput: { hookEventName: "Elicitation", action: "decline" } }),
+  ] }, "Elicitation", {});
+  assert.deepEqual(last.elicitationResponse, { action: "decline" });
+  const noAction = await runHooks({ Elicitation: [emit({ hookSpecificOutput: { hookEventName: "Elicitation", content: { choice: "no" } } })] }, "Elicitation", {});
+  assert.equal("elicitationResponse" in noAction, false);
+  const elsewhere = await runHooks({ Setup: [emit({ hookSpecificOutput: { hookEventName: "Setup", action: "accept" } })] }, "Setup", {});
+  assert.equal("elicitationResponse" in elsewhere, false);
+});
+
 test("session titles normalize like the recovered ci helper", () => {
   assert.equal(normalizeSessionTitle("  a\u0000b\u2028c  "), "a b c");
   assert.equal(normalizeSessionTitle("\u0000\u0007"), "");
