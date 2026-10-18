@@ -498,6 +498,71 @@ function runtimeConfig(workspace: string, out: string): SessionConfig {
   return config;
 }
 
+test('named workflow owners isolate user roots and plugin gates through mutation, nesting and reload', async () => {
+  const workspace = fs.realpathSync(tmpDir());
+  const source = fs.realpathSync(tmpDir());
+  const userA = tmpDir(), userB = tmpDir();
+  const script = (value: string) => `export const meta = {name:'leaf',description:'fixture'}; return ${JSON.stringify(value)}`;
+  for (const [directory, value] of [[userA, 'A'], [userB, 'B']]) {
+    fs.mkdirSync(path.join(directory!, 'workflows'));
+    fs.writeFileSync(path.join(directory!, 'workflows/leaf.js'), script(value!));
+  }
+  fs.mkdirSync(path.join(source, 'workflows'));
+  fs.writeFileSync(path.join(source, 'workflows/leaf.js'), script('plugin-v1'));
+  fs.writeFileSync(path.join(source, 'plugin.json'), JSON.stringify({ name: 'fixture', version: '1' }));
+  const a = defaultConfig(workspace, createTools()); a.model = 'test';
+  a.features = { tasks: true, subagents: true, agentMessaging: true, workflow: true };
+  a.plugins = { enabled: true }; a.configSources = { userDir: userA };
+  const b = structuredClone(a); b.configSources = { userDir: userB }; b.plugins = { enabled: false };
+  const runtime = await createRuntime(a, unusedProvider, new AbortController().signal);
+  const other = await createRuntime(a, unusedProvider, new AbortController().signal);
+  const call = async (tools: ToolDefinition[], name: string, input: unknown) => {
+    const tool = tools.find(tool => tool.schema.name === name)!;
+    return JSON.parse(String(await tool.execute(input, toContext(workspace))));
+  };
+  const named = (tools: ToolDefinition[], name = 'leaf') => call(tools, 'workflow_run', { name });
+  try {
+    const toolsA = runtime.buildTools(a, 'a'), toolsB = runtime.buildTools(b, 'b');
+    const toolsC = runtime.buildTools({ ...b, plugins: { enabled: true } }, 'c');
+    const toolsD = other.buildTools(a, 'd');
+    const nestedOther = () => call(toolsD, 'workflow_run', { script: "export const meta={name:'parent',description:'fixture'};return await workflow('fixture:leaf')" });
+    assert.deepEqual((await Promise.all([named(toolsA), named(toolsB)])).map(result => result.result), ['A', 'B']);
+    const installed = await call(toolsA, 'plugin_install', { directory: source });
+    assert.equal((await named(toolsA, 'fixture:leaf')).result, 'plugin-v1');
+    assert.equal((await named(toolsC, 'fixture:leaf')).result, 'plugin-v1');
+    assert.equal((await named(toolsD, 'fixture:leaf')).result, 'plugin-v1');
+    assert.equal((await nestedOther()).result, 'plugin-v1');
+    await assert.rejects(named(toolsB, 'fixture:leaf'), /not found/);
+    const nested = () => call(toolsA, 'workflow_run', { script: "export const meta={name:'parent',description:'fixture'};return await workflow('fixture:leaf')" });
+    assert.equal((await nested()).result, 'plugin-v1');
+    fs.writeFileSync(path.join(source, 'workflows/leaf.js'), script('plugin-v2'));
+    const updated = await call(toolsA, 'plugin_update', { name: 'fixture', directory: source, expected_digest: installed.plugin.digest });
+    assert.equal((await nested()).result, 'plugin-v2');
+    assert.equal((await named(toolsC, 'fixture:leaf')).result, 'plugin-v2');
+    assert.equal((await named(toolsD, 'fixture:leaf')).result, 'plugin-v2');
+    assert.equal((await nestedOther()).result, 'plugin-v2');
+    await call(toolsA, 'plugin_remove', { name: 'fixture', expected_digest: updated.plugin.digest });
+    assert.match((await nested()).error.message, /no workflow with that name/);
+    await assert.rejects(named(toolsC, 'fixture:leaf'), /not found/);
+    await assert.rejects(named(toolsD, 'fixture:leaf'), /not found/);
+    assert.match((await nestedOther()).error.message, /no workflow with that name/);
+    fs.writeFileSync(path.join(source, 'plugin.json'), JSON.stringify({ name: 'fixture', version: '1', workflows: ['../escape', 'missing'] }));
+    await call(toolsA, 'plugin_install', { directory: source });
+    await assert.rejects(named(toolsD, 'fixture:leaf'), /not found/);
+    const diagnostics = JSON.stringify(other.drainEvents!('d'));
+    assert.match(diagnostics, /path-traversal/);
+    assert.match(diagnostics, /\.\.\/escape/);
+    assert.match(diagnostics, /path-not-found/);
+    assert.match(diagnostics, /fixture\/missing/);
+    assert.doesNotMatch(diagnostics, /\[object Object\]/);
+    fs.writeFileSync(path.join(userA, 'workflows/leaf.js'), script('A-reloaded'));
+    await runtime.releaseSession!('a');
+    await assert.rejects(named(toolsA), /released/);
+    assert.equal((await named(runtime.buildTools(a, 'a'))).result, 'A-reloaded');
+    assert.equal((await named(toolsB)).result, 'B');
+  } finally { await Promise.all([runtime.close(), other.close()]); }
+});
+
 test('createRuntime discovers MCP tools, assembles config tools and closes its children', async () => {
   const ws = tmpDir();
   const out = path.join(ws, 'notes.jsonl');

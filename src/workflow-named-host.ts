@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { realpathSync, statSync } from 'node:fs';
 import os from 'node:os';
 import nodePath from 'node:path';
@@ -42,32 +43,38 @@ export type NamedWorkflowHostOptions = {
   bundled?: NamedWorkflowRecord[];
   bundledOnly?: boolean;
   logger?: (message: string, options?: { level?: string }) => void;
+  loadPlugins?: () => Promise<{ enabled: NamedWorkflowPlugin[]; errors: unknown[] }>;
+  pluginIdentity?: () => string;
 };
 
 type PluginRuntime = { workflows?: Promise<NamedWorkflowRecord[]> };
 
-const runtime: PluginRuntime = {};
-const allWorkflows = new Map<string, Promise<NamedWorkflowRecord[]>>();
-const host: NamedWorkflowHostOptions = {};
-
-export function configureNamedWorkflowHost(options: NamedWorkflowHostOptions = {}): void {
-  if ('userDir' in options) host.userDir = options.userDir;
-  if ('plugins' in options) host.plugins = options.plugins;
-  if ('bundled' in options) host.bundled = options.bundled;
-  if ('bundledOnly' in options) host.bundledOnly = options.bundledOnly;
-  if ('logger' in options) host.logger = options.logger;
-  runtime.workflows = undefined;
-  allWorkflows.clear();
+export type NamedWorkflowState = {
+  host: NamedWorkflowHostOptions;
+  runtime: PluginRuntime;
+  allWorkflows: Map<string, Promise<NamedWorkflowRecord[]>>;
+};
+const states = new AsyncLocalStorage<NamedWorkflowState>();
+export function createNamedWorkflowState(options: NamedWorkflowHostOptions = {}): NamedWorkflowState {
+  return { host: { ...options, plugins: options.plugins?.map(plugin => ({ ...plugin,
+    workflowsPaths: plugin.workflowsPaths && [...plugin.workflowsPaths] })),
+    bundled: options.bundled?.map(record => ({ ...record })) }, runtime: {}, allWorkflows: new Map() };
 }
+const state = (): NamedWorkflowState => {
+  const owner = states.getStore();
+  if (!owner) throw new Error('Named workflow owner is required');
+  return owner;
+};
+export const withNamedWorkflowState = <T>(owner: NamedWorkflowState, run: () => T): T => states.run(owner, run);
 
 // `it`: the plugin-workflow load memo.
 export function it(): PluginRuntime {
-  return runtime;
+  return state().runtime;
 }
 
 // `xr`: the session cache table holding `allWorkflows`.
 export function xr(): { allWorkflows: Map<string, Promise<NamedWorkflowRecord[]>> } {
-  return { allWorkflows };
+  return { allWorkflows: state().allWorkflows };
 }
 
 // `cn`: the source asks whether the account namespace can serve user/project
@@ -79,12 +86,12 @@ export function cn(_namespace: 'userSettings' | 'projectSettings'): 'local' {
 // `br`: the recovered config gate that narrows the catalog to bundled
 // workflows only.
 export function br(_key: 'workflows'): boolean {
-  return host.bundledOnly === true;
+  return state().host.bundledOnly === true;
 }
 
 // `ojt`: bundled workflows are a host input; empty by default.
 export function ojt(): NamedWorkflowRecord[] {
-  return [...(host.bundled ?? [])];
+  return [...(state().host.bundled ?? [])];
 }
 
 // `RUn`: the source prefixes its cache key with the account-level workflow
@@ -95,7 +102,7 @@ export function RUn(): string {
 
 // `be`: the user configuration root.
 export function be(): string {
-  return host.userDir ?? defaultUserDir();
+  return state().host.userDir ?? defaultUserDir();
 }
 
 // `a7`: project settings directories from the workspace up to the home
@@ -126,12 +133,13 @@ export async function a7(kind: 'workflows', workspace: string): Promise<string[]
 export async function Xs(_workspace?: string): Promise<{
   enabled: NamedWorkflowPlugin[]; errors: unknown[];
 }> {
-  return { enabled: host.plugins ?? [], errors: [] };
+  return state().host.loadPlugins?.() ?? { enabled: state().host.plugins ?? [], errors: [] };
 }
 
 // `db`: project the plugin-load error to a message.
 export function db(error: unknown): string {
   if (error instanceof Error) return error.message;
+  if (error !== null && typeof error === 'object') return JSON.stringify(error);
   return String(error);
 }
 
@@ -194,7 +202,7 @@ export function ie(): WorkflowHostFile {
 
 // `t`, `g`, `m`, `f`: workflow logging and telemetry.
 function emit(level: string, message: string, options?: { level?: string }): void {
-  host.logger?.(message, { level: options?.level ?? level });
+  state().host.logger?.(message, { level: options?.level ?? level });
 }
 
 export function t(message: string, options?: { level?: string }): void {

@@ -39,7 +39,8 @@ import { createWebTools } from './web.js';
 import { createWebSearchTools, webSearchConfigSchema, type WebSearchConfig } from './web-search.js';
 import { createMemoryTools } from './memory.js';
 import { createMediaTools } from './media.js';
-import { createPluginTools, pluginConfigSchema, type PluginConfig } from './plugins.js';
+import { createPluginTools, discoverInstalledPluginComponents, installedPluginCatalogIdentity, pluginConfigSchema, type PluginConfig } from './plugins.js';
+import { NamedWorkflowCatalog } from './workflow-named.js';
 import { createInteractionTools } from './interaction-tools.js';
 import { executeSkill, skillRequiresExecution } from './skill-runtime.js';
 import { SkillEffectJournal } from './skill-effects.js';
@@ -59,7 +60,7 @@ import { createSubagentTool, type ChildEnvironmentFactory } from './subagents.js
 import { createTaskTools, readTaskRecords, subscribeTaskChanges, type TaskRecord } from './tasks.js';
 import { spinnerVerbsSchema, type SpinnerVerbs } from './tui-progress-settings.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
-import { createTools, type ToolDefinition } from './tools.js';
+import { createTools, type ToolContext, type ToolDefinition } from './tools.js';
 import { createNotebookTools } from './notebooks.js';
 import { BackgroundRegistry, createBackgroundTools } from './background.js';
 import { LocalScheduler, createSchedulerTools, type LocalSchedulerOptions } from './scheduler.js';
@@ -523,6 +524,7 @@ export async function createRuntime(
   const childTerminalCallbacks = new WeakMap<ToolDefinition[], (child: string, sequence: string) => void>();
   const childInstructionCallbacks = new WeakMap<ToolDefinition[], (workspace: string, paths: string[]) => void>();
   const workflowAccessors = new Map<string, () => WorkflowRegistry>();
+  const namedCatalogs = new Map<string, { catalog: NamedWorkflowCatalog; workspace: string }>();
   const listeners = new Set<(owner: string) => void>();
   const taskSubscriptions = new Set<() => void>();
   let closed = false;
@@ -598,6 +600,29 @@ export async function createRuntime(
     if (cached && owners.has(owner)) throw new Error('Runtime owner configuration changed; release session resources before rebuilding');
     if (cached) { scope = {}; ownerScopes.set(owner, scope); }
     const resources = () => resourcesFor(owner, scope);
+    const namedWorkflows = new NamedWorkflowCatalog({ userDir: current.configSources?.userDir,
+      pluginIdentity: () => {
+        checkScope(owner, scope);
+        return installedPluginCatalogIdentity(current.workspace, current.plugins);
+      },
+      logger: (message, detail) => {
+        if (closed || signal.aborted || ownerScopes.get(owner) !== scope) return;
+        if (detail?.level !== 'warn' && detail?.level !== 'error' && !message.startsWith('Plugin loading errors:')) return;
+        const target = resources();
+        if (target.queued.length >= 50) { target.queued.shift(); target.dropped++; }
+        target.queued.push({ kind: 'notification', prompt: truncateHookText(message) });
+        notify(owner);
+      },
+      loadPlugins: async () => {
+        checkScope(owner, scope);
+        const components = discoverInstalledPluginComponents(current.workspace, current.plugins);
+        return { enabled: components.map(item => ({ name: item.plugin.manifest.name,
+          source: item.directory, manifest: item.plugin.manifest,
+          workflowsPath: item.workflowsPath, workflowsPaths: item.workflowsPaths })),
+          errors: components.flatMap(item => item.workflowProblems) };
+      } });
+    namedCatalogs.get(owner)?.catalog.close();
+    namedCatalogs.set(owner, { catalog: namedWorkflows, workspace: current.workspace });
     const childInstructions = (workspace: string, paths: string[]) => {
       if (!current.watchConfig || workspace !== current.workspace || closed || signal.aborted || ownerScopes.get(owner) !== scope) return;
       const target = resources();
@@ -648,7 +673,16 @@ export async function createRuntime(
     tools.push(...createWebSearchTools(current.webSearch));
     if (current.features?.media) tools.push(...createMediaTools());
     if (current.features?.memory) tools.push(...createMemoryTools());
-    tools.push(...createPluginTools(current.plugins));
+    tools.push(...createPluginTools(current.plugins).map(tool => tool.readOnly ? tool : {
+      ...tool, execute: async (raw: unknown, context: ToolContext) => {
+        try { return await tool.execute(raw, context); }
+        finally {
+          for (const entry of namedCatalogs.values()) {
+            if (entry.workspace === current.workspace) entry.catalog.invalidate();
+          }
+        }
+      },
+    }));
     if (current.features?.interaction) tools.push(...createInteractionTools());
     if (current.features?.checkpoints) tools.push(...createCheckpointTools());
     if (current.features?.lsp) {
@@ -820,6 +854,7 @@ export async function createRuntime(
         notify(owner);
       } });
     const workflows = () => resources().workflows ??= new WorkflowRegistry({ agents: agents(), signal,
+      namedWorkflows,
       ...(current.features?.workflowPersistence ? { workspace: current.workspace, owner, settingsDigest: sessionFingerprint(current) } : {}),
       onNotification: () => { if (ownerScopes.get(owner) === scope) notify(owner); } });
     if (current.features?.workflow) workflowAccessors.set(owner, workflows);
@@ -965,6 +1000,8 @@ export async function createRuntime(
     ownerScopes.delete(owner);
     toolSets.delete(owner);
     workflowAccessors.delete(owner);
+    namedCatalogs.get(owner)?.catalog.close();
+    namedCatalogs.delete(owner);
     if (!resources) return;
     resources.scheduler?.close();
     // Children may still use LSP/tools; stop them before closing their shared clients.

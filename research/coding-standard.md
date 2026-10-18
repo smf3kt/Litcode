@@ -1,4 +1,6 @@
 # Coding standard
+
+2026-10-18 W181: S-1/S-7 verified exact plugin path and host-keyed catalog bodies first. S-4 removes global ownership, replaces invalidated generations, checks after awaits and closes on release; S-6 migrates callers and adds compiled CLI coverage. Initial corrections are in question.md; existing S-1/S-6 cover their causes, so no duplicate rule is added.
 Hard requirements for work in this repository. Each rule exists because the same cause produced two or more incidents in [question.md](question.md) or in the recorded work packages; the rule states the cause, the incidents, and the check that must hold before a package is called done.
 
 更新：2026-10-15。

@@ -1,0 +1,38 @@
+{
+  "schema":"W181LocalPluginWorkflows.v1",
+  "date":"2026-10-18",
+  "status":"verified",
+  "scope":"Local plugin workflow paths and runtime-owned named workflow catalogs",
+  "source":{
+    "coordinates":"zero-based UTF-16 half-open",
+    "modules":[
+      {"path":"chunk-sfn1dbxq.js","sha256":"4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da","ranges":[[4062560,4070285],[4057817,4057935],[4057935,4059181],[4061875,4062192]]},
+      {"path":"chunk-9r54k71g.js","sha256":"25493ddf925c3411f21a163cde66c497682b1becb8b7919b58fb4e0c8eba0998","ranges":[[1448,8633]]},
+      {"path":"chunk-qm4226vk.js","sha256":"03facde94be2af5141839b3f90cc3821dc8344709a1160c01101c49b95c13051","ranges":[[3461,3497]]},
+      {"path":"chunk-3ph567jx.js","sha256":"281868632c24f04e8dca6677ab734f29299f78b6933693a9148d7dbaf698a11b","ranges":[[3729,3763]]}
+    ],
+    "existingCopiedDiscoveryPreserved":true,
+    "copiedDiscoveryBodySha256":"00dbc8bb1c5e241cd01320ef321f88ccca8e0397048738f64da19f159b4911b2",
+    "adaptations":"W181-local-plugin-workflows.md"
+  },
+  "validation":{
+    "check":{"exitCode":0,"log":".audit/w181-review-check.txt"},
+    "build":{"exitCode":0,"log":".audit/w181-review-build.txt"},
+    "affected":{"passed":84,"failed":0,"log":".audit/w181-review-affected.txt"},
+    "focusedReviewFixes":{"passed":2,"failed":0,"log":".audit/w181-review-focused.txt"},
+    "compiledCLI":{"passed":true,"command":"node scripts/smoke-workflow-cli.mjs --compiled --named","log":".audit/w181-review-cli.txt","userDir":true,"customPluginFile":true,"nestedCatalog":true,"locksReleased":true,"provider":"owned loopback SSE"},
+    "fullSuite":"not_run; previous W180 full 2598/2598 retains its historical scope",
+    "packageInstallation":"not_run",
+    "independentReview":{"ownerIsolation":"passed independent probes","initialFullReviewFindings":["cross-runtime stale plugin bodies","path diagnostics silently dropped"],"fixesApplied":true,"originalScenarioRecheck":"independent PASS: separate runtimes top-level and nested v1 -> v2 -> missing; drained notification contains traversal/missing types and exact paths; providerCalls 0; both runtimes and fixtures cleaned"}
+  },
+  "identity":{
+    "sha256":"f13fe216e736e90512f009f3f65669ec7017b5610830a11ff7131e6e0cc630a4",
+    "inputs":{"sha256":"ca7f2f629e6d5115640385595c0c2d6bd7c000280e39cd9b28eb376ce13d4a7a","files":704},
+    "validation":{"sha256":"177f928aef7f01b6dc0dd8ab560448599d5ae630378b0e0a7ef3ee5b822f255c","files":230},
+    "build":{"sha256":"ee677d649531a863652fc6bdbd6ae7b86c56cb2e30fa79e13c85a6b0e70b68f7","files":483}
+  },
+  "remaining":["Default/custom skills agents and commands discovery","Other local C-area obligations in .audit/c-area-exit-checklist.md"],
+  "recoveredEntrypointsExecuted":false,
+  "paidUpstreamCalls":0,
+  "publication":false
+}

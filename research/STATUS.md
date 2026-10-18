@@ -1,5 +1,7 @@
 # Research and implementation status
 
+2026-10-18 W181: local plugin workflow paths and session-owned named catalogs verified; independent runtime freshness and session path diagnostics review defects fixed. 84 affected tests, check/build and compiled CLI passed. Final identity f13fe216; remaining C-9 defaults in [W181](ports/W181-local-plugin-workflows.md).
+
 2026-10-16 W58 local closure. TypeScript 7.0.2 reports 136 errors/64 files; three owned adapter regression groups pass. Full build and CLI remain unverified. [Evidence and remaining work](ports/W58-types.md).
 
 Last updated: 2026-10-11. Recovery files and extracted application text remain research data. Current contracts were checked against ordinary repository source; no new REA analysis was needed. The 948/948 hooks/MCP suite, 879 and 759 are historical checkpoints. Continuous migration passed actual CLI fixtures, independent affected checks (earlier 156/156, final watcher/terminal 40/40 and session 22/22) and final TypeScript below. Counts overlap and are not added. Product migration remains incomplete.

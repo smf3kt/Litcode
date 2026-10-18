@@ -31,6 +31,7 @@ export const pluginManifestSchema = z.object({
   name: nameSchema,
   version: z.string().min(1).max(128).refine(s => s.trim() === s && !/[\x00-\x1f\x7f]/.test(s)),
   description: z.string().max(4096).optional(),
+  workflows: z.union([z.string(), z.array(z.string()).max(PLUGIN_LIMITS.entries)]).optional(),
   themes: themesSchema.optional(),
   experimental: z.object({ themes: themesSchema.optional() }).strict().optional(),
   skills: z.string().min(1).max(1024).refine(s => {
@@ -79,6 +80,9 @@ export interface InstalledPluginComponents {
   directory: string;
   skillDirectory?: string;
   agentDirectory?: string;
+  workflowsPath?: string;
+  workflowsPaths?: string[];
+  workflowProblems: { type: 'path-traversal' | 'path-not-found'; path: string; component: 'workflows' }[];
   themePaths?: PluginThemePaths;
   hooks?: HooksConfig;
   /** Persisted MCP schema: stdio command/args or HTTP URL/header env references. */
@@ -298,6 +302,26 @@ function themePaths(value: Snapshot, root: string): PluginThemePaths | undefined
   return value.entries.some(entry => entry.path === "themes" && entry.kind === "directory")
     ? { name: value.manifest.name, themesPath: path.join(root, "themes") } : undefined;
 }
+/** wne/zR, chunk-sfn1dbxq.js [4062560,4070285)/[4057935,4059181) UTF-16. */
+function workflowPaths(value: Snapshot, root: string): Pick<InstalledPluginComponents, 'workflowsPath' | 'workflowsPaths' | 'workflowProblems'> {
+  const workflowProblems: InstalledPluginComponents['workflowProblems'] = [];
+  const declared = value.manifest.workflows;
+  if (declared !== undefined) {
+    const paths: string[] = [];
+    for (const relative of Array.isArray(declared) ? declared : [declared]) {
+      const full = path.resolve(root, relative);
+      const local = path.relative(root, full);
+      if (local === '..' || local.startsWith(`..${path.sep}`) || path.isAbsolute(local)) {
+        workflowProblems.push({ type: 'path-traversal', path: relative, component: 'workflows' });
+      } else if (!value.entries.some(entry => entry.path === local)) {
+        workflowProblems.push({ type: 'path-not-found', path: full, component: 'workflows' });
+      } else paths.push(full);
+    }
+    return { ...(paths.length ? { workflowsPaths: paths } : {}), workflowProblems };
+  }
+  return value.entries.some(entry => entry.path === 'workflows')
+    ? { workflowsPath: path.join(root, 'workflows'), workflowProblems } : { workflowProblems };
+}
 function record(value: Snapshot): InstalledPlugin {
   return { manifest: value.manifest, digest: value.digest, files: value.files, bytes: value.bytes };
 }
@@ -448,6 +472,18 @@ export function discoverInstalledSkillDirectories(workspace: string, config?: Pl
 }
 
 /** Explicit, inert discovery of declared components in verified installed snapshots. */
+export function installedPluginCatalogIdentity(workspace: string, config?: PluginConfig): string {
+  const options = pluginConfigSchema.parse(config ?? {});
+  if (!options.enabled) return 'disabled';
+  const store = storeFor(workspace);
+  if (!store) return makeIndex([]).digest;
+  return locked(store, () => {
+    assertNoPending(store);
+    return load(store, options).index.digest;
+  });
+}
+
+/** Explicit, inert discovery of declared components in verified installed snapshots. */
 export function discoverInstalledPluginComponents(workspace: string, config?: PluginConfig): InstalledPluginComponents[] {
   const options = pluginConfigSchema.parse(config ?? {});
   if (!options.enabled) return [];
@@ -463,6 +499,7 @@ export function discoverInstalledPluginComponents(workspace: string, config?: Pl
         plugin: record(current), directory: root,
         ...(current.manifest.skills ? { skillDirectory: path.join(root, current.manifest.skills) } : {}),
         ...(current.manifest.agents ? { agentDirectory: path.join(root, current.manifest.agents) } : {}),
+        ...workflowPaths(current, root),
         ...(themePaths(current, root) ? { themePaths: themePaths(current, root) } : {}),
         ...componentConfigs(current, root),
       };
