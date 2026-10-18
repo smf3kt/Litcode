@@ -40,7 +40,7 @@ function completedHistory(source: Session): SessionEvent[] {
     throw new Error("Finish or continue the unfinished session before relocating its workspace");
   }
   assertPaired(source.messages);
-  return history.filter((event) => event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title");
+  return history.filter((event) => event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === 'permission_mode_command');
 }
 
 /**

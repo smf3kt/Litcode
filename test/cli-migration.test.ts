@@ -71,9 +71,10 @@ async function until(condition: () => boolean, timeout = 4000): Promise<void> {
   while (!condition()) { if (Date.now() > deadline) assert.fail('CLI fixture wait expired'); await new Promise(resolve => setTimeout(resolve, 10)); }
 }
 
-test('CLI permission help lists all five accepted modes', TIMEOUT, async () => {
+test('CLI permission help lists all seven accepted modes', TIMEOUT, async () => {
   const result = await run(['--help']).done; assert.equal(result.code, 0, result.stderr);
-  assert.match(result.stdout, /--permission-mode MODE default, plan, acceptEdits, ask or bypass/);
+  assert.equal(result.stdout.split('\n').find(line => line.startsWith('  --permission-mode MODE')),
+    '  --permission-mode MODE default, plan, acceptEdits, ask, bypass, auto or dontAsk (default default)');
   assert.match(result.stdout, /--effort LEVEL.*low, medium, high, xhigh or max/);
 });
 

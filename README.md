@@ -192,7 +192,7 @@ Rules目录现有界递归加载Markdown至depth3（root为0），遍历entries�
 
 不带名称的 `/mcp-reconnect` 保留整体重建入口：成功刷新工具schema并分支新会话，失败保留旧runtime。整体切换结束旧owner后台资源；修改磁盘配置使用 `/reload`。当前mcpRecovery开启启动降级、慢重试和已确认URI重建；跨进程URI持久化另由mcpPersistence显式开启；事件重放与完整原版refetch/park策略仍保留差异。旧14/4请求记录维持各自版本作用域。
 
-`--managed-settings FILE` 指定独立的本地策略JSON，只接受 `allowShell`、`permissions`、`features`、`mcpClient`。已写出的字段最终覆盖项目设置与CLI：`permissions` 整体替换（数组不拼接），feature/MCP布尔值按字段覆盖，其余字段沿用普通配置。策略与文件路径保存到会话；`/permissions`、`/plan` 在策略指定permissions时保持原值。`--watch-config` 观察外部策略文件，完整重载成功后创建新会话快照；错误或缺失文件保留旧runtime。恢复直接使用已存策略，策略源随后删除也可打开；恢复时新增 `--managed-settings` 参数会报错。它是自有harness配置合同，尚无OS级managed配置发现、远端策略签名或凭证管理。
+`--managed-settings FILE` 指定独立的本地策略 JSON，接受 `allowShell`、`permissions`、`features`、`mcpClient`、`allowManagedPermissionRulesOnly`、`useAutoModeDuringPlan`、`autoMode`。已写出的 shell 和权限配置字段最终覆盖普通设置，feature/MCP 布尔值按字段覆盖；权限规则另保留各设置来源，供指定目的地的更新、删除与替换使用。启用 `allowManagedPermissionRulesOnly` 后按托管规则分支过滤来源，CLI deny/ask 仍保留。自动分类覆盖与 PLAN 开关按下方规则合并。策略与文件路径保存到会话；`/permissions`、`/plan` 在策略指定permissions时保持原值。`--watch-config` 观察外部策略文件，完整重载成功后创建新会话快照；错误或缺失文件保留旧runtime。恢复直接使用已存策略，策略源随后删除也可打开；恢复时新增 `--managed-settings` 参数会报错。它是自有harness配置合同，尚无OS级managed配置发现、远端策略签名或凭证管理。
 
 配置监听也包含已验证的installed plugin目录和显式 `pluginDirs` 内容：沿目录最多3层，仍受64个watch/2048项共享预算约束；代码/JSON/Markdown字节变化只排队重载，安装digest校验照常执行。修改installed skill时旧runtime保留，恢复原字节后重载通过；源码与编译CLI均以0次模型/网络请求验证。条件规则中未激活的已固定import也在精确路径监听列表；按需访问的深层目录/新import发现仍待完善。
 
@@ -225,7 +225,11 @@ Hooks 的 event 列表支持旧平铺定义与 `{ "matcher": "...", "hooks": [..
 
 新CLI会话另有 `stopHookBlockCap`（settings中0..1024，默认8）：连续允许8次Stop/SubagentStop延续，第9次阻止结束时返回 `stop_hook_limit`，headless退出码2。0关闭此上限，仍受maxTurns约束；旧日志缺省字段保留旧行为。延续计数随hook结果ID落盘，恢复同一决定不会重复计数，工具回合重置，compaction保留。源码与编译CLI分别验证默认8、自定义2和关闭上限，共15次本地SSE请求；原样本环境变量和结束原因命名未照搬。
 
-权限支持 default、plan、acceptEdits、ask、bypass，工具名 allow/deny/ask globs 及输入 path/command 规则。deny 优先，plan 限制 read-only；acceptEdits 自动放行编辑，对其他可变工具询问。交互终端提供 Allow once；one-shot 使用显式规则或 PermissionRequest hook，修改后的输入再次检查。已配置 hook/MCP/LSP 进程按当前用户权限运行并继承环境。持久 MCP 配置保存 HTTP header 环境变量名称，stdio `env` 值字段不纳入会话。OAuth 按用户要求排除。
+权限支持 default、plan、acceptEdits、ask、bypass、auto、dontAsk，工具名 allow/deny/ask globs 及输入 path/command 规则。deny 优先，plan 限制 read-only；acceptEdits 自动放行编辑，对其他可变工具询问。dontAsk 将剩余询问转为拦截。auto 对符合条件的操作通过当前配置的模型与共享网关单独分类，快速阶段后按需进入思考阶段；明确 ask 规则、交互工具及 hook/宿主权限门仍保留。分类失败、取消或返回格式异常均在工具效果前结束该次授权，等待期间权限或输入变化会重新检查。交互终端提供 Allow once；one-shot 使用显式规则或 PermissionRequest hook，修改后的输入再次检查。PermissionRequest 的 `updatedPermissions` 按 `userSettings`、`projectSettings`、`localSettings`、`session`、`cliArg` 分桶；前三类异步保存到各自设置文件，后两类仅保留在内存。更新先影响当前会话，落盘失败保留内存结果与原始坏 JSON；关闭会话等待自身写入。规则删除与替换只作用于指定来源，canonical local 与旧 cwd local 的撤销同步处理，防止重载复活。新增工作目录保留授权时的路径观察，撤销后失效，符号链接换目标需重新授权。
+
+`useAutoModeDuringPlan` 默认启用，任一设置层明确为 false 即关闭 PLAN 中的自动分类；进入或离开自动分类状态时更新危险 allow 规则。`autoMode` 的 `allow`、`soft_deny`、`hard_deny`、`environment` 数组按用户设置、显式设置文件、托管策略顺序拼接；项目层不提供这些分类覆盖。空数组保留默认内容，非空数组替换对应默认段，`$defaults` 在指定位置插入默认内容。历史 `deny` 字段可读取，但不参与分类规则。
+
+同进程子代理使用最新父权限，并将 PermissionRequest 更新转交根会话；技能 `allowedTools` 继续按自身范围收窄。普通 `/fork` 保留实时模式、规则与路径观察，新会话拥有后续更新，旧会话关闭后仍有效。`/reload` 刷新设置来源并保留相应的会话/CLI 状态；进程重启按保存的设置和会话恢复合同处理。已配置 hook/MCP/LSP 进程按当前用户权限运行并继承环境。持久 MCP 配置保存 HTTP header 环境变量名称，stdio `env` 值字段不纳入会话。OAuth 按用户要求排除。
 
 MCP client 能力由可选配置 `"mcpClient": { "roots": true, "sampling": true, "elicitation": true }` 或 CLI `--mcp-roots` / `--mcp-sampling` / `--mcp-elicitation` 显式开启；默认字段省略，恢复使用固定快照并禁止追加这些配置参数。Roots 返回规范工作区的 `file:` URI。Sampling 使用固定 model/共享 provider 预算，输入低于 compactAt、maxTokens 限于配置值，文本输出限于 min(maxOutputBytes, 64 KiB)；server 内容作为任务数据，主会话 system/history/tools 均省略。可信程序可用 `RuntimeOptions.mcpClientRequests(config)` 提供回调，隔离及 relocation 重新绑定。每个 host factory 最多 16 个实际阶段，取消返回后占槽至底层结束。`--mcp-elicitation` 要求 `--interactive`：活动用户回合显示 form schema，接收 JSON 对象、`:decline` 或 `:cancel`，最多三次校验尝试；startup、idle 事件、headless 及没有活动表单回调时返回 cancel。Elicitation/ElicitationResult hooks 已接线，URL elicitation 与 OAuth 保持排除。
 

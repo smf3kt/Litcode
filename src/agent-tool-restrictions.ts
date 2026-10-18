@@ -228,7 +228,7 @@ function hasUnescapedWildcard(text: string): boolean {
   return false;
 }
 
-function trailingWildcard(text: string): boolean {
+export function trailingWildcard(text: string): boolean {
   const trimmed = text.trimEnd();
   if (!trimmed.endsWith('*')) return false;
   let slashes = 0;
@@ -238,7 +238,7 @@ function trailingWildcard(text: string): boolean {
 }
 
 /** A reading with shell control flow cannot satisfy a prefix or wildcard rule. */
-function isCompoundReading(reading: string): boolean {
+export function isCompoundReading(reading: string): boolean {
   let quote: '"' | "'" | undefined;
   for (let index = 0; index < reading.length; index++) {
     const character = reading[index]!;
@@ -256,7 +256,7 @@ function isCompoundReading(reading: string): boolean {
   return false;
 }
 
-function prefixMatches(prefix: string, reading: string): boolean {
+export function prefixMatches(prefix: string, reading: string): boolean {
   const normalize = (text: string) => text.replace(/[ \t]+/g, ' ');
   const wanted = normalize(prefix);
   const actual = normalize(reading);

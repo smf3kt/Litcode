@@ -1,0 +1,45 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-g9z2s3cs.js",
+      "sha256": "550cc54ca410aa21fddc03375576e7371031bbb7ee852494337fd6d9c0a2ee0b"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-g9z2s3cs.js",
+      "sha256": "550cc54ca410aa21fddc03375576e7371031bbb7ee852494337fd6d9c0a2ee0b",
+      "range": [
+        2177,
+        2260
+      ],
+      "units": 83,
+      "bodySha256": "b81b862adc679979455fe488d38c0b01eb363c9b768513f4d803c237ab429158",
+      "note": "Gp"
+    },
+    {
+      "module": "chunk-g9z2s3cs.js",
+      "sha256": "550cc54ca410aa21fddc03375576e7371031bbb7ee852494337fd6d9c0a2ee0b",
+      "range": [
+        774,
+        920
+      ],
+      "units": 146,
+      "bodySha256": "92e3ad8db1cde2c9fb1347b62c002a4a33398ee8ef8c1eeae75d6e3cac1d0231",
+      "note": "go"
+    },
+    {
+      "module": "chunk-g9z2s3cs.js",
+      "sha256": "550cc54ca410aa21fddc03375576e7371031bbb7ee852494337fd6d9c0a2ee0b",
+      "range": [
+        2890,
+        3158
+      ],
+      "units": 268,
+      "bodySha256": "b7f58e363695765d151416874934d9fd5adf97d6019423a9dec77af7ccdf9f8e",
+      "note": "wAo"
+    }
+  ],
+  "missing": []
+}

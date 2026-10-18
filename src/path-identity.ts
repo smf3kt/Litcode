@@ -61,8 +61,23 @@ export interface ResolvedPath {
   readonly path: string;
   /** Every link followed, in order. Empty when the path had none. */
   readonly hops: readonly ChainHop[];
+  readonly spellings?: readonly string[];
   /** Present when the target exists. Absent for a path that does not. */
   readonly identity?: FileIdentity;
+}
+
+export type WorkingDirectories = readonly string[] & { readonly rootSpellings?: readonly string[] };
+
+/** eNe [214841,215024), Yg [215388,215541), chunk-2bcyxj9q, UTF-16.
+ * The session retains this observation until the grant is removed. */
+export function observeWorkingDirectory(root: string, directory: string): readonly string[] {
+  if (!path.isAbsolute(directory) || directory.includes('\0')) return [];
+  try {
+    const resolved = resolveChain(root, directory);
+    if (!resolved.identity || !fs.statSync(resolved.path).isDirectory()) return [];
+    verifyIdentity(resolved);
+    return [...new Set([directory, ...(resolved.spellings ?? []), resolved.path])];
+  } catch { return []; }
 }
 
 export interface ResolveOptions {
@@ -143,6 +158,7 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
   }
   const absolute = path.resolve(root, userPath);
   const hops: ChainHop[] = [];
+  const spellings = new Set([absolute]);
   const seen = new Set<string>();
   const parsed = path.parse(absolute);
   let current = parsed.root;
@@ -160,7 +176,7 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
       }
       if (code === "ENOENT" || code === "ENOTDIR") {
         // Absent, not an error here: the caller decides whether that is allowed.
-        return { path: path.join(current, ...remaining), hops };
+        return { path: path.join(current, ...remaining), hops, spellings: [...spellings] };
       }
       throw error;
     }
@@ -184,6 +200,7 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
     // Continue from the target, which may itself pass through links, with the
     // unconsumed segments still to walk.
     const resolvedTarget = path.isAbsolute(target) ? path.normalize(target) : path.resolve(current, target);
+    spellings.add(path.resolve(resolvedTarget, ...remaining.slice(1)));
     const targetParsed = path.parse(resolvedTarget);
     current = targetParsed.root;
     remaining = [
@@ -201,6 +218,7 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
     return {
       path: current,
       hops,
+      spellings: [...spellings],
       identity: {
         dev: String(stat.dev),
         ino: String(stat.ino),
@@ -209,7 +227,7 @@ export function resolveChain(root: string, userPath: string, options: ResolveOpt
       },
     };
   } catch {
-    return { path: current, hops };
+    return { path: current, hops, spellings: [...spellings] };
   }
 }
 

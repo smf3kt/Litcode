@@ -8,6 +8,7 @@ import { skillRequiresExecution } from './skill-runtime.js';
 import { relocateSession } from './workspace-session.js';
 import fs from 'node:fs';
 import path from 'node:path';
+import { InteractivePlanResume, permissionModeCommand, transitionPlanMode, type PermissionModeCommand } from './plan-resume.js';
 import { permissionPolicySchema } from './permissions.js';
 import { forkSession, listSessions } from './sessions.js';
 import { startBackgroundSession } from './background-session.js';
@@ -135,6 +136,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   initialWatchPaths?: string[];
 }): Promise<void> {
   let session = initial;
+  const planResume = new InteractivePlanResume(initial.id);
   try {
     const archives = recoverWorktreeArchives(initial.config.workspace);
     for (const restored of archives.recovered) options.status.write(`Restored worktree history after an interrupted removal: ${restored}\n`);
@@ -507,7 +509,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // (chunk-rx2nah4x.js offset 584530).
   const startAgentSession = async (source: 'clear' | 'fork') => {
     const started = await agent().startSession(source, options.signal);
-    if (started?.initialUserMessage !== undefined) queue.unshift({ prompt: started.initialUserMessage, source: 'user' });
+    if (started?.initialUserMessage !== undefined) queue.unshift({ prompt: started.initialUserMessage, source: 'event' });
     if (started?.watchPaths?.length) addInstructionPaths(started.watchPaths);
   };
   const announce = () => options.status.write(`session: ${session.id}\n`);
@@ -527,17 +529,18 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (nextRuntime !== activeRuntime) await activeRuntime.close();
       else await activeRuntime.releaseSession?.(session.id);
     } catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
-    session.close(); session = next; activeRuntime = nextRuntime; activeAgent = undefined; rewindPreview = undefined;
+    session.close(); session = next; planResume.accept(next.id); activeRuntime = nextRuntime; activeAgent = undefined; rewindPreview = undefined;
     bindConfigWatch();
     await terminal?.bindInputHistory?.(session);
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
     unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
   };
-  const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal) => {
+  const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand) => {
     signal.throwIfAborted();
     const previousModel = session.config.model;
     const next = Session.open(config.workspace, { config, startedAt: session.startedAt });
     try {
+      next.carryPermissions(session, config.permissions?.mode === session.config.permissions?.mode);
       const boundaries = new Map<number, number>([[0, 0]]);
       for (const [index, event] of session.events.entries()) {
         if (event.kind === 'message') {
@@ -554,9 +557,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
         }
         if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
-        if (event.kind === 'title' || event.kind === 'instruction_watch' || event.kind === 'file_history') next.append(event);
+        if (event.kind === 'title' || event.kind === 'instruction_watch' || event.kind === 'file_history' || event.kind === 'permission_mode_command') next.append(event);
       }
       next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'configuration' });
+      if (modeCommand) {
+        next.permissionUpdates = transitionPlanMode({ ...next.permissionOwner.state(), mode: session.permissionOwner.state().mode }, modeCommand.mode, planResume.runtime);
+        next.append(modeCommand);
+      }
     } catch (error) { next.close(); throw error; }
     const nextRuntime = await bindNext(activeRuntime, next);
     try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
@@ -648,7 +655,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                   teammate_name: item.idle.name ?? item.idle.id }, signal);
                 if (hook.blocked || hook.stopRequested) { options.status.write('TeammateIdle hook suppressed this idle notification turn.\n'); return { reason: 'hook_blocked', text: "", modelCalls: 0 }; }
               }
-              return agent().run(prompt, signal);
+              return agent().run(prompt, signal, undefined, undefined, [], undefined, { kind: 'generated', source: 'interactive-event' });
             });
             if (result.modelCalls === 0 && result.text) output.write(result.text);
             output.write('\n');
@@ -706,7 +713,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           let nextRuntime: Runtime;
           try {
             if (JSON.stringify(next.config.gateway) !== JSON.stringify(session.config.gateway)) throw new Error('Session gateway differs; restart with --resume UUID to recreate the provider');
-            nextRuntime = await bindNext(await activeRuntime.reconfigure(next.config), next);
+            const prepared = await activeRuntime.reconfigure(next.config);
+            next.carryPermissions(session);
+            next.permissionUpdates = planResume.resume(next.id, next.permissionOwner.state(), next.config.permissions?.mode, next.events);
+            nextRuntime = await bindNext(prepared, next);
           } catch (error) { next.close(); throw error; }
           try { await agent().endSession('session_switch'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
@@ -776,6 +786,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           try {
             config.tools = nextRuntime.buildTools(config, 'reload').map(tool => ({ ...structuredClone(tool.schema), eager_input_streaming: true }));
             next = Session.open(config.workspace, { config, startedAt: session.startedAt });
+            next.carryPermissions(session);
             const boundaries = new Map<number, number>([[0, 0]]);
             for (const [index, event] of session.events.entries()) {
               if (event.kind === 'message') {
@@ -794,7 +805,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
               }
               if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
-              if (event.kind === 'title' || event.kind === "instruction_watch" || event.kind === 'file_history') next.append(event);
+              if (event.kind === 'title' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command') next.append(event);
             }
             next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'reload' });
             nextRuntime = await bindNext(nextRuntime, next);
@@ -908,6 +919,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           || prompt === '/plan' || prompt.startsWith('/permissions ')) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           const config = structuredClone(session.config);
+          let modeCommand: PermissionModeCommand | undefined;
           const switchingModel = prompt.startsWith('/model ');
           const switchingTheme = prompt.startsWith('/theme ');
           if (switchingTheme) {
@@ -949,10 +961,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const mode = prompt === '/plan' ? 'plan' : prompt.slice(13).trim();
             config.permissions = permissionPolicySchema.parse({ ...config.permissions, mode,
               allow: config.permissions?.allow ?? [], deny: config.permissions?.deny ?? [] });
+            modeCommand = permissionModeCommand(prompt === '/plan' ? 'plan' : 'permissions', config.permissions.mode,
+              session.permissionOwner.state().mode);
             if (config.configSources) config.configSources.overrides = { ...config.configSources.overrides,
               permissions: structuredClone(config.permissions) };
           }
-          await applyConfig(config, switchingModel, options.signal);
+          await applyConfig(config, switchingModel, options.signal, modeCommand);
           if (switchingModel) options.status.write(`Model: ${config.model}\n`);
           else if (/^\/thinking(?:\s|$)/.test(prompt)) options.status.write(`Thinking: ${config.thinking ? 'on' : 'off'}\n`);
           continue;
@@ -1090,6 +1104,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (boundary === undefined) throw new Error('Completed turn number does not exist');
           }
           const next = prompt === '/clear' ? Session.open(session.config.workspace, { config: structuredClone(session.config) }) : forkSession(session, boundary);
+          if (prompt.startsWith('/rewind')) next.carryPermissions(session);
           const nextRuntime = await bindNext(activeRuntime, next);
           try { await agent().endSession(prompt === '/clear' ? 'clear' : 'fork'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
@@ -1172,7 +1187,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (skill.context === 'fork' || skill.model || skill.effort || skill.background || skill.hooks || skill.allowedTools) {
               output.write(result + '\n'); continue;
             }
-            const completed = await withTurn(signal => agent().run(result, signal, undefined, undefined, pre.additionalContext));
+            // at, chunk-htgmc2p1.js [38703,39841), UTF-16, returns hookMessages after one raise.
+            const completed = await withTurn(signal => agent().run(result, signal, undefined,
+              { kind: 'raised', payload: expansion }, pre.additionalContext));
             output.write('\n'); options.status.write(`finished: ${completed.reason}; model calls: ${completed.modelCalls}\n`); continue;
           }
           const expanded = expandUserSkill(skill, parsed.args, session.config);

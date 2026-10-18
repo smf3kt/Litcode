@@ -1,0 +1,77 @@
+{
+  "package": "W183",
+  "date": "2026-10-18",
+  "base_commit": "1527a7f",
+  "identity": "96ea4a19c5bbf9005855a933f7fffe474120a1772843e1003c2c6a4a8148ec74",
+  "source_verification": {
+    "modules": 13,
+    "blocks": 97,
+    "utf16_units": 80591,
+    "rules_utf16_units": 95292,
+    "rules_utf8_bytes": 96000,
+    "rules_sha256": "9b240751803312d1c7e9069f4f17ff4caa1bb5edc7e27783a5e3c59fd177457b"
+  },
+  "validation": {
+    "typecheck": "pass",
+    "build": "pass",
+    "full_tests": 2607,
+    "full_pass": 2607,
+    "full_fail": 0,
+    "full_cancelled": 0,
+    "full_skipped": 0,
+    "compiled_cli_cases": 6,
+    "compiled_cli_requests": 18,
+    "identity_stable": true
+  },
+  "package_smoke": {
+    "files": 515,
+    "archive_sha256": "b0a3c15a7513cfea3e2632d1958d6ef09a718c14d9c42550cd426e1431e99cd8",
+    "offline_install": true,
+    "packaged_demo": true,
+    "compiled_help": true,
+    "installed_launcher_and_startup_fixtures": true,
+    "upstream_requests": 0,
+    "identity_stable": true
+  },
+  "independent_review": {
+    "auto_registry_lifecycle_identity": "87d0294a4d643adb3573626ec15c268b46c62cb925ddf9baa95f7c2da68c172e",
+    "registry_resume_marker": false,
+    "registry_provider_calls": 3,
+    "classifier_cli_requests": 17,
+    "reload_plan_root_child_persistence": "pass",
+    "cancel_and_live_mode_effects": 0,
+    "abort_listeners": 0,
+    "fixture_sockets": 0,
+    "final_expansion_identity": "96ea4a19c5bbf9005855a933f7fffe474120a1772843e1003c2c6a4a8148ec74",
+    "production_interactive_skill_allow_and_block": "pass",
+    "hook_calls_each": 1,
+    "blocked_provider_calls": 0,
+    "blocked_file_effect": false,
+    "comment_cleanup_source_and_test_inventory_equivalence": true,
+    "comment_cleanup_build_equivalence": "not inferred; rebuilt and rerun"
+  },
+  "historical_failure_disposition": [
+    "Help fixture updated from five modes to exact seven-mode line.",
+    "Execution-skill fallthrough now carries the already-raised expansion payload and hook context; exact one-hook contract retained.",
+    "Ordinary-denial fixture follows recovered classifier-only PermissionDenied routing while retaining no-effect, no-tool-start and paired-message assertions.",
+    "Test union narrowing corrected with equivalent flatMap before final typecheck.",
+    "Three stale/redundant comments removed; exact source citations and copied bodies retained."
+  ],
+  "coordinator_logs": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w183-final-acceptance.rjMpUxrW/",
+  "independent_results": [
+    "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-registry-resume-after-result.json",
+    "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-final-independent-result.json",
+    "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-final-lifecycle-result.json",
+    "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-expansion-current-result.json",
+    "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w183-comment-equivalence-result.json"
+  ],
+  "host_dispositions": [
+    "Configured shared Magpie provider/model; fixed source both-stage arm and source XML parser.",
+    "SDK transport retries remain distinct from source parse attempts and stay within owned stage deadlines.",
+    "Typed local provenance replaces source-specific producers; missing historical provenance is unknown.",
+    "SDK-worker permission metadata transport and other absent producers are not synthesized.",
+    "Account, subscription, OAuth, billing, telemetry and remote vendor policy paths excluded by user constraint."
+  ],
+  "all_c_complete": false,
+  "remaining_packages": ["C9", "C6", "C7", "C11", "C2"]
+}

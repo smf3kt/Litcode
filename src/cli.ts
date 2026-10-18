@@ -66,7 +66,7 @@ Options (flags override LLM_* environment values for new sessions):
   --settings FILE        Explicit settings file loaded last (highest precedence)
   --managed-settings FILE  Pin authored permission/shell/feature/MCP policy fields
   --user-dir DIR         Harness user directory (default ~/.harness)
-  --permission-mode MODE default, plan, acceptEdits, ask or bypass (default default)
+  --permission-mode MODE default, plan, acceptEdits, ask, bypass, auto or dontAsk (default default)
   --allow-tool RULE      Permit a tool rule (repeatable); outside the list is denied
   --deny-tool RULE       Deny a tool rule (repeatable)
   --tasks               Enable durable task tools (new sessions; default on)
@@ -178,7 +178,7 @@ function expandOneShot(prompt: string, config: SessionConfig): string {
 function resolvePermissions(base: PermissionPolicy | undefined, values: Record<string, unknown>): PermissionPolicy {
   const mode = values['permission-mode'] === undefined
     ? base?.mode ?? 'default'
-    : choice(values['permission-mode'] as string, ['default', 'plan', 'acceptEdits', 'ask', 'bypass'], 'default');
+    : choice(values['permission-mode'] as string, ['default', 'plan', 'acceptEdits', 'ask', 'bypass', 'auto', 'dontAsk'], 'default');
   const allow = dedupe([...(base?.allow ?? []), ...((values['allow-tool'] as string[] | undefined) ?? [])]);
   const deny = dedupe([...(base?.deny ?? []), ...((values['deny-tool'] as string[] | undefined) ?? [])]);
   return { ...base, mode, allow, deny };
@@ -400,7 +400,9 @@ function newConfig(
       const notice = heldMcpServerNotice(admission.pending, admission.declined, approvals.state);
       if (notice) process.stderr.write(`${notice}\n`);
     }
-    config.permissions = resolvePermissions(settings.permissions, values);
+    const cliPermissions = resolvePermissions(undefined, values);
+    config.permissions = { ...resolvePermissions(settings.permissions, values), layers: [...loaded.permissionLayers,
+      { source: 'cliArg', root: workspace, allow: cliPermissions.allow, deny: cliPermissions.deny, ask: [], additionalDirectories: [] }] };
     // The mode that skips every check stops meaning "stop asking me" when the
     // process is root outside a container, so it is refused before anything
     // runs rather than warned about afterwards.
@@ -415,7 +417,7 @@ function newConfig(
       ...(values['allow-shell'] === undefined ? {} : { allowShell: values['allow-shell'] as boolean }),
       ...(values.tasks === undefined ? {} : { tasks: values.tasks as boolean }),
       ...(values.subagents === undefined ? {} : { subagents: values.subagents as boolean }),
-      ...(["permission-mode", "allow-tool", "deny-tool"].some(key => values[key] !== undefined) ? { permissions: structuredClone(config.permissions) } : {}),
+      ...(["permission-mode", "allow-tool", "deny-tool"].some(key => values[key] !== undefined) ? { permissions: structuredClone({ ...cliPermissions, layers: [config.permissions.layers!.at(-1)!] }) } : {}),
       ...(values['mcp-roots'] || values['mcp-sampling'] || values['mcp-elicitation'] ? { mcpClient: {
         ...(values['mcp-roots'] ? { roots: true } : {}), ...(values['mcp-sampling'] ? { sampling: true } : {}),
         ...(values['mcp-elicitation'] ? { elicitation: true } : {}),
@@ -716,7 +718,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     // The recovered headless prologue prepends the hook's initial user message
     // to the input queue (`OXr`/`prependUserMessage`, chunk-rx2nah4x.js offset
     // 472137), so it runs as the first turn ahead of the typed prompt.
-    if (started.initialUserMessage !== undefined) await agent.run(started.initialUserMessage, controller.signal);
+    if (started.initialUserMessage !== undefined) await agent.run(started.initialUserMessage, controller.signal, undefined, undefined, [], undefined, { kind: 'generated', source: 'session-start' });
     const rawPrompt = positionals.join(' ');
     const slash = parseSlashCommand(rawPrompt);
     const selectedSkill = slash ? findSkill(currentSession.config.skills, slash.name) : undefined;
@@ -756,7 +758,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         const child = JSON.parse(output) as { reason: string; model_calls: number; text: string };
         await finish(child.reason, schema === undefined ? output : child.text, child.model_calls); return;
       }
-      const result = await agent.run(output, controller.signal);
+      const result = await agent.run(output, controller.signal, undefined, { expansion_type: 'slash_command', command_name: slash!.name, command_args: slash!.args, prompt: rawPrompt });
       await finish(result.reason, result.text, result.modelCalls);
       return;
     }
@@ -767,7 +769,8 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         : expandOneShot(positionals.join(' '), currentSession.config);
     if (schema !== undefined && prompt !== undefined) prompt += `\nReturn a complete JSON value matching this schema:\n${JSON.stringify(schema)}`;
     const result = await agent.run(prompt, controller.signal, values.attach === undefined ? undefined
-      : { path: values.attach, ...(values.pages === undefined ? {} : { pages: values.pages }) });
+      : { path: values.attach, ...(values.pages === undefined ? {} : { pages: values.pages }) }, selectedSkill && slash
+        ? { expansion_type: 'slash_command', command_name: slash.name, command_args: slash.args, prompt: rawPrompt } : undefined);
     await finish(result.reason, result.text, result.modelCalls);
     if (demo && fs.readFileSync(path.join(workspace, 'hello.txt'), 'utf8') !== 'Hello from the independent agent.\n') throw new Error('Demo verification failed');
   } catch (error) {

@@ -1,0 +1,126 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    },
+    {
+      "module": "chunk-7ah5c51p.js",
+      "sha256": "f0cf1631a25068c3f788d8b82dca713bc1c4d88221f9d55bf9c355ddc74a3dd5"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        615654,
+        617787
+      ],
+      "units": 2133,
+      "bodySha256": "ff60c706eff78c81f8a9202efc8985fbc04f2dbd107678619a39e209ea56bb33",
+      "note": "live/restored host context policy"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1011644,
+        1055752
+      ],
+      "units": 44108,
+      "bodySha256": "d71d3bb2d16fd35434e56b2dad162b55dc786efac6441444cb7035684bfd0b5f",
+      "note": "complete classifier prompt"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1090941,
+        1091921
+      ],
+      "units": 980,
+      "bodySha256": "ee1588b54e466c4d4c5a09d05fe21a255a05bb4279bc6c1d2db62dab3acd418f",
+      "note": "XML stage suffixes"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1095066,
+        1095467
+      ],
+      "units": 401,
+      "bodySha256": "d1ecaa5e820ef64561bc75ae11af31403b89238bec142d0f3d3523c445eb5371",
+      "note": "thinking strip and verdict parser"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1095895,
+        1096384
+      ],
+      "units": 489,
+      "bodySha256": "459968e515af7e8983e70ac580639bbe50038f774535a981b49f5e88c3031a65",
+      "note": "reason category and thinking extraction"
+    },
+    {
+      "module": "chunk-7ah5c51p.js",
+      "sha256": "f0cf1631a25068c3f788d8b82dca713bc1c4d88221f9d55bf9c355ddc74a3dd5",
+      "range": [
+        634,
+        1499
+      ],
+      "units": 865,
+      "bodySha256": "e54b6f2a335bd083185ee38c947f029f6547847f3ec0d731567803d7925efdc3",
+      "note": "slot defaults and settings deny"
+    },
+    {
+      "module": "chunk-7ah5c51p.js",
+      "sha256": "f0cf1631a25068c3f788d8b82dca713bc1c4d88221f9d55bf9c355ddc74a3dd5",
+      "range": [
+        1499,
+        1661
+      ],
+      "units": 162,
+      "bodySha256": "d63f0de297a55569867765cb3840b097b0b331cb1d64a17ab341131603e1d5a8",
+      "note": "slot names"
+    },
+    {
+      "module": "chunk-7ah5c51p.js",
+      "sha256": "f0cf1631a25068c3f788d8b82dca713bc1c4d88221f9d55bf9c355ddc74a3dd5",
+      "range": [
+        1661,
+        2452
+      ],
+      "units": 791,
+      "bodySha256": "8ce11f78e5b51f1ae48556bbd265ea43d020673d16b860dfa3aec8b679fdaea5",
+      "note": "template substitution and category normalization"
+    },
+    {
+      "module": "chunk-7ah5c51p.js",
+      "sha256": "f0cf1631a25068c3f788d8b82dca713bc1c4d88221f9d55bf9c355ddc74a3dd5",
+      "range": [
+        2452,
+        4410
+      ],
+      "units": 1958,
+      "bodySha256": "733f6531403f9de091298e42c0b16521c57bcf81b35ff753458b1041c7c51cbb",
+      "note": "category names"
+    },
+    {
+      "module": "chunk-7ah5c51p.js",
+      "sha256": "f0cf1631a25068c3f788d8b82dca713bc1c4d88221f9d55bf9c355ddc74a3dd5",
+      "range": [
+        4410,
+        4449
+      ],
+      "units": 39,
+      "bodySha256": "9c5f57b107e9b59aff0c2a3fd6addc386df42314de53cd6a4e259cc44558fb92",
+      "note": "valid category set"
+    }
+  ],
+  "missing": []
+}

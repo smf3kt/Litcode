@@ -1,0 +1,78 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        1100,
+        1192
+      ],
+      "units": 92,
+      "bodySha256": "9e659b2b394341934bedd42ee8b512968620634059fd7046d9003e948dc1df37",
+      "note": "_Z"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        1192,
+        1294
+      ],
+      "units": 102,
+      "bodySha256": "e1df6698000a67df291ff7f322a37df8d76f148fde2b60cdf48c2aeed34d36cc",
+      "note": "qW"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        1294,
+        1332
+      ],
+      "units": 38,
+      "bodySha256": "f34670997e2799d9962954539886ffdaefb1b7e6d86a7e95f169503599d0ec27",
+      "note": "Yv"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        1999,
+        2027
+      ],
+      "units": 28,
+      "bodySha256": "655ff2ad573dda8405b60d0047bbbcffd6d03536b9a0ab3666285be113aaff42",
+      "note": "JWn"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        1364,
+        1710
+      ],
+      "units": 346,
+      "bodySha256": "96559c33ee9bcb60b607ffe6d3f2af97a06c248ed67b7f7402fae1e09f3b4217",
+      "note": "p"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        4557,
+        5017
+      ],
+      "units": 460,
+      "bodySha256": "85fa96bbfcf5431bfd62718f36639b2f83e91e0ac5368679cefd72eaafd05838",
+      "note": "R"
+    }
+  ],
+  "missing": []
+}

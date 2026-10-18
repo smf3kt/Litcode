@@ -343,11 +343,14 @@ test('failure notifications and journal limits release session locks', async () 
     const failed = await registry.launch({ prompt: 'work' });
     assert.equal(failed.status, 'failed'); assert.equal(failed.error, 'scripted failure');
     assert.deepEqual(errors, ['scripted failure']); assert.equal(listSessions(f.workspace)[0]?.active, false);
-    const bounded = f.make({ provider: { count: async () => 0, complete: async () => response('large'.repeat(1000)) }, limits: { maxJournalBytes: 4096 } });
+    const journalBudget = 4096 + Buffer.byteLength(f.workspace) * 4;
+    let boundedCalls = 0;
+    const bounded = f.make({ provider: { count: async () => 0, complete: async () => { boundedCalls++; return response('large'.repeat(1000)); } }, limits: { maxJournalBytes: journalBudget } });
     const limited = await bounded.launch({ prompt: 'work' });
+    assert.equal(boundedCalls, 1);
     assert.equal(limited.status, 'failed'); assert.match(limited.error!, /journal limit/);
     const file = path.join(f.workspace, '.agent', `${limited.id}.jsonl`);
-    assert.ok(fs.statSync(file).size <= 4096);
+    assert.ok(fs.statSync(file).size <= journalBudget);
     assert.equal(fs.existsSync(`${file}.lock`), false);
   } finally { await f.cleanup(); }
 });

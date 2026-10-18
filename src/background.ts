@@ -1062,6 +1062,7 @@ const readSchema = z
 
 function runBackgroundTool(registry: BackgroundRegistry): ToolDefinition {
   return {
+    toAutoClassifierInput(input) { return spawnSchema.parse(input).command; },
     readOnly: false,
     schema: {
       name: "run_background",

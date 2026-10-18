@@ -1,0 +1,67 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        190741,
+        191267
+      ],
+      "units": 526,
+      "bodySha256": "30cd9368af04143cf67dc1f869c03bf17a53d14a4f1aa772d95be097ee175f7f",
+      "note": "round trip validation and source enums"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        191386,
+        191546
+      ],
+      "units": 160,
+      "bodySha256": "322db7cc170c8a243344c1d63ba9a07052836ce12b9eaa31d76aca21a5e343aa",
+      "note": "rule shape"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        191671,
+        194364
+      ],
+      "units": 2693,
+      "bodySha256": "26de4b056a3eea0b9d9c69efc6b32f8873b692efc190288d3ca1bf2d02d26219",
+      "note": "update validation"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        194801,
+        197020
+      ],
+      "units": 2219,
+      "bodySha256": "ef4124f242fcd843932889b6edff603388e58491012e1b3a4d674eaf3f5b46e9",
+      "note": "directory map and reducer"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        197487,
+        197767
+      ],
+      "units": 280,
+      "bodySha256": "88c0d115b073d4ad566fc29ccd2f5ca1baf249264397084483234a3c51211b4d",
+      "note": "update sequence and file destinations"
+    }
+  ],
+  "missing": []
+}

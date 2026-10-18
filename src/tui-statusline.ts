@@ -4,6 +4,7 @@ import { runHookCommand } from './hooks.js';
 import { initializeStatusLineSource } from './tui-statusline-source.js';
 import { statusLineSchema } from './tui-statusline-schema.js';
 import { j9, Q1e } from './tui-statusline-usage.js';
+import { effectivePermissionPolicy } from './permissions.js';
 
 export { statusLineSchema };
 export type StatusLineSetting = { type: 'command'; command: string; padding?: number;
@@ -15,6 +16,7 @@ export class StatusLine {
   private readonly memory = new Map<string, { lastText: string | undefined }>();
   private owner: any;
   private unsubscribe: (() => void) | undefined;
+  private unsubscribePermissions: (() => void) | undefined;
   private session: Session | undefined;
   private inputs: any;
   private active = false;
@@ -57,7 +59,9 @@ export class StatusLine {
     if (this.closed) return;
     this.onChange = changed;
     if (session !== this.session) {
-      this.unsubscribe?.(); this.unsubscribe = undefined; this.session = session;
+      this.unsubscribe?.(); this.unsubscribe = undefined;
+      this.unsubscribePermissions?.(); this.session = session;
+      this.unsubscribePermissions = session.subscribePermissions(() => this.refresh());
       if (!this.memory.has(session.id)) this.memory.set(session.id, { lastText: undefined });
       this.inputs = this.snapshot(); this.owner = this.createOwner(session, this.inputs);
     } else this.refresh();
@@ -88,6 +92,12 @@ export class StatusLine {
   refresh(): void {
     if (!this.owner || this.closed) return;
     const next = this.snapshot();
+    if (this.inputs.additionalWorkingDirectories !== next.additionalWorkingDirectories && this.unsubscribe) {
+      this.unsubscribe(); this.unsubscribe = undefined;
+      this.owner.setInputs(next); this.inputs = next;
+      this.mount();
+      return;
+    }
     this.owner.setInputs(next); this.inputs = next;
   }
   private messages(): { uuid: string; usage: unknown }[] {
@@ -99,16 +109,16 @@ export class StatusLine {
   private snapshot() {
     const config = this.session!.config, latest = this.messages().at(-1);
     return { statusLine: config.statusLine, settings: {}, lastAssistantMessageId: latest?.uuid ?? null,
-      tokenUsage: latest?.usage, permissionMode: config.permissions?.mode ?? 'default', vimMode: this.vimMode,
+      tokenUsage: latest?.usage, permissionMode: effectivePermissionPolicy(config.permissions, this.session!.permissionUpdates)?.mode ?? 'default', vimMode: this.vimMode,
       mainLoopModel: config.model, fastMode: false, effortValue: config.effort, thinkingEnabled: config.thinking,
-      prStatus: undefined, additionalWorkingDirectories: new Map() };
+      prStatus: undefined, additionalWorkingDirectories: this.session!.permissionUpdates.additionalWorkingDirectories };
   }
   private payload() {
     const session = this.session!, config = session.config, usage = this.messages().at(-1)?.usage;
     const durationMs = session.events.reduce((sum, row) => sum + (row.kind === 'turn_end' ? row.duration?.durationMs ?? 0 : 0), 0);
     return { session_id: session.id, transcript_path: session.file, cwd: config.workspace,
-      permission_mode: config.permissions?.mode ?? 'default', model: { id: config.model, display_name: config.model },
-      workspace: { current_dir: config.workspace, project_dir: config.workspace, added_dirs: [] }, version: '0.1.0',
+      permission_mode: effectivePermissionPolicy(config.permissions, session.permissionUpdates)?.mode ?? 'default', model: { id: config.model, display_name: config.model },
+      workspace: { current_dir: config.workspace, project_dir: config.workspace, added_dirs: [...session.permissionUpdates.additionalWorkingDirectories.keys()] }, version: '0.1.0',
       cost: { total_duration_ms: durationMs }, context_window: Q1e(usage ? j9(usage) : null, config.contextTokens),
       exceeds_200k_tokens: usage ? Q1e(j9(usage), config.contextTokens).total_input_tokens > 200000 : false,
       fast_mode: false, ...(config.effort ? { effort: { level: config.effort } } : {}),
@@ -127,7 +137,8 @@ export class StatusLine {
   }
   close(): void {
     if (this.closed) return;
-    this.closed = true; this.unsubscribe?.(); this.unsubscribe = undefined; this.owner = undefined;
+    this.closed = true; this.unsubscribe?.(); this.unsubscribe = undefined;
+    this.unsubscribePermissions?.(); this.unsubscribePermissions = undefined; this.owner = undefined;
   }
   async flush(): Promise<void> { await Promise.allSettled([...this.pending]); }
 }

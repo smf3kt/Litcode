@@ -360,6 +360,11 @@ test('expansion hook is raised once before a skill run and its context reaches t
       [['forked', 'alpha', 'projectSettings'], ['runs', 'beta', 'userSettings']]);
     assert.equal(requests.length, 1);
     assert.match(JSON.stringify(requests[0]!.messages), /expansion note/);
+    assert.deepEqual(session.events.flatMap(event => event.kind === 'message' && event.classifier?.origin.kind === 'human'
+      ? [event.classifier.humanText] : []), ['/runs beta']);
+    const content = session.messages.find(message => message.role === 'user')?.content;
+    assert.deepEqual(content, [{ type: 'text', text: 'skill result' },
+      { type: 'text', text: 'Hook context:\nexpansion note' }]);
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 

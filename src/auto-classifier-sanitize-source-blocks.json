@@ -1,0 +1,97 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-ax7r0qj7.js",
+      "sha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+      "range": [
+        677,
+        739
+      ],
+      "units": 62,
+      "bodySha256": "6afca7885a6d64046cc2b6c86cedc7bee37203f59d18f398a0f74f34ada81a19",
+      "note": "escape pattern"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        24502,
+        25269
+      ],
+      "units": 767,
+      "bodySha256": "8d4c4eabfa4cb8c2db5640c6748b4fe7a7731bb2ccdfec7a47497af7f00e3d10",
+      "note": "delimiter tables"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        25697,
+        25716
+      ],
+      "units": 19,
+      "bodySha256": "8ba04288b8e55ac7ee1396eb169f367ee7ef255885664ac4e1c3759c34b9e1d7",
+      "note": "delimiter alphabet"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        26112,
+        26431
+      ],
+      "units": 319,
+      "bodySha256": "df8be1668f2b44e97b00befea5dd0ceba213a545106d14611d797b9c78c8b133",
+      "note": "delimiter forms"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        134392,
+        134912
+      ],
+      "units": 520,
+      "bodySha256": "184fea2b2aa3e9fda0f4507376ec109e60fd274de07c4ff585c5ea5b476b1446",
+      "note": "normalization and framing"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1068070,
+        1068144
+      ],
+      "units": 74,
+      "bodySha256": "aa33f3694a150c020650f533691e52623487aa159de220b82a88e6a77a3a8995",
+      "note": "call ID sanitizer"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        1068263,
+        1068388
+      ],
+      "units": 125,
+      "bodySha256": "9e03e5e86d0c61fa7d0fd110affd6a0f776ccfd4299dae9f8b32f3ad2fe31300",
+      "note": "line-break JSON escape"
+    }
+  ],
+  "missing": []
+}

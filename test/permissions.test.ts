@@ -235,7 +235,7 @@ test('permission updates: session rules join the settings rules and satisfy the 
   assert.equal(permissionDecision(undefined, tool('read_file'), {}, asked).decision, 'ask');
 });
 
-test('permission updates: mode, replace and remove apply while rule content is refused or dropped', () => {
+test('permission updates: mode, content, replace and remove reach consumers', () => {
   const empty = emptySessionPermissionUpdates();
   const planned = applyPermissionUpdates(empty, [{ type: 'setMode', mode: 'plan', destination: 'session' }]).state;
   assert.equal(planned.mode, 'plan');
@@ -250,21 +250,28 @@ test('permission updates: mode, replace and remove apply while rule content is r
     { type: 'removeRules', rules: [{ toolName: 'read_file' }], behavior: 'deny', destination: 'session' },
   ]).state;
   assert.deepEqual(removed.deny, []);
-  // A deny rule with ruleContent cannot be represented: the call is refused.
   const refused = applyPermissionUpdates(empty, [
     { type: 'addRules', rules: [{ toolName: 'write_file', ruleContent: 'private/*' }], behavior: 'deny', destination: 'session' },
   ]);
-  assert.equal(refused.blocked, PERMISSION_UPDATES_UNAPPLIED);
-  // An allow rule with ruleContent and a directory update are dropped, not refused.
+  assert.equal(refused.blocked, undefined);
+  assert.equal(permissionDecision(undefined, tool('write_file', false), { path: 'private/a' }, refused.state).decision, 'deny');
   const dropped = applyPermissionUpdates(empty, [
     { type: 'addRules', rules: [{ toolName: 'write_file', ruleContent: 'docs/*' }], behavior: 'allow', destination: 'session' },
     { type: 'addDirectories', directories: ['/tmp'], destination: 'session' },
   ]);
   assert.equal(dropped.blocked, undefined);
-  assert.deepEqual(dropped.dropped, ['allow rule write_file', 'addDirectories']);
-  assert.deepEqual(dropped.state.allow, []);
-  // A mode this product cannot express is dropped rather than invented.
+  assert.deepEqual(dropped.dropped, []);
+  assert.deepEqual([...dropped.state.additionalWorkingDirectories], [['/tmp', { path: '/tmp', source: 'session' }]]);
+  assert.deepEqual(dropped.state.allow, ['write_file(docs/*)']);
   const unsupported = applyPermissionUpdates(empty, [{ type: 'setMode', mode: 'dontAsk', destination: 'session' }]);
-  assert.deepEqual(unsupported.dropped, ['setMode dontAsk']);
-  assert.equal(unsupported.state.mode, undefined);
+  assert.deepEqual(unsupported.dropped, []);
+  assert.equal(unsupported.state.mode, 'dontAsk');
+  assert.equal(permissionDecision(undefined, tool('write_file', false), {}, unsupported.state).decision, 'deny');
+  const allowed = applyPermissionUpdates(unsupported.state, [{ type: 'addRules', behavior: 'allow', destination: 'session',
+    rules: [{ toolName: 'Bash', ruleContent: 'printf:*' }] }]).state;
+  assert.equal(permissionDecision(undefined, tool('run_command', false), { command: 'printf hello' }, allowed).decision, 'allow');
+  assert.equal(permissionDecision(undefined, tool('run_command', false), { command: 'printf hello; touch secret' }, allowed).decision, 'deny');
+  const asked = applyPermissionUpdates(allowed, [{ type: 'addRules', behavior: 'ask', destination: 'session',
+    rules: [{ toolName: 'Bash', ruleContent: 'printf secret' }] }]).state;
+  assert.equal(permissionDecision(undefined, tool('run_command', false), { command: 'printf secret' }, asked).decision, 'deny');
 });

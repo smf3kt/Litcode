@@ -1,8 +1,7 @@
 // Workspace tool layer for an independent personal agent.
 //
-// File tools are strictly confined to the agent workspace (realpath, all
-// ancestor symlinks resolved), reject absolute paths outright, and refuse the
-// reserved `.agent` directory (including via a symlink that aliases it).
+// File tools use the workspace and explicit live directory grants, vet every
+// symlink spelling, and preserve the reserved `.agent` boundary.
 // Searches and listings include hidden files but always exclude `.agent`.
 // The `run_command` tool is opt-in via `context.allowShell` and is explicitly
 // NOT path-confined: shell commands run unrestricted inside the OS user's
@@ -18,7 +17,7 @@ import type { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { atomicWriteFile } from "./atomic-write.js";
 import type { InteractionCallbacks } from "./interaction-tools.js";
-import { PathResolutionError, resolveChain, verifyIdentity, type ResolvedPath } from "./path-identity.js";
+import { PathResolutionError, resolveChain, verifyIdentity, observeWorkingDirectory, type WorkingDirectories, type ResolvedPath } from "./path-identity.js";
 
 export type ToolContext = {
   workspace: string;
@@ -28,11 +27,15 @@ export type ToolContext = {
   conversation?: readonly Anthropic.MessageParam[];
   interaction?: InteractionCallbacks;
   fileHistory?: (file?: string) => void;
+  workingDirectories?: (readOnly: boolean) => readonly string[];
 };
 
 export type ToolDefinition = {
   schema: Anthropic.Tool;
   readOnly: boolean;
+  toAutoClassifierInput?(input: unknown): unknown;
+  requiresUserInteraction?: boolean;
+  classifierOnly?: boolean;
   execute(input: unknown, context: ToolContext): Promise<string>;
   executeBlocks?(input: unknown, context: ToolContext): Promise<Anthropic.ToolResultBlockParam['content']>;
   forChild?(): ToolDefinition;
@@ -115,8 +118,8 @@ function decodeUtf8(buf: Buffer): string {
 // ---------------------------------------------------------------------------
 
 function isWithin(root: string, candidate: string): boolean {
-  if (candidate === root) return true;
-  return candidate.startsWith(root + path.sep);
+  const relative = path.relative(root, candidate);
+  return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
 }
 
 function rejectAgentSegment(root: string, target: string): void {
@@ -135,7 +138,21 @@ function rejectAgentSegment(root: string, target: string): void {
  * but every existing ancestor symlink is still resolved and checked so a
  * symlinked directory cannot be used to write outside the workspace.
  */
-function confineResolved(root: string, userPath: string, mustExist: boolean): ResolvedPath {
+export function confineResolved(root: string, userPath: string, mustExist: boolean,
+  directories: WorkingDirectories = []): ResolvedPath {
+  const observed = directories.rootSpellings ?? directories.flatMap(directory => observeWorkingDirectory(root, directory));
+  if (observed.length) {
+    // Mk/eNe/Yg, chunk-2bcyxj9q [214762,215541), UTF-16. Every observed spelling needs a vetted root.
+    const roots = [root, ...observed];
+    const resolved = resolveChain(root, userPath);
+    const spellings = [path.resolve(root, userPath), ...(resolved.spellings ?? []), resolved.path];
+    for (const spelling of spellings) {
+      if (spelling.split(path.sep).includes(AGENT_DIR)) throw new Error(`path is inside the reserved "${AGENT_DIR}" directory`);
+      if (!roots.some(allowed => isWithin(allowed, spelling))) throw new Error(`path escapes the workspace through an ungranted spelling: ${userPath}`);
+    }
+    if (!resolved.identity && (mustExist || resolved.hops.length)) throw new Error(`path does not exist or has a dangling symlink: ${userPath}`);
+    return resolved;
+  }
   if (path.isAbsolute(userPath)) {
     throw new Error(`path escapes the workspace (absolute paths are not allowed): ${userPath}`);
   }
@@ -183,8 +200,8 @@ function confineResolved(root: string, userPath: string, mustExist: boolean): Re
   return resolved;
 }
 
-function confine(root: string, userPath: string, mustExist: boolean): string {
-  return confineResolved(root, userPath, mustExist).path;
+function confine(root: string, userPath: string, mustExist: boolean, directories: readonly string[] = []): string {
+  return confineResolved(root, userPath, mustExist, directories).path;
 }
 
 /**
@@ -779,7 +796,7 @@ function readFileTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, offset = 1, limit = READ_DEFAULT_LIMIT } = readFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const resolved = confineResolved(root, userPath, true);
+      const resolved = confineResolved(root, userPath, true, context.workingDirectories?.(true));
       const stat = await fsp.stat(resolved.path);
       if (!stat.isFile()) {
         throw new Error(`read_file: not a regular file: ${userPath}`);
@@ -828,7 +845,7 @@ function listFilesTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath = ".", glob, limit = LIST_DEFAULT_LIMIT } = listFilesSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const real = confine(root, userPath, true);
+      const real = confine(root, userPath, true, context.workingDirectories?.(true));
       const relTarget = path.relative(root, real) || ".";
       const args = ["--files", "--color=never", "--hidden"];
       if (glob) args.push("--glob", glob);
@@ -918,7 +935,7 @@ function searchTool(): ToolDefinition {
         limit = SEARCH_DEFAULT_LIMIT,
       } = searchSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const real = confine(root, userPath, true);
+      const real = confine(root, userPath, true, context.workingDirectories?.(true));
       const relTarget = path.relative(root, real) || ".";
       const args = ["--no-heading", "--color=never", "-n", "--hidden"];
       // `-e` always marks the pattern, even in literal mode, so a pattern that
@@ -956,6 +973,7 @@ function searchTool(): ToolDefinition {
 
 function writeFileTool(): ToolDefinition {
   return {
+    toAutoClassifierInput(input) { const value = writeFileSchema.parse(input); return `${value.path}: ${value.content}`; },
     readOnly: false,
     schema: {
       name: "write_file",
@@ -983,7 +1001,7 @@ function writeFileTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, content, overwrite = false } = writeFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const resolved = confineResolved(root, userPath, false);
+      const resolved = confineResolved(root, userPath, false, context.workingDirectories?.(false));
       const real = resolved.path;
       const existed = fs.existsSync(real);
       if (existed) {
@@ -1009,6 +1027,10 @@ function writeFileTool(): ToolDefinition {
 
 function editFileTool(): ToolDefinition {
   return {
+    // sfn [4160906,4161312), UTF-16. Select external removal-visible defaults, cap 3000.
+    toAutoClassifierInput(input) { const value = editFileSchema.parse(input); return { file_path: value.path,
+      adds: value.new_string, removes: value.old_string.slice(0, 3000), removesTruncated: value.old_string.length > 3000,
+      ...(value.replace_all === true ? { replaceAll: true } : {}) }; },
     readOnly: false,
     schema: {
       name: "edit_file",
@@ -1037,7 +1059,7 @@ function editFileTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, old_string, new_string, replace_all = false } = editFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const resolved = confineResolved(root, userPath, true);
+      const resolved = confineResolved(root, userPath, true, context.workingDirectories?.(false));
       const real = resolved.path;
       const stat = await fsp.stat(real);
       if (!stat.isFile()) {
@@ -1072,6 +1094,7 @@ function editFileTool(): ToolDefinition {
 
 function runCommandTool(): ToolDefinition {
   return {
+    toAutoClassifierInput(input) { return runCommandSchema.parse(input).command; },
     readOnly: false,
     schema: {
       name: "run_command",

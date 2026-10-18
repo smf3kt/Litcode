@@ -2,15 +2,29 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { classifierTranscript, serializeAutoTool } from '../src/auto-classifier-transcript.js';
+import { classifierMessage } from '../src/message-origin.js';
 import { after, test } from "node:test";
+import { execFileSync } from 'node:child_process';
 import type Anthropic from "@anthropic-ai/sdk";
 import { Agent, assertPaired, defaultConfig, toolCalls } from "../src/agent.js";
 import { loadProjectConfig } from "../src/config.js";
+import { reloadConfig } from '../src/reload.js';
+import { InteractivePlanResume, permissionModeCommand, permissionModeCommandSchema, planHistoryState, transitionPlanMode } from '../src/plan-resume.js';
+import { forkSession } from '../src/sessions.js';
+import { checkpointConversation, previewRewind, applyRewind } from '../src/rewind.js';
+import { permissionDecision } from '../src/permissions.js';
+import { executeSkill } from '../src/skill-runtime.js';
+import { AgentRegistry } from '../src/agent-registry.js';
+import { createSubagentTool } from '../src/subagents.js';
 import { Session, type SessionConfig, type ToolResult } from "../src/session.js";
 import { listSessions } from "../src/sessions.js";
 import type { ModelProvider, ModelRequest } from "../src/provider.js";
 import { createTools, type ToolDefinition } from "../src/tools.js";
 import { createTaskTools, readTaskRecord, readTaskRecords } from "../src/tasks.js";
+import { StatusLine } from '../src/tui-statusline.js';
+import { createNotebookTools } from '../src/notebooks.js';
+import { createMediaTools } from '../src/media.js';
 
 const roots: string[] = [];
 function workspace(): string {
@@ -473,6 +487,744 @@ test("PermissionRequest allow applies session permission updates before the call
   } finally { session.close(); }
 });
 
+test("permission destination owner applies memory first, preserves files and drains only its writes", async () => {
+  const root = workspace(), userDir = path.join(root, "user");
+  const effect = spy("write_file");
+  const cfg = config(root, [effect.tool], { configSources: { userDir }, permissions: { mode: "ask", allow: [], deny: [] } });
+  const first = Session.open(root, { config: cfg }), second = Session.open(root, { config: cfg });
+  const userFile = path.join(userDir, "settings.json");
+  const projectFile = path.join(root, ".harness", "settings.json");
+  const localFile = path.join(root, ".harness", "settings.local.json");
+  write(root, "user/settings.json", JSON.stringify({ theme: "dark", permissions: { allow: ["existing"], deny: ["preserved"] } }));
+  write(root, ".harness/settings.local.json", "{broken");
+  try {
+    first.adoptPermissionUpdates([
+      { type: "addRules", behavior: "allow", destination: "userSettings", rules: [{ toolName: "write_file" }] },
+      { type: "addRules", behavior: "deny", destination: "projectSettings", rules: [{ toolName: "read_file" }] },
+      { type: "addRules", behavior: "ask", destination: "localSettings", rules: [{ toolName: "other" }] },
+      { type: "addRules", behavior: "deny", destination: "session", rules: [{ toolName: "session_only" }] },
+      { type: "addRules", behavior: "ask", destination: "cliArg", rules: [{ toolName: "cli_only" }] },
+    ]);
+    assert.deepEqual(first.permissionUpdates.alwaysAllowRules.userSettings, ["write_file"]);
+    assert.equal(fs.existsSync(projectFile), false);
+    const provider = new ScriptedProvider([response([call("current", "write_file", { path: "current" })], "tool_use"), done()]);
+    await new Agent(first, provider, [effect.tool]).run("write");
+    assert.deepEqual(effect.inputs, [{ path: "current" }]);
+    const results = await first.drainPermissionWrites();
+    assert.deepEqual(results.map(result => [result.destination, result.outcome]).sort(), [
+      ["cliArg", "skipped"], ["localSettings", "error"], ["projectSettings", "written"],
+      ["session", "skipped"], ["userSettings", "written"],
+    ]);
+    assert.deepEqual(JSON.parse(fs.readFileSync(userFile, "utf8")), {
+      theme: "dark", permissions: { allow: ["existing", "write_file"], deny: ["preserved"] },
+    });
+    assert.deepEqual(JSON.parse(fs.readFileSync(projectFile, "utf8")), { permissions: { deny: ["read_file"] } });
+    assert.equal(fs.readFileSync(localFile, "utf8"), "{broken");
+    assert.equal(results.find(result => result.outcome === "error")?.file, localFile);
+    assert.match(results.find(result => result.outcome === "error")?.error ?? "", /JSON|position|property/i);
+    assert.deepEqual(first.permissionUpdates.alwaysAskRules.localSettings, ["other"]);
+
+    first.adoptPermissionUpdates([{ type: "addRules", behavior: "allow", destination: "userSettings", rules: [{ toolName: "first" }] }]);
+    for (let index = 0; index < 20; index++) second.adoptPermissionUpdates([
+      { type: "addRules", behavior: "allow", destination: "userSettings", rules: [{ toolName: `second_${index}` }] },
+    ]);
+    await first.drainPermissionWrites();
+    assert.equal(second.permissionWriteResults.length < 20, true, "own drain leaves later unrelated owner writes pending");
+    await second.close();
+    const saved = JSON.parse(fs.readFileSync(userFile, "utf8"));
+    assert.deepEqual(saved.permissions.allow, ["existing", "write_file", "first", ...Array.from({ length: 20 }, (_, index) => `second_${index}`)]);
+    assert.deepEqual(saved.permissions.deny, ["preserved"]);
+    assert.equal(second.permissionWriteResults.length, 20);
+    const ignoreFixture = workspace();
+    const ignoreEvidence = execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
+      import fs from 'node:fs'; import path from 'node:path'; import assert from 'node:assert/strict';
+      import {execFileSync,spawnSync} from 'node:child_process';
+      import {ignorePermissionSettings,persistPermissionUpdate} from './src/permission-settings.ts';
+      import {Session} from './src/session.ts'; import {defaultConfig} from './src/agent.ts';
+      const base=process.argv[1], git=(cwd,args)=>spawnSync('git',args,{cwd,encoding:'utf8'});
+      const home=path.join(base,'home'); fs.mkdirSync(home);
+      process.env.HOME=home; process.env.XDG_CONFIG_HOME=path.join(home,'xdg');
+      process.env.GIT_CONFIG_GLOBAL=path.join(home,'gitconfig'); process.env.GIT_CONFIG_NOSYSTEM='1';
+      process.env.GIT_CONFIG_SYSTEM=path.join(home,'absent');
+      for(const key of Object.keys(process.env)) if(/^GIT_CONFIG_(COUNT|KEY_\\d+|VALUE_\\d+|PARAMETERS)$/.test(key)||
+        ['GIT_DIR','GIT_WORK_TREE','GIT_COMMON_DIR','GIT_INDEX_FILE','GIT_OBJECT_DIRECTORY','GIT_ALTERNATE_OBJECT_DIRECTORIES'].includes(key)) delete process.env[key];
+      const update={type:'replaceRules',destination:'localSettings',behavior:'allow',rules:[]};
+      const rows=[];
+      for(const kind of ['default','explicit','tilde','relative','tracked','duplicate','already','error']) {
+        const root=path.join(base,kind); fs.mkdirSync(root); assert.equal(git(root,['init','--quiet']).status,0);
+        const xdg=path.join(home,kind); process.env.XDG_CONFIG_HOME=xdg;
+        fs.writeFileSync(process.env.GIT_CONFIG_GLOBAL,'');
+        let file=path.join(xdg,'git','ignore');
+        const configured=kind==='explicit'?path.join(home,'explicit-ignore'):kind==='tilde'?'~/tilde-ignore':kind==='relative'?'relative-ignore':undefined;
+        if(configured) { assert.equal(git(root,['config','--global','core.excludesfile',configured]).status,0);
+          if(kind!=='relative') file=kind==='tilde'?path.join(home,'tilde-ignore'):configured; }
+        fs.mkdirSync(path.join(root,'.harness')); const local=path.join(root,'.harness/settings.local.json');
+        fs.writeFileSync(local,JSON.stringify({future:1,permissions:{allow:[]}}));
+        if(kind==='tracked'||kind==='duplicate') assert.equal(git(root,['add','--', '.harness/settings.local.json']).status,0);
+        if(kind==='duplicate'||kind==='already') {fs.mkdirSync(path.dirname(file),{recursive:true}); fs.writeFileSync(file,'**/.harness/settings.local.json\\n');}
+        if(kind==='error') {fs.mkdirSync(xdg,{recursive:true});fs.writeFileSync(path.join(xdg,'git'),'blocked');}
+        const cfg={...defaultConfig(root,[]),model:'fixture-model',configSources:{userDir:path.join(home,'user')}};
+        const owner=Session.open(root,{config:cfg}), unrelated=Session.open(root,{config:cfg});
+        owner.adoptPermissionUpdates([update]);
+        assert.equal(owner.permissionIgnoreResults.length,0,'adoption stays asynchronous');
+        await owner.close(); await unrelated.close();
+        assert.equal(unrelated.permissionIgnoreResults.length,0);
+        assert.equal(owner.permissionIgnoreResults.length,1);
+        const result=owner.permissionIgnoreResults[0];
+        assert.equal(JSON.parse(fs.readFileSync(local)).future,1);
+        if(kind==='error') {assert.equal(result.written,false);assert.equal(result.effective,false);assert.match(result.error,/global gitignore/);}
+        else {assert.equal(result.written,!['duplicate','already'].includes(kind));
+          assert.equal(result.effective,!['relative','tracked','duplicate'].includes(kind));
+          if(kind==='tracked'||kind==='duplicate') assert.equal(result.reason,'already_tracked');
+          if(kind==='relative') assert.equal(result.reason,'excludesfile_not_read');
+          assert.equal(fs.readFileSync(file,'utf8').split('**/.harness/settings.local.json').length-1,1);}
+        const scheduled=[]; const context={workspace:root,schedule:p=>scheduled.push(p)};
+        await persistPermissionUpdate({...update,type:'addRules',rules:[]},{localSettings:local},false,context);
+        assert.equal(scheduled.length,0,'null transform skips ignore');
+        await persistPermissionUpdate(update,{localSettings:local},false,context);
+        assert.equal(scheduled.length,1,'non-null equal transform writes and schedules'); await Promise.all(scheduled);
+        rows.push(kind);
+      }
+      const root=path.join(base,'default'), local=path.join(root,'.harness/settings.local.json');
+      const legacy=path.join(root,'legacy.json');fs.writeFileSync(legacy,JSON.stringify({permissions:{allow:42}}));
+      const scheduled=[], context={workspace:root,schedule:p=>scheduled.push(p)};
+      const result=await persistPermissionUpdate({...update,type:'removeRules'},{localSettings:local,legacyLocalSettings:legacy},false,context);
+      assert.equal(result.outcome,'error');assert.equal(scheduled.length,1);await Promise.all(scheduled);
+      fs.writeFileSync(local,'{broken'); scheduled.length=0;
+      assert.equal((await persistPermissionUpdate(update,{localSettings:local},false,context)).outcome,'error');
+      assert.equal(scheduled.length,0,'outer failure skips ignore');
+      fs.rmSync(path.join(base,'.git'),{recursive:true});
+      const outside=path.join(base,'outside'); fs.mkdirSync(outside);
+      assert.deepEqual(await ignorePermissionSettings('.harness/settings.local.json',outside),{written:false,effective:false});
+      process.env.XDG_CONFIG_HOME=path.join(home,'directory'); fs.writeFileSync(process.env.GIT_CONFIG_GLOBAL,'');
+      assert.deepEqual(await ignorePermissionSettings('cache\\\\',root),{written:true,effective:true});
+      const originalPath=process.env.PATH; process.env.PATH=path.join(base,'missing-bin');
+      const gitError=await ignorePermissionSettings('other.json',root); process.env.PATH=originalPath;
+      assert.equal(gitError.written,false);assert.equal(gitError.effective,false);assert.match(gitError.error,/ENOENT/);
+      process.stdout.write(JSON.stringify(rows));
+    `, ignoreFixture], { cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8', timeout: 20000 });
+    assert.deepEqual(JSON.parse(ignoreEvidence), ['default', 'explicit', 'tilde', 'relative', 'tracked', 'duplicate', 'already', 'error']);
+  } finally { await first.close(); await second.close(); }
+});
+
+test("permission layers remove and replace exact destinations across owners, reload and restart", async (t) => {
+  const root = workspace(), userDir = path.join(root, 'user');
+  const effect = spy('write_file');
+  write(root, 'user/settings.json', JSON.stringify({ unknown: { retained: 1 }, permissions: { mode: 'ask', allow: [], deny: ['write_file'] } }));
+  write(root, '.harness/settings.json', JSON.stringify({ permissions: { deny: ['write_file'] } }));
+  const loaded = loadProjectConfig(root, { userDir });
+  const cfg = config(root, [effect.tool], { configSources: { userDir }, permissions: {
+    mode: 'ask', allow: [], deny: ['write_file'], layers: loaded.permissionLayers } });
+  const first = Session.open(root, { config: cfg }), isolated = Session.open(root, { config: cfg });
+  const remove = (destination: 'userSettings' | 'projectSettings') => first.adoptPermissionUpdates([
+    { type: 'removeRules', destination, behavior: 'deny', rules: [{ toolName: 'write_file' }] }]);
+  try {
+    remove('userSettings');
+    assert.equal(permissionDecision(first.config.permissions, effect.tool, {}).decision, 'deny');
+    remove('projectSettings');
+    assert.equal(permissionDecision(first.config.permissions, effect.tool, {}).decision, 'ask');
+    assert.equal(permissionDecision(isolated.config.permissions, effect.tool, {}).decision, 'deny');
+    first.adoptPermissionUpdates([{ type: 'replaceRules', destination: 'userSettings', behavior: 'allow', rules: [{ toolName: 'write_file' }] }]);
+    const provider = new ScriptedProvider([response([call('current', 'write_file', { path: 'one' })], 'tool_use'),
+      response([call('next', 'write_file', { path: 'two' })], 'tool_use'), done()]);
+    await new Agent(first, provider, [effect.tool]).run('write twice');
+    assert.deepEqual(effect.inputs, [{ path: 'one' }, { path: 'two' }]);
+    await first.drainPermissionWrites();
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(userDir, 'settings.json'), 'utf8')).unknown, { retained: 1 });
+    first.adoptPermissionUpdates([
+      { type: 'addRules', destination: 'session', behavior: 'allow', rules: [{ toolName: 'session_kept' }] },
+      { type: 'addRules', destination: 'cliArg', behavior: 'deny', rules: [{ toolName: 'cli_kept' }] },
+    ]);
+    const reloaded = reloadConfig(first.config);
+    const next = Session.open(root, { config: reloaded });
+    try {
+      next.carryPermissions(first);
+      assert.equal(permissionDecision(next.config.permissions, effect.tool, {}).decision, 'allow');
+      assert.deepEqual(next.permissionUpdates.alwaysAllowRules.session, ['session_kept']);
+      assert.deepEqual(next.permissionUpdates.alwaysDenyRules.cliArg, ['cli_kept']);
+      const managedNext = Session.open(root, { config: { ...reloaded, permissions: { ...reloaded.permissions!, managedOnly: true } } });
+      try {
+        managedNext.carryPermissions(next);
+        assert.deepEqual(managedNext.permissionUpdates.alwaysAllowRules.session, []);
+        assert.deepEqual(managedNext.permissionUpdates.alwaysAllowRules.cliArg, []);
+        assert.deepEqual(managedNext.permissionUpdates.alwaysDenyRules.cliArg, ['cli_kept']);
+      } finally { managedNext.close(); }
+    }
+    finally { await next.close(); }
+    const fresh = execFileSync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
+      import {reloadConfig} from './src/reload.ts';
+      import {permissionDecision} from './src/permissions.ts';
+      const cfg=reloadConfig(JSON.parse(process.argv[1]));
+      const tool={schema:{name:'write_file'},readOnly:false};
+      process.stdout.write(permissionDecision(cfg.permissions,tool,{}).decision);
+    `, JSON.stringify(cfg)], { cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8' });
+    assert.equal(fresh, 'allow');
+    const linked = path.join(root, 'linked'), gitDir = path.join(root, '.git', 'worktrees', 'linked');
+    fs.mkdirSync(linked); fs.mkdirSync(gitDir, { recursive: true });
+    fs.writeFileSync(path.join(linked, '.git'), `gitdir: ${gitDir}\n`);
+    fs.writeFileSync(path.join(gitDir, 'commondir'), '../..\n');
+    fs.writeFileSync(path.join(gitDir, 'gitdir'), path.join(linked, '.git') + '\n');
+    write(root, '.harness/settings.local.json', JSON.stringify({ permissions: { ask: ['canonical'] } }));
+    write(root, 'linked/.harness/settings.local.json', JSON.stringify({ permissions: { ask: ['legacy'] } }));
+    const linkedConfig = loadProjectConfig(linked, { userDir });
+    const local = linkedConfig.permissionLayers.find(layer => layer.source === 'localSettings');
+    assert.equal(local?.file, path.join(root, '.harness/settings.local.json'));
+    assert.deepEqual(local?.ask, ['legacy', 'canonical']);
+    const linkedOwner = Session.open(linked, { config: config(linked, [effect.tool], { configSources: { userDir },
+      permissions: { mode: 'ask', allow: [], deny: [], layers: linkedConfig.permissionLayers } }) });
+    try {
+      linkedOwner.adoptPermissionUpdates([{ type: 'replaceRules', destination: 'localSettings', behavior: 'ask', rules: [{ toolName: 'saved' }] }]);
+      await linkedOwner.drainPermissionWrites();
+      assert.deepEqual(JSON.parse(fs.readFileSync(local!.file!, 'utf8')).permissions.ask, ['saved']);
+      const legacyFile = path.join(linked, '.harness/settings.local.json');
+      assert.deepEqual(JSON.parse(fs.readFileSync(legacyFile, 'utf8')).permissions.ask, []);
+      const { persistPermissionUpdate, permissionSettingsPaths } = await import('../src/permission-settings.js');
+      const paths = permissionSettingsPaths(linked, userDir);
+      const save = (update: Parameters<typeof persistPermissionUpdate>[0]) => persistPermissionUpdate(update, paths, false);
+      for (const behavior of ['allow', 'deny', 'ask'] as const) {
+        for (const type of ['removeRules', 'replaceRules'] as const) {
+          const original = { unknown: { nested: ['keep'] }, permissions: { [behavior]: ['Read(secret)', 'Read(keep)'], future: { enabled: true } } };
+          fs.writeFileSync(legacyFile, JSON.stringify(original));
+          fs.writeFileSync(local!.file!, JSON.stringify({ permissions: { [behavior]: [] } }));
+          const result = await save({ type, destination: 'localSettings', behavior,
+            rules: type === 'removeRules' ? [{ toolName: 'Read', ruleContent: 'secret' }] : [] });
+          assert.equal(result.outcome, 'written');
+          const saved = JSON.parse(fs.readFileSync(legacyFile, 'utf8'));
+          assert.deepEqual(saved, { ...original, permissions: { ...original.permissions,
+            [behavior]: type === 'removeRules' ? ['Read(keep)'] : [] } });
+          assert.deepEqual(loadProjectConfig(linked, { userDir }).permissionLayers.find(layer => layer.source === 'localSettings')?.[behavior],
+            type === 'removeRules' ? ['Read(keep)'] : []);
+        }
+      }
+      fs.writeFileSync(legacyFile, JSON.stringify({ permissions: { additionalDirectories: [root, userDir], defaultMode: 'ask' }, future: 1 }));
+      assert.equal((await save({ type: 'removeDirectories', destination: 'localSettings', directories: [root] })).outcome, 'written');
+      assert.deepEqual(JSON.parse(fs.readFileSync(legacyFile, 'utf8')).permissions.additionalDirectories, [userDir]);
+      const legacyBeforeAdd = fs.readFileSync(legacyFile, 'utf8');
+      await save({ type: 'addRules', destination: 'localSettings', behavior: 'allow', rules: [{ toolName: 'new_grant' }] });
+      await save({ type: 'addDirectories', destination: 'localSettings', directories: [linked] });
+      await save({ type: 'setMode', destination: 'localSettings', mode: 'dontAsk' });
+      assert.equal(fs.readFileSync(legacyFile, 'utf8'), legacyBeforeAdd);
+      fs.writeFileSync(local!.file!, JSON.stringify({ permissions: { allow: [] } }));
+      for (const invalid of ['{broken', 'null', '[]']) {
+        fs.writeFileSync(legacyFile, invalid);
+        assert.equal((await save({ type: 'replaceRules', destination: 'localSettings', behavior: 'allow', rules: [] })).outcome, 'unchanged');
+        assert.equal(fs.readFileSync(legacyFile, 'utf8'), invalid);
+      }
+      fs.writeFileSync(legacyFile, JSON.stringify({ permissions: { allow: 42 } }));
+      const malformed = await save({ type: 'removeRules', destination: 'localSettings', behavior: 'allow', rules: [{ toolName: 'new_grant' }] });
+      assert.equal(malformed.outcome, 'error');
+      assert.match(malformed.error ?? '', /transform legacy/);
+      fs.unlinkSync(legacyFile); fs.symlinkSync(local!.file!, legacyFile);
+      const readError = await save({ type: 'replaceRules', destination: 'localSettings', behavior: 'allow', rules: [] });
+      assert.equal(readError.outcome, 'error'); assert.match(readError.error ?? '', /read legacy/);
+      const warning = await save({ type: 'setMode', destination: 'localSettings', mode: 'default' });
+      assert.equal(warning.outcome, 'written'); assert.match(warning.warning ?? '', /read legacy/);
+      fs.unlinkSync(legacyFile);
+      fs.writeFileSync(legacyFile, JSON.stringify({ permissions: { allow: ['Read(secret)'] }, unknown: 'preserve' }));
+      const rename = fs.renameSync;
+      const mocked = t.mock.method(fs, 'renameSync', (from: fs.PathLike, to: fs.PathLike) => {
+        if (to === legacyFile) throw new Error('fixture legacy publish failure');
+        return rename(from, to);
+      });
+      try {
+        const failed = await save({ type: 'replaceRules', destination: 'localSettings', behavior: 'allow', rules: [] });
+        assert.equal(failed.outcome, 'error'); assert.match(failed.error ?? '', /revoke legacy.*fixture legacy publish failure/);
+        assert.deepEqual(JSON.parse(fs.readFileSync(legacyFile, 'utf8')).permissions.allow, ['Read(secret)']);
+      } finally { mocked.mock.restore(); }
+      await Promise.all([
+        save({ type: 'removeRules', destination: 'localSettings', behavior: 'allow', rules: [{ toolName: 'Read', ruleContent: 'secret' }] }),
+        persistPermissionUpdate({ type: 'addRules', destination: 'userSettings', behavior: 'allow', rules: [{ toolName: 'parallel' }] },
+          { userSettings: legacyFile }, false),
+      ]);
+      assert.deepEqual(JSON.parse(fs.readFileSync(legacyFile, 'utf8')).permissions.allow, ['parallel']);
+    } finally { await linkedOwner.close(); }
+    write(root, 'policy.json', JSON.stringify({ allowManagedPermissionRulesOnly: true,
+      permissions: { mode: 'ask', allow: [], deny: ['write_file'] } }));
+    const managed = reloadConfig({ ...cfg, configSources: { userDir, managedSettingsFile: path.join(root, 'policy.json'),
+      overrides: { permissions: { mode: 'ask', allow: ['write_file'], deny: ['cli_denied'] } } } });
+    const policyOwner = Session.open(root, { config: managed });
+    try {
+      assert.deepEqual(policyOwner.permissionUpdates.alwaysAllowRules.userSettings, []);
+      assert.deepEqual(policyOwner.permissionUpdates.alwaysAllowRules.cliArg, []);
+      assert.deepEqual(policyOwner.permissionUpdates.alwaysDenyRules.cliArg, ['cli_denied']);
+      policyOwner.adoptPermissionUpdates([{ type: 'replaceRules', behavior: 'deny', destination: 'userSettings', rules: [] }]);
+      assert.equal(permissionDecision(policyOwner.config.permissions, effect.tool, {}).decision, 'deny');
+    } finally { await policyOwner.close(); }
+  } finally { await first.close(); await isolated.close(); }
+});
+
+test("live directory grants affect current file execution, revocation and status payload without leaking owners", async () => {
+  const root = workspace(), external = workspace(), denied = workspace();
+  write(external, 'existing.txt', 'outside original');
+  write(denied, 'secret.txt', 'ungranted');
+  fs.symlinkSync(denied, path.join(external, 'escape'));
+  write(root, 'status.cjs', `let s='';process.stdin.on('data',x=>s+=x);process.stdin.on('end',()=>{require('fs').appendFileSync('status.jsonl',s);process.stdout.write('live');});`);
+  const tools = [...createTools(), ...createNotebookTools(), ...createMediaTools()];
+  const session = Session.open(root, { config: config(root, tools, { permissions: { mode: 'ask', allow: [], deny: [] },
+    statusLine: { type: 'command', command: `${process.execPath} status.cjs` }, hooks: {
+      PermissionRequest: [{ command: emit({ hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'allow', updatedPermissions: [
+        { type: 'addDirectories', directories: [external], destination: 'session' },
+        { type: 'addRules', behavior: 'allow', destination: 'session', rules: [{ toolName: 'write_file' }] },
+      ] } } }) }],
+    } }) });
+  const isolated = Session.open(root, { config: session.config }), status = new StatusLine();
+  const context = { workspace: root, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000,
+    workingDirectories: (readOnly: boolean) => session.workingDirectories(readOnly) };
+  const tool = (name: string) => tools.find(value => value.schema.name === name)!;
+  const payloads = () => fs.existsSync(path.join(root, 'status.jsonl')) ? fs.readFileSync(path.join(root, 'status.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line)) : [];
+  const until = async (predicate: () => boolean) => { const end = Date.now() + 5000; while (!predicate()) {
+    assert.ok(Date.now() < end, 'live status payload arrived'); await new Promise(resolve => setTimeout(resolve, 10));
+  } };
+  try {
+    const planOwner = new InteractivePlanResume(session.id);
+    const enter = permissionModeCommand('plan', 'plan', 'ask');
+    const select = permissionModeCommand('permissions', 'ask', 'default');
+    const exit = permissionModeCommand('permissions', 'ask', 'plan');
+    assert.equal(permissionModeCommandSchema.safeParse({ ...enter, mode: 'ask' }).success, false);
+    assert.equal(planHistoryState([enter, select]), 'none');
+    assert.equal(planHistoryState([enter, exit]), 'exited');
+    const live = { ...session.permissionOwner.state(), mode: 'ask' as const };
+    const restored = planOwner.resume('fresh', live, 'plan', [enter, select]);
+    assert.equal(restored.mode, 'plan'); assert.equal(restored.prePlanMode, 'default');
+    assert.equal(restored.contentRuleOwner, live.contentRuleOwner);
+    assert.equal(planOwner.resume('exit', live, 'plan', [enter, exit]), live);
+    assert.equal(planOwner.resume('bypass', live, 'bypass', [enter]), live);
+    assert.equal(planOwner.resume('legacy', live, undefined, [enter]).mode, 'plan');
+    assert.equal(planOwner.resume('invalid', live, 'invalid-mode', [enter]).mode, 'plan');
+    planOwner.accept('fresh'); assert.equal(planOwner.resume('fresh', live, 'plan', [enter]), live);
+    planOwner.runtime.features.set('tengu_tranquil_fern', false);
+    assert.equal(planOwner.resume('disabled', live, 'plan', [enter]), live);
+    planOwner.runtime.features.set('tengu_tranquil_fern', true);
+    for (const rule of ['ExitPlanMode', '*PlanMode', 'Ex*t*Mode']) {
+      const blocked = { ...live, alwaysDenyRules: { session: [rule] }, deny: [rule] };
+      assert.equal(planOwner.resume(rule, blocked, 'plan', [enter]), blocked);
+    }
+    for (const rule of ['submit_plan', 'ExitPlanMode(content)']) {
+      assert.equal(planOwner.resume(rule, { ...live, alwaysDenyRules: { session: [rule] } }, 'plan', [enter]).mode, 'plan');
+    }
+    const autoPlan = transitionPlanMode({ ...live, mode: 'auto', strippedDangerousRules: { session: ['read_file'] } }, 'plan', planOwner.runtime);
+    assert.equal(autoPlan.prePlanMode, 'auto'); assert.equal(autoPlan.autoDuringPlan, true);
+    assert.deepEqual(autoPlan.strippedDangerousRules, { session: ['read_file'] });
+    const history = Session.open(root, { config: config(root, tools, { permissions: { mode: 'ask', allow: [], deny: [] } }) });
+    let rewound: Session | undefined, forked: Session | undefined;
+    try {
+      history.append(enter); history.append({ kind: 'turn_end', reason: 'fixture' });
+      checkpointConversation(history, 'plan-retained', new AbortController().signal);
+      const preview = previewRewind(history, 1, new AbortController().signal);
+      history.append(exit);
+      assert.throws(() => applyRewind(history, preview, preview.token, new AbortController().signal), /stale/);
+      const fresh = previewRewind(history, 1, new AbortController().signal);
+      rewound = applyRewind(history, fresh, fresh.token, new AbortController().signal);
+      assert.equal(planHistoryState(rewound.events), 'open'); assert.equal(rewound.permissionOwner.state().mode, 'ask');
+      forked = forkSession(history, history.events.findIndex(event => event.kind === 'turn_end'));
+      assert.equal(planHistoryState(forked.events), 'open');
+      history.append({ kind: 'compact', summary: 'ExitPlanMode', response: done() });
+      history.append({ kind: 'turn_end', reason: 'compact' });
+      assert.equal(planHistoryState(history.events), 'exited');
+      assert.equal(history.awaitingResponse, false);
+      const id = history.id; await history.close();
+      const reopened = Session.open(root, { id });
+      try { assert.equal(planHistoryState(reopened.events), 'exited'); } finally { await reopened.close(); }
+    } finally { await history.close(); await rewound?.close(); await forked?.close(); }
+    write(root, 'absolute-contract.txt', 'workspace file');
+    for (const directories of [[], ['relative-invalid'], [path.join(external, 'absent')], [path.join(external, 'existing.txt')]]) {
+      await assert.rejects(tool('read_file').execute({ path: path.join(root, 'absolute-contract.txt') }, {
+        ...context, workingDirectories: () => directories }), /absolute|escapes/);
+    }
+    const alias = path.join(root, 'granted-alias');
+    write(external, 'alias.txt', 'original landing');
+    write(denied, 'alias.txt', 'ungranted landing');
+    fs.symlinkSync(external, alias);
+    session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [alias], destination: 'session' }]);
+    assert.match(await tool('read_file').execute({ path: path.join(alias, 'alias.txt') }, context), /original landing/);
+    fs.unlinkSync(alias); fs.symlinkSync(denied, alias);
+    await assert.rejects(tool('write_file').execute({ path: path.join(alias, 'alias.txt'), content: 'changed' }, context), /escapes/);
+    await assert.rejects(tool('read_file').execute({ path: path.join(alias, 'alias.txt') }, context), /escapes/);
+    assert.equal(fs.readFileSync(path.join(external, 'alias.txt'), 'utf8'), 'original landing');
+    assert.equal(fs.readFileSync(path.join(denied, 'alias.txt'), 'utf8'), 'ungranted landing');
+    assert.deepEqual(isolated.workingDirectories(false), []);
+    session.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [alias], destination: 'session' }]);
+    await assert.rejects(tool('read_file').execute({ path: path.join(alias, 'alias.txt') }, context), /escapes/);
+    session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [alias], destination: 'session' }]);
+    assert.match(await tool('read_file').execute({ path: path.join(alias, 'alias.txt') }, context), /ungranted landing/);
+    session.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [alias], destination: 'session' }]);
+    for (const [mode, behavior] of [['bypass', 'deny'], ['ask', 'allow'], ['dontAsk', 'allow']] as const) {
+      const skillRoot = workspace();
+      const skillTools = createTools();
+      const skillSession = Session.open(skillRoot, { config: config(skillRoot, skillTools, { allowShell: true,
+        features: { tasks: true, subagents: true, skillInlineCommands: true }, permissions: { mode, allow: [], deny: [] } }) });
+      try {
+        skillSession.adoptPermissionUpdates([{ type: 'addRules', behavior, destination: 'session', rules: [{ toolName: 'run_command' }] }]);
+        const execution = executeSkill({ name: 'fixture', path: path.join(skillRoot, 'SKILL.md'), description: 'fixture',
+          body: '```!\nprintf owned > marker\n```', shell: '/bin/sh', userInvocable: true, disableModelInvocation: false }, '', {
+          config: skillSession.config, provider: new ScriptedProvider([]), tools: skillTools, signal: new AbortController().signal, source: 'user' });
+        if (behavior === 'deny') await assert.rejects(execution, /denied/);
+        else await execution;
+        assert.equal(fs.existsSync(path.join(skillRoot, 'marker')), behavior === 'allow');
+      } finally { await skillSession.drainPermissionWrites(); skillSession.close(); }
+    }
+    for (const lane of ['direct', 'foreground', 'background'] as const) {
+      const childRoot = workspace(), childTools = createTools();
+      const parent = Session.open(childRoot, { config: config(childRoot, childTools, {
+        permissions: { mode: 'bypass', allow: [], deny: [] } }) });
+      const provider = new ScriptedProvider([() => {
+        parent.adoptPermissionUpdates([{ type: 'addRules', behavior: 'deny', destination: 'session', rules: [{ toolName: 'write_file' }] }]);
+        return response([call('live-deny', 'write_file', { path: 'blocked', content: 'blocked' })], 'tool_use');
+      }, done()]);
+      const registry = new AgentRegistry({ source: () => parent.config, provider, tools: childTools });
+      try {
+        if (lane === 'direct') await createSubagentTool(() => parent.config, provider, childTools).execute({ prompt: 'write', mode: 'general' }, {
+          workspace: childRoot, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000 });
+        else {
+          const child = await registry.launch({ prompt: 'write', mode: 'general', background: lane === 'background' });
+          if (lane === 'background') await registry.get(child.id, { waitMs: 5000 });
+        }
+        assert.equal(fs.existsSync(path.join(childRoot, 'blocked')), false, lane);
+      } finally { await registry.close(); await parent.drainPermissionWrites(); parent.close(); }
+    }
+    for (const lane of ['session', 'direct', 'foreground', 'background'] as const) for (const behavior of ['deny', 'allow'] as const) {
+      const childRoot = workspace(), childTools = createTools();
+      const parent = Session.open(childRoot, { config: config(childRoot, childTools, {
+        permissions: { mode: 'ask', allow: [], deny: [] }, hooks: {
+          PermissionRequest: [{ command: emit({ hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: {
+            behavior: 'allow', updatedPermissions: [{ type: 'addRules', behavior, destination: 'session', rules: [{ toolName: 'write_file' }] }],
+          } } }) }],
+        } }) });
+      const provider = new ScriptedProvider([
+        response([call('first', 'write_file', { path: 'first', content: 'first' })], 'tool_use'),
+        response([call('second', 'write_file', { path: 'second', content: 'second' })], 'tool_use'), done(),
+      ]);
+      const registry = new AgentRegistry({ source: () => parent.config, provider, tools: childTools });
+      let childSession: Session | undefined;
+      try {
+        if (lane === 'session') {
+          childSession = Session.open(childRoot, { config: parent.config });
+          childSession.inheritPermissions(parent.permissionOwner);
+          await new Agent(childSession, provider, childTools).run('write twice');
+          assert.equal(childSession.events.filter(event => event.kind === 'hook_start' && event.event === 'PermissionRequest').length, 1);
+          assert.deepEqual(childSession.permissionUpdates[behavior], []);
+        } else if (lane === 'direct') await createSubagentTool(() => parent.config, provider, childTools).execute({ prompt: 'write', mode: 'general' }, {
+          workspace: childRoot, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000 });
+        else {
+          const child = await registry.launch({ prompt: 'write twice', mode: 'general', background: lane === 'background' });
+          if (lane === 'background') await registry.get(child.id, { waitMs: 5000 });
+        }
+        assert.equal(fs.readFileSync(path.join(childRoot, 'first'), 'utf8'), 'first');
+        assert.equal(fs.existsSync(path.join(childRoot, 'second')), behavior === 'allow', lane);
+        assert.deepEqual(parent.permissionOwner.state()[behavior], ['write_file']);
+        await parent.drainPermissionWrites();
+        assert.equal(parent.permissionWriteResults.length, 1);
+        assert.equal(childSession?.permissionWriteResults.length ?? 0, 0);
+      } finally { await childSession?.close(); await registry.close(); await parent.close(); }
+    }
+    for (const background of [false, true]) {
+      const skillRoot = workspace(), skillTools = createTools();
+      const parent = Session.open(skillRoot, { config: config(skillRoot, skillTools, {
+        permissions: { mode: 'ask', allow: [], deny: [] } }) });
+      const provider = new ScriptedProvider([
+        response([call('first', 'write_file', { path: 'first', content: 'first' })], 'tool_use'),
+        response([call('second', 'write_file', { path: 'second', content: 'second' })], 'tool_use'), done(),
+      ]);
+      const registry = new AgentRegistry({ source: () => parent.config, provider, tools: skillTools });
+      let approvals = 0;
+      try {
+        const result = JSON.parse(await executeSkill({ name: 'fixture', path: path.join(skillRoot, 'SKILL.md'),
+          description: 'fixture', body: 'write twice', context: 'fork', background,
+          userInvocable: true, disableModelInvocation: false }, '', {
+          config: parent.config, provider, tools: skillTools, registry, signal: new AbortController().signal, source: 'user',
+          requestPermission: async () => {
+            approvals++;
+            parent.permissionOwner.adoptUpdates?.([{ type: 'addRules', behavior: 'deny', destination: 'session', rules: [{ toolName: 'write_file' }] }]);
+            return { decision: 'allow' };
+          },
+        }));
+        if (background) await registry.get(result.id, { waitMs: 5000 });
+        assert.equal(fs.readFileSync(path.join(skillRoot, 'first'), 'utf8'), 'first');
+        assert.equal(fs.existsSync(path.join(skillRoot, 'second')), false);
+        assert.equal(approvals, 1);
+        assert.deepEqual(parent.permissionOwner.state().deny, ['write_file']);
+      } finally { await registry.close(); await parent.close(); }
+    }
+    {
+      const parent = Session.open(root, { config: config(root, tools, { configSources: { userDir: path.join(root, 'nested-user') },
+        permissions: { mode: 'ask', allow: [], deny: [] } }) });
+      const child = Session.open(root, { config: parent.config }), nested = Session.open(root, { config: parent.config });
+      try {
+        parent.adoptPermissionUpdates([{ type: 'addRules', behavior: 'allow', destination: 'session', rules: [{ toolName: 'stale' }] }]);
+        child.inheritPermissions(parent.permissionOwner, ['read_file']); nested.inheritPermissions(child.permissionOwner);
+        parent.adoptPermissionUpdates([{ type: 'replaceRules', behavior: 'allow', destination: 'session', rules: [] }]);
+        nested.adoptPermissionUpdates([
+          { type: 'addRules', behavior: 'allow', destination: 'session', rules: [{ toolName: 'write_file' }] },
+          { type: 'addRules', behavior: 'deny', destination: 'session', rules: [{ toolName: 'read_file' }] },
+          { type: 'addDirectories', directories: [external], destination: 'session' },
+          { type: 'setMode', mode: 'dontAsk', destination: 'session' },
+          { type: 'addRules', behavior: 'ask', destination: 'userSettings', rules: [{ toolName: 'persisted_child' }] },
+        ]);
+        assert.deepEqual(parent.permissionOwner.state().allow, ['write_file']);
+        assert.deepEqual(nested.permissionOwner.state().allow, ['read_file']);
+        assert.deepEqual(nested.permissionOwner.state().deny, ['read_file']);
+        assert.equal(nested.permissionOwner.state().mode, 'dontAsk');
+        assert.deepEqual(nested.workingDirectories(false), [external]);
+        parent.adoptPermissionUpdates([
+          { type: 'removeRules', behavior: 'allow', destination: 'session', rules: [{ toolName: 'write_file' }] },
+          { type: 'replaceRules', behavior: 'deny', destination: 'session', rules: [] },
+          { type: 'removeDirectories', directories: [external], destination: 'session' },
+        ]);
+        nested.adoptPermissionUpdates([{ type: 'addRules', behavior: 'deny', destination: 'session', rules: [{ toolName: 'later' }] }]);
+        assert.deepEqual(parent.permissionOwner.state().allow, []);
+        assert.deepEqual(nested.permissionOwner.state().deny, ['later']);
+        assert.deepEqual(nested.workingDirectories(false), []);
+        await parent.drainPermissionWrites();
+        assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'nested-user', 'settings.json'), 'utf8')).permissions.ask, ['persisted_child']);
+        assert.equal(child.permissionWriteResults.length, 0); assert.equal(nested.permissionWriteResults.length, 0);
+      } finally { await nested.close(); await child.close(); await parent.close(); }
+    }
+    {
+      const forkRoot = workspace(), landing = workspace(), retarget = workspace(), forkTools = createTools();
+      const directoryAlias = path.join(forkRoot, 'directory-alias'), contentAlias = path.join(forkRoot, 'content-alias');
+      write(landing, 'value', 'retained landing'); write(retarget, 'value', 'other landing');
+      write(forkRoot, 'secret', 'retained content');
+      fs.symlinkSync(landing, directoryAlias); fs.symlinkSync(path.join(forkRoot, 'secret'), contentAlias);
+      const parent = Session.open(forkRoot, { config: config(forkRoot, forkTools, {
+        permissions: { mode: 'ask', allow: [], deny: [] } }) });
+      let ordinary: Session | undefined;
+      const effect = async (owner: Session, name: string, input: unknown) => {
+        await new Agent(owner, new ScriptedProvider([response([call(`fork-${owner.events.length}`, name, input)], 'tool_use'), done()]), forkTools).run('fork effect');
+        return resultBatches(owner).at(-1)?.[0];
+      };
+      try {
+        parent.adoptPermissionUpdates([
+          { type: 'addRules', behavior: 'allow', destination: 'session', rules: [{ toolName: 'write_file' }, { toolName: 'read_file' }] },
+          { type: 'addRules', behavior: 'deny', destination: 'session', rules: [{ toolName: 'run_command' }, { toolName: 'Read', ruleContent: '/content-alias' }] },
+          { type: 'addDirectories', destination: 'session', directories: [directoryAlias] },
+        ]);
+        assert.equal((await effect(parent, 'read_file', { path: 'content-alias' }))?.is_error, true);
+        parent.permissionUpdates = { ...parent.permissionOwner.state(), mode: 'plan', prePlanMode: 'default' };
+        ordinary = forkSession(parent);
+        assert.equal(ordinary.permissionOwner.state().contentRuleOwner, parent.permissionOwner.state().contentRuleOwner);
+        assert.notEqual(ordinary.permissionUpdates.alwaysAllowRules.session, parent.permissionUpdates.alwaysAllowRules.session);
+        assert.notEqual(ordinary.permissionUpdates.additionalWorkingDirectories, parent.permissionUpdates.additionalWorkingDirectories);
+        await parent.close();
+        assert.equal((await effect(ordinary, 'write_file', { path: 'plan-blocked', content: 'blocked' }))?.is_error, true);
+        assert.equal(fs.existsSync(path.join(forkRoot, 'plan-blocked')), false);
+        ordinary.adoptPermissionUpdates([{ type: 'setMode', mode: 'default', destination: 'session' }]);
+        assert.equal((await effect(ordinary, 'write_file', { path: 'allowed', content: 'fork owned' }))?.is_error, undefined);
+        assert.equal(fs.readFileSync(path.join(forkRoot, 'allowed'), 'utf8'), 'fork owned');
+        assert.equal((await effect(ordinary, 'run_command', { command: 'touch denied' }))?.is_error, true);
+        assert.equal(fs.existsSync(path.join(forkRoot, 'denied')), false);
+        ordinary.adoptPermissionUpdates([{ type: 'removeRules', behavior: 'allow', destination: 'session', rules: [{ toolName: 'write_file' }] }]);
+        assert.equal((await effect(ordinary, 'write_file', { path: 'removed', content: 'blocked' }))?.is_error, true);
+        assert.equal(fs.existsSync(path.join(forkRoot, 'removed')), false);
+        assert.deepEqual(parent.permissionUpdates.alwaysAllowRules.session, ['write_file', 'read_file']);
+        fs.unlinkSync(contentAlias);
+        assert.equal((await effect(ordinary, 'read_file', { path: 'secret' }))?.is_error, true);
+        assert.equal((await effect(ordinary, 'read_file', { path: path.join(directoryAlias, 'value') }))?.is_error, undefined);
+        fs.unlinkSync(directoryAlias); fs.symlinkSync(retarget, directoryAlias);
+        assert.equal((await effect(ordinary, 'read_file', { path: path.join(directoryAlias, 'value') }))?.is_error, true);
+        ordinary.adoptPermissionUpdates([{ type: 'removeDirectories', destination: 'session', directories: [directoryAlias] }]);
+        assert.equal((await effect(ordinary, 'read_file', { path: path.join(directoryAlias, 'value') }))?.is_error, true);
+        ordinary.adoptPermissionUpdates([{ type: 'addDirectories', destination: 'session', directories: [directoryAlias] }]);
+        assert.equal((await effect(ordinary, 'read_file', { path: path.join(directoryAlias, 'value') }))?.is_error, undefined);
+        ordinary.adoptPermissionUpdates([{ type: 'removeDirectories', destination: 'session', directories: [directoryAlias] }]);
+        assert.equal((await effect(ordinary, 'read_file', { path: path.join(directoryAlias, 'value') }))?.is_error, true);
+        assert.equal(fs.readFileSync(path.join(landing, 'value'), 'utf8'), 'retained landing');
+        assert.equal(fs.readFileSync(path.join(retarget, 'value'), 'utf8'), 'other landing');
+      } finally { await ordinary?.close(); await parent.close(); }
+    }
+    status.bind(session, () => {}); status.setActive(true);
+    await until(() => payloads().length > 0);
+    const provider = new ScriptedProvider([response([call('grant', 'write_file', { path: path.join(external, 'current.txt'), content: 'current effect' })], 'tool_use'), done()]);
+    await new Agent(session, provider, tools).run('write current');
+    assert.equal(resultBatches(session)[0]?.[0]?.is_error, undefined, JSON.stringify(resultBatches(session)));
+    assert.equal(fs.readFileSync(path.join(external, 'current.txt'), 'utf8'), 'current effect');
+    await tool('edit_file').execute({ path: path.join(external, 'existing.txt'), old_string: 'original', new_string: 'edited' }, context);
+    assert.equal(fs.readFileSync(path.join(external, 'existing.txt'), 'utf8'), 'outside edited');
+    assert.match(await tool('read_file').execute({ path: path.join(external, 'existing.txt') }, context), /outside edited/);
+    assert.match(await tool('list_files').execute({ path: external }, context), /existing.txt/);
+    assert.match(await tool('search').execute({ path: external, pattern: 'outside edited' }, context), /outside edited/);
+    await assert.rejects(tool('read_file').execute({ path: path.join(external, 'escape', 'secret.txt') }, context), /escapes/);
+    await assert.rejects(tool('read_file').execute({ path: path.join(external, '.agent', 'record') }, context), /reserved/);
+    await assert.rejects(tool('read_file').execute({ path: path.join(external, 'existing.txt') }, { ...context,
+      workingDirectories: readOnly => isolated.workingDirectories(readOnly) }), /absolute|escapes/);
+    write(external, 'book.ipynb', JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {}, cells: [] }));
+    write(external, 'pixel.png', '');
+    fs.writeFileSync(path.join(external, 'pixel.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==', 'base64'));
+    assert.match(await tool('read_media').execute({ path: path.join(external, 'pixel.png') }, context), /image|png/i);
+    assert.match(await tool('notebook_read').execute({ path: path.join(external, 'book.ipynb') }, context), /cells|notebook/i);
+    session.adoptPermissionUpdates([{ type: 'setMode', mode: 'plan', destination: 'session' }]);
+    await until(() => payloads().some(value => value.permission_mode === 'plan' && value.workspace.added_dirs.includes(external)));
+    session.adoptPermissionUpdates([{ type: 'removeDirectories', directories: [external], destination: 'cliArg' }]);
+    await assert.rejects(tool('write_file').execute({ path: path.join(external, 'revoked.txt'), content: 'revoked' }, context), /absolute|escapes/);
+    assert.equal(fs.existsSync(path.join(external, 'revoked.txt')), false);
+    await until(() => payloads().some(value => value.permission_mode === 'plan' && value.workspace.added_dirs.length === 0));
+    session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [path.join(external, 'missing'), path.join(external, 'existing.txt')], destination: 'session' }]);
+    await assert.rejects(tool('write_file').execute({ path: path.join(external, 'missing', 'file'), content: 'invalid' }, context), /escapes/);
+    assert.equal(fs.existsSync(path.join(external, 'missing')), false);
+    status.close(); await status.flush(); const count = payloads().length;
+    session.adoptPermissionUpdates([{ type: 'addDirectories', directories: [external], destination: 'session' }]);
+    await new Promise(resolve => setTimeout(resolve, 350)); assert.equal(payloads().length, count);
+    const seeded = Session.open(root, { config: config(root, tools, { permissions: { mode: 'default', allow: [], deny: [],
+      blockReadsOutsideWorkingDirectories: true, layers: [{ source: 'projectSettings', root, allow: [], deny: [], ask: [],
+        additionalDirectories: [external, path.join(external, 'missing'), path.join(external, 'existing.txt')] }] } }) });
+    try {
+      assert.deepEqual(seeded.workingDirectories(true), []);
+      assert.deepEqual(seeded.workingDirectories(false), [external]);
+      await tool('edit_file').execute({ path: path.join(external, 'existing.txt'), old_string: 'edited', new_string: 'project edit' }, {
+        ...context, workingDirectories: readOnly => seeded.workingDirectories(readOnly) });
+      await assert.rejects(tool('read_file').execute({ path: path.join(external, 'existing.txt') }, {
+        ...context, workingDirectories: readOnly => seeded.workingDirectories(readOnly) }), /absolute|escapes/);
+      assert.match(fs.readFileSync(path.join(external, 'existing.txt'), 'utf8'), /project edit/);
+    } finally { await seeded.close(); }
+    const contentOwner = Session.open(root, { config: config(root, tools, { allowShell: true,
+      permissions: { mode: 'dontAsk', allow: [], deny: [], layers: [
+        { source: 'userSettings', root: external, allow: [], deny: [], ask: [], additionalDirectories: [] },
+        { source: 'projectSettings', root, allow: [], deny: [], ask: [], additionalDirectories: [] },
+      ] } }) });
+    const run = async (name: string, input: unknown) => {
+      await new Agent(contentOwner, new ScriptedProvider([response([call(`content-${contentOwner.events.length}`, name, input)], 'tool_use'), done()]), tools).run('content fixture');
+      return resultBatches(contentOwner).at(-1)![0]!;
+    };
+    try {
+      const update = (behavior: 'allow' | 'deny' | 'ask', toolName: string, ruleContent: string,
+        destination: 'session' | 'userSettings' | 'projectSettings' = 'session', type: 'addRules' | 'removeRules' = 'addRules') =>
+        contentOwner.adoptPermissionUpdates([{ type, behavior, destination, rules: [{ toolName, ruleContent }] }]);
+      update('allow', 'Edit', '/content/**', 'projectSettings');
+      assert.equal((await run('write_file', { path: 'content/allowed.txt', content: 'allowed' })).is_error, undefined);
+      assert.equal(fs.readFileSync(path.join(root, 'content/allowed.txt'), 'utf8'), 'allowed');
+      assert.equal((await run('write_file', { path: 'other.txt', content: 'unrelated' })).is_error, true);
+      assert.equal(fs.existsSync(path.join(root, 'other.txt')), false);
+      update('deny', 'Edit', '/content/blocked.txt', 'projectSettings');
+      assert.equal((await run('write_file', { path: 'content/blocked.txt', content: 'blocked' })).is_error, true);
+      update('deny', 'Edit', '/content/blocked.txt', 'projectSettings', 'removeRules');
+      assert.equal((await run('write_file', { path: 'content/blocked.txt', content: 'now allowed' })).is_error, undefined);
+      update('ask', 'Edit', '/content/asked.txt', 'projectSettings');
+      assert.equal((await run('write_file', { path: 'content/asked.txt', content: 'asked' })).is_error, true);
+      update('ask', 'Edit', '/content/asked.txt', 'projectSettings', 'removeRules');
+      assert.equal((await run('write_file', { path: 'content/asked.txt', content: 'after remove' })).is_error, undefined);
+      update('deny', 'Edit', '/content/allowed.txt', 'userSettings');
+      assert.equal((await run('edit_file', { path: 'content/allowed.txt', old_string: 'allowed', new_string: 'edited' })).is_error, undefined);
+      assert.equal(fs.readFileSync(path.join(root, 'content/allowed.txt'), 'utf8'), 'edited');
+      const command = 'printf shell-content > content/shell.txt';
+      update('allow', 'Bash', command);
+      assert.equal((await run('run_command', { command })).is_error, undefined);
+      assert.equal(fs.readFileSync(path.join(root, 'content/shell.txt'), 'utf8'), 'shell-content');
+      update('deny', 'Bash', 'printf shell-content:*');
+      assert.equal((await run('run_command', { command })).is_error, true);
+      update('deny', 'Bash', 'printf shell-content:*', 'session', 'removeRules');
+      update('ask', 'Bash', command);
+      assert.equal((await run('run_command', { command })).is_error, true);
+      update('ask', 'Bash', command, 'session', 'removeRules');
+      assert.equal((await run('run_command', { command })).is_error, undefined);
+      update('allow', 'Bash', 'printf:*');
+      assert.equal((await run('run_command', { command: 'printf harmless; touch content/alternate.txt' })).is_error, true);
+      assert.equal(fs.existsSync(path.join(root, 'content/alternate.txt')), false);
+      update('allow', 'Bash', command, 'session', 'removeRules');
+      update('allow', 'Bash', 'printf:*', 'session', 'removeRules');
+      assert.equal((await run('run_command', { command })).is_error, true);
+      assert.equal((await run('write_file', { path: 'content/escape\0.txt', content: 'bad' })).is_error, true);
+      for (const behavior of ['deny', 'ask'] as const) {
+        const landing = path.join(root, `content/${behavior}-landing`);
+        const alias = path.join(root, `content/${behavior}-alias`);
+        fs.mkdirSync(landing);
+        fs.symlinkSync(landing, alias);
+        update(behavior, 'Edit', `/content/${behavior}-alias/missing/*.txt`, 'projectSettings');
+        assert.equal((await run('write_file', { path: `content/${behavior}-alias/missing/a.txt`, content: 'blocked' })).is_error, true);
+        fs.unlinkSync(alias);
+        fs.symlinkSync(external, alias);
+        assert.equal((await run('write_file', { path: `content/${behavior}-landing/missing/a.txt`, content: 'old landing' })).is_error, true);
+        assert.equal(fs.existsSync(path.join(landing, 'missing/a.txt')), false);
+        update(behavior, 'Edit', `/content/${behavior}-alias/missing/*.txt`, 'projectSettings', 'removeRules');
+        assert.equal((await run('write_file', { path: `content/${behavior}-landing/missing/a.txt`, content: 'removed' })).is_error, undefined);
+      }
+      const absentUser = path.join(external, 'absent-settings');
+      const firstRoot = Session.open(root, { config: config(root, tools, { configSources: { userDir: absentUser },
+        permissions: { mode: 'default', allow: [], deny: [], ask: [] } }) });
+      try {
+        assert.equal(fs.existsSync(path.join(absentUser, 'settings.json')), false);
+        firstRoot.adoptPermissionUpdates([{ type: 'addRules', destination: 'userSettings', behavior: 'deny',
+          rules: [{ toolName: 'Edit', ruleContent: '/first-root/**' }] }]);
+        await new Agent(firstRoot, new ScriptedProvider([response([call('first-root', 'write_file',
+          { path: 'first-root/project.txt', content: 'project root' })], 'tool_use'), done()]), tools).run('first root');
+        assert.equal(fs.readFileSync(path.join(root, 'first-root/project.txt'), 'utf8'), 'project root');
+        assert.equal(permissionDecision(firstRoot.config.permissions, tool('write_file'),
+          { path: path.join(absentUser, 'first-root/user.txt') }).decision, 'deny');
+      } finally { await firstRoot.close(); }
+      for (const behavior of ['deny', 'ask'] as const) {
+        const unknown = spy('custom_content');
+        const startup = Session.open(root, { config: config(root, [unknown.tool], { permissions: { mode: 'bypass', allow: [],
+          deny: behavior === 'deny' ? ['custom_content(private)'] : [], ask: behavior === 'ask' ? ['custom_content(private)'] : [] } }) });
+        try {
+          await new Agent(startup, new ScriptedProvider([response([call('unsupported', 'custom_content', { path: 'other' })], 'tool_use'), done()]), [unknown.tool]).run('startup');
+          assert.deepEqual(unknown.inputs, []);
+          assert.match(String(resultBatches(startup).at(-1)![0]!.content), /Unsupported restrictive permission content consumer/);
+        } finally { await startup.close(); }
+      }
+    } finally { await contentOwner.close(); }
+    const refreshRoot = workspace();
+    const refresh = Session.open(refreshRoot, { config: config(refreshRoot, tools, { permissions: { mode: 'plan', allow: ['Bash(*)'], deny: [] } }) });
+    const refreshChild = Session.open(refreshRoot, { config: refresh.config });
+    refreshChild.inheritPermissions(refresh.permissionOwner);
+    try {
+      refresh.prepareAutoMode();
+      assert.equal(refresh.permissionOwner.state().allow.some(rule => /^Bash/.test(rule)), false);
+      refresh.permissionUpdates.useAutoModeDuringPlan = false;
+      refreshChild.prepareAutoMode();
+      assert.equal(refresh.permissionOwner.state().autoDuringPlan, false);
+      assert.ok(refresh.permissionOwner.state().allow.includes('Bash'));
+      refresh.permissionUpdates.mode = 'auto';
+      refreshChild.prepareAutoMode();
+      assert.equal(refresh.permissionOwner.state().allow.some(rule => /^Bash/.test(rule)), false);
+      assert.equal(refreshChild.permissionOwner.state().allow.some(rule => /^Bash/.test(rule)), false);
+    } finally { await refreshChild.close(); await refresh.close(); }
+    const ruleLayer = (source: 'userSettings' | 'flagSettings' | 'policySettings', values: string[]) => ({ source, root,
+      allow: [], deny: [], ask: [], additionalDirectories: [], autoMode: { allow: values, deny: ['legacy ignored'] } });
+    const autoSettings = Session.open(root, { config: config(root, tools, { permissions: { mode: 'default', allow: [], deny: [],
+      layers: [ruleLayer('policySettings', ['policy']), ruleLayer('userSettings', ['$defaults', 'user']), ruleLayer('flagSettings', [])] } }) });
+    try { assert.deepEqual(autoSettings.permissionOwner.state().autoMode?.allow, ['$defaults', 'user', 'policy']); }
+    finally { await autoSettings.close(); }
+    assert.equal(permissionDecision({ mode: 'auto', allow: [], deny: [], ask: ['Bash(echo hi)'] },
+      tools.find(value => value.schema.name === 'run_command')!, { command: 'echo "hi"' }).floor, 'rule');
+    for (const outcome of ['allow', 'block', 'malformed', 'unavailable', 'refusal-error'] as const) {
+      const autoRoot = workspace(), ownedTools = createTools();
+      const cfg = config(autoRoot, ownedTools, { permissions: { mode: 'auto', allow: [], deny: [] }, hooks: {
+        PermissionDenied: [{ command: emit({ hookSpecificOutput: { hookEventName: 'PermissionDenied', retry: true } }) }],
+      } });
+      let classifierCalls = 0, sent = false;
+      const provider: ModelProvider = { count: async () => 1, complete: async request => {
+        if (typeof request.system === 'string' && request.system.startsWith('You are a security monitor')) {
+          classifierCalls++;
+          assert.equal(request.tools, undefined);
+          if (outcome === 'unavailable' || outcome === 'refusal-error' && classifierCalls === 2) throw new Error('owned unavailable');
+          if (outcome === 'refusal-error') return response([], 'refusal');
+          return response([{ type: 'text', text: outcome === 'allow' ? '<block>no</block>' : outcome === 'block'
+            ? '<block>yes</block><category>Irreversible Local Destruction</category><reason>held</reason>'
+            : '<block>yes</block><block>no</block>' }], 'end_turn');
+        }
+        if (!sent) { sent = true; return response([call('auto-owned', 'write_file', { path: 'marker', content: 'owned' })], 'tool_use'); }
+        return done();
+      } };
+      const owned = Session.open(autoRoot, { config: cfg });
+      try {
+        await new Agent(owned, provider, ownedTools).run('write marker', undefined, undefined, undefined, ['generated consent']);
+        assert.equal(fs.existsSync(path.join(autoRoot, 'marker')), outcome === 'allow');
+        assert.equal(classifierCalls, outcome === 'malformed' ? 10 : outcome === 'block' || outcome === 'refusal-error' ? 2 : 1);
+        const retry = owned.messages.some(message => message.content === 'The PermissionDenied hook indicated you may retry this tool call.');
+        assert.equal(retry, outcome === 'block' || outcome === 'unavailable');
+        const first = owned.messages[0]!;
+        assert.equal(classifierMessage(first)?.humanText, 'write marker');
+        const transcript = classifierTranscript(owned.messages, new Map(ownedTools.map(tool => [tool.schema.name, tool])),
+          { name: 'write_file', input: { path: 'next', content: 'text' }, id: 'next' });
+        assert.ok(transcript.includes('[MESSAGE FROM NON-USER SOURCE - NOT USER INPUT]'));
+        assert.ok(transcript.includes('generated consent'));
+        if (outcome === 'malformed') assert.ok(transcript.includes('automode-parsing-error'));
+      } finally { await owned.close(); }
+    }
+    const serialized = serializeAutoTool({ schema: { name: 'custom', input_schema: { type: 'object' } }, readOnly: false,
+      execute: async () => '', toAutoClassifierInput: () => { throw new Error('fallback'); } }, { command: 'whole command' }, 'call');
+    assert.ok(serialized.includes('whole command'));
+  } finally { status.close(); await status.flush(); await session.close(); await isolated.close(); }
+});
+
 test("PermissionRequest allow adds a session deny rule that survives the answer", async () => {
   const root = workspace();
   const write = spy("write_file");
@@ -496,7 +1248,7 @@ test("PermissionRequest allow adds a session deny rule that survives the answer"
   } finally { session.close(); }
 });
 
-test("PermissionRequest allow with an unrepresentable tightening refuses the call", async () => {
+test("PermissionRequest tightening applies content without blocking unrelated input", async () => {
   const root = workspace();
   const effect = spy("write_file");
   const cfg = config(root, [effect.tool], { permissions: { mode: "ask", allow: [], deny: [] }, hooks: {
@@ -508,11 +1260,10 @@ test("PermissionRequest allow with an unrepresentable tightening refuses the cal
   const session = Session.open(root, { config: cfg });
   try {
     await new Agent(session, provider, [effect.tool]).run("write");
-    assert.deepEqual(effect.inputs, []);
+    assert.deepEqual(effect.inputs, [{ path: 'one.txt' }]);
     const result = resultBatches(session)[0]![0]!;
-    assert.equal(result.is_error, true);
-    assert.match(String(result.content), /The call was not run\./);
-    assert.match(String(result.content), /could not apply them all/);
+    assert.equal(result.is_error, undefined);
+    assert.equal(permissionDecision(session.config.permissions, effect.tool, { path: 'private/a' }).decision, 'deny');
   } finally { session.close(); }
 });
 
@@ -528,7 +1279,7 @@ test("PermissionRequest replacement denied by input rules produces a paired erro
   try {
     await new Agent(session, provider, [effect.tool]).run("write");
     assert.deepEqual(effect.inputs, []);
-    assert.ok(session.events.some(event => event.kind === "hook_start" && event.event === "PermissionDenied"));
+    assert.equal(session.events.some(event => event.kind === "hook_start" && event.event === "PermissionDenied"), false);
     const result = resultBatches(session)[0]![0]!;
     assert.equal(result.is_error, true);
     assert.match(String(result.content), /input denied/);
@@ -537,7 +1288,7 @@ test("PermissionRequest replacement denied by input rules produces a paired erro
   } finally { session.close(); }
 });
 
-test("PermissionDenied retry adds the recovered hint after the denied tool result", async () => {
+test("ordinary permission denial ignores retry hooks reserved for classifier verdicts", async () => {
   const root = workspace();
   const effect = spy("write_file");
   const cfg = config(root, [effect.tool], { permissions: { mode: "ask", allow: [], deny: [], inputRules: [{ tool: "write_file", path: "blocked.txt", decision: "deny" }] }, hooks: {
@@ -551,7 +1302,8 @@ test("PermissionDenied retry adds the recovered hint after the denied tool resul
     assert.deepEqual(effect.inputs, []);
     const batchIndex = session.messages.findIndex(message => Array.isArray(message.content) && message.content.some(block => block.type === "tool_result"));
     const hintIndex = session.messages.findIndex(message => message.content === "The PermissionDenied hook indicated you may retry this tool call.");
-    assert.equal(hintIndex, batchIndex + 1);
+    assert.equal(hintIndex, -1);
+    assert.ok(batchIndex >= 0);
     assertBatchAdjacency(session);
   } finally { session.close(); }
 });

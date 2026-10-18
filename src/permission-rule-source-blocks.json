@@ -1,0 +1,56 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        662,
+        941
+      ],
+      "units": 279,
+      "bodySha256": "86a9c4fb25d00a4a5d553f86cc1e1635d6edb66c5b44efff9f6acace081ccdfa",
+      "note": "tool aliases"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        2027,
+        2118
+      ],
+      "units": 91,
+      "bodySha256": "23c214fc12bc847c7f89cc62fc1f78cac028a1bee50b0750beca68e707dad62a",
+      "note": "escape rule content"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        2573,
+        3340
+      ],
+      "units": 767,
+      "bodySha256": "773ffd6e40ce7fb4b2b0657fc540aeae8d370b4fd61532f90387680eda376015",
+      "note": "parse and serialize rule"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        4292,
+        4557
+      ],
+      "units": 265,
+      "bodySha256": "c49bcc01871ca52be9b2e164f1e13e6f3ee217ded1ccaa70746d918180e388a2",
+      "note": "escaped bracket scanners"
+    }
+  ],
+  "missing": []
+}

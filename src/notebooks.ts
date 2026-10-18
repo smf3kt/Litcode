@@ -18,7 +18,7 @@ import { atomicWriteFile } from "./atomic-write.js";
 
 import { z } from "zod";
 
-import type { ToolContext, ToolDefinition } from "./tools.js";
+import { confineResolved, type ToolContext, type ToolDefinition } from "./tools.js";
 
 const AGENT_DIR = ".agent";
 const NOTEBOOK_MAX_BYTES = 8 * 1024 * 1024;
@@ -330,7 +330,8 @@ function notebookReadTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath } = notebookReadSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const real = confine(root, userPath, true);
+      const real = context.workingDirectories?.(true).length
+        ? confineResolved(root, userPath, true, context.workingDirectories(true)).path : confine(root, userPath, true);
       if (!real.toLowerCase().endsWith(".ipynb")) {
         throw new Error(`notebook_read: not a Jupyter notebook (.ipynb): ${userPath}`);
       }
@@ -353,6 +354,10 @@ function notebookReadTool(): ToolDefinition {
 
 function notebookEditTool(): ToolDefinition {
   return {
+    toAutoClassifierInput(input) { const value = notebookEditSchema.parse(input); const mode = value.edit_mode ?? 'replace';
+      return { notebook_path: value.path, mode, ...(value.cell_id === undefined ? {} : { cell_id: value.cell_id }),
+        ...(mode !== 'delete' && value.cell_type !== undefined ? { cell_type: value.cell_type } : {}),
+        ...(mode === 'delete' ? { ignored_source: value.new_source } : { adds: value.new_source }) }; },
     readOnly: false,
     schema: {
       name: "notebook_edit",
@@ -403,7 +408,8 @@ function notebookEditTool(): ToolDefinition {
       } = notebookEditSchema.parse(input);
       const mode: EditMode = edit_mode ?? "replace";
       const root = workspaceReal(context.workspace);
-      const real = confine(root, userPath, true);
+      const real = context.workingDirectories?.(false).length
+        ? confineResolved(root, userPath, true, context.workingDirectories(false)).path : confine(root, userPath, true);
       if (!real.toLowerCase().endsWith(".ipynb")) {
         throw new Error("File must be a Jupyter notebook (.ipynb file).");
       }

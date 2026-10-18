@@ -1,0 +1,34 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-nkb63p1y.js",
+      "sha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-nkb63p1y.js",
+      "sha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "range": [
+        4598,
+        5113
+      ],
+      "units": 515,
+      "bodySha256": "642da73742c2b08d76da9fc1150a97b5411767a652e9db21dfd374c55bf4596b",
+      "note": "dangerous rule command constants"
+    },
+    {
+      "module": "chunk-nkb63p1y.js",
+      "sha256": "cb746f58859c7e9d52383597ff3a5c08bea091d17746697e713d379408504e5c",
+      "range": [
+        5113,
+        6996
+      ],
+      "units": 1883,
+      "bodySha256": "e4eb2e32fbc3d21de31bb24126c560a0472cea3959dd2b23003b805241fe96d6",
+      "note": "complete dangerous shell Agent Monitor predicates"
+    }
+  ],
+  "missing": []
+}
