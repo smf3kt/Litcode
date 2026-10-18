@@ -1,0 +1,56 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        19725,
+        23871
+      ],
+      "units": 4146,
+      "bodySha256": "cc7ed01546b1a3c0ba7ad657bd8a9ef61ec08afca3d18a0f439a91f2854874de",
+      "note": "uxn and source collection, branch and no-commit helpers"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        29373,
+        29664
+      ],
+      "units": 291,
+      "bodySha256": "fe45ae3eab6754921fa3a8be8ae53ba06a6f9daa12507ae29baa017b6a59c0fd",
+      "note": "repository merge/rebase guard"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        30153,
+        32005
+      ],
+      "units": 1852,
+      "bodySha256": "66517c8b64a276ba685a56699c75a7345680c8b6fce09db92e6fee9289705a96",
+      "note": "base resolution and untracked file collection"
+    },
+    {
+      "module": "chunk-j8hqhz0c.js",
+      "sha256": "484244ab875460f17f03ba710c6297940ac16c3742592218c4c05af8d9815891",
+      "range": [
+        33547,
+        33868
+      ],
+      "units": 321,
+      "bodySha256": "353ece13cc395e7ac13c18e7ff7fcdb523ed90e147258c03014f592589ad22f9",
+      "note": "origin and local merge-base preference"
+    }
+  ],
+  "missing": []
+}

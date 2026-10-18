@@ -1,0 +1,72 @@
+{
+  "schema": "SourceRegions.v1",
+  "coordinates": "zero-based UTF-16 [start,end)",
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1486702,
+        1487552
+      ],
+      "units": 850,
+      "bodySha256": "4d1ad8a8a001d905dc94fc118afa7e7942e3abd96b7721546042757220a4d1c5",
+      "note": "A4 ideSelection ownership, dismissal, consumption and conditional restoration"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1488693,
+        1488828
+      ],
+      "units": 135,
+      "bodySha256": "8c00166873cd619d69df6c25953ae23bd16082f51293c1efbb065321c2b815a3",
+      "note": "Hlt selection identity"
+    },
+    {
+      "module": "chunk-gyf58rwf.js",
+      "sha256": "7a6a01732760c89b5d434cc5ba98faf72b10917d85b771671f8201e9e3d8d2ad",
+      "range": [
+        8843,
+        9022
+      ],
+      "units": 179,
+      "bodySha256": "7c99721cdc474f145cf12b32fa49b5e8ff9e8f7e6ae60c12e04eb8a35794fe74",
+      "note": "Md/cj/su path sanitation"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        4454587,
+        4454667
+      ],
+      "units": 80,
+      "bodySha256": "3c77c96ea9934f38755a395d0e35cff2d0eab742617b26497e67bce6222b5f31",
+      "note": "TDn/EDn attachment text bound"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        4438375,
+        4438416
+      ],
+      "units": 41,
+      "bodySha256": "1bcb1a5006c31b5ceaef586cf861c97b6d7cb99b237b0229b20d895d69b03281",
+      "note": "Xl attachment data wrapper"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "range": [
+        4460985,
+        4461259
+      ],
+      "units": 274,
+      "bodySha256": "b2bf6b62fad76340708ec97431a60231fccd0e5b30f0f99d8a160019c6585aa0",
+      "note": "selected_lines_in_diff attachment message"
+    }
+  ]
+}

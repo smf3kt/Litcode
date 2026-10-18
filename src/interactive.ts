@@ -163,7 +163,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     } finally { unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false); }
   };
   options.signal.addEventListener('abort', abort, { once: true });
-  const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null } }[] = [];
+  const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
+    attachment?: import('./terminal.js').PromptDiffSelection }[] = [];
   // The recovered prologue prepends the SessionStart message to the user input
   // queue (`prependUserMessage`, chunk-rx2nah4x.js offset 472137), so it runs
   // before anything typed or piped at startup.
@@ -221,6 +222,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.bindThemeCatalog?.(session.config.configSources?.userDir, session.config.workspace, session.config.plugins);
     terminal?.setTheme?.(session.config.theme);
     terminal?.bindStatusLine?.(session);
+    terminal?.bindDiffPanel?.(session);
     taskUnsubscribe?.(); taskUnsubscribe = undefined;
     refreshTasks();
     if (terminal?.setTasks) taskUnsubscribe = activeRuntime.subscribeTasks?.(session.config, refreshTasks);
@@ -272,9 +274,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       } catch (error) { options.status.write(`Config watch error: ${String(error)}\n`); }
     }
   };
-  const onLine = (line: string) => {
+  const onLine = (line: string, attachment?: import('./terminal.js').PromptDiffSelection) => {
     if (approval) { approval(line); return; }
-    queue.push({ prompt: line, source: 'user' }); awaken();
+    queue.push({ prompt: line, source: 'user', ...(attachment ? { attachment } : {}) }); awaken();
   };
   const onClose = () => {
     inputClosed = true;
@@ -534,7 +536,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal) => {
     signal.throwIfAborted();
     const previousModel = session.config.model;
-    const next = Session.open(config.workspace, { config });
+    const next = Session.open(config.workspace, { config, startedAt: session.startedAt });
     try {
       const boundaries = new Map<number, number>([[0, 0]]);
       for (const [index, event] of session.events.entries()) {
@@ -552,7 +554,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
         }
         if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
-        if (event.kind === 'title' || event.kind === 'instruction_watch') next.append(event);
+        if (event.kind === 'title' || event.kind === 'instruction_watch' || event.kind === 'file_history') next.append(event);
       }
       next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'configuration' });
     } catch (error) { next.close(); throw error; }
@@ -582,6 +584,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   try {
     await terminal?.bindInputHistory?.(session);
+    terminal?.bindDiffPanel?.(session);
     terminal?.start();
     unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
     const bound = await bindNext(activeRuntime, session);
@@ -728,6 +731,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (Buffer.byteLength(text) > session.config.maxOutputBytes) throw new Error('MCP catalog exceeds display budget');
           output.write(text + '\n'); continue;
         }
+        if (prompt === '/diff' && terminal?.toggleDiffPanel) {
+          options.status.write(await terminal.toggleDiffPanel() + '\n');
+          continue;
+        }
         if (prompt === '/tasks' || prompt === '/cron' || /^\/diff(?:\s|$)/.test(prompt)) {
           const match = /^\/diff ([A-Za-z0-9][A-Za-z0-9_-]{0,63})(?: (0|[1-9]\d*))?$/.exec(prompt);
           if (prompt !== '/tasks' && prompt !== '/cron' && !match) throw new Error('Use /diff NAME [OFFSET]');
@@ -768,7 +775,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           let next: Session | undefined;
           try {
             config.tools = nextRuntime.buildTools(config, 'reload').map(tool => ({ ...structuredClone(tool.schema), eager_input_streaming: true }));
-            next = Session.open(config.workspace, { config });
+            next = Session.open(config.workspace, { config, startedAt: session.startedAt });
             const boundaries = new Map<number, number>([[0, 0]]);
             for (const [index, event] of session.events.entries()) {
               if (event.kind === 'message') {
@@ -787,7 +794,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
               }
               if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
-              if (event.kind === 'title' || event.kind === "instruction_watch") next.append(event);
+              if (event.kind === 'title' || event.kind === "instruction_watch" || event.kind === 'file_history') next.append(event);
             }
             next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'reload' });
             nextRuntime = await bindNext(nextRuntime, next);
@@ -1175,7 +1182,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
           continue;
         }
-        const result = await withTurn(signal => agent().run(prompt === '/continue' ? undefined : prompt, signal));
+        const before = session.events.length;
+        const attachment = item.attachment?.sessionId === session.id ? item.attachment : undefined;
+        let result;
+        try {
+          result = await withTurn(signal => agent().run(prompt === '/continue' ? undefined : prompt, signal,
+            undefined, undefined, [], attachment?.selection));
+        } finally {
+          if (attachment && !session.events.slice(before).some(event => event.kind === 'message'
+            && event.message.role === 'user' && event.isMeta)) terminal?.restoreDiffSelection?.(attachment);
+        }
         if (result.modelCalls === 0 && result.text) output.write(result.text);
         output.write('\n');
         options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);

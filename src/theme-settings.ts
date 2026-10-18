@@ -16,7 +16,12 @@ export function saveEditorMode(mode: EditorMode, userDir = defaultUserDir()): vo
   saveDisplaySetting('editorMode',mode,userDir);
 }
 
-function saveDisplaySetting(key: 'theme'|'editorMode', value: string, userDir: string): void {
+export function saveDiffDisplaySetting(key: 'diffSidebarOpen' | 'diffSidebarBaseMode', value: boolean | 'session' | 'uncommitted' | 'branch',
+  userDir = defaultUserDir()): void {
+  saveDisplaySetting(key, value, userDir);
+}
+
+function saveDisplaySetting(key: 'theme'|'editorMode'|'diffSidebarOpen'|'diffSidebarBaseMode', value: string | boolean, userDir: string): void {
   const file = path.join(path.resolve(userDir), 'settings.json');
   let settings: Record<string, unknown> = {}, mode = 0o600;
   try {

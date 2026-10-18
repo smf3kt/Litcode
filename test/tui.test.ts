@@ -54,7 +54,7 @@ import path from 'node:path';
 import { PassThrough, Writable } from 'node:stream';
 import { test } from 'node:test';
 import type Anthropic from '@anthropic-ai/sdk';
-import { defaultConfig } from '../src/agent.js';
+import { Agent, defaultConfig } from '../src/agent.js';
 import { interactiveLoop } from '../src/interactive.js';
 import { createKillRing, emptyKillRing, nextYank, reduceKillRing } from '../src/kill-ring.js';
 import type { ModelProvider } from '../src/provider.js';
@@ -73,6 +73,179 @@ import { osc52Payload } from '../src/clipboard-osc52.js';
 import { cellWidth, TerminalKeyDecoder } from '../src/terminal.js';
 
 const cli = path.join(import.meta.dirname, '..', 'src', 'cli.ts');
+
+test('recovered components keep native state, context, refs and one cleanup', async () => {
+  const { nativeElement, Xe, qt, Ae, y, en, R } = await import('../src/plugin-chain-react-hooks.js');
+  const context = qt('default');
+  let increment: (() => void) | undefined, mounted = 0, cleaned = 0;
+  let node: { nodeName?: string } | null = null;
+  function Child() {
+    const value = Ae(context), [count, setCount] = y(0), ref = R<{ nodeName?: string } | null>(null);
+    increment = () => setCount(previous => previous + 1);
+    en(() => { mounted++; node = ref.current; return () => { cleaned++; }; }, []);
+    return Xe('Box', { ref, selectionScope: true, children: Xe('Text', { children: `${value} ${count}` }) });
+  }
+  const renderer = new TuiRenderer({ write() {} });
+  const tree = nativeElement(Xe(context, { value: 'mounted', children: Xe(Child, {}) }));
+  const paint = () => renderer.renderElement(tree, 60, 12, { row: 0, column: 0, visible: false });
+  try {
+    paint(); assert.match(renderer.frame.join('\n'), /mounted 0/); assert.equal(mounted, 1);
+    assert.equal((node as { nodeName?: string } | null)?.nodeName, 'ink-box');
+    increment!(); paint(); assert.match(renderer.frame.join('\n'), /mounted 1/);
+    renderer.selectNative('start', 0, 0); renderer.selectNative('end', 6, 0);
+    assert.equal(renderer.selectionInstance.getSelectedText(), 'mounted');
+    renderer.renderElement(null, 60, 12, { row: 0, column: 0, visible: false });
+    assert.equal(renderer.selectionInstance.hasTextSelection(), false, 'unmount releases the selection owner');
+    renderer.renderElement(nativeElement(Xe('Text', { children: 'replacement' })), 60, 12,
+      { row: 0, column: 0, visible: false });
+    assert.equal(renderer.selectionInstance.getSelectedText(), '');
+  } finally { renderer.close(); }
+  assert.equal(cleaned, 1); assert.equal(renderer.liveNodes, 0);
+});
+
+test('the fullscreen Git sidebar preserves the draft, cycles bases, scrolls and releases its owner', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'native-diff-')));
+  const userDir = path.join(root, 'user'); fs.mkdirSync(userDir);
+  const git = (...args: string[]) => {
+    const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr); return result.stdout;
+  };
+  git('init', '-b', 'main');
+  fs.writeFileSync(path.join(root, 'sample.txt'), Array.from({ length: 80 }, (_, i) => `before ${i}`).join('\n') + '\n');
+  git('add', 'sample.txt'); git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit', '-m', 'baseline');
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode(raw: boolean): void };
+  input.isTTY = true; let raw = false; input.setRawMode = value => { raw = value; };
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 160, rows: 25 }); watchScreen(output);
+  const config = defaultConfig(root, []); config.model = 'fixture/native-diff'; config.configSources = { userDir };
+  config.automaticCheckpoints = true;
+  const session = Session.open(root, { config });
+  const tui = new TuiTerminal({ input, output });
+  let renderError: Error | undefined; tui.on('inputError', error => { renderError = error; });
+  tui.bindDiffPanel(session); tui.start();
+  const key = (text: string) => input.emit('data', text);
+  const until = async (predicate: () => boolean) => {
+    const deadline = Date.now() + 5000;
+    while (!predicate()) { if (renderError) throw renderError; assert.ok(Date.now() < deadline, screenLines(output).join('\n')); await delay(10); }
+  };
+  try {
+    fs.writeFileSync(path.join(root, 'sample.txt'), Array.from({ length: 80 }, (_, i) => `after ${i}`).join('\n') + '\n');
+    key('retained draft'); assert.equal(await tui.toggleDiffPanel(), 'Diff panel shown');
+    await until(() => screenLines(output).some(row => row.includes('sample.txt')));
+    assert.equal(tui.state.text, 'retained draft');
+    key('\u0018b'); await until(() => screenLines(output).some(row => row.includes('uncommitted (vs HEAD)')));
+    const actions: string[] = [], submitted: string[] = [];
+    tui.on('action', action => actions.push(action)); tui.on('submit', text => submitted.push(text));
+    key('\u0018\u0005'); key('\u0018\r'); key('\u0018\u0013');
+    assert.deepEqual(actions, ['chat:externalEditor', 'chat:queueSubmit', 'chat:sendNow']);
+    assert.deepEqual(submitted, ['retained draft'], 'the idle queue-submit chord retains its existing submission');
+    tui.setEditorMode('vim'); key('\u000c'); key('a'.repeat(130)); key('\x1b'); await delay(70); key('0gj');
+    assert.equal(tui.state.cursor, 85, 'Vim uses the 86-column composer while the sidebar is open');
+    tui.setEditorMode('normal'); key('\u000c'); key('retained draft');
+    const before = screenLines(output).join('\n'); key('\x1b[<65;120;15M');
+    await until(() => screenLines(output).join('\n') !== before);
+    assert.equal(tui.state.text, 'retained draft');
+    const selectionRow = screenLines(output).findIndex(row => row.includes('before '));
+    assert.ok(selectionRow > 0, screenLines(output).join('\n'));
+    const selectionColumn = screenLines(output)[selectionRow]!.indexOf('before ');
+    key(`\x1b[<0;${selectionColumn + 1};${selectionRow + 1}M\x1b[<32;${selectionColumn + 5};${selectionRow + 1}M\x1b[<0;${selectionColumn + 5};${selectionRow + 1}m`);
+    await until(() => screenLines(output).some(row => row.includes('1 line from diff')));
+    assert.equal(tui.state.text, 'retained draft', 'selection remains separate from the composer');
+    const attachments: import('../src/terminal.js').PromptDiffSelection[] = [];
+    tui.on('submit', (_text, attachment) => { if (attachment) attachments.push(attachment); });
+    key('\r'); assert.equal(attachments[0]?.selection.text, 'befor');
+    assert.equal(attachments[0]?.selection.filePath, 'sample.txt');
+    const provider: ModelProvider = {
+      count: async () => 1,
+      complete: async request => {
+        assert.deepEqual(request.messages.slice(-2), [
+          { role: 'user', content: 'owned prompt' },
+          { role: 'user', content: '<system-reminder>\nThe user selected the following 1 line from the diff view (in sample.txt):\nbefor\n\nThis may or may not be related to the current task.\n</system-reminder>' },
+        ]);
+        return { id: 'selection-fixture', model: config.model, role: 'assistant', type: 'message',
+          content: [{ type: 'text', text: 'done' }], stop_reason: 'end_turn',
+          usage: { input_tokens: 1, output_tokens: 1 } } as Anthropic.Message;
+      },
+    };
+    await new Agent(session, provider, []).run('owned prompt', new AbortController().signal,
+      undefined, undefined, [], attachments[0]!.selection);
+    assert.equal(session.events.filter(event => event.kind === 'message' && event.isMeta).length, 1);
+    tui.restoreDiffSelection(attachments[0]!);
+    key('\x1b[Bx');
+    assert.ok(screenLines(output).every(row => !row.includes('1 line from diff')), 'footer dismiss removes the pending attachment');
+    key('retained draft');
+    Object.assign(output, { columns: 80 }); output.emit('resize');
+    assert.ok(screenLines(output).every(row => !row.includes('sample.txt')));
+    Object.assign(output, { columns: 160 }); output.emit('resize');
+    await until(() => screenLines(output).some(row => row.includes('sample.txt')));
+    assert.equal(await tui.toggleDiffPanel(), 'Diff panel hidden');
+    assert.equal(tui.state.text, 'retained draft');
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(userDir, 'settings.json'), 'utf8')),
+      { diffSidebarOpen: false, diffSidebarBaseMode: 'uncommitted' });
+    Object.assign(output, { columns: 80 }); output.emit('resize');
+    assert.match(await tui.toggleDiffPanel(), /at least 110 columns/);
+    const { DiffPanel } = await import('../src/diff-panel.js');
+    const { createTools } = await import('../src/tools.js');
+    const { writeFileSync, readFileSync } = fs;
+    const settings = path.join(userDir, 'settings.json');
+    writeFileSync(settings, JSON.stringify({ diffSidebarOpen: true, diffSidebarBaseMode: 'uncommitted' }));
+    let changes = 0;
+    const panel = new DiffPanel(session, () => { changes++; }, () => {});
+    try {
+      panel.setColumns(120);
+      const write = createTools().find(tool => tool.schema.name === 'write_file')!;
+      const toolContext = { workspace: root, signal: new AbortController().signal, allowShell: false,
+        maxOutputBytes: 24000, fileHistory: (file?: string) => session.touchFile(file) };
+      await write.execute({ path: 'fresh.txt', content: 'fresh\n' }, toolContext);
+      await until(() => panel.visible);
+      assert.equal(panel.width(120), 50);
+      const previous = changes;
+      await write.execute({ path: 'fresh.txt', content: 'updated\n', overwrite: true }, toolContext);
+      await until(() => changes > previous);
+      assert.equal(session.fileHistory.trackedFiles.has('fresh.txt'), true);
+    } finally { panel.close(); }
+    const id = session.id, startedAt = session.startedAt, sequence = session.fileHistory.trackSequence;
+    session.close();
+    const resumed = Session.open(root, { id });
+    try {
+      assert.equal(resumed.startedAt, startedAt);
+      assert.equal(resumed.fileHistory.trackSequence, sequence);
+      assert.equal(resumed.fileHistory.trackedFiles.has('fresh.txt'), true);
+      assert.equal(readFileSync(settings, 'utf8').includes('uncommitted'), true);
+    } finally { resumed.close(); }
+    tui.close();
+    const nextConfig = defaultConfig(root, []); nextConfig.model = 'fixture/queued-diff'; nextConfig.configSources = { userDir };
+    const queuedSession = Session.open(root, { config: nextConfig });
+    const queuedInput = new PassThrough();
+    const queuedOutput = new Writable({ write(_chunk, _encoding, done) { done(); } });
+    let callbacks: import('../src/terminal.js').TerminalCallbacks | undefined;
+    const queuedTerminal: import('../src/terminal.js').TerminalSurface = {
+      isTTY: true, outputStream: queuedOutput,
+      subscribe(value) { callbacks = value; return () => { callbacks = undefined; }; },
+      start() {
+        callbacks!.onSubmit!('/clear');
+        callbacks!.onSubmit!('queued prompt', { ...attachments[0]!, sessionId: queuedSession.id });
+      },
+      close() {}, setRunning() {}, setKeybindings() {}, writeTerminalSequence() {},
+    };
+    let requests = 0;
+    const queuedProvider: ModelProvider = { count: async () => 1, complete: async request => {
+      requests++;
+      assert.equal(JSON.stringify(request.messages).includes('selected the following'), false,
+        'an old-session attachment stays with its original queue owner');
+      setImmediate(() => callbacks?.onExit?.());
+      return { id: 'queue-fixture', model: nextConfig.model, role: 'assistant', type: 'message',
+        content: [{ type: 'text', text: 'done' }], stop_reason: 'end_turn',
+        usage: { input_tokens: 1, output_tokens: 1 } } as Anthropic.Message;
+    } };
+    await interactiveLoop(queuedSession, queuedProvider,
+      { tools: [], buildTools: () => [], close: async () => {}, limits: [] },
+      { input: queuedInput, output: queuedOutput, status: queuedOutput, terminal: queuedTerminal,
+        signal: new AbortController().signal });
+    assert.equal(requests, 1);
+  } finally { tui.close(); session.close(); fs.rmSync(root, { recursive: true, force: true }); }
+  assert.equal(raw, false);
+});
 
 test('mouse reports survive fragmentation and stay outside the input draft', () => {
   const reports = ['\x1b[<64;12;3M', '\x1b[<65;12;3m', '\x1b[M' + String.fromCharCode(96, 44, 35)];

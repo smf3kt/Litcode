@@ -13,9 +13,9 @@
 //     discards the value, so the default here is null and no caller needs to mount it.
 //   · `oi()` — the per-host map of terminal selection readers. The source's body is
 //     `At.of(B().host)` in chunk-kexg5hxg.js: a map keyed by the host's output stream. This build has
-//     no terminal host bound, so the map starts empty and `wC` takes its own no-instance branch,
-//     which answers the same fixed no-selection object it builds in the source.
-import { qt } from './plugin-chain-react-hooks.js';
+//     native component owner supplies its reader through SelectionInstanceContext. Isolated runs
+//     use the explicit stream map or the source's no-instance branch.
+import { Ae, qt } from './plugin-chain-react-hooks.js';
 
 /** The clock the leaf's body reads: `now()` for the double-activation window, `setTimeout(fn, ms)`
  *  for the delayed press, and the token it returns must be callable to cancel the timer. */
@@ -46,14 +46,14 @@ export const eE = qt<MarkdownClock | null>(null);
 /** Source `Gfe` (chunk-z7whhrje.js): the selection context. `wC` reads it for hook order and does
  *  not use the value, so its default stands in for any provider. */
 export const Gfe = qt<unknown>(null);
+export const SelectionInstanceContext = qt<TerminalSelectionInstance | null>(null);
 
 const selectionReaders = new Map<unknown, TerminalSelectionInstance>();
 
-/** Source `oi` (chunk-kexg5hxg.js `function oi(){return At.of(B().host)}`): the map `wC` looks the
- *  current output stream up in. No terminal host is bound in this build, so the map is empty unless
- *  a caller binds a reader. */
+/** Source `oi` resolves the current host's selection reader. */
 export function oi(): Map<unknown, TerminalSelectionInstance> {
-  return selectionReaders;
+  const mounted = Ae(SelectionInstanceContext);
+  return mounted ? new Map([[process.stdout, mounted]]) : selectionReaders;
 }
 
 /** Bind one selection reader under a stream key (the source keys by `process.stdout`). Returns the

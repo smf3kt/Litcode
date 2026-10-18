@@ -43,6 +43,9 @@ import { osc52Payload } from './clipboard-osc52.js';
 import { layoutEngine } from './tui-layout.js';
 import { renderPreviewMarkdown } from './tui-markdown.js';
 import { TuiRenderer, type PromptLine } from './tui-renderer.js';
+import { DiffPanel } from './diff-panel.js';
+import { DiffSelectionOwner } from './diff-selection.js';
+import { randomUUID } from 'node:crypto';
 import { TuiDocumentRenderer } from './tui-document-renderer.js';
 import { Welcome, WELCOME_MIN_ROWS } from './tui-welcome.js';
 import { clt, tLo } from './tui-stream-preview.js';
@@ -113,7 +116,7 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
 }
 
 type TuiEvents = {
-  submit: [text: string]; interrupt: []; exit: []; pasteRejected: [bytes: number]; inputError: [error: Error];
+  submit: [text: string, attachment?: import('./terminal.js').PromptDiffSelection]; interrupt: []; exit: []; pasteRejected: [bytes: number]; inputError: [error: Error];
   action: [action: string];
 };
 
@@ -179,6 +182,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private readonly modes: TerminalModeController;
   private renderer: TuiRenderer | undefined;
+  private diffPanel: DiffPanel | undefined;
+  private diffPointer: { column: number; row: number; moved: boolean } | undefined;
+  private readonly diffSelection = new DiffSelectionOwner(() => this.render());
+  private diffAttachmentFocused = false;
   private documentRenderer: TuiDocumentRenderer | undefined;
   private welcomeRenderer: TuiDocumentRenderer | undefined;
   private welcomeRows: string[] = [];
@@ -330,6 +337,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.focus.subscribe(() => {
       this.progress.setFocused(this.focus.focused);
       if (!this.focus.focused && this.selection.dragging) this.selection = reduceSelection(this.selection, { type: 'end' });
+      if (!this.focus.focused && this.diffPointer) {
+        this.renderer?.endNativeSelection(); this.diffPointer = undefined;
+      }
       this.render();
     });
     this.maxProseWidth = options.maxProseWidth;
@@ -417,6 +427,24 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
   async flushInputHistory(): Promise<void> { await this.inputHistory.finish(); }
+  bindDiffPanel(session: import('./session.js').Session): void {
+    if (this.diffPanel?.sessionId === session.id) return;
+    this.diffPanel?.close();
+    this.diffPointer = undefined; this.diffSelection.dismiss(); this.diffAttachmentFocused = false;
+    this.renderer?.clearNativeSelection();
+    this.diffPanel = new DiffPanel(session, () => {
+      if (!this.closed) {
+        try { this.render(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
+      }
+    }, selection => this.diffSelection.set(selection));
+  }
+  async toggleDiffPanel(): Promise<string> {
+    if (!this.diffPanel) throw new Error('Diff panel has no bound session');
+    return this.diffPanel.toggle(this.options.output.columns ?? 80);
+  }
+  restoreDiffSelection(attachment: import('./terminal.js').PromptDiffSelection): void {
+    if (attachment.sessionId === this.diffPanel?.sessionId) this.diffSelection.restore(attachment.promptUuid, attachment.selection);
+  }
   bindStatusLine(session: import('./session.js').Session): void {
     this.statusLineSetting = session.config.statusLine;
     this.statusLineText = undefined; this.statusLineKey = '';
@@ -482,10 +510,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if(this.vimEnabled!==(mode==='vim')){this.gestures.reset();this.vim.reset();}this.vimEnabled=mode==='vim';this.vim.setRemaps(remaps);this.render();
   }
 
+  /** mr/Qs, chunk-qh0w98pn.js [34940,46581)/[7830,8512) UTF-16, share the painted input width. */
   private handleVim(action: EditorAction): boolean {
     const key=vimKey(action);if(!key)return false;this.vimHandling=true;const owner=this;
     const bridge:VimBridge={get text(){return owner.editor.text;},get cursor(){return owner.editor.cursor;},
-      columns:Math.max(20,this.options.output.columns??80)-2,
+      columns:this.conversationColumns()-2,
       change:(text,previous)=>{
         const raw=text.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,'');
         if(raw===this.editor.text)return;
@@ -514,7 +543,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   setRunning(running: boolean): void {
     this.running = running;
-    if (!running) this.progress.stop();
+    if (!running) { this.progress.stop(); this.diffPanel?.refresh(); }
     this.dispatch({ type: 'running', value: running });
   }
 
@@ -810,6 +839,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.undo.clear();
     this.editor = {...this.editor,pastedContents:{},historyPastes:[],historyDraftPastes:{}};
     this.stashedDraft = undefined; this.searchDraft = {text:'',cursor:0,pastedContents:{}};
+    this.diffPanel?.close(); this.diffPanel = undefined;
+    this.diffPointer = undefined; this.diffSelection.dismiss(); this.diffAttachmentFocused = false;
     this.progress.close(); this.progressRenderer?.close();
     this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
     this.welcomeRenderer?.close(); this.welcomeRenderer = undefined; this.welcomeRows = []; this.welcomeKey = '';
@@ -916,7 +947,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if(this.vimEnabled&&!this.vimHandling&&!this.dialog&&action.type!=='running'
       &&!(action.type==='interrupt'&&this.editor.running)&&this.handleVim(action))return;
     const transition = reduceEditorWithUndo(this.editor, action, { ...this.options,
-      navigationColumns: Math.max(20, this.options.output.columns ?? 80) - 2,
+      navigationColumns: this.conversationColumns() - 2,
       pasteOwner:this.pasteOwner,terminalRows:this.options.output.rows ?? 24 }, this.undo);
     if (transition.effects.some(effect => effect.type === 'submit')) this.inputHistory.add({display:this.editor.text,pastedContents:this.editor.pastedContents});
     const draftBefore = { text: this.editor.text, cursor: this.editor.cursor };
@@ -932,7 +963,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
     for (const effect of transition.effects) {
       if (effect.type === 'exit') { this.close(); this.emit('exit'); }
-      else if (effect.type === 'submit') this.emit('submit', effect.text);
+      else if (effect.type === 'submit') {
+        const promptUuid = randomUUID(), selection = this.diffSelection.take(effect.text, promptUuid);
+        this.diffAttachmentFocused = false;
+        this.emit('submit', effect.text, selection && this.diffPanel ? { sessionId: this.diffPanel.sessionId, promptUuid, selection } : undefined);
+      }
       else if (effect.type === 'interrupt') this.emit('interrupt');
       else this.emit('pasteRejected', effect.bytes);
     }
@@ -968,8 +1003,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return { key: '', name: action.type };
   }
 
-  private viewportSize(): { columns: number; rows: number } {
+  private conversationColumns(): number {
     const columns = Math.max(20, this.options.output.columns ?? 80);
+    return columns - (this.screen === 'chat' && !this.dialog ? this.diffPanel?.width(columns) ?? 0 : 0);
+  }
+
+  private viewportSize(): { columns: number; rows: number } {
+    const columns = this.conversationColumns();
     const rows = Math.max(4, this.options.output.rows ?? 24);
     const promptRows = this.inputLayout(columns, rows).lines.length;
     return { columns, rows: Math.max(0, rows - promptRows - 3 - this.progressHeight - this.statusLineRows.length) };
@@ -997,7 +1037,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private transcriptTotal(columns: number): number { return transcriptLines(this.transcript, columns, this.renderEntryRows).length; }
 
   private contexts(): TuiContext[] {
-    return this.screen === 'chat' ? ['Chat', 'Scroll', 'Global'] : contextStack({ screen: this.screen });
+    if (this.screen !== 'chat') return contextStack({ screen: this.screen });
+    const native = this.diffPanel?.width(this.options.output.columns ?? 80)
+      ? this.diffPanel.keys.activeContexts as TuiContext[] : [];
+    return [...new Set([...(this.diffAttachmentFocused ? ['Footer' as const] : []), ...native, 'Chat', 'Scroll', 'Global'] as TuiContext[])];
   }
 
   private readonly onData = (chunk: string | Buffer) => {
@@ -1022,7 +1065,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
       if (action.type === 'mouse') { this.handleMouse(action); continue; }
       if (action.type === 'key') { this.routeKey(action.sequence, action.command); continue; }
-      if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord)) {
+      if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord || this.diffAttachmentFocused)) {
         for (const character of action.text) {
           if (this.closed || this.editorController) return;
           this.routeKey(character);
@@ -1228,6 +1271,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private handleKey(sequence: string, command?: EditorCommand): boolean {
     if (command === 'newline') { this.dispatch({ type: command }, sequence); return true; }
+    if (sequence === '\x1b[B' && this.diffSelection.pending && !this.editor.text) {
+      this.diffAttachmentFocused = true; this.render(); return true;
+    }
     const outcome = this.keys.push(sequence, this.contexts());
     if (outcome.kind === 'pending') return true;
     if (outcome.kind === 'none') {
@@ -1239,12 +1285,40 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       return false;
     }
     if (outcome.match.action === 'history:previous' || outcome.match.action === 'history:next') return false;
+    // Source Yt resolves against all mounted contexts before invoking the registered handler.
+    if (this.screen === 'chat' && this.diffPanel?.width(this.options.output.columns ?? 80)
+      && this.diffPanel.keys.dispatchAction(outcome.match.action)) { this.render(); return true; }
     return this.applyAction(outcome.match.action);
   }
 
   private handleMouse(event: TerminalMouseEvent): void {
     if (this.options.mouseTracking === 'off' || this.screen === 'search') return;
     const view = this.viewportSize();
+    if (this.diffPanel?.width(this.options.output.columns ?? 80) && (event.col > view.columns || this.diffPointer)) {
+      const column = event.col - 1, row = event.row - 1;
+      if (event.action === 'wheelup' || event.action === 'wheeldown') {
+        this.renderer?.wheel(column, row, event.action === 'wheelup' ? -1 : 1,
+          { ctrl: event.ctrl, shift: event.shift, meta: event.meta });
+      } else if ((this.options.mouseTracking ?? 'full') === 'full') {
+        if (event.action === 'press' && (event.button & 3) === 0) {
+          this.selection = createSelection();
+          this.diffPointer = { column, row, moved: false };
+          this.renderer?.selectNative('start', column, row, this.clickCount({ column, line: row }));
+        } else if (this.diffPointer && (event.action === 'move' || event.action === 'release')) {
+          const pointer = this.diffPointer;
+          pointer.moved ||= column !== pointer.column || row !== pointer.row;
+          this.renderer?.selectNative(event.action === 'release' ? 'end' : 'drag', column, row);
+          if (event.action === 'release') {
+            this.diffPointer = undefined;
+            if (!pointer.moved && !this.renderer?.selectionInstance.hasTextSelection()) {
+              this.renderer?.click(column, row, { ctrl: event.ctrl, shift: event.shift, alt: event.meta });
+            }
+          }
+        }
+      }
+      this.render(); return;
+    }
+    if (event.action === 'press') this.renderer?.clearNativeSelection();
     const inside = event.col >= 1 && event.col <= view.columns
       && event.row >= 1 && event.row <= view.rows;
     if (event.action === 'wheelup' || event.action === 'wheeldown') {
@@ -1334,6 +1408,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     if (action !== 'chat:defaultToNewerModel') this.resetKillMode();
     switch (action) {
+      case 'footer:close':
+        if (!this.diffAttachmentFocused) return false;
+        this.diffAttachmentFocused = false; this.diffSelection.dismiss(); this.render(); return true;
+      case 'footer:up': case 'footer:clearSelection':
+        this.diffAttachmentFocused = false; this.render(); return true;
       case 'selection:copy': this.copySelection(); return true;
       case 'selection:extendLeft': this.extendSelection(-1, 0); return true;
       case 'selection:extendRight': this.extendSelection(1, 0); return true;
@@ -1396,6 +1475,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   /** Move the selection focus by a line/cell delta, clamping to the transcript. */
   private extendSelection(dx: number, dy: number): void {
+    if (this.renderer?.selectionInstance.hasTextSelection()) {
+      const direction = !Number.isFinite(dx) ? dx < 0 ? 'lineStart' : 'lineEnd'
+        : dy ? dy < 0 ? 'up' : 'down' : dx < 0 ? 'left' : 'right';
+      this.renderer.selectionInstance.moveSelectionFocus(direction); this.render(); return;
+    }
     const view = this.viewportSize();
     const lines = transcriptLines(this.transcript, view.columns, this.renderEntryRows);
     if (!lines.length) return;
@@ -1416,12 +1500,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private copySelection(): void {
     const view = this.viewportSize();
     const rows = renderedTranscriptRows(this.transcript, view.columns, this.renderEntryRows);
-    const text = selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
+    const native = this.renderer?.selectionInstance;
+    const text = native?.hasTextSelection() ? native.copySelectionNoClear()
+      : selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
     if (!text) return;
     let payload: string;
     try { payload = osc52Payload(text); }
     catch (error) { this.setStatus((error as Error).message); return; }
     this.options.output.write(payload);
+    native?.clearTextSelection();
     this.selection = reduceSelection(this.selection, { type: 'clear' });
     this.setStatus('copy request sent');
   }
@@ -1583,7 +1670,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.close();
     try { this.emit('inputError', error); } finally { this.emit('exit'); }
   };
-  private readonly onResize = () => { this.selection = createSelection(); this.render(); };
+  private readonly onResize = () => {
+    this.selection = createSelection(); this.diffPointer = undefined; this.renderer?.clearNativeSelection(); this.render();
+  };
 
   /**
    * Records the answer for the current step. A grouped request advances to the
@@ -2017,6 +2106,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!this.isTTY || !this.started || this.closed || this.editorSuspended) return;
     const columns = Math.max(20, this.options.output.columns ?? 80);
     const rows = Math.max(4, this.options.output.rows ?? 24);
+    this.diffPanel?.setColumns(columns);
     this.statusLine.setVimMode(this.vim.mode); this.statusLine.refresh();
     this.statusLine.setActive(this.dialog === undefined && this.screen === 'chat' && !this.gestures.hint);
     this.progress.setVisible(this.dialog === undefined);
@@ -2069,24 +2159,32 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.running,undefined,this.theme.current,this.theme.overrides,[],queryRows.slice(0,-1));
       this.drawnRows=rows;this.cursorRow=0;this.cursorColumn=this.queryEditor.cursor;return;
     }
-    const prompt = this.inputLayout(columns, rows);
-    const statusRows = this.renderStatusLine(columns, rows, Math.max(0, rows - prompt.lines.length - 4));
-    const progressRows = this.renderProgress(columns, rows, Math.max(0, rows - prompt.lines.length - 4 - statusRows.length));
+    const sidebarWidth = this.screen === 'chat' ? this.diffPanel?.width(columns) ?? 0 : 0;
+    const conversationWidth = columns - sidebarWidth;
+    const prompt = this.inputLayout(conversationWidth, rows);
+    const statusRows = this.renderStatusLine(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4));
+    const progressRows = this.renderProgress(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4 - statusRows.length));
     const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - progressRows.length - statusRows.length);
-    const viewport = layoutTranscript(this.transcript, columns, transcriptRows, this.renderEntryRows);
-    const welcome = this.transcript.entries.length === 0 ? this.renderWelcome(columns, rows) : [];
+    const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows);
+    const welcome = this.transcript.entries.length === 0 ? this.renderWelcome(conversationWidth, rows) : [];
 
     const frame: string[] = [];
     for (let row = 0; row < transcriptRows; row++) {
       const rendered = viewport.rows[row];
-      frame.push(welcome[row] ?? rendered?.ansi ?? pad(rendered?.text ?? '', columns));
+      frame.push(welcome[row] ?? rendered?.ansi ?? pad(rendered?.text ?? '', conversationWidth));
     }
     const target = transcriptRows + progressRows.length + 1 + prompt.cursorRow;
-    this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true);
+    this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true, () => {
+      if (!this.closed) {
+        try { this.render(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
+      }
+    });
     this.renderer.renderChat(frame, prompt.lines,
-      [this.statusRow(columns)],
+      [this.statusRow(conversationWidth)],
       columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
-      { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows);
+      { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
+      sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
+        this.renderer.appContext, this.renderer.selectionInstance) } : undefined);
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
 
@@ -2149,6 +2247,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private statusRow(columns: number): string {
     if(this.gestures.hint)return this.gestures.hint.slice(0,columns);
+    const attachment = this.diffSelection.pending;
+    if (attachment) return pad(`${this.diffAttachmentFocused ? '> ' : ''}${attachment.lineCount} ${attachment.lineCount === 1 ? 'line' : 'lines'} from diff${attachment.filePath ? ` in ${attachment.filePath}` : ''}`, columns);
     const hints = this.statusLineSetting && this.screen === 'chat' ? '' : this.statusHints();
     // The hints are the part a person needs when they are lost, so they keep as
     // much room as they need up to half the row, and status text is clipped

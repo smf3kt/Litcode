@@ -20,4 +20,4 @@ function So(e){let{project:t}=e;if(t===null)throw new GP;return t}
 var an="NoProjectDirectoryError";
 
 
-export { l, d, P, j, $3n, U3n, is, sv, hC, $r, v };
+export { l, d, P, j, $3n, U3n, is, sv, hC, $r, v, So };

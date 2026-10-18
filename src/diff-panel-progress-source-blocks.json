@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-fa626f29.js",
+      "sha256": "763b38096458e635d9287ed2de76d0582c01411968fb91a37ae6c95aaedf3536"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-fa626f29.js",
+      "sha256": "763b38096458e635d9287ed2de76d0582c01411968fb91a37ae6c95aaedf3536",
+      "range": [
+        896,
+        2048
+      ],
+      "units": 1152,
+      "bodySha256": "87e49d81b5f23fc510bd47bd28b43b4a838d591932b06c0ec4c1e603fde0326b",
+      "note": "IT progress bar and glyph geometry"
+    }
+  ],
+  "missing": []
+}

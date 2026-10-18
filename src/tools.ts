@@ -27,6 +27,7 @@ export type ToolContext = {
   maxOutputBytes: number;
   conversation?: readonly Anthropic.MessageParam[];
   interaction?: InteractionCallbacks;
+  fileHistory?: (file?: string) => void;
 };
 
 export type ToolDefinition = {
@@ -994,8 +995,10 @@ function writeFileTool(): ToolDefinition {
           throw new Error(`write_file: file already exists (pass overwrite: true): ${userPath}`);
         }
         verifyUnchanged(resolved, "write_file", userPath);
+        context.fileHistory?.(real);
         atomicWrite(real, content, stat.mode & 0o7777);
       } else {
+        context.fileHistory?.(real);
         atomicWrite(real, content);
       }
       const rel = path.relative(root, real) || userPath;
@@ -1058,6 +1061,7 @@ function editFileTool(): ToolDefinition {
         ? original.split(old_string).join(new_string)
         : original.replace(old_string, () => new_string);
       verifyUnchanged(resolved, "edit_file", userPath);
+      context.fileHistory?.(real);
       atomicWrite(real, updated, stat.mode & 0o7777);
       const count = replace_all ? occurrences : 1;
       const rel = path.relative(root, real) || userPath;
@@ -1106,7 +1110,8 @@ function runCommandTool(): ToolDefinition {
       }
       const { command, timeout_ms = COMMAND_DEFAULT_TIMEOUT_MS } = runCommandSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      return runShell(command, root, timeout_ms, maxBytesFor(context), context.signal);
+      try { return await runShell(command, root, timeout_ms, maxBytesFor(context), context.signal); }
+      finally { context.fileHistory?.(); }
     },
   };
 }

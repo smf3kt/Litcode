@@ -1,0 +1,34 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        214541,
+        224374
+      ],
+      "units": 9833,
+      "bodySha256": "cefce721da01c733e62b1d8bc439ec53be66d0b13c9b235c309c1a0fe33310bd",
+      "note": "native selection state, scoped drag, text extraction, scroll carry and paint"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        250176,
+        250654
+      ],
+      "units": 478,
+      "bodySha256": "4bb4cc7b8483cc34c3e992f48c63aa60c5a35d7a01e812979c5be19fbe371b08",
+      "note": "Vd selection scope hit test"
+    }
+  ],
+  "missing": []
+}

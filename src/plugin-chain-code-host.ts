@@ -26,13 +26,15 @@
 //
 //   function Qdn(){return Ae(i).activeThemeOverrides}                    [4481,4530) 49 units
 //
-// The layout context `Zy` has no emitter in this host, so its subscription is a no-op; `kc` still
-// reads its value each render and re-renders when the reader's answer changes. `Mi` answers false:
-// this host draws inline, the source's other mode. The structured code and diff highlighters
+// Native mounts subscribe through the terminal app context. Isolated runs keep the explicit
+// layout stub. The structured code and diff highlighters
 // (`rDr`/`CNo`) are gated in the source by `CLAUDE_CODE_SYNTAX_HIGHLIGHT`; this host does not expose
 // that flag, so the seam answers null, exactly the value the source answers when it is unset, and
 // the copied renderers take their non-structured path.
 import { Ae, R, Rt, en, hh, qt, w } from './plugin-chain-react-surface.js';
+import { nativeComponentRender } from './plugin-chain-react-hooks.js';
+import { Zy as AppContext } from './plugin-chain-press-button-source.js';
+import { Ae as nativeContext } from './tui-react-runtime.js';
 import { ThemeContext as i } from './tui-theme.js';
 import { RenderSettingsContext, y4n } from './tui-component-host.js';
 import { RenderCacheContext as Se, createRenderCache as Re } from './tui-base-components.js';
@@ -42,11 +44,12 @@ const Zy = qt({ subscribeLayout: (_listener: () => void) => () => {} });
 
 /** A product context carries its value in `_currentValue` (the TUI runtime's React shape), not in
  *  this runner's `defaultValue`; the source reads them through `Ae` inside the TUI runtime. */
-const readContext = <T>(context: { _currentValue?: unknown }): T => context._currentValue as T;
+const readContext = <T>(context: { _currentValue?: unknown }): T => nativeComponentRender()
+  ? nativeContext(context) as T : context._currentValue as T;
 
 /** Source `kc`: subscribe to the layout and re-render when the reader's answer changes. */
 export function kc<T>(read: () => T): T {
-  const { subscribeLayout: r } = Ae(Zy);
+  const { subscribeLayout: r } = Ae(nativeComponentRender() ? AppContext : Zy);
   const l = Rt(r, read);
   const [, u] = hh((c: number) => c + 1, 0);
   en(() => { if (!Object.is(read(), l)) u(0); });
@@ -59,8 +62,8 @@ export const Ys = (node: { yogaNode?: { getComputedWidth?(): number; getComputed
   height: node?.yogaNode?.getComputedHeight?.() ?? 0,
 });
 
-/** Source `Mi`: whether the terminal draws fullscreen. This host draws inline. */
-export const Mi = (): boolean => false;
+/** Source `Mi` is true during a native fullscreen component render. */
+export const Mi = (): boolean => nativeComponentRender();
 
 /** Source `Tj`: the render cache in the context, or one this component holds. */
 export function Tj(): ReturnType<typeof Re> {

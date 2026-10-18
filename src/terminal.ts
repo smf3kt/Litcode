@@ -559,8 +559,13 @@ export function layoutEditor(state: Pick<EditorState, 'text' | 'cursor'>, column
     cursorColumn, hiddenRows: Math.max(0, lines.length - rows) };
 }
 
+export interface PromptDiffSelection {
+  sessionId: string;
+  promptUuid: string;
+  selection: import('./diff-selection.js').DiffSelection;
+}
 export interface TerminalCallbacks {
-  onSubmit?: (text: string) => void;
+  onSubmit?: (text: string, attachment?: PromptDiffSelection) => void;
   onInterrupt?: () => void;
   onExit?: () => void;
   onAction?: (action: string) => void;
@@ -1105,6 +1110,9 @@ export interface TerminalSurface {
   bindInputHistory?(session: import('./session.js').Session): Promise<void>;
   flushInputHistory?(): Promise<void>;
   bindStatusLine?(session: import('./session.js').Session): void;
+  bindDiffPanel?(session: import('./session.js').Session): void;
+  toggleDiffPanel?(): Promise<string>;
+  restoreDiffSelection?(attachment: PromptDiffSelection): void;
   flushStatusLine?(): Promise<void>;
   pauseProgress?(paused: boolean): void;
   restoreTurnDuration?(duration?: import('./tui-progress.js').TurnDuration): void;

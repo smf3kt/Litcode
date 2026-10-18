@@ -73,12 +73,12 @@ export function applyRewind(session: Session, preview: RewindPreview, token: str
   const fresh = previewRewind(session, preview.turn, signal);
   if (token !== preview.token || fresh.token !== preview.token) throw new Error("Rewind preview is stale; preview again before applying");
   preview = fresh;
-  const next = Session.open(session.config.workspace, { config: structuredClone(session.config) });
+  const next = Session.open(session.config.workspace, { config: structuredClone(session.config), startedAt: session.startedAt });
   const identity = fs.lstatSync(next.file);
 
   try {
     for (const event of session.events.slice(1, preview.boundary + 1)) {
-      if (event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === "instruction_watch") next.append(event);
+      if (event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === "instruction_watch" || event.kind === 'file_history') next.append(event);
     }
     // Re-index inherited associations because effect journals were omitted.
     for (const event of session.events) if (event.kind === "checkpoint" && event.boundary <= preview.boundary) {
