@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
 import { AsyncHookRegistry, type AsyncHookCompletion } from "../src/async-hooks.js";
-import { runHooks, type AsyncHookRequest, type HookEvent, type HookPayload } from "../src/hooks.js";
+import { runHooks, type AsyncHookRequest, type HookCommandHandle, type HookEvent, type HookPayload } from "../src/hooks.js";
 
 const workspaces: string[] = [];
 function workspace(): string {
@@ -229,5 +229,157 @@ test("retained hook results are capped despite JSON duplication and large stderr
     const blocked = await registry.wait(await registry.start(request(root, "awk 'BEGIN { for(i=0;i<70000;i++) printf \"x\" }' >&2; exit 2", { event: "PreToolUse" })));
     assert.equal(blocked.result.blocked, true);
     assert.ok(Buffer.byteLength(JSON.stringify(blocked.result)) <= 64 * 1024);
+  } finally { await registry.close(); }
+});
+
+/** Start one command through the foreground runner and let the registry adopt
+ *  its live handle, exactly as the runtime's startAsyncCommand does. */
+async function adoptThroughForeground(root: string, command: string, options: { signal?: AbortSignal } = {}): Promise<{
+  foreground: Awaited<ReturnType<typeof runHooks>>; handle: HookCommandHandle; id: string; completions: AsyncHookCompletion[];
+}> {
+  const completions: AsyncHookCompletion[] = [];
+  const registry = new AsyncHookRegistry({ workspace: root, onResult: completion => { completions.push(completion); } });
+  let handle: HookCommandHandle | undefined;
+  const foreground = await runHooks({ PostToolUse: [{ command, timeout: 10 }] }, "PostToolUse", { cwd: root, session_id: "adopt" },
+    options.signal ?? new AbortController().signal, {
+      onCommandHandle: value => { handle = value; },
+      startAsyncCommand: request => {
+        assert.ok(request.handle, "the header must reach the owner with its live handle");
+        return registry.adopt(request, request.handle, `async_hook_${request.handle.pid}`);
+      },
+    });
+  assert.ok(handle);
+  const id = foreground.backgroundTasks?.[0];
+  assert.ok(id);
+  return { foreground, handle, id, completions };
+}
+
+test("first-line async header adopts the same process and skips the header in the completion", async () => {
+  const root = workspace();
+  const marker = path.join(root, "marker.json");
+  const release = path.join(root, "release");
+  const fixture = path.join(root, "fixture.mjs");
+  fs.writeFileSync(fixture, [
+    "import fs from 'node:fs';",
+    "import { setTimeout as delay } from 'node:timers/promises';",
+    "const [marker, release] = process.argv.slice(2);",
+    "let input = ''; for await (const chunk of process.stdin) input += chunk;",
+    "fs.writeFileSync(marker, JSON.stringify({ pid: process.pid, lines: input.trim().split('\\n').length }));",
+    "process.stdout.write('{\"async\"'); await delay(20); process.stdout.write(':true}');",
+    "while (!fs.existsSync(release)) await delay(5);",
+    "process.stdout.write('\\n{\"systemMessage\":\"OWNED_FINAL_CONTEXT\"}\\n');",
+  ].join("\n"));
+  const command = `${shellQuote(process.execPath)} ${shellQuote(fixture)} ${shellQuote(marker)} ${shellQuote(release)}`;
+  const completions: AsyncHookCompletion[] = [];
+  const registry = new AsyncHookRegistry({ workspace: root, onResult: completion => { completions.push(completion); } });
+  try {
+    let handle: HookCommandHandle | undefined;
+    const foreground = await runHooks({ PostToolUse: [{ command, timeout: 10 }] }, "PostToolUse", { cwd: root }, new AbortController().signal, {
+      onCommandHandle: value => { handle = value; },
+      startAsyncCommand: request => registry.adopt(request, request.handle!, `async_hook_${request.handle!.pid}`),
+    });
+    assert.ok(handle);
+    const markerValue = JSON.parse(fs.readFileSync(marker, "utf8")) as { pid: number; lines: number };
+    assert.equal(markerValue.lines, 1, "stdin is written exactly once");
+    assert.equal(handle.pid, markerValue.pid, "the adopted process is the one the foreground started");
+    assert.equal(foreground.backgroundTasks?.length, 1);
+    assert.equal(registry.list().length, 1);
+    assert.equal(registry.list()[0]?.state, "running");
+    assert.equal(completions.length, 0);
+    fs.writeFileSync(release, "release");
+    const completed = await registry.wait(foreground.backgroundTasks![0]!);
+    assert.equal(completions.length, 1);
+    assert.equal(completed.state, "completed");
+    assert.deepEqual(completed.result.systemMessages, ["OWNED_FINAL_CONTEXT"]);
+    assert.equal(JSON.stringify(completed.result).includes("registration failed"), false);
+  } finally { await registry.close(); }
+});
+
+test("async header parsing transfers only on the first parseable line", async () => {
+  const root = workspace();
+  const registry = new AsyncHookRegistry({ workspace: root });
+  try {
+    for (const [name, command] of [
+      ["malformed", "printf 'not json }\\n{\"async\":true}\\n{\"systemMessage\":\"late\"}'"],
+      ["nonasync", "printf '{\"async\":false}\\n{\"systemMessage\":\"late\"}'"],
+      ["plain", "printf 'hello\\n{\"async\":true}\\n'"],
+    ] as const) {
+      let adopted = false;
+      const result = await runHooks({ PostToolUse: [{ command }] }, "PostToolUse", { cwd: root }, new AbortController().signal, {
+        startAsyncCommand: async () => { adopted = true; return "unused"; },
+      });
+      assert.equal(adopted, false, `${name} first line must stay foreground`);
+      assert.equal(result.backgroundTasks, undefined, name);
+      assert.equal(registry.list().length, 0, name);
+    }
+  } finally { await registry.close(); }
+});
+
+test("a rejected adoption leaves the same process in the foreground", async () => {
+  const root = workspace();
+  const registry = new AsyncHookRegistry({ workspace: root });
+  try {
+    const command = "printf '{\"async\":true}\\n'; sleep 0.02; printf '{\"additionalContext\":\"final\"}\\n'";
+    const result = await runHooks({ PostToolUse: [{ command }] }, "PostToolUse", { cwd: root }, new AbortController().signal, {
+      startAsyncCommand: async () => { throw new Error("owner unavailable"); },
+    });
+    assert.equal(result.backgroundTasks, undefined);
+    assert.equal(registry.list().length, 0);
+    assert.ok(result.additionalContext.includes("final"), "the final output is still interpreted");
+  } finally { await registry.close(); }
+});
+
+test("configured async keeps its own header line as output without a second handoff", async () => {
+  const root = workspace();
+  const registry = new AsyncHookRegistry({ workspace: root });
+  try {
+    const command = "printf '{\"async\":true}\\n'; sleep 0.02; printf '{\"systemMessage\":\"OWNED_FINAL_CONTEXT\"}\\n'";
+    const completed = await registry.wait(await registry.start(request(root, command)));
+    assert.equal(completed.state, "completed");
+    assert.deepEqual(completed.result.systemMessages, ["OWNED_FINAL_CONTEXT"]);
+    assert.deepEqual(completed.result.additionalContext, []);
+    assert.equal(registry.list().length, 1, "no second job is registered");
+    assert.equal(JSON.stringify(completed.result).includes("registration failed"), false);
+  } finally { await registry.close(); }
+});
+
+test("turn cancellation after adoption retains the job and close kills its group", async () => {
+  const root = workspace();
+  const turn = new AbortController();
+  const fixture = `${shellQuote(process.execPath)} -e ${shellQuote([
+    "const fs=require('node:fs');",
+    "process.stdout.write('{\"async\":true}\\n');",
+    "setInterval(()=>{ if (!fs.existsSync(process.argv[1])) return; fs.writeFileSync(process.argv[1]+'.out','done'); process.exit(0); },10);",
+  ].join(""))} ${shellQuote(path.join(root, "flag"))}`;
+  const registry = new AsyncHookRegistry({ workspace: root });
+  try {
+    let handle: HookCommandHandle | undefined;
+    const foreground = await runHooks({ PostToolUse: [{ command: fixture, timeout: 30 }] }, "PostToolUse", { cwd: root }, turn.signal, {
+      onCommandHandle: value => { handle = value; },
+      startAsyncCommand: request => registry.adopt(request, request.handle!, `async_hook_${request.handle!.pid}`),
+    });
+    const id = foreground.backgroundTasks![0]!;
+    turn.abort();
+    await delay(30);
+    assert.equal(registry.get(id)?.state, "running", "turn cancellation must not end an owned job");
+    fs.writeFileSync(path.join(root, "flag"), "go");
+    assert.equal((await registry.wait(id)).state, "completed");
+    // A second adopted job is killed by registry close, including descendants.
+    const pidFile = path.join(root, "pid");
+    const long = `${shellQuote(process.execPath)} -e ${shellQuote("const fs=require('node:fs');process.stdout.write('{\"async\":true}\\n');fs.writeFileSync(process.argv[1],String(process.pid));setInterval(()=>{},1000);")} ${shellQuote(pidFile)}`;
+    const started = await runHooks({ PostToolUse: [{ command: long, timeout: 30 }] }, "PostToolUse", { cwd: root }, new AbortController().signal, {
+      startAsyncCommand: request => registry.adopt(request, request.handle!, `async_hook_${request.handle!.pid}`),
+    });
+    for (let i = 0; i < 100 && !fs.existsSync(pidFile); i++) await delay(5);
+    const pid = Number(fs.readFileSync(pidFile, "utf8"));
+    assert.ok(Number.isSafeInteger(pid) && pid > 1);
+    await registry.close();
+    assert.equal((await registry.wait(started.backgroundTasks![0]!)).state, "cancelled");
+    let alive = true;
+    for (let i = 0; i < 100; i++) {
+      try { process.kill(pid, 0); } catch { alive = false; break; }
+      await delay(5);
+    }
+    assert.equal(alive, false);
   } finally { await registry.close(); }
 });
