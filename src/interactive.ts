@@ -12,7 +12,7 @@ import { permissionPolicySchema } from './permissions.js';
 import { forkSession, listSessions } from './sessions.js';
 import { startBackgroundSession } from './background-session.js';
 import { parseAttachmentCommand } from './media.js';
-import { terminalAnswerAnnotation } from './interaction-tools.js';
+import { questionClarification, terminalAnswerAnnotation } from './interaction-tools.js';
 import { checkpointConversation, previewRewind, applyRewind, type RewindPreview } from './rewind.js';
 import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
@@ -354,20 +354,22 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         // One grouped request runs every question and then a review page, which
         // is the recovered flow's last tab; the answers come back in order.
         if (terminal?.prompt && request.questions.length > 0) {
-          const answer = await readDialog({ title: 'Questions', message: '', groups: request.questions.map(question => ({
-            key: question.header ?? question.question,
+          const answer = await readDialog({ title: 'Questions', message: '', allowClarification: true,
+            groups: request.questions.map(question => ({
+            key: question.question,
             title: question.header ?? 'Question', message: question.question,
             choices: question.options.map(option => ({ ...option, value: option.label })),
             multiple: question.multiSelect, allowText: true, maxTextChars: 4000 })) }, signal);
           if (!answer) throw new Error('Interaction cancelled');
-          return { answers: request.questions.map((question, questionIndex) => {
-            const entry = answer.groups?.find(item => item.key === (question.header ?? question.question));
+          const answers = request.questions.map((question, questionIndex) => {
+            const entry = answer.groups?.find(item => item.key === question.question);
             const selected = entry?.selected ?? [];
             const annotation = terminalAnswerAnnotation(question, selected, entry?.notes);
             return { questionIndex, selected,
               ...(entry?.text === undefined ? {} : { other: entry.text }),
               ...(annotation === undefined ? {} : { annotations: annotation }) };
-          }) };
+          });
+          return answer.clarify ? questionClarification(request, answers) : { answers };
         }
         const answers = [];
         for (const [questionIndex, question] of request.questions.entries()) {

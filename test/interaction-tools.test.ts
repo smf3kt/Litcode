@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  createInteractionTools, INTERACTION_LIMITS, previewFragmentError, admitCardAnswer, terminalAnswerAnnotation,
+  createInteractionTools, INTERACTION_LIMITS, previewFragmentError, admitCardAnswer, terminalAnswerAnnotation, questionClarification,
   type AskUserQuestionAnswer, type AskUserQuestionRequest, type InteractionCallbacks, type InteractionToolOptions,
 } from '../src/interaction-tools.js';
 import type { ToolContext } from '../src/tools.js';
@@ -60,6 +60,36 @@ test('terminal answer notes follow the same single-select preview gate', async (
     questionIndex: 0, selected: ['A'], annotations: { preview: 'Preview A', notes: 'note' } }] };
   const run = tools({ ask: async () => answer });
   assert.deepEqual(JSON.parse(await run('ask_user_question', withPreview)), answer);
+});
+
+test('clarification feedback preserves unanswered questions, completed answers and preview notes', async () => {
+  const request: AskUserQuestionRequest = { questions: [
+    { ...question.questions[0]!, options: [
+      { label: 'A', description: 'first', preview: 'Preview A' }, { label: 'B', description: 'second' }] },
+    { ...question.questions[0]!, question: 'Which tags?', multiSelect: true },
+    { ...question.questions[0]!, question: 'Another question?' },
+  ] };
+  const feedback = questionClarification(request, [
+    { questionIndex: 0, selected: ['B'], annotations: { notes: '  keep the layout  ' } },
+    { questionIndex: 1, selected: ['A'], other: 'with, comma', annotations: { notes: 'not a preview note' } },
+  ]);
+  assert.deepEqual(feedback, { behavior: 'deny', feedback: `The user wants to clarify these questions.
+    This means they may have additional information, context or questions for you.
+    Take their response into account and then reformulate the questions if appropriate.
+    Start by asking them what they would like to clarify.
+
+    Questions asked:
+- "Which implementation?"
+  Answer: B
+  User notes: keep the layout
+- "Which tags?"
+  Answer: A, "with, comma"
+- "Another question?"
+  (No answer provided)` });
+  assert.deepEqual(JSON.parse(await tools({ ask: async () => feedback })('ask_user_question', request)), feedback);
+  for (const invalid of [{ ...feedback, extra: true }, { behavior: 'deny', feedback: '' }]) {
+    await assert.rejects(tools({ ask: async () => invalid as typeof feedback })('ask_user_question', request), /invalid data/);
+  }
 });
 
 test('interaction catalog exposes strict schemas and read-only flags without invoking callbacks', () => {

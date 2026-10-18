@@ -1131,6 +1131,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.handleReviewAction(dialog, action, command ?? '')) return;
     const step = this.dialogStep(dialog);
     const choices = step?.choices ?? [];
+    const clarification = this.clarificationIndex(dialog);
+    if (clarification !== undefined && dialog.index === clarification) {
+      if (command === 'up' || sequence === '\x1b[Z') {
+        dialog.index -= 1; dialog.followFocus = true; this.render();
+      } else if (command === 'submit') this.clarifyDialog(dialog);
+      return;
+    }
     const textEntry = choices.length === 0 || dialog.index === choices.length;
     // Source `a3` binds plain `n` on the choice list to the notes input.
     if (!textEntry && action.type === 'insert' && action.text === 'n' && this.notesAvailable(dialog, step)) {
@@ -1141,11 +1148,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       dialog.followFocus = false; this.render(); return;
     }
     if (choices.length && (command === 'up' || command === 'down' || sequence === '\t' || sequence === '\x1b[Z')) {
-      const count = choices.length + (step?.allowText ? 1 : 0);
+      const count = choices.length + (step?.allowText ? 1 : 0) + (clarification === undefined ? 0 : 1);
       const delta = command === 'up' || sequence === '\x1b[Z' ? -1 : 1;
       const before = dialog.index;
-      dialog.index = (dialog.index + delta + count) % count;
-      if (dialog.index !== before) dialog.optionTouched = true;
+      dialog.index = clarification === undefined ? (dialog.index + delta + count) % count
+        : Math.max(0, Math.min(count - 1, dialog.index + delta));
+      if (dialog.index !== before && dialog.index < choices.length) dialog.optionTouched = true;
       dialog.followFocus = true; this.previewDialogTheme(); this.render(); return;
     }
     if (choices.length && !textEntry && (command === 'home' || command === 'end'
@@ -1173,6 +1181,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.handleReviewAction(dialog, action, command ?? '')) return;
     if (!textEntry && action.type === 'insert' && action.text === ' ' && step?.multiple) {
       if (dialog.selected.has(dialog.index)) dialog.selected.delete(dialog.index); else dialog.selected.add(dialog.index);
+      this.storeMultiDialogAnswer(dialog);
       dialog.error = undefined; this.render(); return;
     }
     if (step?.allowText && choices.length && (action.type === 'insert' || action.type === 'paste')) {
@@ -1193,6 +1202,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
           if (editorAction.type !== 'undo' && next.state.text !== dialog.editor.text)
             dialog.undo.record(dialog.editor.text, dialog.editor.cursor);
           dialog.editor = next.state; dialog.error = undefined;
+          this.storeMultiDialogAnswer(dialog);
         } else dialog.error = 'Answer exceeds 32768 bytes';
       }
       this.render();
@@ -1623,6 +1633,34 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return dialog.step < groups.length ? groups[dialog.step] : undefined;
   }
 
+  private clarificationIndex(dialog: ActiveDialog): number | undefined {
+    const group = (dialog.request.groups ?? [])[dialog.step];
+    if (!dialog.request.allowClarification || !group || !(group.choices?.length)) return undefined;
+    return group.choices.length + (group.allowText ? 1 : 0);
+  }
+
+  /** f3 onChange updates multi-select answers before advancing, [1158935,1159164), UTF-16. */
+  private storeMultiDialogAnswer(dialog: ActiveDialog): void {
+    const group = (dialog.request.groups ?? [])[dialog.step];
+    if (!group?.multiple) return;
+    const choices = group.choices ?? [];
+    const text = dialog.editor.text.trim();
+    dialog.answers.set(group.key, { key: group.key,
+      selected: [...dialog.selected].sort((a, b) => a - b).map(index => choices[index]!.value),
+      ...(text ? { text } : {}) });
+  }
+
+  private clarifyDialog(dialog: ActiveDialog): void {
+    const groups = (dialog.request.groups ?? []).flatMap(group => {
+      const answer = dialog.answers.get(group.key);
+      const notes = dialog.notes.get(group.key)?.trim();
+      if (!answer && !notes) return [];
+      return [{ key: group.key, selected: answer?.selected ?? [],
+        ...(answer?.text === undefined ? {} : { text: answer.text }), ...(notes ? { notes } : {}) }];
+    });
+    dialog.finish({ selected: [], clarify: true, groups });
+  }
+
   /** `zet`: notes exist only for a single-select question that shows a preview. */
   private notesAvailable(dialog: ActiveDialog, step: TerminalPromptRequest | TerminalPromptGroup | undefined): boolean {
     if (!(dialog.request.groups ?? []).length || step === undefined || step.multiple === true) return false;
@@ -1901,6 +1939,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         }
       } else body.push('', 'Preview:', ...box);
     }
+    const clarification = this.clarificationIndex(dialog);
+    if (clarification !== undefined) {
+      offsets[clarification] = body.length + 1;
+      body.push('', `${dialog.index === clarification ? '>' : ' '} Chat about this`);
+    }
     const focused = offsets[dialog.index];
     // Follow focus after navigation; explicit page scrolling can explore a long body.
     if (dialog.followFocus && focused !== undefined && height > 0) {
@@ -1919,7 +1962,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       : active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'
         : 'Enter next / Esc cancel / PgUp/PgDn';
     return [oneLine(title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
-      textEntry || dialog.notesEditing ? answer : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
+      textEntry || dialog.notesEditing ? answer : dialog.index === clarification ? 'Chat about this'
+        : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
       dialog.error ?? (progress ? `${progress} · ${hint}` : hint),
       ...(countdown === undefined ? [] : [countdown])].map((line, row) =>
         row > 0 && row <= height ? themeRows.get(dialog.scroll + row - 1) ?? pad(line, columns) : pad(line, columns));
