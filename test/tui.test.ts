@@ -863,6 +863,141 @@ test('clarification keeps the current multi-select choices and Other text before
   } finally { tui.close(); }
 });
 
+test('question external editor preserves notes, Other selections and root draft ownership', async () => {
+  const root = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'question-editor-'));
+  const visual = process.env.VISUAL;
+  const script = path.join(root, 'editor.mjs'), observed = path.join(root, 'observed.json');
+  fs.writeFileSync(script, `import fs from 'node:fs';const file=process.argv.at(-1);fs.writeFileSync(${JSON.stringify(observed)},JSON.stringify({content:fs.readFileSync(file,'utf8'),args:process.argv.slice(2)}));fs.writeFileSync(file,fs.readFileSync(file,'utf8')+' edited\\n');`);
+  process.env.VISUAL = process.execPath + ' ' + script;
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; isRaw: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.isRaw = false; input.setRawMode = raw => {input.isRaw = raw;};
+  const output = new Writable({write(_chunk, _encoding, done) {done();}});
+  Object.assign(output, {isTTY:true,columns:80,rows:24});watchScreen(output);
+  const tui = new TuiTerminal({input,output,workspace:root}).start();
+  const key = (text: string) => input.emit('data',text);
+  const edited = async (text: string) => {
+    for(let i=0;i<150 && !screenLines(output).some(line=>line.includes(text));i++)await delay(10);
+    assert.ok(screenLines(output).some(line=>line.includes(text)));assert.equal(input.isRaw,true);
+  };
+  try {
+    key('root draft'); const draft = structuredClone(tui.state);
+    tui.setRunning(true);
+    const pending = tui.prompt({message:'',allowClarification:true,groups:[
+      {key:'same:first',message:'First?',choices:[{label:'A',value:'A',preview:'exact preview'},{label:'B',value:'B'}]},
+      {key:'same:second',message:'Second?',allowText:true,choices:[{label:'X',value:'X'}]},
+      {key:'same:third',message:'Third?',multiple:true,allowText:true,choices:[{label:'Y',value:'Y'}]},
+    ]},new AbortController().signal);
+    key('\u0007');assert.equal(fs.existsSync(observed),false);
+    key('\x1b[B');key('n');key('seed\u0007\r');assert.equal(input.isRaw,false);await edited('seed edited');
+    assert.equal(JSON.parse(fs.readFileSync(observed,'utf8')).content,'seed');
+    assert.equal(JSON.parse(fs.readFileSync(observed,'utf8')).args.length,1);
+    key('\r');
+    key('\x1b[Bsingle\u0018');key('z');key('\u0007');await edited('singlez edited');key('\r');
+    key(' \x1b[Bmulti\u0007');await edited('multi edited');key('\x1b[B\r');
+    assert.deepEqual(await pending,{selected:[],clarify:true,groups:[
+      {key:'same:first',selected:['B'],notes:'seed edited'},
+      {key:'same:second',selected:[],text:'singlez edited'},
+      {key:'same:third',selected:['Y'],text:'multi edited'},
+    ]});
+    assert.deepEqual(tui.state,draft.running ? draft : {...draft,running:true});
+  } finally {tui.close();if(visual===undefined)delete process.env.VISUAL;else process.env.VISUAL=visual;fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('question external editor cancellation waits descendants and rejects a stale duplicate-header result', async () => {
+  const root = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR,'tmp') : os.tmpdir(),'question-cancel-'));
+  const visual=process.env.VISUAL,script=path.join(root,'editor.mjs'),ready=path.join(root,'ready.json');
+  fs.writeFileSync(script,`import fs from 'node:fs';import {spawn} from 'node:child_process';const file=process.argv.at(-1);const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'inherit'});fs.writeFileSync(file,'stale');fs.writeFileSync(${JSON.stringify(ready)},JSON.stringify({file,pid:process.pid,child:child.pid}));setInterval(()=>{},1000);`);
+  process.env.VISUAL=process.execPath+' '+script;
+  const input=new PassThrough() as PassThrough & {isTTY:boolean;isRaw:boolean;setRawMode:(raw:boolean)=>void};
+  input.isTTY=true;input.isRaw=false;input.setRawMode=raw=>{input.isRaw=raw;};
+  const output=new Writable({write(_chunk,_encoding,done){done();}});Object.assign(output,{isTTY:true,columns:80,rows:24});
+  const tui=new TuiTerminal({input,output,workspace:root}).start();
+  const request={message:'',groups:[{key:'same',message:'Same?',allowText:true,choices:[{label:'A',value:'A'}]}]};
+  try {
+    const controller=new AbortController(),pending=tui.prompt(request,controller.signal);
+    input.emit('data','\x1b[Boriginal\u0007');
+    for(let i=0;i<150&&!fs.existsSync(ready);i++)await delay(10);
+    assert.ok(fs.existsSync(ready));const active=JSON.parse(fs.readFileSync(ready,'utf8'));
+    controller.abort();assert.equal(await pending,undefined);
+    assert.equal(fs.existsSync(active.file),false);assert.equal(fs.existsSync(path.dirname(active.file)),false);
+    for(const pid of [active.pid,active.child])assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});
+    assert.equal(input.isRaw,true);
+    const next=tui.prompt(request,new AbortController().signal);
+    input.emit('data','\x1b[Bfresh\r');assert.deepEqual(await next,{selected:[],groups:[{key:'same',selected:[],text:'fresh'}]});
+    fs.rmSync(ready);const closing=tui.prompt(request,new AbortController().signal);
+    input.emit('data','\x1b[B\u0007');for(let i=0;i<150&&!fs.existsSync(ready);i++)await delay(10);
+    assert.ok(fs.existsSync(ready));const last=JSON.parse(fs.readFileSync(ready,'utf8'));
+    tui.close();assert.equal(await closing,undefined);assert.equal(input.isRaw,false);
+    assert.equal(fs.existsSync(last.file),false);for(const pid of [last.pid,last.child])assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});
+    fs.writeFileSync(script,`import fs from 'node:fs';import {spawn} from 'node:child_process';const file=process.argv.at(-1);const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'inherit'});fs.writeFileSync(file,'fresh external');fs.writeFileSync(${JSON.stringify(ready)},JSON.stringify({file,pid:process.pid,child:child.pid}));child.unref();`);
+    fs.rmSync(ready);
+    const input2=new PassThrough() as PassThrough & {isTTY:boolean;isRaw:boolean;setRawMode:(raw:boolean)=>void};
+    input2.isTTY=true;input2.isRaw=false;input2.setRawMode=raw=>{
+      if(raw && fs.existsSync(ready)) {
+        const active=JSON.parse(fs.readFileSync(ready,'utf8'));
+        assert.throws(()=>process.kill(active.child,0),{code:'ESRCH'});
+        assert.equal(fs.existsSync(active.file),false);
+      }
+      input2.isRaw=raw;
+    };
+    const resumed=new TuiTerminal({input:input2,output,workspace:root}).start();
+    try {
+      const normal=resumed.prompt(request,new AbortController().signal);
+      input2.emit('data','\x1b[Bseed\u0007');
+      for(let i=0;i<300&&!input2.isRaw;i++)await delay(10);
+      assert.equal(input2.isRaw,true);assert.ok(fs.existsSync(ready));
+      input2.emit('data','\r');
+      assert.deepEqual(await normal,{selected:[],groups:[{key:'same',selected:[],text:'fresh external'}]});
+    } finally {resumed.close();}
+    fs.rmSync(ready);
+    fs.writeFileSync(script,`import fs from 'node:fs';process.on('SIGTERM',()=>{});fs.writeFileSync(${JSON.stringify(ready)},JSON.stringify({file:process.argv.at(-1),pid:process.pid}));setInterval(()=>{},1000);`);
+    fs.writeFileSync(path.join(root,'ps'),'#!/bin/sh\nexit 2\n',{mode:0o700});
+    const previousPath=process.env.PATH;
+    process.env.PATH=root+path.delimiter+(previousPath??'');
+    const input3=new PassThrough() as PassThrough & {isTTY:boolean;isRaw:boolean;setRawMode:(raw:boolean)=>void};
+    input3.isTTY=true;input3.isRaw=false;input3.setRawMode=raw=>{input3.isRaw=raw;};
+    const failing=new TuiTerminal({input:input3,output,workspace:root}).start();
+    let ownedPid: number | undefined;
+    let cancelled: Promise<unknown> | undefined;
+    try {
+      const controller=new AbortController();
+      cancelled=failing.prompt(request,controller.signal);
+      input3.emit('data','\x1b[Boriginal\u0007');
+      for(let i=0;i<150&&!fs.existsSync(ready);i++)await delay(10);
+      assert.ok(fs.existsSync(ready));const active=JSON.parse(fs.readFileSync(ready,'utf8'));ownedPid=active.pid;
+      controller.abort();
+      assert.equal(await Promise.race([cancelled,delay(3000).then(()=>'timed out')]),undefined);
+      assert.throws(()=>process.kill(active.pid,0),{code:'ESRCH'});
+      assert.equal(fs.existsSync(path.dirname(active.file)),false);
+      assert.equal(input3.isRaw,true);
+    } finally {
+      if(ownedPid!==undefined)try{process.kill(ownedPid,'SIGKILL');}catch{}
+      if(cancelled)await Promise.race([cancelled,delay(3000)]);
+      failing.close();if(previousPath===undefined)delete process.env.PATH;else process.env.PATH=previousPath;
+    }
+  } finally {tui.close();if(visual===undefined)delete process.env.VISUAL;else process.env.VISUAL=visual;fs.rmSync(root,{recursive:true,force:true});}
+});
+
+test('question external editor keeps null and unchanged text, bounds edited text and pauses AFK', async () => {
+  const root=fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR,'tmp') : os.tmpdir(),'question-results-'));
+  const visual=process.env.VISUAL,script=path.join(root,'editor.mjs'),mode=path.join(root,'mode');
+  fs.writeFileSync(script,`import fs from 'node:fs';const file=process.argv.at(-1),mode=fs.readFileSync(${JSON.stringify(mode)},'utf8');if(mode==='null')process.exit(7);if(mode==='long')fs.writeFileSync(file,'x'.repeat(8193));if(mode==='wait')await new Promise(resolve=>setTimeout(resolve,1300));`);
+  process.env.VISUAL=process.execPath+' '+script;
+  const input=new PassThrough() as PassThrough & {isTTY:boolean;isRaw:boolean;setRawMode:(raw:boolean)=>void};input.isTTY=true;input.isRaw=false;input.setRawMode=raw=>{input.isRaw=raw;};
+  const output=new Writable({write(_chunk,_encoding,done){done();}});Object.assign(output,{isTTY:true,columns:80,rows:24});
+  const tui=new TuiTerminal({input,output,workspace:root}).start();let settled=false;
+  try {
+    const pending=tui.prompt({message:'',afkTimeoutMs:500,groups:[{key:'Notes',message:'Notes?',choices:[{label:'A',value:'A',preview:'exact'}]}]},new AbortController().signal).then(answer=>{settled=true;return answer;});
+    input.emit('data','n');input.emit('data','original');
+    for(const value of ['null','unchanged','long','wait']) {
+      fs.writeFileSync(mode,value);input.emit('data','\u0007');assert.equal(input.isRaw,false);
+      for(let i=0;i<200&&!input.isRaw;i++)await delay(10);
+      assert.equal(input.isRaw,true);assert.equal(settled,false);
+    }
+    input.emit('data','\r');assert.deepEqual(await pending,{selected:[],groups:[{key:'Notes',selected:[],text:'(notes only)',notes:'original'}]});
+  } finally {tui.close();if(visual===undefined)delete process.env.VISUAL;else process.env.VISUAL=visual;fs.rmSync(root,{recursive:true,force:true});}
+});
+
 test('a grouped question can be reopened from the review page and cancelled', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
