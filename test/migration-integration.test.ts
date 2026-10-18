@@ -302,7 +302,10 @@ test('migration PreToolUse updatedInput is reauthorized before filesystem effect
     await f.run('hook alters input'); assert.equal(fs.existsSync(path.join(root, 'public.txt')), false);
     assert.equal(fs.existsSync(path.join(root, 'private/secret.txt')), false);
     assert.equal(f.session.events.some(event => event.kind === 'tool_start' && event.id === 'rewrite'), false);
-    assert.ok(f.session.events.some(event => event.kind === 'hook_result' && event.event === 'PermissionDenied'));
+    // I9r caller, sfn [2288685,2289127), UTF-16, raises only for auto classifier denials.
+    assert.deepEqual(f.session.events.filter(event => event.kind === 'hook_result').map(event => event.event),
+      ['PreToolUse']);
+    assertPaired(f.session.messages);
   } finally { await f.close(); }
 });
 

@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { z } from "zod";
 
-import type { ToolContext, ToolDefinition } from "./tools.js";
+import { confineResolved, type ToolContext, type ToolDefinition } from "./tools.js";
 
 export const LSP_MAX_FRAME_BYTES = 1024 * 1024;
 export const LSP_MAX_FILE_BYTES = 2 * 1024 * 1024;
@@ -110,14 +110,14 @@ function confine(root: string, userPath: string): string {
   }
   return current;
 }
-function readDocument(root: string, userPath: string): { file: string; text: string } {
-  const file = confine(root, userPath);
+function readDocument(root: string, userPath: string, directories: readonly string[] = []): { file: string; text: string } {
+  const file = directories.length ? confineResolved(root, userPath, true, directories).path : confine(root, userPath);
   const fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
   try {
     const stat = fs.fstatSync(fd);
     if (!stat.isFile()) throw new Error("LSP path must be a regular file");
     if (stat.size > LSP_MAX_FILE_BYTES) throw new Error(`LSP file exceeds ${LSP_MAX_FILE_BYTES} byte limit`);
-    const rechecked = confine(root, userPath);
+    const rechecked = directories.length ? confineResolved(root, userPath, true, directories).path : confine(root, userPath);
     const current = fs.statSync(rechecked);
     if (rechecked !== file || current.dev !== stat.dev || current.ino !== stat.ino) throw new Error("LSP file changed during path validation");
     const data = Buffer.alloc(Math.min(stat.size + 1, LSP_MAX_FILE_BYTES + 1));
@@ -196,7 +196,7 @@ export class LspClient {
     else context.signal.addEventListener("abort", this.onSessionAbort, { once: true });
   }
 
-  async execute(input: Input, signal: AbortSignal): Promise<unknown> {
+  async execute(input: Input, signal: AbortSignal, directories: readonly string[] = []): Promise<unknown> {
     checkAbort(signal);
     checkAbort(this.context.signal);
     if (this.closing) throw this.failure ?? new Error("LSP connection closed");
@@ -206,21 +206,21 @@ export class LspClient {
       checkAbort(signal);
       checkAbort(this.context.signal);
       if (this.closing) throw this.failure ?? new Error("LSP connection closed");
-      return this.perform(input, signal);
+      return this.perform(input, signal, directories);
     })();
     // An aborted waiter cannot let its successor overtake the still-running call.
     this.queue = Promise.allSettled([previous, operation]);
     return operation;
   }
 
-  private async perform(input: Input, signal: AbortSignal): Promise<unknown> {
+  private async perform(input: Input, signal: AbortSignal, directories: readonly string[]): Promise<unknown> {
     this.root ??= fs.realpathSync(this.context.workspace);
     let file: string | undefined;
     let text: string | undefined;
     const positionOperation = !["diagnostics", "document_symbols", "workspace_symbols"].includes(input.operation);
     if (input.operation !== "workspace_symbols" || input.path !== undefined) {
       if (!input.path) throw new Error("LSP operation requires path");
-      ({ file, text } = readDocument(this.root, input.path));
+      ({ file, text } = readDocument(this.root, input.path, directories));
     }
     if (positionOperation) {
       if (input.line === undefined || input.column === undefined) throw new Error("LSP operation requires 1-based line and column");
@@ -585,7 +585,7 @@ export function createLspTools(config: LspConfig, context: LspContext, options: 
           const input = lspInputSchema.parse(raw);
           const client = input.path ? extensions.get(path.extname(input.path).toLowerCase()) : input.operation === "workspace_symbols" && clients.length === 1 ? clients[0] : undefined;
           if (!client) throw new Error(input.operation === "workspace_symbols" ? "Workspace symbols require a path to select a configured server" : "No configured LSP server for file extension");
-          const result = JSON.stringify(await client.execute(input, toolContext.signal));
+          const result = JSON.stringify(await client.execute(input, toolContext.signal, toolContext.workingDirectories?.(true)));
           return Buffer.byteLength(result) <= limit ? result : bounded(`${bounded(result, Math.max(0, limit - 24))}\n[lsp: output truncated]`, limit);
         } catch (error) {
           const result = JSON.stringify({ status: error instanceof Error && error.name === "AbortError" ? "aborted" : "error", message: errorText(error) });

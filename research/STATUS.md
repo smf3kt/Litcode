@@ -1,5 +1,7 @@
 # Research and implementation status
 
+2026-10-18 W183 local permission integration validated: destination persistence, live child/fork/reload owners, recovered auto classifier/provenance and PLAN transitions. Check/build,2607/2607full,18requestCLI,515file offline install and independent original/final expansion probes pass at a200faac before comment-only cleanup. Final identity and package record are maintained in [W183](ports/W183-permission-destinations.md); other C-area packages remain open.
+
 2026-10-18 W182 verified: question notes/Other external editing and normal/abort cleanup, including direct-launcher release when ps fails. Check/build, 62/62 affected and compiled PTY passed; both lifecycle failures independently rechecked at final identity ed62c245. Remaining C-area work stays open; [W182](ports/W182-question-editor.md).
 
 2026-10-18 W181: local plugin workflow paths and session-owned named catalogs verified; independent runtime freshness and session path diagnostics review defects fixed. 84 affected tests, check/build and compiled CLI passed. Final identity f13fe216; remaining C-9 defaults in [W181](ports/W181-local-plugin-workflows.md).

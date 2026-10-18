@@ -45,6 +45,7 @@ export function forkSession(source: Session, eventBoundary?: number): Session {
   const history = eventBoundary === undefined ? source.events : source.events.slice(0, eventBoundary + 1);
   const fork = Session.open(source.config.workspace, { config: structuredClone(source.config), startedAt: source.startedAt });
   try {
+    if (eventBoundary === undefined) fork.carryForkPermissions(source);
     // Copy conversation epochs, not tool side-effect journals or locks.
     const boundaries = new Map<number, number>([[0, 0]]);
     for (const [index, event] of history.entries()) {
@@ -53,7 +54,7 @@ export function forkSession(source: Session, eventBoundary?: number): Session {
         if (event.kind === 'turn_end') boundaries.set(index, fork.events.length - 1);
       }
       if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) fork.append({ ...event, boundary: boundaries.get(event.boundary)! });
-      if (event.kind === 'title' || event.kind === "instruction_watch" || event.kind === 'file_history') fork.append(event);
+      if (event.kind === 'title' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command') fork.append(event);
     }
     fork.append({ kind: 'branch', source: source.id, workspace: source.config.workspace,
       boundary: eventBoundary ?? source.events.length - 1, reason: eventBoundary === undefined ? 'fork' : 'rewind' });

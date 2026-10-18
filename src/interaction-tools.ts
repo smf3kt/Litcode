@@ -660,6 +660,7 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
   return [
     {
       readOnly: true,
+      requiresUserInteraction: true,
       schema: {
         name: 'ask_user_question',
         description: 'Ask the user 1-4 finite preference or decision questions with 2-4 labeled options each. ' +
@@ -709,6 +710,7 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
     },
     {
       readOnly: true,
+      requiresUserInteraction: true,
       schema: {
         name: 'submit_plan',
         description: 'Submit the complete Markdown plan to the host for review. Preserve all sections, steps and validation details. ' +

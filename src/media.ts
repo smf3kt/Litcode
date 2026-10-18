@@ -8,7 +8,7 @@ import type { Anthropic } from "@anthropic-ai/sdk";
 import { PDFDocument } from "pdf-lib";
 import { z } from "zod";
 
-import type { ToolDefinition } from "./tools.js";
+import { confineResolved, type ToolContext, type ToolDefinition } from "./tools.js";
 
 export const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
 export const MEDIA_MAX_PAGES = 20;
@@ -20,7 +20,7 @@ export const IMAGE_MAX_HEIGHT = 2000;
 export const IMAGE_MAX_BASE64_BYTES = 5 * 1024 * 1024;
 export const IMAGE_TARGET_RAW_BYTES = (IMAGE_MAX_BASE64_BYTES / 4) * 3;
 export function base64Length(bytes: number): number { return Math.ceil(bytes / 3) * 4; }
-export type MediaContext = { workspace: string; signal: AbortSignal };
+export type MediaContext = Pick<ToolContext, 'workspace' | 'signal' | 'workingDirectories'>;
 export type MediaOptions = { pages?: string };
 export const mediaInputSchema = z.object({ path: z.string().min(1).max(4096), pages: z.string().min(1).max(256).optional() }).strict();
 export type MediaAttachment = z.infer<typeof mediaInputSchema>;
@@ -175,7 +175,8 @@ async function readBytes(userPath: string, context: MediaContext): Promise<Buffe
         "Ask the user to attach it to the chat themselves if they want it sent.",
     );
   }
-  const file = await confine(root, userPath);
+  const file = context.workingDirectories?.(true).length
+    ? confineResolved(root, userPath, true, context.workingDirectories(true)).path : await confine(root, userPath);
   checkAbort(context.signal);
   const handle = await fsp.open(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
   try {
@@ -190,7 +191,8 @@ async function readBytes(userPath: string, context: MediaContext): Promise<Buffe
       );
     }
     if (stat.size > MEDIA_MAX_BYTES) throw new Error(`Media exceeds ${MEDIA_MAX_BYTES} byte limit`);
-    const real = await confine(root, userPath);
+    const real = context.workingDirectories?.(true).length
+      ? confineResolved(root, userPath, true, context.workingDirectories(true)).path : await confine(root, userPath);
     const current = await fsp.stat(real);
     if (real !== file || current.dev !== stat.dev || current.ino !== stat.ino) throw new Error("Media path changed during validation");
     checkAbort(context.signal);

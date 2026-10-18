@@ -1,9 +1,11 @@
+import { cloneClassifierMessages } from './message-origin.js';
 import { z } from 'zod';
 import { Agent, assertPaired, type StopRuntimeState } from './agent.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { AgentTypeInfo } from './agent-types.js';
 import { Session, type SessionConfig } from './session.js';
 import type { ModelProvider } from './provider.js';
+import { permissionOwner, seedPermissionUpdates } from './permissions.js';
 import type { ToolDefinition } from './tools.js';
 import { AsyncHookRegistry, type AsyncHookCompletion } from './async-hooks.js';
 import type { HookRunOptions } from './hooks.js';
@@ -71,7 +73,7 @@ export function resolveChildLaunch(parent: SessionConfig, raw: ChildLaunchOption
 export function forkMessages(messages: readonly Anthropic.MessageParam[] | undefined, fork: boolean): Anthropic.MessageParam[] {
   if (!fork) return [];
   if (!messages) throw new Error('Fork requires a parent conversation snapshot');
-  const snapshot = structuredClone([...messages]);
+  const snapshot = cloneClassifierMessages(messages);
   assertPaired(snapshot);
   // Child system/tools differ from the producing prefix; signed reasoning is conversation-bound.
   for (const message of snapshot) {
@@ -225,6 +227,22 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
         }
         context.signal.throwIfAborted();
         session = Session.open(child.workspace, { config: child, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}) });
+        // yn, 40cep [123604,125280), UTF-16. Read the current parent on each decision.
+        const sourceOwner = () => permissionOwner((typeof source === 'function' ? source() : source).permissions);
+        session.inheritPermissions({
+          prepareAutoMode: () => sourceOwner()?.prepareAutoMode?.(),
+          get adoptUpdates() { return sourceOwner()?.adoptUpdates; },
+          state: () => {
+            const parent = typeof source === 'function' ? source() : source;
+            const state = permissionOwner(parent.permissions)?.state() ?? seedPermissionUpdates(parent.permissions,
+              parent.workspace, parent.configSources?.userDir);
+            return { ...state, mode: state.mode ?? parent.permissions?.mode };
+          },
+          workingDirectories: readOnly => {
+            const parent = typeof source === 'function' ? source() : source;
+            return permissionOwner(parent.permissions)?.workingDirectories(readOnly) ?? [];
+          },
+        });
         for (const message of messages) session.append({ kind: 'message', message });
         if (launch.fork && messages.length) session.append({ kind: 'turn_end', reason: 'fork_seed' });
         hooks = createChildHookLifecycle(session, options);
@@ -233,7 +251,7 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
           ...(options.terminalSequence ? { terminalSequence: sequence => options.terminalSequence!(session!.id, sequence) } : {}),
           ...(options.stopState ? { stopState: options.stopState } : {}) });
         await agent.startSession(launch.fork ? 'fork' : 'startup', context.signal);
-        const result = await agent.run(args.prompt, context.signal);
+        const result = await agent.run(args.prompt, context.signal, undefined, undefined, [], undefined, { kind: 'child', source: 'agent' });
         output = { session_id: session.id, reason: result.reason, text: result.text, model_calls: result.modelCalls,
           ...(options.enableAdvanced ? { workspace: child.workspace } : {}) };
       } catch (error) { failure = error; failed = true; }

@@ -1,0 +1,152 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        219605,
+        220384
+      ],
+      "units": 779,
+      "bodySha256": "deaec1d535d35776d0c722c04a0e7c9c9a212676a12d2218ca10d8db431eee7a",
+      "note": "path root syntax"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        220384,
+        220553
+      ],
+      "units": 169,
+      "bodySha256": "53965bfa4efff353f03c11aba11ae12196664c76acc86add83f4f5296040b578",
+      "note": "pattern normalization"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        220736,
+        220876
+      ],
+      "units": 140,
+      "bodySha256": "5323df974064cac7f36a072ad5184760b7a66e7b83269db3df0f56e8ca267cab",
+      "note": "recursive path pattern"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        220876,
+        221216
+      ],
+      "units": 340,
+      "bodySha256": "7e00e682a0bfd2903e53051e2085a122dba268ececc24a32155a6bfaefb07004",
+      "note": "invalid pattern disposition"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        151454,
+        151771
+      ],
+      "units": 317,
+      "bodySha256": "31227157051dffb1ee2561fb7bd2f7d6e7a6aec5b38390d9b0a81c0739fa275d",
+      "note": "ignore pattern validation"
+    },
+    {
+      "module": "chunk-z6p21rxk.js",
+      "sha256": "2e9c002da378e738a825dbd5c30f9a6341a9cf2c1d7022d4e1bbec2dfacf72dd",
+      "range": [
+        2118,
+        2498
+      ],
+      "units": 380,
+      "bodySha256": "d7cd66439a7ef446518ed5f2e3e35fc98070b96d0d088bcf08f8ad156dabce07",
+      "note": "literal pattern escaping"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        181722,
+        181873
+      ],
+      "units": 151,
+      "bodySha256": "8de0eb82bd6e21755dd68f525dab55fb46778dc412afd57ce068c2dab899cba0",
+      "note": "shell wildcard sentinels"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        181873,
+        181928
+      ],
+      "units": 55,
+      "bodySha256": "1190f0b634cc3d060c58655c8f99818791adcc126da6ee4baee0af3bd6cddd55",
+      "note": "shell prefix"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        181928,
+        182090
+      ],
+      "units": 162,
+      "bodySha256": "d6a50ab3cb3e592e295ea37bb35221a4a921cdbc4a8a1ed68bbf5a04628ef878",
+      "note": "shell wildcard detection"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        182221,
+        182861
+      ],
+      "units": 640,
+      "bodySha256": "3b5d045376695f786b03e7f1ecf5e919551ee31acbbeb1fcd8d3b5499442e9b6",
+      "note": "shell wildcard matcher"
+    },
+    {
+      "module": "chunk-3cynezh1.js",
+      "sha256": "c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3",
+      "range": [
+        182861,
+        183008
+      ],
+      "units": 147,
+      "bodySha256": "4320ed8f1ca2ba09f1a2c76181883b900a8d10961bdad8e16371b4103b247267",
+      "note": "shell rule variants"
+    },
+    {
+      "module": "chunk-2bcyxj9q.js",
+      "sha256": "fac54023446990731332f837b388955e357036b2797a11f93150648afb45f7e0",
+      "range": [
+        221216,
+        221752
+      ],
+      "units": 536,
+      "bodySha256": "f9dc2d49396edfb0c4868ab368ece8218428aa670bd9168a52595cb78de3a65a",
+      "note": "physical twin literal prefix and glob tail"
+    }
+  ],
+  "missing": []
+}

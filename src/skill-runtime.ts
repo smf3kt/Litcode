@@ -4,7 +4,7 @@ import { Agent } from './agent.js';
 import type { AgentRegistry } from './agent-registry.js';
 import { expandSkill, type SkillInfo } from './config.js';
 import { HOOK_EVENTS, flattenHookDefinitions, hooksSchema, type HooksConfig } from './hooks.js';
-import { permissionDecision, type PermissionDecision } from './permissions.js';
+import { permissionDecision, permissionOwner, bindPermissionOwner, childPermissionState, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
 import { Session, type SessionConfig } from './session.js';
 import type { SkillEffectJournal } from './skill-effects.js';
@@ -225,7 +225,9 @@ export function skillRequiresExecution(skill: SkillInfo, config?: SessionConfig)
 export async function executeSkill(skill: SkillInfo, args: string, options: SkillExecutionOptions): Promise<string> {
   options.signal.throwIfAborted();
   skill = structuredClone(skill);
+  const owner = permissionOwner(options.config.permissions);
   options = { ...options, config: structuredClone(options.config), tools: [...options.tools] };
+  if (owner) bindPermissionOwner(options.config.permissions, owner);
   if (options.source === 'model' && skill.disableModelInvocation) throw new Error('Skill is disabled for model invocation');
   if (options.source === 'user' && !skill.userInvocable) throw new Error('Skill is hidden from user invocation');
   if (skill.agent !== undefined && skill.context !== 'fork') throw new Error('Skill agent routing requires context: fork');
@@ -250,6 +252,13 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
   }
   const body = await expandedBody(skill, args, options);
   if (!fork) return body;
+  const childOwner = owner && {
+    prepareAutoMode: () => owner.prepareAutoMode?.(),
+    state: () => childPermissionState(owner.state(), skill.allowedTools),
+    workingDirectories: (readOnly: boolean) => owner.workingDirectories(readOnly),
+    adoptUpdates: owner.adoptUpdates,
+  };
+  if (childOwner) bindPermissionOwner(options.config.permissions, childOwner);
   const config = structuredClone(options.config);
   const model = skill.model ?? route?.model;
   const effort = skill.effort ?? route?.effort;
@@ -267,12 +276,12 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
     ...tool,
     async execute(input: unknown, context: Parameters<ToolDefinition['execute']>[1]): Promise<string> {
       await beforeTool(tool, input, context.signal);
-      return tool.execute(input, { ...context, allowShell: context.allowShell && config.allowShell });
+      return tool.execute(input, { ...context, ...(owner ? { workingDirectories: owner.workingDirectories } : {}), allowShell: context.allowShell && config.allowShell });
     },
     ...(tool.executeBlocks ? {
       async executeBlocks(input: unknown, context: Parameters<ToolDefinition['execute']>[1]) {
         await beforeTool(tool, input, context.signal);
-        return tool.executeBlocks!(input, { ...context, allowShell: context.allowShell && config.allowShell });
+        return tool.executeBlocks!(input, { ...context, ...(owner ? { workingDirectories: owner.workingDirectories } : {}), allowShell: context.allowShell && config.allowShell });
       },
     } : {}),
   }));
@@ -285,7 +294,7 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
     if (route?.type?.body) registryConfig.system += '\n\nAgent instructions:\n' + route.type.body;
     const descriptor = await options.registry!.launch({ prompt: body, mode, max_turns: Math.min(child.maxTurns, 30), background: skill.background === true,
       ...(model && model !== 'inherit' ? { model } : {}), ...(route?.isolation ? { isolation: route.isolation } : {}) }, options.signal,
-      { config: registryConfig, tools: originals, beforeTool, ...(conversation !== undefined ? { conversation } : {}) });
+      { config: registryConfig, tools: originals, beforeTool, permissionOwner: childOwner, ...(conversation !== undefined ? { conversation } : {}) });
     if (!skill.background) return capChildOutput(JSON.stringify({ session_id: descriptor.session_id, reason: descriptor.reason, text: descriptor.summary, model_calls: descriptor.model_calls }), config.maxOutputBytes);
     return capChildOutput(JSON.stringify(descriptor), config.maxOutputBytes);
   }
@@ -293,6 +302,7 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
   // Agent's outer check delegates to it so one input asks only once.
   child.permissions = { mode: 'bypass', allow: [], deny: [] };
   const session = Session.open(config.workspace, { config: child });
+  if (childOwner) session.inheritPermissionAdoption(childOwner);
   let agent: Agent | undefined;
   let asyncHooks: ReturnType<typeof createChildHookLifecycle> | undefined;
   try {
@@ -304,7 +314,7 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
       ...(options.terminalSequence ? { terminalSequence: sequence => options.terminalSequence!(session.id, sequence) } : {}),
       ...(options.stopState ? { stopState: options.stopState } : {}) });
     await agent.startSession(conversation !== undefined ? 'fork' : 'startup', options.signal);
-    const result = await agent.run(body, options.signal);
+    const result = await agent.run(body, options.signal, undefined, undefined, [], undefined, { kind: 'child', source: 'skill' });
     return capChildOutput(JSON.stringify({ session_id: session.id, reason: result.reason, text: result.text, model_calls: result.modelCalls }), config.maxOutputBytes);
   } finally {
     try { await agent?.endSession(options.signal.aborted ? 'interrupt' : 'other'); }

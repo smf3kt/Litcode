@@ -226,7 +226,9 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   }
   if ('hooks' in settings) out.hooks = hooksSchema.parse(settings.hooks) as HooksConfig;
   if ('permissions' in settings) {
-    out.permissions = permissionsSchema.parse(settings.permissions) as PermissionPolicy;
+    const raw = z.record(z.unknown()).parse(settings.permissions);
+    out.permissions = permissionsSchema.parse({ mode: raw.defaultMode === 'bypassPermissions' ? 'bypass' : raw.defaultMode ?? 'default',
+      allow: [], deny: [], ...raw }) as PermissionPolicy;
   }
   if ('mcpServers' in settings) out.mcpServers = mcpServersSchema.parse(settings.mcpServers);
   if ('mcpClient' in settings) out.mcpClient = configSchema.shape.mcpClient.parse(settings.mcpClient);
@@ -994,6 +996,7 @@ export async function createRuntime(
   };
   const releaseSession = async (owner: string): Promise<void> => {
     if (boundSession?.id === owner) bindingController.abort();
+    if (boundSession?.id === owner) await boundSession.drainPermissionWrites();
     if (elicitation?.owner === owner) { elicitation.controller.abort(); elicitation = undefined; }
     const resources = owners.get(owner);
     owners.delete(owner);

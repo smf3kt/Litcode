@@ -1,10 +1,13 @@
+import { classifyAutoAction, classifierSystem } from './auto-classifier.js';
+import { classifierTranscript, serializeAutoTool } from './auto-classifier-transcript.js';
+import { cloneClassifierMessages, type MessageOrigin } from './message-origin.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Session, type SessionConfig, type ToolResult } from './session.js';
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
 import type { ToolDefinition, ToolContext } from './tools.js';
 import { randomUUID } from 'node:crypto';
 import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
-import { applyPermissionUpdates, permissionDecision, permissionUpdateListSchema } from './permissions.js';
+import { parsePermissionRule, permissionDecision, effectivePermissionPolicy, permissionUpdateListSchema } from './permissions.js';
 import { bashCommandClampDenial, checkBashCommandClamp, CLAMPED_SHELL_TOOLS } from './agent-tool-restrictions.js';
 import path from 'node:path';
 import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
@@ -33,11 +36,7 @@ Do not automatically add co-author trailers, vendor attribution, promotional tex
 
 // `Hen` (chunk-phm7wwmz.js offset 10022): when a PermissionDenied hook sets
 // `retry`, the source pushes this meta user message after the denied tool
-// result (`chunk-sfn1dbxq.js` offset 2288904: `if (gr && !decisionReason.noVerdict)`)
-// with `isMeta` and `turnCompanion` set, so it is not shown but reaches the next
-// request. `noVerdict` is only set on auto-mode classifier denials (offsets
-// 3343515/3344972/3351249); this product has no classifier, so every deny path
-// here is eligible.
+// result with isMeta. Only classifier verdict denials carry retry guidance.
 const PERMISSION_RETRY_META = 'The PermissionDenied hook indicated you may retry this tool call.';
 
 // Source `tr` (chunk-hedqf2m1.js offset 66584): a stalled workflow attempt is
@@ -164,9 +163,11 @@ export class Agent {
   private endedByTool = false;
   private ended = false;
   private turnTiming: {uuid:string; startedAt:number} | undefined;
+  private autoPriorOutcomes: Record<string, string> = {};
   private tools: Map<string, ToolDefinition>;
   constructor(readonly session: Session, private provider: ModelProvider, tools: ToolDefinition[], private events: AgentEvents = {}) {
     this.tools = new Map(tools.map((tool) => [tool.schema.name, tool]));
+    session.prepareAutoMode();
     if (this.tools.size !== tools.length) throw new Error('Duplicate tool names');
     const config = session.config;
     const schemas = tools.map((tool) => ({ ...tool.schema, eager_input_streaming: true }));
@@ -280,10 +281,11 @@ export class Agent {
               const tool = tools.find(candidate => candidate.schema.name === call.name);
               try {
                 if (!tool) throw new Error('Hook tool is unavailable');
-                const decision = permissionDecision(this.session.config.permissions, tool, call.input, this.session.permissionUpdates);
+                const decision = permissionDecision(this.session.config.permissions, tool, call.input, this.session.permissionOwner.state());
                 if (decision.decision !== 'allow') throw new Error(decision.reason ?? 'Hook tool requires approval');
                 const context: ToolContext = { workspace: this.session.config.workspace, signal: hookSignal,
-                  allowShell: false, maxOutputBytes: Math.min(this.session.config.maxOutputBytes, 16_384) };
+                  allowShell: false, maxOutputBytes: Math.min(this.session.config.maxOutputBytes, 16_384),
+                  workingDirectories: readOnly => this.session.workingDirectories(readOnly) };
                 results.push(this.result(call.id, tool.executeBlocks
                   ? await tool.executeBlocks(call.input, context) : await tool.execute(call.input, context)));
               } catch (error) { results.push(this.result(call.id, error instanceof Error ? error.message : String(error), true)); }
@@ -302,7 +304,7 @@ export class Agent {
         const tool = this.tools.get(definition.tool);
         if (!tool || !tool.readOnly || !tool.schema.name.startsWith("mcp__")) throw new Error("MCP hooks require an available read-only namespaced tool");
         const input = definition.arguments ?? {};
-        if (permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
+        if (permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state()).decision !== 'allow') throw new Error("MCP hook tool input requires an explicit allow decision");
         hookSignal.throwIfAborted();
         const content = await tool.execute(input, { workspace: this.session.config.workspace, signal: hookSignal,
           allowShell: false, maxOutputBytes: this.session.config.maxOutputBytes });
@@ -520,7 +522,7 @@ export class Agent {
     throw new Error('agent stalled');
   }
 
-  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal): Promise<{ input: unknown; denied?: string; retry?: boolean }> {
+  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal, callId = '', heldFloor = false, deferAuto = false): Promise<{ input: unknown; denied?: string; retry?: boolean; outcome?: 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error' }> {
     const clamp = this.session.config.bashCommandClamp;
     if (clamp !== undefined && CLAMPED_SHELL_TOOLS.has(tool.schema.name)) {
       const command = typeof input === 'object' && input !== null
@@ -531,31 +533,52 @@ export class Agent {
       if (failure !== null) {
         const denied = bashCommandClampDenial(tool.schema.name, typeof command === 'string' ? command : '', failure);
         // The source's shell permission check returns a deny; the product's
-        // deny path also raises the one PermissionDenied hook.
-        const deniedHook = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: denied }, signal);
-        return { input, denied, retry: deniedHook.retry === true };
+        return { input, denied };
       }
     }
-    const decision = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates);
-    // `classic.PermissionDenied` is deliberately not raised here, and nowhere else in this product: the
-    // source raises it from exactly one body (`I9r` chunk-sfn1dbxq.js [3063491,3063858)), whose single
-    // caller (chunk-sfn1dbxq.js [2288685,2289127)) is gated on
-    // `decisionReason.type === 'classifier' && decisionReason.classifier === 'auto-mode'` — the auto-mode
-    // classifier's denial. Every other denial kind (a permission rule, `behavior === 'ask'` rejected by
-    // the user, a hook) maps to `permission-rule`/`user-rejected`/`hook` in the source's own outcome
-    // mapping (`mze` chunk-sfn1dbxq.js [1006956,1007251)) and raises no hook event at all.
-    // This product has no classifier and no decision-reason surface at all (`permissionDecision` returns
-    // a rule outcome), so a deny here is the `permission-rule` kind and the raise stays unmapped rather
-    // than invented. When a classifier denial does exist, the raise is `raiseClassicEvent` with the
-    // event's own input `{hook_event_name, tool_name, tool_input, tool_use_id, reason, mcp_server?}`
-    // (`hK` chunk-r2vtj1kh.js [193916,194055)), the source's `'Permission denied'` reason fallback, and
-    // an answer read only for `retry` (schema `o0` chunk-n3ykh62m.js [395412,395472)), which pushes the
-    // meta line `Hen` = "The PermissionDenied hook indicated you may retry this tool call."
-    // (chunk-phm7wwmz.js).
+    this.session.prepareAutoMode();
+    const decision = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state());
+    // I9r caller, sfn [2288685,2289127), UTF-16. Denied events belong only to auto classification.
     if (decision.decision === 'allow') return { input };
     if (decision.decision === 'deny') {
-      const deniedHook = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: decision.reason }, signal);
-      return { input, denied: decision.reason ?? 'Permission denied', retry: deniedHook.retry === true };
+      return { input, denied: decision.reason ?? 'Permission denied' };
+    }
+    const mode = this.session.permissionOwner.state().mode ?? this.session.config.permissions?.mode;
+    if ((mode === 'auto' || mode === 'plan' && this.session.permissionOwner.state().autoDuringPlan) && decision.floor === undefined && !heldFloor && tool.requiresUserInteraction !== true) {
+      if (deferAuto) return { input };
+      if (serializeAutoTool(tool, input, callId) === '') {
+        if (!tool.classifierOnly) return { input };
+        return { input, denied: `${tool.schema.name} was not reviewed: its classifier action is empty`, outcome: 'automode-parsing-error' };
+      }
+      const autoActive = this.session.permissionOwner.state().autoDuringPlan;
+      const snapshot = JSON.stringify(input);
+      const verdict = await classifyAutoAction({ provider: this.provider, model: this.session.config.model,
+        system: classifierSystem(Object.entries(this.session.permissionOwner.state().alwaysDenyRules)
+          .flatMap(([source, rules]) => source === 'toolsNarrowing' || source === 'command' ? [] : rules ?? [])
+          .filter(rule => !parsePermissionRule(rule).ruleContent?.startsWith('prompt:')),
+          this.session.permissionOwner.state().autoMode),
+        transcript: classifierTranscript(this.session.messages, this.tools, { name: tool.schema.name, input, id: callId }, this.autoPriorOutcomes), signal });
+      signal.throwIfAborted();
+      const current = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state());
+      const currentMode = this.session.permissionOwner.state().mode ?? this.session.config.permissions?.mode;
+      if (currentMode !== mode || this.session.permissionOwner.state().autoDuringPlan !== autoActive || JSON.stringify(input) !== snapshot || current.floor !== undefined || current.decision !== 'ask') {
+        return this.authorize(tool, input, signal, callId, true);
+      }
+      if (verdict.kind === 'allow') return { input };
+      const noVerdict = verdict.kind === 'no-verdict' || verdict.kind === 'cancelled';
+      const denied = verdict.reason;
+      const native = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input,
+        tool_use_id: callId, reason: denied }, signal);
+      let retry = native.retry === true;
+      if (classicEventRaised('PermissionDenied')) {
+        const raised = await raiseClassicEvent({ event: 'PermissionDenied', signal,
+          hookInput: classicHookInput('PermissionDenied', { session_id: this.session.id,
+            cwd: this.session.config.workspace, tool_name: tool.schema.name, tool_input: input, tool_use_id: callId, reason: denied }) });
+        retry ||= raised.answer.retry === true;
+      }
+      return { input, denied, retry: retry && !noVerdict,
+        outcome: verdict.kind === 'unavailable' || verdict.kind === 'cancelled' ? 'automode-unavailable' :
+          verdict.kind === 'no-verdict' ? 'automode-parsing-error' : 'automode-blocked' };
     }
     const reason = decision.reason ?? `Approval required for ${tool.schema.name}`;
     const requested = await this.hook('PermissionRequest', { tool_name: tool.schema.name, tool_input: input, reason }, signal);
@@ -574,9 +597,8 @@ export class Agent {
     // and `allow` carries `updatedInput` through the same permission re-check the native answer's
     // rewrite goes through. A deny's `interrupt` aborts the turn through the owning controller
     // (`interruptTurn`). An allow's `updatedPermissions` is validated against the same list schema
-    // and applied to the session's permission state by `applyPermissionUpdates` before the call runs
-    // (`CUt` launcher arm, chunk-fyhzvvp0.js offset 3459); this product's session state stands in for
-    // the source's session permission context and settings writes.
+    // and adopted by the session owner before the call runs. Settings persistence
+    // is queued independently and drained by that owner on shutdown.
     if (classicEventRaised(CLASSIC_PERMISSION_REQUEST)) {
       const raised = await raiseClassicEvent({
         event: CLASSIC_PERMISSION_REQUEST,
@@ -618,23 +640,15 @@ export class Agent {
     }
     if (requested.updatedInput !== undefined) {
       input = requested.updatedInput;
-      const updated = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionUpdates);
+      const updated = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state());
       if (updated.decision === 'deny') {
-        const deniedHook = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input, reason: updated.reason }, signal);
-        return { input, denied: updated.reason ?? 'Permission denied', retry: deniedHook.retry === true };
+        return { input, denied: updated.reason ?? 'Permission denied' };
       }
     }
     if (requested.permissionDecision === 'allow') {
-      // The adopted allow answer's updates join the session permission state
-      // before the call runs. The source's launcher consumer applies them
-      // through `q`/`WK` and its session context (`CUt`, chunk-fyhzvvp0.js
-      // offset 3459); this product has no settings writer, so every
-      // destination lands in this session only. A deny or ask rule that cannot
-      // be represented refuses the call instead of running without it (`AXn`).
       if (requested.updatedPermissions?.length) {
-        const outcome = applyPermissionUpdates(this.session.permissionUpdates, requested.updatedPermissions);
+        const outcome = this.session.adoptPermissionUpdates(requested.updatedPermissions);
         if (outcome.blocked !== undefined) return { input, denied: outcome.blocked };
-        this.session.permissionUpdates = outcome.state;
       }
       return { input };
     }
@@ -759,12 +773,15 @@ export class Agent {
     if (conversation.at(-1)?.role === 'assistant' && toolCalls(conversation.at(-1)!).length) conversation.pop();
     assertPaired(conversation);
     const context: ToolContext = { workspace: c.workspace, signal, allowShell: c.allowShell, maxOutputBytes: c.maxOutputBytes,
-      conversation: structuredClone(conversation), interaction: this.events.interaction,
+      conversation: cloneClassifierMessages(conversation), interaction: this.events.interaction,
+      workingDirectories: readOnly => this.session.workingDirectories(readOnly),
       fileHistory: file => this.session.touchFile(file) };
     const results: ToolResult[] = [];
     const extra: string[] = [];
     let stopReason = blocked;
     let retryMeta = false;
+    const outcomes: Record<string, 'ok' | 'error' | 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error'> = {};
+    this.autoPriorOutcomes = outcomes;
     // Keep hook feedback after the entire paired batch, including on cancellation.
     for (const call of calls) {
       let result: ToolResult;
@@ -780,7 +797,8 @@ export class Agent {
         try {
           const tool = this.tools.get(call.name);
           if (!tool) throw new Error(`Unknown tool: ${call.name}`);
-          const authorization = await this.authorize(tool, input, signal);
+          const authorization = await this.authorize(tool, input, signal, call.id, false, true);
+          if (authorization.outcome) outcomes[call.id] = authorization.outcome;
           input = authorization.input;
           if (authorization.retry === true) retryMeta = true;
           if (authorization.denied) throw new Error(authorization.denied);
@@ -811,10 +829,19 @@ export class Agent {
             }
           }
           if (pre.updatedInput !== undefined) {
-            const updated = await this.authorize(tool, pre.updatedInput, signal);
+            const updated = await this.authorize(tool, pre.updatedInput, signal, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer');
+            if (updated.outcome) outcomes[call.id] = updated.outcome;
             input = updated.input;
             if (updated.retry === true) retryMeta = true;
             if (updated.denied) throw new Error(updated.denied);
+          }
+          if (pre.updatedInput === undefined && permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state()).floor === undefined &&
+            (this.session.permissionOwner.state().mode === 'auto' || this.session.permissionOwner.state().autoDuringPlan)) {
+            const finalAuthorization = await this.authorize(tool, input, signal, call.id, pre.permissionDecision === 'ask' || pre.permissionDecision === 'defer');
+            input = finalAuthorization.input;
+            if (finalAuthorization.outcome) outcomes[call.id] = finalAuthorization.outcome;
+            if (finalAuthorization.retry) retryMeta = true;
+            if (finalAuthorization.denied) throw new Error(finalAuthorization.denied);
           }
           const rules = (await this.ruleContext(call.name, input, signal)).filter(text => !this.session.messages.some(message =>
             message.role === 'user' && Array.isArray(message.content) && message.content.some(block =>
@@ -853,6 +880,7 @@ export class Agent {
         } catch (error) { result = this.result(call.id, error instanceof Error ? error.message : String(error), true); }
       }
       // Persist the effect before running a post hook, which may itself be interrupted.
+      outcomes[call.id] ??= result.is_error ? 'error' : 'ok';
       this.session.append({ kind: 'tool_result', result });
       results.push(result);
       if (executed && !result.is_error && this.tools.get(call.name)?.endsTurn === true) this.endedByTool = true;
@@ -934,13 +962,13 @@ export class Agent {
         }
       }
     }
-    this.session.append({ kind: 'message', message: { role: 'user', content: [
+    this.session.append({ kind: 'message', classifier: { origin: { kind: 'generated', source: 'tool-results' }, outcomes }, message: { role: 'user', content: [
       ...results, ...extra.map(text => ({ type: 'text' as const, text: `Hook context:\n${text}` })),
     ] } });
     // `Hen` is a separate meta user message after the denied tool result, so it
     // is not shown yet reaches the next request. The source appends one per
     // denied call; this batch model appends one after the whole result batch.
-    if (retryMeta) this.session.append({ kind: 'message', message: { role: 'user', content: PERMISSION_RETRY_META } });
+    if (retryMeta) this.session.append({ kind: 'message', isMeta: true, classifier: { origin: { kind: 'generated', source: 'permission-retry' } }, message: { role: 'user', content: PERMISSION_RETRY_META } });
     assertPaired(this.session.messages);
     if (!signal.aborted) {
       // The source's PostToolBatch input is `{hook_event_name: 'PostToolBatch', tool_calls}` with
@@ -1141,7 +1169,9 @@ export class Agent {
   }
 
   async run(prompt?: string, signal = new AbortController().signal, attachment?: MediaAttachment,
-    expansion?: PromptExpansion, hookContext: readonly string[] = [], selection?: DiffSelection): Promise<RunResult> {
+    expansion?: PromptExpansion | { kind: 'raised'; payload: PromptExpansion },
+    hookContext: readonly string[] = [], selection?: DiffSelection,
+    origin: MessageOrigin = { kind: 'human' }): Promise<RunResult> {
     if (this.busy) throw new Error('Agent is already running');
     this.busy = true;
     let modelCalls = 0;
@@ -1187,7 +1217,7 @@ export class Agent {
         // command's name, raw arguments and reconstructed command text (`VYr`, chunk-sfn1dbxq.js
         // offset 2947732, raised from the skill-expansion path at chunk-htgmc2p1.js offset 38795).
         let expansionContext: string[] = [];
-        if (expansion !== undefined) {
+        if (expansion !== undefined && !('kind' in expansion)) {
           const expanded = await this.hook('UserPromptExpansion', { ...expansion }, signal);
           if (expanded.blocked) {
             const text = promptBlockMessage('UserPromptExpansion', expanded.reason ?? 'blocked', expansion.prompt,
@@ -1199,7 +1229,7 @@ export class Agent {
         const context = [...startContext, ...hookContext, ...submitted.additionalContext, ...expansionContext];
         if (this.session.config.autoMemory && this.session.config.features?.memory !== false && this.tools.has("memory_list") && this.tools.has("memory_read")) {
           const memory = await loadAutoMemoryContext(this.session.config.workspace, signal,
-            { permissions: this.session.config.permissions, maxOutputBytes: this.session.config.maxOutputBytes });
+            { permissions: effectivePermissionPolicy(this.session.config.permissions, this.session.permissionOwner.state()), maxOutputBytes: this.session.config.maxOutputBytes });
           const marker = `Workspace memory data (sha256 ${memory.sha256}; latest snapshot supersedes earlier memory data):\n${memory.text}`;
           const latest = this.session.messages.flatMap(message => Array.isArray(message.content)
             ? message.content.filter(block => block.type === 'text' && block.text.startsWith("Hook context:\nWorkspace memory data (sha256 ")) : []).at(-1);
@@ -1225,7 +1255,9 @@ export class Agent {
           }
           signal.throwIfAborted();
         }
-        this.session.append({ kind: 'message', message });
+        this.session.append({ kind: 'message', message, classifier: { origin,
+          ...(origin.kind === 'human' ? { humanText: expansion === undefined ? prompt :
+            'kind' in expansion ? expansion.payload.prompt : expansion.prompt } : {}) } });
         if (selection?.text) this.session.append({ kind: 'message', isMeta: true,
           message: { role: 'user', content: selectedDiffMessage(selection) } });
       } else if (!this.session.awaitingResponse) throw new Error('Session has no unfinished turn');

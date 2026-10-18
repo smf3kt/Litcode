@@ -65,7 +65,11 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   next.allowShell = overrides.allowShell ?? settings.allowShell ?? false;
   next.mcpServers = settings.mcpServers ?? {};
   next.lspServers = settings.lspServers ?? {};
-  next.permissions = overrides.permissions ?? settings.permissions ?? { mode: "default", allow: [], deny: [] };
+  next.permissions = { ...(settings.permissions ?? { mode: "default", allow: [], deny: [] }),
+    ...(overrides.permissions === undefined ? {} : { mode: overrides.permissions.mode }),
+    layers: [...loaded.permissionLayers, ...(overrides.permissions?.layers ??
+      (overrides.permissions ? [{ source: 'cliArg' as const, root: current.workspace, allow: overrides.permissions.allow,
+        deny: overrides.permissions.deny, ask: overrides.permissions.ask ?? [], additionalDirectories: [] }] : []))] };
   if (settings.webSearch) next.webSearch = settings.webSearch; else delete next.webSearch;
   if (settings.plugins) next.plugins = settings.plugins; else delete next.plugins;
   next.mcpClient = { ...settings.mcpClient, ...overrides.mcpClient };

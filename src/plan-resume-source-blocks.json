@@ -1,0 +1,133 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        1260,
+        1289
+      ],
+      "units": 29,
+      "bodySha256": "c0aafed613421529adf273e2403612ee69c5347c7fc821ae1e320756298d0b27",
+      "note": "f"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        1236,
+        1259
+      ],
+      "units": 23,
+      "bodySha256": "afec5f70f1ef72569f5f8de01a0a2ccd9088f9bf9fe1763ff91005c9632128b1",
+      "note": "R"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        1518,
+        1616
+      ],
+      "units": 98,
+      "bodySha256": "3ccf402feaad1c54de2280066bc7e6b183072fb06c311fc5abff0ca95bd5539c",
+      "note": "g"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        1616,
+        1673
+      ],
+      "units": 57,
+      "bodySha256": "423ea71049e08ca37c48d5ee1107f7ee8f686da0c07255ae960c1a4ce103cbc3",
+      "note": "P"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        1749,
+        1818
+      ],
+      "units": 69,
+      "bodySha256": "2357b1fa626191d000b1885c3ebd9ca57985b9be8d57861bd76703567b2bb877",
+      "note": "_"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        3071,
+        4014
+      ],
+      "units": 943,
+      "bodySha256": "584920b8ff172d7060f04ca7fea8e29db91a54d5ce5a4d3844461943cc95caf4",
+      "note": "H9n"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        4014,
+        4254
+      ],
+      "units": 240,
+      "bodySha256": "a4a96571aab4cde385a196d2f46945ba1e5d906ee47b2d0991dc798909adec94",
+      "note": "x"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        4254,
+        4455
+      ],
+      "units": 201,
+      "bodySha256": "209e9be29a498dffc2a9ea696affc2ca5f9d06dbbd16c478443932214ebd35a3",
+      "note": "y"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        4967,
+        5545
+      ],
+      "units": 578,
+      "bodySha256": "656c2551c1a29071c45831b1b8990f7f7904a82aa8faa47e02fc7d3e5d858366",
+      "note": "LBs"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        1289,
+        1367
+      ],
+      "units": 78,
+      "bodySha256": "790c696da3cf0da80cd023a8d79aef336be8801892661e1407d1b52ba595392f",
+      "note": "S$r"
+    },
+    {
+      "module": "chunk-fh503bhf.js",
+      "sha256": "b56435649f8c950fc45ba1d820716cfcf2fd1bfbd302d9f50acaba8e66ec8470",
+      "range": [
+        5545,
+        5968
+      ],
+      "units": 423,
+      "bodySha256": "ea9b42b676b302c615a749e0ced222595955b4eb43ce9593477153e61d26eca9",
+      "note": "E$r"
+    }
+  ],
+  "missing": []
+}

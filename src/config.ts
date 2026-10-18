@@ -31,6 +31,8 @@ import { hooksSchema, type HooksConfig } from "./hooks.js";
 import { discoverInstalledPluginComponents, pluginConfigSchema, type PluginConfig } from "./plugins.js";
 import { mergeSettings } from "./plugin-chain-settings-merge.js";
 import { managedSettingsDir } from "./plugin-chain-settings-source.js";
+import { permissionLayerSchema, type PermissionPolicy } from './permissions.js';
+import { permissionSettingsPaths } from './permission-settings.js';
 import { mcpServersSchema, type McpServerConfig } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
 import { LinkVetError, vetLinkChain } from "./link-vetting.js";
@@ -116,6 +118,7 @@ export interface SkillInfo {
 
 export interface LoadedConfig {
   settings: Record<string, unknown>;
+  permissionLayers: NonNullable<PermissionPolicy['layers']>;
   managedSettings?: Record<string, unknown>;
   /** Origin and diagnostics of the managed policy that was read, when any. */
   managedSettingsReport?: ManagedSettingsReport;
@@ -182,7 +185,7 @@ export interface ManagedSettingsReport {
   errors: { file: string; message: string }[];
 }
 
-const MANAGED_POLICY_KEYS: ReadonlySet<string> = new Set(["allowShell", "permissions", "features", "mcpClient"]);
+const MANAGED_POLICY_KEYS: ReadonlySet<string> = new Set(["allowShell", "permissions", "features", "mcpClient", "allowManagedPermissionRulesOnly", "useAutoModeDuringPlan", "autoMode"]);
 
 function errnoOf(error: unknown): string | undefined {
   const own = (error as NodeJS.ErrnoException | undefined)?.code;
@@ -1121,16 +1124,18 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   const userDir = path.resolve(options.userDir ?? defaultUserDir());
   const harnessDir = path.join(workspaceRoot, HARNESS_DIR);
 
-  const layers: { file: string; required: boolean }[] = [
-    { file: path.join(userDir, "settings.json"), required: false },
-    { file: path.join(harnessDir, "settings.json"), required: false },
-    { file: path.join(harnessDir, "settings.local.json"), required: false },
+  const permissionFiles = permissionSettingsPaths(workspaceRoot, userDir);
+  const permissionLayers: LoadedConfig['permissionLayers'] = [];
+  const layers: { file: string; required: boolean; source: 'userSettings' | 'projectSettings' | 'localSettings' | 'flagSettings' }[] = [
+    { file: permissionFiles.userSettings!, required: false, source: 'userSettings' },
+    { file: permissionFiles.projectSettings!, required: false, source: 'projectSettings' },
+    { file: permissionFiles.localSettings!, required: false, source: 'localSettings' },
   ];
   if (options.settingsFile !== undefined) {
     const explicit = path.isAbsolute(options.settingsFile)
       ? options.settingsFile
       : path.resolve(workspaceRoot, options.settingsFile);
-    layers.push({ file: explicit, required: true });
+    layers.push({ file: explicit, required: true, source: 'flagSettings' });
   }
 
   const settings: Record<string, unknown> = {};
@@ -1139,8 +1144,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   if (options.managedSettingsFile !== undefined) {
     const file = path.resolve(workspaceRoot, options.managedSettingsFile);
     const parsed = readSettingsLayer(file, true)!;
-    const allowed = new Set(["allowShell", "permissions", "features", "mcpClient"]);
-    if (Object.keys(parsed).some(key => !allowed.has(key))) throw new ConfigError("managed settings accepts only allowShell, permissions, features and mcpClient", file);
+    const allowed = new Set(["allowShell", "permissions", "features", "mcpClient", "allowManagedPermissionRulesOnly", "useAutoModeDuringPlan", "autoMode"]);
+    if (Object.keys(parsed).some(key => !allowed.has(key))) throw new ConfigError("managed settings accepts only allowShell, permissions, features, mcpClient, allowManagedPermissionRulesOnly, useAutoModeDuringPlan and autoMode", file);
     managedSettings = managedPolicySchema.parse(cloneSafe(parsed));
     managedSettingsReport = { source: "explicit", documents: [file], ignoredKeys: [], errors: [] };
   } else {
@@ -1165,9 +1170,24 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   // to grant itself admission by editing its own settings.
   let approveAllProjectMcpServers = false;
   for (const [index, layer] of layers.entries()) {
-    const parsed = readSettingsLayer(layer.file, layer.required);
+    let parsed = readSettingsLayer(layer.file, layer.required);
+    // Qnn/vse, chunk-3cynezh1 [427468,428015), UTF-16. Canonical local overlays legacy cwd settings.
+    if (layer.source === 'localSettings' && layer.file !== path.join(harnessDir, 'settings.local.json')) {
+      const legacy = readSettingsLayer(path.join(harnessDir, 'settings.local.json'), false);
+      if (legacy !== null) { const merged: Record<string, unknown> = {}; mergeInto(merged, legacy); mergeInto(merged, parsed ?? {});
+        if (legacy.useAutoModeDuringPlan === false) merged.useAutoModeDuringPlan = false;
+        parsed = merged; }
+    }
     if (parsed !== null) {
       pluginExplicitLayers.push(parsed);
+      if (isPlainObject(parsed.permissions) || parsed.useAutoModeDuringPlan !== undefined || parsed.autoMode !== undefined) {
+        const rules = isPlainObject(parsed.permissions) ? parsed.permissions : {};
+        permissionLayers.push(permissionLayerSchema.parse({ source: layer.source, root: workspaceRoot, file: layer.file,
+          autoMode: parsed.autoMode,
+          useAutoModeDuringPlan: parsed.useAutoModeDuringPlan,
+          classifyAllShell: isPlainObject(parsed.autoMode) ? parsed.autoMode.classifyAllShell : undefined,
+          allow: rules.allow ?? [], deny: rules.deny ?? [], ask: rules.ask ?? [], additionalDirectories: rules.additionalDirectories ?? [] }));
+      }
       mergeInto(settings, parsed);
       if (parsed.approveAllProjectMcpServers !== undefined) {
         if (typeof parsed.approveAllProjectMcpServers !== "boolean") {
@@ -1185,6 +1205,14 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   }
   delete settings.approveAllProjectMcpServers;
   if (managedSettings) {
+    if (isPlainObject(managedSettings.permissions) || managedSettings.useAutoModeDuringPlan !== undefined || managedSettings.autoMode !== undefined) {
+      const rules = isPlainObject(managedSettings.permissions) ? managedSettings.permissions : {};
+      permissionLayers.push(permissionLayerSchema.parse({ source: 'policySettings', root: workspaceRoot,
+        autoMode: managedSettings.autoMode,
+        useAutoModeDuringPlan: managedSettings.useAutoModeDuringPlan,
+        classifyAllShell: isPlainObject(managedSettings.autoMode) ? managedSettings.autoMode.classifyAllShell : undefined,
+        allow: rules.allow ?? [], deny: rules.deny ?? [], ask: rules.ask ?? [], additionalDirectories: rules.additionalDirectories ?? [] }));
+    }
     for (const key of ["allowShell", "permissions"] as const) if (Object.hasOwn(managedSettings, key)) settings[key] = cloneSafe(managedSettings[key]);
     for (const key of ["features", "mcpClient"] as const) if (Object.hasOwn(managedSettings, key)) {
       settings[key] = { ...(isPlainObject(settings[key]) ? settings[key] : {}), ...(managedSettings[key] as Record<string, unknown>) };
@@ -1363,7 +1391,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
       throw new ConfigError(`installed plugin changed during config load (${(error as Error).message})`, path.join(harnessDir, "plugins"), { cause: error });
     }
   }
-  const result: LoadedConfig = { settings, instructions, skills: [...skills.values()] };
+  const result: LoadedConfig = { settings, permissionLayers, instructions, skills: [...skills.values()] };
   // A skill with `paths` is held back from the catalog until a touched path
   // matches (the recovered assembler's conditional split). Keep the held list
   // beside the live one so a caller can activate it without re-scanning.

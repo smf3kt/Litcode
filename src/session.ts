@@ -1,12 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
+import { refreshAutoMode } from './plan-resume.js';
+import { createPlanRuntime } from './plan-runtime-host.js';
+import { classifierMessageSchema, classifierMessage, markClassifierMessage } from './message-origin.js';
 import { z } from 'zod';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { GatewayConfig } from './provider.js';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { HOOK_EVENTS, hooksSchema, type HooksConfig } from './hooks.js';
-import { permissionPolicySchema, emptySessionPermissionUpdates, type PermissionPolicy, type SessionPermissionUpdates } from './permissions.js';
+import { autoPolicySchema, permissionPolicySchema, emptySessionPermissionUpdates, seedPermissionUpdates, bindPermissionOwner, reloadPermissionState, childPermissionState, type LivePermissionOwner, applyPermissionUpdates, type PermissionUpdate, type PermissionPolicy, type SessionPermissionUpdates } from './permissions.js';
+import { persistPermissionUpdate, permissionSettingsPaths, type PermissionWriteResult, type PermissionIgnoreResult } from './permission-settings.js';
+import { observeWorkingDirectory, type WorkingDirectories } from './path-identity.js';
+import { defaultUserDir } from './config.js';
 import type { SkillInfo, ConditionalRule, InstructionSource } from './config.js';
 import { mcpServersSchema, type McpServerConfig } from './mcp.js';
 import { lspConfigSchema, type LspConfig } from './lsp.js';
@@ -104,10 +110,12 @@ export type SessionConfig = {
     agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; policyHelper?: boolean };
 };
 export type ToolResult = Anthropic.ToolResultBlockParam;
+import { permissionModeCommandSchema, type PermissionModeCommand } from './plan-resume.js';
 export type SessionEvent =
+  | PermissionModeCommand
   | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string; startedAt?: number }
   | { kind: 'file_history'; path?: string; tracked: boolean }
-  | { kind: 'message'; message: Anthropic.MessageParam; response?: Anthropic.Message; isMeta?: boolean }
+  | { kind: 'message'; message: Anthropic.MessageParam; response?: Anthropic.Message; isMeta?: boolean; classifier?: import('./message-origin.js').ClassifierMessage }
   | { kind: 'mcp_subscription'; server: string; configDigest: string; method: 'resources/subscribe' | 'resources/unsubscribe'; uri: string }
   | { kind: 'mcp_task'; server: string; configDigest: string; taskId: string; tool: string; createdAt: string; ttl: number | null; resolved: boolean; result?: string; isError?: boolean }
   | { kind: 'tool_start'; id: string; name: string }
@@ -130,7 +138,7 @@ export type SessionEvent =
 const policyFeaturesSchema = z.object({ tasks: z.boolean().optional(), subagents: z.boolean().optional(), notebooks: z.boolean().optional(), background: z.boolean().optional(), scheduler: z.boolean().optional(),
   workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(), taskProjections: z.boolean().optional(), schedulerJitter: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
   agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), policyHelper: z.boolean().optional() }).strict();
-export const managedPolicySchema = z.object({ allowShell: z.boolean().optional(), permissions: permissionPolicySchema.optional(),
+export const managedPolicySchema = z.object({ useAutoModeDuringPlan: z.boolean().optional(), autoMode: autoPolicySchema.optional(), allowManagedPermissionRulesOnly: z.boolean().optional(), allowShell: z.boolean().optional(), permissions: permissionPolicySchema.optional(),
   features: policyFeaturesSchema.optional(), mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), samplingArrays: z.boolean().optional(), samplingAudio: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional() }).strict();
 
 /** Pin only authored fields; permission arrays replace rather than concatenate. */
@@ -139,7 +147,9 @@ export function applyManagedPolicy(config: SessionConfig, policy: SessionConfig[
   const parsed = managedPolicySchema.parse(policy);
   config.managedPolicy = structuredClone(parsed);
   if (parsed.allowShell !== undefined) config.allowShell = parsed.allowShell;
-  if (parsed.permissions !== undefined) config.permissions = structuredClone(parsed.permissions);
+  if (parsed.permissions !== undefined) config.permissions = { ...structuredClone(parsed.permissions),
+    ...(config.permissions?.layers === undefined ? {} : { layers: config.permissions.layers }) };
+  if (parsed.allowManagedPermissionRulesOnly !== undefined && config.permissions) config.permissions.managedOnly = parsed.allowManagedPermissionRulesOnly;
   if (parsed.features) config.features = { tasks: true, subagents: true, ...config.features, ...parsed.features };
   if (parsed.mcpClient) config.mcpClient = { ...config.mcpClient, ...parsed.mcpClient };
 }
@@ -233,8 +243,10 @@ const resultSchema = z.object({ type: z.literal('tool_result'), tool_use_id: z.s
 const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('metadata'), version: z.literal(1), id: z.string().uuid(), config: configSchema,
     fingerprint: z.string(), startedAt: z.number().finite().nonnegative().optional() }).strict(),
+  z.object({ kind: z.literal('permission_mode_command'), operation: z.enum(['enter', 'exit', 'select']),
+    mode: permissionPolicySchema.shape.mode, command: z.enum(['plan', 'permissions']) }).strict(),
   z.object({ kind: z.literal('file_history'), path: z.string().min(1).optional(), tracked: z.boolean() }).strict(),
-  z.object({ kind: z.literal('message'), message: messageSchema, response: responseSchema.optional(), isMeta: z.boolean().optional() }).strict(),
+  z.object({ kind: z.literal('message'), message: messageSchema, response: responseSchema.optional(), isMeta: z.boolean().optional(), classifier: classifierMessageSchema.optional() }).strict(),
   z.object({ kind: z.literal('mcp_subscription'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/),
     method: z.enum(['resources/subscribe', 'resources/unsubscribe']), uri: z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096 && !/[\x00-\x20\x7f]/.test(value)) }).strict(),
   z.object({ kind: z.literal('mcp_task'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/), taskId: z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/), tool: z.string().min(1).max(256), createdAt: z.string().datetime({ offset: true }), ttl: z.number().finite().int().nonnegative().nullable(), resolved: z.boolean(), isError: z.boolean().optional(), result: z.string().refine(value => Buffer.byteLength(value) <= 24000).optional() }).strict(),
@@ -265,6 +277,10 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('turn_end'), reason: z.string(), duration: z.object({uuid:z.string().uuid(),
     durationMs:z.number().finite().nonnegative(), timestamp:z.string().datetime({offset:true})}).strict().optional() }).strict(),
 ]).superRefine((record, context) => {
+  if (record.kind === 'permission_mode_command') {
+    if (!permissionModeCommandSchema.safeParse(record).success) context.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid local permission mode command' });
+    return;
+  }
   if (record.kind !== 'hook_once') return;
   const [event, entry, inner] = record.key.split(':');
   if (event !== record.event || Number(entry) >= 1024 || (inner !== 'flat' && Number(inner) >= 1024)) {
@@ -282,14 +298,132 @@ export class Session {
   readonly startedAt: number;
   private fileHistoryValue = { trackSequence: 0, trackedFiles: new Set<string>() };
   private readonly fileHistoryListeners = new Set<() => void>();
-  /**
-   * Session-scoped permission rules and mode adopted from PermissionRequest
-   * allow answers. The source keeps these in its session permission context
-   * (`CUt` launcher arm, chunk-fyhzvvp0.js offset 3459) beside the
-   * settings-derived policy; they die with the session because this product
-   * has no settings writer.
-   */
+  /** Destination buckets are session-owned; settings writes settle independently of memory. */
   permissionUpdates: SessionPermissionUpdates = emptySessionPermissionUpdates();
+  readonly permissionWriteResults: PermissionWriteResult[] = [];
+  readonly permissionIgnoreResults: PermissionIgnoreResult[] = [];
+  private readonly pendingPermissionWrites = new Set<Promise<void>>();
+  private readonly permissionListeners = new Set<() => void>();
+
+  subscribePermissions(listener: () => void): () => void {
+    this.permissionListeners.add(listener);
+    return () => { this.permissionListeners.delete(listener); };
+  }
+
+  private readonly directoryObservations = new Map<string, readonly string[]>();
+
+  private inheritedPermissions?: { owner: LivePermissionOwner; allowedTools?: readonly string[] };
+  private permissionAdoptionOwner?: LivePermissionOwner;
+  private readonly autoRuntime = createPlanRuntime();
+  prepareAutoMode(): void {
+    if (this.inheritedPermissions) { this.inheritedPermissions.owner.prepareAutoMode?.(); return; }
+    const mode = this.permissionUpdates.mode ?? this.config.permissions?.mode;
+    if (mode === undefined || mode !== 'auto' && mode !== 'plan' && this.permissionUpdates.strippedDangerousRules === undefined) return;
+    this.permissionUpdates = refreshAutoMode(this.permissionUpdates, mode, this.autoRuntime);
+  }
+  readonly permissionOwner: LivePermissionOwner = {
+    prepareAutoMode: () => this.prepareAutoMode(),
+    state: () => this.inheritedPermissions
+      ? childPermissionState(this.inheritedPermissions.owner.state(), this.inheritedPermissions.allowedTools)
+      : { ...this.permissionUpdates, mode: this.permissionUpdates.mode ?? this.config.permissions?.mode },
+    workingDirectories: readOnly => this.workingDirectories(readOnly),
+    adoptUpdates: updates => this.adoptPermissionUpdates(updates),
+  };
+
+  /** Rir sfn [2539631,2543941), eXn rgay [1086,1317), UTF-16. Both child lanes share session adoption. */
+  inheritPermissionAdoption(owner: LivePermissionOwner): void {
+    this.permissionAdoptionOwner = owner;
+  }
+
+  inheritPermissions(owner: LivePermissionOwner, allowedTools?: readonly string[]): void {
+    this.inheritPermissionAdoption(owner);
+    this.inheritedPermissions = { owner, allowedTools };
+    bindPermissionOwner(this.config.permissions, this.permissionOwner);
+  }
+
+  /** HV, 24k7d6mw [348500,351100), UTF-16. Ordinary fork retains the live context without settings rehydration. */
+  carryForkPermissions(previous: Session): void {
+    const { contentRuleOwner, ...state } = previous.permissionOwner.state();
+    this.permissionUpdates = { ...structuredClone(state), contentRuleOwner };
+    this.directoryObservations.clear();
+    for (const [directory, observations] of previous.directoryObservations) {
+      this.directoryObservations.set(directory, [...observations]);
+    }
+    bindPermissionOwner(this.config.permissions, this.permissionOwner);
+  }
+
+  /** IFt/FVt retain the live owner across a local configuration branch. */
+  carryPermissions(previous: Session, preserveMode = true): void {
+    this.permissionUpdates = reloadPermissionState(previous.permissionOwner.state(), this.config.permissions,
+      this.config.workspace, this.config.configSources?.userDir ?? defaultUserDir());
+    if (!preserveMode) delete this.permissionUpdates.mode;
+    this.directoryObservations.clear();
+    for (const [directory, observations] of previous.directoryObservations) {
+      if (this.permissionUpdates.additionalWorkingDirectories.has(directory)) this.directoryObservations.set(directory, observations);
+    }
+    bindPermissionOwner(this.config.permissions, this.permissionOwner);
+    this.workingDirectories(false);
+  }
+
+  workingDirectories(readOnly: boolean): string[] & WorkingDirectories {
+    if (this.inheritedPermissions) {
+      const parent = this.inheritedPermissions.owner.workingDirectories(readOnly);
+      const directories = [...parent];
+      Object.defineProperty(directories, 'rootSpellings', { value: 'rootSpellings' in parent ? parent.rootSpellings : [] });
+      return directories;
+    }
+    const entries = [...this.permissionUpdates.additionalWorkingDirectories.values()]
+      .filter(directory => !(readOnly && this.config.permissions?.blockReadsOutsideWorkingDirectories && directory.source === 'projectSettings'));
+    for (const directory of entries) {
+      if (!this.directoryObservations.has(directory.path)) this.directoryObservations.set(directory.path,
+        observeWorkingDirectory(this.config.workspace, directory.path));
+    }
+    const valid = entries.filter(directory => (this.directoryObservations.get(directory.path)?.length ?? 0) > 0);
+    const directories = valid.map(directory => directory.path);
+    Object.defineProperty(directories, 'rootSpellings', { value: valid.flatMap(directory => this.directoryObservations.get(directory.path) ?? []) });
+    return directories;
+  }
+
+  /** CUt [3459,3835), O1 [199668,199720), UTF-16. Memory commits before queued persistence. */
+  adoptPermissionUpdates(updates: readonly PermissionUpdate[]): ReturnType<typeof applyPermissionUpdates> {
+    if (this.closed) throw new Error('Session is closed');
+    // sxr sfn [3317869,3319984), UTF-16. Reduce against latest shared authority, then persist there.
+    if (this.permissionAdoptionOwner?.adoptUpdates) return this.permissionAdoptionOwner.adoptUpdates(updates);
+    const outcome = applyPermissionUpdates(this.permissionUpdates, updates);
+    if (outcome.blocked !== undefined) return outcome;
+    this.permissionUpdates = outcome.state;
+    for (const update of outcome.applied ?? []) {
+      if (update.type === 'removeDirectories') for (const directory of update.directories) this.directoryObservations.delete(directory);
+    }
+    for (const directory of this.directoryObservations.keys()) {
+      if (!this.permissionUpdates.additionalWorkingDirectories.has(directory)) this.directoryObservations.delete(directory);
+    }
+    this.workingDirectories(false);
+    bindPermissionOwner(this.config.permissions, this.permissionOwner);
+    const paths = permissionSettingsPaths(this.config.workspace, this.config.configSources?.userDir ?? defaultUserDir());
+    for (const update of outcome.applied ?? []) {
+      const pending = persistPermissionUpdate(update, paths, this.config.permissions?.managedOnly === true, {
+        workspace: this.config.workspace,
+        schedule: work => {
+          const pendingIgnore = work.then(result => { this.permissionIgnoreResults.push(result); })
+            .finally(() => { this.pendingPermissionWrites.delete(pendingIgnore); });
+          this.pendingPermissionWrites.add(pendingIgnore);
+        },
+      })
+        .then(result => { this.permissionWriteResults.push(result); })
+        .finally(() => { this.pendingPermissionWrites.delete(pending); });
+      this.pendingPermissionWrites.add(pending);
+    }
+    for (const listener of this.permissionListeners) {
+      try { listener(); } catch { /* UI observers do not own permission adoption or persistence. */ }
+    }
+    return outcome;
+  }
+
+  async drainPermissionWrites(): Promise<readonly PermissionWriteResult[]> {
+    while (this.pendingPermissionWrites.size) await Promise.all([...this.pendingPermissionWrites]);
+    return [...this.permissionWriteResults];
+  }
   private fd: number;
   private lock: string;
   private lockToken: string;
@@ -300,6 +434,10 @@ export class Session {
     if (meta?.kind !== 'metadata') throw new Error('Session metadata is missing');
     this.id = meta.id;
     this.config = structuredClone(meta.config);
+    this.permissionUpdates = seedPermissionUpdates(this.config.permissions, this.config.workspace,
+      this.config.configSources?.userDir ?? defaultUserDir());
+    this.workingDirectories(false);
+    bindPermissionOwner(this.config.permissions, this.permissionOwner);
     this.file = file;
     this.events = events;
     this.fd = fd;
@@ -409,6 +547,10 @@ export class Session {
 
   append(event: Exclude<SessionEvent, { kind: 'metadata' }>): void {
     if (this.closed) throw new Error('Session is closed');
+    if (event.kind === 'message' && event.classifier === undefined) {
+      const inherited = classifierMessage(event.message);
+      if (inherited) event = { ...event, classifier: inherited };
+    }
     eventSchema.parse(event);
     Session.writeAll(this.fd, Buffer.from(JSON.stringify(event) + '\n'));
     fs.fsyncSync(this.fd);
@@ -441,8 +583,12 @@ export class Session {
   get messages(): Anthropic.MessageParam[] {
     let messages: Anthropic.MessageParam[] = [];
     for (const event of this.events) {
-      if (event.kind === 'message') messages.push(structuredClone(event.message));
-      if (event.kind === 'compact') messages = [{ role: 'user', content: `Session summary (prior conversation data):\n${event.summary}` }];
+      if (event.kind === 'message') {
+        const message = structuredClone(event.message);
+        markClassifierMessage(message, event.classifier ?? { origin: { kind: 'unknown' } });
+        messages.push(message);
+      }
+      if (event.kind === 'compact') messages = [markClassifierMessage({ role: 'user', content: `Session summary (prior conversation data):\n${event.summary}` }, { origin: { kind: 'summary' } })];
     }
     return messages;
   }
@@ -465,12 +611,14 @@ export class Session {
     return undefined;
   }
 
-  close(): void {
-    if (this.closed) return;
+  close(): Promise<void> {
+    if (this.closed) return this.drainPermissionWrites().then(() => {});
     this.closed = true;
     this.fileHistoryListeners.clear();
+    this.permissionListeners.clear();
     fs.closeSync(this.fd);
     const owner = JSON.parse(fs.readFileSync(this.lock, 'utf8')) as { token: string };
     if (owner.token === this.lockToken) fs.unlinkSync(this.lock);
+    return this.drainPermissionWrites().then(() => {});
   }
 }

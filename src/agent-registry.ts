@@ -4,7 +4,7 @@ import { Agent } from './agent.js';
 import { Session, fingerprint, type SessionConfig } from './session.js';
 import type { ModelProvider } from './provider.js';
 import type { ToolContext, ToolDefinition } from './tools.js';
-import { permissionDecision } from './permissions.js';
+import { permissionDecision, permissionOwner, seedPermissionUpdates, effectivePermissionPolicy, type LivePermissionOwner } from './permissions.js';
 import { CLAMPED_SHELL_TOOLS, normalizeBashCommandClamp, normalizeDisallowedTools, toolNameDenied,
   validateDisallowedTools } from './agent-tool-restrictions.js';
 import { capChildOutput, childConfig, selectChildTools, createChildHookLifecycle, advancedChildFields, advancedChildProperties,
@@ -117,6 +117,7 @@ type Child = {
   worker?: Promise<void>; journalEvents: number; journalBytes: number;
   environment?: ChildEnvironmentLease; environmentClosing?: Promise<void>; fork?: boolean;
   structured?: StructuredOutputState;
+  liveOwner: LivePermissionOwner; adoptionOnly: boolean;
 };
 
 /** One instance belongs to one parent session; selectors never resolve outside it. */
@@ -271,6 +272,7 @@ export class AgentRegistry {
   async launch(raw: AgentLaunch, callerSignal?: AbortSignal, execution?: {
     config: SessionConfig; tools: ToolDefinition[]; conversation?: readonly Anthropic.MessageParam[];
     beforeTool?: (tool: ToolDefinition, input: unknown, signal: AbortSignal) => Promise<void>;
+    permissionOwner?: LivePermissionOwner;
   }, conversation?: readonly Anthropic.MessageParam[]): Promise<AgentDescriptor> {
     this.assertOpen(callerSignal);
     const args: AgentLaunch = (this.options.enableAdvanced ? advancedLaunchSchema : launchSchema).parse(raw);
@@ -310,8 +312,21 @@ export class AgentRegistry {
     const launch = resolveChildLaunch(parent, args, this.options);
     const seededFork = launch.fork || execution?.conversation !== undefined;
     const messages = forkMessages(execution?.conversation ?? conversation, seededFork);
-    const parentPolicy = structuredClone(parent.permissions);
-    const scopedPolicy = structuredClone(execution?.config.permissions);
+    const sourceOwner = () => permissionOwner(this.source().permissions);
+    const liveOwner: LivePermissionOwner = execution?.permissionOwner ?? {
+      prepareAutoMode: () => permissionOwner(this.source().permissions)?.prepareAutoMode?.(),
+      get adoptUpdates() { return sourceOwner()?.adoptUpdates; },
+      state: () => {
+        const source = this.source();
+        const state = permissionOwner(source.permissions)?.state() ?? seedPermissionUpdates(source.permissions,
+          source.workspace, source.configSources?.userDir);
+        return { ...state, mode: state.mode ?? source.permissions?.mode };
+      },
+      workingDirectories: readOnly => permissionOwner(this.source().permissions)?.workingDirectories(readOnly) ?? [],
+    };
+    const parentPolicy = () => effectivePermissionPolicy(this.source().permissions);
+    const scopedPolicy = () => effectivePermissionPolicy(execution?.config.permissions,
+      execution?.permissionOwner?.state());
     const allowShell = launch.mode === 'general' && parent.allowShell && (execution?.config.allowShell ?? true);
     const beforeTool = execution?.beforeTool;
     let selected = selectChildTools(supplied, launch.mode, launch.type?.tools);
@@ -376,8 +391,8 @@ export class AgentRegistry {
         if (!execution) return tool;
         const authorize = async (input: unknown, context: ToolContext): Promise<ToolContext> => {
           context.signal.throwIfAborted();
-          const decision = permissionDecision(parentPolicy, tool, input);
-          const scopedDecision = permissionDecision(scopedPolicy, tool, input);
+          const decision = permissionDecision(execution.permissionOwner ? scopedPolicy() : parentPolicy(), tool, input);
+          const scopedDecision = permissionDecision(scopedPolicy(), tool, input);
           if (scopedDecision.decision === 'deny') throw new Error(scopedDecision.reason ?? 'Child permission denied tool');
           if (decision.decision === 'deny') throw new Error(decision.reason ?? 'Parent permission denied child tool');
           if ((decision.decision === 'ask' || scopedDecision.decision === 'ask') && !beforeTool) {
@@ -385,7 +400,7 @@ export class AgentRegistry {
           }
           await beforeTool?.(tool, input, context.signal);
           context.signal.throwIfAborted();
-          return { ...context, workspace: config.workspace, allowShell: context.allowShell && allowShell };
+          return { ...context, ...(liveOwner ? { workingDirectories: liveOwner.workingDirectories } : {}), workspace: config.workspace, allowShell: context.allowShell && allowShell };
         };
         return { ...tool,
           async execute(input: unknown, context: ToolContext) { return tool.execute(input, await authorize(input, context)); },
@@ -400,6 +415,8 @@ export class AgentRegistry {
       const seedBoundaryBytes = seededFork && messages.length ? Buffer.byteLength(JSON.stringify({ kind: 'turn_end', reason: 'fork_seed' })) + 1 : 0;
       if (metadataBytes + seedBytes + seedBoundaryBytes + 128 > this.limits.maxJournalBytes || messages.length + (seedBoundaryBytes ? 2 : 1) >= this.limits.maxJournalEvents) throw new Error('Child journal limit reached');
       session = Session.open(config.workspace, { config, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}) });
+      if (execution?.beforeTool) session.inheritPermissionAdoption(liveOwner);
+      else session.inheritPermissions(liveOwner);
       for (const message of messages) session.append({ kind: 'message', message });
       if (seededFork && messages.length) session.append({ kind: 'turn_end', reason: 'fork_seed' });
       hooks = createChildHookLifecycle(session, this.options);
@@ -416,7 +433,7 @@ export class AgentRegistry {
         view: { id: session.id, session_id: session.id, name: args.name ?? null, status: 'queued',
           mode: launch.mode, model: config.model, summary: '', error: null, reason: null, model_calls: 0, queued_messages: 0,
           ...(this.options.enableAdvanced ? { workspace: config.workspace, ...(args.subagent_type ? { subagent_type: args.subagent_type } : {}) } : {}) },
-        config: session.config, tools, controller, mailbox: [], mailboxBytes: 0,
+        config: session.config, tools, controller, mailbox: [], mailboxBytes: 0, liveOwner, adoptionOnly: execution?.beforeTool !== undefined,
         accepted: 0, session, agent, hooks, journalEvents: session.events.length, journalBytes: metadataBytes + seedBytes + seedBoundaryBytes,
         ...(structuredState ? { structured: structuredState } : {}),
         ...(environment ? { environment } : {}), fork: seededFork,
@@ -527,6 +544,8 @@ export class AgentRegistry {
       if (resumed) {
         child.session = Session.open(child.config.workspace, { id: child.view.session_id, config: child.config,
           ...(child.environment?.storageRoot ? { storageRoot: child.environment.storageRoot } : {}) });
+        if (child.adoptionOnly) child.session.inheritPermissionAdoption(child.liveOwner);
+        else child.session.inheritPermissions(child.liveOwner);
         child.hooks = createChildHookLifecycle(child.session, this.options);
         const childId = child.session.id;
         child.agent = new Agent(child.session, this.options.provider, child.tools, { hookOptions: child.hooks.hookOptions,
@@ -543,7 +562,7 @@ export class AgentRegistry {
         signal.throwIfAborted();
         const prompt = child.mailbox.shift()!;
         child.mailboxBytes -= Buffer.byteLength(prompt);
-        const result = await child.agent!.run(prompt, signal);
+        const result = await child.agent!.run(prompt, signal, undefined, undefined, [], undefined, { kind: 'peer', source: 'mailbox' });
         child.view.reason = field(result.reason, this.limits.maxOutputBytes);
         child.view.summary = field(result.text, this.limits.maxOutputBytes);
         if (child.structured !== undefined) {
