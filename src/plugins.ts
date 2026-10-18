@@ -34,12 +34,12 @@ export const pluginManifestSchema = z.object({
   workflows: z.union([z.string(), z.array(z.string()).max(PLUGIN_LIMITS.entries)]).optional(),
   themes: themesSchema.optional(),
   experimental: z.object({ themes: themesSchema.optional() }).strict().optional(),
-  skills: z.string().min(1).max(1024).refine(s => {
-    try { relativePath(s); return true; } catch { return false; }
-  }, "skills must be a relative directory path").optional(),
-  agents: z.string().min(1).max(1024).refine(s => {
-    try { relativePath(s); return true; } catch { return false; }
-  }, "agents must be a relative directory path").optional(),
+  skills: z.union([z.string(), z.array(z.string()).max(PLUGIN_LIMITS.entries)]).optional(),
+  agents: z.union([z.string(), z.array(z.string()).max(PLUGIN_LIMITS.entries)]).optional(),
+  commands: z.union([z.string(), z.array(z.string()).max(PLUGIN_LIMITS.entries),
+    z.record(z.object({ source: z.string().optional(), content: z.string().optional(),
+      description: z.string().optional(), argumentHint: z.string().optional(), model: z.string().optional(),
+      allowedTools: z.array(z.string()).optional() }).passthrough())]).optional(),
   hooks: z.string().min(1).max(1024).refine(s => {
     try { relativePath(s); return true; } catch { return false; }
   }, "hooks must be a relative JSON file path").optional(),
@@ -80,6 +80,12 @@ export interface InstalledPluginComponents {
   directory: string;
   skillDirectory?: string;
   agentDirectory?: string;
+  skillDirectories: string[];
+  agentPaths: string[];
+  commandSources: PluginCommandSource[];
+  componentProblems: PluginComponentProblem[];
+  componentFiles: ReadonlyMap<string, Buffer>;
+  componentEntries: readonly { path: string; kind: 'directory' | 'file' }[];
   workflowsPath?: string;
   workflowsPaths?: string[];
   workflowProblems: { type: 'path-traversal' | 'path-not-found'; path: string; component: 'workflows' }[];
@@ -94,6 +100,16 @@ export interface InstalledPluginComponents {
   /** Why a named module is not loaded, in the source's own diagnostic shapes. The plugin still loads;
    *  the source pushes these into its error list rather than failing the plugin. */
   hooksModuleProblem?: PluginHooksModuleProblem;
+}
+export type PluginCommandMetadata = Exclude<PluginManifest['commands'], string | string[] | undefined>[string];
+export type PluginCommandSource = { kind: 'path'; path: string; name?: string; metadata?: PluginCommandMetadata }
+  | { kind: 'inline'; name: string; content: string; metadata: PluginCommandMetadata };
+export interface PluginComponentProblem {
+  type: 'path-traversal' | 'path-not-found' | 'component-load-failed' | 'folder-shadowed-by-manifest';
+  plugin: string;
+  component: 'skills' | 'agents' | 'commands';
+  path: string;
+  reason?: string;
 }
 export interface PluginHooksModuleProblem {
   type: "hook-load-failed" | "path-traversal" | "path-not-found";
@@ -227,11 +243,6 @@ function snapshot(root: string, options: Options, signal?: AbortSignal, copy = f
   visit("", 0);
   if (!manifestBytes) throw new Error("Plugin directory requires a regular plugin.json manifest.");
   const manifest = pluginManifestSchema.parse(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(manifestBytes)));
-  for (const field of ["skills", "agents"] as const) {
-    if (manifest[field] && !entries.some(e => e.path === manifest[field] && e.kind === "directory")) {
-      throw new Error(`Plugin ${field} path must name an existing directory.`);
-    }
-  }
   const themes = manifest.experimental?.themes ?? manifest.themes;
   for (const themePath of themes === undefined ? [] : Array.isArray(themes) ? themes : [themes]) {
     if (!entries.some(entry => entry.path === themePath)) throw new Error("Plugin themes path must name an existing file or directory.");
@@ -321,6 +332,69 @@ function workflowPaths(value: Snapshot, root: string): Pick<InstalledPluginCompo
   }
   return value.entries.some(entry => entry.path === 'workflows')
     ? { workflowsPath: path.join(root, 'workflows'), workflowProblems } : { workflowProblems };
+}
+/** Adapted wne/zR/OEn/lEn, chunk-sfn1dbxq.js [4057817,4070285), UTF-16. */
+function localComponentPaths(value: Snapshot, root: string): Pick<InstalledPluginComponents,
+  'skillDirectory' | 'agentDirectory' | 'skillDirectories' | 'agentPaths' | 'commandSources' | 'componentProblems'> {
+  const componentProblems: PluginComponentProblem[] = [];
+  const name = value.manifest.name;
+  const resolve = (relative: string, component: PluginComponentProblem['component'], directoryOnly = false): string | undefined => {
+    const full = path.resolve(root, relative);
+    const local = path.relative(root, full);
+    if (path.isAbsolute(relative) || /[\\\x00-\x1f]/.test(relative) || local === '..' || local.startsWith(`..${path.sep}`) || path.isAbsolute(local)) {
+      componentProblems.push({ type: 'path-traversal', plugin: name, component, path: relative });
+      return;
+    }
+    const entry = value.entries.find(entry => entry.path === local);
+    if (!entry) {
+      componentProblems.push({ type: 'path-not-found', plugin: name, component, path: full });
+      return;
+    }
+    if (directoryOnly && entry.kind !== 'directory') {
+      componentProblems.push({ type: 'component-load-failed', plugin: name, component, path: relative,
+        reason: 'skills entries must be directories containing SKILL.md; point to the parent directory' });
+      return;
+    }
+    return full;
+  };
+  const has = (relative: string) => value.entries.some(entry => entry.path === relative);
+  const skillDirectories: string[] = has('skills') ? [path.join(root, 'skills')] : [];
+  const declaredSkills = value.manifest.skills;
+  if (declaredSkills !== undefined) {
+    for (const relative of typeof declaredSkills === 'string' ? [declaredSkills] : declaredSkills) {
+      const full = resolve(relative, 'skills', true);
+      if (full && !skillDirectories.includes(full)) skillDirectories.push(full);
+    }
+  } else if (!skillDirectories.length && has('SKILL.md')) skillDirectories.push(root);
+  const agentPaths: string[] = [];
+  const commandSources: PluginCommandSource[] = [];
+  for (const component of ['agents', 'commands'] as const) {
+    const declared = value.manifest[component];
+    const paths: string[] = [];
+    if (!declared && has(component)) paths.push(path.join(root, component));
+    else if (typeof declared === 'string' || Array.isArray(declared)) {
+      for (const relative of typeof declared === 'string' ? [declared] : declared) {
+        const full = resolve(relative, component);
+        if (full) paths.push(full);
+      }
+    } else if (component === 'commands' && declared) {
+      for (const [commandName, metadata] of Object.entries(declared)) {
+        if (metadata.source) {
+          const full = resolve(metadata.source, component);
+          if (full) { paths.push(full); commandSources.push({ kind: 'path', path: full, name: commandName, metadata }); }
+        } else if (metadata.content) commandSources.push({ kind: 'inline', name: commandName, content: metadata.content, metadata });
+      }
+    }
+    const defaultPath = path.join(root, component);
+    if (declared && has(component) && !paths.some(full => full === defaultPath || full.startsWith(defaultPath + path.sep))) {
+      componentProblems.push({ type: 'folder-shadowed-by-manifest', plugin: name, component, path: defaultPath });
+    }
+    if (component === 'agents') agentPaths.push(...paths);
+    else for (const full of paths) if (!commandSources.some(source => source.kind === 'path' && source.path === full)) commandSources.push({ kind: 'path', path: full });
+  }
+  return { skillDirectories, agentPaths, commandSources, componentProblems,
+    ...(skillDirectories[0] ? { skillDirectory: skillDirectories[0] } : {}),
+    ...(agentPaths[0] ? { agentDirectory: agentPaths[0] } : {}) };
 }
 function record(value: Snapshot): InstalledPlugin {
   return { manifest: value.manifest, digest: value.digest, files: value.files, bytes: value.bytes };
@@ -496,9 +570,8 @@ export function discoverInstalledPluginComponents(workspace: string, config?: Pl
       const current = verifyInstalled(store, item, options);
       const root = path.join(store, item.manifest.name);
       return {
-        plugin: record(current), directory: root,
-        ...(current.manifest.skills ? { skillDirectory: path.join(root, current.manifest.skills) } : {}),
-        ...(current.manifest.agents ? { agentDirectory: path.join(root, current.manifest.agents) } : {}),
+        plugin: record(current), directory: root, componentFiles: current.contents, componentEntries: current.entries,
+        ...localComponentPaths(current, root),
         ...workflowPaths(current, root),
         ...(themePaths(current, root) ? { themePaths: themePaths(current, root) } : {}),
         ...componentConfigs(current, root),

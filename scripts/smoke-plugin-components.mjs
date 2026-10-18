@@ -64,9 +64,9 @@ for await (const line of lines) {
   const hookCommand = [process.execPath, path.join(drivers, "hook.mjs"), marker].map(quote).join(" ");
   put(source, "hooks/config.json", { hooks: { SessionStart: [
     { command: hookCommand + " command" },
-    { type: "script", command: hookCommand + " script" },
+    { command: hookCommand + " script" },
     { type: "mcp_tool", tool: "mcp__fixture_local__ping", arguments: { startup: true } },
-  ], SessionEnd: [{ type: "script", command: hookCommand + " visible" }] } });
+  ], SessionEnd: [{ command: hookCommand + " visible" }] } });
   put(source, "mcp/config.json", { mcpServers: { local: { command: process.execPath,
     args: [path.join(drivers, "server.mjs"), marker] } } });
   const context = { workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 100_000 };
@@ -76,7 +76,7 @@ for await (const line of lines) {
   assert.deepEqual(discoverInstalledPluginComponents(workspace), []);
   put(workspace, ".harness/settings.json", { plugins: { enabled: true }, features: { mcpDynamic: false, lsp: false } });
   const loaded = loadProjectConfig(workspace, { userDir });
-  assert.equal(loaded.agentTypes[0].name, "plugin-reviewer");
+  assert.equal(loaded.agentTypes[0].name, "fixture:plugin-reviewer");
   assert.deepEqual(Object.keys(loaded.settings.mcpServers), ["fixture/local"]);
   assert.equal(fs.existsSync(marker), false, "Install and config discovery must remain inert");
 
@@ -108,8 +108,8 @@ for await (const line of lines) {
   await wait(() => stdout.includes("plugin-example"));
   child.stdin.write("/status\n");
   await wait(() => stdout.includes("\"modelCalls\": 0"));
-  const agents = JSON.parse(await command("/agents", "plugin-reviewer"));
-  assert.ok(agents.types.some(type => type.name === "plugin-reviewer" && type.description === "Installed plugin reviewer"));
+  const agents = JSON.parse(await command("/agents", "fixture:plugin-reviewer"));
+  assert.ok(agents.types.some(type => type.name === "fixture:plugin-reviewer" && type.description === "Installed plugin reviewer"));
   const mcp = JSON.parse(await command("/mcp", "fixture/local"));
   assert.deepEqual(mcp.servers, ["fixture/local"]);
   await command("/rename plugin smoke", "Session title: plugin smoke", "stderr");
@@ -124,14 +124,16 @@ for await (const line of lines) {
   assert.ok(events.some(event => event.method === "tools/list"));
   const calls = events.filter(event => event.method === "tools/call");
   assert.equal(calls.length, 1);
-  assert.deepEqual(calls[0].params, { name: "ping", arguments: { startup: true } });
+  assert.equal(calls[0].params.name, "ping");
+  assert.deepEqual(calls[0].params.arguments, { startup: true });
+  assert.equal(typeof calls[0].params._meta?.progressToken, "string");
   const journal = fs.readdirSync(path.join(workspace, ".agent")).find(name => name.endsWith(".jsonl"));
   const records = fs.readFileSync(path.join(workspace, ".agent", journal), "utf8").trim().split("\n").map(JSON.parse);
   const metadata = records[0];
-  assert.equal(metadata.config.agentTypes[0].name, "plugin-reviewer");
+  assert.equal(metadata.config.agentTypes[0].name, "fixture:plugin-reviewer");
   assert.ok(metadata.config.tools.some(tool => tool.name === "mcp__fixture_local__ping"));
   assert.equal(metadata.id, sessions[0].id);
-  assert.deepEqual(metadata.config.hooks.SessionStart.map(hook => hook.type ?? "command"), ["command", "script", "mcp_tool"]);
+  assert.deepEqual(metadata.config.hooks.SessionStart.map(hook => hook.type ?? "command"), ["command", "command", "mcp_tool"]);
   assert.ok(records.some(record => record.kind === "title" && record.title === "plugin smoke"));
   const startup = records.find(record => record.kind === "hook_result" && record.event === "SessionStart");
   assert.equal(startup.blocked, false);
@@ -158,7 +160,7 @@ for await (const line of lines) {
   child = undefined;
   console.log(JSON.stringify({ install: "passed", discovery: "inert", config: "passed", cli: "passed",
     agentPinned: true, skillListed: true, sessionStartHook: true, stdioMcpHandshake: true,
-    scriptStartupHook: true, readOnlyMcpStartupHook: true, startupHookContextJournal: true,
+    secondCommandStartupHook: true, readOnlyMcpStartupHook: true, startupHookContextJournal: true,
     agentsListed: true, mcpListed: true, renamedSessionSearch: true,
     hookDisplaySuppressed: true, hookDisplayJournal: true, sessionEndDisplay: true,
     namespacedTool: true, pluginBytesWatched: true, tamperReloadRetained: true, restoredDigestReloaded: true,

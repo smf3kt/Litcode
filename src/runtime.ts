@@ -64,7 +64,7 @@ import { createTools, type ToolContext, type ToolDefinition } from './tools.js';
 import { createNotebookTools } from './notebooks.js';
 import { BackgroundRegistry, createBackgroundTools } from './background.js';
 import { LocalScheduler, createSchedulerTools, type LocalSchedulerOptions } from './scheduler.js';
-import { SKILL_TOOL_NAME, skillsSection } from './skill-catalog.js';
+import { SKILL_TOOL_NAME, skillsSection, refreshPluginComponents } from './skill-catalog.js';
 
 export { SKILL_TOOL_NAME } from './skill-catalog.js';
 export const AGENT_TOOL_NAME = 'agent';
@@ -325,7 +325,8 @@ export function createSkillTool(config: SessionConfig, invoke?: (skill: SkillInf
     async execute(input, context) {
       context.signal.throwIfAborted();
       const { name, args = '' } = skillInputSchema.parse(input);
-      const skill = findSkill(skills, name);
+      refreshPluginComponents(config);
+      const skill = findSkill(config.skills, name);
       if (!skill) throw new Error(`Unknown skill: ${name}`);
       if (skill.disableModelInvocation) {
         throw new Error(`Skill "${name}" is not model-invocable; ask the user to run it`);
@@ -582,12 +583,15 @@ export async function createRuntime(
   });
   const inertSignal = AbortSignal.abort();
   const buildTools = (current: SessionConfig = config, owner = 'initial'): ToolDefinition[] => {
+    refreshPluginComponents(current);
     let scope = scopeFor(owner);
     const { tools: _pinnedSchemas, ...settings } = current;
     const storedMonitor = current.tools.find(tool => tool.name === 'monitor');
     const monitorProperties = storedMonitor?.input_schema.properties;
     const monitorWebsocket = !storedMonitor || (monitorProperties !== null && typeof monitorProperties === 'object' && 'ws' in monitorProperties);
-    const fingerprint = JSON.stringify({ settings, monitorWebsocket });
+    const fingerprint = JSON.stringify({ generation: current.pluginGeneration ?? 0,
+      settings: { ...settings, skills: undefined, agentTypes: undefined,
+        system: settings.system.split('\n\n# Available skills\n')[0]!.split('\n\n# Available agent types\n')[0] }, monitorWebsocket });
     const cached = toolSets.get(owner);
     if (cached?.fingerprint === fingerprint) {
       const copy = [...cached.tools];
@@ -966,6 +970,7 @@ export async function createRuntime(
         async execute(input, context) {
           context.signal.throwIfAborted();
           checkScope(owner, scope);
+          refreshPluginComponents(current);
           checkJournalOwner();
           return tool.execute(input, context);
         },
@@ -1127,6 +1132,11 @@ export async function createRuntime(
       },
       runSkill(current, owner, skill, args, invocationSignal, requestPermission, conversation) {
         const tools = buildTools(current, owner);
+        if (skill.plugin !== undefined) {
+          const live = findSkill(current.skills, skill.name);
+          if (!live) throw new Error(`Unknown skill: ${skill.name}`);
+          skill = live;
+        }
         return executeSkill(skill, args, { config: current, provider, tools, signal: invocationSignal,
           source: 'user', registry: agentAccessors.get(tools)?.(), requestPermission, conversation, hookOptions: () => callbackHooks(),
           terminalSequence: childTerminalCallbacks.get(tools), instructionFiles: childInstructionCallbacks.get(tools),

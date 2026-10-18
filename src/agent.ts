@@ -22,7 +22,7 @@ import type { AgentProgressEvent } from './tui-progress.js';
 import { classicPreToolUseHooked, raiseClassicPreToolUse } from './plugin-chain-tool-raise.js';
 import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_USE, CLASSIC_POST_TOOL_USE_FAILURE, classicEventRaised, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
 import type { ClassicPermissionRequestResult } from './plugin-chain-classic-raise.js';
-import { activateTouchedSkills, discoverTouchedSkills, reloadSkills } from './skill-catalog.js';
+import { activateTouchedSkills, discoverTouchedSkills, reloadSkills, refreshPluginComponents } from './skill-catalog.js';
 import { STRUCTURED_OUTPUT_NUDGE } from './structured-output.js';
 import { selectedDiffMessage, type DiffSelection } from './diff-selection.js';
 
@@ -1178,6 +1178,7 @@ export class Agent {
     let text = '';
     try {
       signal.throwIfAborted();
+      refreshPluginComponents(this.session.config);
       this.turnTiming = {uuid:randomUUID(), startedAt:Date.now()};
       this.events.progress?.({kind:'start', ...this.turnTiming});
       if (attachment !== undefined) {

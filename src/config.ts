@@ -29,6 +29,7 @@ import ignore from "ignore";
 import { isMap, isSeq, parseDocument } from "yaml";
 import { hooksSchema, type HooksConfig } from "./hooks.js";
 import { discoverInstalledPluginComponents, pluginConfigSchema, type PluginConfig } from "./plugins.js";
+import { loadPluginComponents, type ComponentDiagnostic } from './plugin-components.js';
 import { mergeSettings } from "./plugin-chain-settings-merge.js";
 import { managedSettingsDir } from "./plugin-chain-settings-source.js";
 import { permissionLayerSchema, type PermissionPolicy } from './permissions.js';
@@ -77,6 +78,9 @@ export type SkillEffort = "low" | "medium" | "high" | "xhigh" | "max";
 export type SkillSource = "userSettings" | "projectSettings" | "plugin";
 
 export interface SkillInfo {
+  format?: 'skill' | 'command';
+  plugin?: string;
+  disallowedTools?: string[];
   /** Frontmatter `name`, or the skill directory name when it is absent. */
   name: string;
   /** Frontmatter `description`, or an empty string when it is absent. */
@@ -117,6 +121,7 @@ export interface SkillInfo {
 }
 
 export interface LoadedConfig {
+  pluginComponentDiagnostics?: ComponentDiagnostic[];
   settings: Record<string, unknown>;
   permissionLayers: NonNullable<PermissionPolicy['layers']>;
   managedSettings?: Record<string, unknown>;
@@ -1349,9 +1354,10 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   } catch (error) {
     throw new ConfigError(`invalid installed plugin catalog (${(error as Error).message})`, path.join(harnessDir, "plugins"), { cause: error });
   }
-  const namespacePlugins = isPlainObject(settings.features) && settings.features.pluginSkillNamespaces === true;
-  for (const item of installedComponents) if (item.skillDirectory) scanSkills(item.skillDirectory, seen, skills, budget, "plugin",
-    namespacePlugins ? item.plugin.manifest.name : undefined);
+  const pluginCatalog = loadPluginComponents(installedComponents,
+    new Set([...skills.values()].map(skill => tryRealpath(skill.path) ?? skill.path)), budget,
+    isPlainObject(settings.features) && settings.features.pluginSkillNamespaces === true);
+  for (const skill of pluginCatalog.skills) if (!skills.has(skill.name)) skills.set(skill.name, skill);
   const pluginDirs = settings.pluginDirs;
   if (pluginDirs !== undefined) {
     if (!Array.isArray(pluginDirs) || pluginDirs.some(value => typeof value !== "string" || value.trim() === "")) {
@@ -1374,7 +1380,6 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   const agentCatalog = loadAgentTypes({
     ...(fs.existsSync(projectAgents) ? { projectDir: projectAgents } : {}),
     ...(fs.existsSync(userAgents) ? { userDir: userAgents } : {}),
-    pluginDirs: installedComponents.flatMap(item => item.agentDirectory ? [item.agentDirectory] : []),
     remainingBudget: budget.remaining,
   });
   budget.remaining -= agentCatalog.bytes;
@@ -1392,6 +1397,9 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     }
   }
   const result: LoadedConfig = { settings, permissionLayers, instructions, skills: [...skills.values()] };
+  agentCatalog.agentTypes.push(...pluginCatalog.agents);
+  if (pluginCatalog.diagnostics.length) result.pluginComponentDiagnostics = pluginCatalog.diagnostics;
+  for (const agent of pluginCatalog.agents) agentCatalog.reports.push({ path: agent.path, source: 'plugin', status: 'loaded', name: agent.name, message: 'plugin agent loaded' });
   // A skill with `paths` is held back from the catalog until a touched path
   // matches (the recovered assembler's conditional split). Keep the held list
   // beside the live one so a caller can activate it without re-scanning.

@@ -21,7 +21,63 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { HARNESS_DIR, activateConditionalSkills, loadProjectConfig, loadSkillsFromDirectories, type SkillInfo } from './config.js';
+import { discoverInstalledPluginComponents, installedPluginCatalogIdentity } from './plugins.js';
+import { loadPluginComponents } from './plugin-components.js';
 import type { SessionConfig } from './session.js';
+import type { AgentTypeInfo } from './agent-types.js';
+
+const pluginIdentities = new WeakMap<SessionConfig, string>();
+/** One agent-catalog renderer for startup, reload and plugin refresh. */
+export function agentTypesSection(agents: readonly AgentTypeInfo[]): string {
+  const catalog = agents.map(type => JSON.stringify({ name: type.name, ...(type.aliases?.length ? { aliases: type.aliases } : {}),
+    description: type.description, mode: type.mode, ...(type.model ? { model: type.model } : {}), ...(type.effort ? { effort: type.effort } : {}) })).join('\n');
+  return '\n\n# Available agent types\nUse agent.subagent_type with general, explore, fork, or a catalog name below. ' +
+    'Fork inherits the parent model, effort and paired conversation history. Catalog model IDs are literal gateway names; inherit uses the parent model.' +
+    (catalog ? '\n' + catalog : '');
+}
+/** sc cache invalidation, chunk-sfn1dbxq.js [3706919,3707202), UTF-16; index identity is the owned host generation. */
+export function refreshPluginComponents(current: SessionConfig): void {
+  // A child config is a snapshot of its owner's catalog; reloading it there
+  // would change the leased environment and the child's pinned system text.
+  if (current.childMode !== undefined) return;
+  if (!current.plugins?.enabled) return;
+  const identity = installedPluginCatalogIdentity(current.workspace, current.plugins);
+  if (pluginIdentities.get(current) === identity) return;
+  const loaded = loadPluginComponents(discoverInstalledPluginComponents(current.workspace, current.plugins),
+    new Set((current.skills ?? []).filter(skill => skill.source !== 'plugin').map(skill => skill.path)), undefined,
+    current.features?.pluginSkillNamespaces === true);
+  const skills = current.skills ??= [];
+  const retained = skills.filter(skill => skill.plugin === undefined && skill.source !== 'plugin');
+  skills.splice(0, skills.length, ...retained, ...loaded.skills);
+  const agents = current.agentTypes ??= [];
+  agents.splice(0, agents.length, ...agents.filter(agent => agent.plugin === undefined), ...loaded.agents);
+  current.system = replaceSkillsSection(current.system, skills);
+  // The agent-types section is the last appended block, and a child config may
+  // already carry child markers and agent instructions after it. Replace only
+  // the heading plus its catalog lines so later text survives.
+  const heading = '\n\n# Available agent types\n';
+  const start = current.system.indexOf(heading);
+  const section = agents.length ? agentTypesSection(agents) : '';
+  if (start < 0) current.system += section;
+  else {
+    let end = start + heading.length;
+    const intro = current.system.indexOf('\n', end);
+    if (intro >= 0 && current.system.slice(end, intro).startsWith('Use agent.subagent_type')) end = intro + 1;
+    while (end < current.system.length && current.system[end] === '{') {
+      const line = current.system.indexOf('\n', end);
+      // Stop before the line terminator so text appended after the catalog keeps
+      // its separating newline.
+      end = line < 0 ? current.system.length : line;
+      if (line >= 0) break;
+    }
+    current.system = current.system.slice(0, start) + section + current.system.slice(end);
+  }
+  pluginIdentities.set(current, identity);
+  // The owner's cached tool set and the live catalog must agree; a plugin
+  // install, update or removal replaces the catalog a later turn can reach.
+  current.pluginGeneration = (current.pluginGeneration ?? 0) + 1;
+}
+
 
 export const SKILL_TOOL_NAME = 'skill';
 

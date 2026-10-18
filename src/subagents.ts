@@ -1,9 +1,12 @@
 import { cloneClassifierMessages } from './message-origin.js';
+import { toolNameDenied } from './agent-tool-restrictions.js';
+import { refreshPluginComponents } from './skill-catalog.js';
 import { z } from 'zod';
 import { Agent, assertPaired, type StopRuntimeState } from './agent.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { AgentTypeInfo } from './agent-types.js';
 import { Session, type SessionConfig } from './session.js';
+import { expandSkill, type SkillInfo } from './config.js';
 import type { ModelProvider } from './provider.js';
 import { permissionOwner, seedPermissionUpdates } from './permissions.js';
 import type { ToolDefinition } from './tools.js';
@@ -49,14 +52,16 @@ export function resolveChildLaunch(parent: SessionConfig, raw: ChildLaunchOption
   mode: 'explore' | 'general'; max_turns: number; model?: string;
   effort?: ChildLaunchOptions['effort']; isolation?: 'worktree'; type?: AgentTypeInfo; fork: boolean;
 } {
+  refreshPluginComponents(parent);
   if (!options.enableAdvanced && (raw.subagent_type !== undefined || raw.effort !== undefined || raw.isolation !== undefined)) {
     throw new Error('Advanced child options are disabled');
   }
   const fork = raw.subagent_type === 'fork';
   const builtin = raw.subagent_type === 'explore' || raw.subagent_type === 'general';
-  let type = raw.subagent_type && !fork && !builtin ? options.agentTypes?.find(type => type.name === raw.subagent_type) : undefined;
+  const definitions = parent.agentTypes ?? options.agentTypes;
+  let type = raw.subagent_type && !fork && !builtin ? definitions?.find(type => type.name === raw.subagent_type) : undefined;
   if (raw.subagent_type && !fork && !builtin && !type) {
-    const candidates = options.agentTypes?.filter(type => type.aliases?.includes(raw.subagent_type!)) ?? [];
+    const candidates = definitions?.filter(type => type.aliases?.includes(raw.subagent_type!)) ?? [];
     if (candidates.length > 1) throw new Error(`Ambiguous agent type alias: ${raw.subagent_type}; use a full type name`);
     type = candidates[0];
   }
@@ -70,8 +75,34 @@ export function resolveChildLaunch(parent: SessionConfig, raw: ChildLaunchOption
     ...((raw.isolation ?? type?.isolation) ? { isolation: raw.isolation ?? type?.isolation } : {}), type, fork };
 }
 
-export function forkMessages(messages: readonly Anthropic.MessageParam[] | undefined, fork: boolean): Anthropic.MessageParam[] {
-  if (!fork) return [];
+/**
+ * Source preloads an agent's declared skills into the child conversation as
+ * meta user messages (chunk-40cepjpq.js, `isSkillPreload`). Each message is the
+ * skill's prompt with the command-message/skill-format header the recovered
+ * formatter emits; at most 32 names are considered.
+ */
+export function preloadAgentSkills(type: AgentTypeInfo | undefined, skills: readonly SkillInfo[] | undefined, agentName: string,
+  report?: (message: string) => void): Anthropic.MessageParam[] {
+  const names = (type?.skills ?? []).slice(0, 32);
+  if (names.length === 0) return [];
+  const found = new Map<string, SkillInfo>();
+  for (const name of names) {
+    let skill = skills?.find(candidate => candidate.name === name);
+    if (!skill && type?.name.includes(':')) skill = skills?.find(candidate => candidate.name === `${type.name.slice(0, type.name.lastIndexOf(':'))}:${name}`);
+    if (!skill) skill = skills?.find(candidate => candidate.name.endsWith(`:${name}`));
+    if (!skill) { report?.(`[Agent: ${agentName}] Warning: Skill '${name}' specified in frontmatter was not found`); continue; }
+    if (skill.disableModelInvocation) { report?.(`[Agent: ${agentName}] Warning: Skill '${name}' is disabled by policy`); continue; }
+    found.set(name, skill);
+  }
+  const messages: Anthropic.MessageParam[] = [];
+  for (const [name, skill] of found) {
+    messages.push({ role: 'user', content: `<command-message>${name}</command-message>\n<command-name>${name}</command-name>\n` +
+      `<skill-format>true</skill-format>\n` + expandSkill(skill.body, '', {}) });
+  }
+  return messages;
+}
+
+export function forkMessages(messages: readonly Anthropic.MessageParam[] | undefined, fork: boolean): Anthropic.MessageParam[] {  if (!fork) return [];
   if (!messages) throw new Error('Fork requires a parent conversation snapshot');
   const snapshot = cloneClassifierMessages(messages);
   assertPaired(snapshot);
@@ -89,7 +120,11 @@ export function forkMessages(messages: readonly Anthropic.MessageParam[] | undef
 export function validateChildEnvironment(config: SessionConfig, tools: readonly ToolDefinition[], lease: ChildEnvironmentLease): void {
   const { workspace: _workspace, tools: _schemas, ...expected } = config;
   const { workspace: _newWorkspace, tools: _newSchemas, ...actual } = lease.config;
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Child environment changed inherited configuration');
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    const keys = new Set([...Object.keys(expected), ...Object.keys(actual)]);
+    const diff = [...keys].filter(key => JSON.stringify((expected as Record<string, unknown>)[key]) !== JSON.stringify((actual as Record<string, unknown>)[key]));
+    throw new Error('Child environment changed inherited configuration: ' + diff.join(','));
+  }
   if (tools.length !== lease.tools.length || tools.some((tool, index) => {
     const rebound = lease.tools[index];
     return !rebound || rebound.readOnly !== tool.readOnly || JSON.stringify(rebound.schema) !== JSON.stringify(tool.schema);
@@ -209,8 +244,12 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
       const config = typeof source === 'function' ? source() : source;
       const launch = resolveChildLaunch(config, args as ChildLaunchOptions, options);
       const messages = forkMessages(context.conversation, launch.fork);
-      let selected = selectChildTools(tools, launch.mode, launch.type?.tools);
+      let selected = selectChildTools(tools, launch.mode, launch.type?.tools)
+        .filter(tool => !toolNameDenied(tool.schema.name, launch.type?.disallowedTools ?? []));
       let child = childConfig(config, selected, launch);
+      // Source preloads the declared skills as meta user messages before the
+      // first child turn; the prompt itself is unaffected.
+      const preloads = launch.type ? preloadAgentSkills(launch.type, config.skills, launch.type.name) : [];
       let environment: ChildEnvironmentLease | undefined;
       let session: Session | undefined;
       let agent: Agent | undefined;
@@ -244,6 +283,7 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
           },
         });
         for (const message of messages) session.append({ kind: 'message', message });
+        for (const message of preloads) session.append({ kind: 'message', message, isMeta: true });
         if (launch.fork && messages.length) session.append({ kind: 'turn_end', reason: 'fork_seed' });
         hooks = createChildHookLifecycle(session, options);
         agent = new Agent(session, provider, selected, { hookOptions: hooks.hookOptions,

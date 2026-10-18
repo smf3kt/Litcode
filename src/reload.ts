@@ -3,7 +3,7 @@ import { loadProjectConfig, instructionSources } from "./config.js";
 import { buildSystem, parseSettings } from "./runtime.js";
 import { configSchema, applyManagedPolicy, type SessionConfig } from "./session.js";
 import { loadKeybindings } from "./keybindings.js";
-import { setHeldSkills } from "./skill-catalog.js";
+import { agentTypesSection, setHeldSkills } from "./skill-catalog.js";
 
 /** Reload local policy/catalogs while retaining the live provider and call limits. */
 export function reloadConfig(current: SessionConfig): SessionConfig {
@@ -55,12 +55,7 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   // Conditional skills are session state, not config text: install the held list
   // before the clone is returned to the runtime.
   setHeldSkills(next, loaded.conditionalSkills);
-  if (next.features.subagents && next.features.agentTypes) {
-    const catalog = next.agentTypes.map(type => JSON.stringify({ name: type.name, ...(type.aliases?.length ? { aliases: type.aliases } : {}), description: type.description,
-      mode: type.mode, ...(type.model ? { model: type.model } : {}), ...(type.effort ? { effort: type.effort } : {}) })).join("\n");
-    next.system += "\n\n# Available agent types\nUse agent.subagent_type with general, explore, fork, or a catalog name below. " +
-      "Fork inherits the parent model, effort and paired conversation history." + (catalog ? "\n" + catalog : "");
-  }
+  if (next.features.subagents && next.features.agentTypes) next.system += agentTypesSection(next.agentTypes);
   next.hooks = settings.hooks ?? {};
   next.allowShell = overrides.allowShell ?? settings.allowShell ?? false;
   next.mcpServers = settings.mcpServers ?? {};

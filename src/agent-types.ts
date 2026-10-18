@@ -12,6 +12,10 @@ export const AGENT_TYPE_LIMITS = Object.freeze({
 });
 
 export interface AgentTypeInfo {
+  plugin?: string;
+  disallowedTools?: string[];
+  skills?: string[];
+  background?: boolean;
   name: string;
   description: string;
   aliases?: string[];
@@ -26,6 +30,10 @@ export interface AgentTypeInfo {
   effort?: "low" | "medium" | "high" | "xhigh" | "max";
   maxTurns?: number;
   isolation?: "worktree";
+  /** Plugin agents only; source Z5t, chunk-sfn1dbxq.js [2048927,2052223). */
+  memory?: "user" | "project" | "local";
+  autoCompactWindow?: number;
+  cacheTtl?: "5m" | "1h";
 }
 
 const nonempty = z.string().trim().min(1);
@@ -42,6 +50,12 @@ const definitionSchema = z.object({
 }).strict();
 
 export const agentTypeSchema = definitionSchema.extend({
+  // Loaded catalogs also carry plugin agents, whose recovered names are
+  // plugin-qualified. Authored definitions keep the strict definitionSchema.
+  name: nonempty.max(128).regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/),
+  plugin: nonempty.optional(), disallowedTools: z.array(nonempty).optional(), skills: z.array(nonempty).optional(), background: z.boolean().optional(),
+  memory: z.enum(["user", "project", "local"]).optional(), autoCompactWindow: z.number().int().min(100000).max(1000000).optional(),
+  cacheTtl: z.enum(["5m", "1h"]).optional(),
   body: z.string(),
   path: nonempty.refine(value => path.isAbsolute(value), "path must be absolute"),
 });

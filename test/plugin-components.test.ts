@@ -62,7 +62,7 @@ test("actual install loads inert components with explicit activation and precede
   f.put(f.workspace, ".harness/agents/reviewer.md", f.agent("project"));
   loaded = loadProjectConfig(f.workspace, { userDir: f.userDir });
   assert.equal(loaded.agentTypes![0]!.description, "project");
-  assert.ok(loaded.agentTypeReports!.some(report => report.source === "plugin" && report.status === "shadowed"));
+  assert.ok(loaded.agentTypes!.some(agent => agent.name === 'sample:reviewer' && agent.description === 'plugin'));
   f.put(f.workspace, ".harness/settings.local.json", { plugins: { enabled: false } });
   loaded = loadProjectConfig(f.workspace, { userDir: f.userDir });
   assert.deepEqual(loaded.skills, []);
@@ -72,7 +72,7 @@ test("actual install loads inert components with explicit activation and precede
 test("component paths schemas and installed integrity fail before activation", async t => {
   const f = fixture(t);
   const manifest = JSON.parse(fs.readFileSync(path.join(f.source, "plugin.json"), "utf8"));
-  for (const patch of [{ agents: "../agents" }, { agents: "mcp/config.json" }, { hooks: "missing.json" },
+  for (const patch of [{ hooks: "missing.json" },
     { hooks: "/tmp/hooks.json" }, { mcpServers: "agents" }]) {
     f.put(f.source, "plugin.json", { ...manifest, ...patch });
     await assert.rejects(f.install());

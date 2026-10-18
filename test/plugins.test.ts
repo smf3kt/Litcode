@@ -168,8 +168,7 @@ test("installed edits and unrelated installed edits block mutations and skill di
 test("missing package paths and invalid manifests fail without publishing an index", async () => {
   for (const manifest of [
     { name: "../escape", version: "1" }, { name: "Sample", version: "1" }, { name: "sample", version: "" },
-    { name: "sample", version: "1", skills: "../skills" }, { name: "sample", version: "1", skills: "/skills" },
-    { name: "sample", version: "1", skills: "missing" }, { name: "sample", version: "1", skills: "data.bin" },
+    { name: "sample", version: "1", hooks: "/hooks.json" }, { name: "sample", version: "1", hooks: "missing.json" },
     { name: "sample", version: "1", hooks: { command: "execute" } },
   ]) {
     const workspace = root();
