@@ -1,5 +1,7 @@
 # 当前项目工作清单
 
+W181 local plugin workflows verified (2026-10-18): default/custom paths, empty suppression and session diagnostics; per-session catalog shared by top-level/nested execution; committed index identity refreshes independent runtimes after mutation, with reload/release and in-flight close checks. Both independent review defects fixed; 84/84 affected, check/build and compiled CLI passed; final identity f13fe216. C-8/C-9 remain Partial; next: default skills/agents/commands discovery. [Record](ports/W181-local-plugin-workflows.md).
+
 更新：2026-10-15。执行规则见 [WORKFLOW](../WORKFLOW.md)。这是当前排程与审核处置的唯一入口；历史报告保持原记录。待办以「待完成清单」为准，下方历史排程表仅供追溯。返工与失败记录见[question.md](question.md)，由同一原因引发两次以上者已提炼为[硬性要求](coding-standard.md)，两者在每个工作包收尾时更新。
 
 ## 当前结论

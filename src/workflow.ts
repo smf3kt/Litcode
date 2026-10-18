@@ -8,7 +8,7 @@ import { WorkflowStore, workflowTaskSchema, workflowDefinitionSchema, workflowDi
 import { loadWorkflowScriptFile, loadWorkflowScriptJournal, openWorkflowScriptJournal,
   parseWorkflowScript, runWorkflowScript, WORKFLOW_SCRIPT_MAX_BYTES,
   type WorkflowScriptJournal } from './workflow-script.js';
-import { isNamedWorkflowNameOnly, listNamedWorkflows, resolveNamedWorkflow } from './workflow-named.js';
+import { isNamedWorkflowNameOnly, NamedWorkflowCatalog } from './workflow-named.js';
 
 // Owned declarative DAG orchestration; workflow input is data, never JavaScript.
 const taskSchema = workflowTaskSchema;
@@ -40,6 +40,7 @@ export type WorkflowNotification = {
 };
 export type WorkflowRegistryOptions = {
   agents: AgentRegistry; signal?: AbortSignal; now?: () => number;
+  namedWorkflows?: NamedWorkflowCatalog;
   onNotification?: (event: WorkflowNotification) => void;
   workspace?: string; owner?: string; settingsDigest?: string;
   storageLimits?: { maxSnapshotBytes?: number; maxRuns?: number };
@@ -61,6 +62,7 @@ function prefix(text: string, limit: number): string {
 }
 
 export class WorkflowRegistry {
+  readonly namedWorkflows: NamedWorkflowCatalog;
   readonly limits: { maxRunning: number; maxHistory: number; maxPromptBytes: number;
     maxTotalPromptBytes: number; maxOutputBytes: number; maxSummaryBytes: number;
     maxEvents: number; maxEventBytes: number };
@@ -76,6 +78,7 @@ export class WorkflowRegistry {
   private readonly onAbort = () => { void this.close(); };
 
   constructor(private readonly options: WorkflowRegistryOptions) {
+    this.namedWorkflows = options.namedWorkflows ?? new NamedWorkflowCatalog();
     this.limits = { maxRunning: 4, maxHistory: 32,
       maxPromptBytes: options.agents.limits.maxMessageBytes, maxTotalPromptBytes: 256 * 1024,
       maxOutputBytes: options.agents.limits.maxOutputBytes, maxSummaryBytes: 8192,
@@ -387,6 +390,7 @@ export class WorkflowRegistry {
   close(): Promise<void> {
     if (this.closing) return this.closing;
     this.closed = true; this.options.signal?.removeEventListener('abort', this.onAbort);
+    this.namedWorkflows.close();
     for (const workflow of this.workflows.values()) if (workflow.worker) workflow.controller.abort();
     this.closing = Promise.all([...this.workflows.values()].map(workflow => workflow.worker)).then(() => {
       this.store?.close();
@@ -424,9 +428,9 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
         source = loaded.source;
       }
     } else if (args.name !== undefined) {
-      const named = await resolveNamedWorkflow(args.name, context.workspace);
+      const named = await registry.namedWorkflows.resolve(args.name, context.workspace);
       if (named === undefined) {
-        const available = (await listNamedWorkflows(context.workspace)).map(entry => entry.name).join(', ');
+        const available = (await registry.namedWorkflows.list(context.workspace)).map(entry => entry.name).join(', ');
         throw new Error(`Workflow "${args.name}" not found. Available: ${available || '(none)'}`);
       }
       source ??= named.script;
@@ -464,9 +468,9 @@ export function createWorkflowTools(registry: WorkflowRegistry, options: { persi
       // stay local; the child body is parsed before it reaches the runtime.
       const resolveChildWorkflow = async (request: unknown) => {
         if (typeof request === 'string') {
-          const found = await resolveNamedWorkflow(request, context.workspace);
+          const found = await registry.namedWorkflows.resolve(request, context.workspace);
           if (found === undefined) {
-            const available = (await listNamedWorkflows(context.workspace)).map(entry => entry.name).join(', ');
+            const available = (await registry.namedWorkflows.list(context.workspace)).map(entry => entry.name).join(', ');
             throw new Error(`workflow('${request}'): no workflow with that name. Available: ${available || '(none)'}`);
           }
           const child = parseWorkflowScript(found.script);

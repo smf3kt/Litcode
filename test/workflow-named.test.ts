@@ -5,13 +5,43 @@ import path from 'node:path';
 import { afterEach, beforeEach, test } from 'node:test';
 import type { AgentRegistry } from '../src/agent-registry.js';
 import {
-  clearNamedWorkflowCache, configureNamedWorkflows, listNamedWorkflows, resolveNamedWorkflow,
+  NamedWorkflowCatalog, type NamedWorkflowHostOptions,
 } from '../src/workflow-named.js';
 import { parseWorkflowScript } from '../src/workflow-script.js';
 import { createWorkflowTools, WorkflowRegistry } from '../src/workflow.js';
 
 const roots: string[] = [];
+test('closed and invalidated catalogs discard in-flight discoveries', async () => {
+  const root = await temporaryRoot();
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  const owner = new NamedWorkflowCatalog({ userDir: root,
+    loadPlugins: async () => { await pending; return { enabled: [], errors: [] }; } });
+  const first = owner.list(root);
+  owner.invalidate();
+  release();
+  await assert.rejects(first, /changed during discovery/);
+  assert.deepEqual(await owner.list(root), []);
+  let finish!: () => void;
+  const held = new Promise<void>(resolve => { finish = resolve; });
+  const closing = new NamedWorkflowCatalog({ userDir: root,
+    loadPlugins: async () => { await held; return { enabled: [], errors: [] }; } });
+  const reading = closing.list(root);
+  closing.close(); finish();
+  await assert.rejects(reading, /changed during discovery/);
+  await assert.rejects(closing.list(root), /closed/);
+});
 const logs: string[] = [];
+let catalog: NamedWorkflowCatalog;
+let host: NamedWorkflowHostOptions;
+const listNamedWorkflows = (workspace: string) => catalog.list(workspace);
+const resolveNamedWorkflow = (name: string, workspace: string) => catalog.resolve(name, workspace);
+const clearNamedWorkflowCache = () => catalog.invalidate();
+function configureNamedWorkflows(options: NamedWorkflowHostOptions) {
+  catalog?.close();
+  host = { ...host, ...options };
+  catalog = new NamedWorkflowCatalog(host);
+}
 
 function meta(name: string, description = name): string {
   return `export const meta = { name: ${JSON.stringify(name)}, description: ${JSON.stringify(description)} }`;
@@ -32,6 +62,7 @@ async function temporaryRoot(): Promise<string> {
 
 beforeEach(() => {
   logs.length = 0;
+  host = {};
   configureNamedWorkflows({ plugins: [], bundled: [], bundledOnly: false, logger: (message) => logs.push(message) });
 });
 

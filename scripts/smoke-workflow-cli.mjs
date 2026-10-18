@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const compiled = process.argv.includes("--compiled");
+const named = process.argv.includes("--named");
 const launcher = compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")];
 if (process.argv.includes("--crash")) { await crashAcceptance(); process.exit(0); }
 const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "workflow-cli-smoke-")));
@@ -33,7 +34,7 @@ const server = http.createServer((req, res) => {
       } else {
         assert.ok(body.tools.some(tool => tool.name === "workflow_run" && tool.input_schema.properties.resume_from));
         blocks = [{ type: "tool_use", id: `workflow-${attempt}`, name: "workflow_run",
-          input: { ...input, ...(attempt === 2 ? { resume_from: results[0].id } : {}) } }]; reason = "tool_use";
+          input: named ? { name: 'parent' } : { ...input, ...(attempt === 2 ? { resume_from: results[0].id } : {}) } }]; reason = "tool_use";
       }
       const events = [{ type: "message_start", message: { id: "smoke", type: "message", role: "assistant", model: body.model,
         content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 0 } } }];
@@ -72,8 +73,30 @@ async function cli(args) {
 }
 try {
   fs.mkdirSync(path.join(workspace, "user"));
+  if (named) {
+    const user = path.join(workspace, 'user');
+    const plugin = fs.mkdtempSync(path.join(os.tmpdir(), 'workflow-plugin-'));
+    try {
+      fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ plugins: { enabled: true } }));
+      fs.mkdirSync(path.join(user, 'workflows'));
+      fs.writeFileSync(path.join(user, 'workflows/parent.js'), "export const meta={name:'parent',description:'user workflow'};return await workflow('fixture:leaf')");
+      fs.writeFileSync(path.join(plugin, 'plugin.json'), JSON.stringify({ name: 'fixture', version: '1', workflows: './leaf.js' }));
+      fs.writeFileSync(path.join(plugin, 'leaf.js'), "export const meta={name:'leaf',description:'plugin workflow'};return 'compiled named plugin result'");
+      const { createPluginTools } = await import(compiled ? '../dist/plugins.js' : '../src/plugins.ts');
+      await createPluginTools({ enabled: true }).find(tool => tool.schema.name === 'plugin_install').execute({ directory: fs.realpathSync(plugin) },
+        { workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000 });
+    } finally { fs.rmSync(plugin, { recursive: true, force: true }); }
+  }
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const owner = await cli(["--user-dir", path.join(workspace, "user"), "--allow-tool", "workflow_run", "run workflow fixture"]);
+  if (named) {
+    assert.equal(results.length, 1);
+    assert.equal(results[0].result, 'compiled named plugin result');
+    assert.equal(childPrompts.length, 0);
+    assert.equal(fs.existsSync(path.join(workspace, '.agent', 'workflows', owner, 'owner.lock')), false);
+    console.log(JSON.stringify({ namedWorkflows: 'passed', userDir: true, customPluginFile: true,
+      nestedCatalog: true, locksReleased: true, gateway: 'owned loopback SSE' }));
+  } else {
   assert.equal(results.length, 1); assert.equal(results[0].status, "failed");
   assert.deepEqual(results[0].tasks.map(task => task.status), ["completed", "failed"]);
   const directory = path.join(workspace, ".agent", "workflows", owner);
@@ -92,6 +115,7 @@ try {
   assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
   console.log(JSON.stringify({ cliWorkflowResume: "passed", ownerSessionResumed: true, completedTaskCalls: 1, retriedTaskCalls: 2,
     fullSettingsCompatible: true, provenance: true, locksReleased: true, gateway: "owned loopback SSE", firstFailure: "max_tokens" }));
+  }
 } finally {
   if (processHandle) {
     const child = processHandle; const exited = new Promise(resolve => child.once("close", resolve));

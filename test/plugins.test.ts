@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { after, test } from "node:test";
-import { createPluginTools, discoverInstalledSkillDirectories, pluginConfigSchema, PLUGIN_LIMITS,
+import { createPluginTools, discoverInstalledPluginComponents, discoverInstalledSkillDirectories, pluginConfigSchema, PLUGIN_LIMITS,
   type PluginConfig } from "../src/plugins.js";
 import type { ToolContext } from "../src/tools.js";
 
@@ -36,6 +36,25 @@ async function run(workspace: string, name: string, input: unknown = {}, config:
   return JSON.parse(await tool.execute(input, context(workspace, extra)));
 }
 const store = (workspace: string) => path.join(workspace, ".harness/plugins");
+test('workflow paths use defaults only when absent and accumulate invalid custom diagnostics', async () => {
+  const workspace = root();
+  const declarations = [undefined, [], ['missing', '../escape', './custom.js'], 'custom.js'];
+  for (const [i, workflows] of declarations.entries()) {
+    const source = packageAt(`paths${i}`, '1', false);
+    put(source, 'plugin.json', JSON.stringify({ name: `paths${i}`, version: '1', ...(workflows === undefined ? {} : { workflows }) }));
+    put(source, 'workflows/default.js', 'inert');
+    put(source, 'custom.js', 'inert');
+    await run(workspace, 'plugin_install', { directory: source });
+  }
+  const [defaults, empty, mixed, custom] = discoverInstalledPluginComponents(workspace, { enabled: true });
+  assert.equal(defaults!.workflowsPath, path.join(installed(workspace, 'paths0'), 'workflows'));
+  assert.equal(empty!.workflowsPath, undefined);
+  assert.equal(empty!.workflowsPaths, undefined);
+  assert.equal(mixed!.workflowsPath, undefined);
+  assert.deepEqual(mixed!.workflowsPaths, [path.join(installed(workspace, 'paths2'), 'custom.js')]);
+  assert.deepEqual(mixed!.workflowProblems.map(error => error.type), ['path-not-found', 'path-traversal']);
+  assert.deepEqual(custom!.workflowsPaths, [path.join(installed(workspace, 'paths3'), 'custom.js')]);
+});
 const installed = (workspace: string, name = "sample") => path.join(store(workspace), name);
 const index = (workspace: string) => path.join(store(workspace), ".index.json");
 function cleanTransactions(workspace: string): void {
