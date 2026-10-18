@@ -21,6 +21,7 @@ import { CLASSIC_PERMISSION_REQUEST, CLASSIC_POST_TOOL_BATCH, CLASSIC_POST_TOOL_
 import type { ClassicPermissionRequestResult } from './plugin-chain-classic-raise.js';
 import { activateTouchedSkills, discoverTouchedSkills, reloadSkills } from './skill-catalog.js';
 import { STRUCTURED_OUTPUT_NUDGE } from './structured-output.js';
+import { selectedDiffMessage, type DiffSelection } from './diff-selection.js';
 
 export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
 Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
@@ -758,7 +759,8 @@ export class Agent {
     if (conversation.at(-1)?.role === 'assistant' && toolCalls(conversation.at(-1)!).length) conversation.pop();
     assertPaired(conversation);
     const context: ToolContext = { workspace: c.workspace, signal, allowShell: c.allowShell, maxOutputBytes: c.maxOutputBytes,
-      conversation: structuredClone(conversation), interaction: this.events.interaction };
+      conversation: structuredClone(conversation), interaction: this.events.interaction,
+      fileHistory: file => this.session.touchFile(file) };
     const results: ToolResult[] = [];
     const extra: string[] = [];
     let stopReason = blocked;
@@ -1139,7 +1141,7 @@ export class Agent {
   }
 
   async run(prompt?: string, signal = new AbortController().signal, attachment?: MediaAttachment,
-    expansion?: PromptExpansion, hookContext: readonly string[] = []): Promise<RunResult> {
+    expansion?: PromptExpansion, hookContext: readonly string[] = [], selection?: DiffSelection): Promise<RunResult> {
     if (this.busy) throw new Error('Agent is already running');
     this.busy = true;
     let modelCalls = 0;
@@ -1224,6 +1226,8 @@ export class Agent {
           signal.throwIfAborted();
         }
         this.session.append({ kind: 'message', message });
+        if (selection?.text) this.session.append({ kind: 'message', isMeta: true,
+          message: { role: 'user', content: selectedDiffMessage(selection) } });
       } else if (!this.session.awaitingResponse) throw new Error('Session has no unfinished turn');
       const prior = this.session.lastResponse;
       if (prior && !toolCalls(this.session.messages.at(-1)!).length && prior.stop_reason !== 'pause_turn') {

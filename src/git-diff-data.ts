@@ -1,6 +1,5 @@
-// Readable seam over the recovered diff data hook. The prime store and its constants are copied
-// verbatim in ./git-diff-data-source.ts; the polling controller is the source hook adapted to a
-// plain class because this runtime has no React-style render loop.
+// The recovered diff data effect is owned by one session controller. The prime store and
+// constants are copied in ./git-diff-data-source.ts. Native components subscribe through their host.
 //
 // Source: chunk-xmvfy87k.js (sha256 fabe23b4…), zero-based UTF-16 half-open ranges. Constants `j`,
 // `jKn`, `de`, `I` [1818,1883) set the 400-line truncation threshold, the 150ms refresh debounce,
@@ -8,9 +7,11 @@
 // [1883,2290) collects stats plus hunks; `Wcn` [2589,2736) primes the store; `WKn` [2736,3956)
 // drives polling and builds the file view. `mkt` [24503,24523) and `Tns` [24607,25087) live in
 // chunk-j8hqhz0c.js and are reached here through the W161/W162 collectors.
-import { readGitDiffStats, type GitDiffStats } from './git-diff-status.js';
+import type { GitDiffStats } from './git-diff-status.js';
 import { readGitDiffHunks, type GitDiffHunk, type GitDiffHunks } from './git-diff-hunks.js';
 import { j, jKn, de, I, z } from './git-diff-data-source.js';
+import { uxn } from './git-diff-collector-source.js';
+import { withDiffCollection } from './git-diff-collector-host.js';
 
 export type GitDiffBaseMode = 'auto' | 'session' | 'uncommitted' | 'branch' | 'branch-point';
 
@@ -73,25 +74,25 @@ export function diffRevision(result: GitDiffRawResult): string {
 
 /**
  * Source `K` adapted to the host collectors: stats first, then hunks for the same revision.
- * The source's `uxn` picks a session/branch/working-tree source; this runtime carries only the
- * working-tree view, so `baseMode` is accepted and recorded but does not change the source.
+ * The copied `uxn` chooses session/branch/working-tree data; its process and session clock
+ * boundaries are scoped to this collection so concurrent terminal sessions stay independent.
  * A throw and a failed collector both answer null, as in the source.
  */
 export async function collectGitDiff(cwd: string, baseMode: GitDiffBaseMode | string,
-  signal?: AbortSignal): Promise<GitDiffCollected | null> {
-  try {
-    const stats = await readGitDiffStats(cwd, signal);
-    if (signal?.aborted) return null;
-    if (stats === null) return null;
-    const result: GitDiffRawResult = { ...stats, source: { kind: 'working-tree' } };
-    const hunks = stats.stats.filesCount === 0
-      ? EMPTY_GIT_DIFF_HUNKS
-      : await readGitDiffHunks(cwd, diffRevision(result), signal);
-    if (signal?.aborted) return null;
-    return { result, hunks: hunks ?? null };
-  } catch {
-    return null;
-  }
+  signal?: AbortSignal, sessionStart = 0): Promise<GitDiffCollected | null> {
+  return withDiffCollection({ cwd, sessionStart }, async () => {
+    try {
+      const result = await uxn({}, signal, baseMode, cwd, {}) as GitDiffRawResult | null;
+      if (signal?.aborted || result === null) return null;
+      const hunks = result.stats.filesCount === 0
+        ? EMPTY_GIT_DIFF_HUNKS
+        : await readGitDiffHunks(cwd, diffRevision(result), signal);
+      if (signal?.aborted) return null;
+      return { result, hunks: hunks ?? null };
+    } catch {
+      return null;
+    }
+  });
 }
 
 /**

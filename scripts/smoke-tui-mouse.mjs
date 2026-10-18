@@ -42,6 +42,7 @@ const returnEditing = process.argv.includes('--return-gesture');
 const confirmingInput = process.argv.includes('--input-gestures');
 const terminalFocus = process.argv.includes('--terminal-focus');
 const statusLineMode = process.argv.includes('--status-line');
+const diffPanel = process.argv.includes('--diff-panel');
 const returnExpected=[];
 const vimExpected=[];
 const editing = process.argv.includes('--editing') || killing || undoing || folding;
@@ -59,6 +60,16 @@ const messageText = (streamingChunks ? 'Frozen prefix paragraph.\n\n'.repeat(180
 const temporary = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? `${process.env.CLAUDE_JOB_DIR}/tmp` : root, '.tui-mouse-'));
 const workspace = path.join(temporary, 'workspace'), user = path.join(temporary, 'user');
 fs.mkdirSync(workspace); fs.mkdirSync(user);
+if (diffPanel) {
+  const git = args => {
+    const result = spawnSync('git', args, { cwd: workspace, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  };
+  git(['init', '-b', 'main']);
+  fs.writeFileSync(path.join(workspace, 'sample.txt'), Array.from({ length: 70 }, (_, i) => `before ${i}`).join('\n') + '\n');
+  git(['add', 'sample.txt']);
+  git(['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit', '-m', 'baseline']);
+}
 const statusLineCalls=path.join(workspace,'statusline-calls.jsonl');
 const statusLineConfig=mode=>({editorMode:'vim',statusLine:{type:'command',command:process.execPath+' statusline-fixture.cjs '+mode,
   padding:2,refreshInterval:1,hideVimModeIndicator:true}});
@@ -261,7 +272,7 @@ process.stdin.emit = function(event, ...args) {
 const progressSettingsModule=path.join(temporary,'progress-settings.mjs');
 // Fix source word selection to the last candidate, so append and empty replacement are deterministic.
 if (progressSettings) fs.writeFileSync(progressSettingsModule,'Math.random = () => 1 - Number.EPSILON;\n',{flag:'wx'});
-const command = `printf '%s' "$$" > ${quote(pidFile)}; stty rows ${previews || messages ? 24 : 10} cols ${actions || (previews || messages) && !narrow ? 100 : 40}; exec ${quote(process.execPath)}${inputClose ? ` --import ${quote(inputCloseModule)}` : ''}${progressSettings ? ` --import ${quote(progressSettingsModule)}` : ''} ${quote(cli)}${line ? ' --no-tui' : ''} --workspace ${quote(workspace)} --user-dir ${quote(user)}${dialogs ? ' --permission-mode ask' : ''}`;
+const command = `printf '%s' "$$" > ${quote(pidFile)}; stty rows ${diffPanel ? 28 : previews || messages ? 24 : 10} cols ${diffPanel ? 160 : actions || (previews || messages) && !narrow ? 100 : 40}; exec ${quote(process.execPath)}${inputClose ? ` --import ${quote(inputCloseModule)}` : ''}${progressSettings ? ` --import ${quote(progressSettingsModule)}` : ''} ${quote(cli)}${line ? ' --no-tui' : ''} --workspace ${quote(workspace)} --user-dir ${quote(user)}${dialogs ? ' --permission-mode ask' : ''}`;
 // A shell pipe gives macOS script a pipe rather than Node's stdin socket.
 const child = spawn('/bin/sh', ['-c', `cat | script -q /dev/null /bin/sh -c ${quote(command)}`], {
   cwd: root, detached: true,
@@ -275,7 +286,8 @@ const child = spawn('/bin/sh', ['-c', `cat | script -q /dev/null /bin/sh -c ${qu
     LLM_PROMPT_CACHE: 'false', LLM_EAGER_TOOL_INPUT: 'false' },
 });
 let output = '', errors = '';
-const screen = new TerminalScreen(actions || (previews || messages) && !narrow ? 100 : 40, previews || messages ? 24 : 10);
+const screen = new TerminalScreen(diffPanel ? 160 : actions || (previews || messages) && !narrow ? 100 : 40,
+  diffPanel ? 28 : previews || messages ? 24 : 10);
 const frame = () => screen.lines().join('\n');
 // PTY reads can split one UTF-8 character across chunks.
 child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
@@ -305,7 +317,40 @@ async function until(predicate) {
 const topLine = () => screen.lines()[0].trim();
 try {
   await until(() => line ? output.includes('/help for commands.') : output.includes('\x1b[?1049h') && (statusLineMode?frame().includes('FOOT A'):output.includes('ctrl+o')));
-  if(statusLineMode){
+  if (diffPanel) {
+    fs.writeFileSync(path.join(workspace, 'sample.txt'), Array.from({ length: 70 }, (_, i) => `after ${i}`).join('\n') + '\n');
+    child.stdin.write('/diff\r');
+    await until(() => frame().includes('Diff panel shown'));
+    child.stdin.write('retained draft\u0018b');
+    await until(() => frame().includes('uncommitted (vs HEAD)') && frame().includes('sample.txt'));
+    assert.ok(frame().includes('retained draft'));
+    const before = frame(); child.stdin.write('\x1b[<65;120;18M');
+    await until(() => frame() !== before);
+    assert.ok(frame().includes('retained draft'));
+    const selectionRow = screen.lines().findIndex(row => row.includes('before '));
+    assert.ok(selectionRow > 0, frame());
+    const selectionColumn = screen.lines()[selectionRow].indexOf('before ');
+    child.stdin.write(`\x1b[<0;${selectionColumn + 1};${selectionRow + 1}M\x1b[<32;${selectionColumn + 5};${selectionRow + 1}M\x1b[<0;${selectionColumn + 5};${selectionRow + 1}m`);
+    await until(() => frame().includes('1 line from diff'));
+    assert.ok(frame().includes('retained draft'));
+    child.stdin.write('\x1b[99;6u');
+    await until(() => output.includes('\x1b]52;c;' + Buffer.from('befor').toString('base64')));
+    const closeRow = screen.lines().findIndex(row => row.includes('✕'));
+    const closeColumn = screen.lines()[closeRow].indexOf('✕');
+    assert.ok(closeRow >= 0 && closeColumn > 80);
+    child.stdin.write(`\x1b[<0;${closeColumn + 1};${closeRow + 1}M\x1b[<0;${closeColumn + 1};${closeRow + 1}m`);
+    await until(() => !frame().includes('✕') && frame().includes('retained draft'));
+    assert.equal(requests.length, 0);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(user, 'settings.json'), 'utf8')),
+      { diffSidebarOpen: false, diffSidebarBaseMode: 'uncommitted' });
+    child.stdin.write('\r');
+    await until(() => requests.length === 1 && frame().includes('ready'));
+    const users = requests[0].messages.filter(message => message.role === 'user');
+    assert.equal(users.at(-2).content, 'retained draft');
+    assert.equal(users.at(-1).content, '<system-reminder>\nThe user selected the following 1 line from the diff view (in sample.txt):\nbefor\n\nThis may or may not be related to the current task.\n</system-reminder>');
+    child.stdin.write('/exit\r'); child.stdin.end();
+    assert.equal(await exited, 0, errors);
+  } else if(statusLineMode){
     const sessions=()=>fs.readdirSync(path.join(workspace,'.agent')).filter(name=>name.endsWith('.jsonl')).map(name=>{
       const text=fs.readFileSync(path.join(workspace,'.agent',name),'utf8'),cut=text.lastIndexOf('\n');
       const rows=cut<0?[]:text.slice(0,cut).split('\n').filter(Boolean).map(JSON.parse);return{id:name.slice(0,-6),rows};
@@ -1444,7 +1489,9 @@ try {
     assert.equal(pacingStreams.size, 0);
     assert.ok(output.includes('\x1b[?2004l') && output.includes('\x1b[?25h'));
   }
-  console.log(JSON.stringify({ ...(statusLineMode?{tuiStatusLine:'passed',sourceCoalescing:true,periodicRefresh:true,multilineANSI:true,
+  console.log(JSON.stringify({ ...(diffPanel ? { tuiDiffPanel: 'passed', commandToggles: true,
+    nativeSourceComponent: true, baseSwitch: true, sidebarWheel: true, closeClick: true, draftPreserved: true,
+    nativeSelection: true, clipboardExact: true, selectionAttachment: true } : {}), ...(statusLineMode?{tuiStatusLine:'passed',sourceCoalescing:true,periodicRefresh:true,multilineANSI:true,
     modePayload:true,usagePayload:true,draftSubmissionExact:true,modalPauses:true,reloadChanges:true,resumePinned:true,
     removalStops:true,pendingChildReaped:true,exitCode:130,narrow}:{}), ...(terminalFocus?{tuiTerminalFocus:'passed',fragmentedReports:true,sourceVisualInverse:true,
     keyboardAndPasteRegain:true,foldedRawRetained:true,modalOwnerRetained:true,remapRetained:true,preciseSubmission:true,
@@ -1492,7 +1539,7 @@ try {
     ...(inputClose ? { fatalInputCancelsProvider: true, exitCode: 0, inputCloseFixture: 'owned Node preload stream error' } : {}), pacingFrames } : {}),
     ...(streamingChunks ? { tuiStreamingChunks: 'passed', frozenPrefix: true,
     openFence: true, sourceChars: messageText.length } : {}), ...(messages ? { tuiMessages: 'passed', cumulativeStream: true,
-    markdownRendered: true, ...(!streamingChunks && !pacing && !visibility && !proseWidth && !highlighting && !theming && !systemTheme && !customTheme && !pluginTheme && !themeEditor && !thinkingProgress && !progressSettings ? { sourceHeadingStyle: true, sourceCodeHighlight: true } : {}), responseBoundaries: true, narrow } : externalEditing || vimEditing || returnEditing || confirmingInput || terminalFocus || statusLineMode ? {} : folding ? {tuiFoldPaste:'passed',sourceThresholds:true,exactExpandedSubmit:true,repeatedPasteExpands:true,
+    markdownRendered: true, ...(!streamingChunks && !pacing && !visibility && !proseWidth && !highlighting && !theming && !systemTheme && !customTheme && !pluginTheme && !themeEditor && !thinkingProgress && !progressSettings ? { sourceHeadingStyle: true, sourceCodeHighlight: true } : {}), responseBoundaries: true, narrow } : diffPanel || externalEditing || vimEditing || returnEditing || confirmingInput || terminalFocus || statusLineMode ? {} : folding ? {tuiFoldPaste:'passed',sourceThresholds:true,exactExpandedSubmit:true,repeatedPasteExpands:true,
     undoRetainsPayload:true,historyRetainsPayload:true,rawHistorySearch:true,deletedPayloadReleased:true,killCancelYankRaw:true,
     literalIdsAvoided:true,unicodeAndCR:true,
     stashRetainsPayload:!line,pendingClose:true,exitCode:130,durableSubmissionMatched:true} : undoing ? { tuiUndo: 'passed', debounceSnapshots: true, cursorRestored: true,

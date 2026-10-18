@@ -105,8 +105,9 @@ export type SessionConfig = {
 };
 export type ToolResult = Anthropic.ToolResultBlockParam;
 export type SessionEvent =
-  | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string }
-  | { kind: 'message'; message: Anthropic.MessageParam; response?: Anthropic.Message }
+  | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string; startedAt?: number }
+  | { kind: 'file_history'; path?: string; tracked: boolean }
+  | { kind: 'message'; message: Anthropic.MessageParam; response?: Anthropic.Message; isMeta?: boolean }
   | { kind: 'mcp_subscription'; server: string; configDigest: string; method: 'resources/subscribe' | 'resources/unsubscribe'; uri: string }
   | { kind: 'mcp_task'; server: string; configDigest: string; taskId: string; tool: string; createdAt: string; ttl: number | null; resolved: boolean; result?: string; isError?: boolean }
   | { kind: 'tool_start'; id: string; name: string }
@@ -230,8 +231,10 @@ const messageSchema = z.object({ role: z.enum(['user', 'assistant']), content: z
 const responseSchema = z.object({ role: z.literal('assistant'), content: z.array(z.object({ type: z.string() }).passthrough()), stop_reason: z.string().nullable() }).passthrough();
 const resultSchema = z.object({ type: z.literal('tool_result'), tool_use_id: z.string().min(1), content: z.union([z.string(), z.array(z.object({ type: z.string() }).passthrough())]), is_error: z.boolean().optional() }).strict();
 const eventSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('metadata'), version: z.literal(1), id: z.string().uuid(), config: configSchema, fingerprint: z.string() }).strict(),
-  z.object({ kind: z.literal('message'), message: messageSchema, response: responseSchema.optional() }).strict(),
+  z.object({ kind: z.literal('metadata'), version: z.literal(1), id: z.string().uuid(), config: configSchema,
+    fingerprint: z.string(), startedAt: z.number().finite().nonnegative().optional() }).strict(),
+  z.object({ kind: z.literal('file_history'), path: z.string().min(1).optional(), tracked: z.boolean() }).strict(),
+  z.object({ kind: z.literal('message'), message: messageSchema, response: responseSchema.optional(), isMeta: z.boolean().optional() }).strict(),
   z.object({ kind: z.literal('mcp_subscription'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/),
     method: z.enum(['resources/subscribe', 'resources/unsubscribe']), uri: z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096 && !/[\x00-\x20\x7f]/.test(value)) }).strict(),
   z.object({ kind: z.literal('mcp_task'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/), taskId: z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/), tool: z.string().min(1).max(256), createdAt: z.string().datetime({ offset: true }), ttl: z.number().finite().int().nonnegative().nullable(), resolved: z.boolean(), isError: z.boolean().optional(), result: z.string().refine(value => Buffer.byteLength(value) <= 24000).optional() }).strict(),
@@ -276,6 +279,9 @@ export class Session {
   readonly config: SessionConfig;
   readonly file: string;
   readonly events: SessionEvent[];
+  readonly startedAt: number;
+  private fileHistoryValue = { trackSequence: 0, trackedFiles: new Set<string>() };
+  private readonly fileHistoryListeners = new Set<() => void>();
   /**
    * Session-scoped permission rules and mode adopted from PermissionRequest
    * allow answers. The source keeps these in its session permission context
@@ -299,9 +305,11 @@ export class Session {
     this.fd = fd;
     this.lock = lock;
     this.lockToken = lockToken;
+    this.startedAt = meta.startedAt ?? Math.min(Date.now(), fs.fstatSync(fd).birthtimeMs || Date.now());
+    for (const event of events) if (event.kind === 'file_history') this.updateFileHistory(event);
   }
 
-  static open(workspace: string, options: { config?: SessionConfig; id?: string; recoverLock?: boolean; storageRoot?: string }): Session {
+  static open(workspace: string, options: { config?: SessionConfig; id?: string; recoverLock?: boolean; storageRoot?: string; startedAt?: number }): Session {
     const root = fs.realpathSync(workspace);
     if (!fs.statSync(root).isDirectory()) throw new Error('Session workspace must be a directory');
     const storage = options.storageRoot === undefined ? root : fs.realpathSync(options.storageRoot);
@@ -374,7 +382,8 @@ export class Session {
         configSchema.parse(options.config);
         if (options.config.workspace !== root) throw new Error('Config workspace must use its canonical path');
         fd = fs.openSync(file, 'ax', 0o600);
-        const meta: SessionEvent = { kind: 'metadata', version: 1, id, config: options.config, fingerprint: fingerprint(options.config) };
+        const meta: SessionEvent = { kind: 'metadata', version: 1, id, config: options.config,
+          fingerprint: fingerprint(options.config), startedAt: Math.min(options.startedAt ?? Date.now(), Date.now()) };
         const record = Buffer.from(JSON.stringify(meta) + '\n');
         Session.writeAll(fd, record);
         fs.fsyncSync(fd);
@@ -404,6 +413,29 @@ export class Session {
     Session.writeAll(this.fd, Buffer.from(JSON.stringify(event) + '\n'));
     fs.fsyncSync(this.fd);
     this.events.push(structuredClone(event));
+    if (event.kind === 'file_history') {
+      this.updateFileHistory(event);
+      for (const listener of this.fileHistoryListeners) listener();
+    }
+  }
+
+  get fileHistory(): { trackSequence: number; trackedFiles: ReadonlySet<string> } { return this.fileHistoryValue; }
+  subscribeFileHistory(listener: () => void): () => void {
+    this.fileHistoryListeners.add(listener);
+    return () => { this.fileHistoryListeners.delete(listener); };
+  }
+
+  /** Fet/rhe, chunk-sfn1dbxq.js [4731316,4732048)/[4728518,4730433) UTF-16. */
+  touchFile(file?: string): void {
+    this.append({ kind: 'file_history', ...(file ? { path: path.relative(this.config.workspace, file) } : {}),
+      tracked: file !== undefined && this.config.automaticCheckpoints === true && this.config.features?.checkpoints !== false
+        && this.events.some(event => event.kind === 'checkpoint') });
+  }
+
+  private updateFileHistory(event: Extract<SessionEvent, { kind: 'file_history' }>): void {
+    const trackedFiles = new Set(this.fileHistoryValue.trackedFiles);
+    if (event.tracked && event.path) trackedFiles.add(event.path);
+    this.fileHistoryValue = { trackSequence: this.fileHistoryValue.trackSequence + 1, trackedFiles };
   }
 
   get messages(): Anthropic.MessageParam[] {
@@ -436,6 +468,7 @@ export class Session {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.fileHistoryListeners.clear();
     fs.closeSync(this.fd);
     const owner = JSON.parse(fs.readFileSync(this.lock, 'utf8')) as { token: string };
     if (owner.token === this.lockToken) fs.unlinkSync(this.lock);

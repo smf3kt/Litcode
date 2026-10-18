@@ -88,7 +88,7 @@ export function relocateSession(source: Session, targetWorkspace: string, buildT
       "The original instruction, model and runtime settings snapshot remains pinned. Completed conversation history was copied; tool executions and hooks were not replayed.",
     ].join("\n") },
   };
-  const next = Session.open(target, { config });
+  const next = Session.open(target, { config, startedAt: source.startedAt });
   try {
     for (const event of history) {
       if (event.kind === "message") {

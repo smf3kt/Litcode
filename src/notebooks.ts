@@ -463,6 +463,7 @@ function notebookEditTool(): ToolDefinition {
             `(${NOTEBOOK_MAX_BYTES} bytes). The file was left unchanged.`,
         );
       }
+      context.fileHistory?.(real);
       atomicWrite(real, serialized, stat.mode & 0o7777);
 
       if (mode === "delete") return `Deleted cell ${resultId ?? index} from ${rel}`;

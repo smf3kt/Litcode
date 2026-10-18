@@ -1,0 +1,79 @@
+{
+  "schema": "W180NativeDiffPanel.v1",
+  "date": "2026-10-18",
+  "status": "verified",
+  "scope": "Local fullscreen Git sidebar, native mounting, selection attachment and session file-history refresh",
+  "source": {
+    "coordinateUnit": "zero-based UTF-16 code units, half-open",
+    "ledgers": [
+      {"path":"src/diff-panel-source-blocks.json","copiedBlocks":11,"copiedUnits":18364},
+      {"path":"src/diff-panel-progress-source-blocks.json","copiedBlocks":1,"copiedUnits":1152},
+      {"path":"src/git-diff-collector-source-blocks.json","copiedBlocks":4,"copiedUnits":6610},
+      {"path":"src/tui-native-input-source-blocks.json","copiedBlocks":5,"copiedUnits":2077},
+      {"path":"src/tui-native-selection-source-blocks.json","copiedBlocks":2,"copiedUnits":10311},
+      {"path":"src/diff-selection-source-blocks.json","copiedBlocks":6,"copiedUnits":1559}
+    ],
+    "copiedBlocks": 29,
+    "copiedUnits": 40073,
+    "sourceBytesMatched": true,
+    "adaptedRangesAndDifferences": "W180-native-diff-panel.md"
+  },
+  "validation": {
+    "full": {"tests":2598,"suites":118,"passed":2598,"failed":0,"cancelled":0,"skipped":0,"exitCode":0,"log":".audit/w180-full2.txt"},
+    "relatedBeforeFinalReviewFixes": {"passed":166,"log":".audit/w180-related1.txt"},
+    "focusedAfterReviewFixes": {"passed":3,"log":".audit/w180-focused8.txt"},
+    "check": {"exitCode":0,"log":".audit/w180-check9.txt"},
+    "build": {"exitCode":0,"log":".audit/w180-build4.txt"},
+    "noticesCheck": {"exitCode":0,"sha256":"46f276dca3414377a658af8af63da39e296adb6b13985e4f1b4f29fed807c4b7","log":".audit/w180-notices.txt","existingMissingText":["@esbuild/darwin-arm64","@xterm/headless","emoji-regex","ignore","standardwebhooks"]},
+    "compiledCLI": {
+      "driver":"scripts/smoke-tui-mouse.mjs --diff-panel",
+      "log":".audit/w180-cli5.txt",
+      "columns":160,
+      "rows":28,
+      "commandToggles":true,
+      "nativeSourceComponent":true,
+      "baseSwitch":true,
+      "sidebarWheel":true,
+      "closeClick":true,
+      "draftPreserved":true,
+      "nativeSelection":true,
+      "clipboardExact":true,
+      "selectionAttachment":true,
+      "terminalModesRestored":true,
+      "sessionLocksReleased":true,
+      "modelCalls":1,
+      "provider":"owned loopback SSE",
+      "paidUpstreamCalls":0,
+      "installedCLI":false,
+      "packageValidation":"not_run"
+    },
+    "independentReview": {
+      "fixedAndReverified":[
+        "Shared Ctrl+X prefix consumed by separate sidebar resolver",
+        "Vim visual row width used full terminal after sidebar narrowed composer",
+        "Queued diff attachment crossed a /clear session boundary",
+        "Detached native selection read replacement subtree coordinates"
+      ],
+      "latestVerifier":"a72f212899be27b79",
+      "latestVerdict":"Both original later P2 findings pass independent verification against the final working tree",
+      "scope":"Original four reported scenarios; no claim of complete C-area coverage",
+      "remainingFindingsInReviewedScenarios":0,
+      "redundantCommentLinesRemoved":4
+    }
+  },
+  "identity": {
+    "sha256":"e662b499f52b3c321d62112c4a98bdc73dc40af6aa5a048161563063dc55d8f5",
+    "inputs":{"sha256":"4f79258f4cfec4a8c416dfbfa6e9d6e7589fac2fdfbeb2508f773cb4abc3423d","files":704},
+    "validation":{"sha256":"a089c81538befba89ca0f508575e9449dacb2dc94a5137f89b9c0488e5f3fe5a","files":230},
+    "build":{"sha256":"50a685e744a207fb56e847d68873046ef2c3974a20fe9dbce5bc2e4fd9e1785c","files":483}
+  },
+  "remaining": [
+    "Inline DiffDialog production mounting",
+    "Complete shared UI renderer and formatter/focus host services",
+    "Source autoOpenBaseline and main-focus gates beyond the local tracked-file and preference adaptation",
+    "Complete source file backup/delta history and shell read classifier; existing local checkpoints and conservative shell refresh are retained"
+  ],
+  "excluded": ["Account and subscription network functions","OAuth","Remote workspace transport","Telemetry network calls"],
+  "recoveredEntrypointsExecuted": false,
+  "paidUpstreamCalls": 0
+}

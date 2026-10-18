@@ -1,6 +1,7 @@
-// The React layer's host seam (W45-72). This build carries no React runtime, so the site components'
-// hook calls are served here: element creation (`Tc`/`s`/`n`), the hooks (`y`/`Z`/`R`/`en`/`Ae`), the
-// context token (`qt`), and the two ink node helpers `_o` calls (`tI`/`ZFt`).
+import * as native from './tui-react-runtime.js';
+import { jsx } from './tui-jsx.js';
+import { s as NativeBox, n as NativeText } from './tui-base-components.js';
+native.N();
 //
 // A component is run by `runComponent`: fresh hook slots, one render, the element tree committed
 // (which is what binds a `ref` to its node), then the queued effects; `unmount` runs their cleanups in
@@ -20,9 +21,41 @@ export interface SurfaceContext<T> {
   readonly Provider: SurfaceContext<T>;
 }
 export function qt<T>(defaultValue: T): SurfaceContext<T> {
-  const context = { defaultValue } as { defaultValue: T; Provider: SurfaceContext<T> };
-  context.Provider = context as SurfaceContext<T>;
-  return context;
+  return Object.assign(native.qt(defaultValue), { defaultValue }) as SurfaceContext<T>;
+}
+
+let nativeRenderDepth = 0;
+
+export function nativeComponentRender(): boolean {
+  return active === undefined && nativeRenderDepth > 0;
+}
+
+const nativeComponents = new WeakMap<Function, (props: Record<string, unknown>) => unknown>();
+
+/** Preserve source component identity and child inspection until the component returns. */
+export function nativeElement(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(nativeElement);
+  if (!isValidElement(value)) return value;
+  let type = value.type;
+  if (type === s) type = NativeBox;
+  else if (type === n) type = NativeText;
+  else if (typeof type === 'function') {
+    const component = type;
+    let adapter = nativeComponents.get(component);
+    if (!adapter) {
+      adapter = props => {
+        nativeRenderDepth += 1;
+        try { return nativeElement(component(props)); }
+        finally { nativeRenderDepth -= 1; }
+      };
+      nativeComponents.set(component, adapter);
+    }
+    return jsx(adapter, value.props, value.key ?? undefined);
+  }
+  const props = { ...value.props };
+  if ('children' in props) props.children = nativeElement(props.children);
+  else if (value.children?.length) props.children = nativeElement(value.children);
+  return jsx(type, props, value.key ?? undefined);
 }
 
 /** Source `s` and `n`: the Box and Text element kinds, kept as tokens the host renderer paints. */
@@ -153,6 +186,7 @@ function sameDeps(a: readonly unknown[] | undefined, b: readonly unknown[]): boo
  *  A setter argument that is a function is the updater form React defines, not a function-valued
  *  state: it receives the previous value. The recovered picker frame relies on that form. */
 export function y<T>(init?: (() => T) | T): [T, (next: T | ((previous: T) => T)) => void] {
+  if (active === undefined) return native.y(init);
   const runtime = requireRuntime();
   const initial = typeof init === 'function' ? (init as () => T)() : init as T;
   const slot = slotAt(runtime, runtime.cursor++, () => ({ value: initial }));
@@ -166,6 +200,7 @@ export function y<T>(init?: (() => T) | T): [T, (next: T | ((previous: T) => T))
 
 /** Source `Z` (React.useMemo): recompute when a dependency changes, keep the value otherwise. */
 export function Z<T>(fn: () => T, deps: readonly unknown[] = []): T {
+  if (active === undefined) return native.Z(fn, deps);
   const runtime = requireRuntime();
   const at = runtime.cursor++;
   const held = runtime.slots[at] as { deps: readonly unknown[]; value: T } | undefined;
@@ -177,6 +212,7 @@ export function Z<T>(fn: () => T, deps: readonly unknown[] = []): T {
 
 /** Source `R` (React.useRef): one stable box across renders. */
 export function R<T>(value: T): { current: T } {
+  if (active === undefined) return native.R(value);
   const runtime = requireRuntime();
   return slotAt(runtime, runtime.cursor++, () => ({ current: value }));
 }
@@ -187,6 +223,7 @@ export function R<T>(value: T): { current: T } {
  *  runs after every render, as React defines it — the source relies on that for its handler refs
  *  (`en(()=>{t.handler=e})`). */
 export function en(effect: () => void | (() => void), deps?: readonly unknown[]): void {
+  if (active === undefined) return native.en(effect, deps);
   const runtime = requireRuntime();
   const at = runtime.cursor++;
   const held = runtime.slots[at] as EffectSlot | undefined;
@@ -199,6 +236,7 @@ export function en(effect: () => void | (() => void), deps?: readonly unknown[])
 /** Source `P` (React.useEffect): queue an effect on mount or a dependency change. The source uses it
  *  beside `en` for subscriptions; both run after the commit, in the order the component queued them. */
 export function P(effect: () => void | (() => void), deps?: readonly unknown[]): void {
+  if (active === undefined) return native.P(effect, deps);
   en(effect, deps);
 }
 
@@ -206,6 +244,7 @@ export function P(effect: () => void | (() => void), deps?: readonly unknown[]):
  *  after the tree is committed. A dependency change re-publishes it; unmount clears an object ref or
  *  calls a function ref with null, the way React does. */
 export function useImperativeHandle<T>(ref: unknown, create: () => T, deps: readonly unknown[] = []): void {
+  if (active === undefined) return native.X3t.H.useImperativeHandle(ref, create, deps);
   const runtime = requireRuntime();
   const at = runtime.cursor++;
   const held = runtime.slots[at] as EffectSlot | undefined;
@@ -232,6 +271,7 @@ export function useImperativeHandle<T>(ref: unknown, create: () => T, deps: read
 /** Source `cZr` (chunk-kexg5hxg.js `p.H.useId`): one stable identity per hook slot. The recovered
  *  focus scope keys its rendered-scope map by it. */
 export function useId(): string {
+  if (active === undefined) return native.X3t.H.useId();
   const runtime = requireRuntime();
   const at = runtime.cursor++;
   return slotAt(runtime, at, () => `:r${at}:`);
@@ -240,6 +280,7 @@ export function useId(): string {
 /** Source `To` (chunk-kexg5hxg.js `p.H.useEffectEvent`): a stable callable whose body is always the
  *  latest render's callback. The two-press gesture keeps its confirm callback current this way. */
 export function To<T extends (...args: never[]) => unknown>(fn: T): T {
+  if (active === undefined) return native.X3t.H.useEffectEvent(fn);
   const runtime = requireRuntime();
   const at = runtime.cursor++;
   const held = slotAt(runtime, at, () => {
@@ -259,6 +300,7 @@ export const b = Symbol.for('react.memo_cache_sentinel');
 /** Source `w` (`react/compiler-runtime` `useMemoCache`): one array of `size` slots, filled with `b`,
  *  kept across renders. The compiled bodies write it directly. */
 export function w(size: number): unknown[] {
+  if (active === undefined) return native.X3t.H.useMemoCache(size);
   const runtime = requireRuntime();
   return slotAt(runtime, runtime.cursor++, () => new Array(size).fill(b));
 }
@@ -277,6 +319,7 @@ export function N(): void {}
  *  the component is mounted. A store that changes marks the runtime dirty, so the runner renders
  *  again. */
 export function Rt<T>(subscribe: (onChange: () => void) => () => void, getSnapshot: () => T): T {
+  if (active === undefined) return native.Rt(subscribe, getSnapshot, getSnapshot);
   const runtime = requireRuntime();
   const at = runtime.cursor++;
   const held = runtime.slots[at] as { subscribe?: unknown; cleanup?: () => void; value?: T } | undefined;
@@ -294,6 +337,7 @@ export function Rt<T>(subscribe: (onChange: () => void) => () => void, getSnapsh
 /** Source `hh` (React.useReducer): one state slot; a dispatched action runs the reducer and marks
  *  the runtime dirty when the state changed. The source's `kc` dispatches with no action. */
 export function hh<S, A>(reducer: (state: S, action: A) => S, initialArg: S, init?: (arg: S) => S): [S, (action: A) => void] {
+  if (active === undefined) return native.hh(reducer, initialArg, init);
   const runtime = requireRuntime();
   const initial = init === undefined ? initialArg : init(initialArg);
   const slot = slotAt(runtime, runtime.cursor++, () => ({ value: initial }));
@@ -308,6 +352,7 @@ export function hh<S, A>(reducer: (state: S, action: A) => S, initialArg: S, ini
 /** Source `le` (React.useCallback): keep the function the same while its dependencies do. The Image
  *  resolver hands the result to the mount writer, whose effect compares it by identity. */
 export function le<T extends (...args: never[]) => unknown>(fn: T, deps: readonly unknown[] = []): T {
+  if (active === undefined) return native.le(fn, deps);
   const runtime = requireRuntime();
   const at = runtime.cursor++;
   const held = runtime.slots[at] as { deps: readonly unknown[]; value: T } | undefined;
@@ -319,6 +364,7 @@ export function le<T extends (...args: never[]) => unknown>(fn: T, deps: readonl
 
 /** Source `Ae` (React.useContext): the mounted value, or the context's own default. */
 export function Ae<T>(context: SurfaceContext<T>): T {
+  if (nativeComponentRender()) return native.Ae(context);
   const runtime = active;
   const mounted = runtime?.contexts.get(context);
   return mounted === undefined ? context.defaultValue : mounted as T;

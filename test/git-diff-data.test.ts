@@ -208,6 +208,37 @@ test('a stale collection is discarded and disabling aborts the in-flight one', a
   assert.equal(signals.at(-1)?.aborted, true);
 });
 
+test('the collector shares HEAD, no-commit and branch revisions with its hunk data', async () => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const { execFileSync } = await import('node:child_process');
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'git-diff-bases-')));
+  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
+  try {
+    git('init', '-b', 'main');
+    fs.writeFileSync(path.join(root, 'file.txt'), 'one\n'); git('add', 'file.txt');
+    const unborn = await collectGitDiff(root, 'uncommitted');
+    assert.equal(unborn?.result.noCommits, true);
+    assert.equal(unborn?.result.stats.linesAdded, 1);
+    assert.deepEqual(unborn?.hunks?.hunks.get('file.txt')?.[0]?.lines, ['+one', '']);
+    git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit', '-m', 'baseline');
+    git('branch', 'feature');
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+    git('switch', 'feature');
+    fs.writeFileSync(path.join(root, 'file.txt'), 'two\n'); git('add', 'file.txt');
+    const staged = await collectGitDiff(root, 'uncommitted');
+    assert.equal(staged?.result.stats.linesAdded, 1);
+    assert.equal(staged?.result.stats.linesRemoved, 1);
+    assert.deepEqual(staged?.hunks?.hunks.get('file.txt')?.[0]?.lines, ['-one', '+two', '']);
+    git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test', 'commit', '-m', 'feature');
+    const branch = await collectGitDiff(root, 'branch');
+    assert.equal(branch?.result.source.kind, 'branch');
+    assert.equal(branch?.result.source.baseBranch, 'main');
+    assert.deepEqual(branch?.hunks?.hunks.get('file.txt')?.[0]?.lines, ['-one', '+two', '']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test('the default collector answers null outside a repository', async () => {
   const fs = await import('node:fs');
   const os = await import('node:os');

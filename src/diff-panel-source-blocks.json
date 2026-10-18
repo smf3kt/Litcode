@@ -1,0 +1,149 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f"
+    },
+    {
+      "module": "chunk-3gz7s57c.js",
+      "sha256": "9d44818f1c5a17e8ddddbce66694eab43a75e489d8afbeaf0369756daf2e378b"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        462495,
+        462544
+      ],
+      "units": 49,
+      "bodySha256": "0e67faede0598a0404d5835a9420cce41d7faab23d06b768b35889c72f7b2524",
+      "note": "_0 sidebar width"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1663022,
+        1663689
+      ],
+      "units": 667,
+      "bodySha256": "8470a4aa06309ec008377a1bb9cdaa0bb7a995f5ab770795680de1b35c5606a4",
+      "note": "sidebar state selectors, callbacks and constants"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1666412,
+        1678857
+      ],
+      "units": 12445,
+      "bodySha256": "f1972fd82a5c60f441427f31977e2559acc85dd2306b8e8a9901088ccac98cb4",
+      "note": "rxe sidebar with dft, zW, close, noise toggle and file rows"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        572710,
+        573994
+      ],
+      "units": 1284,
+      "bodySha256": "c28a72051dd6ed11cad57b57c3651ad1f62466be42aa577e9f608e2dff96b42f",
+      "note": "generated-file classification"
+    },
+    {
+      "module": "chunk-n3ykh62m.js",
+      "sha256": "2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac",
+      "range": [
+        574991,
+        575387
+      ],
+      "units": 396,
+      "bodySha256": "818265b53a579e0fc9602745583125d813fecfedd844ba82184b50009c1fd48d",
+      "note": "test-file classification"
+    },
+    {
+      "module": "chunk-yn0pfn70.js",
+      "sha256": "1d90c3c5bfa8d28f4dec90c70ae77bec0236285ddf3c034790236238a90b940f",
+      "range": [
+        8612,
+        8856
+      ],
+      "units": 244,
+      "bodySha256": "1a06c10b460ef0ad20f29e8009fd5b9973056d5b0a622328a1e4eef180cb60df",
+      "note": "OO suffix-preserving path truncation"
+    },
+    {
+      "module": "chunk-3gz7s57c.js",
+      "sha256": "9d44818f1c5a17e8ddddbce66694eab43a75e489d8afbeaf0369756daf2e378b",
+      "range": [
+        11348,
+        11607
+      ],
+      "units": 259,
+      "bodySha256": "fff228a47c2be1646c091e750245cde1d142ce672673a5cb939c61999a72f986",
+      "note": "uIe subscribed scroll handle"
+    },
+    {
+      "module": "chunk-1r9zp6s1.js",
+      "sha256": "444d1adce233caec24f15e8203bd02c9ae6313df62af94ff0c81ea669458936e",
+      "range": [
+        28099,
+        28445
+      ],
+      "units": 346,
+      "bodySha256": "ca2a4e27593c4ef20659ebf2bd970268a5b553f67b3ea67dcb49dc93354047ee",
+      "note": "Gr delayed loading indicator"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        122322,
+        124024
+      ],
+      "units": 1702,
+      "bodySha256": "1e9bd7f9fa0ca7616dedb8fb627b380e3296a1c60c7abcc8cb5781c1ec277a56",
+      "note": "sF drag-scroll subscription, timers and scope guards"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1656579,
+        1657226
+      ],
+      "units": 647,
+      "bodySha256": "eb78b68e11afbf44c10a76ae552edfeeda0864e57ba1061a31ce01de9b430c1d",
+      "note": "S_e selected diff attachment"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1662474,
+        1662799
+      ],
+      "units": 325,
+      "bodySha256": "da986e39e95979fd7f33fc904313903eadbe06f37942a825a2c25ae3fa329fc9",
+      "note": "x_e pointer row to file path"
+    }
+  ],
+  "missing": []
+}

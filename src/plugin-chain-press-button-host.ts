@@ -36,6 +36,7 @@ export interface KeybindingService {
   registerPreDispatch?(options: {
     handler: (key: string, event: Record<string, unknown>, context: unknown) => boolean;
   }): () => void;
+  getDisplayText?(action: string, context: string): string | undefined;
 }
 
 /** Source `u` (chunk-bwyexfny.js `var u=qt(null)`): the keybinding-service context. */

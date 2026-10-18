@@ -1,0 +1,67 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        135682,
+        136139
+      ],
+      "units": 457,
+      "bodySha256": "6ea2427c444e1ca9cadfabe7fc17e2665f2362b5f134bc233d37b64266dd99c2",
+      "note": "S0 and click event"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        248708,
+        248960
+      ],
+      "units": 252,
+      "bodySha256": "975b204d90ee94a9e10cdb4619dff1e8f898ac519a9e89be2de4c743e6961516",
+      "note": "jd wheel event"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        249383,
+        250176
+      ],
+      "units": 793,
+      "bodySha256": "6a6b3c59f3b367cda7f6b9b5a6a0605591a6b0637c1de932b1231bbcd48cc29b",
+      "note": "cq native pointer hit test"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        250654,
+        251135
+      ],
+      "units": 481,
+      "bodySha256": "f8367407e8a7e382854747cae6fcc379bb092a0b8519464a1a4bbd51e593aeb9",
+      "note": "ov click dispatch and focus"
+    },
+    {
+      "module": "chunk-06azbynj.js",
+      "sha256": "5f6c500dbd8f70af3c65b52a0e67f4a88d62df3793237af821d9f62af7d28fbd",
+      "range": [
+        359028,
+        359122
+      ],
+      "units": 94,
+      "bodySha256": "7795ddc1941e70a671282eea58a538eae8ebfbc0745b86c2059a03a4fd55332d",
+      "note": "wheel handler ancestor predicate"
+    }
+  ],
+  "missing": []
+}

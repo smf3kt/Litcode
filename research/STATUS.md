@@ -2995,8 +2995,8 @@ label. Empty states distinguish a turn with no changes, a notice, too many files
 loading shows the `Mr` message. The tab strip hides for one source, the hint strip switches by
 mode, and cancel returns to the list from detail or dismisses with the source text. `Ht` answers
 false for the local-only build, `PMr` binds the W163 diff view through `DiffDataContext`, `ne`
-reuses the W164 accumulator, and `Fvn` is a telemetry no-op. The C-2 diff chain (W161-W173) is
-complete. Focused 11/11, full 2576/2576, tsc 0, build 0, notices 0, scan 130 unresolved 0,
+reuses the W164 accumulator, and `Fvn` is a telemetry no-op. W161-W173 verifies the isolated
+component chain. The production fullscreen sidebar is tracked separately by W180. Focused 11/11, full 2576/2576, tsc 0, build 0, notices 0, scan 130 unresolved 0,
 identity `ada4a1c6…`. [W173 record](ports/W173-dialog.md).
 
 W174 ported the structured subagent output scrub (40 copied blocks, 44,268 UTF-16 units). `ups`
@@ -3058,3 +3058,5 @@ tui 52/52, interaction-tools 34/34, full 2592/2592, tsc 0, build 0, notices 0, i
 [W178 record](ports/W178-question-notes.md).
 
 W179 connects the question's Chat about this action to Qet clarification feedback. Two copied bodies, nmo/zet, retain questions, completed answers, unanswered markers and preview-question notes. Group identities now use question text. Focused 89/89, full 2595/2595, check/build/notices pass. Compiled clarification, preview and dialog chains pass through owned loopback SSE, with zero paid upstream calls. [W179 record](ports/W179-question-clarification.md).
+
+W180 connects the recovered fullscreen Git sidebar through the real reconciler, session-owned Git collection, native selection and queued prompt attachments. Source verification covers 29 blocks and 40073 UTF-16 units. Full 2598/2598, check/build and compiled PTY pass; four independent findings were fixed and reverified. Identity e662b499. [W180 record](ports/W180-native-diff-panel.md).
