@@ -1,0 +1,59 @@
+{
+  "schema": "W179QuestionClarification.v1",
+  "date": "2026-10-18",
+  "status": "verified",
+  "source": {
+    "module": "extracted-v2/modules/chunk-24k7d6mw.js",
+    "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+    "coordinateUnit": "zero-based UTF-16 code units, half-open",
+    "blocks": "src/question-clarification-source-blocks.json",
+    "copiedBlocks": 2,
+    "copiedUnits": 371,
+    "additionalRanges": {
+      "Qet": [1179279,1179811],
+      "a3ChatKeys": [1148202,1148389],
+      "a3DownChat": [1148527,1148636],
+      "liveMultiSelect": [1158935,1159164],
+      "response": [1171218,1171656]
+    }
+  },
+  "validation": {
+    "focused": "89/89",
+    "full": "2595/2595",
+    "check": 0,
+    "build": 0,
+    "noticesCheck": 0,
+    "sourceUnresolved": 0,
+    "sourceBytesMatched": true,
+    "compiledCLI": {
+      "driver": "scripts/smoke-tui-mouse.mjs",
+      "passedModes": ["--clarification","--preview","--dialogs"],
+      "clarificationColumns": 40,
+      "clarificationRows": 10,
+      "duplicateHeaders": true,
+      "pendingNotes": true,
+      "liveMultiSelect": true,
+      "otherText": true,
+      "nextModelRequestVerified": true,
+      "terminalRestored": true,
+      "sessionLocksReleased": true,
+      "provider": "owned loopback SSE",
+      "paidUpstreamCalls": 0
+    },
+    "independentReview": {
+      "finding": "Current multi-select choices and Other were lost before submit",
+      "disposition": "fixed at f3 onChange equivalent owner",
+      "reverifiedInputs": ["choice only","choice plus Other","Other cleared"],
+      "remainingFindings": 0,
+      "initialWorkflow": "wf_8efe4855-d78 returned no verdict due provider quota"
+    }
+  },
+  "identity": {
+    "sha256": "b5422aa9ed832bc9dcfcc6a64e867b64dc7060eab27b0fdb6425d7ca4e367093",
+    "inputs": {"sha256":"326a40f71cc6769afd4f620f16dd7c84688274ff1410fca0838c516045068cf8","files":687},
+    "validation": {"sha256":"1a38c522555ad90928f542491c05e3934ffc17010e64a1ced3daacbbbcabd2e8","files":230},
+    "build": {"sha256":"343a3b6bdbe8a8090dbe238bc97a57cdd160adcf1d6ab44052c7c0dc0bc8a040","files":472}
+  },
+  "remaining": ["dialog external editor","dialog pasted images","complete shared component renderer"],
+  "recoveredEntrypointsExecuted": false
+}

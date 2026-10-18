@@ -49,5 +49,5 @@
 
 ## 剩余
 
-- clarify 反馈（`Qet`/`nmo` 的 `User notes:`）与“chat about this design”入口未移植。
+- clarify 反馈（`Qet`/`nmo` 的 `User notes:`）与“chat about this design”入口已由 [W179](W179-question-clarification.md) 接通。
 - external-editor/image-paste 与完整 React 渲染器仍属 W43 剩余项。

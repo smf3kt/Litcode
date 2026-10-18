@@ -1,0 +1,34 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1179811,
+        1180104
+      ],
+      "units": 293,
+      "bodySha256": "4d3738033b47d7348d6d684aa1207d0301971104f00eab703eac5b531d3d0472",
+      "note": "nmo question clarification feedback"
+    },
+    {
+      "module": "chunk-24k7d6mw.js",
+      "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+      "range": [
+        1180104,
+        1180182
+      ],
+      "units": 78,
+      "bodySha256": "1666681dad47d5d944d49736413ca84ffb20d3c1303825e9ffd05566c092d01c",
+      "note": "zet preview single-select gate"
+    }
+  ],
+  "missing": []
+}

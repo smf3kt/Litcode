@@ -13,8 +13,9 @@ const cli = cliIndex < 0 ? path.join(root, 'bin/litcode.mjs') : process.argv[cli
 assert.ok(cli, '--cli requires an executable path');
 const line = process.argv.includes('--line');
 const previews = process.argv.includes('--preview');
+const clarification = process.argv.includes('--clarification');
 const narrow = process.argv.includes('--narrow');
-const dialogs = process.argv.includes('--dialogs') || previews;
+const dialogs = process.argv.includes('--dialogs') || previews || clarification;
 const actions = process.argv.includes('--actions');
 const inputClose = process.argv.includes('--input-close');
 const pacing = process.argv.includes('--pacing') || inputClose;
@@ -116,9 +117,11 @@ const initialProgressSettings = {thinking:true,timeFormat:'24-hour-utc',timeZone
 if (progressSettings) fs.writeFileSync(path.join(user,'settings.json'),JSON.stringify(initialProgressSettings));
 if(vimEditing||terminalFocus)fs.writeFileSync(path.join(user,'settings.json'),JSON.stringify({editorMode:'vim',vimInsertModeRemaps:{jj:'<Esc>',jk:'<Esc>'},unrelated:{keep:1}}));
 const questions = { questions: [{ question: 'Choose output', header: 'Fixture choice', multiSelect: false,
-  options: [{ label: 'A', description: 'First', ...(previews ? { preview: '# Preview A\n\n```\nFirst layout\n```' } : {}) },
+  options: [{ label: 'A', description: 'First', ...(previews || clarification ? { preview: '# Preview A\n\n```\nFirst layout\n```' } : {}) },
     { label: 'B', description: 'Second', ...(previews ? { preview: '# Preview B\n\n```\n'
       + Array.from({ length: 24 }, (_, index) => `preview-row-${index}`).join('\n') + '\n```' } : {}) }] }] };
+if (clarification) questions.questions.push({ ...questions.questions[0], question: 'Choose follow-up' },
+  { ...questions.questions[0], question: 'Choose tags', multiSelect: true });
 const requests = [];
 const pacingStreams = new Map();
 const pacingFrames = [];
@@ -1310,6 +1313,34 @@ try {
     child.stdin.write('/exit\r'); child.stdin.end();
     assert.equal(await exited, 0, errors);
     assert.equal(requests.length, 1);
+  } else if (clarification) {
+    child.stdin.write('first task\r');
+    await until(() => topLine() === 'Fixture choice');
+    child.stdin.write('\x1b[B\r');
+    await until(() => frame().includes('Choose follow-up'));
+    child.stdin.write('n');
+    await until(() => frame().includes('Notes'));
+    child.stdin.write('clarify the layout'); child.stdin.write('\x1b'); await delay(80);
+    child.stdin.write('\x1b[C');
+    await until(() => frame().includes('Choose tags'));
+    child.stdin.write(' \x1b[B\x1b[Bextra\x1b[B');
+    await until(() => frame().includes('> Chat about this'));
+    child.stdin.write('\r');
+    await until(() => topLine() === 'Approve this plan');
+    const result = requests[1].messages.flatMap(message => Array.isArray(message.content) ? message.content : [])
+      .find(block => block.type === 'tool_result' && block.tool_use_id === 'question');
+    assert.ok(result); assert.ok(!result.is_error);
+    const value = JSON.parse(typeof result.content === 'string' ? result.content : result.content.map(item => item.text ?? '').join(''));
+    assert.equal(value.behavior, 'deny');
+    assert.ok(value.feedback.includes('- "Choose output"\n  Answer: B\n- "Choose follow-up"\n  (No answer provided)\n  User notes: clarify the layout\n- "Choose tags"\n  Answer: A, extra'));
+    child.stdin.write('\u0003');
+    await until(() => frame().includes('approved.txt')); child.stdin.write('\u0003');
+    await until(() => requests.length === 4 && frame().includes('cancelled.txt')); child.stdin.write('\u0003');
+    await until(() => frame().includes('dialogs accepted'));
+    child.stdin.write('/exit\r'); child.stdin.end();
+    assert.equal(await exited, 0, errors);
+    assert.equal(fs.existsSync(path.join(workspace, 'approved.txt')), false);
+    assert.equal(fs.existsSync(path.join(workspace, 'cancelled.txt')), false);
   } else if (dialogs) {
     child.stdin.write('first task\r');
     await until(() => topLine() === 'Fixture choice');
@@ -1321,9 +1352,8 @@ try {
       assert.equal(frame().includes('Preview A'), false);
       child.stdin.write('\r');
     } else child.stdin.write('\x1b[B\r');
-    // The question ends on a review page, where its answer is confirmed.
-    await until(() => topLine() === 'Review your answers');
-    child.stdin.write('\r');
+    // The source submits a single non-multi-select question immediately.
+
     await until(() => topLine() === 'Approve this plan');
     child.stdin.write('\x1b[B\r');
     await until(() => topLine() === 'Allow once');
@@ -1341,7 +1371,8 @@ try {
       assert.ok(block, id);
       return typeof block.content === 'string' ? block.content : block.content.map(item => item.text ?? '').join('');
     };
-    assert.deepEqual(JSON.parse(content('question')), { answers: [{ questionIndex: 0, selected: ['B'] }] });
+    assert.deepEqual(JSON.parse(content('question')), { answers: [{ questionIndex: 0, selected: ['B'],
+      ...(previews ? { annotations: { preview: questions.questions[0].options[1].preview } } : {}) }] });
     assert.deepEqual(JSON.parse(content('plan')), { approved: true });
     assert.equal(fs.readFileSync(path.join(workspace, 'approved.txt'), 'utf8'), 'approved B\n');
     assert.equal(fs.existsSync(path.join(workspace, 'cancelled.txt')), false);
@@ -1471,11 +1502,14 @@ try {
     retainedAcrossTurns: true, durableSubmissionMatched: true } : editing ? { tuiEditing: 'passed', visualRowNavigation: true,
     logicalLineCommands: true, historyRestored: true, rawUnicode: true, readlineWords: true, placeholderStep: true,
     multilinePaste: true, durableSubmissionMatched: true } : actions ? { tuiActions: 'passed', modelPicker: true, thinking: true,
-    tasks: true, stash: true, pickerCancelled: true, draftPreserved: true } : dialogs ? { tuiDialogs: 'passed', question: true, plan: true,
+    tasks: true, stash: true, pickerCancelled: true, draftPreserved: true } : clarification ? {
+    tuiClarification: 'passed', question: true, permissionCancelled: true, fileEffectsAbsent: true } : dialogs ? {
+    tuiDialogs: 'passed', question: true, plan: true,
     permissionApproved: true, permissionCancelled: true, fileEffectsVerified: true } : {
     tuiMouse: 'passed', transcriptKeys: true, splitSgrWheel: true, x10Wheel: true,
     pointerSelection: true, keyboardExtension: true, osc52PayloadVerified: true, draftUnchanged: true }),
     ...(previews ? { choicePreview: true, markdownRendered: !line, markdownSourceShown: line, hiddenLines: !line, narrow } : {}),
+    ...(clarification ? { clarificationFeedback: true, notesPreserved: true, nextModelRequestVerified: true } : {}),
     compiled: true, installedCLI: cliIndex >= 0, defaultTui: !line, lineInput: line, modesRestored: true, locksReleased: true,
     modelCalls: requests.length, provider: 'owned loopback SSE', paidUpstreamCalls: 0 }));
 } finally {

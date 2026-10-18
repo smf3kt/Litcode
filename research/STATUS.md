@@ -3056,3 +3056,5 @@ the chat-about-design entry remain out. New tests cover the annotation gate and 
 notes-only answer, and a two-question flow that keeps notes across a selection. Focused
 tui 52/52, interaction-tools 34/34, full 2592/2592, tsc 0, build 0, notices 0, identity `e9c3612a…`.
 [W178 record](ports/W178-question-notes.md).
+
+W179 connects the question's Chat about this action to Qet clarification feedback. Two copied bodies, nmo/zet, retain questions, completed answers, unanswered markers and preview-question notes. Group identities now use question text. Focused 89/89, full 2595/2595, check/build/notices pass. Compiled clarification, preview and dialog chains pass through owned loopback SSE, with zero paid upstream calls. [W179 record](ports/W179-question-clarification.md).

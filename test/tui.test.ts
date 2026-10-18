@@ -638,6 +638,58 @@ test('notes persist when an option is taken and stay off non-preview questions',
   } finally { tui.close(); }
 });
 
+test('chat clarification returns stored answers and unsent notes, with Up returning to the choices', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 18 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).map(line => line.trim()).filter(Boolean);
+  try {
+    const pending = tui.prompt({ message: '', allowClarification: true, groups: [
+      { key: 'First', title: 'First', message: 'First?', choices: [{ label: 'A', value: 'A' }, { label: 'B', value: 'B' }] },
+      { key: 'Second', title: 'Second', message: 'Second?', choices: [
+        { label: 'X', value: 'X', preview: 'Preview X' }, { label: 'Y', value: 'Y' }], allowText: true },
+    ] }, new AbortController().signal);
+    key('\r');
+    key('n'); key('unsent note'); key('\x1b'); await delay(60);
+    Object.assign(output, { rows: 10 }); output.emit('resize');
+    key('\x1b[B\x1b[B\x1b[B');
+    assert.ok(frame().includes('> Chat about this'));
+    key('\x1b[A');
+    assert.ok(frame().includes('> Other'));
+    key('\x1b[B\r');
+    assert.deepEqual(await pending, { selected: [], clarify: true, groups: [
+      { key: 'First', selected: ['A'] }, { key: 'Second', selected: [], notes: 'unsent note' },
+    ] });
+    const controller = new AbortController();
+    const ordinary = tui.prompt({ message: '', groups: [
+      { key: 'Only', title: 'Only', message: 'Only?', choices: [{ label: 'A', value: 'A' }] },
+    ] }, controller.signal);
+    assert.equal(frame().some(line => line.includes('Chat about this')), false);
+    controller.abort(); assert.equal(await ordinary, undefined);
+  } finally { tui.close(); }
+});
+
+test('clarification keeps the current multi-select choices and Other text before submit', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 14 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  try {
+    const pending = tui.prompt({ message: '', allowClarification: true, groups: [
+      { key: 'Tags', message: 'Tags?', multiple: true, allowText: true,
+        choices: [{ label: 'X', value: 'X' }, { label: 'Y', value: 'Y' }] },
+    ] }, new AbortController().signal);
+    key(' \x1b[B\x1b[Bextra\x1b[B\r');
+    assert.deepEqual(await pending, { selected: [], clarify: true,
+      groups: [{ key: 'Tags', selected: ['X'], text: 'extra' }] });
+  } finally { tui.close(); }
+});
+
 test('a grouped question can be reopened from the review page and cancelled', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};

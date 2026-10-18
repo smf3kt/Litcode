@@ -1079,9 +1079,12 @@ export interface TerminalPromptRequest {
    * same name is refused (`host_field`) and never reaches this request.
    */
   afkTimeoutMs?: number | null;
+  /** Recovered question action returning clarification feedback to the model. */
+  allowClarification?: boolean;
 }
 export interface TerminalPromptAnswer {
   selected: string[];
+  clarify?: true;
   themeEdit?: boolean;
   text?: string;
   /** Present for grouped requests: one answer per group, in group order. */

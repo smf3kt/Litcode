@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { isDeepStrictEqual } from 'node:util';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import { previewSanitized, previewUnstableInput } from './preview-sanitize.js';
+import { nmo } from './question-clarification-source.js';
 
 export const INTERACTION_LIMITS = Object.freeze({
   questions: 4, options: 4, questionChars: 2000, headerChars: 80,
@@ -39,6 +40,7 @@ export interface QuestionAnswer {
   annotations?: { preview?: string; notes?: string };
 }
 export interface AskUserQuestionAnswer { answers: QuestionAnswer[] }
+export interface QuestionClarification { behavior: 'deny'; feedback: string }
 export interface SubmitPlanRequest { plan: string }
 export interface SubmitPlanResult { approved: boolean }
 export type FindingSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
@@ -50,7 +52,7 @@ export interface InteractionFinding {
 }
 export interface ReportFindingsRequest { findings: InteractionFinding[] }
 export interface InteractionCallbacks {
-  ask?: (request: AskUserQuestionRequest, signal: AbortSignal) => Promise<AskUserQuestionAnswer>;
+  ask?: (request: AskUserQuestionRequest, signal: AbortSignal) => Promise<AskUserQuestionAnswer | QuestionClarification>;
   /** Card host: returns the shown input plus answers/annotations/response/followUp. */
   askCard?: (request: AskUserQuestionRequest, signal: AbortSignal) => Promise<unknown>;
   plan?: (request: SubmitPlanRequest, signal: AbortSignal) => Promise<SubmitPlanResult>;
@@ -162,6 +164,8 @@ const answerShape = z.object({ answers: z.array(z.object({
   other: text(INTERACTION_LIMITS.otherChars).optional(),
   annotations: annotationShape.optional(),
 }).strict()).min(1).max(INTERACTION_LIMITS.questions) }).strict();
+const clarificationShape = z.object({ behavior: z.literal('deny'),
+  feedback: text(INTERACTION_LIMITS.outputBytes) }).strict();
 const planShape = z.object({ plan: text(INTERACTION_LIMITS.planChars) }).strict();
 const approvalShape = z.object({ approved: z.boolean() }).strict();
 const severities = ['info', 'low', 'medium', 'high', 'critical'] as const;
@@ -535,6 +539,28 @@ export function terminalAnswerAnnotation(
   return { ...preview, ...(trimmed ? { notes: trimmed } : {}) };
 }
 
+/** Qet feedback with the copied nmo/zet formatter, chunk-24k7d6mw.js [1179279,1180182), UTF-16. */
+export function questionClarification(request: AskUserQuestionRequest, answers: readonly QuestionAnswer[]): QuestionClarification {
+  const questions = request.questions.map(question => ({ key: question.question,
+    displayQuestion: { text: question.question }, multiSelect: question.multiSelect, options: question.options }));
+  const values: Record<string, string> = Object.create(null);
+  const states: Record<string, { textInputValue: string }> = Object.create(null);
+  for (const answer of answers) {
+    const question = request.questions[answer.questionIndex];
+    if (!question) continue;
+    const parts = [...answer.selected, ...(answer.other === undefined ? [] : [answer.other])];
+    if (parts.length) values[question.question] = question.multiSelect ? cardAnswerJoin(parts) : parts[0]!;
+    if (answer.annotations?.notes !== undefined) states[question.question] = { textInputValue: answer.annotations.notes };
+  }
+  return { behavior: 'deny', feedback: `The user wants to clarify these questions.
+    This means they may have additional information, context or questions for you.
+    Take their response into account and then reformulate the questions if appropriate.
+    Start by asking them what they would like to clarify.
+
+    Questions asked:
+${nmo(questions, questions, values, states, false)}` };
+}
+
 function validAnswer(input: unknown, request: AskUserQuestionRequest): AskUserQuestionAnswer {
   const result = parse(answerShape, input, 'ask_user_question host answer');
   if (result.answers.length !== request.questions.length || new Set(result.answers.map(answer => answer.questionIndex)).size !== result.answers.length) {
@@ -675,7 +701,9 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
         return dispatch(context.signal, async signal => {
           const answer = await ask(request, signal);
           checkSignal(signal);
-          return output(validAnswer(answer, expected), context, 'ask_user_question');
+          const result = plainObject(answer) && answer.behavior === 'deny'
+            ? parse(clarificationShape, answer, 'ask_user_question host clarification') : validAnswer(answer, expected);
+          return output(result, context, 'ask_user_question');
         });
       },
     },
