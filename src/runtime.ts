@@ -1127,6 +1127,7 @@ export async function createRuntime(
               ...(terminalSequences?.length ? { hookTerminal: { id: completion.id, event: completion.event, sequences: terminalSequences } } : {}) });
             notify(owner);
           } });
+          if (request.handle) return resources.hooks.adopt(request, request.handle, `async_hook_${request.handle.pid ?? ''}`);
           return resources.hooks.start(request);
         } };
       },

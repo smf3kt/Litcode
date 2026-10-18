@@ -158,7 +158,7 @@ export function createChildHookLifecycle(session: Session, options: ChildHookOpt
     const supplied = options.hookOptions?.(session.config, session.id) ?? {};
     return {
       hookOptions: { ...supplied, startAsyncCommand: async request => {
-        const id = await hooks.start(request);
+        const id = request.handle ? await hooks.adopt(request, request.handle, `async_hook_${request.handle.pid ?? ''}`) : await hooks.start(request);
         session.append({ kind: 'hook_start', id, event: `async:${request.event}`,
           ...(typeof request.payload.tool_use_id === 'string' ? { toolUseId: request.payload.tool_use_id } : {}) });
         return id;

@@ -236,6 +236,8 @@ export type AsyncHookRequest = {
   cwd: string;
   timeoutMs: number;
   signal: AbortSignal;
+  /** The foreground process handle when the header was detected in a live run. */
+  handle?: HookCommandHandle;
 };
 /** One command hook's raw process result, before exit-code interpretation. The
  *  async registry keeps it so an asyncRewake hook can build its wake body from
@@ -259,6 +261,19 @@ export type HookRunOptions = {
   startAsyncCommand?: (request: AsyncHookRequest) => Promise<string>;
   /** Observes every executed command hook's raw result; the async registry uses it for rewakes. */
   onCommandResult?: (execution: CommandHookExecution) => void;
+  /** Receives the foreground command handle so an async owner can adopt it after a first-line header. */
+  onCommandHandle?: (handle: HookCommandHandle) => void;
+  /**
+   * Whether a first-line async header may hand the process to an owner. The
+   * registry's configured-async run disables this: it already owns the
+   * process, and the header is ordinary output for `gbt` to skip.
+   */
+  adoptAsyncHeaders?: boolean;
+  /**
+   * The registry's configured-async run owns a command whose own header is
+   * output, not a handoff; `gbt` skips that header before interpreting.
+   */
+  stripAsyncHeader?: boolean;
   /** Resolves only explicitly configured environment-variable names for HTTP headers. */
   environment?: NodeJS.ProcessEnv;
   /** Share per owner for once semantics; omission creates state for this run only. */
@@ -720,7 +735,7 @@ function decode(buf: Buffer): string {
 // Bounded, cancellable command execution (POSIX process group)
 // ---------------------------------------------------------------------------
 
-type RawHookResult = {
+export type RawHookResult = {
   stdout: string;
   stderr: string;
   code: number | null;
@@ -728,18 +743,84 @@ type RawHookResult = {
   aborted: boolean;
   truncated: boolean;
   spawnError: NodeJS.ErrnoException | null;
+  /** Set when the first stdout line carried an async header and the owner took
+   *  the same process; the foreground result reports the handoff only. */
+  backgrounded?: boolean;
 };
 
-export function runHookCommand(
+/**
+ * One command hook process with a single owner. The foreground hook run and an
+ * async registry can share it: `background()` records the async task id and
+ * clears the foreground deadline and abort listener, `result` settles once
+ * when the process exits, and `cleanup()` releases the bounded buffers.
+ * Adapted from `wee`/`Axe`/`Cxe` (chunk-sfn1dbxq.js [82462,87504)) with the
+ * host's existing bounded capture and process-group teardown.
+ */
+export type HookCommandHandle = {
+  command: string;
+  /** Foreground view: resolves early with `backgrounded` when the first-line
+   *  header hands the process to an async owner, else at process end. */
+  result: Promise<RawHookResult>;
+  /** Final process output, settling only when the process exits. */
+  done: Promise<RawHookResult>;
+  readonly pid: number | undefined;
+  /** First-line async adoption. Returns false when the process already settled. */
+  background(taskId: string): boolean;
+  /** Idempotent: clears the foreground deadline and abort listener. */
+  detachForeground(): void;
+  /** Terminate the owned process group. */
+  kill(): void;
+  cleanup(): void;
+};
+
+export function startHookCommand(
   command: string,
   cwd: string,
   timeoutMs: number,
   input: string,
   signal: AbortSignal,
-): Promise<RawHookResult> {
-  return new Promise<RawHookResult>((resolve) => {
+  adoptable = true,
+): HookCommandHandle {
+  let handle!: HookCommandHandle;
+  let backgrounded = false;
+  let transferred = false;
+  let processSettled = false;
+  let transfer!: (raw: RawHookResult) => void;
+  let killHook = (): void => {};
+  // The foreground settles through a separate promise at the first-line
+  // handoff (`Oo({backgrounded:true})` in `UF`), while the process keeps
+  // running for the async owner (`Axe.result`, chunk-sfn1dbxq.js [82919,87427)).
+  // Ownership changes only when the owner claims it through `background()`;
+  // until then the original deadline and abort listener stay active.
+  const foreground = new Promise<RawHookResult>(resolve => { transfer = resolve; });
+  let done!: Promise<RawHookResult>;
+  // The handle exists before the process starts so a first-line header in the
+  // very first chunk can still reach `background()`.
+  let childRef: ChildProcess | undefined;
+  let detachHookForeground = (): void => {};
+  let cleanupHook = (): void => {};
+  handle = {
+    command,
+    result: foreground,
+    get done() { return done; },
+    get pid() { return childRef?.pid; },
+    background: (taskId: string) => {
+      void taskId;
+      if (processSettled) return false;
+      backgrounded = true;
+      return true;
+    },
+    detachForeground: () => detachHookForeground(),
+    kill: () => killHook(),
+    cleanup: () => cleanupHook(),
+  };
+  // The foreground settles at transfer or process end; the async owner reads the
+  // same final result from `done`.
+  done = new Promise<RawHookResult>((resolve) => {
     if (signal.aborted) {
-      resolve({ stdout: "", stderr: "", code: null, timedOut: false, aborted: true, truncated: false, spawnError: null });
+      const raw: RawHookResult = { stdout: "", stderr: "", code: null, timedOut: false, aborted: true, truncated: false, spawnError: null };
+      resolve(raw);
+      transfer(raw);
       return;
     }
 
@@ -752,7 +833,7 @@ export function runHookCommand(
         stdio: ["pipe", "pipe", "pipe"],
       });
     } catch (error) {
-      resolve({
+      const raw: RawHookResult = {
         stdout: "",
         stderr: "",
         code: null,
@@ -760,9 +841,12 @@ export function runHookCommand(
         aborted: false,
         truncated: false,
         spawnError: error as NodeJS.ErrnoException,
-      });
+      };
+      resolve(raw);
+      transfer(raw);
       return;
     }
+    childRef = child;
 
     let settled = false;
     let timedOut = false;
@@ -774,6 +858,9 @@ export function runHookCommand(
     const outParts: Buffer[] = [];
     const errParts: Buffer[] = [];
     let grace: NodeJS.Timeout | undefined;
+    let timer: NodeJS.Timeout | undefined;
+    /** `Rr`: the first stdout line was examined, successfully or not. */
+    let firstLineChecked = false;
 
     const killGroup = () => {
       try {
@@ -787,14 +874,12 @@ export function runHookCommand(
         }
       }
     };
-    const timer =
-      timeoutMs > 0
-        ? setTimeout(() => {
-            timedOut = true;
-            killGroup();
-          }, timeoutMs)
-        : undefined;
+    const detachForeground = () => {
+      if (timer) { clearTimeout(timer); timer = undefined; }
+      signal.removeEventListener("abort", onAbort);
+    };
     const onAbort = () => {
+      if (backgrounded) return;
       aborted = true;
       killGroup();
     };
@@ -806,8 +891,9 @@ export function runHookCommand(
     const finish = () => {
       if (settled) return;
       settled = true;
+      processSettled = true;
       cleanup();
-      resolve({
+      const raw: RawHookResult = {
         stdout: decode(Buffer.concat(outParts)),
         stderr: decode(Buffer.concat(errParts)),
         code: exitCode,
@@ -815,10 +901,56 @@ export function runHookCommand(
         aborted,
         truncated,
         spawnError: null,
-      });
+        ...(backgrounded ? { backgrounded: true } : {}),
+      };
+      resolve(raw);
+      // A process that ended before the header was checked settles the
+      // foreground here too; after a transfer the foreground already settled.
+      if (!transferred) {
+        transferred = true;
+        transfer(raw);
+      }
     };
 
     signal.addEventListener("abort", onAbort, { once: true });
+    // `Axe` installs its deadline after the child exists and clears it through
+    // `#C` on background adoption (chunk-sfn1dbxq.js [82919,87427)).
+    detachHookForeground = detachForeground;
+    cleanupHook = cleanup;
+    killHook = killGroup;
+    if (timeoutMs > 0) timer = setTimeout(() => {
+      timedOut = true;
+      killGroup();
+    }, timeoutMs);
+
+    // `Ur`: once the first line is complete, a JSON object with `async: true`
+    // hands the same process to the registry. A malformed parse is final; a
+    // non-async first line never transfers later. `Ar` cuts at the first
+    // newline and accepts the whole remaining text, so a header without a
+    // trailing newline transfers as soon as it parses (chunk-ax7r0qj7.js
+    // [3224,3561); `vye`, chunk-n3ykh62m.js [396651,396699)).
+    const inspectFirstLine = () => {
+      if (!adoptable || firstLineChecked || transferred || processSettled) return;
+      const text = decode(Buffer.concat(outParts));
+      const newline = text.indexOf("\n");
+      const line = (newline < 0 ? text : text.slice(0, newline)).trim();
+      if (!line.includes("}")) return;
+      firstLineChecked = true;
+      let parsed: unknown;
+      try { parsed = JSON.parse(line); } catch { return; }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || (parsed as { async?: unknown }).async !== true) return;
+      const id = `async_hook_${child.pid}`;
+      // `UF` detaches the foreground deadline/listeners and resolves
+      // status 0/backgrounded only after the owner claimed the process through
+      // `m5e`; an owner-side rejection is reported as a foreground failure and
+      // the process keeps its original owner.
+      if (!handle.background(id)) return;
+      transferred = true;
+      detachForeground();
+      // The captured header bytes stay part of the final output for the owner.
+      transfer({ stdout: decode(Buffer.concat(outParts)), stderr: decode(Buffer.concat(errParts)),
+        code: null, timedOut: false, aborted: false, truncated, spawnError: null, backgrounded: true });
+    };
 
     // Bound each stream; a hook cannot exhaust memory through its output.
     child.stdout?.on("data", (chunk: Buffer) => {
@@ -826,6 +958,9 @@ export function runHookCommand(
       if (room > 0) outParts.push(chunk.subarray(0, room));
       outBytes += chunk.length;
       if (outBytes > MAX_HOOK_OUTPUT_BYTES) truncated = true;
+      // `Ur` tries the parse on every chunk until the first line is settled;
+      // a valid header can arrive without a newline.
+      inspectFirstLine();
     });
     child.stderr?.on("data", (chunk: Buffer) => {
       const room = Math.max(0, MAX_HOOK_OUTPUT_BYTES - errBytes);
@@ -842,8 +977,9 @@ export function runHookCommand(
     child.on("error", (error) => {
       if (settled) return;
       settled = true;
+      processSettled = true;
       cleanup();
-      resolve({
+      const raw: RawHookResult = {
         stdout: "",
         stderr: "",
         code: null,
@@ -851,14 +987,21 @@ export function runHookCommand(
         aborted,
         truncated,
         spawnError: error as NodeJS.ErrnoException,
-      });
+      };
+      resolve(raw);
+      if (!transferred) {
+        transferred = true;
+        transfer(raw);
+      }
     });
     child.on("exit", (code) => {
       // The shell has exited; detached descendants may still hold the pipes
-      // open. Kill the group now and bound how long we wait to drain.
+      // open. The group is killed only while the foreground still owns it; a
+      // transferred process belongs to the registry until it exits or the
+      // owner kills it.
       exitCode = code;
       if (timer) clearTimeout(timer);
-      killGroup();
+      if (!transferred) killGroup();
       grace = setTimeout(() => {
         try {
           child.stdout?.destroy();
@@ -875,6 +1018,23 @@ export function runHookCommand(
     });
     child.on("close", () => finish());
   });
+  return handle;
+}
+
+export function runHookCommand(
+  command: string,
+  cwd: string,
+  timeoutMs: number,
+  input: string,
+  // Async adoption is only meaningful inside runHooks, where an owner can take
+  // the process. A bare runHookCommand caller (statusline) always gets the
+  // ordinary final result.
+  signal: AbortSignal,
+): Promise<RawHookResult> {
+  // A bare caller has no async owner, so a header-looking first line stays
+  // ordinary output: wait for the process exactly as before.
+  const handle = startHookCommand(command, cwd, timeoutMs, input, signal, false);
+  return handle.result;
 }
 
 // HTTP/resolver transports share the command output translator, but require JSON.
@@ -975,6 +1135,62 @@ async function runResolvedHook<D extends HookDefinition>(definition: D, event: H
 // ---------------------------------------------------------------------------
 // stdout JSON interpretation
 // ---------------------------------------------------------------------------
+
+/**
+ * Source `gbt` (chunk-sfn1dbxq.js [622557,622798)): skip an async header and
+ * return the first JSON object without any `async` property, trying the joined
+ * remaining lines first and then each original line. `undefined` means no sync
+ * payload was printed.
+ */
+export function syncJsonAfterAsyncHeader(stdout: string): Record<string, unknown> | null | undefined {
+  const lines = stdout.trim().split("\n");
+  const [first = ""] = lines;
+  const parse = (text: string): Record<string, unknown> | undefined => {
+    const candidate = parseHookJson(text);
+    return candidate ?? undefined;
+  };
+  const head = parse(first.trim());
+  const candidates = [(head !== undefined && "async" in head ? lines.slice(1) : lines).join("\n").trim(),
+    ...lines.map(line => line.trim())];
+  for (const text of candidates) {
+    const parsed = parse(text);
+    if (parsed !== undefined && !("async" in parsed)) return parsed;
+  }
+  return undefined;
+}
+
+/**
+ * A first stdout line that parses as an object with `async: true` (`vye`,
+ * chunk-n3ykh62m.js [396651,396699); `Ar` cuts at the first newline).
+ */
+function hasAsyncHeader(stdout: string): boolean {
+  const first = stdout.trim().split("\n")[0]?.trim() ?? "";
+  if (!first.startsWith("{")) return false;
+  try {
+    const parsed: unknown = JSON.parse(first);
+    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && (parsed as { async?: unknown }).async === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Reinterpret an adopted process's final output as the ordinary hook result.
+ * The async header is not a result payload, so it is removed before the
+ * existing exit-code and JSON rules apply; an output with no sync payload on a
+ * clean exit contributes nothing (`Sbt`, chunk-sfn1dbxq.js [626520,627570)).
+ */
+export function syncOutputAfterHeader(raw: RawHookResult): RawHookResult | null {
+  const payload = syncJsonAfterAsyncHeader(raw.stdout);
+  if (payload === undefined) return raw.code === 0 && raw.stderr.trim() === "" ? null : { ...raw, stdout: "" };
+  return { ...raw, stdout: JSON.stringify(payload) };
+}
+
+/** Only a leading async header changes interpretation; plain output keeps the
+ *  existing event contracts (for example PreCompact's raw-stdout contract). */
+function interpretableRaw(raw: RawHookResult): RawHookResult | null {
+  return hasAsyncHeader(raw.stdout) ? syncOutputAfterHeader(raw) : raw;
+}
 
 function parseHookJson(stdout: string): Record<string, unknown> | null {
   const text = stdout.trim();
@@ -1375,17 +1591,83 @@ export async function runHooks(
       } catch { result.additionalContext.push(`[${event} hook: async owner registration failed]`); }
       continue;
     } else {
-      raw = await runHookCommand(definition.command, cwd, timeoutMs, input, signal);
+      const handle = startHookCommand(definition.command, cwd, timeoutMs, input, signal, options.adoptAsyncHeaders !== false);
+      options.onCommandHandle?.(handle);
+      raw = await handle.result;
+      if (raw.backgrounded) {
+        let id: string;
+        try {
+          if (!options.startAsyncCommand) throw new Error("async command owner registry is pending parent integration");
+          id = await options.startAsyncCommand({ definition, event, payload, input, cwd, timeoutMs, signal, handle });
+          if (typeof id !== "string" || !id) throw new Error("Missing owned task id");
+        } catch {
+          // A rejected registration leaves the process in the foreground's
+          // hands (`UF` skips `Do.cleanup()` only for a successful `m5e`): the
+          // same process is awaited again and its final output interpreted with
+          // the same header-skipping rule as a registered completion.
+          raw = await handle.done;
+          handle.cleanup();
+          // The process ended, so the foreground reports it like any other
+          // synchronous command (`UF` keeps the final result when `fo` is false).
+          options.onCommandResult?.({ command: definition.command, code: raw.code, stdout: raw.stdout,
+            stderr: raw.stderr, timedOut: raw.timedOut, aborted: raw.aborted });
+          const output = interpretableRaw(raw);
+          if (output && interpretRawCommand(event, definition, output, timeoutMs, result, displayLines)) stopContext = true;
+          continue;
+        }
+        (result.backgroundTasks ??= []).push(id);
+        continue;
+      }
+      handle.cleanup();
       options.onCommandResult?.({ command: definition.command, code: raw.code, stdout: raw.stdout,
         stderr: raw.stderr, timedOut: raw.timedOut, aborted: raw.aborted });
     }
 
+    // The registry's configured-async run already owns the process; its own
+    // first-line header is output for `gbt` to skip, so only the sync payload
+    // is interpreted (`Sbt`, chunk-sfn1dbxq.js [626520,627570)).
+    if (options.stripAsyncHeader) {
+      const sync = interpretableRaw(raw);
+      if (sync && interpretRawCommand(event, definition, sync, timeoutMs, result, displayLines)) stopContext = true;
+      continue;
+    }
+    if (interpretRawCommand(event, definition, raw, timeoutMs, result, displayLines)) stopContext = true;
+  }
+
+  // A Stop hook that contributes context asks for continuation: block the stop
+  // so the parent runs another turn with that context, but never set the terminal
+  // stopRequested flag (so an explicit continue:false still wins).
+  if (event === "Stop" && stopContext && !result.blocked) {
+    result.blocked = true;
+    result.reason ??= "Stop hook returned additional context";
+  }
+  if (displayLines.length > 0) result.userDisplayMessage = displayLines.join("\n");
+
+  return result;
+}
+
+/**
+ * The raw command outcome's contribution to a hook result. Shared by the
+ * foreground loop and an adopted async completion, which interprets the same
+ * process output after the header bytes (source `gbt`/`ybt`,
+ * chunk-sfn1dbxq.js [622557,622798), [626520,627570)).
+ */
+export function interpretRawCommand(event: HookEvent, definition: HookDefinition, raw: RawHookResult, timeoutMs: number,
+  result: HookResult, displayLines: string[]): boolean {
+  let stopContext = false;
+  const fail = (message: string, displayMessage: string | null = message): void => {
+    result.additionalContext.push(message);
+    if (displayMessage !== null) (result.failures ??= []).push(displayMessage);
+  };
+  const sessionEndFailure = (output: string): string | null | undefined =>
+    event === "SessionEnd" ? (output.length > 0 ? `SessionEnd hook [${hookDisplayLabel(definition)}] failed: ${output}` : null) : undefined;
+  {
     if (event === "PostCompact") {
       // `avt` skips a cancelled record and otherwise renders the record's own
       // output, not its structured fields: a successful hook is "completed
       // successfully", any other exit is "failed", with the trimmed output after
       // a colon when non-empty.
-      if (raw.aborted) break;
+      if (raw.aborted) return false;
       // The source's terminalSequence side effect is applied by the shared hook
       // runner while each record settles (chunk-sfn1dbxq.js offset 3041266), so
       // it still runs even though `avt` reads no other structured field here.
@@ -1397,19 +1679,18 @@ export async function runHooks(
       const output = raw.spawnError ? raw.spawnError.message
         : (raw.code === 0 ? raw.stdout : raw.stderr || raw.stdout).trim();
       displayLines.push(`PostCompact [${label}] ${raw.code === 0 ? "completed successfully" : "failed"}${output ? `: ${output}` : ""}`);
-      continue;
+      return false;
     }
     if (raw.aborted) {
       // An aborted record is the source's cancelled outcome: output
       // "Hook cancelled", succeeded false (`chunk-sfn1dbxq.js` [3052800,…)).
-      if (event === "SessionEnd") fail(`[${event} hook: aborted, process group killed]`, sessionEndFailure(definition, "Hook cancelled"));
+      if (event === "SessionEnd") fail(`[${event} hook: aborted, process group killed]`, sessionEndFailure("Hook cancelled"));
       else result.additionalContext.push(`[${event} hook: aborted, process group killed]`);
-      break;
+      return false;
     }
     if (raw.spawnError) {
-      fail(`[${event} hook: failed to launch: ${raw.spawnError.message}]`,
-        sessionEndFailure(definition, raw.spawnError.message));
-      continue;
+      fail(`[${event} hook: failed to launch: ${raw.spawnError.message}]`, sessionEndFailure(raw.spawnError.message));
+      return false;
     }
 
     if (raw.truncated) {
@@ -1443,9 +1724,8 @@ export async function runHooks(
     if (raw.timedOut) {
       // The source's timeout path aborts the run, which records the same
       // cancelled outcome as an external abort.
-      fail(`[${event} hook: timed out after ${timeoutMs}ms, process group killed]`,
-        sessionEndFailure(definition, "Hook cancelled"));
-      continue;
+      fail(`[${event} hook: timed out after ${timeoutMs}ms, process group killed]`, sessionEndFailure("Hook cancelled"));
+      return false;
     }
     if (raw.code === BLOCKING_EXIT_CODE) {
       if (BLOCKING_EVENTS.has(event)) {
@@ -1462,25 +1742,13 @@ export async function runHooks(
           ? json.reason : undefined;
         fail(
           `[${event} hook: exit code 2 is non-blocking for this event]${raw.stderr.trim() ? ` ${raw.stderr.trim()}` : ""}`,
-          sessionEndFailure(definition, blockReason ?? raw.stderr),
+          sessionEndFailure(blockReason ?? raw.stderr),
         );
       }
     } else if (raw.code !== 0) {
-      fail(
-        `[${event} hook: exit code ${raw.code ?? "null"}]${raw.stderr.trim() ? ` ${raw.stderr.trim()}` : ""}`,
-        sessionEndFailure(definition, raw.stderr),
-      );
+      fail(`[${event} hook: exit code ${raw.code ?? "null"}]${raw.stderr.trim() ? ` ${raw.stderr.trim()}` : ""}`,
+        sessionEndFailure(raw.stderr));
     }
   }
-
-  // A Stop hook that contributes context asks for continuation: block the stop
-  // so the parent runs another turn with that context, but never set the terminal
-  // stopRequested flag (so an explicit continue:false still wins).
-  if (event === "Stop" && stopContext && !result.blocked) {
-    result.blocked = true;
-    result.reason ??= "Stop hook returned additional context";
-  }
-  if (displayLines.length > 0) result.userDisplayMessage = displayLines.join("\n");
-
-  return result;
+  return stopContext;
 }

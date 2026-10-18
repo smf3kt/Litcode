@@ -4,8 +4,8 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { redactCredentialShapes } from "./credential-shapes.js";
-import { HOOK_EVENTS, hookDefinitionSchema, runHooks, type AsyncHookRequest, type CommandHookExecution,
-  type HookEvent, type HookPayload, type HookResult } from "./hooks.js";
+import { HOOK_EVENTS, hookDefinitionSchema, interpretRawCommand, runHooks, syncOutputAfterHeader, type AsyncHookRequest,
+  type CommandHookExecution, type HookEvent, type HookPayload, type HookResult, type HookCommandHandle } from "./hooks.js";
 
 const MAX_ACTIVE = 16;
 const MAX_HISTORY = 100;
@@ -48,6 +48,8 @@ type Job = {
   controller: AbortController;
   done: Promise<AsyncHookCompletion>;
   settled: boolean;
+  /** Owned process teardown for an adopted foreground handle. */
+  kill?: () => void;
 };
 function abortError(): Error {
   const error = new Error("Async hook cancelled before start.");
@@ -171,12 +173,72 @@ export class AsyncHookRegistry {
           ...(wakeFields.rewakeSummary !== undefined ? { rewakeSummary: wakeFields.rewakeSummary } : {}) } }
       : undefined;
     let execution: CommandHookExecution | undefined;
+    let handle: HookCommandHandle | undefined;
     void runHooks(config, request.event, forwarded, controller.signal, {
       onCommandResult: raw => { execution = raw; },
+      onCommandHandle: value => { handle = value; },
+      // This run already owns the process; a header line is ordinary output for
+      // `gbt` to skip, not a second handoff (`UF` `_e` forceSync path).
+      adoptAsyncHeaders: false,
+      stripAsyncHeader: true,
     }).then(
       result => this.finish(job, result, correlation, complete, undefined, wake ? { definition: wake.definition, raw: execution } : undefined),
       () => this.finish(job, { blocked: false, additionalContext: ["[async hook: execution failed]"] }, correlation, complete, "failed"),
     );
+    return id;
+  };
+
+  /**
+   * Source `m5e` normal path: the foreground run detected the first-line async
+   * header and hands its live handle here. The per-call signal is detached on
+   * success; the registry owns the process until it exits. A rejected
+   * registration leaves the foreground run owning the process.
+   */
+  readonly adopt = async (request: AsyncHookRequest, handle: HookCommandHandle, taskId: string): Promise<string> => {
+    if (this.closed) throw new Error("Async hook registry is closed.");
+    if ([...this.jobs.values()].filter(job => !job.settled).length >= MAX_ACTIVE) throw new Error("Async hook active-job limit exceeded (16).");
+    if (!HOOK_EVENTS.includes(request.event)) throw new Error("Invalid async hook event.");
+    const definition = hookDefinitionSchema.parse(request.definition);
+    if (!("command" in definition)) throw new Error("Async hook registry accepts command definitions only.");
+    if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0 || request.timeoutMs > 3600_000) throw new Error("Async hook deadline must be positive and at most one hour.");
+    if (Buffer.byteLength(request.input) > MAX_INPUT_BYTES) throw new Error("Async hook input exceeds byte cap.");
+    const payload = JSON.parse(request.input) as Record<string, unknown>;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.hook_event_name !== request.event ||
+        request.input !== `${JSON.stringify({ ...request.payload, hook_event_name: request.event })}\n`) {
+      throw new Error("Async hook stdin must match the original newline-terminated event payload.");
+    }
+    const requestedCwd = fs.realpathSync(path.resolve(request.cwd));
+    const payloadCwd = typeof request.payload.cwd === "string" && request.payload.cwd ? request.payload.cwd : process.cwd();
+    if (fs.realpathSync(path.resolve(payloadCwd)) !== requestedCwd) throw new Error("Async hook cwd conflicts with original payload.");
+    if (requestedCwd !== this.workspace && !requestedCwd.startsWith(this.workspace + path.sep)) throw new Error("Async hook cwd leaves registry workspace.");
+    if (!handle.background(taskId)) throw new Error("Async hook process already settled.");
+    handle.detachForeground();
+    const forwarded = structuredClone(request.payload);
+    const correlation = minimalPayload(forwarded);
+    const controller = new AbortController();
+    const id = crypto.randomUUID();
+    const descriptor: AsyncHookDescriptor = { id, event: request.event, state: "running", started_at: Date.now() };
+    let complete!: (value: AsyncHookCompletion) => void;
+    const done = new Promise<AsyncHookCompletion>(resolve => { complete = resolve; });
+    const job: Job = { descriptor, controller, done, settled: false, kill: () => handle.kill() };
+    this.jobs.set(id, job);
+    // The header bytes were already read by the foreground run and stay part of
+    // the final output. `gbt` (chunk-sfn1dbxq.js [622557,622798)) skips the
+    // async header and takes the first joined tail or line object without an
+    // `async` property, so the final sync payload is interpreted, not the header.
+    void handle.done.then(raw => {
+      const result: HookResult = { blocked: false, additionalContext: [] };
+      const output = syncOutputAfterHeader(raw);
+      if (output) interpretRawCommand(request.event, definition, output, request.timeoutMs, result, []);
+      this.finish(job, result, correlation, complete, undefined,
+        "asyncRewake" in definition && definition.asyncRewake === true
+          ? { definition: { command: definition.command,
+              ...(definition.rewakeMessage !== undefined ? { rewakeMessage: definition.rewakeMessage } : {}),
+              ...(definition.rewakeSummary !== undefined ? { rewakeSummary: definition.rewakeSummary } : {}) },
+            raw: { command: definition.command, code: raw.code, stdout: raw.stdout, stderr: raw.stderr,
+              timedOut: raw.timedOut, aborted: raw.aborted } }
+          : undefined).catch(() => {});
+    }, () => this.finish(job, { blocked: false, additionalContext: ["[async hook: execution failed]"] }, correlation, complete, "failed"));
     return id;
   };
 
@@ -194,6 +256,7 @@ export class AsyncHookRegistry {
     const job = this.jobs.get(id);
     if (!job) throw new Error(`Unknown async hook job: ${id}`);
     job.controller.abort();
+    job.kill?.();
     return structuredClone(await job.done);
   }
   close(): Promise<void> {
@@ -201,7 +264,10 @@ export class AsyncHookRegistry {
     this.closed = true;
     this.signal?.removeEventListener("abort", this.onAbort);
     const jobs = [...this.jobs.values()];
-    for (const job of jobs) if (job.descriptor.state === "running") job.controller.abort();
+    for (const job of jobs) if (job.descriptor.state === "running") {
+      job.controller.abort();
+      job.kill?.();
+    }
     this.closing = Promise.all(jobs.map(job => job.done)).then(() => {});
     return this.closing;
   }
