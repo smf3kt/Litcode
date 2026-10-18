@@ -8,7 +8,7 @@ import { permissionDecision, permissionOwner, seedPermissionUpdates, effectivePe
 import { CLAMPED_SHELL_TOOLS, normalizeBashCommandClamp, normalizeDisallowedTools, toolNameDenied,
   validateDisallowedTools } from './agent-tool-restrictions.js';
 import { capChildOutput, childConfig, selectChildTools, createChildHookLifecycle, advancedChildFields, advancedChildProperties,
-  resolveChildLaunch, forkMessages, validateChildEnvironment, type ChildHookOptions, type AdvancedChildOptions,
+  resolveChildLaunch, forkMessages, preloadAgentSkills, validateChildEnvironment, type ChildHookOptions, type AdvancedChildOptions,
   type ChildEnvironmentLease, type ChildLaunchOptions } from './subagents.js';
 import { scrubSubagentOutput } from './subagent-output-scrub.js';
 import type Anthropic from '@anthropic-ai/sdk';
@@ -332,9 +332,10 @@ export class AgentRegistry {
     let selected = selectChildTools(supplied, launch.mode, launch.type?.tools);
     // A clamp also denies every MCP tool, as the source merges `mcp__*` into
     // the spawn's disallowed list when a clamp is present.
+    const definitionDenies = [...(disallowedTools ?? []), ...(launch.type?.disallowedTools ?? [])];
     const mergedDenies = bashCommandClamp !== undefined
-      ? [...(disallowedTools ?? []), 'mcp__*']
-      : disallowedTools;
+      ? [...definitionDenies, 'mcp__*']
+      : definitionDenies.length ? definitionDenies : undefined;
     if (mergedDenies !== undefined) {
       validateDisallowedTools(mergedDenies, selected.map(tool => tool.schema.name));
       selected = selected.filter(tool => !toolNameDenied(tool.schema.name, mergedDenies));
@@ -411,13 +412,18 @@ export class AgentRegistry {
       });
       const metadataBytes = Buffer.byteLength(JSON.stringify({ kind: 'metadata', version: 1,
         id: '00000000-0000-4000-8000-000000000000', config, fingerprint: fingerprint(config) })) + 1;
-      const seedBytes = messages.reduce((sum, message) => sum + Buffer.byteLength(JSON.stringify({ kind: 'message', message })) + 1, 0);
+      // Declared agent skills ride as meta user messages before the first turn
+      // (source `isSkillPreload`, chunk-40cepjpq.js offset 3259458).
+      const preloads = launch.type ? preloadAgentSkills(launch.type, parent.skills, launch.type.name) : [];
+      const seedBytes = messages.reduce((sum, message) => sum + Buffer.byteLength(JSON.stringify({ kind: 'message', message })) + 1, 0)
+        + preloads.reduce((sum, message) => sum + Buffer.byteLength(JSON.stringify({ kind: 'message', message, isMeta: true })) + 1, 0);
       const seedBoundaryBytes = seededFork && messages.length ? Buffer.byteLength(JSON.stringify({ kind: 'turn_end', reason: 'fork_seed' })) + 1 : 0;
       if (metadataBytes + seedBytes + seedBoundaryBytes + 128 > this.limits.maxJournalBytes || messages.length + (seedBoundaryBytes ? 2 : 1) >= this.limits.maxJournalEvents) throw new Error('Child journal limit reached');
       session = Session.open(config.workspace, { config, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}) });
       if (execution?.beforeTool) session.inheritPermissionAdoption(liveOwner);
       else session.inheritPermissions(liveOwner);
       for (const message of messages) session.append({ kind: 'message', message });
+      for (const message of preloads) session.append({ kind: 'message', message, isMeta: true });
       if (seededFork && messages.length) session.append({ kind: 'turn_end', reason: 'fork_seed' });
       hooks = createChildHookLifecycle(session, this.options);
       const childId = session.id;

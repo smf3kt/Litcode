@@ -991,7 +991,7 @@ test("installed plugin skills are pinned below project and user but above config
     writeFile(path.join(pluginDir, "installed", "SKILL.md"), "Configured loses");
     writeFile(path.join(pluginDir, "configured", "SKILL.md"), "Configured only");
     const cfg = loadProjectConfig(workspace, { userDir });
-    assert.deepEqual(Object.fromEntries(cfg.skills.map(skill => [skill.name, skill.body])), {
+    assert.deepEqual(Object.fromEntries(cfg.skills.map(skill => [skill.name, skill.body.replace(/^Base directory for this skill: .*\n\n/, "")])), {
       shared: "Project wins", user: "User wins", installed: "Installed wins", only: "Pinned plugin body", configured: "Configured only",
     });
     assert.deepEqual(Object.fromEntries(cfg.skills.map(skill => [skill.name, skill.source])), {
@@ -1000,13 +1000,13 @@ test("installed plugin skills are pinned below project and user but above config
     const pinned = cfg.skills.find(skill => skill.name === "only")!;
     writeFile(path.join(workspace, ".harness", "settings.json"), JSON.stringify({ plugins: { enabled: true }, pluginDirs: [pluginDir], features: { pluginSkillNamespaces: true } }));
     const namespaced = loadProjectConfig(workspace, { userDir });
-    assert.equal(namespaced.skills.find(skill => skill.name === "fixture:shared")!.body, "Installed loses");
+    assert.equal(namespaced.skills.find(skill => skill.name === "fixture:shared")!.body.replace(/^Base directory for this skill: .*\n\n/, ""), "Installed loses");
     assert.deepEqual(namespaced.skills.find(skill => skill.name === "fixture:only")!.aliases, ["only"]);
     assert.equal(namespaced.skills.find(skill => skill.name === "shared")!.body, "Project wins");
     assert.equal(namespaced.skills.find(skill => skill.name === "installed")!.body, "Configured loses");
     assert.equal(pinned.path, path.join(fs.realpathSync(workspace), ".harness", "plugins", "fixture", "skills", "only", "SKILL.md"));
     fs.rmSync(path.join(workspace, ".harness", "plugins"), { recursive: true, force: true });
-    assert.equal(pinned.body, "Pinned plugin body");
+    assert.equal(pinned.body.replace(/^Base directory for this skill: .*\n\n/, ""), "Pinned plugin body");
     assert.equal(fs.existsSync(marker), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -1183,8 +1183,7 @@ test("skill plugin directories do not implicitly become agent type catalogs", as
     await installFixturePlugin(workspace, source, { visible: "Plugin skill" });
     const cfg = loadProjectConfig(workspace, { userDir: path.join(root, "user") });
     assert.deepEqual(cfg.skills.map(skill => skill.name), ["visible"]);
-    assert.equal(Object.hasOwn(cfg, "agentTypes"), false);
-    assert.equal(Object.hasOwn(cfg, "agentTypeReports"), false);
+    assert.deepEqual(cfg.agentTypes!.map(agent => agent.name), ["fixture:hidden"]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

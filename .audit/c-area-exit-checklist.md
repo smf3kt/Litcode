@@ -1,0 +1,32 @@
+# Local C-area exit checklist
+
+Reconciled 2026-10-18 against CURRENT and source investigation reports. Historical duplicated C tables are evidence history, not additional queue items. A completed package does not close a broad feature family automatically.
+
+## Active implementation
+
+- [x] W181. Local plugin workflow paths and runtime/session-owned named catalog. Committed 9caf843, identity f13fe216. Check/build, 84 affected tests, compiled named CLI and independent rechecks of both review findings passed.
+- [x] W182. Question Other single/multi and preview notes external editor. Commit 1527a7f, identity ed62c245. Check/build, 62 affected, compiled PTY and independent original normal-exit/ps-failure lifecycle probes passed. Unknown descendants during enumeration failure and native Windows remain unmeasured.
+- [x] W183. Committed9882b12, final96ea4a19 with check/build2607full/18requestCLI/515fileoffline and independent final expansion acceptance. Permission destination usage chain from base1527a7f. Core83, settings-layer161 and content/dontAsk169 affected tests passed under their scoped identities; content compiled effects verified at36ece6bd. Prior content writer explicitly stopped. Directory repair a7a5beba passed168 affected and independent original-scenario rechecks; public compiled external-root LSP grant/revoke/retarget and cleanup also independently passed. Content residuals729b512d passed215affected/check/build/compiled effects and independent fresh-input verification; that writer stopped. Local legacy revocation614ff693 passed215affected/check/build/compiled fresh-process matrix and independent retained original linked-worktree rechecks. Live owner8539b06c passed168affected/check/build, independent original skill/live owner and coordinator actual model-switch/reload CLI chain. LocalPLAN conditional resumec769411d passes201affected/check/build/original36requestCLI and independent history probes. Global-excludes6f793e6f passed201affected/check/build/compiled realGit+Sessionclose and independent originaldefault/trackedafter. Shared child adoptionbc709f63 passes167affected/check/build/compiled effects and independent original deny/allow+nested/parent revoke/allowedTools/root persistence-drain. Ordinary fork live context6b778562 passes88affected/check/build/compiled effects and independent original36requestCLI plus fresh Agent effects after parent close. Recovered local auto classifier, typed provenance, PLAN integration and resumed-registry binding are implemented. At87d0294a source97blocks/80591units and final18requestCLI pass; independent original registry-after, Gateway17requests/actualCLI and reload/cancel/root-child lifecycle pass. Full2604pass/3fail triggered a bounded repair. Help and ordinary-denial fixtures were updated to source contracts; duplicate skill expansion delivery was repaired using htg at. Affected45pass, final check/build and18requestCLI pass at a200faac; full suite and independent expansion follow-up are running. Product writers are stopped; package smoke remains queued after final review. Auto and recovery/child source preparations are in .audit/w183-auto-source-handoff.md and .audit/w183-recovery-child-handoff.md. Recovery/children, whole-package compiled CLI and final independent acceptance remain pending.
+
+## Remaining local obligations
+
+- [x] C9. Default/custom/empty skills, agents and commands producers, format-specific loaders, component diagnostics and precedence. W184 frozen at identity 1e4dba49: canonical source carrier corrected to `extracted-v2/modules/chunk-sfn1dbxq.js` (`4c74137e…`), ported naming/guard gate/agent field gates/skill preloads, fixed the catalog-refresh truncation and child snapshot reload. 2613/2613 full, check/build, plugin smoke both modes, compiled skill/agent CLI with and without plugins. Record [W184](../research/ports/W184-plugin-components.md). Independent review remains open.
+- [ ] C5. Permission destination buckets and persistence, reload/restart, managed precedence and all effective-permission consumers. Source report c5-permission-persistence-source.md.
+- [ ] C6. First-line async response adopts the same process, with one-time transfer and owned cancellation/cleanup. Source report c6-async-adoption-source.md.
+- [ ] C7. Same-host discovery/records, socket auth, native connected-peer PID/UID identity, recipient admission/held messages and owned cleanup. Source report c7-local-peer-source.md. macOS arm64 Node26 connected-fd N-API fixture passed; product adapter, package distribution and Node22 remain pending.
+- [x] C11. Question notes external editor. W182 committed 1527a7f with independent lifecycle acceptance.
+- [ ] C11. Question images and native contentBlocks through allow/clarify/AFK. Source report c11-question-images-source.md; codec limitation retained.
+- [ ] C11. Timeout settings UI and remaining shared renderer/formatter consumers, verified against actual source before implementation or disposition.
+- [ ] C2. Inline DiffDialog production mounting and remaining shared focus/AbovePrompt/footer/editor/widget consumers and source gates. W180 delivered fullscreen sidebar only. Bounded mount and actual turn-result producer sources are acquired in c2-inline-mount-handoff.md; complete imported t6 patch engine remains a precise dependency. Mount closure does not imply all shared renderer closure.
+- [ ] Final local CLI/build/evidence verification and independent closure check. Broad historical wording needs source-backed dispositions rather than blanket Integrated labels.
+
+## Existing local closures to preserve
+
+- C1 W131 local startup/resume completed. Real Magpie management operation A1 remains a separate user action.
+- C3 recorded dispositions sections 1/2/5/7.
+- C4 W47-W54 lock/checkpoint/GC completed.
+- C10 W124 local closure.
+- C12 W144 gno and recorded W45 completion.
+- C2a W46-03 actual picker chain completed.
+
+Remote/cloud/marketplace/account/provider credential policies retain their existing excluded/external status under the user's local-only constraint. Publication and paid calls remain outside current execution. Keep one active implementation package. Preserve unrelated work and never use bulk staging.

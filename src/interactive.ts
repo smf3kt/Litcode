@@ -304,6 +304,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     } });
   let unsubscribe: (() => void) | undefined;
   let activeAgent: Agent | undefined;
+  let agentGeneration = 0;
   let rewindPreview: RewindPreview | undefined;
   let formController: AbortController | undefined;
   const readDialog = async (request: TerminalPromptRequest, signal: AbortSignal, form = false) => {
@@ -349,7 +350,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     }
     return /^(y|yes)$/i.test((await readAnswer(`\n${message}\n${title}? [y/N] `, signal)).trim());
   };
-  const agent = () => activeAgent ??= new Agent(session, provider, activeRuntime.buildTools(session.config, session.id), {
+  const agent = () => {
+    // A plugin catalog change replaces the tool set a later turn can reach; a
+    // turn boundary is the only point the session's pinned schemas move.
+    const generation = session.config.pluginGeneration ?? 0;
+    if (activeAgent !== undefined && agentGeneration !== generation) activeAgent = undefined;
+    if (activeAgent === undefined) agentGeneration = generation;
+    return activeAgent ??= new Agent(session, provider, activeRuntime.buildTools(session.config, session.id), {
     // Stop/SubagentStop carry the live background jobs and session cron tasks
     // (`Sle`, chunk-sfn1dbxq.js [2946002,2946104)).
     stopState: () => activeRuntime.stopState?.(session.id) ?? { background_tasks: [], session_crons: [] },
@@ -430,7 +437,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       } catch { return false; }
       finally { cancelNotification(); }
     },
-  });
+    });
+  };
   let formActive = false;
   const elicit: NonNullable<McpClientRequests['elicitation']> = async (params, signal, context) => {
     if (inputClosed || signal.aborted || approval || formActive) return { action: 'cancel' };
@@ -1156,6 +1164,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           continue;
         }
         if (prompt.startsWith('/') && prompt !== '/continue') {
+          activeRuntime.buildTools(session.config, session.id);
           const parsed = parseSlashCommand(prompt);
           const skill = parsed ? findSkill(session.config.skills, parsed.name) : undefined;
           if (!parsed || !skill) throw new Error('Unknown command; use /help');

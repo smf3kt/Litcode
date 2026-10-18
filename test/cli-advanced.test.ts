@@ -191,7 +191,7 @@ test('CLI plugin opt-in installs locally and loads pinned skill bodies on new se
     assert.equal(results(fx.requests[1]!)[0]!.is_error ?? false, false);
     phase = 'load'; calls = 0;
     const loaded = await fx.run('Load installed fixture skill.');
-    assert.match(fx.requests[2]!.system, /fixture-plugin-skill: Installed fixture catalog/);
+    assert.match(fx.requests[2]!.system, /- fixture-plugin-skill: Installed fixture catalog/);
     assert.match(String(results(fx.requests[3]!)[0]!.content), /PINNED_PLUGIN_BODY/);
     readSession(fx.workspace, loaded.id, session => {
       assert.equal(session.config.plugins?.enabled, true);

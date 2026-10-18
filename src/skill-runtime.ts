@@ -1,3 +1,4 @@
+import { toolNameDenied } from './agent-tool-restrictions.js';
 import { spawn } from 'node:child_process';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent } from './agent.js';
@@ -57,6 +58,7 @@ function wildcard(pattern: string, value: string): boolean {
 }
 
 function grant(skill: SkillInfo, tool: ToolDefinition, input?: unknown): boolean {
+  if (toolNameDenied(tool.schema.name, skill.disallowedTools ?? [])) return false;
   if (skill.allowedTools === undefined) return true;
   const name = tool.schema.name;
   return skill.allowedTools.some(rule => {
@@ -217,7 +219,7 @@ function overlayHooks(parent: HooksConfig | undefined, extra: HooksConfig | unde
 
 export function skillRequiresExecution(skill: SkillInfo, config?: SessionConfig): boolean {
   return skill.context === 'fork' || skill.model !== undefined || skill.effort !== undefined || skill.background === true ||
-    skill.agent !== undefined || skill.hooks !== undefined || skill.allowedTools !== undefined || skill.command !== undefined || skill.shell !== undefined ||
+    skill.agent !== undefined || skill.hooks !== undefined || skill.allowedTools !== undefined || skill.disallowedTools !== undefined || skill.command !== undefined || skill.shell !== undefined ||
     (config?.features?.skillInlineCommands === true && skillCommands(skill.body).length > 0);
 }
 
@@ -240,7 +242,7 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
     extendedArguments: options.config.features?.skillExtendedArguments === true,
     argumentNames: skill.argumentNames,
     appendUnusedArguments: options.config.features?.skillArgumentFallback === true }), options.config);
-  const fork = skill.context === 'fork' || skill.model !== undefined || skill.effort !== undefined || skill.background === true || skill.hooks !== undefined || skill.allowedTools !== undefined;
+  const fork = skill.context === 'fork' || skill.model !== undefined || skill.effort !== undefined || skill.background === true || skill.hooks !== undefined || skill.allowedTools !== undefined || skill.disallowedTools !== undefined;
   if (skill.background && !options.registry) throw new Error('Background skill requires a session-owned agent registry');
   const hooks = overlayHooks(options.config.hooks, skill.hooks);
   if (skill.hooks) {

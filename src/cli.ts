@@ -12,7 +12,7 @@ import { interactiveLoop } from './interactive.js';
 import { createTuiTerminal } from './tui.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
-import { setHeldSkills } from './skill-catalog.js';
+import { agentTypesSection, setHeldSkills } from './skill-catalog.js';
 import { listSessions } from './sessions.js';
 import { loadProjectConfig, defaultUserDir, instructionSources, type LoadedConfig } from './config.js';
 import { refuseBypassUnderRoot } from './bypass-guard.js';
@@ -372,15 +372,7 @@ function newConfig(
     };
     if (loaded.agentTypes !== undefined) config.agentTypes = structuredClone(loaded.agentTypes);
     applyManagedPolicy(config, loaded.managedSettings);
-    if (config.features.subagents && config.features.agentTypes) {
-      const catalog = (config.agentTypes ?? []).map(type => JSON.stringify({
-        name: type.name, ...(type.aliases?.length ? { aliases: type.aliases } : {}), description: type.description, mode: type.mode,
-        ...(type.model ? { model: type.model } : {}), ...(type.effort ? { effort: type.effort } : {}),
-      })).join("\n");
-      config.system += "\n\n# Available agent types\nUse agent.subagent_type with general, explore, fork, or a catalog name below. " +
-        "Fork inherits the parent model, effort and paired conversation history. Catalog model IDs are literal gateway names; inherit uses the parent model." +
-        (catalog ? "\n" + catalog : "");
-    }
+    if (config.features.subagents && config.features.agentTypes) config.system += agentTypesSection(config.agentTypes ?? []);
     if (settings.plugins) config.plugins = structuredClone(settings.plugins);
     if (settings.lspServers) config.lspServers = settings.lspServers;
     if (settings.webSearch) config.webSearch = settings.webSearch;
