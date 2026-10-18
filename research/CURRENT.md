@@ -1,5 +1,7 @@
 # 当前项目工作清单
 
+W182 question external editor verified (2026-10-18), final independent acceptance passed at ed62c245. Normal wrapper exit settles marked owned descendants before private-file removal and TTY resume. The existing live-ChildProcess fallback also passes ps-exit-2 cancellation, preserving the enumeration error and releasing the launcher/files before resume; authorship remains unknown. Check/build, 62/62 affected, three retained regression groups, two compiled probes and question/root/cancellation PTY pass at identity ed62c245. Both lifecycle failures independently rechecked with cleanup assertions inside resume; C-11/all-C remain Partial/open. Next active package is W183 permission destinations and effective consumers. [Record](ports/W182-question-editor.md).
+
 W181 local plugin workflows verified (2026-10-18): default/custom paths, empty suppression and session diagnostics; per-session catalog shared by top-level/nested execution; committed index identity refreshes independent runtimes after mutation, with reload/release and in-flight close checks. Both independent review defects fixed; 84/84 affected, check/build and compiled CLI passed; final identity f13fe216. C-8/C-9 remain Partial; next: default skills/agents/commands discovery. [Record](ports/W181-local-plugin-workflows.md).
 
 更新：2026-10-15。执行规则见 [WORKFLOW](../WORKFLOW.md)。这是当前排程与审核处置的唯一入口；历史报告保持原记录。待办以「待完成清单」为准，下方历史排程表仅供追溯。返工与失败记录见[question.md](question.md)，由同一原因引发两次以上者已提炼为[硬性要求](coding-standard.md)，两者在每个工作包收尾时更新。

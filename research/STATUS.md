@@ -1,5 +1,7 @@
 # Research and implementation status
 
+2026-10-18 W182 verified: question notes/Other external editing and normal/abort cleanup, including direct-launcher release when ps fails. Check/build, 62/62 affected and compiled PTY passed; both lifecycle failures independently rechecked at final identity ed62c245. Remaining C-area work stays open; [W182](ports/W182-question-editor.md).
+
 2026-10-18 W181: local plugin workflow paths and session-owned named catalogs verified; independent runtime freshness and session path diagnostics review defects fixed. 84 affected tests, check/build and compiled CLI passed. Final identity f13fe216; remaining C-9 defaults in [W181](ports/W181-local-plugin-workflows.md).
 
 2026-10-16 W58 local closure. TypeScript 7.0.2 reports 136 errors/64 files; three owned adapter regression groups pass. Full build and CLI remain unverified. [Evidence and remaining work](ports/W58-types.md).

@@ -1,0 +1,92 @@
+{
+  "package": "W182",
+  "date": "2026-10-18",
+  "status": "verified_with_independent_lifecycle_acceptance",
+  "evidenceLocation": "Actual tool results in writer session c9c17d97; no separate raw logs existed for the initial successful runs.",
+  "commands": [
+    {"command": "npm run check && npm run build", "exit": 0, "scope": "Initial complete integration; repeated after question error display change, before final unmatched-chord reset"},
+    {"command": "CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/c9c17d97 npx tsx --test test/tui.test.ts test/external-editor.test.ts", "exit": 0, "tests": "62/62", "scope": "Complete integration before final error display and unmatched-chord reset"},
+    {"command": "CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/c9c17d97 npx tsx --test --test-name-pattern='question external editor' test/tui.test.ts", "exit": 0, "tests": "3/3", "scope": "Final product logic including error display and unmatched-chord reset; screen-bound completion assertions"},
+    {"command": "CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/c9c17d97 node scripts/smoke-tui-mouse.mjs --question-editor", "exit": 0, "scope": "Compiled preview notes exact annotations plus ordinary single/multi Other, focused gate, editor chord and same-batch Return suppression; modes, locks, private files and editor PID release"},
+    {"command": "CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/c9c17d97 node scripts/smoke-tui-mouse.mjs --question-editor --clarification", "exit": 0, "scope": "Compiled edited notes and live multi Other appear in exact next provider clarification payload; modes and locks released"},
+    {"command": "CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/c9c17d97 node scripts/smoke-tui-mouse.mjs --external-editor", "exit": 0, "scope": "Shared root editor expand/refold, undo, error, chord, same-batch suppression, SIGTERM exit130, descendant/private-file/mode/lock cleanup"},
+    {"command": "CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/c9c17d97 node scripts/smoke-tui-mouse.mjs --question-editor-cancel", "exit": 0, "scope": "Compiled question editor SIGTERM exit130, actual child and descendant ESRCH, private directory removed, modes and session lock released; summary initially mislabeled dialogs, corrected afterward"}
+  ],
+  "finalIdentity": {"sha256":"4ee7b8a4d84be66dd6339514df334a27c1d6f667cf49442e4075f1ef82b21a8a","inputs":"c6cb5def1d7fda353840adb74c2a55ed583be01b9c8b482a529f5907b7a1f1de","validation":"ab932502b636ae999d818f0718d885a443d6ebd3b3f1a1bf6f81c21a5ceadb6b","build":"288b69ab99b3f7037ae838a7b544b826c2dd7c7e4283dc154699d1b92bde3e28","manifest":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w182-final-identity.json"},
+  "finalChecks": {"check":{"exit":0,"log":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w182-final-check.log"},"build":{"exit":0,"log":"/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w182-final-build.log"},"gitDiffCheck":0},
+  "coordinatorFinalValidation": {"check":{"exit":0,"log":".audit/w182-final-check.txt"},"affected":{"exit":0,"tests":"62/62","log":".audit/w182-final-affected.txt"},"build":{"exit":0,"log":".audit/w182-final-build.txt"},"identity":{"path":".audit/w182-final-identity.json","sha256":"4ee7b8a4d84be66dd6339514df334a27c1d6f667cf49442e4075f1ef82b21a8a"},"authority":"coordinator ran final checks and read the 62-test totals and compiled PTY output; source/test/build identity matched again before staging","compiledQuestionEditor":{"status":"passed","exit":0,"log":".audit/w182-final-cli.txt"}},
+  "lifecycleFollowup": {
+    "status": "fixed_locally_pending_coordinator_original_scenario_recheck",
+    "source": {"module":"chunk-7tnkhv2k.js","sha256":"9ffb6fdc8861a418299ffa0765be70a40cdb348468f8bcae67d846ea155ee4d9","unit":"zero-based UTF-16 half-open","Zie":[3072,3957],"$j":[4816,5237]},
+    "adaptation": "Random inherited launch marker, rechecked with process start identity before individual signals; one cleanup task for normal close and abort; retained foreground TTY group; no environment values logged",
+    "commands": [
+      {"command":"node /tmp/w182-review-probe.mjs","exit":0,"log":".audit/w182-lifecycle-before.txt","result":"fresh external; resumed true; descendantAlive true"},
+      {"command":"node --import tsx --test --test-name-pattern='question external editor' test/tui.test.ts","exit":0,"tests":"3/3","log":".audit/w182-lifecycle-focused.txt","scope":"Before final Windows live-child guard; POSIX path unchanged"},
+      {"command":"npm run check","exit":0,"log":".audit/w182-lifecycle-check-final.txt"},
+      {"command":"npm run build","exit":0,"log":".audit/w182-lifecycle-build.txt"},
+      {"command":"node --import tsx --test test/tui.test.ts test/external-editor.test.ts","exit":0,"tests":"62/62","log":".audit/w182-lifecycle-affected.txt"},
+      {"command":"node /tmp/w182-review-probe.mjs","exit":0,"log":".audit/w182-lifecycle-after.txt","result":"fresh external; resumed true; descendantAlive false"},
+      {"command":"node scripts/smoke-tui-mouse.mjs --question-editor","exit":0,"log":".audit/w182-lifecycle-question-pty.txt"},
+      {"command":"node scripts/smoke-tui-mouse.mjs --external-editor","exit":0,"log":".audit/w182-lifecycle-root-pty.txt"},
+      {"command":"node scripts/smoke-tui-mouse.mjs --question-editor-cancel","exit":0,"log":".audit/w182-lifecycle-cancel-pty.txt"}
+    ],
+    "identity": {"sha256":"1f083e756097e812f60a59f4d1689241bcd1401539b1eb099a028208cfb21d64","inputs":"a71a086b0c0c991d5e7f353048e808b64cd418f770811f6c82757370efaff286","validation":"115371db00676179cbc821211dba56760148edfe3918c015975fd84889193530","build":"3114be09f6672829fee281d4a96a4326076b05331c6715381803755ddae13fa3","manifest":".audit/w182-lifecycle-writer-final-identity.json"},
+    "limitations": ["Descendants explicitly clearing inherited owner environment", "Native Windows normal-exit orphan cleanup", "Host process enumeration failure path subsequently measured in enumerationFailureFollowup", "Original single-Other clarification probe result retained as separate observation"],
+    "paidUpstreamCalls": 0
+  },
+  "enumerationFailureVerification": {
+    "status": "verified_locally_pending_independent_review",
+    "sourceAuthorship": "unknown; fallback and regression extension were present on takeover and preserved",
+    "source": {"module":"chunk-7tnkhv2k.js","sha256":"9ffb6fdc8861a418299ffa0765be70a40cdb348468f8bcae67d846ea155ee4d9","unit":"zero-based UTF-16 half-open","Zie":[3072,3957],"$j":[4816,5237]},
+    "adaptation": "Preserve enumeration error and kill only the directly owned live ChildProcess when enumeration fails; retain the existing normal-close descendant settlement",
+    "logDirectory": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w182-final-verification.cQtYggxg",
+    "commands": [
+      {"command":"npm --prefix /Users/mant1ssa/Projects/cc_reverse run check","exit":0,"log":"check.log"},
+      {"command":"npm --prefix /Users/mant1ssa/Projects/cc_reverse run build","exit":0,"log":"build.log"},
+      {"command":"CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/9b2805b2 node --import /Users/mant1ssa/Projects/cc_reverse/node_modules/tsx/dist/loader.mjs --test /Users/mant1ssa/Projects/cc_reverse/test/tui.test.ts /Users/mant1ssa/Projects/cc_reverse/test/external-editor.test.ts","exit":0,"tests":"62/62","log":"affected.log"},
+      {"command":"CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/9b2805b2 node /Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w182-final-verification.cQtYggxg/enumeration-probe.mjs --expect-fixed","exit":0,"log":"enumeration.log","result":"settled/resumed true; editorAlive/filesRemain false; original ps error retained"},
+      {"command":"CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/9b2805b2 node /Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w182-final-verification.cQtYggxg/normal-probe.mjs","exit":0,"log":"normal.log","result":"fresh external; descendant, file and directory absent inside resume callback"},
+      {"command":"CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/9b2805b2 node /Users/mant1ssa/Projects/cc_reverse/scripts/smoke-tui-mouse.mjs --question-editor","exit":0,"log":"question-pty.log"},
+      {"command":"CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/9b2805b2 node /Users/mant1ssa/Projects/cc_reverse/scripts/smoke-tui-mouse.mjs --external-editor","exit":0,"log":"root-pty.log"},
+      {"command":"CLAUDE_JOB_DIR=/Users/mant1ssa/.claude/jobs/9b2805b2 node /Users/mant1ssa/Projects/cc_reverse/scripts/smoke-tui-mouse.mjs --question-editor-cancel","exit":0,"log":"cancel-pty.log"},
+      {"command":"git -C /Users/mant1ssa/Projects/cc_reverse diff --check","exit":0}
+    ],
+    "identity": {"sha256":"ed62c245bb56ca2cf0c648fb4b7841d042409cc178e126dd4c4c25ff0f62b122","inputs":"6fd1b36e29942c41c855ae4f117deaf8ecf8aa1470212119469cea8f1f617d96","validation":"9d0d7226b20a537c70b54a26721207431e1e98bfe9eadcf8f3bb67a12c5b90cb","build":"3763c095d5da9f13f6be6bcd581dd884659db36e96fc01bb59cf0936f69adaa3","manifest":"/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w182-final-verification.cQtYggxg/identity.json"},
+    "regressionGroups": 3,
+    "paidUpstreamCalls": 0,
+    "remaining": ["Independent review", "Enumeration failure does not establish cleanup of descendants whose identities were unavailable", "Native Windows unmeasured"]
+  },
+  "enumerationFailureFollowup": {
+    "status": "verified_locally_pending_independent_acceptance",
+    "sourceAuthor": "unknown; fallback and regression extension were already present at takeover",
+    "source": {"module":"chunk-7tnkhv2k.js","sha256":"9ffb6fdc8861a418299ffa0765be70a40cdb348468f8bcae67d846ea155ee4d9","unit":"zero-based UTF-16 half-open","Zie":[3072,3957],"$j":[4816,5237]},
+    "correction": "Preserved existing guarded ChildProcess SIGKILL on enumeration failure and original error; no broad PID or process-group signalling. Existing third regression group covers ps exit 2 and normal descendant settlement before resume.",
+    "logRoot": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w182-writer-final.SQHI16hv",
+    "commands": [
+      {"command":"npm --prefix /Users/mant1ssa/Projects/cc_reverse run check","exit":0,"log":"check.log"},
+      {"command":"npm --prefix /Users/mant1ssa/Projects/cc_reverse run build","exit":0,"log":"build.log"},
+      {"command":"node --import /Users/mant1ssa/Projects/cc_reverse/node_modules/tsx/dist/loader.mjs --test /Users/mant1ssa/Projects/cc_reverse/test/tui.test.ts /Users/mant1ssa/Projects/cc_reverse/test/external-editor.test.ts","exit":0,"tests":"62/62","w182Groups":3,"log":"affected.log"},
+      {"command":"node /Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w182-writer-final.SQHI16hv/probe.mjs --expect-fixed","exit":0,"log":"probe.log","observed":{"settled":true,"resumed":true,"editorAlive":false,"filesRemain":false,"originalPsErrorPreserved":true}},
+      {"command":"node /Users/mant1ssa/Projects/cc_reverse/scripts/smoke-tui-mouse.mjs --question-editor","exit":0,"log":"question-pty.log"},
+      {"command":"node /Users/mant1ssa/Projects/cc_reverse/scripts/smoke-tui-mouse.mjs --external-editor","exit":0,"log":"root-pty.log"},
+      {"command":"node /Users/mant1ssa/Projects/cc_reverse/scripts/smoke-tui-mouse.mjs --question-editor-cancel","exit":0,"log":"cancel-pty.log"}
+    ],
+    "identity": {"sha256":"ed62c245bb56ca2cf0c648fb4b7841d042409cc178e126dd4c4c25ff0f62b122","inputs":"6fd1b36e29942c41c855ae4f117deaf8ecf8aa1470212119469cea8f1f617d96","validation":"9d0d7226b20a537c70b54a26721207431e1e98bfe9eadcf8f3bb67a12c5b90cb","build":"3763c095d5da9f13f6be6bcd581dd884659db36e96fc01bb59cf0936f69adaa3","manifest":"identity.json"},
+    "limitations": ["Enumeration failure releases the directly owned live launcher; descendants cannot be inventoried on that failed host path", "Native Windows execution unmeasured"],
+    "paidUpstreamCalls": 0
+  },
+  "independentAcceptance": {
+    "status": "passed",
+    "workflow": "wf_9d711186-c07",
+    "identity": "ed62c245bb56ca2cf0c648fb4b7841d042409cc178e126dd4c4c25ff0f62b122",
+    "logDirectory": "/Users/mant1ssa/.claude/jobs/9b2805b2/tmp/w182-independent.sLIxXjme",
+    "probes": ["ps exit 2 cancellation settles without manual kill, preserves error and removes directly owned launcher/files before resume", "normal wrapper returns fresh external with descendant/file/directory gone inside resume"],
+    "compiledDrivers": ["--question-editor-cancel", "--external-editor"],
+    "exit": 0,
+    "identityVerification": "Saved manifest and independently recomputed current identity match; repeated exclusive manifest save returned EEXIST before read-only equality verification",
+    "supersedesPendingReviewStates": true
+  },
+  "provider": "owned loopback SSE",
+  "paidUpstreamCalls": 0,
+  "remaining": ["All-C exit checklist remains open", "Enumeration failure cannot inventory unknown descendants", "Descendants stripping inherited owner environment unmeasured", "Native Windows execution unmeasured"]
+}

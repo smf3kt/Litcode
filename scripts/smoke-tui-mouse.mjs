@@ -12,7 +12,9 @@ const cliIndex = process.argv.indexOf('--cli');
 const cli = cliIndex < 0 ? path.join(root, 'bin/litcode.mjs') : process.argv[cliIndex + 1];
 assert.ok(cli, '--cli requires an executable path');
 const line = process.argv.includes('--line');
-const previews = process.argv.includes('--preview');
+const questionEditorCancel = process.argv.includes('--question-editor-cancel');
+const questionEditor = process.argv.includes('--question-editor') || questionEditorCancel;
+const previews = process.argv.includes('--preview') || questionEditor;
 const clarification = process.argv.includes('--clarification');
 const narrow = process.argv.includes('--narrow');
 const dialogs = process.argv.includes('--dialogs') || previews || clarification;
@@ -133,6 +135,10 @@ const questions = { questions: [{ question: 'Choose output', header: 'Fixture ch
       + Array.from({ length: 24 }, (_, index) => `preview-row-${index}`).join('\n') + '\n```' } : {}) }] }] };
 if (clarification) questions.questions.push({ ...questions.questions[0], question: 'Choose follow-up' },
   { ...questions.questions[0], question: 'Choose tags', multiSelect: true });
+if (questionEditor && !clarification) {
+  questions.questions.push({question:'Single Other',header:'Fixture choice',multiSelect:false,options:[{label:'X',description:'X'},{label:'Z',description:'Z'}]},
+    {question:'Multi Other',header:'Fixture choice',multiSelect:true,options:[{label:'Y',description:'Y'},{label:'Z',description:'Z'}]});
+}
 const requests = [];
 const pacingStreams = new Map();
 const pacingFrames = [];
@@ -259,6 +265,10 @@ if(externalEditing) fs.writeFileSync(editorScript,`import fs from 'node:fs';impo
 const calls=${JSON.stringify(editorCalls)},file=process.argv.at(-1);const previous=fs.existsSync(calls)?JSON.parse(fs.readFileSync(calls,'utf8')):[];
 const index=previous.length+1;const descendant=index===4?spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'inherit'}):undefined;previous.push({index,file,pid:process.pid,descendant:descendant?.pid,content:fs.readFileSync(file,'utf8'),mode:fs.statSync(file).mode&511,terminal:execFileSync('stty',['-a'],{stdio:[0,'pipe','pipe'],encoding:'utf8'})});fs.writeFileSync(calls,JSON.stringify(previous));
 if(index===2)process.exit(7);else if(index===4)setInterval(()=>{},1000);else fs.writeFileSync(file,fs.readFileSync(file,'utf8')+' editor suffix\\n');\n`,{flag:'wx'});
+if(questionEditorCancel) fs.writeFileSync(editorScript,`import fs from 'node:fs';import {execFileSync,spawn} from 'node:child_process';const file=process.argv.at(-1),descendant=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'inherit'});fs.writeFileSync(${JSON.stringify(editorCalls)},JSON.stringify([{file,pid:process.pid,descendant:descendant.pid,mode:fs.statSync(file).mode&511,terminal:execFileSync('stty',['-a'],{stdio:[0,'pipe','pipe'],encoding:'utf8'})}]));setInterval(()=>{},1000);`,{flag:'wx'});
+else if(questionEditor) fs.writeFileSync(editorScript,`import fs from 'node:fs';import {execFileSync} from 'node:child_process';
+const file=process.argv.at(-1),calls=${JSON.stringify(editorCalls)},previous=fs.existsSync(calls)?JSON.parse(fs.readFileSync(calls,'utf8')):[];
+previous.push({file,pid:process.pid,content:fs.readFileSync(file,'utf8'),mode:fs.statSync(file).mode&511,terminal:execFileSync('stty',['-a'],{stdio:[0,'pipe','pipe'],encoding:'utf8'})});fs.writeFileSync(calls,JSON.stringify(previous));fs.writeFileSync(file,fs.readFileSync(file,'utf8')+' edited\\n');`,{flag:'wx'});
 const inputCloseModule = path.join(temporary, 'input-close.mjs');
 if (inputClose) fs.writeFileSync(inputCloseModule,
   `const emit = process.stdin.emit;
@@ -277,7 +287,7 @@ const command = `printf '%s' "$$" > ${quote(pidFile)}; stty rows ${diffPanel ? 2
 const child = spawn('/bin/sh', ['-c', `cat | script -q /dev/null /bin/sh -c ${quote(command)}`], {
   cwd: root, detached: true,
   env: { ...process.env, TERM: 'xterm-256color',
-    ...(externalEditing?{VISUAL:process.execPath+' '+editorScript,EDITOR:'unused-owned-editor'}:{}), ...(theming || customTheme || pluginTheme || themeEditor || thinkingProgress || progressSettings || statusLineMode ? { FORCE_COLOR: '3', COLORFGBG: '0;15', TMUX: '', STY: '' } : {}),
+    ...(externalEditing||questionEditor?{VISUAL:process.execPath+' '+editorScript,EDITOR:'unused-owned-editor'}:{}), ...(theming || customTheme || pluginTheme || themeEditor || thinkingProgress || progressSettings || statusLineMode ? { FORCE_COLOR: '3', COLORFGBG: '0;15', TMUX: '', STY: '' } : {}),
     ...(systemTheme ? { FORCE_COLOR: '3', COLORFGBG: '0;0', TMUX: systemThemeMux ? 'owned-mux-fixture' : '', STY: '' } : {}),
     WT_SESSION: windowsTerminal ? 'owned-terminal-fixture' : '',
     LLM_INHERIT_GATEWAY: 'false', LLM_API_KEY: 'owned-mouse-fixture',
@@ -1358,6 +1368,36 @@ try {
     child.stdin.write('/exit\r'); child.stdin.end();
     assert.equal(await exited, 0, errors);
     assert.equal(requests.length, 1);
+  } else if (questionEditorCancel) {
+    child.stdin.write('first task\r');await until(()=>frame().includes('Choose output'));
+    child.stdin.write('n');await until(()=>frame().includes('Notes ·'));child.stdin.write('pending\u0007');
+    await until(()=>fs.existsSync(editorCalls));const active=JSON.parse(fs.readFileSync(editorCalls,'utf8'))[0];
+    assert.equal(active.mode,0o600);assert.match(active.terminal,/(?:^|[\s;])icanon(?:[\s;]|$)/);
+    process.kill(Number(fs.readFileSync(pidFile,'utf8')),'SIGTERM');child.stdin.end();assert.equal(await exited,130,errors);
+    assert.equal(fs.existsSync(active.file),false);assert.equal(fs.existsSync(path.dirname(active.file)),false);
+    for(const pid of [active.pid,active.descendant])assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});
+    assert.equal(requests.length,1);
+  } else if (questionEditor && !clarification) {
+    const calls=()=>fs.existsSync(editorCalls)?JSON.parse(fs.readFileSync(editorCalls,'utf8')):[];
+    const edit=async(text,index,chord='\u0007')=>{child.stdin.write(text+chord+'\r');await until(()=>calls().length===index&&frame().includes(text+' edited'));};
+    child.stdin.write('first task\r');await until(()=>frame().includes('Choose output'));
+    child.stdin.write('\u0007');await delay(50);assert.equal(calls().length,0);
+    child.stdin.write('\x1b[Bn');await until(()=>frame().includes('Notes ·'));
+    await edit('notes',1);assert.ok(frame().includes('Preview B'));assert.equal(requests.length,1);
+    child.stdin.write('\r');await until(()=>frame().includes('Single Other'));
+    child.stdin.write('\x1b[B\x1b[B');await edit('single',2,'\u0018\u0005');child.stdin.write('\r');
+    await until(()=>frame().includes('Multi Other'));child.stdin.write(' \x1b[B\x1b[B');await edit('multi',3);
+    child.stdin.write('\r');await until(()=>frame().includes('Review your answers'));child.stdin.write('\r');
+    await until(()=>topLine()==='Approve this plan');
+    const result=requests[1].messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).find(block=>block.type==='tool_result'&&block.tool_use_id==='question');
+    const value=JSON.parse(typeof result.content==='string'?result.content:result.content.map(item=>item.text??'').join(''));
+    assert.deepEqual(value,{answers:[{questionIndex:0,selected:['B'],annotations:{preview:questions.questions[0].options[1].preview,notes:'notes edited'}},
+      {questionIndex:1,selected:[],other:'single edited'},{questionIndex:2,selected:['Y'],other:'multi edited'}]});
+    child.stdin.write('\u0003');await until(()=>frame().includes('approved.txt'));child.stdin.write('\u0003');
+    await until(()=>frame().includes('cancelled.txt'));child.stdin.write('\u0003');await until(()=>frame().includes('dialogs accepted'));
+    child.stdin.write('/exit\r');child.stdin.end();assert.equal(await exited,0,errors);
+    assert.deepEqual(calls().map(call=>call.content),['notes','single','multi']);
+    for(const call of calls()){assert.equal(call.mode,0o600);assert.match(call.terminal,/(?:^|[\s;])icanon(?:[\s;]|$)/);assert.equal(fs.existsSync(call.file),false);assert.throws(()=>process.kill(call.pid,0),{code:'ESRCH'});}
   } else if (clarification) {
     child.stdin.write('first task\r');
     await until(() => topLine() === 'Fixture choice');
@@ -1365,10 +1405,14 @@ try {
     await until(() => frame().includes('Choose follow-up'));
     child.stdin.write('n');
     await until(() => frame().includes('Notes'));
-    child.stdin.write('clarify the layout'); child.stdin.write('\x1b'); await delay(80);
+    child.stdin.write('clarify the layout');
+    if(questionEditor){child.stdin.write('\u0007');await until(()=>frame().includes('clarify the layout edited'));}
+    child.stdin.write('\x1b'); await delay(80);
     child.stdin.write('\x1b[C');
     await until(() => frame().includes('Choose tags'));
-    child.stdin.write(' \x1b[B\x1b[Bextra\x1b[B');
+    child.stdin.write(' \x1b[B\x1b[Bextra');
+    if(questionEditor){child.stdin.write('\u0007');await until(()=>frame().includes('extra edited'));}
+    child.stdin.write('\x1b[B');
     await until(() => frame().includes('> Chat about this'));
     child.stdin.write('\r');
     await until(() => topLine() === 'Approve this plan');
@@ -1377,7 +1421,7 @@ try {
     assert.ok(result); assert.ok(!result.is_error);
     const value = JSON.parse(typeof result.content === 'string' ? result.content : result.content.map(item => item.text ?? '').join(''));
     assert.equal(value.behavior, 'deny');
-    assert.ok(value.feedback.includes('- "Choose output"\n  Answer: B\n- "Choose follow-up"\n  (No answer provided)\n  User notes: clarify the layout\n- "Choose tags"\n  Answer: A, extra'));
+    assert.ok(value.feedback.includes(`- "Choose output"\n  Answer: B\n- "Choose follow-up"\n  (No answer provided)\n  User notes: clarify the layout${questionEditor?' edited':''}\n- "Choose tags"\n  Answer: A, extra${questionEditor?' edited':''}`));
     child.stdin.write('\u0003');
     await until(() => frame().includes('approved.txt')); child.stdin.write('\u0003');
     await until(() => requests.length === 4 && frame().includes('cancelled.txt')); child.stdin.write('\u0003');
@@ -1489,7 +1533,7 @@ try {
     assert.equal(pacingStreams.size, 0);
     assert.ok(output.includes('\x1b[?2004l') && output.includes('\x1b[?25h'));
   }
-  console.log(JSON.stringify({ ...(diffPanel ? { tuiDiffPanel: 'passed', commandToggles: true,
+  console.log(JSON.stringify(questionEditorCancel ? {tuiQuestionEditorCancel:'passed',exitCode:130,descendantsReaped:true,privateTemporaryFiles:true} :{ ...(diffPanel ? { tuiDiffPanel: 'passed', commandToggles: true,
     nativeSourceComponent: true, baseSwitch: true, sidebarWheel: true, closeClick: true, draftPreserved: true,
     nativeSelection: true, clipboardExact: true, selectionAttachment: true } : {}), ...(statusLineMode?{tuiStatusLine:'passed',sourceCoalescing:true,periodicRefresh:true,multilineANSI:true,
     modePayload:true,usagePayload:true,draftSubmissionExact:true,modalPauses:true,reloadChanges:true,resumePinned:true,

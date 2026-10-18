@@ -239,6 +239,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private gestureHandling = false;
   private stashedDraft: InputSnapshot | undefined;
   private editorController: AbortController | undefined;
+  private editorTask: Promise<ExternalEditorResult> | undefined;
+  private editorDialog: ActiveDialog | undefined;
   private editorSuspended = false;
   /** Per-terminal focus state; close releases its rendering/clock subscribers. */
   private readonly focus = new TerminalFocus();
@@ -478,8 +480,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!this.isTTY || !this.started || this.closed || this.running || this.dialog || this.editorController) return {content:null};
     this.sourceSearch?.cancel();
     this.sourcePicker?.cancel();
-    const controller=new AbortController();this.editorController=controller;
     const snapshot={text:this.editor.text,cursor:this.editor.cursor,pastedContents:structuredClone(this.editor.pastedContents)};
+    const result = await this.handoffEditor(snapshot, signal, workspace);
+    if(!this.closed&&!signal.aborted&&result.content!==null&&result.content!==snapshot.text){
+      const text=result.content.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,'');
+      this.undo.record(snapshot.text,snapshot.cursor,{immediate:true},snapshot.pastedContents);
+      const pastedContents=referencedPastes(text,snapshot.pastedContents);
+      this.replaceDraft({...this.editor,text,cursor:text.length,pastedContents,historyIndex:this.editor.history.length,
+        historyDraft:text,historyDraftPastes:pastedContents});this.vim.reset();this.render();
+    }
+    return result;
+  }
+
+  private handoffEditor(snapshot: Parameters<typeof editExternal>[0], signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult> {
+    const controller=new AbortController();this.editorController=controller;
     const suspend=()=>{
       this.gestures.reset();this.vim.externalMutation();
       this.editorSuspended=true;this.options.input.off('data',this.onData);this.options.input.pause();
@@ -490,20 +504,52 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const resume=()=>{
       if(this.closed)return;
       this.options.input.setRawMode!(true);this.options.input.on('data',this.onData);this.modes.enter();
-      this.editorSuspended=false;this.progress.pause(false);this.syncSystemTheme();
+      this.editorSuspended=false;this.progress.pause(this.dialog !== undefined);this.syncSystemTheme();
+      this.noteAfkInteraction();
       this.renderer?.invalidate();this.options.input.resume();this.render();
     };
+    const task = editExternal(snapshot,{suspend,resume},AbortSignal.any([signal,controller.signal]),workspace)
+      .then(result => controller.signal.aborted ? {content:null} : result)
+      .finally(() => {
+        if(this.editorSuspended)resume();
+        if(this.editorController===controller){this.editorController=undefined;this.editorTask=undefined;this.editorDialog=undefined;}
+      });
+    this.editorTask=task;
+    return task;
+  }
+
+  /** a3/f3 callbacks, chunk-24k7d6mw.js [1146770,1147260)/[1154985,1155625), UTF-16. */
+  private async editQuestion(dialog: ActiveDialog, owner: 'notes' | 'other'): Promise<void> {
+    if (this.closed || this.editorController || this.dialog !== dialog || !this.isTTY) return;
+    const question = this.notesStep(dialog);
+    if (!question || (owner === 'notes' ? !dialog.notesEditing
+      : !question.allowText || dialog.index !== question.choices?.length)) return;
+    const state = owner === 'notes' ? dialog.notesEditor : dialog.editor;
+    const oldText = state.text;
+    this.editorDialog = dialog;
     try {
-      const result=await editExternal(snapshot,{suspend,resume},AbortSignal.any([signal,controller.signal]),workspace);
-      if(!this.closed&&!signal.aborted&&!controller.signal.aborted&&result.content!==null&&result.content!==snapshot.text){
-        const text=result.content.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,'');
-        this.undo.record(snapshot.text,snapshot.cursor,{immediate:true},snapshot.pastedContents);
-        const pastedContents=referencedPastes(text,snapshot.pastedContents);
-        this.replaceDraft({...this.editor,text,cursor:text.length,pastedContents,historyIndex:this.editor.history.length,
-          historyDraft:text,historyDraftPastes:pastedContents});this.vim.reset();this.render();
+      // $j receives question text alone, without composer paste expansion or cursor hints.
+      const result = await this.handoffEditor({text:oldText}, new AbortController().signal, this.options.workspace);
+      if (this.closed || this.dialog !== dialog || this.notesStep(dialog) !== question) return;
+      if (result.content === null) {if(result.error){dialog.error=result.error;this.render();}return;}
+      if (result.content === oldText) return;
+      const text = result.content;
+      const limit = owner === 'notes' ? NOTES_MAX_CHARS : question.maxTextChars ?? dialog.request.maxTextChars ?? 32 * 1024;
+      if (text.length > limit || Buffer.byteLength(text) > 32 * 1024) {
+        dialog.error = `Answer exceeds ${limit} characters or 32768 bytes`; this.render(); return;
       }
-      return result;
-    } finally {if(this.editorSuspended)resume();if(this.editorController===controller)this.editorController=undefined;}
+      const next = {...state,text,cursor:text.length};
+      if (owner === 'notes') {
+        dialog.notesUndo.record(oldText,state.cursor,{immediate:true});
+        dialog.notesEditor=next;this.storeNotes(dialog);
+      } else {
+        dialog.undo.record(oldText,state.cursor,{immediate:true});
+        dialog.editor=next;this.storeMultiDialogAnswer(dialog);
+      }
+      dialog.error=undefined;this.render();
+    } catch (error) {
+      if (this.dialog === dialog && !this.closed) {dialog.error=String(error);this.render();}
+    }
   }
 
   setEditorMode(mode?: EditorMode,remaps?:Record<string,unknown>): void {
@@ -774,6 +820,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const finish = (answer?: TerminalPromptAnswer) => {
         if (settled) return;
         settled = true; signal.removeEventListener('abort', cancelled);
+        const editorTask = this.editorDialog === dialog ? this.editorTask : undefined;
+        if (editorTask) this.editorController?.abort();
         this.stopAfk();
         this.dialog?.themeEditor?.close();
         this.dialog?.undo.clear();
@@ -781,7 +829,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.dialog = undefined; this.screen = previousScreen;
         this.progress.pause(false);
         if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
-        this.decoder.discardPending(); this.keys.reset(); this.render(); resolve(answer);
+        this.decoder.discardPending(); this.keys.reset(); this.render();
+        if (editorTask) void editorTask.then(() => resolve(answer), () => resolve(answer));
+        else resolve(answer);
       };
       const cancelled = () => finish();
       this.keys.reset(); this.selection = createSelection();
@@ -857,18 +907,22 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.options.input.off('close', this.onEnd);
     this.options.input.off('error', this.onError);
     this.options.output.off('resize', this.onResize);
+    const restoreTerminal = () => {
+      try {if (this.isTTY && this.started) this.modes.leave();}
+      finally {
+        try {if (this.changedRaw) {this.changedRaw=false;this.options.input.setRawMode!(this.originalRaw);}}
+        finally {if (this.started && this.originalPaused) this.options.input.pause();}
+      }
+    };
     try {
-      try {
-        try { this.customThemes?.close(); }
-        finally {
-          try { this.systemTheme?.close(); }
-          finally { try { this.documentRenderer?.close(); } finally { this.renderer?.close(); } }
-        }
-      } finally { if (this.isTTY && this.started) this.modes.leave(); }
+      try { this.customThemes?.close(); }
+      finally {
+        try { this.systemTheme?.close(); }
+        finally { try { this.documentRenderer?.close(); } finally { this.renderer?.close(); } }
+      }
     } finally {
-      try {
-        if (this.changedRaw) { this.changedRaw = false; this.options.input.setRawMode!(this.originalRaw); }
-      } finally { if (this.started && this.originalPaused) this.options.input.pause(); }
+      if (this.editorTask) void this.editorTask.then(restoreTerminal, restoreTerminal);
+      else restoreTerminal();
     }
   }
 
@@ -1165,6 +1219,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     const command = action.type === 'key' ? action.command : action.type;
     const sequence = action.type === 'key' ? action.sequence : '';
+    if (action.type !== 'key' && this.keys.pendingChord) this.keys.reset();
+    if (action.type === 'externalEditor') {
+      void this.editQuestion(dialog, dialog.notesEditing ? 'notes' : 'other');return;
+    }
+    if (action.type === 'key') {
+      const binding = this.keys.push(sequence, ['Chat']);
+      if (binding.kind === 'pending') return;
+      if (binding.kind === 'match' && binding.match.action === 'chat:externalEditor') {
+        // gEe [25027,31575), UTF-16, enables this action only on its focused input row.
+        if (dialog.notesEditing) void this.editQuestion(dialog, 'notes');
+        else void this.editQuestion(dialog, 'other');
+        return;
+      }
+    }
     // Recovered `a3`: the notes input owns keys while it is open; Esc exits it,
     // and Enter saves the text and takes the focused/stored answer when present.
     if (dialog.notesEditing) { this.handleNotesAction(dialog, action, command, sequence); return; }
@@ -1860,6 +1928,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private tickAfk(state: DialogAfk): void {
     if (this.afk !== state || this.dialog !== state.target || state.fired) return;
     const now = Date.now();
+    // Zbe's GPe focus baseline survives handoff, where this host stops reading focus reports.
+    if (this.editorController) {state.base = now;return;}
     // Source `GPe()===true`: a focused terminal keeps moving the baseline.
     if (this.focus.state === 'focused') state.base = now;
     const elapsedMs = now - Math.max(state.base, state.lastInteraction);
