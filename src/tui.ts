@@ -76,20 +76,41 @@ import {
 } from './tui-file-suggestions.js';
 import { ge } from './tui-color.js';
 
-/** The sixteen ANSI foreground names a theme slot can name. */
+/** The sixteen ANSI foreground names a theme slot can name (the source's own `be` table). */
 const ANSI_FOREGROUND: Readonly<Record<string, number>> = {
   black: 30, red: 31, green: 32, yellow: 33, blue: 34, magenta: 35, cyan: 36, white: 37,
-  blackBright: 90, gray: 90, grey: 90, redBright: 91, greenBright: 92, yellowBright: 93,
-  blueBright: 94, magentaBright: 95, cyanBright: 96, whiteBright: 97,
+  blackBright: 90, redBright: 91, greenBright: 92, yellowBright: 93, blueBright: 94,
+  magentaBright: 95, cyanBright: 96, whiteBright: 97,
 };
 
-/** A theme slot value as an SGR foreground sequence, or '' when the terminal takes none. */
+const SLOT_RGB = /^rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)$/;
+const SLOT_ANSI256 = /^ansi256\(\s?(\d+)\s?\)$/;
+const SLOT_HEX = /[a-f\d]{6}|[a-f\d]{3}/i;
+
+/**
+ * The source's `zye` foreground branch (chunk-3cynezh1.js): `ansi:<name>`, `#rgb`, `#rrggbb`,
+ * `ansi256(n)` and `rgb(r,g,b)`. Those are the same five spellings `HK` lets a theme override
+ * carry, so a custom theme's hex override paints instead of being dropped.
+ */
 function slotForeground(slot: string | undefined): string {
   if (slot === undefined || (ge as unknown as { level: number }).level <= 0) return '';
-  const rgb = /^rgb\((\d+),(\d+),(\d+)\)$/.exec(slot);
-  if (rgb) return `\u001b[38;2;${rgb[1]};${rgb[2]};${rgb[3]}m`;
-  const code = ANSI_FOREGROUND[slot.replace(/^ansi:/, '')];
-  return code === undefined ? '' : `\u001b[${code}m`;
+  if (slot.startsWith('ansi:')) {
+    const code = ANSI_FOREGROUND[slot.slice(5)];
+    return code === undefined ? '' : `\u001b[${code}m`;
+  }
+  if (slot.startsWith('#')) {
+    const match = SLOT_HEX.exec(slot);
+    let digits = match ? match[0] : '000000';
+    if (digits.length === 3) digits = [...digits].map(digit => digit + digit).join('');
+    const value = Number.parseInt(digits, 16);
+    return `\u001b[38;2;${value >> 16 & 255};${value >> 8 & 255};${value & 255}m`;
+  }
+  if (slot.startsWith('ansi256')) {
+    const match = SLOT_ANSI256.exec(slot);
+    return match ? `\u001b[38;5;${Number(match[1])}m` : '';
+  }
+  const rgb = SLOT_RGB.exec(slot);
+  return rgb ? `\u001b[38;2;${Number(rgb[1])};${Number(rgb[2])};${Number(rgb[3])}m` : '';
 }
 
 /** `P0e`: a directory listing is reused for fifteen seconds. */
