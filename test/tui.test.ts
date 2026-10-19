@@ -1699,6 +1699,37 @@ test('custom theme watcher refreshes source overrides, removes invalid files and
   }
 });
 
+test('a custom theme slot paints the suggestion band for every spelling an override may carry', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tui-band-theme-'));
+  const directory = path.join(root, 'themes'); fs.mkdirSync(directory);
+  const file = path.join(directory, 'band.json');
+  // The selected row takes `suggestion` and the skill lane takes `skill`, so both branches of
+  // the band's colour path carry the value whichever row happens to be selected.
+  const writeTheme = (value: string) => fs.writeFileSync(file,
+    JSON.stringify({ name: 'Band', base: 'dark', overrides: { suggestion: value, skill: value } }));
+  writeTheme('#010203');
+  const colors = ge as unknown as { level: number }; const previous = colors.level; colors.level = 3;
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {}; let writes = '';
+  const output = new Writable({ write(chunk, _encoding, done) { writes += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, userDir: root, theme: 'custom:band' }).start();
+  const until = async (predicate: () => boolean) => {
+    const deadline = Date.now() + 5000;
+    while (!predicate()) { if (Date.now() >= deadline) throw new Error('Band colour did not update'); await delay(25); }
+  };
+  try {
+    input.emit('data', '/');
+    assert.ok(screenLines(output).some(row => row.includes('/config')), screenLines(output).join('\n'));
+    await until(() => writes.includes('\u001b[38;2;1;2;3m'));
+    writeTheme('ansi256(42)'); await until(() => writes.includes('\u001b[38;5;42m'));
+    writeTheme('#abc'); await until(() => writes.includes('\u001b[38;2;170;187;204m'));
+  } finally {
+    tui.close(); decoded.get(output)!.dispose(); colors.level = previous;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('source progress settings preserve presets, pattern cleanup and append versus replace words', () => {
   const at = '2026-10-14T08:09:07.000Z', now = new Date('2026-10-14T12:00:00.000Z');
   assert.equal(progressTime({timeFormat:'24-hour-utc',timeZone:'Asia/Tokyo'}).format(at,now),'08:09Z');
