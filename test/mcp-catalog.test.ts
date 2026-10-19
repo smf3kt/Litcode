@@ -146,3 +146,24 @@ test("legacy stdio catalog shares adapters and still negotiates 2024-11-05", asy
     assert.equal(JSON.parse(await tool(connection, "mcp_prompt_get").execute({ server: "local", name: "prompt" }, context())).messages[0].content.text, "local");
   } finally { await connection.close(); }
 });
+
+test("catalogListing reads every capable server's resources and templates for the composer", async () => {
+  await fixture(async (url) => {
+    const connection = await connectMcpServers({ srv: { type: "http", url } }, context(), { catalog: true });
+    try {
+      assert.ok(connection.catalogListing);
+      const listing = await connection.catalogListing(new AbortController().signal);
+      assert.deepEqual(listing.resources.srv.map((entry) => entry.uri), ["fixture://notes", "fixture://second"]);
+      assert.equal(listing.resources.srv[0]?.name, "Notes");
+      assert.equal(listing.resources.srv[0]?.mimeType, "text/plain");
+      assert.deepEqual(listing.templates.srv, [{ server: "srv", uriTemplate: "fixture://notes/{id}", name: "Note" }]);
+    } finally { await connection.close(); }
+  });
+});
+
+test("catalogListing is absent unless catalog mode is on", async () => {
+  await fixture(async (url) => {
+    const connection = await connectMcpServers({ srv: { type: "http", url } }, context());
+    try { assert.equal(connection.catalogListing, undefined); } finally { await connection.close(); }
+  });
+});

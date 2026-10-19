@@ -69,6 +69,7 @@ import { acceptEmojiQuery, inlineEmojiCompletion } from './tui-emoji.js';
 import { FileIndex } from './tui-file-index.js';
 import { agentSuggestionRows } from './tui-agent-suggestions.js';
 import { combinedAtRows } from './tui-at-suggestions.js';
+import { templateArgumentRows } from './tui-mcp-suggestions.js';
 import {
   atQuery, applyFileSuggestion, commonPrefix, directorySuggestionRows, fileSuggestionRows,
   listWorkingDirectory, shapeAtDisplayText, FILE_SUGGESTION_LIMIT, type AtQuery,
@@ -171,6 +172,12 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   commands?: readonly TuiCommand[];
   /** The agent types the `@` list offers, as `agent-` rows. */
   agentTypes?: readonly import('./tui-agent-suggestions.js').AgentSuggestionSource[];
+  /** The connected servers' resources and templates, loaded once on the first `@` draft.
+   *  Catalog mode only; without it the MCP families stay empty. */
+  mcpCatalog?: (signal: AbortSignal) => Promise<{
+    resources: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpResource[]>>;
+    templates: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpTemplate[]>>;
+  }>;
   prompt?: string;
   continuationPrompt?: string;
   history?: readonly string[];
@@ -411,6 +418,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private fileIndexStarted = false;
   /** The directory listings an explicit `@./path` asks for, cached for the source's TTL. */
   private readonly directoryListings = new Map<string, { at: number; entries: { name: string; isDirectory: boolean }[] }>();
+  /** The connected servers' `@` catalog, read once in the background on the first `@`. */
+  private mcpCatalogStarted = false;
+  private mcpCatalogAbort: AbortController | undefined;
+  private mcpResources: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpResource[]>> = {};
+  private mcpResourceTemplates: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpTemplate[]>> = {};
   /** `Zi`: the per-draft dismissal the alt+w toggle sets. */
   private workflowKeywordDismissed = false;
   /** The keyed notice `workflow-keyword-ignored`, shown on the one status row this terminal has. */
@@ -1028,6 +1040,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.sourceSearch?.close();this.sourceSearch=undefined;this.queryUndo.clear();this.queryEditor=createEditorState();
     this.sourcePicker?.close();this.sourcePicker=undefined;this.pickerUndo.clear();this.pickerQuery=createEditorState();
     this.editorController?.abort();this.gestures.reset();this.vim.close();this.focus.close();this.inputHistory.close();
+    this.mcpCatalogAbort?.abort();
     this.editRelay.dispose();
     this.undo.clear();
     this.editor = {...this.editor,pastedContents:{},historyPastes:[],historyDraftPastes:{}};
@@ -1285,10 +1298,21 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return { suggestions, selected };
   }
 
-  /** Source `SDs`/`jre`: the rows an `@` draft shows. A file row searches the index;
-   *  an explicit path lists one directory. Source `tse` merges the agent rows in. */
+  /** Source `SDs`/`jre`/`tse`/`ose`: the rows an `@` draft shows. An explicit `server:`
+   *  partial lists that server's templates first; a file row searches the index; an explicit
+   *  path lists one directory; `tse` merges the resource, template and agent rows in. */
   private atSuggestionRows(at: AtQuery): CommandSuggestion[] {
     const workspace = this.options.workspace ?? process.cwd();
+    this.ensureMcpCatalog();
+    const templates = templateArgumentRows(at.partial, this.mcpResourceTemplates);
+    if (templates !== null) {
+      return templates.map(row => ({
+        id: row.id, name: row.displayText, insertName: row.displayText,
+        displayText: row.displayText, description: row.description,
+        kind: 'file' as const, executeOnAccept: false,
+        metadata: { replacement: row.replacement, partial: row.partial },
+      }));
+    }
     if (at.explicit) {
       return directorySuggestionRows(at.partial, workspace,
         directory => this.directoryListing(directory)).map(row => ({
@@ -1303,11 +1327,31 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const agents = agentSuggestionRows(this.options.agentTypes ?? [], at.partial, true);
     // Source `tse` labels the whole combined list as one suggestion type, so every row
     // here accepts through the same splice.
-    return combinedAtRows({ query: at.partial, showOnEmpty: true, files, agents }).map(row => ({
+    return combinedAtRows({ query: at.partial, showOnEmpty: true, files, agents,
+      mcpResources: this.mcpResources,
+      mcpResourceTemplates: this.mcpResourceTemplates }).map(row => ({
       id: row.id, name: row.displayText, insertName: row.displayText,
       displayText: row.displayText, description: row.description,
       kind: 'file' as const, executeOnAccept: false,
+      ...(row.metadata === undefined ? {} : { metadata: row.metadata }),
     }));
+  }
+
+  /** `ose`'s companion: the source reads a live MCP store; the local render path is
+   *  synchronous, so the listing is read once in the background and the band repaints when
+   *  it lands. A failed listing leaves the MCP families empty rather than failing the list. */
+  private ensureMcpCatalog(): void {
+    const load = this.options.mcpCatalog;
+    if (this.mcpCatalogStarted || load === undefined) return;
+    this.mcpCatalogStarted = true;
+    const controller = new AbortController();
+    this.mcpCatalogAbort = controller;
+    void load(controller.signal).then(listing => {
+      if (this.closed) return;
+      this.mcpResources = listing.resources;
+      this.mcpResourceTemplates = listing.templates;
+      if (this.started) this.render();
+    }).catch(() => {});
   }
 
   /** `kDt`: one directory's entries, held for the source's fifteen-second TTL. The source
@@ -1327,8 +1371,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   /** `q`/`ubn`: the index is built once, in the background, the first time an `@` needs it. */
-  private ensureFileIndex(workspace: string): void {
-    if (this.fileIndexStarted) return;
+  private ensureFileIndex(workspace: string): void {    if (this.fileIndexStarted) return;
     this.fileIndexStarted = true;
     void this.loadFileIndex(workspace);
   }
@@ -1386,12 +1429,16 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const hasAtPrefix = at.token.startsWith('@');
       const typed = at.isQuoted ? at.token.slice(2).replace(/"$/, '').length
         : hasAtPrefix ? at.token.length - 1 : at.token.length;
-      // Source: Tab first fills the prefix every row shares, then a second Tab accepts one.
-      const common = commonPrefix(suggestions.map(row => row.displayText));
-      const replacement = common.length > typed
-        ? shapeAtDisplayText(common, { hasAtPrefix, isQuoted: at.isQuoted, isComplete: false })
-        : shapeAtDisplayText(suggestion.displayText, { hasAtPrefix, isQuoted: at.isQuoted,
-          needsQuotes: suggestion.displayText.includes(' '), isComplete: true });
+      // Source: a template `replacement` metadata suppresses the shared-prefix fill and is
+      // written verbatim; `partial` keeps the draft open.
+      const hasReplacement = suggestions.some(row => row.metadata !== undefined);
+      const common = hasReplacement ? '' : commonPrefix(suggestions.map(row => row.displayText));
+      const replacement = suggestion.metadata !== undefined
+        ? `${suggestion.metadata.replacement}${suggestion.metadata.partial ? '' : ' '}`
+        : common.length > typed
+          ? shapeAtDisplayText(common, { hasAtPrefix, isQuoted: at.isQuoted, isComplete: false })
+          : shapeAtDisplayText(suggestion.displayText, { hasAtPrefix, isQuoted: at.isQuoted,
+            needsQuotes: suggestion.displayText.includes(' '), isComplete: true });
       const applied = applyFileSuggestion(this.editor.text, at, replacement);
       const before = { text: this.editor.text, cursor: this.editor.cursor };
       this.editor = { ...this.editor, text: applied.text, cursor: applied.cursor };

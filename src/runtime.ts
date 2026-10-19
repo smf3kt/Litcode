@@ -407,6 +407,8 @@ export type RuntimeOptions = {
 
 export type Runtime = {
   mcpServers?: NonNullable<McpConnection["servers"]>;
+  /** Catalog mode only: the connected servers' resources and templates, for the composer. */
+  catalogListing?: NonNullable<McpConnection["catalogListing"]>;
   reconnectMcp?: NonNullable<McpConnection["reconnect"]>;
   notificationStreams?: NonNullable<McpConnection["notificationStreams"]>;
   listWorkflows?(config: SessionConfig, owner: string): import('./workflow.js').WorkflowView[];
@@ -1107,6 +1109,7 @@ export async function createRuntime(
         return pending;
       },
       ...(mcp.servers ? { mcpServers: () => mcp.servers!() } : {}),
+      ...(mcp.catalogListing ? { catalogListing: (signal: AbortSignal) => mcp.catalogListing!(signal) } : {}),
       ...(mcp.reconnect ? { reconnectMcp: (server: string, requestSignal: AbortSignal) => mcp.reconnect!(server, requestSignal) } : {}),
       ...(mcp.notificationStreams ? { notificationStreams: () => mcp.notificationStreams!() } : {}),
       listWorkflows(current, owner) {

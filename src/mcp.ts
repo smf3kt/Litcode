@@ -39,6 +39,8 @@ export const MCP_MAX_LIST_PAGES = 1000;
 /** Tool inventories are bounded across pages and configured servers. */
 export const MCP_MAX_TOTAL_TOOLS = 10_000;
 export const MCP_MAX_TOOL_CATALOG_BYTES = 8 * 1024 * 1024;
+/** The composer's `@` list keeps one bounded entry set per server and family. */
+export const MCP_MAX_CATALOG_LISTING_ENTRIES = 500;
 /** Maximum tool-name length accepted by the Messages tool schema. */
 export const MCP_TOOL_NAME_MAX = 128;
 /**
@@ -155,6 +157,8 @@ export type McpConnection = {
   close(): Promise<void>;
   limits: readonly string[];
   servers?: () => Record<string, McpServerStatus>;
+  /** Present only in catalog mode: each capable server's resources and templates. */
+  catalogListing?: (signal: AbortSignal) => Promise<McpCatalogListing>;
   reconnect?: (server: string, signal: AbortSignal) => Promise<McpServerStatus>;
   resumeTask?: (server: string, task: StandardMcpTask, signal: AbortSignal, toolName?: string) => Promise<McpToolResult>;
   bindSubscriptions?: (state: Record<string, readonly string[]>, commit: (server: string, method: McpSubscriptionMethod, uri: string) => void, signal: AbortSignal) => Promise<void>;
@@ -985,6 +989,85 @@ export const MCP_CATALOG_LIMITS: readonly string[] = [
 
 function catalogLimits(limits: readonly string[]): readonly string[] {
   return [...limits.filter((entry) => !entry.startsWith("server features:")), ...MCP_CATALOG_LIMITS];
+}
+
+/** One listed resource, in the shape the composer's `@` provider consumes. */
+export type McpCatalogResource = {
+  server: string; uri: string; name?: string; description?: string; mimeType?: string;
+};
+
+/** One listed resource template, in the same shape. */
+export type McpCatalogTemplate = {
+  server: string; uriTemplate: string; name?: string; description?: string; mimeType?: string;
+};
+
+/** Every capable server's resource and template listings, keyed by server name. */
+export type McpCatalogListing = {
+  resources: Record<string, McpCatalogResource[]>;
+  templates: Record<string, McpCatalogTemplate[]>;
+};
+
+function stringField(item: Record<string, unknown>, key: string): string | undefined {
+  const value = item[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+/**
+ * One bounded, capability-gated listing per family. A server that does not advertise
+ * resources, or that fails, contributes nothing rather than failing the whole listing: the
+ * composer's list is a convenience and a broken server must not empty it.
+ */
+async function listCatalogFamily(client: McpClient, server: string, method: McpCatalogMethod,
+  list: "resources" | "resourceTemplates", signal: AbortSignal): Promise<Record<string, unknown>[]> {
+  const all: Record<string, unknown>[] = [];
+  const seen = new Set<string>();
+  let cursor: string | undefined;
+  for (let page = 0; page < MCP_MAX_LIST_PAGES; page++) {
+    const response = await client.catalogRequest(method, cursor === undefined ? {} : { cursor }, signal);
+    const items = isRecord(response) ? response[list] : undefined;
+    if (!isRecord(response) || !Array.isArray(items)) return all;
+    for (const item of items) {
+      if (!isRecord(item)) continue;
+      all.push(item);
+      if (all.length >= MCP_MAX_CATALOG_LISTING_ENTRIES) return all;
+    }
+    const next = response.nextCursor;
+    if (next === undefined || next === null) return all;
+    if (typeof next !== "string" || next.length === 0 || seen.has(next)) return all;
+    seen.add(next);
+    cursor = next;
+  }
+  return all;
+}
+
+/** `T0r`-shaped: read every capable server's listings once, for the composer's `@` list. */
+export async function listMcpCatalog(clients: Map<string, McpClient>,
+  signal: AbortSignal): Promise<McpCatalogListing> {
+  const listing: McpCatalogListing = { resources: {}, templates: {} };
+  for (const [server, client] of clients) {
+    if (!client.supportsCatalog("resources")) continue;
+    try {
+      const resources = await listCatalogFamily(client, server, "resources/list", "resources", signal);
+      const templates = await listCatalogFamily(client, server, "resources/templates/list", "resourceTemplates", signal);
+      if (resources.length > 0) {
+        listing.resources[server] = resources.map(item => ({
+          server, uri: stringField(item, "uri") ?? "",
+          ...(stringField(item, "name") === undefined ? {} : { name: stringField(item, "name")! }),
+          ...(stringField(item, "description") === undefined ? {} : { description: stringField(item, "description")! }),
+          ...(stringField(item, "mimeType") === undefined ? {} : { mimeType: stringField(item, "mimeType")! }),
+        })).filter(entry => entry.uri !== "");
+      }
+      if (templates.length > 0) {
+        listing.templates[server] = templates.map(item => ({
+          server, uriTemplate: stringField(item, "uriTemplate") ?? "",
+          ...(stringField(item, "name") === undefined ? {} : { name: stringField(item, "name")! }),
+          ...(stringField(item, "description") === undefined ? {} : { description: stringField(item, "description")! }),
+          ...(stringField(item, "mimeType") === undefined ? {} : { mimeType: stringField(item, "mimeType")! }),
+        })).filter(entry => entry.uriTemplate !== "");
+      }
+    } catch { continue; }
+  }
+  return listing;
 }
 
 function makeCatalogTools(clients: Map<string, McpClient>, context: McpConnectContext): ToolDefinition[] {
@@ -1852,6 +1935,7 @@ export async function connectMcpServers(
       for (const client of namedClients.values()) (client as ManagedMcpClient).startAutomatic();
     } } : {}),
     servers: () => Object.fromEntries([...namedClients].map(([name, client]) => [name, (client as ManagedMcpClient).view()])),
+    ...(settings.catalog ? { catalogListing: (signal: AbortSignal) => listMcpCatalog(namedClients, signal) } : {}),
     reconnect: async (server, signal) => {
       if (closed) throw new Error("MCP connections closed");
       const client = namedClients.get(server) as ManagedMcpClient | undefined;
