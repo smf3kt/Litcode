@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 /**
  * Full-screen interaction layer.
  *
@@ -73,6 +74,9 @@ import { StatusLine } from './tui-statusline.js';
 import { InputHistory } from './tui-input-history.js';
 import { HistorySearch, type SearchSnapshot } from './tui-history-search.js';
 import { ScopedPicker, type PickerScope, type ScopePickerSnapshot } from './tui-scope-picker.js';
+import { captureClipboardImage } from './clipboard.js';
+import { QuestionImages, readQuestionImage } from './question-images.js';
+import { QUESTION_NOTES_ONLY } from './interaction-tools.js';
 /** Source HI() gate for the picker: see research/ports/W44-scope-picker-copies.json entryEvidence. */
 const SOURCE_PICKER_OWNS_HISTORY_SEARCH = true;
 import { jde } from './tui-statusline-components.js';
@@ -113,6 +117,8 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   userDir?: string;
   workspace?: string;
   plugins?: import('./plugins.js').PluginConfig;
+  /** Trusted host/test clipboard dependency for question image paste. */
+  clipboard?: import('./clipboard.js').ClipboardOptions;
 }
 
 type TuiEvents = {
@@ -149,6 +155,10 @@ interface ActiveDialog {
   notesEditor: EditorState;
   notesUndo: InputUndo;
   notesEditing: boolean;
+  /** Recovered `hwe`: one image map per question key, owned by this dialog. */
+  images: QuestionImages;
+  /** The in-flight clipboard capture, aborted when the dialog settles. */
+  imageCapture?: AbortController;
   /** Source `ko`: the option focus moved during this step. */
   optionTouched: boolean;
   finish(answer?: TerminalPromptAnswer): void;
@@ -552,6 +562,39 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
   }
 
+  /**
+   * Recovered `gEe`/`vae(Ac(tt()))`: an explicit paste chord captures one PNG
+   * through the platform clipboard and stores it against the focused question.
+   * The capture is cancellable and a stale result can never reach a later
+   * dialog or question.
+   */
+  private async attachQuestionImage(dialog: ActiveDialog, question: TerminalPromptGroup | undefined): Promise<void> {
+    if (this.closed || this.dialog !== dialog || !question || this.editorController || dialog.imageCapture) return;
+    const workspace = this.options.workspace;
+    if (workspace === undefined) { dialog.error = 'Image paste needs a workspace'; this.render(); return; }
+    const controller = new AbortController();
+    dialog.imageCapture = controller;
+    try {
+      const captured = await captureClipboardImage(workspace, controller.signal, this.options.clipboard);
+      if (this.closed || this.dialog !== dialog || controller.signal.aborted || this.notesStep(dialog) !== question) {
+        fs.rmSync(path.resolve(workspace, captured.path), { force: true });
+        return;
+      }
+      const content = await readQuestionImage(path.resolve(workspace, captured.path));
+      if (this.closed || this.dialog !== dialog || controller.signal.aborted || this.notesStep(dialog) !== question) {
+        fs.rmSync(path.resolve(workspace, captured.path), { force: true });
+        return;
+      }
+      dialog.images.add(question.key, { ...content, path: path.resolve(workspace, captured.path) });
+      dialog.error = undefined;
+    } catch (error) {
+      if (this.dialog === dialog && !this.closed && !controller.signal.aborted) { dialog.error = String(error); }
+    } finally {
+      if (dialog.imageCapture === controller) dialog.imageCapture = undefined;
+      if (this.dialog === dialog && !this.closed) this.render();
+    }
+  }
+
   setEditorMode(mode?: EditorMode,remaps?:Record<string,unknown>): void {
     if(this.vimEnabled!==(mode==='vim')){this.gestures.reset();this.vim.reset();}this.vimEnabled=mode==='vim';this.vim.setRemaps(remaps);this.render();
   }
@@ -820,6 +863,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const finish = (answer?: TerminalPromptAnswer) => {
         if (settled) return;
         settled = true; signal.removeEventListener('abort', cancelled);
+        // Source removal is in-memory only; this host also unlinks the private
+        // attachments it captured for the dialog.
+        dialog.imageCapture?.abort();
+        void dialog.images.clear();
         const editorTask = this.editorDialog === dialog ? this.editorTask : undefined;
         if (editorTask) this.editorController?.abort();
         this.stopAfk();
@@ -841,7 +888,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         index: Math.max(0, Math.min(first.defaultIndex ?? 0, Math.max(0, choices - 1))),
         selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(),
         notes: new Map(), notesEditor: createEditorState(), notesUndo: new InputUndo(),
-        notesEditing: false, optionTouched: false, finish };
+        notesEditing: false, optionTouched: false, images: new QuestionImages(), finish };
       this.dialog = dialog;
       this.screen = 'dialog'; signal.addEventListener('abort', cancelled, { once: true });
       if (signal.aborted) cancelled();
@@ -1232,6 +1279,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         else void this.editQuestion(dialog, 'other');
         return;
       }
+      if (binding.kind === 'match' && binding.match.action === 'chat:imagePaste') {
+        // gEe registers the paste action only on the focused Other input; plain
+        // option rows, notes and the review page never attach an image.
+        const pasteStep = this.notesStep(dialog);
+        const pasteChoices = pasteStep?.choices ?? [];
+        const pasteTextEntry = pasteChoices.length === 0 || dialog.index === pasteChoices.length;
+        if (pasteTextEntry) void this.attachQuestionImage(dialog, pasteStep);
+        return;
+      }
     }
     // Recovered `a3`: the notes input owns keys while it is open; Esc exits it,
     // and Enter saves the text and takes the focused/stored answer when present.
@@ -1299,6 +1355,16 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       dialog.index = choices.length; dialog.followFocus = true;
     }
     if (choices.length === 0 || dialog.index === choices.length) {
+      // gEe: Backspace on an empty Other input removes the question's last image
+      // before it touches the editor, and the removal is live-gated.
+      const imageKey = dialog.request.groups?.[dialog.step]?.key;
+      if (command === 'backspace' && dialog.editor.text === '' && imageKey !== undefined) {
+        const last = dialog.images.last(imageKey);
+        if (last !== undefined && dialog.images.remove(imageKey, last.id)) {
+          if (last.path !== undefined) fs.rmSync(last.path, { force: true });
+          dialog.error = undefined; this.render(); return;
+        }
+      }
       const limit = step?.maxTextChars ?? dialog.request.maxTextChars ?? 32 * 1024;
       const editorAction = action.type === 'key' ? action.command ? { type: action.command } as EditorAction
         : sequence === '\t' ? { type: 'insert', text: '    ' } as EditorAction : undefined : action;
@@ -1753,9 +1819,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const group = groups[dialog.step];
     if (group) {
       const notes = dialog.notes.get(group.key)?.trim();
+      const images = dialog.images.list(group.key);
       dialog.answers.set(group.key, { key: group.key, selected: answer.selected,
         ...(answer.text === undefined ? {} : { text: answer.text }),
-        ...(notes ? { notes } : {}) });
+        ...(notes ? { notes } : {}), ...(images.length ? { images } : {}) });
     }
     // Source `qr` (chunk-24k7d6mw.js [1170529)): one non-multi-select question hides the
     // submit tab, and its answer handler submits the whole request as soon as the answer is
@@ -1802,18 +1869,21 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!group?.multiple) return;
     const choices = group.choices ?? [];
     const text = dialog.editor.text.trim();
+    const images = dialog.images.list(group.key);
     dialog.answers.set(group.key, { key: group.key,
       selected: [...dialog.selected].sort((a, b) => a - b).map(index => choices[index]!.value),
-      ...(text ? { text } : {}) });
+      ...(text ? { text } : {}), ...(images.length ? { images } : {}) });
   }
 
   private clarifyDialog(dialog: ActiveDialog): void {
     const groups = (dialog.request.groups ?? []).flatMap(group => {
       const answer = dialog.answers.get(group.key);
       const notes = dialog.notes.get(group.key)?.trim();
-      if (!answer && !notes) return [];
+      const images = dialog.images.list(group.key);
+      if (!answer && !notes && !images.length) return [];
       return [{ key: group.key, selected: answer?.selected ?? [],
-        ...(answer?.text === undefined ? {} : { text: answer.text }), ...(notes ? { notes } : {}) }];
+        ...(answer?.text === undefined ? {} : { text: answer.text }), ...(notes ? { notes } : {}),
+        ...(images.length ? { images } : {}) }];
     });
     dialog.finish({ selected: [], clarify: true, groups });
   }
@@ -1890,7 +1960,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const stored = previous === undefined ? undefined : choices.find(choice => choice.value === previous);
     if (stored) { this.advanceDialog(dialog, { selected: [stored.value] }); return; }
     if (dialog.notes.get(key)?.trim()) {
-      this.advanceDialog(dialog, { selected: [], text: '(notes only)' }); return;
+      this.advanceDialog(dialog, { selected: [], text: QUESTION_NOTES_ONLY }); return;
     }
     this.render();
   }
@@ -1939,7 +2009,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       // Source `P3` receives the answers map as-is: only taken answers submit.
       const answers = groups.map(group => state.target.answers.get(group.key))
         .filter((answer): answer is TerminalPromptGroupAnswer => answer !== undefined);
-      state.target.finish({ selected: [], groups: answers });
+      // `Zbe` hands its callback the timeout it fired on, and `P3` stores that
+      // as `afkTimeoutMs`, so the marker is the configured idle threshold.
+      state.target.finish({ selected: [], groups: answers, afkTimeoutMs: state.settings.timeoutMs });
       return;
     }
     const next = afkCountdown(state.settings, state.fullSeconds, elapsedMs);

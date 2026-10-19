@@ -30,7 +30,7 @@ test("reload refreshes local catalogs and policy without mutating pinned provide
     fs.mkdirSync(path.join(root, "user"));
     fs.writeFileSync(path.join(root, "HARNESS.md"), "Reloaded instruction");
     fs.writeFileSync(path.join(root, ".harness/skills/new/SKILL.md"), "---\nname: new\ndescription: new skill\n---\nSkill body");
-    fs.writeFileSync(path.join(root, ".harness/settings.json"), JSON.stringify({ model: "other", autoMemory: true, features: { media: false }, stopHookBlockCap: 2, prefersReducedMotion: true, maxProseWidth: 60, syntaxHighlightingDisabled: true, theme: 'light', timeFormat:'24-hour-utc', timeZone:'Asia/Tokyo', spinnerVerbs:{mode:'replace',verbs:['Owned building']}, editorMode:'vim',vimInsertModeRemaps:{jj:'<Esc>',invalid:42} }));
+    fs.writeFileSync(path.join(root, ".harness/settings.json"), JSON.stringify({ model: "other", autoMemory: true, features: { media: false }, stopHookBlockCap: 2, prefersReducedMotion: true, maxProseWidth: 60, askUserQuestionTimeout: '5m', dialogExpiry: '10m', syntaxHighlightingDisabled: true, theme: 'light', timeFormat:'24-hour-utc', timeZone:'Asia/Tokyo', spinnerVerbs:{mode:'replace',verbs:['Owned building']}, editorMode:'vim',vimInsertModeRemaps:{jj:'<Esc>',invalid:42} }));
     fs.writeFileSync(path.join(root, ".harness/keybindings.json"), JSON.stringify({ "\u0013": "submit" }));
     const current = defaultConfig(root, []); current.model = "pinned"; current.configSources = { userDir: path.join(root, "user") };
     const before = JSON.stringify(current); const next = reloadConfig(current);
@@ -38,6 +38,8 @@ test("reload refreshes local catalogs and policy without mutating pinned provide
     assert.equal(next.stopHookBlockCap, 2);
     assert.equal(next.prefersReducedMotion, true);
     assert.equal(next.maxProseWidth, 60);
+    assert.equal(next.askUserQuestionTimeout, '5m');
+    assert.equal(next.dialogExpiry, '10m');
     assert.equal(next.syntaxHighlightingDisabled, true);
     assert.equal(next.theme, 'light');
     assert.equal(next.timeFormat, '24-hour-utc'); assert.equal(next.timeZone, 'Asia/Tokyo');
@@ -65,6 +67,8 @@ test("reload refreshes local catalogs and policy without mutating pinned provide
     assert.equal(reset.autoMemory, false); assert.equal(reset.features?.media, true);
     assert.equal(reset.prefersReducedMotion, undefined);
     assert.equal(reset.maxProseWidth, undefined);
+    assert.equal(reset.askUserQuestionTimeout, undefined);
+    assert.equal(reset.dialogExpiry, undefined);
     assert.equal(reset.syntaxHighlightingDisabled, undefined);
     assert.equal(reset.theme, undefined);
     assert.equal(reset.timeFormat, undefined); assert.equal(reset.timeZone, undefined);
@@ -82,6 +86,10 @@ test("reload refreshes local catalogs and policy without mutating pinned provide
     assert.equal(next.theme, 'light');
     fs.writeFileSync(path.join(root, '.harness/settings.json'), JSON.stringify({ maxProseWidth: 'bad' }));
     assert.equal(reloadConfig(next).maxProseWidth, undefined);
+    fs.writeFileSync(path.join(root, '.harness/settings.json'), JSON.stringify({ askUserQuestionTimeout: '1h' }));
+    assert.equal(reloadConfig(next).askUserQuestionTimeout, undefined);
+    fs.writeFileSync(path.join(root, '.harness/settings.json'), JSON.stringify({ dialogExpiry: 'default' }));
+    assert.equal(reloadConfig(next).dialogExpiry, undefined);
     assert.equal(reset.keybindings, undefined);
     assert.equal(reset.mcpClient?.sampling, undefined); assert.equal(reset.permissions?.mode, "default");
     fs.writeFileSync(path.join(root, ".harness/settings.json"), "{");

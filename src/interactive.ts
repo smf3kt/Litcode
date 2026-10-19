@@ -14,11 +14,13 @@ import { forkSession, listSessions } from './sessions.js';
 import { startBackgroundSession } from './background-session.js';
 import { parseAttachmentCommand } from './media.js';
 import { questionClarification, terminalAnswerAnnotation } from './interaction-tools.js';
+import { askUserQuestionTimeoutMs } from './tui-afk.js';
+import { questionImageBlocks } from './question-images.js';
 import { checkpointConversation, previewRewind, applyRewind, type RewindPreview } from './rewind.js';
 import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
 import { promptBlockMessage } from './hooks.js';
-import { createLocalPeerTransport, createLocalPeerTools, type LocalPeerTransport, type PeerTransportEvent } from './local-peer.js';
+import { createLocalPeerTransport, createLocalPeerTools, heldApprovalTimeoutMs, type LocalPeerTransport, type PeerTransportEvent } from './local-peer.js';
 import { validateElicitationResult, type McpClientRequests, type McpElicitationResult } from './mcp-client-requests.js';
 import { captureClipboardImage } from './clipboard.js';
 import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree, restoreWorktreeArchive } from './worktree-session.js';
@@ -350,6 +352,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         userDir: config.configSources?.userDir ?? defaultUserDir(),
         workspace: config.workspace, kind: 'interactive', name: session.id, entrypoint: 'interactive',
         policy: peerExplicit, mode: peerMode,
+        // `Ade`: a held message for a mode cause expires after the settings
+        // window (default 5m, `never` disables it); the getter keeps a reload live.
+        heldTimeoutMs: () => heldApprovalTimeoutMs(session.config.dialogExpiry),
         onEvent: onPeerEvent,
         logger: (message, detail) => { if (detail?.level === 'error') options.status.write(`${message}\n`); },
       });
@@ -435,8 +440,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         // One grouped request runs every question and then a review page, which
         // is the recovered flow's last tab; the answers come back in order.
         if (terminal?.prompt && request.questions.length > 0) {
+          // `Kdt`/`XZe`: the `askUserQuestionTimeout` setting is the dialog's
+          // timeout prop; `never` and an absent setting both disable AFK, while
+          // `CLAUDE_AFK_TIMEOUT_MS` still overrides inside the TUI.
+          const afkTimeoutMs = askUserQuestionTimeoutMs(session.config.askUserQuestionTimeout);
           const answer = await readDialog({ title: 'Questions', message: '', allowClarification: true,
-            groups: request.questions.map(question => ({
+            afkTimeoutMs, groups: request.questions.map(question => ({
             key: question.question,
             title: question.header ?? 'Question', message: question.question,
             choices: question.options.map(option => ({ ...option, value: option.label })),
@@ -450,7 +459,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               ...(entry?.text === undefined ? {} : { other: entry.text }),
               ...(annotation === undefined ? {} : { annotations: annotation }) };
           });
-          return answer.clarify ? questionClarification(request, answers) : { answers };
+          // Recovered `P3`/`Qet`: the images attached across every question
+          // convert once, before either result leaves the host.
+          const images = (answer.groups ?? []).flatMap(entry => entry.images ?? []);
+          const blocks = images.length === 0 ? undefined
+            : await questionImageBlocks(images, { workspace: session.config.workspace, signal });
+          return answer.clarify
+            ? { ...questionClarification(request, answers), ...(blocks === undefined ? {} : { contentBlocks: blocks }) }
+            : { answers, ...(answer.afkTimeoutMs === undefined ? {} : { afkTimeoutMs: answer.afkTimeoutMs }),
+              ...(blocks === undefined ? {} : { contentBlocks: blocks }) };
         }
         const answers = [];
         for (const [questionIndex, question] of request.questions.entries()) {

@@ -105,6 +105,10 @@ export type ParsedRuntimeSettings = {
   editorMode?: import('./tui-vim.js').EditorMode;
   vimInsertModeRemaps?: Record<string,unknown>;
   maxProseWidth?: number;
+  /** `Kdt`: idle time before the question dialog auto-continues; absent means never. */
+  askUserQuestionTimeout?: '60s' | '5m' | '10m' | 'never';
+  /** `Ade`/`onn`: how long a held peer message awaits approval; absent is 5m. */
+  dialogExpiry?: '60s' | '5m' | '10m' | 'never';
   syntaxHighlightingDisabled?: boolean;
   enableWorkflows?: boolean;
   workflowKeywordTriggerEnabled?: boolean;
@@ -209,6 +213,10 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   const remaps=vimRemapsSchema.parse(settings.vimInsertModeRemaps);if(remaps!==undefined)out.vimInsertModeRemaps=remaps;
   const proseWidth = z.number().int().min(40).optional().catch(undefined).parse(settings.maxProseWidth);
   if (proseWidth !== undefined) out.maxProseWidth = proseWidth;
+  const askTimeout = z.enum(['60s', '5m', '10m', 'never']).optional().catch(undefined).parse(settings.askUserQuestionTimeout);
+  if (askTimeout !== undefined) out.askUserQuestionTimeout = askTimeout;
+  const dialogExpiry = z.enum(['60s', '5m', '10m', 'never']).optional().catch(undefined).parse(settings.dialogExpiry);
+  if (dialogExpiry !== undefined) out.dialogExpiry = dialogExpiry;
   if (settings.syntaxHighlightingDisabled !== undefined) out.syntaxHighlightingDisabled = settingBoolean(settings, 'syntaxHighlightingDisabled');
   if (settings.enableWorkflows !== undefined) out.enableWorkflows = settingBoolean(settings, 'enableWorkflows');
   if (settings.workflowKeywordTriggerEnabled !== undefined) out.workflowKeywordTriggerEnabled = settingBoolean(settings, 'workflowKeywordTriggerEnabled');

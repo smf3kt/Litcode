@@ -11,10 +11,11 @@
  * mounted tree, and this product registers handlers imperatively.
  *
  * Not carried over, with the reason: bindings the recovered table computes at
- * runtime (`...{[le]:"chat:cycleMode"}`, `...{[Me]:"chat:imagePaste"}`,
- * `...L==="wsl"&&{"ctrl+v":"chat:imagePaste"}`) depend on a mode key and on the
- * host platform, and its always-empty spreads (`...{}`, `...[]`) contribute
- * nothing. The context list is transcribed as far as `AbovePrompt`; the table
+ * runtime (`...{[le]:"chat:cycleMode"}`) depend on the host platform, and its
+ * always-empty spreads (`...{}`, `...[]`) contribute nothing. The paste chord
+ * (`Me`/`...L==="wsl"&&{"ctrl+v"}`, `chat:imagePaste`) is carried with the same
+ * runtime resolution because the question dialog now consumes the action. The
+ * context list is transcribed as far as `AbovePrompt`; the table
  * continues past that point and is recorded as a bounded search boundary.
  */
 
@@ -22,6 +23,15 @@ export const TUI_CONTEXTS = ['Global', 'DiffPanel', 'FeedbackSurvey', 'Chat', 'A
   'Settings', 'Confirmation', 'Tabs', 'Transcript', 'HistorySearch', 'Task', 'ThemePicker',
   'Scroll', 'Help', 'Attachments', 'Footer', 'AbovePrompt'] as const;
 export type TuiContext = (typeof TUI_CONTEXTS)[number];
+
+// Source `Ie`/`Me`: Windows and WSL paste with alt+v, everything else with
+// ctrl+v, and WSL additionally accepts ctrl+v. WSL detection is the standard
+// environment marker because this host has no platform-string refinement here.
+const WSL = process.platform === "linux"
+  && (process.env.WSL_DISTRO_NAME !== undefined || process.env.WSL_INTEROP !== undefined);
+const PASTE_BINDINGS: Readonly<Record<string, string>> = process.platform === "win32" || WSL
+  ? { "alt+v": "chat:imagePaste", ...(WSL ? { "ctrl+v": "chat:imagePaste" } : {}) }
+  : { "ctrl+v": "chat:imagePaste" };
 
 /**
  * Chord -> action. A chord with a space is a sequence: every key in it is
@@ -69,6 +79,7 @@ export const KEY_BINDINGS: Readonly<Record<TuiContext, Readonly<Record<string, s
     'ctrl+x tab': 'abovePrompt:focus',
     'ctrl+g': 'chat:externalEditor',
     'ctrl+s': 'chat:stash',
+    ...PASTE_BINDINGS,
     space: 'voice:pushToTalk',
   },
   Autocomplete: { tab: 'autocomplete:accept', escape: 'autocomplete:dismiss', up: 'autocomplete:previous', down: 'autocomplete:next' },

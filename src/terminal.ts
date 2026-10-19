@@ -1094,8 +1094,16 @@ export interface TerminalPromptAnswer {
   text?: string;
   /** Present for grouped requests: one answer per group, in group order. */
   groups?: readonly TerminalPromptGroupAnswer[];
+  /**
+   * Set when the grouped dialog auto-resolved after this many milliseconds of
+   * idle, and absent on every human-resolved path. Copied from the recovered
+   * answer schema (`afkTimeoutMs`, chunk-ktr9sak2.js) and the `P3` hand-off
+   * (`afkTimeoutMs: Qa`, chunk-24k7d6mw.js): `Zbe` passes the configured
+   * timeout it fired on, not the observed idle span.
+   */
+  afkTimeoutMs?: number;
 }
-export interface TerminalPromptGroupAnswer { key: string; selected: string[]; text?: string; notes?: string }
+export interface TerminalPromptGroupAnswer { key: string; selected: string[]; text?: string; notes?: string; images?: readonly import('./question-images.js').QuestionImage[] }
 
 /** Shared line/full-screen surface; modal support is optional for legacy hosts. */
 export interface TerminalSurface {

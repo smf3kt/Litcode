@@ -4,9 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import net from "node:net";
 import { after, test } from "node:test";
-import { createLocalPeerTransport, createLocalPeerTools, createLocalPeerTools as peerTools, HeldQueue, inboundVerdict,
-  isAuthFrame, listRecords, makeTokens, peerIdentity, probeSocket, publishKey, publishRecord, readKey, socketKeyName,
-  verifyAuthFrame, type AcceptedMessage, type HeldMessage, type LocalPeerTransport, type PeerTransportEvent } from "../src/local-peer.js";
+import { createLocalPeerTransport, createLocalPeerTools, createLocalPeerTools as peerTools, HeldQueue, heldApprovalTimeoutMs,
+  inboundVerdict, isAuthFrame, listRecords, makeTokens, peerIdentity, probeSocket, publishKey, publishRecord, readKey,
+  socketKeyName, verifyAuthFrame, type AcceptedMessage, type HeldCause, type HeldMessage, type LocalPeerTransport,
+  type PeerTransportEvent } from "../src/local-peer.js";
 import type { ToolContext } from "../src/tools.js";
 
 const roots: string[] = [];
@@ -75,6 +76,44 @@ test("held queue keeps a bounded FIFO, re-evaluates on release and expires on cl
   await queue.expireAll();
   assert.deepEqual(queue.list(), []);
   assert.ok(receipts.includes("four:expired"));
+});
+
+test("the held approval window resolves the setting and the environment override", () => {
+  assert.equal(heldApprovalTimeoutMs(undefined, {}), 300_000);
+  assert.equal(heldApprovalTimeoutMs("60s", {}), 60_000);
+  assert.equal(heldApprovalTimeoutMs("5m", {}), 300_000);
+  assert.equal(heldApprovalTimeoutMs("10m", {}), 600_000);
+  assert.equal(heldApprovalTimeoutMs("never", {}), 0);
+  assert.equal(heldApprovalTimeoutMs("5m", { CLAUDE_CODE_USER_DIALOG_TIMEOUT_MS: "1500" }), 1500);
+  // A unit suffix is not numeric, so the setting wins (the recovered release-note fix).
+  assert.equal(heldApprovalTimeoutMs("10m", { CLAUDE_CODE_USER_DIALOG_TIMEOUT_MS: "5m" }), 600_000);
+});
+
+test("only mode causes expire a held message after the approval window", async () => {
+  const receipts: string[] = [];
+  const dropped: string[] = [];
+  let windowMs = 25;
+  const queue = new HeldQueue({
+    verdict: () => ({ policy: "hold", holdCause: "mode-mismatch" }),
+    deliver: () => true,
+    receipt: (message, status) => { receipts.push(`${message.text}:${status}`); },
+    onDropped: (message, reason) => { dropped.push(`${message.text}:${reason}`); },
+  }, { heldTimeoutMs: () => windowMs });
+  const message = (text: string, cause: HeldCause): HeldMessage =>
+    ({ text, cause, receivedAt: Date.now(), origin: { selfSent: false } });
+  queue.hold(message("mismatch", "mode-mismatch"));
+  queue.hold(message("explicit", "explicit"));
+  queue.hold(message("unknown", "mode-unknown"));
+  await delay(70);
+  assert.deepEqual(queue.list().map(item => item.text), ["explicit", "unknown"]);
+  assert.ok(receipts.includes("mismatch:expired"));
+  assert.deepEqual(dropped, ["mismatch:expired"]);
+  // `never` (0) disables the timer for every cause.
+  windowMs = 0;
+  queue.hold(message("never", "no-mode-asserted"));
+  await delay(70);
+  assert.deepEqual(queue.list().map(item => item.text), ["explicit", "unknown", "never"]);
+  await queue.expireAll();
 });
 
 test("auth frames accept only the published peer or child token", () => {

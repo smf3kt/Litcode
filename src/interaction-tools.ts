@@ -1,13 +1,17 @@
 import { z } from 'zod';
 import { isDeepStrictEqual } from 'node:util';
+import type { Anthropic } from '@anthropic-ai/sdk';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import { previewSanitized, previewUnstableInput } from './preview-sanitize.js';
 import { nmo } from './question-clarification-source.js';
+import { admittedImageBlock } from './question-images.js';
 
 export const INTERACTION_LIMITS = Object.freeze({
   questions: 4, options: 4, questionChars: 2000, headerChars: 80,
   labelChars: 100, descriptionChars: 2000, previewChars: 8000, otherChars: 4000,
   annotationNotesChars: 8192,
+  /** Recovered `Jet` input size: every question's images as one native block each. */
+  contentBlocks: 16, contentBlockTextChars: 4096,
   planChars: 128 * 1024, findings: 100, fileChars: 4096, summaryChars: 4000,
   payloadBytes: 256 * 1024, outputBytes: 100_000,
   timeoutMs: 300_000, maxTimeoutMs: 600_000, maxPending: 16, maxPendingLimit: 64,
@@ -39,8 +43,13 @@ export interface QuestionAnswer {
   /** Recovered `J`: the host may attach the selected preview and free-text notes. */
   annotations?: { preview?: string; notes?: string };
 }
-export interface AskUserQuestionAnswer { answers: QuestionAnswer[] }
-export interface QuestionClarification { behavior: 'deny'; feedback: string }
+export interface AskUserQuestionAnswer {
+  answers: QuestionAnswer[];
+  contentBlocks?: unknown[];
+  /** Host-only marker: the idle threshold that auto-resolved the dialog. */
+  afkTimeoutMs?: number;
+}
+export interface QuestionClarification { behavior: 'deny'; feedback: string; contentBlocks?: unknown[] }
 export interface SubmitPlanRequest { plan: string }
 export interface SubmitPlanResult { approved: boolean }
 export type FindingSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
@@ -163,9 +172,13 @@ const answerShape = z.object({ answers: z.array(z.object({
   selected: z.array(text(INTERACTION_LIMITS.labelChars)).max(INTERACTION_LIMITS.options),
   other: text(INTERACTION_LIMITS.otherChars).optional(),
   annotations: annotationShape.optional(),
-}).strict()).min(1).max(INTERACTION_LIMITS.questions) }).strict();
+}).strict()).min(1).max(INTERACTION_LIMITS.questions), contentBlocks: z.array(z.unknown()).max(INTERACTION_LIMITS.contentBlocks).optional(),
+// Recovered answer schema: "Set when the dialog auto-resolved after this many
+// milliseconds of idle (user away from keyboard). Absent on every
+// human-resolved path." The model input field of the same name is a host field.
+afkTimeoutMs: z.number().int().positive().optional() }).strict();
 const clarificationShape = z.object({ behavior: z.literal('deny'),
-  feedback: text(INTERACTION_LIMITS.outputBytes) }).strict();
+  feedback: text(INTERACTION_LIMITS.outputBytes), contentBlocks: z.array(z.unknown()).max(INTERACTION_LIMITS.contentBlocks).optional() }).strict();
 const planShape = z.object({ plan: text(INTERACTION_LIMITS.planChars) }).strict();
 const approvalShape = z.object({ approved: z.boolean() }).strict();
 const severities = ['info', 'low', 'medium', 'high', 'critical'] as const;
@@ -463,6 +476,34 @@ function output(value: unknown, context: ToolContext, tool: string): string {
   return json;
 }
 
+/**
+ * Recovered `P3`/`Qet`: the converted blocks are siblings of the answer input,
+ * and a conversion failure already arrives as a degraded `text` block. This
+ * boundary re-checks each block so a host cannot attach an invalid or oversized
+ * image, and strips the array from the JSON answer text so base64 is not repeated.
+ */
+export function admitContentBlocks(value: unknown): Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam> | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > INTERACTION_LIMITS.contentBlocks) {
+    throw new Error(`ask_user_question: contentBlocks must be an array of at most ${INTERACTION_LIMITS.contentBlocks} blocks`);
+  }
+  const blocks: Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam> = [];
+  for (const entry of value) {
+    if (plainObject(entry) && own(entry, 'type') === 'text') {
+      const text = own(entry, 'text');
+      if (typeof text !== 'string' || text.length === 0 || text.length > INTERACTION_LIMITS.contentBlockTextChars) {
+        throw new Error('ask_user_question: content block text is invalid');
+      }
+      blocks.push({ type: 'text', text });
+      continue;
+    }
+    const image = admittedImageBlock(entry);
+    if (image === undefined) throw new Error('ask_user_question: content block is not a valid image or text block');
+    blocks.push(image);
+  }
+  return blocks;
+}
+
 function aborted(): Error { const error = new Error('Interaction aborted'); error.name = 'AbortError'; return error; }
 function checkSignal(signal: AbortSignal): void { if (signal.aborted) throw aborted(); }
 
@@ -537,6 +578,36 @@ export function terminalAnswerAnnotation(
   const trimmed = notes?.trim();
   if (preview === undefined && !trimmed) return undefined;
   return { ...preview, ...(trimmed ? { notes: trimmed } : {}) };
+}
+
+/**
+ * Recovered `cBt` (chunk-ktr9sak2.js): the answer value that stands for a
+ * question with notes only, which counts as "no option selected".
+ */
+export const QUESTION_NOTES_ONLY = '(notes only)';
+
+/**
+ * AFK branch of the recovered result renderer
+ * `mapToolResultToToolResultBlockParam` (chunk-ktr9sak2.js). The source puts
+ * this text in the model-facing tool_result; this product returns the
+ * structured answer, so the same text travels beside it as `notice`.
+ */
+export function askAfkNotice(request: AskUserQuestionRequest, answers: readonly QuestionAnswer[], afkTimeoutMs: number): string {
+  const selected = answers.map(answer => {
+    const question = request.questions[answer.questionIndex];
+    if (question === undefined) return undefined;
+    const value = cardAnswerJoin([...answer.selected, ...(answer.other === undefined ? [] : [answer.other])]);
+    const taken = value !== '' && value !== QUESTION_NOTES_ONLY;
+    const notes = answer.annotations?.notes;
+    if (!taken && notes === undefined) return undefined;
+    const parts = [taken ? `"${question.question}"="${value}"` : `"${question.question}"=(no option selected)`];
+    if (answer.annotations?.preview !== undefined) parts.push(`selected preview:\n${answer.annotations.preview}`);
+    if (notes !== undefined) parts.push(`notes: ${notes}`);
+    return parts.join(' ');
+  }).filter((entry): entry is string => entry !== undefined).join(', ');
+  const text = `No response after ${Math.round(afkTimeoutMs / 1000)}s — the user may be away from keyboard. ` +
+    'Proceed using your best judgment based on the context so far; you can re-ask this question later if it\'s still relevant.';
+  return selected === '' ? text : `${text}\n\nBefore going idle the user had selected: ${selected}.`;
 }
 
 /** Qet feedback with the copied nmo/zet formatter, chunk-24k7d6mw.js [1179279,1180182), UTF-16. */
@@ -657,6 +728,50 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
   const extendedQuestions = options.extendedQuestions === true;
   const cardAnswers = options.cardAnswers === true;
   const dispatch = createQueue(timeoutMs, maxPending);
+  // Recovered `P3`/`Qet` return the answer input and the converted image blocks
+  // as siblings; `execute` keeps the JSON text, `executeBlocks` adds the blocks.
+  type AskEntry = { json: string; blocks?: Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam> };
+  const askEntry = async (input: unknown, context: ToolContext): Promise<AskEntry> => {
+    checkSignal(context.signal);
+    const shape = (extendedQuestions ? extendedAskShape : askShape) as unknown as z.ZodType<AskUserQuestionRequest>;
+    const request = parse(shape, input, 'ask_user_question');
+    if (extendedQuestions) {
+      // Recovered `K`: the host card input always carries an explicit kind.
+      for (const question of request.questions) question.kind = question.kind ?? 'choice';
+    }
+    if (previewFormat === 'html') {
+      for (const question of request.questions) for (const option of question.options) {
+        const error = previewFragmentError(option.preview);
+        if (error !== null) throw new Error(`ask_user_question: Option "${option.label}" in question "${question.question}": ${error}`);
+      }
+    }
+    const ask = callbacks.ask ?? contextCallbacks(context)?.ask;
+    const askCard = callbacks.askCard ?? contextCallbacks(context)?.askCard;
+    const expected = structuredClone(request);
+    if (cardAnswers) {
+      if (typeof askCard !== 'function') throw new Error('ask_user_question: host askCard callback is missing');
+      return dispatch(context.signal, async signal => {
+        const admitted = admitCardAnswer(expected, await askCard(request, signal));
+        checkSignal(signal);
+        if (admitted.kind === 'refused') throw new Error(`ask_user_question: card answer refused (${admitted.rule})`);
+        return { json: output(admitted.input, context, 'ask_user_question') };
+      });
+    }
+    if (typeof ask !== 'function') throw new Error('ask_user_question: host ask callback is missing');
+    return dispatch(context.signal, async signal => {
+      const answer = await ask(request, signal);
+      checkSignal(signal);
+      if (plainObject(answer) && answer.behavior === 'deny') {
+        const { contentBlocks, ...rest } = parse(clarificationShape, answer, 'ask_user_question host clarification');
+        return { json: output(rest, context, 'ask_user_question'), ...(contentBlocks === undefined ? {} : { blocks: admitContentBlocks(contentBlocks) }) };
+      }
+      const result = validAnswer(answer, expected);
+      const { contentBlocks, ...rest } = result;
+      const payload = result.afkTimeoutMs === undefined ? rest
+        : { ...rest, notice: askAfkNotice(expected, result.answers, result.afkTimeoutMs) };
+      return { json: output(payload, context, 'ask_user_question'), ...(contentBlocks === undefined ? {} : { blocks: admitContentBlocks(contentBlocks) }) };
+    });
+  };
   return [
     {
       readOnly: true,
@@ -672,40 +787,14 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
           'Never request credentials, passwords, tokens, payment details or authentication codes. Requires a host ask callback.',
         input_schema: askInputSchema(extendedQuestions) as ToolDefinition['schema']['input_schema'],
       },
-      async execute(input, context) {
-        checkSignal(context.signal);
-        const shape = (extendedQuestions ? extendedAskShape : askShape) as unknown as z.ZodType<AskUserQuestionRequest>;
-        const request = parse(shape, input, 'ask_user_question');
-        if (extendedQuestions) {
-          // Recovered `K`: the host card input always carries an explicit kind.
-          for (const question of request.questions) question.kind = question.kind ?? 'choice';
-        }
-        if (previewFormat === 'html') {
-          for (const question of request.questions) for (const option of question.options) {
-            const error = previewFragmentError(option.preview);
-            if (error !== null) throw new Error(`ask_user_question: Option "${option.label}" in question "${question.question}": ${error}`);
-          }
-        }
-        const ask = callbacks.ask ?? contextCallbacks(context)?.ask;
-        const askCard = callbacks.askCard ?? contextCallbacks(context)?.askCard;
-        const expected = structuredClone(request);
-        if (cardAnswers) {
-          if (typeof askCard !== 'function') throw new Error('ask_user_question: host askCard callback is missing');
-          return dispatch(context.signal, async signal => {
-            const admitted = admitCardAnswer(expected, await askCard(request, signal));
-            checkSignal(signal);
-            if (admitted.kind === 'refused') throw new Error(`ask_user_question: card answer refused (${admitted.rule})`);
-            return output(admitted.input, context, 'ask_user_question');
-          });
-        }
-        if (typeof ask !== 'function') throw new Error('ask_user_question: host ask callback is missing');
-        return dispatch(context.signal, async signal => {
-          const answer = await ask(request, signal);
-          checkSignal(signal);
-          const result = plainObject(answer) && answer.behavior === 'deny'
-            ? parse(clarificationShape, answer, 'ask_user_question host clarification') : validAnswer(answer, expected);
-          return output(result, context, 'ask_user_question');
-        });
+      async execute(input, context) { return (await askEntry(input, context)).json; },
+      async executeBlocks(input, context) {
+        // The recovered result is `updatedInput` plus the converted blocks, and
+        // a degraded conversion is a `text` block, not an image. Without any
+        // block the answer stays the plain JSON string it has always been.
+        const entry = await askEntry(input, context);
+        if (entry.blocks === undefined || entry.blocks.length === 0) return entry.json;
+        return [{ type: 'text', text: entry.json }, ...entry.blocks];
       },
     },
     {
