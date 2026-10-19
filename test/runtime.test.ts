@@ -16,6 +16,7 @@ import { initializeCustomThemes } from '../src/tui-custom-theme-source.js';
 import { initializePluginThemes } from '../src/tui-plugin-theme-source.js';
 import { createPluginTools, discoverInstalledPluginComponents } from '../src/plugins.js';
 import { HOOK_EVENTS, type HooksConfig } from '../src/hooks.js';
+import { activateTouchedSkills, discoverTouchedSkills } from '../src/skill-catalog.js';
 import type { ModelProvider } from '../src/provider.js';
 import type { SessionConfig } from '../src/session.js';
 import { createTools, type ToolContext, type ToolDefinition } from '../src/tools.js';
@@ -599,6 +600,32 @@ test('createRuntime discovers MCP tools, assembles config tools and closes its c
   } finally {
     await runtime.close();
   }
+});
+
+test("a turn's touched-path skill catalog does not invalidate the live owner tool set", async () => {
+  const ws = fs.realpathSync(tmpDir());
+  const config = defaultConfig(ws, createTools());
+  config.model = 'test';
+  config.skills = [];
+  config.system = buildSystem('BASE', [], config.skills);
+  config.heldSkills = [skill({ name: 'scoped', description: 'Scoped skill', paths: ['src'] })];
+  fs.mkdirSync(path.join(ws, 'nested', '.harness', 'skills', 'local'), { recursive: true });
+  fs.writeFileSync(path.join(ws, 'nested', '.harness', 'skills', 'local', 'SKILL.md'),
+    '---\nname: local\ndescription: Local skill\n---\nLocal body\n');
+  const runtime = await createRuntime(config, unusedProvider, new AbortController().signal);
+  try {
+    const first = runtime.buildTools(config, 'turn-owner');
+    config.tools = pinToolSchemas(first);
+    // Same mutations a turn's path access makes on the live config: a held skill activates,
+    // the visited harness skill directories are recorded, and the rendered section is rewritten.
+    activateTouchedSkills(config, [path.join(ws, 'src', 'a.ts')]);
+    await discoverTouchedSkills(config, [path.join(ws, 'nested', 'a.ts')]);
+    assert.equal(config.heldSkills, undefined, 'the scoped skill left the held list');
+    assert.deepEqual(config.dynamicSkillDirs, [path.join(ws, 'nested', '.harness', 'skills'), path.join(ws, '.harness', 'skills')]);
+    const second = runtime.buildTools(config, 'turn-owner');
+    assert.deepEqual(second.map(t => t.schema.name), first.map(t => t.schema.name));
+    assert.ok(second.find(t => t.schema.name === 'skill'));
+  } finally { await runtime.close(); }
 });
 
 test('a legacy configuration yields base tools only, matching a resumed old session', async () => {
