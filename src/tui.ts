@@ -355,6 +355,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private readonly decorations: PaintedDecorations;
   /** Source snapshot buffer is cleared on submit/stash and owns its pending timer. */
   private readonly undo = new InputUndo();
+  /** Source `lf = R(kn)` and `Er = R(!1)` (`chunk-24k7d6mw.js` 819244): the editor mode the undo
+   *  buffer is baselined on, and whether a Vim INSERT run is already open. */
+  private undoEditorMode: 'normal' | 'vim' | undefined;
+  private undoGesture = false;
   private readonly pasteOwner = new InputPaste();
   private readonly gestures = new InputGestures();
   private gestureHandling = false;
@@ -463,6 +467,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   constructor(private readonly options: TuiOptions) {
     super();
     this.vimEnabled=options.editorMode==='vim';this.vim.setRemaps(options.vimInsertModeRemaps);
+    this.undoEditorMode=this.vimEnabled?'vim':'normal';
+    this.vim.onModeChange=()=>{this.undoGesture=false;};
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.showTurnDuration = options.showTurnDuration !== false;
     this.progressSettings = structuredClone(options.progressSettings ?? {});
@@ -617,7 +623,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const result = await this.handoffEditor(snapshot, signal, workspace);
     if(!this.closed&&!signal.aborted&&result.content!==null&&result.content!==snapshot.text){
       const text=result.content.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,'');
-      this.undo.record(snapshot.text,snapshot.cursor,{immediate:true},snapshot.pastedContents);
+      this.pushUndo(snapshot.text,snapshot.cursor,snapshot.pastedContents,true);
       const pastedContents=referencedPastes(text,snapshot.pastedContents);
       this.replaceDraft({...this.editor,text,cursor:text.length,pastedContents,historyIndex:this.editor.history.length,
         historyDraft:text,historyDraftPastes:pastedContents});this.vim.reset();this.render();
@@ -730,7 +736,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       change:(text,previous)=>{
         const raw=text.replace(/\r\n?/g,'\n').replace(/\t/g,'    ').replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g,'');
         if(raw===this.editor.text)return;
-        this.undo.record(previous?.value??this.editor.text,previous?.cursorOffset??this.editor.cursor,{immediate:true},this.editor.pastedContents);
+        this.pushUndo(previous?.value??this.editor.text,previous?.cursorOffset??this.editor.cursor,this.editor.pastedContents);
         const pastedContents=referencedPastes(raw,this.editor.pastedContents);
         this.editor={...this.editor,text:raw,pastedContents,historyIndex:this.editor.history.length,historyDraft:raw,historyDraftPastes:pastedContents};
       },offset:cursor=>{this.editor={...this.editor,cursor};},register:text=>expandPastedText(text,this.editor.pastedContents),
@@ -1185,6 +1191,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       &&!(action.type==='interrupt'&&this.editor.running)&&this.handleVim(action))return;
     const transition = reduceEditorWithUndo(this.editor, action, { ...this.options,
       navigationColumns: this.conversationColumns() - 2,
+      undoPush: (text, cursor, pastedContents, ownSnapshot) => this.pushUndo(text, cursor, pastedContents, ownSnapshot),
       pasteOwner:this.pasteOwner,terminalRows:this.options.output.rows ?? 24 }, this.undo);
     if (transition.effects.some(effect => effect.type === 'submit')) this.inputHistory.add({display:this.editor.text,pastedContents:this.editor.pastedContents});
     const draftBefore = { text: this.editor.text, cursor: this.editor.cursor };
@@ -1220,6 +1227,29 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    *  this draft's, and the paint for the text being left is carried for the edit that follows. */
   private publishDraft(): void {
     this.decorations.publish(this.editor.text);
+  }
+
+  /**
+   * Source `Du` (`chunk-24k7d6mw.js` 829450): the one undo push every composer edit goes through.
+   * Switching editor mode clears the buffer and re-baselines it, and the push that did not change the
+   * text is dropped. With Vim on, a NORMAL-mode edit is its own snapshot immediately, while an INSERT
+   * run pushes its first edit immediately and lets the rest coalesce through the buffer's debounce
+   * until the run ends (`Er.current = Xn` after every push). Without Vim every push coalesces.
+   * `ownSnapshot` carries this product's two recorded adaptations that a wholesale draft replacement
+   * is its own snapshot: the Return newline conversion (`W44-return-evidence.json`,
+   * `adaptation.undo`) and the external-editor refold.
+   */
+  private pushUndo(text: string, cursor: number, pastedContents: EditorState['pastedContents'], ownSnapshot = false, continuesGesture = false): void {
+    const mode = this.vimEnabled ? 'vim' : 'normal';
+    if (mode !== this.undoEditorMode) {
+      this.undo.clear();
+      if (text !== this.editor.text) return;
+      this.undoEditorMode = mode;
+    }
+    const immediate = ownSnapshot
+      || (!continuesGesture && this.vimEnabled && (this.vim.mode !== 'INSERT' || !this.undoGesture));
+    this.undo.record(text, cursor, { immediate }, pastedContents);
+    this.undoGesture = this.vimEnabled;
   }
 
   /** Relay one key-driven edit to the chain (source `YHo.record`): only in the chat composer, only
@@ -2180,7 +2210,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (SOURCE_PICKER_OWNS_HISTORY_SEARCH) {
       this.selection=createSelection();this.gestures.reset();this.vim.externalMutation();
       this.searchDraft={text:this.editor.text,cursor:this.editor.cursor,pastedContents:structuredClone(this.editor.pastedContents)};
-      this.undo.record(this.editor.text,this.editor.cursor,{immediate:true},this.editor.pastedContents);
+      this.pushUndo(this.editor.text,this.editor.cursor,this.editor.pastedContents);
         // Source `_y` seeds query and caret from `initialQuery`, and its consumer passes the draft
         // (`e(Kse,{initialQuery: ee.value, …})`), so the picker opens pre-filtered by the draft.
         this.pickerUndo.clear();this.pickerQuery={...createEditorState(),text:this.editor.text,cursor:this.editor.text.length};
@@ -2203,7 +2233,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (history[index]!.includes(this.searchQuery)
         || expandPastedText(history[index]!,this.editor.historyPastes[index]).includes(this.searchQuery)) {
         this.searchIndex = index;
-        if (this.editor.text !== history[index]) this.undo.record(this.editor.text,this.editor.cursor,undefined,this.editor.pastedContents);
+        if (this.editor.text !== history[index]) this.pushUndo(this.editor.text,this.editor.cursor,this.editor.pastedContents);
         this.replaceDraft({ ...this.editor, text:history[index]!,cursor:history[index]!.length,
           pastedContents:structuredClone(this.editor.historyPastes[index] ?? {}) });
         this.render(); return;
@@ -2216,7 +2246,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private leaveSearch(execute: boolean): void {
     this.screen = 'chat';
     if (!execute) {
-      if (this.editor.text !== this.searchDraft.text) this.undo.record(this.editor.text,this.editor.cursor,undefined,this.editor.pastedContents);
+      if (this.editor.text !== this.searchDraft.text) this.pushUndo(this.editor.text,this.editor.cursor,this.editor.pastedContents);
       this.replaceDraft({ ...this.editor, ...this.searchDraft,pastedContents:structuredClone(this.searchDraft.pastedContents) });
     }
     this.searchQuery = ''; this.searchIndex = -1; this.searchDraft = {text:'',cursor:0,pastedContents:{}};
