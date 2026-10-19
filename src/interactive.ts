@@ -225,6 +225,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       spinnerVerbs:session.config.spinnerVerbs});
     terminal?.setMaxProseWidth?.(session.config.maxProseWidth);
     terminal?.setSyntaxHighlightingDisabled?.(session.config.syntaxHighlightingDisabled);
+    terminal?.setEmojiCompletion?.(session.config.emojiCompletionEnabled ?? true);
     terminal?.setWorkflowKeywordSettings?.({
       available: workflowsAvailable(session.config.enableWorkflows),
       triggerEnabled: session.config.workflowKeywordTriggerEnabled ?? true,

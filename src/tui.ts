@@ -64,6 +64,7 @@ import type { TaskRecord } from './tasks.js';
 import { progressTime, type ProgressDisplaySettings } from './tui-progress-settings.js';
 import { createThemeColorComponents } from './tui-theme-color-components.js';
 import { S1 } from './tui-theme-colors.js';
+import { EMOJI_QUERY, acceptEmojiQuery, emojiSuggestions, inlineEmojiCompletion } from './tui-emoji.js';
 import { ge } from './tui-color.js';
 
 /** The sixteen ANSI foreground names a theme slot can name. */
@@ -81,7 +82,7 @@ function slotForeground(slot: string | undefined): string {
   const code = ANSI_FOREGROUND[slot.replace(/^ansi:/, '')];
   return code === undefined ? '' : `\u001b[${code}m`;
 }
-import { acceptanceText, commandSuggestions, maxVisibleSuggestions, suggestionMaxColumnWidth,
+import { acceptanceText, commandSuggestions, emojiRows, maxVisibleSuggestions, suggestionMaxColumnWidth,
   suggestionRowHeight, suggestionRowOwners, suggestionRowSegments, suggestionRowWindow,
   suggestionsEmptyMessage, TUI_COMMANDS, type CommandSuggestion,
   type TuiCommand } from './tui-autocomplete.js';
@@ -353,6 +354,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Composer gates `dg()` and `C7t()`: on until the session settings say otherwise. */
   private workflowKeywordAvailable = true;
   private workflowKeywordTriggerEnabled = true;
+  /** Source `Kl().emojiCompletionEnabled !== false`: the `:name:` typeahead is on by default. */
+  private emojiCompletionEnabled = true;
   /** `Zi`: the per-draft dismissal the alt+w toggle sets. */
   private workflowKeywordDismissed = false;
   /** The keyed notice `workflow-keyword-ignored`, shown on the one status row this terminal has. */
@@ -740,6 +743,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
+  setEmojiCompletion(enabled: boolean): void {
+    if (this.emojiCompletionEnabled === enabled) return;
+    this.emojiCompletionEnabled = enabled;
+    this.render();
+  }
+
   setWorkflowKeywordSettings(settings: { available: boolean; triggerEnabled: boolean }): void {
     if (this.workflowKeywordAvailable === settings.available && this.workflowKeywordTriggerEnabled === settings.triggerEnabled) return;
     this.workflowKeywordAvailable = settings.available;
@@ -1090,7 +1099,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       pasteOwner:this.pasteOwner,terminalRows:this.options.output.rows ?? 24 }, this.undo);
     if (transition.effects.some(effect => effect.type === 'submit')) this.inputHistory.add({display:this.editor.text,pastedContents:this.editor.pastedContents});
     const draftBefore = { text: this.editor.text, cursor: this.editor.cursor };
-    this.editor = transition.state;
+    // Source input subscription: a keystroke that completes a known `:name:` swaps the
+    // whole shortcode for its glyph before anything else reads the draft.
+    const inline = this.emojiCompletionEnabled
+      ? inlineEmojiCompletion(transition.state.text, draftBefore.text, transition.state.cursor)
+      : undefined;
+    this.editor = inline === undefined ? transition.state
+      : { ...transition.state, text: inline.text, cursor: inline.cursor };
     this.settleWorkflowKeyword();
     this.publishDraft();
     this.relayEdit(action, draftBefore, sequence);
@@ -1194,7 +1209,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     const text = this.editor.text;
     if (this.autocompleteDismissedText === text) return { suggestions: [], selected: -1 };
-    const suggestions = commandSuggestions(text, this.editor.cursor,
+    // Source order: the `:name:` popup is tried first and falls through to the command
+    // list, so a slash draft is unaffected while emoji completion is on.
+    const emoji = this.emojiCompletionEnabled ? emojiRows(text, this.editor.cursor) : undefined;
+    const suggestions = emoji ?? commandSuggestions(text, this.editor.cursor,
       this.options.commands ?? TUI_COMMANDS);
     if (text !== this.autocompleteForText) {
       const previous = suggestions[this.autocompleteIndex]?.id;
@@ -1244,6 +1262,21 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const { suggestions, selected } = this.autocompleteState();
     const suggestion = suggestions[selected];
     if (!suggestion) return false;
+    // Source `tE`: an emoji row replaces `:partial` with its glyph and a space, and never
+    // submits, on either the accept key or Enter.
+    if (suggestion.kind === 'emoji') {
+      const replaced = acceptEmojiQuery(this.editor.text, this.editor.cursor, suggestion.displayText);
+      if (replaced === undefined) return false;
+      const before = { text: this.editor.text, cursor: this.editor.cursor };
+      this.editor = { ...this.editor, text: replaced.text, cursor: replaced.cursor };
+      this.publishDraft();
+      this.autocompleteForText = replaced.text;
+      this.autocompleteDismissedText = undefined;
+      this.autocompleteIndex = 0;
+      this.relayEdit({ type: 'insert', text: suggestion.displayText }, before, ':');
+      this.render();
+      return true;
+    }
     const text = acceptanceText(suggestion);
     const before = { text: this.editor.text, cursor: this.editor.cursor };
     this.editor = { ...this.editor, text, cursor: text.length };

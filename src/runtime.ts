@@ -112,6 +112,7 @@ export type ParsedRuntimeSettings = {
   syntaxHighlightingDisabled?: boolean;
   enableWorkflows?: boolean;
   workflowKeywordTriggerEnabled?: boolean;
+  emojiCompletionEnabled?: boolean;
   theme?: ThemeSetting;
   statusLine?: import('./tui-statusline.js').StatusLineSetting;
   promptCaching?: boolean;
@@ -220,6 +221,7 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if (settings.syntaxHighlightingDisabled !== undefined) out.syntaxHighlightingDisabled = settingBoolean(settings, 'syntaxHighlightingDisabled');
   if (settings.enableWorkflows !== undefined) out.enableWorkflows = settingBoolean(settings, 'enableWorkflows');
   if (settings.workflowKeywordTriggerEnabled !== undefined) out.workflowKeywordTriggerEnabled = settingBoolean(settings, 'workflowKeywordTriggerEnabled');
+  if (settings.emojiCompletionEnabled !== undefined) out.emojiCompletionEnabled = settingBoolean(settings, 'emojiCompletionEnabled');
   if (settings.statusLine !== undefined) out.statusLine = statusLineSchema.parse(settings.statusLine);
   const theme = parseTheme(settings.theme);
   if (theme !== undefined) out.theme = theme;
