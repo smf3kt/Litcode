@@ -691,6 +691,10 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
         commands: tuiCommandsWithSkills(currentSession.config.skills),
         agentTypes: currentSession.config.agentTypes,
+        ...(currentRuntime.catalogListing ? { mcpCatalog: (signal: AbortSignal) =>
+          currentRuntime.catalogListing!(signal).then(listing => ({
+            resources: listing.resources, templates: listing.templates,
+          })) } : {}),
         version: cliVersion(),
         keybindings: currentSession.config.keybindings,
         prefersReducedMotion: currentSession.config.prefersReducedMotion,

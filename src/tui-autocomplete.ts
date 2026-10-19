@@ -65,6 +65,9 @@ export interface CommandSuggestion {
   /** Source `_Dt`: `project`/`org`/`claude.ai` for a prompt entry from that source. */
   readonly sourceTag?: string;
   readonly matchedAlias?: string;
+  /** Source `JI`: a row that carries its own replacement text. A template always does, and
+   *  its presence suppresses the shared-prefix fill. */
+  readonly metadata?: { readonly replacement: string; readonly partial: boolean };
   /** Source `LK`: local commands and prompt commands without arguments submit on accept. */
   readonly executeOnAccept: boolean;
 }

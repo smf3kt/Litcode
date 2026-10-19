@@ -156,7 +156,9 @@ const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/he
   { Terminal: typeof TerminalType };
 
 function startComposer(commands: readonly TuiCommand[], workspace?: string,
-  agentTypes?: readonly { name: string; description: string }[]) {
+  agentTypes?: readonly { name: string; description: string }[],
+  mcpCatalog?: () => Promise<{ resources: Record<string, readonly { server: string; uri: string; name?: string; description?: string; mimeType?: string }[]>;
+    templates: Record<string, readonly { server: string; uriTemplate: string; name?: string; description?: string; mimeType?: string }[]> }>) {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
   const terminal = new HeadlessTerminal({ allowProposedApi: true, logLevel: 'off' });
@@ -169,7 +171,7 @@ function startComposer(commands: readonly TuiCommand[], workspace?: string,
   Object.assign(output, { isTTY: true, columns: 90, rows: 30 });
   terminal.resize(90, 30);
   const submitted: string[] = [];
-  const tui = new TuiTerminal({ input, output, commands, workspace, agentTypes,
+  const tui = new TuiTerminal({ input, output, commands, workspace, agentTypes, mcpCatalog,
     onSubmit: text => submitted.push(text) }).start();
   const screen = () => {
     const buffer = terminal.buffer.active;
@@ -262,6 +264,35 @@ test('an @ draft lists the agent roster beside the files and splices its display
   } finally {
     composer.tui.close();
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('an @ draft lists an MCP resource row and accepts an explicit server template', async () => {
+  const catalog = async () => ({
+    resources: { docs: [{ server: 'docs', uri: 'docs://guide', name: 'Guide' }] },
+    templates: { repo: [{ server: 'repo', uriTemplate: 'repo://file/{path}', name: 'File' }] },
+  });
+  const composer = startComposer(TUI_COMMANDS, undefined, undefined, catalog);
+  const key = (text: string) => composer.input.emit('data', text);
+  const waitFor = async (ready: () => boolean) => {
+    for (let tries = 0; tries < 100 && !ready(); tries++) await new Promise(resolve => setTimeout(resolve, 20));
+    return ready();
+  };
+  try {
+    key('@docs');
+    assert.ok(await waitFor(() => composer.screen().includes('docs:docs://guide')), composer.screen());
+    const opened = composer.screen();
+    assert.ok(opened.includes('◇ docs:docs://guide'), opened);
+    assert.ok(opened.includes('Guide'), opened);
+    key('\u0015@repo:repo://fi');
+    assert.ok(await waitFor(() => composer.screen().includes('repo:repo://file/')), composer.screen());
+    assert.ok(composer.screen().includes('◇ repo:repo://file/'), composer.screen());
+    key('\r');
+    // Source `ese` + `partial`: the template writes its replacement and keeps the draft open.
+    assert.equal(composer.tui.state.text, '@repo:repo://file/');
+    assert.deepEqual(composer.submitted, [], 'a partial template never submits');
+  } finally {
+    composer.tui.close();
   }
 });
 
