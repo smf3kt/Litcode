@@ -105,7 +105,7 @@ test('the visible window stays inside the screen and follows the selection', () 
   assert.deepEqual(suggestionWindow(20, 99, 6).selected, 19, 'a stale selection clamps to the last row');
 });
 
-test('a row is the pointer, the padded command and the description inside the column', () => {
+test('a row is the pointer, the padded command, the kind lane and the description', () => {
   const suggestions = commandSuggestions('/mo', 3, TUI_COMMANDS);
   const rows = layoutSuggestionRows(suggestions, 0, 60, '❯ ');
   assert.equal(rows.length, suggestions.length);
@@ -113,9 +113,17 @@ test('a row is the pointer, the padded command and the description inside the co
   assert.ok(rows[0]!.startsWith('❯ /model'));
   assert.ok(rows[0]!.includes('Choose or enter a model'));
   assert.ok(rows[1]!.startsWith('  '), 'an unselected row keeps the pointer lane blank');
+  // Source `_t`: `config` draws its label, `action` draws seven blank cells so the
+  // descriptions still line up, and the lane starts at the widest row plus five.
+  assert.ok(rows[0]!.includes('config '), 'a config command names its lane');
+  assert.equal(rows[1]!.slice(19, 26), '       ', 'an action command leaves its lane blank');
+  assert.equal(rows[0]!.indexOf('config'), 19, 'the lane starts at the widest row plus five');
+  // Source `ee`/`No`: past 40% of the terminal the lane is pushed right, and the name
+  // itself is cut to keep a two-cell gap, so a 20-column row shows only a prefix.
   const narrow = layoutSuggestionRows(suggestions, 0, 20, '❯ ');
-  assert.ok(narrow[0]!.startsWith('❯ /model'));
+  assert.ok(narrow[0]!.startsWith('❯ /mod'), narrow[0]!);
   assert.equal(narrow[0]!.includes('Choose'), false, 'a narrow column drops the description');
+  for (const row of narrow) assert.equal([...row].length, 20);
 });
 
 const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/headless') as
