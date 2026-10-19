@@ -45,24 +45,20 @@ const body = (children: string) => e(n, { color: 'clawd_body', children });
 /** Detail sits inside the plumage, so it swaps the two slots and reads as a hole. */
 const detail = (children: string) => e(n, { color: 'clawd_background', backgroundColor: 'clawd_body', children });
 
-/**
- * The owl paints its own backdrop. A theme that assumes the wrong terminal
- * background (auto-detection falling back to `dark` on a light terminal) would
- * otherwise draw white plumage on white and the bird would disappear, so the
- * nine-cell block carries `clawd_background` behind it and stays legible
- * whatever the terminal itself is.
- */
-const owl = (children: unknown) => e(n, { backgroundColor: 'clawd_background', children });
-
 /** The mark: four rows of nine cells, tufts, face, body, feet. */
 const OWL_SHAPE = [' ▟█▙ ▟█▙ ', '█◉██▽██◉█', '█████████', ' ██   ██ '];
 
+/**
+ * The owl paints no background of its own: an explicit panel would show as a grey
+ * box on any terminal whose background is not exactly `clawd_background`. The two
+ * colour slots already follow the theme, so the plumage contrasts with the
+ * terminal as long as the theme matches it; see `/theme` to pin or auto-detect it.
+ */
 function owlRow(cells: string, suffix: unknown = '') {
-  const spans: unknown[] = [];
-  for (const cell of cells) {
-    spans.push(cell === '◉' || cell === '▽' ? detail(cell) : cell === ' ' ? body(' ') : body(cell));
-  }
-  return e(n, { children: [owl(e(n, { children: spans })), suffix] });
+  const children: unknown[] = [];
+  for (const cell of cells) children.push(cell === '◉' || cell === '▽' ? detail(cell) : body(cell));
+  children.push(suffix);
+  return e(n, { children });
 }
 
 function owlLockup(version: string) {

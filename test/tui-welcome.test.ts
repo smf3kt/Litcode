@@ -52,18 +52,24 @@ test('the mark is the white owl in both theme families', () => {
   }
 });
 
-test('the owl carries its own backdrop, so a wrong theme cannot erase it', () => {
-  // A white owl on a light terminal background is invisible unless the bird
-  // paints the contrast itself; every plumage cell must set both slots.
+test('the owl paints no panel, so no grey box shows against the terminal', () => {
+  // An explicit backdrop would render as a rectangle wherever the terminal's own
+  // background is not exactly that colour, so only the eye and beak cells may set
+  // one, and only to punch a hole in the plumage.
   const colors = ge as unknown as { level: number };
   const previous = colors.level;
   colors.level = 3;
   try {
     for (const theme of ['dark', 'light']) {
+      const bodyRgb = /rgb\((\d+),(\d+),(\d+)\)/.exec((S1(theme) as Record<string, string>).clawd_body!);
+      assert.ok(bodyRgb, theme);
+      const hole = `${bodyRgb[1]};${bodyRgb[2]};${bodyRgb[3]}`;
       const rows = renderRows(theme, '9.9.9', 'art');
       assert.equal(rows.length, WELCOME_ART_ROWS, theme);
       for (const row of rows) {
-        assert.match(row.ansi, /48;2;/, `${theme} ${JSON.stringify(row.text)}`);
+        for (const match of row.ansi.matchAll(/\x1b\[48;2;([0-9;]+)m/g)) {
+          assert.equal(match[1], hole, `${theme} ${JSON.stringify(row.text)}`);
+        }
       }
     }
   } finally { colors.level = previous; }
@@ -87,4 +93,15 @@ test('the mascot palette is grey-white in every built-in theme', () => {
     assert.doesNotMatch(palette.clawd_background!, /215,\s*119,\s*87/);
   }
   assert.equal(seen.size, 4);
+});
+
+test('the working and thinking accent is grey-white too, not the source orange', () => {
+  // `claude`/`claudeShimmer` colour the thinking label and the in-progress task
+  // marker; both were the recovered orange until the mascot went grey-white.
+  for (const theme of ['dark', 'light', 'dark-ansi', 'light-ansi', 'dark-daltonized', 'light-daltonized']) {
+    const palette = S1(theme) as Record<string, string>;
+    for (const slot of ['claude', 'claudeShimmer'] as const) {
+      assert.doesNotMatch(palette[slot]!, /215,\s*119,\s*87|255,\s*153,\s*51|redBright|yellowBright/, `${theme} ${slot}`);
+    }
+  }
 });
