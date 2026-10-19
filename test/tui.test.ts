@@ -314,6 +314,31 @@ test('wheel scrolling unpins the live tail and respects prompt, screen and mode 
   } finally { off.close(); }
 });
 
+test('clicking a suggestion row fills the draft with that row, and a click elsewhere does not', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 40 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  try {
+    key('/work');
+    // `/workflows` is the second row of the band, so the row above it leads the band.
+    const zeroBased = screenLines(output).findIndex(row => row.includes('/workflows'));
+    assert.ok(zeroBased > 1, `the band is on screen: ${JSON.stringify(screenLines(output))}`);
+    const rowAboveBand = zeroBased - 1;
+    // The band is drawn above the composer, past the transcript rows, so a press on it
+    // resolves to the row instead of a transcript selection. A press above it stays a
+    // transcript click and leaves the draft alone.
+    key(`\x1b[<0;4;${rowAboveBand}M\x1b[<0;4;${rowAboveBand}m`);
+    assert.equal(tui.state.text, '/work');
+    // A press on the row accepts it, the way Tab does, and dismisses the list.
+    key(`\x1b[<0;4;${zeroBased + 1}M\x1b[<0;4;${zeroBased + 1}m`);
+    assert.equal(tui.state.text, '/workflows ');
+    assert.ok(!screenLines(output).some(row => row.includes('/workflows  ')), 'the band closed');
+  } finally { tui.close(); }
+});
+
 test('pointer and keyboard selection copy the visible transcript without changing the draft', () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};

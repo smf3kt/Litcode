@@ -246,6 +246,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private autocompleteIndex = 0;
   private autocompleteForText = '';
   private autocompleteDismissedText: string | undefined;
+  /** The suggestion band's screen rows, so the pointer can hit-test a row. */
+  private autocompleteBand: { top: number; first: number; count: number } | undefined;
+  /** First suggestion the band is currently showing, from `suggestionWindow`. */
+  private autocompleteWindowStart = 0;
   /** The composer edit relay: the recovered `prompt.edit` hook, inert until a module hooks it. */
   private readonly editRelay: ComposerEditRelay;
   /** The runs a chain answer painted over the draft, held to the text they were painted for. */
@@ -1203,6 +1207,18 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
+  /**
+   * The suggestion index under a 1-based screen row, or -1 outside the band.
+   * Source `Oi`: a click resolves the row's id to an index and accepts it, which
+   * is the fill-the-draft path rather than the submit path Enter takes.
+   */
+  private autocompleteRowAt(row: number): number {
+    const band = this.autocompleteBand;
+    if (!band || !this.autocompleteVisible()) return -1;
+    const offset = row - 1 - band.top;
+    return offset >= 0 && offset < band.count ? band.first + offset : -1;
+  }
+
   /** Source `LK`/`Xn`: replace the draft with `/<name> `; Enter also submits when the
    *  selected row is a local command or an argument-less prompt command. */
   private acceptAutocomplete(execute: boolean): boolean {
@@ -1234,6 +1250,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       return message === undefined ? [] : [`\u001b[2m${pad(`  ${message}`, columns)}\u001b[22m`];
     }
     const window = suggestionWindow(suggestions.length, selected, maxVisibleSuggestions(rows));
+    this.autocompleteWindowStart = window.start;
     const visible = suggestions.slice(window.start, window.end);
     const pointer = `${symbols.pointer} `;
     return layoutSuggestionRows(visible, window.selected - window.start, columns, pointer)
@@ -1565,6 +1582,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const outcome = this.wheelKeys.push(event.action, ['Scroll', 'Global']);
       if (outcome.kind === 'match') this.applyAction(outcome.match.action);
       return;
+    }
+    // The suggestion band is drawn above the composer, past the transcript rows, and
+    // `viewportSize` does not subtract it, so it is hit-tested from its own geometry
+    // before the transcript/selection split.
+    if (event.action === 'press' && (event.button & 3) === 0) {
+      const index = this.autocompleteRowAt(event.row);
+      if (index >= 0) {
+        this.autocompleteIndex = index;
+        this.acceptAutocomplete(false);
+        return;
+      }
     }
     if ((this.options.mouseTracking ?? 'full') !== 'full') return;
     // Release outside the transcript still ends the drag.
@@ -2422,6 +2450,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const progressRows = [...this.renderProgress(conversationWidth, rows,
       Math.max(0, rows - prompt.lines.length - 4 - statusRows.length - hintRows.length)), ...hintRows];
     const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - progressRows.length - statusRows.length);
+    // The hint rows are the tail of `progressRows`, so they sit directly above the composer.
+    this.autocompleteBand = hintRows.length === 0 ? undefined : {
+      top: transcriptRows + progressRows.length - hintRows.length,
+      first: this.autocompleteWindowStart, count: hintRows.length };
     const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows,
       this.welcomePreamble(conversationWidth));
 
