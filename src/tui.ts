@@ -64,7 +64,24 @@ import type { TaskRecord } from './tasks.js';
 import { progressTime, type ProgressDisplaySettings } from './tui-progress-settings.js';
 import { createThemeColorComponents } from './tui-theme-color-components.js';
 import { S1 } from './tui-theme-colors.js';
-import { acceptanceText, commandSuggestions, layoutSuggestionRows, maxVisibleSuggestions,
+import { ge } from './tui-color.js';
+
+/** The sixteen ANSI foreground names a theme slot can name. */
+const ANSI_FOREGROUND: Readonly<Record<string, number>> = {
+  black: 30, red: 31, green: 32, yellow: 33, blue: 34, magenta: 35, cyan: 36, white: 37,
+  blackBright: 90, gray: 90, grey: 90, redBright: 91, greenBright: 92, yellowBright: 93,
+  blueBright: 94, magentaBright: 95, cyanBright: 96, whiteBright: 97,
+};
+
+/** A theme slot value as an SGR foreground sequence, or '' when the terminal takes none. */
+function slotForeground(slot: string | undefined): string {
+  if (slot === undefined || (ge as unknown as { level: number }).level <= 0) return '';
+  const rgb = /^rgb\((\d+),(\d+),(\d+)\)$/.exec(slot);
+  if (rgb) return `\u001b[38;2;${rgb[1]};${rgb[2]};${rgb[3]}m`;
+  const code = ANSI_FOREGROUND[slot.replace(/^ansi:/, '')];
+  return code === undefined ? '' : `\u001b[${code}m`;
+}
+import { acceptanceText, commandSuggestions, maxVisibleSuggestions, suggestionRowSegments,
   suggestionsEmptyMessage, suggestionWindow, TUI_COMMANDS, type CommandSuggestion,
   type TuiCommand } from './tui-autocomplete.js';
 import { te as symbols } from './tui-symbols.js';
@@ -1253,10 +1270,25 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.autocompleteWindowStart = window.start;
     const visible = suggestions.slice(window.start, window.end);
     const pointer = `${symbols.pointer} `;
-    return layoutSuggestionRows(visible, window.selected - window.start, columns, pointer)
-      .map((line, index) => index === window.selected - window.start
-        ? `\u001b[1m${line}\u001b[22m`
-        : `\u001b[2m${line}\u001b[22m`);
+    const chosen = window.selected - window.start;
+    // Source `ze` colours the selected row with the `suggestion` slot, dims every other row,
+    // and lets the skill and agent lanes keep their own colour either way. Each segment
+    // opens its own state and resets, so the lane accents survive the row's dim.
+    return suggestionRowSegments(visible, chosen, columns, pointer).map((segments, index) =>
+      segments.map(segment => {
+        const opens: string[] = [];
+        if (index !== chosen) opens.push('\u001b[2m');
+        const accent = segment.accent === undefined ? '' : slotForeground(this.themeSlot(segment.accent));
+        if (accent !== '') opens.push(accent);
+        else if (segment.dim) opens.push('\u001b[2m');
+        else if (index === chosen) opens.push(slotForeground(this.themeSlot('suggestion')));
+        return opens.join('') + segment.text + '\u001b[0m';
+      }).join(''));
+  }
+
+  /** The active palette value for a slot, with the session's overrides applied. */
+  private themeSlot(name: string): string | undefined {
+    return this.theme.overrides?.[name] ?? (S1(this.theme.current) as Record<string, string | undefined>)[name];
   }
 
   private readonly onData = (chunk: string | Buffer) => {

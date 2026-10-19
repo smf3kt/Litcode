@@ -17,11 +17,24 @@ import { cellWidth } from './terminal.js';
  * than copying the vendor command table; skills are supplied by the caller.
  */
 
+/**
+ * Source `Ixs` plus the vendor name table in `chunk-wtch2p0g.js`: the lane a row shows.
+ * `action` draws an empty lane, `info` draws `config`, and `skill` comes from the entry
+ * type rather than the table.
+ */
+export type SuggestionLane = 'config' | 'action' | 'info' | 'agent' | 'skill';
+
 export interface TuiCommand {
   readonly name: string;
   readonly description: string;
   readonly aliases?: readonly string[];
   readonly kind: 'command' | 'skill';
+  /** Source `a`: the lane this command draws. Defaults to `action`, the table's default. */
+  readonly lane?: Exclude<SuggestionLane, 'skill'>;
+  /** Source `_Dt`: the `[tag]` lane. No local command sets one yet. */
+  readonly tag?: string;
+  /** Source `_Dt`: the `[sourceTag]` lane, which only prompt entries carry. */
+  readonly sourceTag?: 'project' | 'org' | 'claude.ai';
   /** A skill with declared argument names only completes; it is not submitted. */
   readonly requiresArguments?: boolean;
 }
@@ -32,6 +45,8 @@ export interface SkillCommandSource {
   readonly aliases?: readonly string[];
   readonly userInvocable: boolean;
   readonly argumentNames?: readonly string[];
+  /** Source `q2n`/`_Dt`: only a project-settings skill draws a `[project]` lane. */
+  readonly source?: string;
 }
 
 export interface CommandSuggestion {
@@ -41,6 +56,12 @@ export interface CommandSuggestion {
   readonly displayText: string;
   readonly description: string;
   readonly kind: 'command' | 'skill';
+  /** Source `Wre`: the resolved lane, present only when the list draws lanes. */
+  readonly lane: SuggestionLane;
+  /** Source `Wre`: `[dynamic workflow]` for a workflow prompt entry. */
+  readonly tag?: string;
+  /** Source `_Dt`: `project`/`org`/`claude.ai` for a prompt entry from that source. */
+  readonly sourceTag?: string;
   readonly matchedAlias?: string;
   /** Source `LK`: local commands and prompt commands without arguments submit on accept. */
   readonly executeOnAccept: boolean;
@@ -48,49 +69,49 @@ export interface CommandSuggestion {
 
 /** The product command table, transcribed from `COMMAND_HELP`. */
 export const TUI_COMMANDS: readonly TuiCommand[] = [
-  { name: 'help', description: 'Show commands', kind: 'command' },
-  { name: 'status', description: 'Show session, model, context settings and usage', kind: 'command' },
-  { name: 'context', description: 'Count current request against the configured context budget', kind: 'command' },
-  { name: 'usage', description: 'Show recorded model usage', kind: 'command' },
-  { name: 'effort', description: 'Start a session with low/medium/high/xhigh/max effort', kind: 'command' },
-  { name: 'sessions', description: 'List/search workspace sessions by title, model or UUID', kind: 'command' },
-  { name: 'resume', description: 'Resume a matching session or choose from a local list', kind: 'command' },
-  { name: 'rename', description: 'Set the current session title', kind: 'command' },
-  { name: 'skills', description: 'List available skills', kind: 'command' },
-  { name: 'agents', description: 'List configured local agent types', kind: 'command' },
-  { name: 'mcp', description: 'Show configured MCP servers and adapter limitations', kind: 'command' },
-  { name: 'mcp-reconnect', description: 'Reconnect one server in place, or all servers into a new session', kind: 'command' },
-  { name: 'tasks', description: 'Show workspace task dependencies and readiness', kind: 'command' },
-  { name: 'workflows', description: 'Show this session workflow runs, including saved runs', kind: 'command' },
-  { name: 'cron', description: 'Show scheduled prompts in the active session', kind: 'command' },
-  { name: 'peers', description: 'List live same-host sessions and this inbox address', kind: 'command' },
-  { name: 'peer-held', description: 'Review held peer messages', kind: 'command' },
-  { name: 'peer-inbound', description: 'Set the explicit inbound policy', kind: 'command' },
-  { name: 'diff', description: 'Show a page of file changes against a checkpoint', kind: 'command' },
-  { name: 'reload', description: 'Reload local instructions, skills, hooks, tools and settings into a new session', kind: 'command' },
-  { name: 'attach', description: 'Submit an image/PDF with a task (quote paths with spaces)', kind: 'command' },
-  { name: 'paste-image', description: 'Read a PNG image from the clipboard and submit it with a task', kind: 'command' },
-  { name: 'continue', description: 'Resume an interrupted turn', kind: 'command' },
-  { name: 'compact', description: 'Summarize completed history', kind: 'command' },
-  { name: 'fork', description: 'Fork completed history into a new session', kind: 'command' },
-  { name: 'background', description: 'Fork this session into a detached background task', kind: 'command' },
-  { name: 'rewind', description: 'Branch conversation at completed turn N (files stay as they are)', kind: 'command' },
-  { name: 'checkpoint', description: 'Associate a file snapshot with the current completed turn', kind: 'command' },
-  { name: 'checkpoint-recover', description: 'Resolve a proven interrupted restore; changed files stay preserved', kind: 'command' },
-  { name: 'cwd', description: 'Relocate completed conversation into an existing workspace', kind: 'command' },
-  { name: 'worktree', description: 'Create/enter an owned checkout and relocate completed history', kind: 'command' },
-  { name: 'worktree-exit', description: 'Return; optionally archive history and remove owned checkout/branch', kind: 'command' },
-  { name: 'worktree-history', description: 'List preserved worktree histories; restore one to its original name', kind: 'command' },
-  { name: 'model', description: 'Choose or enter a model, then start a session with completed history', kind: 'command' },
-  { name: 'theme', description: 'Preview, choose and save a terminal theme', kind: 'command' },
-  { name: 'thinking', description: 'Toggle or set thinking in a new session with completed history', kind: 'command' },
-  { name: 'plan', description: 'Start a read-only session', kind: 'command' },
-  { name: 'permissions', description: 'Start a session in default/plan/acceptEdits/ask/bypass mode', kind: 'command' },
-  { name: 'editor', description: 'Edit the current draft in VISUAL/EDITOR (Ctrl+G at a terminal)', kind: 'command' },
-  { name: 'config', description: 'Save and apply the input editor mode', kind: 'command' },
-  { name: 'vim', description: 'Open the Editor mode setting', kind: 'command' },
-  { name: 'clear', description: 'Start a new session without changing existing logs', kind: 'command' },
-  { name: 'exit', description: 'Close the interactive session', kind: 'command' },
+  { name: 'help', description: 'Show commands', kind: 'command', lane: 'info' },
+  { name: 'status', description: 'Show session, model, context settings and usage', kind: 'command', lane: 'info' },
+  { name: 'context', description: 'Count current request against the configured context budget', kind: 'command', lane: 'info' },
+  { name: 'usage', description: 'Show recorded model usage', kind: 'command', lane: 'info' },
+  { name: 'effort', description: 'Start a session with low/medium/high/xhigh/max effort', kind: 'command', lane: 'config' },
+  { name: 'sessions', description: 'List/search workspace sessions by title, model or UUID', kind: 'command', lane: 'info' },
+  { name: 'resume', description: 'Resume a matching session or choose from a local list', kind: 'command', lane: 'action' },
+  { name: 'rename', description: 'Set the current session title', kind: 'command', lane: 'action' },
+  { name: 'skills', description: 'List available skills', kind: 'command', lane: 'info' },
+  { name: 'agents', description: 'List configured local agent types', kind: 'command', lane: 'config' },
+  { name: 'mcp', description: 'Show configured MCP servers and adapter limitations', kind: 'command', lane: 'config' },
+  { name: 'mcp-reconnect', description: 'Reconnect one server in place, or all servers into a new session', kind: 'command', lane: 'action' },
+  { name: 'tasks', description: 'Show workspace task dependencies and readiness', kind: 'command', lane: 'agent' },
+  { name: 'workflows', description: 'Show this session workflow runs, including saved runs', kind: 'command', lane: 'agent' },
+  { name: 'cron', description: 'Show scheduled prompts in the active session', kind: 'command', lane: 'agent' },
+  { name: 'peers', description: 'List live same-host sessions and this inbox address', kind: 'command', lane: 'agent' },
+  { name: 'peer-held', description: 'Review held peer messages', kind: 'command', lane: 'agent' },
+  { name: 'peer-inbound', description: 'Set the explicit inbound policy', kind: 'command', lane: 'agent' },
+  { name: 'diff', description: 'Show a page of file changes against a checkpoint', kind: 'command', lane: 'info' },
+  { name: 'reload', description: 'Reload local instructions, skills, hooks, tools and settings into a new session', kind: 'command', lane: 'action' },
+  { name: 'attach', description: 'Submit an image/PDF with a task (quote paths with spaces)', kind: 'command', lane: 'action' },
+  { name: 'paste-image', description: 'Read a PNG image from the clipboard and submit it with a task', kind: 'command', lane: 'action' },
+  { name: 'continue', description: 'Resume an interrupted turn', kind: 'command', lane: 'action' },
+  { name: 'compact', description: 'Summarize completed history', kind: 'command', lane: 'action' },
+  { name: 'fork', description: 'Fork completed history into a new session', kind: 'command', lane: 'agent' },
+  { name: 'background', description: 'Fork this session into a detached background task', kind: 'command', lane: 'action' },
+  { name: 'rewind', description: 'Branch conversation at completed turn N (files stay as they are)', kind: 'command', lane: 'action' },
+  { name: 'checkpoint', description: 'Associate a file snapshot with the current completed turn', kind: 'command', lane: 'action' },
+  { name: 'checkpoint-recover', description: 'Resolve a proven interrupted restore; changed files stay preserved', kind: 'command', lane: 'action' },
+  { name: 'cwd', description: 'Relocate completed conversation into an existing workspace', kind: 'command', lane: 'action' },
+  { name: 'worktree', description: 'Create/enter an owned checkout and relocate completed history', kind: 'command', lane: 'action' },
+  { name: 'worktree-exit', description: 'Return; optionally archive history and remove owned checkout/branch', kind: 'command', lane: 'action' },
+  { name: 'worktree-history', description: 'List preserved worktree histories; restore one to its original name', kind: 'command', lane: 'action' },
+  { name: 'model', description: 'Choose or enter a model, then start a session with completed history', kind: 'command', lane: 'config' },
+  { name: 'theme', description: 'Preview, choose and save a terminal theme', kind: 'command', lane: 'config' },
+  { name: 'thinking', description: 'Toggle or set thinking in a new session with completed history', kind: 'command', lane: 'config' },
+  { name: 'plan', description: 'Start a read-only session', kind: 'command', lane: 'config' },
+  { name: 'permissions', description: 'Start a session in default/plan/acceptEdits/ask/bypass mode', kind: 'command', lane: 'config' },
+  { name: 'editor', description: 'Edit the current draft in VISUAL/EDITOR (Ctrl+G at a terminal)', kind: 'command', lane: 'config' },
+  { name: 'config', description: 'Save and apply the input editor mode', kind: 'command', lane: 'config' },
+  { name: 'vim', description: 'Open the Editor mode setting', kind: 'command', lane: 'config' },
+  { name: 'clear', description: 'Start a new session without changing existing logs', kind: 'command', lane: 'action' },
+  { name: 'exit', description: 'Close the interactive session', kind: 'command', lane: 'action' },
 ];
 
 /** Base commands plus the session's user-invocable skills. A skill whose name
@@ -103,6 +124,7 @@ export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | un
     if (!skill.userInvocable || localNames.has(skill.name)) continue;
     extra.push({ name: skill.name, description: skill.description || '(no description)',
       aliases: skill.aliases, kind: 'skill',
+      sourceTag: skill.source === 'projectSettings' ? 'project' : undefined,
       requiresArguments: (skill.argumentNames?.length ?? 0) > 0 });
   }
   return [...TUI_COMMANDS, ...extra];
@@ -179,6 +201,9 @@ function toSuggestion(command: TuiCommand, matchedAlias?: string): CommandSugges
     displayText: `/${command.name}${aliasSuffix}`,
     description: command.description,
     kind: command.kind,
+    lane: command.kind === 'skill' ? 'skill' : command.lane ?? 'action',
+    tag: command.tag,
+    sourceTag: command.sourceTag,
     matchedAlias,
     executeOnAccept: command.kind === 'command' || command.requiresArguments !== true,
   };
@@ -239,24 +264,91 @@ function truncateCells(text: string, columns: number): string {
   return out;
 }
 
-/** `iEe`/`ze`: pointer, padded command, then the description when it fits. */
-export function layoutSuggestionRows(suggestions: readonly CommandSuggestion[], selected: number,
-  columns: number, pointer: string): string[] {
+/**
+ * `_t`: the row's kind lane, its label, and its source lane. `action` and an absent kind
+ * draw an empty label, `info` draws `config`, and every present kind still spends the
+ * seven-cell lane so the descriptions line up.
+ */
+export function suggestionLanes(row: { lane?: SuggestionLane; sourceTag?: string }):
+{ kindLaneText: string; kindLabel: string; sourceText: string } {
+  const kindLabel = row.lane === undefined || row.lane === 'action' ? ''
+    : row.lane === 'info' ? 'config' : row.lane;
+  const kindLaneText = row.lane === undefined ? ''
+    : kindLabel + ' '.repeat(Math.max(0, 7 - cellWidth(kindLabel)));
+  return { kindLaneText, kindLabel, sourceText: row.sourceTag ? `[${row.sourceTag}] ` : '' };
+}
+
+/** Source `ze`: only the skill and agent lanes take an accent; every other lane stays dim. */
+export function laneAccent(kindLabel: string): 'skill' | 'background' | undefined {
+  return kindLabel === 'skill' ? 'skill' : kindLabel === 'agent' ? 'background' : undefined;
+}
+
+/** Source `No`: how far past the 40% mark the kind lane may push the description. */
+function laneOffset(row: CommandSuggestion, width: number, pointerWidth: number): number {
+  const { kindLaneText, sourceText } = suggestionLanes(row);
+  const tagWidth = row.tag ? cellWidth(`[${row.tag}] `) : 0;
+  const room = width - Math.floor(width * 0.4) - tagWidth - cellWidth(kindLaneText)
+    - cellWidth(sourceText) - 4 - (row.description ? 1 : 0);
+  return room < 0 ? pointerWidth : Math.min(pointerWidth, room);
+}
+
+/**
+ * Source `ee`: the column the kind lane starts at. It is the widest row plus five, unless
+ * that passes 40% of the terminal, where the lane is pushed right by as much of the
+ * pointer as the remaining room allows.
+ */
+export function suggestionColumn(row: CommandSuggestion, maxColumnWidth: number, width: number,
+  pointerWidth: number): number {
+  const floor = Math.floor(width * 0.4);
+  return maxColumnWidth <= floor ? maxColumnWidth : floor + laneOffset(row, width, pointerWidth);
+}
+
+/** A row segment and the theme role the renderer paints it with. */
+export interface SuggestionRowSegment {
+  readonly text: string;
+  /** `skill`/`background` keep their colour; everything else follows the row. */
+  readonly accent?: 'skill' | 'background';
+  /** Source `ze`: the tag and source lanes are dim even on the selected row. */
+  readonly dim?: boolean;
+  /** The description takes the `suggestion` slot when the row is selected. */
+  readonly description?: boolean;
+}
+
+/**
+ * `iEe`/`ze`: the pointer, the padded command, then the kind lane, the tag and source
+ * lanes, and the description, all inside the row width.
+ */
+export function suggestionRowSegments(suggestions: readonly CommandSuggestion[], selected: number,
+  columns: number, pointer: string): SuggestionRowSegment[][] {
   const width = Math.max(1, Math.floor(columns));
   const pointerWidth = cellWidth(pointer);
-  const showDescription = width >= 36;
-  const widest = suggestions.reduce((max, suggestion) => Math.max(max, cellWidth(suggestion.displayText)), 0);
-  const nameWidth = Math.min(widest, Math.max(1, width - pointerWidth - (showDescription ? 24 : 1)));
+  const widest = suggestions.reduce((max, row) => Math.max(max, cellWidth(row.displayText)), 0) + 5;
   return suggestions.map((suggestion, index) => {
-    const marker = index === selected ? pointer : ' '.repeat(pointerWidth);
-    const name = truncateCells(suggestion.displayText, nameWidth);
-    const gap = Math.max(2, nameWidth - cellWidth(name) + 2);
-    let line = marker + name + ' '.repeat(gap);
-    if (showDescription) line += truncateCells(suggestion.description, Math.max(0, width - cellWidth(line)));
-    if (cellWidth(line) > width) line = truncateCells(line, width);
-    if (cellWidth(line) < width) line += ' '.repeat(width - cellWidth(line));
-    return line;
+    const gutter = index === selected ? pointer : ' '.repeat(pointerWidth);
+    const column = suggestionColumn(suggestion, widest, width, pointerWidth);
+    const name = truncateCells(suggestion.displayText, Math.max(0, column - 2 - pointerWidth));
+    const { kindLaneText, kindLabel, sourceText } = suggestionLanes(suggestion);
+    const tagText = suggestion.tag ? `[${suggestion.tag}] ` : '';
+    const laneWidth = cellWidth(kindLaneText) + cellWidth(tagText) + cellWidth(sourceText);
+    const pad = ' '.repeat(Math.max(0, column - cellWidth(name) - pointerWidth));
+    const segments: SuggestionRowSegment[] = [{ text: gutter + name + pad }];
+    if (kindLaneText) segments.push({ text: kindLaneText, accent: laneAccent(kindLabel) });
+    if (tagText) segments.push({ text: tagText, dim: true });
+    if (sourceText) segments.push({ text: sourceText, dim: true });
+    const room = Math.max(0, width - column - laneWidth - 4);
+    if (room > 0) segments.push({ text: truncateCells(suggestion.description, room), description: true });
+    const line = segments.reduce((total, segment) => total + cellWidth(segment.text), 0);
+    if (line > width) return [{ text: truncateCells(segments.map(s => s.text).join(''), width) }];
+    if (line < width) segments.push({ text: ' '.repeat(width - line) });
+    return segments;
   });
+}
+
+/** The same rows as plain text, for callers that only need the layout. */
+export function layoutSuggestionRows(suggestions: readonly CommandSuggestion[], selected: number,
+  columns: number, pointer: string): string[] {
+  return suggestionRowSegments(suggestions, selected, columns, pointer)
+    .map(segments => segments.map(segment => segment.text).join(''));
 }
 
 /** `LK`: accepting a suggestion replaces the draft with `/<name> ` and puts the cursor after it. */
