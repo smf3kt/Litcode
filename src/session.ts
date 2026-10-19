@@ -109,7 +109,9 @@ export type SessionConfig = {
     workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean; mcpPersistence?: boolean; mcpTasks?: boolean; mcpStandardTasks?: boolean;
     taskProjections?: boolean;
     schedulerJitter?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; pluginSkillNamespaces?: boolean;
-    agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; policyHelper?: boolean };
+    agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; policyHelper?: boolean; crossSessionMessaging?: boolean };
+  /** Explicit inbound policy for same-host peer messages; omitted follows the mode. */
+  crossSessionInbound?: 'accept' | 'hold' | 'refuse';
 };
 export type ToolResult = Anthropic.ToolResultBlockParam;
 import { permissionModeCommandSchema, type PermissionModeCommand } from './plan-resume.js';
@@ -172,6 +174,8 @@ export const configSchema = z.object({
   }).strict().optional(),
   hooks: hooksSchema.optional(),
   permissions: permissionPolicySchema.optional(),
+  /** Explicit same-host inbound policy; omitted follows the permission mode. */
+  crossSessionInbound: z.enum(['accept', 'hold', 'refuse']).optional(),
   bashCommandClamp: z.array(z.array(z.string().min(1)).min(1)).min(1).optional(),
   stallMs: z.number().finite().optional(),
   managedPolicy: managedPolicySchema.optional(),
@@ -238,7 +242,7 @@ export const configSchema = z.object({
     workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(),
     taskProjections: z.boolean().optional(),
     schedulerJitter: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
-    agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), policyHelper: z.boolean().optional() }).strict().optional(),
+    agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), policyHelper: z.boolean().optional(), crossSessionMessaging: z.boolean().optional() }).strict().optional(),
 }).strict();
 const messageSchema = z.object({ role: z.enum(['user', 'assistant']), content: z.union([z.string(), z.array(z.object({ type: z.string() }).passthrough())]) }).strict();
 const responseSchema = z.object({ role: z.literal('assistant'), content: z.array(z.object({ type: z.string() }).passthrough()), stop_reason: z.string().nullable() }).passthrough();

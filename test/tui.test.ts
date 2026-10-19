@@ -916,8 +916,13 @@ test('question external editor cancellation waits descendants and rejects a stal
   try {
     const controller=new AbortController(),pending=tui.prompt(request,controller.signal);
     input.emit('data','\x1b[Boriginal\u0007');
-    for(let i=0;i<150&&!fs.existsSync(ready);i++)await delay(10);
-    assert.ok(fs.existsSync(ready));const active=JSON.parse(fs.readFileSync(ready,'utf8'));
+    // `existsSync` can observe the file after `open` but before the editor's
+    // write lands, so parse in the poll rather than once after it.
+    const readyJson=async():Promise<{file:string;pid:number;child:number}>=>{
+      for(let i=0;i<150;i++){try{return JSON.parse(fs.readFileSync(ready,'utf8'));}catch{await delay(10);}}
+      throw new Error(`editor readiness file never parsed: ${ready}`);
+    };
+    const active=await readyJson();
     controller.abort();assert.equal(await pending,undefined);
     assert.equal(fs.existsSync(active.file),false);assert.equal(fs.existsSync(path.dirname(active.file)),false);
     for(const pid of [active.pid,active.child])assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});
@@ -925,8 +930,7 @@ test('question external editor cancellation waits descendants and rejects a stal
     const next=tui.prompt(request,new AbortController().signal);
     input.emit('data','\x1b[Bfresh\r');assert.deepEqual(await next,{selected:[],groups:[{key:'same',selected:[],text:'fresh'}]});
     fs.rmSync(ready);const closing=tui.prompt(request,new AbortController().signal);
-    input.emit('data','\x1b[B\u0007');for(let i=0;i<150&&!fs.existsSync(ready);i++)await delay(10);
-    assert.ok(fs.existsSync(ready));const last=JSON.parse(fs.readFileSync(ready,'utf8'));
+    input.emit('data','\x1b[B\u0007');const last=await readyJson();
     tui.close();assert.equal(await closing,undefined);assert.equal(input.isRaw,false);
     assert.equal(fs.existsSync(last.file),false);for(const pid of [last.pid,last.child])assert.throws(()=>process.kill(pid,0),{code:'ESRCH'});
     fs.writeFileSync(script,`import fs from 'node:fs';import {spawn} from 'node:child_process';const file=process.argv.at(-1);const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'inherit'});fs.writeFileSync(file,'fresh external');fs.writeFileSync(${JSON.stringify(ready)},JSON.stringify({file,pid:process.pid,child:child.pid}));child.unref();`);

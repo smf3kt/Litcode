@@ -343,7 +343,7 @@ test('CLI live loopback run wires tools, settings, hooks and instructions with p
   assert.equal(metadata.config.gateway.auth, 'bearer');
   assert.deepEqual(metadata.config.features, { tasks: true, subagents: true, notebooks: true, background: true, scheduler: true,
     agentMessaging: true, agentIdle: true, agentTypes: true, interaction: true, web: true, checkpoints: true, worktrees: true, memory: true, media: true, workflow: true,
-    workflowPersistence: true, taskProjections: true, mcpSubscriptions: false, mcpCatalog: true, mcpDynamic: false, mcpDeferred: false, lsp: false });
+    workflowPersistence: true, taskProjections: true, mcpSubscriptions: false, mcpCatalog: true, mcpDynamic: false, mcpDeferred: false, crossSessionMessaging: false, lsp: false });
   assert.deepEqual(metadata.config.hooks.SessionStart.length, 1);
   assert.deepEqual((metadata.config.tools as { name: string }[]).map(tool => tool.name).slice().sort(), EXPECTED_TOOLS.slice().sort());
 
