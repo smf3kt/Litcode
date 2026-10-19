@@ -816,6 +816,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
         if (/^\/rename(?:\s|$)/.test(prompt)) {
           const title = prompt.slice(7).trim();
+          if (!title) throw new Error('Use /rename TITLE');
           session.append({ kind: 'title', title });
           options.status.write(`Session title: ${title}\n`); continue;
         }
@@ -1034,13 +1035,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (selected === session.config.model) { options.status.write('Model unchanged.\n'); continue; }
           prompt = `/model ${selected}`;
         }
-        if(prompt==='/vim'||/^\/config\s+editor(?:=|\s|$)/.test(prompt)){
+        if(prompt==='/vim'||prompt==='/config'||/^\/config\s+editor(?:=|\s|$)/.test(prompt)){
           if(session.awaitingResponse)throw new Error('Finish or continue the current turn first');
           const config=structuredClone(session.config);
           const row=editorModeRow(config,(_key:string,value:EditorMode)=>saveEditorMode(value,config.configSources?.userDir),()=>{});
           let picked:string|undefined;
-          if(prompt==='/vim'){
-            options.status.write(vimRedirect('vim')+'\n');
+          if(prompt==='/vim'||prompt==='/config'){
+            if(prompt==='/vim')options.status.write(vimRedirect('vim')+'\n');
             if(terminal?.prompt){
               const answer=await withTurn(signal=>readDialog({title:'Editor mode',message:'Choose input editing',choices:row.options.map((value:string)=>({label:value,value})),
                 defaultIndex:row.options.indexOf(row.value)},signal));
@@ -1060,8 +1061,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           options.signal.throwIfAborted();row.onChange(mode);config.editorMode=mode;
           await applyConfig(config,false,options.signal);options.status.write(`Editor mode: ${mode}\n`);continue;
         }
-        if (prompt.startsWith('/model ') || prompt.startsWith('/theme ') || prompt.startsWith('/effort ') || /^\/thinking(?:\s|$)/.test(prompt)
-          || prompt === '/plan' || prompt.startsWith('/permissions ')) {
+        if (prompt.startsWith('/model ') || prompt.startsWith('/theme ') || prompt === '/effort' || prompt.startsWith('/effort ') || /^\/thinking(?:\s|$)/.test(prompt)
+          || prompt === '/plan' || prompt === '/permissions' || prompt.startsWith('/permissions ')) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           const config = structuredClone(session.config);
           let modeCommand: PermissionModeCommand | undefined;
@@ -1092,7 +1093,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             }
             if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
             config.model = model;
-          } else if (prompt.startsWith('/effort ')) {
+          } else if (prompt === '/effort' || prompt.startsWith('/effort ')) {
             const effort = prompt.slice(8).trim();
             if (!['low', 'medium', 'high', 'xhigh', 'max'].includes(effort)) throw new Error('Use /effort low|medium|high|xhigh|max');
             config.effort = effort as NonNullable<typeof config.effort>;
@@ -1104,6 +1105,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           } else {
             if (session.config.managedPolicy?.permissions !== undefined) throw new Error('Permission mode is pinned by managed settings');
             const mode = prompt === '/plan' ? 'plan' : prompt.slice(13).trim();
+            if (!mode) throw new Error('Use /permissions default|plan|acceptEdits|ask|bypass|auto|dontAsk');
             config.permissions = permissionPolicySchema.parse({ ...config.permissions, mode,
               allow: config.permissions?.allow ?? [], deny: config.permissions?.deny ?? [] });
             modeCommand = permissionModeCommand(prompt === '/plan' ? 'plan' : 'permissions', config.permissions.mode,
@@ -1136,7 +1138,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           output.write(`Restored worktree history ${path.basename(restored.archive)} to ${restored.path} (${restored.sessions} session${restored.sessions === 1 ? '' : 's'})\n`);
           continue;
         }
-        if (prompt.startsWith('/cwd ') || /^\/worktree(?:\s|$)/.test(prompt) || /^\/worktree-exit(?:\s|$)/.test(prompt)) {
+        if (prompt === '/cwd' || prompt.startsWith('/cwd ') || /^\/worktree(?:\s|$)/.test(prompt) || /^\/worktree-exit(?:\s|$)/.test(prompt)) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           if (!activeRuntime.reconfigure) throw new Error('Runtime workspace relocation is unavailable');
           const previousWorkspace = session.config.workspace;
@@ -1155,7 +1157,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             target = entry.path; worktreeReturn = entry.origin;
           } else {
             if (session.config.worktreeReturn) throw new Error('Exit the active worktree before using /cwd');
-            target = fs.realpathSync(path.resolve(session.config.workspace, prompt.slice(5).trim()));
+            const directory = prompt.slice(5).trim();
+            if (!directory) throw new Error('Use /cwd DIR');
+            target = fs.realpathSync(path.resolve(session.config.workspace, directory));
           }
           const nextConfig = { ...structuredClone(session.config), workspace: target };
           if (worktreeReturn === null) delete nextConfig.worktreeReturn;

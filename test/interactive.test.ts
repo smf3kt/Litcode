@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { Readable, Writable } from 'node:stream';
+import { PassThrough, Readable, Writable } from 'node:stream';
 import { test } from 'node:test';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, defaultConfig } from '../src/agent.js';
@@ -503,5 +503,55 @@ test('workspace relocation raises DirectoryAdded as a documented slash_command h
       ['DirectoryAdded', target, 'slash_command']);
     assert.match(stderr.value(), /hook DirectoryAdded: directory note/);
     assert.match(stderr.value(), /\[DirectoryAdded hook: exit code 3\] boom/);
+  } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('a bare argument command answers with its usage instead of the unknown-command error', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-usage-')));
+  const config = { ...defaultConfig(workspace, []), model: 'test' };
+  const provider: ModelProvider = { count: async () => 0, complete: async () => reply('unused') };
+  const lifetime = AbortSignal.timeout(6000);
+  const runtime = await createRuntime(config, provider, lifetime);
+  const session = Session.open(workspace, { config });
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, provider, runtime, {
+      input: Readable.from(['/effort\n', '/cwd\n', '/permissions\n', '/rename\n', '/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: lifetime,
+    });
+    assert.match(stderr.value(), /error: Use \/effort low\|medium\|high\|xhigh\|max/);
+    assert.match(stderr.value(), /error: Use \/cwd DIR/);
+    assert.match(stderr.value(), /error: Use \/permissions default\|plan\|acceptEdits\|ask\|bypass\|auto\|dontAsk/);
+    assert.match(stderr.value(), /error: Use \/rename TITLE/);
+    assert.doesNotMatch(stderr.value(), /Unknown command; use \/help/);
+  } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('bare /config opens the editor mode choice and saves the picked mode', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-config-')));
+  const userDir = path.join(workspace, 'user');
+  fs.mkdirSync(userDir);
+  const config = { ...defaultConfig(workspace, []), model: 'test', configSources: { userDir } };
+  const provider: ModelProvider = { count: async () => 0, complete: async () => reply('unused') };
+  const lifetime = AbortSignal.timeout(6000);
+  const runtime = await createRuntime(config, provider, lifetime);
+  const session = Session.open(workspace, { config });
+  const stdout = output(), stderr = output();
+  // A live stream, because the choice is read after the command line is handled.
+  const input = new PassThrough();
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  try {
+    const loop = interactiveLoop(session, provider, runtime,
+      { input, output: stdout.stream, status: stderr.stream, signal: lifetime });
+    input.write('/config\n');
+    await wait(50);
+    input.write('2\n');
+    await wait(50);
+    input.write('/exit\n');
+    await loop;
+    assert.match(stdout.value(), /Choose input editing/);
+    assert.match(stderr.value(), /Editor mode: vim/);
+    assert.doesNotMatch(stderr.value(), /Unknown command; use \/help/);
+    assert.doesNotMatch(stderr.value(), /Use \/config editor=normal\|vim/);
   } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
