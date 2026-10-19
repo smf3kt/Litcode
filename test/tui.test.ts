@@ -1893,6 +1893,32 @@ test('TUI folded paste survives stash, history search, undo and isolated modal i
   } finally {tui.close();decoded.get(output)!.dispose();context.mock.timers.reset();}
 });
 
+test('a submit whose paste record is gone announces it and hands the prompt back', async () => {
+  const input=new PassThrough() as PassThrough & {isTTY:boolean;setRawMode:(raw:boolean)=>void};
+  input.isTTY=true;input.setRawMode=()=>{};const submitted:string[]=[];
+  const output=new Writable({write(_chunk,_encoding,done){done();}});
+  // Wide enough that the footer shows the notice sentence whole.
+  Object.assign(output,{isTTY:true,columns:140,rows:24});watchScreen(output);
+  const tui=new TuiTerminal({input,output,onSubmit:text=>submitted.push(text)}).start();
+  const rows=()=>screenLines(output).join('\n');
+  const until=async(predicate:()=>boolean)=>{const deadline=Date.now()+5000;
+    while(!predicate()){assert.ok(Date.now()<deadline,rows());await delay(10);}};
+  const raw='first\nsecond\nthird\nfourth';
+  try {
+    input.emit('data','\x1b[200~'+raw+'\x1b[201~');
+    await until(()=>rows().includes('[Pasted text #1 +3 lines]'));
+    // The record is gone, as it is for a recalled history entry whose stored content no longer resolves.
+    (tui as any).editor.pastedContents['1'].unavailable=true;
+    input.emit('data','\r');
+    await until(()=>rows().includes('Pasted text #1 is no longer available and was removed from the prompt'));
+    assert.deepEqual(submitted,[],'a prompt that held only the gone paste is not sent');
+    assert.equal(tui.state.text,'[Pasted text #1 +3 lines]','the prompt is handed back');
+    input.emit('data','hello \r');
+    await until(()=>submitted.length===1);
+    assert.deepEqual(submitted,['hello '],'the placeholder is dropped from what is sent');
+  } finally {tui.close();decoded.get(output)!.dispose();}
+});
+
 test('source thinking progress retains frame, paused-time, task-count and completion contracts', async context => {
   context.mock.timers.enable({apis:['setTimeout','setInterval','Date'], now:10000});
   const document = new TuiDocumentRenderer(); let ticks = 0;

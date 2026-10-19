@@ -486,8 +486,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** `Zi`: the per-draft dismissal the alt+w toggle sets. */
   private workflowKeywordDismissed = false;
   /** The keyed notice `workflow-keyword-ignored`, shown on the one status row this terminal has. */
-  private workflowKeywordNotice: string | undefined;
-  private workflowKeywordNoticeTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The one status-row notice this terminal shows, with the owner that may clear it. */
+  private statusNoticeOwner: string | undefined;
+  private statusNoticeText: string | undefined;
+  private statusNoticeTimer: ReturnType<typeof setTimeout> | undefined;
   private sourceSearch: HistorySearch | undefined;
   private sourcePicker: ScopedPicker | undefined;
   private pickerQuery = createEditorState();
@@ -922,27 +924,45 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return true;
   }
 
-  /** Source notice key `workflow-keyword-ignored`, `timeoutMs: 5000`. This terminal has one status row
-   *  instead of a keyed notification queue, so the clear only removes the row while it still shows it. */
+  /**
+   * Source notice key `workflow-keyword-ignored`, `timeoutMs: 5000`. This terminal has one status row
+   * instead of a keyed notification queue, so the clear only removes the row while it still shows it.
+   */
   private showWorkflowKeywordNotice(text: string): void {
-    this.workflowKeywordNotice = text;
+    this.showStatusNotice('workflow-keyword', text, 5_000);
+  }
+
+  /** Source notice `pasted-text-unavailable`: `priority:"immediate"`, default 8000 ms timeout. */
+  private showPasteGoneNotice(text: string): void {
+    this.showStatusNotice('paste-gone', text, 8_000);
+  }
+
+  private showStatusNotice(owner: string, text: string, timeoutMs: number): void {
+    this.statusNoticeOwner = owner;
+    this.statusNoticeText = text;
     this.setStatus(text);
-    if (this.workflowKeywordNoticeTimer !== undefined) clearTimeout(this.workflowKeywordNoticeTimer);
-    this.workflowKeywordNoticeTimer = setTimeout(() => {
-      this.workflowKeywordNoticeTimer = undefined;
-      if (this.workflowKeywordNotice !== text) return;
-      this.workflowKeywordNotice = undefined;
+    if (this.statusNoticeTimer !== undefined) clearTimeout(this.statusNoticeTimer);
+    this.statusNoticeTimer = setTimeout(() => {
+      this.statusNoticeTimer = undefined;
+      if (this.statusNoticeText !== text) return;
+      this.statusNoticeOwner = undefined;
+      this.statusNoticeText = undefined;
       if (this.status === text) { this.status = ''; this.render(); }
-    }, 5_000);
-    this.workflowKeywordNoticeTimer.unref?.();
+    }, timeoutMs);
+    this.statusNoticeTimer.unref?.();
   }
 
   private clearWorkflowKeywordNotice(): void {
-    const text = this.workflowKeywordNotice;
-    if (text === undefined) return;
-    if (this.workflowKeywordNoticeTimer !== undefined) { clearTimeout(this.workflowKeywordNoticeTimer); this.workflowKeywordNoticeTimer = undefined; }
-    this.workflowKeywordNotice = undefined;
-    if (this.status === text) { this.status = ''; this.render(); }
+    this.clearStatusNotice('workflow-keyword');
+  }
+
+  private clearStatusNotice(owner: string): void {
+    if (this.statusNoticeOwner !== owner) return;
+    const text = this.statusNoticeText;
+    if (this.statusNoticeTimer !== undefined) { clearTimeout(this.statusNoticeTimer); this.statusNoticeTimer = undefined; }
+    this.statusNoticeOwner = undefined;
+    this.statusNoticeText = undefined;
+    if (text !== undefined && this.status === text) { this.status = ''; this.render(); }
   }
 
   /** Source input-store subscription: a draft that no longer holds a keyword run restores the gate. */
@@ -1136,8 +1156,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.previewCoalescer.dispose();
     this.previewStore.setRaw(null);
     this.dialog?.finish();
-    if (this.workflowKeywordNoticeTimer !== undefined) { clearTimeout(this.workflowKeywordNoticeTimer); this.workflowKeywordNoticeTimer = undefined; }
-    this.workflowKeywordNotice = undefined;
+    if (this.statusNoticeTimer !== undefined) { clearTimeout(this.statusNoticeTimer); this.statusNoticeTimer = undefined; }
+    this.statusNoticeOwner = undefined; this.statusNoticeText = undefined;
     if (this.escapeTimer) clearTimeout(this.escapeTimer);
     this.decoder.reset(); this.keys.reset();
     this.options.input.off('data', this.onData);
@@ -1274,6 +1294,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.emit('submit', effect.text, selection && this.diffPanel ? { sessionId: this.diffPanel.sessionId, promptUuid, selection } : undefined);
       }
       else if (effect.type === 'interrupt') this.emit('interrupt');
+      else if (effect.type === 'pasteGone') this.showPasteGoneNotice(effect.text);
       else this.emit('pasteRejected', effect.bytes);
     }
   }

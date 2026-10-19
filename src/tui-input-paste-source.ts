@@ -47,4 +47,10 @@ function xM(B7){let nC=wa.current==="link"?" ":"";wa.current=!1;let{value:dL,pas
 `).replaceAll("\t","    ");if(dL.length===0){let U7=x_(Xu);if(U7!=="prompt")Qn(U7),Xu=sI(Xu)}let Px=Xu.trim();let Rw=B5r(Px);if(Rw)Xu=Px;let TS=ji.current;if(TS!==null&&Aq[TS]?.type==="text"&&Aq[TS].content===Xu&&Pq(TS)){return}let cy=HF(Xu);let j7=Math.max(0,Math.min(dr-10,2));if(Xu.length>$q||cy>j7||Rw){if(!Rw)g("input_paste_large");let cL=hA(dL,Aq);ji.current=cL;let Oxe={id:cL,type:"text",content:Xu};if(In((TM)=>({...TM,[cL]:Oxe})),Pw(nC+tJ(cL,cy,Rw||U5r(Xu)?RDe:void 0)),Rw)wa.current="link";if(Xu.length<=fVe)Bo(!0),Ei.current?.(),Ei.current=ys.setTimeout(()=>{Bo(!1),Ei.current=null},8000)}else{let $7=WT()&&(upe(Xu)||HF(__e(Xu).text)>j7);if($7||mpe(Xu))In((Nxe)=>sY(Nxe,Xu,$7));Pw(nC+Xu,{isTyped:!0})}}
 return {paste:xM};
 }
-export {HF,tJ,Jd,U4t,sce,Mct,Ict,BE,UE,VAe,F4t,RDe};
+// Source chunk-n3ykh62m.js `jE` [464509,464881), `kPn` [464881,464922), `Fdr` [465087,465276)
+// and `GE` [465449,465520): the submit-time strip of placeholders whose paste record is gone,
+// and the notice the composer shows for the ones it removed.
+function jE(e,n,r,s){let h=Jd(e),y=[],b=e;for(let R=h.length-1;R>=0;R--){let T=h[R];if(!T.match.startsWith("[Image")&&n[T.id]?.unavailable===!0)b=b.slice(0,T.index)+b.slice(T.index+T.match.length),y.unshift({id:T.id,label:T.match.startsWith("[...Truncated text")?"Truncated text":"Pasted text"})}let w=UE(BE(e,h,n,!0,r),s,r,VAe(n));return{stripped:b,expanded:w,removed:y}}
+function GE(e){return D(e.map((n)=>`${n.label} #${n.id}`))}
+function Fdr(e){let n=GE(e),r=n.join(", ");return n.length===1?`${r} is no longer available and was removed from the prompt`:`${r} are no longer available and were removed from the prompt`}
+export {HF,tJ,Jd,U4t,sce,Mct,Ict,BE,UE,VAe,F4t,RDe,jE,Fdr};

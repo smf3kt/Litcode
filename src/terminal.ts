@@ -8,7 +8,7 @@ import { inputCursor, layoutInput } from './tui-input-navigation.js';
 import { inputKillRange, type InputKillCommand } from './tui-input-kill.js';
 import { killRingHead, nextYank, reduceKillRing, type KillRingState } from './kill-ring.js';
 import { InputUndo } from './tui-input-undo.js';
-import { InputPaste, expandPastedText, referencedPastes, type PastedContents } from './tui-input-paste.js';
+import { InputPaste, expandPastedText, pasteGoneNotice, referencedPastes, stripGonePastes, type PastedContents } from './tui-input-paste.js';
 import { parseTerminalResponse } from './tui-response-source.js';
 import { editExternal, type ExternalEditorResult } from './external-editor.js';
 import { InputVim, type EditorMode, type VimBridge } from './tui-vim.js';
@@ -79,7 +79,9 @@ export interface EditorPolicy {
   undoPush?: (text: string, cursor: number, pastedContents: PastedContents, ownSnapshot: boolean) => void;
 }
 export type EditorEffect = { type: 'submit'; text: string } | { type: 'interrupt' } | { type: 'exit' }
-  | { type: 'pasteRejected'; bytes: number };
+  | { type: 'pasteRejected'; bytes: number }
+  /** Source `addNotification({key:"pasted-text-unavailable", priority:"immediate"})`. */
+  | { type: 'pasteGone'; text: string };
 
 export function createEditorState(history: readonly string[] = []): EditorState {
   return { text: '', cursor: 0, history: history.map(cleanInput), historyIndex: history.length, historyDraft: '',
@@ -273,7 +275,19 @@ export function reduceEditor(state: EditorState, action: EditorAction, policy: E
       next={...next,text:gesture.text,cursor:gesture.cursor,historyIndex:state.history.length,historyDraft:gesture.text};break;
     }
     case 'submit': {
-      effects.push({ type: 'submit', text: expandPastedText(state.text,state.pastedContents) });
+      // Source local-submit branch (`chunk-24k7d6mw.js` 1345288): a placeholder whose paste
+      // record is gone is removed from the prompt and announced; when nothing else remains, or
+      // the draft is a slash command, the prompt is handed back instead of sent.
+      const stripped = stripGonePastes(state.text, state.pastedContents);
+      if (stripped.removed.length > 0) {
+        effects.push({ type: 'pasteGone', text: pasteGoneNotice(stripped.removed) });
+        // The source hands the prompt back with the caret at its end (`he(no), Pt(no.length)`).
+        if (stripped.stripped.trim() === '' || state.text.trimStart().startsWith('/')) {
+          next = { ...next, cursor: state.text.length };
+          break;
+        }
+      }
+      effects.push({ type: 'submit', text: stripped.expanded });
       const limit = Math.max(0, Math.floor(policy.historyLimit ?? 100));
       const add = state.text.trim() && (state.history.at(-1) !== state.text
         || JSON.stringify(state.historyPastes.at(-1) ?? {}) !== JSON.stringify(state.pastedContents));
@@ -595,7 +609,7 @@ export interface TerminalOptions extends EditorPolicy, TerminalCallbacks {
   escapeTimeoutMs?: number;
 }
 type TerminalEvents = {
-  submit: [text: string]; interrupt: []; exit: []; pasteRejected: [bytes: number]; inputError: [error: Error]; action:[action:string]; historyError:[error:unknown];
+  submit: [text: string]; interrupt: []; exit: []; pasteRejected: [bytes: number]; pasteGone: [text: string]; inputError: [error: Error]; action:[action:string]; historyError:[error:unknown];
 };
 
 /** In-memory editor. Queue submit events and route streamed writes through outputStream. */
@@ -990,6 +1004,7 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
       if (effect.type === 'exit') { this.close(); this.emit('exit'); }
       else if (effect.type === 'submit') this.emit('submit', effect.text);
       else if (effect.type === 'interrupt') this.emit('interrupt');
+      else if (effect.type === 'pasteGone') this.emit('pasteGone', effect.text);
       else this.emit('pasteRejected', effect.bytes);
     }
   }
