@@ -1,6 +1,6 @@
 # W183 permission destinations
 
-Status: local implementation validated, exact-path commit pending. Base commit1527a7f. Final identity96ea4a19c5bbf9005855a933f7fffe474120a1772843e1003c2c6a4a8148ec74; pre-comment-cleanup identity a200faac18a39c75b6808cf7645cc81a9d0f9b536c2577ad1c821282ad2e028a retains its historical runtime scope. Check/build,2607/2607full,18requestCLI,515file offline package and independent source-backed original-scenario/final-expansion checks pass. Earlier scoped identities below retain their own coverage. C5 broader settings UI and other C families are not closed by this package.
+Status: committed as `9882b12` (`Port local permission destinations and automatic classification`); the local implementation was validated at that commit. Base commit1527a7f. Final identity96ea4a19c5bbf9005855a933f7fffe474120a1772843e1003c2c6a4a8148ec74; pre-comment-cleanup identity a200faac18a39c75b6808cf7645cc81a9d0f9b536c2577ad1c821282ad2e028a retains its historical runtime scope. Check/build,2607/2607full,18requestCLI,515file offline package and independent source-backed original-scenario/final-expansion checks pass. Earlier scoped identities below retain their own coverage. The destination and persistence engine this record describes is the delivered C5 implementation; C5's broader settings UI (interactive UI restore) and other C families are not closed by this package.
 
 ## Source and implementation
 
