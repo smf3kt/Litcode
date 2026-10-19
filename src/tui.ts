@@ -118,8 +118,6 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   theme?: ThemeSetting;
   /** Version shown by the startup header. */
   version?: string;
-  /** `TERM_PROGRAM`; `Apple_Terminal` selects the source's dedicated welcome art. */
-  termProgram?: string;
   userDir?: string;
   workspace?: string;
   plugins?: import('./plugins.js').PluginConfig;
@@ -2455,12 +2453,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private welcomePreamble(columns: number): RenderedRow[] {
     const density = welcomeDensity(this.viewportSize().rows);
     const version = this.options.version ?? '';
-    const appleTerminal = this.options.termProgram === 'Apple_Terminal';
-    const key = JSON.stringify([columns, density, version, appleTerminal, this.theme.current, this.theme.overrides]);
+    const key = JSON.stringify([columns, density, version, this.theme.current, this.theme.overrides]);
     if (key !== this.welcomeKey) {
       this.welcomeRenderer ??= new TuiDocumentRenderer();
       this.welcomeRows = this.welcomeRenderer.renderElement(
-        jsx(Welcome, { theme: this.theme.current, version, density, appleTerminal }, undefined), columns,
+        jsx(Welcome, { theme: this.theme.current, version, density }, undefined), columns,
         { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
       this.welcomeKey = key;
     }

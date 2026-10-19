@@ -690,7 +690,6 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
         commands: tuiCommandsWithSkills(currentSession.config.skills),
         version: cliVersion(),
-        termProgram: process.env.TERM_PROGRAM,
         keybindings: currentSession.config.keybindings,
         prefersReducedMotion: currentSession.config.prefersReducedMotion,
         showTurnDuration: currentSession.config.showTurnDuration,
