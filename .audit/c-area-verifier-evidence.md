@@ -30,6 +30,21 @@ scroll-viewport context, and the source frame box (`es`) drops its border when
 Blocked-then-fixed: the acceptance could not reach turn 2 on any build until the runtime
 owner regression below was repaired.
 
+Two further compiled-PTY scenarios, written by the C2 writer and run independently here
+against the committed tree:
+
+```
+c2-tabs-pty.mjs          two real turns: "first\nSECOND\nTHIRD\n", tabs "Current   T2   T1",
+                         2 files changed, made.txt untracked, exitCode 0
+c2-resume-cancel-pty.mjs --resume <id> remounts the dialog on a stored session, 0 provider
+                         calls while open, Ctrl+C with the dialog open neither closes it
+                         nor kills the process, Escape closes, second exitCode 0
+```
+
+`/exit` cleanup is a normal exit, not a hang: the earlier "stuck" reading came from a
+driver that attached its `exit` listener after the 2 s settle window in which the child had
+already exited. With the listener created first, both drivers report `exitCode: 0`.
+
 ## Runtime owner regression: fixed and re-verified
 
 `Runtime owner configuration changed; release session resources before rebuilding`
@@ -133,20 +148,55 @@ rules (`w183-legacy-after-result.json`), and the `auto`/`dontAsk` classifier gat
 Recorded boundary: interactive UI restore stays unclosed and is not generalized from print
 resume, as the source report requires. Vendor account/remote policy stays excluded.
 
-## Full suite on the current tree
+## Full suite and identity on the closed tree
 
 ```
-npm test    2663 tests, 118 suites, 0 fail, 0 cancelled, 0 skipped
+npm test              2663 tests, 118 suites, 0 fail, 0 cancelled, 0 skipped
+npm run check         exit 0 (tsc --noEmit)
+node scripts/identity.mjs
+  sha256 88b41c2251d3b4c30da42b3a924c19adcbc158b298fdf686c7be4327f9a9335b
+  inputs 758 files   c7845f1c68dffaaf3c63f7506accb016d28940ad2da8b772a6f86aa3fcefa895
+  validation 237 files f4c0894bfda8a741e5f9cf2bea6cdd506bde228695df3b43325a356872a5f19b
+  build 519 files    c00057d98d784e7b6fb2b42dac43981846c430bfcdf418783c4daa6a510de4ce
 ```
 
-Bound to the working tree that contains the C2 inline mount and the runtime-owner fix.
+The identity digest was recomputed here and equals the one recorded with the W188/W189
+commits, so the acceptance runs above are bound to the same content.
 
-## Still open
+## Final closure check (last open row)
 
-The final local CLI/build/evidence row consumes this file. The W183 checklist row still
-contradicts itself (head claims commit `9882b12` and identity `96ea4a19`, tail lists
-recovery/children, whole-package compiled CLI and final independent acceptance as pending;
-the port record's Status still reads "exact-path commit pending"). W182's identity appears
-as both `4ee7b8a4` and `ed62c245`. W181's port record still ends "No commit or push"
-although `9caf843` contains it. None of these are product defects; all three are record
-inconsistencies that block a truthful exit checklist.
+Every path the checklist cites resolves on disk; the one apparent miss
+(`.audit/w183-recovery-child-handoff.md.`) was sentence punctuation captured by the scan,
+and the file exists. `research/ports/W183-permission-destinations.md`,
+`W184-plugin-components.md`, `W185-async-adoption.md`, `W186-local-peer.md`,
+`W188-turn-diff.md` and `W189-runtime-owner-fingerprint.md` are all present.
+
+The six preserved closures each have a source-backed record rather than a blanket label:
+
+| row | record |
+|---|---|
+| C1 W131 local startup/resume | `research/ports/W131-magpie-endpoint-rotation.md` — local launcher adaptation; the management surface is left untouched and remains a separate user action |
+| C3 dispositions 1/2/5/7 | recorded dispositions in `research/CURRENT.md` / `research/STATUS.md` |
+| C4 W47-W54 lock/checkpoint/GC | `research/ports/` W47-W54 chain records; W54's device-cache and torn-write boundary is recorded as unmeasurable, not pending |
+| C10 W124 | `research/ports/W124-c10-dispositions.md` — every residual phrase has a disposition, no product change |
+| C12 W144 + W45 | `research/ports/W144-gno-pipeline.md` (status accepted) and the W45 evidence set |
+| C2a W46-03 | `research/CURRENT.md` C-2a ledger entry with the W46-01/02/03 port ranges, probes and identities |
+
+Per-row dispositions for the active rows, including the caveats that are not defects, are in
+`/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/c-area-dispositions.md`.
+
+
+## Record issues, and their state after the coordinator's pass
+
+W183's row carried mid-entry pending language (recovery/children, whole-package compiled
+CLI, final independent acceptance) beside a head that already recorded the commit; the row
+now supersedes that text explicitly. W182's two identities are not a contradiction:
+`ed62c245` is the acceptance working tree, `4ee7b8a4` the combined identity that also
+covers the coordinator-owned canonical manifest. W181's "No commit or push" tail now notes
+the later `9caf843` commit. C7's Node22 sentence is replaced by the measured v22.23.3
+result. None of these were product defects.
+
+The W183 port record's own Status line and `research/STATUS.md` were not re-read after this
+pass; if either still reads "exact-path commit pending", that is the last stale sentence in
+the C-area records.
+
