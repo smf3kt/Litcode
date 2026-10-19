@@ -20,16 +20,14 @@ import { parseSettings } from '../src/runtime.js';
 import type { TaskRecord } from '../src/tasks.js';
 import { SKo } from '../src/tui-system-theme-source.js';
 import { setTimeout as delay } from 'node:timers/promises';
-import { welcomeDensity, WELCOME_ART_ROWS, WELCOME_OWL_ROWS } from '../src/tui-welcome.js';
+import { welcomeDensity, WELCOME_ART_ROWS } from '../src/tui-welcome.js';
 
 /** Terminal rows the composer, status line and margins take from the transcript. */
 const WELCOME_CHROME_ROWS = 4;
 
 /** The startup header leads the transcript, so content rows begin below it. */
-const welcomeRows = (rows: number) => {
-  const density = welcomeDensity(rows - WELCOME_CHROME_ROWS);
-  return density === 'art' ? WELCOME_ART_ROWS : density === 'owl' ? WELCOME_OWL_ROWS : 1;
-};
+const welcomeRows = (rows: number) =>
+  (welcomeDensity(rows - WELCOME_CHROME_ROWS) === 'art' ? WELCOME_ART_ROWS : 1);
 
 const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/headless') as { Terminal: typeof Terminal };
 const decoded = new WeakMap<Writable, Terminal>();
@@ -2362,7 +2360,7 @@ test('the startup header stays in the log and scrolls with it', () => {
     // Typing must not clear it: the header is the log's head, not a splash.
     tui.append({ kind: 'user', text: 'first task' });
     assert.equal(header(), 0);
-    assert.ok(screenLines(output).some(line => line.includes('▟█████████▙')));
+    assert.ok(screenLines(output).some(line => line.includes('█◉██▽██◉█')));
     // It scrolls away with the log and comes back on a wheel-up.
     for (let index = 0; index < 60; index++) tui.append({ kind: 'assistant', text: `row ${index}` });
     assert.equal(header(), -1);
