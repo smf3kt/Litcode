@@ -1018,12 +1018,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           let selected: string | undefined;
           if (terminal?.prompt) {
             const models = [...new Set([session.config.model,
-              ...(session.config.agentTypes ?? []).map(type => type.model).filter((model): model is string => Boolean(model) && model !== 'inherit'),
+              ...(session.config.agentTypes ?? []).map(type => type.model),
+              ...(session.config.skills ?? []).map(skill => skill.model),
               ...listSessions(session.config.workspace).map(item => item.model)])]
+              .filter((model): model is string => Boolean(model) && model !== 'inherit')
               .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
             const answer = await withTurn(signal => readDialog({ title: 'Model',
               message: `Current: ${session.config.model}\nChoose a local model or enter another gateway model ID.`,
-              choices: models.map(model => ({ label: model, value: model })), allowText: true, maxTextChars: 256 }, signal));
+              choices: models.map(model => ({ label: model, value: model })),
+              defaultIndex: Math.max(0, models.indexOf(session.config.model)),
+              allowText: true, maxTextChars: 256 }, signal));
             selected = answer?.text ?? answer?.selected[0];
           } else selected = (await withTurn(signal => readAnswer(`Current model: ${session.config.model}\nModel ID, or :cancel: `, signal))).trim();
           if (!selected || selected === ':cancel') { options.status.write('Model selection cancelled.\n'); continue; }

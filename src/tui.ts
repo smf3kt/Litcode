@@ -64,6 +64,10 @@ import type { TaskRecord } from './tasks.js';
 import { progressTime, type ProgressDisplaySettings } from './tui-progress-settings.js';
 import { createThemeColorComponents } from './tui-theme-color-components.js';
 import { S1 } from './tui-theme-colors.js';
+import { acceptanceText, commandSuggestions, layoutSuggestionRows, maxVisibleSuggestions,
+  suggestionsEmptyMessage, suggestionWindow, TUI_COMMANDS, type CommandSuggestion,
+  type TuiCommand } from './tui-autocomplete.js';
+import { te as symbols } from './tui-symbols.js';
 import { editExternal, type ExternalEditorResult } from './external-editor.js';
 import { InputVim, type EditorMode, type VimBridge } from './tui-vim.js';
 import { vimKey } from './tui-vim-keys.js';
@@ -96,6 +100,8 @@ import {
 export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   input: Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode?: (raw: boolean) => unknown };
   output: Writable & { isTTY?: boolean; columns?: number; rows?: number };
+  /** Slash commands offered above the composer; defaults to the local command table. */
+  commands?: readonly TuiCommand[];
   prompt?: string;
   continuationPrompt?: string;
   history?: readonly string[];
@@ -238,6 +244,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private cursorColumn = 0;
 
   private editor: EditorState;
+  /** Slash-command suggestion state, re-derived from the draft whenever it is read. */
+  private autocompleteIndex = 0;
+  private autocompleteForText = '';
+  private autocompleteDismissedText: string | undefined;
   /** The composer edit relay: the recovered `prompt.edit` hook, inert until a module hooks it. */
   private readonly editRelay: ComposerEditRelay;
   /** The runs a chain answer painted over the draft, held to the text they were painted for. */
@@ -1034,6 +1044,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   dispatch(action: EditorAction, sequence?: string): void {
     if (this.closed || this.editorSuspended || this.editorController) return;
+    // Source `Er`/`at.enter()`: Enter on an open suggestion accepts it first. The
+    // accepted draft ends with a space, so the follow-up submit passes this gate.
+    if ((action.type === 'return' || action.type === 'submit') && !this.keys.pendingChord
+      && (action.type !== 'return' || (!action.meta && !action.shift)) && this.autocompleteVisible()) {
+      if (this.acceptAutocomplete(true)) return;
+    }
     if (action.type === 'focus') { this.focus.set(action.focused); return; }
     if (action.type === 'search' && !this.sourceSearch?.snapshot.searching) { this.enterSearch(); return; }
     // The open picker owns the keyboard: source gLt handles its own keys and hands the rest to its
@@ -1141,7 +1157,89 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.screen !== 'chat') return contextStack({ screen: this.screen });
     const native = this.diffPanel?.width(this.options.output.columns ?? 80)
       ? this.diffPanel.keys.activeContexts as TuiContext[] : [];
-    return [...new Set([...(this.diffAttachmentFocused ? ['Footer' as const] : []), ...native, 'Chat', 'Scroll', 'Global'] as TuiContext[])];
+    // Source `nn(La,{context:"Autocomplete",isActive:ya&&!Wr})`: the list owns
+    // Tab/Escape/arrows while it is visible, and the chat context keeps the rest.
+    const autocomplete: TuiContext[] = this.autocompleteVisible() ? ['Autocomplete'] : [];
+    return [...new Set([...autocomplete, ...(this.diffAttachmentFocused ? ['Footer' as const] : []), ...native, 'Chat', 'Scroll', 'Global'] as TuiContext[])];
+  }
+
+  /** Slash suggestions for the current draft, or an empty list outside command entry. */
+  private autocompleteState(): { suggestions: CommandSuggestion[]; selected: number } {
+    if (this.screen !== 'chat' || this.dialog || this.sourceSearch?.snapshot.searching) {
+      return { suggestions: [], selected: -1 };
+    }
+    const text = this.editor.text;
+    if (this.autocompleteDismissedText === text) return { suggestions: [], selected: -1 };
+    const suggestions = commandSuggestions(text, this.editor.cursor,
+      this.options.commands ?? TUI_COMMANDS);
+    if (text !== this.autocompleteForText) {
+      const previous = suggestions[this.autocompleteIndex]?.id;
+      const retained = previous === undefined ? -1
+        : suggestions.findIndex(suggestion => suggestion.id === previous);
+      this.autocompleteForText = text;
+      this.autocompleteIndex = retained >= 0 ? retained : 0;
+    }
+    if (suggestions.length === 0) this.autocompleteIndex = 0;
+    const selected = suggestions.length === 0 ? -1
+      : Math.min(this.autocompleteIndex, suggestions.length - 1);
+    return { suggestions, selected };
+  }
+
+  private autocompleteVisible(): boolean {
+    return this.autocompleteState().suggestions.length > 0;
+  }
+
+  private moveAutocomplete(step: number): void {
+    const { suggestions, selected } = this.autocompleteState();
+    if (suggestions.length === 0) return;
+    this.autocompleteIndex = (selected + step + suggestions.length) % suggestions.length;
+    this.render();
+  }
+
+  private dismissAutocomplete(): void {
+    this.autocompleteDismissedText = this.editor.text;
+    this.autocompleteForText = this.editor.text;
+    this.autocompleteIndex = 0;
+    this.render();
+  }
+
+  /** Source `LK`/`Xn`: replace the draft with `/<name> `; Enter also submits when the
+   *  selected row is a local command or an argument-less prompt command. */
+  private acceptAutocomplete(execute: boolean): boolean {
+    const { suggestions, selected } = this.autocompleteState();
+    const suggestion = suggestions[selected];
+    if (!suggestion) return false;
+    const text = acceptanceText(suggestion);
+    const before = { text: this.editor.text, cursor: this.editor.cursor };
+    this.editor = { ...this.editor, text, cursor: text.length };
+    this.settleWorkflowKeyword();
+    this.publishDraft();
+    this.autocompleteForText = text;
+    this.autocompleteDismissedText = undefined;
+    this.autocompleteIndex = 0;
+    this.relayEdit({ type: 'insert', text }, before, '/');
+    if (execute && suggestion.executeOnAccept) {
+      this.dispatch({ type: 'return', sequence: '\r', meta: false, shift: false });
+      return true;
+    }
+    this.render();
+    return true;
+  }
+
+  /** Rows `iEe` draws above the composer, including its no-match message. */
+  private renderAutocompleteRows(columns: number, rows: number): string[] {
+    const { suggestions, selected } = this.autocompleteState();
+    if (suggestions.length === 0) {
+      const message = suggestionsEmptyMessage(this.editor.text, this.editor.cursor, suggestions);
+      return message === undefined ? [] : [`\u001b[2m${pad(`  ${message}`, columns)}\u001b[22m`];
+    }
+    const window = suggestionWindow(suggestions.length, selected, maxVisibleSuggestions(rows));
+    const visible = suggestions.slice(window.start, window.end);
+    const pointer = `${symbols.pointer} `;
+    return layoutSuggestionRows(visible, window.selected - window.start, columns, pointer)
+      .map((line, index) => index === window.selected - window.start
+        ? `\u001b[1m${line}\u001b[22m`
+        : `\u001b[2m${line}\u001b[22m`);
   }
 
   private readonly onData = (chunk: string | Buffer) => {
@@ -1391,6 +1489,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if ((!command || !['yank', 'yankPop', 'killLineStart', 'killLineEnd', 'killWordForward', 'killWordBackward', 'killWORDBackward'].includes(command))
       && !this.keys.pendingChord) this.resetKillMode();
     if(sequence==='\x1b'&&this.keys.pendingChord){this.handleKey(sequence,command);return;}
+    // Source `ds` (autocomplete:dismiss): Escape closes the list before any gesture handling.
+    if (sequence === '\x1b' && this.autocompleteVisible()) { this.dismissAutocomplete(); return; }
     if(sequence==='\x1b'&&this.options.sourceInputGestures&&this.screen==='chat'&&!this.vimEnabled&&!this.running){
       this.handleGesture('escape');return;
     }
@@ -1407,6 +1507,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (command === 'newline') { this.dispatch({ type: command }, sequence); return true; }
     if (sequence === '\x1b[B' && this.diffSelection.pending && !this.editor.text) {
       this.diffAttachmentFocused = true; this.render(); return true;
+    }
+    // Source `Js` hardcodes ctrl+n/ctrl+p beside the registry's arrow bindings.
+    if ((sequence === '\u000e' || sequence === '\u0010') && !this.keys.pendingChord
+      && this.autocompleteVisible()) {
+      this.moveAutocomplete(sequence === '\u000e' ? 1 : -1); return true;
     }
     const outcome = this.keys.push(sequence, this.contexts());
     if (outcome.kind === 'pending') return true;
@@ -1579,6 +1684,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       case 'historySearch:accept': case 'historySearch:cancel': if(this.handleSourcePicker(action))return true;if(this.sourceSearch?.snapshot.searching)this.sourceSearch.action(action);else this.leaveSearch(false);return true;
       case 'historySearch:execute': if(this.sourceSearch?.snapshot.searching)this.sourceSearch.action(action);else this.leaveSearch(true);return true;
       case 'historySearch:cycleScope': return this.handleSourcePicker(action);
+      case 'autocomplete:next': this.moveAutocomplete(1); return true;
+      case 'autocomplete:previous': this.moveAutocomplete(-1); return true;
+      case 'autocomplete:accept': return this.acceptAutocomplete(false);
+      case 'autocomplete:dismiss': this.dismissAutocomplete(); return true;
       case 'chat:submit': this.dispatch({ type: 'submit' }); return true;
       case 'chat:newline': this.dispatch({ type: 'newline' }); return true;
       case 'chat:undo': this.dispatch({ type: 'undo' }); return true;
@@ -2304,8 +2413,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const sidebarWidth = this.screen === 'chat' ? this.diffPanel?.width(columns) ?? 0 : 0;
     const conversationWidth = columns - sidebarWidth;
     const prompt = this.inputLayout(conversationWidth, rows);
-    const statusRows = this.renderStatusLine(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4));
-    const progressRows = this.renderProgress(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4 - statusRows.length));
+    // Source `iEe` draws the suggestion list above the composer; the transcript shrinks with it.
+    const hintRows = this.renderAutocompleteRows(conversationWidth, rows);
+    const statusRows = this.renderStatusLine(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4 - hintRows.length));
+    const progressRows = [...this.renderProgress(conversationWidth, rows,
+      Math.max(0, rows - prompt.lines.length - 4 - statusRows.length - hintRows.length)), ...hintRows];
     const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - progressRows.length - statusRows.length);
     const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows);
     const welcome = this.transcript.entries.length === 0 ? this.renderWelcome(conversationWidth, rows) : [];
