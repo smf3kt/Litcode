@@ -670,6 +670,29 @@ test('TUI undo restores measured caret and isolates stash, dialog and rejected a
   } finally { tui.close(); decoded.get(output)!.dispose(); context.mock.timers.reset(); }
 });
 
+test('the undo push treats a Vim INSERT run as one continuous gesture', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 18 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, editorMode: 'vim' }).start();
+  const key = async (value: string) => { input.emit('data', value); if (value === '\x1b') await delay(70); };
+  try {
+    // `Er.current` opens on the first push of a run, so the rest of the typing coalesces through
+    // the buffer's debounce; one undo therefore returns the text the run started from.
+    for (const character of 'pqr') await key(character);
+    await key('\x1b'); await key('u');
+    assert.equal(tui.state.text, '', 'one undo drops the whole INSERT run');
+    // Once a run's snapshot has landed, a mode switch opens a new run whose first push is its own
+    // snapshot, so an undo straight after it returns the text before that run rather than the start.
+    await key('i'); for (const character of 'abc') await key(character);
+    await delay(1100);
+    assert.equal(tui.state.text, 'abc');
+    await key('\x1b'); await key('i'); await key('x'); await key('\x1b'); await key('u');
+    assert.equal(tui.state.text, 'abc', 'the new run opens its own snapshot');
+  } finally { tui.close(); decoded.get(output)!.dispose(); }
+});
+
 test('grouped questions step through each question and review before submitting', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};

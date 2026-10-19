@@ -71,19 +71,26 @@ export class InputVim {
 
   get mode(): VimMode {return this.modeValue;}
   get anchor(): number | null {return this.anchorValue;}
+  /** Source `ds` (`chunk-24k7d6mw.js` 819300): the mode setter resets the open edit gesture. */
+  onModeChange: (mode: VimMode) => void = () => {};
+  private setMode(value: VimMode): void {
+    if (value === this.modeValue) return;
+    this.modeValue = value;
+    this.onModeChange(value);
+  }
   setRemaps(value?: Record<string,unknown>): void {
     if(JSON.stringify(value??{})!==JSON.stringify(this.remaps))this.cancelRemap();
     this.remaps=structuredClone(value??{});
   }
   externalMutation(): void {this.cancelRemap();this.forgetColumn();}
   close(): void {this.reset();this.registerState=undefined;}
-  reset(): void {this.slots=[];this.modeValue='INSERT';this.anchorValue=null;this.cancelRemap=()=>{};this.forgetColumn=()=>{};}
+  reset(): void {this.slots=[];this.setMode('INSERT');this.anchorValue=null;this.cancelRemap=()=>{};this.forgetColumn=()=>{};}
 
   private hooks(bridge: VimBridge) {
     this.slot=0;
     const hooks=this.source({value:bridge.text,columns:bridge.columns,
       onChange:(text:string,options?:{previous?:{value:string;cursorOffset:number}})=>bridge.change(text,options?.previous),
-      onModeChange:(mode:VimMode)=>{this.modeValue=mode;},onUndo:()=>bridge.undo(),
+      onModeChange:(mode:VimMode)=>{this.setMode(mode);},onUndo:()=>bridge.undo(),
       onOpenHistorySearch:()=>bridge.search(),onHistoryUp:()=>bridge.history(-1),onHistoryDown:()=>bridge.history(1),
     });
     this.cancelRemap=hooks.cancelPendingRemap;this.forgetColumn=hooks.forgetColumn;
@@ -114,6 +121,6 @@ export class InputVim {
       }};
     this.bridge=bridge;
     try{hooks.handleKeyDown(key,owner);}finally{this.bridge=undefined;}
-    const rendered=this.hooks(bridge);this.modeValue=rendered.mode;this.anchorValue=rendered.visualAnchor;
+    const rendered=this.hooks(bridge);this.setMode(rendered.mode);this.anchorValue=rendered.visualAnchor;
   }
 }

@@ -72,6 +72,11 @@ export interface EditorPolicy {
   sourceInputGestures?: boolean;
   editorMode?: EditorMode;
   vimInsertModeRemaps?: Record<string,unknown>;
+  /** Source `Du`'s push, when the owner carries the Vim mode and the open gesture the
+   *  immediate/continuous decision needs. `ownSnapshot` marks a wholesale draft replacement — the
+   *  Return newline conversion — which this product records immediately (W44-return-evidence
+   *  `adaptation.undo`); without this hook the reducer pushes on its own. */
+  undoPush?: (text: string, cursor: number, pastedContents: PastedContents, ownSnapshot: boolean) => void;
 }
 export type EditorEffect = { type: 'submit'; text: string } | { type: 'interrupt' } | { type: 'exit' }
   | { type: 'pasteRejected'; bytes: number };
@@ -305,8 +310,12 @@ export function reduceEditorWithUndo(state: EditorState, action: EditorAction, p
         historyIndex: state.history.length, historyDraft: snapshot.text, historyDraftPastes:structuredClone(snapshot.pastedContents) as PastedContents };
     }
   } else if (transition.effects.some(effect=>effect.type==='submit') || action.type === 'interrupt' && !state.running) undo.clear();
-  else if (transition.state.text !== state.text && action.type !== 'running')
-    undo.record(state.text,state.cursor,action.type==='return'?{immediate:true}:undefined,state.pastedContents);
+  else if (transition.state.text !== state.text && action.type !== 'running') {
+    // Source `Du` is one push every composer edit goes through, and it decides `immediate` itself
+    // from the Vim mode and the open gesture; an owner that carries that state supplies `undoPush`.
+    if (policy.undoPush) policy.undoPush(state.text, state.cursor, state.pastedContents, action.type === 'return');
+    else undo.record(state.text,state.cursor,action.type==='return'?{immediate:true}:undefined,state.pastedContents);
+  }
   return transition;
 }
 
