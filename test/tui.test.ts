@@ -20,6 +20,10 @@ import { parseSettings } from '../src/runtime.js';
 import type { TaskRecord } from '../src/tasks.js';
 import { SKo } from '../src/tui-system-theme-source.js';
 import { setTimeout as delay } from 'node:timers/promises';
+import { WELCOME_MIN_ROWS } from '../src/tui-welcome.js';
+
+/** The startup header leads the transcript, so content rows begin below it. */
+const welcomeRows = (rows: number) => (rows < WELCOME_MIN_ROWS ? 1 : 16);
 
 const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/headless') as { Terminal: typeof Terminal };
 const decoded = new WeakMap<Writable, Terminal>();
@@ -285,15 +289,16 @@ test('wheel scrolling unpins the live tail and respects prompt, screen and mode 
     for (let i = 0; i < 20; i++) tui.append({ kind: 'assistant', text: `line ${i}` });
     key('draft');
     key('\x1b[<64;2;3M');
-    assert.equal(tui.transcriptState.offset, 13); // Six visible rows after the source input's two borders.
+    // Five visible rows after the source input's two borders and the startup header.
+    assert.equal(tui.transcriptState.offset, 14);
     tui.append({ kind: 'assistant', text: 'new output' });
-    assert.equal(tui.transcriptState.offset, 13);
+    assert.equal(tui.transcriptState.offset, 14);
     key('\x1b[M' + String.fromCharCode(97, 34, 35));
-    assert.equal(tui.transcriptState.offset, 14);
+    assert.equal(tui.transcriptState.offset, 15);
     key('\x1b[<64;2;9M\x1b[<64;0;3M\x1b[<0;2;3M\x1b[<0;2;3m');
-    assert.equal(tui.transcriptState.offset, 14);
+    assert.equal(tui.transcriptState.offset, 15);
     key('\u0012\x1b[<64;2;3M'); // Search owns its input; wheel does not move the transcript.
-    assert.equal(tui.transcriptState.offset, 14);
+    assert.equal(tui.transcriptState.offset, 15);
     assert.equal(tui.state.text, 'draft');
   } finally { tui.close(); }
   const off = new TuiTerminal({ input, output, mouseTracking: 'off' }).start();
@@ -387,26 +392,30 @@ test('multi-click selects the word and then the whole row, and a drag extends th
   // A double click on 'beta-gamma' takes the whole hyphenated run, not just 'beta'.
   const double = open();
   try {
-    double.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M');
+    const top = welcomeRows(10) + 1;
+    double.key(`\x1b[<0;7;${top}M\x1b[<0;7;${top}m\x1b[<0;7;${top}M`);
     assert.equal(double.copy(), 'beta-gamma');
   } finally { double.tui.close(); }
   // A drag in the same sequence keeps the word span and grows its far edge.
   const dragged = open();
   try {
-    dragged.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<32;22;1M');
+    const top = welcomeRows(10) + 1;
+    dragged.key(`\x1b[<0;7;${top}M\x1b[<0;7;${top}m\x1b[<0;7;${top}M\x1b[<32;22;${top}M`);
     assert.equal(dragged.copy(), 'beta-gamma delta');
   } finally { dragged.tui.close(); }
   // A third press selects the whole rendered row.
   const triple = open();
   try {
-    triple.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M');
+    const top = welcomeRows(10) + 1;
+    triple.key(`\x1b[<0;7;${top}M\x1b[<0;7;${top}m\x1b[<0;7;${top}M\x1b[<0;7;${top}m\x1b[<0;7;${top}M`);
     assert.equal(triple.copy(), 'alpha beta-gamma delta');
   } finally { triple.tui.close(); }
   // A line span drags by row, and its moving end snaps to the whole row under
   // the pointer rather than to the raw cell.
   const byLine = open();
   try {
-    byLine.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<32;4;2M');
+    const top = welcomeRows(10) + 1;
+    byLine.key(`\x1b[<0;7;${top}M\x1b[<0;7;${top}m\x1b[<0;7;${top}M\x1b[<0;7;${top}m\x1b[<0;7;${top}M\x1b[<32;4;${top + 1}M`);
     assert.equal(byLine.copy(), 'alpha beta-gamma delta\nsecond row');
   } finally { byLine.tui.close(); }
   // A word span snaps the moving end to the word under the pointer, so a drag
@@ -414,24 +423,27 @@ test('multi-click selects the word and then the whole row, and a drag extends th
   // raw cells between the two points.
   const snapped = open();
   try {
-    snapped.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<32;20;1M');
+    const top = welcomeRows(10) + 1;
+    snapped.key(`\x1b[<0;7;${top}M\x1b[<0;7;${top}m\x1b[<0;7;${top}M\x1b[<32;20;${top}M`);
     assert.equal(snapped.copy(), 'beta-gamma delta');
   } finally { snapped.tui.close(); }
   // A press far from the previous one restarts the sequence at one click, so a
   // drag from it is a plain character span rather than a word or row.
   const restarted = open();
   try {
-    restarted.key('\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M');
-    restarted.key('\x1b[<0;1;2M\x1b[<32;4;2M');
+    const top = welcomeRows(10) + 1;
+    restarted.key(`\x1b[<0;7;${top}M\x1b[<0;7;${top}m\x1b[<0;7;${top}M`);
+    restarted.key(`\x1b[<0;1;${top + 1}M\x1b[<32;4;${top + 1}M`);
     assert.equal(restarted.copy(), 'seco');
   } finally { restarted.tui.close(); }
   // Changing screens between presses restarts the sequence, so the press after
   // the change is a plain one rather than the second half of a double click.
   const acrossScreens = open();
   try {
-    acrossScreens.key('\x1b[<0;7;1M');
+    const top = welcomeRows(10) + 1;
+    acrossScreens.key(`\x1b[<0;7;${top}M`);
     acrossScreens.key('\u000f');
-    acrossScreens.key('\x1b[<0;7;1M\x1b[<0;4;1m');
+    acrossScreens.key(`\x1b[<0;7;${top}M\x1b[<0;4;${top}m`);
     // A plain span between cells 6 and 3, i.e. 'ha b' reversed into reading order.
     assert.equal(acrossScreens.copy(), 'ha b');
   } finally { acrossScreens.tui.close(); }
@@ -460,13 +472,15 @@ test('wrapped rows copy as one logical line while explicit newlines keep theirs'
     indented.tui.append({ kind: 'user', text: 'aaaaaaaaaaaaaaaaaaaaaaaa\nbbbb' });
     // Selecting all three rows joins the wrapped tail back onto the first line,
     // while the explicit newline keeps its own prefix.
-    indented.key('\x1b[<0;1;1M\x1b[<32;10;3M\x1b[<0;10;3m');
+    const top = welcomeRows(10) + 1;
+    indented.key(`\x1b[<0;1;${top}M\x1b[<32;10;${top + 2}M\x1b[<0;10;${top + 2}m`);
     assert.equal(indented.copy(), '> aaaaaaaaaaaaaaaaaaaaaaaa\n> bbbb');
   } finally { indented.tui.close(); }
   // A wrap point that lands on a space keeps it, so the halves do not glue.
   const spaced = open(12, 'hello world foo bar baz');
   try {
-    spaced.key('\x1b[<0;1;1M\x1b[<32;12;2M\x1b[<0;12;2m');
+    const top = welcomeRows(10) + 1;
+    spaced.key(`\x1b[<0;1;${top}M\x1b[<32;12;${top + 1}M\x1b[<0;12;${top + 1}m`);
     assert.equal(spaced.copy(), 'hello world foo bar baz');
   } finally { spaced.tui.close(); }
 });
@@ -509,12 +523,12 @@ test('actual TUI input reaches contextual navigation while paste and overrides k
     for (let i = 0; i < 20; i++) tui.append({ kind: 'assistant', text: `line ${i}` });
     key('draft'); key('\u000f');
     assert.equal(tui.currentScreen, 'transcript');
-    key('k'); assert.equal(tui.transcriptState.offset, 13);
-    key('j'); assert.equal(tui.transcriptState.offset, 14);
+    key('k'); assert.equal(tui.transcriptState.offset, 14);
+    key('j'); assert.equal(tui.transcriptState.offset, 15);
     key('\u0005'); assert.equal(tui.transcriptState.showAll, true);
     key('g'); assert.equal(tui.transcriptState.offset, 0);
-    key('G'); assert.equal(tui.transcriptState.offset, 14);
-    key('\x1b[5~'); assert.equal(tui.transcriptState.offset, 8);
+    key('G'); assert.equal(tui.transcriptState.offset, 15);
+    key('\x1b[5~'); assert.equal(tui.transcriptState.offset, 9);
     key('q'); assert.equal(tui.currentScreen, 'chat');
     assert.equal(tui.state.text, 'draft');
     key('\u000f\x1b'); await wait();
@@ -1440,7 +1454,8 @@ test('highlight setting invalidates streamed and completed transcript caches wit
     assert.equal(cell.getFgColor(), highlighted ? 4 : -1);
     assert.equal(cell.getFgColorMode(), highlighted ? 16777216 : 0);
     assert.equal(screenLines(output).some(line => line.trim() === 'ts'), !highlighted);
-    assert.ok(decoded.get(output)!.buffer.active.getLine(0)!.getCell(2)!.isBold());
+    // The header row, then the speaker's blank gutter row, then the heading.
+    assert.ok(decoded.get(output)!.buffer.active.getLine(welcomeRows(24) + 1)!.getCell(2)!.isBold());
     return row;
   };
   try {
@@ -2325,4 +2340,28 @@ test('a terminal can open the full-screen interface and leave it on exit', { tim
   assert.match(result.stdout, /ctrl\+o/);
   // No task was given, so the session must not have spent a model call.
   assert.doesNotMatch(result.stdout, /model calls: [1-9]/);
+});
+
+test('the startup header stays in the log and scrolls with it', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 40 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, version: '1.2.3' }).start();
+  const key = (text: string) => input.emit('data', text);
+  const header = () => screenLines(output).findIndex(line => line.includes('Welcome to LiTcode'));
+  try {
+    assert.equal(header(), 0);
+    // Typing must not clear it: the header is the log's head, not a splash.
+    tui.append({ kind: 'user', text: 'first task' });
+    assert.equal(header(), 0);
+    assert.ok(screenLines(output).some(line => line.includes('▄█████▄')));
+    // It scrolls away with the log and comes back on a wheel-up.
+    for (let index = 0; index < 60; index++) tui.append({ kind: 'assistant', text: `row ${index}` });
+    assert.equal(header(), -1);
+    assert.ok(tui.transcriptState.offset > 0);
+    for (let index = 0; index < 200 && header() < 0; index++) key('\x1b[<64;2;3M');
+    assert.equal(header(), 0);
+    assert.equal(tui.transcriptState.offset, 0);
+  } finally { tui.close(); }
 });

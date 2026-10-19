@@ -1151,7 +1151,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return { ...body, lines, cursorColumn: body.cursorColumn + 2 };
   }
 
-  private transcriptTotal(columns: number): number { return transcriptLines(this.transcript, columns, this.renderEntryRows).length; }
+  private transcriptTotal(columns: number): number {
+    return transcriptLines(this.transcript, columns, this.renderEntryRows, this.welcomePreamble(columns)).length;
+  }
 
   private contexts(): TuiContext[] {
     if (this.screen !== 'chat') return contextStack({ screen: this.screen });
@@ -1617,14 +1619,16 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Rendered text of one absolute transcript row, when it is on screen. */
   private renderedRow(line: number): string | undefined {
     const view = this.viewportSize();
-    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows);
+    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows,
+      this.welcomePreamble(view.columns));
     return viewport.lines[line - viewport.offset];
   }
 
   /** Map a terminal coordinate to the transcript line and cell it lands on. */
   private anchorAt(col: number, row: number): SelectionAnchor | null {
     const view = this.viewportSize();
-    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows);
+    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows,
+      this.welcomePreamble(view.columns));
     const text = viewport.lines[row - 1];
     if (text === undefined) return null;
     return { line: row - 1 + viewport.offset, column: selectionColumn(text, col - 1) };
@@ -1724,7 +1728,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.renderer.selectionInstance.moveSelectionFocus(direction); this.render(); return;
     }
     const view = this.viewportSize();
-    const lines = transcriptLines(this.transcript, view.columns, this.renderEntryRows);
+    const lines = transcriptLines(this.transcript, view.columns, this.renderEntryRows, this.welcomePreamble(view.columns));
     if (!lines.length) return;
     const from = this.selection.focus ?? this.selection.anchor ?? this.anchorAt(1, 1)!;
     if (!this.selection.anchor) this.selection = reduceSelection(this.selection, { type: 'start', at: from });
@@ -1733,7 +1737,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const column = !Number.isFinite(dx) ? selectionColumn(text, dx < 0 ? 0 : Infinity)
       : dy ? selectionColumn(text, from.column) : moveSelectionColumn(text, from.column, dx);
     this.selection = reduceSelection(this.selection, { type: 'extend', to: { line, column } });
-    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows);
+    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows,
+      this.welcomePreamble(view.columns));
     if (line < viewport.offset) this.transcript = { ...this.transcript, offset: line };
     else if (line >= viewport.offset + view.rows) this.transcript = { ...this.transcript, offset: line - view.rows + 1 };
     this.render();
@@ -1742,7 +1747,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Copy the span through OSC 52, then take it down as the recovered app does. */
   private copySelection(): void {
     const view = this.viewportSize();
-    const rows = renderedTranscriptRows(this.transcript, view.columns, this.renderEntryRows);
+    const rows = renderedTranscriptRows(this.transcript, view.columns, this.renderEntryRows, this.welcomePreamble(view.columns));
     const native = this.renderer?.selectionInstance;
     const text = native?.hasTextSelection() ? native.copySelectionNoClear()
       : selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
@@ -2401,7 +2406,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         {theme:this.theme.current,themeOverrides:this.theme.overrides});
       const queryRows = queryDocument.map(row=>row.ansi);
       const height = Math.max(0,rows-prompt.lines.length-queryRows.length-3);
-      const viewport=layoutTranscript(this.transcript,columns,height,this.renderEntryRows);
+      const viewport=layoutTranscript(this.transcript,columns,height,this.renderEntryRows,this.welcomePreamble(columns));
       const frame=Array.from({length:height},(_,index)=>viewport.rows[index]?.ansi ?? pad('',columns));
       const target=rows-1;
       this.renderer ??= new TuiRenderer(this.options.output,this.options.synchronizedUpdate ?? true);
@@ -2419,13 +2424,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const progressRows = [...this.renderProgress(conversationWidth, rows,
       Math.max(0, rows - prompt.lines.length - 4 - statusRows.length - hintRows.length)), ...hintRows];
     const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - progressRows.length - statusRows.length);
-    const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows);
-    const welcome = this.transcript.entries.length === 0 ? this.renderWelcome(conversationWidth, rows) : [];
+    const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows,
+      this.welcomePreamble(conversationWidth));
 
     const frame: string[] = [];
     for (let row = 0; row < transcriptRows; row++) {
       const rendered = viewport.rows[row];
-      frame.push(welcome[row] ?? rendered?.ansi ?? pad(rendered?.text ?? '', conversationWidth));
+      frame.push(rendered?.ansi ?? pad(rendered?.text ?? '', conversationWidth));
     }
     const target = transcriptRows + progressRows.length + 1 + prompt.cursorRow;
     this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true, () => {
@@ -2443,10 +2448,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   /**
-   * The startup header (`Hee`) is shown only while the transcript is empty.
-   * Below 30 terminal rows the source collapses it to one line.
+   * The startup header (`Hee`) leads the transcript's rendered rows without being
+   * an entry, so it stays in the log and scrolls with it instead of vanishing on
+   * the first keystroke. Below 30 terminal rows the source collapses it to one line.
    */
-  private renderWelcome(columns: number, rows: number): string[] {
+  private welcomePreamble(columns: number): RenderedRow[] {
+    const rows = this.viewportSize().rows;
     const compact = rows < WELCOME_MIN_ROWS;
     const version = this.options.version ?? '';
     const appleTerminal = this.options.termProgram === 'Apple_Terminal';
@@ -2458,7 +2465,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
       this.welcomeKey = key;
     }
-    return this.welcomeRows;
+    return this.welcomeRows.map(ansi => ({ text: plainRow(ansi, columns), continuation: false, indent: 0, ansi }));
   }
 
   private renderStatusLine(columns: number, rows: number, maximum: number): string[] {
@@ -2564,6 +2571,11 @@ export function previewBox(content: string, maxLines: number, maxWidth: number):
   }
   out.push(`${PREVIEW_BOX.bl}${PREVIEW_BOX.h.repeat(width - 2)}${PREVIEW_BOX.br}`);
   return out;
+}
+
+/** The startup header leads the scrollable log, so it scrolls with the transcript. */
+function plainRow(ansi: string, columns: number): string {
+  return pad(ansi.replace(/\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07]*(?:\x07|\x1b\\)/g, ''), columns);
 }
 
 /** Pad or clip a screen row at grapheme boundaries to keep the frame aligned. */
