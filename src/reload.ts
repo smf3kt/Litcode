@@ -40,6 +40,10 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   if(settings.vimInsertModeRemaps!==undefined)next.vimInsertModeRemaps=settings.vimInsertModeRemaps;
   if (settings.maxProseWidth !== undefined) next.maxProseWidth = settings.maxProseWidth;
   else delete next.maxProseWidth;
+  if (settings.askUserQuestionTimeout !== undefined) next.askUserQuestionTimeout = settings.askUserQuestionTimeout;
+  else delete next.askUserQuestionTimeout;
+  if (settings.dialogExpiry !== undefined) next.dialogExpiry = settings.dialogExpiry;
+  else delete next.dialogExpiry;
   if (settings.syntaxHighlightingDisabled !== undefined) next.syntaxHighlightingDisabled = settings.syntaxHighlightingDisabled;
   else delete next.syntaxHighlightingDisabled;
   if (settings.enableWorkflows !== undefined) next.enableWorkflows = settings.enableWorkflows;

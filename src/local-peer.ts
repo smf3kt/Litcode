@@ -625,11 +625,41 @@ export function inboundVerdict(input: { explicit?: InboundPolicy; selfSent?: boo
 
 export type HeldResolution = "delivered" | "dropped" | "gone" | "dropped-by-guard";
 
-/** `R`/`A`/`wht` (chunk-0ydceggj.js): bounded FIFO with receipts. */
+/**
+ * Recovered `Ade`/`Ab` (chunk-14rnebpd.js [216426,216500)): the held-approval
+ * window is `CLAUDE_CODE_USER_DIALOG_TIMEOUT_MS` when it parses as numeric
+ * milliseconds, else the `dialogExpiry` setting (`60s`/`5m`/`10m`, or `never`
+ * for 0), else 300000 ms. A unit-suffixed environment value is not numeric and
+ * falls back to the setting, which is the recovered release-note fix.
+ */
+export function heldApprovalTimeoutMs(setting: string | undefined,
+  env: Readonly<Record<string, string | undefined>> = process.env): number {
+  const raw = env.CLAUDE_CODE_USER_DIALOG_TIMEOUT_MS?.trim();
+  if (raw !== undefined && raw !== "") {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  switch (setting) {
+    case "60s": return 60_000;
+    case "5m": return 300_000;
+    case "10m": return 600_000;
+    case "never": return 0;
+    default: return 300_000;
+  }
+}
+
+/**
+ * `R`/`A`/`wht` (chunk-0ydceggj.js): bounded FIFO with receipts. `JUt`
+ * (chunk-rx2nah4x.js) additionally arms an approval timeout for the two mode
+ * causes; on expiry the still-held message is dropped with an `expired`
+ * receipt. Other causes wait for an explicit decision or close.
+ */
 export class HeldQueue {
   readonly limit: number;
   private readonly entries: HeldMessage[] = [];
   private readonly announced = new Map<HeldMessage, HeldCause>();
+  private readonly expiry = new Map<HeldMessage, NodeJS.Timeout>();
+  private readonly heldTimeoutMs: () => number;
   constructor(private readonly callbacks: {
     verdict: (message: HeldMessage) => { policy: InboundPolicy; holdCause?: HeldCause; refuseCause?: "opt-out" };
     deliver: (message: HeldMessage) => boolean;
@@ -637,8 +667,42 @@ export class HeldQueue {
     onHeld?: (message: HeldMessage, count: number, cause: HeldCause) => void;
     onDropped?: (message: HeldMessage, reason: "refused" | "expired" | "dropped") => void;
     onReleased?: (messages: HeldMessage[], cause: string) => void;
-  }, options: { limit?: number } = {}) {
+  }, options: { limit?: number; heldTimeoutMs?: () => number } = {}) {
     this.limit = options.limit ?? HELD_LIMIT;
+    this.heldTimeoutMs = options.heldTimeoutMs ?? (() => 0);
+  }
+
+  /**
+   * `JUt`: each re-evaluation clears the message's timer and re-arms it only
+   * for `mode-mismatch`/`no-mode-asserted` with a positive window.
+   */
+  private rearm(message: HeldMessage): void {
+    const existing = this.expiry.get(message);
+    if (existing !== undefined) { clearTimeout(existing); this.expiry.delete(message); }
+    const cause = this.announced.get(message);
+    if (cause !== "mode-mismatch" && cause !== "no-mode-asserted") return;
+    const windowMs = this.heldTimeoutMs();
+    if (!Number.isFinite(windowMs) || windowMs <= 0) return;
+    const timer = setTimeout(() => this.expireOnTimeout(message), windowMs);
+    timer.unref?.();
+    this.expiry.set(message, timer);
+  }
+
+  private expireOnTimeout(message: HeldMessage): void {
+    this.expiry.delete(message);
+    const index = this.entries.indexOf(message);
+    if (index === -1) return;
+    const cause = this.announced.get(message);
+    if (cause !== "mode-mismatch" && cause !== "no-mode-asserted") return;
+    this.entries.splice(index, 1);
+    this.announced.delete(message);
+    this.callbacks.receipt?.(message, "expired");
+    this.callbacks.onDropped?.(message, "expired");
+  }
+
+  private clearExpiry(message: HeldMessage): void {
+    const existing = this.expiry.get(message);
+    if (existing !== undefined) { clearTimeout(existing); this.expiry.delete(message); }
   }
 
   list(): HeldMessage[] { return [...this.entries]; }
@@ -650,6 +714,7 @@ export class HeldQueue {
       const evicted = this.entries.shift();
       if (evicted) {
         this.announced.delete(evicted);
+        this.clearExpiry(evicted);
         this.callbacks.receipt?.(evicted, "expired");
         this.callbacks.onDropped?.(evicted, "expired");
       }
@@ -658,6 +723,7 @@ export class HeldQueue {
     this.announced.set(message, message.cause);
     this.callbacks.onHeld?.(message, this.entries.length, message.cause);
     this.callbacks.receipt?.(message, "held");
+    this.rearm(message);
   }
 
   /** `A`: re-evaluate every held message against the current gate. */
@@ -685,6 +751,10 @@ export class HeldQueue {
       this.announced.set(message, next);
       this.callbacks.onHeld?.(message, this.entries.length, next);
     }
+    // `JUt` runs for every re-evaluated entry: clear the old timer and arm a
+    // new one only while the message stays held for a mode cause.
+    for (const message of kept) this.rearm(message);
+    for (const message of admitted) this.clearExpiry(message);
     const delivered = admitted.filter(message => {
       if (this.callbacks.deliver(message)) return true;
       this.announced.delete(message);
@@ -706,6 +776,7 @@ export class HeldQueue {
     if (index === -1) return "gone";
     this.entries.splice(index, 1);
     this.announced.delete(message);
+    this.clearExpiry(message);
     if (decision !== "approve") {
       this.callbacks.receipt?.(message, decision === "deny" ? "denied" : "expired");
       this.callbacks.onDropped?.(message, decision === "deny" ? "refused" : "expired");
@@ -731,6 +802,7 @@ export class HeldQueue {
     if (this.entries.length === 0) return;
     const messages = this.entries.splice(0, this.entries.length);
     this.announced.clear();
+    for (const message of messages) this.clearExpiry(message);
     const pending: Promise<void>[] = [];
     for (const message of messages) {
       this.callbacks.receipt?.(message, "expired");
@@ -854,6 +926,8 @@ export type PeerInboxOptions = {
   firstLineDeadlineMs?: number;
   policy?: () => InboundPolicy | undefined;
   mode?: () => { mode: string; bypassAvailable?: boolean } | null;
+  /** `Ade`: the held-approval window in milliseconds; 0 or less disables it. */
+  heldTimeoutMs?: () => number;
   /** `Rwt` (chunk-sfn1dbxq.js [472253,472852)): consume or rewrite before admission. */
   receive?: (frame: { from?: string; text: string; msgId?: string }) => { consume?: true; content?: string } | Promise<{ consume?: true; content?: string }>;
   onAccepted: (message: AcceptedMessage) => void;
@@ -944,7 +1018,7 @@ export async function startPeerInbox(options: PeerInboxOptions): Promise<PeerInb
     onHeld: message => options.onHeld?.(message),
     onDropped: (message, reason) => options.onDropped?.(message, reason),
     onReleased: (messages, cause) => options.onNotice?.({ kind: "held-released", message: `released ${messages.length} held peer message(s) (${cause})` }),
-  }, { limit: HELD_LIMIT });
+  }, { limit: HELD_LIMIT, ...(options.heldTimeoutMs === undefined ? {} : { heldTimeoutMs: options.heldTimeoutMs }) });
   state.held = held;
   options.onNotice?.({ kind: "listening", message: "listening", address: peerAddress(socketPath) });
   const inbox: PeerInbox = {
@@ -1134,6 +1208,7 @@ export type LocalPeerTransportOptions = {
   socketPath?: string;
   policy?: () => InboundPolicy | undefined;
   mode?: () => { mode: string; bypassAvailable?: boolean } | null;
+  heldTimeoutMs?: () => number;
   receive?: PeerInboxOptions["receive"];
   onEvent: (event: PeerTransportEvent) => void;
   logger?: PeerInboxOptions["logger"];
@@ -1176,6 +1251,7 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
     ...(options.requireAuth === undefined ? {} : { requireAuth: options.requireAuth }),
     ...(options.policy === undefined ? {} : { policy: options.policy }),
     ...(options.mode === undefined ? {} : { mode: options.mode }),
+    ...(options.heldTimeoutMs === undefined ? {} : { heldTimeoutMs: options.heldTimeoutMs }),
     ...(options.receive === undefined ? {} : { receive: options.receive }),
     onAccepted: message => emit({ kind: "message", message }),
     onHeld: message => emit({ kind: "held", message, count: inbox.held.size() }),

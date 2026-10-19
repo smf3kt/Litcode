@@ -40,6 +40,22 @@ export function afkTimeoutSettings(
   return { timeoutMs, countdownMs: Math.min(intEnv(env.CLAUDE_AFK_COUNTDOWN_MS) ?? 20_000, timeoutMs) };
 }
 
+/**
+ * Recovered `XZe` (chunk-24k7d6mw.js [1165013,1165119)) over the
+ * `askUserQuestionTimeout` setting read by `Kdt` (chunk-x0dc37w9.js
+ * [109538,109592)): the three
+ * explicit durations map to their milliseconds, `never` and every value the
+ * settings schema rejects (it falls back to undefined) disable AFK.
+ */
+export function askUserQuestionTimeoutMs(value: unknown): number | null {
+  switch (value) {
+    case '60s': return 60_000;
+    case '5m': return 300_000;
+    case '10m': return 600_000;
+    default: return null;
+  }
+}
+
 /** The source tick's remaining/countdown computation, with the same ceiling. */
 export function afkCountdown(settings: AfkTimeoutSettings, fullSeconds: number, elapsedMs: number): AfkCountdown {
   const remainingSeconds = elapsedMs >= settings.timeoutMs - settings.countdownMs

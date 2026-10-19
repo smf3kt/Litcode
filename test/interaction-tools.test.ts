@@ -573,3 +573,56 @@ test('invalid queue configuration fails immediately', () => {
     assert.throws(() => createInteractionTools(options), /Invalid interaction/);
   }
 });
+
+const questionImage = { type: 'image', source: { type: 'base64', media_type: 'image/png',
+  data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==' } };
+
+test('an ask answer forwards converted image blocks beside its JSON text', async () => {
+  const tool = createInteractionTools({ ask: async () => ({ answers: [{ questionIndex: 0, selected: ['A'] }],
+    contentBlocks: [questionImage] }) }).find(item => item.schema.name === 'ask_user_question')!;
+  const blocks = await tool.executeBlocks!(structuredClone(question), context());
+  assert.ok(Array.isArray(blocks));
+  assert.equal(blocks.length, 2);
+  assert.equal(blocks[0]!.type, 'text');
+  assert.deepEqual(JSON.parse((blocks[0] as { text: string }).text), { answers: [{ questionIndex: 0, selected: ['A'] }] });
+  assert.deepEqual(blocks[1], questionImage);
+  // `execute` keeps the JSON text only, so the base64 is never duplicated.
+  assert.deepEqual(JSON.parse(await tool.execute(structuredClone(question), context())),
+    { answers: [{ questionIndex: 0, selected: ['A'] }] });
+});
+
+test('a clarification forwards the same converted blocks', async () => {
+  const tool = createInteractionTools({ ask: async () => ({ behavior: 'deny' as const, feedback: 'clarify',
+    contentBlocks: [questionImage] }) }).find(item => item.schema.name === 'ask_user_question')!;
+  const blocks = await tool.executeBlocks!(structuredClone(question), context());
+  assert.ok(Array.isArray(blocks));
+  assert.equal(blocks.length, 2);
+  assert.deepEqual(JSON.parse((blocks[0] as { text: string }).text), { behavior: 'deny', feedback: 'clarify' });
+  assert.deepEqual(blocks[1], questionImage);
+});
+
+test('an AFK-resolved answer carries the host marker and the recovered notice', async () => {
+  const afk: AskUserQuestionAnswer = { answers: [{ questionIndex: 0, selected: ['A'], annotations: { notes: 'note' } }], afkTimeoutMs: 60_000 };
+  const result = JSON.parse(await tools({ ask: async () => afk })('ask_user_question', structuredClone(question)));
+  assert.equal(result.afkTimeoutMs, 60_000);
+  assert.match(result.notice, /^No response after 60s — the user may be away from keyboard\. Proceed using your best judgment based on the context so far; you can re-ask this question later if it's still relevant\./);
+  assert.match(result.notice, /\n\nBefore going idle the user had selected: "Which implementation\?"="A" notes: note\.$/);
+  // A human-resolved answer has no marker and no notice.
+  const plain = JSON.parse(await tools({ ask: async () => answer })('ask_user_question', structuredClone(question)));
+  assert.equal(plain.afkTimeoutMs, undefined);
+  assert.equal(plain.notice, undefined);
+  // The marker is host-only; a non-positive value is not an admitted answer.
+  await assert.rejects(tools({ ask: async () => ({ ...afk, afkTimeoutMs: 0 }) })('ask_user_question', structuredClone(question)), /invalid data/);
+});
+
+test('an invalid or oversized content block fails the call', async () => {
+  const tool = (contentBlocks: unknown[]) => createInteractionTools({ ask: async () => ({ answers: [{ questionIndex: 0, selected: ['A'] }],
+    contentBlocks }) }).find(item => item.schema.name === 'ask_user_question')!;
+  const broken = { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAAA' } };
+  await assert.rejects(tool([broken]).executeBlocks!(structuredClone(question), context()),
+    /content block is not a valid image or text block/);
+  await assert.rejects(tool(Array.from({ length: INTERACTION_LIMITS.contentBlocks + 1 }, () => questionImage))
+    .executeBlocks!(structuredClone(question), context()), /contentBlocks/);
+  await assert.rejects(tool([{ type: 'text', text: 'x'.repeat(INTERACTION_LIMITS.contentBlockTextChars + 1) }])
+    .executeBlocks!(structuredClone(question), context()), /content block text is invalid/);
+});

@@ -303,6 +303,8 @@ function newConfig(
   if(settings.editorMode!==undefined)config.editorMode=settings.editorMode;
   if(settings.vimInsertModeRemaps!==undefined)config.vimInsertModeRemaps=settings.vimInsertModeRemaps;
   if (settings.maxProseWidth !== undefined) config.maxProseWidth = settings.maxProseWidth;
+  if (settings.askUserQuestionTimeout !== undefined) config.askUserQuestionTimeout = settings.askUserQuestionTimeout;
+  if (settings.dialogExpiry !== undefined) config.dialogExpiry = settings.dialogExpiry;
   if (settings.syntaxHighlightingDisabled !== undefined) config.syntaxHighlightingDisabled = settings.syntaxHighlightingDisabled;
   if (settings.enableWorkflows !== undefined) config.enableWorkflows = settings.enableWorkflows;
   if (settings.workflowKeywordTriggerEnabled !== undefined) config.workflowKeywordTriggerEnabled = settings.workflowKeywordTriggerEnabled;

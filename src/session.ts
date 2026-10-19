@@ -79,6 +79,10 @@ export type SessionConfig = {
   editorMode?: import('./tui-vim.js').EditorMode;
   vimInsertModeRemaps?: Record<string,unknown>;
   maxProseWidth?: number;
+  /** `Kdt`: idle time before the question dialog auto-continues; absent means never. */
+  askUserQuestionTimeout?: '60s' | '5m' | '10m' | 'never';
+  /** `Ade`/`onn`: how long a held peer message awaits approval; absent is 5m. */
+  dialogExpiry?: '60s' | '5m' | '10m' | 'never';
   syntaxHighlightingDisabled?: boolean;
   /** Composer workflow-keyword gates: the `dg` availability switch and the `C7t` trigger setting. */
   enableWorkflows?: boolean;
@@ -208,6 +212,9 @@ export const configSchema = z.object({
   editorMode: editorModeSchema,
   vimInsertModeRemaps: vimRemapsSchema,
   maxProseWidth: z.number().int().min(40).optional(),
+  // Recovered schema: enum with `.catch(void 0)`, so an invalid value is unset.
+  askUserQuestionTimeout: z.enum(['60s', '5m', '10m', 'never']).optional().catch(undefined),
+  dialogExpiry: z.enum(['60s', '5m', '10m', 'never']).optional().catch(undefined),
   syntaxHighlightingDisabled: z.boolean().optional(),
   // `enableWorkflows` and `workflowKeywordTriggerEnabled` are the two settings the composer's
   // workflow-keyword gate reads (chunk-c5zwk83v.js `dg`/`C7t`).

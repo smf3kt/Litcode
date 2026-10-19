@@ -64,7 +64,7 @@ import { ENTER_ALT_SCREEN, LEAVE_ALT_SCREEN, MOUSE_OFF, MOUSE_SCROLL, TerminalMo
 import { Keymap, contextStack, expandChord, type TuiContext } from '../src/tui-keys.js';
 import { createTranscriptState, layoutTranscript, reduceTranscript, renderedTranscriptRows, transcriptLines } from '../src/tui-transcript.js';
 import { pad, previewBox, TuiTerminal } from '../src/tui.js';
-import { afkCountdown, afkTimeoutSettings } from '../src/tui-afk.js';
+import { afkCountdown, afkTimeoutSettings, askUserQuestionTimeoutMs } from '../src/tui-afk.js';
 import { layoutEngine } from '../src/tui-layout.js';
 import { renderPreviewMarkdown } from '../src/tui-markdown.js';
 import { wrapMessageText } from '../src/tui-wrap.js';
@@ -700,6 +700,13 @@ test('AFK settings follow the recovered enable gate and environment overrides', 
     { remainingSeconds: 20, showCountdown: true });
   assert.deepEqual(afkCountdown({ timeoutMs: 60_000, countdownMs: 20_000 }, 60, 60_000),
     { remainingSeconds: 0, showCountdown: true });
+  // `Kdt`/`XZe`: only the three explicit durations arm the dialog clock.
+  assert.equal(askUserQuestionTimeoutMs('60s'), 60_000);
+  assert.equal(askUserQuestionTimeoutMs('5m'), 300_000);
+  assert.equal(askUserQuestionTimeoutMs('10m'), 600_000);
+  assert.equal(askUserQuestionTimeoutMs('never'), null);
+  assert.equal(askUserQuestionTimeoutMs(undefined), null);
+  assert.equal(askUserQuestionTimeoutMs('1h'), null);
 });
 
 test('the AFK countdown auto-continues with the answers taken so far', async (context) => {
@@ -729,7 +736,7 @@ test('the AFK countdown auto-continues with the answers taken so far', async (co
     assert.ok(!frame().at(-1)!.includes('auto-continue'), drawn);
     key('\x1b[O');        // Focus leaves again, so idle time resumes.
     context.mock.timers.tick(60_000);
-    assert.deepEqual(await pending, { selected: [], groups: [{ key: 'First', selected: ['A'] }] });
+    assert.deepEqual(await pending, { selected: [], groups: [{ key: 'First', selected: ['A'] }], afkTimeoutMs: 60_000 });
   } finally { tui.close(); context.mock.timers.reset(); }
 });
 
@@ -752,7 +759,7 @@ test('AFK stays at full while the terminal is focused', async (context) => {
     assert.ok(!frame().at(-1)!.includes('auto-continue'), drawn);
     key('\x1b[O');
     context.mock.timers.tick(60_000);
-    assert.deepEqual(await pending, { selected: [], groups: [] });
+    assert.deepEqual(await pending, { selected: [], groups: [], afkTimeoutMs: 60_000 });
   } finally { tui.close(); context.mock.timers.reset(); }
 });
 
