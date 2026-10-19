@@ -56,7 +56,7 @@ export interface CommandSuggestion {
   readonly insertName: string;
   readonly displayText: string;
   readonly description: string;
-  readonly kind: 'command' | 'skill' | 'emoji';
+  readonly kind: 'command' | 'skill' | 'emoji' | 'file' | 'directory';
   /** Source `Wre`: the resolved lane. An emoji row has no lane, which is `_t`'s
    *  "kind is undefined" case. */
   readonly lane?: SuggestionLane;
@@ -265,15 +265,9 @@ export function maxVisibleSuggestions(rows: number): number {
   return Math.max(1, Math.min(Math.max(6, Math.floor(rows / 2)), rows - 3));
 }
 
+/** `ct`: the plain row's cuts all end in an ellipsis, so this is the end cut. */
 function truncateCells(text: string, columns: number): string {
-  if (columns <= 0) return '';
-  let out = '', used = 0;
-  for (const { segment } of new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(text)) {
-    const cells = cellWidth(segment);
-    if (used + cells > columns) break;
-    out += segment; used += cells;
-  }
-  return out;
+  return clipEnd(text, columns);
 }
 
 /**
@@ -335,7 +329,8 @@ function descriptionPlacement(row: CommandSuggestion, maxColumnWidth: number, wi
  *  description does not fit beside the lanes. */
 export function suggestionRowHeight(row: CommandSuggestion, maxColumnWidth: number, width: number,
   pointerWidth: number): number {
-  if (!row.description) return 1;
+  // Source `_o`: a special family never wraps, whatever its description says.
+  if (isSpecialRow(row.id) || !row.description) return 1;
   const { room } = descriptionPlacement(row, maxColumnWidth, width, pointerWidth);
   if (room <= 0) return 1;
   return cellWidth(collapsedDescription(row)) > room ? 2 : 1;
@@ -344,7 +339,7 @@ export function suggestionRowHeight(row: CommandSuggestion, maxColumnWidth: numb
 /** `Ue`: the first line and the remainder, split at the last whole word that fits. */
 export function splitDescription(text: string, cells: number): [string, string] {
   if (cells <= 0 || cellWidth(text) <= cells) return [text, ''];
-  const head = truncateCells(text, cells);
+  const head = clipHead(text, cells);
   const rest = text.slice(head.length);
   if (rest.startsWith(' ')) return [head, rest.trimStart()];
   const space = head.lastIndexOf(' ');
@@ -378,6 +373,76 @@ export function suggestionRowOwners(heights: readonly number[]): number[] {
   return owners;
 }
 
+/** Source `Zt`: the families that get their own lane glyph and row layout. */
+export function isSpecialRow(id: string): boolean {
+  return id.startsWith('file-') || id.startsWith('mcp-resource-')
+    || id.startsWith('mcp-template') || id.startsWith('agent-');
+}
+
+/** Source `ue`: the glyph a special family draws instead of a kind lane. */
+export function specialRowGlyph(id: string): string | undefined {
+  if (id.startsWith('file-')) return '+';
+  if (id.startsWith('mcp-resource-') || id.startsWith('mcp-template')) return '◇';
+  if (id.startsWith('agent-')) return '*';
+  return undefined;
+}
+
+/** The grapheme iterator every width-aware cut shares. */
+const SEGMENTER = new Intl.Segmenter('en', { granularity: 'grapheme' });
+
+/** `ct`: the head of the text plus an ellipsis. */
+function clipEnd(text: string, columns: number): string {
+  if (cellWidth(text) <= columns) return text;
+  if (columns <= 1) return '…';
+  return clipHead(text, columns - 1) + '…';
+}
+
+/** `qB`: as many leading whole graphemes as fit, with no ellipsis. */
+function clipHead(text: string, columns: number): string {
+  if (cellWidth(text) <= columns) return text;
+  if (columns <= 0) return '';
+  let out = '', used = 0;
+  for (const { segment } of SEGMENTER.segment(text)) {
+    const cells = cellWidth(segment);
+    if (used + cells > columns) break;
+    out += segment;
+    used += cells;
+  }
+  return out;
+}
+
+/** `OO`: an ellipsis then the tail of the text, which keeps a path's last segment. */
+function clipLeading(text: string, columns: number): string {
+  if (cellWidth(text) <= columns) return text;
+  if (columns <= 1) return '…';
+  const budget = columns - 1;
+  const segments = [...SEGMENTER.segment(text)].map(part => part.segment);
+  let used = 0, start = segments.length;
+  for (let index = segments.length - 1; index >= 0; index--) {
+    const cells = cellWidth(segments[index]!);
+    if (used + cells > budget) break;
+    used += cells;
+    start = index;
+  }
+  return `…${segments.slice(start).join('')}`;
+}
+
+/**
+ * `hc`: a path cut in the middle so its basename survives. A basename that fills the
+ * budget falls back to the tail, and a budget under five cells to a plain head cut.
+ */
+function clipMiddle(text: string, columns: number): string {
+  if (cellWidth(text) <= columns) return text;
+  if (columns <= 0) return '…';
+  if (columns < 5) return clipEnd(text, columns);
+  const slash = Math.max(text.lastIndexOf('/'), text.lastIndexOf('\\'));
+  const base = slash >= 0 ? text.slice(slash) : text;
+  const directory = slash >= 0 ? text.slice(0, slash) : '';
+  const baseWidth = cellWidth(base);
+  if (baseWidth >= columns - 1) return clipLeading(text, columns);
+  return clipHead(directory, columns - 1 - baseWidth) + '…' + base;
+}
+
 /** The widest row plus five, which is what the source passes as `maxColumnWidth`. */
 export function suggestionMaxColumnWidth(suggestions: readonly CommandSuggestion[]): number {
   return suggestions.reduce((max, row) => Math.max(max, cellWidth(row.displayText)), 0) + 5;
@@ -407,6 +472,31 @@ export function suggestionRowSegments(suggestions: readonly CommandSuggestion[],
   const lines: SuggestionRowSegment[][] = [];
   suggestions.forEach((suggestion, index) => {
     const gutter = index === selected ? pointer : ' '.repeat(pointerWidth);
+    const glyph = specialRowGlyph(suggestion.id);
+    if (glyph !== undefined) {
+      const description = collapsedDescription(suggestion);
+      const separator = suggestion.description ? 3 : 0;
+      // Source `ze`: a file row reserves a description column capped at twenty cells and
+      // cuts its path in the middle; an MCP resource shows a plain thirty-cell head.
+      const fileFamily = suggestion.id.startsWith('file-')
+        || suggestion.id.startsWith('mcp-template::') || suggestion.id.startsWith('mcp-template-value::');
+      let name = suggestion.displayText;
+      if (fileFamily) {
+        const descriptionColumn = suggestion.description ? Math.min(20, cellWidth(description)) : 0;
+        const nameBudget = width - pointerWidth - 2 - 4 - separator - descriptionColumn;
+        name = suggestion.id.startsWith('mcp-template-value::')
+          ? clipLeading(name, nameBudget) : clipMiddle(name, nameBudget);
+      } else if (suggestion.id.startsWith('mcp-resource-')) {
+        name = clipEnd(name, 30);
+      }
+      const descriptionBudget = width - pointerWidth - 2 - cellWidth(name) - separator - 4;
+      const text = suggestion.description
+        ? `${gutter}${glyph} ${name} – ${clipEnd(description, Math.max(0, descriptionBudget))}`
+        : `${gutter}${glyph} ${name}`;
+      const padded = cellWidth(text) >= width ? clipHead(text, width) : text + ' '.repeat(width - cellWidth(text));
+      lines.push([{ text: padded }]);
+      return;
+    }
     const { column, tagWidth, laneWidth, room } = descriptionPlacement(suggestion, maxColumnWidth, width, pointerWidth);
     const name = truncateCells(suggestion.displayText, Math.max(0, column - 2 - pointerWidth));
     const { kindLaneText, kindLabel, sourceText } = suggestionLanes(suggestion);

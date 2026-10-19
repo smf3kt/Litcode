@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
 /**
  * Full-screen interaction layer.
  *
@@ -64,7 +65,12 @@ import type { TaskRecord } from './tasks.js';
 import { progressTime, type ProgressDisplaySettings } from './tui-progress-settings.js';
 import { createThemeColorComponents } from './tui-theme-color-components.js';
 import { S1 } from './tui-theme-colors.js';
-import { EMOJI_QUERY, acceptEmojiQuery, emojiSuggestions, inlineEmojiCompletion } from './tui-emoji.js';
+import { acceptEmojiQuery, inlineEmojiCompletion } from './tui-emoji.js';
+import { FileIndex } from './tui-file-index.js';
+import {
+  atQuery, applyFileSuggestion, commonPrefix, directorySuggestionRows, fileSuggestionRows,
+  listWorkingDirectory, shapeAtDisplayText, FILE_SUGGESTION_LIMIT, type AtQuery,
+} from './tui-file-suggestions.js';
 import { ge } from './tui-color.js';
 
 /** The sixteen ANSI foreground names a theme slot can name. */
@@ -82,6 +88,46 @@ function slotForeground(slot: string | undefined): string {
   const code = ANSI_FOREGROUND[slot.replace(/^ansi:/, '')];
   return code === undefined ? '' : `\u001b[${code}m`;
 }
+
+/** `P0e`: a directory listing is reused for fifteen seconds. */
+const DIRECTORY_LISTING_TTL = 15_000;
+/** The walk fallback stops here, which is the source's own entry budget order of size. */
+const FILE_INDEX_ENTRY_LIMIT = 20_000;
+/** Directories the walk never descends into, matching the source's ripgrep globs. */
+const WALK_SKIP = new Set(['.git', '.svn', '.hg', '.bzr', '.jj', '.sl']);
+
+/** `A`/`X`: one `git ls-files` run, or undefined when the workspace is not a repository. */
+async function gitPathList(args: readonly string[], cwd: string): Promise<string[] | undefined> {
+  return new Promise(resolve => {
+    execFile('git', [...args], { cwd, timeout: 10_000, maxBuffer: 64 * 1024 * 1024 },
+      (error, stdout) => {
+        if (error) { resolve(undefined); return; }
+        resolve(String(stdout).split('\n').filter(line => line.length > 0));
+      });
+  });
+}
+
+/** `z`: the bounded directory walk that stands in for the source's ripgrep listing. */
+function walkWorkspace(root: string, limit: number): string[] {
+  const found: string[] = [];
+  const queue: string[] = [''];
+  while (queue.length > 0 && found.length < limit) {
+    const relative = queue.shift()!;
+    const absolute = relative === '' ? root : path.join(root, relative);
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(absolute, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      if (found.length >= limit) break;
+      const child = relative === '' ? entry.name : `${relative}/${entry.name}`;
+      if (entry.isDirectory()) {
+        if (WALK_SKIP.has(entry.name)) continue;
+        queue.push(child);
+      } else if (entry.isFile()) found.push(child);
+    }
+  }
+  return found;
+}
+
 import { acceptanceText, commandSuggestions, emojiRows, maxVisibleSuggestions, suggestionMaxColumnWidth,
   suggestionRowHeight, suggestionRowOwners, suggestionRowSegments, suggestionRowWindow,
   suggestionsEmptyMessage, TUI_COMMANDS, type CommandSuggestion,
@@ -356,6 +402,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private workflowKeywordTriggerEnabled = true;
   /** Source `Kl().emojiCompletionEnabled !== false`: the `:name:` typeahead is on by default. */
   private emojiCompletionEnabled = true;
+  /** The `@path` index (`mnn`), filled in the background from the workspace's file list. */
+  private readonly fileIndex = new FileIndex();
+  private fileIndexStarted = false;
+  /** The directory listings an explicit `@./path` asks for, cached for the source's TTL. */
+  private readonly directoryListings = new Map<string, { at: number; entries: { name: string; isDirectory: boolean }[] }>();
   /** `Zi`: the per-draft dismissal the alt+w toggle sets. */
   private workflowKeywordDismissed = false;
   /** The keyed notice `workflow-keyword-ignored`, shown on the one status row this terminal has. */
@@ -1212,8 +1263,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Source order: the `:name:` popup is tried first and falls through to the command
     // list, so a slash draft is unaffected while emoji completion is on.
     const emoji = this.emojiCompletionEnabled ? emojiRows(text, this.editor.cursor) : undefined;
-    const suggestions = emoji ?? commandSuggestions(text, this.editor.cursor,
-      this.options.commands ?? TUI_COMMANDS);
+    // Source order after the commands: an `@` draft asks the file index instead.
+    const at = emoji === undefined ? atQuery(text, this.editor.cursor) : undefined;
+    const suggestions = emoji ?? (at === undefined
+      ? commandSuggestions(text, this.editor.cursor, this.options.commands ?? TUI_COMMANDS)
+      : this.atSuggestionRows(at));
     if (text !== this.autocompleteForText) {
       const previous = suggestions[this.autocompleteIndex]?.id;
       const retained = previous === undefined ? -1
@@ -1225,6 +1279,56 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const selected = suggestions.length === 0 ? -1
       : Math.min(this.autocompleteIndex, suggestions.length - 1);
     return { suggestions, selected };
+  }
+
+  /** Source `SDs`/`jre`: the rows an `@` draft shows. A file row searches the index;
+   *  an explicit path lists one directory. */
+  private atSuggestionRows(at: AtQuery): CommandSuggestion[] {
+    const workspace = this.options.workspace ?? process.cwd();
+    this.ensureFileIndex(workspace);
+    const rows = at.explicit
+      ? directorySuggestionRows(at.partial, workspace, directory => this.directoryListing(directory))
+      : fileSuggestionRows(query => this.fileIndex.search(query, FILE_SUGGESTION_LIMIT),
+        at.partial, workspace, () => listWorkingDirectory(workspace));
+    const kind = at.explicit ? 'directory' as const : 'file' as const;
+    return rows.map(row => ({
+      id: row.id, name: row.displayText, insertName: row.displayText,
+      displayText: row.displayText, description: row.description ?? '',
+      kind, executeOnAccept: false,
+    }));
+  }
+
+  /** `kDt`: one directory's entries, held for the source's fifteen-second TTL. The source
+   *  caches per session asynchronously; the local render path is synchronous, so the
+   *  listing is read here and only the TTL is kept. */
+  private directoryListing(directory: string): readonly { name: string; isDirectory: boolean }[] {
+    const now = Date.now();
+    const cached = this.directoryListings.get(directory);
+    if (cached !== undefined && now - cached.at < DIRECTORY_LISTING_TTL) return cached.entries;
+    let entries: { name: string; isDirectory: boolean }[] = [];
+    try {
+      entries = fs.readdirSync(directory, { withFileTypes: true })
+        .map(entry => ({ name: entry.name, isDirectory: entry.isDirectory() }));
+    } catch { entries = []; }
+    this.directoryListings.set(directory, { at: now, entries });
+    return entries;
+  }
+
+  /** `q`/`ubn`: the index is built once, in the background, the first time an `@` needs it. */
+  private ensureFileIndex(workspace: string): void {
+    if (this.fileIndexStarted) return;
+    this.fileIndexStarted = true;
+    void this.loadFileIndex(workspace);
+  }
+
+  private async loadFileIndex(workspace: string): Promise<void> {
+    const tracked = await gitPathList(['-c', 'core.quotepath=false', 'ls-files'], workspace);
+    const untracked = await gitPathList(
+      ['-c', 'core.quotepath=false', 'ls-files', '--others', '--exclude-standard'], workspace);
+    const paths = tracked ?? walkWorkspace(workspace, FILE_INDEX_ENTRY_LIMIT);
+    this.fileIndex.loadFromFileList([...paths, ...untracked ?? []]);
+    // The band can only appear once the index answers, so repaint when it lands.
+    if (this.started && !this.closed) this.render();
   }
 
   private autocompleteVisible(): boolean {
@@ -1264,6 +1368,29 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!suggestion) return false;
     // Source `tE`: an emoji row replaces `:partial` with its glyph and a space, and never
     // submits, on either the accept key or Enter.
+    if (suggestion.kind === 'file' || suggestion.kind === 'directory') {
+      const at = atQuery(this.editor.text, this.editor.cursor);
+      if (at === undefined) return false;
+      const hasAtPrefix = at.token.startsWith('@');
+      const typed = at.isQuoted ? at.token.slice(2).replace(/"$/, '').length
+        : hasAtPrefix ? at.token.length - 1 : at.token.length;
+      // Source: Tab first fills the prefix every row shares, then a second Tab accepts one.
+      const common = commonPrefix(suggestions.map(row => row.displayText));
+      const replacement = common.length > typed
+        ? shapeAtDisplayText(common, { hasAtPrefix, isQuoted: at.isQuoted, isComplete: false })
+        : shapeAtDisplayText(suggestion.displayText, { hasAtPrefix, isQuoted: at.isQuoted,
+          needsQuotes: suggestion.displayText.includes(' '), isComplete: true });
+      const applied = applyFileSuggestion(this.editor.text, at, replacement);
+      const before = { text: this.editor.text, cursor: this.editor.cursor };
+      this.editor = { ...this.editor, text: applied.text, cursor: applied.cursor };
+      this.publishDraft();
+      this.autocompleteForText = applied.text;
+      this.autocompleteDismissedText = undefined;
+      this.autocompleteIndex = 0;
+      this.relayEdit({ type: 'insert', text: replacement }, before, '@');
+      this.render();
+      return true;
+    }
     if (suggestion.kind === 'emoji') {
       const replaced = acceptEmojiQuery(this.editor.text, this.editor.cursor, suggestion.displayText);
       if (replaced === undefined) return false;
