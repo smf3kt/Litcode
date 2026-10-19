@@ -1,4 +1,5 @@
 import { cellWidth } from './terminal.js';
+import { EMOJI_QUERY, emojiSuggestions } from './tui-emoji.js';
 
 /**
  * Slash-command suggestions for the composer, adapted from the recovered
@@ -55,9 +56,10 @@ export interface CommandSuggestion {
   readonly insertName: string;
   readonly displayText: string;
   readonly description: string;
-  readonly kind: 'command' | 'skill';
-  /** Source `Wre`: the resolved lane, present only when the list draws lanes. */
-  readonly lane: SuggestionLane;
+  readonly kind: 'command' | 'skill' | 'emoji';
+  /** Source `Wre`: the resolved lane. An emoji row has no lane, which is `_t`'s
+   *  "kind is undefined" case. */
+  readonly lane?: SuggestionLane;
   /** Source `Wre`: `[dynamic workflow]` for a workflow prompt entry. */
   readonly tag?: string;
   /** Source `_Dt`: `project`/`org`/`claude.ai` for a prompt entry from that source. */
@@ -207,6 +209,25 @@ function toSuggestion(command: TuiCommand, matchedAlias?: string): CommandSugges
     matchedAlias,
     executeOnAccept: command.kind === 'command' || command.requiresArguments !== true,
   };
+}
+
+/**
+ * Source `H0e`: the `:partial` popup. The trigger is on the text before the cursor only,
+ * so an emoji row appears while the shortcode is still being typed. Returns undefined when
+ * the draft is not an emoji query, which is the source's fall-through to the command list.
+ */
+export function emojiRows(text: string, cursor: number): CommandSuggestion[] | undefined {
+  const match = text.slice(0, cursor).match(EMOJI_QUERY);
+  if (!match) return undefined;
+  return emojiSuggestions(match[2]!).map(row => ({
+    id: row.id,
+    name: row.name,
+    insertName: row.name,
+    displayText: row.displayText,
+    description: row.description,
+    kind: 'emoji' as const,
+    executeOnAccept: false,
+  }));
 }
 
 /** `U0`: empty prefix orders the first five skills, then local commands, then the rest. */

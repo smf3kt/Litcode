@@ -174,6 +174,42 @@ function startComposer(commands: readonly TuiCommand[]) {
   return { tui, submitted, input, screen };
 }
 
+test('typing a colon opens the emoji list and accepting inserts the glyph', () => {
+  const composer = startComposer(TUI_COMMANDS);
+  const key = (text: string) => composer.input.emit('data', text);
+  try {
+    key(':roc');
+    const opened = composer.screen();
+    assert.ok(opened.includes('🚀'), `the rocket row is on screen: ${opened}`);
+    assert.ok(opened.includes(':rocket:'), 'the row describes its shortcode');
+    assert.equal(composer.tui.state.text, ':roc', 'the trigger leaves the draft alone');
+    key('\r');
+    assert.equal(composer.tui.state.text, '🚀 ');
+    assert.deepEqual(composer.submitted, [], 'an emoji row never submits');
+    assert.equal(composer.screen().includes(':rocket:'), false, 'the list closed');
+  } finally { composer.tui.close(); }
+});
+
+test('a completed shortcode is replaced inline, and a slash draft still lists commands', () => {
+  const composer = startComposer(TUI_COMMANDS);
+  const key = (text: string) => composer.input.emit('data', text);
+  try {
+    // The closing colon is the keystroke that swaps the shortcode for its glyph.
+    key(':rocket');
+    assert.equal(composer.tui.state.text, ':rocket');
+    key(':');
+    assert.equal(composer.tui.state.text, '🚀');
+    assert.equal(composer.tui.state.cursor, 2);
+    // An unknown name is left as typed.
+    key(' :nope:');
+    assert.equal(composer.tui.state.text, '🚀 :nope:');
+    // Emoji completion is tried first but falls through, so a slash draft is unaffected.
+    key('\u0015/mo');
+    assert.equal(composer.tui.state.text, '/mo');
+    assert.ok(composer.screen().includes('/model'), 'the command list still opens');
+  } finally { composer.tui.close(); }
+});
+
 test('typing a slash opens the suggestion list above the composer', () => {
   const composer = startComposer(TUI_COMMANDS);
   const key = (text: string) => composer.input.emit('data', text);

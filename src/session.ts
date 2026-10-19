@@ -88,6 +88,8 @@ export type SessionConfig = {
   /** Composer workflow-keyword gates: the `dg` availability switch and the `C7t` trigger setting. */
   enableWorkflows?: boolean;
   workflowKeywordTriggerEnabled?: boolean;
+  /** The `:name:` emoji typeahead. Absent or true enables it. */
+  emojiCompletionEnabled?: boolean;
   theme?: ThemeSetting;
   statusLine?: import('./tui-statusline.js').StatusLineSetting;
   webSearch?: WebSearchConfig;
@@ -221,6 +223,8 @@ export const configSchema = z.object({
   // workflow-keyword gate reads (chunk-c5zwk83v.js `dg`/`C7t`).
   enableWorkflows: z.boolean().optional(),
   workflowKeywordTriggerEnabled: z.boolean().optional(),
+  // The `:name:` emoji typeahead switch (`chunk-24k7d6mw.js` `Kl().emojiCompletionEnabled`).
+  emojiCompletionEnabled: z.boolean().optional(),
   theme: z.string().refine(value => parseTheme(value) !== undefined, 'Invalid theme').optional(),
   statusLine: statusLineSchema,
   webSearch: webSearchConfigSchema.optional(),

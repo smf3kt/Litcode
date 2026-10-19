@@ -1233,6 +1233,8 @@ export interface TerminalSurface {
   setSyntaxHighlightingDisabled?(value?: boolean): void;
   /** The composer's `dg()`/`C7t()` gates; the keyword run and its alt+w toggle exist only while both hold. */
   setWorkflowKeywordSettings?(settings: { available: boolean; triggerEnabled: boolean }): void;
+  /** The `:name:` emoji typeahead switch. Absent means enabled. */
+  setEmojiCompletion?(enabled: boolean): void;
   setTheme?(value?: import('./tui-theme-state.js').ThemeSetting): void;
   bindThemeCatalog?(userDir?: string, workspace?: string, plugins?: import('./plugins.js').PluginConfig): void;
   getThemeChoices?(): Promise<TerminalPromptChoice[]>;
