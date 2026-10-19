@@ -67,6 +67,8 @@ import { createThemeColorComponents } from './tui-theme-color-components.js';
 import { S1 } from './tui-theme-colors.js';
 import { acceptEmojiQuery, inlineEmojiCompletion } from './tui-emoji.js';
 import { FileIndex } from './tui-file-index.js';
+import { agentSuggestionRows } from './tui-agent-suggestions.js';
+import { combinedAtRows } from './tui-at-suggestions.js';
 import {
   atQuery, applyFileSuggestion, commonPrefix, directorySuggestionRows, fileSuggestionRows,
   listWorkingDirectory, shapeAtDisplayText, FILE_SUGGESTION_LIMIT, type AtQuery,
@@ -167,6 +169,8 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   output: Writable & { isTTY?: boolean; columns?: number; rows?: number };
   /** Slash commands offered above the composer; defaults to the local command table. */
   commands?: readonly TuiCommand[];
+  /** The agent types the `@` list offers, as `agent-` rows. */
+  agentTypes?: readonly import('./tui-agent-suggestions.js').AgentSuggestionSource[];
   prompt?: string;
   continuationPrompt?: string;
   history?: readonly string[];
@@ -1282,19 +1286,27 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   /** Source `SDs`/`jre`: the rows an `@` draft shows. A file row searches the index;
-   *  an explicit path lists one directory. */
+   *  an explicit path lists one directory. Source `tse` merges the agent rows in. */
   private atSuggestionRows(at: AtQuery): CommandSuggestion[] {
     const workspace = this.options.workspace ?? process.cwd();
+    if (at.explicit) {
+      return directorySuggestionRows(at.partial, workspace,
+        directory => this.directoryListing(directory)).map(row => ({
+        id: row.id, name: row.displayText, insertName: row.displayText,
+        displayText: row.displayText, description: row.description ?? '',
+        kind: 'directory' as const, executeOnAccept: false,
+      }));
+    }
     this.ensureFileIndex(workspace);
-    const rows = at.explicit
-      ? directorySuggestionRows(at.partial, workspace, directory => this.directoryListing(directory))
-      : fileSuggestionRows(query => this.fileIndex.search(query, FILE_SUGGESTION_LIMIT),
-        at.partial, workspace, () => listWorkingDirectory(workspace));
-    const kind = at.explicit ? 'directory' as const : 'file' as const;
-    return rows.map(row => ({
+    const files = fileSuggestionRows(query => this.fileIndex.search(query, FILE_SUGGESTION_LIMIT),
+      at.partial, workspace, () => listWorkingDirectory(workspace));
+    const agents = agentSuggestionRows(this.options.agentTypes ?? [], at.partial, true);
+    // Source `tse` labels the whole combined list as one suggestion type, so every row
+    // here accepts through the same splice.
+    return combinedAtRows({ query: at.partial, showOnEmpty: true, files, agents }).map(row => ({
       id: row.id, name: row.displayText, insertName: row.displayText,
-      displayText: row.displayText, description: row.description ?? '',
-      kind, executeOnAccept: false,
+      displayText: row.displayText, description: row.description,
+      kind: 'file' as const, executeOnAccept: false,
     }));
   }
 

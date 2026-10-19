@@ -84,6 +84,7 @@
     "@anthropic-ai/sdk": "0.133.0",
     "acorn": "8.15.0",
     "acorn-walk": "8.3.4",
+    "fuse.js": "7.1.0",
     "ignore": "^7.0.5",
     "parse5": "7.3.0",
     "pdf-lib": "1.17.1",
