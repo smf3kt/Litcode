@@ -368,6 +368,9 @@ function newConfig(
       mcpCatalog: settings.features?.mcpCatalog ?? true,
       mcpDynamic: settings.features?.mcpDynamic ?? Boolean(settings.mcpServers && Object.keys(settings.mcpServers).length),
       mcpDeferred: settings.features?.mcpDeferred ?? false,
+      // Same-host peer transport is opt-in: an inbox is a listening socket,
+      // so it is never opened without the user's own setting.
+      crossSessionMessaging: settings.features?.crossSessionMessaging ?? false,
       lsp: settings.features?.lsp ?? Boolean(settings.lspServers && Object.keys(settings.lspServers).length),
     };
     if (loaded.agentTypes !== undefined) config.agentTypes = structuredClone(loaded.agentTypes);

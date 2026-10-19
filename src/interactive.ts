@@ -18,6 +18,7 @@ import { checkpointConversation, previewRewind, applyRewind, type RewindPreview 
 import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
 import { promptBlockMessage } from './hooks.js';
+import { createLocalPeerTransport, createLocalPeerTools, type LocalPeerTransport, type PeerTransportEvent } from './local-peer.js';
 import { validateElicitationResult, type McpClientRequests, type McpElicitationResult } from './mcp-client-requests.js';
 import { captureClipboardImage } from './clipboard.js';
 import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree, restoreWorktreeArchive } from './worktree-session.js';
@@ -33,6 +34,7 @@ import {
   expandUserSkill,
   findSkill,
   parseSlashCommand,
+  pinToolSchemas,
   type Runtime,
 } from './runtime.js';
 
@@ -84,6 +86,9 @@ export const COMMAND_HELP = `/help       Show commands
 /tasks      Show workspace task dependencies and readiness
 /workflows  Show this session workflow runs, including saved runs
 /cron       Show scheduled prompts in the active session
+/peers      List live same-host sessions and this inbox address
+/peer-held [list|approve N|deny N|expire N]  Review held peer messages
+/peer-inbound accept|hold|refuse|off  Set the explicit inbound policy
 /diff NAME [OFFSET]  Show a page of file changes against a checkpoint
 /reload     Reload local instructions, skills, hooks, tools and settings into a new session
 /attach PATH [--pages RANGE] PROMPT  Submit an image/PDF with a task (quote paths with spaces)
@@ -166,6 +171,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   options.signal.addEventListener('abort', abort, { once: true });
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
+    peer?: { from: string | null };
     attachment?: import('./terminal.js').PromptDiffSelection }[] = [];
   // The recovered prologue prepends the SessionStart message to the user input
   // queue (`prependUserMessage`, chunk-rx2nah4x.js offset 472137), so it runs
@@ -307,6 +313,64 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   let agentGeneration = 0;
   let rewindPreview: RewindPreview | undefined;
   let formController: AbortController | undefined;
+  // Same-host peer transport. Admission follows the recipient's current
+  // permission mode (`E`, chunk-0ydceggj.js [4491,4991)); accepted text enters
+  // the queue as recipient meta input, exactly like a scheduled event, and
+  // never as a user prompt.
+  let peer: LocalPeerTransport | undefined;
+  const peerMode = (): { mode: string; bypassAvailable?: boolean } | null => {
+    const mode = session.permissionOwner.state().mode;
+    return mode === undefined ? null : { mode };
+  };
+  const peerExplicit = () => session.config.crossSessionInbound;
+  const queuePeerMessage = (message: { text: string; from?: string }) => {
+    const eventCount = queue.filter(item => item.source === 'event').length;
+    if (eventCount >= 50) {
+      const oldest = queue.findIndex(item => item.source === 'event'); queue.splice(oldest, 1);
+      options.status.write('Event queue full; dropped the oldest event.\n');
+    }
+    // `Qe` (chunk-bt8cr7rw.js [5180,6744)): recipient meta, slash commands and
+    // attachments skipped; the sender text is untrusted task data.
+    queue.push({ prompt: message.text, source: 'event', peer: { from: message.from ?? null } });
+  };
+  const releasePeerHeld = (cause: string) => {
+    try { peer?.releaseHeld(cause); } catch (error) { options.status.write(`Peer held queue error: ${String(error)}\n`); }
+  };
+  const onPeerEvent = (event: PeerTransportEvent) => {
+    if (event.kind === 'message') { queuePeerMessage(event.message); awaken(); }
+    else if (event.kind === 'held') options.status.write(`Peer message from ${event.message.from ?? 'unknown'} held for approval: ${event.message.text.slice(0, 200)}\n`);
+    else if (event.kind === 'dropped') options.status.write(`Peer message from ${event.message.from ?? 'unknown'} ${event.reason}\n`);
+    else if (event.kind === 'listening') options.status.write(`Peer inbox: ${event.address}\n`);
+    else if (event.kind === 'error') options.status.write(`Peer transport: ${event.message}\n`);
+  };
+  const startPeer = async (config: SessionConfig) => {
+    if (config.features?.crossSessionMessaging !== true) return;
+    try {
+      peer = await createLocalPeerTransport({
+        userDir: config.configSources?.userDir ?? defaultUserDir(),
+        workspace: config.workspace, kind: 'interactive', name: session.id, entrypoint: 'interactive',
+        policy: peerExplicit, mode: peerMode,
+        onEvent: onPeerEvent,
+        logger: (message, detail) => { if (detail?.level === 'error') options.status.write(`${message}\n`); },
+      });
+      peer.setMode(peerMode);
+      await peer.setSession(session.id);
+    } catch (error) {
+      peer = undefined;
+      options.status.write(`Peer inbox unavailable: ${error instanceof Error ? error.message : String(error)}\n`);
+    }
+  };
+  const stopPeer = async () => {
+    const current = peer; peer = undefined;
+    if (current) try { await current.close(); } catch (error) { options.status.write(`Peer cleanup error: ${String(error)}\n`); }
+  };
+  /** Tools are pinned per turn; the peer tool set joins the runtime's own. */
+  const peerTools = () => peer === undefined ? [] : createLocalPeerTools(peer);
+  const resolveHeld = async (msgId: string | undefined, decision: 'approve' | 'deny' | 'expire') => {
+    if (peer === undefined) throw new Error('Peer transport is unavailable');
+    const result = await peer.resolveHeld(msgId, decision);
+    options.status.write(`Peer held message ${decision}: ${result}\n`);
+  };
   const readDialog = async (request: TerminalPromptRequest, signal: AbortSignal, form = false) => {
     if (!form) formController?.abort();
     if (approval) throw new Error('Another interaction already owns terminal input');
@@ -356,7 +420,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const generation = session.config.pluginGeneration ?? 0;
     if (activeAgent !== undefined && agentGeneration !== generation) activeAgent = undefined;
     if (activeAgent === undefined) agentGeneration = generation;
-    return activeAgent ??= new Agent(session, provider, activeRuntime.buildTools(session.config, session.id), {
+    const base = activeRuntime.buildTools(session.config, session.id);
+    const tools = peer === undefined ? base : [...base, ...createLocalPeerTools(peer)];
+    // The inbox starts after the session pinned its schemas, so the first turn
+    // that can reach the peer tools repins them; `Agent` rejects a mismatch.
+    const schemas = pinToolSchemas(tools);
+    if (JSON.stringify(schemas) !== JSON.stringify(session.config.tools)) session.config.tools = schemas;
+    return activeAgent ??= new Agent(session, provider, tools, {
     // Stop/SubagentStop carry the live background jobs and session cron tasks
     // (`Sle`, chunk-sfn1dbxq.js [2946002,2946104)).
     stopState: () => activeRuntime.stopState?.(session.id) ?? { background_tasks: [], session_crons: [] },
@@ -610,6 +680,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
     }
     options.status.write('Personal harness. /help for commands.\n');
+    await startPeer(session.config);
     announce();
     bindConfigWatch();
     while (!options.signal.aborted) {
@@ -663,17 +734,53 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                   teammate_name: item.idle.name ?? item.idle.id }, signal);
                 if (hook.blocked || hook.stopRequested) { options.status.write('TeammateIdle hook suppressed this idle notification turn.\n'); return { reason: 'hook_blocked', text: "", modelCalls: 0 }; }
               }
-              return agent().run(prompt, signal, undefined, undefined, [], undefined, { kind: 'generated', source: 'interactive-event' });
+              return agent().run(prompt, signal, undefined, undefined, [], undefined,
+                item.peer === undefined ? { kind: 'generated', source: 'interactive-event' } : { kind: 'peer', source: 'uds' });
             });
             if (result.modelCalls === 0 && result.text) output.write(result.text);
             output.write('\n');
             options.status.write(`event finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
+            // A turn boundary is the only safe point to re-evaluate held
+            // messages: a mode change during the turn may now accept them.
+            if (item.peer === undefined) releasePeerHeld('turn-complete');
           } catch (error) { options.status.write(`error: ${error instanceof Error ? error.message : String(error)}\n`); }
         }
         continue;
       }
       try {
         if (prompt === '/help') { output.write(COMMAND_HELP + '\n'); continue; }
+        if (/^\/peers(?:\s|$)/.test(prompt)) {
+          if (peer === undefined) { options.status.write('Peer transport is unavailable.\n'); continue; }
+          const listed = await peer.list();
+          const text = JSON.stringify({ inbox: peer.address, peers: listed }, null, 2);
+          if (Buffer.byteLength(text) > session.config.maxOutputBytes) throw new Error('Peer list exceeds display budget');
+          output.write(text + '\n'); continue;
+        }
+        if (/^\/peer-held(?:\s|$)/.test(prompt)) {
+          if (peer === undefined) { options.status.write('Peer transport is unavailable.\n'); continue; }
+          const rest = prompt.slice('/peer-held'.length).trim();
+          const match = /^(approve|deny|expire) (\d+)$/.exec(rest);
+          if (match) {
+            const held = peer.held()[Number(match[2]) - 1];
+            if (!held) throw new Error('Use /peer-held to list held messages');
+            await resolveHeld(held.origin.msgId, match[1] as 'approve' | 'deny' | 'expire');
+            continue;
+          }
+          if (rest && !/^list$/.test(rest)) throw new Error('Use /peer-held [list|approve N|deny N|expire N]');
+          const held = peer.held();
+          if (held.length === 0) { options.status.write('No held peer messages.\n'); continue; }
+          output.write(held.map((message, index) => `${index + 1}. ${message.from ?? 'unknown'} (${message.cause}): ${message.text.slice(0, 500)}`).join('\n') + '\n');
+          continue;
+        }
+        if (/^\/peer-inbound(?:\s|$)/.test(prompt)) {
+          const value = prompt.slice('/peer-inbound'.length).trim();
+          if (value !== 'accept' && value !== 'hold' && value !== 'refuse' && value !== 'off') throw new Error('Use /peer-inbound accept|hold|refuse|off');
+          session.config.crossSessionInbound = value === 'off' ? undefined : value;
+          if (value === 'off') options.status.write('Peer inbound follows the permission mode.\n');
+          else options.status.write(`Peer inbound policy: ${value}\n`);
+          releasePeerHeld('policy-change');
+          continue;
+        }
         if (prompt === '/editor') {
           const edited=await (editorWork??terminal?.editDraft?.(options.signal,session.config.workspace));editorWork=undefined;
           const report=terminal?.prompt?options.status:output;
@@ -977,6 +1084,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           await applyConfig(config, switchingModel, options.signal, modeCommand);
           if (switchingModel) options.status.write(`Model: ${config.model}\n`);
           else if (/^\/thinking(?:\s|$)/.test(prompt)) options.status.write(`Thinking: ${config.thinking ? 'on' : 'off'}\n`);
+          // The mode change decides whether held peer messages may now enter.
+          if (modeCommand !== undefined) releasePeerHeld('mode-change');
           continue;
         }
         if (/^\/worktree-history(?:\s|$)/.test(prompt)) {
@@ -1235,6 +1344,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await editorWork;editorWork=undefined;
     await terminal?.flushStatusLine?.();
     await terminal?.flushInputHistory?.();
+    await stopPeer();
     try { await (activeAgent ?? agent()).endSession(options.signal.aborted ? 'interrupt' : 'prompt_input_exit'); }
     catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
     try { await activeRuntime.releaseSession?.(session.id); }
