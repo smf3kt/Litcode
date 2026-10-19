@@ -131,8 +131,9 @@ export function wrapEntry(entry: TranscriptEntry, columns: number): string[] {
  * Rendered lines for the current state. `showAll` off collapses only the tail
  * of an over-long entry, so the newest output stays visible either way.
  */
-export function transcriptLines(state: TranscriptState, columns: number, renderer?: EntryRowRenderer): string[] {
-  return renderedTranscriptRows(state, columns, renderer).map(row => row.text);
+export function transcriptLines(state: TranscriptState, columns: number, renderer?: EntryRowRenderer,
+  preamble: readonly RenderedRow[] = []): string[] {
+  return renderedTranscriptRows(state, columns, renderer, preamble).map(row => row.text);
 }
 
 export interface TranscriptViewport {
@@ -145,9 +146,14 @@ export interface TranscriptViewport {
   scrolled: boolean;
 }
 
-/** Rendered rows for the current state, with the wrap metadata selection needs. */
-export function renderedTranscriptRows(state: TranscriptState, columns: number, renderer?: EntryRowRenderer): RenderedRow[] {
-  const rows: RenderedRow[] = [];
+/**
+ * Rendered rows for the current state, with the wrap metadata selection needs.
+ * `preamble` rows lead the log without being entries, so the startup header
+ * scrolls with the transcript instead of vanishing on the first keystroke.
+ */
+export function renderedTranscriptRows(state: TranscriptState, columns: number, renderer?: EntryRowRenderer,
+  preamble: readonly RenderedRow[] = []): RenderedRow[] {
+  const rows: RenderedRow[] = [...preamble];
   for (const entry of state.entries) {
     const wrapped = wrapEntryRows(entry, columns, renderer);
     if (!wrapped.length) continue;
@@ -164,8 +170,9 @@ export function renderedTranscriptRows(state: TranscriptState, columns: number, 
   return rows;
 }
 
-export function layoutTranscript(state: TranscriptState, columns: number, rows: number, renderer?: EntryRowRenderer): TranscriptViewport {
-  const rendered = renderedTranscriptRows(state, columns, renderer);
+export function layoutTranscript(state: TranscriptState, columns: number, rows: number, renderer?: EntryRowRenderer,
+  preamble: readonly RenderedRow[] = []): TranscriptViewport {
+  const rendered = renderedTranscriptRows(state, columns, renderer, preamble);
   const lines = rendered.map(row => row.text);
   const height = Math.max(1, Math.floor(rows));
   const total = lines.length;
