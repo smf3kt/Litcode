@@ -244,15 +244,6 @@ export function maxVisibleSuggestions(rows: number): number {
   return Math.max(1, Math.min(Math.max(6, Math.floor(rows / 2)), rows - 3));
 }
 
-export function suggestionWindow(count: number, selected: number, maxVisible: number):
-{ start: number; end: number; selected: number } {
-  if (count === 0) return { start: 0, end: 0, selected: -1 };
-  const visible = Math.max(1, Math.min(maxVisible, count));
-  const index = Math.max(0, Math.min(selected, count - 1));
-  const start = Math.max(0, Math.min(index - Math.floor(visible / 2), count - visible));
-  return { start, end: start + visible, selected: index };
-}
-
 function truncateCells(text: string, columns: number): string {
   if (columns <= 0) return '';
   let out = '', used = 0;
@@ -303,6 +294,74 @@ export function suggestionColumn(row: CommandSuggestion, maxColumnWidth: number,
   return maxColumnWidth <= floor ? maxColumnWidth : floor + laneOffset(row, width, pointerWidth);
 }
 
+/** `xt`: the source collapses every whitespace run before it measures or splits. */
+const SPACE_RUN = /\s+/g;
+function collapsedDescription(row: CommandSuggestion): string {
+  return row.description.replace(SPACE_RUN, ' ').trim();
+}
+
+/** The description column and the cells the description gets on its first line. */
+function descriptionPlacement(row: CommandSuggestion, maxColumnWidth: number, width: number,
+  pointerWidth: number): { column: number; tagWidth: number; laneWidth: number; room: number } {
+  const column = suggestionColumn(row, maxColumnWidth, width, pointerWidth);
+  const { kindLaneText, sourceText } = suggestionLanes(row);
+  const tagWidth = row.tag ? cellWidth(`[${row.tag}] `) : 0;
+  const laneWidth = cellWidth(kindLaneText) + tagWidth + cellWidth(sourceText);
+  return { column, tagWidth, laneWidth, room: Math.max(0, width - column - laneWidth - 4) };
+}
+
+/** `_o`: the rows a suggestion needs. Only the plain families wrap, and only when the
+ *  description does not fit beside the lanes. */
+export function suggestionRowHeight(row: CommandSuggestion, maxColumnWidth: number, width: number,
+  pointerWidth: number): number {
+  if (!row.description) return 1;
+  const { room } = descriptionPlacement(row, maxColumnWidth, width, pointerWidth);
+  if (room <= 0) return 1;
+  return cellWidth(collapsedDescription(row)) > room ? 2 : 1;
+}
+
+/** `Ue`: the first line and the remainder, split at the last whole word that fits. */
+export function splitDescription(text: string, cells: number): [string, string] {
+  if (cells <= 0 || cellWidth(text) <= cells) return [text, ''];
+  const head = truncateCells(text, cells);
+  const rest = text.slice(head.length);
+  if (rest.startsWith(' ')) return [head, rest.trimStart()];
+  const space = head.lastIndexOf(' ');
+  return space > 0 ? [head.slice(0, space), text.slice(space + 1)] : [head, rest];
+}
+
+/** `go`: a window of at most `maxRows` rows, held near `keptStart` and always containing
+ *  the selection. A row is one or two lines, so the window is measured in rows. */
+export function suggestionRowWindow(heights: readonly number[], maxRows: number,
+  selected: number, keptStart: number): { start: number; end: number; usedRows: number } {
+  const heightAt = (index: number) => heights[index] ?? 1;
+  const grow = (start: number) => {
+    let end = start + 1, used = heightAt(start);
+    while (end < heights.length && used + heightAt(end) <= maxRows) { used += heightAt(end); end += 1; }
+    return { start, end, usedRows: used };
+  };
+  const last = Math.max(0, heights.length - 1);
+  let window = grow(Math.max(0, Math.min(keptStart, last)));
+  if (selected >= window.end) window = grow(selected);
+  else if (selected < window.start) window = { start: selected, end: selected + 1, usedRows: heightAt(selected) };
+  while (window.start > 0 && window.usedRows + heightAt(window.start - 1) <= maxRows) {
+    window.start -= 1; window.usedRows += heightAt(window.start);
+  }
+  return grow(window.start);
+}
+
+/** The suggestion each drawn line belongs to, so a click resolves to a row. */
+export function suggestionRowOwners(heights: readonly number[]): number[] {
+  const owners: number[] = [];
+  heights.forEach((height, index) => { for (let line = 0; line < height; line++) owners.push(index); });
+  return owners;
+}
+
+/** The widest row plus five, which is what the source passes as `maxColumnWidth`. */
+export function suggestionMaxColumnWidth(suggestions: readonly CommandSuggestion[]): number {
+  return suggestions.reduce((max, row) => Math.max(max, cellWidth(row.displayText)), 0) + 5;
+}
+
 /** A row segment and the theme role the renderer paints it with. */
 export interface SuggestionRowSegment {
   readonly text: string;
@@ -315,33 +374,50 @@ export interface SuggestionRowSegment {
 }
 
 /**
- * `iEe`/`ze`: the pointer, the padded command, then the kind lane, the tag and source
- * lanes, and the description, all inside the row width.
+ * `iEe`/`ze`: one line per drawn row. A row is the pointer, the padded command, the kind
+ * lane, the tag and source lanes and the description; a description that does not fit
+ * continues on a second line, indented to the column it started at.
  */
 export function suggestionRowSegments(suggestions: readonly CommandSuggestion[], selected: number,
-  columns: number, pointer: string): SuggestionRowSegment[][] {
+  columns: number, pointer: string, maxColumnWidth = suggestionMaxColumnWidth(suggestions),
+  heightOf?: (row: CommandSuggestion) => number): SuggestionRowSegment[][] {
   const width = Math.max(1, Math.floor(columns));
   const pointerWidth = cellWidth(pointer);
-  const widest = suggestions.reduce((max, row) => Math.max(max, cellWidth(row.displayText)), 0) + 5;
-  return suggestions.map((suggestion, index) => {
+  const lines: SuggestionRowSegment[][] = [];
+  suggestions.forEach((suggestion, index) => {
     const gutter = index === selected ? pointer : ' '.repeat(pointerWidth);
-    const column = suggestionColumn(suggestion, widest, width, pointerWidth);
+    const { column, tagWidth, laneWidth, room } = descriptionPlacement(suggestion, maxColumnWidth, width, pointerWidth);
     const name = truncateCells(suggestion.displayText, Math.max(0, column - 2 - pointerWidth));
     const { kindLaneText, kindLabel, sourceText } = suggestionLanes(suggestion);
     const tagText = suggestion.tag ? `[${suggestion.tag}] ` : '';
-    const laneWidth = cellWidth(kindLaneText) + cellWidth(tagText) + cellWidth(sourceText);
     const pad = ' '.repeat(Math.max(0, column - cellWidth(name) - pointerWidth));
-    const segments: SuggestionRowSegment[] = [{ text: gutter + name + pad }];
-    if (kindLaneText) segments.push({ text: kindLaneText, accent: laneAccent(kindLabel) });
-    if (tagText) segments.push({ text: tagText, dim: true });
-    if (sourceText) segments.push({ text: sourceText, dim: true });
-    const room = Math.max(0, width - column - laneWidth - 4);
-    if (room > 0) segments.push({ text: truncateCells(suggestion.description, room), description: true });
-    const line = segments.reduce((total, segment) => total + cellWidth(segment.text), 0);
-    if (line > width) return [{ text: truncateCells(segments.map(s => s.text).join(''), width) }];
-    if (line < width) segments.push({ text: ' '.repeat(width - line) });
-    return segments;
+    const head: SuggestionRowSegment[] = [{ text: gutter + name + pad }];
+    if (kindLaneText) head.push({ text: kindLaneText, accent: laneAccent(kindLabel) });
+    if (tagText) head.push({ text: tagText, dim: true });
+    if (sourceText) head.push({ text: sourceText, dim: true });
+    const description = collapsedDescription(suggestion);
+    const wrap = (heightOf?.(suggestion) ?? suggestionRowHeight(suggestion, maxColumnWidth, width, pointerWidth)) > 1;
+    if (room > 0) {
+      const [first, rest] = wrap ? splitDescription(description, room) : [truncateCells(description, room), ''];
+      head.push({ text: first, description: true });
+      const used = head.reduce((total, segment) => total + cellWidth(segment.text), 0);
+      if (used < width) head.push({ text: ' '.repeat(width - used) });
+      lines.push(head);
+      if (rest !== '') {
+        // Source `ze`: the continuation is indented to where the description began.
+        const indent = column + laneWidth - tagWidth;
+        const tail = truncateCells(rest, Math.max(0, width - indent - 4));
+        const filler = ' '.repeat(Math.max(0, width - indent - cellWidth(tail)));
+        lines.push([{ text: ' '.repeat(indent) }, { text: tail, description: true }].concat(
+          filler === '' ? [] : [{ text: filler }]));
+      }
+      return;
+    }
+    const used = head.reduce((total, segment) => total + cellWidth(segment.text), 0);
+    if (used > width) lines.push([{ text: truncateCells(head.map(s => s.text).join(''), width) }]);
+    else lines.push(used < width ? [...head, { text: ' '.repeat(width - used) }] : head);
   });
+  return lines;
 }
 
 /** The same rows as plain text, for callers that only need the layout. */

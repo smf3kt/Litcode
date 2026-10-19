@@ -6,7 +6,8 @@ import type { Terminal as TerminalType } from '@xterm/headless';
 import { COMMAND_HELP } from '../src/interactive.js';
 import { TuiTerminal } from '../src/tui.js';
 import { acceptanceText, commandQuery, commandSuggestions, layoutSuggestionRows,
-  maxVisibleSuggestions, suggestionWindow, suggestionsEmptyMessage, tuiCommandsWithSkills,
+  maxVisibleSuggestions, suggestionMaxColumnWidth, suggestionRowHeight, suggestionRowOwners,
+  suggestionRowWindow, suggestionsEmptyMessage, tuiCommandsWithSkills,
   TUI_COMMANDS, type TuiCommand } from '../src/tui-autocomplete.js';
 
 const skill = (name: string, description: string, extra: Partial<TuiCommand> = {}): TuiCommand =>
@@ -94,22 +95,17 @@ test('the no-match message appears only for a non-empty command name', () => {
   assert.equal(suggestionsEmptyMessage('/zzz x', 6, []), undefined);
 });
 
-test('the visible window stays inside the screen and follows the selection', () => {
+test('the list budget is at most half the screen and never fewer than six rows', () => {
   assert.equal(maxVisibleSuggestions(40), 20, 'a tall screen spends at most half its rows');
   assert.equal(maxVisibleSuggestions(12), 6);
   assert.equal(maxVisibleSuggestions(8), 5);
-  assert.deepEqual(suggestionWindow(3, 1, 6), { start: 0, end: 3, selected: 1 });
-  assert.deepEqual(suggestionWindow(20, 0, 6), { start: 0, end: 6, selected: 0 });
-  assert.deepEqual(suggestionWindow(20, 10, 6), { start: 7, end: 13, selected: 10 });
-  assert.deepEqual(suggestionWindow(20, 19, 6), { start: 14, end: 20, selected: 19 });
-  assert.deepEqual(suggestionWindow(20, 99, 6).selected, 19, 'a stale selection clamps to the last row');
 });
 
 test('a row is the pointer, the padded command, the kind lane and the description', () => {
   const suggestions = commandSuggestions('/mo', 3, TUI_COMMANDS);
-  const rows = layoutSuggestionRows(suggestions, 0, 60, '❯ ');
-  assert.equal(rows.length, suggestions.length);
-  for (const row of rows) assert.equal([...row].length, 60);
+  const rows = layoutSuggestionRows(suggestions, 0, 100, '❯ ');
+  assert.equal(rows.length, suggestions.length, 'the descriptions fit on one line at 100 columns');
+  for (const row of rows) assert.equal([...row].length, 100);
   assert.ok(rows[0]!.startsWith('❯ /model'));
   assert.ok(rows[0]!.includes('Choose or enter a model'));
   assert.ok(rows[1]!.startsWith('  '), 'an unselected row keeps the pointer lane blank');
@@ -124,6 +120,33 @@ test('a row is the pointer, the padded command, the kind lane and the descriptio
   assert.ok(narrow[0]!.startsWith('❯ /mod'), narrow[0]!);
   assert.equal(narrow[0]!.includes('Choose'), false, 'a narrow column drops the description');
   for (const row of narrow) assert.equal([...row].length, 20);
+});
+
+test('a description that does not fit wraps onto a second line under its own column', () => {
+  const suggestions = commandSuggestions('/mo', 3, TUI_COMMANDS);
+  const rows = layoutSuggestionRows(suggestions, 0, 60, '❯ ');
+  assert.equal(rows.length, suggestions.length * 2, 'every row needs two lines at 60 columns');
+  for (const row of rows) assert.equal([...row].length, 60);
+  // The continuation starts where the description began, one row below its own row.
+  assert.equal(rows[1]!.indexOf('start'), rows[0]!.indexOf('Choose'), 'the tail is indented to the description');
+  assert.equal(rows[1]!.trim().length > 0, true);
+  // Source `_o`: the row height is one when the whole description fits beside the lanes.
+  const heights = suggestions.map(row => suggestionRowHeight(row, suggestionMaxColumnWidth(suggestions), 100, 2));
+  assert.deepEqual(heights, [1, 1, 1], '100 columns leaves room for every description');
+  assert.deepEqual(suggestionRowOwners(heights), [0, 1, 2], 'one line each, so each line owns its row');
+});
+
+test('the window is measured in rows, so a wrapped row spends two of its budget', () => {
+  const suggestions = commandSuggestions('/m', 2, TUI_COMMANDS);
+  const widest = suggestionMaxColumnWidth(suggestions);
+  const heights = suggestions.map(row => suggestionRowHeight(row, widest, 60, 2));
+  const window = suggestionRowWindow(heights, 6, 0, 0);
+  const used = heights.slice(window.start, window.end).reduce((total, height) => total + height, 0);
+  assert.ok(used <= 6, `the window stays inside the row budget, used ${used}`);
+  assert.ok(window.start <= 0 && window.end > 0, 'the selection stays inside the window');
+  // A selection past the window re-anchors it.
+  const far = suggestionRowWindow(heights, 6, heights.length - 1, 0);
+  assert.ok(far.start <= heights.length - 1 && far.end === heights.length, JSON.stringify(far));
 });
 
 const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/headless') as

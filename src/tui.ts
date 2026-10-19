@@ -81,8 +81,9 @@ function slotForeground(slot: string | undefined): string {
   const code = ANSI_FOREGROUND[slot.replace(/^ansi:/, '')];
   return code === undefined ? '' : `\u001b[${code}m`;
 }
-import { acceptanceText, commandSuggestions, maxVisibleSuggestions, suggestionRowSegments,
-  suggestionsEmptyMessage, suggestionWindow, TUI_COMMANDS, type CommandSuggestion,
+import { acceptanceText, commandSuggestions, maxVisibleSuggestions, suggestionMaxColumnWidth,
+  suggestionRowHeight, suggestionRowOwners, suggestionRowSegments, suggestionRowWindow,
+  suggestionsEmptyMessage, TUI_COMMANDS, type CommandSuggestion,
   type TuiCommand } from './tui-autocomplete.js';
 import { te as symbols } from './tui-symbols.js';
 import { editExternal, type ExternalEditorResult } from './external-editor.js';
@@ -264,7 +265,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private autocompleteForText = '';
   private autocompleteDismissedText: string | undefined;
   /** The suggestion band's screen rows, so the pointer can hit-test a row. */
-  private autocompleteBand: { top: number; first: number; count: number } | undefined;
+  private autocompleteBand: { top: number; owners: readonly number[] } | undefined;
+  /** The suggestion each drawn band line belongs to, from `suggestionRowOwners`. */
+  private autocompleteOwners: readonly number[] = [];
   /** First suggestion the band is currently showing, from `suggestionWindow`. */
   private autocompleteWindowStart = 0;
   /** The composer edit relay: the recovered `prompt.edit` hook, inert until a module hooks it. */
@@ -1232,8 +1235,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private autocompleteRowAt(row: number): number {
     const band = this.autocompleteBand;
     if (!band || !this.autocompleteVisible()) return -1;
-    const offset = row - 1 - band.top;
-    return offset >= 0 && offset < band.count ? band.first + offset : -1;
+    return band.owners[row - 1 - band.top] ?? -1;
   }
 
   /** Source `LK`/`Xn`: replace the draft with `/<name> `; Enter also submits when the
@@ -1264,26 +1266,37 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const { suggestions, selected } = this.autocompleteState();
     if (suggestions.length === 0) {
       const message = suggestionsEmptyMessage(this.editor.text, this.editor.cursor, suggestions);
+      this.autocompleteBand = undefined;
       return message === undefined ? [] : [`\u001b[2m${pad(`  ${message}`, columns)}\u001b[22m`];
     }
-    const window = suggestionWindow(suggestions.length, selected, maxVisibleSuggestions(rows));
-    this.autocompleteWindowStart = window.start;
-    const visible = suggestions.slice(window.start, window.end);
     const pointer = `${symbols.pointer} `;
-    const chosen = window.selected - window.start;
+    const pointerWidth = cellWidth(pointer);
+    const widest = suggestionMaxColumnWidth(suggestions);
+    // Source `iEe`: the budget is rows, and a row is one or two lines, so the window is
+    // chosen from the heights rather than from a count of suggestions.
+    const heights = suggestions.map(row => suggestionRowHeight(row, widest, columns, pointerWidth));
+    const window = suggestionRowWindow(heights, maxVisibleSuggestions(rows), selected, this.autocompleteWindowStart);
+    this.autocompleteWindowStart = window.start;
+    const chosen = selected - window.start;
+    const visible = suggestions.slice(window.start, window.end);
+    const lines = suggestionRowSegments(visible, chosen, columns, pointer, widest);
+    this.autocompleteOwners = suggestionRowOwners(heights.slice(window.start, window.end))
+      .map(owner => owner + window.start);
     // Source `ze` colours the selected row with the `suggestion` slot, dims every other row,
     // and lets the skill and agent lanes keep their own colour either way. Each segment
     // opens its own state and resets, so the lane accents survive the row's dim.
-    return suggestionRowSegments(visible, chosen, columns, pointer).map((segments, index) =>
-      segments.map(segment => {
+    return lines.map((segments, line) => {
+      const onSelected = this.autocompleteOwners[line] === selected;
+      return segments.map(segment => {
         const opens: string[] = [];
-        if (index !== chosen) opens.push('\u001b[2m');
+        if (!onSelected) opens.push('\u001b[2m');
         const accent = segment.accent === undefined ? '' : slotForeground(this.themeSlot(segment.accent));
         if (accent !== '') opens.push(accent);
         else if (segment.dim) opens.push('\u001b[2m');
-        else if (index === chosen) opens.push(slotForeground(this.themeSlot('suggestion')));
+        else if (onSelected) opens.push(slotForeground(this.themeSlot('suggestion')));
         return opens.join('') + segment.text + '\u001b[0m';
-      }).join(''));
+      }).join('');
+    });
   }
 
   /** The active palette value for a slot, with the session's overrides applied. */
@@ -2485,7 +2498,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // The hint rows are the tail of `progressRows`, so they sit directly above the composer.
     this.autocompleteBand = hintRows.length === 0 ? undefined : {
       top: transcriptRows + progressRows.length - hintRows.length,
-      first: this.autocompleteWindowStart, count: hintRows.length };
+      owners: this.autocompleteOwners };
     const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows,
       this.welcomePreamble(conversationWidth));
 
