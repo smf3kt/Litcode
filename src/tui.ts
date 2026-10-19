@@ -48,7 +48,7 @@ import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
 import { TuiDocumentRenderer } from './tui-document-renderer.js';
-import { Welcome, WELCOME_MIN_ROWS } from './tui-welcome.js';
+import { Welcome, welcomeDensity } from './tui-welcome.js';
 import { clt, tLo } from './tui-stream-preview.js';
 import { Zqn, l$t } from './tui-preview-visibility.js';
 import { layoutInput } from './tui-input-navigation.js';
@@ -2450,18 +2450,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /**
    * The startup header (`Hee`) leads the transcript's rendered rows without being
    * an entry, so it stays in the log and scrolls with it instead of vanishing on
-   * the first keystroke. Below 30 terminal rows the source collapses it to one line.
+   * the first keystroke. The density follows the transcript's own row budget.
    */
   private welcomePreamble(columns: number): RenderedRow[] {
-    const rows = this.viewportSize().rows;
-    const compact = rows < WELCOME_MIN_ROWS;
+    const density = welcomeDensity(this.viewportSize().rows);
     const version = this.options.version ?? '';
     const appleTerminal = this.options.termProgram === 'Apple_Terminal';
-    const key = JSON.stringify([columns, compact, version, appleTerminal, this.theme.current, this.theme.overrides]);
+    const key = JSON.stringify([columns, density, version, appleTerminal, this.theme.current, this.theme.overrides]);
     if (key !== this.welcomeKey) {
       this.welcomeRenderer ??= new TuiDocumentRenderer();
       this.welcomeRows = this.welcomeRenderer.renderElement(
-        jsx(Welcome, { theme: this.theme.current, version, compact, appleTerminal }, undefined), columns,
+        jsx(Welcome, { theme: this.theme.current, version, density, appleTerminal }, undefined), columns,
         { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
       this.welcomeKey = key;
     }
