@@ -391,7 +391,7 @@ export function specialRowGlyph(id: string): string | undefined {
 const SEGMENTER = new Intl.Segmenter('en', { granularity: 'grapheme' });
 
 /** `ct`: the head of the text plus an ellipsis. */
-function clipEnd(text: string, columns: number): string {
+export function clipEnd(text: string, columns: number): string {
   if (cellWidth(text) <= columns) return text;
   if (columns <= 1) return '…';
   return clipHead(text, columns - 1) + '…';

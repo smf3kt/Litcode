@@ -155,7 +155,8 @@ test('the window is measured in rows, so a wrapped row spends two of its budget'
 const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/headless') as
   { Terminal: typeof TerminalType };
 
-function startComposer(commands: readonly TuiCommand[], workspace?: string) {
+function startComposer(commands: readonly TuiCommand[], workspace?: string,
+  agentTypes?: readonly { name: string; description: string }[]) {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
   const terminal = new HeadlessTerminal({ allowProposedApi: true, logLevel: 'off' });
@@ -168,7 +169,7 @@ function startComposer(commands: readonly TuiCommand[], workspace?: string) {
   Object.assign(output, { isTTY: true, columns: 90, rows: 30 });
   terminal.resize(90, 30);
   const submitted: string[] = [];
-  const tui = new TuiTerminal({ input, output, commands, workspace,
+  const tui = new TuiTerminal({ input, output, commands, workspace, agentTypes,
     onSubmit: text => submitted.push(text) }).start();
   const screen = () => {
     const buffer = terminal.buffer.active;
@@ -225,6 +226,39 @@ test('typing @ opens the file list and Tab fills the shared prefix before accept
     // carry no `file-` id, so they take the plain layout rather than the file glyph.
     key('\u0015@./src/');
     assert.ok(await waitFor(() => composer.screen().includes('src/alpha.ts')), composer.screen());
+  } finally {
+    composer.tui.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('an @ draft lists the agent roster beside the files and splices its display text', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'litcode-agent-'));
+  const composer = startComposer(TUI_COMMANDS, dir, [
+    { name: 'explore', description: 'Fast read-only search agent' },
+    { name: 'reviewer', description: 'Reviews a change' },
+  ]);
+  const key = (text: string) => composer.input.emit('data', text);
+  const waitFor = async (ready: () => boolean) => {
+    for (let tries = 0; tries < 100 && !ready(); tries++) await new Promise(resolve => setTimeout(resolve, 20));
+    return ready();
+  };
+  try {
+    key('@rev');
+    assert.ok(await waitFor(() => composer.screen().includes('reviewer (agent)')), composer.screen());
+    const opened = composer.screen();
+    // Source `tse` labels every non-file row with the same family glyph as a file row.
+    assert.ok(opened.includes('* reviewer (agent)'), opened);
+    assert.ok(opened.includes('Reviews a change'), opened);
+    assert.ok(!opened.includes('explore (agent)'), 'the filter drops the other types');
+    key('\r');
+    // Source `tse` output carries no template `replacement`, so `Gs` is the shared prefix
+    // and one row's prefix is its whole display text: the first accept only fills it.
+    assert.equal(composer.tui.state.text, '@reviewer (agent)');
+    assert.deepEqual(composer.submitted, [], 'an agent row never submits');
+    key('\r');
+    assert.deepEqual(composer.submitted, ['@reviewer (agent)'],
+      'a second Enter submits the filled draft');
   } finally {
     composer.tui.close();
     fs.rmSync(dir, { recursive: true, force: true });
