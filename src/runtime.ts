@@ -598,7 +598,12 @@ export async function createRuntime(
     const monitorProperties = storedMonitor?.input_schema.properties;
     const monitorWebsocket = !storedMonitor || (monitorProperties !== null && typeof monitorProperties === 'object' && 'ws' in monitorProperties);
     const fingerprint = JSON.stringify({ generation: current.pluginGeneration ?? 0,
-      settings: { ...settings, skills: undefined, agentTypes: undefined,
+      // A turn's path access mutates the live skill catalog on the config: `activateTouchedSkills`
+      // moves a held skill into `skills`, `discoverTouchedSkills` records the `<HARNESS_DIR>/skills`
+      // directories it visited, and both rewrite the rendered system section. The skill tool reads
+      // those arrays by reference, so none of it can make the tool set stale.
+      settings: { ...settings, skills: undefined, heldSkills: undefined, dynamicSkillDirs: undefined,
+        agentTypes: undefined,
         system: settings.system.split('\n\n# Available skills\n')[0]!.split('\n\n# Available agent types\n')[0] }, monitorWebsocket });
     const cached = toolSets.get(owner);
     if (cached?.fingerprint === fingerprint) {
