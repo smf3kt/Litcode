@@ -373,9 +373,11 @@ export function Ae<T>(context: SurfaceContext<T>): T {
 /** Source `tI` (chunk-06azbynj.js, `tI=(n)=>{let u=n,f=!1;while(u){…}}`, [173047,173232)): mark the
  *  node and its ancestors dirty, and the first text/raw-ansi ancestor's yoga node with them. */
 export function tI(node: SurfaceNode | null): void {
-  let u: SurfaceNode | null = node;
+  let u: SurfaceNode | null | undefined = node;
   let marked = false;
-  while (u !== null) {
+  // The source walks on truthiness (`while(u)`), not on `null`: a root node built by the host
+  // reconciler can leave `parentNode` undefined, and `undefined !== null` would dereference it.
+  while (u) {
     if (u.nodeName !== '#text') {
       u.dirty = true;
       if (!marked && (u.nodeName === 'ink-text' || u.nodeName === 'ink-raw-ansi')) {
@@ -392,7 +394,9 @@ export function tI(node: SurfaceNode | null): void {
 export function ZFt(node: SurfaceNode | null): void {
   let u: SurfaceNode | null = node;
   while (u?.parentNode) u = u.parentNode;
-  if (u !== null && u.nodeName !== '#text') u.onRender();
+  // Host nodes in this renderer carry `onRender` only on the mounted root; a scroll repaint that
+  // lands after the tree unmounted reaches a detached box, which has nothing to repaint.
+  if (u !== null && u.nodeName !== '#text' && typeof u.onRender === 'function') u.onRender();
 }
 
 /** Build the node for one element and bind every `ref` in the tree, then the children. */

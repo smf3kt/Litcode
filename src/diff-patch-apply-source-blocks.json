@@ -1,0 +1,167 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-f606a53w.js",
+      "sha256": "dd0a1dc61be769e7ea2ec7f4345b3b4f88996150d4d219b8ada90f03e89dd033"
+    },
+    {
+      "module": "chunk-kcwp0ct0.js",
+      "sha256": "6e2a2f6d72577f973cdd9fa83e5b5801f6b05499f69792052b6070b20cb91bda"
+    },
+    {
+      "module": "chunk-r2vtj1kh.js",
+      "sha256": "2b13302b83beea3fe54e83316b9d855c43e2298af6d0041b009cec563bbc1515"
+    },
+    {
+      "module": "chunk-4qh9ecjv.js",
+      "sha256": "4e74c1bc713fb8237e118b58ce45ca1e1acd52ec22238268e0c270db3fca0999"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-f606a53w.js",
+      "sha256": "dd0a1dc61be769e7ea2ec7f4345b3b4f88996150d4d219b8ada90f03e89dd033",
+      "range": [
+        7703,
+        7802
+      ],
+      "units": 99,
+      "bodySha256": "b23ca733c5b3a66a3f7bd6d6127d1f3eec7051452786079c0be887eb5d53437b",
+      "note": "HN: each leading tab replaced by exactly two spaces"
+    },
+    {
+      "module": "chunk-kcwp0ct0.js",
+      "sha256": "6e2a2f6d72577f973cdd9fa83e5b5801f6b05499f69792052b6070b20cb91bda",
+      "range": [
+        14131,
+        14186
+      ],
+      "units": 55,
+      "bodySha256": "e95e782d257330ae8947ff5f83323bc1b7b9ac1e427d420771976cd58278f488",
+      "note": "Ee/ke: the ampersand and dollar sentinel literals"
+    },
+    {
+      "module": "chunk-kcwp0ct0.js",
+      "sha256": "6e2a2f6d72577f973cdd9fa83e5b5801f6b05499f69792052b6070b20cb91bda",
+      "range": [
+        14186,
+        14247
+      ],
+      "units": 61,
+      "bodySha256": "5365788aa5383a798b7178c8d0617813e08b65b9658f3eb3d61b67d37b18c1b8",
+      "note": "V: sentinel escaping"
+    },
+    {
+      "module": "chunk-kcwp0ct0.js",
+      "sha256": "6e2a2f6d72577f973cdd9fa83e5b5801f6b05499f69792052b6070b20cb91bda",
+      "range": [
+        14247,
+        14309
+      ],
+      "units": 62,
+      "bodySha256": "5b7e9f9da5acad8e69f4e47848fa16dedf590582788ab07444b8ccf3895426d2",
+      "note": "Te: sentinel restoration"
+    },
+    {
+      "module": "chunk-kcwp0ct0.js",
+      "sha256": "6e2a2f6d72577f973cdd9fa83e5b5801f6b05499f69792052b6070b20cb91bda",
+      "range": [
+        14004,
+        14023
+      ],
+      "units": 19,
+      "bodySha256": "f650e6d89d31c8f9de6cdf1cc87131f522d9946dc67dc14ddf21ce5774b328ba",
+      "note": "ckt/ucr: hunk context 3 and the 5000 ms diff timeout"
+    },
+    {
+      "module": "chunk-kcwp0ct0.js",
+      "sha256": "6e2a2f6d72577f973cdd9fa83e5b5801f6b05499f69792052b6070b20cb91bda",
+      "range": [
+        14673,
+        15003
+      ],
+      "units": 330,
+      "bodySha256": "f154280236f29aca51f62918bd756569c8bfc23ea102296de60883e9ff7792aa",
+      "note": "Fle: post-effect structured patch between two known contents"
+    },
+    {
+      "module": "chunk-kcwp0ct0.js",
+      "sha256": "6e2a2f6d72577f973cdd9fa83e5b5801f6b05499f69792052b6070b20cb91bda",
+      "range": [
+        15003,
+        15409
+      ],
+      "units": 406,
+      "bodySha256": "f8400f932c7780cc3e4569e66c6412e19d35c864a290baf853200d0e1e3e9f2a",
+      "note": "yK: patch for a list of applied string edits"
+    },
+    {
+      "module": "chunk-r2vtj1kh.js",
+      "sha256": "2b13302b83beea3fe54e83316b9d855c43e2298af6d0041b009cec563bbc1515",
+      "range": [
+        166481,
+        166556
+      ],
+      "units": 75,
+      "bodySha256": "3389113f06e2c64a43de6fe6df84663c72c7787cf169219e9faf527d9b3e1b6a",
+      "note": "L8: FileStateError"
+    },
+    {
+      "module": "chunk-4qh9ecjv.js",
+      "sha256": "4e74c1bc713fb8237e118b58ce45ca1e1acd52ec22238268e0c270db3fca0999",
+      "range": [
+        5505,
+        5685
+      ],
+      "units": 180,
+      "bodySha256": "548f90351df4dfca6d06049ec5bf1950cc2c4a47023bd5b0cb5b9427025f79d4",
+      "note": "Q: literal replacement, with the trailing-newline consumption rule"
+    },
+    {
+      "module": "chunk-4qh9ecjv.js",
+      "sha256": "4e74c1bc713fb8237e118b58ce45ca1e1acd52ec22238268e0c270db3fca0999",
+      "range": [
+        6122,
+        6220
+      ],
+      "units": 98,
+      "bodySha256": "76a7f94404ff8074d644e6ecf86b99f0d053231a9146234e75cb277b393fa35e",
+      "note": "S: the empty-file empty-to-empty edit"
+    },
+    {
+      "module": "chunk-4qh9ecjv.js",
+      "sha256": "4e74c1bc713fb8237e118b58ce45ca1e1acd52ec22238268e0c270db3fca0999",
+      "range": [
+        6220,
+        6734
+      ],
+      "units": 514,
+      "bodySha256": "f9a1f0b9e80ef915095ea87b6d929c23d45cde0f3f44291192e79505ba8180d0",
+      "note": "F: sequential edit application with overlap and no-op rejection"
+    },
+    {
+      "module": "chunk-4qh9ecjv.js",
+      "sha256": "4e74c1bc713fb8237e118b58ce45ca1e1acd52ec22238268e0c270db3fca0999",
+      "range": [
+        5857,
+        6122
+      ],
+      "units": 265,
+      "bodySha256": "9edf3945b406fd79f26479a985863ced556edcac77ed36a25e20cb58c1454fe8",
+      "note": "BQr: apply edits and return the updated file plus its patch"
+    },
+    {
+      "module": "chunk-4qh9ecjv.js",
+      "sha256": "4e74c1bc713fb8237e118b58ce45ca1e1acd52ec22238268e0c270db3fca0999",
+      "range": [
+        5685,
+        5857
+      ],
+      "units": 172,
+      "bodySha256": "28ba9ce96173c93d3188778f8c00e14e8756a13fffc705ba80bb68458fd683b5",
+      "note": "P3t: single old/new string edit"
+    }
+  ],
+  "missing": []
+}

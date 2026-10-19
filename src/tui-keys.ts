@@ -1,3 +1,5 @@
+import type { EditorAction } from './terminal.js';
+
 /**
  * Declarative keybinding registry for the full-screen interaction layer.
  *
@@ -21,7 +23,7 @@
 
 export const TUI_CONTEXTS = ['Global', 'DiffPanel', 'FeedbackSurvey', 'Chat', 'Autocomplete',
   'Settings', 'Confirmation', 'Tabs', 'Transcript', 'HistorySearch', 'Task', 'ThemePicker',
-  'Scroll', 'Help', 'Attachments', 'Footer', 'AbovePrompt'] as const;
+  'Scroll', 'Help', 'Attachments', 'Footer', 'AbovePrompt', 'DiffDialog', 'Select'] as const;
 export type TuiContext = (typeof TUI_CONTEXTS)[number];
 
 // Source `Ie`/`Me`: Windows and WSL paste with alt+v, everything else with
@@ -52,6 +54,22 @@ export const KEY_BINDINGS: Readonly<Record<TuiContext, Readonly<Record<string, s
     'ctrl+]': 'app:openArtifact',
   },
   DiffPanel: { 'ctrl+x b': 'app:cycleDiffBase' },
+  // Source `DiffDialog` (chunk-6ccen3s8.js): the dialog's own navigation, transcribed with the
+  // table above. `shift+space` is carried as far as the decoder can spell it.
+  DiffDialog: {
+    escape: 'diff:dismiss', left: 'diff:previousSource', right: 'diff:nextSource',
+    up: 'diff:previousFile', down: 'diff:nextFile', j: 'diff:nextFile', k: 'diff:previousFile',
+    pageup: 'scroll:pageUp', pagedown: 'scroll:pageDown',
+    space: 'scroll:fullPageDown', b: 'scroll:fullPageUp',
+    g: 'scroll:top', 'shift+g': 'scroll:bottom', home: 'scroll:top', end: 'scroll:bottom',
+  },
+  // Source `Select`: the list selection the file list and the source tabs share.
+  Select: {
+    up: 'select:previous', down: 'select:next', j: 'select:next', k: 'select:previous',
+    'ctrl+n': 'select:next', 'ctrl+p': 'select:previous',
+    pageup: 'select:pageUp', pagedown: 'select:pageDown',
+    home: 'select:first', end: 'select:last', enter: 'select:accept', escape: 'select:cancel',
+  },
   FeedbackSurvey: { 'ctrl+x 1': 'feedbackSurvey:bad', 'ctrl+x 2': 'feedbackSurvey:fine', 'ctrl+x 3': 'feedbackSurvey:good' },
   Chat: {
     escape: 'chat:cancel',
@@ -140,6 +158,23 @@ export const KEY_BINDINGS: Readonly<Record<TuiContext, Readonly<Record<string, s
     pageup: 'pane:pageUp', pagedown: 'pane:pageDown',
   },
 };
+
+/** The raw sequence for an editor action, used to consult the chord registry. */
+export function chordSequence(action: EditorAction): string | undefined {
+  switch (action.type) {
+    case 'left': return '\x1b[D'; case 'right': return '\x1b[C';
+    case 'up': return '\x1b[A'; case 'down': return '\x1b[B';
+    case 'home': return '\x1b[H'; case 'end': return '\x1b[F';
+    case 'backspace': return '\x7f'; case 'delete': return '\x1b[3~';
+    case 'newline': return '\n'; case 'submit': return '\r';
+    case 'extendLeft': return '\x1b[1;2D'; case 'extendRight': return '\x1b[1;2C';
+    case 'extendUp': return '\x1b[1;2A'; case 'extendDown': return '\x1b[1;2B';
+    case 'extendLineStart': return '\x1b[1;2H'; case 'extendLineEnd': return '\x1b[1;2F';
+    case 'selectionCopy': return '\x1b[99;6u';
+    case 'interrupt': return '\u0003'; case 'eof': return '\u0004'; case 'search': return '\u0012';
+    default: return undefined;
+  }
+}
 
 /** Raw sequences for the key names the registry uses, in the decoded-input domain. */
 const CONTROL: Record<string, string> = {

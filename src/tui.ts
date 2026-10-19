@@ -29,7 +29,7 @@ import { Writable, type Readable } from 'node:stream';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { reduceKillRing } from './kill-ring.js';
 import { TerminalModeController, type MouseTracking } from './tui-modes.js';
-import { Keymap, contextStack, type TuiContext } from './tui-keys.js';
+import { Keymap, chordSequence, contextStack, type TuiContext } from './tui-keys.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
   createSelection, dragSpan, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
@@ -2463,23 +2463,6 @@ export function pad(line: string, columns: number): string {
     text += segment; width += cells;
   }
   return text + ' '.repeat(Math.max(0, columns - width));
-}
-
-/** The raw sequence for an editor action, used to consult the chord registry. */
-export function chordSequence(action: EditorAction): string | undefined {
-  switch (action.type) {
-    case 'left': return '\x1b[D'; case 'right': return '\x1b[C';
-    case 'up': return '\x1b[A'; case 'down': return '\x1b[B';
-    case 'home': return '\x1b[H'; case 'end': return '\x1b[F';
-    case 'backspace': return '\x7f'; case 'delete': return '\x1b[3~';
-    case 'newline': return '\n'; case 'submit': return '\r';
-    case 'extendLeft': return '\x1b[1;2D'; case 'extendRight': return '\x1b[1;2C';
-    case 'extendUp': return '\x1b[1;2A'; case 'extendDown': return '\x1b[1;2B';
-    case 'extendLineStart': return '\x1b[1;2H'; case 'extendLineEnd': return '\x1b[1;2F';
-    case 'selectionCopy': return '\x1b[99;6u';
-    case 'interrupt': return '\u0003'; case 'eof': return '\u0004'; case 'search': return '\u0012';
-    default: return undefined;
-  }
 }
 
 export function createTuiTerminal(options: TuiOptions): TuiTerminal { return new TuiTerminal(options); }

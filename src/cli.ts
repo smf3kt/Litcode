@@ -18,6 +18,8 @@ import { loadProjectConfig, defaultUserDir, instructionSources, type LoadedConfi
 import { refuseBypassUnderRoot } from './bypass-guard.js';
 import { heldMcpServerNotice, mcpServerFingerprint, readMcpApprovals, recordMcpApprovals, resolveMcpServers, workspaceApprovalKey } from './mcp-approval.js';
 import { loadKeybindings } from './keybindings.js';
+import { bindSettingsStore } from './plugin-chain-settings-store.js';
+import { bindWheelSettingsHost } from './plugin-chain-wheel-glue-host.js';
 import { compileJsonSchema, createHeadlessOutput, UsageBudget, UsageBudgetExceeded, withUsageBudget,
   type HeadlessOutput, type OutputFormat } from './structured-output.js';
 import type { PermissionPolicy } from './permissions.js';
@@ -522,6 +524,19 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     ? loadProjectConfig(workspace, { userDir: values['user-dir'], settingsFile: values.settings, managedSettingsFile: values['managed-settings'], paths: [] })
     : undefined;
   const settings = loaded ? parseSettings(loaded.settings) : {};
+  // The wheel settings read (`hs`, chunk-js2bhabe.js [777,1499)) walks the enabled settings
+  // sources; this build merges its layers when it loads them, so each source it names answers the
+  // merged map, and a resume or demo session answers the same empty map its pins imply. The legacy
+  // global config stays empty: this build has no legacy store to read.
+  const mergedSettings: Record<string, unknown> = loaded?.settings ?? {};
+  bindSettingsStore({ all: () => mergedSettings, one: () => mergedSettings });
+  bindWheelSettingsHost({
+    sourceOrder: () => ['userSettings'],
+    projectSharesUserSettings: () => false,
+    legacyConfig: () => ({}),
+    legacyDefaults: () => ({}),
+    parseLegacySetting: () => undefined,
+  });
   const userDir = path.resolve((values['user-dir'] as string | undefined) ?? defaultUserDir());
   // Answering for a project-declared server is its own action: it records the
   // declaration the person answered for and starts nothing.
