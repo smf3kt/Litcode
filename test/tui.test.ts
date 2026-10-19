@@ -693,6 +693,36 @@ test('the undo push treats a Vim INSERT run as one continuous gesture', async ()
   } finally { tui.close(); decoded.get(output)!.dispose(); }
 });
 
+test('the footer leads with the permission-mode chip and answers a running turn with its chord', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'footer-mode-')));
+  const userDir = path.join(root, 'user'); fs.mkdirSync(userDir);
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 20 }); watchScreen(output);
+  const config = defaultConfig(root, []); config.model = 'fixture/footer'; config.configSources = { userDir };
+  config.permissions = { mode: 'plan', allow: [], deny: [] };
+  const session = Session.open(root, { config });
+  const tui = new TuiTerminal({ input, output });
+  let renderError: Error | undefined; tui.on('inputError', error => { renderError = error; });
+  tui.bindStatusLine(session); tui.start();
+  const until = async (predicate: () => boolean) => {
+    const deadline = Date.now() + 5000;
+    while (!predicate()) { if (renderError) throw renderError; assert.ok(Date.now() < deadline, screenLines(output).join('\n')); await delay(10); }
+  };
+  try {
+    // Source `DR` reads `ur.plan` and joins its glyph, indicator and ` on`.
+    await until(() => screenLines(output).some(row => row.includes('⏸ plan mode on')));
+    // Source `LVe`'s `Ei` chain gives `interrupt` to a running turn; its chord comes from the
+    // keymap, where this product binds `app:interrupt`.
+    tui.setRunning(true);
+    await until(() => screenLines(output).some(row => row.includes('ctrl+c to interrupt')));
+    // A permission update repaints the chip without a new bind.
+    session.adoptPermissionUpdates([{ type: 'setMode', mode: 'acceptEdits', destination: 'session' }]);
+    await until(() => screenLines(output).some(row => row.includes('⏵⏵ accept edits on')));
+  } finally { tui.close(); session.close(); decoded.get(output)!.dispose(); }
+});
+
 test('grouped questions step through each question and review before submitting', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};

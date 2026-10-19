@@ -343,3 +343,12 @@ export function contextStack(input: { screen: 'chat' | 'transcript' | 'search' |
     default: return ['Chat', 'Global'];
   }
 }
+
+/**
+ * Source `us`: the chord an action is bound to in a context, with a fallback when nothing is
+ * bound. The recovered footer reads its interrupt hint this way rather than hard-coding the key.
+ */
+export function chordForAction(action: string, context: TuiContext, fallback: string): string {
+  for (const [chord, bound] of Object.entries(KEY_BINDINGS[context])) if (bound === action) return chord;
+  return fallback;
+}

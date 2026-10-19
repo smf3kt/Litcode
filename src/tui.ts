@@ -10,8 +10,9 @@ import { execFile } from 'node:child_process';
  * TuiRenderer owns that chain; Node CellSegmenter/width/wrap are explicit host
  * adaptations. TuiDocumentRenderer paints the copied Markdown components,
  * theme and highlighter into transcript cells; copied input/footer components
- * frame the owned editor. Dialog composition and footer service state remain
- * earlier host adaptations.
+ * frame the owned editor. The footer's permission-mode chip is ported
+ * (`tui-footer-source.ts`); its task, agent, voice, artifact and IDE branches
+ * have no local source and remain unported.
  * Complete provenance and remaining differences are recorded in W44.
  *
  * Other ports include the mode sequences (`tui-modes.ts`, a copy), the
@@ -30,7 +31,7 @@ import { Writable, type Readable } from 'node:stream';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { reduceKillRing } from './kill-ring.js';
 import { TerminalModeController, type MouseTracking } from './tui-modes.js';
-import { Keymap, chordSequence, contextStack, type TuiContext } from './tui-keys.js';
+import { Keymap, chordForAction, chordSequence, contextStack, type TuiContext } from './tui-keys.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
   createSelection, dragSpan, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
@@ -38,13 +39,15 @@ import {
   type SelectionAnchor, type SelectionRow, type SelectionState,
 } from './tui-selection.js';
 import { composerEditRelay, type ChainRelayKey, type ComposerEditRelay } from './plugin-chain-relay.js';
+import { externalMode, modeChip, modeColorSlot } from './tui-footer-source.js';
+import { effectivePermissionPolicy } from './permissions.js';
 import { paintedDecorations, normalizedRuns, highlightRows, type DecorationRun, type PaintedDecorations, type PromptSegment } from './tui-input-decorations.js';
 import { composerHighlights } from './tui-input-highlights.js';
 import { Art } from './tui-input-highlights-source.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { layoutEngine } from './tui-layout.js';
 import { renderPreviewMarkdown } from './tui-markdown.js';
-import { TuiRenderer, type PromptLine } from './tui-renderer.js';
+import { TuiRenderer, type FooterPart, type PromptLine } from './tui-renderer.js';
 import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
@@ -427,6 +430,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private statusLineRenderer: TuiDocumentRenderer | undefined;
   private statusLineRows: string[] = [];
   private statusLineKey = '';
+  /** The session's effective permission mode, the input to the footer's mode chip. */
+  private permissionMode: string | undefined;
+  private unsubscribePermissions: (() => void) | undefined;
   private selection: SelectionState = createSelection();
   private dialog: ActiveDialog | undefined;
   /** The grouped question dialog's AFK countdown, when the host enables it. */
@@ -589,6 +595,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   bindStatusLine(session: import('./session.js').Session): void {
     this.statusLineSetting = session.config.statusLine;
     this.statusLineText = undefined; this.statusLineKey = '';
+    this.unsubscribePermissions?.();
+    const readMode = () => externalMode(effectivePermissionPolicy(session.config.permissions,
+      session.permissionUpdates)?.mode ?? 'default');
+    this.permissionMode = readMode();
+    this.unsubscribePermissions = session.subscribePermissions(() => {
+      if (this.closed) return;
+      const mode = readMode();
+      if (mode === this.permissionMode) return;
+      this.permissionMode = mode;
+      try { this.render(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
+    });
     this.statusLine.bind(session, text => {
       if (this.closed) return;
       this.statusLineText = text; this.statusLineKey = '';
@@ -1076,6 +1093,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.diffPointer = undefined; this.diffSelection.dismiss(); this.diffAttachmentFocused = false;
     this.progress.close(); this.progressRenderer?.close();
     this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
+    this.unsubscribePermissions?.(); this.unsubscribePermissions = undefined;
     this.welcomeRenderer?.close(); this.welcomeRenderer = undefined; this.welcomeRows = []; this.welcomeKey = '';
     this.assistantMessage = undefined;
     this.previewCoalescer.dispose();
@@ -2784,7 +2802,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
     });
     this.renderer.renderChat(frame, prompt.lines,
-      [this.statusRow(conversationWidth)],
+      this.statusFooter(conversationWidth),
       columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
@@ -2849,19 +2867,34 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       : 'ctrl+o transcript  ctrl+r search  ctrl+c interrupt';
   }
 
-  private statusRow(columns: number): string {
-    if(this.gestures.hint)return this.gestures.hint.slice(0,columns);
+  /**
+   * The footer row. Source `LVe` leads it with the permission-mode chip (`DR`, `jy` here) and
+   * gives the right side one indicator from the `Ei` priority chain; the interrupt branch is the
+   * only one whose data this terminal has, so running shows its chord and idle keeps the local
+   * hints.
+   */
+  private statusFooter(columns: number): Array<string | FooterPart> {
+    if(this.gestures.hint)return [this.gestures.hint.slice(0,columns)];
     const attachment = this.diffSelection.pending;
-    if (attachment) return pad(`${this.diffAttachmentFocused ? '> ' : ''}${attachment.lineCount} ${attachment.lineCount === 1 ? 'line' : 'lines'} from diff${attachment.filePath ? ` in ${attachment.filePath}` : ''}`, columns);
-    const hints = this.statusLineSetting && this.screen === 'chat' ? '' : this.statusHints();
+    if (attachment) return [pad(`${this.diffAttachmentFocused ? '> ' : ''}${attachment.lineCount} ${attachment.lineCount === 1 ? 'line' : 'lines'} from diff${attachment.filePath ? ` in ${attachment.filePath}` : ''}`, columns)];
+    const hints = this.statusLineSetting && this.screen === 'chat' ? ''
+      : this.running && this.screen === 'chat'
+        ? `${chordForAction('app:interrupt', 'Global', 'ctrl+c')} to interrupt`
+        : this.statusHints();
     // The hints are the part a person needs when they are lost, so they keep as
     // much room as they need up to half the row, and status text is clipped
     // into what is left rather than allowed to push the hints off the screen.
     const shown = hints.slice(0, Math.min(hints.length, Math.floor(columns / 2)));
+    const chip = this.permissionMode === undefined ? '' : modeChip(this.permissionMode);
+    // The footer's parts render through `Se`, which joins them with ` · `.
+    const chipWidth = chip === '' ? 0 : cellWidth(chip) + 3;
     const left = `${this.running ? 'running' : 'ready'}${this.vimEnabled&&!this.statusLineSetting?.hideVimModeIndicator&&this.vim.mode!=='NORMAL'&&this.screen!=='search'?' -- '+this.vim.mode+' --':''}${this.status ? `  ${this.status}` : ''}`
-      .slice(0, Math.max(0, columns - shown.length - 1));
-    const gap = Math.max(1, columns - left.length - shown.length);
-    return left + ' '.repeat(gap) + shown;
+      .slice(0, Math.max(0, columns - shown.length - chipWidth - 1));
+    const gap = Math.max(1, columns - chipWidth - cellWidth(left) - shown.length);
+    const parts: Array<string | FooterPart> = [];
+    if (chip !== '') parts.push({ text: chip, color: modeColorSlot(this.permissionMode!) });
+    parts.push(left + ' '.repeat(gap) + shown);
+    return parts;
   }
 }
 
