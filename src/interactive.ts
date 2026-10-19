@@ -233,6 +233,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setTheme?.(session.config.theme);
     terminal?.bindStatusLine?.(session);
     terminal?.bindDiffPanel?.(session);
+    terminal?.bindInlineDiff?.(session);
     taskUnsubscribe?.(); taskUnsubscribe = undefined;
     refreshTasks();
     if (terminal?.setTasks) taskUnsubscribe = activeRuntime.subscribeTasks?.(session.config, refreshTasks);
@@ -687,6 +688,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   try {
     await terminal?.bindInputHistory?.(session);
     terminal?.bindDiffPanel?.(session);
+    terminal?.bindInlineDiff?.(session);
     terminal?.start();
     unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
     const bound = await bindNext(activeRuntime, session);
@@ -875,6 +877,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
         if (prompt === '/diff' && terminal?.toggleDiffPanel) {
           options.status.write(await terminal.toggleDiffPanel() + '\n');
+          continue;
+        }
+        // The inline presentation: a line-mode session opens the dialog rather than the panel, and
+        // `/diff NAME [OFFSET]` keeps its checkpoint meaning below.
+        if (prompt === '/diff' && terminal?.toggleInlineDiff) {
+          const message = await terminal.toggleInlineDiff();
+          if (message) options.status.write(message + '\n');
           continue;
         }
         if (prompt === '/tasks' || prompt === '/cron' || /^\/diff(?:\s|$)/.test(prompt)) {

@@ -1,11 +1,12 @@
 // Readable seam over the recovered per-turn diff history. The pure helpers are copied verbatim in
 // ./diff-turn-source.ts; `ne`, a React-style memo hook, is adapted to an incremental accumulator.
 //
-// Source: chunk-twzxjzbk.js (sha256…), zero-based UTF-16 half-open ranges. `Rt` [17903,18122)
+// Source: chunk-twzxjzbk.js (sha256 84e9dd9e0d193d0d9e64cfdf3534a0f0c2f2b42cee51236346b5eef34b7dd35b),
+// zero-based UTF-16 half-open ranges. `Rt` [17903,18122)
 // recognizes a diff tool result, `St` [18122,18194) the create/update types, `Mt` [18194,18338)
 // counts hunk lines, `Ct` [18338,18487) builds the 30-character prompt preview, `we`
 // [18487,18642) settles turn stats, `ri` [22140,22184) wraps a turn as a source entry and `Ie`
-// [22184,22672) converts a turn to the dialog diff data shape. `ne` [18641,20072) walks messages
+// [22184,22672) converts a turn to the dialog diff data shape. `ne` [18642,20073) walks messages
 // into completed turns.
 import { Rt, St, Mt, Ct, we, ri, Ie } from './diff-turn-source.js';
 

@@ -1,0 +1,23 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-3gz7s57c.js",
+      "sha256": "9d44818f1c5a17e8ddddbce66694eab43a75e489d8afbeaf0369756daf2e378b"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-3gz7s57c.js",
+      "sha256": "9d44818f1c5a17e8ddddbce66694eab43a75e489d8afbeaf0369756daf2e378b",
+      "range": [
+        11348,
+        11607
+      ],
+      "units": 259,
+      "bodySha256": "fff228a47c2be1646c091e750245cde1d142ce672673a5cb939c61999a72f986",
+      "note": "Kp/uIe: the scroll viewport holder the modal host hands to its content"
+    }
+  ],
+  "missing": []
+}

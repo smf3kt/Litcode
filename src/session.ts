@@ -25,6 +25,7 @@ import { clearCheckpointAssociation, recoverCheckpointAssociations } from './che
 import { spinnerVerbsSchema } from './tui-progress-settings.js';
 import { statusLineSchema } from './tui-statusline-schema.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
+import type { StoredToolUseResult } from './tool-use-result.js';
 
 export type SessionConfig = {
   model: string;
@@ -127,7 +128,7 @@ export type SessionEvent =
   | { kind: 'mcp_subscription'; server: string; configDigest: string; method: 'resources/subscribe' | 'resources/unsubscribe'; uri: string }
   | { kind: 'mcp_task'; server: string; configDigest: string; taskId: string; tool: string; createdAt: string; ttl: number | null; resolved: boolean; result?: string; isError?: boolean }
   | { kind: 'tool_start'; id: string; name: string }
-  | { kind: 'tool_result'; result: ToolResult }
+  | { kind: 'tool_result'; result: ToolResult; host?: StoredToolUseResult }
   | { kind: 'tool_output'; result: ToolResult }
   | { kind: 'hook_once'; event: string; key: string }
   | { kind: 'checkpoint'; name: string; digest: string; boundary: number }
@@ -254,6 +255,15 @@ export const configSchema = z.object({
 const messageSchema = z.object({ role: z.enum(['user', 'assistant']), content: z.union([z.string(), z.array(z.object({ type: z.string() }).passthrough())]) }).strict();
 const responseSchema = z.object({ role: z.literal('assistant'), content: z.array(z.object({ type: z.string() }).passthrough()), stop_reason: z.string().nullable() }).passthrough();
 const resultSchema = z.object({ type: z.literal('tool_result'), tool_use_id: z.string().min(1), content: z.union([z.string(), z.array(z.object({ type: z.string() }).passthrough())]), is_error: z.boolean().optional() }).strict();
+// The stored host row (`TRn`): hunks the turn-diff walk counts, plus the fields a row needs to be
+// recognized at all. A create keeps its content because an empty patch leaves no other body.
+const patchHunkSchema = z.object({ oldStart: z.number().int(), oldLines: z.number().int(),
+  newStart: z.number().int(), newLines: z.number().int(), lines: z.array(z.string()) }).strict();
+const storedToolUseResultSchema = z.union([
+  z.object({ type: z.literal('create'), filePath: z.string().min(1), content: z.string(), structuredPatch: z.array(patchHunkSchema) }).strict(),
+  z.object({ type: z.literal('update'), filePath: z.string().min(1), structuredPatch: z.array(patchHunkSchema) }).strict(),
+  z.object({ filePath: z.string().min(1), oldString: z.string(), newString: z.string(), structuredPatch: z.array(patchHunkSchema), replaceAll: z.boolean() }).strict(),
+]);
 const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('metadata'), version: z.literal(1), id: z.string().uuid(), config: configSchema,
     fingerprint: z.string(), startedAt: z.number().finite().nonnegative().optional() }).strict(),
@@ -265,7 +275,7 @@ const eventSchema = z.discriminatedUnion('kind', [
     method: z.enum(['resources/subscribe', 'resources/unsubscribe']), uri: z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096 && !/[\x00-\x20\x7f]/.test(value)) }).strict(),
   z.object({ kind: z.literal('mcp_task'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/), taskId: z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/), tool: z.string().min(1).max(256), createdAt: z.string().datetime({ offset: true }), ttl: z.number().finite().int().nonnegative().nullable(), resolved: z.boolean(), isError: z.boolean().optional(), result: z.string().refine(value => Buffer.byteLength(value) <= 24000).optional() }).strict(),
   z.object({ kind: z.literal('tool_start'), id: z.string(), name: z.string() }).strict(),
-  z.object({ kind: z.literal('tool_result'), result: resultSchema }).strict(),
+  z.object({ kind: z.literal('tool_result'), result: resultSchema, host: storedToolUseResultSchema.optional() }).strict(),
   z.object({ kind: z.literal('tool_output'), result: resultSchema }).strict(),
   z.object({ kind: z.literal('title'), title: z.string().min(1).max(200).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)) }).strict(),
   z.object({ kind: z.literal('refusal'), model: z.string().min(1).max(256).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)),

@@ -18,6 +18,7 @@ import { z } from "zod";
 import { atomicWriteFile } from "./atomic-write.js";
 import type { InteractionCallbacks } from "./interaction-tools.js";
 import { PathResolutionError, resolveChain, verifyIdentity, observeWorkingDirectory, type WorkingDirectories, type ResolvedPath } from "./path-identity.js";
+import { editEffectResult, writeEffectResult, type ToolUseResult } from "./tool-use-result.js";
 
 export type ToolContext = {
   workspace: string;
@@ -28,6 +29,8 @@ export type ToolContext = {
   interaction?: InteractionCallbacks;
   fileHistory?: (file?: string) => void;
   workingDirectories?: (readOnly: boolean) => readonly string[];
+  /** A file-effecting tool reports the structured host result of the effect it just performed. */
+  hostResult?: (value: ToolUseResult) => void;
 };
 
 export type ToolDefinition = {
@@ -1004,6 +1007,7 @@ function writeFileTool(): ToolDefinition {
       const resolved = confineResolved(root, userPath, false, context.workingDirectories?.(false));
       const real = resolved.path;
       const existed = fs.existsSync(real);
+      let previous = "";
       if (existed) {
         const stat = fs.statSync(real);
         if (!stat.isFile()) {
@@ -1012,6 +1016,10 @@ function writeFileTool(): ToolDefinition {
         if (!overwrite) {
           throw new Error(`write_file: file already exists (pass overwrite: true): ${userPath}`);
         }
+        // The prior content is read only once the target is known to be a regular file we may
+        // replace, so the host row reports the effect against what the file actually held: an
+        // existing but empty file takes the source's create branch.
+        previous = fs.readFileSync(real, "utf8");
         verifyUnchanged(resolved, "write_file", userPath);
         context.fileHistory?.(real);
         atomicWrite(real, content, stat.mode & 0o7777);
@@ -1020,6 +1028,7 @@ function writeFileTool(): ToolDefinition {
         atomicWrite(real, content);
       }
       const rel = path.relative(root, real) || userPath;
+      context.hostResult?.(writeEffectResult(rel, previous, content));
       return `${existed ? "overwrote" : "wrote"} ${Buffer.byteLength(content, "utf8")} bytes to ${rel}`;
     },
   };
@@ -1087,6 +1096,7 @@ function editFileTool(): ToolDefinition {
       atomicWrite(real, updated, stat.mode & 0o7777);
       const count = replace_all ? occurrences : 1;
       const rel = path.relative(root, real) || userPath;
+      context.hostResult?.(editEffectResult(rel, original, updated, old_string, new_string, replace_all));
       return `edited ${rel}: ${count} replacement(s)`;
     },
   };

@@ -24,6 +24,8 @@ import type { ScopedPicker } from './tui-scope-picker.js';
 /** Source HI() gate for the picker: see research/ports/W44-scope-picker-copies.json entryEvidence. */
 const SOURCE_PICKER_OWNS_HISTORY_SEARCH = true;
 import type { TuiDocumentRenderer } from './tui-document-renderer.js';
+import type { InlineDiffDialog } from './inline-diff.js';
+import { Keymap, chordSequence } from './tui-keys.js';
 import { ENABLE_FOCUS_EVENTS, DISABLE_FOCUS_EVENTS } from './tui-modes.js';
 
 export const MAX_PASTE_BYTES = 256 * 1024;
@@ -364,9 +366,13 @@ export class TerminalKeyDecoder {
   private discardPaste = false;
   private overrides: Keybindings;
   private preserveTab = false;
+  /** A modal overlay owns unbound sequences, so the decoder keeps them for the chord registry. */
+  private preserveKeys = false;
   setSearchInput(active: boolean): void { this.preserveTab = active; }
+  setOverlayKeys(active: boolean): void { this.preserveKeys = active; }
   constructor(keybindings: Keybindings = {}, private readonly maxPasteBytes = MAX_PASTE_BYTES,
-    private readonly preserveKeys = false, private readonly frameReturn = false) {
+    preserveKeys = false, private readonly frameReturn = false) {
+    this.preserveKeys = preserveKeys;
     this.overrides = decodeTerminalKeybindings(keybindings);
     this.bindings = { ...DEFAULT_KEYS, ...this.overrides };
   }
@@ -597,6 +603,9 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
   private readonly inputHistory = new InputHistory(error => this.emit('historyError', error));
   private historyBinding = 0;
   private sourceSearch: HistorySearch | undefined;
+  private sourceDiff: InlineDiffDialog | undefined;
+  private diffSession: import('./session.js').Session | undefined;
+  private diffKeys: Keymap | undefined;
   private SearchClass: typeof HistorySearch | undefined;
   private SearchDocument: typeof TuiDocumentRenderer | undefined;
   private PickerClass: typeof ScopedPicker | undefined;
@@ -663,6 +672,47 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
     this.render();
   }
   async flushInputHistory(): Promise<void> { await this.inputHistory.finish(); }
+
+  /**
+   * Bind the inline diff dialog (C2). The recovered dispatch keeps the full-screen panel for the
+   * full-screen presentation and mounts `si` inline otherwise, so a line-mode session opens the
+   * dialog instead of falling through to the checkpoint parser's `/diff NAME [OFFSET]`. The
+   * dialog itself is built on first use, so binding stays synchronous.
+   */
+  bindInlineDiff(session: import('./session.js').Session): void {
+    this.sourceDiff?.close();
+    this.sourceDiff = undefined;
+    this.diffSession = session;
+  }
+
+  /** Source `C`: the inline command route. Returns the line to display, empty when it opened. */
+  async toggleInlineDiff(): Promise<string> {
+    const session = this.diffSession;
+    if (!session) return 'The diff dialog is unavailable in this session';
+    if (!this.sourceDiff) {
+      const module = await import('./inline-diff.js');
+      if (this.closed || this.diffSession !== session) return '';
+      this.diffKeys ??= new Keymap();
+      this.sourceDiff = new module.InlineDiffDialog(session, () => this.render());
+    }
+    const dialog = this.sourceDiff;
+    if (dialog.visible) { this.closeInlineDiff(); return ''; }
+    const message = await dialog.open();
+    if (this.closed) return '';
+    if (!dialog.visible) { this.render(); return message; }
+    // The dialog owns the keyboard while it is open, so unbound sequences reach its binding table.
+    this.decoder.setOverlayKeys(true);
+    this.render();
+    return '';
+  }
+
+  private closeInlineDiff(): void {
+    const dialog = this.sourceDiff;
+    if (!dialog?.visible) return;
+    dialog.dismiss();
+    this.decoder.setOverlayKeys(false);
+    this.render();
+  }
   get state(): Readonly<EditorState> { return { ...this.editor, history: [...this.editor.history],
     pastedContents:structuredClone(this.editor.pastedContents),historyPastes:structuredClone(this.editor.historyPastes),
     historyDraftPastes:structuredClone(this.editor.historyDraftPastes),killRing: structuredClone(this.editor.killRing) }; }
@@ -835,8 +885,47 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
     else if(snapshot.query!==this.queryEditor.text)this.sourceSearch.queryCursor=snapshot.query.length;
     this.render();
   }
-  private handleSourceSearch(action:EditorAction): boolean {
-    if(!this.sourceSearch?.snapshot.searching)return false;
+  /**
+   * The inline dialog owns the keyboard while it is open. Source `Yt` resolves one raw sequence
+   * against the mounted contexts and dispatches the named action to the focused tree; the modal
+   * contexts (`DiffDialog`, `Tabs`, `Select`) sit above `Scroll` and `Global`, so a chord the
+   * dialog binds never reaches the editor underneath.
+   */
+  private handleSourceDiff(action: EditorAction): boolean {
+    const dialog = this.sourceDiff;
+    if (!dialog?.visible) return false;
+    if (action.type === 'insert') {
+      // A printable key arrives as (possibly batched) text; every character is one key press here.
+      let consumed = false;
+      for (const character of action.text) if (this.diffKey(character)) consumed = true;
+      return consumed;
+    }
+    if (action.type === 'interrupt' || action.type === 'eof') {
+      // Ctrl-C and Ctrl-D are the frame's own two-press exit chords; never the editor's.
+      this.diffKey(action.type === 'interrupt' ? '\u0003' : '\u0004');
+      return true;
+    }
+    if (action.type === 'submit' || action.type === 'return') return this.diffKey('\r');
+    const sequence = action.type === 'key' ? action.sequence : chordSequence(action);
+    if (sequence !== undefined && this.diffKey(sequence)) return true;
+    // A modal dialog swallows what it does not bind rather than letting it reach the prompt.
+    return true;
+  }
+
+  private diffKey(sequence: string): boolean {
+    const dialog = this.sourceDiff;
+    if (!dialog?.visible || !this.diffKeys) return false;
+    const outcome = this.diffKeys.push(sequence, dialog.contexts as never);
+    if (outcome.kind === 'pending') return true;
+    if (outcome.kind !== 'match') return false;
+    const handled = dialog.handleAction(outcome.match.action);
+    // The dialog's own dismissal (`diff:dismiss`, or a `select:accept` that completes) hides it
+    // without going through `closeInlineDiff`, so release the keyboard here too.
+    if (!dialog.visible) this.decoder.setOverlayKeys(false);
+    return handled;
+  }
+
+  private handleSourceSearch(action:EditorAction): boolean {    if(!this.sourceSearch?.snapshot.searching)return false;
     const sequence=action.type==='key'?action.sequence:action.type==='return'?action.sequence:'';
     const command=action.type==='key'?action.command:action.type;
     const operation=command==='search'||sequence==='\u0012'?'historySearch:next'
@@ -864,6 +953,7 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
     if (this.closed || this.editorSuspended || this.editorController) return;
     if (action.type === 'focus') { this.focus.set(action.focused); return; }
     if(action.type!=='running'&&this.handleLinePicker(action))return;
+    if(action.type!=='running'&&this.handleSourceDiff(action))return;
     if(action.type!=='running'&&this.handleSourceSearch(action))return;
     if(action.type==='key'&&action.sequence==='\t'){this.dispatch({type:'insert',text:'    '});return;}
     if(action.type==='search'){if(this.inputHistory.bound){if(this.openSourcePicker())return;}if(this.inputHistory.bound){this.openSourceSearch();return;}}
@@ -909,6 +999,7 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
     if (this.closed) return;
     this.closed = true;
     this.sourceSearch?.close();this.sourceSearch=undefined;this.queryUndo.clear();this.searchRenderer?.close();
+    this.sourceDiff?.close();this.sourceDiff=undefined;this.diffSession=undefined;
     this.editorController?.abort();this.gestures.reset();this.vim.close();this.focus.close();this.inputHistory.close();
     this.undo.clear();
     this.editor = {...this.editor,pastedContents:{},historyPastes:[],historyDraftPastes:{}};
@@ -947,6 +1038,7 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
       this.escapeTimer = setTimeout(() => {
         const standalone=this.decoder.pendingStandaloneEscape;this.decoder.flushEscape();this.escapeTimer=undefined;
         if(standalone&&!this.focus.focused)this.focus.set(true);
+        if(standalone&&this.handleSourceDiff({type:'key',sequence:'\x1b'}))return;
         if(standalone&&this.handleSourceSearch({type:'key',sequence:'\x1b'}))return;
         if(standalone&&this.vimEnabled)this.handleVim({type:'key',sequence:'\x1b'});
         else if(standalone&&this.options.sourceInputGestures&&!this.editor.running)this.handleGesture('escape');
@@ -989,6 +1081,9 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
       const queryRows=this.searchRenderer.renderElement(this.sourceSearch!.element(),this.columns()).map(row=>row.ansi);
       lines.push(...queryRows);
     }else if(this.gestures.hint)lines.unshift(this.gestures.hint.slice(0,this.columns()));
+    const dialogRows = this.sourceDiff?.visible
+      ? this.sourceDiff.rowsFor(this.columns(), Math.max(3, (this.options.output.rows ?? 24) - lines.length)) : [];
+    if (dialogRows.length) lines.push(...dialogRows.slice(0, Math.max(1, (this.options.output.rows ?? 24) - lines.length - 1)));
     const frame = { ...body, lines,cursorRow:searching?lines.length-1:body.cursorRow+(this.gestures.hint?1:0),
       cursorColumn:searching?this.sourceSearch!.caretColumn(this.columns())
         :body.cursorColumn + cellWidth(cursorPrefix) };
@@ -1120,6 +1215,9 @@ export interface TerminalSurface {
   bindStatusLine?(session: import('./session.js').Session): void;
   bindDiffPanel?(session: import('./session.js').Session): void;
   toggleDiffPanel?(): Promise<string>;
+  /** The inline presentation's owner (`C`/`_5t`): the line-mode dialog, not the full-screen panel. */
+  bindInlineDiff?(session: import('./session.js').Session): void;
+  toggleInlineDiff?(): Promise<string>;
   restoreDiffSelection?(attachment: PromptDiffSelection): void;
   flushStatusLine?(): Promise<void>;
   pauseProgress?(paused: boolean): void;

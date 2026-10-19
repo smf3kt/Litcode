@@ -1,0 +1,89 @@
+{
+  "schema": "W45ChainRunnerBlocks.v1",
+  "modules": [
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d"
+    }
+  ],
+  "blocks": [
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d",
+      "range": [
+        615,
+        3451
+      ],
+      "units": 2836,
+      "bodySha256": "1359f72ef9722462547cb603f50e026f949e208b74ff526b92367c128eb06f35",
+      "note": "L: Myers line-diff engine with component accumulation, comparator, timeout and callback scheduling"
+    },
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d",
+      "range": [
+        3856,
+        4082
+      ],
+      "units": 226,
+      "bodySha256": "8e3e65465ee3715fa14ce95fec95e12dccdeee2ea6e6e1b95232bbcf47f38aea",
+      "note": "V: newline tokenizer with stripTrailingCr"
+    },
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d",
+      "range": [
+        3451,
+        3803
+      ],
+      "units": 352,
+      "bodySha256": "097ded34b871fe0ac9b4cfc61e5ee569fbe2404f8cac9ef0a4bbca6e25fa5d3d",
+      "note": "N: diff class binding the tokenizer and the whitespace/EOF normalizers"
+    },
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d",
+      "range": [
+        3803,
+        3815
+      ],
+      "units": 12,
+      "bodySha256": "f7c604635d648c06af3fbe2f0a9a95b4d482f391fe52635ca9f6996e55c6cfdb",
+      "note": "R: the shared diff instance (`var R=new N;`)"
+    },
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d",
+      "range": [
+        3815,
+        3856
+      ],
+      "units": 41,
+      "bodySha256": "3187c52d31004ec300f56135e734d638cf74b519cb4e425f0f7c60fd73218df5",
+      "note": "_qe: the diff entry point"
+    },
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d",
+      "range": [
+        5395,
+        5517
+      ],
+      "units": 122,
+      "bodySha256": "4cdb91800b58379735bf1c2eab162b9ec2f6ae36fda91070bb7314dbf65b11bb",
+      "note": "Y: a value split into newline-terminated lines"
+    },
+    {
+      "module": "chunk-34bv7wfw.js",
+      "sha256": "3c54cf84149d490f331f6c45a0d54ac7f471c7962b5a359f2a6880189b94f27d",
+      "range": [
+        4082,
+        5395
+      ],
+      "units": 1313,
+      "bodySha256": "a4b9dc30acc2d3a925bef3d6089f760fb4dd58c2df97e8bac5485d01ee0315ad",
+      "note": "t6: hunk builder with explicit no-newline markers"
+    }
+  ],
+  "missing": []
+}

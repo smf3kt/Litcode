@@ -13,6 +13,7 @@ import path from 'node:path';
 import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
 import type { InteractionCallbacks } from './interaction-tools.js';
 import { boundToolContent } from './tool-output.js';
+import { projectToolUseResult, type StoredToolUseResult } from './tool-use-result.js';
 import { mediaInputSchema, readMedia, type MediaAttachment } from './media.js';
 import { AUTO_MEMORY_INSTRUCTIONS, loadAutoMemoryContext } from './auto-memory.js';
 import { automaticCheckpoint } from './rewind.js';
@@ -775,9 +776,15 @@ export class Agent {
     const context: ToolContext = { workspace: c.workspace, signal, allowShell: c.allowShell, maxOutputBytes: c.maxOutputBytes,
       conversation: cloneClassifierMessages(conversation), interaction: this.events.interaction,
       workingDirectories: readOnly => this.session.workingDirectories(readOnly),
-      fileHistory: file => this.session.touchFile(file) };
+      fileHistory: file => this.session.touchFile(file),
+      // A file effect reports its structured result here; the storage projection is taken now, so
+      // the journal holds the row the transcript keeps rather than the live capture.
+      hostResult: value => { hostResult = projectToolUseResult(value); } };
     const results: ToolResult[] = [];
     const extra: string[] = [];
+    // One slot for the batch: calls execute in order, and a slot is cleared before each call, so a
+    // row can only belong to the call that produced it.
+    let hostResult: StoredToolUseResult | undefined;
     let stopReason = blocked;
     let retryMeta = false;
     const outcomes: Record<string, 'ok' | 'error' | 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error'> = {};
@@ -786,6 +793,7 @@ export class Agent {
     for (const call of calls) {
       let result: ToolResult;
       let executed = false;
+      hostResult = undefined;
       let input = call.input;
       // Source `duration_ms`: "Tool execution time in milliseconds. Excludes permission-prompt and hook
       // time." (chunk-r2vtj1kh.js [193030,193147)), so it wraps the tool's own call and nothing else —
@@ -879,9 +887,12 @@ export class Agent {
           } finally { durationMs = Date.now() - startedAt; }
         } catch (error) { result = this.result(call.id, error instanceof Error ? error.message : String(error), true); }
       }
-      // Persist the effect before running a post hook, which may itself be interrupted.
+      // Persist the effect before running a post hook, which may itself be interrupted. A file
+      // effect's structured row is written with the call it belongs to, so replay keeps the same
+      // chronological order the source's per-result message has.
       outcomes[call.id] ??= result.is_error ? 'error' : 'ok';
-      this.session.append({ kind: 'tool_result', result });
+      this.session.append(hostResult === undefined
+        ? { kind: 'tool_result', result } : { kind: 'tool_result', result, host: hostResult });
       results.push(result);
       if (executed && !result.is_error && this.tools.get(call.name)?.endsTurn === true) this.endedByTool = true;
       if (executed && !signal.aborted) {
