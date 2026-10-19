@@ -35,6 +35,8 @@ export interface TranscriptEntry {
   messageKey?: string;
   hideTrailingLine?: boolean;
   duration?: import('./tui-progress.js').TurnDuration;
+  /** Arrival time in epoch milliseconds, the input to the footer's message stamp. */
+  timestamp?: number;
 }
 
 export interface TranscriptState {
@@ -81,7 +83,11 @@ export type EntryRowRenderer = (entry: TranscriptEntry, columns: number) => Rend
 
 export function wrapEntryRows(entry: TranscriptEntry, columns: number, renderer?: EntryRowRenderer): RenderedRow[] {
   const width = Math.max(8, Math.floor(columns));
-  if ((entry.markdown !== undefined || entry.duration !== undefined) && renderer) return renderer(entry, width);
+  // A timestamped entry is rendered by its host as well, because the stamp is a row the
+  // entry's own wrapper cannot produce: it precedes the body without joining its indent.
+  if ((entry.markdown !== undefined || entry.duration !== undefined || entry.timestamp !== undefined) && renderer) {
+    return renderer(entry, width);
+  }
   if (entry.speaker) {
     const rows: RenderedRow[] = [];
     // Recovered vu(..., 'wrap') uses hard:true, trim:false with word wrapping.

@@ -1237,6 +1237,7 @@ export interface TerminalSurface {
   setKeybindings(keybindings?: Keybindings): void;
   setPrefersReducedMotion?(value?: boolean): void;
   setShowTurnDuration?(value?: boolean): void;
+  setShowMessageTimestamps?(value?: boolean): void;
   setProgressSettings?(settings: import('./tui-progress-settings.js').ProgressDisplaySettings): void;
   setMaxProseWidth?(value?: number): void;
   setSyntaxHighlightingDisabled?(value?: boolean): void;

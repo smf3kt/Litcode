@@ -300,6 +300,7 @@ function newConfig(
   config.maxOutputBytes = settings.maxOutputBytes ?? config.maxOutputBytes;
   if (settings.prefersReducedMotion !== undefined) config.prefersReducedMotion = settings.prefersReducedMotion;
   if (settings.showTurnDuration !== undefined) config.showTurnDuration = settings.showTurnDuration;
+  if (settings.showMessageTimestamps !== undefined) config.showMessageTimestamps = settings.showMessageTimestamps;
   if (settings.timeFormat !== undefined) config.timeFormat = settings.timeFormat;
   if (settings.timeZone !== undefined) config.timeZone = settings.timeZone;
   if (settings.spinnerVerbs !== undefined) config.spinnerVerbs = settings.spinnerVerbs;
@@ -699,6 +700,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         keybindings: currentSession.config.keybindings,
         prefersReducedMotion: currentSession.config.prefersReducedMotion,
         showTurnDuration: currentSession.config.showTurnDuration,
+        showMessageTimestamps: currentSession.config.showMessageTimestamps,
         editorMode:currentSession.config.editorMode,vimInsertModeRemaps:currentSession.config.vimInsertModeRemaps,
         progressSettings: {timeFormat:currentSession.config.timeFormat, timeZone:currentSession.config.timeZone,
           spinnerVerbs:currentSession.config.spinnerVerbs},

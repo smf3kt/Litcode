@@ -180,6 +180,7 @@ import { jsx } from './tui-jsx.js';
 import { s, n } from './tui-base-components.js';
 import {
   createTranscriptState, layoutTranscript, reduceTranscript, renderedTranscriptRows, transcriptLines, wrapEntry,
+  wrapEntryRows,
   type TranscriptEntry, type TranscriptScrollCommand, type TranscriptState, type RenderedRow,
 } from './tui-transcript.js';
 import {
@@ -212,6 +213,7 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   promptRows?: number;
   prefersReducedMotion?: boolean;
   showTurnDuration?: boolean;
+  showMessageTimestamps?: boolean;
   progressSettings?: ProgressDisplaySettings;
   maxProseWidth?: number;
   syntaxHighlightingDisabled?: boolean;
@@ -305,27 +307,52 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private welcomeRows: string[] = [];
   private welcomeKey = '';
   private readonly messageRows = new WeakMap<TranscriptEntry, { columns: number; maxProseWidth?: number;
-    syntaxHighlightingDisabled?: boolean; theme: BuiltinTheme; themeGeneration: number; progressGeneration: number; rows: RenderedRow[] }>();
+    syntaxHighlightingDisabled?: boolean; theme: BuiltinTheme; themeGeneration: number; progressGeneration: number;
+    stamp?: string; rows: RenderedRow[] }>();
   private readonly renderEntryRows = (entry: TranscriptEntry, columns: number): RenderedRow[] => {
-    if (entry.streaming && !Zqn(this.prefersReducedMotion, this.windowsTerminal)) return [];
+    const document = entry.markdown !== undefined || entry.duration !== undefined;
+    if (document && entry.streaming && !Zqn(this.prefersReducedMotion, this.windowsTerminal)) return [];
     if (entry.duration && !this.showTurnDuration) return [];
+    const stamp = this.entryStamp(entry);
     const cached = this.messageRows.get(entry);
     if (cached?.columns === columns && cached.maxProseWidth === this.maxProseWidth
       && cached.syntaxHighlightingDisabled === this.syntaxHighlightingDisabled
       && cached.theme === this.theme.current && cached.themeGeneration === this.theme.generation
-      && cached.progressGeneration === this.progressGeneration) return cached.rows;
+      && cached.progressGeneration === this.progressGeneration && cached.stamp === stamp) return cached.rows;
     this.documentRenderer ??= new TuiDocumentRenderer();
-    const rows = entry.duration ? this.documentRenderer.renderElement(jsx(ProgressCompletion, {message:entry.duration, formatTime:this.timeFormatter.format}, entry.duration.uuid), columns,
-      {theme:this.theme.current, themeOverrides:this.theme.overrides}) : this.documentRenderer.renderMarkdown(entry.markdown ?? entry.text, columns,
+    const body = entry.duration ? this.documentRenderer.renderElement(jsx(ProgressCompletion, {message:entry.duration, formatTime:this.timeFormatter.format}, entry.duration.uuid), columns,
+      {theme:this.theme.current, themeOverrides:this.theme.overrides}) : document ? this.documentRenderer.renderMarkdown(entry.markdown ?? entry.text, columns,
       { speaker: entry.speaker, streaming: entry.streaming, messageKey: entry.messageKey,
         hideTrailingLine: entry.hideTrailingLine, maxProseWidth: this.maxProseWidth,
         syntaxHighlightingDisabled: this.syntaxHighlightingDisabled, theme: this.theme.current,
-        themeOverrides: this.theme.overrides });
+        themeOverrides: this.theme.overrides }) : wrapEntryRows(entry, columns);
+    // Source `Va`: the stamp is its own dim row above the message, so it never reflows the body.
+    const stampRows = stamp === '' ? [] : document
+      ? this.documentRenderer.renderElement(jsx(n, {dimColor:true, children:stamp}, 'stamp'),
+        columns, {theme:this.theme.current, themeOverrides:this.theme.overrides})
+      : [{ text: stamp, continuation: false, indent: 0 }];
+    const rows = [...stampRows, ...body];
     this.messageRows.set(entry, { columns, maxProseWidth: this.maxProseWidth,
       syntaxHighlightingDisabled: this.syntaxHighlightingDisabled, theme: this.theme.current,
-      themeGeneration: this.theme.generation, progressGeneration:this.progressGeneration, rows });
+      themeGeneration: this.theme.generation, progressGeneration:this.progressGeneration, stamp, rows });
     return rows;
   };
+
+  /**
+   * Source `Os` decides which messages carry a stamp and `Va` which clock it shows: the transcript
+   * viewer stamps both user and assistant messages, the live chat screen stamps only assistant
+   * messages and only with the setting on, and the setting promotes the short time to the full
+   * date-and-zone stamp.
+   */
+  private entryStamp(entry: TranscriptEntry): string {
+    if (entry.timestamp === undefined || entry.duration !== undefined) return '';
+    const transcript = this.screen === 'transcript';
+    const stampable = entry.kind === 'assistant' ? transcript || this.showMessageTimestamps
+      : entry.kind === 'user' && transcript;
+    if (!stampable || entry.text === '') return '';
+    const clock = this.showMessageTimestamps ? this.timeFormatter.stamp : this.timeFormatter.short;
+    return typeof clock === 'function' ? clock(entry.timestamp) : '';
+  }
   private readonly keys = new Keymap();
   private readonly wheelKeys = new Keymap();
   private readonly decoder: TerminalKeyDecoder;
@@ -383,10 +410,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private screen: TuiScreen = 'chat';
   private transcript: TranscriptState;
   /** One provider response owns this cumulative raw source; end/close releases it. */
-  private assistantMessage: { index?: number; source: string; key: string } | undefined;
+  private assistantMessage: { index?: number; source: string; key: string; startedAt: number } | undefined;
   private messageSequence = 0;
   private prefersReducedMotion: boolean | undefined;
   private showTurnDuration = true;
+  /** Source `showMessageTimestamps`: stamp each message with its arrival time. */
+  private showMessageTimestamps = false;
   private progressSettings: ProgressDisplaySettings = {};
   private progressGeneration = 0;
   private timeFormatter = progressTime({});
@@ -477,6 +506,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.vim.onModeChange=()=>{this.undoGesture=false;};
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.showTurnDuration = options.showTurnDuration !== false;
+    this.showMessageTimestamps = options.showMessageTimestamps === true;
     this.progressSettings = structuredClone(options.progressSettings ?? {});
     this.timeFormatter = progressTime(this.progressSettings);
     this.progress.setVerbs(this.progressSettings.spinnerVerbs);
@@ -620,7 +650,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Append one entry to the transcript, following the tail unless scrolled away. */
   append(entry: TranscriptEntry): void {
     const view = this.viewportSize();
-    this.transcript = reduceTranscript(this.transcript, { type: 'append', entry },
+    this.transcript = reduceTranscript(this.transcript,
+      { type: 'append', entry: entry.timestamp === undefined ? { ...entry, timestamp: Date.now() } : entry },
       { rows: view.rows, total: this.transcriptTotal(view.columns) });
     this.render();
   }
@@ -797,6 +828,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const enabled = value !== false;
     if (enabled === this.showTurnDuration) return;
     this.showTurnDuration = enabled; this.selection = createSelection(); this.render();
+  }
+
+  setShowMessageTimestamps(value?: boolean): void {
+    const enabled = value === true;
+    if (enabled === this.showMessageTimestamps) return;
+    this.showMessageTimestamps = enabled; this.selection = createSelection(); this.render();
   }
 
   setProgressSettings(settings: ProgressDisplaySettings): void {
@@ -1133,7 +1170,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.previewStore.setTransformed(null);
     this.previewStore.setRewrite(null);
     this.previewStore.setSalvage(null, false);
-    this.assistantMessage = { source: '', key: String(++this.messageSequence) };
+    this.assistantMessage = { source: '', key: String(++this.messageSequence), startedAt: Date.now() };
   }
 
   /** Raw text is retained immediately; source clt publishes the aggregate every 100ms. */
@@ -1156,7 +1193,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const total = this.transcriptTotal(view.columns);
     const pinned = this.transcript.offset >= Math.max(0, total - view.rows);
     const entry: TranscriptEntry = { kind: 'assistant', text: renderPreviewMarkdown(displayed),
-      markdown: displayed, speaker: true, ...(!completed ? { streaming: true, messageKey: message.key,
+      markdown: displayed, speaker: true, timestamp: message.startedAt, ...(!completed ? { streaming: true, messageKey: message.key,
         hideTrailingLine: this.previewStore.getDerived().hideTrailingLine } : {}) };
     if (message.index === undefined) {
       message.index = this.transcript.entries.length;
@@ -1226,7 +1263,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if(transition.effects.some(effect=>effect.type==='submit')||action.type==='interrupt'&&!this.editor.running)this.vim.reset();
     const submitted = transition.effects.find(effect => effect.type === 'submit');
     if (submitted) this.transcript = reduceTranscript(this.transcript,
-      { type: 'append', entry: { kind: 'user', text: submitted.text } },
+      { type: 'append', entry: { kind: 'user', text: submitted.text, timestamp: Date.now() } },
       { rows: this.viewportSize().rows, total: this.transcriptTotal(this.viewportSize().columns) });
     this.render();
     for (const effect of transition.effects) {

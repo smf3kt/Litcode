@@ -74,6 +74,7 @@ export type SessionConfig = {
   keybindings?: Keybindings;
   prefersReducedMotion?: boolean;
   showTurnDuration?: boolean;
+  showMessageTimestamps?: boolean;
   timeFormat?: string;
   timeZone?: string;
   spinnerVerbs?: import('./tui-progress-settings.js').SpinnerVerbs;
@@ -209,6 +210,7 @@ export const configSchema = z.object({
   keybindings: keybindingsSchema.optional(),
   prefersReducedMotion: z.boolean().optional(),
   showTurnDuration: z.boolean().optional(),
+  showMessageTimestamps: z.boolean().optional(),
   timeFormat: z.string().optional(),
   timeZone: z.string().optional(),
   spinnerVerbs: spinnerVerbsSchema.optional(),
