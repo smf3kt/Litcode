@@ -33,6 +33,8 @@ interface NativeSelection {
 export interface FrameCursor { row: number; column: number; visible: boolean }
 /** One prompt row: plain text, or the runs a chain answer painted over it. */
 export type PromptLine = string | readonly PromptSegment[];
+/** A footer part painted in a theme slot's colour instead of the dim default. */
+export interface FooterPart { text: string; color?: string }
 type HostNode = Omit<ReturnType<typeof Lr>, 'yogaNode' | 'focusManager' | 'onComputeLayout' | 'onRender'> & {
   yogaNode: ReturnType<typeof layoutEngine.Node.create>;
   focusManager: InstanceType<typeof ZDr>;
@@ -196,7 +198,7 @@ export class TuiRenderer {
       flexGrow: 0, flexShrink: 0, children }, undefined), columns, rows, cursor);
   }
 
-  renderChat(transcript: readonly string[], prompt: readonly PromptLine[], footer: readonly string[],
+  renderChat(transcript: readonly string[], prompt: readonly PromptLine[], footer: readonly (string | FooterPart)[],
     columns: number, rows: number, cursor: FrameCursor, running: boolean,
     selection?: { state: SelectionState; offset: number; rows: number }, theme = 'dark',
     themeOverrides?: Record<string, string>, progress: readonly string[] = [], statusLine: readonly string[] = [],
@@ -209,7 +211,9 @@ export class TuiRenderer {
           children: prompt.map((line, index) => jsx(s, { height: 1, flexShrink: 0,
             children: this.promptRow(line) }, String(index))) }, 'draft')] }, 'input');
     const status = jsx(Tde, { width: conversationWidth, left: footer.map((part, index) =>
-      jsx(Do, { dimColor: true, children: part }, String(index))) }, 'footer');
+      typeof part === 'string'
+        ? jsx(Do, { dimColor: true, children: part }, String(index))
+        : jsx(n, { color: part.color, children: part.text }, String(index))) }, 'footer');
     const transcriptHeight = Math.max(0, rows - prompt.length - 3 - progress.length - statusLine.length);
     const children = [jsx(s, { height: transcriptHeight, flexDirection: 'column', flexShrink: 0,
       children: Array.from({ length: transcriptHeight }, (_, index) =>
