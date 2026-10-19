@@ -9,6 +9,7 @@ import { resolveInheritedGateway, sameGateway, type InheritedField, type Inherit
 import { Session, applyManagedPolicy, managedPolicySchema, type SessionConfig } from './session.js';
 import { PolicyHelper } from './policy-helper.js';
 import { interactiveLoop } from './interactive.js';
+import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import { createTuiTerminal } from './tui.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
@@ -687,6 +688,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     process.stderr.write(`session: ${currentSession.id}\nworkspace: ${workspace}\n`);
     if (values.interactive) {
       const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
+        commands: tuiCommandsWithSkills(currentSession.config.skills),
         version: cliVersion(),
         termProgram: process.env.TERM_PROGRAM,
         keybindings: currentSession.config.keybindings,
