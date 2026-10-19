@@ -3,7 +3,7 @@
 import {z} from 'zod';
 import {createHash as vG} from 'node:crypto';
 import {join as zc,join as NE} from 'node:path';
-import {Jd,BE,UE,VAe} from './tui-input-paste-source.js';
+import {Jd,BE,UE,VAe,jE} from './tui-input-paste-source.js';
 import {bCs,fbe} from './tui-input-history-sensitive.js';
 import {initializeHistoryReader} from './tui-input-history-read.js';
 
@@ -47,7 +47,6 @@ function Aye(e,n){if(n.trim()==="")return!1;let{isSensitive:r}=e;return typeof r
 function OE(e,n,{pastedTexts:r=[]}={}){if(r.some(Jp))return!0;let s=e.trim();if(s.startsWith("!")){if(s=s.slice(1).trimStart(),Jp(s))return!0}if(!s.startsWith("/"))return!1;let{name:h,args:y}=BAe(s.replace(Qz,"$1 [")),b=Ls(h,n);if(!b?.isSensitive)return Jp(s.slice(1));return Aye(b,y)||r.length>0&&Jz.test(y)}
 function Jp(e){if(e.length<=qp)return fbe(e);let n=qp-Zz;for(let r=0;r<e.length;r+=n)if(fbe(e.slice(r,r+qp)))return!0;return!1}
 function hW(e,n){let{stripped:r,removed:s}=jE(e,n);return{input:r,removed:s}}
-function jE(e,n,r,s){let h=Jd(e),y=[],b=e;for(let R=h.length-1;R>=0;R--){let T=h[R];if(!T.match.startsWith("[Image")&&n[T.id]?.unavailable===!0)b=b.slice(0,T.index)+b.slice(T.index+T.match.length),y.unshift({id:T.id,label:T.match.startsWith("[...Truncated text")?"Truncated text":"Pasted text"})}let w=UE(BE(e,h,n,!0,r),s,r,VAe(n));return{stripped:b,expanded:w,removed:y}}
 function FE(e,n){if(!n)return[];let r=new Set(Jd(e).map((s)=>s.id));return Object.entries(n).filter((s)=>s[1].type==="text"&&!s[1].unavailable&&r.has(Number(s[0])))}
 var yW=200;
 var SW=262144;

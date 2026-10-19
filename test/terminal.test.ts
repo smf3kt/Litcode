@@ -205,6 +205,36 @@ test('bracketed paste preserves multiline, strips controls and rejects over 256 
   assert.deepEqual(small.push('\x1b[200~abcd\x1b[201~'), [{ type: 'pasteRejected', bytes: 4 }]);
 });
 
+test('a submit drops placeholders whose paste record is gone and hands the prompt back', () => {
+  const gone = { id: 1, type: 'text' as const, content: '', unavailable: true };
+  const onlyPlaceholder: EditorState = { ...createEditorState(), text: '[Pasted text #1 +2 lines]',
+    cursor: 8, pastedContents: { 1: gone } };
+  const cancelled = reduceEditor(onlyPlaceholder, { type: 'submit' });
+  assert.deepEqual(cancelled.effects, [{ type: 'pasteGone',
+    text: 'Pasted text #1 is no longer available and was removed from the prompt' }]);
+  assert.equal(cancelled.state.text, onlyPlaceholder.text);
+  assert.equal(cancelled.state.cursor, onlyPlaceholder.text.length);
+  // A slash command that only held the gone paste is handed back too.
+  const command: EditorState = { ...onlyPlaceholder, text: '/review [Pasted text #1 +2 lines]' };
+  assert.deepEqual(reduceEditor(command, { type: 'submit' }).effects, [{ type: 'pasteGone',
+    text: 'Pasted text #1 is no longer available and was removed from the prompt' }]);
+  // With text left over, the prompt is sent without the placeholder and still announces it.
+  const mixed: EditorState = { ...onlyPlaceholder, text: 'hello [Pasted text #1 +2 lines]' };
+  assert.deepEqual(reduceEditor(mixed, { type: 'submit' }).effects, [
+    { type: 'pasteGone', text: 'Pasted text #1 is no longer available and was removed from the prompt' },
+    { type: 'submit', text: 'hello ' }]);
+  // A live record still expands, and several gone pastes are listed together.
+  const live: EditorState = { ...mixed, pastedContents: { 1: { id: 1, type: 'text', content: 'PASTED' } } };
+  assert.deepEqual(reduceEditor(live, { type: 'submit' }).effects, [{ type: 'submit', text: 'hello PASTED' }]);
+  const two: EditorState = { ...onlyPlaceholder, text: '[Pasted text #1][Image #2][...Truncated text #3]',
+    pastedContents: { 1: gone, 3: gone } };
+  // An image placeholder is never stripped, so what is left of the draft still goes out.
+  assert.deepEqual(reduceEditor(two, { type: 'submit' }).effects, [
+    { type: 'pasteGone',
+      text: 'Pasted text #1, Truncated text #3 are no longer available and were removed from the prompt' },
+    { type: 'submit', text: '[Image #2]' }]);
+});
+
 test('render layout handles multiline, wide characters, wrapping and bounded viewport', () => {
   const state = edit([{ type: 'insert', text: '中\u{1f600}\nhi' }]);
   assert.deepEqual(layoutEditor(state, 20), {

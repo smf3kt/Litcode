@@ -165,7 +165,11 @@ export class InputHistory {
     try {
       for await (const entry of owner.source.readForProject(undefined, { withClearedDrafts: true })) {
         entries.push({ display: entry.display, pastedContents: Object.fromEntries(Object.entries(entry.pastedContents)
-          .filter(([,paste]) => (paste as {type:string;content:string}).type === 'text' && (paste as {content:string}).content !== '')) as PastedContents });
+          // An unavailable paste resolves to `content: ''`; the marker must survive the binding so
+          // the submit strip (`jE`) can remove the placeholder instead of sending it literally.
+          .filter(([,paste]) => (paste as {type:string;content:string;unavailable?:boolean}).type === 'text'
+            && ((paste as {content:string}).content !== '' || (paste as {unavailable?:boolean}).unavailable === true))
+          ) as PastedContents });
       }
     } catch (error) { this.onError(error); }
     return entries.reverse();

@@ -1,4 +1,4 @@
-import { initializePasteSource, U4t, sce, Jd, Mct } from './tui-input-paste-source.js';
+import { initializePasteSource, U4t, sce, jE, Fdr, Jd, Mct } from './tui-input-paste-source.js';
 import { tokenizeAnsi } from './tui-ansi-tokenizer.js';
 
 export interface PastedText { id: number; type: 'text'; content: string; unavailable?: boolean }
@@ -12,6 +12,23 @@ export function referencedPastes(text: string, contents: PastedContents): Pasted
 
 export function expandPastedText(text: string, contents: PastedContents = {}): string {
   return sce(text, contents, undefined, undefined);
+}
+
+export interface GonePaste { id: number; label: string }
+export interface StrippedDraft { stripped: string; expanded: string; removed: GonePaste[] }
+
+/**
+ * Source `kPn`/`jE`: a submit-time pass over the draft. A placeholder whose paste record is gone
+ * (`unavailable`) is cut from the display text and from the expansion, so the prompt never sends
+ * the literal `[Pasted text #1]`, and each removal is reported for the composer's notice.
+ */
+export function stripGonePastes(text: string, contents: PastedContents = {}): StrippedDraft {
+  return jE(text, contents, undefined, undefined) as StrippedDraft;
+}
+
+/** Source `Fdr`: the notice for a submit that dropped gone placeholders. */
+export function pasteGoneNotice(removed: readonly GonePaste[]): string {
+  return Fdr(removed) as string;
 }
 
 /** Source xM closes over one editor owner; raw Unicode and Node insertion stay host-owned. */
