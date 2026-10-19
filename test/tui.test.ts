@@ -472,7 +472,9 @@ test('multi-click selects the word and then the whole row, and a drag extends th
     const top = welcomeRows(10) + 1;
     acrossScreens.key(`\x1b[<0;7;${top}M`);
     acrossScreens.key('\u000f');
-    acrossScreens.key(`\x1b[<0;7;${top}M\x1b[<0;4;${top}m`);
+    // The transcript screen leads each assistant message with its stamp row, so the
+    // message the second press targets sits one row lower there.
+    acrossScreens.key(`\x1b[<0;7;${top + 1}M\x1b[<0;4;${top + 1}m`);
     // A plain span between cells 6 and 3, i.e. 'ha b' reversed into reading order.
     assert.equal(acrossScreens.copy(), 'ha b');
   } finally { acrossScreens.tui.close(); }
@@ -552,12 +554,14 @@ test('actual TUI input reaches contextual navigation while paste and overrides k
     for (let i = 0; i < 20; i++) tui.append({ kind: 'assistant', text: `line ${i}` });
     key('draft'); key('\u000f');
     assert.equal(tui.currentScreen, 'transcript');
-    key('k'); assert.equal(tui.transcriptState.offset, 14);
-    key('j'); assert.equal(tui.transcriptState.offset, 15);
+    // Source `Os` stamps each assistant message in transcript mode, so every entry
+    // contributes its stamp row to the scrollable total.
+    key('k'); assert.equal(tui.transcriptState.offset, 34);
+    key('j'); assert.equal(tui.transcriptState.offset, 35);
     key('\u0005'); assert.equal(tui.transcriptState.showAll, true);
     key('g'); assert.equal(tui.transcriptState.offset, 0);
-    key('G'); assert.equal(tui.transcriptState.offset, 15);
-    key('\x1b[5~'); assert.equal(tui.transcriptState.offset, 9);
+    key('G'); assert.equal(tui.transcriptState.offset, 35);
+    key('\x1b[5~'); assert.equal(tui.transcriptState.offset, 29);
     key('q'); assert.equal(tui.currentScreen, 'chat');
     assert.equal(tui.state.text, 'draft');
     key('\u000f\x1b'); await wait();
@@ -690,6 +694,38 @@ test('the undo push treats a Vim INSERT run as one continuous gesture', async ()
     assert.equal(tui.state.text, 'abc');
     await key('\x1b'); await key('i'); await key('x'); await key('\x1b'); await key('u');
     assert.equal(tui.state.text, 'abc', 'the new run opens its own snapshot');
+  } finally { tui.close(); decoded.get(output)!.dispose(); }
+});
+
+test('the message stamp follows the showMessageTimestamps setting and the transcript screen', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output,
+    progressSettings: { timeFormat: '24-hour', timeZone: 'UTC' } }).start();
+  const at = Date.UTC(2026, 0, 2, 15, 45, 30);
+  const rows = () => screenLines(output);
+  const until = async (predicate: () => boolean) => {
+    const deadline = Date.now() + 5000;
+    while (!predicate()) { assert.ok(Date.now() < deadline, rows().join('\n')); await delay(10); }
+  };
+  try {
+    tui.append({ kind: 'user', text: 'first question', timestamp: at });
+    tui.append({ kind: 'assistant', text: 'first answer', timestamp: at });
+    await delay(60);
+    // Source `Os`: neither kind is stamped in chat mode while the setting is off.
+    assert.equal(rows().some(row => row.includes('15:45:30')), false, 'no stamp while the setting is off');
+    // Source `Os`: the live chat screen stamps only the assistant message, and `Va`'s
+    // setting branch promotes the short clock to the full date-and-zone stamp.
+    tui.setShowMessageTimestamps(true);
+    await until(() => rows().filter(row => row.includes('2026-01-02 15:45:30 UTC')).length === 1);
+    tui.setShowMessageTimestamps(false);
+    await until(() => !rows().some(row => row.includes('15:45:30')));
+    // Source `Os`'s transcript branch stamps both messages even with the setting off.
+    input.emit('data', '\u000f');
+    await until(() => rows().filter(row => row.includes('15:45')).length === 2);
+    assert.equal(rows().some(row => row.includes('15:45:30')), false, 'the transcript branch keeps the short clock');
   } finally { tui.close(); decoded.get(output)!.dispose(); }
 });
 
@@ -1217,8 +1253,11 @@ test('streamed assistant text shares one formatted message and retains its respo
     assert.ok(messageKey);
     tui.endAssistantMessage();
     assert.equal(tui.transcriptState.entries[0]?.streaming, undefined);
-    assert.deepEqual(tui.transcriptState.entries, [{ kind: 'assistant', speaker: true, markdown: text,
-      text: 'Message layout\n\nOne streamed sentence keeps its words together.\n\n- First item\n\nts\nconst value = 1;' }]);
+    // The entry carries its arrival time so the message stamp has an input.
+    const { timestamp, ...message } = tui.transcriptState.entries[0]!;
+    assert.equal(typeof timestamp, 'number');
+    assert.deepEqual(message, { kind: 'assistant', speaker: true, markdown: text,
+      text: 'Message layout\n\nOne streamed sentence keeps its words together.\n\n- First item\n\nts\nconst value = 1;' });
     const lines = transcriptLines(tui.transcriptState, 40);
     assert.equal(lines[0], '● Message layout');
     assert.ok(lines.every(line => cellWidth(line) <= 40));
@@ -1910,6 +1949,8 @@ test('TUI thinking progress isolates draft, cancels clocks and renders source su
     tui.setShowTurnDuration(); assert.ok(screenLines(output).some(row=>row.includes('for 29m 56s')));
     assert.equal(parseSettings({showTurnDuration:false}).showTurnDuration,false);
     assert.throws(()=>parseSettings({showTurnDuration:'false'}));
+    assert.equal(parseSettings({showMessageTimestamps:true}).showMessageTimestamps,true);
+    assert.throws(()=>parseSettings({showMessageTimestamps:'true'}));
     tui.close(); const closed=writes; await delay(450); assert.equal(writes,closed);
   } finally {tui.close();decoded.get(output)!.dispose();}
 });

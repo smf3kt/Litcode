@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Exact source bodies: research/ports/W44-progress-settings-copies.json.
-import {zB,cPe,FJn,AWe} from "./tui-progress-time.js";
+import {zB,cPe,FJn,AWe,fKo,mKo} from "./tui-progress-time.js";
 function initializeFormatCleanup() {
 function ne(t,n){if(n<=0)return"";if(t.length<=n)return t;let e=t.slice(0,n),r=e.charCodeAt(n-1);return WMt(r>=55296&&r<=56319?e.slice(0,-1):e)}
 function WMt(t){if(typeof Buffer<"u")return Buffer.from(t,"utf16le").toString("utf16le");return x(t)}
@@ -40,7 +40,9 @@ var le={week:{weekday:"long"},older:{weekday:"long",month:"short",day:"numeric"}
 var ce={year:"numeric",month:"2-digit",day:"2-digit"};
 function G(d,t){if(!t)return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();let o=zB("en-US",cPe(ce,t)).formatToParts(d),a={};for(let i of o)a[i.type]=i.value;return Date.UTC(Number(a.year),Number(a.month)-1,Number(a.day))}
 function EXe(d,t=new Date){let o=new Date(d);if(Number.isNaN(o.getTime()))return"";let a=AWe(),i=w_t(),{timeZone:m}=i,u=G(t,m)-G(o,m),g=Math.round(u/86400000),l="older";if(g===0)l="today";else if(g>0&&g<7)l="week";if(i.kind==="preset")return FJn(i,ae[l],a,o);let p=gKo(i.pattern,m,o);if(l==="today")return p;let c=zB(a,cPe(le[l],m)).format(o);return l==="week"?`${c} ${p}`:`${c}, ${p}`}
-return {format:EXe,resolve:w_t};
+function short(d){return fKo(w_t(),d,AWe())}
+function stamp(d){return mKo(w_t(),d,AWe())}
+return {format:EXe,resolve:w_t,short,stamp};
 }
 export function initializeSpinnerWords(ft, base) {
 const v=base;

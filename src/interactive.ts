@@ -221,6 +221,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setEditorMode?.(session.config.editorMode,session.config.vimInsertModeRemaps);
     terminal?.setPrefersReducedMotion?.(session.config.prefersReducedMotion);
     terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
+    terminal?.setShowMessageTimestamps?.(session.config.showMessageTimestamps);
     terminal?.setProgressSettings?.({timeFormat:session.config.timeFormat, timeZone:session.config.timeZone,
       spinnerVerbs:session.config.spinnerVerbs});
     terminal?.setMaxProseWidth?.(session.config.maxProseWidth);
