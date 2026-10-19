@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { createRequire } from 'node:module';
 import { PassThrough, Writable } from 'node:stream';
 import { test } from 'node:test';
@@ -8,7 +11,7 @@ import { TuiTerminal } from '../src/tui.js';
 import { acceptanceText, commandQuery, commandSuggestions, layoutSuggestionRows,
   maxVisibleSuggestions, suggestionMaxColumnWidth, suggestionRowHeight, suggestionRowOwners,
   suggestionRowWindow, suggestionsEmptyMessage, tuiCommandsWithSkills,
-  TUI_COMMANDS, type TuiCommand } from '../src/tui-autocomplete.js';
+  TUI_COMMANDS, type CommandSuggestion, type TuiCommand } from '../src/tui-autocomplete.js';
 
 const skill = (name: string, description: string, extra: Partial<TuiCommand> = {}): TuiCommand =>
   ({ name, description, kind: 'skill', ...extra });
@@ -115,9 +118,9 @@ test('a row is the pointer, the padded command, the kind lane and the descriptio
   assert.equal(rows[1]!.slice(19, 26), '       ', 'an action command leaves its lane blank');
   assert.equal(rows[0]!.indexOf('config'), 19, 'the lane starts at the widest row plus five');
   // Source `ee`/`No`: past 40% of the terminal the lane is pushed right, and the name
-  // itself is cut to keep a two-cell gap, so a 20-column row shows only a prefix.
+  // itself is cut to keep a two-cell gap with the source's trailing ellipsis.
   const narrow = layoutSuggestionRows(suggestions, 0, 20, '❯ ');
-  assert.ok(narrow[0]!.startsWith('❯ /mod'), narrow[0]!);
+  assert.ok(narrow[0]!.startsWith('❯ /mo…'), narrow[0]!);
   assert.equal(narrow[0]!.includes('Choose'), false, 'a narrow column drops the description');
   for (const row of narrow) assert.equal([...row].length, 20);
 });
@@ -152,7 +155,7 @@ test('the window is measured in rows, so a wrapped row spends two of its budget'
 const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/headless') as
   { Terminal: typeof TerminalType };
 
-function startComposer(commands: readonly TuiCommand[]) {
+function startComposer(commands: readonly TuiCommand[], workspace?: string) {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
   const terminal = new HeadlessTerminal({ allowProposedApi: true, logLevel: 'off' });
@@ -165,7 +168,8 @@ function startComposer(commands: readonly TuiCommand[]) {
   Object.assign(output, { isTTY: true, columns: 90, rows: 30 });
   terminal.resize(90, 30);
   const submitted: string[] = [];
-  const tui = new TuiTerminal({ input, output, commands, onSubmit: text => submitted.push(text) }).start();
+  const tui = new TuiTerminal({ input, output, commands, workspace,
+    onSubmit: text => submitted.push(text) }).start();
   const screen = () => {
     const buffer = terminal.buffer.active;
     return Array.from({ length: terminal.rows }, (_, row) =>
@@ -173,6 +177,59 @@ function startComposer(commands: readonly TuiCommand[]) {
   };
   return { tui, submitted, input, screen };
 }
+
+test('a file row draws its own lane glyph and keeps its basename when the path is cut', () => {
+  const file = (path: string): CommandSuggestion => ({
+    id: `file-${path}`, name: path, insertName: path, displayText: path, description: '',
+    kind: 'file', executeOnAccept: false });
+  const long = file('src/very/deeply/nested/directory/structure/alpha.ts');
+  const [row] = layoutSuggestionRows([long], 0, 40, '❯ ');
+  assert.ok(row!.startsWith('❯ + src/very'), row!);
+  assert.ok(row!.includes('…/alpha.ts'), `the middle cut keeps the basename: ${row}`);
+  assert.equal([...row!].length, 40);
+  const [wide] = layoutSuggestionRows([long], 0, 100, '❯ ');
+  assert.ok(wide!.startsWith(`❯ + ${long.displayText}`), wide!);
+  // Source `_o`: a special family is always one line, description or not.
+  assert.equal(suggestionRowHeight(long, 30, 40, 2), 1);
+  assert.equal(suggestionRowHeight({ ...long, description: 'a long description that would wrap' },
+    30, 40, 2), 1);
+  const [described] = layoutSuggestionRows([{ ...long, description: 'A source file' }], 0, 60, '❯ ');
+  assert.ok(described!.includes(' – A source file'), described!);
+});
+
+test('typing @ opens the file list and Tab fills the shared prefix before accepting', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'litcode-at-'));
+  fs.mkdirSync(path.join(dir, 'src'));
+  fs.writeFileSync(path.join(dir, 'src', 'alpha.ts'), '');
+  fs.writeFileSync(path.join(dir, 'src', 'alpine.ts'), '');
+  const composer = startComposer(TUI_COMMANDS, dir);
+  const key = (text: string) => composer.input.emit('data', text);
+  const waitFor = async (ready: () => boolean) => {
+    for (let tries = 0; tries < 100 && !ready(); tries++) await new Promise(resolve => setTimeout(resolve, 20));
+    return ready();
+  };
+  try {
+    key('@src/al');
+    assert.ok(await waitFor(() => composer.screen().includes('alpha.ts')),
+      `the index answers the query: ${composer.screen()}`);
+    const opened = composer.screen();
+    assert.ok(opened.includes('+ src/alpha.ts'), opened);
+    assert.ok(opened.includes('+ src/alpine.ts'), opened);
+    assert.equal(composer.tui.state.text, '@src/al', 'the trigger leaves the draft alone');
+    key('\t');
+    assert.equal(composer.tui.state.text, '@src/alp', 'Tab fills the prefix both rows share');
+    key('\t');
+    assert.ok(/^@src\/al(p|pha\.ts) ?$/.test(composer.tui.state.text), composer.tui.state.text);
+    assert.deepEqual(composer.submitted, [], 'a file row never submits');
+    // An explicit path lists the directory instead of searching the index. Those rows
+    // carry no `file-` id, so they take the plain layout rather than the file glyph.
+    key('\u0015@./src/');
+    assert.ok(await waitFor(() => composer.screen().includes('src/alpha.ts')), composer.screen());
+  } finally {
+    composer.tui.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('typing a colon opens the emoji list and accepting inserts the glyph', () => {
   const composer = startComposer(TUI_COMMANDS);
