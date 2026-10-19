@@ -4,6 +4,9 @@ log_user 0
 fconfigure stdin -blocking 0 -translation binary -buffering none
 fconfigure stdout -translation binary -buffering none
 spawn -noecho {*}$argv
+# The spawn channel decodes with the locale encoding by default, which turns
+# multi-byte glyphs into single bytes. Pass bytes through untouched instead.
+fconfigure $spawn_id -encoding binary -translation binary
 proc forward_input {} {
     set bytes [read stdin]
     if {$bytes ne ""} { send -raw -- $bytes }

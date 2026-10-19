@@ -78,15 +78,21 @@ same idiom.
   stay at 10 rows, where the density is `line`; the highlight fixture moved to 40 rows so
   the sixteen-row header leaves its heading on screen.
 - Full suite 2685/2685 (118 suites), `npm run check` and `npm run build` clean.
-- Compiled CLI: the emitted stream carries `38;2;240;240;240` and `48;2;60;60;60` and no
-  `38;2;215;119;87` at 24, 30 and 40 rows; the in-process capture shows the owl glyphs at
-  14, 24 and 40 rows with no U+FFFD, matching `welcomeDensity(rows - 4)` at every height.
+- Compiled CLI (`litcode` global launcher): at 24, 30 and 40 rows the header is row 0, the
+  tufts are row 11, the face row 13 and the talons row 15, the emitted stream carries
+  `38;2;240;240;240` and `48;2;60;60;60`, no `38;2;215;119;87` is emitted, and each
+  session exits 0.
+- The in-process capture shows the owl glyphs at 14, 24 and 40 rows with no U+FFFD,
+  matching `welcomeDensity(rows - 4)` at every height.
 
 ## Verification note
 
-The PTY driver (`scripts/pty-cli.exp`, expect) transcodes non-ASCII to U+FFFD under a
-non-UTF-8 locale, so glyph text read back from a PTY capture is not evidence. ASCII in
-the same capture is intact, and escape sequences are unaffected, so SGR checks remain
-valid. Verify glyph content in-process or with `LC_ALL` set to a UTF-8 locale.
+The first PTY reads showed the art as U+FFFD, which looked like a rendering defect. It
+was the driver: `scripts/pty-cli.exp` left the spawn channel at the locale encoding, so
+`printf "▟█▙ ◉"` through it returned four single bytes instead of the UTF-8 sequences.
+The driver now sets `fconfigure $spawn_id -encoding binary -translation binary`, and the
+same probe returns the glyphs intact. Suspicion should fall on the driver, not the
+product, whenever a PTY capture of non-ASCII looks corrupt while ASCII and escape
+sequences in the same capture are intact.
 
 Raw samples stay unchanged; no recovered entrypoint is executed.
