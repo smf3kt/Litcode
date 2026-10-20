@@ -161,7 +161,7 @@ import { acceptanceText, commandSuggestions, emojiRows, maxVisibleSuggestions, s
   suggestionsEmptyMessage, TUI_COMMANDS, type CommandSuggestion,
   type TuiCommand } from './tui-autocomplete.js';
 import { te as symbols } from './tui-symbols.js';
-import { editExternal, type ExternalEditorResult } from './external-editor.js';
+import { editExternal, openExternalFile, type EditorHandoff, type ExternalEditorResult } from './external-editor.js';
 import { InputVim, type EditorMode, type VimBridge } from './tui-vim.js';
 import { vimKey } from './tui-vim-keys.js';
 import { InputGestures } from './tui-input-gestures.js';
@@ -687,8 +687,37 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return result;
   }
 
+  /** `/keybindings` (`Zie`): the same handoff, opening one existing file instead of the draft. */
+  async openFile(file: string, signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult> {
+    if (!this.isTTY || !this.started || this.closed || this.running || this.dialog || this.editorController) return {content:null};
+    this.sourceSearch?.cancel();
+    this.sourcePicker?.cancel();
+    const controller=new AbortController();this.editorController=controller;
+    const handoff=this.editorHandoff();
+    const task = openExternalFile(file,handoff,AbortSignal.any([signal,controller.signal]),workspace)
+      .then(result => controller.signal.aborted ? {content:null} : result)
+      .finally(() => {
+        if(this.editorSuspended)handoff.resume();
+        if(this.editorController===controller){this.editorController=undefined;this.editorTask=undefined;this.editorDialog=undefined;}
+      });
+    this.editorTask=task;
+    return task;
+  }
+
   private handoffEditor(snapshot: Parameters<typeof editExternal>[0], signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult> {
     const controller=new AbortController();this.editorController=controller;
+    const handoff=this.editorHandoff();
+    const task = editExternal(snapshot,handoff,AbortSignal.any([signal,controller.signal]),workspace)
+      .then(result => controller.signal.aborted ? {content:null} : result)
+      .finally(() => {
+        if(this.editorSuspended)handoff.resume();
+        if(this.editorController===controller){this.editorController=undefined;this.editorTask=undefined;this.editorDialog=undefined;}
+      });
+    this.editorTask=task;
+    return task;
+  }
+
+  private editorHandoff(): EditorHandoff {
     const suspend=()=>{
       this.gestures.reset();this.vim.externalMutation();
       this.editorSuspended=true;this.options.input.off('data',this.onData);this.options.input.pause();
@@ -703,14 +732,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.noteAfkInteraction();
       this.renderer?.invalidate();this.options.input.resume();this.render();
     };
-    const task = editExternal(snapshot,{suspend,resume},AbortSignal.any([signal,controller.signal]),workspace)
-      .then(result => controller.signal.aborted ? {content:null} : result)
-      .finally(() => {
-        if(this.editorSuspended)resume();
-        if(this.editorController===controller){this.editorController=undefined;this.editorTask=undefined;this.editorDialog=undefined;}
-      });
-    this.editorTask=task;
-    return task;
+    return {suspend,resume};
   }
 
   /** a3/f3 callbacks, chunk-24k7d6mw.js [1146770,1147260)/[1154985,1155625), UTF-16. */

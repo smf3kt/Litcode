@@ -13,7 +13,6 @@ export interface EditorHandoff {
   resume(): void;
 }
 export interface ExternalEditorResult { content: string | null; error?: string }
-
 function executable(name: string): string | undefined {
   const candidates = name.includes(path.sep) ? [name] : (process.env.PATH ?? '').split(path.delimiter).map(directory => path.join(directory,name));
   for (const candidate of candidates) {
@@ -69,7 +68,37 @@ export async function editExternal(snapshot: Omit<InputSnapshot, 'cursor' | 'pas
   let suspended = false;
   const suspend = () => {suspended = true;handoff.suspend();};
   const resume = () => {};
-  const source = initializeExternalEditor({
+  const source = initializeExternalEditor(editorDependencies(suspend, resume, signal, workspace, filename));
+  try {
+    if (signal.aborted) return {content:null};
+    return await source.edit(snapshot.text,snapshot.pastedContents,undefined,snapshot.cursor);
+  } finally {
+    try {fs.rmSync(directory,{recursive:true,force:true});}
+    finally {if(suspended)handoff.resume();}
+  }
+}
+
+/**
+ * `Zie`: open an existing file in the user's editor and read it back. The draft flow above
+ * writes its own temporary file, so this one takes the path as given and returns `content:
+ * null` when the file is absent or the editor failed, with `error` set only for a failure.
+ */
+export async function openExternalFile(file: string, handoff: EditorHandoff | undefined, signal: AbortSignal,
+  workspace = process.cwd()): Promise<ExternalEditorResult> {
+  let suspended = false;
+  const suspend = () => {suspended = true;handoff?.suspend();};
+  const resume = () => {};
+  const source = initializeExternalEditor(editorDependencies(suspend, resume, signal, workspace, file));
+  try {
+    if (signal.aborted) return {content:null};
+    return await source.open(file, undefined);
+  } finally {if(suspended)handoff?.resume();}
+}
+
+/** The host bindings both editor entries share: one resolver, one owned child, one handoff. */
+function editorDependencies(suspend: () => void, resume: () => void, signal: AbortSignal,
+  workspace: string, filename: string) {
+  return {
     a:process.env, MN:executable, h:path.basename, oi:() => new Map([[process.stdout,{
       enterAlternateScreen:suspend,exitAlternateScreen:resume,
       prepareTerminalForHandoff:suspend,restoreTerminalAfterHandoff:resume,
@@ -104,12 +133,5 @@ export async function editExternal(snapshot: Omit<InputSnapshot, 'cursor' | 'pas
       });
       if(signal.aborted)abort();
     }),
-  });
-  try {
-    if (signal.aborted) return {content:null};
-    return await source.edit(snapshot.text,snapshot.pastedContents,undefined,snapshot.cursor);
-  } finally {
-    try {fs.rmSync(directory,{recursive:true,force:true});}
-    finally {if(suspended)handoff.resume();}
-  }
+  };
 }
