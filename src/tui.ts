@@ -933,6 +933,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
+  /** The recovered reload voids the shared command and skill tables (`Nhr`/`Fhr`,
+   *  chunk-3ph567jx.js 3862/3898) so the next render re-reads them. This host captures the
+   *  composer's list once, so a rescan replaces it; the next draft re-suggests. */
+  setCommands(commands: readonly TuiCommand[]): void {
+    this.options.commands = commands;
+    this.render();
+  }
+
   setWorkflowKeywordSettings(settings: { available: boolean; triggerEnabled: boolean }): void {
     if (this.workflowKeywordAvailable === settings.available && this.workflowKeywordTriggerEnabled === settings.triggerEnabled) return;
     this.workflowKeywordAvailable = settings.available;
