@@ -27,12 +27,13 @@ import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, re
 import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
 import { defaultUserDir, loadProjectConfig } from './config.js';
-import { saveThemeSetting, saveEditorMode } from './theme-settings.js';
+import { saveThemeSetting, saveEditorMode, saveEffortSetting } from './theme-settings.js';
 import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
 import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import { workflowsAvailable } from './tui-input-highlights.js';
 import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from './loop-command.js';
+import { DEFAULT_EFFORT, effortCommand, effortIndicator } from './effort-command.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
 import {
@@ -80,7 +81,7 @@ export const COMMAND_HELP = `/help       Show commands
 /status     Show session, model, context settings and usage
 /context    Count current request against the configured context budget
 /usage      Show recorded model usage
-/effort LEVEL  Start a session with low/medium/high/xhigh/max effort
+/effort LEVEL  Set effort level for model usage (low/medium/high/xhigh/max/auto)
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
 /rename TITLE  Set the current session title
@@ -1096,6 +1097,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           const config = structuredClone(session.config);
           let modeCommand: PermissionModeCommand | undefined;
+          let effortMessage: string | undefined;
+          let effortNotice: string | undefined;
           const switchingModel = prompt.startsWith('/model ');
           const switchingTheme = prompt.startsWith('/theme ');
           if (switchingTheme) {
@@ -1124,9 +1127,21 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
             config.model = model;
           } else if (prompt === '/effort' || prompt.startsWith('/effort ')) {
-            const effort = prompt.slice(8).trim();
-            if (!['low', 'medium', 'high', 'xhigh', 'max'].includes(effort)) throw new Error('Use /effort low|medium|high|xhigh|max');
-            config.effort = effort as NonNullable<typeof config.effort>;
+            const result = effortCommand(prompt.slice('/effort'.length), {
+              current: session.config.effort, fallback: DEFAULT_EFFORT, save: true });
+            // A read-only answer (usage, help, a status report, an invalid argument) leaves the
+            // session alone. The recovered handler returns its answer as a `{type:"text"}` value
+            // (`u` at `chunk-tf9zceev.js` [4922,5480)), which the dispatcher prints as text; the
+            // `eee` notice is the separate status-row surface.
+            if (result.effort === undefined && result.saved === undefined) {
+              output.write(`${result.message}\n`); continue;
+            }
+            if (result.effort === null) delete config.effort;
+            else if (result.effort !== undefined) config.effort = result.effort;
+            if (result.saved !== undefined) saveEffortSetting(result.saved ?? undefined, config.configSources?.userDir);
+            effortMessage = result.message;
+            // `eee` at `chunk-24k7d6mw.js` 153296 guards on a present level, so `auto` has none.
+            if (config.effort !== undefined) effortNotice = effortIndicator(config.effort);
           } else if (/^\/thinking(?:\s|$)/.test(prompt)) {
             const value = prompt.slice('/thinking'.length).trim();
             if (value && value !== 'on' && value !== 'off') throw new Error('Use /thinking [on|off]');
@@ -1145,6 +1160,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           }
           await applyConfig(config, switchingModel, options.signal, modeCommand);
           if (switchingModel) options.status.write(`Model: ${config.model}\n`);
+          else if (effortMessage !== undefined) {
+            output.write(`${effortMessage}\n`);
+            if (effortNotice !== undefined) options.status.write(`${effortNotice}\n`);
+          }
           else if (/^\/thinking(?:\s|$)/.test(prompt)) options.status.write(`Thinking: ${config.thinking ? 'on' : 'off'}\n`);
           // The mode change decides whether held peer messages may now enter.
           if (modeCommand !== undefined) releasePeerHeld('mode-change');

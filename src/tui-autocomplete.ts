@@ -78,7 +78,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'status', description: 'Show session, model, context settings and usage', kind: 'command', lane: 'info' },
   { name: 'context', description: 'Count current request against the configured context budget', kind: 'command', lane: 'info' },
   { name: 'usage', description: 'Show recorded model usage', kind: 'command', lane: 'info' },
-  { name: 'effort', description: 'Start a session with low/medium/high/xhigh/max effort', kind: 'command', lane: 'config' },
+  { name: 'effort', description: 'Set effort level for model usage', kind: 'command', lane: 'config' },
   { name: 'sessions', description: 'List/search workspace sessions by title, model or UUID', kind: 'command', lane: 'info' },
   { name: 'resume', description: 'Resume a matching session or choose from a local list', kind: 'command', lane: 'action' },
   { name: 'rename', description: 'Set the current session title', kind: 'command', lane: 'action' },

@@ -21,7 +21,22 @@ export function saveDiffDisplaySetting(key: 'diffSidebarOpen' | 'diffSidebarBase
   saveDisplaySetting(key, value, userDir);
 }
 
-function saveDisplaySetting(key: 'theme'|'editorMode'|'diffSidebarOpen'|'diffSidebarBaseMode', value: string | boolean, userDir: string): void {
+/**
+ * The `X9` settings write at `chunk-9vcaezw1.js` 13965 reaches `we` at 13897, which stores
+ * `userSettings.effort`; `Z_e` at 8999 keeps `max` out of it. Passing undefined is the recovered
+ * `auto` path and removes the key, so the next session has no effort of its own.
+ */
+export function saveEffortSetting(level: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | undefined,
+  userDir = defaultUserDir()): void {
+  saveDisplaySetting('effort', level, userDir);
+}
+
+const SETTING_LABELS = {
+  theme: 'saveThemeSetting', editorMode: 'saveEditorMode', diffSidebarOpen: 'saveDiffDisplaySetting',
+  diffSidebarBaseMode: 'saveDiffDisplaySetting', effort: 'saveEffortSetting',
+} as const;
+
+function saveDisplaySetting(key: keyof typeof SETTING_LABELS, value: string | boolean | undefined, userDir: string): void {
   const file = path.join(path.resolve(userDir), 'settings.json');
   let settings: Record<string, unknown> = {}, mode = 0o600;
   try {
@@ -37,7 +52,9 @@ function saveDisplaySetting(key: 'theme'|'editorMode'|'diffSidebarOpen'|'diffSid
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
-  const content = JSON.stringify({ ...settings, [key]:value }, null, 2) + '\n';
+  if (value === undefined) delete settings[key];
+  else settings[key] = value;
+  const content = JSON.stringify(settings, null, 2) + '\n';
   if (Buffer.byteLength(content) > CONFIG_LIMITS.settingsBytes) throw new Error('Theme settings exceed the byte limit');
-  atomicWriteFile(file, content, { mode, label: key==='theme'?'saveThemeSetting':'saveEditorMode' });
+  atomicWriteFile(file, content, { mode, label: SETTING_LABELS[key] });
 }
