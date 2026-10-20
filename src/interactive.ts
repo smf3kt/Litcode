@@ -35,6 +35,9 @@ import { workflowsAvailable } from './tui-input-highlights.js';
 import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from './loop-command.js';
 import { DEFAULT_EFFORT, EFFORT_LEVELS, effortCommand, effortDescription, effortGlyph,
   effortIndicator } from './effort-command.js';
+import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUsageMessage,
+  parseCopyArgument, writeCopyFile } from './copy-command.js';
+import { osc52Payload } from './clipboard-osc52.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
 import {
@@ -83,6 +86,7 @@ export const COMMAND_HELP = `/help       Show commands
 /context    Count current request against the configured context budget
 /usage      Show recorded model usage
 /effort LEVEL  Set effort level for model usage (low/medium/high/xhigh/max/auto)
+/copy [N]   Copy the latest response to the clipboard (or the Nth-latest)
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
 /rename TITLE  Set the current session title
@@ -776,6 +780,25 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
       try {
         if (prompt === '/help') { output.write(COMMAND_HELP + '\n'); continue; }
+        if (prompt === '/copy' || prompt.startsWith('/copy ')) {
+          const responses = copyResponses(session.events.flatMap(event =>
+            event.kind === 'message' ? [event.message] : []));
+          if (responses.length === 0) { output.write(`${copyEmptyMessage()}\n`); continue; }
+          const argument = parseCopyArgument(prompt.slice('/copy'.length), responses.length);
+          if (argument.kind === 'usage') { output.write(`${copyUsageMessage(argument.got)}\n`); continue; }
+          if (argument.kind === 'too-many') { output.write(`${copyTooManyMessage(argument.count)}\n`); continue; }
+          const text = responses[argument.kind === 'latest' ? 0 : argument.index]!;
+          let payload: string;
+          try { payload = osc52Payload(text); }
+          catch (error) { output.write(`${(error as Error).message}\n`); continue; }
+          if (terminal?.writeClipboard) terminal.writeClipboard(payload); else output.write(payload);
+          // The recovered `A` still returns its report when the file write fails, so a scratch
+          // directory that cannot be created only drops the `Also written to` line.
+          let file: string | undefined;
+          try { file = writeCopyFile(text); } catch { file = undefined; }
+          output.write(`${copyReport(text, file)}\n`);
+          continue;
+        }
         if (/^\/peers(?:\s|$)/.test(prompt)) {
           if (peer === undefined) { options.status.write('Peer transport is unavailable.\n'); continue; }
           const listed = await peer.list();

@@ -1114,6 +1114,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
   }
 
+  /** The `copySelection` sink: a clipboard request the terminal receives byte for byte. */
+  writeClipboard(payload: string): void {
+    if (this.closed) return;
+    this.options.output.write(payload);
+  }
+
   start(): this {
     if (this.started || this.closed) return this;
     this.started = true;
