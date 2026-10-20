@@ -132,12 +132,30 @@ Order is by how much a user sees.
 
 Next up, scoped but not started:
 
-- W222 `/output-style` (`List output styles or switch to one`, `argumentHint: "[style]"`). Scouting
-  done: the `local` registration is at `chunk-sfn1dbxq.js` 1133890 (`_Be`/`wNt`, the chooser
-  descriptor with `{workspace:!0}`, `isEnabled:()=>ve()||!Hhe()`), and the body loads from
-  `chunk-8w0gx47m.js`, sha256 `389325e069785b8ce3217250250879ef770ff368584f89929d8b1c840f9d17b7`
-  (16775 bytes). Local-only: no account, network or vendor-content dependency. This host already
-  carries an output-style concept, so the chooser has real state to write.
+- [x] W222 surface sweep of the commands reported as unresponsive. `.audit/w222-surface-sweep.mjs`
+      passes 8 checks over the compiled CLI: `/workflows` opens the dynamic-workflows dialog with
+      its empty message and `Esc close` footer; bare `/loop` expands to a user turn rather than
+      opening a dialog (the recovered `se` prompt-expansion path); `/tasks`, `/cron`, `/status`,
+      `/context` and `/usage` each print their report. The `/effort` (W212) and `/model` (W215)
+      probes also still pass, so the two surfaces the request named by example are healthy.
+- `/output-style` is scoped out. In this version the visible chooser is a `/config` pane: the
+  `local-jsx` registration is `bNt("output-style","Output style",{workspace:!0})`, whose whole
+  descriptor is `description: "Output style moved to /config"`, `isHidden: true`. Only the
+  non-interactive `local` twin (`kBe`, `chunk-sfn1dbxq.js` 1133890, body
+  `chunk-8w0gx47m.js` sha256 `389325e069785b8ce3217250250879ef770ff368584f89929d8b1c840f9d17b7`)
+  is reachable, and it needs the built-in style table `x5` (each entry a vendor prompt body),
+  an `outputStyle` settings key and the prompt application — none of which this host carries.
+  Porting it would mean porting vendor prompt text, which the project rules exclude.
+- `/focus` is scoped out for now. Its state is one flag (`briefTranscript`) and its body is small,
+  but the flag is threaded through the recovered renderer in at least eight modules
+  (`chunk-24k7d6mw.js`, `chunk-2bcyxj9q.js`, `chunk-3gz7s57c.js`, `chunk-4jr9rxry.js`,
+  `chunk-7q49cqja.js`, `chunk-7vyj6mx6.js`, `chunk-bk5ct2gw.js`, `chunk-j6zmxvvx.js`), so a local
+  brief-transcript mode is a multi-file renderer change, not a command port.
+- `/permissions` needs a full editing pane, not a chooser (`bTo`, `immediate:!0`,
+  `thinClientDispatch: "control-request"`, no `load`).
+- `/hooks` (`View hook configurations for tool events`, `local-jsx`, `immediate:!0`) is the next
+  bounded candidate: this host already parses `HooksConfig` (`src/hooks.ts`, `config.ts:114`) and
+  skill hooks, so a read-only viewer has real local state to show.
 - The remaining registrations are out or blocked: `/radio` streams audio from a network source;
   `/powerup` is a lesson runner over the vendor's own content; `/auto-mode-setup` is gated on an
   env-onboarding flag this host does not carry; `/privacy-settings` is account-adjacent;
