@@ -10,6 +10,7 @@ import { Session, applyManagedPolicy, managedPolicySchema, type SessionConfig } 
 import { PolicyHelper } from './policy-helper.js';
 import { interactiveLoop } from './interactive.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
+import { briefTranscriptEnabled } from './focus-command.js';
 import { createTuiTerminal } from './tui.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
@@ -301,6 +302,7 @@ function newConfig(
   if (settings.prefersReducedMotion !== undefined) config.prefersReducedMotion = settings.prefersReducedMotion;
   if (settings.showTurnDuration !== undefined) config.showTurnDuration = settings.showTurnDuration;
   if (settings.showMessageTimestamps !== undefined) config.showMessageTimestamps = settings.showMessageTimestamps;
+  if (settings.viewMode !== undefined) config.viewMode = settings.viewMode;
   if (settings.timeFormat !== undefined) config.timeFormat = settings.timeFormat;
   if (settings.timeZone !== undefined) config.timeZone = settings.timeZone;
   if (settings.spinnerVerbs !== undefined) config.spinnerVerbs = settings.spinnerVerbs;
@@ -701,6 +703,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         prefersReducedMotion: currentSession.config.prefersReducedMotion,
         showTurnDuration: currentSession.config.showTurnDuration,
         showMessageTimestamps: currentSession.config.showMessageTimestamps,
+        briefTranscript: briefTranscriptEnabled(currentSession.config),
         editorMode:currentSession.config.editorMode,vimInsertModeRemaps:currentSession.config.vimInsertModeRemaps,
         progressSettings: {timeFormat:currentSession.config.timeFormat, timeZone:currentSession.config.timeZone,
           spinnerVerbs:currentSession.config.spinnerVerbs},

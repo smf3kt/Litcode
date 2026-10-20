@@ -1327,6 +1327,8 @@ export interface TerminalSurface {
   setWorkflowKeywordSettings?(settings: { available: boolean; triggerEnabled: boolean }): void;
   /** The `:name:` emoji typeahead switch. Absent means enabled. */
   setEmojiCompletion?(enabled: boolean): void;
+  /** `/focus`'s brief transcript: hold the streaming preview while a turn runs through tools. */
+  setBriefTranscript?(enabled: boolean): void;
   /** The composer's slash-command rows; a skill rescan hands back the list it rebuilt. */
   setCommands?(commands: readonly import('./tui-autocomplete.js').TuiCommand[]): void;
   setTheme?(value?: import('./tui-theme-state.js').ThemeSetting): void;

@@ -85,6 +85,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'keybindings', description: 'Open your keyboard shortcuts file', kind: 'command', lane: 'config' },
   { name: 'scroll-speed', description: 'Adjust mouse wheel scroll speed', kind: 'command', lane: 'config' },
   { name: 'tui', description: 'Set the terminal UI renderer (default | fullscreen)', kind: 'command', lane: 'config' },
+  { name: 'focus', description: 'Toggle focus view: just your prompt, summary, and response', kind: 'command', lane: 'config' },
   { name: 'add-dir', description: 'Add a new working directory', kind: 'command', lane: 'action' },
   { name: 'hooks', description: 'View hook configurations for tool events', kind: 'command', lane: 'config' },
   { name: 'sessions', description: 'List/search workspace sessions by title, model or UUID', kind: 'command', lane: 'info' },

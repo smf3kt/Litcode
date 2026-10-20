@@ -84,6 +84,8 @@ export class ThinkingProgress {
     if (!this.active || this.phase === mode) return false;
     this.phase = mode; this.syncClock(); return true;
   }
+  /** Source `streamingToolUses.length > 0`: the turn is inside a tool call right now. */
+  hasActiveTools(): boolean { return this.active && this.phase === 'tool-use'; }
   text(value: string): void {if (this.active) {this.response.current += value.length; this.phase = 'responding';}}
   tasks(rows: readonly TaskRecord[]): void {this.taskRows = rows;}
   setVerbs(setting?: SpinnerVerbs): void {this.verbsSetting = setting ? structuredClone(setting) : undefined;}

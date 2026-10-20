@@ -216,6 +216,8 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   prefersReducedMotion?: boolean;
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
+  /** `/focus`: the brief transcript holds the streaming preview while tools run. */
+  briefTranscript?: boolean;
   progressSettings?: ProgressDisplaySettings;
   maxProseWidth?: number;
   syntaxHighlightingDisabled?: boolean;
@@ -420,6 +422,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private showTurnDuration = true;
   /** Source `showMessageTimestamps`: stamp each message with its arrival time. */
   private showMessageTimestamps = false;
+  /** Source `briefTranscript`: the fold that holds the in-flight preview during tool use. */
+  private briefTranscript = false;
   /** `/color`'s pick; `Mk`'s banner row exists only while this is set. */
   private sessionColor: SessionColor | undefined;
   private progressSettings: ProgressDisplaySettings = {};
@@ -515,6 +519,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.showTurnDuration = options.showTurnDuration !== false;
     this.showMessageTimestamps = options.showMessageTimestamps === true;
+    this.briefTranscript = options.briefTranscript === true;
     this.progressSettings = structuredClone(options.progressSettings ?? {});
     this.timeFormatter = progressTime(this.progressSettings);
     this.progress.setVerbs(this.progressSettings.spinnerVerbs);
@@ -846,12 +851,28 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   setProgress(event: AgentProgressEvent): void {
     if (this.closed) return;
     if (event.kind === 'start') this.progress.start(event.uuid, event.startedAt);
-    else if (event.kind === 'phase') {if (!this.progress.mode(event.mode)) return;}
+    else if (event.kind === 'phase') {
+      if (!this.progress.mode(event.mode)) return;
+      // Source `Ue`: while the fold holds, the streaming block is not rendered. The entry
+      // painted before the tool started is taken back off the transcript; the source text
+      // stays in `assistantMessage`, so the paint that ends the fold re-appends it.
+      if (this.holdsFocusPreview()) this.hideStreamingPreview();
+    }
     else {
       this.progress.stop();
       if (event.reason !== 'error' && event.reason !== 'aborted') this.restoreTurnDuration(event.duration);
     }
     this.render();
+  }
+
+  private hideStreamingPreview(): void {
+    const message = this.assistantMessage;
+    if (!message || message.index === undefined) return;
+    const entries = this.transcript.entries.filter(entry => !(entry.streaming && entry.messageKey === message.key));
+    if (entries.length === this.transcript.entries.length) return;
+    this.transcript = { ...this.transcript, entries };
+    message.index = undefined;
+    this.selection = createSelection();
   }
 
   setShowTurnDuration(value?: boolean): void {
@@ -864,6 +885,27 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const enabled = value === true;
     if (enabled === this.showMessageTimestamps) return;
     this.showMessageTimestamps = enabled; this.selection = createSelection(); this.render();
+  }
+
+  /** Source `vNt`'s `focusFoldHoldsPreview`, live half: `/focus` toggles the fold. */
+  setBriefTranscript(enabled: boolean): void {
+    if (enabled === this.briefTranscript) return;
+    this.briefTranscript = enabled;
+    // Leaving focus re-paints the preview the fold was holding back.
+    if (!enabled) this.paintAssistantPreview();
+    this.render();
+  }
+
+  /**
+   * The fold holds the in-flight preview while the turn is inside a tool call or the tail
+   * line is still incomplete (`vNt`: `streamingToolUses > 0 || tailBlank`). The completed
+   * paint in `endAssistantMessage` is never held, so the finished text always lands.
+   */
+  private holdsFocusPreview(): boolean {
+    if (!this.briefTranscript || !this.running) return false;
+    // Source `sc`: a hidden trailing line with no newline in the displayed text.
+    const derived = this.previewStore.getDerived();
+    return this.progress.hasActiveTools() || (derived.hideTrailingLine && !derived.displayedHasNewline);
   }
 
   /** `/color`: the banner row exists only while a colour is set, so this changes the layout. */
@@ -1260,6 +1302,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private paintAssistantPreview(completed = false): void {
     const message = this.assistantMessage;
     if (!message || !message.source || this.closed) return;
+    if (!completed && this.holdsFocusPreview()) return;
     const displayed = completed ? message.source : this.previewStore.getDerived().displayed;
     if (!displayed) return;
     const view = this.viewportSize();

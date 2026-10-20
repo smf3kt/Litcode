@@ -102,6 +102,7 @@ export type ParsedRuntimeSettings = {
   prefersReducedMotion?: boolean;
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
+  viewMode?: 'default' | 'verbose' | 'focus';
   timeFormat?: string;
   timeZone?: string;
   spinnerVerbs?: SpinnerVerbs;
@@ -211,6 +212,7 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if ('prefersReducedMotion' in settings) out.prefersReducedMotion = settingBoolean(settings, 'prefersReducedMotion');
   if ('showTurnDuration' in settings) out.showTurnDuration = settingBoolean(settings, 'showTurnDuration');
   if ('showMessageTimestamps' in settings) out.showMessageTimestamps = settingBoolean(settings, 'showMessageTimestamps');
+  if ('viewMode' in settings) out.viewMode = settingEnum(settings, 'viewMode', ['default', 'verbose', 'focus'] as const);
   if (settings.timeFormat !== undefined) out.timeFormat = z.string().parse(settings.timeFormat);
   if (settings.timeZone !== undefined) out.timeZone = z.string().parse(settings.timeZone);
   if (settings.spinnerVerbs !== undefined) out.spinnerVerbs = spinnerVerbsSchema.parse(settings.spinnerVerbs);

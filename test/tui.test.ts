@@ -2601,3 +2601,84 @@ test('the startup header stays in the log and scrolls with it', () => {
     assert.equal(tui.transcriptState.offset, 0);
   } finally { tui.close(); }
 });
+
+test('/focus takes the streaming preview off screen while a tool call runs, and the finished text lands', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 20 });
+  const tui = new TuiTerminal({ input, output, briefTranscript: true }).start();
+  try {
+    tui.setRunning(true);
+    tui.setProgress({ kind: 'start', uuid: 'u1', startedAt: Date.now() });
+    tui.beginAssistantMessage();
+    tui.writeAssistantText('partial line\nincomplete tail');
+    context.mock.timers.tick(200);
+    assert.equal(tui.transcriptState.entries[0]?.streaming, true);
+    tui.setProgress({ kind: 'phase', mode: 'tool-use' });
+    assert.equal(tui.transcriptState.entries.length, 0);
+    tui.endAssistantMessage();
+    assert.equal(tui.transcriptState.entries.length, 1);
+    assert.equal(tui.transcriptState.entries[0]?.markdown, 'partial line\nincomplete tail');
+    assert.equal(tui.transcriptState.entries[0]?.streaming, undefined);
+  } finally { tui.close(); }
+});
+
+test('without focus the same tool call leaves the streaming preview on screen', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 20 });
+  const tui = new TuiTerminal({ input, output }).start();
+  try {
+    tui.setRunning(true);
+    tui.setProgress({ kind: 'start', uuid: 'u2', startedAt: Date.now() });
+    tui.beginAssistantMessage();
+    tui.writeAssistantText('partial line\nincomplete tail');
+    context.mock.timers.tick(200);
+    tui.setProgress({ kind: 'phase', mode: 'tool-use' });
+    assert.equal(tui.transcriptState.entries[0]?.streaming, true);
+    // Turning focus on mid-turn takes the painted preview back off screen.
+    tui.setBriefTranscript(true);
+    assert.equal(tui.transcriptState.entries.filter(entry => entry.streaming).length, 1);
+    tui.setProgress({ kind: 'phase', mode: 'responding' });
+    tui.setProgress({ kind: 'phase', mode: 'tool-use' });
+    assert.equal(tui.transcriptState.entries.length, 0);
+    tui.endAssistantMessage();
+    assert.equal(tui.transcriptState.entries[0]?.markdown, 'partial line\nincomplete tail');
+  } finally { tui.close(); }
+});
+
+test('focus does not fold outside a tool call or outside a running turn', context => {
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 20 });
+  const tui = new TuiTerminal({ input, output, briefTranscript: true }).start();
+  try {
+    tui.setRunning(true);
+    tui.setProgress({ kind: 'start', uuid: 'u3', startedAt: Date.now() });
+    tui.setProgress({ kind: 'phase', mode: 'responding' });
+    tui.beginAssistantMessage();
+    tui.writeAssistantText('complete line\n');
+    context.mock.timers.tick(200);
+    assert.equal(tui.transcriptState.entries[0]?.streaming, true);
+    tui.setProgress({ kind: 'phase', mode: 'tool-use' });
+    assert.equal(tui.transcriptState.entries.length, 0);
+    tui.endAssistantMessage();
+  } finally { tui.close(); }
+  const idleInput = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  idleInput.isTTY = true; idleInput.setRawMode = () => {};
+  const idleOutput = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(idleOutput, { isTTY: true, columns: 60, rows: 20 });
+  const idle = new TuiTerminal({ input: idleInput, output: idleOutput, briefTranscript: true }).start();
+  try {
+    idle.beginAssistantMessage();
+    idle.writeAssistantText('not running');
+    context.mock.timers.tick(200);
+    assert.equal(idle.transcriptState.entries[0]?.streaming, true);
+  } finally { idle.close(); }
+});
