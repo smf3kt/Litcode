@@ -171,10 +171,16 @@ Next up, scoped but not started:
       sandbox exemption, and the four report strings. The dialog accumulates its reports and returns
       them joined as the command's result (the recovered `wu`), rendered through `writeNotice` as one
       `system` transcript entry. See `research/ports/W226-permissions.md`.
-- [ ] W227 `/permissions`, part two: the `recent` tab (the session's denial list, `Rn`/`wn`) and the
-      `workspace` tab (`Bn`/`Hn`, the additional working directories with `Pr`'s empty state).
-- [ ] W228 `/permissions`, part three: the `automode` tab (`Op`/`Yn`, `Added auto mode ${…} rule`)
-      over the local auto-mode state.
+- [x] W227 `/permissions`, part two: the Workspace tab. The directory list in insertion order under
+      the shared label dedup, the add row last, the original-directory row, the removal confirm
+      (`xn`) and the path input (`TXe`) with its validation message, the two reports, and the tab's
+      own dismissal message. See `research/ports/W227-workspace.md`.
+- [ ] W228 `/permissions`, part three: the `recent` tab (the auto-mode classifier's denial list,
+      `Rn`/`Wr`, the approve/retry sets and their batch confirm). Needs the denial store `pEe`'s
+      `getDenials`/`recordDenial`/`removeDenial` (capped at 20, newest first) wired into the local
+      classifier gate in `src/agent.ts`.
+- [ ] W229 `/permissions`, part four: the `automode` tab (`Bn`, `Added auto mode ${…} rule`) over the
+      local auto-mode state.
 
 Scoped out:
 

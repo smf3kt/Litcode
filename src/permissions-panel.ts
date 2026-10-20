@@ -16,13 +16,14 @@
  *
  * Three surfaces, in the recovered order: the tabbed rule list, the add-rule flow (`pn` then `mn`),
  * and the rule's own pane (`ai`). The rule list is the tab strip's `allow`, `ask` and `deny` tabs;
- * the recovered `recent`, `automode` and `workspace` tabs are `PERMISSION_TABS` entries this package
- * does not render yet.
+ * the `workspace` tab is `wn`/`xn`, below. The recovered `recent` and `automode` tabs are
+ * `PERMISSION_TABS` entries this build does not render yet.
  */
 
 import type { PermissionFilePaths } from './permission-settings.js';
 import type { PermissionUpdate } from './permissions.js';
 import type { TerminalPromptRequest } from './terminal.js';
+import { addDirectoryMessage, validateAddDirectory } from './add-dir-command.js';
 import { BASH_RULE_TOOL } from './agent-tool-restrictions.js';
 import { parsePermissionRule, serializePermissionRule } from './permission-state.js';
 import { te } from './tui-symbols.js';
@@ -122,7 +123,18 @@ export const PERMISSION_LABEL_LIMIT = 2000;
  * appearance on. Identical serialized texts share one group, so they never earn a suffix.
  */
 export function permissionRuleLabels(rules: readonly PermissionRuleValue[]): string[] {
-  const texts = rules.map(rule => serializePermissionRule(rule).replace(INVISIBLE, ''));
+  return permissionDisplayLabels(rules.map(serializePermissionRule), text => text.replace(INVISIBLE, ''));
+}
+
+/**
+ * Source `uFe` at 10928 with a caller formatter. `format` runs twice per value: once to group the
+ * entries whose display text folds alike, and once for the plain label. A grouped entry falls back
+ * to its own raw text — truncated and with its non-ASCII characters escaped — and takes a `(#N)`
+ * suffix from the second appearance on. Identical raw texts share one seen-slot, so they never earn
+ * a suffix. The workspace list reuses this (`nB` = `uFe` over `Fn`).
+ */
+export function permissionDisplayLabels<T>(values: readonly T[], format: (value: T) => string): string[] {
+  const texts = values.map(value => format(value));
   const formatted = texts.map(text => text.replace(/\s+/g, ' ').trim());
   const groups = new Map<string, Set<string>>();
   for (const [index, text] of texts.entries()) {
@@ -135,7 +147,7 @@ export function permissionRuleLabels(rules: readonly PermissionRuleValue[]): str
     .replace(/[\u007f-￿]/g, character => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`)
     + (text.length > PERMISSION_LABEL_LIMIT ? te.ellipsis : '');
   const seen = new Map<string, Map<string, number>>();
-  return rules.map((_rule, index) => {
+  return values.map((_value, index) => {
     const text = texts[index]!, form = formatted[index]!;
     if ((groups.get(form.normalize('NFC'))?.size ?? 0) <= 1) return form;
     const escapedText = escaped(text);
@@ -363,10 +375,13 @@ export function permissionDeleteFailedReport(rule: PermissionRuleValue): string 
   return `Could not delete ${permissionRuleText(rule)} — the rule is unchanged`;
 }
 
+/** The tabs this build offers as rows, in the recovered `br` order. `recent` and `automode` follow. */
+export const PERMISSION_OFFERED_TABS = ['allow', 'ask', 'deny', 'workspace'] as const;
+
 /** The tab strip the panel draws above the body, the current tab bracketed. */
-export function permissionTabRow(active: PermissionTabId): string {
-  return PERMISSION_TABS.filter(tab => PERMISSION_RULE_TABS.includes(tab.id as PermissionRuleTabId))
-    .map(tab => (tab.id === active ? `[${tab.title}]` : ` ${tab.title} `)).join('');
+export function permissionTabRow(active: PermissionTabId,
+  tabs: readonly PermissionTabId[] = PERMISSION_OFFERED_TABS): string {
+  return tabs.map(id => (id === active ? `[${permissionTabTitle(id)}]` : ` ${permissionTabTitle(id)} `)).join('');
 }
 
 /** The recovered footer's non-header, non-search arm, minus the `←/→` clause this host cannot honour. */
@@ -377,6 +392,96 @@ export interface PermissionPanelInput {
   readonly rules: readonly PermissionPanelRule[];
   readonly paths?: PermissionFilePaths;
   readonly userSettingsFile?: string;
+  /** The session's additional working directories, in insertion order (`wn` reads the map's keys). */
+  readonly directories?: readonly string[];
+  /** Source `Ac`: `originalCwd`, drawn above the workspace list. */
+  readonly originalCwd?: string;
+}
+
+/**
+ * The `/permissions` Workspace tab. Recovered from `chunk-fxx7hh8y.js` sha256
+ * `6c02bdbdf6679fafe7e6e589e8f21f18b347d1192564753fc4fed7559557dc78`: the tab body `wn` at 33390,
+ * the remove confirm `xn` at 32367, the add surface `TXe` in `chunk-k65ya3x7.js` (sha256
+ * `ba76569c9bb35d13cdab5907534863174c7e0ba60fe3d0ac3cea099edf22e171`, body at 3186) with its
+ * header `O` at 1720 and the input `Y` at 2140, and the add apply at 86500. Offsets are zero-based
+ * UTF-16 code units.
+ */
+export const PERMISSIONS_WORKSPACE_DISMISSED = 'Workspace dialog dismissed';
+export const PERMISSION_WORKSPACE_INTRO =
+  'Claude Code can read files in the workspace, and make edits when auto-accept edits is on.';
+export const PERMISSION_WORKSPACE_ORIGINAL = '(Original working directory)';
+export const PERMISSION_WORKSPACE_ADD_SCOPE =
+  'Claude Code will be able to read files in this directory and make edits when auto-accept edits is on.';
+export const PERMISSION_ADD_DIRECTORY_LABEL = `Add directory${te.ellipsis}`;
+export const PERMISSION_ADD_DIRECTORY_VALUE = 'add-directory';
+export const PERMISSION_ADD_DIRECTORY_TITLE = 'Add directory to workspace';
+export const PERMISSION_ADD_DIRECTORY_PROMPT = 'Enter the path to the directory:';
+export const PERMISSION_REMOVE_DIRECTORY_TITLE = 'Remove directory from workspace?';
+export const PERMISSION_REMOVE_DIRECTORY_NOTE =
+  'Claude Code will no longer have access to files in this directory.';
+/** Source `visibleOptionCount: Math.min(10, rows.length)`. */
+export const PERMISSION_WORKSPACE_VISIBLE_ROWS = 10;
+
+/**
+ * Source `Fn` (`chunk-2bcyxj9q.js` 166973): the text a path is drawn with. Control, format and
+ * unassigned code points become U+FFFD. The recovered's leading coercion arm is unreachable here
+ * because the parameter is already a string.
+ */
+const DISPLAY_REPLACED = /[\u0000-\u001f\u007f-\u009f\u061c\u2028\u2029\u202a-\u202e\u2066-\u2069\p{Co}\p{Cn}]/gu;
+export function workspaceDisplayText(value: string): string {
+  return value.replace(DISPLAY_REPLACED, '\uFFFD').normalize('NFC');
+}
+
+export interface WorkspaceRow { readonly label: string; readonly value: string }
+
+/**
+ * Source `wn`'s list: the directories in insertion order under `nB`'s deduped labels, then the add
+ * row last. The original directory is not a row — it is drawn above the list.
+ */
+export function workspaceDirectoryRows(directories: readonly string[]): WorkspaceRow[] {
+  const labels = permissionDisplayLabels(directories, workspaceDisplayText);
+  return [...directories.map((directory, index) => ({ label: labels[index]!, value: directory })),
+    { label: PERMISSION_ADD_DIRECTORY_LABEL, value: PERMISSION_ADD_DIRECTORY_VALUE }];
+}
+
+/** Source `wn` + the shell's intro: the tab's read-only lines. */
+export function workspaceTabLines(input: PermissionPanelInput): string[] {
+  const lines = [PERMISSION_WORKSPACE_INTRO, ''];
+  if (input.originalCwd !== undefined) {
+    lines.push(`-  ${workspaceDisplayText(input.originalCwd)} ${PERMISSION_WORKSPACE_ORIGINAL}`);
+  }
+  for (const row of workspaceDirectoryRows(input.directories ?? [])) {
+    if (row.value === PERMISSION_ADD_DIRECTORY_VALUE) continue;
+    lines.push(`  ${row.label}`);
+  }
+  return lines;
+}
+
+export function workspaceAddedReport(directory: string, remembered: boolean): string {
+  return `Added directory ${workspaceDisplayText(directory)} to workspace`
+    + `${remembered ? ' and saved to local settings' : ' for this session'}`;
+}
+
+export function workspaceRemovedReport(directory: string): string {
+  return `Removed directory ${workspaceDisplayText(directory)} from workspace`;
+}
+
+/** Source `TXe`'s input arm: the header line, the prompt, and the validation error when there is one. */
+export function workspaceAddRequest(error?: string): TerminalPromptRequest {
+  const lines = [PERMISSION_WORKSPACE_ADD_SCOPE, '', PERMISSION_ADD_DIRECTORY_PROMPT];
+  if (error !== undefined) lines.push('', error);
+  lines.push('', 'Esc to cancel');
+  return { title: PERMISSION_ADD_DIRECTORY_TITLE, message: lines.join('\n'), allowText: true };
+}
+
+/** Source `xn`: the confirm that precedes a removal, focused on No. */
+export function workspaceRemoveRequest(directory: string): TerminalPromptRequest {
+  return {
+    title: PERMISSION_REMOVE_DIRECTORY_TITLE,
+    message: [workspaceDisplayText(directory), '', PERMISSION_REMOVE_DIRECTORY_NOTE].join('\n'),
+    choices: [{ label: 'Yes', value: 'confirm' }, { label: 'No', value: 'cancel' }],
+    defaultIndex: 1,
+  };
 }
 
 /**
@@ -384,23 +489,29 @@ export interface PermissionPanelInput {
  * switches it with left and right; this host's dialog has one selection axis, so the tabs are rows
  * at the head of the list, the way `/help` carries its three tabs.
  */
-export function permissionsPanelRequest(input: PermissionPanelInput, tab: PermissionRuleTabId = 'allow'):
+export function permissionsPanelRequest(input: PermissionPanelInput, tab: PermissionTabId = 'allow'):
 TerminalPromptRequest {
-  const rules = input.rules.filter(rule => rule.ruleBehavior === tab);
-  const list = permissionRuleRows(rules, tab);
-  const lines = [permissionTabRow(tab), '', permissionTabIntro(tab), ''];
-  if (rules.length === 0) lines.push(permissionSectionEmpty(tab));
-  else for (const option of list.options) {
-    if (option.value === PERMISSION_ADD_RULE_VALUE) continue;
-    lines.push(`  ${option.label}`);
+  const lines = [permissionTabRow(tab), ''];
+  const choices: { label: string; value: string; description?: string }[] =
+    PERMISSION_OFFERED_TABS.map(id => ({ label: permissionTabTitle(id), value: `tab:${id}` }));
+  if (tab === 'workspace') {
+    lines.push(...workspaceTabLines(input), '', PERMISSION_GUIDE);
+    choices.push(...workspaceDirectoryRows(input.directories ?? []));
+  } else {
+    const ruleTab = tab as PermissionRuleTabId;
+    const rules = input.rules.filter(rule => rule.ruleBehavior === ruleTab);
+    const list = permissionRuleRows(rules, ruleTab);
+    lines.push(permissionTabIntro(ruleTab), '');
+    if (rules.length === 0) lines.push(permissionSectionEmpty(ruleTab));
+    else for (const option of list.options) {
+      if (option.value === PERMISSION_ADD_RULE_VALUE) continue;
+      lines.push(`  ${option.label}`);
+    }
+    lines.push('', PERMISSION_GUIDE);
+    choices.push(...list.options.map(option => ({ label: option.label, value: option.value })));
   }
-  lines.push('', PERMISSION_GUIDE);
-  const choices = [
-    ...PERMISSION_RULE_TABS.map(entry => ({ label: permissionSectionTitle(entry), value: `tab:${entry}` })),
-    ...list.options.map(option => ({ label: option.label, value: option.value })),
-  ];
   return { title: PERMISSIONS_TITLE, message: lines.join('\n'), choices,
-    defaultIndex: Math.max(0, PERMISSION_RULE_TABS.indexOf(tab)) };
+    defaultIndex: Math.max(0, PERMISSION_OFFERED_TABS.indexOf(tab as typeof PERMISSION_OFFERED_TABS[number])) };
 }
 
 /** Source `pn` at 27432: the rule input, with its own example line and its submit guide. */
@@ -467,16 +578,20 @@ export type PermissionPanelAnswer = { selected: readonly string[]; text?: string
 export interface PermissionPanelApplyResult { readonly error?: string }
 
 export type PermissionPanelMode =
-  | { readonly kind: 'tab'; readonly tab: PermissionRuleTabId }
+  | { readonly kind: 'tab'; readonly tab: PermissionTabId }
   | { readonly kind: 'add'; readonly tab: PermissionRuleTabId }
   | { readonly kind: 'save'; readonly tab: PermissionRuleTabId; readonly rules: readonly PermissionRuleValue[] }
-  | { readonly kind: 'rule'; readonly tab: PermissionRuleTabId; readonly rule: PermissionPanelRule };
+  | { readonly kind: 'rule'; readonly tab: PermissionRuleTabId; readonly rule: PermissionPanelRule }
+  | { readonly kind: 'addDirectory'; readonly error?: string }
+  | { readonly kind: 'removeDirectory'; readonly path: string };
 
 /**
  * Source `di`'s `no`/`sn`/`mu`/`Di` handlers: the panel's own navigation. Selecting a rule opens its
  * pane; the add row opens the input, whose submit opens the scope picker, whose pick applies the
- * update. `Esc` steps back one surface and dismisses from a tab. The input is re-read on every
- * surface, which is how the recovered `U0(T)`/`Bc(T)`/`xm(T)` see a rule the panel just added.
+ * update. The workspace tab's add row opens `TXe`'s text surface and its directory rows open `xn`'s
+ * confirm. `Esc` steps back one surface and dismisses from a tab — with the workspace tab's own
+ * message (`wn`'s `Workspace dialog dismissed`). The input is re-read on every surface, which is how
+ * the recovered `U0(T)`/`Bc(T)`/`xm(T)` see a rule the panel just added.
  */
 export async function browsePermissions(readInput: () => PermissionPanelInput,
   read: (request: TerminalPromptRequest) => Promise<PermissionPanelAnswer>,
@@ -485,31 +600,65 @@ export async function browsePermissions(readInput: () => PermissionPanelInput,
   // that list joined when it closes (`wu`); with no lines it returns the dismissed message.
   const reports: string[] = [];
   const report = (lines: readonly string[]) => { reports.push(...lines); };
-  const finish = () => reports.length > 0 ? reports.join('\n') : PERMISSIONS_DISMISSED;
-  let mode: PermissionPanelMode = { kind: 'tab', tab: 'allow' };
+  let tab: PermissionTabId = 'allow';
+  const finish = () => reports.length > 0 ? reports.join('\n')
+    : tab === 'workspace' ? PERMISSIONS_WORKSPACE_DISMISSED : PERMISSIONS_DISMISSED;
+  let mode: PermissionPanelMode = { kind: 'tab', tab };
   for (;;) {
     const input = readInput();
     const request = mode.kind === 'tab' ? permissionsPanelRequest(input, mode.tab)
       : mode.kind === 'add' ? permissionAddRuleRequest(mode.tab)
         : mode.kind === 'save' ? permissionSaveRequest(mode.tab, mode.rules, input)
-          : permissionRulePaneRequest(mode.rule);
+          : mode.kind === 'rule' ? permissionRulePaneRequest(mode.rule)
+            : mode.kind === 'addDirectory' ? workspaceAddRequest(mode.error)
+              : workspaceRemoveRequest(mode.path);
     const answer = await read(request);
     if (answer === undefined) {
       if (mode.kind === 'tab') return finish();
-      if (mode.kind === 'rule') { mode = { kind: 'tab', tab: mode.tab }; continue; }
-      mode = { kind: 'tab', tab: mode.tab };
+      mode = { kind: 'tab', tab };
       continue;
     }
     const value = answer.selected[0] ?? '';
     if (mode.kind === 'tab') {
-      const tab: PermissionRuleTabId = mode.tab;
-      const tabPick = PERMISSION_RULE_TABS.find(entry => value === `tab:${entry}`);
-      if (tabPick !== undefined) { mode = { kind: 'tab', tab: tabPick }; continue; }
-      if (value === PERMISSION_ADD_RULE_VALUE) { mode = { kind: 'add', tab }; continue; }
+      const picked = PERMISSION_OFFERED_TABS.find(entry => value === `tab:${entry}`);
+      if (picked !== undefined) { tab = picked; mode = { kind: 'tab', tab: picked }; continue; }
+      if (mode.tab === 'workspace') {
+        if (value === PERMISSION_ADD_DIRECTORY_VALUE) { mode = { kind: 'addDirectory' }; continue; }
+        if (input.directories?.includes(value) === true) { mode = { kind: 'removeDirectory', path: value }; continue; }
+        return finish();
+      }
+      if (value === PERMISSION_ADD_RULE_VALUE) {
+        mode = { kind: 'add', tab: mode.tab as PermissionRuleTabId };
+        continue;
+      }
+      const ruleTab = mode.tab as PermissionRuleTabId;
       const chosen: PermissionPanelRule | undefined = input.rules
-        .find(rule => rule.ruleBehavior === tab && permissionRuleKey(rule) === value);
+        .find(rule => rule.ruleBehavior === ruleTab && permissionRuleKey(rule) === value);
       if (chosen === undefined) return finish();
-      mode = { kind: 'rule', tab, rule: chosen };
+      mode = { kind: 'rule', tab: ruleTab, rule: chosen };
+      continue;
+    }
+    if (mode.kind === 'addDirectory') {
+      const text = (answer.text ?? '').trim();
+      if (text.length === 0) { mode = { kind: 'tab', tab }; continue; }
+      const result = validateAddDirectory({ directoryPath: text,
+        workingDirectories: input.directories ?? [], cwd: input.originalCwd ?? process.cwd() });
+      if (result.kind !== 'success') {
+        // Source `TXe`: a rejected path keeps the input surface open with `hge`'s line under it.
+        mode = { kind: 'addDirectory', error: addDirectoryMessage(result) };
+        continue;
+      }
+      // Source's add handler: the session-scope apply's own outcome is discarded, as `/add-dir` does.
+      await apply({ type: 'addDirectories', directories: [result.absolutePath], destination: 'session' });
+      report([workspaceAddedReport(result.absolutePath, false)]);
+      mode = { kind: 'tab', tab };
+      continue;
+    }
+    if (mode.kind === 'removeDirectory') {
+      if (value !== 'confirm') { mode = { kind: 'tab', tab }; continue; }
+      await apply({ type: 'removeDirectories', directories: [mode.path], destination: 'session' });
+      report([workspaceRemovedReport(mode.path)]);
+      mode = { kind: 'tab', tab };
       continue;
     }
     if (mode.kind === 'add') {

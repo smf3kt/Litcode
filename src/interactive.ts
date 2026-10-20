@@ -232,6 +232,10 @@ function permissionPanelInput(session: Session): PermissionPanelInput {
     ],
     paths: permissionSettingsPaths(session.config.workspace,
       session.config.configSources?.userDir ?? defaultUserDir()),
+    // Source `Ac`/`wn`: the workspace tab reads the raw insertion order, unlike the observed
+    // `workingDirectories()` list, and draws the original directory above it.
+    directories: [...session.permissionUpdates.additionalWorkingDirectories.keys()],
+    originalCwd: session.config.workspace,
   };
 }
 
