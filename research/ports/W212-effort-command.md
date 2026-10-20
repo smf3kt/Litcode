@@ -75,6 +75,8 @@ watches the effective level.
   the answer after `applyConfig`, with the `eee` notice on the status stream.
 - `src/tui-autocomplete.ts` and `COMMAND_HELP` take the recovered description
   `Set effort level for model usage`.
+- A bare `/effort` on a terminal opens the `Effort` chooser before the argument grammar runs; the
+  non-terminal path keeps the short hint.
 
 ## Adaptations and what stays out
 
@@ -101,9 +103,14 @@ watches the effective level.
 - **No 10-second expiry.** The recovered notice carries `timeoutMs: 1e4`; this host's status
   stream is a plain writable with no timeout form, so the notice stands until the next status
   write, as `/model` and `/thinking` already do.
-- **The interactive slider is out.** The `local-jsx` registration opens an `EffortSlider`
-  (`chat:increaseEffort`/`chat:decreaseEffort` and the `ultracode` track); only the `local`
-  handler's argument grammar is ported.
+- **The slider is a chooser.** The `local-jsx` registration at `chunk-sfn1dbxq.js` 1659314 opens
+  `EffortSlider` (`chunk-76jkr621.js` [18600,27000)): a 42-cell `─` track, triangle positions
+  `[1,10,20,30,40]`, spacers `[5,5,5,6]`, the `Faster … Smarter` caption, and left/right stepping
+  plus `s` for this-session-only. The local dialog host has choices, not keyed adjustment, so a
+  bare `/effort` on a terminal opens the same `Effort` title and caption as a five-row chooser with
+  the current level preselected, each row carrying its glyph and the `De` description; picking one
+  runs `/effort <level>`. The track, the triangle, the `s` binding and the rainbow `max` styling
+  are out. `MAX_EFFORT_NOTE` and the descriptions are the same strings the slider's `Nt` shows.
 
 ## Verification
 
@@ -119,7 +126,8 @@ watches the effective level.
 - The existing bare-command test changed: `/effort` now answers with its usage instead of the old
   error, which is the recovered behaviour.
 - Full suite 2784/2784 (118 suites), `npm run check` and `npm run build` clean.
-- Compiled probe `.audit/w212-effort.mjs` passes 11 checks over the real CLI: the short hint, the
-  full help block, `auto (currently high)`, the set answer with its scope, the `● high · /effort`
-  notice, the `high` write, `max` as session-only with the store intact, the invalid-argument
-  answer, `auto` removing the key, and `output_config.effort: "low"` on the next request.
+- Compiled probe `.audit/w212-effort.mjs` passes 14 checks over the real CLI: the chooser with its
+  preselected level, every glyph and description, and Escape leaving the level alone; the full help
+  block; `auto (currently high)`; the set answer with its scope; the `● high · /effort` notice; the
+  `high` write; `max` as session-only with the store intact; the invalid-argument answer; `auto`
+  removing the key; and `output_config.effort: "low"` on the next request.
