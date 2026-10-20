@@ -527,6 +527,38 @@ test('a bare argument command answers with its usage instead of the unknown-comm
   } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
+test('/loop expands to the recovered loop instructions and sends them as the turn', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-loop-')));
+  const config = { ...defaultConfig(workspace, []), model: 'fixture' };
+  const session = Session.open(workspace, { config });
+  const requests: Anthropic.MessageCreateParamsNonStreaming[] = [];
+  const provider: ModelProvider = { count: async () => 0, complete: async request => {
+    requests.push(request); return reply('done'); } };
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, provider, stubRuntime(), {
+      input: Readable.from(['/loop 5m /babysit-prs\n/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: new AbortController().signal,
+    });
+    assert.doesNotMatch(stderr.value(), /Unknown command/);
+    assert.equal(requests.length, 1);
+    // A plain typed turn is sent as a string body; only later turns carry content blocks.
+    const sent = requests[0]!.messages.filter(message => message.role === 'user')
+      .map(message => typeof message.content === 'string' ? message.content
+        : message.content.filter(block => block.type === 'text').map(block => (block as Anthropic.TextBlock).text).join(''));
+    assert.equal(sent.length, 1);
+    const text = sent[0]!;
+    assert.ok(text.startsWith('# /loop — schedule a recurring or self-paced prompt'), text.slice(0, 60));
+    assert.ok(text.endsWith('5m /babysit-prs'), 'the typed arguments end the text');
+    assert.ok(text.includes('Call cron_create with'));
+    assert.ok(text.includes('schedule_wakeup'));
+    assert.ok(text.includes('task_stop any monitor you armed (use task_list'));
+    assert.ok(text.includes('invoke it via the `skill` tool'));
+    // The vendor display names never reach the model: every one is mapped to this host's tool.
+    assert.doesNotMatch(text, /CronCreate|CronDelete|ScheduleWakeup|TaskStop|TaskList|AskUserQuestion|Monitor\b|PushNotification/);
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test('bare /config opens the editor mode choice and saves the picked mode', { timeout: 8000 }, async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-config-')));
   const userDir = path.join(workspace, 'user');

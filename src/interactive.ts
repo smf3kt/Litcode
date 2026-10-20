@@ -32,6 +32,7 @@ import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
 import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import { workflowsAvailable } from './tui-input-highlights.js';
+import { loopCommandPrompt } from './loop-command.js';
 import {
   expandUserSkill,
   findSkill,
@@ -88,6 +89,7 @@ export const COMMAND_HELP = `/help       Show commands
 /tasks      Show workspace task dependencies and readiness
 /workflows  Show this session workflow runs, including saved runs
 /cron       Show scheduled prompts in the active session
+/loop [interval] [prompt]  Repeat a prompt or command on an interval (e.g. /loop 5m /foo)
 /peers      List live same-host sessions and this inbox address
 /peer-held [list|approve N|deny N|expire N]  Review held peer messages
 /peer-inbound accept|hold|refuse|off  Set the explicit inbound policy
@@ -900,6 +902,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           output.write(await withTurn(signal => tool.execute(input, { workspace: session.config.workspace,
             signal, allowShell: false, maxOutputBytes: session.config.maxOutputBytes })) + '\n');
           continue;
+        }
+        if (prompt === '/loop' || prompt.startsWith('/loop ')) {
+          // Source `se` (chunk-1eegq95r.js [22959,24199)): a built-in user-invocable command whose
+          // prompt is the loop instructions, with the typed arguments riding at the end of the
+          // text. It never runs locally; the expanded text becomes the user turn.
+          prompt = loopCommandPrompt(prompt.slice('/loop'.length).trim());
         }
         if (prompt === '/workflows') {
           const tool = activeRuntime.buildTools(session.config, session.id).find(tool => tool.schema.name === 'workflow_get');
