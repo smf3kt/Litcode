@@ -45,6 +45,11 @@ import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
   autoCompactStatus, autoCompactUnchangedMessage, resolveAutoCompactWindow } from './autocompact-command.js';
 import { parseSessionColor, sessionColorArgumentHint, sessionColorMessage } from './session-color.js';
 import { keybindingsFilePath, keybindingsReport, writeKeybindingsTemplate } from './keybindings-command.js';
+import { SCROLL_SPEED_ENV, SCROLL_SPEED_UNCHANGED, applyStoredEnvironment, autoScrollSpeed,
+  currentScrollSpeed, saveScrollSpeedSetting, scrollSpeedAvailable, scrollSpeedDetail,
+  scrollSpeedNotch, scrollSpeedNotchCount, scrollSpeedReset, scrollSpeedRuler, scrollSpeedSaved,
+  scrollSpeedSettingsFile, scrollSpeedStep, scrollSpeedValues, setLiveScrollSpeed } from './scroll-speed.js';
+import { invalidateTerminalEnvironment, terminalEnvironment } from './plugin-chain-terminal-environment.js';
 import { openExternalFile } from './external-editor.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
@@ -99,6 +104,7 @@ export const COMMAND_HELP = `/help       Show commands
 /autocompact [auto|<tokens>]  Set how full the context gets before auto-summarizing
 /color ${sessionColorArgumentHint()}  Set the prompt bar color for this session
 /keybindings  Open your keyboard shortcuts file
+/scroll-speed  Adjust mouse wheel scroll speed
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
 /rename TITLE  Set the current session title
@@ -166,6 +172,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
 }): Promise<void> {
   let session = initial;
   const planResume = new InteractivePlanResume(initial.id);
+  // The user settings file's `env` block is applied before anything probes the environment, so a
+  // persisted `/scroll-speed` survives a restart. It runs here rather than at startup because the
+  // session's own user directory is the one `/scroll-speed` reads and writes; a real variable wins.
+  applyStoredEnvironment(session.config.configSources?.userDir);
   try {
     const archives = recoverWorktreeArchives(initial.config.workspace);
     for (const restored of archives.recovered) options.status.write(`Restored worktree history after an interrupted removal: ${restored}\n`);
@@ -860,6 +870,54 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             ? await terminal.openFile(file, options.signal, session.config.workspace)
             : await openExternalFile(file, undefined, options.signal, session.config.workspace);
           output.write(`${keybindingsReport(file, created, opened.error)}\n`);
+          continue;
+        }
+        if (prompt === '/scroll-speed') {
+          // `ce`: the recovered dialog is a live adjuster with a demo ruler, so the reachable
+          // values and `auto` are the choices here and the pick is applied on accept. The save
+          // writes the settings file's `env` block and the live variable, which is what `O` and
+          // `Y` do between them. `Xfo`'s gate is `Rc()` (fullscreen) and not a JetBrains
+          // terminal; this host always draws its own renderer, so the half that can still say no
+          // is the absence of a modal surface.
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          const environment = terminalEnvironment();
+          const current = currentScrollSpeed(environment);
+          const file = scrollSpeedSettingsFile(session.config.configSources?.userDir);
+          if (!terminal?.prompt) {
+            // The recovered registration has no `local` sibling, so a piped session can only
+            // report the value that would apply.
+            output.write(`${scrollSpeedNotch(current.value)}${current.explicit ? '' : ' (auto)'}`
+              + ` · ${SCROLL_SPEED_ENV}\n`);
+            continue;
+          }
+          if (!scrollSpeedAvailable(environment)) {
+            output.write('Scroll speed is fixed by this terminal.\n');
+            continue;
+          }
+          const step = scrollSpeedStep(environment);
+          const values = scrollSpeedValues(step);
+          const environmentAnswer = await withTurn(signal => readDialog({ title: 'Scroll speed',
+            message: scrollSpeedDetail(current, environment),
+            choices: [
+              { label: `auto (${scrollSpeedNotchCount(autoScrollSpeed(environment))} per notch)`, value: 'auto',
+                description: scrollSpeedRuler(autoScrollSpeed(environment)) },
+              ...values.map(value => ({ label: scrollSpeedNotch(value), value: String(value),
+                description: scrollSpeedRuler(value) })),
+            ],
+            defaultIndex: current.explicit
+              ? Math.max(1, values.indexOf(current.value) + 1) : 0 }, signal));
+          const picked = environmentAnswer?.selected[0];
+          if (picked === undefined) { output.write(`${SCROLL_SPEED_UNCHANGED}\n`); continue; }
+          const value = picked === 'auto' ? undefined : Number(picked);
+          try { saveScrollSpeedSetting(value, session.config.configSources?.userDir); }
+          catch (error) {
+            output.write(`Couldn't save scroll speed: ${(error as Error).message}\n`);
+            continue;
+          }
+          setLiveScrollSpeed(value);
+          // The probe caches on the environment, so the new variable has to invalidate it.
+          invalidateTerminalEnvironment();
+          output.write(`${value === undefined ? scrollSpeedReset(environment, file) : scrollSpeedSaved(value, file)}\n`);
           continue;
         }
         if (prompt === '/color' || prompt.startsWith('/color ')) {

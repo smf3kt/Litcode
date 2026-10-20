@@ -99,16 +99,25 @@ Order is by how much a user sees.
       context document. Also added the missing editor capability: `Zie` without the draft write,
       exposed as `openFile` on both terminal surfaces. See `research/ports/W217-keybindings.md`.
 
+- [x] W218 `/scroll-speed`. The value model (`v4n`'s auto step, `k`'s snap and clamp, `Me`'s
+      ruler, `Dt`/`xe`'s terminal row, `I`'s notch text), the chooser over the reachable values
+      plus `auto`, the settings `env` write and the live variable, and the recovered save, reset
+      and cancel lines. The settings `env` block gained its missing reader
+      (`applyStoredEnvironment`, applied at the start of the interactive loop, where the
+      session's own user directory is known). See `research/ports/W218-scroll-speed.md`.
+
 Next up, scoped but not started:
 
-- The live input-bar names from that scan are exhausted. `/loops` (`RTo`) and `/branch` (`CTo`) are
-  `isEnabled:()=>!1` in this build, so they are dead registrations; `/insights` is a `prompt`-type
-  command behind an `allow_insights` policy gate; `/memory` (`xfo`) is a thin-client `local-jsx`
-  over CLAUDE.md and the memory settings. W218 starts with a fresh scan of the composer's command
-  list for a name whose surface is not yet ported.
+- W219 targets the next live `local-jsx` surface from the registration scan of
+  `chunk-sfn1dbxq.js`: ungated `tui`, `powerup`, `radio`, `help`; gated `add-dir` (`ve()`),
+  `auto-mode-setup` (`sBe()`), `privacy-settings` (`Yoe()`), `skill-doctor` (`ve()`).
+  `scroll-speed` is done (W218).
+- The live input-bar names from the earlier scan are exhausted. `/loops` (`RTo`) and `/branch`
+  (`CTo`) are `isEnabled:()=>!1`; `/insights` is a `prompt`-type command behind an `allow_insights`
+  policy gate; `/memory` (`xfo`) is a thin-client `local-jsx` over CLAUDE.md and the memory
+  settings.
 
 Explicitly out of scope for this loop:
-
 - The full React reconciler / Ink host / screen renderer (noted as pending in row 50;
   the local renderer is the product's own).
 - The vendor command set and the account-gated option sources (local-only constraint).
