@@ -132,6 +132,12 @@ Order is by how much a user sees.
 
 Next up, scoped but not started:
 
+- W222 `/output-style` (`List output styles or switch to one`, `argumentHint: "[style]"`). Scouting
+  done: the `local` registration is at `chunk-sfn1dbxq.js` 1133890 (`_Be`/`wNt`, the chooser
+  descriptor with `{workspace:!0}`, `isEnabled:()=>ve()||!Hhe()`), and the body loads from
+  `chunk-8w0gx47m.js`, sha256 `389325e069785b8ce3217250250879ef770ff368584f89929d8b1c840f9d17b7`
+  (16775 bytes). Local-only: no account, network or vendor-content dependency. This host already
+  carries an output-style concept, so the chooser has real state to write.
 - The remaining registrations are out or blocked: `/radio` streams audio from a network source;
   `/powerup` is a lesson runner over the vendor's own content; `/auto-mode-setup` is gated on an
   env-onboarding flag this host does not carry; `/privacy-settings` is account-adjacent;
