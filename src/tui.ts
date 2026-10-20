@@ -1339,6 +1339,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return true;
   }
 
+  /** A command result the dialog produced, not model prose: one system entry, line breaks kept. */
+  writeNotice(text: string): void {
+    if (!this.isTTY || !this.started || this.closed) { this.options.output.write(text.endsWith('\n') ? text : `${text}\n`); return; }
+    if (text) this.append({ kind: 'system', text });
+  }
+
   dispatch(action: EditorAction, sequence?: string): void {
     if (this.closed || this.editorSuspended || this.editorController) return;
     // Source `Er`/`at.enter()`: Enter on an open suggestion accepts it first. The

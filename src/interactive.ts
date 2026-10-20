@@ -10,6 +10,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { InteractivePlanResume, permissionModeCommand, transitionPlanMode, type PermissionModeCommand } from './plan-resume.js';
 import { permissionPolicySchema } from './permissions.js';
+import type { PermissionUpdate } from './permissions.js';
+import {
+  browsePermissions, type PermissionPanelApplyResult, type PermissionPanelInput, permissionPanelRules,
+} from './permissions-panel.js';
 import { forkSession, listSessions } from './sessions.js';
 import { startBackgroundSession } from './background-session.js';
 import { parseAttachmentCommand } from './media.js';
@@ -159,6 +163,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /theme [NAME] Preview, choose and save a terminal theme
 /thinking [on|off] Toggle or set thinking in a new session with completed history
 /plan       Start a read-only session
+/permissions  Manage allow and deny tool permission rules
 /permissions MODE  Start a session in default/plan/acceptEdits/ask/bypass mode
 /editor     Edit the current draft in VISUAL/EDITOR (Ctrl+G at a terminal)
 /config editor=normal|vim  Save and apply the input editor mode
@@ -209,6 +214,40 @@ function hooksReport(hooks: readonly HookPanelHook[]): string {
   if (hooks.length === 0) return `${HOOKS_TITLE}\n${HOOKS_NONE_YET}`;
   return [HOOKS_TITLE, hookListSubtitle(hooks), '',
     ...hooks.map(hook => `${hook.event}  ${hookConfigLabel(hook.config)}  [${hook.config.type ?? 'command'}]  ${hook.source}`)].join('\n');
+}
+
+/**
+ * The `/permissions` panel's own view of the session: every rule bucket the live permission state
+ * carries, attributed to the source that declares it, plus the settings file each writable source
+ * resolves to. The recovered reads the same three buckets off its permission context (`U0`, `Bc`,
+ * `xm`, `chunk-nkb63p1y.js`) and its own save paths (`TO`).
+ */
+function permissionPanelInput(session: Session): PermissionPanelInput {
+  const state = session.permissionOwner.state();
+  return {
+    rules: [
+      ...permissionPanelRules(state.alwaysAllowRules, 'allow'),
+      ...permissionPanelRules(state.alwaysAskRules, 'ask'),
+      ...permissionPanelRules(state.alwaysDenyRules, 'deny'),
+    ],
+    paths: permissionSettingsPaths(session.config.workspace,
+      session.config.configSources?.userDir ?? defaultUserDir()),
+  };
+}
+
+/**
+ * Source `kor` (`chunk-sfn1dbxq.js` 3364311) and the `L9` write behind it: reduce the update onto
+ * the live context, then persist it. The recovered `await`s its writer, so this awaits the session's
+ * queued permission writes and reports the first one that failed.
+ */
+async function applyPermissionPanelUpdate(session: Session,
+  update: PermissionUpdate): Promise<PermissionPanelApplyResult> {
+  await session.drainPermissionWrites();
+  const outcome = session.adoptPermissionUpdates([update]);
+  if (outcome.blocked !== undefined) return { error: outcome.blocked };
+  const results = await session.drainPermissionWrites();
+  const failure = results.find(result => result.outcome === 'error');
+  return failure === undefined ? {} : { error: failure.error };
 }
 
 export async function interactiveLoop(initial: Session, provider: ModelProvider, runtime: Runtime, options: {
@@ -1425,6 +1464,21 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // event, not by a synchronous hook here (`QXr`).
           options.signal.throwIfAborted();row.onChange(mode);config.editorMode=mode;
           await applyConfig(config,false,options.signal);options.status.write(`Editor mode: ${mode}\n`);continue;
+        }
+        if (prompt === '/permissions' && terminal?.prompt) {
+          // Source `bTo` (`chunk-sfn1dbxq.js` 1636668: `local-jsx`, `immediate:!0`, no `load`) and
+          // the body `gR` (`chunk-fxx7hh8y.js` 91405): the bare command opens the rule panel, while
+          // an argument still names a session mode. The panel reads the live state's per-source
+          // buckets, which is the local counterpart of the recovered `U0`/`Bc`/`xm`, and applies
+          // each change through the same adoption path `/add-dir` uses.
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          const notice = await browsePermissions(() => permissionPanelInput(session),
+            request => withTurn(signal => readDialog(request, signal)),
+            update => applyPermissionPanelUpdate(session, update));
+          // The recovered dialog returns its accumulated lines as the command's own result text
+          // (`display: "system"`), so the whole block lands in the transcript, not on the status row.
+          if (notice) terminal.writeNotice?.(notice);
+          continue;
         }
         if (prompt.startsWith('/model ') || prompt.startsWith('/theme ') || prompt === '/effort' || prompt.startsWith('/effort ') || /^\/thinking(?:\s|$)/.test(prompt)
           || prompt === '/plan' || prompt === '/permissions' || prompt.startsWith('/permissions ')) {
