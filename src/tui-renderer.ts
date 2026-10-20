@@ -12,6 +12,7 @@ import type { PromptSegment } from './tui-input-decorations.js';
 import { _4n, jd, cq, ov, $C } from './tui-native-input-source.js';
 import { Eg, Pd, xg, Kr, Kl, Rg, Ag, Ng, wg, kn, Hg, Lg, Vd, Bd, _g, Dg } from './tui-native-selection-source.js';
 import { zye } from './tui-text-style.js';
+import { composeBanner } from './session-color.js';
 
 interface NativePoint { col: number; row: number }
 interface NativeSelection {
@@ -202,9 +203,16 @@ export class TuiRenderer {
     columns: number, rows: number, cursor: FrameCursor, running: boolean,
     selection?: { state: SelectionState; offset: number; rows: number }, theme = 'dark',
     themeOverrides?: Record<string, string>, progress: readonly string[] = [], statusLine: readonly string[] = [],
-    sidebar?: { width: number; element: unknown }): void {
+    sidebar?: { width: number; element: unknown },
+    banner?: { text: string; color: string }): void {
     this.selection = selection;
     const conversationWidth = columns - (sidebar?.width ?? 0);
+    // `Mk`: the composer's own rule, drawn above the box and painted in one colour. It is
+    // absent until a session title, an agent chip or a `/color` pick gives it a reason.
+    const bannerRow = banner === undefined ? undefined
+      : jsx(s, { height: 1, flexShrink: 0, width: '100%',
+        children: jsx(n, { color: banner.color, wrap: 'truncate-end',
+          children: composeBanner(banner.text, conversationWidth) }, 'rule') }, 'banner');
     const input = jsx(s, { ...GE('prompt', false), width: '100%', alignItems: 'flex-start',
       children: [jsx(tH, { isLoading: running, isScreenReader: false }, 'pointer'),
         jsx(s, { flexGrow: 1, flexShrink: 1, flexDirection: 'column',
@@ -214,11 +222,14 @@ export class TuiRenderer {
       typeof part === 'string'
         ? jsx(Do, { dimColor: true, children: part }, String(index))
         : jsx(n, { color: part.color, children: part.text }, String(index))) }, 'footer');
-    const transcriptHeight = Math.max(0, rows - prompt.length - 3 - progress.length - statusLine.length);
+    const bannerHeight = bannerRow === undefined ? 0 : 1;
+    const transcriptHeight = Math.max(0,
+      rows - prompt.length - 3 - bannerHeight - progress.length - statusLine.length);
     const children = [jsx(s, { height: transcriptHeight, flexDirection: 'column', flexShrink: 0,
       children: Array.from({ length: transcriptHeight }, (_, index) =>
         this.rawRow(transcript[index] ?? '', conversationWidth, String(index))) }, 'transcript'),
-      ...progress.map((line, index) => this.rawRow(line, conversationWidth, 'progress-' + index)), input,
+      ...progress.map((line, index) => this.rawRow(line, conversationWidth, 'progress-' + index)),
+      ...(bannerRow === undefined ? [] : [bannerRow]), input,
       ...statusLine.map((line, index) => this.rawRow(line, conversationWidth, 'status-line-' + index)), status];
     const conversation = jsx(s, { width: conversationWidth, height: rows, flexDirection: 'column',
       flexShrink: 0, children }, 'conversation');

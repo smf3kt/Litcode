@@ -687,6 +687,45 @@ test('/autocompact reports the window, stores a token count and clears it', { ti
   } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
+test('/color records the pick, clears it and reports an unknown name', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-color-')));
+  const config = { ...defaultConfig(workspace, []), model: 'test' };
+  const provider: ModelProvider = { count: async () => 0, complete: async () => reply('unused') };
+  const lifetime = AbortSignal.timeout(6000);
+  const runtime = await createRuntime(config, provider, lifetime);
+  const session = Session.open(workspace, { config });
+  const stdout = output(), stderr = output();
+  const input = new PassThrough();
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  const colors = () => session.events.filter(event => event.kind === 'session_color')
+    .map(event => event.kind === 'session_color' ? event.color : undefined);
+  try {
+    const loop = interactiveLoop(session, provider, runtime,
+      { input, output: stdout.stream, status: stderr.stream, signal: lifetime });
+    assert.equal(session.sessionColor, undefined);
+    input.write('/color Red\n'); await wait(200);
+    assert.deepEqual(colors(), ['red']);
+    assert.equal(session.sessionColor, 'red');
+    input.write('/color teal\n'); await wait(200);
+    // An unknown name is refused without touching the record.
+    assert.deepEqual(colors(), ['red']);
+    input.write('/color default\n'); await wait(200);
+    assert.deepEqual(colors(), ['red', null]);
+    assert.equal(session.sessionColor, undefined);
+    input.write('/color\n'); await wait(200);
+    const picked = colors().at(-1);
+    assert.equal(typeof picked, 'string');
+    input.write('/exit\n');
+    await loop;
+    const said = stdout.value();
+    assert.match(said, /Session color set to: red/);
+    assert.match(said, /Invalid color "teal"\. Available colors: red, blue, green, yellow, purple, orange, pink, cyan, default/);
+    assert.match(said, /Session color reset to default/);
+    assert.match(said, /Session color set to: /);
+    assert.doesNotMatch(said, /Unknown command; use \/help/);
+  } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test('/model makes a typed pick the default for new sessions', { timeout: 8000 }, async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-model-')));
   const userDir = path.join(workspace, 'user');

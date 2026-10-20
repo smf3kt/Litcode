@@ -43,6 +43,7 @@ import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUs
 import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
   autoCompactDialogMessage, autoCompactLimit, autoCompactSelection, autoCompactSelectionValue,
   autoCompactStatus, autoCompactUnchangedMessage, resolveAutoCompactWindow } from './autocompact-command.js';
+import { parseSessionColor, sessionColorArgumentHint, sessionColorMessage } from './session-color.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
@@ -94,6 +95,7 @@ export const COMMAND_HELP = `/help       Show commands
 /effort LEVEL  Set effort level for model usage (low/medium/high/xhigh/max/auto)
 /copy [N]   Copy the latest response to the clipboard (or the Nth-latest)
 /autocompact [auto|<tokens>]  Set how full the context gets before auto-summarizing
+/color ${sessionColorArgumentHint()}  Set the prompt bar color for this session
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
 /rename TITLE  Set the current session title
@@ -174,6 +176,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         editorMode:initial.config.editorMode,vimInsertModeRemaps:initial.config.vimInsertModeRemaps })
       : undefined);
   const rl = terminal ? undefined : createInterface({ input: options.input, terminal: false });
+  // `251130`: the reader takes the colour from the session's own record, `??=` on resume.
+  terminal?.setSessionColor?.(session.sessionColor);
   const output = terminal?.outputStream ?? options.output;
   let turnController: AbortController | undefined;
   const abort = () => { rl?.close(); terminal?.close(); onClose(); };
@@ -645,6 +649,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       else await activeRuntime.releaseSession?.(session.id);
     } catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
     session.close(); session = next; planResume.accept(next.id); activeRuntime = nextRuntime; activeAgent = undefined; rewindPreview = undefined;
+    terminal?.setSessionColor?.(session.sessionColor);
     bindConfigWatch();
     await terminal?.bindInputHistory?.(session);
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
@@ -672,7 +677,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
         }
         if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
-        if (event.kind === 'title' || event.kind === 'instruction_watch' || event.kind === 'file_history' || event.kind === 'permission_mode_command') next.append(event);
+        if (event.kind === 'title' || event.kind === 'session_color' || event.kind === 'instruction_watch' || event.kind === 'file_history' || event.kind === 'permission_mode_command') next.append(event);
       }
       next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'configuration' });
       if (modeCommand) {
@@ -839,6 +844,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           session.config.compactAt = Math.min(limit,
             result.saved === 'auto' ? AUTO_COMPACT_FALLBACK : result.saved);
           output.write(`${result.message}\n`);
+          continue;
+        }
+        if (prompt === '/color' || prompt.startsWith('/color ')) {
+          // `BQn`: the parse answers the reset words, one of the eight, a random pick for an
+          // empty argument, or the list. `XKt` then writes the colour as a session record.
+          const result = parseSessionColor(prompt.slice('/color'.length));
+          if (result.kind === 'invalid') { output.write(`${result.message}\n`); continue; }
+          const color = result.kind === 'set' ? result.color : undefined;
+          session.append({ kind: 'session_color', color: color ?? null });
+          terminal?.setSessionColor?.(color);
+          output.write(`${sessionColorMessage(result)}\n`);
           continue;
         }
         if (/^\/peers(?:\s|$)/.test(prompt)) {
@@ -1044,7 +1060,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
               }
               if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
-              if (event.kind === 'title' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command') next.append(event);
+              if (event.kind === 'title' || event.kind === 'session_color' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command') next.append(event);
             }
             next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'reload' });
             nextRuntime = await bindNext(nextRuntime, next);

@@ -1318,6 +1318,8 @@ export interface TerminalSurface {
    * done, and caps the length.
    */
   writeClipboard?(payload: string): void;
+  /** `/color`: repaint the composer banner, or drop it for `undefined`. */
+  setSessionColor?(color: import('./session-color.js').SessionColor | undefined): void;
   setEditorMode?(mode?: import('./tui-vim.js').EditorMode,remaps?:Record<string,unknown>): void;
   editDraft?(signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult>;
   prompt?(request: TerminalPromptRequest, signal: AbortSignal): Promise<TerminalPromptAnswer | undefined>;

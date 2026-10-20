@@ -54,7 +54,7 @@ export function forkSession(source: Session, eventBoundary?: number): Session {
         if (event.kind === 'turn_end') boundaries.set(index, fork.events.length - 1);
       }
       if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) fork.append({ ...event, boundary: boundaries.get(event.boundary)! });
-      if (event.kind === 'title' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command') fork.append(event);
+      if (event.kind === 'title' || event.kind === 'session_color' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command') fork.append(event);
     }
     fork.append({ kind: 'branch', source: source.id, workspace: source.config.workspace,
       boundary: eventBoundary ?? source.events.length - 1, reason: eventBoundary === undefined ? 'fork' : 'rewind' });
