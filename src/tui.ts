@@ -268,6 +268,8 @@ interface ActiveDialog {
   imageCapture?: AbortController;
   /** Source `ko`: the option focus moved during this step. */
   optionTouched: boolean;
+  /** The request's `adjust` axis position; only read when the request has one. */
+  adjustIndex: number;
   finish(answer?: TerminalPromptAnswer): void;
 }
 
@@ -1061,7 +1063,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     this.sourceSearch?.cancel();
     this.sourcePicker?.cancel();
-    const snapshot = structuredClone(request);
+    // The `adjust` axis carries its own formatter, which structuredClone cannot copy, so the
+    // plain fields are cloned and the axis is carried by reference.
+    const { adjust: axis, ...plain } = request;
+    const snapshot: TerminalPromptRequest = structuredClone(plain);
+    if (axis !== undefined) snapshot.adjust = axis;
     this.gestures.reset();this.vim.externalMutation();
     this.progress.pause(true);
     if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
@@ -1098,7 +1104,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         index: Math.max(0, Math.min(first.defaultIndex ?? 0, Math.max(0, choices - 1))),
         selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(),
         notes: new Map(), notesEditor: createEditorState(), notesUndo: new InputUndo(),
-        notesEditing: false, optionTouched: false, images: new QuestionImages(), finish };
+        notesEditing: false, optionTouched: false, images: new QuestionImages(),
+        adjustIndex: Math.max(0, snapshot.adjust?.values.indexOf(snapshot.adjust.initial) ?? 0), finish };
       this.dialog = dialog;
       this.screen = 'dialog'; signal.addEventListener('abort', cancelled, { once: true });
       if (signal.aborted) cancelled();
@@ -1823,6 +1830,21 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       return;
     }
     const textEntry = choices.length === 0 || dialog.index === choices.length;
+    // The `adjust` axis moves with the arrows and never moves the selection, so it runs
+    // before the list navigation and only while a row holds the focus (`KHe` clamps).
+    const adjust = dialog.request.adjust;
+    if (adjust !== undefined && !textEntry && (command === 'left' || command === 'right')) {
+      const delta = command === 'left' ? -1 : 1;
+      dialog.adjustIndex = Math.max(0, Math.min(adjust.values.length - 1, dialog.adjustIndex + delta));
+      this.render(); return;
+    }
+    // The request's own keys take the focused row, the way the recovered picker's `s`
+    // accepts a session-only pick while `enter` also makes it the default.
+    const keyed = textEntry ? undefined : dialog.request.keys?.find(entry => action.type === 'insert' && action.text === entry.key);
+    if (keyed !== undefined && !dialog.notesEditing && choices.length) {
+      this.advanceDialog(dialog, { selected: [choices[dialog.index]!.value], key: keyed.key });
+      return;
+    }
     // Source `a3` binds plain `n` on the choice list to the notes input.
     if (!textEntry && action.type === 'insert' && action.text === 'n' && this.notesAvailable(dialog, step)) {
       this.enterNotes(dialog); return;
@@ -2356,8 +2378,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    * settles immediately, which is the pre-existing behaviour.
    */
   private advanceDialog(dialog: ActiveDialog, answer: TerminalPromptAnswer): void {
+    const adjust = dialog.request.adjust;
+    const settled = adjust === undefined ? answer
+      : { ...answer, adjusted: adjust.values[dialog.adjustIndex] ?? adjust.initial };
     const groups = dialog.request.groups ?? [];
-    if (!groups.length) { dialog.finish(answer); return; }
+    if (!groups.length) { dialog.finish(settled); return; }
     const group = groups[dialog.step];
     if (group) {
       const notes = dialog.notes.get(group.key)?.trim();
@@ -2736,10 +2761,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const hint = readOnly ? (choices.length ? 'Enter next / Esc back / PgUp/PgDn' : 'Esc close / PgUp/PgDn')
       : dialog.notesEditing ? 'Notes · Enter save / Esc exit'
         : active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'
-          : 'Enter next / Esc cancel / PgUp/PgDn';
+          : dialog.request.adjust?.guide ?? 'Enter next / Esc cancel / PgUp/PgDn';
+    // The axis line sits under the selection, the way the recovered picker draws its
+    // effort line between the list and the key guide.
+    const axis = dialog.request.adjust;
+    const axisLine = axis === undefined ? undefined : axis.label(axis.values[dialog.adjustIndex] ?? axis.initial);
     return [oneLine(title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
       readOnly && textEntry ? '' : textEntry || dialog.notesEditing ? answer : dialog.index === clarification ? 'Chat about this'
         : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
+      ...(axisLine === undefined ? [] : [axisLine]),
       dialog.error ?? (progress ? `${progress} · ${hint}` : hint),
       ...(countdown === undefined ? [] : [countdown])].map((line, row) =>
         row > 0 && row <= height ? themeRows.get(dialog.scroll + row - 1) ?? pad(line, columns) : pad(line, columns));

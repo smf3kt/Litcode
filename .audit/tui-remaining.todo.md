@@ -82,21 +82,17 @@ Order is by how much a user sees.
       and the thousand shorthand), the two-source resolver (`aE`, `Mwt`), the status block (`w`),
       the setter (`$2t`) and the window dialog (`ue`) with its step, its bounds and its auto
       sentinel. See `research/ports/W214-autocompact.md`.
+- [x] W215 model selection. The recovered picker host: the `Select model` title and caption, the
+      `Current model` row description, the effort axis (`KHe`) on left/right with its
+      `glyph level effort (default)` line, the `s` session-only accept, and the default write to
+      `userSettings.model`. Needed two dialog-host additions in `src/tui.ts` (an `adjust` axis and
+      request-declared keys). See `research/ports/W215-model-picker.md`.
 
 Next up, scoped but not started:
 
-- W215 model selection, named in the loop request. The recovered pair is `SWe` (`local`,
-  `<model>`, loader `chunk-naxwgf3s.js`) and `bWe` (`local-jsx`, `[model]`, `immediate:!0`,
-  `thinClientDispatch:"control-request"`, description `Set the AI model for Claude Code
-  (currently <qo>)`), both in `chunk-sfn1dbxq.js` at 1650535 and 1650764. The picker component
-  and its effort slider live in `chunk-24k7d6mw.js`; its keybinding contexts are declared in
-  `chunk-6ccen3s8.js` as `ModelPicker` (`left`/`right` = `modelPicker:decreaseEffort`/
-  `increaseEffort`, `s` = `modelPicker:thisSessionOnly`) and `EffortSlider`
-  (`left`/`right`, `tab` = `effortSlider:toggleUltracode`, `s` = `effortSlider:thisSessionOnly`).
-  The local `/model` currently opens a list of the current model plus skill-declared models with
-  a text entry; the recovered picker adds the family list, the per-row effort adjustment and the
-  session-only toggle. The effort slider is W212's vocabulary already, so the work is the picker
-  host and the two extra verbs, not new semantics.
+- Nothing yet. The remaining input-bar commands with no local counterpart are `/memory`,
+  `/keybindings`, `/files`, `/definition`, `/color`, `/loops`, `/branch` and `/insights`; each
+  needs its recovered registration read before it can be scoped.
 
 Explicitly out of scope for this loop:
 
