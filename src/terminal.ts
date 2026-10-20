@@ -1211,12 +1211,51 @@ export interface TerminalPromptRequest {
    * act on them, while the question dialog's input row would answer a question nobody asked.
    */
   readOnly?: boolean;
+  /**
+   * A second axis on the focused row, moved with left and right instead of the
+   * selection. Copied from the recovered `ModelPicker` context
+   * (`chunk-6ccen3s8.js`), whose `left` and `right` bind
+   * `modelPicker:decreaseEffort`/`increaseEffort` while `up`/`down` walk the
+   * model rows. The ends clamp rather than wrap (`KHe`,
+   * `chunk-24k7d6mw.js` 620948).
+   */
+  adjust?: TerminalPromptAdjust;
+  /**
+   * Keys that resolve the dialog without touching the selection, each reported
+   * in the answer's `key`. Copied from the recovered picker, where `s` accepts
+   * the focused row as a session-only pick while `enter` also makes it the
+   * default.
+   */
+  keys?: readonly TerminalPromptKey[];
+}
+export interface TerminalPromptAdjust {
+  /** The values the axis moves through, in order. */
+  values: readonly string[];
+  /** The value the axis starts on. */
+  initial: string;
+  /** The line drawn under the selection for the current value. */
+  label(value: string): string;
+  /**
+   * The guide line under the selection. Present replaces the built-in
+   * `Enter next / Esc cancel` guide, because an axis dialog names its own keys.
+   */
+  guide?: string;
+}
+export interface TerminalPromptKey {
+  /** The character that triggers it. */
+  key: string;
+  /** Its entry in the guide line. */
+  label: string;
 }
 export interface TerminalPromptAnswer {
   selected: string[];
   clarify?: true;
   themeEdit?: boolean;
   text?: string;
+  /** The value the request's `adjust` axis held when the dialog resolved. */
+  adjusted?: string;
+  /** The key from the request's `keys` that resolved the dialog, when one did. */
+  key?: string;
   /** Present for grouped requests: one answer per group, in group order. */
   groups?: readonly TerminalPromptGroupAnswer[];
   /**

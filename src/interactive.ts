@@ -28,14 +28,16 @@ import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
 import { defaultUserDir, loadProjectConfig } from './config.js';
 import { saveThemeSetting, saveEditorMode, saveEffortSetting, saveAutoCompactSetting,
-  readAutoCompactSetting } from './theme-settings.js';
+  readAutoCompactSetting, saveModelSetting } from './theme-settings.js';
 import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
 import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import { workflowsAvailable } from './tui-input-highlights.js';
 import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from './loop-command.js';
 import { DEFAULT_EFFORT, EFFORT_LEVELS, effortCommand, effortDescription, effortGlyph,
-  effortIndicator } from './effort-command.js';
+  effortIndicator, type EffortLevel } from './effort-command.js';
+import { MODEL_PICKER_TITLE, modelPickerCaption, modelPickerEffortFor, modelPickerEffortLine,
+  modelPickerGuide, modelPickerRowDescription } from './model-picker.js';
 import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUsageMessage,
   parseCopyArgument, writeCopyFile } from './copy-command.js';
 import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
@@ -1109,6 +1111,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           }
           prompt = `/theme ${selected}`;
         }
+        // The picker's enter arm also makes the pick the default for new sessions; its `s` arm
+        // (`modelPicker:thisSessionOnly`) accepts the same row without the settings write.
+        let pendingEffort: EffortLevel | undefined;
+        let pendingSessionOnly = false;
         if (prompt === '/model') {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           let selected: string | undefined;
@@ -1119,15 +1125,33 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               ...listSessions(session.config.workspace).map(item => item.model)])]
               .filter((model): model is string => Boolean(model) && model !== 'inherit')
               .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
-            const answer = await withTurn(signal => readDialog({ title: 'Model',
-              message: `Current: ${session.config.model}\nChoose a local model or enter another gateway model ID.`,
-              choices: models.map(model => ({ label: model, value: model })),
+            const currentEffort = session.config.effort ?? DEFAULT_EFFORT;
+            const answer = await withTurn(signal => readDialog({ title: MODEL_PICKER_TITLE,
+              message: modelPickerCaption(),
+              choices: models.map(model => ({ label: model, value: model,
+                description: modelPickerRowDescription(model, session.config.model) })),
               defaultIndex: Math.max(0, models.indexOf(session.config.model)),
-              allowText: true, maxTextChars: 256 }, signal));
+              allowText: true, maxTextChars: 256,
+              // `modelPicker:decreaseEffort`/`increaseEffort` move the focused model's effort
+              // with the arrows; the local axis is one value per dialog, so a move carries to
+              // whichever row is accepted (the recovered resets it on focus change).
+              adjust: { values: EFFORT_LEVELS, initial: currentEffort,
+                label: value => modelPickerEffortLine(value as EffortLevel),
+                guide: modelPickerGuide() },
+              keys: [{ key: 's', label: 'use this session only' }] }, signal));
             selected = answer?.text ?? answer?.selected[0];
+            pendingEffort = modelPickerEffortFor(currentEffort, answer?.adjusted);
+            pendingSessionOnly = answer?.key === 's';
           } else selected = (await withTurn(signal => readAnswer(`Current model: ${session.config.model}\nModel ID, or :cancel: `, signal))).trim();
           if (!selected || selected === ':cancel') { options.status.write('Model selection cancelled.\n'); continue; }
-          if (selected === session.config.model) { options.status.write('Model unchanged.\n'); continue; }
+          if (selected === session.config.model) {
+            // The picker still passes the adjusted effort for the row that is already in use, and
+            // the request builder reads `session.config.effort` on every call.
+            if (pendingEffort === undefined) { options.status.write('Model unchanged.\n'); continue; }
+            session.config.effort = pendingEffort;
+            options.status.write(`Effort: ${pendingEffort}\n`);
+            continue;
+          }
           prompt = `/model ${selected}`;
         }
         if (prompt === '/effort' && terminal?.prompt) {
@@ -1207,7 +1231,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               }
             }
             if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
+            // The picker's enter arm makes the pick the default for new sessions (`onSetDefault`
+            // in `uBe`); the `s` arm accepts the same row for this session only. The default
+            // lives in the user settings file, so a session built without a user directory has
+            // nothing to update.
+            if (!pendingSessionOnly && config.configSources?.userDir !== undefined) {
+              saveModelSetting(model, config.configSources.userDir);
+            }
             config.model = model;
+            if (pendingEffort !== undefined) config.effort = pendingEffort;
           } else if (prompt === '/effort' || prompt.startsWith('/effort ')) {
             const result = effortCommand(prompt.slice('/effort'.length), {
               current: session.config.effort, fallback: DEFAULT_EFFORT, save: true });

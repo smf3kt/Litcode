@@ -60,10 +60,23 @@ export function readAutoCompactSetting(userDir = defaultUserDir()): number | und
   } catch { return undefined; }
 }
 
+/**
+ * The `/model` default. The recovered picker's enter arm calls `onSetDefault`, and the
+ * non-interactive handler passes `!isNonInteractiveSession` as the save flag (`xWe` in
+ * `chunk-naxwgf3s.js`), so a pick becomes the default for new sessions; the picker's `s` arm
+ * skips this write. `src/cli.ts` already reads `settings.model` ahead of the inherited value.
+ */
+export function saveModelSetting(model: string | undefined, userDir = defaultUserDir()): void {
+  if (model !== undefined && (model.trim() === '' || model.length > 256)) {
+    throw new Error('Model takes 1 to 256 characters');
+  }
+  saveDisplaySetting('model', model, userDir);
+}
+
 const SETTING_LABELS = {
   theme: 'saveThemeSetting', editorMode: 'saveEditorMode', diffSidebarOpen: 'saveDiffDisplaySetting',
   diffSidebarBaseMode: 'saveDiffDisplaySetting', effort: 'saveEffortSetting',
-  compactAt: 'saveAutoCompactSetting',
+  compactAt: 'saveAutoCompactSetting', model: 'saveModelSetting',
 } as const;
 
 function saveDisplaySetting(key: keyof typeof SETTING_LABELS,

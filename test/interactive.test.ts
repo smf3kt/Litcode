@@ -687,6 +687,33 @@ test('/autocompact reports the window, stores a token count and clears it', { ti
   } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
+test('/model makes a typed pick the default for new sessions', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-model-')));
+  const userDir = path.join(workspace, 'user');
+  fs.mkdirSync(userDir);
+  const config = { ...defaultConfig(workspace, []), model: 'first-model', configSources: { userDir } };
+  const provider: ModelProvider = { count: async () => 0, complete: async () => reply('unused') };
+  const lifetime = AbortSignal.timeout(6000);
+  const runtime = await createRuntime(config, provider, lifetime);
+  const session = Session.open(workspace, { config });
+  const stdout = output(), stderr = output();
+  const settingsFile = path.join(userDir, 'settings.json');
+  const stored = () => fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf8')) : {};
+  try {
+    await interactiveLoop(session, provider, runtime, {
+      input: Readable.from(['/model second-model\n', '/model second-model\n', '/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: lifetime,
+    });
+    // The picker's enter arm writes the default; typing the same id again reports it unchanged.
+    // A config change replaces the session object, so the live model is the printed answer.
+    // The picker's enter arm writes the default. A typed pick always re-applies (the recovered
+    // `R` validates and switches without a same-model check), so the second line repeats it.
+    assert.equal(stored().model, 'second-model');
+    assert.match(stderr.value(), /Model: second-model/);
+    assert.doesNotMatch(stdout.value() + stderr.value(), /Unknown command; use \/help/);
+  } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test('bare /config opens the editor mode choice and saves the picked mode', { timeout: 8000 }, async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-config-')));
   const userDir = path.join(workspace, 'user');
