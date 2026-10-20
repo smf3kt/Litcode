@@ -130,6 +130,14 @@ Order is by how much a user sees.
       usage arm because this build is fullscreen-only, where `Slo.immediate` holds. See
       `research/ports/W221-add-dir.md`.
 
+- [x] W223 `/hooks`. Both units landed: `src/hooks-event-metadata.ts` (the `igt` transcription with
+      the `$p` labels) and `src/hooks-panel.ts` (the four surfaces of the recovered `ft` machine, the
+      type tables, the guidance arms and `attributeHooks`), wired in `src/interactive.ts` with
+      `hookSettingsLayers` and the piped-session text form. The source of each merged hook is
+      recovered by matching it back to the layer that declares it, since the local config folds
+      plugin declarations and every settings layer into one `config.hooks`. See
+      `research/ports/W223-hooks.md`.
+
 Next up, scoped but not started:
 
 - [x] W222 surface sweep of the commands reported as unresponsive. `.audit/w222-surface-sweep.mjs`
@@ -153,28 +161,6 @@ Next up, scoped but not started:
   brief-transcript mode is a multi-file renderer change, not a command port.
 - `/permissions` needs a full editing pane, not a chooser (`bTo`, `immediate:!0`,
   `thinClientDispatch: "control-request"`, no `load`).
-- [ ] W223 `/hooks` (in progress). Unit 1 landed: `src/hooks-event-metadata.ts` transcribes `igt`
-      from `chunk-5s0t90hn.js` (sha256 `78fb5ac9b58de2292c2682ae027da0104606e0119919e1d87a6cbce32beafe89`,
-      offset 861) — 33 events with the recovered `summary`, `description` and `matcherField` — plus
-      the source label table `$p` and the readers `SPn`/`H4t`/`O4t` from `chunk-n3ykh62m.js`
-      (sha256 `2a0e605d3c585ce776af544c82755ec30f932e568cdef58b2d9a5b1f53725eac`, 410486) and the
-      source order `Bbe` from `chunk-wtch2p0g.js` 6070. 8 tests, all 33 local `HOOK_EVENTS` covered
-      with no extra entry. The recovered `values` arrays are dropped: the dialog never renders them.
-- [ ] W223 unit 2, the dialog itself. Recovered shape: three levels in `chunk-5ggmnm67.js` (sha256
-      `ea9d9376a5653cc9717c6259d762931644a873dbbb103880bad9c78e5f917776`) — level 1 `So` titled
-      `Hook events` with the subtitle `${n} event(s) · ${k} with hooks` and rows carrying the
-      event's `summary`; level 2 `bo` titled `${event} - Matchers` with rows `[sources]` /
-      matcher-or-`(all)` / `${n} hook(s)`; level 3 `Ho` titled
-      `${event} - Matcher: ${matcher}` when the event declares matcher metadata. Empty states say
-      `No hooks configured for this event` with the hint `To add hooks, edit settings.json directly
-      or ask Claude`; the level-1 guide is `enter: open, escape: go back`.
-- [ ] W223 unit 2, the attribution decision (settled, not yet coded). This host merges its settings
-      layers into one `config.hooks` and keeps only `permissionLayers` as `{source, file}` pairs
-      (`config.ts:1134`), so per-hook source has to be reconstructed rather than read: build a
-      multiset of the `hooks` each layer file declares, walk `flattenHookDefinitions` over the merged
-      config, and attribute each definition to the first matching layer; anything left over is
-      `pluginHook`, which is how the recovered merge puts plugin declarations first. Do not label the
-      whole merged set as one source.
 - `/hooks` (`View hook configurations for tool events`, `local-jsx`, `immediate:!0`) is the next
   bounded candidate: this host already parses `HooksConfig` (`src/hooks.ts`, `config.ts:114`) and
   skill hooks, so a read-only viewer has real local state to show.

@@ -27,6 +27,10 @@ import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, re
 import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
 import { defaultUserDir, loadProjectConfig } from './config.js';
+import { permissionSettingsPaths } from './permission-settings.js';
+import { hooksSchema } from './hooks.js';
+import { HOOKS_NONE_YET, HOOKS_TITLE, attributeHooks, browseHooks, hookConfigLabel,
+  hookListSubtitle, type HookLayer, type HookPanelHook } from './hooks-panel.js';
 import { saveThemeSetting, saveEditorMode, saveEffortSetting, saveAutoCompactSetting,
   readAutoCompactSetting, saveModelSetting } from './theme-settings.js';
 import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
@@ -112,6 +116,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /scroll-speed  Adjust mouse wheel scroll speed
 /tui [default|fullscreen]  Set the terminal UI renderer
 /add-dir <path>  Add a new working directory
+/hooks      View hook configurations for tool events
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
 /rename TITLE  Set the current session title
@@ -166,6 +171,38 @@ export function notifyPermissionPrompt(tool: string, emit: (payload: { message: 
   const timer = setTimeout(() => emit({ message: `Permission needed to use ${tool}`, notification_type: 'permission_prompt' }), delayMs);
   timer.unref();
   return () => clearTimeout(timer);
+}
+
+/**
+ * The settings layers that can declare hooks, read back for `/hooks`. The config merge folds every
+ * layer into one `config.hooks`, so the panel recovers the source by re-reading each file this
+ * session's config was built from (`permissionSettingsPaths`). A layer that is absent, unreadable,
+ * or declares no hooks contributes nothing; an invalid `hooks` block is skipped rather than thrown,
+ * because the merged config would already have refused to load.
+ */
+function hookSettingsLayers(session: Session): (HookLayer & { file: string })[] {
+  const paths = permissionSettingsPaths(session.config.workspace,
+    session.config.configSources?.userDir ?? defaultUserDir());
+  const layers: (HookLayer & { file: string })[] = [];
+  for (const source of ['userSettings', 'projectSettings', 'localSettings'] as const) {
+    const file = paths[source];
+    if (file === undefined) continue;
+    let parsed: unknown;
+    try { parsed = JSON.parse(fs.readFileSync(file, 'utf8')); }
+    catch { continue; }
+    const declared = (parsed as { hooks?: unknown } | null)?.hooks;
+    if (declared === undefined) continue;
+    const hooks = hooksSchema.safeParse(declared);
+    if (hooks.success) layers.push({ source, file, hooks: hooks.data });
+  }
+  return layers;
+}
+
+/** The `/hooks` text form for a session with no modal surface. */
+function hooksReport(hooks: readonly HookPanelHook[]): string {
+  if (hooks.length === 0) return `${HOOKS_TITLE}\n${HOOKS_NONE_YET}`;
+  return [HOOKS_TITLE, hookListSubtitle(hooks), '',
+    ...hooks.map(hook => `${hook.event}  ${hookConfigLabel(hook.config)}  [${hook.config.type ?? 'command'}]  ${hook.source}`)].join('\n');
 }
 
 export async function interactiveLoop(initial: Session, provider: ModelProvider, runtime: Runtime, options: {
@@ -832,6 +869,23 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // one — and has no relaunch, so the arms that could change something say what they can.
           output.write(`${tuiReport(prompt.slice('/tui'.length))}\n`);
           continue;
+        }
+        if (prompt === '/hooks') {
+          // Source `Jd` (chunk-5ggmnm67.js 61081) and the `ft` machine: a bare `/hooks` opens the
+          // hook list over the hooks the session's settings layers declare. This host merges those
+          // layers, so the sources are reconstructed by re-reading them (`attributeHooks`). The
+          // recovered `restrictedByPolicy` flag reads `allowManagedHooksOnly`, which this host has
+          // no policy key for, so the list is never restricted to managed hooks.
+          const layers = hookSettingsLayers(session);
+          const settingsPaths = Object.fromEntries(layers.map(layer => [layer.source, layer.file]));
+          const hooks = attributeHooks(session.config.hooks ?? {}, layers);
+          if (terminal?.prompt) {
+            const notice = await browseHooks({ hooks, settingsPaths },
+              request => withTurn(signal => readDialog(request, signal)));
+            if (notice) options.status.write(notice + '\n');
+            continue;
+          }
+          output.write(hooksReport(hooks) + '\n'); continue;
         }
         if (prompt === '/help') {
           // Source `G` (chunk-yehhb8pt.js 18865): the recovered command docks a tabbed panel in the
