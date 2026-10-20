@@ -83,6 +83,21 @@ Order is by how much a user sees.
       the setter (`$2t`) and the window dialog (`ue`) with its step, its bounds and its auto
       sentinel. See `research/ports/W214-autocompact.md`.
 
+Next up, scoped but not started:
+
+- W215 model selection, named in the loop request. The recovered pair is `SWe` (`local`,
+  `<model>`, loader `chunk-naxwgf3s.js`) and `bWe` (`local-jsx`, `[model]`, `immediate:!0`,
+  `thinClientDispatch:"control-request"`, description `Set the AI model for Claude Code
+  (currently <qo>)`), both in `chunk-sfn1dbxq.js` at 1650535 and 1650764. The picker component
+  and its effort slider live in `chunk-24k7d6mw.js`; its keybinding contexts are declared in
+  `chunk-6ccen3s8.js` as `ModelPicker` (`left`/`right` = `modelPicker:decreaseEffort`/
+  `increaseEffort`, `s` = `modelPicker:thisSessionOnly`) and `EffortSlider`
+  (`left`/`right`, `tab` = `effortSlider:toggleUltracode`, `s` = `effortSlider:thisSessionOnly`).
+  The local `/model` currently opens a list of the current model plus skill-declared models with
+  a text entry; the recovered picker adds the family list, the per-row effort adjustment and the
+  session-only toggle. The effort slider is W212's vocabulary already, so the work is the picker
+  host and the two extra verbs, not new semantics.
+
 Explicitly out of scope for this loop:
 
 - The full React reconciler / Ink host / screen renderer (noted as pending in row 50;
