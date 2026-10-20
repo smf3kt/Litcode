@@ -31,12 +31,43 @@ export function saveEffortSetting(level: 'low' | 'medium' | 'high' | 'xhigh' | '
   saveDisplaySetting('effort', level, userDir);
 }
 
+/**
+ * The `compactAt` write behind `/autocompact`: the recovered handler persists
+ * `autoCompactWindow` into `userSettings` (`Duo` in `chunk-9vcaezw1.js` 1081400) and `auto`
+ * clears it. Passing undefined removes the key, so the next session takes the built-in window.
+ */
+export function saveAutoCompactSetting(window: number | undefined, userDir = defaultUserDir()): void {
+  if (window !== undefined && !Number.isSafeInteger(window)) throw new Error('Auto-compact window takes a whole number of tokens');
+  saveDisplaySetting('compactAt', window, userDir);
+}
+
+/**
+ * The stored `compactAt`, or undefined when the file or the key is absent. The dialog needs the
+ * authored value rather than the resolved one, because `auto` and `default for this model` are
+ * different states with the same effective window.
+ */
+export function readAutoCompactSetting(userDir = defaultUserDir()): number | undefined {
+  const file = path.join(path.resolve(userDir), 'settings.json');
+  try {
+    const stat = fs.lstatSync(file);
+    if (!stat.isFile() || stat.isSymbolicLink()) return undefined;
+    const read = readBoundedBytes(file, CONFIG_LIMITS.settingsBytes);
+    if (read.overflow) return undefined;
+    const parsed: unknown = JSON.parse(read.buffer.toString('utf8') || '{}');
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
+    const value = (parsed as Record<string, unknown>).compactAt;
+    return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined;
+  } catch { return undefined; }
+}
+
 const SETTING_LABELS = {
   theme: 'saveThemeSetting', editorMode: 'saveEditorMode', diffSidebarOpen: 'saveDiffDisplaySetting',
   diffSidebarBaseMode: 'saveDiffDisplaySetting', effort: 'saveEffortSetting',
+  compactAt: 'saveAutoCompactSetting',
 } as const;
 
-function saveDisplaySetting(key: keyof typeof SETTING_LABELS, value: string | boolean | undefined, userDir: string): void {
+function saveDisplaySetting(key: keyof typeof SETTING_LABELS,
+  value: string | number | boolean | undefined, userDir: string): void {
   const file = path.join(path.resolve(userDir), 'settings.json');
   let settings: Record<string, unknown> = {}, mode = 0o600;
   try {

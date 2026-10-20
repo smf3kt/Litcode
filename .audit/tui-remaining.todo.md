@@ -78,6 +78,10 @@ Order is by how much a user sees.
 - [x] W213 `/copy [N]`. The recovered newest-first collection capped at 20, the argument arms, the
       byte-exact OSC 52 request through its own sink, and the scratch file and report. See
       `research/ports/W213-copy-command.md`.
+- [x] W214 `/autocompact [auto|<tokens>]`. The recovered parser (`fVt` with the `m`/`k` multipliers
+      and the thousand shorthand), the two-source resolver (`aE`, `Mwt`), the status block (`w`),
+      the setter (`$2t`) and the window dialog (`ue`) with its step, its bounds and its auto
+      sentinel. See `research/ports/W214-autocompact.md`.
 
 Explicitly out of scope for this loop:
 
