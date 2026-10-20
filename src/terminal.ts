@@ -1316,6 +1316,8 @@ export interface TerminalSurface {
   beginAssistantMessage?(): void;
   writeAssistantText?(text: string): void;
   endAssistantMessage?(): void;
+  /** A dialog's own report lines, returned as the command's result and shown as a system entry. */
+  writeNotice?(text: string): void;
   setKeybindings(keybindings?: Keybindings): void;
   setPrefersReducedMotion?(value?: boolean): void;
   setShowTurnDuration?(value?: boolean): void;

@@ -122,7 +122,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'theme', description: 'Preview, choose and save a terminal theme', kind: 'command', lane: 'config' },
   { name: 'thinking', description: 'Toggle or set thinking in a new session with completed history', kind: 'command', lane: 'config' },
   { name: 'plan', description: 'Start a read-only session', kind: 'command', lane: 'config' },
-  { name: 'permissions', description: 'Start a session in default/plan/acceptEdits/ask/bypass mode', kind: 'command', lane: 'config' },
+  { name: 'permissions', description: 'Manage allow and deny tool permission rules', kind: 'command', lane: 'config' },
   { name: 'editor', description: 'Edit the current draft in VISUAL/EDITOR (Ctrl+G at a terminal)', kind: 'command', lane: 'config' },
   { name: 'config', description: 'Save and apply the input editor mode', kind: 'command', lane: 'config' },
   { name: 'vim', description: 'Open the Editor mode setting', kind: 'command', lane: 'config' },

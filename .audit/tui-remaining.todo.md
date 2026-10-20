@@ -165,8 +165,18 @@ Order is by how much a user sees.
 
 Next up, scoped but not started:
 
-- Nothing bounded and local: `/permissions` needs an editing pane, and every other registration is
-  account- or network-backed.
+- [x] W226 `/permissions`, part one. The panel shell, the Allow/Ask/Deny rule tabs with their
+      intros and sorted rows, the add-rule input and its save-scope picker, the detail pane with its
+      three read-only arms and its delete confirm, the deny-then-ask shadow analysis with the Bash
+      sandbox exemption, and the four report strings. The dialog accumulates its reports and returns
+      them joined as the command's result (the recovered `wu`), rendered through `writeNotice` as one
+      `system` transcript entry. See `research/ports/W226-permissions.md`.
+- [ ] W227 `/permissions`, part two: the `recent` tab (the session's denial list, `Rn`/`wn`) and the
+      `workspace` tab (`Bn`/`Hn`, the additional working directories with `Pr`'s empty state).
+- [ ] W228 `/permissions`, part three: the `automode` tab (`Op`/`Yn`, `Added auto mode ${…} rule`)
+      over the local auto-mode state.
+
+Scoped out:
 
 - `/output-style` is scoped out. In this version the visible chooser is a `/config` pane: the
   `local-jsx` registration is `bNt("output-style","Output style",{workspace:!0})`, whose whole
@@ -179,8 +189,6 @@ Next up, scoped but not started:
 - `/focus` is ported (W225). Its state is one flag (`briefTranscript`) and its body is small; the
   local renderer is this product's own, so the threading landed as the `setBriefTranscript` +
   `holdsFocusPreview` pair in `src/tui.ts` rather than the recovered eight-module thread.
-- `/permissions` needs a full editing pane, not a chooser (`bTo`, `immediate:!0`,
-  `thinClientDispatch: "control-request"`, no `load`).
 - The remaining registrations are out or blocked: `/radio` streams audio from a network source;
   `/powerup` is a lesson runner over the vendor's own content; `/auto-mode-setup` is gated on an
   env-onboarding flag this host does not carry; `/privacy-settings` is account-adjacent;
