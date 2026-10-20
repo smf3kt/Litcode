@@ -87,7 +87,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'mcp', description: 'Show configured MCP servers and adapter limitations', kind: 'command', lane: 'config' },
   { name: 'mcp-reconnect', description: 'Reconnect one server in place, or all servers into a new session', kind: 'command', lane: 'action' },
   { name: 'tasks', description: 'Show workspace task dependencies and readiness', kind: 'command', lane: 'agent' },
-  { name: 'workflows', description: 'Show this session workflow runs, including saved runs', kind: 'command', lane: 'agent' },
+  { name: 'workflows', description: 'Browse running and completed workflows', kind: 'command', lane: 'agent' },
   { name: 'cron', description: 'Show scheduled prompts in the active session', kind: 'command', lane: 'agent' },
   { name: 'loop', description: 'Repeat a prompt or command on an interval (e.g. /loop 5m /foo)', kind: 'command', lane: 'agent' },
   { name: 'peers', description: 'List live same-host sessions and this inbox address', kind: 'command', lane: 'agent' },
