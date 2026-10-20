@@ -121,11 +121,20 @@ Order is by how much a user sees.
 
 Next up, scoped but not started:
 
-- W221 targets the next live `local-jsx` surface from the registration scan of
-  `chunk-sfn1dbxq.js`: ungated `powerup`, `radio`; gated `add-dir` (`ve()`), `auto-mode-setup`
-  (`sBe()`), `privacy-settings` (`Yoe()`), `skill-doctor` (`ve()`). `/radio` streams audio from a
-  network source and `/powerup` is a lesson runner over the vendor's own content; both need a
-  scoping pass before they are ready.
+- W221 `/add-dir`. Scouting done, source located: the `local` twin loads its body from
+  `chunk-dzt2d3te.js` (barrel), whose `d` calls `gge` (validation, `chunk-8f8e39h5.js` 1097),
+  `hge` (the failure messages, same chunk 2073) and `lwn`/`iGt` (`chunk-340rde3k.js` 1608/3062).
+  Validation result kinds: `emptyPath`, `invalidPath`, `networkPath`, `notADirectory`,
+  `pathNotFound`, `alreadyInWorkingDirectory`, `success`. Success applies
+  `{type:"addDirectories", directories:[abs], destination:"session"}` through the permission
+  reducer — which this host already ports as `wco`/`jd` in `permission-reducer-source.ts`, with
+  `additionalWorkingDirectories` already in `permission-state.ts` — then reports
+  `Added <abs> as a working directory for this session`. Still to scope: the `DirectoryAdded` hook
+  fan-out and `iGt`'s skill/command/agent loading notes.
+- The remaining registrations are out or blocked: `/radio` streams audio from a network source;
+  `/powerup` is a lesson runner over the vendor's own content; `/auto-mode-setup` is gated on an
+  env-onboarding flag this host does not carry; `/privacy-settings` is account-adjacent;
+  `/skill-doctor` needs per-skill usage tracking, which this host does not record.
 - The live input-bar names from the earlier scan are exhausted. `/loops` (`RTo`) and `/branch`
   (`CTo`) are `isEnabled:()=>!1`; `/insights` is a `prompt`-type command behind an `allow_insights`
   policy gate; `/memory` (`xfo`) is a thin-client `local-jsx` over CLAUDE.md and the memory
