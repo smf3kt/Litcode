@@ -10,7 +10,7 @@ import { killRingHead, nextYank, reduceKillRing, type KillRingState } from './ki
 import { InputUndo } from './tui-input-undo.js';
 import { InputPaste, expandPastedText, pasteGoneNotice, referencedPastes, stripGonePastes, type PastedContents } from './tui-input-paste.js';
 import { parseTerminalResponse } from './tui-response-source.js';
-import { editExternal, type ExternalEditorResult } from './external-editor.js';
+import { editExternal, openExternalFile, type ExternalEditorResult } from './external-editor.js';
 import { InputVim, type EditorMode, type VimBridge } from './tui-vim.js';
 import { vimKey } from './tui-vim-keys.js';
 import { applyReturnGesture } from './tui-input-return.js';
@@ -353,7 +353,8 @@ export function decodeTerminalKeybindings(value: unknown): Keybindings {
   }
   return bindings;
 }
-const DEFAULT_KEYS: Keybindings = {
+/** The reader's own defaults. `/keybindings` writes them out as the starting file. */
+export const DEFAULT_KEYBINDINGS: Keybindings = {
   '\r': 'submit', '\n': 'submit', '\u0003': 'interrupt', '\u0004': 'eof', '\u0012': 'search',
   '\u007f': 'backspace', '\b': 'backspace', '\u0001': 'logicalHome', '\u0005': 'logicalEnd',
   '\u0002': 'left', '\u0006': 'right', '\x1bb': 'wordLeft', '\x1bf': 'wordRight',
@@ -397,11 +398,11 @@ export class TerminalKeyDecoder {
     preserveKeys = false, private readonly frameReturn = false) {
     this.preserveKeys = preserveKeys;
     this.overrides = decodeTerminalKeybindings(keybindings);
-    this.bindings = { ...DEFAULT_KEYS, ...this.overrides };
+    this.bindings = { ...DEFAULT_KEYBINDINGS, ...this.overrides };
   }
   setKeybindings(keybindings: Keybindings = {}): void {
     this.overrides = decodeTerminalKeybindings(keybindings);
-    this.bindings = { ...DEFAULT_KEYS, ...this.overrides };
+    this.bindings = { ...DEFAULT_KEYBINDINGS, ...this.overrides };
   }
   get pendingEscape(): boolean {
     return !this.paste && !this.discardingControl && !/^\x1b(?:[\]P]|_G)/.test(this.buffer) && this.buffer.startsWith('\x1b');
@@ -795,6 +796,27 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
           historyDraft:text,historyDraftPastes:pastedContents};this.vim.reset();this.render();
       }
       return result;
+    } finally {if(this.editorSuspended)resume();if(this.editorController===controller)this.editorController=undefined;}
+  }
+
+  /** `/keybindings`: the same handoff as the draft editor, with no snapshot to read back. */
+  async openFile(file: string, signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult> {
+    if (!this.isTTY || !this.started || this.closed || this.editor.running || this.editorController) return {content:null};
+    this.sourceSearch?.cancel();
+    const controller = new AbortController(); this.editorController = controller;
+    const suspend = () => {
+      this.gestures.reset();this.vim.externalMutation();
+      this.editorSuspended = true; this.options.input.off('data',this.onData);this.options.input.pause();
+      if(this.escapeTimer){clearTimeout(this.escapeTimer);this.escapeTimer=undefined;}this.decoder.reset();
+      this.clearPrompt();this.options.output.write(DISABLE_FOCUS_EVENTS + '\x1b[?2004l\x1b[0m\x1b[?25h');this.options.input.setRawMode!(false);
+    };
+    const resume = () => {
+      if(this.closed)return;
+      this.options.input.setRawMode!(true);this.options.input.on('data',this.onData);
+      this.editorSuspended=false;this.options.output.write('\x1b[?2004h'+ENABLE_FOCUS_EVENTS);this.options.input.resume();this.render();
+    };
+    try {
+      return await openExternalFile(file,{suspend,resume},AbortSignal.any([signal,controller.signal]),workspace);
     } finally {if(this.editorSuspended)resume();if(this.editorController===controller)this.editorController=undefined;}
   }
 
@@ -1322,5 +1344,7 @@ export interface TerminalSurface {
   setSessionColor?(color: import('./session-color.js').SessionColor | undefined): void;
   setEditorMode?(mode?: import('./tui-vim.js').EditorMode,remaps?:Record<string,unknown>): void;
   editDraft?(signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult>;
+  /** `/keybindings`: hand the terminal to the user's editor for one existing file. */
+  openFile?(file: string, signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult>;
   prompt?(request: TerminalPromptRequest, signal: AbortSignal): Promise<TerminalPromptAnswer | undefined>;
 }

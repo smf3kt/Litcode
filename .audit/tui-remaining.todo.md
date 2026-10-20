@@ -93,15 +93,19 @@ Order is by how much a user sees.
       line, plus `p2`/`bLe` over the eight slots; the visible surface is `Mk`'s banner rule, which
       exists only while a colour or a title needs it. See `research/ports/W216-color.md`.
 
+- [x] W217 `/keybindings`. `k9t`'s path, `a`/`m`'s create-once template with `QDe`'s seven
+      unrebindable keys stripped, and `O`'s `wx` write whose `EEXIST` arm selects the `Created`
+      or `Opened` report. The template is the local reader's flat sequence map, not the recovered
+      context document. Also added the missing editor capability: `Zie` without the draft write,
+      exposed as `openFile` on both terminal surfaces. See `research/ports/W217-keybindings.md`.
+
 Next up, scoped but not started:
 
-- Scan of the remaining names: `/loops` (`RTo`) and `/branch` (`CTo`) are `isEnabled:()=>!1` in
-  this build, so they are dead registrations; `/insights` is a `prompt`-type command behind a
-  `allow_insights` policy gate; `/memory` (`xfo`) is a thin-client `local-jsx` over CLAUDE.md and
-  the memory settings. `/keybindings` (`Bfo` `local`, loader `chunk-askg8yg9.js`,
-  `Open your keyboard shortcuts file`) is the one live name left from that scan.
-- W217 starts with `/keybindings`: it opens the keyboard-shortcuts file in the editor, and this
-  host already owns an external-editor path and a keybindings registry.
+- The live input-bar names from that scan are exhausted. `/loops` (`RTo`) and `/branch` (`CTo`) are
+  `isEnabled:()=>!1` in this build, so they are dead registrations; `/insights` is a `prompt`-type
+  command behind an `allow_insights` policy gate; `/memory` (`xfo`) is a thin-client `local-jsx`
+  over CLAUDE.md and the memory settings. W218 starts with a fresh scan of the composer's command
+  list for a name whose surface is not yet ported.
 
 Explicitly out of scope for this loop:
 

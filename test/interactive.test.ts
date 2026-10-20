@@ -12,6 +12,7 @@ import { createRuntime, type Runtime } from '../src/runtime.js';
 import { Session } from '../src/session.js';
 import { forkSession, listSessions } from '../src/sessions.js';
 import type { SkillInfo } from '../src/config.js';
+import { decodeKeybindingsJson } from '../src/keybindings.js';
 
 function reply(text: string): Anthropic.Message {
   return { id: 'fixture', model: 'test', role: 'assistant', type: 'message', content: [{ type: 'text', text }],
@@ -724,6 +725,49 @@ test('/color records the pick, clears it and reports an unknown name', { timeout
     assert.match(said, /Session color set to: /);
     assert.doesNotMatch(said, /Unknown command; use \/help/);
   } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('/keybindings writes the template once and opens it in the editor', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-keybindings-')));
+  const userDir = path.join(workspace, 'user');
+  fs.mkdirSync(userDir);
+  const config = { ...defaultConfig(workspace, []), model: 'test', configSources: { userDir } };
+  const provider: ModelProvider = { count: async () => 0, complete: async () => reply('unused') };
+  const lifetime = AbortSignal.timeout(6000);
+  const runtime = await createRuntime(config, provider, lifetime);
+  const session = Session.open(workspace, { config });
+  const stdout = output(), stderr = output();
+  const input = new PassThrough();
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  const file = path.join(userDir, 'keybindings.json');
+  // `true` is the editor: it exits 0 without touching the file, which is the opened arm.
+  // The resolver prefers VISUAL over EDITOR, and resolves once per process, so both are pinned.
+  const previousEditor = { VISUAL: process.env.VISUAL, EDITOR: process.env.EDITOR };
+  process.env.VISUAL = 'true';
+  process.env.EDITOR = 'true';
+  try {
+    const loop = interactiveLoop(session, provider, runtime,
+      { input, output: stdout.stream, status: stderr.stream, signal: lifetime });
+    assert.equal(fs.existsSync(file), false);
+    input.write('/keybindings\n'); await wait(600);
+    assert.equal(fs.existsSync(file), true);
+    const written = fs.readFileSync(file, 'utf8');
+    assert.deepEqual({ ...decodeKeybindingsJson(written) }, JSON.parse(written) as Record<string, string>);
+    input.write('/keybindings\n'); await wait(600);
+    assert.equal(fs.readFileSync(file, 'utf8'), written);
+    input.write('/exit\n');
+    await loop;
+    const said = stdout.value();
+    assert.match(said, new RegExp(`Created ${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} with template\\. Opened in your editor\\.`));
+    assert.match(said, new RegExp(`Opened ${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} in your editor\\.`));
+    assert.doesNotMatch(said, /Unknown command; use \/help/);
+  } finally {
+    for (const name of ['VISUAL', 'EDITOR'] as const) {
+      const value = previousEditor[name];
+      if (value === undefined) delete process.env[name]; else process.env[name] = value;
+    }
+    session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true });
+  }
 });
 
 test('/model makes a typed pick the default for new sessions', { timeout: 8000 }, async () => {

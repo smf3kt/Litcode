@@ -26,5 +26,5 @@ async function $j(n,e,r,o){let c=ie(),d=lPe();try{let g=e?sce(n,e):n,u=r?k(r):""
 `)?`\r
 `:`
 `;if(s.endsWith(f)&&!s.endsWith(f+f))s=s.slice(0,-f.length);if(e)s=U(s,n,e);return{content:s}}finally{try{c.unlinkSync(d)}catch{}}}
-return {edit:$j,resolve:hx,editorName:x,args:R,refold:U};
+return {edit:$j,open:Zie,resolve:hx,editorName:x,args:R,refold:U};
 }

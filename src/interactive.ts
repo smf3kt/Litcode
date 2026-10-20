@@ -44,6 +44,8 @@ import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
   autoCompactDialogMessage, autoCompactLimit, autoCompactSelection, autoCompactSelectionValue,
   autoCompactStatus, autoCompactUnchangedMessage, resolveAutoCompactWindow } from './autocompact-command.js';
 import { parseSessionColor, sessionColorArgumentHint, sessionColorMessage } from './session-color.js';
+import { keybindingsFilePath, keybindingsReport, writeKeybindingsTemplate } from './keybindings-command.js';
+import { openExternalFile } from './external-editor.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
@@ -96,6 +98,7 @@ export const COMMAND_HELP = `/help       Show commands
 /copy [N]   Copy the latest response to the clipboard (or the Nth-latest)
 /autocompact [auto|<tokens>]  Set how full the context gets before auto-summarizing
 /color ${sessionColorArgumentHint()}  Set the prompt bar color for this session
+/keybindings  Open your keyboard shortcuts file
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
 /rename TITLE  Set the current session title
@@ -844,6 +847,19 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           session.config.compactAt = Math.min(limit,
             result.saved === 'auto' ? AUTO_COMPACT_FALLBACK : result.saved);
           output.write(`${result.message}\n`);
+          continue;
+        }
+        if (prompt === '/keybindings') {
+          // `call`: create the file when it is absent, then hand the terminal to the editor.
+          const userDir = session.config.configSources?.userDir ?? defaultUserDir();
+          const file = keybindingsFilePath(userDir);
+          let created: boolean;
+          try { created = writeKeybindingsTemplate(file); }
+          catch (error) { output.write(`Couldn't write ${file}: ${(error as Error).message}\n`); continue; }
+          const opened = terminal?.openFile
+            ? await terminal.openFile(file, options.signal, session.config.workspace)
+            : await openExternalFile(file, undefined, options.signal, session.config.workspace);
+          output.write(`${keybindingsReport(file, created, opened.error)}\n`);
           continue;
         }
         if (prompt === '/color' || prompt.startsWith('/color ')) {
