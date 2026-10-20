@@ -138,31 +138,14 @@ Order is by how much a user sees.
       plugin declarations and every settings layer into one `config.hooks`. See
       `research/ports/W223-hooks.md`.
 
-Next up, scoped but not started:
-
-- W224 `/reload-skills` (`Pick up skills added or changed on disk during this session`, `local`,
-  `supportsNonInteractive: true`, `thinClientDispatch: "post-text"`). Scouting done: the barrel
-  `chunk-hyft8yrm.js` (sha256
-  `fad372982d5516747b598e25e44c70b79d2fe1cbebaa85282cdd65e17fc5cfcb`, 14498 bytes) re-exports `v`
-  from `chunk-4bw62nzm.js`; the body is small and complete:
-  ```js
-  var v = async (g, t) => {
-    let m = cr(), i = JOn(t.getMcp().commands), s = (o) => tre(o, i),
-        n = s(await qT(m, t.storageV5)), d = new Set(n.map(o => o.name));
-    gL(), bM(), $5();                       // the three skill-cache invalidations
-    let e = s(await qT(m, t.storageV5)), c = new Set(e.map(o => o.name));
-    i1.emit();                              // the change event
-    let r = F(e, o => !d.has(o.name)), l = F(n, o => !c.has(o.name)), a = [];
-    if (r > 0) a.push(`${r} added`);
-    if (l > 0) a.push(`${l} removed`);
-    let p = a.length > 0 ? a.join(", ") : "no changes",
-        f = Tr() ? " (custom skills are disabled in safe mode)" : "";
-    return { type: "text", value: `Reloaded skills: ${e.length} ${I(e.length,"skill")} available (${p})${f}` };
-  };
-  ```
-  Local backing: `scanSkills`/`config.skills` (`config.ts:1305`) and the loop's existing reload path
-  (`loadProjectConfig` + `tuiCommandsWithSkills`). The safe-mode suffix has no local equivalent, so
-  that arm is out; the three invalidations need mapping to whatever this host caches skills behind.
+- [x] W224 `/reload-skills`. The recovered body `v` (`chunk-hyft8yrm.js` [13938,14479), exported as
+      `call`): snapshot the catalog by name, rescan in place, report the added and removed counts.
+      The rescan is the existing `reloadSkills`; the composer keeps the command list it captured at
+      startup, so the rebuilt rows are handed back through a new `TerminalSurface.setCommands`, the
+      local counterpart of the recovered `Nhr`/`Fhr` voiding the shared command and skill tables
+      (`chunk-3ph567jx.js` 3862/3898). The cloud-sync invalidation `gL()`, the MCP and synced-skill
+      merge `JOn`/`tre` and the safe-mode suffix `Tr()` stay out. See
+      `research/ports/W224-reload-skills.md`.
 
 - [x] W222 surface sweep of the commands reported as unresponsive. `.audit/w222-surface-sweep.mjs`
       passes 8 checks over the compiled CLI: `/workflows` opens the dynamic-workflows dialog with
@@ -170,6 +153,12 @@ Next up, scoped but not started:
       opening a dialog (the recovered `se` prompt-expansion path); `/tasks`, `/cron`, `/status`,
       `/context` and `/usage` each print their report. The `/effort` (W212) and `/model` (W215)
       probes also still pass, so the two surfaces the request named by example are healthy.
+
+Next up, scoped but not started:
+
+- Nothing bounded and local: the three subsystem-level candidates below each need more than one
+  command port, and every other registration is account- or network-backed.
+
 - `/output-style` is scoped out. In this version the visible chooser is a `/config` pane: the
   `local-jsx` registration is `bNt("output-style","Output style",{workspace:!0})`, whose whole
   descriptor is `description: "Output style moved to /config"`, `isHidden: true`. Only the
@@ -185,9 +174,6 @@ Next up, scoped but not started:
   brief-transcript mode is a multi-file renderer change, not a command port.
 - `/permissions` needs a full editing pane, not a chooser (`bTo`, `immediate:!0`,
   `thinClientDispatch: "control-request"`, no `load`).
-- `/hooks` (`View hook configurations for tool events`, `local-jsx`, `immediate:!0`) is the next
-  bounded candidate: this host already parses `HooksConfig` (`src/hooks.ts`, `config.ts:114`) and
-  skill hooks, so a read-only viewer has real local state to show.
 - The remaining registrations are out or blocked: `/radio` streams audio from a network source;
   `/powerup` is a lesson runner over the vendor's own content; `/auto-mode-setup` is gated on an
   env-onboarding flag this host does not carry; `/privacy-settings` is account-adjacent;

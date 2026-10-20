@@ -63,6 +63,8 @@ import { tuiReport } from './tui-command.js';
 import { ADD_DIR_USAGE, addedForSessionMessage, addDirectoryMessage, validateAddDirectory } from './add-dir-command.js';
 import { chordForAction } from './tui-keys.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
+import { reloadSkillsMessage } from './reload-skills.js';
+import { reloadSkills } from './skill-catalog.js';
 import {
   expandUserSkill,
   findSkill,
@@ -133,6 +135,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /peer-inbound accept|hold|refuse|off  Set the explicit inbound policy
 /diff NAME [OFFSET]  Show a page of file changes against a checkpoint
 /reload     Reload local instructions, skills, hooks, tools and settings into a new session
+/reload-skills  Pick up skills added or changed on disk during this session
 /attach PATH [--pages RANGE] PROMPT  Submit an image/PDF with a task (quote paths with spaces)
 /paste-image PROMPT  Read a PNG image from the clipboard and submit it with a task
 /NAME args  Run an available skill by name
@@ -1200,6 +1203,21 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (!activeRuntime.reconnectMcp) throw new Error('Runtime MCP reconnect is unavailable');
           const status = await withTurn(signal => activeRuntime.reconnectMcp!(server, signal));
           options.status.write(`MCP server ${server} reconnected; generation ${status.generation}; published schemas retained.\n`);
+          continue;
+        }
+        if (prompt === '/reload-skills') {
+          // Source `v` (chunk-hyft8yrm.js [13938,14479)): snapshot the catalog by name,
+          // rescan it in place, then report what the rescan added or removed. `reloadSkills`
+          // is the local rescan — `Fhr`'s dropped skill table and the re-read — and it
+          // re-renders the system prompt's skill section, which is this host's stand-in for
+          // the source's `i1.emit()`. The composer keeps the command list it captured at
+          // startup, so the fresh skill rows are handed back, the local counterpart of the
+          // source's shared command table being invalidated (`Nhr`).
+          const before = (session.config.skills ?? []).map(skill => skill.name);
+          reloadSkills(session.config);
+          const after = (session.config.skills ?? []).map(skill => skill.name);
+          terminal?.setCommands?.(tuiCommandsWithSkills(session.config.skills));
+          output.write(`${reloadSkillsMessage(before, after)}\n`);
           continue;
         }
         if (prompt === '/reload' || prompt === '/mcp-reconnect') {
