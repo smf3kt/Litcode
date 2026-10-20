@@ -40,6 +40,7 @@ import {
 } from './tui-selection.js';
 import { composerEditRelay, type ChainRelayKey, type ComposerEditRelay } from './plugin-chain-relay.js';
 import { externalMode, modeChip, modeColorSlot } from './tui-footer-source.js';
+import { PROMPT_BORDER_SLOT, effectiveSessionColor, sessionColorSlot, type SessionColor } from './session-color.js';
 import { effectivePermissionPolicy } from './permissions.js';
 import { paintedDecorations, normalizedRuns, highlightRows, type DecorationRun, type PaintedDecorations, type PromptSegment } from './tui-input-decorations.js';
 import { composerHighlights } from './tui-input-highlights.js';
@@ -419,6 +420,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private showTurnDuration = true;
   /** Source `showMessageTimestamps`: stamp each message with its arrival time. */
   private showMessageTimestamps = false;
+  /** `/color`'s pick; `Mk`'s banner row exists only while this is set. */
+  private sessionColor: SessionColor | undefined;
   private progressSettings: ProgressDisplaySettings = {};
   private progressGeneration = 0;
   private timeFormatter = progressTime({});
@@ -839,6 +842,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const enabled = value === true;
     if (enabled === this.showMessageTimestamps) return;
     this.showMessageTimestamps = enabled; this.selection = createSelection(); this.render();
+  }
+
+  /** `/color`: the banner row exists only while a colour is set, so this changes the layout. */
+  setSessionColor(color: SessionColor | undefined): void {
+    if (this.closed || color === this.sessionColor) return;
+    this.sessionColor = color; this.selection = createSelection(); this.render();
   }
 
   setProgressSettings(settings: ProgressDisplaySettings): void {
@@ -1662,6 +1671,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** The active palette value for a slot, with the session's overrides applied. */
   private themeSlot(name: string): string | undefined {
     return this.theme.overrides?.[name] ?? (S1(this.theme.current) as Record<string, string | undefined>)[name];
+  }
+
+  /**
+   * `xzt`: the banner is `{text: he || agent || "", bgColor}` and is `null` when neither a
+   * standalone-agent name, an agent chip nor a colour override gives it a reason. This host
+   * has no title or agent chip on the composer yet, so only `/color` can create one.
+   */
+  private sessionBanner(): { text: string; color: string } | undefined {
+    if (this.sessionColor === undefined) return undefined;
+    return { text: '', color: sessionColorSlot(effectiveSessionColor({ userOverride: this.sessionColor }),
+      PROMPT_BORDER_SLOT) };
   }
 
   private readonly onData = (chunk: string | Buffer) => {
@@ -2898,10 +2918,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const prompt = this.inputLayout(conversationWidth, rows);
     // Source `iEe` draws the suggestion list above the composer; the transcript shrinks with it.
     const hintRows = this.renderAutocompleteRows(conversationWidth, rows);
-    const statusRows = this.renderStatusLine(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4 - hintRows.length));
+    // `Mk`'s banner is a row of its own above the box, so the transcript yields one more row
+    // whenever it is drawn.
+    const banner = this.sessionBanner();
+    const bannerRows = banner === undefined ? 0 : 1;
+    const statusRows = this.renderStatusLine(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4 - bannerRows - hintRows.length));
     const progressRows = [...this.renderProgress(conversationWidth, rows,
-      Math.max(0, rows - prompt.lines.length - 4 - statusRows.length - hintRows.length)), ...hintRows];
-    const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - progressRows.length - statusRows.length);
+      Math.max(0, rows - prompt.lines.length - 4 - bannerRows - statusRows.length - hintRows.length)), ...hintRows];
+    const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - bannerRows - progressRows.length - statusRows.length);
     // The hint rows are the tail of `progressRows`, so they sit directly above the composer.
     this.autocompleteBand = hintRows.length === 0 ? undefined : {
       top: transcriptRows + progressRows.length - hintRows.length,
@@ -2914,7 +2938,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const rendered = viewport.rows[row];
       frame.push(rendered?.ansi ?? pad(rendered?.text ?? '', conversationWidth));
     }
-    const target = transcriptRows + progressRows.length + 1 + prompt.cursorRow;
+    const target = transcriptRows + progressRows.length + bannerRows + 1 + prompt.cursorRow;
     this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true, () => {
       if (!this.closed) {
         try { this.render(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
@@ -2925,7 +2949,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
-        this.renderer.appContext, this.renderer.selectionInstance) } : undefined);
+        this.renderer.appContext, this.renderer.selectionInstance) } : undefined, banner);
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
 

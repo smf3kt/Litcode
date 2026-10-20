@@ -137,6 +137,7 @@ export type SessionEvent =
   | { kind: 'checkpoint'; name: string; digest: string; boundary: number }
   | { kind: 'rewind'; source: string; boundary: number; checkpoint: string; digest: string }
   | { kind: 'title'; title: string }
+  | { kind: 'session_color'; color: import('./session-color.js').SessionColor | null }
   | { kind: 'refusal'; model: string; category?: string; explanation?: string; requestId?: string }
   | { kind: 'branch'; source: string; workspace: string; boundary: number; reason: 'fork' | 'rewind' | 'reload' | 'configuration' | 'relocation' }
   | { kind: 'hook_start'; id: string; event: string; toolUseId?: string }
@@ -284,6 +285,7 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('tool_result'), result: resultSchema, host: storedToolUseResultSchema.optional() }).strict(),
   z.object({ kind: z.literal('tool_output'), result: resultSchema }).strict(),
   z.object({ kind: z.literal('title'), title: z.string().min(1).max(200).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)) }).strict(),
+  z.object({ kind: z.literal('session_color'), color: z.enum(['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan']).nullable() }).strict(),
   z.object({ kind: z.literal('refusal'), model: z.string().min(1).max(256).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)),
     category: z.string().min(1).max(64).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)).optional(),
     explanation: z.string().min(1).max(1024).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)).optional(),
@@ -637,6 +639,20 @@ export class Session {
       const event = this.events[i]!;
       if (event.kind === 'message') return event.response;
       if (event.kind === 'compact') return undefined;
+    }
+    return undefined;
+  }
+
+  /**
+   * `XKt` writes the session colour as a transcript event and the reader takes the first
+   * one it meets (`r.currentSessionAgentColor ??= e.agentColor`), so the earliest record
+   * wins and a later reset does not clear it. Locally the latest write wins instead: a
+   * `/color default` has to take effect on the session that issued it.
+   */
+  get sessionColor(): import('./session-color.js').SessionColor | undefined {
+    for (let i = this.events.length - 1; i >= 0; i--) {
+      const event = this.events[i]!;
+      if (event.kind === 'session_color') return event.color ?? undefined;
     }
     return undefined;
   }

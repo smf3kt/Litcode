@@ -81,6 +81,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'effort', description: 'Set effort level for model usage', kind: 'command', lane: 'config' },
   { name: 'copy', description: "Copy Claude's last response to clipboard (or /copy N for the Nth-latest)", kind: 'command', lane: 'action' },
   { name: 'autocompact', description: 'Set how full the context gets before auto-summarizing', kind: 'command', lane: 'config' },
+  { name: 'color', description: 'Set the prompt bar color for this session', kind: 'command', lane: 'config' },
   { name: 'sessions', description: 'List/search workspace sessions by title, model or UUID', kind: 'command', lane: 'info' },
   { name: 'resume', description: 'Resume a matching session or choose from a local list', kind: 'command', lane: 'action' },
   { name: 'rename', description: 'Set the current session title', kind: 'command', lane: 'action' },

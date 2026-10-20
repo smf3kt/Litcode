@@ -1,4 +1,5 @@
 import { clipEnd } from './tui-autocomplete.js';
+import { SESSION_COLOR_SLOTS } from './session-color.js';
 
 /**
  * The `@` agent rows, adapted from the recovered interactive application
@@ -6,19 +7,12 @@ import { clipEnd } from './tui-autocomplete.js';
  * 1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31): `HDt` 562351 builds
  * and filters them, `q0` 560849 cuts their description, and `wLe` (chunk-1z1j45h7.js
  * 01bb837725202a084cad281f0b8fcf059995c5d924da078b489cd9611f50fc9d) 1062 resolves the agent
- * colour slot over the `BM` table at 663. Coordinates are zero-based UTF-16 offsets.
+ * colour slot over the `BM` table at 663, which `session-color.ts` now owns. Coordinates are
+ * zero-based UTF-16 offsets.
  */
 
 /** `BDt`: an agent's description is cut to sixty cells. */
 export const AGENT_DESCRIPTION_LIMIT = 60;
-
-/** `BM`: the eight colour names a subagent definition may choose, and their theme slots. */
-const SUBAGENT_COLOR_SLOTS: Readonly<Record<string, string>> = {
-  red: 'red_FOR_SUBAGENTS_ONLY', blue: 'blue_FOR_SUBAGENTS_ONLY',
-  green: 'green_FOR_SUBAGENTS_ONLY', yellow: 'yellow_FOR_SUBAGENTS_ONLY',
-  purple: 'purple_FOR_SUBAGENTS_ONLY', orange: 'orange_FOR_SUBAGENTS_ONLY',
-  pink: 'pink_FOR_SUBAGENTS_ONLY', cyan: 'cyan_FOR_SUBAGENTS_ONLY',
-};
 
 /** The definition fields the row needs; the source's `agentType` and `whenToUse`. */
 export interface AgentSuggestionSource {
@@ -47,7 +41,7 @@ export function agentColor(agentType: string,
   overrides: Readonly<Record<string, string>> = {}): string | undefined {
   if (agentType === 'general-purpose') return undefined;
   const chosen = overrides[agentType];
-  return chosen === undefined ? undefined : SUBAGENT_COLOR_SLOTS[chosen];
+  return chosen === undefined ? undefined : SESSION_COLOR_SLOTS[chosen as keyof typeof SESSION_COLOR_SLOTS];
 }
 
 /**

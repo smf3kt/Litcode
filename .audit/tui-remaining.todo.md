@@ -88,11 +88,20 @@ Order is by how much a user sees.
       `userSettings.model`. Needed two dialog-host additions in `src/tui.ts` (an `adjust` axis and
       request-declared keys). See `research/ports/W215-model-picker.md`.
 
+- [x] W216 `/color [red|blue|green|yellow|purple|orange|pink|cyan|default]`. The recovered name
+      list, the five reset words, the random pick for an empty argument and the verbatim invalid
+      line, plus `p2`/`bLe` over the eight slots; the visible surface is `Mk`'s banner rule, which
+      exists only while a colour or a title needs it. See `research/ports/W216-color.md`.
+
 Next up, scoped but not started:
 
-- Nothing yet. The remaining input-bar commands with no local counterpart are `/memory`,
-  `/keybindings`, `/files`, `/definition`, `/color`, `/loops`, `/branch` and `/insights`; each
-  needs its recovered registration read before it can be scoped.
+- Scan of the remaining names: `/loops` (`RTo`) and `/branch` (`CTo`) are `isEnabled:()=>!1` in
+  this build, so they are dead registrations; `/insights` is a `prompt`-type command behind a
+  `allow_insights` policy gate; `/memory` (`xfo`) is a thin-client `local-jsx` over CLAUDE.md and
+  the memory settings. `/keybindings` (`Bfo` `local`, loader `chunk-askg8yg9.js`,
+  `Open your keyboard shortcuts file`) is the one live name left from that scan.
+- W217 starts with `/keybindings`: it opens the keyboard-shortcuts file in the editor, and this
+  host already owns an external-editor path and a keybindings registry.
 
 Explicitly out of scope for this loop:
 
