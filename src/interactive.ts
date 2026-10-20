@@ -56,6 +56,7 @@ import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
 import { HELP_DISMISSED, browseHelp } from './help-panel.js';
 import { tuiReport } from './tui-command.js';
+import { ADD_DIR_USAGE, addedForSessionMessage, addDirectoryMessage, validateAddDirectory } from './add-dir-command.js';
 import { chordForAction } from './tui-keys.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import {
@@ -110,6 +111,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /keybindings  Open your keyboard shortcuts file
 /scroll-speed  Adjust mouse wheel scroll speed
 /tui [default|fullscreen]  Set the terminal UI renderer
+/add-dir <path>  Add a new working directory
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
 /rename TITLE  Set the current session title
@@ -809,6 +811,21 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         continue;
       }
       try {
+        if (prompt === '/add-dir' || prompt.startsWith('/add-dir ')) {
+          // Source `d` (chunk-dzt2d3te.js 14026) and `lwn` (chunk-340rde3k.js 1608): validate the
+          // path, apply `{type:"addDirectories", directories:[abs], destination:"session"}`, then
+          // report. `d` discards the apply's own outcome, so this does too, and the session's
+          // `adoptPermissionUpdates` is this host's `setToolPermissionContext`.
+          const argument = prompt.slice('/add-dir'.length).trim();
+          if (!argument) { output.write(`${ADD_DIR_USAGE}\n`); continue; }
+          const result = validateAddDirectory({ directoryPath: argument,
+            workingDirectories: session.workingDirectories(false), cwd: session.config.workspace });
+          if (result.kind !== 'success') { output.write(`${addDirectoryMessage(result)}\n`); continue; }
+          session.adoptPermissionUpdates([{ type: 'addDirectories',
+            directories: [result.absolutePath], destination: 'session' }]);
+          output.write(`${addedForSessionMessage(result.absolutePath)}\n`);
+          continue;
+        }
         if (prompt === '/tui' || prompt.startsWith('/tui ')) {
           // Source `b1s` (chunk-24k7d6mw.js 64587): the recovered command saves the renderer
           // preference and relaunches into it. This build draws one renderer — the alternate-screen
