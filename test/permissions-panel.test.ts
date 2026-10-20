@@ -1,14 +1,21 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 
 import {
-  PERMISSION_ADD_RULE_LABEL, PERMISSION_ADD_RULE_VALUE, PERMISSION_GUIDE, PERMISSIONS_DISMISSED,
-  PERMISSION_RULE_TABS, PERMISSION_SAVE_DESTINATIONS, PERMISSION_TABS, browsePermissions,
+  PERMISSION_ADD_DIRECTORY_LABEL, PERMISSION_ADD_DIRECTORY_VALUE, PERMISSION_ADD_RULE_LABEL,
+  PERMISSION_ADD_RULE_VALUE, PERMISSION_GUIDE, PERMISSIONS_DISMISSED, PERMISSIONS_WORKSPACE_DISMISSED,
+  PERMISSION_OFFERED_TABS, PERMISSION_RULE_TABS, PERMISSION_SAVE_DESTINATIONS, PERMISSION_TABS,
+  PERMISSION_WORKSPACE_INTRO, PERMISSION_WORKSPACE_ORIGINAL, browsePermissions,
   permissionAddedReport, permissionDeleteFailedReport, permissionDeletedReport,
   permissionPanelRules, permissionRuleDecomposition, permissionRuleKey, permissionRuleLabels,
   PERMISSION_LABEL_LIMIT, permissionRulePaneRequest, permissionRuleRows, permissionRuleText, permissionSaveOptions,
   permissionSaveRequest, permissionShadowWarningLines, permissionShadowWarnings, permissionSourceName,
-  permissionTabRow, permissionTabTitle, permissionsPanelRequest, type PermissionPanelRule,
+  permissionTabRow, permissionTabTitle, permissionsPanelRequest, workspaceAddRequest,
+  workspaceAddedReport, workspaceDirectoryRows, workspaceDisplayText, workspaceRemoveRequest,
+  workspaceRemovedReport, workspaceTabLines, type PermissionPanelRule,
 } from '../src/permissions-panel.js';
 import type { PermissionUpdate } from '../src/permissions.js';
 
@@ -91,7 +98,10 @@ test('the tab table keeps the recovered order and titles', () => {
     ['recent', 'allow', 'ask', 'deny', 'automode', 'workspace']);
   assert.equal(permissionTabTitle('recent'), 'Recently denied');
   assert.equal(permissionTabTitle('automode'), 'Auto mode');
-  assert.equal(permissionTabRow('ask'), ' Allow [Ask] Deny ');
+  assert.deepEqual([...PERMISSION_OFFERED_TABS], ['allow', 'ask', 'deny', 'workspace']);
+  assert.equal(permissionTabRow('ask'), ' Allow [Ask] Deny  Workspace ');
+  // The strip follows the caller's list, so a tab the build does not draw stays out.
+  assert.equal(permissionTabRow('deny', PERMISSION_RULE_TABS), ' Allow  Ask [Deny]');
 });
 
 test('the rule rows lead with the add row, sort by text and filter on the query', () => {
@@ -119,14 +129,15 @@ test('the panel body carries the tab row, the intro and the empty state', () => 
   assert.ok(request.message.includes('Claude Code will always reject requests to use denied tools.'));
   assert.ok(request.message.includes('No deny rules'));
   assert.ok(request.message.includes(PERMISSION_GUIDE));
-  assert.deepEqual((request.choices ?? []).map(choice => choice.value), ['tab:allow', 'tab:ask', 'tab:deny', PERMISSION_ADD_RULE_VALUE]);
+  assert.deepEqual((request.choices ?? []).map(choice => choice.value),
+    ['tab:allow', 'tab:ask', 'tab:deny', 'tab:workspace', PERMISSION_ADD_RULE_VALUE]);
   assert.equal(request.defaultIndex, 2);
 
   const listed = permissionsPanelRequest({ rules: [rule('Read'), rule('Bash', 'ls *', 'projectSettings')] }, 'allow');
   assert.ok(listed.message.includes('  Bash(ls *)'));
   assert.ok(listed.message.includes('  Read'));
   assert.ok(!listed.message.includes('No allow rules'));
-  assert.deepEqual((listed.choices ?? []).slice(3).map(choice => choice.label), [PERMISSION_ADD_RULE_LABEL, 'Bash(ls *)', 'Read']);
+  assert.deepEqual((listed.choices ?? []).slice(4).map(choice => choice.label), [PERMISSION_ADD_RULE_LABEL, 'Bash(ls *)', 'Read']);
 });
 
 test('the rule pane is read-only for managed, flag and command sources', () => {
@@ -255,4 +266,116 @@ test('the add-rule surface carries the recovered example and asks for text', () 
   const many = permissionSaveRequest('deny', [{ toolName: 'Read' }, { toolName: 'Write' }]);
   assert.equal(many.title, 'Add deny permission rules');
   assert.ok(many.message.includes('Where should these rules be saved?'));
+});
+
+test('the workspace tab draws the intro, the original directory and its rows', () => {
+  const request = permissionsPanelRequest({ rules: [], directories: ['/w/extras'], originalCwd: '/w' }, 'workspace');
+  assert.ok(request.message.includes(PERMISSION_WORKSPACE_INTRO));
+  assert.ok(request.message.includes(`-  /w ${PERMISSION_WORKSPACE_ORIGINAL}`));
+  assert.ok(request.message.includes('  /w/extras'));
+  assert.ok(request.message.includes(PERMISSION_GUIDE));
+  // The add row is last here, unlike the rule tabs where it leads.
+  assert.deepEqual((request.choices ?? []).slice(4).map(choice => choice.value), ['/w/extras', PERMISSION_ADD_DIRECTORY_VALUE]);
+  assert.deepEqual((request.choices ?? []).slice(4).map(choice => choice.label), ['/w/extras', PERMISSION_ADD_DIRECTORY_LABEL]);
+  assert.equal(request.defaultIndex, 3);
+  // With no directory the tab still offers the add row and shows no empty-state line.
+  const empty = permissionsPanelRequest({ rules: [], directories: [], originalCwd: '/w' }, 'workspace');
+  assert.ok(!empty.message.includes('No additional working directories'));
+  assert.deepEqual((empty.choices ?? []).slice(4).map(choice => choice.value), [PERMISSION_ADD_DIRECTORY_VALUE]);
+});
+
+test('the workspace labels go through the display fold, then the dedup', () => {
+  // Source `Fn`: control, format and separator code points become U+FFFD.
+  assert.equal(workspaceDisplayText('/w/a\u0007b'), '/w/a�b');
+  assert.equal(workspaceDisplayText('/w/a b'), '/w/a�b');
+  assert.equal(workspaceDisplayText('/w/plain'), '/w/plain');
+  // Source `nB` = `uFe` over `Fn`: only paths that fold onto the same label take the escaped form.
+  assert.deepEqual(workspaceDirectoryRows(['/w/one', '/w/two']).map(row => row.label),
+    ['/w/one', '/w/two', PERMISSION_ADD_DIRECTORY_LABEL]);
+  // Paths that fold onto the same label drop to the escaped form; ASCII alone is left as it is.
+  assert.deepEqual(workspaceDirectoryRows(['/w/a b', '/w/a  b']).map(row => row.label),
+    ['/w/a b', '/w/a  b', PERMISSION_ADD_DIRECTORY_LABEL]);
+  assert.deepEqual(workspaceDirectoryRows(['/w/é x', '/w/é  x']).map(row => row.label),
+    ['/w/\\u00e9 x', '/w/\\u00e9  x', PERMISSION_ADD_DIRECTORY_LABEL]);
+  // The rows carry the raw path as their value and the original directory is never a row.
+  assert.deepEqual(workspaceDirectoryRows(['/w/a b'])[0], { label: '/w/a b', value: '/w/a b' });
+  assert.deepEqual(workspaceTabLines({ rules: [], directories: ['/w/x'], originalCwd: '/w' }),
+    [PERMISSION_WORKSPACE_INTRO, '', `-  /w ${PERMISSION_WORKSPACE_ORIGINAL}`, '  /w/x']);
+});
+
+test('the workspace add flow validates, reports the add, and re-prompts on a rejection', async () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'w227-')));
+  const originalCwd = path.join(root, 'w');
+  const added = path.join(root, 'extras');
+  fs.mkdirSync(originalCwd);
+  fs.mkdirSync(added);
+  try {
+    const updates: PermissionUpdate[] = [];
+    const script = [
+      { selected: ['tab:workspace'] },
+      { selected: [PERMISSION_ADD_DIRECTORY_VALUE] },
+      { selected: [], text: path.join(root, 'missing') },
+      { selected: [], text: '  ' },
+      { selected: [PERMISSION_ADD_DIRECTORY_VALUE] },
+      { selected: [], text: added },
+      undefined,
+    ];
+    let step = 0;
+    const input = { rules: [], directories: [], originalCwd };
+    const notice = await browsePermissions(() => input, async () => script[step++],
+      async update => { updates.push(update); return {}; });
+    // The rejection and the empty submission apply nothing; the valid path adds for the session.
+    assert.deepEqual(updates, [{ type: 'addDirectories', directories: [added], destination: 'session' }]);
+    assert.equal(notice, workspaceAddedReport(added, false));
+    assert.equal(notice, `Added directory ${added} to workspace for this session`);
+    assert.equal(workspaceAddedReport(added, true), `Added directory ${added} to workspace and saved to local settings`);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('the workspace removal confirms first and reports the removal', async () => {
+  const updates: PermissionUpdate[] = [];
+  const script = [
+    { selected: ['tab:workspace'] },
+    { selected: ['/w/extras'] },
+    { selected: ['cancel'] },
+    { selected: ['/w/extras'] },
+    { selected: ['confirm'] },
+    undefined,
+  ];
+  let step = 0;
+  const notice = await browsePermissions(() => ({ rules: [], directories: ['/w/extras'], originalCwd: '/w' }),
+    async () => script[step++], async update => { updates.push(update); return {}; });
+  assert.deepEqual(updates, [{ type: 'removeDirectories', directories: ['/w/extras'], destination: 'session' }]);
+  assert.equal(notice, 'Removed directory /w/extras from workspace');
+  assert.equal(workspaceRemovedReport('/w/extras'), notice);
+});
+
+test('the workspace tab dismisses with its own message and keeps the rule tabs to theirs', async () => {
+  // The panel opens on a rule tab, so a bare Esc there gives the panel's own message.
+  const rules = await browsePermissions(() => ({ rules: [], directories: [], originalCwd: '/w' }),
+    async () => undefined, async () => ({}));
+  assert.equal(rules, PERMISSIONS_DISMISSED);
+  // Esc from a sub-surface steps back to the tab, so the dismissal only lands there.
+  const backing = [{ selected: ['tab:workspace'] }, { selected: [PERMISSION_ADD_DIRECTORY_VALUE] },
+    undefined, undefined];
+  let step = 0;
+  assert.equal(await browsePermissions(() => ({ rules: [], directories: [], originalCwd: '/w' }),
+    async () => backing[step++], async () => ({})), PERMISSIONS_WORKSPACE_DISMISSED);
+});
+
+test('the workspace surfaces carry the recovered wording', () => {
+  const add = workspaceAddRequest();
+  assert.equal(add.title, 'Add directory to workspace');
+  assert.equal(add.allowText, true);
+  assert.ok(add.message.includes('Claude Code will be able to read files in this directory and make edits when auto-accept edits is on.'));
+  assert.ok(add.message.includes('Enter the path to the directory:'));
+  // Source `TXe`: a rejected path re-opens the surface with `hge`'s line under the prompt.
+  assert.ok(workspaceAddRequest('Path /w/nope was not found.').message.includes('Path /w/nope was not found.'));
+
+  const remove = workspaceRemoveRequest('/w/extras');
+  assert.equal(remove.title, 'Remove directory from workspace?');
+  assert.ok(remove.message.includes('/w/extras'));
+  assert.ok(remove.message.includes('Claude Code will no longer have access to files in this directory.'));
+  assert.deepEqual(remove.choices, [{ label: 'Yes', value: 'confirm' }, { label: 'No', value: 'cancel' }]);
+  assert.equal(remove.defaultIndex, 1);
 });
