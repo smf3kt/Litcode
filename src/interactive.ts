@@ -32,7 +32,8 @@ import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
 import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import { workflowsAvailable } from './tui-input-highlights.js';
-import { loopCommandPrompt } from './loop-command.js';
+import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from './loop-command.js';
+import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
 import {
   expandUserSkill,
@@ -900,15 +901,25 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (!tool || !tool.readOnly) throw new Error('Requested inspection feature is disabled');
           const input = match ? { name: match[1], offset: Number(match[2] ?? 0), limit: 50 } : {};
           if (permissionDecision(session.config.permissions, tool, input).decision !== 'allow') throw new Error('Inspection requires an explicit tool allow decision');
-          output.write(await withTurn(signal => tool.execute(input, { workspace: session.config.workspace,
-            signal, allowShell: false, maxOutputBytes: session.config.maxOutputBytes })) + '\n');
+          const text = await withTurn(signal => tool.execute(input, { workspace: session.config.workspace,
+            signal, allowShell: false, maxOutputBytes: session.config.maxOutputBytes }));
+          // Source `C` (chunk-appb2dtz.js [18304,18490)): a scheduled loop job shows as `/loop`, or
+          // `/loop (loop.md)`. The tool result itself keeps the literal sentinel.
+          output.write((prompt === '/cron' ? displayCronJobs(text) : text) + '\n');
           continue;
         }
         if (prompt === '/loop' || prompt.startsWith('/loop ')) {
           // Source `se` (chunk-1eegq95r.js [22959,24199)): a built-in user-invocable command whose
           // prompt is the loop instructions, with the typed arguments riding at the end of the
-          // text. It never runs locally; the expanded text becomes the user turn.
-          prompt = loopCommandPrompt(prompt.slice('/loop'.length).trim());
+          // text. It never runs locally; the expanded text becomes the user turn. An empty input
+          // or a bare interval takes the `y` branch over the loop-tasks file instead of `R`.
+          const input = prompt.slice('/loop'.length).trim();
+          const bare = loopAutonomousInterval(input);
+          if (bare === null) prompt = loopCommandPrompt(input);
+          else {
+            const userDir = session.config.configSources?.userDir ?? defaultUserDir();
+            prompt = loopAutonomousPrompt({ file: readLoopFile(session.config.workspace, userDir), ...bare });
+          }
         }
         if (prompt === '/workflows') {
           const tool = activeRuntime.buildTools(session.config, session.id).find(tool => tool.schema.name === 'workflow_get');

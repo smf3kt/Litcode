@@ -25,7 +25,7 @@ import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { z } from 'zod';
 import { statusLineSchema } from './tui-statusline-schema.js';
 
-import { expandSkill, type InstructionFile, type SkillInfo } from './config.js';
+import { defaultUserDir, expandSkill, type InstructionFile, type SkillInfo } from './config.js';
 import { hooksSettingsSchema, runHooks, type HooksConfig, type HookRunOptions } from './hooks.js';
 import { AsyncHookRegistry } from './async-hooks.js';
 import { validateHookTerminalSequence } from './hook-terminal.js';
@@ -64,6 +64,8 @@ import { createTools, type ToolContext, type ToolDefinition } from './tools.js';
 import { createNotebookTools } from './notebooks.js';
 import { BackgroundRegistry, createBackgroundTools } from './background.js';
 import { LocalScheduler, createSchedulerTools, type LocalSchedulerOptions } from './scheduler.js';
+import { isLoopDefaultSentinel, newLoopDeliveryState, readLoopFile, resolveLoopDefaultFire,
+  type LoopDeliveryState } from './loop-file.js';
 import { SKILL_TOOL_NAME, skillsSection, refreshPluginComponents } from './skill-catalog.js';
 
 export { SKILL_TOOL_NAME } from './skill-catalog.js';
@@ -533,7 +535,7 @@ export async function createRuntime(
   type Resources = { background?: BackgroundRegistry; scheduler?: LocalScheduler; agents?: AgentRegistry; workflows?: WorkflowRegistry; hooks?: AsyncHookRegistry;
     lsp?: ReturnType<typeof createLspTools>; worktrees?: WorktreeManager;
     queued: RuntimeEvent[]; instructionPaths: Set<string>; terminalQueued: Extract<RuntimeEvent, { kind: 'hook_terminal' }>[]; terminalDropped: number;
-    dropped: number; reportedDropped: number; reportedAgentDrops: number };
+    dropped: number; reportedDropped: number; reportedAgentDrops: number; loopDelivery?: LoopDeliveryState };
   const owners = new Map<string, Resources>();
   const ownerScopes = new Map<string, object>();
   const toolSets = new Map<string, { fingerprint: string; tools: ToolDefinition[] }>();
@@ -1175,6 +1177,16 @@ export async function createRuntime(
       drainEvents(owner) {
         const resources = owners.get(owner);
         if (!resources) return [];
+        // Source `Hc.resolveLoopDefaultFireAsync(e.autonomousLoopPreamble, Se, gt)` in
+        // `chunk-rx2nah4x.js` [562724): a scheduled fire resolves a loop sentinel into its tick
+        // text before it reaches the turn, carrying the delivery state across fires. The async
+        // variant differs only in awaiting the file read; this host reads it synchronously.
+        const loopDelivery = resources.loopDelivery ??= newLoopDeliveryState();
+        for (const event of resources.queued) {
+          if (event.kind !== 'scheduled' || !isLoopDefaultSentinel(event.prompt)) continue;
+          event.prompt = resolveLoopDefaultFire(loopDelivery, event.prompt,
+            () => readLoopFile(config.workspace, config.configSources?.userDir ?? defaultUserDir()));
+        }
         const events: RuntimeEvent[] = [...resources.terminalQueued.splice(0),
           ...(resources.instructionPaths.size ? [{ kind: "instruction_paths" as const, paths: [...resources.instructionPaths] }] : []), ...resources.queued.splice(0)];
         resources.instructionPaths.clear();
