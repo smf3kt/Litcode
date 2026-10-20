@@ -131,6 +131,14 @@ Next up, scoped but not started:
   `additionalWorkingDirectories` already in `permission-state.ts` — then reports
   `Added <abs> as a working directory for this session`. Still to scope: the `DirectoryAdded` hook
   fan-out and `iGt`'s skill/command/agent loading notes.
+- W221 wiring note (found, not yet used): this host has no live `toolPermissionContext` object in
+  the interactive loop — `reducePermissionState` in `permission-state.ts` is a ported primitive
+  with no caller, and decisions come from the config layers instead (`permissionLayersSchema`'s
+  per-layer `additionalDirectories`, read through `permissionDecision(session.config.permissions,
+  …)`). So the local `session` write is an append to the effective layer's `additionalDirectories`
+  plus the workspace roots the loop already carries, not a `setToolPermissionContext` call. The
+  validation half (`gge`'s seven result kinds and `hge`'s messages) is pure and portable on its
+  own, so it can land first with the report strings and the config write second.
 - The remaining registrations are out or blocked: `/radio` streams audio from a network source;
   `/powerup` is a lesson runner over the vendor's own content; `/auto-mode-setup` is gated on an
   env-onboarding flag this host does not carry; `/privacy-settings` is account-adjacent;
