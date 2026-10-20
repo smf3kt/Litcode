@@ -89,6 +89,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'tasks', description: 'Show workspace task dependencies and readiness', kind: 'command', lane: 'agent' },
   { name: 'workflows', description: 'Show this session workflow runs, including saved runs', kind: 'command', lane: 'agent' },
   { name: 'cron', description: 'Show scheduled prompts in the active session', kind: 'command', lane: 'agent' },
+  { name: 'loop', description: 'Repeat a prompt or command on an interval (e.g. /loop 5m /foo)', kind: 'command', lane: 'agent' },
   { name: 'peers', description: 'List live same-host sessions and this inbox address', kind: 'command', lane: 'agent' },
   { name: 'peer-held', description: 'Review held peer messages', kind: 'command', lane: 'agent' },
   { name: 'peer-inbound', description: 'Set the explicit inbound policy', kind: 'command', lane: 'agent' },
