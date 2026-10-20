@@ -27,7 +27,8 @@ import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, re
 import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
 import { defaultUserDir, loadProjectConfig } from './config.js';
-import { saveThemeSetting, saveEditorMode, saveEffortSetting } from './theme-settings.js';
+import { saveThemeSetting, saveEditorMode, saveEffortSetting, saveAutoCompactSetting,
+  readAutoCompactSetting } from './theme-settings.js';
 import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
 import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
@@ -37,6 +38,9 @@ import { DEFAULT_EFFORT, EFFORT_LEVELS, effortCommand, effortDescription, effort
   effortIndicator } from './effort-command.js';
 import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUsageMessage,
   parseCopyArgument, writeCopyFile } from './copy-command.js';
+import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
+  autoCompactDialogMessage, autoCompactLimit, autoCompactSelection, autoCompactSelectionValue,
+  autoCompactStatus, autoCompactUnchangedMessage, resolveAutoCompactWindow } from './autocompact-command.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
@@ -87,6 +91,7 @@ export const COMMAND_HELP = `/help       Show commands
 /usage      Show recorded model usage
 /effort LEVEL  Set effort level for model usage (low/medium/high/xhigh/max/auto)
 /copy [N]   Copy the latest response to the clipboard (or the Nth-latest)
+/autocompact [auto|<tokens>]  Set how full the context gets before auto-summarizing
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
 /rename TITLE  Set the current session title
@@ -797,6 +802,41 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           let file: string | undefined;
           try { file = writeCopyFile(text); } catch { file = undefined; }
           output.write(`${copyReport(text, file)}\n`);
+          continue;
+        }
+        if (prompt === '/autocompact' || prompt.startsWith('/autocompact ')) {
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          const model = session.config.model;
+          const limit = autoCompactLimit(session.config.contextTokens, session.config.maxTokens);
+          const userDir = session.config.configSources?.userDir;
+          let argument = prompt.slice('/autocompact'.length).trim();
+          // The `local-jsx` registration (`SNt`, chunk-sfn1dbxq.js 1132446) opens the dialog on a
+          // bare name and applies the argument directly; the `local` registration (`que`, 1132674)
+          // answers the bare form with `w`'s status block. This host renders the dialog when it
+          // has a prompt surface and falls back to the block, which is the `m2s` empty arm.
+          if (!argument) {
+            const resolved = resolveAutoCompactWindow(limit, readAutoCompactSetting(userDir));
+            if (!terminal?.prompt) { output.write(`${autoCompactStatus(model, resolved)}\n`); continue; }
+            const answer = await withTurn(signal => readDialog({ title: 'Auto-compact window',
+              message: autoCompactDialogMessage(model, resolved),
+              choices: autoCompactChoices(), defaultIndex: autoCompactSelection(resolved) }, signal));
+            const picked = answer?.selected[0];
+            // `ue` reports the unchanged caption on cancel and on an accept that moved nothing.
+            if (!picked || picked === autoCompactSelectionValue(resolved)) {
+              options.status.write(`${autoCompactUnchangedMessage(model, resolved)}\n`); continue;
+            }
+            argument = picked;
+          }
+          const result = applyAutoCompactWindow(argument, { model, limit });
+          if (result.saved === undefined) { output.write(`${result.message}\n`); continue; }
+          try { saveAutoCompactSetting(result.saved === 'auto' ? undefined : result.saved, userDir); }
+          catch (error) { output.write(`Couldn't save setting: ${(error as Error).message}\n`); continue; }
+          // `$2t` clears the session override (`apply_flag_settings`) and leaves the saved value
+          // to resolve on the next read; this host has no per-model table, so the live window is
+          // the ceiling-clamped value the same resolver would produce.
+          session.config.compactAt = Math.min(limit,
+            result.saved === 'auto' ? AUTO_COMPACT_FALLBACK : result.saved);
+          output.write(`${result.message}\n`);
           continue;
         }
         if (/^\/peers(?:\s|$)/.test(prompt)) {

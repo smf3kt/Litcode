@@ -642,6 +642,51 @@ test('/copy sends the latest response through OSC 52 and reports what it copied'
   } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
+test('/autocompact reports the window, stores a token count and clears it', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-autocompact-')));
+  const userDir = path.join(workspace, 'user');
+  fs.mkdirSync(userDir);
+  const config = { ...defaultConfig(workspace, []), model: 'test', configSources: { userDir } };
+  const provider: ModelProvider = { count: async () => 0, complete: async () => reply('unused') };
+  const lifetime = AbortSignal.timeout(6000);
+  const runtime = await createRuntime(config, provider, lifetime);
+  const session = Session.open(workspace, { config });
+  const stdout = output(), stderr = output();
+  const settingsFile = path.join(userDir, 'settings.json');
+  const stored = () => fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf8')) : {};
+  const input = new PassThrough();
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  try {
+    const loop = interactiveLoop(session, provider, runtime,
+      { input, output: stdout.stream, status: stderr.stream, signal: lifetime });
+    // No prompt surface, so the bare form falls back to the recovered status block.
+    input.write('/autocompact\n'); await wait(200);
+    input.write('/autocompact 300k\n'); await wait(200);
+    assert.equal(stored().compactAt, 300000);
+    assert.equal(session.config.compactAt, 300000);
+    input.write('/autocompact\n'); await wait(200);
+    input.write('/autocompact 1m\n'); await wait(200);
+    // The store keeps the requested value; the session takes the ceiling-clamped window.
+    assert.equal(stored().compactAt, 1000000);
+    assert.equal(session.config.compactAt, 975424);
+    input.write('/autocompact reset\n'); await wait(200);
+    assert.equal('compactAt' in stored(), false);
+    assert.equal(session.config.compactAt, 512000);
+    input.write('/autocompact 2m\n'); await wait(200);
+    input.write('/exit\n');
+    await loop;
+    const said = stdout.value();
+    assert.match(said, /Auto-compact window for test: 512k tokens \(default for this model\)/);
+    assert.match(said, /Auto-compact window for test: 300k tokens \(from settings\)/);
+    assert.match(said, /Overriding auto may result in high token usage, especially when resuming long sessions\./);
+    assert.match(said, /Auto-compact window for test set to 300k tokens/);
+    assert.match(said, /Auto-compact window for test set to 1m tokens \(capped to model limit of 975\.4k\)/);
+    assert.match(said, /Auto-compact window for test set to auto/);
+    assert.match(said, /Couldn't parse '2m'\. Expected 'auto' or 100k–1M tokens/);
+    assert.doesNotMatch(said, /Unknown command; use \/help/);
+  } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test('bare /config opens the editor mode choice and saves the picked mode', { timeout: 8000 }, async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-config-')));
   const userDir = path.join(workspace, 'user');
