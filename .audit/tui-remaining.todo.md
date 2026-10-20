@@ -119,26 +119,19 @@ Order is by how much a user sees.
       so the setting is not written and the arms that need a second renderer stay out. See
       `research/ports/W220-tui.md`.
 
+- [x] W221 `/add-dir`. The path validator in `gge`'s recovered order with `hge`'s seven messages,
+      the `iGt` branch left to fall through, and the success apply through
+      `Session.adoptPermissionUpdates` (`{type:'addDirectories', directories:[abs], destination:
+      'session'}`) plus `lwn`'s session report. Wiring note resolved: the live interactive loop has
+      no `setToolPermissionContext`, but `Session.adoptPermissionUpdates` is the apply-and-persist
+      path for the same `SessionPermissionUpdates` shape, so `reducePermissionState` was not
+      needed. The `localSettings` destination, the non-interactive `local` registration, `iGt`'s
+      skills-loading note and the `local-jsx` path box stay out; an empty argument reaches the
+      usage arm because this build is fullscreen-only, where `Slo.immediate` holds. See
+      `research/ports/W221-add-dir.md`.
+
 Next up, scoped but not started:
 
-- W221 `/add-dir`. Scouting done, source located: the `local` twin loads its body from
-  `chunk-dzt2d3te.js` (barrel), whose `d` calls `gge` (validation, `chunk-8f8e39h5.js` 1097),
-  `hge` (the failure messages, same chunk 2073) and `lwn`/`iGt` (`chunk-340rde3k.js` 1608/3062).
-  Validation result kinds: `emptyPath`, `invalidPath`, `networkPath`, `notADirectory`,
-  `pathNotFound`, `alreadyInWorkingDirectory`, `success`. Success applies
-  `{type:"addDirectories", directories:[abs], destination:"session"}` through the permission
-  reducer — which this host already ports as `wco`/`jd` in `permission-reducer-source.ts`, with
-  `additionalWorkingDirectories` already in `permission-state.ts` — then reports
-  `Added <abs> as a working directory for this session`. Still to scope: the `DirectoryAdded` hook
-  fan-out and `iGt`'s skill/command/agent loading notes.
-- W221 wiring note (found, not yet used): this host has no live `toolPermissionContext` object in
-  the interactive loop — `reducePermissionState` in `permission-state.ts` is a ported primitive
-  with no caller, and decisions come from the config layers instead (`permissionLayersSchema`'s
-  per-layer `additionalDirectories`, read through `permissionDecision(session.config.permissions,
-  …)`). So the local `session` write is an append to the effective layer's `additionalDirectories`
-  plus the workspace roots the loop already carries, not a `setToolPermissionContext` call. The
-  validation half (`gge`'s seven result kinds and `hge`'s messages) is pure and portable on its
-  own, so it can land first with the report strings and the config write second.
 - The remaining registrations are out or blocked: `/radio` streams audio from a network source;
   `/powerup` is a lesson runner over the vendor's own content; `/auto-mode-setup` is gated on an
   env-onboarding flag this host does not carry; `/privacy-settings` is account-adjacent;

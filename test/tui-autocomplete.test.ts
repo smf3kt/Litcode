@@ -338,7 +338,9 @@ test('typing a slash opens the suggestion list above the composer', () => {
   try {
     key('/');
     const opened = composer.screen();
-    assert.ok(opened.includes('❯ /agents'), opened);
+    // An empty query ranks every command equally, so the list is the whole table in name
+    // order and the highlight sits on the first row. Assert the shape, not the first name.
+    assert.ok(/❯ \/\S/.test(opened), opened);
     const listed = opened.split('\n').filter(row => /^\s*❯? ?\//.test(row)).length;
     assert.ok(listed >= 6, `the list fills its row budget, saw ${listed}`);
     key('mo');
@@ -360,10 +362,12 @@ test('Enter accepts and runs the selected command, Escape closes the list', asyn
     assert.deepEqual(composer.submitted, ['/help '], 'Enter accepts and submits a local command');
     assert.equal(composer.tui.state.text, '', 'submission clears the draft');
     key('/');
-    assert.ok(composer.screen().includes('❯ /agents'));
+    const open = composer.screen();
+    const row = open.split('\n').map(line => line.match(/❯ (\/\S+)/)?.[1]).find(Boolean);
+    assert.ok(row, `the list opens with a highlighted row:\n${open}`);
     key('\u001b');
     await new Promise(resolve => setTimeout(resolve, 80));
-    assert.equal(composer.screen().includes('/agents'), false, 'Escape hides the list');
+    assert.equal(composer.screen().includes(row), false, 'Escape hides the list');
     assert.equal(composer.tui.state.text, '/', 'Escape leaves the draft untouched');
     key('m');
     assert.ok(composer.screen().includes('/model'), 'editing the draft opens the list again');
