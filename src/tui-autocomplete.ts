@@ -84,6 +84,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'color', description: 'Set the prompt bar color for this session', kind: 'command', lane: 'config' },
   { name: 'keybindings', description: 'Open your keyboard shortcuts file', kind: 'command', lane: 'config' },
   { name: 'scroll-speed', description: 'Adjust mouse wheel scroll speed', kind: 'command', lane: 'config' },
+  { name: 'tui', description: 'Set the terminal UI renderer (default | fullscreen)', kind: 'command', lane: 'config' },
   { name: 'sessions', description: 'List/search workspace sessions by title, model or UUID', kind: 'command', lane: 'info' },
   { name: 'resume', description: 'Resume a matching session or choose from a local list', kind: 'command', lane: 'action' },
   { name: 'rename', description: 'Set the current session title', kind: 'command', lane: 'action' },

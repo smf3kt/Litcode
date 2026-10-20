@@ -55,6 +55,7 @@ import { osc52Payload } from './clipboard-osc52.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
 import { HELP_DISMISSED, browseHelp } from './help-panel.js';
+import { tuiReport } from './tui-command.js';
 import { chordForAction } from './tui-keys.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import {
@@ -108,6 +109,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /color ${sessionColorArgumentHint()}  Set the prompt bar color for this session
 /keybindings  Open your keyboard shortcuts file
 /scroll-speed  Adjust mouse wheel scroll speed
+/tui [default|fullscreen]  Set the terminal UI renderer
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
 /rename TITLE  Set the current session title
@@ -807,6 +809,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         continue;
       }
       try {
+        if (prompt === '/tui' || prompt.startsWith('/tui ')) {
+          // Source `b1s` (chunk-24k7d6mw.js 64587): the recovered command saves the renderer
+          // preference and relaunches into it. This build draws one renderer — the alternate-screen
+          // one — and has no relaunch, so the arms that could change something say what they can.
+          output.write(`${tuiReport(prompt.slice('/tui'.length))}\n`);
+          continue;
+        }
         if (prompt === '/help') {
           // Source `G` (chunk-yehhb8pt.js 18865): the recovered command docks a tabbed panel in the
           // frame — General, Commands and Custom commands. Without a modal surface the flat list

@@ -112,15 +112,20 @@ Order is by how much a user sees.
       line. The tabs are the chooser's rows, and `Esc` dismisses. See
       `research/ports/W219-help-panel.md`.
 
+- [x] W220 `/tui`. The recovered argument grammar (`lZ`'s two names, `b1s`'s trim/lowercase and its
+      current/unknown/renderer arms) and the three report strings, plus the local refusal for the
+      classic arm this build cannot honour. This product draws one renderer — `Rc()`'s fullscreen
+      arm, since `TerminalModeController` always enters the alternate screen — and has no relaunch,
+      so the setting is not written and the arms that need a second renderer stay out. See
+      `research/ports/W220-tui.md`.
+
 Next up, scoped but not started:
 
-- W220 targets the next live `local-jsx` surface from the registration scan of
-  `chunk-sfn1dbxq.js`: ungated `tui`, `powerup`, `radio`; gated `add-dir` (`ve()`),
-  `auto-mode-setup` (`sBe()`), `privacy-settings` (`Yoe()`), `skill-doctor` (`ve()`).
-  `scroll-speed` (W218) and `help` (W219) are done. `/tui` is a real registration but this
-  product has a single renderer: `Rc()`'s classic arm does not exist locally, so the package
-  is small by nature. `/powerup` is a lesson runner and `/radio` streams audio, which the
-  local-only constraint puts out.
+- W221 targets the next live `local-jsx` surface from the registration scan of
+  `chunk-sfn1dbxq.js`: ungated `powerup`, `radio`; gated `add-dir` (`ve()`), `auto-mode-setup`
+  (`sBe()`), `privacy-settings` (`Yoe()`), `skill-doctor` (`ve()`). `/radio` streams audio from a
+  network source and `/powerup` is a lesson runner over the vendor's own content; both need a
+  scoping pass before they are ready.
 - The live input-bar names from the earlier scan are exhausted. `/loops` (`RTo`) and `/branch`
   (`CTo`) are `isEnabled:()=>!1`; `/insights` is a `prompt`-type command behind an `allow_insights`
   policy gate; `/memory` (`xfo`) is a thin-client `local-jsx` over CLAUDE.md and the memory
