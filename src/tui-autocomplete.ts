@@ -79,6 +79,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'context', description: 'Count current request against the configured context budget', kind: 'command', lane: 'info' },
   { name: 'usage', description: 'Show recorded model usage', kind: 'command', lane: 'info' },
   { name: 'effort', description: 'Set effort level for model usage', kind: 'command', lane: 'config' },
+  { name: 'copy', description: "Copy Claude's last response to clipboard (or /copy N for the Nth-latest)", kind: 'command', lane: 'action' },
   { name: 'sessions', description: 'List/search workspace sessions by title, model or UUID', kind: 'command', lane: 'info' },
   { name: 'resume', description: 'Resume a matching session or choose from a local list', kind: 'command', lane: 'action' },
   { name: 'rename', description: 'Set the current session title', kind: 'command', lane: 'action' },

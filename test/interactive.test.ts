@@ -611,6 +611,37 @@ test('/effort answers every argument form and stores only a persistable level', 
   }
 });
 
+test('/copy sends the latest response through OSC 52 and reports what it copied', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-copy-')));
+  const config = { ...defaultConfig(workspace, []), model: 'test' };
+  const responses = ['the first answer', 'the second answer'];
+  const provider: ModelProvider = { count: async () => 10,
+    complete: async () => reply(responses.shift()!) };
+  const lifetime = AbortSignal.timeout(6000);
+  const runtime = await createRuntime(config, provider, lifetime);
+  const session = Session.open(workspace, { config });
+  const stdout = output(), stderr = output();
+  try {
+    await interactiveLoop(session, provider, runtime, {
+      input: Readable.from(['one\n', 'two\n', '/copy\n', '/copy 2\n', '/copy 9\n', '/copy 0\n', '/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: lifetime,
+    });
+    const said = stdout.value();
+    // The payload is the recovered `osc52Payload` form: ESC ] 52 ; c ; <base64> BEL.
+    const payload = (text: string) => `\u001b]52;c;${Buffer.from(text, 'utf8').toString('base64')}\u0007`;
+    assert.ok(said.includes(payload('the second answer')), 'the latest response is the one copied');
+    assert.ok(said.includes(payload('the first answer')), '/copy 2 reaches the earlier response');
+    assert.match(said, /Copied to clipboard \(17 characters, 1 lines\)\nAlso written to .*response\.md/);
+    assert.match(said, /Only 2 assistant messages available to copy/);
+    assert.match(said, /Usage: \/copy \[N\] where N is 1 \(latest\), 2, 3, … Got: 0/);
+    assert.doesNotMatch(said, /Unknown command; use \/help/);
+    // Two requests, two copies, and the scratch file holds the last one.
+    assert.equal(responses.length, 0);
+    const scratch = path.join(os.tmpdir(), 'litcode-copy', String(process.pid), 'response.md');
+    assert.equal(fs.readFileSync(scratch, 'utf8'), 'the first answer');
+  } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
 test('bare /config opens the editor mode choice and saves the picked mode', { timeout: 8000 }, async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-config-')));
   const userDir = path.join(workspace, 'user');

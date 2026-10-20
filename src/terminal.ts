@@ -1272,6 +1272,13 @@ export interface TerminalSurface {
   editCustomTheme?(reference: string | undefined, pick: (theme: import('./tui-theme-state.js').ThemeSetting) => Promise<void>,
     signal: AbortSignal): Promise<void>;
   writeTerminalSequence(sequence: string): void;
+  /**
+   * A clipboard request, written to the terminal verbatim. The recovered `Sv` builds the payload
+   * and `A` hands it to `process.stdout.write` unwrapped, so this must not pass through the hook
+   * sequence formatter: that one re-wraps for tmux and screen, which `osc52Payload` has already
+   * done, and caps the length.
+   */
+  writeClipboard?(payload: string): void;
   setEditorMode?(mode?: import('./tui-vim.js').EditorMode,remaps?:Record<string,unknown>): void;
   editDraft?(signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult>;
   prompt?(request: TerminalPromptRequest, signal: AbortSignal): Promise<TerminalPromptAnswer | undefined>;
