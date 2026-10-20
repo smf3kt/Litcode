@@ -140,6 +140,30 @@ Order is by how much a user sees.
 
 Next up, scoped but not started:
 
+- W224 `/reload-skills` (`Pick up skills added or changed on disk during this session`, `local`,
+  `supportsNonInteractive: true`, `thinClientDispatch: "post-text"`). Scouting done: the barrel
+  `chunk-hyft8yrm.js` (sha256
+  `fad372982d5516747b598e25e44c70b79d2fe1cbebaa85282cdd65e17fc5cfcb`, 14498 bytes) re-exports `v`
+  from `chunk-4bw62nzm.js`; the body is small and complete:
+  ```js
+  var v = async (g, t) => {
+    let m = cr(), i = JOn(t.getMcp().commands), s = (o) => tre(o, i),
+        n = s(await qT(m, t.storageV5)), d = new Set(n.map(o => o.name));
+    gL(), bM(), $5();                       // the three skill-cache invalidations
+    let e = s(await qT(m, t.storageV5)), c = new Set(e.map(o => o.name));
+    i1.emit();                              // the change event
+    let r = F(e, o => !d.has(o.name)), l = F(n, o => !c.has(o.name)), a = [];
+    if (r > 0) a.push(`${r} added`);
+    if (l > 0) a.push(`${l} removed`);
+    let p = a.length > 0 ? a.join(", ") : "no changes",
+        f = Tr() ? " (custom skills are disabled in safe mode)" : "";
+    return { type: "text", value: `Reloaded skills: ${e.length} ${I(e.length,"skill")} available (${p})${f}` };
+  };
+  ```
+  Local backing: `scanSkills`/`config.skills` (`config.ts:1305`) and the loop's existing reload path
+  (`loadProjectConfig` + `tuiCommandsWithSkills`). The safe-mode suffix has no local equivalent, so
+  that arm is out; the three invalidations need mapping to whatever this host caches skills behind.
+
 - [x] W222 surface sweep of the commands reported as unresponsive. `.audit/w222-surface-sweep.mjs`
       passes 8 checks over the compiled CLI: `/workflows` opens the dynamic-workflows dialog with
       its empty message and `Esc close` footer; bare `/loop` expands to a user turn rather than
