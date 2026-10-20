@@ -61,13 +61,17 @@ Order is by how much a user sees.
       sits on the dialog's own answer row. See `research/ports/W209-dialog-chat-frame.md`.
 - [x] W210 the built-in `/loop` command: the recovered parse-and-schedule prompt becomes the user
       turn, with the tool display names mapped to this host's registry and the composer's
-      suggestion row. The no-argument autonomous default waits on W208. See
+      suggestion row. The no-argument autonomous default is W208's. See
       `research/ports/W210-loop-command.md`.
 - [x] W211 the `/workflows` panel: the run list, a run detail and a task card, over a read-only
       dialog form that draws rows without an answer input. See
       `research/ports/W211-workflows-panel.md`.
-- [ ] W208 native storage V5 / transformed session-storage producers. Split out of W207: a
-      durable-storage service, not a TUI display, so it stays out of this display loop.
+- [x] W208 native storage V5 / transformed session-storage producers. Split out of W207 as a durable
+      service; the one thing this product needs it for is the `loop.md` file `/loop` reads, so it
+      landed as the loop-file runtime: the four sentinels, the truncation, the project-then-user
+      resolution, the tick texts, the delivery state, the autonomous default and the `/cron` label.
+      Native storage V5 is the stub `Mbr` in this build, so the recovered direct-`fs` fallback is the
+      live path. See `research/ports/W208-loop-file-runtime.md`.
 
 Explicitly out of scope for this loop:
 

@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, assertPaired, defaultConfig } from '../src/agent.js';
 import { interactiveLoop } from '../src/interactive.js';
+import { getAutonomousLoopPreamble } from '../src/loop-file.js';
 import { createRuntime, pinToolSchemas } from '../src/runtime.js';
 import type { ModelProvider } from '../src/provider.js';
 import { Session } from '../src/session.js';
@@ -186,6 +187,45 @@ test('scheduler events are owner-specific and released on session change', async
     await runtime.releaseSession!('one'); now = new Date(2026, 9, 10, 12, 2); ticks.forEach(tick => tick());
     assert.deepEqual(runtime.drainEvents!('one'), []); unsubscribe();
   } finally { await runtime.close(); f.cleanup(); }
+});
+
+test('a scheduled loop sentinel expands into its tick text at fire time', async () => {
+  const f = fixture(); const userDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-loop-user-')));
+  f.config.configSources = { userDir };
+  fs.mkdirSync(path.join(f.workspace, '.harness'), { recursive: true });
+  fs.writeFileSync(path.join(f.workspace, '.harness', 'loop.md'), 'run the tests\n');
+  let now = new Date(2026, 9, 10, 12, 0); const ticks: (() => void)[] = [];
+  const runtime = await createRuntime(f.config, unused, f.context.signal, { scheduler: {
+    now: () => now, timer: { setInterval: handler => { ticks.push(handler); return handler; }, clearInterval: () => {} },
+  } });
+  try {
+    const tools = runtime.buildTools(f.config, 'one');
+    const create = tools.find(t => t.schema.name === 'cron_create')!;
+    // The autonomous sentinel carries the preamble on the first delivery of the session.
+    await create.execute({ cron: '* * * * *', prompt: '<<autonomous-loop>>', recurring: true }, f.context);
+    now = new Date(2026, 9, 10, 12, 1); ticks.forEach(tick => tick());
+    const first = runtime.drainEvents!('one').map(event => event.prompt);
+    assert.equal(first[0]!.startsWith(`${getAutonomousLoopPreamble()}\n\n---\n\n# Autonomous loop tick\n`), true);
+
+    // A loop-file job inlines the file on its own first delivery. The delivery state is shared
+    // across both sentinel families, so the autonomous tick that follows is the short form.
+    await create.execute({ cron: '* * * * *', prompt: '<<loop.md>>', recurring: true }, f.context);
+    await create.execute({ cron: '* * * * *', prompt: 'plain job', recurring: true }, f.context);
+    now = new Date(2026, 9, 10, 12, 2); ticks.forEach(tick => tick());
+    const second = runtime.drainEvents!('one').map(event => event.prompt);
+    const loopFile = path.join(f.workspace, '.harness', 'loop.md');
+    assert.equal(second[0]!.startsWith('# Autonomous loop tick\n'), true);
+    assert.equal(second[0]!.includes('Autonomous loop check'), false);
+    assert.equal(second[1]!.startsWith(`# /loop tick — tasks from ${loopFile}\n`), true);
+    assert.equal(second[1]!.includes('\n---\n\nrun the tests\n\n---\n\n# /loop tick — loop.md tasks\n'), true);
+    assert.equal(second[2], 'plain job');
+
+    // Unchanged content and an already-delivered preamble both repeat the short ticks.
+    now = new Date(2026, 9, 10, 12, 3); ticks.forEach(tick => tick());
+    const third = runtime.drainEvents!('one').map(event => event.prompt);
+    assert.equal(third[0]!.startsWith('# Autonomous loop tick\n'), true);
+    assert.equal(third[1]!.startsWith('# /loop tick — loop.md tasks\n'), true);
+  } finally { await runtime.close(); f.cleanup(); fs.rmSync(userDir, { recursive: true, force: true }); }
 });
 
 test('child agents omit parent background and schedule controls', async () => {
