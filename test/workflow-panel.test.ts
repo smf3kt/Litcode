@@ -54,6 +54,8 @@ test('the list request is the recovered panel title, empty state and rows', () =
   assert.equal(empty.title, WORKFLOW_PANEL_TITLE);
   assert.equal(empty.message, WORKFLOW_PANEL_EMPTY);
   assert.deepEqual(empty.choices, []);
+  // Nothing to pick means nothing to answer: the empty panel is a message and `Esc`.
+  assert.equal(empty.readOnly, true);
 
   const facts = workflowListRequest([view({ tasks: [task()] })], 0);
   assert.equal(facts.message, '1 completed');

@@ -118,6 +118,8 @@ export function workflowListRequest(views: readonly WorkflowView[], now: number)
     choices: views.map(view => ({ label: rowLabel(view), value: view.id,
       description: workflowRowFacts(view, now) })),
     defaultIndex: 0,
+    // With no runs there is nothing to pick, so the panel is the empty-state message and `Esc`.
+    ...(views.length === 0 ? { readOnly: true } : {}),
   };
 }
 
