@@ -106,12 +106,21 @@ Order is by how much a user sees.
       (`applyStoredEnvironment`, applied at the start of the interactive loop, where the
       session's own user directory is known). See `research/ports/W218-scroll-speed.md`.
 
+- [x] W219 `/help`. The recovered three-tab panel: the builtin/custom split (`Uo`), the name-sorted
+      deduped rows (`U`/`Po`), the General tab's intro and `hft`'s three-column shortcuts table, the
+      two browse titles with the custom empty state, the docs footer and the tall-layout feedback
+      line. The tabs are the chooser's rows, and `Esc` dismisses. See
+      `research/ports/W219-help-panel.md`.
+
 Next up, scoped but not started:
 
-- W219 targets the next live `local-jsx` surface from the registration scan of
-  `chunk-sfn1dbxq.js`: ungated `tui`, `powerup`, `radio`, `help`; gated `add-dir` (`ve()`),
+- W220 targets the next live `local-jsx` surface from the registration scan of
+  `chunk-sfn1dbxq.js`: ungated `tui`, `powerup`, `radio`; gated `add-dir` (`ve()`),
   `auto-mode-setup` (`sBe()`), `privacy-settings` (`Yoe()`), `skill-doctor` (`ve()`).
-  `scroll-speed` is done (W218).
+  `scroll-speed` (W218) and `help` (W219) are done. `/tui` is a real registration but this
+  product has a single renderer: `Rc()`'s classic arm does not exist locally, so the package
+  is small by nature. `/powerup` is a lesson runner and `/radio` streams audio, which the
+  local-only constraint puts out.
 - The live input-bar names from the earlier scan are exhausted. `/loops` (`RTo`) and `/branch`
   (`CTo`) are `isEnabled:()=>!1`; `/insights` is a `prompt`-type command behind an `allow_insights`
   policy gate; `/memory` (`xfo`) is a thin-client `local-jsx` over CLAUDE.md and the memory

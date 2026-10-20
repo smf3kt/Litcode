@@ -74,7 +74,7 @@ export interface CommandSuggestion {
 
 /** The product command table, transcribed from `COMMAND_HELP`. */
 export const TUI_COMMANDS: readonly TuiCommand[] = [
-  { name: 'help', description: 'Show commands', kind: 'command', lane: 'info' },
+  { name: 'help', description: 'Show help and available commands', kind: 'command', lane: 'info' },
   { name: 'status', description: 'Show session, model, context settings and usage', kind: 'command', lane: 'info' },
   { name: 'context', description: 'Count current request against the configured context budget', kind: 'command', lane: 'info' },
   { name: 'usage', description: 'Show recorded model usage', kind: 'command', lane: 'info' },
