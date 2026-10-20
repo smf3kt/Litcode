@@ -154,10 +154,19 @@ Order is by how much a user sees.
       `/context` and `/usage` each print their report. The `/effort` (W212) and `/model` (W215)
       probes also still pass, so the two surfaces the request named by example are healthy.
 
+- [x] W225 `/focus`. The first renderer-level package of the loop. Both recovered registrations
+      (`bEo` the panel, `PWe` the `local` twin with `r` [4693,5262) as its body): the
+      `on`/`off`/empty-toggle grammar, the recovered invalid line, the `viewMode` write into the user
+      settings file and the live flag the renderer reads. The brief transcript is `vNt`'s fold: while
+      a tool call runs, the in-flight streaming preview comes off screen and the retained source text
+      is re-appended when the fold ends. The non-fullscreen arm, the managed-`viewMode` override, the
+      local-stdin refusal, the panel's key clear and the remote suffix stay out. See
+      `research/ports/W225-focus.md`.
+
 Next up, scoped but not started:
 
-- Nothing bounded and local: the three subsystem-level candidates below each need more than one
-  command port, and every other registration is account- or network-backed.
+- Nothing bounded and local: `/permissions` needs an editing pane, and every other registration is
+  account- or network-backed.
 
 - `/output-style` is scoped out. In this version the visible chooser is a `/config` pane: the
   `local-jsx` registration is `bNt("output-style","Output style",{workspace:!0})`, whose whole
@@ -167,11 +176,9 @@ Next up, scoped but not started:
   is reachable, and it needs the built-in style table `x5` (each entry a vendor prompt body),
   an `outputStyle` settings key and the prompt application — none of which this host carries.
   Porting it would mean porting vendor prompt text, which the project rules exclude.
-- `/focus` is scoped out for now. Its state is one flag (`briefTranscript`) and its body is small,
-  but the flag is threaded through the recovered renderer in at least eight modules
-  (`chunk-24k7d6mw.js`, `chunk-2bcyxj9q.js`, `chunk-3gz7s57c.js`, `chunk-4jr9rxry.js`,
-  `chunk-7q49cqja.js`, `chunk-7vyj6mx6.js`, `chunk-bk5ct2gw.js`, `chunk-j6zmxvvx.js`), so a local
-  brief-transcript mode is a multi-file renderer change, not a command port.
+- `/focus` is ported (W225). Its state is one flag (`briefTranscript`) and its body is small; the
+  local renderer is this product's own, so the threading landed as the `setBriefTranscript` +
+  `holdsFocusPreview` pair in `src/tui.ts` rather than the recovered eight-module thread.
 - `/permissions` needs a full editing pane, not a chooser (`bTo`, `immediate:!0`,
   `thinClientDispatch: "control-request"`, no `load`).
 - The remaining registrations are out or blocked: `/radio` streams audio from a network source;

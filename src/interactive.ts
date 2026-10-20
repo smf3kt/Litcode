@@ -64,6 +64,8 @@ import { ADD_DIR_USAGE, addedForSessionMessage, addDirectoryMessage, validateAdd
 import { chordForAction } from './tui-keys.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import { reloadSkillsMessage } from './reload-skills.js';
+import { briefTranscriptEnabled, focusModeFor, focusReport, focusUnknownArgument, parseFocusArgument,
+  saveViewModeSetting } from './focus-command.js';
 import { reloadSkills } from './skill-catalog.js';
 import {
   expandUserSkill,
@@ -117,6 +119,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /keybindings  Open your keyboard shortcuts file
 /scroll-speed  Adjust mouse wheel scroll speed
 /tui [default|fullscreen]  Set the terminal UI renderer
+/focus [on|off]  Toggle focus view: just your prompt, summary, and response
 /add-dir <path>  Add a new working directory
 /hooks      View hook configurations for tool events
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
@@ -303,6 +306,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setPrefersReducedMotion?.(session.config.prefersReducedMotion);
     terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
     terminal?.setShowMessageTimestamps?.(session.config.showMessageTimestamps);
+    terminal?.setBriefTranscript?.(briefTranscriptEnabled(session.config));
     terminal?.setProgressSettings?.({timeFormat:session.config.timeFormat, timeZone:session.config.timeZone,
       spinnerVerbs:session.config.spinnerVerbs});
     terminal?.setMaxProseWidth?.(session.config.maxProseWidth);
@@ -871,6 +875,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // preference and relaunches into it. This build draws one renderer — the alternate-screen
           // one — and has no relaunch, so the arms that could change something say what they can.
           output.write(`${tuiReport(prompt.slice('/tui'.length))}\n`);
+          continue;
+        }
+        if (prompt === '/focus' || prompt.startsWith('/focus ')) {
+          // Source `r` (chunk-4jr9rxry.js [4693,5262)) and the `bEo` panel (chunk-sfn1dbxq.js
+          // 1659965): `on`/`off`/empty-toggle, the `XMn` write (`viewMode` in the user settings
+          // file) and the live flag the renderer reads. This host draws one fullscreen renderer,
+          // so the panel's "needs the fullscreen renderer" arm is unreachable, and it has no
+          // managed `viewMode`, so the "set by a managed setting" arm is too. The local-stdin
+          // refusal (`bot`) has no local submission channel.
+          const current = briefTranscriptEnabled(session.config);
+          const argument = parseFocusArgument(prompt.slice('/focus'.length), current);
+          if (argument.kind === 'unknown') { output.write(`${focusUnknownArgument(argument.argument)}\n`); continue; }
+          const mode = focusModeFor(argument.enabled);
+          try { saveViewModeSetting(mode, session.config.configSources?.userDir); }
+          catch (error) { output.write(`Couldn't save focus view: ${(error as Error).message}\n`); continue; }
+          session.config.viewMode = mode;
+          terminal?.setBriefTranscript?.(argument.enabled);
+          output.write(`${focusReport(argument.enabled)}\n`);
           continue;
         }
         if (prompt === '/hooks') {

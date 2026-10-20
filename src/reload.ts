@@ -32,6 +32,8 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   else delete next.showTurnDuration;
   if (settings.showMessageTimestamps !== undefined) next.showMessageTimestamps = settings.showMessageTimestamps;
   else delete next.showMessageTimestamps;
+  if (settings.viewMode !== undefined) next.viewMode = settings.viewMode;
+  else delete next.viewMode;
   for (const key of ['timeFormat', 'timeZone', 'spinnerVerbs','editorMode','vimInsertModeRemaps'] as const) {
     if (settings[key] === undefined) delete next[key];
   }

@@ -75,6 +75,8 @@ export type SessionConfig = {
   prefersReducedMotion?: boolean;
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
+  /** `/focus`'s persisted view mode; `focus` is the brief transcript. */
+  viewMode?: import('./focus-command.js').FocusMode;
   timeFormat?: string;
   timeZone?: string;
   spinnerVerbs?: import('./tui-progress-settings.js').SpinnerVerbs;
@@ -212,6 +214,7 @@ export const configSchema = z.object({
   prefersReducedMotion: z.boolean().optional(),
   showTurnDuration: z.boolean().optional(),
   showMessageTimestamps: z.boolean().optional(),
+  viewMode: z.enum(['default', 'verbose', 'focus']).optional(),
   timeFormat: z.string().optional(),
   timeZone: z.string().optional(),
   spinnerVerbs: spinnerVerbsSchema.optional(),
