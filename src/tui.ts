@@ -177,7 +177,8 @@ import { QUESTION_NOTES_ONLY } from './interaction-tools.js';
 const SOURCE_PICKER_OWNS_HISTORY_SEARCH = true;
 import { jde } from './tui-statusline-components.js';
 import { jsx } from './tui-jsx.js';
-import { s, n } from './tui-base-components.js';
+import { s, n, Do } from './tui-base-components.js';
+import { Tde } from './tui-source-chrome.js';
 import {
   createTranscriptState, layoutTranscript, reduceTranscript, renderedTranscriptRows, transcriptLines, wrapEntry,
   wrapEntryRows,
@@ -2611,7 +2612,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return true;
   }
 
-  private renderDialog(columns: number, rows: number): string[] {
+  private renderDialog(columns: number, bodyRows: number): string[] {
     const dialog = this.dialog!;
     const clean = (text: string) => text.replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
     const oneLine = (text: string) => clean(text).replace(/[\t\n]/g, ' ');
@@ -2624,7 +2625,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Source `Ku` renders the countdown as its own row after the question body;
     // the dialog frame trades one content row for it.
     const countdown = this.dialogCountdown();
-    const height = Math.max(0, rows - 4 - (countdown === undefined ? 0 : 1));
+    const height = Math.max(0, bodyRows);
     const content: string[] = [];
     if (reviewing) {
       // Recovered page: a warning while questions are unanswered, then each
@@ -2789,19 +2790,35 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;
         this.drawFrame(frame, columns, rows, rows - 2, cursor, !this.dialog.busy); return;
       }
-      const frame = this.renderDialog(columns, rows);
+      // The recovered host renders a pending dialog inside the chat frame rather than over the
+      // whole screen: the transcript keeps the top, the dialog takes the body and the footer
+      // stays at the bottom, so the surface never degenerates into a bare text screen.
+      const afkRows = this.afkRows();
+      // The transcript keeps the top third while the dialog keeps the rows it needs below it,
+      // and the footer keeps the last row.
+      const transcriptRows = Math.max(0, Math.min(Math.floor(rows / 3), rows - 14 - afkRows));
+      const frame = this.renderDialog(columns, rows - 5 - afkRows - transcriptRows);
+      const viewport = layoutTranscript(this.transcript, columns, transcriptRows, this.renderEntryRows,
+        this.welcomePreamble(columns));
+      const lines: string[] = [];
+      for (let row = 0; row < transcriptRows; row++) {
+        const rendered = viewport.rows[row];
+        lines.push(rendered?.ansi ?? pad(rendered?.text ?? '', columns));
+      }
+      lines.push(...frame, ...this.footerRows(columns));
       const groups = this.dialog.request.groups ?? [];
       const reviewing = groups.length > 0 && this.dialog.step >= groups.length;
       const active = reviewing ? undefined : groups[this.dialog.step] ?? this.dialog.request;
       const choices = active?.choices ?? [];
-      const afkRows = this.afkRows();
+      // The dialog's own answer row: last row when no countdown, one above it otherwise.
+      const answerRow = transcriptRows + frame.length - 2 - afkRows;
       if (this.dialog.notesEditing) {
         const cursor = layoutInput(this.dialog.notesEditor, columns - 2, 1).cursorColumn + 2;
-        this.drawFrame(frame, columns, rows, rows - 2 - afkRows, cursor, true);
+        this.drawFrame(lines, columns, rows, answerRow, cursor, true);
       } else if (reviewing || !choices.length || this.dialog.index === choices.length) {
         const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;
-        this.drawFrame(frame, columns, rows, rows - 2 - afkRows, cursor, true);
-      } else this.drawFrame(frame, columns, rows, rows - 1 - afkRows, 0, false);
+        this.drawFrame(lines, columns, rows, answerRow, cursor, true);
+      } else this.drawFrame(lines, columns, rows, answerRow, 0, false);
       return;
     }
     if (this.sourcePicker?.snapshot.searching) {
@@ -2917,6 +2934,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     row: number, column: number, visible: boolean): void {
     this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true);
     this.renderer.render(lines, columns, rows, { row, column, visible });
+  }
+
+  /**
+   * The footer as painted rows, for screens that compose their own frame instead of going
+   * through `renderChat`. `Tde` is the same element `renderChat` uses, so the permission chip
+   * keeps its slot colour.
+   */
+  private footerRows(columns: number): string[] {
+    this.documentRenderer ??= new TuiDocumentRenderer();
+    return this.documentRenderer.renderElement(jsx(Tde, { width: columns, left: this.statusFooter(columns).map((part, index) =>
+      typeof part === 'string'
+        ? jsx(Do, { dimColor: true, children: part }, String(index))
+        : jsx(n, { color: part.color, children: part.text }, String(index))) }, undefined), columns,
+      { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
   }
 
   private statusHints(): string {

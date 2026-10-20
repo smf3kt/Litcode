@@ -56,6 +56,16 @@ function screenLines(output: Writable): string[] {
   const buffer = terminal.buffer.active;
   return Array.from({ length: terminal.rows }, (_, row) => buffer.getLine(buffer.viewportY + row)?.translateToString(true) ?? '');
 }
+
+/**
+ * A pending dialog keeps the chat frame: its rows sit below the welcome lockup when that fits
+ * and end above the footer, which stays on the last row.
+ */
+function dialogLines(output: Writable): string[] {
+  return screenLines(output).map(line => line.trim()).filter(Boolean)
+    .filter(line => !/[█▟▙]/.test(line) && !line.includes('Welcome to LiTcode'))
+    .filter(line => !line.includes('ctrl+o transcript'));
+}
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -774,19 +784,20 @@ test('grouped questions step through each question and review before submitting'
       { key: 'Second', title: 'Second', message: 'Pick many',
         choices: [{ label: 'X', value: 'X' }, { label: 'Y', value: 'Y' }], multiple: true },
     ] }, new AbortController().signal);
-    assert.equal(frame()[0], 'First');
-    assert.match(frame().at(-1)!, /Question 1 of 2/);
+    const dialog = () => dialogLines(output);
+    assert.equal(dialog()[0], 'First');
+    assert.match(dialog().at(-1)!, /Question 1 of 2/);
     key('\x1b[B\r');
-    assert.equal(frame()[0], 'Second');
-    assert.match(frame().at(-1)!, /Question 2 of 2/);
+    assert.equal(dialog()[0], 'Second');
+    assert.match(dialog().at(-1)!, /Question 2 of 2/);
     key(' \x1b[B \r');
     // The review page lists every answer before the request settles.
-    assert.equal(frame()[0], 'Review your answers');
-    assert.ok(frame().includes('-   B'), drawn);
-    assert.ok(frame().includes('-   X, Y'), drawn);
-    assert.ok(frame().includes('Ready to submit your answers?'));
-    assert.ok(frame().includes('[ Submit answers ]  [ Cancel ]'));
-    assert.match(frame().at(-1)!, /Enter submit/);
+    assert.equal(dialog()[0], 'Review your answers');
+    assert.ok(dialog().includes('-   B'), drawn);
+    assert.ok(dialog().includes('-   X, Y'), drawn);
+    assert.ok(dialog().includes('Ready to submit your answers?'));
+    assert.ok(dialog().includes('[ Submit answers ]  [ Cancel ]'));
+    assert.match(dialog().at(-1)!, /Enter submit/);
     key('\r');
     assert.deepEqual(await pending, { selected: [], groups: [
       { key: 'First', selected: ['B'] }, { key: 'Second', selected: ['X', 'Y'] }] });
@@ -806,10 +817,10 @@ test('a single non-multi-select question submits when its answer is taken', asyn
     const pending = tui.prompt({ message: '', groups: [
       { key: 'Only', title: 'Only', message: 'Pick', choices: [{ label: 'A', value: 'A' }, { label: 'B', value: 'B' }] }] },
     new AbortController().signal);
-    assert.equal(frame()[0], 'Only');
+    assert.equal(dialogLines(output)[0], 'Only');
     // Right does not open a review tab: the source's next-tab bound is 0 for this question.
     key('\x1b[C');
-    assert.equal(frame()[0], 'Only');
+    assert.equal(dialogLines(output)[0], 'Only');
     key('\x1b[B\r');
     assert.deepEqual(await pending, { selected: [], groups: [{ key: 'Only', selected: ['B'] }] });
     assert.ok(!drawn.includes('Review your answers'));
@@ -861,11 +872,11 @@ test('the AFK countdown auto-continues with the answers taken so far', async (co
     key(' \r');           // First takes A and advances.
     key('\x1b[O');        // Focus leaves; idle time starts counting.
     context.mock.timers.tick(40_000);
-    assert.match(frame().at(-1)!, /auto-continue in 20s · any key to stay/);
+    assert.match(dialogLines(output).at(-1)!, /auto-continue in 20s · any key to stay/);
     key('\x1b[B');        // Any key stays; the countdown clears on the next tick.
-    assert.ok(frame().at(-1)!.includes('auto-continue in 20s · any key to stay'), drawn);
+    assert.ok(dialogLines(output).at(-1)!.includes('auto-continue in 20s · any key to stay'), drawn);
     context.mock.timers.tick(1_000);
-    assert.ok(!frame().at(-1)!.includes('auto-continue'), drawn);
+    assert.ok(!dialogLines(output).at(-1)!.includes('auto-continue'), drawn);
     key('\x1b[O');        // Focus leaves again, so idle time resumes.
     context.mock.timers.tick(60_000);
     assert.deepEqual(await pending, { selected: [], groups: [{ key: 'First', selected: ['A'] }], afkTimeoutMs: 60_000 });
@@ -910,7 +921,7 @@ test('notes alone answer a preview question with the source notes-only marker', 
         { label: 'B', value: 'B', preview: 'Preview B' }] }] }, new AbortController().signal);
     assert.ok(frame().includes('Notes: press n to add notes'));
     key('n');
-    assert.match(frame().at(-1)!, /Notes · Enter save \/ Esc exit/);
+    assert.match(dialogLines(output).at(-1)!, /Notes · Enter save \/ Esc exit/);
     assert.ok(frame().includes('Notes:'));
     key('note');
     key('\r');
@@ -939,10 +950,10 @@ test('notes persist when an option is taken and stay off non-preview questions',
     await delay(60);          // The standalone escape is held briefly by the decoder.
     assert.ok(frame().includes('Notes: note'));
     key('\x1b[B\r');          // move to B and take it; the note rides along.
-    assert.equal(frame()[0], 'Extra');
+    assert.equal(dialogLines(output)[0], 'Extra');
     assert.ok(!frame().some(line => line.startsWith('Notes:')), 'multi-select has no notes row');
     key(' \r');
-    assert.equal(frame()[0], 'Review your answers');
+    assert.equal(dialogLines(output)[0], 'Review your answers');
     key('\r');
     assert.deepEqual(await pending, { selected: [], groups: [
       { key: 'Design', selected: ['B'], notes: 'note' },
@@ -1158,19 +1169,19 @@ test('a grouped question can be reopened from the review page and cancelled', as
     ] }, new AbortController().signal);
     key('\r');            // first question keeps A
     key(' \r');           // second question takes X
-    assert.equal(frame()[0], 'Review your answers');
+    assert.equal(dialogLines(output)[0], 'Review your answers');
     // Left steps back one question, so it reopens the last one with its answer.
     key('\x1b[D');
-    assert.equal(frame()[0], 'Second');
+    assert.equal(dialogLines(output)[0], 'Second');
     assert.ok(frame().includes('Selected: X'), drawn);
     key('\x1b[D');
-    assert.equal(frame()[0], 'First');
+    assert.equal(dialogLines(output)[0], 'First');
     assert.ok(frame().includes('Selected: A'), drawn);
     key('\x1b[B\r');      // change it to B, which advances to the second question
-    assert.equal(frame()[0], 'Second');
+    assert.equal(dialogLines(output)[0], 'Second');
     // Right on the last question opens the review page, as the last tab does.
     key('\x1b[C');
-    assert.equal(frame()[0], 'Review your answers');
+    assert.equal(dialogLines(output)[0], 'Review your answers');
     key('\r');
     assert.deepEqual(await pending, { selected: [], groups: [
       { key: 'First', selected: ['B'] }, { key: 'Second', selected: ['X'] }] });
