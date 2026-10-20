@@ -72,6 +72,9 @@ Order is by how much a user sees.
       resolution, the tick texts, the delivery state, the autonomous default and the `/cron` label.
       Native storage V5 is the stub `Mbr` in this build, so the recovered direct-`fs` fallback is the
       live path. See `research/ports/W208-loop-file-runtime.md`.
+- [x] W212 the `/effort` command. The recovered argument grammar (`yhn`/`g`/`qJ`/`D`/`V`/`VBt`/`P`),
+      the persistable-level write through `X9`/`we`, the `LLM_EFFORT` override and the `eee`
+      level-change notice. See `research/ports/W212-effort-command.md`.
 
 Explicitly out of scope for this loop:
 

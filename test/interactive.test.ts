@@ -519,7 +519,7 @@ test('a bare argument command answers with its usage instead of the unknown-comm
       input: Readable.from(['/effort\n', '/cwd\n', '/permissions\n', '/rename\n', '/exit\n']),
       output: stdout.stream, status: stderr.stream, signal: lifetime,
     });
-    assert.match(stderr.value(), /error: Use \/effort low\|medium\|high\|xhigh\|max/);
+    assert.match(stdout.value(), /Usage: \/effort <low\|medium\|high\|xhigh\|max\|auto>/);
     assert.match(stderr.value(), /error: Use \/cwd DIR/);
     assert.match(stderr.value(), /error: Use \/permissions default\|plan\|acceptEdits\|ask\|bypass\|auto\|dontAsk/);
     assert.match(stderr.value(), /error: Use \/rename TITLE/);
@@ -557,6 +557,58 @@ test('/loop expands to the recovered loop instructions and sends them as the tur
     // The vendor display names never reach the model: every one is mapped to this host's tool.
     assert.doesNotMatch(text, /CronCreate|CronDelete|ScheduleWakeup|TaskStop|TaskList|AskUserQuestion|Monitor\b|PushNotification/);
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('/effort answers every argument form and stores only a persistable level', { timeout: 8000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-effort-')));
+  const userDir = path.join(workspace, 'user');
+  fs.mkdirSync(userDir);
+  const config = { ...defaultConfig(workspace, []), model: 'test', configSources: { userDir } };
+  const provider: ModelProvider = { count: async () => 0, complete: async () => reply('unused') };
+  const lifetime = AbortSignal.timeout(6000);
+  const runtime = await createRuntime(config, provider, lifetime);
+  const session = Session.open(workspace, { config });
+  const stdout = output(), stderr = output();
+  const settingsFile = path.join(userDir, 'settings.json');
+  const stored = () => fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf8')) : {};
+  const previous = process.env.LLM_EFFORT;
+  delete process.env.LLM_EFFORT;
+  // A live stream, because the settings write is only observable once the command has returned.
+  const input = new PassThrough();
+  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  try {
+    const loop = interactiveLoop(session, provider, runtime,
+      { input, output: stdout.stream, status: stderr.stream, signal: lifetime });
+    input.write('/effort\n'); await wait(200);
+    input.write('/effort status\n'); await wait(200);
+    input.write('/effort high\n'); await wait(200);
+    assert.equal(stored().effort, 'high');
+    input.write('/effort status\n'); await wait(200);
+    input.write('/effort max\n'); await wait(200);
+    // `max` is session-scoped, so the store keeps the earlier level.
+    assert.equal(stored().effort, 'high');
+    input.write('/effort extreme\n'); await wait(200);
+    input.write('/effort auto\n'); await wait(200);
+    assert.equal('effort' in stored(), false);
+    input.write('/exit\n');
+    await loop;
+    const said = stdout.value(), status = stderr.value();
+    assert.match(said, /Usage: \/effort <low\|medium\|high\|xhigh\|max\|auto>/);
+    assert.match(said, /^Effort level: auto \(currently high\)$/m);
+    assert.match(said, /Set effort level to high \(saved as your default for new sessions\): Comprehensive implementation with extensive testing and documentation/);
+    assert.match(said, /Set effort level to max \(this session only\)/);
+    assert.match(said, /Current effort level: high \(Comprehensive implementation with extensive testing and documentation\)/);
+    assert.match(said, /Invalid argument: extreme\. Valid options are: low, medium, high, xhigh, max, auto/);
+    assert.match(said, /Effort level set to auto/);
+    // The recovered `eee` notice is the status-row surface, and `auto` has none.
+    assert.match(status, /● high · \/effort/);
+    assert.match(status, /◈ max · \/effort/);
+    assert.doesNotMatch(status, /auto · \/effort/);
+    assert.doesNotMatch(said + status, /Unknown command; use \/help/);
+  } finally {
+    if (previous !== undefined) process.env.LLM_EFFORT = previous;
+    session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true });
+  }
 });
 
 test('bare /config opens the editor mode choice and saves the picked mode', { timeout: 8000 }, async () => {
