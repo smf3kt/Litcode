@@ -33,7 +33,8 @@ import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import { workflowsAvailable } from './tui-input-highlights.js';
 import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from './loop-command.js';
-import { DEFAULT_EFFORT, effortCommand, effortIndicator } from './effort-command.js';
+import { DEFAULT_EFFORT, EFFORT_LEVELS, effortCommand, effortDescription, effortGlyph,
+  effortIndicator } from './effort-command.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
 import {
@@ -1065,6 +1066,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (!selected || selected === ':cancel') { options.status.write('Model selection cancelled.\n'); continue; }
           if (selected === session.config.model) { options.status.write('Model unchanged.\n'); continue; }
           prompt = `/model ${selected}`;
+        }
+        if (prompt === '/effort' && terminal?.prompt) {
+          // The recovered `local-jsx` registration at `chunk-sfn1dbxq.js` 1659314 opens the effort
+          // slider, whose title is `Effort` and whose track reads `Faster … Smarter`; the `local`
+          // registration's usage text is the non-interactive answer, so only this terminal gets the
+          // chooser. Left/right adjustment needs a keyed dialog the local host does not have, so the
+          // five levels are the choices and the current one is preselected.
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          const current = session.config.effort ?? DEFAULT_EFFORT;
+          const answer = await withTurn(signal => readDialog({ title: 'Effort',
+            message: `Current: ${session.config.effort ?? `auto (${DEFAULT_EFFORT})`}\nFaster  ← →  Smarter`,
+            choices: EFFORT_LEVELS.map(level => ({ label: `${effortGlyph(level)} ${level}`,
+              value: level, description: effortDescription(level) })),
+            defaultIndex: Math.max(0, EFFORT_LEVELS.indexOf(current)) }, signal));
+          const picked = answer?.selected[0];
+          if (!picked) { options.status.write('Effort selection cancelled.\n'); continue; }
+          if (picked === session.config.effort) { options.status.write('Effort unchanged.\n'); continue; }
+          prompt = `/effort ${picked}`;
         }
         if(prompt==='/vim'||prompt==='/config'||/^\/config\s+editor(?:=|\s|$)/.test(prompt)){
           if(session.awaitingResponse)throw new Error('Finish or continue the current turn first');

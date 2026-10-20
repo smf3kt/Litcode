@@ -71,10 +71,22 @@ const check = (label, condition) => console.log(`${condition ? 'PASS' : 'FAIL'} 
 const stored = () => fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(settingsFile, 'utf8')) : {};
 
 await delay(2000);
-child.stdin.write('/effort\r'); await delay(1200);
-const shortUsage = screenNow().join('\n');
-check('a bare /effort prints the short argument hint', shortUsage.includes('Usage: /effort <low|medium|high|xhigh|max|auto>'));
+child.stdin.write('/effort\r'); await delay(1500);
+const picker = screenNow().join('\n');
+check('a bare /effort in a terminal opens the effort chooser', picker.includes('\nEffort\n')
+  && picker.includes('Faster  ← →  Smarter'));
+check('the chooser preselects the level auto resolves to', picker.includes('Current: auto (high)')
+  && picker.includes('>     ● high'));
+check('the chooser carries every level with its glyph and description',
+  ['○ low', '◐ medium', '● high', '◉ xhigh', '◈ max']
+    .every(row => picker.includes(row))
+  && picker.includes('Comprehensive implementation with extensive testing and documentation'));
 snap('after bare /effort');
+
+child.stdin.write('\u001b'); await delay(1500);
+const cancelled = screenNow().join('\n');
+check('Escape closes the chooser and leaves the level alone',
+  !cancelled.includes('Faster  ← →  Smarter') && cancelled.includes('Effort selection c'));
 
 child.stdin.write('/effort help\r'); await delay(1200);
 const usage = screenNow().join('\n');
