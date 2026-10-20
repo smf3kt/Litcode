@@ -54,6 +54,9 @@ import { openExternalFile } from './external-editor.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
+import { HELP_DISMISSED, browseHelp } from './help-panel.js';
+import { chordForAction } from './tui-keys.js';
+import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import {
   expandUserSkill,
   findSkill,
@@ -95,7 +98,7 @@ export function configChangeSource(file: string, workspace: string, sources: {
   return undefined;
 }
 
-export const COMMAND_HELP = `/help       Show commands
+export const COMMAND_HELP = `/help       Show help and available commands
 /status     Show session, model, context settings and usage
 /context    Count current request against the configured context budget
 /usage      Show recorded model usage
@@ -804,7 +807,22 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         continue;
       }
       try {
-        if (prompt === '/help') { output.write(COMMAND_HELP + '\n'); continue; }
+        if (prompt === '/help') {
+          // Source `G` (chunk-yehhb8pt.js 18865): the recovered command docks a tabbed panel in the
+          // frame — General, Commands and Custom commands. Without a modal surface the flat list
+          // stays, which is what the same command prints for a piped session.
+          if (terminal?.prompt) {
+            const notice = await browseHelp({
+              commands: tuiCommandsWithSkills(session.config.skills),
+              rows: process.stdout.rows ?? 24,
+              columns: Math.max(40, (process.stdout.columns ?? 80) - 4),
+              chords: (action, context, fallback) => chordForAction(action, context, fallback),
+            }, request => withTurn(signal => readDialog(request, signal)));
+            if (notice) options.status.write(notice + '\n');
+            continue;
+          }
+          output.write(COMMAND_HELP + '\n'); continue;
+        }
         if (prompt === '/copy' || prompt.startsWith('/copy ')) {
           const responses = copyResponses(session.events.flatMap(event =>
             event.kind === 'message' ? [event.message] : []));
