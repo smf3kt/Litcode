@@ -33,6 +33,7 @@ import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import { workflowsAvailable } from './tui-input-highlights.js';
 import { loopCommandPrompt } from './loop-command.js';
+import { browseWorkflows } from './workflow-panel.js';
 import {
   expandUserSkill,
   findSkill,
@@ -87,7 +88,7 @@ export const COMMAND_HELP = `/help       Show commands
 /mcp        Show configured MCP servers and adapter limitations
 /mcp-reconnect [SERVER]  Reconnect one server in place, or all servers into a new session
 /tasks      Show workspace task dependencies and readiness
-/workflows  Show this session workflow runs, including saved runs
+/workflows  Browse running and completed workflows
 /cron       Show scheduled prompts in the active session
 /loop [interval] [prompt]  Repeat a prompt or command on an interval (e.g. /loop 5m /foo)
 /peers      List live same-host sessions and this inbox address
@@ -912,7 +913,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (prompt === '/workflows') {
           const tool = activeRuntime.buildTools(session.config, session.id).find(tool => tool.schema.name === 'workflow_get');
           if (!tool || permissionDecision(session.config.permissions, tool, {}).decision !== 'allow') throw new Error('Workflow inspection is disabled by configuration or permission');
-          const views = activeRuntime.listWorkflows?.(session.config, session.id) ?? [];
+          const list = () => activeRuntime.listWorkflows?.(session.config, session.id) ?? [];
+          // Source `le`/`pe` (chunk-mtw0aefh.js [20074,24977)/[19263,20074)): the command is a
+          // docked panel of rows, not a text dump. Without a modal surface the text stays.
+          if (terminal?.prompt) {
+            const notice = await browseWorkflows(list, request => withTurn(signal => readDialog(request, signal)));
+            if (notice) options.status.write(notice + '\n');
+            continue;
+          }
+          const views = list();
           const text = JSON.stringify(views.map(view => ({ id: view.id, status: view.status, started_at: view.started_at,
             ended_at: view.ended_at, tasks: view.tasks.map(task => ({ id: task.id, status: task.status })) })), null, 2);
           if (Buffer.byteLength(text) > session.config.maxOutputBytes) throw new Error('Workflow list exceeds display budget; use workflow_get for a known ID');

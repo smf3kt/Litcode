@@ -1800,6 +1800,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // and Enter saves the text and takes the focused/stored answer when present.
     if (dialog.notesEditing) { this.handleNotesAction(dialog, action, command, sequence); return; }
     if (command === 'interrupt' || command === 'eof' || sequence === '\x1b') { dialog.finish(); return; }
+    // A read-only panel has no answer input: Enter picks the focused row when there is one,
+    // and does nothing when the panel is only a record to read.
+    if (dialog.request.readOnly === true && command === 'submit'
+      && !(this.dialogStep(dialog)?.choices ?? []).length) return;
     // The review page owns its keys before any per-question handling, because
     // it has no choices of its own and would otherwise fall into text entry.
     if (this.handleReviewAction(dialog, action, command ?? '')) return;
@@ -2718,14 +2722,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const visible = body.slice(dialog.scroll, dialog.scroll + height);
     while (visible.length < height) visible.push('');
     const textEntry = choices.length === 0 || dialog.index === choices.length;
+    const readOnly = dialog.request.readOnly === true;
     const answer = '> ' + (layoutInput(dialog.notesEditing ? dialog.notesEditor : dialog.editor,
       columns - 2, 1).lines[0] ?? '');
     const progress = groups.length ? `Question ${dialog.step + 1} of ${groups.length}` : undefined;
-    const hint = dialog.notesEditing ? 'Notes · Enter save / Esc exit'
-      : active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'
-        : 'Enter next / Esc cancel / PgUp/PgDn';
+    // A read-only panel keeps its rows selectable but draws no input row of its own.
+    const hint = readOnly ? (choices.length ? 'Enter next / Esc back / PgUp/PgDn' : 'Esc close / PgUp/PgDn')
+      : dialog.notesEditing ? 'Notes · Enter save / Esc exit'
+        : active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'
+          : 'Enter next / Esc cancel / PgUp/PgDn';
     return [oneLine(title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
-      textEntry || dialog.notesEditing ? answer : dialog.index === clarification ? 'Chat about this'
+      readOnly && textEntry ? '' : textEntry || dialog.notesEditing ? answer : dialog.index === clarification ? 'Chat about this'
         : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
       dialog.error ?? (progress ? `${progress} · ${hint}` : hint),
       ...(countdown === undefined ? [] : [countdown])].map((line, row) =>
@@ -2815,7 +2822,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (this.dialog.notesEditing) {
         const cursor = layoutInput(this.dialog.notesEditor, columns - 2, 1).cursorColumn + 2;
         this.drawFrame(lines, columns, rows, answerRow, cursor, true);
-      } else if (reviewing || !choices.length || this.dialog.index === choices.length) {
+      } else if (this.dialog.request.readOnly === true) this.drawFrame(lines, columns, rows, answerRow, 0, false);
+      else if (reviewing || !choices.length || this.dialog.index === choices.length) {
         const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;
         this.drawFrame(lines, columns, rows, answerRow, cursor, true);
       } else this.drawFrame(lines, columns, rows, answerRow, 0, false);

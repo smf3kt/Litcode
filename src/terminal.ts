@@ -1205,6 +1205,12 @@ export interface TerminalPromptRequest {
   afkTimeoutMs?: number | null;
   /** Recovered question action returning clarification feedback to the model. */
   allowClarification?: boolean;
+  /**
+   * A panel that only shows rows: no answer input, no focus cursor and an `Esc close` guide. The
+   * recovered `/workflows` detail view is one of these — it lists a run's agents and its own keys
+   * act on them, while the question dialog's input row would answer a question nobody asked.
+   */
+  readOnly?: boolean;
 }
 export interface TerminalPromptAnswer {
   selected: string[];

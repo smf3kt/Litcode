@@ -622,6 +622,50 @@ test('copied input rows keep visible navigation and raw submission aligned throu
   } finally { tui.close(); decoded.get(output)!.dispose(); }
 });
 
+test('a read-only panel lists its rows with no answer input and closes on Escape', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 80, rows: 20 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, onSubmit: () => {} }).start();
+  const key = (value: string) => input.emit('data', value);
+  try {
+    const pending = tui.prompt({ title: '✔ run-1', message: '1/2 agents · 1m 20s · done', readOnly: true,
+      choices: [{ label: '✔ build', value: 'build', description: 'Completed' }] }, new AbortController().signal);
+    const lines = () => dialogLines(output);
+    assert.equal(lines()[0], '✔ run-1');
+    assert.ok(lines().includes('1/2 agents · 1m 20s · done'));
+    assert.ok(lines().some(line => line.endsWith('✔ build')), lines().join('|'));
+    assert.ok(lines().includes('Completed'), lines().join('|'));
+    assert.match(lines().at(-1)!, /Enter next \/ Esc back \/ PgUp\/PgDn/);
+    // No `> ` input row: the panel has no question to answer.
+    assert.ok(!lines().some(line => line.trim() === '>'), lines().join('|'));
+    assert.ok(lines().includes('Selected: ✔ build'), lines().join('|'));
+    // Enter picks the focused row, so the panel resolves with it rather than complaining.
+    key('\r');
+    assert.deepEqual(await pending, { selected: ['build'] });
+  } finally { tui.close(); decoded.get(output)!.dispose(); }
+});
+
+test('a read-only panel with no rows closes on Escape and ignores Enter', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 80, rows: 20 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, onSubmit: () => {} }).start();
+  const key = (value: string) => input.emit('data', value);
+  try {
+    const pending = tui.prompt({ title: '✔ build', readOnly: true,
+      message: 'Completed · session session-9\n\ndo the build' }, new AbortController().signal);
+    assert.equal(dialogLines(output)[0], '✔ build');
+    assert.match(dialogLines(output).at(-1)!, /Esc close \/ PgUp\/PgDn/);
+    key('\r');
+    assert.ok(!dialogLines(output).some(line => line.includes('Enter an answer')), dialogLines(output).join('|'));
+    key('\x1b');
+    assert.equal(await pending, undefined);
+  } finally { tui.close(); decoded.get(output)!.dispose(); }
+});
+
 test('TUI kill and yank commands fall through context bindings and isolate modal spans', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
