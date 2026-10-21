@@ -438,6 +438,14 @@ Next up, scoped but not started:
       description. The host dialog has no text filter, so `/ to search` is not offered. Unit 14/14
       + 1/1, focused 62/62, compiled 10/10 at identity `3e8af877…`. See
       `research/ports/W258-skills-panel.md`.
+- [x] W259 `/tasks` (`fLt`, chunk-24k7d6mw.js 674472): the local Background panel over the live
+      registries. Rows keep the recovered per-kind labels (command, description, name), the
+      subtitle counts shells/agents/crons, and `x` stops the focused row through the new
+      `Runtime.stopTask`; Escape closes silently and an idle registry shows
+      `No tasks currently running`. Enter stays inert (no host detail or foreground view), the
+      vendor-only task kinds are not produced, and piped sessions keep the durable `task_list`
+      report. Unit 6/6 + 1/1, focused 33/33, compiled 7/7 at identity `c44dd8ab…`. See
+      `research/ports/W259-tasks-panel.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

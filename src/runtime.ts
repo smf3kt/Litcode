@@ -446,6 +446,10 @@ export type Runtime = {
   backgroundWorkCount?(owner: string): number;
   /** Stop every running background job and child agent for an owner; returns how many. */
   stopBackground?(owner: string): number;
+  /** Live jobs, running child agents and scheduled crons, the `/tasks` panel's snapshot. */
+  backgroundTasks?(owner: string): import('./tasks-panel.js').BackgroundTaskSnapshot;
+  /** Stop one job, child agent or cron by id; undefined when the id is no longer live. */
+  stopTask?(owner: string, id: string): Promise<import('./tasks-panel.js').BackgroundTaskKind | undefined>;
   releaseSession?(owner: string): Promise<void>;
   runSkill?(config: SessionConfig, owner: string, skill: SkillInfo, args: string, signal: AbortSignal,
     requestPermission?: (tool: ToolDefinition, input: unknown, decision: PermissionDecision) => Promise<PermissionDecision>,
@@ -637,6 +641,36 @@ export async function createRuntime(
     if (closed || signal.aborted) return 0;
     const resources = resourcesFor(owner, scopeFor(owner));
     return (resources.background?.active().length ?? 0) + runningChildren(resources).length;
+  };
+  // `fLt`'s list inputs (`EWe` at 699801): running background jobs, running child
+  // agents and the session's scheduled crons. A closed runtime has no live rows.
+  const backgroundTasksForOwner = (owner: string): import('./tasks-panel.js').BackgroundTaskSnapshot => {
+    if (closed || signal.aborted) return { jobs: [], agents: [], crons: [] };
+    const resources = owners.get(owner);
+    if (resources === undefined) return { jobs: [], agents: [], crons: [] };
+    return {
+      jobs: resources.background?.active() ?? [],
+      agents: runningChildren(resources).map(child => ({ id: child.id, name: child.name, status: child.status })),
+      crons: (resources.scheduler?.list() ?? []).map(job => ({ id: job.id, cron: job.cron,
+        recurring: job.recurring === true, prompt: job.prompt })),
+    };
+  };
+  // `Cm` at 680125: the stop arm dispatches by the row's live registry.
+  const stopTaskForOwner = async (owner: string, id: string): Promise<import('./tasks-panel.js').BackgroundTaskKind | undefined> => {
+    if (closed || signal.aborted) return undefined;
+    const resources = resourcesFor(owner, scopeFor(owner));
+    const job = resources.background?.active().find(candidate => candidate.id === id);
+    if (job !== undefined) {
+      resources.background!.stop(id);
+      return job.kind === 'run' ? 'shell' : 'monitor';
+    }
+    const child = runningChildren(resources).find(candidate => candidate.id === id);
+    if (child !== undefined) {
+      await resources.agents!.stop(id);
+      return 'agent';
+    }
+    if (resources.scheduler?.delete(id) === true) return 'cron';
+    return undefined;
   };
   const stopBackgroundForOwner = (owner: string): number => {
     if (closed || signal.aborted) return 0;
@@ -1245,6 +1279,8 @@ export async function createRuntime(
       stopState(owner) { return stopStateForOwner(owner); },
       backgroundWorkCount(owner) { return backgroundWorkCountForOwner(owner); },
       stopBackground(owner) { return stopBackgroundForOwner(owner); },
+      backgroundTasks(owner) { return backgroundTasksForOwner(owner); },
+      stopTask(owner, id) { return stopTaskForOwner(owner, id); },
       subscribeTasks(current, listener) {
         if (closed || !current.features?.tasks) return () => {};
         const unsubscribe = subscribeTaskChanges(current.workspace, () => {if (!closed) listener();});
