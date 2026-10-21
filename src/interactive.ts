@@ -346,6 +346,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     },
   };
   terminal?.bindPromptQueue?.(promptQueue);
+  // Source `Jr` (chunk-24k7d6mw.js 435644) reads the task store and, on the confirmed press,
+  // stops the running jobs and local-agent tasks. This host projects the same live set from the
+  // owner's runtime and stops exactly those; a closed runtime has no live work to report.
+  terminal?.bindBackgroundWork?.(
+    () => {
+      try { return activeRuntime.backgroundWorkCount?.(session.id) ?? 0; } catch { return 0; }
+    },
+    () => { try { activeRuntime.stopBackground?.(session.id); } catch (error) { options.status.write(`Background stop error: ${String(error)}\n`); } });
   const promptQueueChanged = () => { terminal?.promptQueueChanged?.(); };
   let editorWork: Promise<import('./external-editor.js').ExternalEditorResult> | undefined;
   let inputClosed = false;
