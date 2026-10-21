@@ -11,6 +11,9 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   const settings = parseSettings(loaded.settings);
   const next = structuredClone(current);
   const overrides = current.configSources?.overrides ?? {};
+  // se/uc, 9vcaezw1 [10462,12624), UTF-16: refresh the defaults while preserving the selected session effort.
+  if (settings.modelSettings !== undefined) next.modelSettings = settings.modelSettings;
+  else delete next.modelSettings;
   next.skills = loaded.skills;
   next.instructionSources = instructionSources(loaded.instructions);
   next.conditionalRules = loaded.conditionalRules ?? [];

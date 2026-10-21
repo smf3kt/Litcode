@@ -23,6 +23,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { z } from 'zod';
+import { modelSettingsSchema, type ModelSettings } from './effort-command.js';
 import { statusLineSchema } from './tui-statusline-schema.js';
 
 import { defaultUserDir, expandSkill, type InstructionFile, type SkillInfo } from './config.js';
@@ -122,6 +123,7 @@ export type ParsedRuntimeSettings = {
   promptCaching?: boolean;
   eagerToolInput?: boolean;
   effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+  modelSettings?: ModelSettings;
   allowShell?: boolean;
   maxTurns?: number;
   stopHookBlockCap?: number;
@@ -234,6 +236,7 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if ('promptCaching' in settings) out.promptCaching = settingBoolean(settings, 'promptCaching');
   if ('eagerToolInput' in settings) out.eagerToolInput = settingBoolean(settings, 'eagerToolInput');
   if ('effort' in settings) out.effort = settingEnum(settings, 'effort', ['low', 'medium', 'high', 'xhigh', 'max'] as const);
+  if (settings.modelSettings !== undefined) out.modelSettings = modelSettingsSchema.parse(settings.modelSettings);
   if ('allowShell' in settings) out.allowShell = settingBoolean(settings, 'allowShell');
   if ('stopHookBlockCap' in settings) out.stopHookBlockCap = configSchema.shape.stopHookBlockCap.parse(settings.stopHookBlockCap);
   if ('automaticCheckpoints' in settings) out.automaticCheckpoints = settingBoolean(settings, 'automaticCheckpoints');

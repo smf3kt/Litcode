@@ -36,16 +36,18 @@ import { hooksSchema } from './hooks.js';
 import { HOOKS_NONE_YET, HOOKS_TITLE, attributeHooks, browseHooks, hookConfigLabel,
   hookListSubtitle, type HookLayer, type HookPanelHook } from './hooks-panel.js';
 import { saveThemeSetting, saveEditorMode, saveEffortSetting, saveAutoCompactSetting,
-  readAutoCompactSetting, saveModelSetting } from './theme-settings.js';
+  readAutoCompactSetting, saveModelSetting, saveConfigPanelSetting, saveConfigModelEffort } from './theme-settings.js';
 import { editorModeRow, vimRedirect } from './tui-vim-settings-source.js';
 import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import { workflowsAvailable } from './tui-input-highlights.js';
 import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from './loop-command.js';
-import { DEFAULT_EFFORT, effortCommand, isEffortLevel,
+import { DEFAULT_EFFORT, effortCommand, isEffortLevel, modelEffort, modelSettingsKey, persistableEffort,
   effortIndicator, type EffortLevel } from './effort-command.js';
 import { effortSliderRequest } from './effort-slider.js';
 import { modelPickerRequest } from './model-picker.js';
+import { TIME_FORMATS, type ConfigPanelState, type ConfigUpdate } from './config-panel.js';
+import { configPanelInput } from './config-panel-input.js';
 import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUsageMessage,
   parseCopyArgument, writeCopyFile } from './copy-command.js';
 import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
@@ -168,6 +170,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /permissions  Manage allow and deny tool permission rules
 /permissions MODE  Start a session in default/plan/acceptEdits/ask/bypass mode
 /editor     Edit the current draft in VISUAL/EDITOR (Ctrl+G at a terminal)
+/config     Browse and change local settings
 /config editor=normal|vim  Save and apply the input editor mode
 /vim        Open the Editor mode setting
 /clear      Start a new session without changing existing logs
@@ -825,6 +828,34 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await applyConfig(config, false, signal);
     options.status.write(`Theme: ${theme}\n`);
   };
+  /** Co -> Ll/Me, dag4qhha [33770,34600), nybcbd9t [8318,9556), UTF-16; shares the command's hook/save/apply path. */
+  const selectModel = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal, fromConfig = false) => {
+    if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
+    const config = structuredClone(session.config);
+    const pre = await agent().emitHook('PreModelSwitch', { from_model: config.model, to_model: model, requested_model: model }, signal);
+    const hookReason = pre.permissionDecisionReason;
+    if (pre.permissionDecision === 'deny') throw new Error(`Model switch blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
+    if (pre.permissionDecision === 'ask') {
+      const approved = await confirm('Switch model', hookReason ?? 'A PreModelSwitch hook asked you to confirm', signal).catch(() => false);
+      if (!approved) throw new Error(`Model switch to ${model} was blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
+    }
+    if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
+    if (fromConfig && effort !== undefined) {
+      await saveConfigModelEffort(model, effort, config.configSources?.userDir);
+      const value = persistableEffort(effort), key = modelSettingsKey(model);
+      if (value !== undefined && !Object.hasOwn(Object.prototype, key))
+        config.modelSettings = { ...config.modelSettings, [key]: { ...config.modelSettings?.[key], effortLevel: value } };
+    }
+    if (!sessionOnly && config.configSources?.userDir !== undefined) saveModelSetting(model, config.configSources.userDir);
+    config.model = model;
+    if (effort !== undefined) { config.effort = effort; config.effortSelection = { kind: 'level' }; }
+    else {
+      const inherited = modelEffort(config, model);
+      if (inherited === undefined) delete config.effort; else config.effort = inherited;
+    }
+    await applyConfig(config, true, signal);
+    options.status.write(`Model: ${model}\n`);
+  };
   try {
     await terminal?.bindInputHistory?.(session);
     terminal?.bindDiffPanel?.(session);
@@ -1408,7 +1439,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             // uBe ys/Cr/dr, 24k7d6mw [617998,624627), UTF-16: touched effort is distinct
             // from implicit effort, even after an endpoint or round trip returns to the same level.
             const answer = await withTurn(signal => readDialog(
-              modelPickerRequest(models, session.config.model, session.config.effort), signal));
+              modelPickerRequest(models, session.config.model, session.config.effort, true,
+                session.config.effortSelection?.kind === 'inherit'
+                  ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined), signal));
             selected = answer?.selected[0];
             if (answer?.adjusted !== undefined && isEffortLevel(answer.adjusted)) pendingEffort = answer.adjusted;
             pendingSessionOnly = answer?.key === 's';
@@ -1428,6 +1461,85 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (!isEffortLevel(picked)) throw new Error('Invalid effort selection');
           pendingSessionOnly = answer?.key === 's';
           prompt = `/effort ${picked}`;
+        }
+        if (prompt === '/config' && terminal?.prompt) {
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          let state: ConfigPanelState | undefined;
+          let problem: string | undefined;
+          const changes = new Map<string, string>();
+          // bs/Hl/Co, dag4qhha [17007,42182), UTF-16: accepted rows persist immediately; closing only reports.
+          for (;;) {
+            const answer = await withTurn(signal => readDialog({ title: 'Config', message: '', configPanel: {
+              input: configPanelInput(session.config, state),
+              change: async update => {
+                signal.throwIfAborted();
+                const config = structuredClone(session.config);
+                try {
+                  await saveConfigPanelSetting(update, config.workspace, config.configSources?.userDir);
+                  switch (update.id) {
+                    case 'reduceMotion': config.prefersReducedMotion = update.value; break;
+                    case 'thinking': config.thinking = update.value; break;
+                    case 'turnDuration': config.showTurnDuration = update.value; break;
+                    case 'timeFormat': config.timeFormat = update.value; break;
+                    case 'editor': config.editorMode = update.value; break;
+                    case 'askUserQuestionTimeout': config.askUserQuestionTimeout = update.value; break;
+                    case 'dialogExpiry':
+                      if (update.value === 'default') delete config.dialogExpiry; else config.dialogExpiry = update.value;
+                      break;
+                  }
+                  await applyConfig(config, false, signal);
+                  changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                  return configPanelInput(session.config);
+                } catch (error) {
+                  terminal.writeNotice?.(`Setting change failed: ${error instanceof Error ? error.message : String(error)}`);
+                  throw error;
+                }
+              },
+            }, ...(problem === undefined ? {} : { initialText: problem }) }, signal));
+            const result = answer?.configPanel;
+            if (result === undefined || result.open === undefined) break;
+            state = result.state; problem = undefined;
+            try {
+              if (result.open === 'timeFormat') {
+                const picked = await withTurn(signal => readDialog({ title: 'Time format', message: '',
+                  choices: TIME_FORMATS.map(value => ({ label: value, value })),
+                  defaultIndex: TIME_FORMATS.findIndex(value => value === session.config.timeFormat) }, signal));
+                const value = TIME_FORMATS.find(value => value === picked?.selected[0]);
+                if (value !== undefined) {
+                  const update: ConfigUpdate = { id: 'timeFormat', value };
+                  await saveConfigPanelSetting(update, session.config.workspace, session.config.configSources?.userDir);
+                  const config = structuredClone(session.config); config.timeFormat = value;
+                  await withTurn(signal => applyConfig(config, false, signal));
+                  changes.set('timeFormat', `Set timeFormat to ${value}`);
+                }
+              } else if (result.open === 'theme') {
+                const choices = await terminal.getThemeChoices?.() ?? themeChoices as { label: string; value: ThemeSetting }[];
+                const picked = await withTurn(signal => readDialog({ title: 'Theme', message: '', choices,
+                  defaultIndex: Math.max(0, choices.findIndex(choice => choice.value === (session.config.theme ?? 'dark'))), themePreview: true }, signal));
+                const value = parseTheme(picked?.selected[0]);
+                if (value !== undefined) {
+                  await withTurn(signal => selectTheme(value, signal)); changes.set('theme', `Set theme to ${value}`);
+                }
+              } else {
+                const models = [...new Set([session.config.model, ...(session.config.agentTypes ?? []).map(type => type.model),
+                  ...(session.config.skills ?? []).map(skill => skill.model), ...listSessions(session.config.workspace).map(item => item.model)])]
+                  .filter((model): model is string => Boolean(model) && model !== 'inherit')
+                  .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
+                const inherited = session.config.effortSelection?.kind === 'inherit'
+                  ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined;
+                const picked = await withTurn(signal => readDialog(modelPickerRequest(models, session.config.model, session.config.effort, false, inherited), signal));
+                const model = picked?.selected[0];
+                if (model !== undefined) {
+                  await withTurn(signal => selectModel(model, picked?.adjusted !== undefined && isEffortLevel(picked.adjusted) ? picked.adjusted : undefined, false, signal, true));
+                  changes.set('model', `Set model to ${model}`);
+                }
+              }
+            } catch (error) {
+              options.signal.throwIfAborted(); problem = error instanceof Error ? error.message : String(error);
+            }
+          }
+          terminal.writeNotice?.(changes.size ? [...changes.values()].join('\n') : 'Config dialog dismissed');
+          continue;
         }
         if(prompt==='/vim'||prompt==='/config'||/^\/config\s+editor(?:=|\s|$)/.test(prompt)){
           if(session.awaitingResponse)throw new Error('Finish or continue the current turn first');
@@ -1558,34 +1670,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (!theme) throw new Error('Theme takes the name of a theme');
             await selectTheme(theme, options.signal); continue;
           } else if (switchingModel) {
-            const model = prompt.slice(7).trim();
-            if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
-            const pre = await agent().emitHook('PreModelSwitch', { from_model: config.model, to_model: model,
-              requested_model: model }, options.signal);
-            // The recovered hook runner maps deny to a blocking error and ask
-            // to a confirmation requirement (`oXr`, chunk-sfn1dbxq.js offset
-            // 2937531); the user-facing texts are the `RWe`/`jU` shapes.
-            const hookReason = pre.permissionDecisionReason;
-            if (pre.permissionDecision === 'deny') {
-              throw new Error(`Model switch blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
-            }
-            if (pre.permissionDecision === 'ask') {
-              const approved = await confirm('Switch model', hookReason ?? 'A PreModelSwitch hook asked you to confirm',
-                options.signal).catch(() => false);
-              if (!approved) {
-                throw new Error(`Model switch to ${model} was blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
-              }
-            }
-            if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
-            // The picker's enter arm makes the pick the default for new sessions (`onSetDefault`
-            // in `uBe`); the `s` arm accepts the same row for this session only. The default
-            // lives in the user settings file, so a session built without a user directory has
-            // nothing to update.
-            if (!pendingSessionOnly && config.configSources?.userDir !== undefined) {
-              saveModelSetting(model, config.configSources.userDir);
-            }
-            config.model = model;
-            if (pendingEffort !== undefined) config.effort = pendingEffort;
+            await selectModel(prompt.slice(7).trim(), pendingEffort, pendingSessionOnly, options.signal);
+            continue;
           } else if (prompt === '/effort' || prompt.startsWith('/effort ')) {
             const result = effortCommand(prompt.slice('/effort'.length), {
               current: session.config.effort, fallback: DEFAULT_EFFORT, save: !pendingSessionOnly });
@@ -1596,9 +1682,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (result.effort === undefined && result.saved === undefined) {
               output.write(`${result.message}\n`); continue;
             }
-            if (result.effort === null) delete config.effort;
-            else if (result.effort !== undefined) config.effort = result.effort;
-            if (result.saved !== undefined) saveEffortSetting(result.saved ?? undefined, config.configSources?.userDir);
+            if (result.effort === null) { delete config.effort; config.effortSelection = { kind: 'default' }; }
+            else if (result.effort !== undefined) { config.effort = result.effort; config.effortSelection = { kind: 'level' }; }
+            if (result.saved !== undefined) {
+              saveEffortSetting(result.saved ?? undefined, config.configSources?.userDir, config.model);
+              const key = modelSettingsKey(config.model);
+              if (config.modelSettings !== undefined && !Object.hasOwn(Object.prototype, key)) {
+                const entry = { ...config.modelSettings[key], effortLevel: persistableEffort(result.saved ?? DEFAULT_EFFORT) };
+                if (result.saved === null) delete entry.effortLevel;
+                config.modelSettings = { ...config.modelSettings, [key]: entry };
+              }
+            }
             effortMessage = result.message;
             // `eee` at `chunk-24k7d6mw.js` 153296 guards on a present level, so `auto` has none.
             if (config.effort !== undefined) effortNotice = effortIndicator(config.effort);
@@ -1618,9 +1712,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (config.configSources) config.configSources.overrides = { ...config.configSources.overrides,
               permissions: structuredClone(config.permissions) };
           }
-          await applyConfig(config, switchingModel, options.signal, modeCommand);
-          if (switchingModel) options.status.write(`Model: ${config.model}\n`);
-          else if (effortMessage !== undefined) {
+          await applyConfig(config, false, options.signal, modeCommand);
+          if (effortMessage !== undefined) {
             output.write(`${effortMessage}\n`);
             if (effortNotice !== undefined) options.status.write(`${effortNotice}\n`);
           }

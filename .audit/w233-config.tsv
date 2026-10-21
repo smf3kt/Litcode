@@ -1,0 +1,11 @@
+step	decision	evidence	outcome
+source	Acquire vWe bs field list query writer and effort closure before dependent edits	research/ports/W233-config-panel.md	verified
+shape	ConfigPanel owns full query focus and measured viewport; TuiTerminal owns pending writes and input	ConfigPanelInput ConfigUpdate TerminalPromptRequest.configPanel	implemented
+scope	Nine reachable local rows; no account or outer Status Usage Stats shell	vWe factories and existing local consumers	implemented
+navigation	Adapt mn fn Qe boundaries, Gl search ownership and wn picker direction	12 source character comparisons; config-panel.test.ts	verified
+writes	Save each accepted update immediately and bind a successor runtime session	saveConfigPanelSetting applyConfig; compiled actual file and request checks	verified
+model	Config acceptance persists four effort levels per exact gateway model; max remains live only	Me X9 Pe Duo; CLI loader session snapshot reload	verified
+validation	Three new regression groups and 264 affected tests; compiled config 35 model 23 slider 18	.audit/w233-evidence.json and portable decoded captures	passed
+comments	Retain mandatory provenance and verified callback clone constraint	independent comment review 18 comments, zero flags	passed
+review	Repair and independently repeat six original failed cases	.audit/w233-review-evidence.json; identity 893ac6cb1d3fdebcf72f71f1b57b8309cc3953ef499be181f4ab0a9b58037954	passed
+publication	Keep work local on work/w43-choice-preview	standing user instruction	no push

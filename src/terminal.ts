@@ -1208,6 +1208,8 @@ export interface TerminalPromptRequest {
   initialText?: string;
   /** uBe, 24k7d6mw [617998,624627), UTF-16: local model list with its own focus and effort state. */
   modelPicker?: import('./model-picker.js').ModelPickerInput;
+  /** bs/vWe, dag4qhha [17007,42182), nybcbd9t [7247,31899), UTF-16: immediate local settings. */
+  configPanel?: import('./config-panel.js').ConfigPanelHost;
   /**
    * When present the request runs as a sequence of groups followed by a review
    * page, and the answer carries one entry per group. Copied from the recovered
@@ -1273,6 +1275,7 @@ export interface TerminalPromptAnswer {
   selected: string[];
   clarify?: true;
   themeEdit?: boolean;
+  configPanel?: { state: import('./config-panel.js').ConfigPanelState; open?: 'theme' | 'model' | 'timeFormat' };
   text?: string;
   /** The value the request's `adjust` axis held when the dialog resolved. */
   adjusted?: string;

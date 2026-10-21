@@ -40,7 +40,7 @@
  * canEnter=false in uBe, so the search paths remain closed in this sample.
  */
 
-import { DEFAULT_EFFORT, EFFORT_LEVELS, MAX_EFFORT_NOTE, effortGlyph, type EffortLevel } from './effort-command.js';
+import { DEFAULT_EFFORT, EFFORT_LEVELS, MAX_EFFORT_NOTE, configuredEffort, effortGlyph, type EffortLevel, type ModelSettings } from './effort-command.js';
 import type { TerminalPromptAnswer, TerminalPromptChoice, TerminalPromptRequest } from './terminal.js';
 import { cellWidth } from './terminal.js';
 import { clipEnd } from './tui-autocomplete.js';
@@ -66,8 +66,8 @@ export function modelPickerCaption(): string {
  * (`enter` = `set as default`, `s` = `use this session only`, `Esc` = cancel); this host draws
  * its guides as one line, so the same entries are joined in its own separator style.
  */
-export function modelPickerGuide(): string {
-  return 'Enter set as default / s use this session only / Esc cancel';
+export function modelPickerGuide(setDefault = true): string {
+  return setDefault ? 'Enter set as default / s use this session only / Esc cancel' : 'Enter confirm / Esc cancel';
 }
 
 /**
@@ -101,13 +101,16 @@ type PickerEffort = { kind: 'implicit'; value: EffortLevel } | { kind: 'adjusted
 export interface ModelPickerInput {
   current: string;
   effort?: EffortLevel;
+  defaults?: { modelSettings: ModelSettings; fallback?: EffortLevel };
+  setDefault?: boolean;
 }
 
 /** uBe, 24k7d6mw [617998,624627), UTF-16; source closure and host differences in W232. */
-export function modelPickerRequest(models: readonly string[], current: string, effort?: EffortLevel): TerminalPromptRequest {
+export function modelPickerRequest(models: readonly string[], current: string, effort?: EffortLevel, setDefault = true,
+  defaults?: ModelPickerInput['defaults']): TerminalPromptRequest {
   return { title: MODEL_PICKER_TITLE, message: modelPickerCaption(),
     choices: models.map(model => ({ label: model, value: model, description: modelPickerRowDescription(model, current) })),
-    modelPicker: { current, ...(effort === undefined ? {} : { effort }) } };
+    modelPicker: { current, setDefault, ...(effort === undefined ? {} : { effort }), ...(defaults === undefined ? {} : { defaults }) } };
 }
 
 /** uBe ys/Cr/dr plus W3n/lc, yygmb66g [34632,40138), UTF-16. */
@@ -119,12 +122,18 @@ export class ModelPicker {
 
   constructor(readonly options: readonly TerminalPromptChoice[], private readonly input: ModelPickerInput) {
     this.index = Math.max(0, options.findIndex(option => option.value === input.current));
-    this.effortState = { kind: 'implicit', value: input.effort ?? DEFAULT_EFFORT };
+    this.effortState = { kind: 'implicit', value: this.implicitEffort(input.current) };
   }
 
   get focusIndex(): number { return this.index; }
   get focused(): TerminalPromptChoice | undefined { return this.options[this.index]; }
   get effort(): EffortLevel { return this.effortState.value; }
+
+  /** ys/uc, 24k7d6mw [620537,620695), 9vcaezw1 [12346,12719), UTF-16. */
+  private implicitEffort(model: string): EffortLevel {
+    return this.input.defaults === undefined ? this.input.effort ?? DEFAULT_EFFORT
+      : configuredEffort({ modelSettings: this.input.defaults.modelSettings, effort: this.input.defaults.fallback }, model) ?? DEFAULT_EFFORT;
+  }
 
   /** tl/lc, yygmb66g [34632,38135), UTF-16: keep the focused row within the window. */
   fit(visibleCount: number): void {
@@ -138,7 +147,7 @@ export class ModelPicker {
     if (!this.options[index]) return;
     this.index = index;
     if (this.effortState.kind === 'implicit')
-      this.effortState = { kind: 'implicit', value: this.input.effort ?? DEFAULT_EFFORT };
+      this.effortState = { kind: 'implicit', value: this.implicitEffort(this.options[index]!.value) };
     this.fit(this.count);
   }
 
@@ -169,6 +178,7 @@ export class ModelPicker {
   }
 
   accept(sessionOnly = false, index = this.index): TerminalPromptAnswer | undefined {
+    if (sessionOnly && this.input.setDefault === false) return;
     this.focus(index);
     const row = this.focused;
     return row === undefined ? undefined : { selected: [row.value],

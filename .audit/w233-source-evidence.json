@@ -1,0 +1,612 @@
+{
+  "schema": "SourcePortComparisons.v1",
+  "artifact": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "groups": [
+    {
+      "name": "rows",
+      "source": {
+        "module": "chunk-nybcbd9t.js",
+        "sha256": "0abe0d704940977466d81c1efab7f953d8f9dac0f30cd758c4a3d0286b5c1bca",
+        "ranges": [
+          [
+            7247,
+            31899
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            2830,
+            4086
+          ],
+          "coordinates": "utf16",
+          "sha256": "3346cfee03ba7e80517614e2442cbf7060ef7542c7264ef753d0d6b2e589462d"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-rows.txt",
+        "sha256": "9625aa226591f7645aa93d4a753afc3b1449073a8480b977a34ca82884525a61",
+        "bytes": 27445
+      }
+    },
+    {
+      "name": "viewport",
+      "source": {
+        "module": "chunk-0wtqg4zf.js",
+        "sha256": "37fffc2f615ac9aaf5d92ff2cacd3d96cb7191880b1115f02b8f3353eb85a50f",
+        "ranges": [
+          [
+            7642,
+            12509
+          ],
+          [
+            15880,
+            18925
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            4191,
+            7040
+          ],
+          "coordinates": "utf16",
+          "sha256": "b6e79b18ef0d0573aa72aa35b1574ca2dfb09ca78876a5bdae8a2906c8d43bfe"
+        },
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            9674,
+            10340
+          ],
+          "coordinates": "utf16",
+          "sha256": "803fddd1a48f96172b518bf8d102d959b5d9e0f6254a44c24c08c97f97859f5e"
+        },
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            10473,
+            10900
+          ],
+          "coordinates": "utf16",
+          "sha256": "d1ec776963e748e75f82bd5b43eab1682554cb28a131c2d8f1e4a9aa7e68a3d6"
+        },
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            15063,
+            17864
+          ],
+          "coordinates": "utf16",
+          "sha256": "e3782bf2fa2f069331571d552ccaebfc9afb0728f82e5d8d5bfe217eef0457c6"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-viewport.txt",
+        "sha256": "db0cd0800e5a5e87b178d5615b63a1966e33b6ebd494533acbfb49c75ec944d5",
+        "bytes": 20483
+      }
+    },
+    {
+      "name": "query",
+      "source": {
+        "module": "chunk-dag4qhha.js",
+        "sha256": "cd1a28e9b3a52a9e2fa16901017bf7b0151c67d1859d5104a840d41e33f3f4d2",
+        "ranges": [
+          [
+            16553,
+            16761
+          ],
+          [
+            22342,
+            22674
+          ],
+          [
+            30733,
+            31282
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            1940,
+            2399
+          ],
+          "coordinates": "utf16",
+          "sha256": "af62c3c7054a561d09ddbe315c10c0084e2ac95e3fb487c52cec3b5d5376cfe9"
+        },
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            8136,
+            8374
+          ],
+          "coordinates": "utf16",
+          "sha256": "7186a22d8a86dbb3618816413279e5d431a1c063b90dfedf7cb44f73b47a2dec"
+        },
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            12309,
+            14962
+          ],
+          "coordinates": "utf16",
+          "sha256": "ad3f2ac35f72586f6a6f45b79161612cb84c2ed676f05b1f9203a8ece7026988"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-query.txt",
+        "sha256": "ef5866383fad34c811dccfbeaf2fedc714714d575ea0b11774354052b0b2103b",
+        "bytes": 5941
+      }
+    },
+    {
+      "name": "query-editor",
+      "source": {
+        "module": "chunk-qh0w98pn.js",
+        "sha256": "a6f4555b23f747a11e952695c27895a1f2c76e2cf92396754242e9c23fdd8472",
+        "ranges": [
+          [
+            48154,
+            53325
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            12309,
+            14962
+          ],
+          "coordinates": "utf16",
+          "sha256": "ad3f2ac35f72586f6a6f45b79161612cb84c2ed676f05b1f9203a8ece7026988"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-query-editor.txt",
+        "sha256": "eb98c8dedfb0cfbcd7e692df2e6dd15ac8b293dda050929118a3c61a0ec8c434",
+        "bytes": 10579
+      }
+    },
+    {
+      "name": "field-actions",
+      "source": {
+        "module": "chunk-czbq7s7d.js",
+        "sha256": "4160752a3b42549dc45e1e745b64e8c83848bc467b2b93cc4f006a20007c8345",
+        "ranges": [
+          [
+            1599,
+            6470
+          ],
+          [
+            11819,
+            12442
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            10986,
+            12233
+          ],
+          "coordinates": "utf16",
+          "sha256": "625baa3c373ebbf7b131442c7244a9931811f2cdeffeda50faa1dd405cb10374"
+        },
+        {
+          "file": "src/config-panel.ts",
+          "range": [
+            15063,
+            17864
+          ],
+          "coordinates": "utf16",
+          "sha256": "e3782bf2fa2f069331571d552ccaebfc9afb0728f82e5d8d5bfe217eef0457c6"
+        },
+        {
+          "file": "src/tui.ts",
+          "range": [
+            105506,
+            107888
+          ],
+          "coordinates": "utf16",
+          "sha256": "8b812c89f2a9ff179893dae8146771a1c176b88f24398ec31ee3c6a0697d4c9b"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-field-actions.txt",
+        "sha256": "1083e5f5f39e562ae98898895c12f0cd885a6050c52e8263d312e58d08cdef21",
+        "bytes": 16843
+      }
+    },
+    {
+      "name": "frame",
+      "source": {
+        "module": "chunk-dag4qhha.js",
+        "sha256": "cd1a28e9b3a52a9e2fa16901017bf7b0151c67d1859d5104a840d41e33f3f4d2",
+        "ranges": [
+          [
+            40450,
+            42182
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/tui.ts",
+          "range": [
+            159189,
+            161025
+          ],
+          "coordinates": "utf16",
+          "sha256": "cf62b60eea129fb3311736237e83f6d1229efc0fcb1e6377c35bc99d5a75ee19"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-frame.txt",
+        "sha256": "d59d4ac56715de7c70608510c9e83bf0f138969125f14ba204e2ec4d7b16d203",
+        "bytes": 5508
+      }
+    },
+    {
+      "name": "query-frame",
+      "source": {
+        "module": "chunk-qh0w98pn.js",
+        "sha256": "a6f4555b23f747a11e952695c27895a1f2c76e2cf92396754242e9c23fdd8472",
+        "ranges": [
+          [
+            55320,
+            57547
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/tui.ts",
+          "range": [
+            159189,
+            161025
+          ],
+          "coordinates": "utf16",
+          "sha256": "cf62b60eea129fb3311736237e83f6d1229efc0fcb1e6377c35bc99d5a75ee19"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-query-frame.txt",
+        "sha256": "b00e10b2b7bd2afb46ee1916eb185aee54b84272285a7239fce0b528f02f2d19",
+        "bytes": 5940
+      }
+    },
+    {
+      "name": "source-scope",
+      "source": {
+        "module": "chunk-nybcbd9t.js",
+        "sha256": "0abe0d704940977466d81c1efab7f953d8f9dac0f30cd758c4a3d0286b5c1bca",
+        "ranges": [
+          [
+            4744,
+            4817
+          ],
+          [
+            26484,
+            26977
+          ],
+          [
+            29982,
+            30405
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/config-panel-input.ts",
+          "range": [
+            452,
+            2094
+          ],
+          "coordinates": "utf16",
+          "sha256": "26c6364faa2903b923cc1d08cc51f334d158089a7981a050ce4cb983ab79f204"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-source-scope.txt",
+        "sha256": "2889924204eb679f5c2490cbf1eea7d46e27ab97836d69b0f57d94400a61023f",
+        "bytes": 3825
+      }
+    },
+    {
+      "name": "writes",
+      "source": {
+        "module": "chunk-nybcbd9t.js",
+        "sha256": "0abe0d704940977466d81c1efab7f953d8f9dac0f30cd758c4a3d0286b5c1bca",
+        "ranges": [
+          [
+            8029,
+            8318
+          ],
+          [
+            15295,
+            16009
+          ],
+          [
+            20770,
+            21906
+          ],
+          [
+            26179,
+            26977
+          ],
+          [
+            29982,
+            30405
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/theme-settings.ts",
+          "range": [
+            4222,
+            4871
+          ],
+          "coordinates": "utf16",
+          "sha256": "4d2a31e4ce6c3e621280b5d6b97b737e1a6dbd97cbb8baef16320881b4c982f1"
+        },
+        {
+          "file": "src/interactive.ts",
+          "range": [
+            96933,
+            102497
+          ],
+          "coordinates": "utf16",
+          "sha256": "4d92634b28e9d118d03f9e19b4d65d0116ea2ac76bde23df82206f28902083f0"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-writes.txt",
+        "sha256": "a971a373c7e1abd606de58ec247f9d70163d406a7a72ff83b9e92a524bcc88c1",
+        "bytes": 12844
+      }
+    },
+    {
+      "name": "subpages",
+      "source": {
+        "module": "chunk-dag4qhha.js",
+        "sha256": "cd1a28e9b3a52a9e2fa16901017bf7b0151c67d1859d5104a840d41e33f3f4d2",
+        "ranges": [
+          [
+            33000,
+            34600
+          ],
+          [
+            36900,
+            37450
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/interactive.ts",
+          "range": [
+            96933,
+            102497
+          ],
+          "coordinates": "utf16",
+          "sha256": "4d92634b28e9d118d03f9e19b4d65d0116ea2ac76bde23df82206f28902083f0"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-subpages.txt",
+        "sha256": "7e9dbf9c52c4d3a6771fe88995ef8b6656f964f64d7e50a27b6aca151df6d30b",
+        "bytes": 10106
+      }
+    },
+    {
+      "name": "model-save",
+      "source": {
+        "module": "chunk-nybcbd9t.js",
+        "sha256": "0abe0d704940977466d81c1efab7f953d8f9dac0f30cd758c4a3d0286b5c1bca",
+        "ranges": [
+          [
+            8318,
+            9556
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/interactive.ts",
+          "range": [
+            52549,
+            54612
+          ],
+          "coordinates": "utf16",
+          "sha256": "f7d3b7d36563a10c6bdfa52e7e39f8557a922972fd91e265badf7c572ee3c339"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-model-save.txt",
+        "sha256": "4871fb3cbcf808688dc0678bbb4ce897e1602e85760819ea4959cf32bb5c40d4",
+        "bytes": 4774
+      }
+    },
+    {
+      "name": "effort-default",
+      "source": {
+        "module": "chunk-9vcaezw1.js",
+        "sha256": "eccb69a1f121aa90407d23fbd69b3167178da1b759c1a4cd8b29609d15cb98e0",
+        "ranges": [
+          [
+            10679,
+            11697
+          ],
+          [
+            11834,
+            12021
+          ],
+          [
+            12117,
+            12346
+          ],
+          [
+            13891,
+            14114
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/effort-command.ts",
+          "range": [
+            3808,
+            4167
+          ],
+          "coordinates": "utf16",
+          "sha256": "83683516bf7c117bd434e2890ba5654a9dbdd1b33c9b6cece5e5559eababadd0"
+        },
+        {
+          "file": "src/effort-command.ts",
+          "range": [
+            3711,
+            3807
+          ],
+          "coordinates": "utf16",
+          "sha256": "8097d00919a4c7a8010f871a29ba536693cb315a4bc0171b678a79090f946735"
+        },
+        {
+          "file": "src/theme-settings.ts",
+          "range": [
+            4962,
+            5416
+          ],
+          "coordinates": "utf16",
+          "sha256": "a6510c00a327e862a9f450229754a9debbccac46e0699fe6f78596e055a00c27"
+        },
+        {
+          "file": "src/theme-settings.ts",
+          "range": [
+            5519,
+            6420
+          ],
+          "coordinates": "utf16",
+          "sha256": "b75d57cc6c6c374a6aad9ee1130742a50d115b025209fd9cdeecc6c08a73a7c4"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-effort-default.txt",
+        "sha256": "1a79b400cf9cdae46c3e66aec34e3d7f95104d0397be25e027344a4e46de6837",
+        "bytes": 5255
+      }
+    },
+    {
+      "name": "effort-inherit",
+      "source": {
+        "module": "chunk-24k7d6mw.js",
+        "sha256": "1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31",
+        "ranges": [
+          [
+            620537,
+            620695
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/model-picker.ts",
+          "range": [
+            6806,
+            7088
+          ],
+          "coordinates": "utf16",
+          "sha256": "7d98fab46d00842fd201f01a167ff9341d62a6f9f11b2421f9422d22fe769167"
+        },
+        {
+          "file": "src/model-picker.ts",
+          "range": [
+            7547,
+            7816
+          ],
+          "coordinates": "utf16",
+          "sha256": "22bdbe98fb28678eb21a9488ea9031beae98ea01c1371abf114becbe75dff4aa"
+        },
+        {
+          "file": "src/effort-command.ts",
+          "range": [
+            4305,
+            4722
+          ],
+          "coordinates": "utf16",
+          "sha256": "b3775b0e3a70b24bad632c482957c0d6ac9b267dfd05673884c2917cfef8d6da"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-effort-inherit.txt",
+        "sha256": "32d1a709d5a02cad086f05d35d0054f56f8328405aec2f9dc1e2dc754419a112",
+        "bytes": 1701
+      }
+    },
+    {
+      "name": "effort-command-save",
+      "source": {
+        "module": "chunk-0q6c90q6.js",
+        "sha256": "97c49a70fcefc8407f6fc93c4b4c8d50a7b63ca8c6d3a3aba6627e91c761457b",
+        "ranges": [
+          [
+            2541,
+            4018
+          ],
+          [
+            4505,
+            5283
+          ]
+        ],
+        "coordinates": "utf16"
+      },
+      "target": [
+        {
+          "file": "src/theme-settings.ts",
+          "range": [
+            1447,
+            1897
+          ],
+          "coordinates": "utf16",
+          "sha256": "94eccbb7011fe24d6f1a7a492425c8c5a27eb629ee210a83c1ad1f043b794b51"
+        },
+        {
+          "file": "src/interactive.ts",
+          "range": [
+            112113,
+            112969
+          ],
+          "coordinates": "utf16",
+          "sha256": "6b5815fe54b6792cb55ce1c34716912b75e246c9acca3947cd5383401b0d585b"
+        }
+      ],
+      "diff": {
+        "name": "w233-character-diff-effort-command-save.txt",
+        "sha256": "283030bb2435cf08eb0a6cce6adf678b83ade3e840b060a95c2a9e1b1a9f1af3",
+        "bytes": 5028
+      }
+    }
+  ]
+}
