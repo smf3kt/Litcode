@@ -311,6 +311,17 @@ Next up, scoped but not started:
       request on `second-model`, 87/87 picker tests and check/build pass; full suite 2997/2998
       with the CLI-effort failure reproduced at HEAD. Independent review requested.
       See `research/ports/W243-model-picker-live.md`.
+- [x] W244 `/effort` applies live, including mid-turn. Source `kEo` (chunk-sfn1dbxq.js 1659299)
+      is `immediate`, the submit gate (`zn`, chunk-24k7d6mw.js 1491124) runs it beside an active
+      turn, and `MOe` (chunk-0q6c90q6.js 6286) writes live `sessionEffort` with rollback. `onLine`
+      executes `/effort` directly during a turn and shares `applyEffortCommand` with the queued
+      path; the slider uses the session signal, and the command mutates
+      `session.config.effort/effortSelection` without a successor session. The runtime fingerprint
+      excludes the live model/effort fields, fixing the next-turn owner error that also affected
+      W243. Compiled 10/10 at identity `6f893fe2…` (argument arm and mid-turn slider), interactive
+      25/25 and check/build pass; full suite 2997/2998 with the CLI-effort failure reproduced at
+      HEAD. Independent review requested.
+      See `research/ports/W244-effort-live.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.

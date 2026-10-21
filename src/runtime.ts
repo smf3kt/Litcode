@@ -650,6 +650,10 @@ export async function createRuntime(
       // those arrays by reference, so none of it can make the tool set stale.
       settings: { ...settings, skills: undefined, heldSkills: undefined, dynamicSkillDirs: undefined,
         agentTypes: undefined,
+        // The model picker and `/effort` apply to live state without rebuilding tools (`w9`,
+        // chunk-24k7d6mw.js 894465; `MOe`, chunk-0q6c90q6.js 6286). These fields shape the
+        // request only, so they must not make the owner's tool set look stale.
+        model: undefined, modelSettings: undefined, effort: undefined, effortSelection: undefined,
         system: settings.system.split('\n\n# Available skills\n')[0]!.split('\n\n# Available agent types\n')[0] }, monitorWebsocket });
     const cached = toolSets.get(owner);
     if (cached?.fingerprint === fingerprint) {

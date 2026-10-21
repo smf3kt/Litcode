@@ -61,7 +61,7 @@ const server = http.createServer((request, response) => {
       return;
     }
     streamed(response, { id: `msg_done_${requests.length}`, stopReason: 'end_turn',
-      block: { start: { type: 'text', text: '' }, text: 'finished' } });
+      block: { start: { type: 'text', text: '' }, text: `finished ${requests.length}` } });
   });
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -113,8 +113,12 @@ try {
   releaseFirst();
   await until(() => requests.length === 2, 'the turn continues');
   pass('the running turn continues after the switch', requests[1].model === 'second-model');
-  await until(() => screen().includes('finished'), 'turn end');
+  await until(() => screen().includes('finished 2'), 'turn end');
   pass('the turn finishes on the new model');
+  send('again\r');
+  await until(() => requests.length === 3, 'the next turn reaches the provider');
+  pass('a later turn still uses the switched model', requests[2].model === 'second-model');
+  await until(() => screen().includes('finished 3'), 'second turn end');
   send('\u0015'); await delay(100);
   send('/exit\r');
   const status = await Promise.race([active.closed, delay(6000).then(() => 'timeout')]);
