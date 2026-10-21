@@ -100,7 +100,9 @@ try {
   pass('Config exposes Auto-compact with its default true', /^Auto-compact\s+true$/m.test(screen()));
   await selectAuto(); await toggle(false); captures.off = screen(); await close();
   pass('Enter saves false immediately and Escape retains it', stored().autoCompactEnabled === false && stored().keep === 'authored');
-  pass('the active successor session records false', journal().events[0].config.autoCompactEnabled === false);
+  // W252 moved the row live; the running session keeps its file instead of a successor.
+  pass('the live toggle opens no successor session',
+    fs.readdirSync(path.join(workspace, '.agent')).filter(file => file.endsWith('.jsonl')).length === 1);
   pressure = 100_000; await turn('over automatic threshold with auto disabled');
   pass('disabled auto sends a normal request at the exact threshold');
   await turn('/attach pixel.png attachment above the automatic threshold');
@@ -124,7 +126,10 @@ try {
   await turn('trigger automatic compaction', 1);
   pass('re-enabled auto summarizes the next threshold-crossing turn', requests.at(-2).summary && !requests.at(-1).summary);
   const activeId = journal().id; await stop(); await launch({}, activeId);
-  await open(); pass('resume keeps the enabled snapshot', /^Auto-compact\s+true$/m.test(screen()));
+  // The row now applies live (W252), so the session snapshot keeps the value it was opened
+  // with; `/reload` is the path that re-reads the persisted setting on resume.
+  send('/reload\r'); await until(() => ready() && !panel(), 'reload after resume');
+  await open(); pass('reload after resume adopts the persisted true', /^Auto-compact\s+true$/m.test(screen()));
   await selectAuto(); const validBytes = fs.readFileSync(settingsFile, 'utf8'); fs.writeFileSync(settingsFile, '{invalid');
   send('\r'); await until(() => screen().includes('JSON') && !screen().includes('Saving settings'), 'write failure');
   pass('failed save leaves true active and preserves the malformed authored bytes', /^Auto-compact\s+true$/m.test(screen())

@@ -87,3 +87,17 @@ rollback semantics, the fingerprint exclusion, and both acceptance arms.
   9/9 at the same identity, covering the fingerprint fix.
 - Full suite: 2998 tests, 2997 pass; the single failure is the pre-existing CLI effort-flag
   divergence at HEAD.
+
+## Later packages
+
+W253 (2026-10-22) removes the duplicated bare-`/effort` slider block that W244 left in the queued
+command loop. That block opened the slider under `withTurn` first and turned the answer into
+`/effort LEVEL` plus a local `pendingSessionOnly`; the rewritten `applyEffortCommand` then saw a
+non-bare prompt, reset `sessionOnly` to false and saved the level as a default even when the user
+pressed `s`. The W231 compiled arm caught it (`selection applied`, message
+"saved as your default"). `applyEffortCommand` is now the only opener for both the queued and the
+mid-turn path, so the recovered `It`/`Ce` answer key reaches the applier directly. W231 18/18 and
+W244 10/10 at identity `5b52acc4…`; focused effort/interactive/picker/thinking tests 51/51. The
+same commit updates W234's compiled arm: since the live `/config` rows keep the snapshot a
+resumed session was opened with, the driver reloads before asserting the persisted true (26/26).
+See [W253](W253-effort-slider-dedup.md).

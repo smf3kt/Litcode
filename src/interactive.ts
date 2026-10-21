@@ -1745,17 +1745,6 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // xWe, hh0bresc [9916,10415), UTF-16, likewise runs the default-save condition.
           prompt = `/model ${selected}`;
         }
-        if (prompt === '/effort' && terminal?.prompt) {
-          // It/Ce, chunk-76jkr621.js [22174,30123)/[17514,17916), UTF-16:
-          // Enter applies the displayed level even unchanged; s skips the default write.
-          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
-          const answer = await withTurn(signal => readDialog(effortSliderRequest(session.config.effort), signal));
-          const picked = answer?.adjusted;
-          if (picked === undefined) { options.status.write('Effort selection cancelled.\n'); continue; }
-          if (!isEffortLevel(picked)) throw new Error('Invalid effort selection');
-          pendingSessionOnly = answer?.key === 's';
-          prompt = `/effort ${picked}`;
-        }
         if (prompt === '/config' && terminal?.prompt) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           let state: ConfigPanelState | undefined;

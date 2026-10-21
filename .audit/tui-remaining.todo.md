@@ -209,6 +209,8 @@ Next up, scoped but not started:
       Same-level Enter now saves; cancel preserves state. Actual request effort resolves the
       environment override separately from the session choice. Three regression groups, compiled
       slider 18/18, argument path 14/14 and model picker 11/11; independent review accepted.
+      W253 removes the duplicate queued slider block so `applyEffortCommand` is the only opener
+      and the `s` key survives; slider 18/18 again. See `research/ports/W244-effort-live.md`.
       See `research/ports/W231-effort-slider.md`.
 
 - [x] W232 model picker list. Gse canEnter=false closes the preliminary search candidate.
