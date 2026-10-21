@@ -79,13 +79,18 @@ test('display-only config rows keep the owner tool set', async () => {
   const runtime = await createRuntime(f.config, unused, f.controller.signal);
   try {
     const pinned = pinToolSchemas(runtime.buildTools({ ...f.config, verbose: true, prefersReducedMotion: true,
-      showTurnDuration: false, timeFormat: '24-hour', editorMode: 'vim', terminalProgressBarEnabled: false }, 'display-owner'));
-    // The Verbose, Reduce motion, turn-duration, time-format, editor and progress-bar rows write
-    // live state (`Te`/`vy`, chunk-nybcbd9t.js 9556/15296; rows 20203/20771/21614/26180);
+      showTurnDuration: false, timeFormat: '24-hour', editorMode: 'vim', terminalProgressBarEnabled: false,
+      autoCompactEnabled: false, askUserQuestionTimeout: '60s', dialogExpiry: '5m',
+      permissions: { ...(f.config.permissions ?? { mode: 'default', allow: [], deny: [] }), defaultMode: 'plan' } }, 'display-owner'));
+    // The Verbose, Reduce motion, turn-duration, time-format, editor, progress-bar, auto-compact,
+    // question-timeout, dialog-expiry and default-permission-mode rows write live state
+    // (`Te`/`vy`, chunk-nybcbd9t.js 9556/15296; rows 12035/20203/20771/21614/21908/26180/26485/29983);
     // rebuilding for the same owner must not see a stale tool set.
     assert.deepEqual(pinToolSchemas(runtime.buildTools({ ...f.config, verbose: false,
       prefersReducedMotion: false, showTurnDuration: true, timeFormat: 'auto', editorMode: 'normal',
-      terminalProgressBarEnabled: true }, 'display-owner')), pinned);
+      terminalProgressBarEnabled: true, autoCompactEnabled: true, askUserQuestionTimeout: 'never',
+      dialogExpiry: undefined,
+      permissions: { ...(f.config.permissions ?? { mode: 'default', allow: [], deny: [] }) } }, 'display-owner')), pinned);
   } finally {
     await runtime.close();
     f.cleanup();

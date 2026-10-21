@@ -59,7 +59,8 @@ ride the same review pass.
 - Compiled acceptance `.audit/w248-config-live.mjs` (wide PTY `.audit/w248-config-live.exp`):
   9/9 at identity `5ab78a0676206aba442fafb3ddc33d6623a45248c3f2b5649d6319a8638c61d5`.
   Thinking on persists, keeps the rest of the settings document, opens no configuration branch,
-  and the next request carries `thinking: adaptive`; an `Auto-compact` toggle still opens one.
+  and the next request carries `thinking: adaptive`; an `Auto-compact` toggle still opened one
+  at this identity (W252 later moved that row live too).
 - W233 config acceptance 35/35 at the same identity; W246 12/12, W247 12/12; focused
   interactive/thinking-dialog/config-panel 31/31.
 - Full suite: 3001 tests, 3000 pass; the single failure is the pre-existing CLI effort-flag

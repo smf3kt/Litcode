@@ -193,3 +193,11 @@ source reader and a lead writer keep coupled modal/session changes under one own
 pstack Model the Domain and Test Behavior, Not Implementation principles guide typed state and
 actual key/file/request assertions. The source task is independent of the lead's current-host
 mapping and compiled baseline capture.
+
+## Later packages
+
+W248 and W250–W252 replaced this package's successor-session apply path for every config row:
+Thinking, Verbose, Reduce motion, turn duration, time format, editor, progress bar,
+auto-compact, question timeout, dialog expiry and default permission mode now write live state.
+The successor adaptation recorded above is superseded; see
+[W252](W252-config-last-live.md) for the final row.
