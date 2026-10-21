@@ -372,9 +372,19 @@ Next up, scoped but not started:
       (bare Enter approves), W243–W245/W247/W248 rerun 9/9, 10/10, 10/10, 12/12, 9/9,
       focused 30/30 and check/build pass; full suite 3001/3002 with the CLI-effort failure.
       See `research/ports/W249-review-followups.md`.
+- [x] W250 `/config` Verbose and Reduce motion apply live. Both rows write live app state in the
+      source (`Te` chunk-nybcbd9t.js 9556; reduceMotion 15296). The callback now assigns the
+      session fields and repaints through `setVerbose`/`setPrefersReducedMotion`; the two
+      display-only fields leave the owner tool-set fingerprint and both connection digests.
+      Compiled 11/11 at identity `90e580b8…` (both persist, other keys kept, no branch, both
+      following turns in one session), W233 35/35, W243–W248 rerun, runtime-resources 16/16 and
+      check/build pass; full suite 3002/3003 with the CLI-effort failure.
+      See `research/ports/W250-config-display-live.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
-      next complete local package.
+      next complete local package. Remaining config rows still on the successor path but written
+      without a session restart in source: turnDuration, timeFormat, editor, progressBar,
+      autoCompact, askUserQuestionTimeout, dialogExpiry, permissionMode.
       Not portable now: tips (vendor/service content), prompt suggestions / timestamps / tab
       status / copy-on-select / auto-scroll (source rows sit behind `tengu_*` flags default off),
       recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no

@@ -74,6 +74,21 @@ test('schema construction and relocation owner allocate no timers or registry li
   }
 });
 
+test('display-only config rows keep the owner tool set', async () => {
+  const f = fixture();
+  const runtime = await createRuntime(f.config, unused, f.controller.signal);
+  try {
+    const pinned = pinToolSchemas(runtime.buildTools({ ...f.config, verbose: true, prefersReducedMotion: true }, 'display-owner'));
+    // The Verbose and Reduce motion rows write live state (`Te`/`vy`, chunk-nybcbd9t.js
+    // 9556/15296); rebuilding for the same owner must not see a stale tool set.
+    assert.deepEqual(pinToolSchemas(runtime.buildTools({ ...f.config, verbose: false,
+      prefersReducedMotion: false }, 'display-owner')), pinned);
+  } finally {
+    await runtime.close();
+    f.cleanup();
+  }
+});
+
 test('initial tools remain executable and activate only the resource used', async () => {
   const f = fixture();
   let now = new Date(2026, 9, 10, 12, 0);
