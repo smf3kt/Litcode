@@ -34,6 +34,9 @@ import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
 import { defaultUserDir, loadProjectConfig } from './config.js';
 import { permissionSettingsPaths } from './permission-settings.js';
+import { SKILLS_TITLE, applySkillOverrideDiff, defaultSkillModes, nextSkillMode, readLocalSkillOverrides,
+  saveSkillOverrides, skillOverrideDiff, skillPanelRows, skillsPanelMessage, skillsSaveError,
+  skillsSaveMessage, type SkillMode } from './skills-panel.js';
 import { hooksSchema } from './hooks.js';
 import { HOOKS_NONE_YET, HOOKS_TITLE, attributeHooks, browseHooks, hookConfigLabel,
   hookListSubtitle, type HookLayer, type HookPanelHook } from './hooks-panel.js';
@@ -1768,13 +1771,58 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
         if (prompt === '/skills') {
           const skills = session.config.skills ?? [];
-          if (skills.length === 0) { output.write('No skills are available.\n'); continue; }
-          const lines = skills.map(skill => {
-            const flags = [skill.userInvocable ? '' : 'not user-invocable', skill.disableModelInvocation ? 'model-disabled' : ''].filter(Boolean);
-            const suffix = flags.length ? ` (${flags.join(', ')})` : '';
-            return `- ${skill.name}${skill.aliases?.length ? ` (aliases: ${skill.aliases.join(", ")})` : ""}${suffix}: ${skill.description === '' ? '(no description)' : skill.description}`;
-          });
-          output.write(`Skills:\n${lines.join('\n')}\n`);
+          // A session without a modal surface keeps the plain report; the local
+          // component `He` (`chunk-hkrgn8hf.js` 23602) is the dialog arm below.
+          if (!terminal?.prompt) {
+            if (skills.length === 0) { output.write('No skills are available.\n'); continue; }
+            const lines = skills.map(skill => {
+              const flags = [skill.userInvocable ? '' : 'not user-invocable', skill.disableModelInvocation ? 'model-disabled' : ''].filter(Boolean);
+              const suffix = flags.length ? ` (${flags.join(', ')})` : '';
+              return `- ${skill.name}${skill.aliases?.length ? ` (aliases: ${skill.aliases.join(", ")})` : ""}${suffix}: ${skill.description === '' ? '(no description)' : skill.description}`;
+            });
+            output.write(`Skills:\n${lines.join('\n')}\n`);
+            continue;
+          }
+          const userDir = session.config.configSources?.userDir ?? defaultUserDir();
+          const settingsPaths = permissionSettingsPaths(session.config.workspace, userDir);
+          const localFile = settingsPaths.localSettings;
+          let localOverrides = readLocalSkillOverrides(settingsPaths);
+          let modes: Record<string, SkillMode> = defaultSkillModes(skills, localOverrides);
+          let sortByTokens = false;
+          let focus = 0;
+          for (;;) {
+            const rows = skillPanelRows(skills, { modes, sortByTokens });
+            // `settings:sortByTokens` at 29724 is a `t` key; every other answer
+            // resolves the focused row, which `enter/space to cycle` at 29731 flips.
+            const answer = await withTurn(signal => readDialog({
+              title: SKILLS_TITLE,
+              message: skillsPanelMessage({ skills, rows, query: '', total: skills.length, sortByTokens }),
+              choices: rows.map(row => ({ label: row.label, value: row.value, description: row.description })),
+              defaultIndex: Math.min(focus, Math.max(0, rows.length - 1)),
+              keys: [{ key: 't', label: sortByTokens ? 'sort by name' : 'sort by tokens' }],
+            }, signal));
+            if (answer === undefined) {
+              // `confirm:no` at 29871 saves before closing; the host dialog's
+              // Escape is the same move, so the diff is written here.
+              const { diff, writes, effectiveChanged } = skillOverrideDiff(skills, modes, localOverrides);
+              if (writes > 0) {
+                if (localFile === undefined) { output.write(`${skillsSaveError('no local settings file')}\n`); break; }
+                try { saveSkillOverrides(localFile, diff); }
+                catch (error) { output.write(`${skillsSaveError((error as Error).message)}\n`); break; }
+                localOverrides = applySkillOverrideDiff(localOverrides, diff);
+                // `VT()` at 1675922 invalidates the command table after a write.
+                reloadSkills(session.config);
+                terminal.setCommands?.(tuiCommandsWithSkills(session.config.skills));
+              }
+              output.write(`${skillsSaveMessage(effectiveChanged)}\n`);
+              break;
+            }
+            if (answer.key === 't') { sortByTokens = !sortByTokens; continue; }
+            const row = rows.find(entry => entry.value === answer.selected[0]);
+            if (row === undefined || row.locked !== undefined) continue;
+            modes = { ...modes, [row.name]: nextSkillMode(modes[row.name] ?? 'on') };
+            focus = rows.indexOf(row);
+          }
           continue;
         }
         if (prompt === '/context') {

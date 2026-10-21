@@ -45,6 +45,8 @@ export interface SkillCommandSource {
   readonly description: string;
   readonly aliases?: readonly string[];
   readonly userInvocable: boolean;
+  /** Effective `/skills` mode; `off` hides the skill from the composer too. */
+  readonly mode?: 'on' | 'name-only' | 'user-invocable-only' | 'off';
   readonly argumentNames?: readonly string[];
   /** Source `q2n`/`_Dt`: only a project-settings skill draws a `[project]` lane. */
   readonly source?: string;
@@ -139,7 +141,7 @@ export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | un
   const localNames = new Set(TUI_COMMANDS.map(command => command.name));
   const extra: TuiCommand[] = [];
   for (const skill of skills ?? []) {
-    if (!skill.userInvocable || localNames.has(skill.name)) continue;
+    if (!skill.userInvocable || skill.mode === 'off' || localNames.has(skill.name)) continue;
     extra.push({ name: skill.name, description: skill.description || '(no description)',
       aliases: skill.aliases, kind: 'skill',
       sourceTag: skill.source === 'projectSettings' ? 'project' : undefined,

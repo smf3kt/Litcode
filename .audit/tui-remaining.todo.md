@@ -430,6 +430,14 @@ Next up, scoped but not started:
       `Cancelled memory editing`. Vendor org-memory, auto-memory folder and agent-memory rows are
       control-plane surfaces and stay out. Unit 7/7 + 1/1, autocomplete 22/22, compiled 8/8 at
       identity `205d9bf2…`. See `research/ports/W257-memory-panel.md`.
+- [x] W258 `/skills` (`He`, chunk-hkrgn8hf.js 23602): the local Skills panel. Rows sort by source
+      label or token estimate (`t`), Enter/space cycles `on → name-only → user-invocable-only →
+      off` and skips author, plugin and `__proto__` locks; Escape writes the `w$t` diff to the
+      local settings layer and reports `Updated N skill override(s)` / `No changes`. The mode
+      reaches the composer and model catalog through `SkillInfo.mode`; `name-only` drops the
+      description. The host dialog has no text filter, so `/ to search` is not offered. Unit 14/14
+      + 1/1, focused 62/62, compiled 10/10 at identity `3e8af877…`. See
+      `research/ports/W258-skills-panel.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

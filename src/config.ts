@@ -34,6 +34,7 @@ import { mergeSettings } from "./plugin-chain-settings-merge.js";
 import { managedSettingsDir } from "./plugin-chain-settings-source.js";
 import { permissionLayerSchema, type PermissionPolicy } from './permissions.js';
 import { permissionSettingsPaths } from './permission-settings.js';
+import { skillOverrideMode } from './skills-panel.js';
 import { mcpServersSchema, type McpServerConfig } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
 import { LinkVetError, vetLinkChain } from "./link-vetting.js";
@@ -81,6 +82,11 @@ export interface SkillInfo {
   format?: 'skill' | 'command';
   plugin?: string;
   disallowedTools?: string[];
+  /**
+   * Effective `/skills` mode from the merged `skillOverrides` setting. Authored
+   * flags stay untouched, so the panel can tell an override apart from a lock.
+   */
+  mode?: import('./skills-panel.js').SkillMode;
   /** Frontmatter `name`, or the skill directory name when it is absent. */
   name: string;
   /** Frontmatter `description`, or an empty string when it is absent. */
@@ -1367,6 +1373,13 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     for (const dir of pluginDirs as string[]) {
       scanSkills(path.resolve(workspaceRoot, dir), seen, skills, budget, "plugin");
     }
+  }
+  // `$C` (`chunk-sfn1dbxq.js` 401991): the effective mode is the lock, else the
+  // merged `skillOverrides` entry. Locked rows keep their authored flags.
+  const skillOverrides = isPlainObject(settings.skillOverrides) ? settings.skillOverrides : {};
+  for (const skill of skills.values()) {
+    const mode = skillOverrideMode(skill, skillOverrides);
+    if (mode !== undefined) skill.mode = mode;
   }
   const memorySeen = new Set<string>();
   const memories = listRules(path.join(harnessDir, "memory")).filter(file => {
