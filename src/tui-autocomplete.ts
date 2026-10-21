@@ -80,6 +80,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'usage', description: 'Show recorded model usage', kind: 'command', lane: 'info' },
   { name: 'effort', description: 'Set effort level for model usage', kind: 'command', lane: 'config' },
   { name: 'copy', description: "Copy Claude's last response to clipboard (or /copy N for the Nth-latest)", kind: 'command', lane: 'action' },
+  { name: 'export', description: 'Export the current conversation to a file or clipboard', kind: 'command', lane: 'action' },
   { name: 'autocompact', description: 'Set how full the context gets before auto-summarizing', kind: 'command', lane: 'config' },
   { name: 'color', description: 'Set the prompt bar color for this session', kind: 'command', lane: 'config' },
   { name: 'keybindings', description: 'Open your keyboard shortcuts file', kind: 'command', lane: 'config' },

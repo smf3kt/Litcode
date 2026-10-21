@@ -67,6 +67,12 @@ import { openExternalFile, externalEditorName } from './external-editor.js';
 import { persistAutoModeUpdate, readAutoModePolicy } from './auto-mode-rules.js';
 import { type AutoModeEditorHost } from './auto-mode-editor.js';
 import { osc52Payload } from './clipboard-osc52.js';
+import {
+  EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
+  EXPORT_DIALOG_TITLE, EXPORT_FILE_DESCRIPTION, EXPORT_FILE_LABEL, EXPORT_FILENAME_PROMPT,
+  exportCopiedMessage, exportDefaultFilename, exportFailedMessage, exportSavedMessage, exportTranscriptText,
+  writeConversationExport,
+} from './export-command.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
 import { HELP_DISMISSED, browseHelp } from './help-panel.js';
@@ -125,6 +131,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /usage      Show recorded model usage
 /effort LEVEL  Set effort level for model usage (low/medium/high/xhigh/max/auto)
 /copy [N]   Copy the latest response to the clipboard (or the Nth-latest)
+/export [filename]  Export the conversation to a file or clipboard
 /autocompact [auto|<tokens>]  Set how full the context gets before auto-summarizing
 /color ${sessionColorArgumentHint()}  Set the prompt bar color for this session
 /keybindings  Open your keyboard shortcuts file
@@ -1326,6 +1333,44 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           let file: string | undefined;
           try { file = writeCopyFile(text); } catch { file = undefined; }
           output.write(`${copyReport(text, file)}\n`);
+          continue;
+        }
+        // `ho` (chunk-3f62mcb0.js 25000-ish): an argument writes at once; the bare command opens
+        // the method dialog. The method select precedes the filename input, and Esc in the input
+        // returns to the method select (`confirm:no` with the rename-style `isActive` gate).
+        if (prompt === '/export' || prompt.startsWith('/export ')) {
+          const messages = session.events.flatMap(event => event.kind === 'message' ? [event.message] : []);
+          const content = exportTranscriptText(messages);
+          const save = (filename: string): void => {
+            try { output.write(`${exportSavedMessage(writeConversationExport(filename, content, session.config.workspace))}\n`); }
+            catch (error) { output.write(`${exportFailedMessage(error)}\n`); }
+          };
+          const argument = prompt.slice('/export'.length).trim();
+          if (argument !== '') { save(argument); continue; }
+          if (!terminal?.prompt) { output.write('Usage: /export [filename]\n'); continue; }
+          let close = false;
+          while (!close) {
+            const method = await withTurn(signal => readDialog({ title: EXPORT_DIALOG_TITLE,
+              message: EXPORT_DIALOG_SUBTITLE, choices: [
+                { label: EXPORT_CLIPBOARD_LABEL, value: 'clipboard', description: EXPORT_CLIPBOARD_DESCRIPTION },
+                { label: EXPORT_FILE_LABEL, value: 'file', description: EXPORT_FILE_DESCRIPTION },
+              ] }, signal));
+            const choice = method?.selected[0];
+            if (choice === undefined) { output.write(`${EXPORT_CANCELLED}\n`); break; }
+            if (choice === 'clipboard') {
+              try {
+                const payload = osc52Payload(content);
+                if (terminal.writeClipboard) terminal.writeClipboard(payload); else output.write(payload);
+                output.write(`${exportCopiedMessage()}\n`);
+              } catch (error) { output.write(`${exportFailedMessage(error)}\n`); }
+              break;
+            }
+            const answer = await withTurn(signal => readDialog({ message: EXPORT_FILENAME_PROMPT,
+              allowText: true, initialText: exportDefaultFilename(messages) }, signal));
+            if (answer?.text === undefined) continue;
+            save(answer.text);
+            close = true;
+          }
           continue;
         }
         if (prompt === '/autocompact' || prompt.startsWith('/autocompact ')) {
