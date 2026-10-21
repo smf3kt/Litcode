@@ -48,6 +48,7 @@ import { DEFAULT_EFFORT, effortCommand, isEffortLevel, modelEffort, modelSetting
   effortIndicator, type EffortLevel } from './effort-command.js';
 import { effortSliderRequest } from './effort-slider.js';
 import { modelPickerRequest } from './model-picker.js';
+import { thinkingDialogRequest, THINKING_DIALOG_TITLE, THINKING_MID_CONVERSATION_WARNING } from './thinking-dialog.js';
 import { TIME_FORMATS, type ConfigPanelState, type ConfigUpdate } from './config-panel.js';
 import { configPanelInput } from './config-panel-input.js';
 import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUsageMessage,
@@ -534,8 +535,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (!inputClosed && !approval) void openModelPickerLive?.();
         return;
       }
-      const command = action === 'chat:thinkingToggle' ? '/thinking'
-        : action === 'app:toggleTodos' ? '/tasks' : undefined;
+      // `lL` (chunk-24k7d6mw.js 838388) opens the `SG` dialog directly; `kp` (898567) writes the
+      // live thinking state, so the chord reaches it mid-turn instead of queueing a command.
+      if (action === 'chat:thinkingToggle') {
+        if (!inputClosed && !approval) void applyThinkingToggle?.();
+        return;
+      }
+      const command = action === 'app:toggleTodos' ? '/tasks' : undefined;
       if (!command || inputClosed || approval) return;
       if (!queue.some(item => item.source === 'user' && item.prompt === command)) {
         queue.push({ prompt: command, source: 'user', meta: true }); promptQueueChanged();
@@ -549,6 +555,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   let formController: AbortController | undefined;
   /** Bound after the picker helpers; the chord handler above runs only after terminal start. */
   let openModelPickerLive: (() => Promise<void>) | undefined;
+  let applyThinkingToggle: (() => Promise<void>) | undefined;
   // Same-host peer transport. Admission follows the recipient's current
   // permission mode (`E`, chunk-0ydceggj.js [4491,4991)); accepted text enters
   // the queue as recipient meta input, exactly like a scheduled event, and
@@ -1036,6 +1043,31 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     // `eee` at `chunk-24k7d6mw.js` 153296 guards on a present level, so `auto` has none.
     if (session.config.effort !== undefined) options.status.write(`${effortIndicator(session.config.effort)}\n`);
   }
+  /**
+   * `lL` (chunk-24k7d6mw.js 838388) opens the `SG` dialog; accept `kp` (898567) and cancel `ph`
+   * (898638). The accept writes the live state, and `SG` asks once more for a changed value
+   * mid-conversation (`627114`). The source's `sendControlRequest` has no local channel here:
+   * the request builder reads `config.thinking` on every call, so the live write is enough.
+   */
+  applyThinkingToggle = async () => {
+    try {
+      if (!terminal?.prompt) return;
+      const current = session.config.thinking;
+      const answer = await readDialog(thinkingDialogRequest(current), options.signal);
+      const value = answer?.selected[0];
+      if (value !== 'true' && value !== 'false') return;
+      const next = value === 'true';
+      if (next !== current && session.messages.some(message => message.role === 'assistant')) {
+        const proceed = await confirm(THINKING_DIALOG_TITLE,
+          `${THINKING_MID_CONVERSATION_WARNING}\n\nDo you want to proceed?`, options.signal);
+        if (!proceed) return;
+      }
+      session.config.thinking = next;
+      options.status.write(`Thinking ${next ? 'on' : 'off'}\n`);
+    } catch (error) {
+      if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    }
+  };
   /** Co -> Ll/Me, dag4qhha [33770,34600), nybcbd9t [8318,9556), UTF-16; shares the command's hook/save/apply path. */
   const selectModel = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal, fromConfig = false) => {
     if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');

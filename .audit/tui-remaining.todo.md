@@ -330,6 +330,23 @@ Next up, scoped but not started:
       same tree, interactive 25/25 and check/build pass; full suite 2997/2998 with the CLI-effort
       failure reproduced at HEAD. Independent review pending.
       See `research/ports/W245-model-typed.md`.
+- [x] W246 thinking chord opens its dialog and applies live. Source `lL` (chunk-24k7d6mw.js
+      882215) opens `SG` (625719); accept `kp` (898567) writes `thinkingEnabled` in place, cancel
+      `ph` (898638) only closes, and a changed value mid-conversation asks first (627114). The
+      chord now calls `applyThinkingToggle` instead of queueing `/thinking`, so `alt+t` works
+      mid-turn, and `session.config.thinking` joins the runtime fingerprint exclusion. Compiled
+      12/12 at identity `b1555844…` (mid-turn dialog, next requests with and without
+      `thinking`), new `test/thinking-dialog.test.ts` 2/2, W243/W244/W245 rerun 9/9, 10/10,
+      10/10, interactive 25/25 and check/build pass; full suite 2999/3000 with the CLI-effort
+      failure reproduced at HEAD. Independent review pending with the W243/W244 findings.
+      See `research/ports/W246-thinking-live.md`.
+- [ ] W247 review fixes for W243/W244. The completed independent review returned SOUND with no
+      high findings, but reported: a settings-write failure aborts the picker's switch instead
+      of applying first (medium); `preModelSwitch` lacks `dk`'s revalidation of the model it
+      read (medium); a live model/effort write desynchronises `connectionConfigDigest` when the
+      MCP persistence features are on (medium); the picker chord does not toggle closed (low);
+      the effort live write is not rolled back on a synchronous save failure (low). Fix against
+      the cited source, rerun the compiled acceptances, and record.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.
