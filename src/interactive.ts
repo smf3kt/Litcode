@@ -1795,7 +1795,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       break;
                     }
                     case 'reduceMotion': config.prefersReducedMotion = update.value; break;
-                    case 'thinking': config.thinking = update.value; break;
+                    case 'thinking':
+                      // `nybcbd9t` 15590: the row writes live `thinkingEnabled` and persists its
+                      // setting; this host's settings key is `thinking`, written just above, so
+                      // the change applies in place instead of opening a successor session.
+                      session.config.thinking = update.value;
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
                     case 'turnDuration': config.showTurnDuration = update.value; break;
                     case 'timeFormat': config.timeFormat = update.value; break;
                     case 'editor': config.editorMode = update.value; break;

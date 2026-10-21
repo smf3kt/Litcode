@@ -352,6 +352,16 @@ Next up, scoped but not started:
       the fix, W243–W246 rerun 9/9, 10/10, 10/10, 12/12, thinking-dialog 3/3 and check/build
       pass; full suite 3000/3001 with the CLI-effort failure reproduced at HEAD.
       See `research/ports/W247-review-fixes.md`.
+- [x] W248 `/config` Thinking mode row applies live. The recovered row (`thinking`,
+      chunk-nybcbd9t.js 15590) writes `thinkingEnabled` in place and persists its setting
+      (`_4e`, chunk-bk5ct2gw.js 400925) instead of restarting the session. The callback now
+      persists `settings.thinking` (the only adaptation), writes `session.config.thinking` and
+      repaints via `configPanelInput`; other rows keep the successor path and the model
+      capability lock stays out with the W246 gap. Compiled 9/9 at identity `5ab78a06…`
+      (thinking on persists, next request `adaptive`, no branch; Auto-compact still branches),
+      W233 35/35, W246/W247 12/12, focused 31/31 and check/build pass; full suite 3000/3001
+      with the CLI-effort failure reproduced at HEAD.
+      See `research/ports/W248-config-thinking.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.
