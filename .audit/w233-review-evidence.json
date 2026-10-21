@@ -1,0 +1,175 @@
+{
+  "schema": "W233IndependentRecheck.v1",
+  "identity": "893ac6cb1d3fdebcf72f71f1b57b8309cc3953ef499be181f4ab0a9b58037954",
+  "findings": {
+    "commands": {
+      "outcome": "fixed",
+      "evidence": {
+        "identity": "893ac6cb1d3fdebcf72f71f1b57b8309cc3953ef499be181f4ab0a9b58037954",
+        "afterConfig": {
+          "model": "model-01",
+          "effort": "low",
+          "thinking": false,
+          "modelSettings": {
+            "model-01": {
+              "effortLevel": "high"
+            }
+          }
+        },
+        "configRequest": {
+          "model": "model-01",
+          "effort": "high"
+        },
+        "afterLow": {
+          "model": "model-01",
+          "effort": "low",
+          "thinking": false,
+          "modelSettings": {
+            "model-01": {
+              "effortLevel": "low"
+            }
+          }
+        },
+        "lowRequest": {
+          "model": "model-01",
+          "effort": "low"
+        },
+        "restartedAfterLow": {
+          "model": "model-01",
+          "effort": "low"
+        },
+        "afterAuto": {
+          "model": "model-01",
+          "thinking": false,
+          "modelSettings": {
+            "model-01": {}
+          }
+        },
+        "autoRequest": {
+          "model": "model-01",
+          "effort": null
+        },
+        "restartedAfterAuto": {
+          "model": "model-01",
+          "effort": null
+        },
+        "captures": {
+          "lowConfirmation": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████           \n ██   ██ \n> /config\n- Set model to model-01\n> review proof 1\n\n⏺ review reply 1\n✻ Baked for 0s · done 3:37 PM\n\n> /effort low\nSet effort level to low (saved as your default for new sessions): Quick, straightforward i\nmplementation with minimal overhead\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\n❯ \n──────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  ○ low · /effort    ctrl+o transcript  ctrl+r search  ctrl+c inte",
+          "autoConfirmation": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████\n ██   ██\n> review proof 3\n\n⏺ review reply 3\n✻ Worked for 0s · done 3:37 PM\n\n> /effort auto\nEffort level set to auto\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\n❯ \n──────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  session: 778f74fa- ctrl+o transcript  ctrl+r search  ctrl+c inte"
+        },
+        "processExits": [
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "metadata": {
+      "outcome": "fixed",
+      "evidence": {
+        "identity": "893ac6cb1d3fdebcf72f71f1b57b8309cc3953ef499be181f4ab0a9b58037954",
+        "markerIsSynthetic": true,
+        "journalPath": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w233-review-map-parser-YMAzBT/workspace/.agent/c9cea9eb-ad67-4375-9b2d-03463a23720d.jsonl",
+        "sessionModelSettings": {
+          "model-01": {
+            "effortLevel": "high"
+          }
+        },
+        "userSettingsUnchanged": true,
+        "markerAbsentFromJournal": true,
+        "processExit": 0
+      }
+    },
+    "model": {
+      "outcome": "fixed",
+      "evidence": {
+        "identity": "893ac6cb1d3fdebcf72f71f1b57b8309cc3953ef499be181f4ab0a9b58037954",
+        "before": {
+          "model": "model-01",
+          "effort": "low"
+        },
+        "switched": {
+          "model": "model-02",
+          "effort": "xhigh"
+        },
+        "restarted": {
+          "model": "model-02",
+          "effort": "xhigh"
+        },
+        "authored": {
+          "model": "model-02",
+          "effort": "low",
+          "thinking": false,
+          "modelSettings": {
+            "model-02": {
+              "effortLevel": "xhigh"
+            }
+          }
+        },
+        "captures": {
+          "targetFocused": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████           \n ██   ██ \n> review proof 1\n\n⏺ review reply 1\n✻ Cogitated for 0s · done 3:39 PM\n\n> /config\nSelect model\nSwitch between models. Your pick becomes the default for new sessions. For other/previous \nmodel names, specify with --model.\n\n  1. model-01 ✔  Current model\n❯ 2. model-02     \n\n◉ xHigh effort  Left/Right adjust\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\n\nEnter confirm / Esc cancel\n⏸ manual mode on · running  finished: end_tu ctrl+o transcript  ctrl+r search  ctrl+c inte",
+          "afterSwitch": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████           \n ██   ██ \n> review proof 1\n\n⏺ review reply 1\n✻ Cogitated for 0s · done 3:39 PM\n\n> /config\n- Set model to model-02\n> review proof 2\n\n⏺ review reply 2\n✻ Crunched for 0s · done 3:39 PM\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\n❯ \n──────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  finished: end_turn ctrl+o transcript  ctrl+r search  ctrl+c inte"
+        },
+        "processExits": [
+          0,
+          0
+        ]
+      }
+    },
+    "close": {
+      "outcome": "fixed",
+      "evidence": {
+        "identity": "893ac6cb1d3fdebcf72f71f1b57b8309cc3953ef499be181f4ab0a9b58037954",
+        "failureSilent": false,
+        "failedFilePreserved": true,
+        "successfulWriteCommittedDespiteClose": true,
+        "processExit": 0,
+        "failureFrame": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████\n ██   ██ \n> /config\n- Setting change failed: Expected property name or '}' in JSON at position 1 (line 1 colum\n  n 2)\n- Config dialog dismissed\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\n❯ \n──────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  session: 0d9b1d80- ctrl+o transcript  ctrl+r search  ctrl+c inte",
+        "successfulFrame": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████\n ██   ██ \n> /config\n- Setting change failed: Expected property name or '}' in JSON at position 1 (line 1 colum\n  n 2)\n- Config dialog dismissed\n> /config\n- Set thinking to true\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\n❯ \n──────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  session: d977b7b5- ctrl+o transcript  ctrl+r search  ctrl+c inte"
+      }
+    },
+    "settings": {
+      "outcome": "fixed",
+      "evidence": {
+        "identity": "893ac6cb1d3fdebcf72f71f1b57b8309cc3953ef499be181f4ab0a9b58037954",
+        "before": {
+          "askUserQuestionTimeout": "5m",
+          "dialogExpiry": "10m"
+        },
+        "hidden": [
+          "askUserQuestionTimeout",
+          "dialogExpiry"
+        ],
+        "authored": {
+          "askUserQuestionTimeout": "never"
+        },
+        "restarted": {
+          "askUserQuestionTimeout": "5m",
+          "dialogExpiry": "10m"
+        },
+        "flag": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w233-review-symlink-RnTk49/workspace/settings-link.json",
+        "target": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w233-review-symlink-RnTk49/workspace/settings-target.json"
+      }
+    },
+    "search": {
+      "outcome": "fixed",
+      "evidence": {
+        "identity": "893ac6cb1d3fdebcf72f71f1b57b8309cc3953ef499be181f4ab0a9b58037954",
+        "query": "24-hour",
+        "frame": "Config\n╭────────────────────────────────────────────────────────────────────────────────────────╮\n│ ⌕ 24-hour                                                                              │\n╰────────────────────────────────────────────────────────────────────────────────────────╯\n\nTime format  auto ›\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\nType to filter / Enter or Down select / Esc clear\nready                                        ctrl+o transcript  ctrl+r search  ctrl+c inte",
+        "answer": {
+          "selected": [],
+          "configPanel": {
+            "state": {
+              "query": "24-hour",
+              "cursor": 7,
+              "focus": "timeFormat",
+              "mode": "list"
+            },
+            "open": "timeFormat"
+          }
+        }
+      }
+    }
+  }
+}

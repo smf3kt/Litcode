@@ -32,6 +32,33 @@
  * can't change the remote session's settings" suffix) has no local counterpart.
  */
 
+import { z } from 'zod';
+
+/** se/de/Pe, 9vcaezw1 [10462,12370), UTF-16; arbitrary gateway IDs bypass the vendor alias table. */
+export const modelSettingsSchema = z.record(z.string(), z.object({
+  effortLevel: z.enum(['low', 'medium', 'high', 'xhigh']).optional(),
+}));
+export const effortSelectionSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('inherit'), fallback: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional() }),
+  z.object({ kind: z.literal('level') }), z.object({ kind: z.literal('default') }),
+]);
+export type EffortSelection = z.infer<typeof effortSelectionSchema>;
+export type ModelSettings = z.infer<typeof modelSettingsSchema>;
+
+export function modelSettingsKey(model: string): string { return model.replace(/\[1m\]$/, ''); }
+export function configuredEffort(settings: { modelSettings?: ModelSettings; effort?: EffortLevel }, model: string): EffortLevel | undefined {
+  const key = modelSettingsKey(model);
+  return settings.modelSettings !== undefined && Object.hasOwn(settings.modelSettings, key)
+    ? settings.modelSettings[key]?.effortLevel ?? settings.effort : settings.effort;
+}
+
+/** uc/ys, 9vcaezw1 [12346,12719), 24k7d6mw [620537,620695), UTF-16: manual state survives focus, inherited state resolves by model. */
+export function modelEffort(config: { effort?: EffortLevel; effortSelection?: EffortSelection; modelSettings?: ModelSettings }, model: string): EffortLevel | undefined {
+  if (config.effortSelection?.kind === 'default') return;
+  if (config.effortSelection?.kind !== 'inherit') return config.effort;
+  return configuredEffort({ modelSettings: config.modelSettings, effort: config.effortSelection.fallback }, model);
+}
+
 /** Source `Ia` in `chunk-3cynezh1.js` 29926. */
 export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
 export type EffortLevel = typeof EFFORT_LEVELS[number];
@@ -90,7 +117,7 @@ export function parseEffortLevel(argument: string): EffortLevel | undefined {
  * Source `Z_e` in `chunk-9vcaezw1.js` 8999: the levels `X9` at 13965 writes to `userSettings`.
  * `max` is absent, so it stays session-scoped.
  */
-export function persistableEffort(level: EffortLevel): EffortLevel | undefined {
+export function persistableEffort(level: EffortLevel): Exclude<EffortLevel, 'max'> | undefined {
   return level === 'max' ? undefined : level;
 }
 

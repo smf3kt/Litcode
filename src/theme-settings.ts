@@ -4,6 +4,9 @@ import { atomicWriteFile } from './atomic-write.js';
 import { CONFIG_LIMITS, defaultUserDir, readBoundedBytes } from './config.js';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { editorModeSchema, type EditorMode } from './tui-vim.js';
+import type { ConfigUpdate } from './config-panel.js';
+import { modelSettingsKey, persistableEffort, type EffortLevel } from './effort-command.js';
+import { permissionSettingsPaths, queuePermissionSettingsWrite } from './permission-settings.js';
 
 /** Source D6 writes userSettings; retain all authored fields in the owned store. */
 export function saveThemeSetting(theme: ThemeSetting, userDir = defaultUserDir()): void {
@@ -21,14 +24,14 @@ export function saveDiffDisplaySetting(key: 'diffSidebarOpen' | 'diffSidebarBase
   saveDisplaySetting(key, value, userDir);
 }
 
-/**
- * The `X9` settings write at `chunk-9vcaezw1.js` 13965 reaches `we` at 13897, which stores
- * `userSettings.effort`; `Z_e` at 8999 keeps `max` out of it. Passing undefined is the recovered
- * `auto` path and removes the key, so the next session has no effort of its own.
- */
-export function saveEffortSetting(level: 'low' | 'medium' | 'high' | 'xhigh' | 'max' | undefined,
-  userDir = defaultUserDir()): void {
-  saveDisplaySetting('effort', level, userDir);
+/** D/V -> X9/Pe, 0q6c90q6 [2541,4018)/[4505,5283), 9vcaezw1 [12184,12346)/[13891,14114), UTF-16. */
+export function saveEffortSetting(level: EffortLevel | undefined, userDir = defaultUserDir(), model?: string): void {
+  if (level === 'max') return;
+  updateDisplayFile(path.join(path.resolve(userDir), 'settings.json'), 'effort', settings => {
+    if (level === undefined) delete settings.effort;
+    else settings.effort = level;
+    if (model !== undefined && settings.modelSettings !== undefined) updateModelEffort(settings, model, level);
+  });
 }
 
 /**
@@ -73,15 +76,62 @@ export function saveModelSetting(model: string | undefined, userDir = defaultUse
   saveDisplaySetting('model', model, userDir);
 }
 
+/** vWe P/me/W, nybcbd9t [8029,8318), rows [15295,30405); ta/us x0dc37w9 [102253,105519), UTF-16. */
+export async function saveConfigPanelSetting(update: ConfigUpdate, workspace: string, userDir = defaultUserDir()): Promise<void> {
+  const paths = permissionSettingsPaths(workspace, userDir);
+  const file = update.id === 'reduceMotion' ? paths.localSettings! : paths.userSettings!;
+  const key = update.id === 'reduceMotion' ? 'prefersReducedMotion' : update.id === 'turnDuration' ? 'showTurnDuration'
+    : update.id === 'editor' ? 'editorMode' : update.id;
+  const value = update.id === 'dialogExpiry' && update.value === 'default' ? undefined : update.value;
+  await queuePermissionSettingsWrite(file, () => writeDisplayFile(file, key, value));
+}
+
+/** Me/X9/Pe/Duo, nybcbd9t [8318,9556), 9vcaezw1 [12184,12346)/[13891,14114), UTF-16. */
+export async function saveConfigModelEffort(model: string, effort: EffortLevel, userDir = defaultUserDir()): Promise<void> {
+  const value = persistableEffort(effort);
+  if (value === undefined) return;
+  const file = path.join(path.resolve(userDir), 'settings.json');
+  const key = modelSettingsKey(model);
+  await queuePermissionSettingsWrite(file, () => updateDisplayFile(file, 'modelSettings', settings => updateModelEffort(settings, key, value)));
+}
+
+/** Pe/Duo and us undefined-leaf merge, 9vcaezw1 [12184,12346), x0dc37w9 [102833,105519), UTF-16. */
+function updateModelEffort(settings: Record<string, unknown>, model: string, value: Exclude<EffortLevel, 'max'> | undefined): void {
+  const key = modelSettingsKey(model);
+  if (Object.hasOwn(Object.prototype, key)) {
+    if (value === undefined) delete settings.effort; else settings.effort = value;
+    return;
+  }
+  const models: unknown = settings.modelSettings ?? {};
+  if (models === null || typeof models !== 'object' || Array.isArray(models)) throw new Error('modelSettings must contain an object');
+  const previous: unknown = Object.hasOwn(models, key) ? Reflect.get(models, key) : {};
+  if (previous === null || typeof previous !== 'object' || Array.isArray(previous)) throw new Error('Model settings must contain an object');
+  const entry = { ...previous, effortLevel: value };
+  if (value === undefined) delete entry.effortLevel;
+  settings.modelSettings = { ...models, [key]: entry };
+}
+
 const SETTING_LABELS = {
   theme: 'saveThemeSetting', editorMode: 'saveEditorMode', diffSidebarOpen: 'saveDiffDisplaySetting',
   diffSidebarBaseMode: 'saveDiffDisplaySetting', effort: 'saveEffortSetting',
-  compactAt: 'saveAutoCompactSetting', model: 'saveModelSetting',
+  compactAt: 'saveAutoCompactSetting', model: 'saveModelSetting', modelSettings: 'saveConfigModelEffort', thinking: 'saveConfigPanelSetting',
+  prefersReducedMotion: 'saveConfigPanelSetting', showTurnDuration: 'saveConfigPanelSetting',
+  timeFormat: 'saveConfigPanelSetting', askUserQuestionTimeout: 'saveConfigPanelSetting', dialogExpiry: 'saveConfigPanelSetting',
 } as const;
 
 function saveDisplaySetting(key: keyof typeof SETTING_LABELS,
   value: string | number | boolean | undefined, userDir: string): void {
-  const file = path.join(path.resolve(userDir), 'settings.json');
+  writeDisplayFile(path.join(path.resolve(userDir), 'settings.json'), key, value);
+}
+
+function writeDisplayFile(file: string, key: keyof typeof SETTING_LABELS, value: string | number | boolean | undefined): void {
+  updateDisplayFile(file, key, settings => {
+    if (value === undefined) delete settings[key];
+    else settings[key] = value;
+  });
+}
+
+function updateDisplayFile(file: string, key: keyof typeof SETTING_LABELS, update: (settings: Record<string, unknown>) => void): void {
   let settings: Record<string, unknown> = {}, mode = 0o600;
   try {
     const stat = fs.lstatSync(file);
@@ -96,8 +146,7 @@ function saveDisplaySetting(key: keyof typeof SETTING_LABELS,
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
-  if (value === undefined) delete settings[key];
-  else settings[key] = value;
+  update(settings);
   const content = JSON.stringify(settings, null, 2) + '\n';
   if (Buffer.byteLength(content) > CONFIG_LIMITS.settingsBytes) throw new Error('Theme settings exceed the byte limit');
   atomicWriteFile(file, content, { mode, label: SETTING_LABELS[key] });

@@ -11,6 +11,7 @@ import { PolicyHelper } from './policy-helper.js';
 import { interactiveLoop } from './interactive.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import { briefTranscriptEnabled } from './focus-command.js';
+import { configuredEffort } from './effort-command.js';
 import { createTuiTerminal } from './tui.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
@@ -282,8 +283,11 @@ function newConfig(
 ): SessionConfig {
   const config = defaultConfig(workspace, []);
   config.model = gateway.model;
-  const effort = (values.effort as string | undefined) ?? (demo ? undefined : process.env.LLM_EFFORT) ?? settings.effort;
+  if (settings.modelSettings !== undefined) config.modelSettings = settings.modelSettings;
+  const effort = (values.effort as string | undefined) ?? (demo ? undefined : process.env.LLM_EFFORT) ?? configuredEffort(settings, config.model);
   if (effort !== undefined) config.effort = choice<NonNullable<SessionConfig['effort']>>(effort, ['low', 'medium', 'high', 'xhigh', 'max'], 'high');
+  config.effortSelection = values.effort !== undefined || !demo && process.env.LLM_EFFORT !== undefined
+    ? { kind: 'level' } : { kind: 'inherit', fallback: settings.effort };
   config.gateway = {
     baseURL: gateway.baseURL,
     auth: choice((values.auth as string | undefined) ?? process.env.LLM_AUTH ?? settings.auth ?? gateway.authDefault, ['bearer', 'api-key'], 'bearer'),

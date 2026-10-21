@@ -5,6 +5,7 @@ import { refreshAutoMode } from './plan-resume.js';
 import { createPlanRuntime } from './plan-runtime-host.js';
 import { classifierMessageSchema, classifierMessage, markClassifierMessage } from './message-origin.js';
 import { z } from 'zod';
+import { effortSelectionSchema, modelSettingsSchema, type EffortSelection, type ModelSettings } from './effort-command.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { GatewayConfig } from './provider.js';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
@@ -43,6 +44,8 @@ export type SessionConfig = {
   automaticCheckpoints?: boolean;
   thinking: boolean;
   effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+  modelSettings?: ModelSettings;
+  effortSelection?: EffortSelection;
   childMode?: 'explore' | 'general';
   gateway?: GatewayConfig;
   hooks?: HooksConfig;
@@ -178,6 +181,8 @@ export const configSchema = z.object({
   stopHookBlockCap: z.number().int().min(0).max(1024).optional(),
   automaticCheckpoints: z.boolean().optional(),
   effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(),
+  modelSettings: modelSettingsSchema.optional(),
+  effortSelection: effortSelectionSchema.optional(),
   childMode: z.enum(['explore', 'general']).optional(),
   gateway: z.object({
     baseURL: z.string().url().refine(value => { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) && !u.username && !u.password && !u.search && !u.hash; }, 'Use an HTTP(S) endpoint without credentials, query or fragment'),

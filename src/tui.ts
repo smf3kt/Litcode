@@ -80,6 +80,7 @@ import {
 } from './tui-file-suggestions.js';
 import { ge } from './tui-color.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
+import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
 
 /** The sixteen ANSI foreground names a theme slot can name (the source's own `be` table). */
 const ANSI_FOREGROUND: Readonly<Record<string, number>> = {
@@ -243,6 +244,9 @@ interface ActiveDialog {
   request: TerminalPromptRequest;
   themeEditor?: ThemeEditor;
   modelPicker?: { owner: ModelPicker; hitRows: Map<number, number>; pressed?: number };
+  configPanel?: { owner: ConfigPanel; hits: Map<number, { id: ConfigRowId; valueColumn: number }>;
+    pressed?: { kind: 'row'; id: ConfigRowId; value: boolean } | { kind: 'search' };
+    searchRows: Set<number>; pending?: Promise<void> };
   busy?: boolean;
   editor: EditorState;
   undo: InputUndo;
@@ -1148,11 +1152,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     this.sourceSearch?.cancel();
     this.sourcePicker?.cancel();
-    // The `adjust` axis carries its own formatter, which structuredClone cannot copy, so the
-    // plain fields are cloned and the axis is carried by reference.
-    const { adjust: axis, ...plain } = request;
+    // Formatter and settings callbacks retain their host ownership outside the cloned display data.
+    const { adjust: axis, configPanel, ...plain } = request;
     const snapshot: TerminalPromptRequest = structuredClone(plain);
     if (axis !== undefined) snapshot.adjust = axis;
+    if (configPanel !== undefined) snapshot.configPanel = configPanel;
     this.gestures.reset();this.vim.externalMutation();
     this.progress.pause(true);
     if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
@@ -1179,7 +1183,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.progress.pause(false);
         if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
         this.decoder.discardPending(); this.keys.reset(); this.render();
-        if (editorTask) void editorTask.then(() => resolve(answer), () => resolve(answer));
+        const pending = dialog.configPanel?.pending ?? editorTask;
+        if (pending) void pending.then(() => resolve(answer), () => resolve(answer));
         else resolve(answer);
       };
       const cancelled = () => finish();
@@ -1197,6 +1202,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (snapshot.modelPicker !== undefined) dialog.modelPicker = {
         owner: new ModelPicker(snapshot.choices ?? [], snapshot.modelPicker), hitRows: new Map(),
       };
+      if (snapshot.configPanel !== undefined) {
+        dialog.configPanel = { owner: new ConfigPanel(snapshot.configPanel.input), hits: new Map(), searchRows: new Set() };
+        dialog.configPanel.owner.error = snapshot.initialText;
+      }
       this.dialog = dialog;
       // Pt/he, 76jkr621 [21105,21789), UTF-16: repaint from a modal-owned 100 ms clock.
       if (snapshot.adjust?.kind === 'slider') {
@@ -1936,9 +1945,55 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
+  /** bs/Co/Gl, dag4qhha [26517,31282), Qe field clicks czbq7s7d [1599,4413), UTF-16. */
+  private handleConfigPanelAction(dialog: ActiveDialog, action: EditorAction): void {
+    const panel = dialog.configPanel!;
+    const owner = panel.owner;
+    let effect: ConfigPanelEffect | undefined;
+    if (action.type === 'mouse') {
+      if (this.options.mouseTracking === 'off' || action.col < 1 || action.col > (this.options.output.columns ?? 80)) return;
+      const row = action.row - 1, hit = panel.hits.get(row);
+      if (action.action === 'wheelup' || action.action === 'wheeldown') {
+        panel.pressed = undefined;
+        if (hit && !owner.busy) { owner.scroll(action.action === 'wheelup' ? -1 : 1); this.render(); }
+        return;
+      }
+      if ((this.options.mouseTracking ?? 'full') !== 'full' || (action.button & 3) !== 0 || owner.busy) return;
+      if (action.action === 'press') panel.pressed = hit
+        ? { kind: 'row', id: hit.id, value: action.col - 1 >= hit.valueColumn }
+        : panel.searchRows.has(row) ? { kind: 'search' } : undefined;
+      else if (action.action === 'release') {
+        const pressed = panel.pressed; panel.pressed = undefined;
+        if (pressed?.kind === 'search' && panel.searchRows.has(row)) owner.search();
+        else if (pressed?.kind === 'row' && hit?.id === pressed.id) {
+          owner.focusRow(hit.id);
+          if (pressed.value && action.col - 1 >= hit.valueColumn) effect = owner.activate();
+        }
+      } else if (action.action === 'move' && panel.pressed !== undefined) {
+        if (panel.pressed.kind === 'search' ? !panel.searchRows.has(row) : hit?.id !== panel.pressed.id)
+          panel.pressed = undefined;
+      }
+    } else effect = owner.key(action, this.options.output.columns ?? 80);
+    if (effect?.kind === 'close' || effect?.kind === 'open') {
+      dialog.finish({ selected: [], configPanel: { state: owner.state,
+        ...(effect.kind === 'open' ? { open: effect.id } : {}) } });
+      return;
+    }
+    if (effect?.kind === 'change') {
+      owner.busy = true;
+      const change = dialog.request.configPanel!.change;
+      panel.pending = change(effect.update).then(input => {
+        if (this.dialog === dialog) owner.update(input);
+      }, error => { if (this.dialog === dialog) owner.error = error instanceof Error ? error.message : String(error); })
+        .finally(() => { owner.busy = false; if (this.dialog === dialog) this.render(); });
+    }
+    this.render();
+  }
+
   private handleDialogAction(action: EditorAction): void {
     const dialog = this.dialog;
     if (!dialog) return;
+    if (dialog.configPanel) { this.handleConfigPanelAction(dialog, action); return; }
     if (dialog.modelPicker) { this.handleModelPickerAction(dialog, action); return; }
     if (action.type === 'mouse') return;
     // Source presence records the interaction behind `Ip()`, so any key defers AFK.
@@ -2548,6 +2603,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   };
   private readonly onResize = () => {
     if (this.dialog?.modelPicker) this.dialog.modelPicker.pressed = undefined;
+    if (this.dialog?.configPanel) this.dialog.configPanel.pressed = undefined;
     this.selection = createSelection(); this.diffPointer = undefined; this.renderer?.clearNativeSelection(); this.render();
   };
 
@@ -2826,6 +2882,33 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return true;
   }
 
+  /** bs/rS/Field, dag4qhha [40450,42182), qh0w98pn [55320,57047), czbq7s7d [1599,7850), UTF-16. */
+  private renderConfigPanel(dialog: ActiveDialog, columns: number, rows: number): string[] {
+    const panel = dialog.configPanel!, owner = panel.owner;
+    this.documentRenderer ??= new TuiDocumentRenderer();
+    const paint = (tree: unknown) => this.documentRenderer!.renderElement(tree, columns,
+      { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
+    const header = paint(jsx(n, { bold: true, color: 'remember', children: 'Config' }, undefined));
+    const query = owner.queryDisplay(columns);
+    const search = paint(jsx(s, { borderStyle: 'round', borderColor: owner.searching ? 'suggestion' : undefined,
+      paddingX: 1, children: jsx(n, { dimColor: !owner.searching, wrap: 'truncate-end',
+        children: `⌕ ${query.text || 'Search settings…'}` }, undefined) }, undefined));
+    const guide = owner.searching ? 'Type to filter / Enter or Down select / Esc clear'
+      : 'Enter/Space change / Left/Right adjust / / search / Esc close';
+    const notice = owner.busy ? 'Saving settings…' : owner.error;
+    const notices = notice === undefined ? [] : paint(jsx(n, { color: owner.error ? 'warning' : undefined,
+      children: notice }, undefined));
+    const height = Math.max(1, rows - header.length - search.length - notices.length - 5);
+    const body = owner.render(columns, height, paint);
+    panel.searchRows = new Set(search.map((_row, index) => header.length + index));
+    panel.hits = new Map(body.hits.map(hit => [header.length + search.length + 1 + hit.row,
+      { id: hit.id, valueColumn: hit.valueColumn }]));
+    const frame = [...header, ...search, '', ...body.lines];
+    while (frame.length < rows - notices.length - 3) frame.push('');
+    frame.push(...notices, SEPARATOR.repeat(columns), pad(guide, columns), ...this.footerRows(columns));
+    return frame;
+  }
+
   /** uBe/Yi, 24k7d6mw [617998,624627), yygmb66g [41667,54367), UTF-16. */
   private renderModelPicker(dialog: ActiveDialog, columns: number, bodyRows: number): string[] {
     const picker = dialog.modelPicker!;
@@ -2864,7 +2947,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const visible = content.slice(0, height);
     while (visible.length < height) visible.push('');
     const title = paint(jsx(n, { color: 'remember', bold: true, children: dialog.request.title ?? 'Select model' }, undefined));
-    return [...title.map(row => row.ansi), ...visible, SEPARATOR.repeat(columns), '', pad(modelPickerGuide(), columns)];
+    return [...title.map(row => row.ansi), ...visible, SEPARATOR.repeat(columns), '', pad(modelPickerGuide(dialog.request.modelPicker?.setDefault), columns)];
   }
 
   private renderDialog(columns: number, bodyRows: number): string[] {
@@ -3062,6 +3145,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.statusLine.setActive(this.dialog === undefined && this.screen === 'chat' && !this.gestures.hint);
     this.progress.setVisible(this.dialog === undefined);
     if (this.dialog) {
+      if (this.dialog.configPanel) {
+        const owner = this.dialog.configPanel.owner;
+        const frame = this.renderConfigPanel(this.dialog, columns, rows);
+        this.drawFrame(frame, columns, rows, 2, Math.min(columns - 3,
+          owner.queryDisplay(columns).column), owner.searching);
+        return;
+      }
       if (this.dialog.themeEditor) {
         const frame = this.renderThemeEditor(this.dialog, columns, rows);
         const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;

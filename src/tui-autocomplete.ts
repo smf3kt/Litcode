@@ -124,7 +124,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'plan', description: 'Start a read-only session', kind: 'command', lane: 'config' },
   { name: 'permissions', description: 'Manage allow and deny tool permission rules', kind: 'command', lane: 'config' },
   { name: 'editor', description: 'Edit the current draft in VISUAL/EDITOR (Ctrl+G at a terminal)', kind: 'command', lane: 'config' },
-  { name: 'config', description: 'Save and apply the input editor mode', kind: 'command', lane: 'config' },
+  { name: 'config', description: 'Browse and change local settings', kind: 'command', lane: 'config' },
   { name: 'vim', description: 'Open the Editor mode setting', kind: 'command', lane: 'config' },
   { name: 'clear', description: 'Start a new session without changing existing logs', kind: 'command', lane: 'action' },
   { name: 'exit', description: 'Close the interactive session', kind: 'command', lane: 'action' },

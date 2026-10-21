@@ -218,6 +218,14 @@ Next up, scoped but not started:
       and slider 18/18 pass. Independent narrow hidden-focus defect repaired and rechecked.
       See `research/ports/W232-model-picker.md`. Account-backed catalogue stays excluded.
 
+- [x] W233 `/config` local list. Nine settings, source search and line viewport, immediate writes,
+      Theme/Time format/Model child return, per-model effort defaults, errors and restart pass
+      compiled acceptance 35/35. Check/build and 264 affected tests pass. Six independent findings
+      repaired and rechecked. See `research/ports/W233-config-panel.md`.
+- [ ] Config residuals without complete consumers. Verbose, Auto-compact enable, tips, terminal
+      progress, notifications and selection flags remain unported. Read each source consumer
+      closure before choosing the next complete local package.
+
 Scoped out:
 
 - `/output-style` is scoped out. In this version the visible chooser is a `/config` pane: the
