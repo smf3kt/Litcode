@@ -411,6 +411,12 @@ Next up, scoped but not started:
       `c760cabe…`. Review fixed the config-panel permission owner binding and made the
       display-owner, first-bind digest and single-opener `/effort` regressions real.
       See `research/ports/W254-resume-picker.md`.
+- [x] W255 `/resume` preview and rename: space/ctrl+v opens `Ct` over the target journal
+      (`mAe`), footer `time · N messages`, Enter resume / Esc back; ctrl+r opens the
+      `Rename session:` form, `bt` trims and appends a title record (`Pz`) then refreshes the
+      row, an empty value only returns, and a failing writer keeps the form. Local locks reject a
+      live journal. Unit 21/21, focused 124/124, compiled 8/8 at identity `edb62c56…`.
+      See `research/ports/W255-resume-preview-rename.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

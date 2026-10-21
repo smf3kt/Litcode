@@ -45,12 +45,23 @@ export interface ResumeSession {
   parent?: { id: string };
 }
 
+/** One stored conversation message, as the preview page reads it back (`mAe`). */
+export interface ResumePreviewMessage { role: 'user' | 'assistant'; text: string }
+export interface ResumePreview { messages: readonly ResumePreviewMessage[]; messageCount: number }
+
 export interface ResumePickerInput {
   logs: readonly ResumeSession[];
   /** The session the CLI is in; the source filters it out (`q` in `Jln` and `q` in `filterResumableSessions`). */
   currentId?: string;
   /** Fixed clock for tests; the product passes the wall clock. */
   now?: number;
+  /**
+   * `mAe` for a row whose summary carries no messages: read the target journal back for the
+   * preview page. A reader failure leaves the page empty rather than closing the panel.
+   */
+  preview?: (log: ResumeSession) => ResumePreview;
+  /** `Pz`: append the custom title to the target journal. Throws keep the rename form open. */
+  rename?: (log: ResumeSession, title: string) => void;
 }
 
 export interface ResumePickerOptions {
@@ -185,19 +196,31 @@ export function resumePickerRows(input: ResumePickerInput, options: ResumePicker
 export function resumePickerGuide(mode: 'list' | 'search' | 'rename' | 'preview'): string {
   if (mode === 'search') return 'Type to Search / Enter select / Esc clear';
   if (mode === 'rename') return 'Enter save / Esc cancel';
+  if (mode === 'preview') return 'Enter resume / Esc cancel';
   return 'Type to search / Enter select / Esc cancel';
 }
 
+/** `p4(I, "Enter new session name")`: the current title, else the input placeholder. */
+export function resumeRenamePlaceholder(log: ResumeSession | undefined): string {
+  return log === undefined ? 'Enter new session name' : resumeSessionName(log);
+}
+
 /**
- * `Jln`'s state machine over the ported surface: free-text search, list focus, fork expansion and
- * the search/list mode pair. Preview and rename are the recovered modes this record leaves out.
+ * `Jln`'s state machine over the ported surface: free-text search, list focus, fork expansion,
+ * the search/list mode pair and the preview/rename pages. The all-projects/branch/worktree
+ * filters and load-more paging stay out because the local summary carries none of those fields.
  */
 export class ResumePicker {
   private readonly input: ResumePickerInput;
   private editor = createEditorState();
-  private mode: 'list' | 'search' = 'list';
+  private mode: 'list' | 'search' | 'preview' | 'rename' = 'list';
   private expanded = new Set<string>();
   private focus = 0;
+  private previewLog: ResumeSession | undefined;
+  private previewData: ResumePreview | undefined;
+  private renameLog: ResumeSession | undefined;
+  private renameEditor = createEditorState();
+  private renameFailure: string | undefined;
   width = 80;
 
   constructor(input: ResumePickerInput) {
@@ -211,6 +234,9 @@ export class ResumePicker {
   get query(): string { return this.editor.text; }
   get cursor(): number { return this.editor.cursor; }
   get searching(): boolean { return this.mode === 'search'; }
+  get previewing(): boolean { return this.mode === 'preview'; }
+  get renaming(): boolean { return this.mode === 'rename'; }
+  get modeName(): 'list' | 'search' | 'preview' | 'rename' { return this.mode; }
   get rows(): ResumePickerRow[] { return resumePickerRows(this.input, {
     query: this.editor.text, expanded: this.expanded, now: this.input.now }, this.width); }
   get focused(): ResumePickerRow | undefined { return this.rows[this.focus]; }
@@ -219,10 +245,73 @@ export class ResumePicker {
   get empty(): boolean { return this.input.logs.length === 0; }
   get noMatch(): boolean { return this.rows.length === 0 && this.input.logs.length > 0 && this.query.trim() !== ''; }
 
+  get previewSession(): ResumeSession | undefined { return this.previewLog; }
+  get preview(): ResumePreview { return this.previewData ?? { messages: [], messageCount: 0 }; }
+  get renameValue(): string { return this.renameEditor.text; }
+  get renameCursor(): number { return this.renameEditor.cursor; }
+  get renameError(): string | undefined { return this.renameFailure; }
+  get renamePlaceholder(): string { return resumeRenamePlaceholder(this.renameLog); }
+  get now(): number | undefined { return this.input.now; }
+
   setWidth(width: number): void { this.width = Math.max(20, width); }
   clamp(): void { const count = this.rows.length; this.focus = count === 0 ? 0 : Math.min(this.focus, count - 1); }
   search(): void { this.mode = 'search'; }
   list(): void { this.mode = 'list'; }
+  /** `G(I)` + `C="preview"`: open the focused row's stored conversation. */
+  openPreview(): void {
+    const row = this.focused;
+    if (row === undefined) return;
+    this.previewLog = row.log;
+    try { this.previewData = this.input.preview?.(row.log) ?? { messages: [], messageCount: 0 }; }
+    catch { this.previewData = { messages: [], messageCount: 0 }; }
+    this.mode = 'preview';
+  }
+  /** `Ct`'s `onExit`: back to the list, discarding the rendered page. */
+  closePreview(): void { this.previewLog = undefined; this.previewData = undefined; this.mode = 'list'; }
+  /** ctrl+r: the input starts empty (`te("")`); the placeholder carries the current name. */
+  beginRename(): void {
+    const row = this.focused;
+    if (row === undefined) return;
+    this.renameLog = row.log;
+    this.renameEditor = createEditorState();
+    this.renameFailure = undefined;
+    this.mode = 'rename';
+  }
+  /** Esc in the rename form (`confirm:no` with `isActive`): list, value dropped. */
+  cancelRename(): void { this.renameLog = undefined; this.renameEditor = createEditorState(); this.renameFailure = undefined; this.mode = 'list'; }
+  renameInsert(text: string): void {
+    this.renameEditor = { ...this.renameEditor,
+      text: this.renameEditor.text.slice(0, this.renameEditor.cursor) + text + this.renameEditor.text.slice(this.renameEditor.cursor),
+      cursor: this.renameEditor.cursor + text.length };
+  }
+  renameBackspace(): void {
+    if (this.renameEditor.cursor === 0) return;
+    this.renameEditor = { ...this.renameEditor,
+      text: this.renameEditor.text.slice(0, this.renameEditor.cursor - 1) + this.renameEditor.text.slice(this.renameEditor.cursor),
+      cursor: this.renameEditor.cursor - 1 };
+  }
+  renameReduce(action: EditorAction): void {
+    if (action.type === 'insert') { this.renameInsert(action.text); return; }
+    if (action.type === 'backspace') { this.renameBackspace(); return; }
+  }
+  /**
+   * `bt`: write the trimmed value through `Pz`, then return to the list. An empty value only
+   * returns; a writer failure keeps the form open with its message.
+   */
+  submitRename(): { log: ResumeSession; title: string } | undefined {
+    const log = this.renameLog;
+    const title = this.renameEditor.text.trim();
+    if (log === undefined) { this.cancelRename(); return undefined; }
+    if (title === '') { this.cancelRename(); return undefined; }
+    try { this.input.rename?.(log, title); }
+    catch (error) {
+      this.renameFailure = error instanceof Error ? error.message : String(error);
+      return undefined;
+    }
+    log.title = title;
+    this.cancelRename();
+    return { log, title };
+  }
   clear(): void { this.editor = { ...this.editor, text: '', cursor: 0 }; this.focus = 0; this.mode = 'list'; }
   move(delta: number): void {
     const count = this.rows.length;
