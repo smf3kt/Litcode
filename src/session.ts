@@ -84,6 +84,8 @@ export type SessionConfig = {
   viewMode?: import('./focus-command.js').FocusMode;
   /** The live Verbose output switch (`Te`); `viewMode` supplies its startup value. */
   verbose?: boolean;
+  /** `progressBar`/`terminalProgressBarEnabled`: OSC 9;4 progress while the agent runs. */
+  terminalProgressBarEnabled?: boolean;
   timeFormat?: string;
   timeZone?: string;
   spinnerVerbs?: import('./tui-progress-settings.js').SpinnerVerbs;
@@ -226,6 +228,7 @@ export const configSchema = z.object({
   showMessageTimestamps: z.boolean().optional(),
   viewMode: z.enum(['default', 'verbose', 'focus']).optional(),
   verbose: z.boolean().optional(),
+  terminalProgressBarEnabled: z.boolean().optional(),
   timeFormat: z.string().optional(),
   timeZone: z.string().optional(),
   spinnerVerbs: spinnerVerbsSchema.optional(),

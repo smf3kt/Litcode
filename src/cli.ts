@@ -311,6 +311,7 @@ function newConfig(
   if (settings.viewMode !== undefined) config.viewMode = settings.viewMode;
   // It, 9shw4xrd [106333,106421), UTF-16: the stored boolean wins; viewMode seeds it when absent.
   config.verbose = startupVerbose(config.viewMode, settings.verbose);
+  if (settings.terminalProgressBarEnabled !== undefined) config.terminalProgressBarEnabled = settings.terminalProgressBarEnabled;
   if (settings.timeFormat !== undefined) config.timeFormat = settings.timeFormat;
   if (settings.timeZone !== undefined) config.timeZone = settings.timeZone;
   if (settings.spinnerVerbs !== undefined) config.spinnerVerbs = settings.spinnerVerbs;
@@ -715,6 +716,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         showMessageTimestamps: currentSession.config.showMessageTimestamps,
         briefTranscript: briefTranscriptEnabled(currentSession.config),
         verbose: currentSession.config.verbose === true,
+        terminalProgressBar: currentSession.config.terminalProgressBarEnabled !== false,
         editorMode:currentSession.config.editorMode,vimInsertModeRemaps:currentSession.config.vimInsertModeRemaps,
         progressSettings: {timeFormat:currentSession.config.timeFormat, timeZone:currentSession.config.timeZone,
           spinnerVerbs:currentSession.config.spinnerVerbs},

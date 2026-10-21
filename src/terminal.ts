@@ -1336,6 +1336,8 @@ export interface TerminalSurface {
   setBriefTranscript?(enabled: boolean): void;
   /** The live Verbose output switch (`Te`); detailed tool result rows replace their summaries. */
   setVerbose?(enabled: boolean): void;
+  /** `progressBar`: the OSC 9;4 indicator switch; disabling clears an active indicator. */
+  setTerminalProgressBar?(enabled: boolean): void;
   /** One finished tool call, after any post hook replaced its result. */
   appendToolResult?(result: import('./tui-tool-result.js').ToolDisplayResult): void;
   /** The composer's slash-command rows; a skill rescan hands back the list it rebuilt. */

@@ -8,7 +8,7 @@ import { te } from './tui-symbols.js';
 
 export const TIME_FORMATS = ['auto', '12-hour', '24-hour', '24-hour-utc'] as const;
 export type ConfigUpdate =
-  | { id: 'autoCompact' | 'verbose' | 'reduceMotion' | 'thinking' | 'turnDuration'; value: boolean }
+  | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration'; value: boolean }
   | { id: 'editor'; value: 'normal' | 'vim' }
   | { id: 'timeFormat'; value: typeof TIME_FORMATS[number] }
   | { id: 'askUserQuestionTimeout'; value: 'never' | '60s' | '5m' | '10m' }
@@ -21,7 +21,7 @@ type Row = { id: ConfigRowId; label: string } & (
 );
 export interface ConfigPanelState { query: string; cursor: number; focus: ConfigRowId; mode: 'search' | 'list' }
 export type ConfigPanelValues = Pick<SessionConfig, 'model' | 'thinking' | 'theme' | 'editorMode' | 'timeFormat'
-  | 'verbose' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry'>;
+  | 'verbose' | 'terminalProgressBarEnabled' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry'>;
 export interface ConfigPanelInput { config: ConfigPanelValues; hidden: readonly ConfigRowId[]; state?: ConfigPanelState }
 export interface ConfigPanelHost {
   input: ConfigPanelInput;
@@ -57,6 +57,8 @@ function rows({ config, hidden }: ConfigPanelInput): Row[] {
     { id: 'thinking', label: 'Thinking mode', kind: 'boolean', value: config.thinking },
     // vWe, nybcbd9t [20115,20201), UTF-16; Ze, bk5ct2gw [558427,559209) defaults false.
     { id: 'verbose', label: 'Verbose output', kind: 'boolean', value: config.verbose ?? false },
+    // vWe, nybcbd9t [20202,20454), UTF-16; `y0` (3gz7s57c 138878) defaults it on.
+    { id: 'progressBar', label: 'Terminal progress bar', kind: 'boolean', value: config.terminalProgressBarEnabled ?? true },
     { id: 'turnDuration', label: 'Show turn duration', kind: 'boolean', value: config.showTurnDuration ?? true },
     { id: 'timeFormat', label: 'Time format', kind: 'picker', value: config.timeFormat ?? 'auto', options: TIME_FORMATS },
     { id: 'theme', label: 'Theme', kind: 'picker', value: themeNames[config.theme ?? 'dark'] ?? config.theme ?? 'dark' },
@@ -208,7 +210,7 @@ export class ConfigPanel {
     const value = row.kind === 'boolean' ? !row.value : row.kind === 'enum'
       ? row.options[(row.options.indexOf(row.value) + direction + row.options.length) % row.options.length] : undefined;
     switch (row.id) {
-      case 'autoCompact': case 'verbose': case 'reduceMotion': case 'thinking': case 'turnDuration':
+      case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration':
         if (typeof value === 'boolean') return { kind: 'change', update: { id: row.id, value } };
         return;
       case 'editor':

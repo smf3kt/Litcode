@@ -44,6 +44,8 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   // It, 9shw4xrd [106333,106421), UTF-16: reload resolves the same way startup does, so a
   // removed key falls back to the authored viewMode instead of keeping a stale live value.
   next.verbose = startupVerbose(next.viewMode, settings.verbose);
+  // y0, 3gz7s57c 138878, UTF-16: the merged row defaults on when no layer authors it.
+  next.terminalProgressBarEnabled = settings.terminalProgressBarEnabled ?? true;
   for (const key of ['timeFormat', 'timeZone', 'spinnerVerbs','editorMode','vimInsertModeRemaps'] as const) {
     if (settings[key] === undefined) delete next[key];
   }

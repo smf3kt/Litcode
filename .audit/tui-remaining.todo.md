@@ -234,9 +234,23 @@ Next up, scoped but not started:
       CLI-effort failure reproduced at HEAD. Independent review fixes: precedence, blank-line
       count, reload fallback, unfinished-turn refusal, uncapped detailed tool rows. Thinking,
       Bash/edit/MCP and nested renderers stay unported. See `research/ports/W235-verbose-view.md`.
-- [ ] Config residuals without complete consumers. Tips, terminal progress, notifications
+- [x] W236 Config Terminal progress bar. Default-on row after Verbose with user persistence,
+      fresh/reload/live successor application and restart. An agent turn writes the recovered
+      OSC 9;4 indeterminate sequence and clears when idle, gated by iTerm2/Ghostty/ConEmu and
+      wrapped for tmux/screen; disabled or unsupported terminals stay silent. Compiled 10/10,
+      89 affected regressions and check/build pass; full suite 2980/2981 with the CLI-effort
+      failure reproduced at HEAD. Independent review's low findings are closed. See
+      `research/ports/W236-terminal-progress.md`.
+- [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.
+      Next candidate: the unflagged `permissionMode` row ("Default permission mode", nybcbd9t
+      [21907,22578)); `permissions.defaultMode` already parses and `setMode` already writes a
+      settings document, so the package is row + enum options + user-file scope + restart proof.
+      Not portable now: tips (vendor/service content), prompt suggestions / timestamps / tab
+      status / copy-on-select / auto-scroll (source rows sit behind `tengu_*` flags default off),
+      recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no
+      matching host consumer), notifications (no local trigger set).
 
 Scoped out:
 

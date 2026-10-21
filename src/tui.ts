@@ -42,6 +42,8 @@ import { composerEditRelay, type ChainRelayKey, type ComposerEditRelay } from '.
 import { externalMode, modeChip, modeColorSlot } from './tui-footer-source.js';
 import { PROMPT_BORDER_SLOT, effectiveSessionColor, sessionColorSlot, type SessionColor } from './session-color.js';
 import { effectivePermissionPolicy } from './permissions.js';
+import { terminalProgressMux, terminalProgressSequence, terminalProgressSupported,
+  type TerminalProgressState } from './terminal-progress.js';
 import { paintedDecorations, normalizedRuns, highlightRows, type DecorationRun, type PaintedDecorations, type PromptSegment } from './tui-input-decorations.js';
 import { composerHighlights } from './tui-input-highlights.js';
 import { Art } from './tui-input-highlights-source.js';
@@ -223,6 +225,8 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   briefTranscript?: boolean;
   /** The live Verbose output switch at construction; Config and `/reload` update it through `setVerbose`. */
   verbose?: boolean;
+  /** The Config "Terminal progress bar" row; default on, updated through `setTerminalProgressBar`. */
+  terminalProgressBar?: boolean;
   progressSettings?: ProgressDisplaySettings;
   maxProseWidth?: number;
   syntaxHighlightingDisabled?: boolean;
@@ -441,6 +445,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Source `briefTranscript`: the fold that holds the in-flight preview during tool use. */
   private briefTranscript = false;
   private verbose = false;
+  /** `progressBar`/`terminalProgressBarEnabled`: write OSC 9;4 while the agent runs. */
+  private terminalProgressEnabled = true;
+  private terminalProgressState: TerminalProgressState = null;
+  private lastTerminalProgress = '';
   /** `/color`'s pick; `Mk`'s banner row exists only while this is set. */
   private sessionColor: SessionColor | undefined;
   private progressSettings: ProgressDisplaySettings = {};
@@ -538,6 +546,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.showMessageTimestamps = options.showMessageTimestamps === true;
     this.briefTranscript = options.briefTranscript === true;
     this.verbose = options.verbose === true;
+    this.terminalProgressEnabled = options.terminalProgressBar !== false;
     this.progressSettings = structuredClone(options.progressSettings ?? {});
     this.timeFormatter = progressTime(this.progressSettings);
     this.progress.setVerbs(this.progressSettings.spinnerVerbs);
@@ -880,7 +889,37 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.progress.stop();
       if (event.reason !== 'error' && event.reason !== 'aborted') this.restoreTurnDuration(event.duration);
     }
+    // `qa`/`om` (3gz7s57c [138656,139637)): any active agent work is indeterminate;
+    // the idle state clears the terminal's progress indicator.
+    this.setTerminalProgress(event.kind === 'start' ? 'indeterminate'
+      : event.kind === 'finish' ? 'completed' : this.terminalProgressState);
     this.render();
+  }
+
+  /** `progressBar`'s live switch: disabling clears any indicator already on screen. */
+  setTerminalProgressBar(enabled: boolean): void {
+    if (enabled === this.terminalProgressEnabled) return;
+    this.terminalProgressEnabled = enabled;
+    if (!enabled) { if (this.lastTerminalProgress !== '') this.emitTerminalProgress('completed', 0, true); }
+    else if (this.progress.running) this.emitTerminalProgress('indeterminate', 0, true);
+    // `qa` recomputes on the enabled change; idle resolves to completed, which clears.
+    else this.emitTerminalProgress('completed', 0, false);
+  }
+
+  /** One agent-progress state; the terminal gate and the live switch decide the write. */
+  setTerminalProgress(state: TerminalProgressState, percent = 0): void {
+    this.terminalProgressState = state;
+    this.emitTerminalProgress(state, percent, false);
+  }
+
+  private emitTerminalProgress(state: TerminalProgressState, percent: number, force: boolean): void {
+    if (!this.isTTY || (!force && !this.terminalProgressEnabled)) return;
+    // `s7e` gates on the stdout TTY, which is the stream this writer uses.
+    if (!terminalProgressSupported(this.options.output.isTTY === true)) return;
+    const sequence = terminalProgressSequence(state, percent, { mux: terminalProgressMux() });
+    if (sequence === this.lastTerminalProgress) return;
+    this.lastTerminalProgress = sequence;
+    this.options.output.write(sequence);
   }
 
   private hideStreamingPreview(): void {
@@ -1283,6 +1322,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    // `qa`'s unmount cleanup clears the progress indicator before the screen is restored.
+    if (this.lastTerminalProgress !== '') this.emitTerminalProgress('completed', 0, true);
     this.sourceSearch?.close();this.sourceSearch=undefined;this.queryUndo.clear();this.queryEditor=createEditorState();
     this.sourcePicker?.close();this.sourcePicker=undefined;this.pickerUndo.clear();this.pickerQuery=createEditorState();
     this.editorController?.abort();this.gestures.reset();this.vim.close();this.focus.close();this.inputHistory.close();

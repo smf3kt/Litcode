@@ -362,6 +362,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setShowMessageTimestamps?.(session.config.showMessageTimestamps);
     terminal?.setBriefTranscript?.(briefTranscriptEnabled(session.config));
     terminal?.setVerbose?.(session.config.verbose === true);
+    terminal?.setTerminalProgressBar?.(session.config.terminalProgressBarEnabled !== false);
     terminal?.setProgressSettings?.({timeFormat:session.config.timeFormat, timeZone:session.config.timeZone,
       spinnerVerbs:session.config.spinnerVerbs});
     terminal?.setMaxProseWidth?.(session.config.maxProseWidth);
@@ -813,6 +814,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     // The Verbose config row applies to the live surface through the successor session,
     // the same owner handoff `Te` performs beside its settings write.
     terminal?.setVerbose?.(next.config.verbose === true);
+    terminal?.setTerminalProgressBar?.(next.config.terminalProgressBarEnabled !== false);
     announce();
     const resumed = await agent().startSession('resume', signal);
     if (resumed?.watchPaths?.length) addInstructionPaths(resumed.watchPaths);
@@ -1377,6 +1379,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           await acceptNext(next, nextRuntime);
           // The merged Verbose value reaches the live surface with the reloaded owner.
           terminal?.setVerbose?.(next.config.verbose === true);
+          terminal?.setTerminalProgressBar?.(next.config.terminalProgressBarEnabled !== false);
           announce();
           const resumed = await agent().startSession('resume', options.signal);
           if (resumed?.watchPaths?.length) addInstructionPaths(resumed.watchPaths);
@@ -1498,6 +1501,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       break;
                     }
                     case 'verbose': config.verbose = update.value; break;
+                    case 'progressBar': {
+                      // y0 reads the merged setting (`hs`) with default true; re-read it after the write
+                      // so a higher authored layer keeps precedence.
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const authored = loaded.settings.terminalProgressBarEnabled;
+                      config.terminalProgressBarEnabled = authored === undefined ? true
+                        : configSchema.shape.terminalProgressBarEnabled.parse(authored);
+                      break;
+                    }
                     case 'reduceMotion': config.prefersReducedMotion = update.value; break;
                     case 'thinking': config.thinking = update.value; break;
                     case 'turnDuration': config.showTurnDuration = update.value; break;
