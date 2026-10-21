@@ -662,8 +662,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   const confirm = async (title: string, message: string, signal: AbortSignal): Promise<boolean> => {
     if (terminal?.prompt) {
+      // `confirm:yes` binds enter and `confirm:no` escape (`chunk-6ccen3s8.js` 4063), so the
+      // focused row must be Yes: Enter approves and Escape cancels.
       const answer = await readDialog({ title, message, choices: [
-        { label: 'No', value: 'no' }, { label: 'Yes', value: 'yes' },
+        { label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' },
       ], defaultIndex: 0 }, signal);
       return answer?.selected[0] === 'yes';
     }
@@ -948,8 +950,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
    * slow hook cannot let an accept overwrite a newer choice; a second move blocks the switch.
    */
   const preModelSwitch = async (model: string, signal: AbortSignal, revalidating = false): Promise<void> => {
-    const base = session.config.model;
-    const pre = await agent().emitHook('PreModelSwitch', { from_model: base, to_model: model, requested_model: model }, signal);
+    // `fw(o())` (chunk-sfn1dbxq.js 2937319) reads the model together with the live permission
+    // mode, so a mode change during a hook revalidates just like a model change.
+    const identity = () => `${session.config.model ?? ''}\0${session.permissionOwner.state().mode}`;
+    const base = identity();
+    const pre = await agent().emitHook('PreModelSwitch', { from_model: session.config.model, to_model: model, requested_model: model }, signal);
     const hookReason = pre.permissionDecisionReason;
     if (pre.permissionDecision === 'deny') throw new Error(`Model switch blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
     if (pre.permissionDecision === 'ask') {
@@ -957,7 +962,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (!approved) throw new Error(`Model switch to ${model} was blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
     }
     if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
-    if (session.config.model !== base) {
+    if (identity() !== base) {
       if (revalidating) throw new Error('the session model changed while a PreModelSwitch hook was running; pick again');
       return preModelSwitch(model, signal, true);
     }
@@ -981,16 +986,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const previous = session.config.model;
     const userDir = session.config.configSources?.userDir;
     await preModelSwitch(model, signal);
-    // `X9(Ex, iae(lC), k9, Xn)` at chunk-24k7d6mw.js 894692 is called without `await`, so a failed
-    // effort-table write does not undo the switch; `s` skips it with the model default.
+    // `X9(Ex, iae(lC), k9, Xn)` at chunk-24k7d6mw.js 894527 is called without `await`, so the
+    // live switch never waits on the settings queue and a failed effort-table write does not
+    // undo the switch; `s` skips it with the model default.
     if (effort !== undefined && !sessionOnly && userDir !== undefined) {
-      try {
-        await saveConfigModelEffort(model, effort, userDir);
-        const value = persistableEffort(effort), key = modelSettingsKey(model);
+      const value = persistableEffort(effort), key = modelSettingsKey(model);
+      saveConfigModelEffort(model, effort, userDir).then(() => {
         if (value !== undefined && !Object.hasOwn(Object.prototype, key))
           session.config.modelSettings = { ...session.config.modelSettings,
             [key]: { ...session.config.modelSettings?.[key], effortLevel: value } };
-      } catch { /* The source ignores the effort write's failure. */ }
+      }).catch(() => { /* The source ignores the effort write's failure. */ });
     }
     session.config.model = model;
     if (effort !== undefined) { session.config.effort = effort; session.config.effortSelection = { kind: 'level' }; }
@@ -1092,7 +1097,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (session.config.effort !== undefined) options.status.write(`${effortIndicator(session.config.effort)}\n`);
   }
   /**
-   * `lL` (chunk-24k7d6mw.js 838388) opens the `SG` dialog; accept `kp` (898567) and cancel `ph`
+   * `lL` (chunk-24k7d6mw.js 882215) opens the `SG` dialog; accept `kp` (898567) and cancel `ph`
    * (898638). The accept writes the live state, and `SG` asks once more for a changed value
    * mid-conversation (`627114`). The source's `sendControlRequest` has no local channel here:
    * the request builder reads `config.thinking` on every call, so the live write is enough.

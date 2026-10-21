@@ -49,7 +49,8 @@ Recovered application entrypoints remain inert.
 - `src/thinking-dialog.ts` carries the recovered strings and rows with the current value as the
   default focus. `applyThinkingToggle` reads the first answer, applies it live to
   `session.config.thinking`, and shows `Thinking on/off`. The mid-conversation confirmation uses
-  the host's confirmation prompt with the recovered warning and proceed text.
+  the host's confirmation prompt with the recovered warning and proceed text; since W249 its
+  focused row is Yes, so Enter approves as `confirm:yes` does.
 - The `lZt` "thinking is always on" arm needs the model capability table (`rS` on
   `rejects_disabled_thinking`, chunk-bk5ct2gw.js 51); this host has no such catalogue, so the
   dialog is always offered. The `sendControlRequest` channel has no local producer; the request
@@ -73,7 +74,8 @@ outstanding W243/W244 findings.
   A first turn is held, `alt+t` opens the dialog mid-turn, the Enabled row applies without a
   confirmation (no assistant message yet), and the held turn's next request carries
   `thinking: adaptive`; a second held turn opens the dialog again, the changed row shows the
-  mid-conversation warning, Yes applies `Thinking off`, and the next request has no `thinking`.
+  mid-conversation warning, Enter applies `Thinking off` (the focused Yes row), and the next
+  request has no `thinking`.
 - W243, W244 and W245 acceptances rerun on the same tree: 9/9, 10/10, 10/10 at the same identity.
 - Full suite: 3000 tests, 2999 pass; the single failure is the pre-existing CLI effort-flag
   divergence at HEAD.

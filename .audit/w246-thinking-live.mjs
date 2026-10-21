@@ -121,10 +121,10 @@ try {
   send('\r');
   await until(() => screen().includes('Changing thinking mode mid-conversation'), 'the warning appears');
   pass('a changed value mid-conversation asks first');
-  send('\u001b[B'); await delay(150);
+  // `confirm:yes` binds enter (`chunk-6ccen3s8.js` 4070), so the confirmation approves on Enter.
   send('\r');
   await until(() => screen().includes('Thinking off'), 'the confirmation applies');
-  pass('the confirmation applies thinking off');
+  pass('the confirmation applies thinking off on Enter');
   secondGate.release();
   await until(() => requests.length === 4, 'the second turn continues');
   pass('the next request has thinking off again', requests[3].thinking === undefined);
