@@ -468,6 +468,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   const onLine = (line: string, attachment?: import('./terminal.js').PromptDiffSelection) => {
     if (approval) { approval(line); return; }
+    // `kEo` (chunk-sfn1dbxq.js 1659192) is `immediate`; the recovered submit gate runs it while
+    // the turn guard is active (`zn`, chunk-24k7d6mw.js 1491124) instead of queueing it behind
+    // the turn. `/model` keeps the queued path until its typed mid-turn arm is ported.
+    const trimmed = line.trim();
+    if (turnController && /^\/effort(?:\s|$)/.test(trimmed)) {
+      void applyEffortCommand(trimmed).catch(error => {
+        if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
+      });
+      return;
+    }
     queue.push({ prompt: line, source: 'user', ...(attachment ? { attachment } : {}) });
     promptQueueChanged(); awaken();
   };
@@ -973,6 +983,44 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
     }
   };
+  /** `MOe`, chunk-0q6c90q6.js 6286: apply the level to live state; the write is the only default arm. */
+  async function applyEffortCommand(prompt: string): Promise<void> {
+    let sessionOnly = false;
+    if (prompt === '/effort' && terminal?.prompt) {
+      // It/Ce, chunk-76jkr621.js [22174,30123)/[17514,17916), UTF-16:
+      // Enter applies the displayed level even unchanged; s skips the default write.
+      const answer = await readDialog(effortSliderRequest(session.config.effort), options.signal);
+      const picked = answer?.adjusted;
+      if (picked === undefined) { options.status.write('Effort selection cancelled.\n'); return; }
+      if (!isEffortLevel(picked)) throw new Error('Invalid effort selection');
+      sessionOnly = answer?.key === 's';
+      prompt = `/effort ${picked}`;
+    }
+    const result = effortCommand(prompt.slice('/effort'.length), {
+      current: session.config.effort, fallback: DEFAULT_EFFORT, save: !sessionOnly });
+    // A read-only answer (usage, help, a status report, an invalid argument) leaves the session
+    // alone. The recovered handler returns its answer as a `{type:"text"}` value (`u` at
+    // `chunk-tf9zceev.js` [4922,5480)), which the dispatcher prints as text; the `eee` notice is
+    // the separate status-row surface.
+    if (result.effort === undefined && result.saved === undefined) { output.write(`${result.message}\n`); return; }
+    if (result.effort === null) {
+      delete session.config.effort; session.config.effortSelection = { kind: 'default' };
+    } else if (result.effort !== undefined) {
+      session.config.effort = result.effort; session.config.effortSelection = { kind: 'level' };
+    }
+    if (result.saved !== undefined) {
+      saveEffortSetting(result.saved ?? undefined, session.config.configSources?.userDir, session.config.model);
+      const key = modelSettingsKey(session.config.model);
+      if (session.config.modelSettings !== undefined && !Object.hasOwn(Object.prototype, key)) {
+        const entry = { ...session.config.modelSettings[key], effortLevel: persistableEffort(result.saved ?? DEFAULT_EFFORT) };
+        if (result.saved === null) delete entry.effortLevel;
+        session.config.modelSettings = { ...session.config.modelSettings, [key]: entry };
+      }
+    }
+    output.write(`${result.message}\n`);
+    // `eee` at `chunk-24k7d6mw.js` 153296 guards on a present level, so `auto` has none.
+    if (session.config.effort !== undefined) options.status.write(`${effortIndicator(session.config.effort)}\n`);
+  }
   /** Co -> Ll/Me, dag4qhha [33770,34600), nybcbd9t [8318,9556), UTF-16; shares the command's hook/save/apply path. */
   const selectModel = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal, fromConfig = false) => {
     if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
@@ -1828,13 +1876,18 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           }
           continue;
         }
-        if (prompt.startsWith('/model ') || prompt.startsWith('/theme ') || prompt === '/effort' || prompt.startsWith('/effort ') || /^\/thinking(?:\s|$)/.test(prompt)
+        // `kEo` (chunk-sfn1dbxq.js 1659192) is an `immediate` local-jsx command; the submit gate
+        // (`zn`, chunk-24k7d6mw.js 1491124) lets it run mid-turn. `MOe` (chunk-0q6c90q6.js 6286)
+        // applies the level to live state, so no successor session is opened here either.
+        if (prompt === '/effort' || prompt.startsWith('/effort ')) {
+          await applyEffortCommand(prompt);
+          continue;
+        }
+        if (prompt.startsWith('/model ') || prompt.startsWith('/theme ') || /^\/thinking(?:\s|$)/.test(prompt)
           || prompt === '/plan' || prompt === '/permissions' || prompt.startsWith('/permissions ')) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           const config = structuredClone(session.config);
           let modeCommand: PermissionModeCommand | undefined;
-          let effortMessage: string | undefined;
-          let effortNotice: string | undefined;
           const switchingModel = prompt.startsWith('/model ');
           const switchingTheme = prompt.startsWith('/theme ');
           if (switchingTheme) {
@@ -1844,30 +1897,6 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           } else if (switchingModel) {
             await selectModel(prompt.slice(7).trim(), pendingEffort, pendingSessionOnly, options.signal);
             continue;
-          } else if (prompt === '/effort' || prompt.startsWith('/effort ')) {
-            const result = effortCommand(prompt.slice('/effort'.length), {
-              current: session.config.effort, fallback: DEFAULT_EFFORT, save: !pendingSessionOnly });
-            // A read-only answer (usage, help, a status report, an invalid argument) leaves the
-            // session alone. The recovered handler returns its answer as a `{type:"text"}` value
-            // (`u` at `chunk-tf9zceev.js` [4922,5480)), which the dispatcher prints as text; the
-            // `eee` notice is the separate status-row surface.
-            if (result.effort === undefined && result.saved === undefined) {
-              output.write(`${result.message}\n`); continue;
-            }
-            if (result.effort === null) { delete config.effort; config.effortSelection = { kind: 'default' }; }
-            else if (result.effort !== undefined) { config.effort = result.effort; config.effortSelection = { kind: 'level' }; }
-            if (result.saved !== undefined) {
-              saveEffortSetting(result.saved ?? undefined, config.configSources?.userDir, config.model);
-              const key = modelSettingsKey(config.model);
-              if (config.modelSettings !== undefined && !Object.hasOwn(Object.prototype, key)) {
-                const entry = { ...config.modelSettings[key], effortLevel: persistableEffort(result.saved ?? DEFAULT_EFFORT) };
-                if (result.saved === null) delete entry.effortLevel;
-                config.modelSettings = { ...config.modelSettings, [key]: entry };
-              }
-            }
-            effortMessage = result.message;
-            // `eee` at `chunk-24k7d6mw.js` 153296 guards on a present level, so `auto` has none.
-            if (config.effort !== undefined) effortNotice = effortIndicator(config.effort);
           } else if (/^\/thinking(?:\s|$)/.test(prompt)) {
             const value = prompt.slice('/thinking'.length).trim();
             if (value && value !== 'on' && value !== 'off') throw new Error('Use /thinking [on|off]');
@@ -1885,11 +1914,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               permissions: structuredClone(config.permissions) };
           }
           await applyConfig(config, false, options.signal, modeCommand);
-          if (effortMessage !== undefined) {
-            output.write(`${effortMessage}\n`);
-            if (effortNotice !== undefined) options.status.write(`${effortNotice}\n`);
-          }
-          else if (/^\/thinking(?:\s|$)/.test(prompt)) options.status.write(`Thinking: ${config.thinking ? 'on' : 'off'}\n`);
+          if (/^\/thinking(?:\s|$)/.test(prompt)) options.status.write(`Thinking: ${config.thinking ? 'on' : 'off'}\n`);
           // The mode change decides whether held peer messages may now enter.
           if (modeCommand !== undefined) releasePeerHeld('mode-change');
           continue;

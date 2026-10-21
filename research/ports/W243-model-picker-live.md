@@ -64,6 +64,11 @@ Recovered application entrypoints remain inert.
 - The chord path opens the dialog directly, so it works while the agent turn is awaiting the
   provider. It does not take `withTurn`, so it does not replace the running turn's controller; it
   uses the session signal for the hook and the dialog.
+- The live write changes `session.config` without opening a successor session, so `buildTools`
+  must not treat the new model as a stale tool set. The runtime fingerprint excludes `model`,
+  `modelSettings`, `effort` and `effortSelection` (they shape the request only); without that, the
+  next turn throws `Runtime owner configuration changed`. The compiled acceptance now runs a
+  second turn after the switch to cover it.
 - Out of scope with the record: the cloud-session branch, fast-mode state in the same accept arm
   (`gW`/`fastMode`), the `showFastModeNotice` row, and the account-gated catalogue. The picker's
   per-model capability table remains out (W190 documented it), so every row offers every effort
@@ -81,11 +86,11 @@ semantics against `w9`/`FL`, the effort-save arm, and the mid-turn acceptance.
 - `test/tui.test.ts`, `test/tui-model-picker.test.ts` and `test/model-picker.test.ts`: 87 tests
   pass; the picker's row/effort/accept behavior is unchanged.
 - Compiled acceptance `.audit/w243-model-picker.mjs` (wide PTY `.audit/w243-model-picker.exp`,
-  rows 30 columns 160): 8/8 at identity
-  `2fc7033fec12dbaa8ab937ec2cd5b7f4c70a70f4a1282b40a3907d78748cd606`. The fixture provider holds
+  rows 30 columns 160): 9/9 at identity
+  `6f893fe2c71184947e5bbf43dda7f5c2db1646f8e087c4dd48bb26f9bd08a052`. The fixture provider holds
   the first turn open; the chord opens `Select model` while that turn runs, a down-arrow plus
   Enter accepts the seeded second model and shows `Model set to second-model`, the held turn then
-  continues and its second provider request carries `second-model`, the turn finishes, and the CLI
-  exits zero.
+  continues and its second provider request carries `second-model`, the turn finishes, a later
+  turn's request still carries `second-model`, and the CLI exits zero.
 - Full suite: 2998 tests, 2997 pass; the single failure is the pre-existing CLI effort-flag
   divergence at HEAD.

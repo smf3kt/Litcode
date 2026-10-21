@@ -112,10 +112,12 @@ test('context and effort commands count paired history and pin the new request e
     const history = requests[1]!.messages[1]!.content;
     assert.ok(Array.isArray(history));
     assert.equal(history.some(block => block.type === 'thinking' || block.type === 'redacted_thinking'), false);
-    assert.equal(listSessions(workspace).length, 3);
+    // `/effort` applies to live state (`MOe`) and opens no successor session; only the model
+    // switch writes a configuration branch.
+    assert.equal(listSessions(workspace).length, 2);
     assert.ok(listSessions(workspace).every(item => item.title === 'retained title'));
     const branches = listSessions(workspace).filter(item => item.parent);
-    assert.equal(branches.length, 2); assert.ok(branches.every(item => item.parent?.reason === 'configuration'));
+    assert.equal(branches.length, 1); assert.ok(branches.every(item => item.parent?.reason === 'configuration'));
     assert.ok(listSessions(workspace).every(item => !item.active));
     const pre = JSON.parse(fs.readFileSync(path.join(captured, 'pre.json'), 'utf8'));
     assert.equal(pre.hook_event_name, 'PreModelSwitch');
