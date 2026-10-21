@@ -301,6 +301,16 @@ Next up, scoped but not started:
       first none-only delivery was rejected by review; the corrected delivery and a delta
       re-review returned SOUND and the medium and lows are fixed.
       See `research/ports/W242-kill-agents.md`.
+- [x] W243 model-picker chord live open and switch. Source `aL` (chunk-24k7d6mw.js 881614)
+      opens the picker panel directly for local sessions (`fa(S8t)`); `/model` with
+      `fromKeybinding` is the cloud branch only. The accept arm `w9`/`FL` (894465/895434) writes
+      the model and touched effort to live state and persists the default on Enter. The chord now
+      calls `openModelPickerLive` and `switchModelInPlace`, sharing the extracted `preModelSwitch`
+      gate and emitting `PostModelSwitch`, so a running turn's next request uses the new model.
+      Compiled 8/8 at identity `2fc7033f…` with the picker opened mid-turn and the second provider
+      request on `second-model`, 87/87 picker tests and check/build pass; full suite 2997/2998
+      with the CLI-effort failure reproduced at HEAD. Independent review requested.
+      See `research/ports/W243-model-picker-live.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.

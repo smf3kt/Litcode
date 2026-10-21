@@ -512,7 +512,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (command !== undefined) { queue.push({ prompt: command, source: 'user', meta: true }); promptQueueChanged(); }
         awaken(); return;
       }
-      const command = action === 'chat:modelPicker' ? '/model' : action === 'chat:thinkingToggle' ? '/thinking'
+      // Source `aL` (chunk-24k7d6mw.js 881614): the local branch opens the picker panel directly
+      // (`fa(S8t)`), so the chord reaches it mid-turn instead of queueing a refusing command.
+      if (action === 'chat:modelPicker') {
+        if (!inputClosed && !approval) void openModelPickerLive?.();
+        return;
+      }
+      const command = action === 'chat:thinkingToggle' ? '/thinking'
         : action === 'app:toggleTodos' ? '/tasks' : undefined;
       if (!command || inputClosed || approval) return;
       if (!queue.some(item => item.source === 'user' && item.prompt === command)) {
@@ -525,6 +531,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   let agentGeneration = 0;
   let rewindPreview: RewindPreview | undefined;
   let formController: AbortController | undefined;
+  /** Bound after the picker helpers; the chord handler above runs only after terminal start. */
+  let openModelPickerLive: (() => Promise<void>) | undefined;
   // Same-host peer transport. Admission follows the recipient's current
   // permission mode (`E`, chunk-0ydceggj.js [4491,4991)); accepted text enters
   // the queue as recipient meta input, exactly like a scheduled event, and
@@ -902,11 +910,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await applyConfig(config, false, signal);
     options.status.write(`Theme: ${theme}\n`);
   };
-  /** Co -> Ll/Me, dag4qhha [33770,34600), nybcbd9t [8318,9556), UTF-16; shares the command's hook/save/apply path. */
-  const selectModel = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal, fromConfig = false) => {
-    if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
-    const config = structuredClone(session.config);
-    const pre = await agent().emitHook('PreModelSwitch', { from_model: config.model, to_model: model, requested_model: model }, signal);
+  /** `dk`, chunk-hh0bresc.js 8545: the PreModelSwitch hook gate shared by every switch path. */
+  const preModelSwitch = async (model: string, signal: AbortSignal): Promise<void> => {
+    const pre = await agent().emitHook('PreModelSwitch', { from_model: session.config.model, to_model: model, requested_model: model }, signal);
     const hookReason = pre.permissionDecisionReason;
     if (pre.permissionDecision === 'deny') throw new Error(`Model switch blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
     if (pre.permissionDecision === 'ask') {
@@ -914,6 +920,64 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (!approved) throw new Error(`Model switch to ${model} was blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
     }
     if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
+  };
+  const modelPickerModels = (): string[] =>
+    [...new Set([session.config.model,
+      ...(session.config.agentTypes ?? []).map(type => type.model),
+      ...(session.config.skills ?? []).map(skill => skill.model),
+      ...listSessions(session.config.workspace).map(item => item.model)])]
+      .filter((model): model is string => Boolean(model) && model !== 'inherit')
+      .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
+  /**
+   * Picker `w9`/`FL` (chunk-24k7d6mw.js 894465/895434): the chosen model is written to the live
+   * session state (`mainLoopModel`, `sessionEffort`) instead of opening a successor session, so
+   * the switch works while a turn is running. Enter persists the default; `s` is session-only.
+   */
+  const switchModelInPlace = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal) => {
+    if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
+    const previous = session.config.model;
+    await preModelSwitch(model, signal);
+    if (!sessionOnly && session.config.configSources?.userDir !== undefined) saveModelSetting(model, session.config.configSources.userDir);
+    // `X9(Ex, iae(lC), k9, Xn)` at chunk-24k7d6mw.js 894692: a touched effort is persisted on
+    // the default arm only; `s` keeps it session-only like the model.
+    if (effort !== undefined && !sessionOnly) {
+      await saveConfigModelEffort(model, effort, session.config.configSources?.userDir);
+      const value = persistableEffort(effort), key = modelSettingsKey(model);
+      if (value !== undefined && !Object.hasOwn(Object.prototype, key))
+        session.config.modelSettings = { ...session.config.modelSettings,
+          [key]: { ...session.config.modelSettings?.[key], effortLevel: value } };
+    }
+    session.config.model = model;
+    if (effort !== undefined) { session.config.effort = effort; session.config.effortSelection = { kind: 'level' }; }
+    else {
+      const inherited = modelEffort(session.config, model);
+      if (inherited === undefined) delete session.config.effort; else session.config.effort = inherited;
+    }
+    await agent().emitHook('PostModelSwitch', { from_model: previous, to_model: model, requested_model: model }, signal);
+    options.status.write(`Model set to ${model}${sessionOnly ? ' for this session only' : ''}\n`);
+  };
+  openModelPickerLive = async () => {
+    try {
+      if (!terminal?.prompt) return;
+      const answer = await readDialog(modelPickerRequest(modelPickerModels(), session.config.model,
+        session.config.effort, true,
+        session.config.effortSelection?.kind === 'inherit'
+          ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined),
+        options.signal);
+      const selected = answer?.selected[0];
+      if (!selected || selected === ':cancel') return;
+      await switchModelInPlace(selected,
+        answer?.adjusted !== undefined && isEffortLevel(answer.adjusted) ? answer.adjusted : undefined,
+        answer?.key === 's', options.signal);
+    } catch (error) {
+      if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    }
+  };
+  /** Co -> Ll/Me, dag4qhha [33770,34600), nybcbd9t [8318,9556), UTF-16; shares the command's hook/save/apply path. */
+  const selectModel = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal, fromConfig = false) => {
+    if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
+    const config = structuredClone(session.config);
+    await preModelSwitch(model, signal);
     if (fromConfig && effort !== undefined) {
       await saveConfigModelEffort(model, effort, config.configSources?.userDir);
       const value = persistableEffort(effort), key = modelSettingsKey(model);
@@ -1516,16 +1580,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           let selected: string | undefined;
           if (terminal?.prompt) {
-            const models = [...new Set([session.config.model,
-              ...(session.config.agentTypes ?? []).map(type => type.model),
-              ...(session.config.skills ?? []).map(skill => skill.model),
-              ...listSessions(session.config.workspace).map(item => item.model)])]
-              .filter((model): model is string => Boolean(model) && model !== 'inherit')
-              .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
             // uBe ys/Cr/dr, 24k7d6mw [617998,624627), UTF-16: touched effort is distinct
             // from implicit effort, even after an endpoint or round trip returns to the same level.
             const answer = await withTurn(signal => readDialog(
-              modelPickerRequest(models, session.config.model, session.config.effort, true,
+              modelPickerRequest(modelPickerModels(), session.config.model, session.config.effort, true,
                 session.config.effortSelection?.kind === 'inherit'
                   ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined), signal));
             selected = answer?.selected[0];
