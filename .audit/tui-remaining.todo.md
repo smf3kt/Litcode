@@ -417,6 +417,12 @@ Next up, scoped but not started:
       row, an empty value only returns, and a failing writer keeps the form. Local locks reject a
       live journal. Unit 21/21, focused 124/124, compiled 8/8 at identity `edb62c56…`.
       See `research/ports/W255-resume-preview-rename.md`.
+- [x] W256 `/export` (`ho`, chunk-3f62mcb0.js 25338): argument writes directly (`.txt` only
+      without an extension, mkdir -p, flushed UTF-8); bare command opens `Export conversation` /
+      `Select export method` with clipboard and file arms, `Enter filename:` prefilled by `wcn`,
+      Esc returning to the method list, `Export cancelled` on the list. Transcript text is host
+      plain text (no off-screen vendor renderer). Unit 5/5, autocomplete 27/27, compiled 9/9 at
+      identity `ded25dac…`. See `research/ports/W256-export.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any
