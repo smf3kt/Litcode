@@ -227,7 +227,14 @@ Next up, scoped but not started:
       and oversized-summary recovery. Compiled chain 26/26, Config compatibility 35/35 and 164
       related regressions pass; independent recheck 13/13 at 50e07b23. See
       `research/ports/W234-autocompact-toggle.md`.
-- [ ] Config residuals without complete consumers. Verbose, tips, terminal progress, notifications
+- [x] W235 Config Verbose output. Independent persisted boolean with viewMode-first startup and
+      stored fallback, live successor application, restart/resume, `/focus` reuse and live
+      Read/list/search/error result rows with recovered gutters and transcript-screen detail.
+      Compiled 20/20, 89 affected regressions and check/build pass; full suite 2977/2978 with the
+      CLI-effort failure reproduced at HEAD. Independent review fixes: precedence, blank-line
+      count, reload fallback, unfinished-turn refusal, uncapped detailed tool rows. Thinking,
+      Bash/edit/MCP and nested renderers stay unported. See `research/ports/W235-verbose-view.md`.
+- [ ] Config residuals without complete consumers. Tips, terminal progress, notifications
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.
 

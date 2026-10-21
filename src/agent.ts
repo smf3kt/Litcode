@@ -103,6 +103,8 @@ export type AgentEvents = { text?: (text: string) => void; status?: (status: str
   terminalSequence?: (sequence: string) => void;
   instructionFiles?: (paths: string[]) => void;
   permission?: (request: { tool: string; input: unknown; reason: string; signal: AbortSignal }) => Promise<boolean>;
+  /** One finished tool call after its post hook, for the live result rows. */
+  toolResult?: (result: import('./tui-tool-result.js').ToolDisplayResult) => void;
   /** Abort the turn after a PermissionRequest deny carried `interrupt:true`; the owner of the
    *  turn's controller supplies this (the source aborts it directly at
    *  chunk-rx2nah4x.js offset 660913). */
@@ -988,6 +990,9 @@ export class Agent {
           if (!signal.aborted) extra.push(`PostToolUse hook error: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
+      // After the post hook and any replacement, so the rows show what the model received.
+      this.events.toolResult?.({ id: call.id, name: call.name, input,
+        content: String(result.content), isError: result.is_error === true });
     }
     this.session.append({ kind: 'message', classifier: { origin: { kind: 'generated', source: 'tool-results' }, outcomes }, message: { role: 'user', content: [
       ...results, ...extra.map(text => ({ type: 'text' as const, text: `Hook context:\n${text}` })),

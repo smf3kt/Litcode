@@ -37,6 +37,8 @@ export interface TranscriptEntry {
   duration?: import('./tui-progress.js').TurnDuration;
   /** Arrival time in epoch milliseconds, the input to the footer's message stamp. */
   timestamp?: number;
+  /** A finished tool call; the host renders its rows from the recovered result bodies. */
+  tool?: import('./tui-tool-result.js').ToolDisplayResult;
 }
 
 export interface TranscriptState {
@@ -85,7 +87,8 @@ export function wrapEntryRows(entry: TranscriptEntry, columns: number, renderer?
   const width = Math.max(8, Math.floor(columns));
   // A timestamped entry is rendered by its host as well, because the stamp is a row the
   // entry's own wrapper cannot produce: it precedes the body without joining its indent.
-  if ((entry.markdown !== undefined || entry.duration !== undefined || entry.timestamp !== undefined) && renderer) {
+  if ((entry.markdown !== undefined || entry.duration !== undefined || entry.timestamp !== undefined
+    || entry.tool !== undefined) && renderer) {
     return renderer(entry, width);
   }
   if (entry.speaker) {
@@ -164,7 +167,9 @@ export function renderedTranscriptRows(state: TranscriptState, columns: number, 
     const wrapped = wrapEntryRows(entry, columns, renderer);
     if (!wrapped.length) continue;
     if (entry.speaker && rows.length) rows.push({ text: '', continuation: false, indent: 0 });
-    if (!state.showAll && !entry.speaker && wrapped.length > COLLAPSED_ENTRY_LINES) {
+    // Tool rows already carry the source's own detail choice; the collapsed tail would
+    // drop the full verbose output this lane exists to show.
+    if (!state.showAll && !entry.speaker && entry.tool === undefined && wrapped.length > COLLAPSED_ENTRY_LINES) {
       const hidden = wrapped.length - COLLAPSED_ENTRY_LINES;
       rows.push({ text: `  ... ${hidden} earlier lines (ctrl+e shows all)`.slice(0, Math.max(8, Math.floor(columns))),
         continuation: false, indent: 0 });

@@ -1,5 +1,7 @@
 # Research and implementation status
 
+2026-10-21 W235 Config Verbose verified. Independent persisted verbose row with viewMode-first startup precedence (stored boolean as fallback), live successor application, restart/resume and `/focus` reuse with an unfinished-turn refusal. Read/list/search/error result rows render live with recovered gutters, collapse hints and transcript-screen detail that is not tail-capped. Check/build, 89 affected regressions and compiled 20/20 pass; full suite 2977/2978 with the CLI-effort failure reproduced at HEAD5717eb9. [Record](ports/W235-verbose-view.md). Local only.
+
 2026-10-21 W234 Config Auto-compact verified. Persisted default-on setting controls both automatic callers; manual and threshold paths remain usable, including cancellation, initial capacity and oversized-summary recovery. Check/build, 164 related regressions, compiled new chain 26/26 and Config 35/35 pass at 50e07b23. Independent retained-input recheck 13/13 passes. [Record](ports/W234-autocompact-toggle.md). Local only.
 
 2026-10-21 W233 local Config panel verified. Nine settings, full-query search, measured navigation, immediate persistence and three child pickers. Per-model effort defaults, command low/auto continuity, metadata projection and close-time errors pass actual requests/restart. Check/build, 264 related regressions, compiled Config 35/35, model 23/23 and slider 18/18. Six independent findings repaired and rechecked at 893ac6cb. [Record](ports/W233-config-panel.md). Local only.

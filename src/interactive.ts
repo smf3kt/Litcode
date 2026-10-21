@@ -361,6 +361,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
     terminal?.setShowMessageTimestamps?.(session.config.showMessageTimestamps);
     terminal?.setBriefTranscript?.(briefTranscriptEnabled(session.config));
+    terminal?.setVerbose?.(session.config.verbose === true);
     terminal?.setProgressSettings?.({timeFormat:session.config.timeFormat, timeZone:session.config.timeZone,
       spinnerVerbs:session.config.spinnerVerbs});
     terminal?.setMaxProseWidth?.(session.config.maxProseWidth);
@@ -645,6 +646,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       },
     },
     progress: event => terminal?.setProgress?.(event),
+    toolResult: result => terminal?.appendToolResult?.(result),
     textStart: () => terminal?.beginAssistantMessage?.(),
     text: text => { if (terminal?.writeAssistantText) terminal.writeAssistantText(text); else output.write(text); },
     textEnd: () => terminal?.endAssistantMessage?.(),
@@ -808,6 +810,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const nextRuntime = await bindNext(activeRuntime, next);
     try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
     await acceptNext(next, nextRuntime);
+    // The Verbose config row applies to the live surface through the successor session,
+    // the same owner handoff `Te` performs beside its settings write.
+    terminal?.setVerbose?.(next.config.verbose === true);
     announce();
     const resumed = await agent().startSession('resume', signal);
     if (resumed?.watchPaths?.length) addInstructionPaths(resumed.watchPaths);
@@ -971,10 +976,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const current = briefTranscriptEnabled(session.config);
           const argument = parseFocusArgument(prompt.slice('/focus'.length), current);
           if (argument.kind === 'unknown') { output.write(`${focusUnknownArgument(argument.argument)}\n`); continue; }
+          // A successor session must not branch or trim an unfinished turn, as the other
+          // config commands already refuse that case.
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           const mode = focusModeFor(argument.enabled);
           try { saveViewModeSetting(mode, session.config.configSources?.userDir); }
           catch (error) { output.write(`Couldn't save focus view: ${(error as Error).message}\n`); continue; }
-          session.config.viewMode = mode;
+          // r, 4jr9rxry [4693,5262), UTF-16: the write is followed by apply_flag_settings; a live
+          // owner change needs the successor session, and verbose stays untouched.
+          const config = structuredClone(session.config);
+          config.viewMode = mode;
+          await withTurn(signal => applyConfig(config, false, signal));
           terminal?.setBriefTranscript?.(argument.enabled);
           output.write(`${focusReport(argument.enabled)}\n`);
           continue;
@@ -1363,6 +1375,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           try { await agent().endSession('config_reload'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
           await acceptNext(next, nextRuntime);
+          // The merged Verbose value reaches the live surface with the reloaded owner.
+          terminal?.setVerbose?.(next.config.verbose === true);
           announce();
           const resumed = await agent().startSession('resume', options.signal);
           if (resumed?.watchPaths?.length) addInstructionPaths(resumed.watchPaths);
@@ -1483,6 +1497,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       config.autoCompactEnabled = configSchema.shape.autoCompactEnabled.parse(loaded.settings.autoCompactEnabled);
                       break;
                     }
+                    case 'verbose': config.verbose = update.value; break;
                     case 'reduceMotion': config.prefersReducedMotion = update.value; break;
                     case 'thinking': config.thinking = update.value; break;
                     case 'turnDuration': config.showTurnDuration = update.value; break;

@@ -103,6 +103,7 @@ export type ParsedRuntimeSettings = {
   prefersReducedMotion?: boolean;
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
+  verbose?: boolean;
   viewMode?: 'default' | 'verbose' | 'focus';
   timeFormat?: string;
   timeZone?: string;
@@ -217,6 +218,8 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if ('prefersReducedMotion' in settings) out.prefersReducedMotion = settingBoolean(settings, 'prefersReducedMotion');
   if ('showTurnDuration' in settings) out.showTurnDuration = settingBoolean(settings, 'showTurnDuration');
   if ('showMessageTimestamps' in settings) out.showMessageTimestamps = settingBoolean(settings, 'showMessageTimestamps');
+  // U2t/hs, nybcbd9t [5051,6155), js2bhabe [1114,1499), UTF-16: the merged boolean, default false.
+  if ('verbose' in settings) out.verbose = settingBoolean(settings, 'verbose');
   if ('viewMode' in settings) out.viewMode = settingEnum(settings, 'viewMode', ['default', 'verbose', 'focus'] as const);
   if (settings.timeFormat !== undefined) out.timeFormat = z.string().parse(settings.timeFormat);
   if (settings.timeZone !== undefined) out.timeZone = z.string().parse(settings.timeZone);

@@ -41,6 +41,16 @@ export function briefTranscriptEnabled(config: Pick<SessionConfig, 'viewMode'>):
   return config.viewMode === 'focus';
 }
 
+/**
+ * `It`, chunk-9shw4xrd.js [106333,106421), UTF-16: a present viewMode decides the startup value
+ * (`viewMode === "verbose"`); the stored boolean is the fallback when viewMode is absent, and the
+ * default is false. The source's CLI flag arm and legacy focus boolean have no key here.
+ */
+export function startupVerbose(viewMode: FocusMode | undefined, stored: boolean | undefined): boolean {
+  if (viewMode !== undefined) return viewMode === 'verbose';
+  return stored ?? false;
+}
+
 export type FocusArgument =
   | { readonly kind: 'set'; readonly enabled: boolean }
   | { readonly kind: 'unknown'; readonly argument: string };
