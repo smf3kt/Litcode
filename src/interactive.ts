@@ -449,6 +449,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           .catch(error=>({content:null,error:String(error)}));
         queue.push({prompt:'/editor',source:'user'});awaken();return;
       }
+      // `e9`/`Zat`/`tlt` (chunk-24k7d6mw.js 887081 / 1343398 / 1343820): the TUI has already
+      // queued a non-empty draft. The source flushes the queue through the low-latency channel;
+      // without that channel it cancels the live turn only when one holds a queued message
+      // (`elt`), which is the fallback this host reproduces. `nothing_to_send` stays a no-op.
+      if (action === 'chat:sendNow') {
+        if (inputClosed || approval) return;
+        if (turnController && queue.some(item => item.source === 'user'))
+          turnController.abort(new Error('Send now'));
+        return;
+      }
       // `Ax`/`Pq`, chunk-24k7d6mw.js [882826,884298): the source updates the permission context
       // synchronously. This host's recovered transition lives on the command boundary, so a busy
       // turn ignores the key rather than queueing a transition that would be refused.

@@ -2320,6 +2320,25 @@ test('common action keys preserve drafts and stash swaps text with its cursor', 
   } finally { tui.close(); }
 });
 
+test('send-now submits a non-empty draft and never submits an empty one', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 50, rows: 10 }); watchScreen(output);
+  const submitted: string[] = [];
+  const tui = new TuiTerminal({ input, output, onSubmit: text => submitted.push(text) }).start();
+  const key = (text: string) => input.emit('data', text);
+  try {
+    key('hello\u0018\u0013');
+    assert.deepEqual(submitted, ['hello']);
+    assert.equal(tui.state.text, '');
+    key('\u0018\u0013');
+    assert.deepEqual(submitted, ['hello'], 'an empty composer sends nothing');
+    key('again\u0018\r');
+    assert.deepEqual(submitted, ['hello', 'again'], 'queue-submit submits the draft');
+  } finally { tui.close(); }
+});
+
 test('the kill ring coalesces, caps at ten, and cycles yank-pop', () => {
   let state = reduceKillRing(emptyKillRing, { type: 'kill', text: 'one' });
   assert.deepEqual(state.ring, ['one']);
