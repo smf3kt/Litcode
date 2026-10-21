@@ -2595,11 +2595,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       case 'chat:queueSubmit': this.dispatch({ type: 'submit' }); return true;
       case 'chat:newline': this.dispatch({ type: 'newline' }); return true;
       case 'chat:undo': this.dispatch({ type: 'undo' }); return true;
-      case 'chat:clearInput':
-        this.undo.clear();this.gestures.reset();this.vim.reset();
-        this.replaceDraft({ ...createEditorState(this.editor.history), historyPastes:this.editor.historyPastes,
-          running: this.editor.running, killRing: this.editor.killRing });
-        this.render(); return true;
+      // Source `yM` (chunk-24k7d6mw.js 881185): the clear chords bump a counter whose only
+      // effect is `oi().get(process.stdout)?.forceRedraw()` (effect at 874706). The action map at
+      // 887385 binds both `chat:clearInput` and `chat:clearScreen` to that one handler, so the
+      // chords clear the screen and repaint; the draft, undo stack and modal state stay. Locally
+      // `TuiRenderer.invalidate()` reproduces the alt-screen branch of that reset: full frame
+      // reset, erase of the painted rows, then the repaint (src/tui-renderer.ts:193).
+      case 'chat:clearInput': case 'chat:clearScreen':
+        this.renderer?.invalidate(); this.render(); return true;
       case 'chat:stash': this.stashDraft(); return true;
       case 'chat:workflowKeywordToggle': return this.toggleWorkflowKeyword();
       case 'chat:modelPicker': case 'chat:thinkingToggle': case 'app:toggleTodos': case 'chat:externalEditor': return true;

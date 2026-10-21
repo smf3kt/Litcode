@@ -46,7 +46,7 @@ test('framed Return preserves source Vim insertion repeats and plain modal comma
         await key('literal\\\r');assert.deepEqual(await answer,{selected:[],text:'literal\\'});assert.equal(terminal.state.text,'root');
         const multiline=terminal.prompt({message:'Answer',allowText:true},new AbortController().signal);
         await key('literal\\\x1b[13;2uvalue\r');assert.deepEqual(await multiline,{selected:[],text:'literal\\\nvalue'});
-        await key('\u000c');await key('chord');await key('\u0018\r');assert.ok(submitted.includes('chord'));
+        await key('\u007f'.repeat('literal\\\nvalue'.length));await key('chord');await key('\u0018\r');assert.ok(submitted.includes('chord'));
       }
       if(terminal instanceof TuiTerminal){
         await key('draft\u0012\r');assert.equal(Reflect.get(terminal,'screen'),'chat');assert.equal(terminal.state.text,'');assert.equal(submitted.at(-1),'draft');

@@ -108,7 +108,8 @@ all product changes. The compiled acceptance drives the real CLI under a PTY.
   selection and is dismissed when it names another mounted panel (so it cannot ride along with
   pulled text); the SessionStart message is `meta` and not pullable. Its lows were assessed: the
   Escape/autocomplete overlap cannot arise (a selection needs an empty draft), the placeholder
-  caret uses the same `+2` prefix offset as the normal composer path, `ctrl+l` is the bound
-  `chat:clearInput` in this product, and the popAll comment now states the first-non-empty rule.
+  caret uses the same `+2` prefix offset as the normal composer path, `ctrl+l` is bound to
+  `chat:clearInput` (W241 later aligned that chord with the source's repaint handler, so it no
+  longer resets the draft), and the popAll comment now states the first-non-empty rule.
   The `stale_index` arm consumes the key without submitting and the pull sends nothing, both in
   the compiled run.
