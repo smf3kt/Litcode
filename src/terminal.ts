@@ -1206,6 +1206,8 @@ export interface TerminalPromptRequest {
   maxTextChars?: number;
   /** Yn, fxx7hh8y [64476,66637), UTF-16: editing starts at the end of the existing rule. */
   initialText?: string;
+  /** uBe, 24k7d6mw [617998,624627), UTF-16: local model list with its own focus and effort state. */
+  modelPicker?: import('./model-picker.js').ModelPickerInput;
   /**
    * When present the request runs as a sequence of groups followed by a review
    * page, and the answer carries one entry per group. Copied from the recovered

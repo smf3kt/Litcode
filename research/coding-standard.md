@@ -1,5 +1,7 @@
 # Coding standard
 
+2026-10-21 W232: S-1/S-7 source closure keeps the model search gate closed and compares reachable list/effort bodies by character. S-2/S-6 migrate the old effort gate and numbered-row driver without losing acceptance intent. S-3/S-4 reserve visible model rows before transcript space, remeasure wrapped pointer rows and invalidate presses on resize. S-5 binds assertions to painted numbers, hook/request identities and actual session locks. Independent narrow-frame finding resolved; incidents are in question.md and [W232](ports/W232-model-picker.md). Existing seven rules cover the causes.
+
 2026-10-18 W181: S-1/S-7 verified exact plugin path and host-keyed catalog bodies first. S-4 removes global ownership, replaces invalidated generations, checks after awaits and closes on release; S-6 migrates callers and adds compiled CLI coverage. Initial corrections are in question.md; existing S-1/S-6 cover their causes, so no duplicate rule is added.
 Hard requirements for work in this repository. Each rule exists because the same cause produced two or more incidents in [question.md](question.md) or in the recorded work packages; the rule states the cause, the incidents, and the check that must hold before a package is called done.
 

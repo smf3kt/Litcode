@@ -40,8 +40,9 @@ const server = http.createServer((req, res) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const port = server.address().port;
 
-const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'w215-ws-')));
-const user = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'w215-user-')));
+const temporary = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir();
+const workspace = fs.realpathSync(fs.mkdtempSync(path.join(temporary, 'w215-ws-')));
+const user = fs.realpathSync(fs.mkdtempSync(path.join(temporary, 'w215-user-')));
 fs.mkdirSync(path.join(user, 'agents'));
 fs.writeFileSync(path.join(user, 'agents', 'probe.md'),
   '---\nname: probe-agent\ndescription: Probe agent for the model picker\nmodel: probe-model\n---\nProbe body.\n');
@@ -94,8 +95,8 @@ child.stdin.write(right); await delay(400);
 check('a second step reaches max', screenNow().join('\n').includes('◈ max effort'));
 child.stdin.write(down); await delay(300);
 check('the arrow axis does not move the selection',
-  screenNow().join('\n').includes('>     probe-model')
-  && screenNow().join('\n').includes('Selected: probe-model'));
+  /❯ 2\.\s+probe-model/u.test(screenNow().join('\n'))
+  && screenNow().join('\n').includes('◈ max effort'));
 snap('after right right down');
 
 child.stdin.write('\r'); await delay(2000);

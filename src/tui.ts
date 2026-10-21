@@ -79,6 +79,7 @@ import {
   listWorkingDirectory, shapeAtDisplayText, FILE_SUGGESTION_LIMIT, type AtQuery,
 } from './tui-file-suggestions.js';
 import { ge } from './tui-color.js';
+import { ModelPicker, modelPickerGuide } from './model-picker.js';
 
 /** The sixteen ANSI foreground names a theme slot can name (the source's own `be` table). */
 const ANSI_FOREGROUND: Readonly<Record<string, number>> = {
@@ -241,6 +242,7 @@ export type TuiScreen = 'chat' | 'transcript' | 'search' | 'dialog';
 interface ActiveDialog {
   request: TerminalPromptRequest;
   themeEditor?: ThemeEditor;
+  modelPicker?: { owner: ModelPicker; hitRows: Map<number, number>; pressed?: number };
   busy?: boolean;
   editor: EditorState;
   undo: InputUndo;
@@ -1192,6 +1194,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         notes: new Map(), notesEditor: createEditorState(), notesUndo: new InputUndo(),
         notesEditing: false, optionTouched: false, images: new QuestionImages(),
         adjustIndex: Math.max(0, snapshot.adjust?.values.indexOf(snapshot.adjust.initial) ?? 0), finish };
+      if (snapshot.modelPicker !== undefined) dialog.modelPicker = {
+        owner: new ModelPicker(snapshot.choices ?? [], snapshot.modelPicker), hitRows: new Map(),
+      };
       this.dialog = dialog;
       // Pt/he, 76jkr621 [21105,21789), UTF-16: repaint from a modal-owned 100 ms clock.
       if (snapshot.adjust?.kind === 'slider') {
@@ -1885,9 +1890,57 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
+  /** Oi/FFt/Yi, yygmb66g [31583,34355)/[40142,40513)/[41667,54367), UTF-16. */
+  private handleModelPickerAction(dialog: ActiveDialog, action: EditorAction): void {
+    const picker = dialog.modelPicker!;
+    const owner = picker.owner;
+    if (action.type === 'mouse') {
+      if (this.options.mouseTracking === 'off' || action.col < 1 || action.col > (this.options.output.columns ?? 80)) return;
+      const index = picker.hitRows.get(action.row - 1);
+      if (action.action === 'wheelup' || action.action === 'wheeldown') {
+        if (index !== undefined) { owner.scroll(action.action === 'wheelup' ? -1 : 1); this.render(); }
+      } else if ((this.options.mouseTracking ?? 'full') === 'full' && (action.button & 3) === 0) {
+        if (action.action === 'press') picker.pressed = index;
+        else if (action.action === 'release') {
+          const pressed = picker.pressed; picker.pressed = undefined;
+          if (index !== undefined && index === pressed) dialog.finish(owner.accept(false, index));
+        } else if (action.action === 'move' && index !== picker.pressed) picker.pressed = undefined;
+      }
+      return;
+    }
+    const command = action.type === 'key' ? action.command : action.type;
+    const sequences = action.type === 'key' ? [action.sequence] : action.type === 'insert' ? [...action.text] : [];
+    if (command === 'interrupt' || command === 'eof') { dialog.finish(); return; }
+    if (command === 'left' || command === 'right') { owner.adjust(command); this.render(); return; }
+    if (command === 'submit') { const answer = owner.accept(); if (answer) dialog.finish(answer); return; }
+    for (const sequence of sequences) {
+      if (sequence === 's') { const answer = owner.accept(true); if (answer) dialog.finish(answer); return; }
+      if (/^[1-9]$/.test(sequence)) {
+        const index = Number(sequence) - 1;
+        if (owner.options[index]) dialog.finish(owner.accept(false, index));
+        return;
+      }
+      const result = this.keys.push(sequence, ['Select']);
+      if (result.kind !== 'match') continue;
+      switch (result.match.action) {
+        case 'select:next': owner.move(1); break;
+        case 'select:previous': owner.move(-1); break;
+        case 'select:pageDown': owner.page(1); break;
+        case 'select:pageUp': owner.page(-1); break;
+        case 'select:first': owner.focus(0); break;
+        case 'select:last': owner.focus(owner.options.length - 1); break;
+        case 'select:cancel': dialog.finish(); return;
+        case 'select:accept': { const answer = owner.accept(); if (answer) dialog.finish(answer); return; }
+      }
+    }
+    this.render();
+  }
+
   private handleDialogAction(action: EditorAction): void {
     const dialog = this.dialog;
-    if (!dialog || action.type === 'mouse') return;
+    if (!dialog) return;
+    if (dialog.modelPicker) { this.handleModelPickerAction(dialog, action); return; }
+    if (action.type === 'mouse') return;
     // Source presence records the interaction behind `Ip()`, so any key defers AFK.
     this.noteAfkInteraction();
     if (dialog.themeEditor) { this.handleThemeEditorAction(dialog, action); return; }
@@ -2494,6 +2547,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     try { this.emit('inputError', error); } finally { this.emit('exit'); }
   };
   private readonly onResize = () => {
+    if (this.dialog?.modelPicker) this.dialog.modelPicker.pressed = undefined;
     this.selection = createSelection(); this.diffPointer = undefined; this.renderer?.clearNativeSelection(); this.render();
   };
 
@@ -2772,8 +2826,50 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return true;
   }
 
+  /** uBe/Yi, 24k7d6mw [617998,624627), yygmb66g [41667,54367), UTF-16. */
+  private renderModelPicker(dialog: ActiveDialog, columns: number, bodyRows: number): string[] {
+    const picker = dialog.modelPicker!;
+    const owner = picker.owner;
+    const content: string[] = [];
+    this.documentRenderer ??= new TuiDocumentRenderer();
+    const paint = (tree: unknown) => this.documentRenderer!.renderElement(tree, columns,
+      { theme: this.theme.current, themeOverrides: this.theme.overrides });
+    const caption = paint(jsx(n, { dimColor: true, children: dialog.request.message }, undefined));
+    const effort = paint(jsx(s, { flexDirection: 'column', children: owner.footer().map((text, index) =>
+      jsx(n, { dimColor: true, children: text }, index)) }, undefined));
+    const terminalRows = this.options.output.rows ?? 24;
+    const minimumListRows = Math.min(2, owner.options.length) * 2 + (owner.options.length > 2 ? 1 : 0);
+    const height = Math.max(0, Math.min(terminalRows - 5,
+      Math.max(bodyRows, caption.length + effort.length + minimumListRows + 2)));
+    const captionBudget = Math.max(0, height - effort.length - minimumListRows - 2);
+    content.push(...caption.slice(0, captionBudget).map(row => row.ansi), '');
+    const listBudget = Math.max(0, height - content.length - effort.length - 1);
+    let visibleCount = Math.max(1, Math.min(10, Math.floor((terminalRows - 14) / 2), listBudget));
+    let list = owner.render(columns, visibleCount);
+    let renderedRows = list.rows.map(paint);
+    while (visibleCount > 1 && renderedRows.reduce((total, rows) => total + rows.length, 0) > listBudget) {
+      list = owner.render(columns, --visibleCount);
+      renderedRows = list.rows.map(paint);
+    }
+    picker.hitRows.clear();
+    for (const [index, rendered] of renderedRows.entries()) {
+      const optionIndex = list.indices[index]!;
+      for (const row of rendered) {
+        if (content.length >= height - effort.length - 1) break;
+        if (optionIndex >= 0) picker.hitRows.set(content.length + 1, optionIndex);
+        content.push(row.ansi);
+      }
+    }
+    content.push('', ...effort.map(row => row.ansi));
+    const visible = content.slice(0, height);
+    while (visible.length < height) visible.push('');
+    const title = paint(jsx(n, { color: 'remember', bold: true, children: dialog.request.title ?? 'Select model' }, undefined));
+    return [...title.map(row => row.ansi), ...visible, SEPARATOR.repeat(columns), '', pad(modelPickerGuide(), columns)];
+  }
+
   private renderDialog(columns: number, bodyRows: number): string[] {
     const dialog = this.dialog!;
+    if (dialog.modelPicker) return this.renderModelPicker(dialog, columns, bodyRows);
     const clean = (text: string) => text.replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
     const oneLine = (text: string) => clean(text).replace(/[\t\n]/g, ' ');
     const groups = dialog.request.groups ?? [];
@@ -2977,8 +3073,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const afkRows = this.afkRows();
       // The transcript keeps the top third while the dialog keeps the rows it needs below it,
       // and the footer keeps the last row.
-      const transcriptRows = Math.max(0, Math.min(Math.floor(rows / 3), rows - 14 - afkRows));
+      let transcriptRows = Math.max(0, Math.min(Math.floor(rows / 3), rows - 14 - afkRows));
       const frame = this.renderDialog(columns, rows - 5 - afkRows - transcriptRows);
+      if (this.dialog.modelPicker) {
+        transcriptRows = Math.max(0, rows - frame.length - 1 - afkRows);
+      }
+      if (this.dialog.modelPicker) this.dialog.modelPicker.hitRows = new Map(
+        [...this.dialog.modelPicker.hitRows].map(([row, index]) => [row + transcriptRows, index]));
       const viewport = layoutTranscript(this.transcript, columns, transcriptRows, this.renderEntryRows,
         this.welcomePreamble(columns));
       const lines: string[] = [];
@@ -2996,7 +3097,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (this.dialog.notesEditing) {
         const cursor = layoutInput(this.dialog.notesEditor, columns - 2, 1).cursorColumn + 2;
         this.drawFrame(lines, columns, rows, answerRow, cursor, true);
-      } else if (this.dialog.request.readOnly === true || this.dialog.request.adjust?.kind === 'slider')
+      } else if (this.dialog.modelPicker || this.dialog.request.readOnly === true || this.dialog.request.adjust?.kind === 'slider')
         this.drawFrame(lines, columns, rows, answerRow, 0, false);
       else if (reviewing || !choices.length || this.dialog.index === choices.length) {
         const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;

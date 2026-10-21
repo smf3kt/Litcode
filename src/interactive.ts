@@ -42,11 +42,10 @@ import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import { workflowsAvailable } from './tui-input-highlights.js';
 import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from './loop-command.js';
-import { DEFAULT_EFFORT, EFFORT_LEVELS, effortCommand, isEffortLevel,
+import { DEFAULT_EFFORT, effortCommand, isEffortLevel,
   effortIndicator, type EffortLevel } from './effort-command.js';
 import { effortSliderRequest } from './effort-slider.js';
-import { MODEL_PICKER_TITLE, modelPickerCaption, modelPickerEffortFor, modelPickerEffortLine,
-  modelPickerGuide, modelPickerRowDescription } from './model-picker.js';
+import { modelPickerRequest } from './model-picker.js';
 import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUsageMessage,
   parseCopyArgument, writeCopyFile } from './copy-command.js';
 import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
@@ -1406,33 +1405,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               ...listSessions(session.config.workspace).map(item => item.model)])]
               .filter((model): model is string => Boolean(model) && model !== 'inherit')
               .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
-            const currentEffort = session.config.effort ?? DEFAULT_EFFORT;
-            const answer = await withTurn(signal => readDialog({ title: MODEL_PICKER_TITLE,
-              message: modelPickerCaption(),
-              choices: models.map(model => ({ label: model, value: model,
-                description: modelPickerRowDescription(model, session.config.model) })),
-              defaultIndex: Math.max(0, models.indexOf(session.config.model)),
-              allowText: true, maxTextChars: 256,
-              // `modelPicker:decreaseEffort`/`increaseEffort` move the focused model's effort
-              // with the arrows; the local axis is one value per dialog, so a move carries to
-              // whichever row is accepted (the recovered resets it on focus change).
-              adjust: { kind: 'line', values: EFFORT_LEVELS, initial: currentEffort,
-                label: value => modelPickerEffortLine(value as EffortLevel),
-                guide: modelPickerGuide() },
-              keys: [{ key: 's', label: 'use this session only' }] }, signal));
-            selected = answer?.text ?? answer?.selected[0];
-            pendingEffort = modelPickerEffortFor(currentEffort, answer?.adjusted);
+            // uBe ys/Cr/dr, 24k7d6mw [617998,624627), UTF-16: touched effort is distinct
+            // from implicit effort, even after an endpoint or round trip returns to the same level.
+            const answer = await withTurn(signal => readDialog(
+              modelPickerRequest(models, session.config.model, session.config.effort), signal));
+            selected = answer?.selected[0];
+            if (answer?.adjusted !== undefined && isEffortLevel(answer.adjusted)) pendingEffort = answer.adjusted;
             pendingSessionOnly = answer?.key === 's';
           } else selected = (await withTurn(signal => readAnswer(`Current model: ${session.config.model}\nModel ID, or :cancel: `, signal))).trim();
           if (!selected || selected === ':cancel') { options.status.write('Model selection cancelled.\n'); continue; }
-          if (selected === session.config.model) {
-            // The picker still passes the adjusted effort for the row that is already in use, and
-            // the request builder reads `session.config.effort` on every call.
-            if (pendingEffort === undefined) { options.status.write('Model unchanged.\n'); continue; }
-            session.config.effort = pendingEffort;
-            options.status.write(`Effort: ${pendingEffort}\n`);
-            continue;
-          }
+          // Pr has no same-model early return; Enter can promote the live choice to a default.
+          // xWe, hh0bresc [9916,10415), UTF-16, likewise runs the default-save condition.
           prompt = `/model ${selected}`;
         }
         if (prompt === '/effort' && terminal?.prompt) {

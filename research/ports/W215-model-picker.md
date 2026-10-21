@@ -1,6 +1,10 @@
 # W215 model selection
 
 Status: implemented locally on `work/w43-choice-preview`. No push, no upstream calls.
+W232 supersedes the generic chooser, effort value-equality gate and same-model acceptance fast path.
+Its source closure also corrects the historical ys description below: focus refreshes effort only
+before manual adjustment; touched effort survives row changes. Search is closed by canEnter=false
+in the sample itself, independently of this host's catalog. See [W232](W232-model-picker.md).
 
 ## Request
 
