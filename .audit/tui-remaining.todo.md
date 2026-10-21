@@ -380,11 +380,20 @@ Next up, scoped but not started:
       following turns in one session), W233 35/35, W243–W248 rerun, runtime-resources 16/16 and
       check/build pass; full suite 3002/3003 with the CLI-effort failure.
       See `research/ports/W250-config-display-live.md`.
+- [x] W251 `/config` turn duration, time format, editor and progress bar apply live. The four
+      rows write settings plus the global config and never restart (20203/20771/21614/26180).
+      The callback writes the live field and calls the terminal setter; the time-format picker
+      writes the live formatter; the progress-bar row keeps the merged-layer read; the four
+      display-only fields leave the owner fingerprint and connection digests. Compiled 12/12
+      at identity `3aab3ef7…` (each row persists, no branch, following turn in one session),
+      W233 35/35, W243–W248/W250 rerun, runtime-resources 16/16 and check/build pass; full
+      suite 3002/3003 with the CLI-effort failure.
+      See `research/ports/W251-config-live.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. Remaining config rows still on the successor path but written
-      without a session restart in source: turnDuration, timeFormat, editor, progressBar,
-      autoCompact, askUserQuestionTimeout, dialogExpiry, permissionMode.
+      without a session restart in source: autoCompact, askUserQuestionTimeout, dialogExpiry,
+      permissionMode.
       Not portable now: tips (vendor/service content), prompt suggestions / timestamps / tab
       status / copy-on-select / auto-scroll (source rows sit behind `tengu_*` flags default off),
       recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no
