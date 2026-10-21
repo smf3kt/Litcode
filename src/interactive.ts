@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { InteractivePlanResume, permissionModeCommand, transitionPlanMode, type PermissionModeCommand } from './plan-resume.js';
 import { permissionPolicySchema } from './permissions.js';
+import { permissionCycleCommand } from './permission-cycle.js';
 import type { PermissionUpdate } from './permissions.js';
 import {
   browsePermissions, type PermissionPanelApplyResult, type PermissionPanelInput, permissionPanelRules,
@@ -447,6 +448,21 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         editorWork=terminal.editDraft(options.signal,session.config.workspace)
           .catch(error=>({content:null,error:String(error)}));
         queue.push({prompt:'/editor',source:'user'});awaken();return;
+      }
+      // `Ax`/`Pq`, chunk-24k7d6mw.js [882826,884298): the source updates the permission context
+      // synchronously. This host's recovered transition lives on the command boundary, so a busy
+      // turn ignores the key rather than queueing a transition that would be refused.
+      if (action === 'chat:cycleMode') {
+        if (inputClosed || approval || turnController || session.awaitingResponse) return;
+        // A command already queued has not reached the owner yet; step from it so a quick second
+        // press advances again instead of recomputing the same step from the stale live mode.
+        const pending = [...queue].reverse().find(item => item.source === 'user' && item.prompt.startsWith('/permissions '));
+        const state = session.permissionOwner.state();
+        const command = permissionCycleCommand({ mode: pending?.prompt.slice('/permissions '.length).trim() ?? state.mode,
+          isBypassPermissionsModeAvailable: state.isBypassPermissionsModeAvailable });
+        // The source applies every press; a full wrap repeats a command that may still be queued.
+        if (command !== undefined) queue.push({ prompt: command, source: 'user' });
+        awaken(); return;
       }
       const command = action === 'chat:modelPicker' ? '/model' : action === 'chat:thinkingToggle' ? '/thinking'
         : action === 'app:toggleTodos' ? '/tasks' : undefined;

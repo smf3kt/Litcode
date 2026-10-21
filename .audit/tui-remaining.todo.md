@@ -248,6 +248,17 @@ Next up, scoped but not started:
       Compiled 13/13, 28 affected regressions and check/build pass; full suite 2980/2981 with the
       CLI-effort failure reproduced at HEAD. Independent review's medium and low items are closed.
       See `research/ports/W237-permission-mode.md`.
+- [x] W238 shift+tab permission-mode cycle. The Chat keybinding advances the live mode by the
+      recovered `BBt` order (manual -> accept edits -> plan -> auto -> manual; plan reaches bypass
+      only for a launch-granted bypass session), applies through the existing `/permissions MODE`
+      transition, updates the chip and writes no settings. Launch-granted bypass availability is
+      carried across a live mode change; a press that lands before the previous queued step runs
+      computes from that pending step and a wrap repeats a queued step; the vendor auto gate has a
+      documented adapter; the key is inert during a turn. Compiled 14/14 and cycle/TUI tests pass;
+      full suite 2986/2987 with the CLI-effort failure reproduced at HEAD. Independent review found
+      no high findings; its wrap-drop medium is fixed, its Windows branch medium is refuted by the
+      resolved `le`, and its low items are closed.
+      See `research/ports/W238-shift-tab-cycle.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.
