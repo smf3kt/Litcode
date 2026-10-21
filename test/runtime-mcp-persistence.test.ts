@@ -127,6 +127,7 @@ test('a first bind rejects a session whose live model differs from the runtime s
   try {
     const address = server.address(); assert(address && typeof address !== 'string');
     const config = defaultConfig(workspace, []); config.model = 'fixture';
+    config.permissions = { mode: 'default', allow: [], deny: [] };
     config.features = { tasks: false, subagents: false, mcpSubscriptions: true, mcpRecovery: true, mcpPersistence: true };
     config.mcpServers = { srv: { type: 'http', url: `http://127.0.0.1:${address.port}/mcp` } };
     // A same-session rebind may ignore the live request fields (`w9`/`MOe`/`kp`), but the first
@@ -136,6 +137,20 @@ test('a first bind rejects a session whose live model differs from the runtime s
     try {
       await assert.rejects(runtime.bindSession!(other), /differs from its connected settings/);
     } finally { await runtime.close(); other.close(); }
+    // The display-only normalisation is narrower than the connection comparison: a different
+    // default mode binds, while a different live permission mode still does not.
+    const defaultOnly = Session.open(workspace, { config: { ...structuredClone(config),
+      permissions: { ...(config.permissions ?? { mode: 'default' as const, allow: [], deny: [] }), defaultMode: 'plan' as const } } });
+    const defaultRuntime = await createRuntime(config, provider, controller.signal);
+    try {
+      await defaultRuntime.bindSession!(defaultOnly);
+    } finally { await defaultRuntime.close(); defaultOnly.close(); }
+    const liveMode = Session.open(workspace, { config: { ...structuredClone(config),
+      permissions: { ...(config.permissions ?? { mode: 'default' as const, allow: [], deny: [] }), mode: 'acceptEdits' as const } } });
+    const modeRuntime = await createRuntime(config, provider, controller.signal);
+    try {
+      await assert.rejects(modeRuntime.bindSession!(liveMode), /differs from its connected settings/);
+    } finally { await modeRuntime.close(); liveMode.close(); }
   } finally {
     controller.abort(); server.closeAllConnections();
     await new Promise<void>(resolve => server.close(() => resolve()));

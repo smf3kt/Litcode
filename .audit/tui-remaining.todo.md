@@ -403,6 +403,14 @@ Next up, scoped but not started:
 - [x] Config rows now all apply live; the successor-session path for `/config` is gone. Remaining
       config work is the unported rows listed below (tips, notifications, terminal tab status,
       selection flags).
+- [x] W254 `/resume` interactive panel (`Jln`, chunk-er09v3xa.js 9331): search-as-you-type, fork
+      groups with left/right expand, relative-time rows, recovered empty/no-match text and
+      Escape-clear/Enter-select keys; multi-match arguments print the recovered sentence.
+      Out: all-projects/branch/worktree filters, preview, rename, load-more (no host source or
+      callback). Unit 11/11, focused 38/38, compiled 10/10 and W231 18/18 at identity
+      `c760cabe…`. Review fixed the config-panel permission owner binding and made the
+      display-owner, first-bind digest and single-opener `/effort` regressions real.
+      See `research/ports/W254-resume-picker.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

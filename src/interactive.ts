@@ -10,7 +10,7 @@ import { relocateSession } from './workspace-session.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { InteractivePlanResume, permissionModeCommand, transitionPlanMode, type PermissionModeCommand } from './plan-resume.js';
-import { permissionPolicySchema } from './permissions.js';
+import { permissionPolicySchema, bindPermissionOwner } from './permissions.js';
 import { permissionCycleCommand } from './permission-cycle.js';
 import type { PermissionUpdate } from './permissions.js';
 import {
@@ -1494,18 +1494,31 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const query = selector.toLowerCase();
             const matches = listSessions(session.config.workspace).filter(item => item.id !== session.id &&
               `${item.id} ${item.title ?? ""} ${item.model} ${item.parent?.id ?? ""}`.toLowerCase().includes(query));
-            if (!matches.length) throw new Error('No matching sessions found');
-            if (matches.length === 1) id = matches[0]!.id;
-            else {
-              const page = matches.slice(0, 20);
-              const choices = page.map((item, index) => `${index + 1}. ${item.title ?? item.id} | ${item.model} | ${item.updated}${item.active ? ' | locked' : ''}`).join('\n');
-              const selectionPrompt = `Sessions${matches.length > page.length ? ' (first 20; use a query to narrow)' : ''}:\n${choices}\nChoose a number, or :cancel: `;
-              if (Buffer.byteLength(selectionPrompt) > session.config.maxOutputBytes) throw new Error('Session picker exceeds display budget; narrow the query');
-              const selected = (await withTurn(signal => readAnswer(selectionPrompt, signal))).trim();
-              if (selected === ':cancel') { options.status.write('Session selection cancelled.\n'); continue; }
-              const index = /^([1-9]|1\d|20)$/.test(selected) ? Number(selected) - 1 : -1;
-              if (index < 0 || index >= page.length) throw new Error('Choose a displayed session number');
-              id = page[index]!.id;
+            if (!selector && terminal?.prompt) {
+              // Jln, chunk-er09v3xa.js 9331: a bare `/resume` opens the recovered session panel;
+              // an argument keeps the source's exact-match path below.
+              const answer = await withTurn(signal => readDialog({ title: 'Resume session', message: '',
+                resumePicker: { logs: listSessions(session.config.workspace), currentId: session.id } }, signal));
+              if (answer?.resume === undefined) { options.status.write('Session selection cancelled.\n'); continue; }
+              id = answer.resume.id;
+            } else {
+              if (!matches.length) throw new Error(selector ? `Session ${selector} was not found.` : 'No matching sessions found');
+              if (matches.length === 1) id = matches[0]!.id;
+              else if (selector && terminal?.prompt) {
+                // X, chunk-14ept3y3.js 22590: `multipleMatches` reports and asks for `/resume`.
+                output.write(`Found ${matches.length} sessions matching ${selector}. Please use /resume to pick a specific session.\n`);
+                continue;
+              } else {
+                const page = matches.slice(0, 20);
+                const choices = page.map((item, index) => `${index + 1}. ${item.title ?? item.id} | ${item.model} | ${item.updated}${item.active ? ' | locked' : ''}`).join('\n');
+                const selectionPrompt = `Sessions${matches.length > page.length ? ' (first 20; use a query to narrow)' : ''}:\n${choices}\nChoose a number, or :cancel: `;
+                if (Buffer.byteLength(selectionPrompt) > session.config.maxOutputBytes) throw new Error('Session picker exceeds display budget; narrow the query');
+                const selected = (await withTurn(signal => readAnswer(selectionPrompt, signal))).trim();
+                if (selected === ':cancel') { options.status.write('Session selection cancelled.\n'); continue; }
+                const index = /^([1-9]|1\d|20)$/.test(selected) ? Number(selected) - 1 : -1;
+                if (index < 0 || index >= page.length) throw new Error('Choose a displayed session number');
+                id = page[index]!.id;
+              }
             }
           }
           if (id === session.id) { options.status.write('Session is already active.\n'); continue; }
@@ -1798,9 +1811,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       const raw = loaded.settings.permissions;
                       const defaultMode = raw !== null && typeof raw === 'object' && !Array.isArray(raw)
                         ? permissionPolicySchema.shape.defaultMode.parse((raw as Record<string, unknown>).defaultMode) : undefined;
-                      const permissions = { ...(session.config.permissions ?? { mode: 'default' as const, allow: [], deny: [] }) };
+                      const permissions = session.config.permissions ?? { mode: 'default' as const, allow: [], deny: [] };
                       if (defaultMode === undefined) delete permissions.defaultMode; else permissions.defaultMode = defaultMode;
                       session.config.permissions = permissions;
+                      // The owner map is keyed by policy identity; keep the live binding when the
+                      // policy object is new so child agents and skills still see the live mode.
+                      bindPermissionOwner(session.config.permissions, session.permissionOwner);
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
                       return configPanelInput(session.config);
                     }

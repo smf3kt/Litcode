@@ -82,6 +82,10 @@ test('display-only config rows keep the owner tool set', async () => {
       showTurnDuration: false, timeFormat: '24-hour', editorMode: 'vim', terminalProgressBarEnabled: false,
       autoCompactEnabled: false, askUserQuestionTimeout: '60s', dialogExpiry: '5m',
       permissions: { ...(f.config.permissions ?? { mode: 'default', allow: [], deny: [] }), defaultMode: 'plan' } }, 'display-owner'));
+    // Allocate a resource record for the owner so a fingerprint mismatch would throw; without
+    // this line the comparison below passes even with every exclusion deleted. `drainEvents`
+    // only reads an existing record, so it cannot serve as the allocation.
+    assert.equal(runtime.backgroundWorkCount!('display-owner'), 0);
     // The Verbose, Reduce motion, turn-duration, time-format, editor, progress-bar, auto-compact,
     // question-timeout, dialog-expiry and default-permission-mode rows write live state
     // (`Te`/`vy`, chunk-nybcbd9t.js 9556/15296; rows 12035/20203/20771/21614/21908/26180/26485/29983);
@@ -91,7 +95,11 @@ test('display-only config rows keep the owner tool set', async () => {
       terminalProgressBarEnabled: true, autoCompactEnabled: true, askUserQuestionTimeout: 'never',
       dialogExpiry: undefined,
       permissions: { ...(f.config.permissions ?? { mode: 'default', allow: [], deny: [] }) } }, 'display-owner')), pinned);
+    // Negative control: a request-shaping field still trips the same allocated owner.
+    assert.throws(() => runtime.buildTools({ ...f.config, maxOutputBytes: f.config.maxOutputBytes + 1 },
+      'display-owner'), /Runtime owner configuration changed/);
   } finally {
+    await runtime.releaseSession!('display-owner');
     await runtime.close();
     f.cleanup();
   }
