@@ -1249,6 +1249,8 @@ export interface TerminalPromptRequest {
    * same name is refused (`host_field`) and never reaches this request.
    */
   afkTimeoutMs?: number | null;
+  /** Jln, chunk-er09v3xa.js 9331: the `/resume` picker over this workspace's own sessions. */
+  resumePicker?: import('./resume-picker.js').ResumePickerInput;
   /** Recovered question action returning clarification feedback to the model. */
   allowClarification?: boolean;
   /**
@@ -1293,6 +1295,8 @@ export interface TerminalPromptAnswer {
   selected: string[];
   clarify?: true;
   themeEdit?: boolean;
+  /** Jln, chunk-er09v3xa.js 9331: the picked session id from the `/resume` panel. */
+  resume?: { id: string };
   configPanel?: { state: import('./config-panel.js').ConfigPanelState; open?: 'theme' | 'model' | 'timeFormat' };
   text?: string;
   /** The value the request's `adjust` axis held when the dialog resolved. */

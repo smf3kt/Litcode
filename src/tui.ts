@@ -82,6 +82,7 @@ import {
 } from './tui-file-suggestions.js';
 import { ge } from './tui-color.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
+import { ResumePicker, resumePickerGuide, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
 import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
 
 /** The sixteen ANSI foreground names a theme slot can name (the source's own `be` table). */
@@ -255,6 +256,7 @@ interface ActiveDialog {
   configPanel?: { owner: ConfigPanel; hits: Map<number, { id: ConfigRowId; valueColumn: number }>;
     pressed?: { kind: 'row'; id: ConfigRowId; value: boolean } | { kind: 'search' };
     searchRows: Set<number>; pending?: Promise<void> };
+  resumePicker?: { owner: ResumePicker; hits: Map<number, number> };
   busy?: boolean;
   editor: EditorState;
   undo: InputUndo;
@@ -1423,6 +1425,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         dialog.configPanel = { owner: new ConfigPanel(snapshot.configPanel.input), hits: new Map(), searchRows: new Set() };
         dialog.configPanel.owner.error = snapshot.initialText;
       }
+      if (snapshot.resumePicker !== undefined) {
+        dialog.resumePicker = { owner: new ResumePicker(snapshot.resumePicker), hits: new Map() };
+      }
       this.dialog = dialog;
       // Pt/he, 76jkr621 [21105,21789), UTF-16: repaint from a modal-owned 100 ms clock.
       if (snapshot.adjust?.kind === 'slider') {
@@ -2190,6 +2195,38 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   /** bs/Co/Gl, dag4qhha [26517,31282), Qe field clicks czbq7s7d [1599,4413), UTF-16. */
+  /** Jln, chunk-er09v3xa.js 9331: list focus, fork expand, search-as-you-type and select/cancel. */
+  private handleResumePickerAction(dialog: ActiveDialog, action: EditorAction): void {
+    const picker = dialog.resumePicker!.owner;
+    if (action.type === 'mouse') return;
+    const command = action.type === 'key' ? action.command : action.type;
+    const sequence = action.type === 'key' ? action.sequence : '';
+    if (action.type === 'paste') {
+      picker.insert((action.text.split(/\r\n|\r|\n/, 2)[0] ?? '').trim());
+      this.render(); return;
+    }
+    if (action.type === 'insert') {
+      if (/[^\x00-\x1f\x7f-\x9f]/.test(action.text)) { picker.insert(action.text); this.render(); }
+      return;
+    }
+    if (command === 'up') {
+      if (picker.focusIndex === 0) picker.search(); else picker.move(-1);
+      this.render(); return;
+    }
+    if (command === 'down') { picker.move(1); this.render(); return; }
+    if (command === 'left' || command === 'right') { picker.expand(command); this.render(); return; }
+    if (command === 'backspace') { picker.backspace(); this.render(); return; }
+    if (sequence === '\x1b' || command === 'interrupt' || command === 'eof') {
+      // `kt`: Escape in search clears the query and returns to the list; in the list it cancels.
+      if (picker.searching) { picker.clear(); this.render(); } else dialog.finish();
+      return;
+    }
+    if (command === 'submit') {
+      const row = picker.focused;
+      if (row !== undefined) dialog.finish({ selected: [], resume: { id: row.log.id } });
+    }
+  }
+
   private handleConfigPanelAction(dialog: ActiveDialog, action: EditorAction): void {
     const panel = dialog.configPanel!;
     const owner = panel.owner;
@@ -2239,6 +2276,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!dialog) return;
     if (dialog.configPanel) { this.handleConfigPanelAction(dialog, action); return; }
     if (dialog.modelPicker) { this.handleModelPickerAction(dialog, action); return; }
+    if (dialog.resumePicker) { this.handleResumePickerAction(dialog, action); return; }
     if (action.type === 'mouse') return;
     // Source presence records the interaction behind `Ip()`, so any key defers AFK.
     this.noteAfkInteraction();
@@ -3221,8 +3259,44 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return [...title.map(row => row.ansi), ...visible, SEPARATOR.repeat(columns), '', pad(modelPickerGuide(dialog.request.modelPicker?.setDefault), columns)];
   }
 
+  /** Jln, chunk-er09v3xa.js 9331, over this product's dialog frame. */
+  private renderResumePicker(dialog: ActiveDialog, columns: number, bodyRows: number): string[] {
+    const picker = dialog.resumePicker!.owner;
+    picker.setWidth(Math.max(20, columns - 4));
+    picker.clamp();
+    this.documentRenderer ??= new TuiDocumentRenderer();
+    const paint = (tree: unknown) => this.documentRenderer!.renderElement(tree, columns,
+      { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
+    const title = paint(jsx(n, { bold: true, color: 'remember',
+      children: dialog.request.title ?? 'Resume session' }, undefined));
+    const search = paint(jsx(s, { borderStyle: 'round', borderColor: picker.searching ? 'suggestion' : undefined,
+      paddingX: 1, children: jsx(n, { dimColor: !picker.searching, wrap: 'truncate-end',
+        children: `⌕ ${picker.query || 'Type to search'}` }, undefined) }, undefined));
+    const height = Math.max(1, bodyRows - title.length - search.length - 4);
+    const rows = picker.rows;
+    const visibleCount = Math.max(1, Math.floor(height / 2));
+    const start = Math.max(0, Math.min(Math.max(0, rows.length - visibleCount),
+      picker.focusIndex - Math.floor(visibleCount / 2)));
+    const body: string[] = [];
+    dialog.resumePicker!.hits.clear();
+    if (rows.length === 0) {
+      body.push(picker.empty ? RESUME_EMPTY_TEXT : resumeNoMatchText(picker.query));
+    } else {
+      for (const [offset, row] of rows.slice(start, start + visibleCount).entries()) {
+        const index = start + offset;
+        body.push(`${index === picker.focusIndex ? '> ' : '  '}${row.label}`);
+        body.push(`  ${row.description}`);
+        dialog.resumePicker!.hits.set(title.length + search.length + 1 + body.length - 2, index);
+      }
+    }
+    while (body.length < height) body.push('');
+    return [...title, ...search, '', ...body.slice(0, height), SEPARATOR.repeat(columns), '',
+      pad(resumePickerGuide(picker.searching ? 'search' : 'list'), columns)];
+  }
+
   private renderDialog(columns: number, bodyRows: number): string[] {
     const dialog = this.dialog!;
+    if (dialog.resumePicker) return this.renderResumePicker(dialog, columns, bodyRows);
     if (dialog.modelPicker) return this.renderModelPicker(dialog, columns, bodyRows);
     const clean = (text: string) => text.replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
     const oneLine = (text: string) => clean(text).replace(/[\t\n]/g, ' ');
