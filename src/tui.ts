@@ -530,6 +530,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private statusNoticeOwner: string | undefined;
   private statusNoticeText: string | undefined;
   private statusNoticeTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Host-bound live background count and stop action for the kill chord. */
+  private backgroundWorkProbe: (() => number) | undefined;
+  private backgroundWorkStop: (() => void) | undefined;
+  /** Source `go.current`: the last kill-chord press while a confirmation is armed. */
+  private killAgentsArmed: number | undefined;
   private sourceSearch: HistorySearch | undefined;
   private sourcePicker: ScopedPicker | undefined;
   private pickerQuery = createEditorState();
@@ -869,6 +874,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
+  /** Source `Jr` reads the task store directly; this host hands the composer the same live count. */
+  bindBackgroundWork(probe: () => number, stop: () => void): void {
+    this.backgroundWorkProbe = probe;
+    this.backgroundWorkStop = stop;
+  }
+
   /** Source store subscription: a changed queue repaints the hint and clamps a stale index. */
   promptQueueChanged(): void {
     if (this.closed) return;
@@ -1206,6 +1217,33 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Source notice `pasted-text-unavailable`: `priority:"immediate"`, default 8000 ms timeout. */
   private showPasteGoneNotice(text: string): void {
     this.showStatusNotice('paste-gone', text, 8_000);
+  }
+
+  /**
+   * Source `Jr` (chunk-24k7d6mw.js 435644). The none arm reports immediately for 2000 ms; the
+   * armed press keeps `go.current` so a second press within `mFe` stops the work.
+   */
+  private killAgents(): void {
+    // The host probe can only count jobs; a malformed count takes the source's boolean none arm.
+    if (!(this.backgroundWork() > 0)) {
+      this.showStatusNotice('kill-agents-none', 'No background agents running', 2_000);
+      return;
+    }
+    const now = Date.now();
+    if (this.killAgentsArmed !== undefined && now - this.killAgentsArmed <= 3_000) {
+      this.killAgentsArmed = undefined;
+      this.clearStatusNotice('kill-agents-confirm');
+      this.backgroundWorkStop?.();
+      this.render();
+      return;
+    }
+    this.killAgentsArmed = now;
+    this.showStatusNotice('kill-agents-confirm',
+      `Press ${chordForAction('chat:killAgents', 'Chat', 'ctrl+x ctrl+k')} again to stop background agents`, 3_000);
+  }
+
+  private backgroundWork(): number {
+    try { return this.backgroundWorkProbe?.() ?? 0; } catch { return 0; }
   }
 
   private showStatusNotice(owner: string, text: string, timeoutMs: number): void {
@@ -2603,6 +2641,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       // reset, erase of the painted rows, then the repaint (src/tui-renderer.ts:193).
       case 'chat:clearInput': case 'chat:clearScreen':
         this.renderer?.invalidate(); this.render(); return true;
+      // Source footer handler `Jr` (chunk-24k7d6mw.js 435644): `ane` (429125) counts running
+      // background work. With none, the immediate `kill-agents-none` row lasts 2000 ms; otherwise
+      // the first press arms the double-press confirmation for `mFe` (3000 ms) and a second press
+      // inside that window clears it and stops the jobs.
+      case 'chat:killAgents': this.killAgents(); return true;
       case 'chat:stash': this.stashDraft(); return true;
       case 'chat:workflowKeywordToggle': return this.toggleWorkflowKeyword();
       case 'chat:modelPicker': case 'chat:thinkingToggle': case 'app:toggleTodos': case 'chat:externalEditor': return true;

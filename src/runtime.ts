@@ -441,6 +441,10 @@ export type Runtime = {
   subscribeTasks?(config: SessionConfig, listener: () => void): () => void;
   /** Stop/SubagentStop background jobs and session cron tasks (`Sle`). */
   stopState?(owner: string): StopRuntimeState;
+  /** Running background jobs plus running child agents, the local `ane` set. */
+  backgroundWorkCount?(owner: string): number;
+  /** Stop every running background job and child agent for an owner; returns how many. */
+  stopBackground?(owner: string): number;
   releaseSession?(owner: string): Promise<void>;
   runSkill?(config: SessionConfig, owner: string, skill: SkillInfo, args: string, signal: AbortSignal,
     requestPermission?: (tool: ToolDefinition, input: unknown, decision: PermissionDecision) => Promise<PermissionDecision>,
@@ -600,6 +604,27 @@ export async function createRuntime(
     }
     return { background_tasks: tasks, session_crons: (resources.scheduler?.list() ?? []).map(job => ({
       id: job.id, schedule: job.cron, recurring: job.recurring === true, prompt: truncateHookText(job.prompt) })) };
+  };
+  // Source `Jr` confirm arm (chunk-24k7d6mw.js 435644) stops whatever `ane` (429125) counted:
+  // running local-agent tasks and running background jobs. Locally the first set is this owner's
+  // running child agents and the second is its running registry jobs. A closed runtime has no
+  // live owner resources, so both calls are no-ops.
+  const runningChildren = (resources: Resources | undefined) =>
+    (resources?.agents?.list() ?? []).filter(child => child.status === 'running');
+  const backgroundWorkCountForOwner = (owner: string): number => {
+    if (closed || signal.aborted) return 0;
+    const resources = resourcesFor(owner, scopeFor(owner));
+    return (resources.background?.active().length ?? 0) + runningChildren(resources).length;
+  };
+  const stopBackgroundForOwner = (owner: string): number => {
+    if (closed || signal.aborted) return 0;
+    const resources = resourcesFor(owner, scopeFor(owner));
+    const jobs = resources.background?.active() ?? [];
+    for (const job of jobs) { try { resources.background!.stop(job.id); } catch { /* the job already ended */ } }
+    const children = runningChildren(resources);
+    // Child stop aborts the agent and awaits its worker; the chord does not wait for teardown.
+    for (const child of children) { try { void resources.agents!.stop(child.id).catch(() => {}); } catch { /* the child already ended */ } }
+    return jobs.length + children.length;
   };
   // Factories close over registries but access them only on execution. Bind methods
   // to their real instance lazily so constructing schemas installs no resources.
@@ -1180,6 +1205,8 @@ export async function createRuntime(
       },
       taskRecords(current) {if (closed) return []; return current.features?.tasks ? readTaskRecords(current.workspace) : [];},
       stopState(owner) { return stopStateForOwner(owner); },
+      backgroundWorkCount(owner) { return backgroundWorkCountForOwner(owner); },
+      stopBackground(owner) { return stopBackgroundForOwner(owner); },
       subscribeTasks(current, listener) {
         if (closed || !current.features?.tasks) return () => {};
         const unsubscribe = subscribeTaskChanges(current.workspace, () => {if (!closed) listener();});

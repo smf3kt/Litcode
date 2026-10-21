@@ -313,6 +313,110 @@ test('stopState projects running background jobs and session cron tasks', async 
   } finally { await runtime.close(); f.cleanup(); }
 });
 
+test('stopBackground stops every running job for its owner', async () => {
+  const f = fixture();
+  const runtime = await createRuntime(f.config, unused, f.controller.signal);
+  const owner = 'stop-background';
+  try {
+    const tools = runtime.buildTools(f.config, owner);
+    const first = JSON.parse(await selected(tools, 'run_background').execute(
+      { command: 'sleep 5', description: 'one' }, { ...f.context, allowShell: true })) as { id: string };
+    const second = JSON.parse(await selected(tools, 'run_background').execute(
+      { command: 'sleep 5', description: 'two' }, { ...f.context, allowShell: true })) as { id: string };
+    assert.equal(runtime.stopState!(owner).background_tasks.length, 2);
+    assert.equal(runtime.stopBackground!(owner), 2);
+    // `stop` only signals the group; the registry settles on the child close event.
+    for (const job of [first, second]) {
+      await selected(tools, 'get_background_task').execute({ id: job.id, wait_ms: 5000 }, { ...f.context, allowShell: true });
+    }
+    assert.deepEqual(runtime.stopState!(owner).background_tasks, []);
+    assert.equal(runtime.stopBackground!(owner), 0);
+  } finally { await runtime.close(); f.cleanup(); }
+});
+
+const childStatus = async (list: ToolDefinition, id: string, context: ToolContext): Promise<string> => {
+  const rows = JSON.parse(await list.execute({}, { ...context })) as { id: string; status: string }[];
+  return rows.find(row => row.id === id)?.status ?? 'running';
+};
+
+test('stopBackground aborts a running child agent instead of only counting it', async () => {
+  const f = fixture();
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const provider: ModelProvider = { count: async () => 1,
+    complete: async (_request, signal) => {
+      entered();
+      // Settles only when the registry aborts the child, so a count-only stop leaves it running.
+      await new Promise<never>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      });
+      return reply('done');
+    } };
+  const runtime = await createRuntime(f.config, provider, f.controller.signal);
+  const owner = 'stop-agents';
+  try {
+    const tools = runtime.buildTools(f.config, owner);
+    const launched = JSON.parse(await selected(tools, 'agent').execute(
+      { prompt: 'hold', background: true }, { ...f.context, allowShell: true })) as { id: string };
+    await started;
+    assert.equal(runtime.backgroundWorkCount!(owner), 1);
+    assert.equal(runtime.stopBackground!(owner), 1);
+    const list = selected(tools, 'list_agents');
+    let status = 'running';
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      status = await childStatus(list, launched.id, f.context);
+      if (status !== 'running') break;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.equal(status, 'cancelled');
+    assert.equal(runtime.backgroundWorkCount!(owner), 0);
+    assert.equal(runtime.stopBackground!(owner), 0);
+  } finally { await runtime.close(); f.cleanup(); }
+});
+
+test('backgroundWorkCount excludes completed child agents', async () => {
+  const f = fixture();
+  let hold = false;
+  let entered!: () => void;
+  const started = new Promise<void>(resolve => { entered = resolve; });
+  const provider: ModelProvider = { count: async () => 1,
+    complete: async (_request, signal) => {
+      if (!hold) return reply('done');
+      entered();
+      await new Promise<never>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      });
+      return reply('done');
+    } };
+  const runtime = await createRuntime(f.config, provider, f.controller.signal);
+  const owner = 'count-agents';
+  try {
+    const tools = runtime.buildTools(f.config, owner);
+    const agent = selected(tools, 'agent');
+    const first = JSON.parse(await agent.execute(
+      { prompt: 'finish', background: true }, { ...f.context, allowShell: true })) as { id: string };
+    const list = selected(tools, 'list_agents');
+    for (let attempt = 0; attempt < 200 && await childStatus(list, first.id, f.context) !== 'completed'; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.equal(await childStatus(list, first.id, f.context), 'completed');
+
+    hold = true;
+    const second = JSON.parse(await agent.execute(
+      { prompt: 'hold', background: true }, { ...f.context, allowShell: true })) as { id: string };
+    await started;
+    // The completed sibling stays in the registry but does not count as live work.
+    assert.equal(runtime.backgroundWorkCount!(owner), 1);
+    assert.equal(runtime.stopBackground!(owner), 1);
+    for (let attempt = 0; attempt < 200 && await childStatus(list, second.id, f.context) === 'running'; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.equal(await childStatus(list, second.id, f.context), 'cancelled');
+    assert.equal(runtime.backgroundWorkCount!(owner), 0);
+    assert.equal(runtime.stopBackground!(owner), 0);
+  } finally { await runtime.close(); f.cleanup(); }
+});
+
 test('effort settings accepts exactly five levels without introducing a default', () => {
   assert.deepEqual(parseSettings({}), {});
   for (const effort of ['low', 'medium', 'high', 'xhigh', 'max']) assert.deepEqual(parseSettings({ effort }), { effort });

@@ -289,6 +289,18 @@ Next up, scoped but not started:
       `a3840ef3…`, 76/76 TUI tests and check/build pass; full suite 2990/2991 with the CLI-effort
       failure reproduced at HEAD. Independent review returned SOUND; its two lows are fixed.
       See `research/ports/W241-clear-screen.md`.
+- [x] W242 kill-agents chord confirmation and stop. Source `Jr` (chunk-24k7d6mw.js 435644) gates
+      `chat:killAgents` on running background work (`ane` 429125): the none arm shows
+      `No background agents running` for 2000 ms, and with work the first press arms a 3000 ms
+      confirmation and the second stops it. The chord now counts `Runtime.backgroundWorkCount`
+      (running background jobs plus running child agents, the local `ane` set) and stops through
+      `Runtime.stopBackground` (`BackgroundRegistry.stop`/`AgentRegistry.stop`), bound with
+      `TerminalSurface.bindBackgroundWork`. Compiled 10/10 at identity `174700e3…` with a live
+      `run_background` job killed on confirm, 80/80 TUI tests, 15/15 runtime-resources tests and
+      check/build pass; full suite 2997/2998 with the CLI-effort failure reproduced at HEAD. The
+      first none-only delivery was rejected by review; the corrected delivery and a delta
+      re-review returned SOUND and the medium and lows are fixed.
+      See `research/ports/W242-kill-agents.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.

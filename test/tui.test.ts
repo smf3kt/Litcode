@@ -536,6 +536,96 @@ test('the clear chords repaint the screen and keep the draft and its undo step',
   } finally { tui.close(); }
 });
 
+test('the kill chord reports that no background agents are running', async context => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 12 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  context.mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    key('draft');
+    key('\u0018\u000b');
+    // Source feedback `kill-agents-none` (chunk-24k7d6mw.js 435644): immediate, 2000 ms.
+    assert.ok(screenLines(output).some(row => row.includes('No background agents running')),
+      screenLines(output).join('\n'));
+    assert.equal(tui.state.text, 'draft', 'the chord leaves the draft untouched');
+    context.mock.timers.tick(2_000);
+    assert.ok(!screenLines(output).some(row => row.includes('No background agents running')));
+  } finally { tui.close(); context.mock.timers.reset(); }
+});
+
+test('the kill chord confirms a running background job before stopping it', async context => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 12 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  let stopped = 0;
+  tui.bindBackgroundWork(() => 1, () => { stopped += 1; });
+  const key = (text: string) => input.emit('data', text);
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  try {
+    key('draft');
+    key('\u0018\u000b');
+    // Source `Jr` first press: `kill-agents-confirm`, text built from the chord, 3000 ms.
+    assert.ok(screenLines(output).some(row => row.includes('again to stop backgrou')),
+      screenLines(output).join('\n'));
+    assert.equal(stopped, 0, 'the first press only arms the confirmation');
+    assert.equal(tui.state.text, 'draft', 'the chord leaves the draft untouched');
+    key('\u0018\u000b');
+    assert.equal(stopped, 1, 'the second press inside the window stops the jobs');
+    assert.ok(!screenLines(output).some(row => row.includes('again to stop backgrou')));
+    assert.equal(tui.state.text, 'draft', 'the confirmed press leaves the draft untouched');
+    // Source `Jr` zeroes `go.current` on the stop; the next press arms a fresh confirmation
+    // instead of stopping again, even while the probe still reports the stopped job set.
+    key('\u0018\u000b');
+    assert.equal(stopped, 1, 'a press after the confirmed stop does not stop twice');
+    assert.ok(screenLines(output).some(row => row.includes('again to stop backgrou')));
+  } finally { tui.close(); context.mock.timers.reset(); }
+});
+
+test('the kill chord accepts a press exactly on the confirmation window boundary', async context => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 12 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  let stopped = 0;
+  tui.bindBackgroundWork(() => 1, () => { stopped += 1; });
+  const key = (text: string) => input.emit('data', text);
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  try {
+    key('\u0018\u000b');
+    // Source `Jr` compares `Date.now() - go.current <= mFe` (429116); mFe is inclusive.
+    context.mock.timers.tick(3_000);
+    key('\u0018\u000b');
+    assert.equal(stopped, 1, 'the boundary press is the confirmed press');
+  } finally { tui.close(); context.mock.timers.reset(); }
+});
+
+test('the kill chord asks again after the confirmation window expires', async context => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 12 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  let stopped = 0;
+  tui.bindBackgroundWork(() => 1, () => { stopped += 1; });
+  const key = (text: string) => input.emit('data', text);
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  try {
+    key('\u0018\u000b');
+    context.mock.timers.tick(3_001);
+    key('\u0018\u000b');
+    assert.equal(stopped, 0, 'a press after the window arms a fresh confirmation');
+    assert.ok(screenLines(output).some(row => row.includes('again to stop backgrou')));
+    key('\u0018\u000b');
+    assert.equal(stopped, 1);
+  } finally { tui.close(); context.mock.timers.reset(); }
+});
+
 test('wrapped rows copy as one logical line while explicit newlines keep theirs', () => {
   const open = (columns: number, text: string) => {
     const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
