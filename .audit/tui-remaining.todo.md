@@ -222,9 +222,14 @@ Next up, scoped but not started:
       Theme/Time format/Model child return, per-model effort defaults, errors and restart pass
       compiled acceptance 35/35. Check/build and 264 affected tests pass. Six independent findings
       repaired and rechecked. See `research/ports/W233-config-panel.md`.
-- [ ] Config residuals without complete consumers. Verbose, Auto-compact enable, tips, terminal
-      progress, notifications and selection flags remain unported. Read each source consumer
-      closure before choosing the next complete local package.
+- [x] W234 Config Auto-compact enable. Default true, immediate user persistence, live/reloaded/
+      restored boolean, neutral environment gates, automatic and manual separation, hard capacity
+      and oversized-summary recovery. Compiled chain 26/26, Config compatibility 35/35 and 164
+      related regressions pass; independent recheck 13/13 at 50e07b23. See
+      `research/ports/W234-autocompact-toggle.md`.
+- [ ] Config residuals without complete consumers. Verbose, tips, terminal progress, notifications
+      and selection flags remain unported. Read each source consumer closure before choosing the
+      next complete local package.
 
 Scoped out:
 

@@ -660,19 +660,26 @@ test('/autocompact reports the window, stores a token count and clears it', { ti
   try {
     const loop = interactiveLoop(session, provider, runtime,
       { input, output: stdout.stream, status: stderr.stream, signal: lifetime });
+    const activeConfig = () => {
+      const locks = fs.readdirSync(path.join(workspace, '.agent')).filter(file => file.endsWith('.jsonl.lock'));
+      assert.equal(locks.length, 1);
+      const file = path.join(workspace, '.agent', locks[0]!.slice(0, -5));
+      return JSON.parse(fs.readFileSync(file, 'utf8').split('\n')[0]!).config;
+    };
     // No prompt surface, so the bare form falls back to the recovered status block.
     input.write('/autocompact\n'); await wait(200);
     input.write('/autocompact 300k\n'); await wait(200);
     assert.equal(stored().compactAt, 300000);
-    assert.equal(session.config.compactAt, 300000);
+    assert.equal(activeConfig().compactAt, 300000);
+    assert.equal(session.config.compactAt, 512000);
     input.write('/autocompact\n'); await wait(200);
     input.write('/autocompact 1m\n'); await wait(200);
     // The store keeps the requested value; the session takes the ceiling-clamped window.
     assert.equal(stored().compactAt, 1000000);
-    assert.equal(session.config.compactAt, 975424);
+    assert.equal(activeConfig().compactAt, 975424);
     input.write('/autocompact reset\n'); await wait(200);
     assert.equal('compactAt' in stored(), false);
-    assert.equal(session.config.compactAt, 512000);
+    assert.equal(activeConfig().compactAt, 512000);
     input.write('/autocompact 2m\n'); await wait(200);
     input.write('/exit\n');
     await loop;

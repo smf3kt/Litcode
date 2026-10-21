@@ -29,6 +29,9 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   applyManagedPolicy(next, loaded.managedSettings);
   next.autoMemory = overrides.autoMemory ?? settings.autoMemory ?? false;
   next.watchConfig = overrides.watchConfig ?? settings.watchConfig ?? false;
+  // hs/ef, js2bhabe [1114,1499), 14rnebpd [317949,318021), UTF-16: re-read the merged value.
+  if (settings.autoCompactEnabled !== undefined) next.autoCompactEnabled = settings.autoCompactEnabled;
+  else delete next.autoCompactEnabled;
   if (settings.prefersReducedMotion !== undefined) next.prefersReducedMotion = settings.prefersReducedMotion;
   else delete next.prefersReducedMotion;
   if (settings.showTurnDuration !== undefined) next.showTurnDuration = settings.showTurnDuration;

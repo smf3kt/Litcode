@@ -8,7 +8,7 @@ import { te } from './tui-symbols.js';
 
 export const TIME_FORMATS = ['auto', '12-hour', '24-hour', '24-hour-utc'] as const;
 export type ConfigUpdate =
-  | { id: 'reduceMotion' | 'thinking' | 'turnDuration'; value: boolean }
+  | { id: 'autoCompact' | 'reduceMotion' | 'thinking' | 'turnDuration'; value: boolean }
   | { id: 'editor'; value: 'normal' | 'vim' }
   | { id: 'timeFormat'; value: typeof TIME_FORMATS[number] }
   | { id: 'askUserQuestionTimeout'; value: 'never' | '60s' | '5m' | '10m' }
@@ -21,7 +21,7 @@ type Row = { id: ConfigRowId; label: string } & (
 );
 export interface ConfigPanelState { query: string; cursor: number; focus: ConfigRowId; mode: 'search' | 'list' }
 export type ConfigPanelValues = Pick<SessionConfig, 'model' | 'thinking' | 'theme' | 'editorMode' | 'timeFormat'
-  | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry'>;
+  | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry'>;
 export interface ConfigPanelInput { config: ConfigPanelValues; hidden: readonly ConfigRowId[]; state?: ConfigPanelState }
 export interface ConfigPanelHost {
   input: ConfigPanelInput;
@@ -51,6 +51,8 @@ const themeNames: Record<string, string> = { auto: 'Auto (match terminal)', dark
 /** vWe, nybcbd9t [7247,31899), UTF-16; local row bodies and omitted consumers are recorded in W233. */
 function rows({ config, hidden }: ConfigPanelInput): Row[] {
   const all: Row[] = [
+    // vWe, nybcbd9t [12034,12244), UTF-16; Ze, bk5ct2gw [558575,558596) supplies true when absent.
+    { id: 'autoCompact', label: 'Auto-compact', kind: 'boolean', value: config.autoCompactEnabled ?? true },
     { id: 'reduceMotion', label: 'Reduce motion', kind: 'boolean', value: config.prefersReducedMotion ?? false },
     { id: 'thinking', label: 'Thinking mode', kind: 'boolean', value: config.thinking },
     { id: 'turnDuration', label: 'Show turn duration', kind: 'boolean', value: config.showTurnDuration ?? true },
@@ -137,7 +139,7 @@ export class ConfigPanel {
     const state = input.state;
     this.editor = { ...this.editor, text: state?.query ?? '', cursor: state?.cursor ?? 0 };
     this.mode = state?.mode ?? 'search';
-    this.focus = state?.focus ?? 'reduceMotion';
+    this.focus = state?.focus ?? 'autoCompact';
     this.ensureFocus();
   }
 
@@ -158,12 +160,12 @@ export class ConfigPanel {
       || 'options' in row && row.options?.some(value => value.toLowerCase().includes(query)));
   }
   private ensureFocus(): void {
-    if (!this.focused) this.focus = this.filtered()[0]?.id ?? 'reduceMotion';
+    if (!this.focused) this.focus = this.filtered()[0]?.id ?? 'autoCompact';
   }
   update(input: ConfigPanelInput): void { this.input = input; this.ensureFocus(); this.error = undefined; }
   private queryText(text: string, cursor = text.length): void {
     this.editor = { ...this.editor, text, cursor }; this.start = null;
-    this.focus = this.filtered()[0]?.id ?? 'reduceMotion'; this.error = undefined;
+    this.focus = this.filtered()[0]?.id ?? 'autoCompact'; this.error = undefined;
   }
   search(): void { this.mode = 'search'; }
   focusRow(id: ConfigRowId): void { this.focus = id; this.mode = 'list'; this.error = undefined; }
@@ -204,7 +206,7 @@ export class ConfigPanel {
     const value = row.kind === 'boolean' ? !row.value : row.kind === 'enum'
       ? row.options[(row.options.indexOf(row.value) + direction + row.options.length) % row.options.length] : undefined;
     switch (row.id) {
-      case 'reduceMotion': case 'thinking': case 'turnDuration':
+      case 'autoCompact': case 'reduceMotion': case 'thinking': case 'turnDuration':
         if (typeof value === 'boolean') return { kind: 'change', update: { id: row.id, value } };
         return;
       case 'editor':
@@ -239,7 +241,7 @@ export class ConfigPanel {
       const previous = this.query;
       this.editor = reduceEditorWithUndo(this.editor, edit, { historyLimit: 0, maxPasteBytes: 32768,
         navigationColumns: Math.max(1, columns - 6) }, this.undo).state;
-      if (previous !== this.query) { this.start = null; this.focus = this.filtered()[0]?.id ?? 'reduceMotion'; }
+      if (previous !== this.query) { this.start = null; this.focus = this.filtered()[0]?.id ?? 'autoCompact'; }
       this.ensureFocus(); return;
     }
     if (command === 'submit') return this.activate();

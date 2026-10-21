@@ -144,6 +144,8 @@ Hard requirements for work in this repository. Each rule exists because the same
 
 **验收检查**：每包列出已核验的入口与依赖范围、摘要、坐标单位和搬运分类；复制正文与来源做摘要或差异核对；**手写适配的来源正文（生成文件之外的宿主适配体）必须与来源区间逐字符 diff**，注释坐标不能替代比对，因为生成文件的摘要核验覆盖不到手写分支（Q-079）；每个适配 / 重写有具体接口理由和行为差异；来源关键算法已有时禁止凭效果近似重造。缺陷记录必须指明未满足的那条来源分支及其坐标；被改动的 handler 注释含来源范围。先完成完整使用链，再用自有 fixture 和实际 CLI 验证；提取目录保持只读，恢复的应用入口不执行。
 
+2026-10-21 W234 Auto-compact复查：S-1至S-7绑定八组来源正文差异和三组新增回归。实际CLI发现旧阈值setter直接修改活动配置；按来源apply_flag_settings接入successor session。独立审核补齐硬容量与摘要容量的terminal outcome，避免待响应状态挡住手动恢复。最终check/build、164项相关回归及26项新链和35项Config编译验收通过，独立原始输入复验13项通过。默认并发的一次旧effort定时超时已独测与限并发整组复验，未修改超时值。问题继续归于S-4/S-5/S-6/S-7，详见[W234](ports/W234-autocompact-toggle.md)。保持现有七条要求。
+
 2026-10-21 W233 Config面板复查：S-1至S-7已逐项绑定来源范围、十四组逐字符差异、三组新回归及编译CLI文件/请求/重启证据。已处理批量字符在search owner切换后丢失、窄屏placeholder等待及persistableEffort返回类型过宽。独立审核六项缺口均修复并复验，覆盖跨入口默认值、继承状态、metadata投影、关闭后错误、链接设置归属和enum选项搜索，继续归于现有S-4/S-5/S-6/S-7。独立审核与最终身份见[W233](ports/W233-config-panel.md)。保持现有七条要求。
 
 2026-10-14正文宽度包复查：S-1至S-7均已对照，未出现新同因事故；既有来源组件复用、invalid-value fallback、完整设置固定/恢复与缓存消费者已验，详见[工作包](ports/W44-tui-renderer.md#prose-width-acceptance-2026-10-14)。保持现有七条要求。
