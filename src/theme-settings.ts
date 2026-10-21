@@ -115,7 +115,7 @@ const SETTING_LABELS = {
   theme: 'saveThemeSetting', editorMode: 'saveEditorMode', diffSidebarOpen: 'saveDiffDisplaySetting',
   diffSidebarBaseMode: 'saveDiffDisplaySetting', effort: 'saveEffortSetting',
   compactAt: 'saveAutoCompactSetting', model: 'saveModelSetting', modelSettings: 'saveConfigModelEffort', thinking: 'saveConfigPanelSetting',
-  autoCompactEnabled: 'saveConfigPanelSetting', prefersReducedMotion: 'saveConfigPanelSetting', showTurnDuration: 'saveConfigPanelSetting',
+  verbose: 'saveConfigPanelSetting', autoCompactEnabled: 'saveConfigPanelSetting', prefersReducedMotion: 'saveConfigPanelSetting', showTurnDuration: 'saveConfigPanelSetting',
   timeFormat: 'saveConfigPanelSetting', askUserQuestionTimeout: 'saveConfigPanelSetting', dialogExpiry: 'saveConfigPanelSetting',
 } as const;
 

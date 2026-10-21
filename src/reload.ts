@@ -4,6 +4,7 @@ import { buildSystem, parseSettings } from "./runtime.js";
 import { configSchema, applyManagedPolicy, type SessionConfig } from "./session.js";
 import { loadKeybindings } from "./keybindings.js";
 import { agentTypesSection, setHeldSkills } from "./skill-catalog.js";
+import { startupVerbose } from "./focus-command.js";
 
 /** Reload local policy/catalogs while retaining the live provider and call limits. */
 export function reloadConfig(current: SessionConfig): SessionConfig {
@@ -40,6 +41,9 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   else delete next.showMessageTimestamps;
   if (settings.viewMode !== undefined) next.viewMode = settings.viewMode;
   else delete next.viewMode;
+  // It, 9shw4xrd [106333,106421), UTF-16: reload resolves the same way startup does, so a
+  // removed key falls back to the authored viewMode instead of keeping a stale live value.
+  next.verbose = startupVerbose(next.viewMode, settings.verbose);
   for (const key of ['timeFormat', 'timeZone', 'spinnerVerbs','editorMode','vimInsertModeRemaps'] as const) {
     if (settings[key] === undefined) delete next[key];
   }

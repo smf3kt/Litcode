@@ -23,7 +23,7 @@ export function configPanelInput(config: SessionConfig, state?: ConfigPanelState
     if ('askUserQuestionTimeout' in settings && settings.askUserQuestionTimeout !== undefined) hidden.add('askUserQuestionTimeout');
     if ('dialogExpiry' in settings && settings.dialogExpiry !== undefined) hidden.add('dialogExpiry');
   }
-  return { config: { model: config.model, thinking: config.thinking, autoCompactEnabled: config.autoCompactEnabled,
+  return { config: { model: config.model, thinking: config.thinking, verbose: config.verbose, autoCompactEnabled: config.autoCompactEnabled,
     theme: config.theme, editorMode: config.editorMode,
     timeFormat: config.timeFormat, prefersReducedMotion: config.prefersReducedMotion, showTurnDuration: config.showTurnDuration,
     askUserQuestionTimeout: config.askUserQuestionTimeout, dialogExpiry: config.dialogExpiry }, hidden: [...hidden], state };

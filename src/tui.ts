@@ -187,6 +187,7 @@ import {
   wrapEntryRows,
   type TranscriptEntry, type TranscriptScrollCommand, type TranscriptState, type RenderedRow,
 } from './tui-transcript.js';
+import { toolResultRows, type ToolDisplayResult } from './tui-tool-result.js';
 import {
   cellWidth, createEditorState, questionPreviewText, reduceEditor, reduceEditorWithUndo, TerminalKeyDecoder,
   type EditorAction, type EditorCommand, type EditorPolicy, type EditorState, type Keybindings, type TerminalCallbacks,
@@ -220,6 +221,8 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   showMessageTimestamps?: boolean;
   /** `/focus`: the brief transcript holds the streaming preview while tools run. */
   briefTranscript?: boolean;
+  /** The live Verbose output switch at construction; Config and `/reload` update it through `setVerbose`. */
+  verbose?: boolean;
   progressSettings?: ProgressDisplaySettings;
   maxProseWidth?: number;
   syntaxHighlightingDisabled?: boolean;
@@ -322,19 +325,24 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private welcomeKey = '';
   private readonly messageRows = new WeakMap<TranscriptEntry, { columns: number; maxProseWidth?: number;
     syntaxHighlightingDisabled?: boolean; theme: BuiltinTheme; themeGeneration: number; progressGeneration: number;
-    stamp?: string; rows: RenderedRow[] }>();
+    stamp?: string; detailed?: boolean; rows: RenderedRow[] }>();
   private readonly renderEntryRows = (entry: TranscriptEntry, columns: number): RenderedRow[] => {
     const document = entry.markdown !== undefined || entry.duration !== undefined;
     if (document && entry.streaming && !Zqn(this.prefersReducedMotion, this.windowsTerminal)) return [];
     if (entry.duration && !this.showTurnDuration) return [];
+    // jw, 3gz7s57c [167024,183767), UTF-16: the transcript screen forces detailed rows; the
+    // live screen takes only the Verbose switch.
+    const detailed = this.verbose || this.screen === 'transcript';
     const stamp = this.entryStamp(entry);
     const cached = this.messageRows.get(entry);
     if (cached?.columns === columns && cached.maxProseWidth === this.maxProseWidth
       && cached.syntaxHighlightingDisabled === this.syntaxHighlightingDisabled
       && cached.theme === this.theme.current && cached.themeGeneration === this.theme.generation
-      && cached.progressGeneration === this.progressGeneration && cached.stamp === stamp) return cached.rows;
+      && cached.progressGeneration === this.progressGeneration && cached.stamp === stamp
+      && cached.detailed === detailed) return cached.rows;
     this.documentRenderer ??= new TuiDocumentRenderer();
-    const body = entry.duration ? this.documentRenderer.renderElement(jsx(ProgressCompletion, {message:entry.duration, formatTime:this.timeFormatter.format}, entry.duration.uuid), columns,
+    const body = entry.tool ? toolResultRows(entry.tool, detailed, columns)
+      : entry.duration ? this.documentRenderer.renderElement(jsx(ProgressCompletion, {message:entry.duration, formatTime:this.timeFormatter.format}, entry.duration.uuid), columns,
       {theme:this.theme.current, themeOverrides:this.theme.overrides}) : document ? this.documentRenderer.renderMarkdown(entry.markdown ?? entry.text, columns,
       { speaker: entry.speaker, streaming: entry.streaming, messageKey: entry.messageKey,
         hideTrailingLine: entry.hideTrailingLine, maxProseWidth: this.maxProseWidth,
@@ -348,7 +356,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const rows = [...stampRows, ...body];
     this.messageRows.set(entry, { columns, maxProseWidth: this.maxProseWidth,
       syntaxHighlightingDisabled: this.syntaxHighlightingDisabled, theme: this.theme.current,
-      themeGeneration: this.theme.generation, progressGeneration:this.progressGeneration, stamp, rows });
+      themeGeneration: this.theme.generation, progressGeneration:this.progressGeneration, stamp, detailed, rows });
     return rows;
   };
 
@@ -432,6 +440,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private showMessageTimestamps = false;
   /** Source `briefTranscript`: the fold that holds the in-flight preview during tool use. */
   private briefTranscript = false;
+  private verbose = false;
   /** `/color`'s pick; `Mk`'s banner row exists only while this is set. */
   private sessionColor: SessionColor | undefined;
   private progressSettings: ProgressDisplaySettings = {};
@@ -528,6 +537,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.showTurnDuration = options.showTurnDuration !== false;
     this.showMessageTimestamps = options.showMessageTimestamps === true;
     this.briefTranscript = options.briefTranscript === true;
+    this.verbose = options.verbose === true;
     this.progressSettings = structuredClone(options.progressSettings ?? {});
     this.timeFormatter = progressTime(this.progressSettings);
     this.progress.setVerbs(this.progressSettings.spinnerVerbs);
@@ -902,6 +912,19 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Leaving focus re-paints the preview the fold was holding back.
     if (!enabled) this.paintAssistantPreview();
     this.render();
+  }
+
+  /** `Te`'s live half: the Config row's switch turns full tool rows on or off in place. */
+  setVerbose(enabled: boolean): void {
+    if (enabled === this.verbose) return;
+    this.verbose = enabled;
+    this.selection = createSelection();
+    this.render();
+  }
+
+  /** One finished tool call, shown as summary rows or detailed rows under the Verbose switch. */
+  appendToolResult(result: ToolDisplayResult): void {
+    this.append({ kind: 'tool', text: '', tool: result });
   }
 
   /**

@@ -46,6 +46,7 @@ const input: ConfigPanelInput = { config: { model: 'model-01', thinking: false }
 function updated(state: ConfigPanelInput, change: ConfigUpdate): ConfigPanelInput {
   switch (change.id) {
     case 'autoCompact': return { ...state, config: { ...state.config, autoCompactEnabled: change.value } };
+    case 'verbose': return { ...state, config: { ...state.config, verbose: change.value } };
     case 'reduceMotion': return { ...state, config: { ...state.config, prefersReducedMotion: change.value } };
     case 'thinking': return { ...state, config: { ...state.config, thinking: change.value } };
     case 'turnDuration': return { ...state, config: { ...state.config, showTurnDuration: change.value } };
@@ -67,7 +68,7 @@ test('config modal owns full query editing, immediate changes, errors and child 
   try {
     f.key('retained draft');
     let pending = f.tui.prompt({ message: '', configPanel: host() }, new AbortController().signal);
-    assert.equal(f.lines().filter(row => /^(Auto-compact|Reduce motion|Thinking mode|Show turn duration|Time format|Theme|Editor mode|Question auto-continue timeout|Model|Dialog expiry)\s/.test(row)).length, 10);
+    assert.equal(f.lines().filter(row => /^(Verbose output|Auto-compact|Reduce motion|Thinking mode|Show turn duration|Time format|Theme|Editor mode|Question auto-continue timeout|Model|Dialog expiry)\s/.test(row)).length, 11);
     f.key('MOTION\r\r'); await delay(0);
     assert.deepEqual(changes, [{ id: 'reduceMotion', value: true }]);
     assert.ok(f.lines().includes('Reduce motion  true'));
@@ -114,10 +115,11 @@ test('config viewport pages rendered rows, scrolls without selecting the hovered
       changes.push(change); state = updated(state, change); return state;
     } } }, new AbortController().signal);
     f.key('\r\x1b[6~');
-    assert.ok(f.rowOf('Question auto-continue timeout') >= 0); assert.ok(f.rowOf('↑ 2 more') >= 0);
-    f.key('\x1b[6~'); assert.ok(f.rowOf('Dialog expiry') >= 0); assert.ok(f.rowOf('↑ 3 more') >= 0);
+    assert.ok(f.rowOf('Verbose output') >= 0); assert.ok(f.rowOf('↑ 2 more') >= 0);
+    f.key('\x1b[6~');
+    assert.ok(f.rowOf('Dialog expiry') >= 0); assert.ok(f.rowOf('↑ 4 more') >= 0);
     f.key('\x1b[5~\x1b[5~'); assert.ok(f.rowOf('Auto-compact') >= 0);
-    f.mouse(65, f.rowOf('Editor mode'), 3);
+    f.mouse(65, f.rowOf('Thinking mode'), 3);
     assert.ok(f.rowOf('↑ 1 more') >= 0); assert.equal(f.rowOf('Auto-compact'), -1);
     const label = f.rowOf('Thinking mode');
     f.mouse(0, label, 3); f.mouse(0, label, 3, true); await delay(0);
@@ -163,13 +165,15 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
     await saveConfigPanelSetting({ id: 'reduceMotion', value: true }, workspace, userDir);
     await Promise.all([
       saveConfigPanelSetting({ id: 'thinking', value: true }, workspace, userDir),
+      saveConfigPanelSetting({ id: 'verbose', value: true }, workspace, userDir),
       saveConfigPanelSetting({ id: 'editor', value: 'vim' }, workspace, userDir),
       saveConfigPanelSetting({ id: 'dialogExpiry', value: '60s' }, workspace, userDir),
       saveConfigModelEffort('model-02[1m]', 'xhigh', userDir),
     ]);
     let authored = JSON.parse(fs.readFileSync(userFile, 'utf8'));
     assert.deepEqual(authored, { keep: { nested: true }, model: 'model-02', effort: 'medium',
-      modelSettings: { 'model-02': { unrelated: 7, effortLevel: 'xhigh' } }, thinking: true, editorMode: 'vim', dialogExpiry: '60s' });
+      modelSettings: { 'model-02': { unrelated: 7, effortLevel: 'xhigh' } }, thinking: true, verbose: true,
+      editorMode: 'vim', dialogExpiry: '60s' });
     assert.equal(fs.statSync(userFile).mode & 0o777, 0o640);
     assert.deepEqual(JSON.parse(fs.readFileSync(localFile, 'utf8')), { prefersReducedMotion: true });
     const beforeMax = fs.readFileSync(userFile, 'utf8'); await saveConfigModelEffort('model-02', 'max', userDir);

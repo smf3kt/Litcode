@@ -10,7 +10,7 @@ import { Session, applyManagedPolicy, managedPolicySchema, type SessionConfig } 
 import { PolicyHelper } from './policy-helper.js';
 import { interactiveLoop } from './interactive.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
-import { briefTranscriptEnabled } from './focus-command.js';
+import { briefTranscriptEnabled, startupVerbose } from './focus-command.js';
 import { configuredEffort } from './effort-command.js';
 import { createTuiTerminal } from './tui.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
@@ -309,6 +309,8 @@ function newConfig(
   if (settings.showTurnDuration !== undefined) config.showTurnDuration = settings.showTurnDuration;
   if (settings.showMessageTimestamps !== undefined) config.showMessageTimestamps = settings.showMessageTimestamps;
   if (settings.viewMode !== undefined) config.viewMode = settings.viewMode;
+  // It, 9shw4xrd [106333,106421), UTF-16: the stored boolean wins; viewMode seeds it when absent.
+  config.verbose = startupVerbose(config.viewMode, settings.verbose);
   if (settings.timeFormat !== undefined) config.timeFormat = settings.timeFormat;
   if (settings.timeZone !== undefined) config.timeZone = settings.timeZone;
   if (settings.spinnerVerbs !== undefined) config.spinnerVerbs = settings.spinnerVerbs;
@@ -640,6 +642,8 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     } else if (values.resume) {
       session = Session.open(workspace, { id: values.resume, recoverLock: values['recover-lock'] });
       if (!session.config.gateway) throw new Error('Legacy session has no gateway settings; start a new session');
+      // It, 9shw4xrd [106333,106421), UTF-16: a pre-verbose journal still resolves from its viewMode.
+      session.config.verbose = startupVerbose(session.config.viewMode, session.config.verbose);
       // A resumed session keeps its pinned endpoint, so the credential has to suit that
       // endpoint rather than whatever a new session would have chosen.
       const pinned = gatewayCredential(session.config.gateway.baseURL, inherited);
@@ -710,6 +714,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         showTurnDuration: currentSession.config.showTurnDuration,
         showMessageTimestamps: currentSession.config.showMessageTimestamps,
         briefTranscript: briefTranscriptEnabled(currentSession.config),
+        verbose: currentSession.config.verbose === true,
         editorMode:currentSession.config.editorMode,vimInsertModeRemaps:currentSession.config.vimInsertModeRemaps,
         progressSettings: {timeFormat:currentSession.config.timeFormat, timeZone:currentSession.config.timeZone,
           spinnerVerbs:currentSession.config.spinnerVerbs},

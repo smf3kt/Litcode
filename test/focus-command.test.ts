@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 
 import { FOCUS_DISABLED, FOCUS_ENABLED, FOCUS_MODES, briefTranscriptEnabled, focusModeFor,
-  focusReport, focusUnknownArgument, parseFocusArgument, saveViewModeSetting } from '../src/focus-command.js';
+  focusReport, focusUnknownArgument, parseFocusArgument, saveViewModeSetting, startupVerbose } from '../src/focus-command.js';
 
 const userDir = () => fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'focus-')));
 
@@ -36,6 +36,18 @@ test('only the focus view mode turns the brief transcript on', () => {
   assert.equal(briefTranscriptEnabled({ viewMode: 'default' }), false);
   assert.equal(briefTranscriptEnabled({ viewMode: 'verbose' }), false);
   assert.equal(briefTranscriptEnabled({}), false);
+});
+
+test('a present viewMode decides startup verbose; the stored switch is the fallback', () => {
+  assert.equal(startupVerbose('verbose', false), true);
+  assert.equal(startupVerbose('default', true), false);
+  assert.equal(startupVerbose('focus', true), false);
+  assert.equal(startupVerbose('verbose', undefined), true);
+  assert.equal(startupVerbose('default', undefined), false);
+  assert.equal(startupVerbose('focus', undefined), false);
+  assert.equal(startupVerbose(undefined, true), true);
+  assert.equal(startupVerbose(undefined, false), false);
+  assert.equal(startupVerbose(undefined, undefined), false);
 });
 
 test('the write creates the settings file and keeps every other key', () => {

@@ -409,6 +409,27 @@ test('pointer and keyboard selection copy the visible transcript without changin
   } finally { tui.close(); }
 });
 
+test('the Verbose switch and the transcript screen decide tool result detail', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 60, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, verbose: false }).start();
+  try {
+    tui.appendToolResult({ id: 's', name: 'search', input: {}, isError: false,
+      content: 'src/a.ts:1:alpha\nsrc/b.ts:2:beta' });
+    assert.ok(screenLines(output).some(row => row.includes('Found 2 lines')));
+    assert.ok(!screenLines(output).some(row => row.includes('alpha')));
+    tui.setVerbose(true);
+    assert.ok(screenLines(output).some(row => row.includes('src/a.ts:1:alpha')));
+    tui.setVerbose(false);
+    assert.ok(!screenLines(output).some(row => row.includes('alpha')));
+    input.emit('data', '\u000f');
+    assert.equal(tui.currentScreen, 'transcript');
+    assert.ok(screenLines(output).some(row => row.includes('src/a.ts:1:alpha')));
+  } finally { tui.close(); }
+});
+
 test('multi-click selects the word and then the whole row, and a drag extends that span', () => {
   // Each case starts a fresh terminal so the click sequence cannot carry over.
   const open = () => {
@@ -2399,6 +2420,12 @@ test('the transcript viewport clamps its scroll and follows the tail only when p
   assert.equal(collapsed.length, 13);
   const shown = transcriptLines({ ...long, showAll: true }, 40);
   assert.equal(shown.length, 30);
+
+  // Tool rows already carry the recovered detail choice, so the collapsed tail must not
+  // drop a long verbose result that the switch asked to show.
+  const toolEntry = { kind: 'tool' as const, text: '', tool: { id: 't', name: 'search', input: {}, content: '', isError: false } };
+  const many = Array.from({ length: 30 }, (_, i) => ({ text: `row ${i}`, continuation: false, indent: 0 }));
+  assert.equal(transcriptLines(createTranscriptState([toolEntry]), 80, () => many).length, 30);
 });
 
 test('the full-screen layer draws, scrolls and restores the terminal it took', async () => {
