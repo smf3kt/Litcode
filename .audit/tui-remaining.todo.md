@@ -280,6 +280,15 @@ Next up, scoped but not started:
       HEAD. Independent review returned SOUND; its mediums (Vim external mutation on pull,
       attachment replace/dismiss, SessionStart meta) are fixed and its lows assessed.
       See `research/ports/W240-queue-edit.md`.
+- [x] W241 clear chords repaint the screen. The source binds `chat:clearInput` (ctrl+l) and
+      `chat:clearScreen` (cmd+k) to one handler `yM` (chunk-24k7d6mw.js 881185): a counter
+      increment whose only effect calls `forceRedraw()`. Both chords now invalidate the renderer
+      and repaint (the alt-screen repaint writes `ESC[2J ESC[3J` first) and leave the draft, undo
+      stack, gestures and Vim mode untouched. Test setup clears moved to home+kill-line or
+      backspaces, and the Vim suite asserts the draft survives. Compiled 9/9 at identity
+      `a3840ef3…`, 76/76 TUI tests and check/build pass; full suite 2990/2991 with the CLI-effort
+      failure reproduced at HEAD. Independent review returned SOUND; its two lows are fixed.
+      See `research/ports/W241-clear-screen.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.

@@ -157,9 +157,12 @@ test('the fullscreen Git sidebar preserves the draft, cycles bases, scrolls and 
     key('\u0018\u0005'); key('\u0018\r'); key('\u0018\u0013');
     assert.deepEqual(actions, ['chat:externalEditor', 'chat:queueSubmit', 'chat:sendNow']);
     assert.deepEqual(submitted, ['retained draft'], 'the idle queue-submit chord retains its existing submission');
-    tui.setEditorMode('vim'); key('\u000c'); key('a'.repeat(130)); key('\x1b'); await delay(70); key('0gj');
+    tui.setEditorMode('vim');
+    key('a'.repeat(130)); key('\x1b'); await delay(70); key('0gj');
     assert.equal(tui.state.cursor, 85, 'Vim uses the 86-column composer while the sidebar is open');
-    tui.setEditorMode('normal'); key('\u000c'); key('retained draft');
+    tui.setEditorMode('normal'); key('\u0001');
+    for (let rows = 0; rows < 4; rows += 1) key('\u000b');
+    key('retained draft');
     const before = screenLines(output).join('\n'); key('\x1b[<65;120;15M');
     await until(() => screenLines(output).join('\n') !== before);
     assert.equal(tui.state.text, 'retained draft');
@@ -511,6 +514,28 @@ test('multi-click selects the word and then the whole row, and a drag extends th
   } finally { acrossScreens.tui.close(); }
 });
 
+test('the clear chords repaint the screen and keep the draft and its undo step', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  let drawn = '';
+  const output = new Writable({ write(chunk, _encoding, done) { drawn += String(chunk); done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 10 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  try {
+    key('draft');
+    assert.equal(tui.state.text, 'draft');
+    drawn = '';
+    key('\u000c');
+    // Source `yM` (chunk-24k7d6mw.js 881185) only forces a repaint; the alt-screen clear is the
+    // observable part of that, and the composer keeps its text.
+    assert.ok(drawn.includes('\x1b[2J\x1b[3J\x1b[H'), 'the redraw clears the screen');
+    assert.equal(tui.state.text, 'draft', 'the redraw chord leaves the draft untouched');
+    key('\u001f');
+    assert.equal(tui.state.text, '', 'the redraw left the undo step in place');
+  } finally { tui.close(); }
+});
+
 test('wrapped rows copy as one logical line while explicit newlines keep theirs', () => {
   const open = (columns: number, text: string) => {
     const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
@@ -708,7 +733,7 @@ test('TUI kill and yank commands fall through context bindings and isolate modal
     assert.deepEqual(await dialog, { selected: [], text: 'answer words' });
     assert.equal(tui.state.text, 'one three-');
     key('\x1by'); assert.equal(tui.state.text, 'one three-');
-    key('\u000c\u0019'); assert.equal(tui.state.text, 'two');
+    key('\x7f'.repeat('one three-'.length)); key('\u0019'); assert.equal(tui.state.text, 'two');
     tui.setKeybindings({ '\u0015': 'submit', '\u0019': null });
     key('\u0019\u0015'); assert.equal(submitted[1], 'two');
     tui.setKeybindings(); key('\u0019'); assert.equal(tui.state.text, 'two');
@@ -742,7 +767,7 @@ test('TUI undo restores measured caret and isolates stash, dialog and rejected a
     key('\r\u001f'); assert.deepEqual(submitted, ['stash']); assert.equal(tui.state.text, '');
     key('sta'); context.mock.timers.tick(1000); key('\u0012\u0012');
     assert.equal(tui.state.text, 'stash'); key('\u001f'); assert.equal(tui.state.text, 'sta');
-    key('\u000c');
+    key('\x7f\x7f\x7f');
     key('pending'); context.mock.timers.tick(100); key(' timer');
     tui.close(); const frame = screenLines(output); context.mock.timers.tick(2000);
     assert.deepEqual(screenLines(output), frame);
@@ -2372,7 +2397,7 @@ test('a queued prompt is selectable, editable and pulled back into the composer'
     assert.deepEqual(submitted, [], 'the pull is not a submit');
     assert.match(screen(), /second queued/);
     // Escape leaves the selection without removing the queued prompt.
-    key('\u000c');
+    key('\x7f'.repeat('second queued'.length));
     key('\x1b[A');
     assert.match(screen(), /Press Enter to edit the selected message, or up again for history/);
     key('\x1b'); await delay(70);
