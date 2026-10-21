@@ -1777,7 +1777,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       config.autoCompactEnabled = configSchema.shape.autoCompactEnabled.parse(loaded.settings.autoCompactEnabled);
                       break;
                     }
-                    case 'verbose': config.verbose = update.value; break;
+                    case 'verbose':
+                      // `Te`, chunk-nybcbd9t.js 20116: the row writes userSettings, the global
+                      // config and the live app state together; `setVerbose` is the terminal's
+                      // binding to that state, so no successor session is opened.
+                      session.config.verbose = update.value;
+                      terminal?.setVerbose?.(update.value === true);
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
                     case 'progressBar': {
                       // y0 reads the merged setting (`hs`) with default true; re-read it after the write
                       // so a higher authored layer keeps precedence.
@@ -1799,7 +1806,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       config.permissions = permissions;
                       break;
                     }
-                    case 'reduceMotion': config.prefersReducedMotion = update.value; break;
+                    case 'reduceMotion':
+                      // `vy` row, chunk-nybcbd9t.js: localSettings and the live app settings move
+                      // together; the renderer and progress animations read the live value.
+                      session.config.prefersReducedMotion = update.value;
+                      terminal?.setPrefersReducedMotion?.(update.value === true);
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
                     case 'thinking':
                       // `nybcbd9t` 15590: the row writes live `thinkingEnabled` and persists its
                       // setting; this host's settings key is `thinking`, written just above, so

@@ -486,13 +486,15 @@ export async function createRuntime(
   // connection's identity, so a chord mid-turn must not make the journal owner look wrong.
   // Only the same-session rebind may ignore them; a first bind still compares the full digest,
   // otherwise a second session with another model could adopt a connection built for the first.
+  // Display-only rows (`Te`/`vy`) never shape an MCP connection either.
+  const displayOnly = { verbose: undefined, prefersReducedMotion: undefined };
   const connectionConfigDigest = (current: SessionConfig): string => {
     const { tools: _tools, ...settings } = current;
-    return fingerprintOf({ ...settings, tools: [] });
+    return fingerprintOf({ ...settings, tools: [], ...displayOnly });
   };
   const liveConfigDigest = (current: SessionConfig): string => {
     const { tools: _tools, ...settings } = current;
-    return fingerprintOf({ ...settings, tools: [],
+    return fingerprintOf({ ...settings, tools: [], ...displayOnly,
       model: undefined, modelSettings: undefined, effort: undefined, effortSelection: undefined,
       thinking: undefined });
   };
@@ -667,6 +669,9 @@ export async function createRuntime(
         // not make the owner's tool set look stale.
         model: undefined, modelSettings: undefined, effort: undefined, effortSelection: undefined,
         thinking: undefined,
+        // The Verbose and Reduce motion config rows write live app state as well as settings
+        // (`Te`/`vy`, chunk-nybcbd9t.js 9556/15296); neither field shapes the tool set.
+        verbose: undefined, prefersReducedMotion: undefined,
         system: settings.system.split('\n\n# Available skills\n')[0]!.split('\n\n# Available agent types\n')[0] }, monitorWebsocket });
     const cached = toolSets.get(owner);
     if (cached?.fingerprint === fingerprint) {
