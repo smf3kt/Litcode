@@ -259,6 +259,16 @@ Next up, scoped but not started:
       no high findings; its wrap-drop medium is fixed, its Windows branch medium is refuted by the
       resolved `le`, and its low items are closed.
       See `research/ports/W238-shift-tab-cycle.md`.
+- [x] W239 input-bar send-now and queue-submit. ctrl+x ctrl+s and ctrl+enter (`chat:sendNow`, source
+      `e9`/`Zat`/`tlt`) queue a non-empty draft and cancel the running turn so the queued prompt
+      sends immediately (the recovered fallback; this host has no low-latency mid-turn channel); an
+      empty composer with an empty queue is a no-op, and with a queued prompt it only flushes it.
+      ctrl+x enter (`chat:queueSubmit`, source `Bq`) submits
+      the draft as a queued submission. The TUI owns submission, the interactive loop owns the
+      abort. Compiled 11/11 at identity `2fa9da4b1…`, 73 TUI tests and check/build pass; full suite
+      2987/2988 with the CLI-effort failure reproduced at HEAD. Independent review found no blocking
+      defect; its low items are fixed and its two mediums are recorded adapters (no local draft
+      mode; approval dialog owns the keyboard). See `research/ports/W239-send-now.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.

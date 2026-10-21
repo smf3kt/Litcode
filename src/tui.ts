@@ -2387,6 +2387,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   /** Actions with a local counterpart are handled; the rest are reported as unbound. */
   private applyAction(action: string): boolean {
+    // `e9` (chunk-24k7d6mw.js 887081): a non-empty draft is queued before the flush request, so
+    // the loop sees it by the time the action reaches its subscriber. Its other non-empty arm is
+    // image pastes (`_8t` 863568); this composer stores text pastes only.
+    if (action === 'chat:sendNow') {
+      if (this.sourcePicker?.snapshot.searching) { this.emit('action', action); return true; }
+      this.resetKillMode();
+      if (this.editor.text.trim() !== ''
+        || Object.keys(referencedPastes(this.editor.text, this.editor.pastedContents)).length > 0)
+        this.dispatch({ type: 'submit' });
+      this.emit('action', action); return true;
+    }
     this.emit('action', action);
     // Source hands the open picker the whole keyboard: its Global shortcuts must not run while it
     // is up. Map the three that matter onto the picker's own actions and swallow the rest.
@@ -2440,6 +2451,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       case 'autocomplete:accept': return this.acceptAutocomplete(false);
       case 'autocomplete:dismiss': this.dismissAutocomplete(); return true;
       case 'chat:submit': this.dispatch({ type: 'submit' }); return true;
+      // `Bq` (chunk-24k7d6mw.js 886226): the queue-submit chord hands the draft back as a queued
+      // submission; locally a queued prompt drains as soon as the loop is free.
+      case 'chat:queueSubmit': this.dispatch({ type: 'submit' }); return true;
       case 'chat:newline': this.dispatch({ type: 'newline' }); return true;
       case 'chat:undo': this.dispatch({ type: 'undo' }); return true;
       case 'chat:clearInput':
