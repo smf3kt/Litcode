@@ -55,6 +55,8 @@ function updated(state: ConfigPanelInput, change: ConfigUpdate): ConfigPanelInpu
     case 'timeFormat': return { ...state, config: { ...state.config, timeFormat: change.value } };
     case 'askUserQuestionTimeout': return { ...state, config: { ...state.config, askUserQuestionTimeout: change.value } };
     case 'dialogExpiry': return { ...state, config: { ...state.config, dialogExpiry: change.value === 'default' ? undefined : change.value } };
+    case 'permissionMode': return { ...state, config: { ...state.config,
+      permissions: { ...(state.config.permissions ?? { mode: 'default' as const, allow: [], deny: [] }), defaultMode: change.value } } };
   }
 }
 
@@ -69,7 +71,7 @@ test('config modal owns full query editing, immediate changes, errors and child 
   try {
     f.key('retained draft');
     let pending = f.tui.prompt({ message: '', configPanel: host() }, new AbortController().signal);
-    assert.equal(f.lines().filter(row => /^(Verbose output|Terminal progress bar|Auto-compact|Reduce motion|Thinking mode|Show turn duration|Time format|Theme|Editor mode|Question auto-continue timeout|Model|Dialog expiry)\s/.test(row)).length, 12);
+    assert.equal(f.lines().filter(row => /^(Verbose output|Terminal progress bar|Auto-compact|Reduce motion|Thinking mode|Show turn duration|Time format|Default permission mode|Theme|Editor mode|Question auto-continue timeout|Model|Dialog expiry)\s/.test(row)).length, 13);
     f.key('MOTION\r\r'); await delay(0);
     assert.deepEqual(changes, [{ id: 'reduceMotion', value: true }]);
     assert.ok(f.lines().includes('Reduce motion  true'));
@@ -118,7 +120,7 @@ test('config viewport pages rendered rows, scrolls without selecting the hovered
     f.key('\r\x1b[6~');
     assert.ok(f.rowOf('Verbose output') >= 0); assert.ok(f.rowOf('↑ 2 more') >= 0);
     f.key('\x1b[6~');
-    assert.ok(f.rowOf('Dialog expiry') >= 0); assert.ok(f.rowOf('↑ 5 more') >= 0);
+    assert.ok(f.rowOf('Dialog expiry') >= 0); assert.ok(f.rowOf('↑ 6 more') >= 0);
     f.key('\x1b[5~\x1b[5~'); assert.ok(f.rowOf('Auto-compact') >= 0);
     f.mouse(65, f.rowOf('Thinking mode'), 3);
     assert.ok(f.rowOf('↑ 1 more') >= 0); assert.equal(f.rowOf('Auto-compact'), -1);
@@ -161,7 +163,7 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
   fs.mkdirSync(workspace); fs.mkdirSync(userDir);
   const userFile = path.join(userDir, 'settings.json'), localFile = path.join(workspace, '.harness', 'settings.local.json');
   fs.writeFileSync(userFile, JSON.stringify({ keep: { nested: true }, model: 'model-02', effort: 'medium',
-    modelSettings: { 'model-02': { unrelated: 7 } } }), { mode: 0o640 });
+    permissions: { allow: ['Bash'] }, modelSettings: { 'model-02': { unrelated: 7 } } }), { mode: 0o640 });
   try {
     await saveConfigPanelSetting({ id: 'reduceMotion', value: true }, workspace, userDir);
     await Promise.all([
@@ -170,10 +172,12 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
       saveConfigPanelSetting({ id: 'progressBar', value: false }, workspace, userDir),
       saveConfigPanelSetting({ id: 'editor', value: 'vim' }, workspace, userDir),
       saveConfigPanelSetting({ id: 'dialogExpiry', value: '60s' }, workspace, userDir),
+      saveConfigPanelSetting({ id: 'permissionMode', value: 'acceptEdits' }, workspace, userDir),
       saveConfigModelEffort('model-02[1m]', 'xhigh', userDir),
     ]);
     let authored = JSON.parse(fs.readFileSync(userFile, 'utf8'));
     assert.deepEqual(authored, { keep: { nested: true }, model: 'model-02', effort: 'medium',
+      permissions: { allow: ['Bash'], defaultMode: 'acceptEdits' },
       modelSettings: { 'model-02': { unrelated: 7, effortLevel: 'xhigh' } }, thinking: true, verbose: true,
       terminalProgressBarEnabled: false, editorMode: 'vim', dialogExpiry: '60s' });
     assert.equal(fs.statSync(userFile).mode & 0o777, 0o640);
@@ -182,6 +186,8 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
     assert.equal(fs.readFileSync(userFile, 'utf8'), beforeMax);
     const loaded = parseSettings(loadProjectConfig(workspace, { userDir, paths: [] }).settings);
     assert.equal(configuredEffort(loaded, 'model-02[1m]'), 'xhigh'); assert.equal(configuredEffort(loaded, 'other-model'), 'medium');
+    assert.equal(loaded.permissions?.mode, 'acceptEdits'); assert.equal(loaded.permissions?.defaultMode, 'acceptEdits');
+    assert.equal(configPanelInput({ ...defaultConfig(workspace, []), permissions: loaded.permissions }).config.permissions?.defaultMode, 'acceptEdits');
     const config = { ...defaultConfig(workspace, []), model: 'model-02', thinking: true, modelSettings: loaded.modelSettings,
       effort: configuredEffort(loaded, 'model-02'), configSources: { userDir } };
     const session = Session.open(workspace, { config }); const id = session.id; session.close();
@@ -201,6 +207,9 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
     assert.deepEqual(configPanelInput({ ...config, configSources: { userDir, settingsFile: link } }).hidden, ['askUserQuestionTimeout', 'dialogExpiry']);
     await saveConfigPanelSetting({ id: 'dialogExpiry', value: 'default' }, workspace, userDir);
     authored = JSON.parse(fs.readFileSync(userFile, 'utf8')); assert.equal(Object.hasOwn(authored, 'dialogExpiry'), false);
+    fs.writeFileSync(userFile, JSON.stringify({ permissions: 'legacy' }));
+    await saveConfigPanelSetting({ id: 'permissionMode', value: 'dontAsk' }, workspace, userDir);
+    assert.deepEqual(JSON.parse(fs.readFileSync(userFile, 'utf8')), { permissions: { defaultMode: 'dontAsk' } });
     fs.writeFileSync(userFile, '{invalid');
     await assert.rejects(saveConfigPanelSetting({ id: 'thinking', value: false }, workspace, userDir), SyntaxError);
     assert.equal(fs.readFileSync(userFile, 'utf8'), '{invalid');

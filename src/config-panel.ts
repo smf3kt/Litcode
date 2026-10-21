@@ -7,9 +7,13 @@ import { n, s } from './tui-base-components.js';
 import { te } from './tui-symbols.js';
 
 export const TIME_FORMATS = ['auto', '12-hour', '24-hour', '24-hour-utc'] as const;
+/** BE, chunk-a60ee1ne.js 765, minus default/plan/bypassPermissions, prefixed by Z's two. */
+export const PERMISSION_MODE_OPTIONS = ['default', 'plan', 'acceptEdits', 'auto', 'dontAsk'] as const;
+export type PermissionModeSetting = typeof PERMISSION_MODE_OPTIONS[number];
 export type ConfigUpdate =
   | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration'; value: boolean }
   | { id: 'editor'; value: 'normal' | 'vim' }
+  | { id: 'permissionMode'; value: PermissionModeSetting }
   | { id: 'timeFormat'; value: typeof TIME_FORMATS[number] }
   | { id: 'askUserQuestionTimeout'; value: 'never' | '60s' | '5m' | '10m' }
   | { id: 'dialogExpiry'; value: 'default' | 'never' | '60s' | '5m' | '10m' };
@@ -21,7 +25,7 @@ type Row = { id: ConfigRowId; label: string } & (
 );
 export interface ConfigPanelState { query: string; cursor: number; focus: ConfigRowId; mode: 'search' | 'list' }
 export type ConfigPanelValues = Pick<SessionConfig, 'model' | 'thinking' | 'theme' | 'editorMode' | 'timeFormat'
-  | 'verbose' | 'terminalProgressBarEnabled' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry'>;
+  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry'>;
 export interface ConfigPanelInput { config: ConfigPanelValues; hidden: readonly ConfigRowId[]; state?: ConfigPanelState }
 export interface ConfigPanelHost {
   input: ConfigPanelInput;
@@ -61,6 +65,9 @@ function rows({ config, hidden }: ConfigPanelInput): Row[] {
     { id: 'progressBar', label: 'Terminal progress bar', kind: 'boolean', value: config.terminalProgressBarEnabled ?? true },
     { id: 'turnDuration', label: 'Show turn duration', kind: 'boolean', value: config.showTurnDuration ?? true },
     { id: 'timeFormat', label: 'Time format', kind: 'picker', value: config.timeFormat ?? 'auto', options: TIME_FORMATS },
+    // vWe, nybcbd9t [21907,22578), UTF-16: settings default, not the live session mode.
+    { id: 'permissionMode', label: 'Default permission mode', kind: 'enum',
+      value: config.permissions?.defaultMode || 'default', options: PERMISSION_MODE_OPTIONS },
     { id: 'theme', label: 'Theme', kind: 'picker', value: themeNames[config.theme ?? 'dark'] ?? config.theme ?? 'dark' },
     { id: 'editor', label: 'Editor mode', kind: 'enum', value: config.editorMode ?? 'normal', options: ['normal', 'vim'] },
     { id: 'askUserQuestionTimeout', label: 'Question auto-continue timeout', kind: 'enum', value: config.askUserQuestionTimeout ?? 'never',
@@ -215,6 +222,10 @@ export class ConfigPanel {
         return;
       case 'editor':
         if (value === 'normal' || value === 'vim') return { kind: 'change', update: { id: row.id, value } };
+        return;
+      case 'permissionMode':
+        if (typeof value === 'string' && (PERMISSION_MODE_OPTIONS as readonly string[]).includes(value))
+          return { kind: 'change', update: { id: row.id, value: value as PermissionModeSetting } };
         return;
       case 'askUserQuestionTimeout':
         if (value === 'never' || value === '60s' || value === '5m' || value === '10m')

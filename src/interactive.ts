@@ -1510,6 +1510,18 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                         : configSchema.shape.terminalProgressBarEnabled.parse(authored);
                       break;
                     }
+                    case 'permissionMode': {
+                      // vWe [21907,22578), UTF-16: the row reads the merged settings default (`hs`),
+                      // not the live session mode, so re-read it after the write.
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const raw = loaded.settings.permissions;
+                      const defaultMode = raw !== null && typeof raw === 'object' && !Array.isArray(raw)
+                        ? permissionPolicySchema.shape.defaultMode.parse((raw as Record<string, unknown>).defaultMode) : undefined;
+                      const permissions = { ...(config.permissions ?? { mode: 'default' as const, allow: [], deny: [] }) };
+                      if (defaultMode === undefined) delete permissions.defaultMode; else permissions.defaultMode = defaultMode;
+                      config.permissions = permissions;
+                      break;
+                    }
                     case 'reduceMotion': config.prefersReducedMotion = update.value; break;
                     case 'thinking': config.thinking = update.value; break;
                     case 'turnDuration': config.showTurnDuration = update.value; break;
