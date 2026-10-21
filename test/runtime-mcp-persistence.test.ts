@@ -62,6 +62,11 @@ test('durable runtime rejects other owners and cancels pending replacements with
     assert.deepEqual(effects, []); assert.equal(initialized, 1);
     assert.equal(parent.events.filter(event => event.kind === 'mcp_subscription').length, 0);
 
+    // The live request fields move in place while a turn runs (`w9`/`MOe`/`kp`); the journal
+    // owner digest must not read that as a configuration change.
+    parent.config.model = 'moved-model'; parent.config.effort = 'high'; parent.config.thinking = true;
+    assert.equal(await runtime.bindSession!(parent), runtime);
+
     const fork = Session.open(workspace, { config }); sessions.push(fork);
     const accepted = await runtime.bindSession!(fork); runtimes.push(accepted);
     assert.notEqual(accepted, runtime);

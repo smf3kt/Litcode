@@ -340,13 +340,18 @@ Next up, scoped but not started:
       10/10, interactive 25/25 and check/build pass; full suite 2999/3000 with the CLI-effort
       failure reproduced at HEAD. Independent review pending with the W243/W244 findings.
       See `research/ports/W246-thinking-live.md`.
-- [ ] W247 review fixes for W243/W244. The completed independent review returned SOUND with no
-      high findings, but reported: a settings-write failure aborts the picker's switch instead
-      of applying first (medium); `preModelSwitch` lacks `dk`'s revalidation of the model it
-      read (medium); a live model/effort write desynchronises `connectionConfigDigest` when the
-      MCP persistence features are on (medium); the picker chord does not toggle closed (low);
-      the effort live write is not rolled back on a synchronous save failure (low). Fix against
-      the cited source, rerun the compiled acceptances, and record.
+- [x] W247 review fixes for W243/W244/W246. The completed independent review returned SOUND
+      with no high findings; this package closes the mediums and lows against source: the picker
+      applies the model before its default write and reports a failed write through `x_t`
+      (with `gne`'s success suffix), `preModelSwitch` ports `dk`'s one-pass revalidation,
+      `MOe` restores the effort snapshot on a throwing write, `connectionConfigDigest` excludes
+      the live request fields so the MCP journal owner survives a mid-turn switch, and a modal
+      dialog hands `alt+p`/`alt+t` to the host so the same chord closes its panel. Compiled
+      12/12 at identity `16917da4…` (corrupt settings: effort rollback and non-fatal model save;
+      both chord closes; next request on `second-model`), new digest regression fails without
+      the fix, W243–W246 rerun 9/9, 10/10, 10/10, 12/12, thinking-dialog 3/3 and check/build
+      pass; full suite 3000/3001 with the CLI-effort failure reproduced at HEAD.
+      See `research/ports/W247-review-fixes.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.

@@ -529,15 +529,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (command !== undefined) { queue.push({ prompt: command, source: 'user', meta: true }); promptQueueChanged(); }
         awaken(); return;
       }
-      // Source `aL` (chunk-24k7d6mw.js 881614): the local branch opens the picker panel directly
-      // (`fa(S8t)`), so the chord reaches it mid-turn instead of queueing a refusing command.
+      // Source `aL` (chunk-24k7d6mw.js 881614): the local branch opens (or closes) the picker
+      // panel directly (`fa(S8t)`, `S8t = v => !v`), so the chord reaches it mid-turn.
       if (action === 'chat:modelPicker') {
+        if (liveDialog?.kind === 'model') { liveDialog.controller.abort(); return; }
         if (!inputClosed && !approval) void openModelPickerLive?.();
         return;
       }
-      // `lL` (chunk-24k7d6mw.js 838388) opens the `SG` dialog directly; `kp` (898567) writes the
-      // live thinking state, so the chord reaches it mid-turn instead of queueing a command.
+      // `lL` (chunk-24k7d6mw.js 882215) toggles the `SG` dialog the same way (`Iu(w8t)`).
       if (action === 'chat:thinkingToggle') {
+        if (liveDialog?.kind === 'thinking') { liveDialog.controller.abort(); return; }
         if (!inputClosed && !approval) void applyThinkingToggle?.();
         return;
       }
@@ -556,6 +557,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   /** Bound after the picker helpers; the chord handler above runs only after terminal start. */
   let openModelPickerLive: (() => Promise<void>) | undefined;
   let applyThinkingToggle: (() => Promise<void>) | undefined;
+  /** The dialog a live chord can close while it is open (the source's panel toggle). */
+  let liveDialog: { kind: 'model' | 'thinking'; controller: AbortController } | undefined;
+  const withLiveDialog = (kind: 'model' | 'thinking', signal: AbortSignal) => {
+    const controller = new AbortController();
+    liveDialog = { kind, controller };
+    return { controller, signal: AbortSignal.any([signal, controller.signal]),
+      release: () => { if (liveDialog?.controller === controller) liveDialog = undefined; } };
+  };
   // Same-host peer transport. Admission follows the recipient's current
   // permission mode (`E`, chunk-0ydceggj.js [4491,4991)); accepted text enters
   // the queue as recipient meta input, exactly like a scheduled event, and
@@ -933,9 +942,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await applyConfig(config, false, signal);
     options.status.write(`Theme: ${theme}\n`);
   };
-  /** `dk`, chunk-hh0bresc.js 8545: the PreModelSwitch hook gate shared by every switch path. */
-  const preModelSwitch = async (model: string, signal: AbortSignal): Promise<void> => {
-    const pre = await agent().emitHook('PreModelSwitch', { from_model: session.config.model, to_model: model, requested_model: model }, signal);
+  /**
+   * `dk`, chunk-hh0bresc.js 8545: the PreModelSwitch hook gate shared by every switch path.
+   * The gate reads the session model before the hooks and re-runs once if a hook moved it, so a
+   * slow hook cannot let an accept overwrite a newer choice; a second move blocks the switch.
+   */
+  const preModelSwitch = async (model: string, signal: AbortSignal, revalidating = false): Promise<void> => {
+    const base = session.config.model;
+    const pre = await agent().emitHook('PreModelSwitch', { from_model: base, to_model: model, requested_model: model }, signal);
     const hookReason = pre.permissionDecisionReason;
     if (pre.permissionDecision === 'deny') throw new Error(`Model switch blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
     if (pre.permissionDecision === 'ask') {
@@ -943,6 +957,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (!approved) throw new Error(`Model switch to ${model} was blocked by a PreModelSwitch hook${hookReason === undefined ? '' : `: ${hookReason}`}`);
     }
     if (pre.blocked || pre.stopRequested) throw new Error(pre.reason ?? 'PreModelSwitch hook blocked the change');
+    if (session.config.model !== base) {
+      if (revalidating) throw new Error('the session model changed while a PreModelSwitch hook was running; pick again');
+      return preModelSwitch(model, signal, true);
+    }
   };
   const modelPickerModels = (): string[] =>
     [...new Set([session.config.model,
@@ -955,20 +973,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
    * Picker `w9`/`FL` (chunk-24k7d6mw.js 894465/895434): the chosen model is written to the live
    * session state (`mainLoopModel`, `sessionEffort`) instead of opening a successor session, so
    * the switch works while a turn is running. Enter persists the default; `s` is session-only.
+   * The live state moves before the default write, and the write is non-fatal (`R_t` returns
+   * `{kind:'failed'}`; its text joins the notice through `x_t`).
    */
   const switchModelInPlace = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal) => {
     if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
     const previous = session.config.model;
+    const userDir = session.config.configSources?.userDir;
     await preModelSwitch(model, signal);
-    if (!sessionOnly && session.config.configSources?.userDir !== undefined) saveModelSetting(model, session.config.configSources.userDir);
-    // `X9(Ex, iae(lC), k9, Xn)` at chunk-24k7d6mw.js 894692: a touched effort is persisted on
-    // the default arm only; `s` keeps it session-only like the model.
-    if (effort !== undefined && !sessionOnly) {
-      await saveConfigModelEffort(model, effort, session.config.configSources?.userDir);
-      const value = persistableEffort(effort), key = modelSettingsKey(model);
-      if (value !== undefined && !Object.hasOwn(Object.prototype, key))
-        session.config.modelSettings = { ...session.config.modelSettings,
-          [key]: { ...session.config.modelSettings?.[key], effortLevel: value } };
+    // `X9(Ex, iae(lC), k9, Xn)` at chunk-24k7d6mw.js 894692 is called without `await`, so a failed
+    // effort-table write does not undo the switch; `s` skips it with the model default.
+    if (effort !== undefined && !sessionOnly && userDir !== undefined) {
+      try {
+        await saveConfigModelEffort(model, effort, userDir);
+        const value = persistableEffort(effort), key = modelSettingsKey(model);
+        if (value !== undefined && !Object.hasOwn(Object.prototype, key))
+          session.config.modelSettings = { ...session.config.modelSettings,
+            [key]: { ...session.config.modelSettings?.[key], effortLevel: value } };
+      } catch { /* The source ignores the effort write's failure. */ }
     }
     session.config.model = model;
     if (effort !== undefined) { session.config.effort = effort; session.config.effortSelection = { kind: 'level' }; }
@@ -976,25 +998,41 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       const inherited = modelEffort(session.config, model);
       if (inherited === undefined) delete session.config.effort; else session.config.effort = inherited;
     }
+    let saveSuffix = ' for this session only';
+    if (!sessionOnly && userDir !== undefined) {
+      try {
+        saveModelSetting(model, userDir);
+        saveSuffix = ' and saved as your default for new sessions';
+      } catch (error) {
+        // `x_t` (chunk-hh0bresc.js 10783): the model stays applied and the notice carries why the
+        // default write failed.
+        const file = path.join(path.resolve(userDir), 'settings.json');
+        const reason = error instanceof SyntaxError ? "isn't valid JSON"
+          : `can't be written (${error instanceof Error ? error.message : String(error)})`;
+        saveSuffix = ` · couldn't save it as your default: ${file} ${reason}`;
+      }
+    }
     await agent().emitHook('PostModelSwitch', { from_model: previous, to_model: model, requested_model: model }, signal);
-    options.status.write(`Model set to ${model}${sessionOnly ? ' for this session only' : ''}\n`);
+    options.status.write(`Model set to ${model}${saveSuffix}\n`);
   };
   openModelPickerLive = async () => {
+    if (!terminal?.prompt) return;
+    const live = withLiveDialog('model', options.signal);
     try {
-      if (!terminal?.prompt) return;
       const answer = await readDialog(modelPickerRequest(modelPickerModels(), session.config.model,
         session.config.effort, true,
         session.config.effortSelection?.kind === 'inherit'
           ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined),
-        options.signal);
+        live.signal);
       const selected = answer?.selected[0];
       if (!selected || selected === ':cancel') return;
       await switchModelInPlace(selected,
         answer?.adjusted !== undefined && isEffortLevel(answer.adjusted) ? answer.adjusted : undefined,
         answer?.key === 's', options.signal);
     } catch (error) {
-      if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    }
+      if (!options.signal.aborted && !live.controller.signal.aborted)
+        options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    } finally { live.release(); }
   };
   /**
    * `/model` inline arm (`R` in chunk-naxwgf3s.js): the argument is applied through the live
@@ -1025,13 +1063,23 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     // `chunk-tf9zceev.js` [4922,5480)), which the dispatcher prints as text; the `eee` notice is
     // the separate status-row surface.
     if (result.effort === undefined && result.saved === undefined) { output.write(`${result.message}\n`); return; }
+    const previousEffort = session.config.effort;
+    const previousSelection = session.config.effortSelection;
     if (result.effort === null) {
       delete session.config.effort; session.config.effortSelection = { kind: 'default' };
     } else if (result.effort !== undefined) {
       session.config.effort = result.effort; session.config.effortSelection = { kind: 'level' };
     }
     if (result.saved !== undefined) {
-      saveEffortSetting(result.saved ?? undefined, session.config.configSources?.userDir, session.config.model);
+      try {
+        saveEffortSetting(result.saved ?? undefined, session.config.configSources?.userDir, session.config.model);
+      } catch (error) {
+        // `MOe` restores the snapshot taken at the first live update when the write reports no
+        // `effortUpdate`, so a failed default write leaves the previous level in place.
+        if (previousEffort === undefined) delete session.config.effort; else session.config.effort = previousEffort;
+        session.config.effortSelection = previousSelection === undefined ? undefined : { ...previousSelection };
+        throw error;
+      }
       const key = modelSettingsKey(session.config.model);
       if (session.config.modelSettings !== undefined && !Object.hasOwn(Object.prototype, key)) {
         const entry = { ...session.config.modelSettings[key], effortLevel: persistableEffort(result.saved ?? DEFAULT_EFFORT) };
@@ -1050,23 +1098,25 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
    * the request builder reads `config.thinking` on every call, so the live write is enough.
    */
   applyThinkingToggle = async () => {
+    if (!terminal?.prompt) return;
+    const live = withLiveDialog('thinking', options.signal);
     try {
-      if (!terminal?.prompt) return;
       const current = session.config.thinking;
-      const answer = await readDialog(thinkingDialogRequest(current), options.signal);
+      const answer = await readDialog(thinkingDialogRequest(current), live.signal);
       const value = answer?.selected[0];
       if (value !== 'true' && value !== 'false') return;
       const next = value === 'true';
       if (next !== current && session.messages.some(message => message.role === 'assistant')) {
         const proceed = await confirm(THINKING_DIALOG_TITLE,
-          `${THINKING_MID_CONVERSATION_WARNING}\n\nDo you want to proceed?`, options.signal);
+          `${THINKING_MID_CONVERSATION_WARNING}\n\nDo you want to proceed?`, live.signal);
         if (!proceed) return;
       }
       session.config.thinking = next;
       options.status.write(`Thinking ${next ? 'on' : 'off'}\n`);
     } catch (error) {
-      if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    }
+      if (!options.signal.aborted && !live.controller.signal.aborted)
+        options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    } finally { live.release(); }
   };
   /** Co -> Ll/Me, dag4qhha [33770,34600), nybcbd9t [8318,9556), UTF-16; shares the command's hook/save/apply path. */
   const selectModel = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal, fromConfig = false) => {

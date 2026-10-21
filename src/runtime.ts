@@ -54,7 +54,7 @@ import { classicEventHooked, classicHookInput, raiseClassicEvent } from './plugi
 import { permissionPolicySchema, type PermissionPolicy, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
 import type { StopRuntimeState } from './agent.js';
-import { configSchema, fingerprint as sessionFingerprint } from './session.js';
+import { configSchema, fingerprint as sessionFingerprint, fingerprintOf } from './session.js';
 import type { Session, SessionConfig } from './session.js';
 import { mcpSubscriptionState, commitMcpSubscription } from './mcp-session-subscriptions.js';
 import { createSubagentTool, type ChildEnvironmentFactory } from './subagents.js';
@@ -482,9 +482,14 @@ export async function createRuntime(
   let taskJournalFailed = false;
   const recoveringTasks = new Set<string>();
   // Tool schemas are pinned after construction; connected and host settings must still match.
+  // The live model/effort/thinking fields are request-only (`w9`, chunk-24k7d6mw.js 894465;
+  // `MOe`, chunk-0q6c90q6.js 6286; `kp`, chunk-24k7d6mw.js 898567) and never change an MCP
+  // connection's identity, so a chord mid-turn must not make the journal owner look wrong.
   const connectionConfigDigest = (current: SessionConfig): string => {
     const { tools: _tools, ...settings } = current;
-    return sessionFingerprint({ ...settings, tools: [] });
+    return fingerprintOf({ ...settings, tools: [],
+      model: undefined, modelSettings: undefined, effort: undefined, effortSelection: undefined,
+      thinking: undefined });
   };
   const initialConfigDigest = connectionConfigDigest(config);
   const base = createTools();

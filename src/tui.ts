@@ -2038,6 +2038,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (!this.focus.focused && (action.type !== 'mouse' || action.action === 'press')) this.focus.set(true);
       if (this.dialog) {
         const owner = this.dialog;
+        // The source's picker and thinking panels close from their own chord while open
+        // (`fa(S8t)`/`Iu(w8t)`); a modal dialog otherwise consumes every key, so hand these two
+        // chords back to the host that owns the live panel.
+        if (action.type === 'key' && (action.sequence === '\x1bp' || action.sequence === '\x1bt')) {
+          this.emit('action', action.sequence === '\x1bp' ? 'chat:modelPicker' : 'chat:thinkingToggle');
+          this.decoder.discardPending(); handedOff = true;
+          continue;
+        }
         this.handleDialogAction(action.type==='return'?{type:action.meta||action.shift?'newline':'submit'}:action);
         if (this.dialog !== owner) { this.decoder.discardPending(); handedOff = true; }
         continue;
