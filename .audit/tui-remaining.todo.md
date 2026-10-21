@@ -269,6 +269,17 @@ Next up, scoped but not started:
       2987/2988 with the CLI-effort failure reproduced at HEAD. Independent review found no blocking
       defect; its low items are fixed and its two mediums are recorded adapters (no local draft
       mode; approval dialog owns the keyboard). See `research/ports/W239-send-now.md`.
+- [x] W240 queued-prompt selection and pop-to-edit. An empty draft paints the recovered hints;
+      with `CLAUDE_CODE_KB_COHESION_FIXES` up/down select the editable queue (newest first toward
+      the oldest), Enter pulls the selected prompt above the draft via the source merge and
+      removes it from the loop queue, Escape clears the selection without cancelling, and a stale
+      index consumes the key; without the flag up is the recovered `popAllEditable` default and
+      pulls every editable queued prompt. Internal slash commands are source `isMeta` and stay
+      unselectable; event prompts are excluded. Compiled 15/15 at identity `9b389688…`, 75/75 TUI
+      tests and check/build pass; full suite 2989/2990 with the CLI-effort failure reproduced at
+      HEAD. Independent review returned SOUND; its mediums (Vim external mutation on pull,
+      attachment replace/dismiss, SessionStart meta) are fixed and its lows assessed.
+      See `research/ports/W240-queue-edit.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.

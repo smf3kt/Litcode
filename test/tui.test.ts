@@ -2339,6 +2339,84 @@ test('send-now submits a non-empty draft and never submits an empty one', () => 
   } finally { tui.close(); }
 });
 
+test('a queued prompt is selectable, editable and pulled back into the composer', async () => {
+  const previous = process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+  process.env.CLAUDE_CODE_KB_COHESION_FIXES = '1';
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 12 }); watchScreen(output);
+  const submitted: string[] = [];
+  let items = ['first queued', 'second queued'];
+  const tui = new TuiTerminal({ input, output, onSubmit: text => submitted.push(text) }).start();
+  const key = (text: string) => input.emit('data', text);
+  const screen = () => screenLines(output).join('\n');
+  tui.bindPromptQueue({
+    snapshot: () => items,
+    pop: index => { const [text] = items.splice(index, 1); return text === undefined ? undefined : { text }; },
+    popAll: () => { if (!items.length) return undefined; const text = items.join('\n'); items = []; return { text }; },
+  });
+  try {
+    key('\x1b[A');
+    assert.match(screen(), /Press Enter to edit the selected message, or up again for an older one/);
+    key('\x1b[A');
+    assert.match(screen(), /Press Enter to edit the selected message, or up again for history/);
+    key('\x1b[A');
+    assert.match(screen(), /Press up to select a queued message, then Enter to edit it/,
+      'the oldest row clears the selection and hands the key back to history');
+    assert.deepEqual(items, ['first queued', 'second queued'], 'browsing removes nothing');
+    key('\x1b[A');
+    key('\r');
+    assert.equal(tui.state.text, 'second queued', 'Enter pulls the selected prompt into the draft');
+    assert.deepEqual(items, ['first queued']);
+    assert.deepEqual(submitted, [], 'the pull is not a submit');
+    assert.match(screen(), /second queued/);
+    // Escape leaves the selection without removing the queued prompt.
+    key('\u000c');
+    key('\x1b[A');
+    assert.match(screen(), /Press Enter to edit the selected message, or up again for history/);
+    key('\x1b'); await delay(70);
+    assert.match(screen(), /Press up to select a queued message, then Enter to edit it/);
+    assert.deepEqual(items, ['first queued']);
+    // Down walks toward the newest row and clears at the end.
+    key('\x1b[A');
+    key('\x1b[B');
+    assert.match(screen(), /Press up to select a queued message, then Enter to edit it/);
+  } finally {
+    if (previous === undefined) delete process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+    else process.env.CLAUDE_CODE_KB_COHESION_FIXES = previous;
+    tui.close();
+  }
+});
+
+test('without the cohesion flag, up pulls every queued prompt into the draft', () => {
+  const previous = process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+  delete process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 12 }); watchScreen(output);
+  const submitted: string[] = [];
+  let items = ['first queued', 'second queued'];
+  const tui = new TuiTerminal({ input, output, onSubmit: text => submitted.push(text) }).start();
+  tui.bindPromptQueue({
+    snapshot: () => items,
+    pop: index => { const [text] = items.splice(index, 1); return text === undefined ? undefined : { text }; },
+    popAll: () => { if (!items.length) return undefined; const text = items.join('\n'); items = []; return { text }; },
+  });
+  try {
+    assert.match(screenLines(output).join('\n'), /Press up to edit queued messages/);
+    input.emit('data', '\x1b[A');
+    assert.equal(tui.state.text, 'first queued\nsecond queued');
+    assert.deepEqual(items, [], 'the pull takes every editable queued prompt');
+    assert.deepEqual(submitted, []);
+  } finally {
+    if (previous === undefined) delete process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+    else process.env.CLAUDE_CODE_KB_COHESION_FIXES = previous;
+    tui.close();
+  }
+});
+
 test('the kill ring coalesces, caps at ten, and cycles yank-pop', () => {
   let state = reduceKillRing(emptyKillRing, { type: 'kill', text: 'one' });
   assert.deepEqual(state.ring, ['one']);

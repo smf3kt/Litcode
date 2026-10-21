@@ -194,8 +194,9 @@ import {
   cellWidth, createEditorState, questionPreviewText, reduceEditor, reduceEditorWithUndo, TerminalKeyDecoder,
   type EditorAction, type EditorCommand, type EditorPolicy, type EditorState, type Keybindings, type TerminalCallbacks,
   type TerminalPromptAnswer, type TerminalPromptGroup, type TerminalPromptGroupAnswer,
-  type TerminalPromptRequest,
+  type TerminalPromptQueue, type TerminalPromptRequest, type TerminalQueuedPrompt,
 } from './terminal.js';
+import { keyboardCohesion } from './diff-dialog-frame-host.js';
 
 export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   input: Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode?: (raw: boolean) => unknown };
@@ -405,6 +406,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private autocompleteOwners: readonly number[] = [];
   /** First suggestion the band is currently showing, from `suggestionWindow`. */
   private autocompleteWindowStart = 0;
+  /** The loop's editable input queue; absent in the bare line-style terminals. */
+  private promptQueue: TerminalPromptQueue | undefined;
+  /** Source `queueEditIndex`: the queued prompt the up arrow has selected, or null. */
+  private queueEditIndex: number | null = null;
   /** The composer edit relay: the recovered `prompt.edit` hook, inert until a module hooks it. */
   private readonly editRelay: ComposerEditRelay;
   /** The runs a chain answer painted over the draft, held to the text they were painted for. */
@@ -856,6 +861,118 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       history:direction=>this.dispatch({type:direction<0?'up':'down'}),search:()=>this.enterSearch(),
     };
     try{this.vim.key(key,bridge);}finally{this.vimHandling=false;}this.render();return true;
+  }
+
+  /** Source `Er` subscription: the loop hands the composer its editable queue. */
+  bindPromptQueue(queue: TerminalPromptQueue): void {
+    this.promptQueue = queue;
+    this.render();
+  }
+
+  /** Source store subscription: a changed queue repaints the hint and clamps a stale index. */
+  promptQueueChanged(): void {
+    if (this.closed) return;
+    this.syncQueueSelection();
+    this.render();
+  }
+
+  /** Source `js`: the selection follows the queue, clearing at zero and clamping to the last row. */
+  private syncQueueSelection(): void {
+    if (this.queueEditIndex === null) return;
+    const count = this.promptQueue?.snapshot().length ?? 0;
+    if (count === 0) this.queueEditIndex = null;
+    else if (this.queueEditIndex > count - 1) this.queueEditIndex = count - 1;
+  }
+
+  /**
+   * Source `gpe`: the empty composer's placeholder. `Psr()` (`tengu_jiggly_mochi`) is false in this
+   * artifact, so the send-now wording is unreachable, and the `queuedCommandUpHintCount` cap never
+   * advances because this artifact has no writer for it.
+   */
+  private queuePlaceholder(): string | undefined {
+    if (this.editor.text !== '' || (this.promptQueue?.snapshot().length ?? 0) === 0) return undefined;
+    if (this.queueEditIndex !== null) return this.queueEditIndex === 0
+      ? 'Press Enter to edit the selected message, or up again for history'
+      : 'Press Enter to edit the selected message, or up again for an older one';
+    return keyboardCohesion() ? 'Press up to select a queued message, then Enter to edit it'
+      : 'Press up to edit queued messages';
+  }
+
+  /**
+   * Source `Gv`/`bS`: up and down over the queued prompts. The gesture only runs with the caret on
+   * the draft's first line and with the suggestion list not holding more than one row. With the
+   * cohesion flag off, up pulls every editable queued prompt into the draft (`yS`) instead of
+   * selecting one, and a failed pull falls through to ordinary history.
+   */
+  private handleQueueKey(direction: 'up' | 'down'): boolean {
+    const queue = this.promptQueue;
+    if (queue === undefined) return false;
+    this.syncQueueSelection();
+    const newline = this.editor.text.indexOf('\n');
+    if (newline !== -1 && this.editor.cursor > newline) return false;
+    if (this.autocompleteState().suggestions.length > 1) return false;
+    const count = queue.snapshot().length;
+    if (!keyboardCohesion()) {
+      if (direction === 'down' || count === 0) return false;
+      return this.popAllQueuedPrompts();
+    }
+    if (direction === 'up') {
+      if (this.queueEditIndex === null) {
+        if (count === 0) return false;
+        this.queueEditIndex = count - 1;
+        this.render(); return true;
+      }
+      if (this.queueEditIndex > 0) { this.queueEditIndex -= 1; this.render(); return true; }
+      // The oldest row is the end of the selection; the source then runs history up.
+      this.queueEditIndex = null; this.render(); return false;
+    }
+    if (this.queueEditIndex === null) return false;
+    if (this.queueEditIndex < count - 1) this.queueEditIndex += 1;
+    else this.queueEditIndex = null;
+    this.render(); return true;
+  }
+
+  /** Source `Zm`: pull every editable queued prompt into the draft; false when nothing popped. */
+  private popAllQueuedPrompts(): boolean {
+    const pulled = this.promptQueue?.popAll();
+    if (pulled === undefined) return false;
+    this.replaceDraftFromQueue(pulled);
+    return true;
+  }
+
+  /** Source `cg`/`dl`: the selected prompt replaces the draft and leaves the queue. */
+  private popSelectedQueuedPrompt(): boolean {
+    this.syncQueueSelection();
+    const index = this.queueEditIndex;
+    if (index === null) return false;
+    this.queueEditIndex = null;
+    const pulled = this.promptQueue?.pop(index);
+    // A stale index is the source's `stale_index` arm: the key is consumed but nothing submits.
+    if (pulled === undefined) { this.render(); return true; }
+    this.replaceDraftFromQueue(pulled);
+    return true;
+  }
+
+  /** Source `Wct`: the pulled queue text goes above the draft; the caret follows the draft.
+   *  Source `returnIdeSelection` restores the queued IDE selection; locally that is the diff
+   *  attachment, and only while it still names the mounted diff panel's session. */
+  private replaceDraftFromQueue(pulled: TerminalQueuedPrompt): void {
+    // The same out-of-band replacement the paste path announces: Vim's anchor and undo snapshot
+    // must not survive a pull that rewrote the draft under it.
+    this.vim.externalMutation();
+    const draft = this.editor.text;
+    const queueText = pulled.text;
+    const text = draft === '' ? queueText : `${queueText}\n${draft}`;
+    const cursor = draft === '' ? text.length : queueText.length + 1 + this.editor.cursor;
+    this.editor = { ...this.editor, text, cursor, historyIndex: this.editor.history.length,
+      historyDraft: text, historyDraftPastes: this.editor.pastedContents };
+    if (pulled.attachment !== undefined && (this.diffPanel === undefined
+      || pulled.attachment.sessionId === this.diffPanel.sessionId))
+      this.diffSelection.set(pulled.attachment.selection);
+    else this.diffSelection.dismiss();
+    this.settleWorkflowKeyword();
+    this.publishDraft();
+    this.render();
   }
 
   private handleGesture(key:'interrupt'|'eof'|'escape'):void{
@@ -1457,6 +1574,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if(action.type==='paste')this.vim.externalMutation();
     if(this.vimEnabled&&!this.vimHandling&&!this.dialog&&action.type!=='running'
       &&!(action.type==='interrupt'&&this.editor.running)&&this.handleVim(action))return;
+    // Source `Gv`/`bS`/`cg`: the queue gestures sit in the input's own key handling, after the
+    // suggestion list and the modal editor have taken their keys.
+    if (this.screen === 'chat' && !this.dialog
+      && (action.type === 'up' || action.type === 'down') && this.handleQueueKey(action.type)) return;
+    if ((action.type === 'return' || action.type === 'submit') && this.screen === 'chat' && !this.dialog
+      && !this.keys.pendingChord && keyboardCohesion() && this.queueEditIndex !== null
+      && (action.type !== 'return' || (!action.meta && !action.shift))
+      && this.popSelectedQueuedPrompt()) return;
     const transition = reduceEditorWithUndo(this.editor, action, { ...this.options,
       navigationColumns: this.conversationColumns() - 2,
       undoPush: (text, cursor, pastedContents, ownSnapshot) => this.pushUndo(text, cursor, pastedContents, ownSnapshot),
@@ -1470,6 +1595,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       : undefined;
     this.editor = inline === undefined ? transition.state
       : { ...transition.state, text: inline.text, cursor: inline.cursor };
+    // Source `ls`: a draft that moved by an edit drops the queued-row selection. The pull path
+    // writes the draft outside this reducer and clears the index itself.
+    if (this.queueEditIndex !== null && this.editor.text !== draftBefore.text) this.queueEditIndex = null;
     this.settleWorkflowKeyword();
     this.publishDraft();
     this.relayEdit(action, draftBefore, sequence);
@@ -1560,6 +1688,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private inputLayout(columns: number, rows: number) {
     const maximum = Math.max(1, Math.min(this.options.promptRows ?? Math.max(3, Math.floor(rows / 2) - 5), rows - 4));
     const body = layoutInput(this.editor, columns - 2, maximum,this.vimEnabled?{mode:this.vim.mode,anchor:this.vim.anchor}:undefined,this.focus.focused);
+    // Source text input: an empty draft draws its `placeholder` dim instead of the value.
+    const queueHint = this.queuePlaceholder();
+    if (queueHint !== undefined) {
+      return { ...body, lines: [[{ text: queueHint, style: { dimColor: true } }]],
+        cursorColumn: body.cursorColumn + 2 };
+    }
     // The composer's own highlights are built first (the `/btw` notice, the keyword rainbows, the
     // ghost text), then a chain answer's runs are overlaid on them, then the input maps the result onto
     // the rendered rows: `composerHighlights` is the source's span assembly and its `w9r` overlay, and
@@ -2227,6 +2361,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if ((!command || !['yank', 'yankPop', 'killLineStart', 'killLineEnd', 'killWordForward', 'killWordBackward', 'killWORDBackward'].includes(command))
       && !this.keys.pendingChord) this.resetKillMode();
     if(sequence==='\x1b'&&this.keys.pendingChord){this.handleKey(sequence,command);return;}
+    // Source escape keydown: a selected queued row clears on Escape, and the source's `chat:cancel`
+    // handler declines while the selection is up, so the key stops here either way.
+    if (sequence === '\x1b' && this.queueEditIndex !== null) {
+      this.queueEditIndex = null; this.render(); return;
+    }
     // Source `ds` (autocomplete:dismiss): Escape closes the list before any gesture handling.
     if (sequence === '\x1b' && this.autocompleteVisible()) { this.dismissAutocomplete(); return; }
     if(sequence==='\x1b'&&this.options.sourceInputGestures&&this.screen==='chat'&&!this.vimEnabled&&!this.running){
@@ -3216,6 +3355,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private render(): void {
     if (!this.isTTY || !this.started || this.closed || this.editorSuspended) return;
+    // A queue that changed without a repaint (the loop drained a row) still owns the selection.
+    this.syncQueueSelection();
     const columns = Math.max(20, this.options.output.columns ?? 80);
     const rows = Math.max(4, this.options.output.rows ?? 24);
     this.diffPanel?.setColumns(columns);

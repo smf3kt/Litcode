@@ -313,11 +313,40 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   options.signal.addEventListener('abort', abort, { once: true });
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
     peer?: { from: string | null };
+    /** Source `isMeta`: an entry this host queued itself, not one a person may pull back and edit. */
+    meta?: boolean;
     attachment?: import('./terminal.js').PromptDiffSelection }[] = [];
   // The recovered prologue prepends the SessionStart message to the user input
   // queue (`prependUserMessage`, chunk-rx2nah4x.js offset 472137), so it runs
   // before anything typed or piped at startup.
-  if (options.initialUserMessage !== undefined) queue.push({ prompt: options.initialUserMessage, source: 'user' });
+  // The SessionStart message is host-generated, so it is source `isMeta`: the composer may not
+  // pull it back as if a person had typed it.
+  if (options.initialUserMessage !== undefined) queue.push({ prompt: options.initialUserMessage, source: 'user', meta: true });
+  // Source `Kp`: the composer may pull back only a person's own queued prompt, not a meta entry,
+  // an event and not a bash-mode command (this host has no bash queue mode).
+  const editableQueued = (item: (typeof queue)[number]) => item.source === 'user' && item.meta !== true;
+  const promptQueue = {
+    snapshot: () => queue.filter(editableQueued).map(item => item.prompt),
+    pop: (index: number) => {
+      const target = queue.filter(editableQueued)[index];
+      if (target === undefined) return undefined;
+      queue.splice(queue.indexOf(target), 1);
+      return { text: target.prompt, ...(target.attachment === undefined ? {} : { attachment: target.attachment }) };
+    },
+    popAll: () => {
+      const editable = queue.filter(editableQueued);
+      if (editable.length === 0) return undefined;
+      for (const target of editable) queue.splice(queue.indexOf(target), 1);
+      // Source `pi` restores the first item carrying a non-empty IDE selection, else the first
+      // item with one at all.
+      const attachment = editable.find(item => Boolean(item.attachment?.selection.text))?.attachment
+        ?? editable.find(item => item.attachment !== undefined)?.attachment;
+      return { text: editable.map(item => item.prompt).join('\n'),
+        ...(attachment === undefined ? {} : { attachment }) };
+    },
+  };
+  terminal?.bindPromptQueue?.(promptQueue);
+  const promptQueueChanged = () => { terminal?.promptQueueChanged?.(); };
   let editorWork: Promise<import('./external-editor.js').ExternalEditorResult> | undefined;
   let inputClosed = false;
   let approval: ((value: string | undefined) => void) | undefined;
@@ -431,7 +460,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   const onLine = (line: string, attachment?: import('./terminal.js').PromptDiffSelection) => {
     if (approval) { approval(line); return; }
-    queue.push({ prompt: line, source: 'user', ...(attachment ? { attachment } : {}) }); awaken();
+    queue.push({ prompt: line, source: 'user', ...(attachment ? { attachment } : {}) });
+    promptQueueChanged(); awaken();
   };
   const onClose = () => {
     inputClosed = true;
@@ -447,7 +477,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if(inputClosed||approval||turnController||editorWork||!terminal?.editDraft)return;
         editorWork=terminal.editDraft(options.signal,session.config.workspace)
           .catch(error=>({content:null,error:String(error)}));
-        queue.push({prompt:'/editor',source:'user'});awaken();return;
+        queue.push({prompt:'/editor',source:'user',meta:true});promptQueueChanged();awaken();return;
       }
       // `e9`/`Zat`/`tlt` (chunk-24k7d6mw.js 887081 / 1343398 / 1343820): the TUI has already
       // queued a non-empty draft. The source flushes the queue through the low-latency channel;
@@ -471,13 +501,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         const command = permissionCycleCommand({ mode: pending?.prompt.slice('/permissions '.length).trim() ?? state.mode,
           isBypassPermissionsModeAvailable: state.isBypassPermissionsModeAvailable });
         // The source applies every press; a full wrap repeats a command that may still be queued.
-        if (command !== undefined) queue.push({ prompt: command, source: 'user' });
+        if (command !== undefined) { queue.push({ prompt: command, source: 'user', meta: true }); promptQueueChanged(); }
         awaken(); return;
       }
       const command = action === 'chat:modelPicker' ? '/model' : action === 'chat:thinkingToggle' ? '/thinking'
         : action === 'app:toggleTodos' ? '/tasks' : undefined;
       if (!command || inputClosed || approval) return;
-      if (!queue.some(item => item.source === 'user' && item.prompt === command)) queue.push({ prompt: command, source: 'user' });
+      if (!queue.some(item => item.source === 'user' && item.prompt === command)) {
+        queue.push({ prompt: command, source: 'user', meta: true }); promptQueueChanged();
+      }
       awaken();
     } });
   let unsubscribe: (() => void) | undefined;
@@ -910,7 +942,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     while (!options.signal.aborted) {
       if (configDirty && !session.awaitingResponse && !inputClosed) {
         configDirty = false;
-        if (!queue.some(item => item.source === 'user' && item.prompt.trim() === '/reload')) queue.unshift({ prompt: '/reload', source: 'user' });
+        if (!queue.some(item => item.source === 'user' && item.prompt.trim() === '/reload')) {
+          queue.unshift({ prompt: '/reload', source: 'user', meta: true }); promptQueueChanged();
+        }
       }
       if (!session.awaitingResponse && !inputClosed) {
         for (const event of activeRuntime.drainEvents?.(session.id) ?? []) {
@@ -943,6 +977,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         continue;
       }
       const item = queue.splice(nextIndex, 1)[0]!;
+      promptQueueChanged();
       let prompt = item.prompt.trim();
       if (!prompt) continue;
       if (item.source === 'user' && (prompt === '/exit' || prompt === '/quit')) break;
