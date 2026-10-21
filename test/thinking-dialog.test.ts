@@ -43,3 +43,25 @@ test('the dialog focuses the current value and answers in row values', async () 
     tui.close();
   }
 });
+
+test('a modal dialog hands the two live-panel chords back to the host', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode(raw: boolean): void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new (await import('node:stream')).Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 });
+  const tui = new TuiTerminal({ input, output, prefersReducedMotion: true }).start();
+  const actions: string[] = [];
+  tui.on('action', action => actions.push(action));
+  const key = (value: string) => input.emit('data', value);
+  try {
+    const controller = new AbortController();
+    const pending = tui.prompt(thinkingDialogRequest(true), controller.signal);
+    key('\x1bt');
+    key('\x1bp');
+    assert.deepEqual(actions, ['chat:thinkingToggle', 'chat:modelPicker']);
+    controller.abort();
+    assert.equal(await pending, undefined);
+  } finally {
+    tui.close();
+  }
+});

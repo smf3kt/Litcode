@@ -337,7 +337,9 @@ const eventSchema = z.discriminatedUnion('kind', [
   }
 });
 
-export const fingerprint = (config: SessionConfig): string => createHash('sha256').update(JSON.stringify(config)).digest('hex');
+/** The stored identity digest. `fingerprintOf` also covers prepared documents with derived fields. */
+export const fingerprintOf = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+export const fingerprint = (config: SessionConfig): string => fingerprintOf(config);
 
 export class Session {
   readonly id: string;
