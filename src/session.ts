@@ -407,6 +407,10 @@ export class Session {
   carryPermissions(previous: Session, preserveMode = true): void {
     this.permissionUpdates = reloadPermissionState(previous.permissionOwner.state(), this.config.permissions,
       this.config.workspace, this.config.configSources?.userDir ?? defaultUserDir());
+    // The source builds `isBypassPermissionsModeAvailable` once per session context and `UBt`
+    // reads it for the cycle; a live mode change must not revoke a launch-granted availability.
+    if (previous.permissionOwner.state().isBypassPermissionsModeAvailable)
+      this.permissionUpdates.isBypassPermissionsModeAvailable = true;
     if (!preserveMode) delete this.permissionUpdates.mode;
     this.directoryObservations.clear();
     for (const [directory, observations] of previous.directoryObservations) {

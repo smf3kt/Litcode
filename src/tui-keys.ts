@@ -13,11 +13,15 @@ import type { EditorAction } from './terminal.js';
  * mounted tree, and this product registers handlers imperatively.
  *
  * Not carried over, with the reason: bindings the recovered table computes at
- * runtime (`...{[le]:"chat:cycleMode"}`) depend on the host platform, and its
- * always-empty spreads (`...{}`, `...[]`) contribute nothing. The paste chord
- * (`Me`/`...L==="wsl"&&{"ctrl+v"}`, `chat:imagePaste`) is carried with the same
- * runtime resolution because the question dialog now consumes the action. The
- * context list is transcribed as far as `AbovePrompt`; the table
+ * runtime that change behaviour here. The cycle chord `{[le]:"chat:cycleMode"}`
+ * looks platform-dependent, but on this artifact `le` resolves to `shift+tab`
+ * for every platform: `nA()` (chunk-yvnhkg35.js 1245) returns true and
+ * `Yho("1.4.3",">=1.2.23")` holds, so only the Windows fallback branch could
+ * ever differ and that branch is not taken. The always-empty spreads (`...{}`,
+ * `...[]`) contribute nothing. The paste chord (`Me`/`...L==="wsl"&&{"ctrl+v"}`,
+ * `chat:imagePaste`) is carried with the same runtime resolution because the
+ * question dialog now consumes the action. The context list is transcribed as
+ * far as `AbovePrompt`; the table
  * continues past that point and is recorded as a bounded search boundary.
  */
 
@@ -76,6 +80,9 @@ export const KEY_BINDINGS: Readonly<Record<TuiContext, Readonly<Record<string, s
     'ctrl+l': 'chat:clearInput',
     'cmd+k': 'chat:clearScreen',
     'ctrl+x ctrl+k': 'chat:killAgents',
+    // `le` (chunk-6ccen3s8.js 1933, binding at 2679): resolves to shift+tab on every platform
+    // for this artifact; the header records why the Windows fallback is not taken.
+    'shift+tab': 'chat:cycleMode',
     'meta+p': 'chat:modelPicker',
     'meta+o': 'chat:fastMode',
     'ctrl+y': 'chat:defaultToNewerModel',

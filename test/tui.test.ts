@@ -2310,8 +2310,8 @@ test('common action keys preserve drafts and stash swaps text with its cursor', 
   try {
     key('draft\x1b[D');
     const cursor = tui.state.cursor;
-    key('\x1bp\x1bt\u0014');
-    assert.deepEqual(actions, ['chat:modelPicker', 'chat:thinkingToggle', 'app:toggleTodos']);
+    key('\x1bp\x1bt\x1b[Z\u0014');
+    assert.deepEqual(actions, ['chat:modelPicker', 'chat:thinkingToggle', 'chat:cycleMode', 'app:toggleTodos']);
     assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, cursor);
     key('\u0013'); assert.equal(tui.state.text, '');
     key('other\u0013'); assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, cursor);
