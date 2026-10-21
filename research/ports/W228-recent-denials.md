@@ -112,8 +112,29 @@ The recovered semantics, read off those units:
   clean.
 - Compiled probe `.audit/w228-recent.mjs` passes 3 checks over the real CLI: the tab strip offers
   `Recently denied` ahead of the rule tabs, the tab draws the recovered header and empty state with
-  its guide, and an unmarked Esc still dismisses. The populated list cannot be reached through the
-  probe because there is no model to refuse a call; that path is the unit and agent-harness evidence
-  above.
+  its guide, and an unmarked Esc still dismisses.
+- Compiled probe `.audit/w228-live.mjs` (9 checks) supplies its own model so the populated path is
+  reached for real: a Messages-API stub on a loopback port, answering SSE, returns one `write_file`
+  call for the main loop's first and third rounds and a verdict for every classifier request. Auto
+  mode routes the call through `classifyAutoAction`, the denial is returned to the model as the tool
+  result, and `/permissions` then opens on `recent` and lists the live row with its reason. The probe
+  asserts the focused row is the denial before sending `r`, that `r` marks it, that Esc reports
+  `Permission granted for: marker: owned`, that the retry turn re-issues the call and the write
+  lands, and that the denial is still in the store afterwards — the retry arm hands the labels back
+  without removing them, so an approve arm would empty the list and fail that check.
+  Two findings from building it, both recorded because they are easy to get wrong again: the target
+  settings file must carry no allow list and no ask rule (`{permissions: {}}`), because an allow list
+  denies the write outright and an ask *rule* sets `decision.floor`, which `authorize()` treats as
+  "auto mode does not apply"; and the classifier is reached only through `decideOnce`'s `ask` arm for
+  a non-read-only tool in auto mode.
+  The grant assertion is the one that had to be rebuilt. `classifierTranscript` renders a
+  human-origin message as `{"user":"  <text>"}` and every other origin as
+  `[MESSAGE FROM NON-USER SOURCE - NOT USER INPUT]\n  <text>`
+  (`src/auto-classifier-transcript.ts:56-67`), so a substring test for the grant text passes either
+  way and proves nothing about the origin W228 ports. Both the stub's verdict and the assertions now
+  key on the exact human rendering, and only on the classifier requests the retry turn produced.
+  Verified by mutation, each reverted before commit: with `appendPermissionRetry` appending
+  `origin: {kind:'unknown'}`, the grant check and the write check both fail; with the retry arm also
+  calling `removeDenial`, the store check fails. Correct source: 9/9.
 - `.audit/w226-permissions.mjs` was re-navigated for the extra tab row (12/12); `.audit/w227-workspace.mjs`
   is unchanged and still 7/7.
