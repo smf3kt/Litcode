@@ -26,10 +26,8 @@ import type { TerminalPromptRequest } from './terminal.js';
 import { addDirectoryMessage, validateAddDirectory } from './add-dir-command.js';
 import { BASH_RULE_TOOL } from './agent-tool-restrictions.js';
 import { denialReasonText, type AutoModeDenial } from './permission-denials.js';
-import { autoModeBuiltins, autoModeBuiltinsPaneRequest, autoModeDocumentPaneRequest,
-  autoModeEntries, autoModeEntryPaneRequest, autoModeEntryValue, autoModeRows,
-  AUTO_MODE_DOCUMENT_VALUE, AUTO_MODE_INTRO, type AutoModeEntry, type AutoModeSection
-} from './auto-mode-panel.js';
+import { autoModeBuiltins, autoModeEntries, autoModeRows, AUTO_MODE_INTRO } from './auto-mode-panel.js';
+import { browseAutoMode, type AutoModeEditorHost } from './auto-mode-editor.js';
 import { parsePermissionRule, serializePermissionRule } from './permission-state.js';
 import { te } from './tui-symbols.js';
 
@@ -679,10 +677,7 @@ export type PermissionPanelMode =
   | { readonly kind: 'save'; readonly tab: PermissionRuleTabId; readonly rules: readonly PermissionRuleValue[] }
   | { readonly kind: 'rule'; readonly tab: PermissionRuleTabId; readonly rule: PermissionPanelRule }
   | { readonly kind: 'addDirectory'; readonly error?: string }
-  | { readonly kind: 'removeDirectory'; readonly path: string }
-  | { readonly kind: 'builtins'; readonly section: AutoModeSection }
-  | { readonly kind: 'autoEntry'; readonly entry: AutoModeEntry }
-  | { readonly kind: 'autoDocument' };
+  | { readonly kind: 'removeDirectory'; readonly path: string };
 
 /**
  * Source `di`'s `no`/`sn`/`mu`/`Di` handlers: the panel's own navigation. Selecting a rule opens its
@@ -703,6 +698,7 @@ export async function browsePermissions(readInput: () => PermissionPanelInput,
     removeDenial?(denial: AutoModeDenial): void;
     /** Source `di`'s `onRetryDenials` prop. */
     onRetryDenials?(labels: readonly string[]): void;
+    autoMode?: AutoModeEditorHost;
   } = {}): Promise<string | undefined> {
   // Source `M`: every action appends its lines to the dialog's own list, and the dialog returns
   // that list joined when it closes (`wu`); with no lines it returns the dismissed message.
@@ -724,14 +720,8 @@ export async function browsePermissions(readInput: () => PermissionPanelInput,
       : mode.kind === 'add' ? permissionAddRuleRequest(mode.tab)
         : mode.kind === 'save' ? permissionSaveRequest(mode.tab, mode.rules, input)
           : mode.kind === 'rule' ? permissionRulePaneRequest(mode.rule)
-            : mode.kind === 'builtins' ? autoModeBuiltinsPaneRequest(mode.section,
-              autoModeBuiltins(input.autoModeLayers ?? [])[mode.section])
-              : mode.kind === 'autoEntry' ? autoModeEntryPaneRequest(mode.entry)
-                : mode.kind === 'autoDocument' ? autoModeDocumentPaneRequest(
-                  autoModeEntries(input.autoModeLayers ?? []),
-                  autoModeBuiltins(input.autoModeLayers ?? []).environment)
-                  : mode.kind === 'addDirectory' ? workspaceAddRequest(mode.error)
-                    : workspaceRemoveRequest(mode.path);
+            : mode.kind === 'addDirectory' ? workspaceAddRequest(mode.error)
+              : workspaceRemoveRequest(mode.path);
     const answer = await read(request);
     if (answer === undefined) {
       if (mode.kind !== 'tab') { mode = { kind: 'tab', tab }; continue; }
@@ -787,16 +777,15 @@ export async function browsePermissions(readInput: () => PermissionPanelInput,
         return finish();
       }
       if (mode.tab === 'automode') {
-        // Source `Bn`'s dispatch at 48450: the builtins and document values first, then the entry map.
-        if (value.startsWith('builtins:')) {
-          mode = { kind: 'builtins', section: value.slice('builtins:'.length) as AutoModeSection };
-          continue;
-        }
-        if (value === AUTO_MODE_DOCUMENT_VALUE) { mode = { kind: 'autoDocument' }; continue; }
-        const entry = autoModeEntries(input.autoModeLayers ?? [])
-          .find(candidate => autoModeEntryValue(candidate) === value);
-        if (entry === undefined) return finish();
-        mode = { kind: 'autoEntry', entry };
+        // Bn/di, fxx7hh8y [48843,49094)/[78011,85560), UTF-16.
+        if (!autoModeRows(autoModeEntries(input.autoModeLayers ?? []), autoModeBuiltins(input.autoModeLayers ?? []))
+          .some(row => row.value === value)) return finish();
+        report(await browseAutoMode(value, () => readInput().autoModeLayers ?? [], read,
+          options.autoMode ?? {
+            apply: async () => ({ error: 'Auto mode settings are unavailable in this session' }),
+            editDocument: async () => ({ kind: 'problem', message: 'No editor is available in this session', canReopen: false }),
+            viewRules: async () => 'No editor is available in this session',
+          }));
         continue;
       }
       if (value === PERMISSION_ADD_RULE_VALUE) {
@@ -808,12 +797,6 @@ export async function browsePermissions(readInput: () => PermissionPanelInput,
         .find(rule => rule.ruleBehavior === ruleTab && permissionRuleKey(rule) === value);
       if (chosen === undefined) return finish();
       mode = { kind: 'rule', tab: ruleTab, rule: chosen };
-      continue;
-    }
-    if (mode.kind === 'builtins' || mode.kind === 'autoEntry' || mode.kind === 'autoDocument') {
-      // Source `Hn`/`Nn`'s Cancel row and the document's own exit: every automode pane returns
-      // to its tab, which is the only surface that opened it.
-      mode = { kind: 'tab', tab: 'automode' };
       continue;
     }
     if (mode.kind === 'addDirectory') {

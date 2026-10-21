@@ -3,41 +3,37 @@
  * `chunk-fxx7hh8y.js`, sha256 `6c02bdbdf6679fafe7e6e589e8f21f18b347d1192564753fc4fed7559557dc78`:
  * the tab body `Bn` at 44266 with its intro at 48286 and its row dispatch at 48450, the entry reader
  * `ve` at 35310, the builtins state `me` at 36535, the section table `Ke` at 35249, the section
- * titles `ie` at 42811, the source labels `Te` at 42889 and the source tags `En` at 42850, the entry
+ * titles `ie` at 42811, the source labels `Te` at 43115 and the source tags `En` at 43540, the entry
  * column `Vm` at 42306, the builtins row `$t` at 47106, the environment document row `hi` at 46500,
- * the builtins card `Hn` at 56850, the entry card `Nn` at 52375 and the entry display `Le` at 51291.
+ * the builtins card `Hn` at 57192, the entry card `Nn` at 52375 and the entry display `Le` at 51291.
  * Cross-chunk: the splice sentinel `xu` (`chunk-7ah5c51p.js` 2452), the layer order `aUe`
  * (`chunk-x0dc37w9.js`), the built-in rule reader `Rue` (`chunk-sfn1dbxq.js` 1065708) and the
  * always-true internal-template gate `rne` (same chunk), the display text `Ci`/`Bi`
  * (`chunk-qq2mgstr.js` 15827/12567). Offsets are zero-based UTF-16 code units.
  *
- * This package ports the tab's list and both read-only detail cards. The add, edit, delete and
- * environment-editor arms (`Jr` 40570, `ts` 40909, `os` 41045, `Xr` 36731, `qr` 35450, `Ho` 36630)
- * write `permissions.autoMode.<section>` through a settings-document writer this build does not
- * carry yet; they are W230.
+ * W230 adds qn/Yn/Kn/Hn/Nn [52375,66637) and the host transitions [78011,85560), UTF-16.
+ * The writer in auto-mode-rules.ts updates the top-level autoMode section in user settings.
  */
 
 import { AUTO_RULES } from './auto-classifier-rules-source.js';
 import type { PermissionLayer } from './permissions.js';
 import type { TerminalPromptRequest } from './terminal.js';
 import { denialDisplayText } from './permission-denials.js';
-import { PERMISSIONS_RULE_DETAILS_TITLE } from './permissions-panel.js';
+import { autoModeRuleProblem, AUTO_MODE_SECTIONS, AUTO_MODE_SPLICE_SENTINEL,
+  type AutoModeSection } from './auto-mode-rules.js';
+export { AUTO_MODE_SECTIONS, AUTO_MODE_SPLICE_SENTINEL, type AutoModeSection } from './auto-mode-rules.js';
 
-/** Source `Ke` at 35249, in its declared order. */
-export const AUTO_MODE_SECTIONS = ['allow', 'soft_deny', 'hard_deny', 'environment'] as const;
-export type AutoModeSection = typeof AUTO_MODE_SECTIONS[number];
+const PERMISSIONS_RULE_DETAILS_TITLE = 'Rule details';
 
 /** Source `aUe` at `chunk-x0dc37w9.js`: the layers whose `autoMode` blocks the tab reads. */
 export const AUTO_MODE_LAYER_SOURCES = ['userSettings', 'flagSettings', 'policySettings'] as const;
 export type AutoModeLayerSource = typeof AUTO_MODE_LAYER_SOURCES[number];
 
-/** Source `xu` at `chunk-7ah5c51p.js` 2452: the sentinel that splices the built-in rules in. */
-export const AUTO_MODE_SPLICE_SENTINEL = '$defaults';
-/** Source `Re` at 42930: the section-title column width. */
+/** Source `Re` at 43666: the section-title column width. */
 export const AUTO_MODE_SECTION_COLUMN = 20;
 /** Source `Ml` at 43840: the environment document's own line budget in its row. */
 export const AUTO_MODE_DOCUMENT_ROWS = 5;
-/** Source `Jm` at 56846: the built-in rule text budget of the card. */
+/** Source `Jm` at 57132: the built-in rule text budget of the card. */
 export const AUTO_MODE_BUILTIN_LIMIT = 3200;
 /** Source the list's `visibleOptionCount: Math.min(10, rows.length)`. */
 export const AUTO_MODE_VISIBLE_ROWS = 10;
@@ -238,33 +234,32 @@ function orderedUnique<T>(values: readonly T[]): T[] {
 
 /**
  * Source `hi`'s note at 46500: what the environment row says about the document it stands for. The
- * recovered ends it with `enter to edit`, which is W230's editor; this host ends it with
- * `enter to view` until that writer lands.
+ * action names the user-owned document even when foreign sources supply other entries.
  */
 export function autoModeDocumentNote(entries: readonly AutoModeEntry[], builtin: AutoModeBuiltin): string {
   const environment = entries.filter(entry => entry.section === 'environment');
   if (environment.length === 0) {
     return `Built-in default document${builtin.control === 'otherSource'
-      ? ` · kept by ${autoModeSourceLabel(builtin.source ?? 'userSettings')}` : ''} · enter to view`;
+      ? ` · kept by ${autoModeSourceLabel(builtin.source ?? 'userSettings')}` : ''} · enter to edit`;
   }
   const sources = orderedUnique(environment.map(entry => entry.source)).map(autoModeSourceLabel).join(' and ');
   const anyUser = environment.some(entry => entry.source === 'userSettings');
   const anyForeign = environment.some(entry => entry.source !== 'userSettings');
-  const action = !anyForeign ? 'enter to view' : anyUser ? 'enter to view your entries' : 'enter to view';
+  const action = !anyForeign ? 'enter to edit' : anyUser ? 'enter to edit your entries' : 'enter to add your own';
   return `${builtin.enabled ? 'Extends' : 'Replaces'} the built-in default · from ${sources} · ${action}`;
 }
 
 export interface AutoModeRow { readonly label: string; readonly value: string; readonly description?: string }
 
 /**
- * Source `Bn`'s non-search row list at 46900, minus its leading add row (W230's writer): per section
+ * Source `Bn`'s non-search row list [46900,48060), UTF-16: the add row, then per section
  * its builtins row when `tn` keeps it, then its entries — except the environment, which the source
  * replaces with the single document row.
  */
 export function autoModeRows(entries: readonly AutoModeEntry[],
   builtins: Record<AutoModeSection, AutoModeBuiltin>): AutoModeRow[] {
   const counts = autoModeBuiltinCounts();
-  const rows: AutoModeRow[] = [];
+  const rows: AutoModeRow[] = [{ label: 'Add a new rule…', value: 'add-new-rule' }];
   for (const section of AUTO_MODE_SECTIONS) {
     if (section === 'environment') {
       const document = autoModeBuiltinRules('environment');
@@ -288,7 +283,7 @@ export function autoModeRows(entries: readonly AutoModeEntry[],
 /**
  * Source `hi`'s document at 46500 and `Nn`'s frame: the environment document the row stands for —
  * the entries the layers declare, or the built-in default when they declare none. The recovered
- * opens this as an editor; this host reads it until W230's writer lands.
+ * runtime editing uses the document state machine; this projection remains available for reading.
  */
 export function autoModeDocumentPaneRequest(entries: readonly AutoModeEntry[],
   builtin: AutoModeBuiltin): TerminalPromptRequest {
@@ -307,9 +302,8 @@ function cutText(value: string, width: number): string {
 }
 
 /**
- * Source `Hn` at 56850: the builtins card. Its rule list is bounded by `Jm` and its two control
- * notes explain an empty or foreign-owned section. The recovered's toggle and editor rows are
- * W230's writes, so this host shows the section and a way back.
+ * Source `Hn` [57192,61328), UTF-16: the builtins card. Its rule list is bounded by `Jm` and its two control
+ * notes explain an empty or foreign-owned section. Only user-owned sections offer a toggle.
  */
 export function autoModeBuiltinsPaneRequest(section: AutoModeSection,
   builtin: AutoModeBuiltin): TerminalPromptRequest {
@@ -344,13 +338,16 @@ export function autoModeBuiltinsPaneRequest(section: AutoModeSection,
         + 'This control follows that configuration; add your own rules to customize the section.');
   }
   return { title: AUTO_MODE_BUILTINS_TITLE, message: lines.join('\n'),
-    choices: [{ label: 'Back', value: 'back' }], defaultIndex: 0 };
+    choices: [
+      ...(builtin.control === 'user' ? [{ label: `${builtin.enabled ? 'Disable' : 'Enable'} built-in rules for this section`, value: 'toggle' }] : []),
+      { label: 'View in editor', value: 'view' }, { label: 'Cancel', value: 'cancel' },
+    ], defaultIndex: 0 };
 }
 
 /**
- * Source `Nn` at 52375, its read-only arms. A rule whose section is the environment describes this
- * machine and project for the classifier. The recovered's Edit, Delete and toggle rows write the
- * settings file, which is W230; the legacy `autoMode.deny` arm is absent because this build's
+ * Source `Nn` [52375,57128), UTF-16. User rules offer Edit/Delete; foreign and structure rows are
+ * read-only. An invalid existing rule offers Delete alone. The legacy `autoMode.deny` arm is absent;
+ * this build's
  * `classifierSystem` passes only `allow`/`soft_deny`/`hard_deny`/`environment` to the classifier,
  * so a legacy rule would be described as enforced when it is not.
  */
@@ -372,6 +369,60 @@ export function autoModeEntryPaneRequest(entry: AutoModeEntry): TerminalPromptRe
   } else if (entry.section === 'environment') {
     lines.push('Environment entries describe this machine and project for the classifier.');
   }
+  const editable = entry.source === 'userSettings' && entry.structure !== true;
+  const problem = editable ? autoModeRuleProblem(entry.section, entry.text) : null;
+  if (problem !== null) lines.push(`This rule cannot be edited here: ${problem}`,
+    'Edit it in your settings file, or delete it here.');
   return { title: PERMISSIONS_RULE_DETAILS_TITLE, message: lines.join('\n'),
-    choices: [{ label: 'Back', value: 'back' }], defaultIndex: 0 };
+    choices: [
+      ...(editable && problem === null ? [{ label: 'Edit', value: 'edit' }] : []),
+      ...(editable ? [{ label: 'Delete', value: 'delete' }] : []),
+      { label: 'Cancel', value: 'cancel' },
+    ], defaultIndex: 0 };
+}
+
+/** qn/pa/Yn, fxx7hh8y [62927,66637), UTF-16. */
+export function autoModeSectionRequest(): TerminalPromptRequest {
+  const descriptions: Record<AutoModeSection, string> = {
+    allow: 'Actions the classifier lets run without blocking',
+    soft_deny: 'Actions the classifier blocks, unless a soft allow rule or your explicit direction applies',
+    hard_deny: 'Actions the classifier always blocks — soft allow rules cannot override',
+    environment: 'Facts about this machine or project the classifier should take into account',
+  };
+  return { title: 'Add auto mode rule', message: 'What kind of rule is this?',
+    choices: AUTO_MODE_SECTIONS.map(section => ({ label: autoModeSectionTitle(section),
+      value: section, description: descriptions[section] })), defaultIndex: 0 };
+}
+
+export function autoModeInputRequest(section: AutoModeSection, initialText = '', editing = false,
+  error?: string): TerminalPromptRequest {
+  return { title: `${editing ? 'Edit' : 'Add'} ${autoModeSectionTitle(section).toLowerCase()} rule`,
+    message: ['Write the rule as a plain sentence. A short label up front helps, e.g.,',
+      section === 'environment' ? 'Deploys from this machine only reach the staging cluster.'
+        : 'Database Writes: UPDATE statements against the local dev database.',
+      '', ...(error === undefined ? [] : [error, '']), 'Saved to your user settings file'].join('\n'),
+    allowText: true, maxTextChars: 10000, initialText };
+}
+
+/** Kn, fxx7hh8y [61328,62613), UTF-16. */
+export function autoModeDeleteRequest(entry: AutoModeEntry, entries: readonly AutoModeEntry[]): TerminalPromptRequest {
+  const last = entries.filter(candidate => candidate.section === entry.section
+    && !(candidate.source === 'userSettings' && candidate.structure === true)).length === 1;
+  return { title: 'Delete auto mode rule?',
+    message: `${denialDisplayText(entry.text)}\n\nAre you sure you want to delete this rule? The classifier stops applying it on your next request.`
+      + (last ? ` This is your last ${autoModeSectionTitle(entry.section).toLowerCase()} rule — without it, only the built-in rules apply for this section.` : ''),
+    choices: [{ label: 'Yes', value: 'confirm' }, { label: 'No', value: 'cancel' }], defaultIndex: 1 };
+}
+
+/** di environment states, fxx7hh8y [79936,81747), UTF-16. */
+export function autoModeEnvironmentConfirmRequest(): TerminalPromptRequest {
+  return { title: 'Replace the built-in environment?',
+    message: 'Writing your own environment replaces the built-in default document — the classifier context that defines trusted hosts, sensitive targets, and repository scope. The editor starts from the full default text so you can edit rather than rewrite; deleting all your environment entries later restores the default.',
+    choices: [{ label: 'Yes', value: 'confirm' }, { label: 'No', value: 'cancel' }], defaultIndex: 1 };
+}
+
+export function autoModeEnvironmentProblemRequest(problem: string, canReopen: boolean): TerminalPromptRequest {
+  return { title: 'Edit environment', message: problem,
+    choices: [...(canReopen ? [{ label: 'Reopen in your editor', value: 'reopen' }] : []),
+      { label: 'Cancel', value: 'cancel' }], defaultIndex: 0 };
 }

@@ -625,10 +625,9 @@ test('the row list puts each section builtins first and the environment as one d
   const entries = autoModeEntries(layers);
   const builtins = autoModeBuiltins(layers);
   const rows = autoModeRows(entries, builtins);
-  // No add row: its writer is W230.
-  assert.ok(!rows.some(row => row.value === 'add-new-rule'));
-  assert.deepEqual(rows.map(row => row.value).slice(0, 2), ['builtins:allow', 'allow:userSettings:0']);
-  assert.deepEqual(rows.map(row => row.value).slice(2, 3), ['builtins:soft_deny']);
+  assert.equal(rows[0]?.value, 'add-new-rule');
+  assert.deepEqual(rows.map(row => row.value).slice(1, 3), ['builtins:allow', 'allow:userSettings:0']);
+  assert.deepEqual(rows.map(row => row.value).slice(3, 4), ['builtins:soft_deny']);
   assert.deepEqual(rows.filter(row => row.value.startsWith('soft_deny:')).map(row => row.value),
     ['soft_deny:userSettings:1']);
   // The environment collapses into its document row, whose note names the sources.
@@ -638,15 +637,15 @@ test('the row list puts each section builtins first and the environment as one d
   assert.ok(document.description !== undefined && document.description.length > 0);
   // No environment entry rows survive the collapse.
   assert.equal(rows.filter(row => row.label.startsWith('Environment'.padEnd(20))).length, 1);
-  assert.equal(autoModeRows(entries, builtins).length, 6);
+  assert.equal(autoModeRows(entries, builtins).length, 7);
 });
 
 test('the document note says kept for a foreign copy and default when nothing is configured', () => {
   const empty = autoModeBuiltins([layer('userSettings')]);
-  assert.equal(autoModeDocumentNote([], empty.environment), 'Built-in default document · enter to view');
+  assert.equal(autoModeDocumentNote([], empty.environment), 'Built-in default document · enter to edit');
   const foreign = autoModeBuiltins([layer('policySettings', { environment: ['$defaults'] })]);
   assert.equal(autoModeDocumentNote([], foreign.environment),
-    'Built-in default document · kept by managed settings · enter to view');
+    'Built-in default document · kept by managed settings · enter to edit');
   const configured = [layer('userSettings', { environment: ['### Host', '- macOS'] })];
   const entries = autoModeEntries(configured);
   assert.ok(autoModeDocumentNote(entries, autoModeBuiltins(configured).environment)
@@ -667,7 +666,7 @@ test('the automode tab draws the intro, the rows and the document row', () => {
   assert.ok(request.message.includes(`  ${'Environment'.padEnd(20)}Replaces the built-in default`));
   assert.ok(request.message.includes(PERMISSION_GUIDE));
   assert.deepEqual((request.choices ?? []).slice(6).map(choice => choice.value), [
-    'builtins:allow', 'builtins:soft_deny', 'soft_deny:userSettings:0', 'builtins:hard_deny',
+    'add-new-rule', 'builtins:allow', 'builtins:soft_deny', 'soft_deny:userSettings:0', 'builtins:hard_deny',
     AUTO_MODE_DOCUMENT_VALUE,
   ]);
   assert.equal(request.defaultIndex, 4);
@@ -681,7 +680,7 @@ test('the builtins card prints the count line, the rules and the control note', 
   assert.ok(card.message.includes('- '));
   assert.ok(card.message.includes('This section has no configured rules, so the built-ins apply. '
     + 'Add a rule to customize it.'));
-  assert.deepEqual(card.choices, [{ label: 'Back', value: 'back' }]);
+  assert.deepEqual(card.choices, [{ label: 'View in editor', value: 'view' }, { label: 'Cancel', value: 'cancel' }]);
 
   const replaced = autoModeBuiltinsPaneRequest('soft_deny', { enabled: false, control: 'otherSource',
     source: 'userSettings' });
@@ -729,7 +728,7 @@ test('the entry card names the classifier it belongs to and its source', () => {
 test('the document card shows the built-in default until a layer replaces it', () => {
   const empty = autoModeDocumentPaneRequest([], autoModeBuiltins([layer('userSettings')]).environment);
   assert.equal(empty.title, 'Environment document');
-  assert.ok(empty.message.startsWith('Built-in default document · enter to view\n\n'));
+  assert.ok(empty.message.startsWith('Built-in default document · enter to edit\n\n'));
   assert.ok(empty.message.includes(autoModeBuiltinRules('environment')[0] ?? 'impossible'));
 
   const entries = autoModeEntries([layer('userSettings', { environment: ['### Host', '- macOS'] })]);
@@ -762,7 +761,7 @@ test('the automode panes open from their rows and come back to the tab', async (
   }, async () => ({}));
   assert.equal(notice, 'Permissions dialog dismissed');
   assert.deepEqual(seen, ['Permissions', 'Permissions', AUTO_MODE_BUILTINS_TITLE, 'Permissions',
-    'Rule details', 'Permissions', 'Environment document', 'Permissions', 'Permissions']);
+    'Rule details', 'Permissions', 'Edit environment', 'Permissions', 'Permissions']);
   // The Back row returns to the automode tab rather than dismissing the panel.
   assert.equal(step, 9);
 });
