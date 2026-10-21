@@ -37,6 +37,8 @@ import { permissionSettingsPaths } from './permission-settings.js';
 import { SKILLS_TITLE, applySkillOverrideDiff, defaultSkillModes, nextSkillMode, readLocalSkillOverrides,
   saveSkillOverrides, skillOverrideDiff, skillPanelRows, skillsPanelMessage, skillsSaveError,
   skillsSaveMessage, type SkillMode } from './skills-panel.js';
+import { TASKS_EMPTY, TASKS_TITLE, backgroundTaskGoneMessage, backgroundTaskItems,
+  parseBackgroundTaskValue, tasksPanelRows, tasksPanelSubtitle } from './tasks-panel.js';
 import { hooksSchema } from './hooks.js';
 import { HOOKS_NONE_YET, HOOKS_TITLE, attributeHooks, browseHooks, hookConfigLabel,
   hookListSubtitle, type HookLayer, type HookPanelHook } from './hooks-panel.js';
@@ -1651,6 +1653,40 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (prompt === '/diff' && terminal?.toggleInlineDiff) {
           const message = await terminal.toggleInlineDiff();
           if (message) options.status.write(message + '\n');
+          continue;
+        }
+        if (prompt === '/tasks' && terminal?.prompt && activeRuntime.backgroundTasks) {
+          // Source `fLt` (`chunk-24k7d6mw.js` 674472): the `Background` dialog over the live
+          // registries. `x` is the stop chord; the selection it carries is the focused row.
+          let notice: string | undefined;
+          for (;;) {
+            const items = backgroundTaskItems(activeRuntime.backgroundTasks(session.id));
+            if (items.length === 0) {
+              await withTurn(signal => readDialog({ title: TASKS_TITLE, message: notice ?? TASKS_EMPTY,
+                readOnly: true }, signal));
+              break;
+            }
+            const rows = tasksPanelRows(items);
+            const answer = await withTurn(signal => readDialog({
+              title: TASKS_TITLE,
+              message: [tasksPanelSubtitle(items), notice].filter((part): part is string => part !== undefined).join('\n\n'),
+              choices: rows.map(row => ({ label: row.label, value: row.value, description: row.description })),
+              keys: [{ key: 'x', label: 'stop' }],
+            }, signal));
+            if (answer === undefined) break;
+            if (answer.key !== 'x') continue;
+            const parsed = parseBackgroundTaskValue(answer.selected[0] ?? '');
+            if (parsed === undefined) continue;
+            const stopped = await activeRuntime.stopTask?.(session.id, parsed.id);
+            if (stopped === undefined) { notice = backgroundTaskGoneMessage(); continue; }
+            // A stopped shell leaves `active()` only when its process group exits, so
+            // hold the panel briefly for the registry to reflect the stop.
+            for (let attempt = 0; attempt < 80; attempt++) {
+              if (!activeRuntime.backgroundTasks(session.id).jobs.some(job => job.id === parsed.id)) break;
+              await new Promise(resolve => setTimeout(resolve, 25));
+            }
+            notice = undefined;
+          }
           continue;
         }
         if (prompt === '/tasks' || prompt === '/cron' || /^\/diff(?:\s|$)/.test(prompt)) {
