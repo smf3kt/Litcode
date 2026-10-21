@@ -389,11 +389,22 @@ Next up, scoped but not started:
       W233 35/35, W243–W248/W250 rerun, runtime-resources 16/16 and check/build pass; full
       suite 3002/3003 with the CLI-effort failure.
       See `research/ports/W251-config-live.md`.
+- [x] W252 the last four `/config` rows apply live. `autoCompact`, `askUserQuestionTimeout`,
+      `dialogExpiry` and `permissionMode` (12035/26485/29983/21908) assign live state instead of
+      opening a successor session; the default-permission row moves only the default, and the
+      now-dead post-switch `applyConfig` tail is removed. New display-only exclusions plus
+      `permissions.defaultMode` normalisation keep the owner and connection digests stable.
+      Compiled 13/13 at identity `95189065…` (each row persists, keys kept, no branch, following
+      turn in one session), W233 35/35, W243–W248/W250/W251 rerun, runtime-resources 16/16 and
+      check/build pass; full suite 3002/3003 with the CLI-effort failure.
+      See `research/ports/W252-config-last-live.md`.
+- [x] Config rows now all apply live; the successor-session path for `/config` is gone. Remaining
+      config work is the unported rows listed below (tips, notifications, terminal tab status,
+      selection flags).
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
-      next complete local package. Remaining config rows still on the successor path but written
-      without a session restart in source: autoCompact, askUserQuestionTimeout, dialogExpiry,
-      permissionMode.
+      next complete local package. No local config row uses the successor-session path any
+      more; the unported rows are the ones named in the preceding sentence.
       Not portable now: tips (vendor/service content), prompt suggestions / timestamps / tab
       status / copy-on-select / auto-scroll (source rows sit behind `tengu_*` flags default off),
       recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no

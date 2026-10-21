@@ -109,7 +109,8 @@ try {
   send(' ');
   await until(() => stored().autoCompactEnabled === false && !screen().includes('Saving settings'), 'auto-compact toggles');
   send('\x1b'); await until(ready, 'config closed again');
-  pass('another row still opens its configuration branch', sessions().length === before + 1);
+  // W252 moved the remaining rows live, including this control row.
+  pass('another row also applies without a configuration branch', sessions().length === before);
   send('\u0015'); await delay(100);
   send('/exit\r');
   const status = await Promise.race([active.closed, delay(6000).then(() => 'timeout')]);

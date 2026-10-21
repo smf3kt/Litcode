@@ -489,14 +489,20 @@ export async function createRuntime(
   // Display-only rows (`Te`/`vy`; rows 20203/20771/21614/26180) never shape an MCP connection.
   const displayOnly = { verbose: undefined, prefersReducedMotion: undefined,
     showTurnDuration: undefined, timeFormat: undefined, editorMode: undefined,
-    terminalProgressBarEnabled: undefined };
+    terminalProgressBarEnabled: undefined, autoCompactEnabled: undefined,
+    askUserQuestionTimeout: undefined, dialogExpiry: undefined };
+  // The default permission mode (row 21908) applies to new sessions, not this connection.
+  const permissionsWithoutDefault = (current: SessionConfig) => current.permissions === undefined
+    ? undefined : { ...current.permissions, defaultMode: undefined };
   const connectionConfigDigest = (current: SessionConfig): string => {
     const { tools: _tools, ...settings } = current;
-    return fingerprintOf({ ...settings, tools: [], ...displayOnly });
+    return fingerprintOf({ ...settings, tools: [], ...displayOnly,
+      permissions: permissionsWithoutDefault(current) });
   };
   const liveConfigDigest = (current: SessionConfig): string => {
     const { tools: _tools, ...settings } = current;
     return fingerprintOf({ ...settings, tools: [], ...displayOnly,
+      permissions: permissionsWithoutDefault(current),
       model: undefined, modelSettings: undefined, effort: undefined, effortSelection: undefined,
       thinking: undefined });
   };
@@ -676,6 +682,11 @@ export async function createRuntime(
         // rows 20203/20771/21614/26180); none of these fields shapes the tool set.
         verbose: undefined, prefersReducedMotion: undefined, showTurnDuration: undefined,
         timeFormat: undefined, editorMode: undefined, terminalProgressBarEnabled: undefined,
+        // Rows 12035/26485/29983 write these live after the settings write; none shapes tools.
+        autoCompactEnabled: undefined, askUserQuestionTimeout: undefined, dialogExpiry: undefined,
+        // The Default permission mode row (21908) only moves the default for new sessions.
+        permissions: settings.permissions === undefined ? undefined
+          : { ...settings.permissions, defaultMode: undefined },
         system: settings.system.split('\n\n# Available skills\n')[0]!.split('\n\n# Available agent types\n')[0] }, monitorWebsocket });
     const cached = toolSets.get(owner);
     if (cached?.fingerprint === fingerprint) {

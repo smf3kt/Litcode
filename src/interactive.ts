@@ -1773,9 +1773,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                   switch (update.id) {
                     // hs/D6, js2bhabe [1114,1554), UTF-16: higher authored layers still win after the user write.
                     case 'autoCompact': {
+                      // Row 12035: userSettings plus the global config, no restart. The merged
+                      // setting is re-read first so a higher authored layer keeps precedence.
                       const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
-                      config.autoCompactEnabled = configSchema.shape.autoCompactEnabled.parse(loaded.settings.autoCompactEnabled);
-                      break;
+                      const enabled = configSchema.shape.autoCompactEnabled.parse(loaded.settings.autoCompactEnabled);
+                      session.config.autoCompactEnabled = enabled;
+                      changes.set(update.id, `Set ${update.id} to ${enabled}`);
+                      return configPanelInput(session.config);
                     }
                     case 'verbose':
                       // `Te`, chunk-nybcbd9t.js 20116: the row writes userSettings, the global
@@ -1799,16 +1803,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       return configPanelInput(session.config);
                     }
                     case 'permissionMode': {
-                      // vWe [21907,22578), UTF-16: the row reads the merged settings default (`hs`),
-                      // not the live session mode, so re-read it after the write.
+                      // vWe 21908: the settings cache moves without changing the live mode; the
+                      // row's value is the merged default (`hs`), so re-read it after the write.
                       const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
                       const raw = loaded.settings.permissions;
                       const defaultMode = raw !== null && typeof raw === 'object' && !Array.isArray(raw)
                         ? permissionPolicySchema.shape.defaultMode.parse((raw as Record<string, unknown>).defaultMode) : undefined;
-                      const permissions = { ...(config.permissions ?? { mode: 'default' as const, allow: [], deny: [] }) };
+                      const permissions = { ...(session.config.permissions ?? { mode: 'default' as const, allow: [], deny: [] }) };
                       if (defaultMode === undefined) delete permissions.defaultMode; else permissions.defaultMode = defaultMode;
-                      config.permissions = permissions;
-                      break;
+                      session.config.permissions = permissions;
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
                     }
                     case 'reduceMotion':
                       // `vy` row, chunk-nybcbd9t.js: localSettings and the live app settings move
@@ -1846,14 +1851,19 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       terminal?.setEditorMode?.(update.value, session.config.vimInsertModeRemaps);
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
                       return configPanelInput(session.config);
-                    case 'askUserQuestionTimeout': config.askUserQuestionTimeout = update.value; break;
+                    case 'askUserQuestionTimeout':
+                      // vWe 26485: the settings cache moves after the write; the live field is
+                      // what a new question dialog reads.
+                      session.config.askUserQuestionTimeout = update.value;
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
                     case 'dialogExpiry':
-                      if (update.value === 'default') delete config.dialogExpiry; else config.dialogExpiry = update.value;
-                      break;
+                      // vWe 29983: `default` removes the stored key; dialog expiry is read live.
+                      if (update.value === 'default') delete session.config.dialogExpiry;
+                      else session.config.dialogExpiry = update.value;
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
                   }
-                  await applyConfig(config, false, signal);
-                  changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                  return configPanelInput(session.config);
                 } catch (error) {
                   terminal.writeNotice?.(`Setting change failed: ${error instanceof Error ? error.message : String(error)}`);
                   throw error;
