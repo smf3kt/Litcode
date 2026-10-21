@@ -423,6 +423,13 @@ Next up, scoped but not started:
       Esc returning to the method list, `Export cancelled` on the list. Transcript text is host
       plain text (no off-screen vendor renderer). Unit 5/5, autocomplete 27/27, compiled 9/9 at
       identity `ded25dac…`. See `research/ports/W256-export.md`.
+- [x] W257 `/memory` (`kn`, chunk-xmmahshv.js 45274): the local Memory panel over the loader's
+      instruction files. `ecn` rows label user/project files, indent imports with `@-imported`
+      and append absent `~/HARNESS.md` / `./HARNESS.md` placeholders; choosing one creates it and
+      opens it through `$VISUAL`/`$EDITOR` with the recovered report/failure text; Esc reports
+      `Cancelled memory editing`. Vendor org-memory, auto-memory folder and agent-memory rows are
+      control-plane surfaces and stay out. Unit 7/7 + 1/1, autocomplete 22/22, compiled 8/8 at
+      identity `205d9bf2…`. See `research/ports/W257-memory-panel.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

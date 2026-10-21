@@ -115,7 +115,7 @@ test('a row is the pointer, the padded command, the kind lane and the descriptio
   // Source `_t`: `config` draws its label, `action` draws seven blank cells so the
   // descriptions still line up, and the lane starts at the widest row plus five.
   assert.ok(rows[0]!.includes('config '), 'a config command names its lane');
-  assert.equal(rows[1]!.slice(19, 26), '       ', 'an action command leaves its lane blank');
+  assert.equal(rows[2]!.slice(19, 26), '       ', 'an action command leaves its lane blank');
   assert.equal(rows[0]!.indexOf('config'), 19, 'the lane starts at the widest row plus five');
   // Source `ee`/`No`: past 40% of the terminal the lane is pushed right, and the name
   // itself is cut to keep a two-cell gap with the source's trailing ellipsis.
@@ -135,8 +135,8 @@ test('a description that does not fit wraps onto a second line under its own col
   assert.equal(rows[1]!.trim().length > 0, true);
   // Source `_o`: the row height is one when the whole description fits beside the lanes.
   const heights = suggestions.map(row => suggestionRowHeight(row, suggestionMaxColumnWidth(suggestions), 100, 2));
-  assert.deepEqual(heights, [1, 1, 1], '100 columns leaves room for every description');
-  assert.deepEqual(suggestionRowOwners(heights), [0, 1, 2], 'one line each, so each line owns its row');
+  assert.deepEqual(heights, [1, 1, 1, 1], '100 columns leaves room for every description');
+  assert.deepEqual(suggestionRowOwners(heights), [0, 1, 2, 3], 'one line each, so each line owns its row');
 });
 
 test('the window is measured in rows, so a wrapped row spends two of its budget', () => {
