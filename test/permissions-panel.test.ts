@@ -22,7 +22,15 @@ import {
 } from '../src/permissions-panel.js';
 import { AUTO_MODE_DENIAL_LIMIT, AutoModeDenialStore, autoModeDenialDisplay, autoModeDenialInputKey,
   denialReasonText, type AutoModeDenial } from '../src/permission-denials.js';
-import type { PermissionUpdate } from '../src/permissions.js';
+import {
+  AUTO_MODE_BUILTINS_TITLE, AUTO_MODE_DOCUMENT_VALUE, AUTO_MODE_INTRO, AUTO_MODE_SECTIONS,
+  AUTO_MODE_SECTION_COLUMN, autoModeBuiltinCounts, autoModeBuiltinRow, autoModeBuiltinRules,
+  autoModeBuiltins, autoModeBuiltinsPaneRequest, autoModeDocumentNote, autoModeDocumentPaneRequest,
+  autoModeEntries, autoModeEntryPaneRequest, autoModeEntryRow, autoModeEntryValue, autoModeRows,
+  autoModeSectionTitle, autoModeShowsBuiltin, autoModeSourceLabel, autoModeSourceTag,
+  type AutoModeEntry,
+} from '../src/auto-mode-panel.js';
+import { permissionLayerSchema, type PermissionLayer, type PermissionUpdate } from '../src/permissions.js';
 
 function rule(toolName: string, ruleContent?: string, source = 'userSettings',
   ruleBehavior: 'allow' | 'deny' | 'ask' = 'allow'): PermissionPanelRule {
@@ -103,8 +111,8 @@ test('the tab table keeps the recovered order and titles', () => {
     ['recent', 'allow', 'ask', 'deny', 'automode', 'workspace']);
   assert.equal(permissionTabTitle('recent'), 'Recently denied');
   assert.equal(permissionTabTitle('automode'), 'Auto mode');
-  assert.deepEqual([...PERMISSION_OFFERED_TABS], ['recent', 'allow', 'ask', 'deny', 'workspace']);
-  assert.equal(permissionTabRow('ask'), ' Recently denied  Allow [Ask] Deny  Workspace ');
+  assert.deepEqual([...PERMISSION_OFFERED_TABS], ['recent', 'allow', 'ask', 'deny', 'automode', 'workspace']);
+  assert.equal(permissionTabRow('ask'), ' Recently denied  Allow [Ask] Deny  Auto mode  Workspace ');
   // The strip follows the caller's list, so a tab the build does not draw stays out.
   assert.equal(permissionTabRow('deny', PERMISSION_RULE_TABS), ' Allow  Ask [Deny]');
 });
@@ -135,14 +143,14 @@ test('the panel body carries the tab row, the intro and the empty state', () => 
   assert.ok(request.message.includes('No deny rules'));
   assert.ok(request.message.includes(PERMISSION_GUIDE));
   assert.deepEqual((request.choices ?? []).map(choice => choice.value),
-    ['tab:recent', 'tab:allow', 'tab:ask', 'tab:deny', 'tab:workspace', PERMISSION_ADD_RULE_VALUE]);
+    ['tab:recent', 'tab:allow', 'tab:ask', 'tab:deny', 'tab:automode', 'tab:workspace', PERMISSION_ADD_RULE_VALUE]);
   assert.equal(request.defaultIndex, 3);
 
   const listed = permissionsPanelRequest({ rules: [rule('Read'), rule('Bash', 'ls *', 'projectSettings')] }, 'allow');
   assert.ok(listed.message.includes('  Bash(ls *)'));
   assert.ok(listed.message.includes('  Read'));
   assert.ok(!listed.message.includes('No allow rules'));
-  assert.deepEqual((listed.choices ?? []).slice(5).map(choice => choice.label), [PERMISSION_ADD_RULE_LABEL, 'Bash(ls *)', 'Read']);
+  assert.deepEqual((listed.choices ?? []).slice(6).map(choice => choice.label), [PERMISSION_ADD_RULE_LABEL, 'Bash(ls *)', 'Read']);
 });
 
 test('the rule pane is read-only for managed, flag and command sources', () => {
@@ -280,13 +288,13 @@ test('the workspace tab draws the intro, the original directory and its rows', (
   assert.ok(request.message.includes('  /w/extras'));
   assert.ok(request.message.includes(PERMISSION_GUIDE));
   // The add row is last here, unlike the rule tabs where it leads.
-  assert.deepEqual((request.choices ?? []).slice(5).map(choice => choice.value), ['/w/extras', PERMISSION_ADD_DIRECTORY_VALUE]);
-  assert.deepEqual((request.choices ?? []).slice(5).map(choice => choice.label), ['/w/extras', PERMISSION_ADD_DIRECTORY_LABEL]);
-  assert.equal(request.defaultIndex, 4);
+  assert.deepEqual((request.choices ?? []).slice(6).map(choice => choice.value), ['/w/extras', PERMISSION_ADD_DIRECTORY_VALUE]);
+  assert.deepEqual((request.choices ?? []).slice(6).map(choice => choice.label), ['/w/extras', PERMISSION_ADD_DIRECTORY_LABEL]);
+  assert.equal(request.defaultIndex, 5);
   // With no directory the tab still offers the add row and shows no empty-state line.
   const empty = permissionsPanelRequest({ rules: [], directories: [], originalCwd: '/w' }, 'workspace');
   assert.ok(!empty.message.includes('No additional working directories'));
-  assert.deepEqual((empty.choices ?? []).slice(5).map(choice => choice.value), [PERMISSION_ADD_DIRECTORY_VALUE]);
+  assert.deepEqual((empty.choices ?? []).slice(6).map(choice => choice.value), [PERMISSION_ADD_DIRECTORY_VALUE]);
 });
 
 test('the workspace labels go through the display fold, then the dedup', () => {
@@ -448,8 +456,8 @@ test('the recent tab draws its header, the empty state and the retry key', () =>
   const listed = permissionsPanelRequest({ rules: [], denials: [denial('rm -rf /w', 'too broad')] }, 'recent');
   assert.ok(listed.message.includes(PERMISSION_RECENT_GUIDE));
   assert.deepEqual(listed.keys, [{ key: PERMISSION_RECENT_RETRY_KEY, label: 'r to retry' }]);
-  assert.deepEqual((listed.choices ?? []).slice(5).map(choice => choice.value), ['0']);
-  assert.equal((listed.choices ?? [])[5]!.description, 'too broad');
+  assert.deepEqual((listed.choices ?? []).slice(6).map(choice => choice.value), ['0']);
+  assert.equal((listed.choices ?? [])[6]!.description, 'too broad');
   assert.equal(listed.defaultIndex, 0);
 });
 
@@ -492,4 +500,278 @@ test('the recent tab dismisses plainly when nothing is marked', async () => {
   // The rule grid is the opening tab only while the denial list is empty.
   assert.equal(await browsePermissions(() => ({ rules: [], denials: [] }),
     async () => script[step++], async () => ({}), {}), PERMISSIONS_DISMISSED);
+});
+
+/* ---------------------------------------------------------------- W229 automode */
+
+function layer(source: string, autoMode?: Record<string, readonly string[]>): PermissionLayer {
+  return permissionLayerSchema.parse({ source, root: '/w', allow: [], deny: [], ask: [],
+    additionalDirectories: [], ...(autoMode === undefined ? {} : { autoMode }) });
+}
+
+test('the automode section and source tables keep the recovered wording', () => {
+  assert.deepEqual([...AUTO_MODE_SECTIONS], ['allow', 'soft_deny', 'hard_deny', 'environment']);
+  assert.equal(autoModeSectionTitle('allow'), 'Soft allow');
+  assert.equal(autoModeSectionTitle('soft_deny'), 'Soft deny');
+  assert.equal(autoModeSectionTitle('hard_deny'), 'Hard deny');
+  assert.equal(autoModeSectionTitle('environment'), 'Environment');
+  assert.equal(autoModeSourceLabel('userSettings'), 'user settings');
+  assert.equal(autoModeSourceLabel('flagSettings'), 'the --settings flag');
+  assert.equal(autoModeSourceLabel('policySettings'), 'managed settings');
+  // `En`: only a source that is not the user's own earns a column tag.
+  assert.equal(autoModeSourceTag('userSettings'), undefined);
+  assert.equal(autoModeSourceTag('flagSettings'), 'flag');
+  assert.equal(autoModeSourceTag('policySettings'), 'org');
+  assert.equal(AUTO_MODE_SECTION_COLUMN, 20);
+  assert.equal(AUTO_MODE_INTRO, 'Extra rules for the auto mode classifier. Rules are plain sentences; '
+    + 'new rules are saved to your user settings.');
+});
+
+test('the built-in rules come out of the classifier document, one entry per bullet', () => {
+  const allow = autoModeBuiltinRules('allow');
+  assert.ok(allow.length > 0);
+  // `Rue` strips the bullet and keeps the rule text whole.
+  assert.ok(allow.every(rule => !rule.startsWith('- ')));
+  assert.ok(allow.some(rule => rule.startsWith('Read-Only Operations')));
+  const counts = autoModeBuiltinCounts();
+  for (const section of AUTO_MODE_SECTIONS) {
+    assert.equal(counts[section], autoModeBuiltinRules(section).length);
+  }
+  assert.equal(counts.allow, allow.length);
+});
+
+test('the entry reader takes the three settings layers, skips the sentinel and marks structure', () => {
+  const layers = [
+    layer('userSettings', { allow: ['Allow reading docs', '$defaults'], environment: ['### Host', '- macOS'] }),
+    layer('projectSettings', { allow: ['Ignored project rule'] }),
+    layer('flagSettings', { soft_deny: ['Flag rule'] }),
+    layer('policySettings', { hard_deny: ['Managed rule'] }),
+  ];
+  const entries = autoModeEntries(layers);
+  assert.deepEqual(entries.map(entry => [entry.section, entry.source, entry.text]), [
+    ['allow', 'userSettings', 'Allow reading docs'],
+    ['environment', 'userSettings', '### Host'],
+    ['environment', 'userSettings', '- macOS'],
+    ['soft_deny', 'flagSettings', 'Flag rule'],
+    ['hard_deny', 'policySettings', 'Managed rule'],
+  ]);
+  // `### ` lines are structure; the sentinel never reaches the list.
+  assert.equal(entries.filter(entry => entry.structure === true).length, 1);
+  assert.ok(!entries.some(entry => entry.text === '$defaults'));
+  // The index is the position inside that layer's section array, so the sentinel leaves a gap.
+  assert.deepEqual(entries.filter(entry => entry.section === 'allow').map(entry => entry.index), [0]);
+  assert.equal(autoModeEntryValue(entries[1]!), 'environment:userSettings:0');
+});
+
+test('the builtins state follows the section, the sentinel and the owning layer', () => {
+  // A section with no values keeps its built-ins on.
+  assert.deepEqual(autoModeBuiltins([layer('userSettings')]).allow, { enabled: true, control: 'empty' });
+  // User values without the sentinel replace the built-ins.
+  assert.deepEqual(autoModeBuiltins([layer('userSettings', { soft_deny: ['mine'] })]).soft_deny,
+    { enabled: false, control: 'user' });
+  // The sentinel splices the built-ins back in.
+  assert.deepEqual(autoModeBuiltins([layer('userSettings', { soft_deny: ['$defaults', 'mine'] })]).soft_deny,
+    { enabled: true, control: 'user' });
+  // A foreign layer's sentinel owns the section, and the theme reports where it comes from.
+  const managed = autoModeBuiltins([layer('policySettings', { hard_deny: ['$defaults'] })]).hard_deny;
+  assert.deepEqual(managed, { enabled: true, control: 'otherSource', source: 'policySettings' });
+  // The environment is single-document: values without the sentinel replace the default.
+  const environment = autoModeBuiltins([layer('userSettings', { environment: ['### Host'] })]).environment;
+  assert.deepEqual(environment, { enabled: false, control: 'otherSource', source: 'userSettings' });
+  assert.deepEqual(autoModeBuiltins([layer('userSettings', { environment: ['$defaults'] })]).environment,
+    { enabled: true, control: 'otherSource', source: 'userSettings' });
+});
+
+test('only a replaced section hides its builtins row, and the environment never draws one', () => {
+  const empty = { enabled: true, control: 'empty' } as const;
+  const user = { enabled: false, control: 'user' } as const;
+  const kept = { enabled: true, control: 'otherSource', source: 'policySettings' } as const;
+  const off = { enabled: false, control: 'otherSource', source: 'userSettings' } as const;
+  assert.equal(autoModeShowsBuiltin('allow', empty), true);
+  assert.equal(autoModeShowsBuiltin('allow', user), true);
+  assert.equal(autoModeShowsBuiltin('allow', kept), true);
+  assert.equal(autoModeShowsBuiltin('allow', off), false);
+  assert.equal(autoModeShowsBuiltin('environment', empty), false);
+  assert.equal(autoModeShowsBuiltin('environment', kept), false);
+});
+
+test('the builtins row carries the mark, the count, the off state and the source', () => {
+  assert.equal(autoModeBuiltinRow('allow', { enabled: true, control: 'empty' }, 17),
+    `${'Soft allow'.padEnd(20)}[x] ${AUTO_MODE_BUILTINS_TITLE} · 17`);
+  assert.equal(autoModeBuiltinRow('soft_deny', { enabled: false, control: 'user' }, 72),
+    `${'Soft deny'.padEnd(20)}[ ] ${AUTO_MODE_BUILTINS_TITLE} · 72 · off`);
+  assert.equal(autoModeBuiltinRow('hard_deny', { enabled: false, control: 'otherSource',
+    source: 'policySettings' }, 1),
+  `${'Hard deny'.padEnd(20)}[ ] ${AUTO_MODE_BUILTINS_TITLE} · 1 · off · from managed settings`);
+});
+
+test('the entry row is the section column, the source tag, then the text', () => {
+  const entry = (over: Partial<AutoModeEntry>): AutoModeEntry =>
+    ({ text: 'rule', section: 'allow', source: 'userSettings', index: 0, ...over });
+  assert.equal(autoModeEntryRow(entry({})), `${'Soft allow'.padEnd(20)}rule`);
+  // `Vm`: the tag is padded to the same 20-cell column, not appended after it.
+  assert.equal(autoModeEntryRow(entry({ section: 'soft_deny', source: 'flagSettings' })),
+    `Soft deny · flag${' '.repeat(20 - 'Soft deny · flag'.length)}rule`);
+  assert.equal(autoModeEntryRow(entry({ section: 'hard_deny', source: 'policySettings' })),
+    `Hard deny · org${' '.repeat(20 - 'Hard deny · org'.length)}rule`);
+  // The text goes through the display fold, so a control character never reaches the row.
+  assert.equal(autoModeEntryRow(entry({ text: 'a\u0000b' })), `${'Soft allow'.padEnd(20)}a\uFFFDb`);
+});
+
+test('the row list puts each section builtins first and the environment as one document row', () => {
+  const layers = [layer('userSettings', {
+    allow: ['Allow docs'], soft_deny: ['$defaults', 'Never push'], environment: ['### Host', '- macOS'],
+  })];
+  const entries = autoModeEntries(layers);
+  const builtins = autoModeBuiltins(layers);
+  const rows = autoModeRows(entries, builtins);
+  // No add row: its writer is W230.
+  assert.ok(!rows.some(row => row.value === 'add-new-rule'));
+  assert.deepEqual(rows.map(row => row.value).slice(0, 2), ['builtins:allow', 'allow:userSettings:0']);
+  assert.deepEqual(rows.map(row => row.value).slice(2, 3), ['builtins:soft_deny']);
+  assert.deepEqual(rows.filter(row => row.value.startsWith('soft_deny:')).map(row => row.value),
+    ['soft_deny:userSettings:1']);
+  // The environment collapses into its document row, whose note names the sources.
+  const document = rows.find(row => row.value === AUTO_MODE_DOCUMENT_VALUE)!;
+  assert.ok(document.label.startsWith('Environment'.padEnd(20)));
+  assert.ok(document.label.includes('Replaces the built-in default · from user settings'));
+  assert.ok(document.description !== undefined && document.description.length > 0);
+  // No environment entry rows survive the collapse.
+  assert.equal(rows.filter(row => row.label.startsWith('Environment'.padEnd(20))).length, 1);
+  assert.equal(autoModeRows(entries, builtins).length, 6);
+});
+
+test('the document note says kept for a foreign copy and default when nothing is configured', () => {
+  const empty = autoModeBuiltins([layer('userSettings')]);
+  assert.equal(autoModeDocumentNote([], empty.environment), 'Built-in default document · enter to view');
+  const foreign = autoModeBuiltins([layer('policySettings', { environment: ['$defaults'] })]);
+  assert.equal(autoModeDocumentNote([], foreign.environment),
+    'Built-in default document · kept by managed settings · enter to view');
+  const configured = [layer('userSettings', { environment: ['### Host', '- macOS'] })];
+  const entries = autoModeEntries(configured);
+  assert.ok(autoModeDocumentNote(entries, autoModeBuiltins(configured).environment)
+    .startsWith('Replaces the built-in default · from user settings'));
+});
+
+test('the automode tab draws the intro, the rows and the document row', () => {
+  const input = { rules: [], autoModeLayers: [layer('userSettings', {
+    soft_deny: ['Never push to main'], environment: ['### Host', '- macOS'],
+  })] };
+  const request = permissionsPanelRequest(input, 'automode');
+  assert.equal(request.title, 'Permissions');
+  assert.ok(request.message.includes('[Auto mode]'));
+  assert.ok(request.message.includes(AUTO_MODE_INTRO));
+  assert.ok(request.message.includes(`  ${'Soft allow'.padEnd(20)}[x] ${AUTO_MODE_BUILTINS_TITLE} · ${autoModeBuiltinCounts().allow}`));
+  assert.ok(request.message.includes(`  ${'Soft deny'.padEnd(20)}[ ] ${AUTO_MODE_BUILTINS_TITLE} · ${autoModeBuiltinCounts().soft_deny} · off`));
+  assert.ok(request.message.includes(`  ${'Soft deny'.padEnd(20)}Never push to main`));
+  assert.ok(request.message.includes(`  ${'Environment'.padEnd(20)}Replaces the built-in default`));
+  assert.ok(request.message.includes(PERMISSION_GUIDE));
+  assert.deepEqual((request.choices ?? []).slice(6).map(choice => choice.value), [
+    'builtins:allow', 'builtins:soft_deny', 'soft_deny:userSettings:0', 'builtins:hard_deny',
+    AUTO_MODE_DOCUMENT_VALUE,
+  ]);
+  assert.equal(request.defaultIndex, 4);
+});
+
+test('the builtins card prints the count line, the rules and the control note', () => {
+  const card = autoModeBuiltinsPaneRequest('allow', { enabled: true, control: 'empty' });
+  assert.equal(card.title, AUTO_MODE_BUILTINS_TITLE);
+  const count = autoModeBuiltinRules('allow').length;
+  assert.ok(card.message.startsWith(`Soft allow · ${count} built-in ${count === 1 ? 'rule' : 'rules'} · in effect`));
+  assert.ok(card.message.includes('- '));
+  assert.ok(card.message.includes('This section has no configured rules, so the built-ins apply. '
+    + 'Add a rule to customize it.'));
+  assert.deepEqual(card.choices, [{ label: 'Back', value: 'back' }]);
+
+  const replaced = autoModeBuiltinsPaneRequest('soft_deny', { enabled: false, control: 'otherSource',
+    source: 'userSettings' });
+  assert.ok(replaced.message.includes('Soft deny · '));
+  assert.ok(replaced.message.includes('· switched off'));
+  assert.ok(replaced.message.includes('Replaced by rules from user settings. This control follows '
+    + 'that configuration; add your own rules to customize the section.'));
+  const kept = autoModeBuiltinsPaneRequest('hard_deny', { enabled: true, control: 'otherSource',
+    source: 'policySettings' });
+  assert.ok(kept.message.includes('Kept on by managed settings — it cannot be switched off here.'));
+});
+
+test('the entry card names the classifier it belongs to and its source', () => {
+  const entry: AutoModeEntry = { text: 'Never push to main', section: 'soft_deny',
+    source: 'userSettings', index: 0 };
+  const card = autoModeEntryPaneRequest(entry);
+  assert.equal(card.title, 'Rule details');
+  assert.ok(card.message.startsWith('Never push to main\n rule for the auto mode classifier · From user settings'));
+  // A user rule with nothing to explain shows no note at all.
+  assert.ok(!card.message.includes('cannot be modified'));
+
+  const structure: AutoModeEntry = { text: '### Host', section: 'environment',
+    source: 'userSettings', index: 0, structure: true };
+  assert.ok(autoModeEntryPaneRequest(structure).message.includes(' section header for the auto mode classifier'));
+  assert.ok(autoModeEntryPaneRequest(structure).message.includes('A section header that organizes the '
+    + 'environment entries below it; it renders into the classifier prompt as written.'));
+  assert.ok(autoModeEntryPaneRequest(structure).message.includes('Edit your settings file directly to restructure.'));
+
+  const flag: AutoModeEntry = { text: 'Flag rule', section: 'allow', source: 'flagSettings', index: 0 };
+  assert.ok(autoModeEntryPaneRequest(flag).message.includes('This rule comes from a read-only source '
+    + '(the --settings flag) and cannot be modified here.'));
+
+  const managed: AutoModeEntry = { text: 'Managed rule', section: 'hard_deny',
+    source: 'policySettings', index: 0 };
+  const managedCard = autoModeEntryPaneRequest(managed);
+  assert.ok(managedCard.message.includes('This rule is configured by managed settings and cannot be modified.'));
+  assert.ok(managedCard.message.includes('Contact your system administrator for more information.'));
+
+  const environment: AutoModeEntry = { text: '- macOS', section: 'environment',
+    source: 'userSettings', index: 1 };
+  assert.ok(autoModeEntryPaneRequest(environment).message.includes('Environment entries describe this '
+    + 'machine and project for the classifier.'));
+});
+
+test('the document card shows the built-in default until a layer replaces it', () => {
+  const empty = autoModeDocumentPaneRequest([], autoModeBuiltins([layer('userSettings')]).environment);
+  assert.equal(empty.title, 'Environment document');
+  assert.ok(empty.message.startsWith('Built-in default document · enter to view\n\n'));
+  assert.ok(empty.message.includes(autoModeBuiltinRules('environment')[0] ?? 'impossible'));
+
+  const entries = autoModeEntries([layer('userSettings', { environment: ['### Host', '- macOS'] })]);
+  const replaced = autoModeDocumentPaneRequest(entries, autoModeBuiltins([layer('userSettings',
+    { environment: ['### Host', '- macOS'] })]).environment);
+  assert.ok(replaced.message.includes('### Host\n- macOS'));
+  assert.ok(!replaced.message.includes('Built-in default document'));
+});
+
+test('the automode panes open from their rows and come back to the tab', async () => {
+  const input = { rules: [], autoModeLayers: [layer('userSettings', {
+    soft_deny: ['Never push to main'], environment: ['### Host', '- macOS'],
+  })] };
+  const seen: string[] = [];
+  const script = [
+    { selected: ['tab:automode'] },
+    { selected: ['builtins:allow'] },
+    { selected: ['back'] },
+    { selected: ['soft_deny:userSettings:0'] },
+    { selected: ['back'] },
+    { selected: [AUTO_MODE_DOCUMENT_VALUE] },
+    { selected: ['back'] },
+    { selected: ['tab:allow'] },
+    undefined,
+  ];
+  let step = 0;
+  const notice = await browsePermissions(() => input, async request => {
+    seen.push(request.title ?? '');
+    return script[step++];
+  }, async () => ({}));
+  assert.equal(notice, 'Permissions dialog dismissed');
+  assert.deepEqual(seen, ['Permissions', 'Permissions', AUTO_MODE_BUILTINS_TITLE, 'Permissions',
+    'Rule details', 'Permissions', 'Environment document', 'Permissions', 'Permissions']);
+  // The Back row returns to the automode tab rather than dismissing the panel.
+  assert.equal(step, 9);
+});
+
+test('an unknown automode row value dismisses the panel', async () => {
+  const input = { rules: [], autoModeLayers: [layer('userSettings')] };
+  const script = [{ selected: ['tab:automode'] }, { selected: ['allow:userSettings:99'] }, undefined];
+  let step = 0;
+  assert.equal(await browsePermissions(() => input, async () => script[step++], async () => ({})),
+    'Permissions dialog dismissed');
+  assert.equal(step, 2);
 });

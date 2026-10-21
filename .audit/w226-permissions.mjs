@@ -53,7 +53,7 @@ escape(); await delay(1000);
 check('Escape dismisses the panel', flat().includes('Permissions dialog dismissed'), flat());
 
 await open();
-await down(4);           // four tab rows (Recently denied first), then the add row
+await down(5);           // five tab rows (Recently denied first), then the add row
 enter(); await delay(1000);
 const input = flat();
 check('the add row opens the rule input', input.includes('Add allow permission rule')
@@ -91,7 +91,7 @@ check('the deny tab lists the deny rules',
 
 escape(); await delay(800);
 await open();
-await down(6);           // four tabs, the add row, Bash(ls *), then Read
+await down(7);           // five tabs, the add row, Bash(ls *), then Read
 enter(); await delay(1000);
 const pane = flat();
 check('selecting a rule asks before deleting it',
