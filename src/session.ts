@@ -11,6 +11,7 @@ import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { HOOK_EVENTS, hooksSchema, type HooksConfig } from './hooks.js';
 import { autoPolicySchema, permissionPolicySchema, emptySessionPermissionUpdates, seedPermissionUpdates, bindPermissionOwner, reloadPermissionState, childPermissionState, type LivePermissionOwner, applyPermissionUpdates, type PermissionUpdate, type PermissionPolicy, type SessionPermissionUpdates } from './permissions.js';
 import { persistPermissionUpdate, permissionSettingsPaths, type PermissionWriteResult, type PermissionIgnoreResult } from './permission-settings.js';
+import { AutoModeDenialStore, permissionRetryMessage } from './permission-denials.js';
 import { observeWorkingDirectory, type WorkingDirectories } from './path-identity.js';
 import { defaultUserDir } from './config.js';
 import type { SkillInfo, ConditionalRule, InstructionSource } from './config.js';
@@ -337,6 +338,8 @@ export class Session {
   permissionUpdates: SessionPermissionUpdates = emptySessionPermissionUpdates();
   readonly permissionWriteResults: PermissionWriteResult[] = [];
   readonly permissionIgnoreResults: PermissionIgnoreResult[] = [];
+  /** The auto-mode classifier's recent refusals, the `/permissions` `recent` tab's list. */
+  readonly autoModeDenials = new AutoModeDenialStore();
   private readonly pendingPermissionWrites = new Set<Promise<void>>();
   private readonly permissionListeners = new Set<() => void>();
 
@@ -613,6 +616,20 @@ export class Session {
     const trackedFiles = new Set(this.fileHistoryValue.trackedFiles);
     if (event.tracked && event.path) trackedFiles.add(event.path);
     this.fileHistoryValue = { trackSequence: this.fileHistoryValue.trackSequence + 1, trackedFiles };
+  }
+
+  /**
+   * Source `gR` (`chunk-fxx7hh8y.js` 91624) and the message `Ets` (`chunk-sfn1dbxq.js` 4502383):
+   * the `recent` tab's retry grants the named commands, and the grant is appended to the
+   * conversation so a re-issued call passes the classifier. The source appends a `system` record
+   * through `applyMessageOp`; this build's conversation holds `Anthropic.MessageParam`s and its
+   * classifier reads a human-origin message as `{user: …}`, so the grant is a user message marked
+   * human rather than non-user content.
+   */
+  appendPermissionRetry(labels: readonly string[]): void {
+    this.append({ kind: 'message',
+      message: { role: 'user', content: permissionRetryMessage(labels) },
+      classifier: { origin: { kind: 'human' } } });
   }
 
   get messages(): Anthropic.MessageParam[] {
