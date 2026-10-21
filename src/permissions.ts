@@ -49,6 +49,8 @@ export const permissionPolicySchema = z.object({
 }).strict();
 
 export type PermissionPolicy = z.infer<typeof permissionPolicySchema>;
+/** One settings layer, derived from the schema the config parses. */
+export type PermissionLayer = NonNullable<PermissionPolicy['layers']>[number];
 export type PermissionDecision = { decision: 'allow' | 'deny' | 'ask'; reason?: string;
   floor?: 'rule' | 'plan' | 'readings' | 'host' | 'interaction' };
 

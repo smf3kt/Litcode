@@ -43,14 +43,13 @@ const open = async () => { child.stdin.write('/permissions\r'); await delay(1200
 
 await delay(2500);
 await open();
-// Rows: four tab rows, then the seeded directory, then the add row.
-await down(3);
+// Rows: five tab rows, then the seeded directory, then the add row.
+await down(4);
 enter(); await delay(1000);
 const tab = flat();
 check('the workspace tab draws its intro, the original directory and the seeded one',
   tab.includes("Claude Code can read files in the workspace, and make edits when auto-accept edits is on.")
-  && tab.includes(`${workspace} (Original working directory)`) && tab.includes(extra)
-  && tab.includes('Add directory'), tab);
+  && tab.includes(`${workspace} (Original working directory)`) && tab.includes(extra), tab);
 
 await down(1);
 enter(); await delay(1000);
@@ -68,7 +67,7 @@ check('the confirm removes the directory and the exit reports it',
 
 await delay(200);
 await open();
-await down(3);
+await down(4);
 enter(); await delay(1000);
 const refreshed = flat();
 check('the refreshed list drops the removed directory',

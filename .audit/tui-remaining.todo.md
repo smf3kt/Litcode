@@ -182,8 +182,20 @@ Next up, scoped but not started:
       `bu`: approved rows leave the store and report `Approved <labels>`, a retry appends
       `Allowed <labels>` as a human-origin message and starts a turn. The panel now opens on
       `recent` whenever the list is non-empty. See `research/ports/W228-recent-denials.md`.
-- [ ] W229 `/permissions`, part four: the `automode` tab (`Bn`, `Added auto mode ${…} rule`) over the
-      local auto-mode state.
+- [x] W229 `/permissions`, part four: the `automode` tab. The intro, the four sections with their
+      builtins rows (the count read out of the classifier's rules document by `SL`/`Rue`), the
+      `· off`/`· from <source>` states `me` derives, the entry rows in `Vm`'s column with their
+      `flag`/`org` tags, the environment document row `hi` and the two read-only cards `Hn`/`Nn`.
+      The add/edit/delete and document-editor writes (`Jr`/`ts`/`os`/`Xr`/`qr`/`Ho`) are W230; the
+      legacy `autoMode.deny` arm is out because this build's classifier does not enforce it. See
+      `research/ports/W229-automode.md`.
+
+Next up, scoped but not started:
+
+- [ ] W230 `/permissions`, part five: the `automode` writes. The settings-document writer `Ho` with
+      its three refusals, the add input and section picker, the edit and delete arms, the builtins
+      toggle `Xr` (which splices or removes `$defaults`), and the environment document editor `qr`
+      with `wl`'s validation. Turns W229's `enter to view` back into the recovered `enter to edit`.
 
 Scoped out:
 

@@ -238,6 +238,9 @@ function permissionPanelInput(session: Session): PermissionPanelInput {
     originalCwd: session.config.workspace,
     // Source `Wr`'s `denials` prop, read from the store at mount.
     denials: session.autoModeDenials.denials,
+    // Source `ve`'s layers: the config keeps the loaded layers with their `autoMode` blocks, which
+    // `effectivePermissionPolicy` rebuilds without. The reader keeps only the three it reads.
+    autoModeLayers: session.config.permissions?.layers ?? [],
   };
 }
 

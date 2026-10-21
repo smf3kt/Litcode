@@ -14,18 +14,22 @@
  * canonical rule key `_` = `JSON.stringify` (`chunk-gyf58rwf.js` 59764). Offsets are zero-based
  * UTF-16 code units.
  *
- * Three surfaces, in the recovered order: the tabbed rule list, the add-rule flow (`pn` then `mn`),
+ * Four surfaces, in the recovered order: the tabbed rule list, the add-rule flow (`pn` then `mn`),
  * and the rule's own pane (`ai`). The rule list is the tab strip's `allow`, `ask` and `deny` tabs;
- * the `workspace` tab is `wn`/`xn`, below, and the `recent` tab is `Rn`/`Wr`, below that. The
- * recovered `automode` tab is a `PERMISSION_TABS` entry this build does not render yet.
+ * the `workspace` tab is `wn`/`xn`, below; the `recent` tab is `Rn`/`Wr`, below that; and the
+ * `automode` tab is `Bn`, in `src/auto-mode-panel.ts`.
  */
 
 import type { PermissionFilePaths } from './permission-settings.js';
-import type { PermissionUpdate } from './permissions.js';
+import type { PermissionLayer, PermissionUpdate } from './permissions.js';
 import type { TerminalPromptRequest } from './terminal.js';
 import { addDirectoryMessage, validateAddDirectory } from './add-dir-command.js';
 import { BASH_RULE_TOOL } from './agent-tool-restrictions.js';
 import { denialReasonText, type AutoModeDenial } from './permission-denials.js';
+import { autoModeBuiltins, autoModeBuiltinsPaneRequest, autoModeDocumentPaneRequest,
+  autoModeEntries, autoModeEntryPaneRequest, autoModeEntryValue, autoModeRows,
+  AUTO_MODE_DOCUMENT_VALUE, AUTO_MODE_INTRO, type AutoModeEntry, type AutoModeSection
+} from './auto-mode-panel.js';
 import { parsePermissionRule, serializePermissionRule } from './permission-state.js';
 import { te } from './tui-symbols.js';
 
@@ -376,8 +380,8 @@ export function permissionDeleteFailedReport(rule: PermissionRuleValue): string 
   return `Could not delete ${permissionRuleText(rule)} — the rule is unchanged`;
 }
 
-/** The tabs this build offers as rows, in the recovered `br` order. `automode` follows. */
-export const PERMISSION_OFFERED_TABS = ['recent', 'allow', 'ask', 'deny', 'workspace'] as const;
+/** The tabs this build offers as rows, in the recovered `br` order at 87975. */
+export const PERMISSION_OFFERED_TABS = ['recent', 'allow', 'ask', 'deny', 'automode', 'workspace'] as const;
 
 /** The tab strip the panel draws above the body, the current tab bracketed. */
 export function permissionTabRow(active: PermissionTabId,
@@ -399,6 +403,8 @@ export interface PermissionPanelInput {
   readonly originalCwd?: string;
   /** Source `Wr`'s `denials` prop: the auto-mode classifier's recent refusals, newest first. */
   readonly denials?: readonly AutoModeDenial[];
+  /** Source `ve`'s settings layers: the `automode` tab reads their `autoMode` blocks. */
+  readonly autoModeLayers?: readonly PermissionLayer[];
 }
 
 /** The `recent` tab's two marks, held by the panel host (`di`'s `approved`/`retry` state). */
@@ -573,6 +579,17 @@ export function permissionsPanelRequest(input: PermissionPanelInput, tab: Permis
   } else if (tab === 'workspace') {
     lines.push(...workspaceTabLines(input), '', PERMISSION_GUIDE);
     choices.push(...workspaceDirectoryRows(input.directories ?? []));
+  } else if (tab === 'automode') {
+    // Source `Bn` at 44266: the intro, then one row per section — its builtins row and its entries,
+    // except the environment, which is its own single document row.
+    const entries = autoModeEntries(input.autoModeLayers ?? []);
+    const builtins = autoModeBuiltins(input.autoModeLayers ?? []);
+    const rows = autoModeRows(entries, builtins);
+    lines.push(AUTO_MODE_INTRO, '');
+    for (const row of rows) lines.push(`  ${row.label}`);
+    lines.push('', PERMISSION_GUIDE);
+    choices.push(...rows.map(row => ({ label: row.label, value: row.value,
+      ...(row.description === undefined ? {} : { description: row.description }) })));
   } else {
     const ruleTab = tab as PermissionRuleTabId;
     const rules = input.rules.filter(rule => rule.ruleBehavior === ruleTab);
@@ -662,17 +679,21 @@ export type PermissionPanelMode =
   | { readonly kind: 'save'; readonly tab: PermissionRuleTabId; readonly rules: readonly PermissionRuleValue[] }
   | { readonly kind: 'rule'; readonly tab: PermissionRuleTabId; readonly rule: PermissionPanelRule }
   | { readonly kind: 'addDirectory'; readonly error?: string }
-  | { readonly kind: 'removeDirectory'; readonly path: string };
+  | { readonly kind: 'removeDirectory'; readonly path: string }
+  | { readonly kind: 'builtins'; readonly section: AutoModeSection }
+  | { readonly kind: 'autoEntry'; readonly entry: AutoModeEntry }
+  | { readonly kind: 'autoDocument' };
 
 /**
  * Source `di`'s `no`/`sn`/`mu`/`Di` handlers: the panel's own navigation. Selecting a rule opens its
  * pane; the add row opens the input, whose submit opens the scope picker, whose pick applies the
  * update. The workspace tab's add row opens `TXe`'s text surface and its directory rows open `xn`'s
- * confirm. The `recent` tab's Enter toggles a row's approval mark and its `r` toggles the retry mark
- * and approves the row; `Esc` there applies the marks (`bu`) instead of dismissing. `Esc` elsewhere
- * steps back one surface and dismisses from a tab — with the workspace tab's own message (`wn`'s
- * `Workspace dialog dismissed`). The input is re-read on every surface, which is how the recovered
- * `U0(T)`/`Bc(T)`/`xm(T)` see a rule the panel just added.
+ * confirm. The `automode` tab's builtins rows open `Hn`, its entry rows open `Nn` and its environment
+ * row opens the document. The `recent` tab's Enter toggles a row's approval mark and its `r` toggles
+ * the retry mark and approves the row; `Esc` there applies the marks (`bu`) instead of dismissing.
+ * `Esc` elsewhere steps back one surface and dismisses from a tab — with the workspace tab's own
+ * message (`wn`'s `Workspace dialog dismissed`). The input is re-read on every surface, which is how
+ * the recovered `U0(T)`/`Bc(T)`/`xm(T)` see a rule the panel just added.
  */
 export async function browsePermissions(readInput: () => PermissionPanelInput,
   read: (request: TerminalPromptRequest) => Promise<PermissionPanelAnswer>,
@@ -703,8 +724,14 @@ export async function browsePermissions(readInput: () => PermissionPanelInput,
       : mode.kind === 'add' ? permissionAddRuleRequest(mode.tab)
         : mode.kind === 'save' ? permissionSaveRequest(mode.tab, mode.rules, input)
           : mode.kind === 'rule' ? permissionRulePaneRequest(mode.rule)
-            : mode.kind === 'addDirectory' ? workspaceAddRequest(mode.error)
-              : workspaceRemoveRequest(mode.path);
+            : mode.kind === 'builtins' ? autoModeBuiltinsPaneRequest(mode.section,
+              autoModeBuiltins(input.autoModeLayers ?? [])[mode.section])
+              : mode.kind === 'autoEntry' ? autoModeEntryPaneRequest(mode.entry)
+                : mode.kind === 'autoDocument' ? autoModeDocumentPaneRequest(
+                  autoModeEntries(input.autoModeLayers ?? []),
+                  autoModeBuiltins(input.autoModeLayers ?? []).environment)
+                  : mode.kind === 'addDirectory' ? workspaceAddRequest(mode.error)
+                    : workspaceRemoveRequest(mode.path);
     const answer = await read(request);
     if (answer === undefined) {
       if (mode.kind !== 'tab') { mode = { kind: 'tab', tab }; continue; }
@@ -759,6 +786,19 @@ export async function browsePermissions(readInput: () => PermissionPanelInput,
         if (input.directories?.includes(value) === true) { mode = { kind: 'removeDirectory', path: value }; continue; }
         return finish();
       }
+      if (mode.tab === 'automode') {
+        // Source `Bn`'s dispatch at 48450: the builtins and document values first, then the entry map.
+        if (value.startsWith('builtins:')) {
+          mode = { kind: 'builtins', section: value.slice('builtins:'.length) as AutoModeSection };
+          continue;
+        }
+        if (value === AUTO_MODE_DOCUMENT_VALUE) { mode = { kind: 'autoDocument' }; continue; }
+        const entry = autoModeEntries(input.autoModeLayers ?? [])
+          .find(candidate => autoModeEntryValue(candidate) === value);
+        if (entry === undefined) return finish();
+        mode = { kind: 'autoEntry', entry };
+        continue;
+      }
       if (value === PERMISSION_ADD_RULE_VALUE) {
         mode = { kind: 'add', tab: mode.tab as PermissionRuleTabId };
         continue;
@@ -768,6 +808,12 @@ export async function browsePermissions(readInput: () => PermissionPanelInput,
         .find(rule => rule.ruleBehavior === ruleTab && permissionRuleKey(rule) === value);
       if (chosen === undefined) return finish();
       mode = { kind: 'rule', tab: ruleTab, rule: chosen };
+      continue;
+    }
+    if (mode.kind === 'builtins' || mode.kind === 'autoEntry' || mode.kind === 'autoDocument') {
+      // Source `Hn`/`Nn`'s Cancel row and the document's own exit: every automode pane returns
+      // to its tab, which is the only surface that opened it.
+      mode = { kind: 'tab', tab: 'automode' };
       continue;
     }
     if (mode.kind === 'addDirectory') {
