@@ -85,11 +85,15 @@ const SKILLS_HEADING = '\n\n# Available skills\n';
 
 /** The catalog section `buildSystem` appends, or an empty string when none applies. */
 export function skillsSection(skills: readonly SkillInfo[]): string {
-  const invocable = skills.filter((skill) => !skill.disableModelInvocation);
+  // `$C`/`_5` (`chunk-sfn1dbxq.js` 401991): `user-invocable-only` and `off` are
+  // out of the model catalog; `name-only` keeps the row and drops its description.
+  const invocable = skills.filter((skill) => !skill.disableModelInvocation &&
+    skill.mode !== 'user-invocable-only' && skill.mode !== 'off');
   if (invocable.length === 0) return '';
-  const lines = invocable.map(
-    (skill) => `- ${skill.name}${skill.aliases?.length ? ` (aliases: ${skill.aliases.join(", ")})` : ""}: ${skill.description === '' ? '(no description)' : skill.description}`,
-  );
+  const lines = invocable.map((skill) => {
+    const name = `- ${skill.name}${skill.aliases?.length ? ` (aliases: ${skill.aliases.join(", ")})` : ""}`;
+    return skill.mode === 'name-only' ? name : `${name}: ${skill.description === '' ? '(no description)' : skill.description}`;
+  });
   return `${SKILLS_HEADING}Call the \`${SKILL_TOOL_NAME}\` tool with a skill \`name\` (and optional \`args\`) to load its instructions.\n` +
     lines.join('\n');
 }

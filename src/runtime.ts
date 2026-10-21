@@ -310,6 +310,7 @@ export function findSkill(skills: readonly SkillInfo[] | undefined, name: string
  */
 export function expandUserSkill(skill: SkillInfo, args: string, config?: SessionConfig): string {
   if (!skill.userInvocable) throw new Error(`Skill "${skill.name}" is not user-invocable`);
+  if (skill.mode === 'off') throw new Error(`Skill "${skill.name}" is turned off`);
   return expandSkill(skill, args, { quotedArguments: config?.features?.skillQuotedArguments === true, appendUnusedArguments: config?.features?.skillArgumentFallback === true, extendedArguments: config?.features?.skillExtendedArguments === true });
 }
 
@@ -355,7 +356,7 @@ export function createSkillTool(config: SessionConfig, invoke?: (skill: SkillInf
       refreshPluginComponents(config);
       const skill = findSkill(config.skills, name);
       if (!skill) throw new Error(`Unknown skill: ${name}`);
-      if (skill.disableModelInvocation) {
+      if (skill.disableModelInvocation || skill.mode === 'user-invocable-only' || skill.mode === 'off') {
         throw new Error(`Skill "${name}" is not model-invocable; ask the user to run it`);
       }
       const text = invoke && skillRequiresExecution(skill, config) ? await invoke(skill, args, context) : expandSkill(skill, args, { quotedArguments: config.features?.skillQuotedArguments === true, appendUnusedArguments: config.features?.skillArgumentFallback === true, extendedArguments: config.features?.skillExtendedArguments === true });

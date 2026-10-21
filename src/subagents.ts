@@ -91,7 +91,9 @@ export function preloadAgentSkills(type: AgentTypeInfo | undefined, skills: read
     if (!skill && type?.name.includes(':')) skill = skills?.find(candidate => candidate.name === `${type.name.slice(0, type.name.lastIndexOf(':'))}:${name}`);
     if (!skill) skill = skills?.find(candidate => candidate.name.endsWith(`:${name}`));
     if (!skill) { report?.(`[Agent: ${agentName}] Warning: Skill '${name}' specified in frontmatter was not found`); continue; }
-    if (skill.disableModelInvocation) { report?.(`[Agent: ${agentName}] Warning: Skill '${name}' is disabled by policy`); continue; }
+    if (skill.disableModelInvocation || skill.mode === 'user-invocable-only' || skill.mode === 'off') {
+      report?.(`[Agent: ${agentName}] Warning: Skill '${name}' is disabled by policy`); continue;
+    }
     found.set(name, skill);
   }
   const messages: Anthropic.MessageParam[] = [];
