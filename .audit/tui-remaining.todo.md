@@ -211,9 +211,12 @@ Next up, scoped but not started:
       slider 18/18, argument path 14/14 and model picker 11/11; independent review accepted.
       See `research/ports/W231-effort-slider.md`.
 
-- [ ] W232 candidate: model-picker search and focus/reset behavior over the local model set.
-      Read the recovered uBe/ys and select/input owner bodies before changing product behavior.
-      No account-backed catalogue work; keep the existing model/effort save scope.
+- [x] W232 model picker list. Gse canEnter=false closes the preliminary search candidate.
+      Ported numbered current/focus rows, wrap/page/Home/End, numeric/pointer acceptance,
+      wheel viewport, measured narrow rows, explicit effort touch and same-model default save.
+      Check/build, 135/135 related, compiled picker 23/23 at 90/20/24 columns, prior model 11/11
+      and slider 18/18 pass. Independent narrow hidden-focus defect repaired and rechecked.
+      See `research/ports/W232-model-picker.md`. Account-backed catalogue stays excluded.
 
 Scoped out:
 

@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
-import { MODEL_PICKER_TITLE, modelPickerCaption, modelPickerEffortFor, modelPickerEffortLine,
+import { ModelPicker, MODEL_PICKER_TITLE, modelPickerCaption, modelPickerEffortLine,
   modelPickerEffortStep, modelPickerGuide, modelPickerRowDescription } from '../src/model-picker.js';
 
 test('the picker takes the recovered title, caption and guide', () => {
@@ -34,10 +34,17 @@ test('only the row already in use carries a synthesized description', () => {
   assert.equal(modelPickerRowDescription('gateway/model-b', 'gateway/model-a'), undefined);
 });
 
-test('the effort is passed only when the axis moved onto a level', () => {
-  assert.equal(modelPickerEffortFor('high', undefined), undefined);
-  assert.equal(modelPickerEffortFor('high', 'high'), undefined);
-  assert.equal(modelPickerEffortFor('high', 'low'), 'low');
-  assert.equal(modelPickerEffortFor('medium', 'max'), 'max');
-  assert.equal(modelPickerEffortFor('high', 'extreme'), undefined);
+test('manual effort survives focus changes, endpoint clamps and a round trip to the initial level', () => {
+  const options = [{ label: 'One', value: 'one' }, { label: 'Two', value: 'two' }];
+  const picker = new ModelPicker(options, { current: 'one' });
+  assert.deepEqual(picker.accept(), { selected: ['one'] });
+  picker.move(1);
+  assert.deepEqual(picker.accept(), { selected: ['two'] });
+  picker.adjust('right'); picker.adjust('left'); picker.move(-1);
+  assert.deepEqual(picker.accept(), { selected: ['one'], adjusted: 'high' });
+  picker.adjust('left'); picker.adjust('left'); picker.adjust('left'); picker.move(1);
+  assert.deepEqual(picker.accept(true), { selected: ['two'], adjusted: 'low', key: 's' });
+  const maximum = new ModelPicker(options, { current: 'one', effort: 'max' });
+  maximum.adjust('right');
+  assert.deepEqual(maximum.accept(false, 1), { selected: ['two'], adjusted: 'max' });
 });

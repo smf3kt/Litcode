@@ -1,5 +1,7 @@
 # Research and implementation status
 
+2026-10-21 W232 model picker list verified locally: numbered current/focus rows, navigation/window, numeric/pointer acceptance, manual effort state and same-model default promotion. Check/build, 135 related regressions, compiled picker 23/23 including 20/24-column clicks, prior model 11/11 and slider 18/18 pass; independent narrow-layout finding resolved. Search is source-gated off. Source and identity in [W232](ports/W232-model-picker.md).
+
 2026-10-21 W231 standalone effort slider verified locally: source geometry/styles, arrow preview, Enter/default and s/session scope, cancel/restart and effective environment effort on actual requests. Check/build, 264 related regressions, compiled slider 18/18, argument path 14/14 and model picker 11/11 pass; independent review accepted. Source and identity in [W231](ports/W231-effort-slider.md).
 
 2026-10-21 W230 Auto mode editing verified locally: add/edit/delete, builtin toggles and environment editor, with conflict recovery and recent-denial continuity. Check/build and compiled CLI 20/20 pass; source and identity in [W230](ports/W230-automode-writes.md).

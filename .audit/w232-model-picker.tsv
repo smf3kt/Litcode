@@ -1,0 +1,8 @@
+step	decision	evidence	outcome
+source	Keep search closed because canEnter=false gates initialization and entry	research/ports/W232-model-picker.md	verified
+shape	One modal owner with implicit or adjusted effort	ModelPicker and TerminalPromptRequest.modelPicker	implemented
+navigation	Preserve source wrap, page positioning and direct numeric acceptance	lc/tl/Oi source ranges and actual terminal regression	verified
+review	Reserve measured list space before transcript after narrow hidden-focus finding	independent 20x24/24x24 high/max and wrapped-row click probes	resolved
+validation	Use actual compiled CLI, settings bytes, hook payloads and request fields	w232-cli-9rN7N9/result.json; 135 related regressions	passed
+identity	Bind final source, tests and build	78181883e2891c964285e3ee329c02e2177db5bfadad8eb6fcf3afaf67b7e88e	verified
+publication	Keep changes local on work/w43-choice-preview	standing user instruction	no push
