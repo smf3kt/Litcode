@@ -58,6 +58,8 @@ import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
   autoCompactStatus, autoCompactUnchangedMessage, resolveAutoCompactWindow } from './autocompact-command.js';
 import { parseSessionColor, sessionColorArgumentHint, sessionColorMessage } from './session-color.js';
 import { keybindingsFilePath, keybindingsReport, writeKeybindingsTemplate } from './keybindings-command.js';
+import { MEMORY_CANCELLED, MEMORY_TITLE, memoryOpenFailedMessage, memoryOpenedMessage,
+  memoryPanelReport, memoryPanelRows, openMemoryFile, type MemoryPanelRow } from './memory-panel.js';
 import { SCROLL_SPEED_ENV, SCROLL_SPEED_UNCHANGED, applyStoredEnvironment, autoScrollSpeed,
   currentScrollSpeed, saveScrollSpeedSetting, scrollSpeedAvailable, scrollSpeedDetail,
   scrollSpeedNotch, scrollSpeedNotchCount, scrollSpeedReset, scrollSpeedRuler, scrollSpeedSaved,
@@ -135,6 +137,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /autocompact [auto|<tokens>]  Set how full the context gets before auto-summarizing
 /color ${sessionColorArgumentHint()}  Set the prompt bar color for this session
 /keybindings  Open your keyboard shortcuts file
+/memory     Edit instruction files in your editor
 /scroll-speed  Adjust mouse wheel scroll speed
 /tui [default|fullscreen]  Set the terminal UI renderer
 /focus [on|off]  Toggle focus view: just your prompt, summary, and response
@@ -1418,6 +1421,40 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             ? await terminal.openFile(file, options.signal, session.config.workspace)
             : await openExternalFile(file, undefined, options.signal, session.config.workspace);
           output.write(`${keybindingsReport(file, created, opened.error)}\n`);
+          continue;
+        }
+        if (prompt === '/memory' || prompt.startsWith('/memory ')) {
+          // `kn` (chunk-xmmahshv.js 45274): a Memory panel over the instruction files the
+          // session's loader reads, with the absent user and project files listed so choosing
+          // one creates it, then the file is handed to $VISUAL/$EDITOR. Re-read the config so a
+          // file added by `/reload` or a rules edit is listed here; the panel itself never edits
+          // content.
+          const userDir = session.config.configSources?.userDir ?? defaultUserDir();
+          let rows: MemoryPanelRow[];
+          try {
+            const loaded = loadProjectConfig(session.config.workspace, { userDir });
+            rows = memoryPanelRows({
+              instructions: [...loaded.instructions,
+                ...(loaded.conditionalRules ?? []).flatMap(rule => [rule, ...(rule.imports ?? [])])],
+              workspace: session.config.workspace,
+              userDir,
+            });
+          } catch (error) {
+            output.write(`Couldn't read instruction files: ${(error as Error).message}\n`);
+            continue;
+          }
+          if (!terminal?.prompt) { output.write(`${memoryPanelReport(rows)}\n`); continue; }
+          const answer = await withTurn(signal => readDialog({ title: MEMORY_TITLE, message: '',
+            choices: rows.map(row => ({ label: row.label, value: row.path, description: row.description })) }, signal));
+          const file = answer?.selected[0];
+          if (file === undefined) { output.write(`${MEMORY_CANCELLED}\n`); continue; }
+          const opened = await openMemoryFile(file, options.signal, session.config.workspace,
+            (target, signal, workspace) => terminal?.openFile
+              ? terminal.openFile(target, signal, workspace)
+              : openExternalFile(target, undefined, signal, workspace),
+            () => externalEditorName() !== undefined);
+          output.write(`${opened.ok ? memoryOpenedMessage(file, session.config.workspace)
+            : memoryOpenFailedMessage(file, session.config.workspace)}\n`);
           continue;
         }
         if (prompt === '/scroll-speed') {
