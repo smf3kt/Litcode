@@ -40,7 +40,7 @@ export type EffortLevel = typeof EFFORT_LEVELS[number];
 const EFFORT_ALIASES: Record<string, EffortLevel> = { med: 'medium' };
 
 /** Source `V$` in `chunk-3cynezh1.js` 29967, interpolated into the `max` description. */
-const MAX_EFFORT_NOTE = 'May use excessive tokens resulting in long response times or overthinking. ' +
+export const MAX_EFFORT_NOTE = 'May use excessive tokens resulting in long response times or overthinking. ' +
   'Use sparingly for the hardest tasks.';
 
 /** Source `F` in `chunk-0q6c90q6.js` 1011: the short descriptions `yhn` lists. */
@@ -144,7 +144,9 @@ export function effortOverride(env: NodeJS.ProcessEnv = process.env): { raw: str
   if (raw === undefined) return null;
   const normalised = raw.trim().toLowerCase();
   if (normalised === 'unset' || normalised === 'auto') return { raw, level: null };
-  return { raw, level: parseEffortLevel(normalised) ?? null };
+  // z1/Y0, 9vcaezw1 [8790,9267), UTF-16: invalid or empty values have no override.
+  const level = parseEffortLevel(normalised);
+  return level === undefined ? null : { raw, level };
 }
 
 /** Source `qC` in `chunk-9vcaezw1.js` 14204: the level `auto` resolves to, absent a model table. */

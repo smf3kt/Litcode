@@ -273,6 +273,8 @@ interface ActiveDialog {
   optionTouched: boolean;
   /** The request's `adjust` axis position; only read when the request has one. */
   adjustIndex: number;
+  /** Pt/he's clock belongs to this modal and is cleared by finish. */
+  adjustClock?: { startedAt: number; timer: ReturnType<typeof setInterval> };
   finish(answer?: TerminalPromptAnswer): void;
 }
 
@@ -1160,6 +1162,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const finish = (answer?: TerminalPromptAnswer) => {
         if (settled) return;
         settled = true; signal.removeEventListener('abort', cancelled);
+        if (dialog.adjustClock !== undefined) clearInterval(dialog.adjustClock.timer);
         // Source removal is in-memory only; this host also unlinks the private
         // attachments it captured for the dialog.
         dialog.imageCapture?.abort();
@@ -1190,6 +1193,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         notesEditing: false, optionTouched: false, images: new QuestionImages(),
         adjustIndex: Math.max(0, snapshot.adjust?.values.indexOf(snapshot.adjust.initial) ?? 0), finish };
       this.dialog = dialog;
+      // Pt/he, 76jkr621 [21105,21789), UTF-16: repaint from a modal-owned 100 ms clock.
+      if (snapshot.adjust?.kind === 'slider') {
+        const timer = setInterval(() => {
+          if (this.dialog === dialog && !this.prefersReducedMotion) this.render();
+        }, 100);
+        timer.unref?.();
+        dialog.adjustClock = { startedAt: Date.now(), timer };
+      }
       this.screen = 'dialog'; signal.addEventListener('abort', cancelled, { once: true });
       if (signal.aborted) cancelled();
       else { this.startAfk(dialog, snapshot); this.previewDialogTheme(); this.render(); }
@@ -1921,6 +1932,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // The review page owns its keys before any per-question handling, because
     // it has no choices of its own and would otherwise fall into text entry.
     if (this.handleReviewAction(dialog, action, command ?? '')) return;
+    const adjust = dialog.request.adjust;
+    // It, 76jkr621 [22174,30123), UTF-16: the slider owns only its axis and accept keys.
+    if (adjust?.kind === 'slider') {
+      if (command === 'left' || command === 'right') {
+        const delta = command === 'left' ? -1 : 1;
+        dialog.adjustIndex = Math.max(0, Math.min(adjust.values.length - 1, dialog.adjustIndex + delta));
+        this.render();
+      } else if (command === 'submit') this.advanceDialog(dialog, { selected: [] });
+      else {
+        const keyed = dialog.request.keys?.find(entry => action.type === 'insert' && action.text === entry.key);
+        if (keyed !== undefined) this.advanceDialog(dialog, { selected: [], key: keyed.key });
+      }
+      return;
+    }
     const step = this.dialogStep(dialog);
     const choices = step?.choices ?? [];
     const clarification = this.clarificationIndex(dialog);
@@ -1933,7 +1958,6 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const textEntry = choices.length === 0 || dialog.index === choices.length;
     // The `adjust` axis moves with the arrows and never moves the selection, so it runs
     // before the list navigation and only while a row holds the focus (`KHe` clamps).
-    const adjust = dialog.request.adjust;
     if (adjust !== undefined && !textEntry && (command === 'left' || command === 'right')) {
       const delta = command === 'left' ? -1 : 1;
       dialog.adjustIndex = Math.max(0, Math.min(adjust.values.length - 1, dialog.adjustIndex + delta));
@@ -2762,6 +2786,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // the dialog frame trades one content row for it.
     const countdown = this.dialogCountdown();
     const height = Math.max(0, bodyRows);
+    const axis = dialog.request.adjust;
+    // It, 76jkr621 [22174,30123), UTF-16: draw the standalone scale without a choice/input row.
+    if (axis?.kind === 'slider') {
+      this.documentRenderer ??= new TuiDocumentRenderer();
+      const frame = Math.floor((Date.now() - (dialog.adjustClock?.startedAt ?? Date.now())) / 100);
+      const scale = this.documentRenderer.renderElement(
+        axis.render(axis.values[dialog.adjustIndex] ?? axis.initial, frame, this.prefersReducedMotion === true), columns,
+        { theme: this.theme.current, themeOverrides: this.theme.overrides });
+      const visible = ['', ...scale.map(row => row.ansi)].slice(0, height);
+      while (visible.length < height) visible.push('');
+      return [pad(oneLine(title ?? 'Interaction'), columns), ...visible, SEPARATOR.repeat(columns), '',
+        pad(dialog.error ?? axis.guide ?? 'Enter confirm / Esc cancel', columns),
+        ...(countdown === undefined ? [] : [pad(countdown, columns)])];
+    }
     const content: string[] = [];
     if (reviewing) {
       // Recovered page: a warning while questions are unanswered, then each
@@ -2865,7 +2903,6 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
           : dialog.request.adjust?.guide ?? 'Enter next / Esc cancel / PgUp/PgDn';
     // The axis line sits under the selection, the way the recovered picker draws its
     // effort line between the list and the key guide.
-    const axis = dialog.request.adjust;
     const axisLine = axis === undefined ? undefined : axis.label(axis.values[dialog.adjustIndex] ?? axis.initial);
     return [oneLine(title ?? 'Interaction'), ...visible, SEPARATOR.repeat(columns),
       readOnly && textEntry ? '' : textEntry || dialog.notesEditing ? answer : dialog.index === clarification ? 'Chat about this'
@@ -2959,7 +2996,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (this.dialog.notesEditing) {
         const cursor = layoutInput(this.dialog.notesEditor, columns - 2, 1).cursorColumn + 2;
         this.drawFrame(lines, columns, rows, answerRow, cursor, true);
-      } else if (this.dialog.request.readOnly === true) this.drawFrame(lines, columns, rows, answerRow, 0, false);
+      } else if (this.dialog.request.readOnly === true || this.dialog.request.adjust?.kind === 'slider')
+        this.drawFrame(lines, columns, rows, answerRow, 0, false);
       else if (reviewing || !choices.length || this.dialog.index === choices.length) {
         const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;
         this.drawFrame(lines, columns, rows, answerRow, cursor, true);

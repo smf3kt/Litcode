@@ -27,6 +27,7 @@ import type { ClassicPermissionRequestResult } from './plugin-chain-classic-rais
 import { activateTouchedSkills, discoverTouchedSkills, reloadSkills, refreshPluginComponents } from './skill-catalog.js';
 import { STRUCTURED_OUTPUT_NUDGE } from './structured-output.js';
 import { selectedDiffMessage, type DiffSelection } from './diff-selection.js';
+import { effortOverride } from './effort-command.js';
 
 export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
 Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
@@ -179,10 +180,14 @@ export class Agent {
 
   private request(messages = this.session.messages): ModelRequest {
     const c = this.session.config;
+    // cln/w0e, sfn1dbxq [2780635,2780743)/[2752428,2752586), UTF-16:
+    // resolve kE's environment precedence at the wire boundary, keeping the session choice.
+    const override = effortOverride();
+    const effort = override === null ? c.effort : override.level ?? undefined;
     const memoryEnabled = c.autoMemory === true && c.features?.memory !== false && this.tools.has("memory_list") && this.tools.has("memory_read");
     return { model: c.model, system: c.system + (memoryEnabled ? `\n\n${AUTO_MEMORY_INSTRUCTIONS}` : ""), tools: structuredClone(c.tools), messages,
       max_tokens: c.maxTokens, thinking: { type: c.thinking ? 'adaptive' : 'disabled' }, cache_control: { type: 'ephemeral' },
-      ...(c.effort ? { output_config: { effort: c.effort } } : {}) };
+      ...(effort === undefined ? {} : { output_config: { effort } }) };
   }
 
   private result(id: string, content: ToolResult['content'], error = false): ToolResult {

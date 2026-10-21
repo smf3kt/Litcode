@@ -73,20 +73,18 @@ const stored = () => fs.existsSync(settingsFile) ? JSON.parse(fs.readFileSync(se
 await delay(2000);
 child.stdin.write('/effort\r'); await delay(1500);
 const picker = screenNow().join('\n');
-check('a bare /effort in a terminal opens the effort chooser', picker.includes('\nEffort\n')
-  && picker.includes('Faster  ← →  Smarter'));
-check('the chooser preselects the level auto resolves to', picker.includes('Current: auto (high)')
-  && picker.includes('>     ● high'));
-check('the chooser carries every level with its glyph and description',
-  ['○ low', '◐ medium', '● high', '◉ xhigh', '◈ max']
-    .every(row => picker.includes(row))
-  && picker.includes('Comprehensive implementation with extensive testing and documentation'));
+check('a bare /effort in a terminal opens the effort slider', picker.includes('\nEffort\n')
+  && picker.includes('Faster                             Smarter'));
+check('the slider preselects the level auto resolves to', picker.includes('─'.repeat(20) + '▲' + '─'.repeat(21)));
+check('the slider carries every level and its adjustment guide',
+  picker.includes('low     medium     high     xhigh      max')
+  && picker.includes('Left/Right adjust / Enter confirm / s for this session only / Esc cancel'));
 snap('after bare /effort');
 
 child.stdin.write('\u001b'); await delay(1500);
 const cancelled = screenNow().join('\n');
-check('Escape closes the chooser and leaves the level alone',
-  !cancelled.includes('Faster  ← →  Smarter') && cancelled.includes('Effort selection c'));
+check('Escape closes the slider and leaves the level alone',
+  !cancelled.includes('Faster                             Smarter') && cancelled.includes('Effort selection c'));
 
 child.stdin.write('/effort help\r'); await delay(1200);
 const usage = screenNow().join('\n');

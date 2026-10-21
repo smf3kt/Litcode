@@ -1252,19 +1252,15 @@ export interface TerminalPromptRequest {
    */
   keys?: readonly TerminalPromptKey[];
 }
-export interface TerminalPromptAdjust {
-  /** The values the axis moves through, in order. */
+export type TerminalPromptAdjust = {
   values: readonly string[];
-  /** The value the axis starts on. */
   initial: string;
-  /** The line drawn under the selection for the current value. */
-  label(value: string): string;
-  /**
-   * The guide line under the selection. Present replaces the built-in
-   * `Enter next / Esc cancel` guide, because an axis dialog names its own keys.
-   */
   guide?: string;
-}
+} & (
+  | { kind: 'line'; label(value: string): string }
+  /** It, chunk-76jkr621.js [22174,30123), UTF-16: a standalone axis owns the modal body. */
+  | { kind: 'slider'; render(value: string, frame: number, reducedMotion: boolean): unknown }
+);
 export interface TerminalPromptKey {
   /** The character that triggers it. */
   key: string;
