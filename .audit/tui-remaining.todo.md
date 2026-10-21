@@ -362,6 +362,16 @@ Next up, scoped but not started:
       W233 35/35, W246/W247 12/12, focused 31/31 and check/build pass; full suite 3000/3001
       with the CLI-effort failure reproduced at HEAD.
       See `research/ports/W248-config-thinking.md`.
+- [x] W249 review follow-ups for W246/W247. The second reviewer found the host confirmation
+      focused No against `confirm:yes` enter, the effort write awaited against unawaited `X9`,
+      `dk`'s identity missing the permission mode, and the digest relaxation reaching the
+      first-bind guard. Fixed with a Yes-focused confirmation, an unawaited effort write with a
+      success-only `modelSettings` mirror, a model-plus-mode identity, and a full/live digest
+      split plus a first-bind rejection test. Citations corrected (lL 882215, FL 895326,
+      w8t 863360, confirm keys 626232/626467). Compiled 12/12 at identity `bf65a3e8…`
+      (bare Enter approves), W243–W245/W247/W248 rerun 9/9, 10/10, 10/10, 12/12, 9/9,
+      focused 30/30 and check/build pass; full suite 3001/3002 with the CLI-effort failure.
+      See `research/ports/W249-review-followups.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.

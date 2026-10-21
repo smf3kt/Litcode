@@ -481,17 +481,23 @@ export async function createRuntime(
   const persistence = subscriptionPersistence || taskPersistence;
   let taskJournalFailed = false;
   const recoveringTasks = new Set<string>();
-  // Tool schemas are pinned after construction; connected and host settings must still match.
   // The live model/effort/thinking fields are request-only (`w9`, chunk-24k7d6mw.js 894465;
   // `MOe`, chunk-0q6c90q6.js 6286; `kp`, chunk-24k7d6mw.js 898567) and never change an MCP
   // connection's identity, so a chord mid-turn must not make the journal owner look wrong.
+  // Only the same-session rebind may ignore them; a first bind still compares the full digest,
+  // otherwise a second session with another model could adopt a connection built for the first.
   const connectionConfigDigest = (current: SessionConfig): string => {
+    const { tools: _tools, ...settings } = current;
+    return fingerprintOf({ ...settings, tools: [] });
+  };
+  const liveConfigDigest = (current: SessionConfig): string => {
     const { tools: _tools, ...settings } = current;
     return fingerprintOf({ ...settings, tools: [],
       model: undefined, modelSettings: undefined, effort: undefined, effortSelection: undefined,
       thinking: undefined });
   };
   const initialConfigDigest = connectionConfigDigest(config);
+  const initialLiveDigest = liveConfigDigest(config);
   const base = createTools();
   const journalOwnedMcp = new Set(['mcp_resource_subscribe', 'mcp_resource_unsubscribe', 'mcp_resource_notifications', 'mcp_task_recover']);
   const scopedMcpTool = (tool: ToolDefinition): ToolDefinition => persistence && (journalOwnedMcp.has(tool.schema.name) || taskPersistence) ? {
@@ -1032,7 +1038,7 @@ export async function createRuntime(
         bindingController.signal.throwIfAborted();
         if (taskJournalFailed) throw new Error('MCP task journal requires reconciliation');
         if (!alreadyBound || boundSession?.id !== owner || boundSession.config.workspace !== current.workspace ||
-          connectionConfigDigest(current) !== initialConfigDigest) throw new Error('MCP operation requires the bound session journal owner');
+          liveConfigDigest(current) !== initialLiveDigest) throw new Error('MCP operation requires the bound session journal owner');
         if (taskPersistence && (tool.schema.name.startsWith('mcp__') || tool.schema.name === 'mcp_tool_call') && savedMcpTasks(boundSession).length >= 128) throw new Error('Persistent MCP task journal limit reached before tool execution');
       };
       let child: ToolDefinition | undefined;
@@ -1111,7 +1117,7 @@ export async function createRuntime(
           if (closed || signal.aborted) throw new Error('Runtime is closed');
           if (!persistence && !persistsSubscriptions(session.config) && !persistsMcpTasks(session)) return runtime;
           if (alreadyBound && boundSession?.id === session.id && boundSession.file === session.file) {
-            if (connectionConfigDigest(session.config) !== initialConfigDigest) throw new Error('Runtime session configuration differs from its connected settings');
+            if (liveConfigDigest(session.config) !== initialLiveDigest) throw new Error('Runtime session configuration differs from its connected settings');
             bindingController.signal.throwIfAborted();
             boundSession = session; config = session.config;
             return runtime;

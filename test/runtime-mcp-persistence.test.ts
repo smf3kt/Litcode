@@ -104,3 +104,41 @@ test('durable runtime rejects other owners and cancels pending replacements with
     fs.rmSync(workspace, { recursive: true, force: true });
   }
 });
+
+test('a first bind rejects a session whose live model differs from the runtime settings', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-mcp-digest-')));
+  const controller = new AbortController();
+  const server = http.createServer((request, response) => {
+    if (request.method !== 'POST') { response.writeHead(request.method === 'DELETE' ? 204 : 405); response.end(); return; }
+    let text = '';
+    request.on('data', chunk => { text += String(chunk); });
+    request.on('end', () => {
+      const body = JSON.parse(text);
+      const reply = (result: unknown) => {
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ jsonrpc: '2.0', id: body.id, result }));
+      };
+      if (body.method === 'initialize') reply({ protocolVersion: '2025-06-18', capabilities: { tools: {}, resources: { subscribe: true } } });
+      else if (body.method === 'tools/list') reply({ tools: [] });
+      else { response.writeHead(202); response.end(); }
+    });
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const address = server.address(); assert(address && typeof address !== 'string');
+    const config = defaultConfig(workspace, []); config.model = 'fixture';
+    config.features = { tasks: false, subagents: false, mcpSubscriptions: true, mcpRecovery: true, mcpPersistence: true };
+    config.mcpServers = { srv: { type: 'http', url: `http://127.0.0.1:${address.port}/mcp` } };
+    // A same-session rebind may ignore the live request fields (`w9`/`MOe`/`kp`), but the first
+    // bind must still compare them so one runtime never adopts another session's choice.
+    const other = Session.open(workspace, { config: { ...structuredClone(config), model: 'other-model' } });
+    const runtime = await createRuntime(config, provider, controller.signal);
+    try {
+      await assert.rejects(runtime.bindSession!(other), /differs from its connected settings/);
+    } finally { await runtime.close(); other.close(); }
+  } finally {
+    controller.abort(); server.closeAllConnections();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+    fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});

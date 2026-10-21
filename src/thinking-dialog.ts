@@ -10,7 +10,7 @@
  * | 626784 | `Toggle thinking mode` title |
  * | 626835 | `Enable or disable thinking for this session.` subtitle |
  * | 627114 / 627288 | mid-conversation warning and `Do you want to proceed?` |
- * | 838388 | `lL` handler (`chat:thinkingToggle`) |
+ * | 882215 | `lL` handler (`chat:thinkingToggle`) |
  * | 898567 / 898638 | `kp` accept and `ph` cancel |
  *
  * The handler's `lZt` "thinking is always on" arm needs the model capability table this host has

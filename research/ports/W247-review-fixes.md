@@ -30,7 +30,7 @@ Recovered application entrypoints remain inert.
 
 | Module | SHA-256 | Bodies |
 | --- | --- | --- |
-| chunk-24k7d6mw.js | 1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31 | picker accept `w9` 894465 and `FL` 895434, panel toggle `S8t` 863272 / `w8t` 863369, thinking accept `kp` 898567, handler `lL` 882215 |
+| chunk-24k7d6mw.js | 1d064454003e46bba8086468918622fd0cad3673bf3ba900031c380b27ed1d31 | picker accept `w9` 894465 and `FL` 895326 (`let FL=w9`), panel toggle `S8t` 863272 / `w8t` 863360, thinking accept `kp` 898567, handler `lL` 882215 |
 | chunk-hh0bresc.js | 676add2366d870ee2f7ed3405c6ca095d9079f0cf20aebf11fabb56a52ddb455 | hook gate `dk` 8545 (revalidation), default write `R_t` 10432, failure text `x_t` 10783 |
 | chunk-sfn1dbxq.js | 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da | success suffix `gne` 4359915 (` and saved as your default for new sessions`), `fle` 4359891 (`Set model to `) |
 | chunk-0q6c90q6.js | 97c49a70fcefc8407f6fc93c4b4c8d50a7b63ca8c6d3a3aba6627e91c761457b | applier `MOe` 6286 (snapshot and restore) |
@@ -55,8 +55,9 @@ Recovered application entrypoints remain inert.
 ## Adaptations and ownership
 
 - `switchModelInPlace` now follows `w9`'s order: hook gate, effort default write (failure
-  ignored like the source's unawaited `X9`), live model and effort, model default write, with the
-  recovered success and failure suffixes. The failure text uses the local absolute settings path.
+  ignored like the source's unawaited `X9`; W249 makes the call itself unawaited, since W247
+  still awaited it), live model and effort, model default write, with the recovered success and
+  failure suffixes. The failure text uses the local absolute settings path.
 - `preModelSwitch` takes the internal `revalidating` flag and re-runs once; the second move
   throws the recovered message.
 - `applyEffortCommand` snapshots `effort`/`effortSelection` before its live update, restores them
@@ -64,11 +65,13 @@ Recovered application entrypoints remain inert.
 - `connectionConfigDigest` now excludes the live request fields through a new `fingerprintOf`
   helper (`src/session.ts`), matching the tool-set fingerprint exclusion. This digest is a local
   adapter for the MCP journal owner; the source has no counterpart, and these fields never shape
-  an MCP connection.
+  an MCP connection. W249 restricts the relaxation to a same-session rebind and keeps the first
+  bind on the full digest.
 - `TuiTerminal` hands `\x1bp`/`\x1bt` to the host while a modal dialog is open, where the host
-  aborts the matching `liveDialog`; the source's panel state is inline and never owns the
-  keyboard, so this restores the chord's toggle for the modal host. A mismatched chord is
-  ignored rather than opening a second dialog over the first.
+  aborts the matching `liveDialog`. `SG` itself registers `confirm:no`/`confirm:yes` in the
+  `Confirmation` context (`626232`), so the source's Chat chord is inactive while the dialog is
+  open; handing the same chord to the host is an adaptation for the modal host, not a restored
+  source path. A mismatched chord is ignored rather than opening a second dialog over the first.
 - The picker and thinking dialogs register their abort controller (`withLiveDialog`) so the
   chord can close them; an aborted dialog writes no error.
 
