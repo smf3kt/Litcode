@@ -16,7 +16,7 @@ import type { PermissionUpdate } from './permissions.js';
 import {
   browsePermissions, type PermissionPanelApplyResult, type PermissionPanelInput, permissionPanelRules,
 } from './permissions-panel.js';
-import { forkSession, listSessions } from './sessions.js';
+import { forkSession, listSessions, readSessionPreview, renameStoredSession } from './sessions.js';
 import { startBackgroundSession } from './background-session.js';
 import { parseAttachmentCommand } from './media.js';
 import { questionClarification, terminalAnswerAnnotation } from './interaction-tools.js';
@@ -1498,7 +1498,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               // Jln, chunk-er09v3xa.js 9331: a bare `/resume` opens the recovered session panel;
               // an argument keeps the source's exact-match path below.
               const answer = await withTurn(signal => readDialog({ title: 'Resume session', message: '',
-                resumePicker: { logs: listSessions(session.config.workspace), currentId: session.id } }, signal));
+                resumePicker: { logs: listSessions(session.config.workspace), currentId: session.id,
+                  preview: log => readSessionPreview(session.config.workspace, log.id),
+                  rename: (log, title) => renameStoredSession(session.config.workspace, log.id, title) } }, signal));
               if (answer?.resume === undefined) { options.status.write('Session selection cancelled.\n'); continue; }
               id = answer.resume.id;
             } else {

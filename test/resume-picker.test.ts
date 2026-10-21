@@ -108,3 +108,63 @@ test('focus clamps at the list ends and moving leaves search mode', () => {
   picker.move(-99);
   assert.equal(picker.focusIndex, 0);
 });
+
+test('space opens the preview page and Escape returns to the list', () => {
+  const loaded: string[] = [];
+  const picker = new ResumePicker({ logs: [log('one', { title: 'Alpha' })], now: NOW,
+    preview: session => { loaded.push(session.id); return { messages: [
+      { role: 'user', text: 'hello' }, { role: 'assistant', text: 'hi' }], messageCount: 2 }; } });
+  picker.openPreview();
+  assert.equal(picker.previewing, true);
+  assert.deepEqual(loaded, ['one']);
+  assert.deepEqual(picker.preview.messages.map(message => message.role), ['user', 'assistant']);
+  assert.equal(picker.preview.messageCount, 2);
+  assert.equal(resumePickerGuide('preview'), 'Enter resume / Esc cancel');
+  picker.closePreview();
+  assert.equal(picker.previewing, false);
+  assert.equal(picker.modeName, 'list');
+});
+
+test('a reader failure leaves an empty preview page instead of leaving the panel', () => {
+  const picker = new ResumePicker({ logs: [log('one')], now: NOW,
+    preview: () => { throw new Error('unreadable'); } });
+  picker.openPreview();
+  assert.equal(picker.previewing, true);
+  assert.deepEqual(picker.preview, { messages: [], messageCount: 0 });
+});
+
+test('ctrl+r renames the focused session through the writer and returns to the list', () => {
+  const logs = [log('one', { title: 'Alpha' }), log('two', { title: 'Beta' })];
+  const writes: Array<[string, string]> = [];
+  const picker = new ResumePicker({ logs, now: NOW, rename: (session, title) => { writes.push([session.id, title]); } });
+  picker.beginRename();
+  assert.equal(picker.renaming, true);
+  assert.equal(picker.renameValue, '');
+  assert.equal(picker.renamePlaceholder, 'Alpha');
+  assert.equal(resumePickerGuide('rename'), 'Enter save / Esc cancel');
+  picker.renameInsert('  Gamma  ');
+  const result = picker.submitRename();
+  assert.deepEqual(writes, [['one', 'Gamma']]);
+  assert.equal(result?.log.title, 'Gamma');
+  assert.equal(picker.renaming, false);
+  assert.equal(resumeSessionName(logs[0]!), 'Gamma');
+
+  picker.beginRename();
+  picker.renameInsert('   ');
+  assert.equal(picker.submitRename(), undefined);
+  assert.equal(writes.length, 1, 'an empty value only returns to the list');
+  assert.equal(picker.renaming, false);
+});
+
+test('a writer failure keeps the rename form open with the message', () => {
+  const picker = new ResumePicker({ logs: [log('one', { title: 'Alpha' })], now: NOW,
+    rename: () => { throw new Error('Session is active in another process'); } });
+  picker.beginRename();
+  picker.renameInsert('Beta');
+  assert.equal(picker.submitRename(), undefined);
+  assert.equal(picker.renaming, true);
+  assert.equal(picker.renameError, 'Session is active in another process');
+  picker.cancelRename();
+  assert.equal(picker.renaming, false);
+  assert.equal(picker.renameError, undefined);
+});

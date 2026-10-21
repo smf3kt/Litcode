@@ -82,7 +82,7 @@ import {
 } from './tui-file-suggestions.js';
 import { ge } from './tui-color.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
-import { ResumePicker, resumePickerGuide, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
+import { ResumePicker, resumePickerGuide, resumeRelativeTime, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
 import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
 
 /** The sixteen ANSI foreground names a theme slot can name (the source's own `be` table). */
@@ -1372,10 +1372,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.sourceSearch?.cancel();
     this.sourcePicker?.cancel();
     // Formatter and settings callbacks retain their host ownership outside the cloned display data.
-    const { adjust: axis, configPanel, ...plain } = request;
+    // The resume picker's preview/rename callbacks are host closures too; only its rows are data.
+    const { adjust: axis, configPanel, resumePicker, ...plain } = request;
     const snapshot: TerminalPromptRequest = structuredClone(plain);
     if (axis !== undefined) snapshot.adjust = axis;
     if (configPanel !== undefined) snapshot.configPanel = configPanel;
+    if (resumePicker !== undefined) snapshot.resumePicker = { ...resumePicker, logs: structuredClone(resumePicker.logs) };
     this.gestures.reset();this.vim.externalMutation();
     this.progress.pause(true);
     if (this.escapeTimer) { clearTimeout(this.escapeTimer); this.escapeTimer = undefined; }
@@ -2201,6 +2203,39 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (action.type === 'mouse') return;
     const command = action.type === 'key' ? action.command : action.type;
     const sequence = action.type === 'key' ? action.sequence : '';
+    // `Ct`: the preview page owns enter (resume) and confirm:no (back to the list).
+    // List-mode triggers live at 14629 (space / ctrl+r); the rename input starts at 17035 and
+    // its submit is `bt` at 13235.
+    if (picker.previewing) {
+      if (sequence === '\x1b' || command === 'interrupt' || command === 'eof') { picker.closePreview(); this.render(); return; }
+      if (command === 'submit') {
+        const log = picker.previewSession;
+        if (log !== undefined) dialog.finish({ selected: [], resume: { id: log.id } });
+      }
+      return;
+    }
+    // The rename arm renders a focused text input; its `kt` returns immediately, so the input
+    // owns typing, backspace, enter (`bt`) and the rename-scoped `confirm:no`.
+    if (picker.renaming) {
+      if (sequence === '\x1b' || command === 'interrupt' || command === 'eof') { picker.cancelRename(); this.render(); return; }
+      if (command === 'submit') { picker.submitRename(); this.render(); return; }
+      if (action.type === 'paste') {
+        picker.renameInsert((action.text.split(/\r\n|\r|\n/, 2)[0] ?? '').trim()); this.render(); return;
+      }
+      if (action.type === 'insert') {
+        if (/[^\x00-\x1f\x7f-\x9f]/.test(action.text)) { picker.renameInsert(action.text); this.render(); }
+        return;
+      }
+      if (command === 'backspace') { picker.renameBackspace(); this.render(); return; }
+      return;
+    }
+    // List-mode controls (`kt`): ctrl+r starts rename, space or ctrl+v opens the preview.
+    if (command !== undefined && (sequence === '\x12' || command === 'search') && !picker.searching) {
+      picker.beginRename(); this.render(); return;
+    }
+    if ((action.type === 'insert' && action.text === ' ' && !picker.searching) || (action.type === 'key' && sequence === '\x16')) {
+      picker.openPreview(); this.render(); return;
+    }
     if (action.type === 'paste') {
       picker.insert((action.text.split(/\r\n|\r|\n/, 2)[0] ?? '').trim());
       this.render(); return;
@@ -3267,6 +3302,38 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.documentRenderer ??= new TuiDocumentRenderer();
     const paint = (tree: unknown) => this.documentRenderer!.renderElement(tree, columns,
       { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
+    if (picker.previewing) {
+      // `Ct` (chunk-er09v3xa.js 2632; preview branch 15806): the preview page replaces the picker
+      // frame. The source renders the stored messages through the transcript screen (`gie`, screen
+      // "transcript", history "all"); this host has no free-standing transcript surface, so the
+      // same messages are laid out as plain rows.
+      const session = picker.previewSession;
+      const data = picker.preview;
+      const width = Math.max(10, columns - 4);
+      const wrapped: string[] = [];
+      for (const message of data.messages) {
+        const text = message.text.trim();
+        if (text === '') continue;
+        const prefix = message.role === 'user' ? '> ' : '  ';
+        for (const paragraph of text.split(/\r?\n/)) {
+          if (paragraph === '') { wrapped.push(''); continue; }
+          let line = '';
+          for (const { segment } of new Intl.Segmenter('en', { granularity: 'grapheme' }).segment(paragraph)) {
+            if (cellWidth(line) + cellWidth(segment) > width - 2) { wrapped.push(prefix + line); line = segment; }
+            else line += segment;
+          }
+          wrapped.push(prefix + line);
+        }
+        wrapped.push('');
+      }
+      const height = Math.max(1, bodyRows - 3);
+      const visible = wrapped.slice(0, height);
+      while (visible.length < height) visible.push('');
+      const info = session === undefined ? '' :
+        `${resumeRelativeTime(session.updated, picker.now)} · ${data.messageCount} messages`;
+      return [...visible.map(row => pad(row, columns)), SEPARATOR.repeat(columns), '',
+        pad(info, columns), pad(resumePickerGuide('preview'), columns)];
+    }
     const title = paint(jsx(n, { bold: true, color: 'remember',
       children: dialog.request.title ?? 'Resume session' }, undefined));
     const search = paint(jsx(s, { borderStyle: 'round', borderColor: picker.searching ? 'suggestion' : undefined,
@@ -3279,7 +3346,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       picker.focusIndex - Math.floor(visibleCount / 2)));
     const body: string[] = [];
     dialog.resumePicker!.hits.clear();
-    if (rows.length === 0) {
+    if (picker.renaming) {
+      body.push('  Rename session:', '');
+      body.push(`  ${picker.renameValue === '' ? picker.renamePlaceholder : picker.renameValue}▏`);
+      if (picker.renameError !== undefined) body.push('', `  ${picker.renameError}`);
+    } else if (rows.length === 0) {
       body.push(picker.empty ? RESUME_EMPTY_TEXT : resumeNoMatchText(picker.query));
     } else {
       for (const [offset, row] of rows.slice(start, start + visibleCount).entries()) {
@@ -3291,7 +3362,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     while (body.length < height) body.push('');
     return [...title, ...search, '', ...body.slice(0, height), SEPARATOR.repeat(columns), '',
-      pad(resumePickerGuide(picker.searching ? 'search' : 'list'), columns)];
+      pad(resumePickerGuide(picker.modeName), columns)];
   }
 
   private renderDialog(columns: number, bodyRows: number): string[] {

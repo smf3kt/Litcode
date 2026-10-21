@@ -1,9 +1,69 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Session, type SessionEvent } from './session.js';
+import type { ResumePreview, ResumePreviewMessage } from './resume-picker.js';
 
 export type SessionSummary = { id: string; model: string; updated: string; active: boolean; title?: string;
   parent?: { id: string; workspace: string; boundary: number; reason: string } };
+
+const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function sessionJournal(workspace: string, id: string): string {
+  if (!SESSION_ID.test(id)) throw new Error('Invalid session id');
+  return path.join(fs.realpathSync(workspace), '.agent', `${id}.jsonl`);
+}
+
+function messageText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content.flatMap(block => block !== null && typeof block === 'object' &&
+    (block as { type?: unknown }).type === 'text' && typeof (block as { text?: unknown }).text === 'string'
+    ? [(block as { text: string }).text] : []).join('\n');
+}
+
+/**
+ * `mAe` (chunk-sfn1dbxq.js 4662194): a picker row whose summary carries no messages reads the
+ * target transcript back. Only completed records are read, and only user/assistant text reaches
+ * the preview page.
+ */
+export function readSessionPreview(workspace: string, id: string): ResumePreview {
+  const file = sessionJournal(workspace, id);
+  const stat = fs.lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 100 * 1024 * 1024) throw new Error('Invalid or oversized session journal');
+  const text = fs.readFileSync(file, 'utf8');
+  const end = text.lastIndexOf('\n') + 1;
+  const messages: ResumePreviewMessage[] = [];
+  for (const line of text.slice(0, end).split('\n').slice(1)) {
+    if (line === '') continue;
+    let event: SessionEvent;
+    try { event = JSON.parse(line) as SessionEvent; } catch { continue; }
+    if (event.kind !== 'message') continue;
+    const text = messageText(event.message.content);
+    if (text !== '') messages.push({ role: event.message.role === 'assistant' ? 'assistant' : 'user', text });
+  }
+  return { messages, messageCount: messages.length };
+}
+
+/**
+ * `Pz` (chunk-sfn1dbxq.js 4644259) for a row that is not the live session: append the custom
+ * title to the target journal. The source also updates its session index; the local index is
+ * derived from those title records.
+ */
+export function renameStoredSession(workspace: string, id: string, title: string): void {
+  const clean = title.trim();
+  if (clean === '' || clean.length > 200 || /[\x00-\x1f\x7f-\x9f]/.test(clean)) throw new Error('Invalid session title');
+  const file = sessionJournal(workspace, id);
+  // The target journal belongs to another process while its lock exists; the source's storage
+  // writer appends under the same lock discipline.
+  if (fs.existsSync(`${file}.lock`)) throw new Error('Session is active in another process');
+  const stat = fs.lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 100 * 1024 * 1024) throw new Error('Invalid or oversized session journal');
+  const fd = fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_APPEND | fs.constants.O_NOFOLLOW);
+  try {
+    fs.writeSync(fd, Buffer.from(JSON.stringify({ kind: 'title', title: clean }) + '\n'));
+    fs.fsyncSync(fd);
+  } finally { fs.closeSync(fd); }
+}
 export function listSessions(workspace: string): SessionSummary[] {
   return listSessionDirectory(path.join(fs.realpathSync(workspace), '.agent'));
 }
