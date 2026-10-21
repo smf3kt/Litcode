@@ -188,6 +188,8 @@ Rules目录现有界递归加载Markdown至depth3（root为0），遍历entries�
 
 新会话按 defaults → `~/.harness/settings.json` → 项目 `.harness/settings.json` → `.harness/settings.local.json` → `--settings FILE` → 已设置的 `LLM_*` 环境变量 → CLI flags 合并。`--user-dir DIR` 可指定独立用户目录；恢复会话使用原快照。
 
+`/config` 的 Auto-compact 默认开启，修改后即时写入用户设置 `autoCompactEnabled`。关闭后自动摘要暂停，`/compact` 仍可手动压缩，`/autocompact` 继续调整阈值。`LLM_DISABLE_AUTO_COMPACT` 控制当前进程的自动压缩，`LLM_DISABLE_COMPACT` 同时关闭自动和手动入口；两者以去空白、忽略大小写的 `1`、`true`、`yes`、`on` 表示开启禁用。这些环境覆盖在运行时读取，恢复会话也生效，上下文容量检查持续有效。
+
 `/mcp-reconnect SERVER` 使用固定配置替换单个连接，保留当前会话、其他server及后台资源；模型也可调用 `mcp_reconnect` 工具，沿用常规权限与工具日志。新连接完成握手和目录校验后才提交，失败保留旧连接。`/mcp` 展示状态、generation、尝试次数和重连错误。HTTP session过期或连续3次transport错误触发最多5次自动拨号，间隔为立即、1/2/4/8秒；认证与协议错误结束重试，stdio崩溃使用显式恢复。调用效果始终只执行一次，重连后的日志/订阅队列从空开始。发布schema保持固定，发生变化时旧工具报错；启用动态目录后可重新发现，或使用整体重连接入新的发布schema。
 
 不带名称的 `/mcp-reconnect` 保留整体重建入口：成功刷新工具schema并分支新会话，失败保留旧runtime。整体切换结束旧owner后台资源；修改磁盘配置使用 `/reload`。当前mcpRecovery开启启动降级、慢重试和已确认URI重建；跨进程URI持久化另由mcpPersistence显式开启；事件重放与完整原版refetch/park策略仍保留差异。旧14/4请求记录维持各自版本作用域。

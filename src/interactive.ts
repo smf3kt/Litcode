@@ -1,8 +1,9 @@
 import { createInterface } from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
 import { Agent } from './agent.js';
+import { automaticCompactionEnabled } from './compaction-policy.js';
 import type { ModelProvider } from './provider.js';
-import { Session, type SessionConfig } from './session.js';
+import { Session, configSchema, type SessionConfig } from './session.js';
 import { createTerminalInput, questionPreviewText, type TerminalSurface, type TerminalPromptRequest } from './terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { relocateSession } from './workspace-session.js';
@@ -1042,9 +1043,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // has a prompt surface and falls back to the block, which is the `m2s` empty arm.
           if (!argument) {
             const resolved = resolveAutoCompactWindow(limit, readAutoCompactSetting(userDir));
-            if (!terminal?.prompt) { output.write(`${autoCompactStatus(model, resolved)}\n`); continue; }
+            if (!terminal?.prompt) { output.write(`${autoCompactStatus(model, resolved, automaticCompactionEnabled(session.config))}\n`); continue; }
             const answer = await withTurn(signal => readDialog({ title: 'Auto-compact window',
-              message: autoCompactDialogMessage(model, resolved),
+              message: autoCompactDialogMessage(model, resolved, automaticCompactionEnabled(session.config)),
               choices: autoCompactChoices(), defaultIndex: autoCompactSelection(resolved) }, signal));
             const picked = answer?.selected[0];
             // `ue` reports the unchanged caption on cancel and on an accept that moved nothing.
@@ -1057,11 +1058,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (result.saved === undefined) { output.write(`${result.message}\n`); continue; }
           try { saveAutoCompactSetting(result.saved === 'auto' ? undefined : result.saved, userDir); }
           catch (error) { output.write(`Couldn't save setting: ${(error as Error).message}\n`); continue; }
-          // `$2t` clears the session override (`apply_flag_settings`) and leaves the saved value
-          // to resolve on the next read; this host has no per-model table, so the live window is
-          // the ceiling-clamped value the same resolver would produce.
-          session.config.compactAt = Math.min(limit,
-            result.saved === 'auto' ? AUTO_COMPACT_FALLBACK : result.saved);
+          // $2t, agx4redd [1968,3167), UTF-16: apply_flag_settings refreshes the owner after persistence.
+          const config = structuredClone(session.config);
+          config.compactAt = Math.min(limit, result.saved === 'auto' ? AUTO_COMPACT_FALLBACK : result.saved);
+          await withTurn(signal => applyConfig(config, false, signal));
           output.write(`${result.message}\n`);
           continue;
         }
@@ -1477,6 +1477,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 try {
                   await saveConfigPanelSetting(update, config.workspace, config.configSources?.userDir);
                   switch (update.id) {
+                    // hs/D6, js2bhabe [1114,1554), UTF-16: higher authored layers still win after the user write.
+                    case 'autoCompact': {
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      config.autoCompactEnabled = configSchema.shape.autoCompactEnabled.parse(loaded.settings.autoCompactEnabled);
+                      break;
+                    }
                     case 'reduceMotion': config.prefersReducedMotion = update.value; break;
                     case 'thinking': config.thinking = update.value; break;
                     case 'turnDuration': config.showTurnDuration = update.value; break;

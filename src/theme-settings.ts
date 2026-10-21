@@ -76,12 +76,12 @@ export function saveModelSetting(model: string | undefined, userDir = defaultUse
   saveDisplaySetting('model', model, userDir);
 }
 
-/** vWe P/me/W, nybcbd9t [8029,8318), rows [15295,30405); ta/us x0dc37w9 [102253,105519), UTF-16. */
+/** vWe W/rows, nybcbd9t [8208,8266)/[12034,12244)/[15295,30405); D6, js2bhabe [1499,1554), UTF-16. */
 export async function saveConfigPanelSetting(update: ConfigUpdate, workspace: string, userDir = defaultUserDir()): Promise<void> {
   const paths = permissionSettingsPaths(workspace, userDir);
   const file = update.id === 'reduceMotion' ? paths.localSettings! : paths.userSettings!;
   const key = update.id === 'reduceMotion' ? 'prefersReducedMotion' : update.id === 'turnDuration' ? 'showTurnDuration'
-    : update.id === 'editor' ? 'editorMode' : update.id;
+    : update.id === 'editor' ? 'editorMode' : update.id === 'autoCompact' ? 'autoCompactEnabled' : update.id;
   const value = update.id === 'dialogExpiry' && update.value === 'default' ? undefined : update.value;
   await queuePermissionSettingsWrite(file, () => writeDisplayFile(file, key, value));
 }
@@ -115,7 +115,7 @@ const SETTING_LABELS = {
   theme: 'saveThemeSetting', editorMode: 'saveEditorMode', diffSidebarOpen: 'saveDiffDisplaySetting',
   diffSidebarBaseMode: 'saveDiffDisplaySetting', effort: 'saveEffortSetting',
   compactAt: 'saveAutoCompactSetting', model: 'saveModelSetting', modelSettings: 'saveConfigModelEffort', thinking: 'saveConfigPanelSetting',
-  prefersReducedMotion: 'saveConfigPanelSetting', showTurnDuration: 'saveConfigPanelSetting',
+  autoCompactEnabled: 'saveConfigPanelSetting', prefersReducedMotion: 'saveConfigPanelSetting', showTurnDuration: 'saveConfigPanelSetting',
   timeFormat: 'saveConfigPanelSetting', askUserQuestionTimeout: 'saveConfigPanelSetting', dialogExpiry: 'saveConfigPanelSetting',
 } as const;
 

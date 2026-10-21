@@ -1,0 +1,864 @@
+{
+  "schema": "W234Validation.v1",
+  "identity": "50e07b23ead569635351a5b3f6ad2e84f12f1e8f43e3b5d5b9709cd569e4c271",
+  "inputs": {
+    "sha256": "74192e40c419869a66b3a71c4c63aafef56c208e0305f669cc6279e2848a39fc",
+    "count": 794
+  },
+  "validation": {
+    "sha256": "190df07b7a6ca60a0528a04a3d7b84f224962d36dcb787ad9484cfc988a8d072",
+    "count": 266
+  },
+  "build": {
+    "sha256": "72bc2e57f2bc598c0b3c5f9d5d08888c5423070131f547e2adab882aa18d0c00",
+    "count": 555
+  },
+  "drivers": [
+    {
+      "file": ".audit/w234-autocompact.mjs",
+      "sha256": "742a7ed8e9dec344e0d60626727e362f09cdc7cc98eaa5ea4d9eca94b114958e"
+    },
+    {
+      "file": ".audit/w233-config-panel.mjs",
+      "sha256": "e6722c3edf2d2af5552973b06d32d4f4f69f931a152b0015798c8b59d9b0f2e6"
+    },
+    {
+      "file": ".audit/w234-source-compare.mjs",
+      "sha256": "e6b200052639d93abf1d72ec4ee2e5efacc2eaca58775df6927be446b3d2e486"
+    }
+  ],
+  "results": [
+    {
+      "name": "w234-cli-ybFY4u",
+      "checks": [
+        "Config exposes Auto-compact with its default true",
+        "Enter saves false immediately and Escape retains it",
+        "the active successor session records false",
+        "disabled auto sends a normal request at the exact threshold",
+        "disabled auto also skips attachment precompaction within capacity",
+        "threshold chooser shows the recovered disabled caption",
+        "the threshold can change while disabled and the next task stays usable",
+        "manual compact still sends a tool-free summary while auto is disabled",
+        "the journal commits the manual summary and turn end",
+        "a fresh CLI restores saved false",
+        "re-enabled auto summarizes the next threshold-crossing turn",
+        "resume keeps the enabled snapshot",
+        "failed save leaves true active and preserves the malformed authored bytes",
+        "live disable environment wins over saved true after reload",
+        "the chooser reports the effective environment disable",
+        "Ctrl+C aborts the in-flight manual request and returns the prompt",
+        "the next task runs after cancellation with auto still disabled",
+        "disabled auto returns blocking_limit before completion",
+        "a capacity-blocked turn remains manually compactable",
+        "normal input resumes after manual capacity recovery",
+        "global disable closes the manual entry without a model request",
+        "fresh input above capacity finishes without a summary request",
+        "oversized automatic summary ends the blocked turn without a normal completion",
+        "manual compact and the next task work after an oversized automatic summary",
+        "every owned CLI exits zero and releases its session lock",
+        "the fixture observed actual token-count requests"
+      ],
+      "captures": {
+        "default": "Config\n╭────────────────────────────────────────────────────────────────────────────────────────╮\n│ ⌕ Search settings…                                                                     │\n╰────────────────────────────────────────────────────────────────────────────────────────╯\n\nAuto-compact                    true\nReduce motion                   false\nThinking mode                   false\nShow turn duration              true\nTime format                     auto ›\nTheme                           Dark mode ›\nEditor mode                     normal\nQuestion auto-continue timeout  never\nModel                           fixture ›\nDialog expiry                   default\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\nType to filter / Enter or Down select / Esc clear\n⏸ manual mode on · running  finished: end_tu ctrl+o transcript  ctrl+r search  ctrl+c inte",
+        "off": "Config\n╭────────────────────────────────────────────────────────────────────────────────────────╮\n│ ⌕ autoCompact                                                                          │\n╰────────────────────────────────────────────────────────────────────────────────────────╯\n\nAuto-compact  false\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\nEnter/Space change / Left/Right adjust / / search / Esc close\n⏸ manual mode on · running  session: 3c41f6e ctrl+o transcript  ctrl+r search  ctrl+c inte",
+        "disabledWindow": "\n⏺ response 2\n✻ Cogitated for 0s · done 7:23 PM\n\n> /attach pixel.png attachment above the automatic threshold\n\n⏺ response 3\n✻ Baked for 0s · done 7:23 PM\n\n> /autocompact\nAuto-compact window\nCurrent setting for fixture: 100k tokens (from settings)\nThis command configures when auto-compaction happens. The actual threshold is the minimum\nof this setting and your model's maximum context window.\nThe auto setting picks a window tuned for your model and is strongly recommended for the b\nest cost and performance. You can override it below.\nAuto-compact is currently disabled (see /config)\nOverriding auto may result in high token usage, especially when resuming long sessions.\n      auto\n>     100k tokens\n      200k tokens\n      300k tokens\n      400k tokens\n      500k tokens\n      600k tokens\n      700k tokens\n──────────────────────────────────────────────────────────────────────────────────────────\nSelected: 100k tokens\nEnter next / Esc cancel / PgUp/PgDn\n⏸ manual mode on · running  finished: end_tu ctrl+o transcript  ctrl+r search  ctrl+c inte",
+        "restart": "Config\n╭────────────────────────────────────────────────────────────────────────────────────────╮\n│ ⌕ Search settings…                                                                     │\n╰────────────────────────────────────────────────────────────────────────────────────────╯\n\nAuto-compact                    false\nReduce motion                   false\nThinking mode                   false\nShow turn duration              true\nTime format                     auto ›\nTheme                           Dark mode ›\nEditor mode                     normal\nQuestion auto-continue timeout  never\nModel                           fixture ›\nDialog expiry                   default\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\nType to filter / Enter or Down select / Esc clear\n⏸ manual mode on · running  session: a84ba66 ctrl+o transcript  ctrl+r search  ctrl+c inte"
+      },
+      "requests": [
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 1
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 3
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 5
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 7
+        },
+        {
+          "summary": true,
+          "model": "fixture",
+          "messages": 9
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 1
+        },
+        {
+          "summary": true,
+          "model": "fixture",
+          "messages": 4
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 1
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 1
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 3
+        },
+        {
+          "summary": true,
+          "model": "fixture",
+          "messages": 5
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 5
+        },
+        {
+          "summary": true,
+          "model": "fixture",
+          "messages": 8
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 2
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 1
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 3
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 2
+        },
+        {
+          "summary": true,
+          "model": "fixture",
+          "messages": 5
+        },
+        {
+          "summary": true,
+          "model": "fixture",
+          "messages": 5
+        },
+        {
+          "summary": false,
+          "model": "fixture",
+          "messages": 2
+        }
+      ],
+      "counts": [
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100000,
+          "messages": 3
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100000,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100000,
+          "messages": 5
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 200000,
+          "messages": 7
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 200000,
+          "messages": 3
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 200000,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 200000,
+          "messages": 3
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 200000,
+          "messages": 5
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 980616,
+          "messages": 7
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100,
+          "messages": 2
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 200000,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 200000,
+          "messages": 3
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 980700,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100,
+          "messages": 2
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 981000,
+          "messages": 4
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 980700,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100,
+          "messages": 1
+        },
+        {
+          "path": "/v1/messages/count_tokens",
+          "inputTokens": 100,
+          "messages": 2
+        }
+      ]
+    },
+    {
+      "name": "w233-cli-lobLhs",
+      "checks": [
+        "bare config opens ten local setting rows with active search",
+        "Reduce motion writes the workspace local file and applies in place",
+        "local write preserves the user document",
+        "Thinking mode writes immediately",
+        "Turn duration cycles and persists",
+        "Editor mode changes through the list",
+        "Editor left cycles back to normal",
+        "Question timeout persists",
+        "Dialog expiry persists",
+        "Dialog expiry default removes the authored key",
+        "Left on a picker link leaves the parent open",
+        "Time format cancellation preserves settings and the parent search",
+        "Time format confirms in its child picker and returns to the parent",
+        "Theme cancellation returns without a write",
+        "Theme selection saves and returns to the parent",
+        "Config model picker has no session-only acceptance guide",
+        "s leaves the Config model picker open",
+        "Config model selection updates its saved model and per-model effort default",
+        "live model thinking and effort reach the next request",
+        "empty search retains input focus",
+        "failed write keeps the live setting and exposes the error",
+        "retry succeeds after the authored file is repaired",
+        "successful retry updates the next actual request",
+        "fresh CLI restores saved local settings",
+        "fresh process applies the model-specific effort ahead of the legacy default",
+        "standalone effort updates the existing per-model default across restart",
+        "auto clears the per-model effort and stays omitted after restart",
+        "Time format remains searchable by an enum option",
+        "immediate close preserves the accepted write failure as a transcript notice",
+        "untouched model selection previews and applies its target default immediately",
+        "session journals omit unconsumed authored model fields",
+        "a workspace-owned timeout hides the user-only row",
+        "20-column layout keeps the final Model row reachable with owned expiry hidden",
+        "narrow value click opens the painted model child",
+        "all CLI processes exit and release session locks"
+      ],
+      "captures": {
+        "open": "Config\n╭────────────────────────────────────────────────────────────────────────────────────────╮\n│ ⌕ Search settings…                                                                     │\n╰────────────────────────────────────────────────────────────────────────────────────────╯\n\nAuto-compact                    true\nReduce motion                   false\nThinking mode                   false\nShow turn duration              true\nTime format                     auto ›\nTheme                           Dark mode ›\nEditor mode                     normal\nQuestion auto-continue timeout  never\nModel                           model-01 ›\nDialog expiry                   default\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\nType to filter / Enter or Down select / Esc clear\n⏸ manual mode on · running  session: 5bdfecc ctrl+o transcript  ctrl+r search  ctrl+c inte",
+        "error": "Config\n╭────────────────────────────────────────────────────────────────────────────────────────╮\n│ ⌕ thinking                                                                             │\n╰────────────────────────────────────────────────────────────────────────────────────────╯\n\nThinking mode  true\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nExpected property name or '}' in JSON at position 1 (line 1 column 2)\n──────────────────────────────────────────────────────────────────────────────────────────\nEnter/Space change / Left/Right adjust / / search / Esc close\n⏸ manual mode on · running  finished: end_tu ctrl+o transcript  ctrl+r search  ctrl+c inte",
+        "restart": "Config\n╭────────────────────────────────────────────────────────────────────────────────────────╮\n│ ⌕ Search settings…                                                                     │\n╰────────────────────────────────────────────────────────────────────────────────────────╯\n\nAuto-compact                    true\nReduce motion                   true\nThinking mode                   false\nShow turn duration              false\nTime format                     24-hour ›\nTheme                           Light mode ›\nEditor mode                     normal\nQuestion auto-continue timeout  60s\nModel                           model-02 ›\nDialog expiry                   default\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\nType to filter / Enter or Down select / Esc clear\n⏸ manual mode on · running  session: 678999b ctrl+o transcript  ctrl+r search  ctrl+c inte",
+        "narrow": "Config\n╭──────────────────╮\n│ ⌕ Search settin… │\n╰──────────────────╯\n\n  ↑ 1 more\nReduce motion\n  true\nThinking mode\n  false\nShow turn duration\n  false\nTime format\n  24-hour ›\nTheme\n  Light mode ›\nEditor mode\n  normal\nModel\n  model-02 ›\n\n────────────────────\nEnter/Space change /\n⏸ manual mode on · …"
+      },
+      "requests": [
+        {
+          "model": "model-02",
+          "thinking": {
+            "type": "adaptive"
+          },
+          "effort": "high"
+        },
+        {
+          "model": "model-02",
+          "effort": "high"
+        },
+        {
+          "model": "model-02",
+          "effort": "high"
+        },
+        {
+          "model": "model-02",
+          "effort": "low"
+        },
+        {
+          "model": "model-02",
+          "effort": "low"
+        },
+        {
+          "model": "model-02"
+        },
+        {
+          "model": "model-02",
+          "effort": "xhigh"
+        }
+      ]
+    }
+  ],
+  "source": {
+    "schema": "W234SourceComparison.v1",
+    "artifact": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "groups": [
+      {
+        "name": "row",
+        "source": [
+          {
+            "module": "chunk-nybcbd9t.js",
+            "sha256": "0abe0d704940977466d81c1efab7f953d8f9dac0f30cd758c4a3d0286b5c1bca",
+            "ranges": [
+              [
+                12034,
+                12244
+              ],
+              [
+                5051,
+                6113
+              ],
+              [
+                6113,
+                6155
+              ]
+            ],
+            "coordinates": "utf16"
+          },
+          {
+            "module": "chunk-bk5ct2gw.js",
+            "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+            "ranges": [
+              [
+                558575,
+                558596
+              ]
+            ],
+            "coordinates": "utf16"
+          }
+        ],
+        "target": [
+          {
+            "file": "src/config-panel.ts",
+            "symbol": "rows",
+            "range": [
+              2869,
+              4334
+            ],
+            "coordinates": "utf16",
+            "sha256": "677182c3309061345cceebaeff2887da3d8871095a5de3b4c368cedd48eca7cf"
+          },
+          {
+            "file": "src/config-panel-input.ts",
+            "symbol": "configPanelInput",
+            "range": [
+              452,
+              2145
+            ],
+            "coordinates": "utf16",
+            "sha256": "18b1ab31b42e753463be01a0be8059008c5f2de967a0e20523805abcc223bb73"
+          }
+        ],
+        "diff": {
+          "sha256": "99d841be00a57fb14aa741c3097ad029b3aa1b6271140ef517b49878a72e1994",
+          "bytes": 6213
+        }
+      },
+      {
+        "name": "persistence",
+        "source": [
+          {
+            "module": "chunk-nybcbd9t.js",
+            "sha256": "0abe0d704940977466d81c1efab7f953d8f9dac0f30cd758c4a3d0286b5c1bca",
+            "ranges": [
+              [
+                8208,
+                8266
+              ]
+            ],
+            "coordinates": "utf16"
+          },
+          {
+            "module": "chunk-js2bhabe.js",
+            "sha256": "f196bcf7599a185ad08c73d32ce68b25130ce9db48d781138b1899a3f6e786de",
+            "ranges": [
+              [
+                1114,
+                1499
+              ],
+              [
+                1499,
+                1554
+              ]
+            ],
+            "coordinates": "utf16"
+          }
+        ],
+        "target": [
+          {
+            "file": "src/theme-settings.ts",
+            "symbol": "saveConfigPanelSetting",
+            "range": [
+              4224,
+              4926
+            ],
+            "coordinates": "utf16",
+            "sha256": "96552e3ee72cc005c6aa74ea08f7378fced54ad92810493ee5b8c4cda97f6e5e"
+          },
+          {
+            "file": "src/interactive.ts",
+            "range": [
+              98089,
+              98427
+            ],
+            "coordinates": "utf16",
+            "sha256": "bca3a87b32ceb6009c37a859cdb16892cbf8f9654ed1c48a2e42c70d48722a48"
+          }
+        ],
+        "diff": {
+          "sha256": "4868a099db20ce525c298da47bdbd82143ecd02249cd7d1ba15406fcae23d2f9",
+          "bytes": 2414
+        }
+      },
+      {
+        "name": "admission",
+        "source": [
+          {
+            "module": "chunk-nybcbd9t.js",
+            "sha256": "0abe0d704940977466d81c1efab7f953d8f9dac0f30cd758c4a3d0286b5c1bca",
+            "ranges": [
+              [
+                5051,
+                6113
+              ],
+              [
+                6113,
+                6155
+              ]
+            ],
+            "coordinates": "utf16"
+          }
+        ],
+        "target": [
+          {
+            "file": "src/runtime.ts",
+            "symbol": "parseSettings",
+            "range": [
+              11450,
+              16878
+            ],
+            "coordinates": "utf16",
+            "sha256": "bf912acf29180e4cbb3e65fc6163028dec2739a27c9cb7ba9713b9dcc8e756dd"
+          },
+          {
+            "file": "src/reload.ts",
+            "symbol": "reloadConfig",
+            "range": [
+              469,
+              6766
+            ],
+            "coordinates": "utf16",
+            "sha256": "32ce3917a50e533ceac9ad792bcf76e2b717f65a7bfe78730796ba11e8b6ae85"
+          },
+          {
+            "file": "src/session.ts",
+            "symbol": "SessionConfig",
+            "range": [
+              2302,
+              7798
+            ],
+            "coordinates": "utf16",
+            "sha256": "891612edd5c4db8ca3ef0a8f4da7e874dad755234d70348e4b9d27c4a3ac020e"
+          },
+          {
+            "file": "src/session.ts",
+            "range": [
+              13466,
+              13616
+            ],
+            "coordinates": "utf16",
+            "sha256": "f2e2402dc7333de871db8dfaaa0d9c2a233b9903bac53f8be59e8fbeab68926e"
+          },
+          {
+            "file": "src/cli.ts",
+            "range": [
+              17739,
+              18087
+            ],
+            "coordinates": "utf16",
+            "sha256": "2afd29283f2aaf2e6c098860b5ad5e8947f9b88af10dc341f4c538ab24e480c9"
+          }
+        ],
+        "diff": {
+          "sha256": "7a9402d1ac42c2140c4ea528693c63bb5636ecb5d1274f2a5852ce89fb4004a0",
+          "bytes": 20973
+        }
+      },
+      {
+        "name": "environment",
+        "source": [
+          {
+            "module": "chunk-fdxhcr6b.js",
+            "sha256": "3c625e31827ca4ef7cc3a4691103fbbb3abbdd338778cbf70c0054f37359507b",
+            "ranges": [
+              [
+                615,
+                757
+              ]
+            ],
+            "coordinates": "utf16"
+          },
+          {
+            "module": "chunk-14rnebpd.js",
+            "sha256": "d1ba8228f324b01eb984c0a09eed1095d0bb0e6ace7c295b0c0fdb03a17be810",
+            "ranges": [
+              [
+                317863,
+                317949
+              ],
+              [
+                317949,
+                318021
+              ]
+            ],
+            "coordinates": "utf16"
+          },
+          {
+            "module": "chunk-sfn1dbxq.js",
+            "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+            "ranges": [
+              [
+                1132121,
+                1132437
+              ]
+            ],
+            "coordinates": "utf16"
+          }
+        ],
+        "target": [
+          {
+            "file": "src/compaction-policy.ts",
+            "symbol": "enabledFlag",
+            "range": [
+              139,
+              367
+            ],
+            "coordinates": "utf16",
+            "sha256": "a3870f2cfca7f272d5edef420f7865d93682bd9ca7a60047def953017ea5d47a"
+          },
+          {
+            "file": "src/compaction-policy.ts",
+            "symbol": "manualCompactionEnabled",
+            "range": [
+              458,
+              568
+            ],
+            "coordinates": "utf16",
+            "sha256": "f8790d80ade3c3e223f19409ab242f68afd22ad1c7716ad21d6ac928ae59f324"
+          },
+          {
+            "file": "src/compaction-policy.ts",
+            "symbol": "automaticCompactionEnabled",
+            "range": [
+              663,
+              914
+            ],
+            "coordinates": "utf16",
+            "sha256": "4f350536ca1f9abd956f6bc78c2df8856329e2929b4a807d1a0799cd21f98b83"
+          }
+        ],
+        "diff": {
+          "sha256": "ffabdea5f79e8fb80d7ccdd9569dee66f5675634ebd32755c8ec9771e66a154e",
+          "bytes": 1881
+        }
+      },
+      {
+        "name": "automatic-gates",
+        "source": [
+          {
+            "module": "chunk-sfn1dbxq.js",
+            "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+            "ranges": [
+              [
+                2593055,
+                2593868
+              ],
+              [
+                859411,
+                859734
+              ],
+              [
+                863158,
+                863237
+              ]
+            ],
+            "coordinates": "utf16"
+          },
+          {
+            "module": "chunk-5b2hxy2e.js",
+            "sha256": "46d7f73a2b28fd9493ecf37d85abc89acd020f6de7e2bdb83efe621811f12656",
+            "ranges": [
+              [
+                147582,
+                148075
+              ],
+              [
+                125441,
+                126326
+              ]
+            ],
+            "coordinates": "utf16"
+          }
+        ],
+        "target": [
+          {
+            "file": "src/compaction-policy.ts",
+            "symbol": "contextBlockingLimit",
+            "range": [
+              1018,
+              1201
+            ],
+            "coordinates": "utf16",
+            "sha256": "40ba1ad54bfeb3539e281c96dbea0b67999e76044a539de275d3da09923b63e4"
+          },
+          {
+            "file": "src/agent.ts",
+            "range": [
+              82968,
+              84288
+            ],
+            "coordinates": "utf16",
+            "sha256": "fe36094a1b77b6e06598b3a30de80f764898220dbfcde854d0a3455d47a04718"
+          },
+          {
+            "file": "src/agent.ts",
+            "range": [
+              85745,
+              86889
+            ],
+            "coordinates": "utf16",
+            "sha256": "e2c52fceb4735a81a7358e68a47d25eadc299182b94d7b2a9a7ff98aa160b8ee"
+          }
+        ],
+        "diff": {
+          "sha256": "923f4d50bd928a92e581327912712da078e4c4a9855fee241edd3b3f97217296",
+          "bytes": 7827
+        }
+      },
+      {
+        "name": "manual",
+        "source": [
+          {
+            "module": "chunk-sfn1dbxq.js",
+            "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+            "ranges": [
+              [
+                1132121,
+                1132437
+              ]
+            ],
+            "coordinates": "utf16"
+          },
+          {
+            "module": "chunk-qy8qtapj.js",
+            "sha256": "978650286e1e00b449ef14aa30ebf9e19c1dab938c2be4ee698d788f7b2845a8",
+            "ranges": [
+              [
+                14510,
+                15263
+              ]
+            ],
+            "coordinates": "utf16"
+          }
+        ],
+        "target": [
+          {
+            "file": "src/agent.ts",
+            "symbol": "compactContext",
+            "range": [
+              66879,
+              67734
+            ],
+            "coordinates": "utf16",
+            "sha256": "8cd7bd079895cd6f9661ed21ef36ec5d045601ba3267c5b628ed86f174b34a4d"
+          },
+          {
+            "file": "src/agent.ts",
+            "symbol": "compact",
+            "range": [
+              69534,
+              72664
+            ],
+            "coordinates": "utf16",
+            "sha256": "9a8a3c66ab25d206104b3b5ef86ab589ce2d32ed3dadc6eb2df480dad2b40dca"
+          }
+        ],
+        "diff": {
+          "sha256": "e743ff146accd63d538de9339da52fd04c383d01e4576e005cb14d382aa5dad2",
+          "bytes": 6394
+        }
+      },
+      {
+        "name": "threshold-apply",
+        "source": [
+          {
+            "module": "chunk-agx4redd.js",
+            "sha256": "cab9f4f64094d99c72ce9e0ba08b19e54674d00ab32ffaca90dfd9667af6a6de",
+            "ranges": [
+              [
+                1968,
+                3167
+              ]
+            ],
+            "coordinates": "utf16"
+          }
+        ],
+        "target": [
+          {
+            "file": "src/interactive.ts",
+            "range": [
+              67547,
+              68352
+            ],
+            "coordinates": "utf16",
+            "sha256": "c0735d95dda7ebeb3c9a8633d219e5b9a7fa8e83c2effda29f6be4286a2ea2fd"
+          }
+        ],
+        "diff": {
+          "sha256": "75e87c81f6cb7ca10115bc042317f826dd409d4ee31787252dd018d5c48c128e",
+          "bytes": 3123
+        }
+      },
+      {
+        "name": "captions",
+        "source": [
+          {
+            "module": "chunk-agx4redd.js",
+            "sha256": "cab9f4f64094d99c72ce9e0ba08b19e54674d00ab32ffaca90dfd9667af6a6de",
+            "ranges": [
+              [
+                1174,
+                1968
+              ]
+            ],
+            "coordinates": "utf16"
+          },
+          {
+            "module": "chunk-c27zz9xr.js",
+            "sha256": "c53fa3e31a80e202f6222f8a2fce021df73abf4d53961da47286de0a6472e94d",
+            "ranges": [
+              [
+                15808,
+                19858
+              ]
+            ],
+            "coordinates": "utf16"
+          }
+        ],
+        "target": [
+          {
+            "file": "src/autocompact-command.ts",
+            "symbol": "autoCompactStatus",
+            "range": [
+              6605,
+              7381
+            ],
+            "coordinates": "utf16",
+            "sha256": "62c7f0b80e3992b1f73d74d2e7dc72a055cbd2c71849b06109b56d258b1844f9"
+          },
+          {
+            "file": "src/autocompact-command.ts",
+            "symbol": "autoCompactDialogMessage",
+            "range": [
+              8358,
+              9134
+            ],
+            "coordinates": "utf16",
+            "sha256": "627d56c8d9ef0c63b75e6ff8de18ee96083c09b306fe93406fe9d664d0eea8ba"
+          },
+          {
+            "file": "src/interactive.ts",
+            "range": [
+              65741,
+              68352
+            ],
+            "coordinates": "utf16",
+            "sha256": "73b3f823129643d0fc3ba491661ffdcff75df6eb348992e347567d19a507ed91"
+          }
+        ],
+        "diff": {
+          "sha256": "6759c4a6ec96bfe117c79be3191aff41705fb21979cab086ad4fa32f3ff62379",
+          "bytes": 12198
+        }
+      }
+    ]
+  },
+  "upstream": "owned-loopback",
+  "paidCalls": 0,
+  "magpie": "not_run",
+  "fullSuite": "not_run"
+}

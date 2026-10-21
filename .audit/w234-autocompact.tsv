@@ -1,0 +1,11 @@
+date	phase	decision	evidence
+2026-10-21	S0	Complete the Config Auto-compact row and actual automatic/manual usage chain	ports/W234-autocompact-toggle.md
+2026-10-21	S1	Default true and persist userSettings.autoCompactEnabled; preserve authored false	vWe/U2t/Ze/D6/hs exact UTF-16 ranges in package record
+2026-10-21	S1	Read disable gates, hard capacity and blocked terminal return before product edits	Gm/ef/Ne/Gur/L$e/Mrr/yd/QH
+2026-10-21	S2	Adapt one optional boolean through settings/session/reload; keep one host compactAt window	compaction-policy.ts and config-panel.ts
+2026-10-21	S3	Fix existing threshold setter owner mutation using successor applyConfig	compiled disabled threshold-change then normal task; $2t[1968,3167)
+2026-10-21	S3	Propagate typed compacted/blocking_limit so blocked requests and oversized summaries release the turn	independent original capacity/summary probes and yd terminal outcome
+2026-10-21	S4	Check/build pass; final affected tests164/164 with concurrency2; existing effort isolated timer recheck passes	jobtmp/w234-final-check.log,w234-final-build.log,w234-final-related3.log,w234-effort-recheck.log
+2026-10-21	S4	Actual compiled CLI26 checks and Config compatibility35 checks pass at 50e07b23	.audit/w234-evidence.json
+2026-10-21	S5	Eight exact source/target character comparisons bind current files	.audit/w234-source-compare.mjs and embedded source manifest in evidence
+2026-10-21	review	Final independent retained-input recheck13/13 passes with stable identity and clean exit	.audit/w234-review-evidence.json

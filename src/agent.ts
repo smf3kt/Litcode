@@ -28,6 +28,7 @@ import { activateTouchedSkills, discoverTouchedSkills, reloadSkills, refreshPlug
 import { STRUCTURED_OUTPUT_NUDGE } from './structured-output.js';
 import { selectedDiffMessage, type DiffSelection } from './diff-selection.js';
 import { effortOverride } from './effort-command.js';
+import { automaticCompactionEnabled, contextBlockingLimit, manualCompactionEnabled } from './compaction-policy.js';
 
 export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
 Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
@@ -1044,11 +1045,14 @@ export class Agent {
   }
 
   async compactContext(signal: AbortSignal = new AbortController().signal, customInstructions?: string): Promise<void> {
+    // Rfo, sfn1dbxq [1132121,1132437), UTF-16; the automatic setting does not gate manual compact.
+    if (!manualCompactionEnabled()) throw new Error('Compaction is disabled by LLM_DISABLE_COMPACT');
     if (this.busy || this.session.awaitingResponse) throw new Error('Finish or continue the current turn before compacting');
     if (!this.session.messages.length) throw new Error('Session is empty');
     this.busy = true;
     try {
-      await this.compact(signal, 'manual', customInstructions);
+      if (await this.compact(signal, 'manual', customInstructions) === 'blocking_limit')
+        throw new Error('Compaction failed to free context; circuit breaker stopped the loop');
       this.session.append({ kind: 'turn_end', reason: 'manual_compact' });
     } finally { this.busy = false; }
   }
@@ -1077,7 +1081,7 @@ export class Agent {
     this.events.status?.(`model refused this request${category ? ` (${category})` : ''}${explanation ? `: ${explanation}` : ''}`);
   }
 
-  private async compact(signal: AbortSignal, trigger: 'manual' | 'auto' = 'auto', customInstructions?: string): Promise<void> {
+  private async compact(signal: AbortSignal, trigger: 'manual' | 'auto' = 'auto', customInstructions?: string): Promise<'compacted' | 'blocking_limit'> {
     // Recovered PreCompact payload (`rAe`, chunk-sfn1dbxq.js [2931620,2932807)) always carries
     // `custom_instructions`, nullable. Successful hooks' trimmed stdout becomes
     // `newCustomInstructions`; the compaction prompt appends both under "Additional Instructions:"
@@ -1104,9 +1108,13 @@ export class Agent {
     if (!summary.trim()) throw new Error('Compaction summary is empty');
     // Start a new prefix without replaying thinking bound to the original history.
     const next = [{ role: 'user' as const, content: `Session summary (prior conversation data):\n${summary}` }];
-    if (await this.provider.count(this.request(next), signal) >= this.session.config.compactAt) throw new Error('Compaction failed to free context; circuit breaker stopped the loop');
+    // L$e/Mrr and yd, sfn1dbxq [859411,859734)/[863158,863237), 5b2hxy2e [147582,148075), UTF-16.
+    const tokens = await this.provider.count(this.request(next), signal);
+    if (tokens >= contextBlockingLimit(this.session.config)) return 'blocking_limit';
+    if (tokens >= this.session.config.compactAt) throw new Error('Compaction failed to free context; circuit breaker stopped the loop');
     this.session.append({ kind: 'compact', summary, response });
     await this.hook('PostCompact', { trigger, compact_summary: summary }, signal);
+    return 'compacted';
   }
 
   private async finishWithHooks(reason: string, text: string, modelCalls: number, signal: AbortSignal): Promise<RunResult | undefined> {
@@ -1269,14 +1277,17 @@ export class Agent {
             ...context.map(text => ({ type: 'text' as const, text: `Hook context:\n${text}` }))]
           : prompt };
         if (media) {
-          // Compact only prior completed history so the new media stays in the task.
-          if (await this.provider.count(this.request([message]), signal) >= this.session.config.compactAt) {
+          // Gur/L$e, sfn1dbxq [2593055,2593868)/[859411,859734), UTF-16; prior-history compaction is a host adaptation.
+          const automatic = automaticCompactionEnabled(this.session.config);
+          const capacity = contextBlockingLimit(this.session.config);
+          const inputLimit = automatic ? Math.min(this.session.config.compactAt, capacity) : capacity;
+          if (await this.provider.count(this.request([message]), signal) >= inputLimit) {
             throw new Error('Attachment input exceeds the context threshold; use a smaller file, fewer PDF pages or API token counting');
           }
-          if (await this.provider.count(this.request([...this.session.messages, message]), signal) >= this.session.config.compactAt) {
-            await this.compact(signal);
+          if (automatic && await this.provider.count(this.request([...this.session.messages, message]), signal) >= inputLimit) {
+            if (await this.compact(signal) === 'blocking_limit') return this.finish('blocking_limit', 'Prompt is too long', modelCalls);
             this.session.append({ kind: 'turn_end', reason: 'attachment_precompact' });
-            if (await this.provider.count(this.request([...this.session.messages, message]), signal) >= this.session.config.compactAt) {
+            if (await this.provider.count(this.request([...this.session.messages, message]), signal) >= inputLimit) {
               throw new Error('Attachment with the session summary exceeds the context threshold; start a fresh session or use a smaller file');
             }
           }
@@ -1304,10 +1315,17 @@ export class Agent {
         signal.throwIfAborted();
         assertPaired(this.session.messages);
         const tokens = await this.provider.count(this.request(), signal);
-        if (tokens >= this.session.config.compactAt) {
+        // Gur/L$e, sfn1dbxq [2593055,2593868)/[859411,859734), UTF-16; disabled auto retains the capacity boundary.
+        const automatic = automaticCompactionEnabled(this.session.config);
+        const capacity = contextBlockingLimit(this.session.config);
+        if (tokens >= capacity && (!automatic || this.session.messages.length < 3)) {
+          // yd/QH, 5b2hxy2e [147582,148075)/[125441,126326), UTF-16: a blocked request completes its turn.
+          return this.finish('blocking_limit', 'Prompt is too long', modelCalls);
+        }
+        if (automatic && tokens >= Math.min(this.session.config.compactAt, capacity)) {
           if (turn - lastCompact < 2) throw new Error('Context refilled too quickly after compaction; circuit breaker stopped the loop');
           if (this.session.messages.length < 3) throw new Error('Initial input exceeds the configured context threshold');
-          await this.compact(signal);
+          if (await this.compact(signal) === 'blocking_limit') return this.finish('blocking_limit', 'Prompt is too long', modelCalls);
           lastCompact = turn;
         }
         const request = this.request();

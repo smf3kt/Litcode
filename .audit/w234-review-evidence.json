@@ -1,0 +1,228 @@
+{
+  "verdict": "PASS",
+  "checks": [
+    "capacity returns blocking_limit without completion and ends journal turn",
+    "Config opens after blocking_limit",
+    "manual compaction and next task work after capacity block",
+    "clear starts a fresh session after recovery",
+    "disabled-auto threshold setter creates successor and next request passes runtime fingerprint",
+    "live environment disable, disabled caption, chooser cancellation and in-flight manual recovery",
+    "higher local false wins over Config user write; removal and reload restore user true",
+    "oversized auto summary makes one summary request, zero normal completions and turn_end blocking_limit",
+    "Config opens after oversized auto summary blocking_limit",
+    "manual retry reaches summary provider, surfaces circuit breaker and keeps completed turn",
+    "summary count 100 permits manual compaction and next normal task",
+    "fresh automatic input above hard cap completes blocking_limit; Config and next task remain usable",
+    "clean exit releases session lock"
+  ],
+  "requests": [
+    {
+      "summary": false,
+      "messages": 1,
+      "maxTokens": 16384
+    },
+    {
+      "summary": true,
+      "messages": 4,
+      "maxTokens": 8192
+    },
+    {
+      "summary": false,
+      "messages": 2,
+      "maxTokens": 16384
+    },
+    {
+      "summary": false,
+      "messages": 1,
+      "maxTokens": 16384
+    },
+    {
+      "summary": false,
+      "messages": 1,
+      "maxTokens": 16384
+    },
+    {
+      "summary": true,
+      "messages": 3,
+      "maxTokens": 8192
+    },
+    {
+      "summary": false,
+      "messages": 3,
+      "maxTokens": 16384
+    },
+    {
+      "summary": false,
+      "messages": 1,
+      "maxTokens": 16384
+    },
+    {
+      "summary": false,
+      "messages": 1,
+      "maxTokens": 16384
+    },
+    {
+      "summary": true,
+      "messages": 4,
+      "maxTokens": 8192
+    },
+    {
+      "summary": true,
+      "messages": 4,
+      "maxTokens": 8192
+    },
+    {
+      "summary": true,
+      "messages": 4,
+      "maxTokens": 8192
+    },
+    {
+      "summary": false,
+      "messages": 2,
+      "maxTokens": 16384
+    },
+    {
+      "summary": false,
+      "messages": 2,
+      "maxTokens": 16384
+    }
+  ],
+  "counts": [
+    100,
+    980616,
+    100,
+    100,
+    200000,
+    100000,
+    100000,
+    100000,
+    100,
+    981000,
+    980700,
+    980700,
+    100,
+    100,
+    980700,
+    100
+  ],
+  "captures": {
+    "capacity": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████\n ██   ██\n> completed seed\n\n⏺ answer 1\n✻ Cooked for 0s · done 7:24 PM\n\n> at capacity\n✻ Worked for 0s · done 7:24 PM\nPrompt is too long\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\n❯ \n──────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  finished: end_turn ctrl+o transcript  ctrl+r search  ctrl+c inte",
+    "caption": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████\n ██   ██ \n> /config\n- Set autoCompact to true\n> /autocompact\n\n\n\nAuto-compact window\nCurrent setting for fixture: 200k tokens (from settings)\nThis command configures when auto-compaction happens. The actual threshold is the minimum\nof this setting and your model's maximum context window.\nThe auto setting picks a window tuned for your model and is strongly recommended for the b\nest cost and performance. You can override it below.\nAuto-compact is currently disabled (see /config)\nOverriding auto may result in high token usage, especially when resuming long sessions.\n      auto\n      100k tokens\n>     200k tokens\n      300k tokens\n      400k tokens\n      500k tokens\n      600k tokens\n      700k tokens\n──────────────────────────────────────────────────────────────────────────────────────────\nSelected: 200k tokens\nEnter next / Esc cancel / PgUp/PgDn\n⏸ manual mode on · running  session: 8a414a7 ctrl+o transcript  ctrl+r search  ctrl+c inte",
+    "precedence": "Config\n╭────────────────────────────────────────────────────────────────────────────────────────╮\n│ ⌕ autoCompact                                                                          │\n╰────────────────────────────────────────────────────────────────────────────────────────╯\n\nAuto-compact  false\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n──────────────────────────────────────────────────────────────────────────────────────────\nEnter/Space change / Left/Right adjust / / search / Esc close\n⏸ manual mode on · running  session: 96c8260 ctrl+o transcript  ctrl+r search  ctrl+c inte",
+    "oversized": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████\n ██   ██\n> /reload\n> oversized summary seed\n\n⏺ answer 9\n✻ Worked for 0s · done 7:24 PM\n\n> /reload\n> oversized summary task\n✻ Brewed for 0s · done 7:24 PM\nPrompt is too long\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯ \n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  compacting context                                                                                                          ctrl+o transcript  ctrl+r search  ctrl+c interrupt",
+    "oversizedConfig": "Config\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n│ ⌕ Search settings…                                                                                                                                                                                   │\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n\nAuto-compact                    true\nReduce motion                   false\nThinking mode                   false\nShow turn duration              true\nTime format                     auto ›\nTheme                           Dark mode ›\nEditor mode                     normal\nQuestion auto-continue timeout  never\nModel                           fixture ›\nDialog expiry                   default\n\n\n\n\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\nType to filter / Enter or Down select / Esc clear\n⏸ manual mode on · running  finished: blocking_limit; model calls: 0                                                                                  ctrl+o transcript  ctrl+r search  ctrl+c interrupt",
+    "oversizedManualFailure": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████\n ██   ██ \n> /reload\n> oversized summary seed\n\n⏺ answer 9\n✻ Worked for 0s · done 7:24 PM\n\n> /reload\n> oversized summary task\n✻ Brewed for 0s · done 7:24 PM\nPrompt is too long\n\n> /config\n- Config dialog dismissed\n> /compact\n\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯ \n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  error: Compaction failed to free context; circuit breaker stopped the loop                                                  ctrl+o transcript  ctrl+r search  ctrl+c interrupt",
+    "manualRecovery": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████\n ██   ██ \n> /reload\n> oversized summary seed\n\n⏺ answer 9\n✻ Worked for 0s · done 7:24 PM\n\n> /reload\n> oversized summary task\n✻ Brewed for 0s · done 7:24 PM\nPrompt is too long\n\n> /config\n- Config dialog dismissed\n> /compact\n> /compact\n\n\n\n\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯ \n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  Context compacted                                                                                                           ctrl+o transcript  ctrl+r search  ctrl+c interrupt",
+    "nextTask": " ▟█▙ ▟█▙   Welcome to LiTcode v0.1.0\n█◉██▽██◉█\n█████████\n ██   ██ \n> /reload\n> oversized summary seed\n\n⏺ answer 9\n✻ Worked for 0s · done 7:24 PM\n\n> /reload\n> oversized summary task\n✻ Brewed for 0s · done 7:24 PM\nPrompt is too long\n\n> /config\n- Config dialog dismissed\n> /compact\n> /compact\n> task after oversized summary recovery\n\n⏺ answer 13\n✻ Churned for 0s · done 7:24 PM\n\n\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯ \n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  finished: end_turn; model calls: 1                                                                                          ctrl+o transcript  ctrl+r search  ctrl+c interrupt",
+    "freshCapacity": " ██   ██ \n> /reload\n> oversized summary seed\n\n⏺ answer 9\n✻ Worked for 0s · done 7:24 PM\n\n> /reload\n> oversized summary task\n✻ Brewed for 0s · done 7:24 PM\nPrompt is too long\n\n> /config\n- Config dialog dismissed\n> /compact\n> /compact\n> task after oversized summary recovery\n\n⏺ answer 13\n✻ Churned for 0s · done 7:24 PM\n\n> /clear\n> fresh input at hard capacity\n✻ Sautéed for 0s · done 7:24 PM\nPrompt is too long\n\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯ \n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n⏸ manual mode on · ready  finished: blocking_limit; model calls: 0                                                                                    ctrl+o transcript  ctrl+r search  ctrl+c interrupt"
+  },
+  "recovery": {
+    "contextTokens": 1000000,
+    "maxTokens": 16384,
+    "compactAt": 981000,
+    "blockingLimit": 980616,
+    "inputCount": 981000,
+    "oversizedSummaryCount": 980700,
+    "autoRequests": [
+      {
+        "summary": true,
+        "messages": 4,
+        "maxTokens": 8192
+      }
+    ],
+    "terminal": {
+      "kind": "turn_end",
+      "reason": "blocking_limit",
+      "duration": {
+        "uuid": "3749cf13-8e9e-45c4-a989-a932a9285b67",
+        "durationMs": 34,
+        "timestamp": "2026-10-21T11:24:22.845Z"
+      }
+    },
+    "failedManual": {
+      "request": {
+        "summary": true,
+        "messages": 4,
+        "maxTokens": 8192
+      },
+      "terminal": {
+        "kind": "turn_end",
+        "reason": "blocking_limit",
+        "duration": {
+          "uuid": "3749cf13-8e9e-45c4-a989-a932a9285b67",
+          "durationMs": 34,
+          "timestamp": "2026-10-21T11:24:22.845Z"
+        }
+      },
+      "footer": "⏸ manual mode on · ready  error: Compaction failed to free context; circuit breaker stopped the loop                                                  ctrl+o transcript  ctrl+r search  ctrl+c interrupt"
+    },
+    "successfulManual": {
+      "request": {
+        "summary": true,
+        "messages": 4,
+        "maxTokens": 8192
+      },
+      "terminal": {
+        "kind": "turn_end",
+        "reason": "manual_compact"
+      },
+      "summaryTokens": 100
+    },
+    "nextTask": {
+      "request": {
+        "summary": false,
+        "messages": 2,
+        "maxTokens": 16384
+      },
+      "terminal": {
+        "kind": "turn_end",
+        "reason": "end_turn",
+        "duration": {
+          "uuid": "3cebedde-9074-4bfd-9190-f80756e6584b",
+          "durationMs": 48,
+          "timestamp": "2026-10-21T11:24:23.359Z"
+        }
+      }
+    },
+    "freshCapacity": {
+      "inputCount": 980700,
+      "requests": 0,
+      "terminal": {
+        "kind": "turn_end",
+        "reason": "blocking_limit",
+        "duration": {
+          "uuid": "f8338fce-a5a1-4620-bced-49c8a783121e",
+          "durationMs": 24,
+          "timestamp": "2026-10-21T11:24:23.554Z"
+        }
+      }
+    }
+  },
+  "sourceContract": {
+    "path": "/Users/mant1ssa/Projects/cc_reverse/extracted-v2/modules/chunk-5b2hxy2e.js",
+    "sha256": "46d7f73a2b28fd9493ecf37d85abc89acd020f6de7e2bdb83efe621811f12656",
+    "coordinateUnit": "zero-based UTF-16 code units, half-open",
+    "ranges": [
+      {
+        "start": 147582,
+        "end": 148075,
+        "text": "if(wt.kind!==\"compacted\"&&b!==\"compact\"&&!Ad){if(Jae($f(I,vt.bytesPerToken)-bn,vt,p.options.autoCompactWindow).level===\"blocked\"){let A=nFe(b),ie=wt.kind===\"failed\"?wt.compactFailure:void 0;if(!A)i(\"tengu_ptl_surfaced_to_user\",{reason:S(\"blocking_limit\"),querySource:ls(b),wasGatedByPriorAttempt:!1,reactiveUnsupported:!a$(),compactFailureReason:pe(ie?.reason)});let z=Is({content:HXr(ie)??gF,error:\"invalid_request\",now:w.now,uuid:w.uuid});return yield z,ho(p,b,z),{reason:\"blocking_limit\"}}}"
+      },
+      {
+        "start": 125441,
+        "end": 126326,
+        "text": "async function*QH(e){let o=[],n=performance.now();if(as(e.querySource)===\"main\"&&!e.toolUseContext.agentId)HC(\"engine_pickup\");let r=[],u;using s=Bi(e.toolUseContext,e.messages);try{await Iet(e.toolUseContext.options.tools),u=yield*hbn()?Wp(e,o,r,s):s.through(yd(e,o,r,s))}finally{let T=e.toolUseContext.agentId;if(T)jir(e.toolUseContext.session.precompute,T,\"subagent_exit\",e.querySource,e.toolUseContext.storageV5)}yield*Wa(e.toolUseContext,e.toolUseContext.getAppState,e.querySource,u,ks);let y=JBn(u.reason)?\"cancelled\":\"completed\";for(let T of o)yield{type:\"command_lifecycle\",uuid:T,state:y};for(let T of r)yield{type:\"command_lifecycle\",uuid:T,state:\"completed\"};if(Ict(u.reason))m(\"turn\",ICs(u));else g(\"turn\");return ql({terminal:u,querySource:e.querySource,agentContext:e.toolUseContext.agentContext,hasActiveGoal:e.toolUseContext.options.activeGoal!==void 0,startedAt:n}),u}"
+      }
+    ]
+  },
+  "preserved": {
+    "path": "/Users/mant1ssa/Projects/cc_reverse/.audit/w45-77-evidence.mjs",
+    "before": "9a3b57af640773f1283975e6ca49523407d8fb8469639817da5ab807b7b4d3aa",
+    "after": "9a3b57af640773f1283975e6ca49523407d8fb8469639817da5ab807b7b4d3aa"
+  },
+  "beforeIdentity": "50e07b23ead569635351a5b3f6ad2e84f12f1e8f43e3b5d5b9709cd569e4c271",
+  "identity": "50e07b23ead569635351a5b3f6ad2e84f12f1e8f43e3b5d5b9709cd569e4c271",
+  "build": "72bc2e57f2bc598c0b3c5f9d5d08888c5423070131f547e2adab882aa18d0c00",
+  "inputs": "74192e40c419869a66b3a71c4c63aafef56c208e0305f669cc6279e2848a39fc",
+  "validation": "190df07b7a6ca60a0528a04a3d7b84f224962d36dcb787ad9484cfc988a8d072"
+}

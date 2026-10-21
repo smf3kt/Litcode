@@ -96,7 +96,7 @@ async function turn(model, thinking, effort) {
 }
 try {
   await launch(); await open(); captures.open = screen();
-  pass('bare config opens nine local setting rows with active search', ['Reduce motion', 'Thinking mode', 'Show turn duration',
+  pass('bare config opens ten local setting rows with active search', ['Auto-compact', 'Reduce motion', 'Thinking mode', 'Show turn duration',
     'Time format', 'Theme', 'Editor mode', 'Question auto-continue timeout', 'Model', 'Dialog expiry'].every(label => screen().includes(label)));
   send('MOTION\r'); await until(() => screen().includes('Enter/Space change'), 'first search focus');
   await change('\r', () => fs.existsSync(localFile) && JSON.parse(fs.readFileSync(localFile)).prefersReducedMotion === true,

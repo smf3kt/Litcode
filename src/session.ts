@@ -39,6 +39,7 @@ export type SessionConfig = {
   maxTokens: number;
   contextTokens: number;
   compactAt: number;
+  autoCompactEnabled?: boolean;
   maxTurns: number;
   stopHookBlockCap?: number;
   automaticCheckpoints?: boolean;
@@ -177,7 +178,8 @@ export const configSchema = z.object({
   model: z.string().min(1), system: z.string(), tools: z.array(z.object({ name: z.string() }).passthrough()),
   workspace: z.string(), allowShell: z.boolean(), maxOutputBytes: z.number().int().positive(),
   maxTokens: z.number().int().positive(), contextTokens: z.number().int().positive(),
-  compactAt: z.number().int().positive(), maxTurns: z.number().int().positive(), thinking: z.boolean(),
+  compactAt: z.number().int().positive(), autoCompactEnabled: z.boolean().optional(),
+  maxTurns: z.number().int().positive(), thinking: z.boolean(),
   stopHookBlockCap: z.number().int().min(0).max(1024).optional(),
   automaticCheckpoints: z.boolean().optional(),
   effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(),

@@ -1,5 +1,7 @@
 # Research and implementation status
 
+2026-10-21 W234 Config Auto-compact verified. Persisted default-on setting controls both automatic callers; manual and threshold paths remain usable, including cancellation, initial capacity and oversized-summary recovery. Check/build, 164 related regressions, compiled new chain 26/26 and Config 35/35 pass at 50e07b23. Independent retained-input recheck 13/13 passes. [Record](ports/W234-autocompact-toggle.md). Local only.
+
 2026-10-21 W233 local Config panel verified. Nine settings, full-query search, measured navigation, immediate persistence and three child pickers. Per-model effort defaults, command low/auto continuity, metadata projection and close-time errors pass actual requests/restart. Check/build, 264 related regressions, compiled Config 35/35, model 23/23 and slider 18/18. Six independent findings repaired and rechecked at 893ac6cb. [Record](ports/W233-config-panel.md). Local only.
 
 2026-10-21 W232 model picker list verified locally: numbered current/focus rows, navigation/window, numeric/pointer acceptance, manual effort state and same-model default promotion. Check/build, 135 related regressions, compiled picker 23/23 including 20/24-column clicks, prior model 11/11 and slider 18/18 pass; independent narrow-layout finding resolved. Search is source-gated off. Source and identity in [W232](ports/W232-model-picker.md).

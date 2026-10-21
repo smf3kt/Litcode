@@ -131,6 +131,7 @@ export type ParsedRuntimeSettings = {
   maxTokens?: number;
   contextTokens?: number;
   compactAt?: number;
+  autoCompactEnabled?: boolean;
   maxOutputBytes?: number;
   hooks?: HooksConfig;
   permissions?: PermissionPolicy;
@@ -211,6 +212,8 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
     out.tokenCounting = settingEnum(settings, 'tokenCounting', ['estimate', 'api'] as const);
   }
   if ('thinking' in settings) out.thinking = settingBoolean(settings, 'thinking');
+  // U2t/ef, nybcbd9t [5051,6155), 14rnebpd [317949,318021), UTF-16: preserve an authored false.
+  if ('autoCompactEnabled' in settings) out.autoCompactEnabled = settingBoolean(settings, 'autoCompactEnabled');
   if ('prefersReducedMotion' in settings) out.prefersReducedMotion = settingBoolean(settings, 'prefersReducedMotion');
   if ('showTurnDuration' in settings) out.showTurnDuration = settingBoolean(settings, 'showTurnDuration');
   if ('showMessageTimestamps' in settings) out.showMessageTimestamps = settingBoolean(settings, 'showMessageTimestamps');

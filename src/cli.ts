@@ -302,6 +302,8 @@ function newConfig(
   config.maxTokens = positive(values['max-tokens'] as string | undefined, settings.maxTokens ?? config.maxTokens);
   config.contextTokens = positive(values['context-tokens'] as string | undefined, settings.contextTokens ?? config.contextTokens);
   config.compactAt = positive(values['compact-at'] as string | undefined, Math.min(settings.compactAt ?? config.compactAt, config.contextTokens - config.maxTokens - 8192));
+  // U2t/Ze, nybcbd9t [5051,6155), bk5ct2gw [558575,558596), UTF-16.
+  if (settings.autoCompactEnabled !== undefined) config.autoCompactEnabled = settings.autoCompactEnabled;
   config.maxOutputBytes = settings.maxOutputBytes ?? config.maxOutputBytes;
   if (settings.prefersReducedMotion !== undefined) config.prefersReducedMotion = settings.prefersReducedMotion;
   if (settings.showTurnDuration !== undefined) config.showTurnDuration = settings.showTurnDuration;

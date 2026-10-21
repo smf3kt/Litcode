@@ -31,9 +31,7 @@
  * Two recovered sources are out. The environment source `CLAUDE_CODE_AUTO_COMPACT_WINDOW` has no
  * local counterpart, so the "is set and takes precedence" branch, the dialog's lock line and the
  * `env` label are unreachable, and `Mwt` reduces to "is the source settings". The
- * `experiment`/`clientdata` sources and the auto-compact enable toggle (`ef()`) are likewise
- * absent: this host has one window and no separate enable flag, so the
- * "Auto-compact is currently disabled (see /config)" line never renders.
+ * `experiment`/`clientdata` sources remain absent.
  *
  * The local resolved window is the one `src/cli.ts` computes: `min(configured, contextTokens -
  * maxTokens - 8192)`. That is `aE`'s `Math.min(h, configured)` with the launch-time ceiling in
@@ -116,15 +114,13 @@ export function autoCompactWindowText(resolved: ResolvedWindow): string {
   return `${formatTokens(resolved.configured)} tokens (${sourceLabel(resolved.source)})${capped}`;
 }
 
-/**
- * Source `w` in `chunk-agx4redd.js` 1174, the `local` registration's empty-argument answer. The
- * disabled line is out; the last line is `Mwt(source)`, which is the settings source here.
- */
-export function autoCompactStatus(model: string, resolved: ResolvedWindow): string {
-  const lines = [`Auto-compact window for ${model}: ${autoCompactWindowText(resolved)}`,
-    'Auto-compact summarizes the conversation when context usage approaches this limit. ' +
+/** w, agx4redd [1174,1968), UTF-16; ef's effective policy controls the disabled caption. */
+export function autoCompactStatus(model: string, resolved: ResolvedWindow, enabled = true): string {
+  const lines = [`Auto-compact window for ${model}: ${autoCompactWindowText(resolved)}`];
+  if (!enabled) lines.push('Auto-compact is currently disabled (see /config)');
+  lines.push('Auto-compact summarizes the conversation when context usage approaches this limit. ' +
     'The actual threshold is the minimum of this setting and your model\'s maximum context window.',
-    'The auto setting picks a window tuned for your model and is strongly recommended for the best cost and performance.'];
+    'The auto setting picks a window tuned for your model and is strongly recommended for the best cost and performance.');
   if (resolved.source === 'settings') {
     lines.push('Overriding auto may result in high token usage, especially when resuming long sessions.');
   }
@@ -137,9 +133,8 @@ export function autoCompactUnchangedMessage(model: string, resolved: ResolvedWin
 }
 
 /**
- * The dialog caption and body from `ue` at `chunk-c27zz9xr.js` 15808. The dialog renders the two
- * fixed paragraphs and, when a window is stored, the override warning; the disabled line and the
- * env lock are out.
+ * ue, chunk-c27zz9xr.js [15808,19858), UTF-16. The dialog renders the two fixed paragraphs,
+ * the disabled line and, when a window is stored, the override warning.
  *
  * The recovered warning follows the selection state (`a !== t`, so moving off auto raises it and
  * moving back clears it). The local dialog body is fixed when it opens, so the warning reflects
@@ -148,12 +143,13 @@ export function autoCompactUnchangedMessage(model: string, resolved: ResolvedWin
  * leaves the line in place. `TerminalPromptChoice.description` renders for every row, so it
  * cannot carry a per-selection line either.
  */
-export function autoCompactDialogMessage(model: string, resolved: ResolvedWindow): string {
+export function autoCompactDialogMessage(model: string, resolved: ResolvedWindow, enabled = true): string {
   const lines = [`Current setting for ${model}: ${autoCompactWindowText(resolved)}`,
     'This command configures when auto-compaction happens. The actual threshold is the minimum ' +
     'of this setting and your model\'s maximum context window.',
     'The auto setting picks a window tuned for your model and is strongly recommended for the ' +
     'best cost and performance. You can override it below.'];
+  if (!enabled) lines.push('Auto-compact is currently disabled (see /config)');
   if (resolved.source === 'settings') {
     lines.push('Overriding auto may result in high token usage, especially when resuming long sessions.');
   }
