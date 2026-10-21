@@ -241,12 +241,16 @@ Next up, scoped but not started:
       89 affected regressions and check/build pass; full suite 2980/2981 with the CLI-effort
       failure reproduced at HEAD. Independent review's low findings are closed. See
       `research/ports/W236-terminal-progress.md`.
+- [x] W237 Config Default permission mode. Enum row after Time format reads the merged settings
+      `permissions.defaultMode` (not the live mode), cycles default/plan/acceptEdits/auto/dontAsk,
+      persists the nested userSettings value while preserving authored rules, keeps higher layers
+      authoritative, survives resume and is adopted live by a fresh session with no mode flag.
+      Compiled 13/13, 28 affected regressions and check/build pass; full suite 2980/2981 with the
+      CLI-effort failure reproduced at HEAD. Independent review's medium and low items are closed.
+      See `research/ports/W237-permission-mode.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.
-      Next candidate: the unflagged `permissionMode` row ("Default permission mode", nybcbd9t
-      [21907,22578)); `permissions.defaultMode` already parses and `setMode` already writes a
-      settings document, so the package is row + enum options + user-file scope + restart proof.
       Not portable now: tips (vendor/service content), prompt suggestions / timestamps / tab
       status / copy-on-select / auto-scroll (source rows sit behind `tengu_*` flags default off),
       recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no

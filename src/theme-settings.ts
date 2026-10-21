@@ -79,6 +79,11 @@ export function saveModelSetting(model: string | undefined, userDir = defaultUse
 /** vWe W/rows, nybcbd9t [8208,8266)/[12034,12244)/[15295,30405); D6, js2bhabe [1499,1554), UTF-16. */
 export async function saveConfigPanelSetting(update: ConfigUpdate, workspace: string, userDir = defaultUserDir()): Promise<void> {
   const paths = permissionSettingsPaths(workspace, userDir);
+  // vWe permissionMode [21907,22578), UTF-16: P writes the nested userSettings document.
+  if (update.id === 'permissionMode') {
+    await queuePermissionSettingsWrite(paths.userSettings!, () => writePermissionDefaultMode(paths.userSettings!, update.value));
+    return;
+  }
   const file = update.id === 'reduceMotion' ? paths.localSettings! : paths.userSettings!;
   const key = update.id === 'reduceMotion' ? 'prefersReducedMotion' : update.id === 'turnDuration' ? 'showTurnDuration'
     : update.id === 'editor' ? 'editorMode' : update.id === 'autoCompact' ? 'autoCompactEnabled'
@@ -133,6 +138,21 @@ function writeDisplayFile(file: string, key: keyof typeof SETTING_LABELS, value:
 }
 
 function updateDisplayFile(file: string, key: keyof typeof SETTING_LABELS, update: (settings: Record<string, unknown>) => void): void {
+  updateSettingsDocument(file, SETTING_LABELS[key], update);
+}
+
+function writePermissionDefaultMode(file: string, mode: string): void {
+  updateSettingsDocument(file, 'saveConfigPanelSetting', settings => {
+    // `us`/`MB` (chunk-x0dc37w9.js, decoded byte 102833): a non-object leaf is replaced by the
+    // merged object; the merge only preserves keys of an existing plain object.
+    const permissions = settings.permissions;
+    const current = permissions !== null && typeof permissions === 'object' && !Array.isArray(permissions)
+      ? permissions as Record<string, unknown> : undefined;
+    settings.permissions = { ...current, defaultMode: mode };
+  });
+}
+
+function updateSettingsDocument(file: string, label: string, update: (settings: Record<string, unknown>) => void): void {
   let settings: Record<string, unknown> = {}, mode = 0o600;
   try {
     const stat = fs.lstatSync(file);
@@ -150,5 +170,5 @@ function updateDisplayFile(file: string, key: keyof typeof SETTING_LABELS, updat
   update(settings);
   const content = JSON.stringify(settings, null, 2) + '\n';
   if (Buffer.byteLength(content) > CONFIG_LIMITS.settingsBytes) throw new Error('Theme settings exceed the byte limit');
-  atomicWriteFile(file, content, { mode, label: SETTING_LABELS[key] });
+  atomicWriteFile(file, content, { mode, label });
 }
