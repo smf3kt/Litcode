@@ -181,7 +181,10 @@ Next up, scoped but not started:
       1506012), the list `Rn`/`Wr` with its status icons and the `r` retry mark, and the Esc apply
       `bu`: approved rows leave the store and report `Approved <labels>`, a retry appends
       `Allowed <labels>` as a human-origin message and starts a turn. The panel now opens on
-      `recent` whenever the list is non-empty. See `research/ports/W228-recent-denials.md`.
+      `recent` whenever the list is non-empty. `.audit/w228-live.mjs` drives the whole path against
+      the compiled CLI with a Messages-API stub standing in for the model (9 checks); the grant check
+      keys on the human-origin rendering and was proven to fail when that origin is wrong. See
+      `research/ports/W228-recent-denials.md`.
 - [x] W229 `/permissions`, part four: the `automode` tab. The intro, the four sections with their
       builtins rows (the count read out of the classifier's rules document by `SL`/`Rue`), the
       `· off`/`· from <source>` states `me` derives, the entry rows in `Vm`'s column with their
