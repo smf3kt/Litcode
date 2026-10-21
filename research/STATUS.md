@@ -1,5 +1,7 @@
 # Research and implementation status
 
+2026-10-21 W231 standalone effort slider verified locally: source geometry/styles, arrow preview, Enter/default and s/session scope, cancel/restart and effective environment effort on actual requests. Check/build, 264 related regressions, compiled slider 18/18, argument path 14/14 and model picker 11/11 pass; independent review accepted. Source and identity in [W231](ports/W231-effort-slider.md).
+
 2026-10-21 W230 Auto mode editing verified locally: add/edit/delete, builtin toggles and environment editor, with conflict recovery and recent-denial continuity. Check/build and compiled CLI 20/20 pass; source and identity in [W230](ports/W230-automode-writes.md).
 
 2026-10-18 W183 local permission integration validated: destination persistence, live child/fork/reload owners, recovered auto classifier/provenance and PLAN transitions. Check/build,2607/2607full,18requestCLI,515file offline install and independent original/final expansion probes pass at a200faac before comment-only cleanup. Final identity and package record are maintained in [W183](ports/W183-permission-destinations.md); other C-area packages remain open.

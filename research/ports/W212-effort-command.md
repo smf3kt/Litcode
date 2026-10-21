@@ -111,6 +111,8 @@ watches the effective level.
   the current level preselected, each row carrying its glyph and the `De` description; picking one
   runs `/effort <level>`. The track, the triangle, the `s` binding and the rainbow `max` styling
   are out. `MAX_EFFORT_NOTE` and the descriptions are the same strings the slider's `Nt` shows.
+  Superseded by [W231](W231-effort-slider.md): the standalone source slider, styles, keys and save
+  scopes are now ported. Its AST-verified ranges replace the reconnaissance range above.
 
 ## Verification
 

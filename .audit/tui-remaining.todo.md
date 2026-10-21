@@ -204,10 +204,16 @@ Next up, scoped but not started:
       groups; conflict refresh and recent-denial continuity were independently reviewed.
       See `research/ports/W230-automode-writes.md`.
 
-- [ ] W231 `/effort` interactive axis. The standalone chooser still uses the old vertical-choice
-      adaptation even though the model picker now has the left/right adjustment host. Acquire the
-      recovered effort-slider body, map its accept/cancel/default behavior, then connect that axis.
-      Keep the existing setting and request propagation checks.
+- [x] W231 `/effort` interactive axis. Recovered 42-cell track, five label positions, selected
+      colors, xhigh shimmer, max rainbow/note, left/right clamp, Enter/default and s/session scope.
+      Same-level Enter now saves; cancel preserves state. Actual request effort resolves the
+      environment override separately from the session choice. Three regression groups, compiled
+      slider 18/18, argument path 14/14 and model picker 11/11; independent review accepted.
+      See `research/ports/W231-effort-slider.md`.
+
+- [ ] W232 candidate: model-picker search and focus/reset behavior over the local model set.
+      Read the recovered uBe/ys and select/input owner bodies before changing product behavior.
+      No account-backed catalogue work; keep the existing model/effort save scope.
 
 Scoped out:
 

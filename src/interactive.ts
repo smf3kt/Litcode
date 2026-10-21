@@ -42,8 +42,9 @@ import type { EditorMode } from './tui-vim.js';
 import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.js';
 import { workflowsAvailable } from './tui-input-highlights.js';
 import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from './loop-command.js';
-import { DEFAULT_EFFORT, EFFORT_LEVELS, effortCommand, effortDescription, effortGlyph,
+import { DEFAULT_EFFORT, EFFORT_LEVELS, effortCommand, isEffortLevel,
   effortIndicator, type EffortLevel } from './effort-command.js';
+import { effortSliderRequest } from './effort-slider.js';
 import { MODEL_PICKER_TITLE, modelPickerCaption, modelPickerEffortFor, modelPickerEffortLine,
   modelPickerGuide, modelPickerRowDescription } from './model-picker.js';
 import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUsageMessage,
@@ -1415,7 +1416,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               // `modelPicker:decreaseEffort`/`increaseEffort` move the focused model's effort
               // with the arrows; the local axis is one value per dialog, so a move carries to
               // whichever row is accepted (the recovered resets it on focus change).
-              adjust: { values: EFFORT_LEVELS, initial: currentEffort,
+              adjust: { kind: 'line', values: EFFORT_LEVELS, initial: currentEffort,
                 label: value => modelPickerEffortLine(value as EffortLevel),
                 guide: modelPickerGuide() },
               keys: [{ key: 's', label: 'use this session only' }] }, signal));
@@ -1435,21 +1436,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           prompt = `/model ${selected}`;
         }
         if (prompt === '/effort' && terminal?.prompt) {
-          // The recovered `local-jsx` registration at `chunk-sfn1dbxq.js` 1659314 opens the effort
-          // slider, whose title is `Effort` and whose track reads `Faster … Smarter`; the `local`
-          // registration's usage text is the non-interactive answer, so only this terminal gets the
-          // chooser. Left/right adjustment needs a keyed dialog the local host does not have, so the
-          // five levels are the choices and the current one is preselected.
+          // It/Ce, chunk-76jkr621.js [22174,30123)/[17514,17916), UTF-16:
+          // Enter applies the displayed level even unchanged; s skips the default write.
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
-          const current = session.config.effort ?? DEFAULT_EFFORT;
-          const answer = await withTurn(signal => readDialog({ title: 'Effort',
-            message: `Current: ${session.config.effort ?? `auto (${DEFAULT_EFFORT})`}\nFaster  ← →  Smarter`,
-            choices: EFFORT_LEVELS.map(level => ({ label: `${effortGlyph(level)} ${level}`,
-              value: level, description: effortDescription(level) })),
-            defaultIndex: Math.max(0, EFFORT_LEVELS.indexOf(current)) }, signal));
-          const picked = answer?.selected[0];
-          if (!picked) { options.status.write('Effort selection cancelled.\n'); continue; }
-          if (picked === session.config.effort) { options.status.write('Effort unchanged.\n'); continue; }
+          const answer = await withTurn(signal => readDialog(effortSliderRequest(session.config.effort), signal));
+          const picked = answer?.adjusted;
+          if (picked === undefined) { options.status.write('Effort selection cancelled.\n'); continue; }
+          if (!isEffortLevel(picked)) throw new Error('Invalid effort selection');
+          pendingSessionOnly = answer?.key === 's';
           prompt = `/effort ${picked}`;
         }
         if(prompt==='/vim'||prompt==='/config'||/^\/config\s+editor(?:=|\s|$)/.test(prompt)){
@@ -1611,7 +1605,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (pendingEffort !== undefined) config.effort = pendingEffort;
           } else if (prompt === '/effort' || prompt.startsWith('/effort ')) {
             const result = effortCommand(prompt.slice('/effort'.length), {
-              current: session.config.effort, fallback: DEFAULT_EFFORT, save: true });
+              current: session.config.effort, fallback: DEFAULT_EFFORT, save: !pendingSessionOnly });
             // A read-only answer (usage, help, a status report, an invalid argument) leaves the
             // session alone. The recovered handler returns its answer as a `{type:"text"}` value
             // (`u` at `chunk-tf9zceev.js` [4922,5480)), which the dispatcher prints as text; the
