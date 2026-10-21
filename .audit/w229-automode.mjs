@@ -17,7 +17,7 @@ fs.writeFileSync(settingsFile, JSON.stringify({ autoMode: {
 
 const env = { ...process.env, TERM: 'xterm-256color', LC_ALL: 'en_US.UTF-8', LANG: 'en_US.UTF-8',
   LLM_API_KEY: 'f', LLM_MODEL: 'base-model', LLM_BASE_URL: 'http://127.0.0.1:1', LLM_AUTH: 'bearer',
-  LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false' };
+  LLM_TOKEN_COUNTING: 'estimate', LLM_THINKING: 'false', VISUAL: '/usr/bin/true', EDITOR: '/usr/bin/true' };
 for (const key of Object.keys(env)) {
   if (/^ANTHROPIC_/.test(key) || key === 'TMUX' || key === 'STY') delete env[key];
 }
@@ -58,30 +58,30 @@ check('the automode tab carries the recovered intro and its rows',
   && tab.includes('Soft deny           [ ] Built-in rules · ') && tab.includes('· off')
   && tab.includes('Soft deny           Never push to main')
   && tab.includes('Hard deny           [x] Built-in rules · ')
-  && tab.includes('Environment         Replaces the built-in default · from user settings · enter to view')
+  && tab.includes('Environment         Replaces the built-in default · from user settings · enter to edit')
   && tab.includes('Selected: Auto mode'), tab);
 
-// The tab rows start one below the six tab rows: Soft allow's builtins row is the first of them.
-await down(2);
+// The add row precedes Soft allow's builtins row below the six tabs.
+await down(3);
 enter(); await delay(1000);
 const builtins = flat();
 check('a builtins row opens the built-ins card with its count line and rules',
   builtins.includes('Built-in rules')
   && builtins.includes('Soft allow · 17 built-in rules · in effect')
   && builtins.includes('- Read-Only Operations')
-  && builtins.includes('Selected: Back'), builtins);
+  && builtins.includes('Selected: View in editor'), builtins);
 
+await down();
 enter(); await delay(800);
 check('the card comes back to the automode tab', flat().includes('Selected: Auto mode'), flat());
 
-// The card returns the cursor to the tab's own row, so the document row is six rows below it.
-await down(6);
+// The document row is seven choices below the tab after adding the rule input row.
+await down(7);
 enter(); await delay(1000);
 const document = flat();
-check('the environment document row opens the document',
-  document.includes('Environment document')
-  && document.includes('Replaces the built-in default · from user settings · enter to view')
-  && document.includes('### Host') && document.includes('- macOS 26'), document);
+check('the environment document row runs the editor and retains an unchanged document',
+  document.includes('Edit environment') && document.includes('No changes detected')
+  && JSON.parse(fs.readFileSync(settingsFile, 'utf8')).autoMode.environment.includes('- macOS 26'), document);
 
 escape(); await delay(600);
 escape(); await delay(800);

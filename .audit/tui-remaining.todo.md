@@ -195,10 +195,19 @@ Next up, scoped but not started:
 
 Next up, scoped but not started:
 
-- [ ] W230 `/permissions`, part five: the `automode` writes. The settings-document writer `Ho` with
+- [x] W230 `/permissions`, part five: the `automode` writes. The settings-document writer `Ho` with
       its three refusals, the add input and section picker, the edit and delete arms, the builtins
       toggle `Xr` (which splices or removes `$defaults`), and the environment document editor `qr`
       with `wl`'s validation. Turns W229's `enter to view` back into the recovered `enter to edit`.
+      Recovered source is already mapped, with offsets and digests, in
+      `.audit/w230-automode-writes.md`. Completed with 20/20 compiled checks and three regression
+      groups; conflict refresh and recent-denial continuity were independently reviewed.
+      See `research/ports/W230-automode-writes.md`.
+
+- [ ] W231 `/effort` interactive axis. The standalone chooser still uses the old vertical-choice
+      adaptation even though the model picker now has the left/right adjustment host. Acquire the
+      recovered effort-slider body, map its accept/cancel/default behavior, then connect that axis.
+      Keep the existing setting and request propagation checks.
 
 Scoped out:
 

@@ -95,6 +95,13 @@ export async function openExternalFile(file: string, handoff: EditorHandoff | un
   } finally {if(suspended)handoff?.resume();}
 }
 
+/** hx/XG, 7tnkhv2k [2859,2988), UTF-16: use the same resolver as the editor handoff. */
+export function externalEditorName(): string | undefined {
+  const source = initializeExternalEditor(editorDependencies(() => {}, () => {}, new AbortController().signal, process.cwd(), ''));
+  const editor: string | undefined = source.resolve();
+  return editor === undefined ? undefined : source.editorName(editor);
+}
+
 /** The host bindings both editor entries share: one resolver, one owned child, one handoff. */
 function editorDependencies(suspend: () => void, resume: () => void, signal: AbortSignal,
   workspace: string, filename: string) {

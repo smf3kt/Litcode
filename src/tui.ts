@@ -1181,7 +1181,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.keys.reset(); this.selection = createSelection();
       const first = snapshot.groups?.[0] ?? snapshot;
       const choices = first.choices?.length ?? 0;
-      const dialog: ActiveDialog = { request: snapshot, editor: createEditorState(), undo: new InputUndo(),
+      // Yn, fxx7hh8y [64476,66637), UTF-16: seed the input and its end cursor together.
+      const initialText = snapshot.initialText ?? '';
+      const dialog: ActiveDialog = { request: snapshot, editor: { ...createEditorState(), text: initialText, cursor: initialText.length }, undo: new InputUndo(),
         index: Math.max(0, Math.min(first.defaultIndex ?? 0, Math.max(0, choices - 1))),
         selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(),
         notes: new Map(), notesEditor: createEditorState(), notesUndo: new InputUndo(),

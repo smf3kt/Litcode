@@ -12,6 +12,10 @@ import type { PermissionUpdate } from './permissions.js';
 
 const objectSchema = z.record(z.unknown());
 const queues = createSettingsWriteQueue();
+/** ta, x0dc37w9 [102253,102464), UTF-16: rule and auto-mode writes share the file queue. */
+export function queuePermissionSettingsWrite<T>(file: string, write: () => T | Promise<T>): Promise<T> {
+  return queues.run(path.resolve(file), write);
+}
 const execute = promisify(execFile);
 export type PermissionIgnoreResult = { written: boolean; effective: boolean;
   reason?: 'already_tracked' | 'excludesfile_not_read'; error?: string; warning?: string };

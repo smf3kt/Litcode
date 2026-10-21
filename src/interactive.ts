@@ -58,7 +58,9 @@ import { SCROLL_SPEED_ENV, SCROLL_SPEED_UNCHANGED, applyStoredEnvironment, autoS
   scrollSpeedNotch, scrollSpeedNotchCount, scrollSpeedReset, scrollSpeedRuler, scrollSpeedSaved,
   scrollSpeedSettingsFile, scrollSpeedStep, scrollSpeedValues, setLiveScrollSpeed } from './scroll-speed.js';
 import { invalidateTerminalEnvironment, terminalEnvironment } from './plugin-chain-terminal-environment.js';
-import { openExternalFile } from './external-editor.js';
+import { openExternalFile, externalEditorName } from './external-editor.js';
+import { persistAutoModeUpdate, readAutoModePolicy } from './auto-mode-rules.js';
+import { type AutoModeEditorHost } from './auto-mode-editor.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { displayCronJobs, readLoopFile } from './loop-file.js';
 import { browseWorkflows } from './workflow-panel.js';
@@ -773,6 +775,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const next = Session.open(config.workspace, { config, startedAt: session.startedAt });
     try {
       next.carryPermissions(session, config.permissions?.mode === session.config.permissions?.mode);
+      // Y/pEe, frj2b06g [2565,3111), UTF-16: the denial provider survives a settings refresh.
+      for (const denial of [...session.autoModeDenials.denials].reverse()) next.autoModeDenials.record(denial);
       const boundaries = new Map<number, number>([[0, 0]]);
       for (const [index, event] of session.events.entries()) {
         if (event.kind === 'message') {
@@ -1484,11 +1488,74 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // Source `gR` (`chunk-fxx7hh8y.js` 91624): `onRetryDenials` appends the grant and the
           // panel's own exit carries `shouldQuery: true`, so a retry mark starts a turn here.
           let retried = false;
-          const notice = await browsePermissions(() => permissionPanelInput(session),
+          let autoModeSaved = false;
+          let autoModeLayers = session.config.permissions?.layers ?? [];
+          const autoModeFile = permissionSettingsPaths(session.config.workspace,
+            session.config.configSources?.userDir ?? defaultUserDir()).userSettings;
+          // ve/me refresh after both outcomes, di [78011,79476)/[81747,85560), UTF-16.
+          const refreshAutoModeLayers = () => {
+            const policy = readAutoModePolicy(autoModeFile);
+            const user = autoModeLayers.find(layer => layer.source === 'userSettings');
+            const updated = user === undefined ? { source: 'userSettings' as const, root: session.config.workspace,
+              allow: [], deny: [], ask: [], additionalDirectories: [], autoMode: policy } : { ...user, autoMode: policy };
+            autoModeLayers = [...autoModeLayers.filter(layer => layer.source !== 'userSettings'), updated];
+          };
+          refreshAutoModeLayers();
+          // Ms/Gl, fxx7hh8y [63340,63987)/[49877,50106), UTF-16. Owned private files use the existing TTY handoff.
+          const editAutoModeFile = async (prefix: string, content: string, keep = false) => {
+            const signal = options.signal;
+            signal.throwIfAborted();
+            const directory = fs.mkdtempSync(path.join(path.dirname(session.file), `${prefix}-`));
+            const file = path.join(directory, 'rules.md');
+            fs.chmodSync(directory, 0o700);
+            try {
+              fs.writeFileSync(file, content, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+              const result = terminal?.openFile ? await terminal.openFile(file, signal, session.config.workspace)
+                : await openExternalFile(file, undefined, signal, session.config.workspace);
+              signal.throwIfAborted();
+              return { ...result, file };
+            } finally { if (!keep) fs.rmSync(directory, { recursive: true, force: true }); }
+          };
+          const autoMode: AutoModeEditorHost = {
+            apply: async update => {
+              try {
+                await session.drainPermissionWrites();
+                await persistAutoModeUpdate(autoModeFile, update);
+                autoModeSaved = true;
+                return {};
+              } catch (error) { return { error: error instanceof Error ? error.message : String(error) }; }
+              finally { refreshAutoModeLayers(); }
+            },
+            editDocument: async lines => {
+              if (externalEditorName() === undefined) return { kind: 'problem', canReopen: false,
+                message: 'No editor is configured — set $VISUAL or $EDITOR, then reopen /permissions to edit the environment.' };
+              try {
+                const result = await editAutoModeFile('auto-mode-env-edit', lines.join('\n'));
+                return result.content === null ? { kind: 'problem', canReopen: true,
+                  message: result.error ?? 'the editor returned no content — reopen to try again.' }
+                  : { kind: 'edited', content: result.content };
+              } catch (error) {
+                options.signal.throwIfAborted();
+                return { kind: 'problem', canReopen: true, message: `could not write the file: ${String(error)}` };
+              }
+            },
+            viewRules: async (_section, lines) => {
+              try {
+                const result = await editAutoModeFile('auto-mode-builtins', lines.join('\n\n'), true);
+                return result.error === undefined ? `wrote ${result.file}` : `wrote ${result.file} — ${result.error}`;
+              } catch (error) {
+                options.signal.throwIfAborted();
+                return `could not write the file: ${error instanceof Error ? error.message : String(error)}`;
+              }
+            },
+          };
+          const notice = await browsePermissions(() => ({ ...permissionPanelInput(session), autoModeLayers }),
             request => withTurn(signal => readDialog(request, signal)),
             update => applyPermissionPanelUpdate(session, update),
             { onRetryDenials: labels => { session.appendPermissionRetry(labels); retried = true; },
-              removeDenial: denial => session.autoModeDenials.remove(denial) });
+              removeDenial: denial => session.autoModeDenials.remove(denial), autoMode });
+          // di refreshes ve/me after writes; FVt's existing configuration branch refreshes the live classifier owner.
+          if (autoModeSaved) await withTurn(signal => applyConfig(reloadConfig(session.config), false, signal));
           // The recovered dialog returns its accumulated lines as the command's own result text
           // (`display: "system"`), so the whole block lands in the transcript, not on the status row.
           if (notice) terminal.writeNotice?.(notice);
