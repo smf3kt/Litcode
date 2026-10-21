@@ -322,6 +322,14 @@ Next up, scoped but not started:
       25/25 and check/build pass; full suite 2997/2998 with the CLI-effort failure reproduced at
       HEAD. Independent review requested.
       See `research/ports/W244-effort-live.md`.
+- [x] W245 typed `/model` runs mid-turn. Source `bWe` (chunk-sfn1dbxq.js 1650742) is `immediate`;
+      the submit gate (`zn`, chunk-24k7d6mw.js 1491124) runs it beside the active turn. `onLine`
+      calls `applyModelCommand`: bare `/model` opens the W243 picker, `/model ID` uses
+      `switchModelInPlace` (hook gate, live state, default save, `PostModelSwitch`). Compiled
+      10/10 at identity `2ae8a9fb…` for both arms mid-turn, W243 9/9 and W244 10/10 rerun on the
+      same tree, interactive 25/25 and check/build pass; full suite 2997/2998 with the CLI-effort
+      failure reproduced at HEAD. Independent review pending.
+      See `research/ports/W245-model-typed.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package.

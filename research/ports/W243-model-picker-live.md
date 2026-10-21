@@ -87,7 +87,7 @@ semantics against `w9`/`FL`, the effort-save arm, and the mid-turn acceptance.
   pass; the picker's row/effort/accept behavior is unchanged.
 - Compiled acceptance `.audit/w243-model-picker.mjs` (wide PTY `.audit/w243-model-picker.exp`,
   rows 30 columns 160): 9/9 at identity
-  `6f893fe2c71184947e5bbf43dda7f5c2db1646f8e087c4dd48bb26f9bd08a052`. The fixture provider holds
+  `2ae8a9fb6e94fc40ae0a37157eee1d3f741c7d93500c9aa01b063b553bc6b888`. The fixture provider holds
   the first turn open; the chord opens `Select model` while that turn runs, a down-arrow plus
   Enter accepts the seeded second model and shows `Model set to second-model`, the held turn then
   continues and its second provider request carries `second-model`, the turn finishes, a later

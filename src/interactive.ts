@@ -468,12 +468,18 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   const onLine = (line: string, attachment?: import('./terminal.js').PromptDiffSelection) => {
     if (approval) { approval(line); return; }
-    // `kEo` (chunk-sfn1dbxq.js 1659192) is `immediate`; the recovered submit gate runs it while
-    // the turn guard is active (`zn`, chunk-24k7d6mw.js 1491124) instead of queueing it behind
-    // the turn. `/model` keeps the queued path until its typed mid-turn arm is ported.
+    // `kEo` (chunk-sfn1dbxq.js 1659192) and `bWe` (1650535) are `immediate`; the recovered submit
+    // gate runs them while the turn guard is active (`zn`, chunk-24k7d6mw.js 1491124) instead of
+    // queueing them behind the turn.
     const trimmed = line.trim();
     if (turnController && /^\/effort(?:\s|$)/.test(trimmed)) {
       void applyEffortCommand(trimmed).catch(error => {
+        if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
+      });
+      return;
+    }
+    if (turnController && /^\/model(?:\s|$)/.test(trimmed)) {
+      void applyModelCommand(trimmed.slice('/model'.length).trim()).catch(error => {
         if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
       });
       return;
@@ -983,6 +989,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (!options.signal.aborted) options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
     }
   };
+  /**
+   * `/model` inline arm (`R` in chunk-naxwgf3s.js): the argument is applied through the live
+   * switch, while the bare command opens the picker. The hook gate and persistence are the same
+   * ones W243 uses; the source's availability probe has no local catalogue.
+   */
+  async function applyModelCommand(argument: string): Promise<void> {
+    if (argument === '') { await openModelPickerLive?.(); return; }
+    await switchModelInPlace(argument, undefined, false, options.signal);
+  }
   /** `MOe`, chunk-0q6c90q6.js 6286: apply the level to live state; the write is the only default arm. */
   async function applyEffortCommand(prompt: string): Promise<void> {
     let sessionOnly = false;
