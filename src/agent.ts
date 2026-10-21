@@ -1,5 +1,6 @@
 import { classifyAutoAction, classifierSystem } from './auto-classifier.js';
 import { classifierTranscript, serializeAutoTool } from './auto-classifier-transcript.js';
+import { autoModeDenialDisplay, autoModeDenialInputKey } from './permission-denials.js';
 import { cloneClassifierMessages, type MessageOrigin } from './message-origin.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Session, type SessionConfig, type ToolResult } from './session.js';
@@ -568,6 +569,17 @@ export class Agent {
       if (verdict.kind === 'allow') return { input };
       const noVerdict = verdict.kind === 'no-verdict' || verdict.kind === 'cancelled';
       const denied = verdict.reason;
+      const outcome = verdict.kind === 'unavailable' || verdict.kind === 'cancelled' ? 'automode-unavailable' :
+        verdict.kind === 'no-verdict' ? 'automode-parsing-error' : 'automode-blocked';
+      // The source records only the classifier's own deny (`decisionReason.classifier === "auto-mode"`
+      // and not `noVerdict`), keyed by the tool's description and its canonical input
+      // (chunk-24k7d6mw.js 1506012). The `/permissions` `recent` tab lists these.
+      if (outcome === 'automode-blocked') {
+        this.session.autoModeDenials.record({ toolName: tool.schema.name,
+          display: autoModeDenialDisplay(tool, input),
+          inputKey: autoModeDenialInputKey(tool.schema.name, input),
+          reason: denied });
+      }
       const native = await this.hook('PermissionDenied', { tool_name: tool.schema.name, tool_input: input,
         tool_use_id: callId, reason: denied }, signal);
       let retry = native.retry === true;
@@ -577,9 +589,7 @@ export class Agent {
             cwd: this.session.config.workspace, tool_name: tool.schema.name, tool_input: input, tool_use_id: callId, reason: denied }) });
         retry ||= raised.answer.retry === true;
       }
-      return { input, denied, retry: retry && !noVerdict,
-        outcome: verdict.kind === 'unavailable' || verdict.kind === 'cancelled' ? 'automode-unavailable' :
-          verdict.kind === 'no-verdict' ? 'automode-parsing-error' : 'automode-blocked' };
+      return { input, denied, retry: retry && !noVerdict, outcome };
     }
     const reason = decision.reason ?? `Approval required for ${tool.schema.name}`;
     const requested = await this.hook('PermissionRequest', { tool_name: tool.schema.name, tool_input: input, reason }, signal);

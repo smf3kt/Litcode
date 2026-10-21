@@ -236,6 +236,8 @@ function permissionPanelInput(session: Session): PermissionPanelInput {
     // `workingDirectories()` list, and draws the original directory above it.
     directories: [...session.permissionUpdates.additionalWorkingDirectories.keys()],
     originalCwd: session.config.workspace,
+    // Source `Wr`'s `denials` prop, read from the store at mount.
+    denials: session.autoModeDenials.denials,
   };
 }
 
@@ -1476,12 +1478,23 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // buckets, which is the local counterpart of the recovered `U0`/`Bc`/`xm`, and applies
           // each change through the same adoption path `/add-dir` uses.
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          // Source `gR` (`chunk-fxx7hh8y.js` 91624): `onRetryDenials` appends the grant and the
+          // panel's own exit carries `shouldQuery: true`, so a retry mark starts a turn here.
+          let retried = false;
           const notice = await browsePermissions(() => permissionPanelInput(session),
             request => withTurn(signal => readDialog(request, signal)),
-            update => applyPermissionPanelUpdate(session, update));
+            update => applyPermissionPanelUpdate(session, update),
+            { onRetryDenials: labels => { session.appendPermissionRetry(labels); retried = true; },
+              removeDenial: denial => session.autoModeDenials.remove(denial) });
           // The recovered dialog returns its accumulated lines as the command's own result text
           // (`display: "system"`), so the whole block lands in the transcript, not on the status row.
           if (notice) terminal.writeNotice?.(notice);
+          if (retried) {
+            const result = await withTurn(signal => agent().run(undefined, signal));
+            if (result.modelCalls === 0 && result.text) output.write(result.text);
+            output.write('\n');
+            options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
+          }
           continue;
         }
         if (prompt.startsWith('/model ') || prompt.startsWith('/theme ') || prompt === '/effort' || prompt.startsWith('/effort ') || /^\/thinking(?:\s|$)/.test(prompt)

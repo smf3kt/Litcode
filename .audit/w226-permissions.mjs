@@ -53,7 +53,7 @@ escape(); await delay(1000);
 check('Escape dismisses the panel', flat().includes('Permissions dialog dismissed'), flat());
 
 await open();
-await down(3);           // three tab rows, then the add row
+await down(4);           // four tab rows (Recently denied first), then the add row
 enter(); await delay(1000);
 const input = flat();
 check('the add row opens the rule input', input.includes('Add allow permission rule')
@@ -91,7 +91,7 @@ check('the deny tab lists the deny rules',
 
 escape(); await delay(800);
 await open();
-await down(5);           // three tabs, the add row, Bash(ls *), then Read
+await down(6);           // four tabs, the add row, Bash(ls *), then Read
 enter(); await delay(1000);
 const pane = flat();
 check('selecting a rule asks before deleting it',
@@ -109,13 +109,11 @@ check('the delete is reported', deleted.includes('Deleted allow rule Read'), del
 
 await delay(200);
 await open();
-// The refreshed list has five rows (three tabs, the add row, the surviving rule), so a fifth
-// down wraps back onto the Allow tab; a stale list would land on the deleted rule instead.
-await down(5);
-enter(); await delay(800);
+// The panel re-reads the state on every surface, so the reopened allow tab lists the add row
+// alone; a stale list would still draw the deleted rule.
 const refreshed = flat();
 check('the refreshed list drops the deleted rule',
-  refreshed.includes('Selected: Allow') && refreshed.includes('  Bash(ls *)'), refreshed);
+  !refreshed.includes('  Read') && refreshed.includes('Add a new rule'), refreshed);
 
 child.stdin.write('\u001b'); await delay(600);
 child.stdin.write('/exit\r'); await delay(1200);

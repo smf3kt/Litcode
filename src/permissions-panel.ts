@@ -16,8 +16,8 @@
  *
  * Three surfaces, in the recovered order: the tabbed rule list, the add-rule flow (`pn` then `mn`),
  * and the rule's own pane (`ai`). The rule list is the tab strip's `allow`, `ask` and `deny` tabs;
- * the `workspace` tab is `wn`/`xn`, below. The recovered `recent` and `automode` tabs are
- * `PERMISSION_TABS` entries this build does not render yet.
+ * the `workspace` tab is `wn`/`xn`, below, and the `recent` tab is `Rn`/`Wr`, below that. The
+ * recovered `automode` tab is a `PERMISSION_TABS` entry this build does not render yet.
  */
 
 import type { PermissionFilePaths } from './permission-settings.js';
@@ -25,6 +25,7 @@ import type { PermissionUpdate } from './permissions.js';
 import type { TerminalPromptRequest } from './terminal.js';
 import { addDirectoryMessage, validateAddDirectory } from './add-dir-command.js';
 import { BASH_RULE_TOOL } from './agent-tool-restrictions.js';
+import { denialReasonText, type AutoModeDenial } from './permission-denials.js';
 import { parsePermissionRule, serializePermissionRule } from './permission-state.js';
 import { te } from './tui-symbols.js';
 
@@ -375,8 +376,8 @@ export function permissionDeleteFailedReport(rule: PermissionRuleValue): string 
   return `Could not delete ${permissionRuleText(rule)} — the rule is unchanged`;
 }
 
-/** The tabs this build offers as rows, in the recovered `br` order. `recent` and `automode` follow. */
-export const PERMISSION_OFFERED_TABS = ['allow', 'ask', 'deny', 'workspace'] as const;
+/** The tabs this build offers as rows, in the recovered `br` order. `automode` follows. */
+export const PERMISSION_OFFERED_TABS = ['recent', 'allow', 'ask', 'deny', 'workspace'] as const;
 
 /** The tab strip the panel draws above the body, the current tab bracketed. */
 export function permissionTabRow(active: PermissionTabId,
@@ -396,6 +397,14 @@ export interface PermissionPanelInput {
   readonly directories?: readonly string[];
   /** Source `Ac`: `originalCwd`, drawn above the workspace list. */
   readonly originalCwd?: string;
+  /** Source `Wr`'s `denials` prop: the auto-mode classifier's recent refusals, newest first. */
+  readonly denials?: readonly AutoModeDenial[];
+}
+
+/** The `recent` tab's two marks, held by the panel host (`di`'s `approved`/`retry` state). */
+export interface DenialMarks {
+  readonly approved: ReadonlySet<number>;
+  readonly retry: ReadonlySet<number>;
 }
 
 /**
@@ -485,16 +494,83 @@ export function workspaceRemoveRequest(directory: string): TerminalPromptRequest
 }
 
 /**
+ * The `/permissions` `recent` tab. Recovered from `chunk-fxx7hh8y.js` sha256
+ * `6c02bdbdf6679fafe7e6e589e8f21f18b347d1192564753fc4fed7559557dc78`: the empty state `Rn` at 29218,
+ * its list `Wr` at 29950 with the status icon `ut` (`chunk-hyx1j919.js` 275), the tab guide at
+ * 61300 and the `Esc` apply `bu` at 76102. The store behind it is `src/permission-denials.ts`.
+ * Offsets are zero-based UTF-16 code units.
+ */
+export const PERMISSION_RECENT_HEADER = 'Commands recently denied by the auto mode classifier.';
+export const PERMISSION_RECENT_EMPTY =
+  'No recent denials. Commands denied by the auto mode classifier will appear here.';
+/** Source `visibleOptionCount: Math.min(10, rows.length)`. */
+export const PERMISSION_RECENT_VISIBLE_ROWS = 10;
+/** Source `Wr`'s `r` binding, which toggles the focused row's retry mark. */
+export const PERMISSION_RECENT_RETRY_KEY = 'r';
+/** Source `Wr`'s row prefix: `ut` with `status: approved ? "success" : "error"` and `withSpace`. */
+export const PERMISSION_RECENT_APPROVED_MARK = `${te.tick} `;
+export const PERMISSION_RECENT_DENIED_MARK = `${te.cross} `;
+/** Source `Wr`'s `De`, drawn dim after the label. */
+export const PERMISSION_RECENT_RETRY_SUFFIX = ' (retry)';
+/** Source `di`'s guide for the `recent` tab, in the wide-terminal arm. */
+export const PERMISSION_RECENT_GUIDE = 'Enter to approve · r to retry · ↑/↓ to navigate · Esc to cancel';
+
+export interface DenialRow { readonly label: string; readonly value: string; readonly description?: string }
+
+/**
+ * Source `Wr`'s rows: the status mark, the label under `OJt`'s dedup, the dim ` (retry)` when the
+ * row carries the retry mark, the collapsed reason as the description, and the row's index as its
+ * value. `OJt`'s unit budget is `Kb` = 200000 (`chunk-qq2mgstr.js` 8897), above any label, so no
+ * row is withheld and the recovered `withheld` marker has no reachable case here.
+ */
+export function denialRows(denials: readonly AutoModeDenial[], approved: ReadonlySet<number>,
+  retry: ReadonlySet<number>): DenialRow[] {
+  const labels = permissionDisplayLabels(denials.map(denial => denial.display), text => text);
+  return denials.map((denial, index) => {
+    const description = denialReasonText(denial.reason);
+    return {
+      label: `${approved.has(index) ? PERMISSION_RECENT_APPROVED_MARK : PERMISSION_RECENT_DENIED_MARK}`
+        + `${labels[index]}${retry.has(index) ? PERMISSION_RECENT_RETRY_SUFFIX : ''}`,
+      value: String(index),
+      ...(description === undefined ? {} : { description }),
+    };
+  });
+}
+
+/** Source `bu`'s approved arm. The recovered bolds each label through `zh`; these rows are plain. */
+export function denialsApprovedReport(labels: readonly string[]): string {
+  return `Approved ${labels.join(', ')}`;
+}
+
+/** Source `bu`'s two `metaMessages` arms, one wording for one command and one for several. */
+export function denialsGrantReport(labels: readonly string[]): string {
+  return `Permission granted for: ${labels.join(', ')}. You may now retry `
+    + `${labels.length === 1 ? 'this command' : 'these commands'} if you would like.`;
+}
+
+/**
  * Source `sS`/`Na` in the shell: the panel body. The recovered docks the tab strip in the frame and
  * switches it with left and right; this host's dialog has one selection axis, so the tabs are rows
  * at the head of the list, the way `/help` carries its three tabs.
  */
-export function permissionsPanelRequest(input: PermissionPanelInput, tab: PermissionTabId = 'allow'):
-TerminalPromptRequest {
+export function permissionsPanelRequest(input: PermissionPanelInput, tab: PermissionTabId = 'allow',
+  marks: DenialMarks = { approved: new Set(), retry: new Set() }): TerminalPromptRequest {
   const lines = [permissionTabRow(tab), ''];
   const choices: { label: string; value: string; description?: string }[] =
     PERMISSION_OFFERED_TABS.map(id => ({ label: permissionTabTitle(id), value: `tab:${id}` }));
-  if (tab === 'workspace') {
+  if (tab === 'recent') {
+    const denials = input.denials ?? [];
+    lines.push(PERMISSION_RECENT_HEADER, '');
+    if (denials.length === 0) {
+      lines.push(PERMISSION_RECENT_EMPTY, '', PERMISSION_GUIDE);
+    } else {
+      const rows = denialRows(denials, marks.approved, marks.retry);
+      for (const row of rows) lines.push(`  ${row.label}`);
+      lines.push('', PERMISSION_RECENT_GUIDE);
+      choices.push(...rows.map(row => ({ label: row.label, value: row.value,
+        ...(row.description === undefined ? {} : { description: row.description }) })));
+    }
+  } else if (tab === 'workspace') {
     lines.push(...workspaceTabLines(input), '', PERMISSION_GUIDE);
     choices.push(...workspaceDirectoryRows(input.directories ?? []));
   } else {
@@ -511,6 +587,9 @@ TerminalPromptRequest {
     choices.push(...list.options.map(option => ({ label: option.label, value: option.value })));
   }
   return { title: PERMISSIONS_TITLE, message: lines.join('\n'), choices,
+    // Source `Wr`'s `r` binding: it resolves the dialog with the focused row's index in `selected`.
+    ...(tab === 'recent' && (input.denials ?? []).length > 0
+      ? { keys: [{ key: PERMISSION_RECENT_RETRY_KEY, label: `r to retry` }] } : {}),
     defaultIndex: Math.max(0, PERMISSION_OFFERED_TABS.indexOf(tab as typeof PERMISSION_OFFERED_TABS[number])) };
 }
 
@@ -572,7 +651,7 @@ export function permissionRulePaneRequest(rule: PermissionPanelRule): TerminalPr
 
 /* -------------------------------------------------------------- navigation */
 
-export type PermissionPanelAnswer = { selected: readonly string[]; text?: string } | undefined;
+export type PermissionPanelAnswer = { selected: readonly string[]; text?: string; key?: string } | undefined;
 
 /** One update to apply, with the report the panel prints when it lands. */
 export interface PermissionPanelApplyResult { readonly error?: string }
@@ -589,24 +668,38 @@ export type PermissionPanelMode =
  * Source `di`'s `no`/`sn`/`mu`/`Di` handlers: the panel's own navigation. Selecting a rule opens its
  * pane; the add row opens the input, whose submit opens the scope picker, whose pick applies the
  * update. The workspace tab's add row opens `TXe`'s text surface and its directory rows open `xn`'s
- * confirm. `Esc` steps back one surface and dismisses from a tab — with the workspace tab's own
- * message (`wn`'s `Workspace dialog dismissed`). The input is re-read on every surface, which is how
- * the recovered `U0(T)`/`Bc(T)`/`xm(T)` see a rule the panel just added.
+ * confirm. The `recent` tab's Enter toggles a row's approval mark and its `r` toggles the retry mark
+ * and approves the row; `Esc` there applies the marks (`bu`) instead of dismissing. `Esc` elsewhere
+ * steps back one surface and dismisses from a tab — with the workspace tab's own message (`wn`'s
+ * `Workspace dialog dismissed`). The input is re-read on every surface, which is how the recovered
+ * `U0(T)`/`Bc(T)`/`xm(T)` see a rule the panel just added.
  */
 export async function browsePermissions(readInput: () => PermissionPanelInput,
   read: (request: TerminalPromptRequest) => Promise<PermissionPanelAnswer>,
-  apply: (update: PermissionUpdate) => Promise<PermissionPanelApplyResult>): Promise<string | undefined> {
+  apply: (update: PermissionUpdate) => Promise<PermissionPanelApplyResult>,
+  options: {
+    /** Source `pEe()`'s `removeDenial`, which the host calls directly. */
+    removeDenial?(denial: AutoModeDenial): void;
+    /** Source `di`'s `onRetryDenials` prop. */
+    onRetryDenials?(labels: readonly string[]): void;
+  } = {}): Promise<string | undefined> {
   // Source `M`: every action appends its lines to the dialog's own list, and the dialog returns
   // that list joined when it closes (`wu`); with no lines it returns the dismissed message.
   const reports: string[] = [];
   const report = (lines: readonly string[]) => { reports.push(...lines); };
-  let tab: PermissionTabId = 'allow';
+  const initialDenials = readInput().denials ?? [];
+  // Source `di`: `E = initialTab ?? (denials.length > 0 ? "recent" : "allow")`.
+  let tab: PermissionTabId = initialDenials.length > 0 ? 'recent' : 'allow';
+  let marks: DenialMarks = { approved: new Set(), retry: new Set() };
   const finish = () => reports.length > 0 ? reports.join('\n')
     : tab === 'workspace' ? PERMISSIONS_WORKSPACE_DISMISSED : PERMISSIONS_DISMISSED;
+  /** Source `bu`: the marks name rows by index into the denials list. */
+  const markedLabels = (set: ReadonlySet<number>, denials: readonly AutoModeDenial[]) =>
+    [...set].map(index => denials[index]?.display).filter((label): label is string => label !== undefined);
   let mode: PermissionPanelMode = { kind: 'tab', tab };
   for (;;) {
     const input = readInput();
-    const request = mode.kind === 'tab' ? permissionsPanelRequest(input, mode.tab)
+    const request = mode.kind === 'tab' ? permissionsPanelRequest(input, mode.tab, marks)
       : mode.kind === 'add' ? permissionAddRuleRequest(mode.tab)
         : mode.kind === 'save' ? permissionSaveRequest(mode.tab, mode.rules, input)
           : mode.kind === 'rule' ? permissionRulePaneRequest(mode.rule)
@@ -614,14 +707,53 @@ export async function browsePermissions(readInput: () => PermissionPanelInput,
               : workspaceRemoveRequest(mode.path);
     const answer = await read(request);
     if (answer === undefined) {
-      if (mode.kind === 'tab') return finish();
-      mode = { kind: 'tab', tab };
-      continue;
+      if (mode.kind !== 'tab') { mode = { kind: 'tab', tab }; continue; }
+      if (mode.tab !== 'recent') return finish();
+      // Source `bu`: Esc on the `recent` tab applies the marks. A retry mark hands the labels to the
+      // host, which appends the grant and starts the turn; the approved marks are removed from the
+      // store and reported. Only when neither mark is set does the plain dismissal survive.
+      const denials = input.denials ?? [];
+      const retryLabels = markedLabels(marks.retry, denials);
+      if (retryLabels.length > 0) {
+        options.onRetryDenials?.(retryLabels);
+        return denialsGrantReport(retryLabels);
+      }
+      const approvedLabels = markedLabels(marks.approved, denials);
+      if (approvedLabels.length === 0 && reports.length === 0) return PERMISSIONS_DISMISSED;
+      for (const index of marks.approved) {
+        const denial = denials[index];
+        if (denial !== undefined) options.removeDenial?.(denial);
+      }
+      if (approvedLabels.length > 0) {
+        // Source `bu`: `[...uy, ...B]` — the approved line leads, then the panel's own reports.
+        reports.unshift(denialsApprovedReport(approvedLabels));
+        reports.push(denialsGrantReport(approvedLabels));
+      }
+      return reports.join('\n');
     }
     const value = answer.selected[0] ?? '';
     if (mode.kind === 'tab') {
       const picked = PERMISSION_OFFERED_TABS.find(entry => value === `tab:${entry}`);
-      if (picked !== undefined) { tab = picked; mode = { kind: 'tab', tab: picked }; continue; }
+      if (picked !== undefined) {
+        // Source `Rn`: the marks are cleared whenever the denials list empties.
+        marks = { approved: new Set(), retry: new Set() };
+        tab = picked; mode = { kind: 'tab', tab: picked }; continue;
+      }
+      if (mode.tab === 'recent') {
+        const index = Number(value);
+        if (!Number.isInteger(index) || (input.denials ?? [])[index] === undefined) return finish();
+        if (answer.key === PERMISSION_RECENT_RETRY_KEY) {
+          // Source `Wr`'s `Ge`: `r` toggles the retry mark and adds the row to the approved set.
+          const retry = new Set(marks.retry);
+          if (retry.has(index)) retry.delete(index); else retry.add(index);
+          marks = { approved: new Set(marks.approved).add(index), retry };
+        } else {
+          const approved = new Set(marks.approved);
+          if (approved.has(index)) approved.delete(index); else approved.add(index);
+          marks = { approved, retry: marks.retry };
+        }
+        continue;
+      }
       if (mode.tab === 'workspace') {
         if (value === PERMISSION_ADD_DIRECTORY_VALUE) { mode = { kind: 'addDirectory' }; continue; }
         if (input.directories?.includes(value) === true) { mode = { kind: 'removeDirectory', path: value }; continue; }

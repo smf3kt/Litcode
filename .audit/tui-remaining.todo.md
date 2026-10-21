@@ -175,32 +175,13 @@ Next up, scoped but not started:
       the shared label dedup, the add row last, the original-directory row, the removal confirm
       (`xn`) and the path input (`TXe`) with its validation message, the two reports, and the tab's
       own dismissal message. See `research/ports/W227-workspace.md`.
-- [ ] W228 `/permissions`, part three: the `recent` tab. Scoped this tick; the recovered pieces and
-      their offsets are below. It is a behavioural package, not only a surface: the tab lists the
-      auto-mode classifier's denials and its Esc *applies* them.
-      - The store is `pEe`'s provider (`chunk-frj2b06g.js` 2696): `getDenials` / `recordDenial` /
-        `removeDenial` over an in-memory list capped at 20 (`$e`), newest first. A record is
-        `{tool_name, tool_use_id, tool_input}`, written by `Sv` (`chunk-rx2nah4x.js` 308939) at the
-        permission refusal. Local counterpart: `src/agent.ts`'s `authorize()` already reaches the
-        `automode-blocked` arm; the record needs to live on the session and survive the tab.
-      - The surface is `Rn` 29218 (empty state: `No recent denials. Commands denied by the auto mode
-        classifier will appear here.`) and its list `Wr` 29900: header
-        `Commands recently denied by the auto mode classifier.`, rows of
-        `status icon + label + dim " (retry)"` with the tool input as the description,
-        `visibleOptionCount = min(10, rows.length)`, Enter toggling the approved set (skipping rows
-        `nc` rejects) and `r` toggling the retry set while clearing approved.
-      - Enter and `r` are both expressible on the local dialog: `TerminalPromptRequest.keys` is
-        already honoured at `src/tui.ts:1944`, and the answer carries the key that was pressed, so
-        the marks live in `browsePermissions`'s state instead of the recovered component's.
-      - Esc runs `bu` (76102), not a dismissal: with a retry set it calls `onRetryDenials` and exits
-        with the metaMessage `Permission granted for: …` and `shouldQuery: true`; otherwise it
-        removes each approved denial and returns `Approved <labels>` joined with the panel's own
-        reports. `wu` (77137) then supplies the exit text and `wu`/`Do` keep the ordinary fallbacks.
-      - The retry path appends one message: `Ets` (`chunk-sfn1dbxq.js` 4502383) builds
-        `{type:'system', subtype:'permission_retry', content: 'Allowed ' + commands.join(', ')}`, and
-        `gR` 91624 applies it through `applyMessageOp({type:'append', messages:[…]})`. The local
-        classifier reads `classifierTranscript(this.session.messages, …)`, so the appended message is
-        what makes the re-issued call pass.
+- [x] W228 `/permissions`, part three: the `recent` tab. The denial store (`pEe`, `chunk-frj2b06g.js`
+      2696: `getDenials`/`recordDenial`/`removeDenial`, cap 20, newest first), the record written at
+      the classifier's own refusal (`{toolName, display, inputKey, reason}`, `chunk-24k7d6mw.js`
+      1506012), the list `Rn`/`Wr` with its status icons and the `r` retry mark, and the Esc apply
+      `bu`: approved rows leave the store and report `Approved <labels>`, a retry appends
+      `Allowed <labels>` as a human-origin message and starts a turn. The panel now opens on
+      `recent` whenever the list is non-empty. See `research/ports/W228-recent-denials.md`.
 - [ ] W229 `/permissions`, part four: the `automode` tab (`Bn`, `Added auto mode ${…} rule`) over the
       local auto-mode state.
 

@@ -1210,6 +1210,13 @@ test("live directory grants affect current file execution, revocation and status
         assert.equal(classifierCalls, outcome === 'malformed' ? 10 : outcome === 'block' || outcome === 'refusal-error' ? 2 : 1);
         const retry = owned.messages.some(message => message.content === 'The PermissionDenied hook indicated you may retry this tool call.');
         assert.equal(retry, outcome === 'block' || outcome === 'unavailable');
+        // The `/permissions` `recent` list holds the classifier's own deny and nothing else.
+        const denials = owned.autoModeDenials.denials;
+        assert.equal(denials.length, outcome === 'block' ? 1 : 0);
+        if (outcome === 'block') {
+          assert.deepEqual(denials[0], { toolName: 'write_file', display: 'marker: owned',
+            inputKey: '{"path":"marker","content":"owned"}', reason: 'held' });
+        }
         const first = owned.messages[0]!;
         assert.equal(classifierMessage(first)?.humanText, 'write marker');
         const transcript = classifierTranscript(owned.messages, new Map(ownedTools.map(tool => [tool.schema.name, tool])),
@@ -1223,6 +1230,25 @@ test("live directory grants affect current file execution, revocation and status
       execute: async () => '', toAutoClassifierInput: () => { throw new Error('fallback'); } }, { command: 'whole command' }, 'call');
     assert.ok(serialized.includes('whole command'));
   } finally { status.close(); await status.flush(); await session.close(); await isolated.close(); }
+});
+
+test("a permission retry appends a human-origin grant the classifier reads as the user", async () => {
+  const root = workspace();
+  const tools = createTools();
+  const session = Session.open(root, { config: config(root, tools) });
+  try {
+    // Source `gR`/`Ets`: the grant is appended, then the panel exits with `shouldQuery: true`.
+    session.appendPermissionRetry(['marker: owned']);
+    assert.equal(session.awaitingResponse, true);
+    assert.equal(session.messages.at(-1)!.content, 'Allowed marker: owned');
+    // A human-origin message reaches the classifier as the user's own words, not as untrusted content.
+    assert.equal(classifierMessage(session.messages.at(-1)!)?.origin.kind, 'human');
+    const transcript = classifierTranscript(session.messages, new Map(tools.map(tool => [tool.schema.name, tool])),
+      { name: 'write_file', input: { path: 'marker', content: 'owned' }, id: 'retry' });
+    // `gm` indents a human turn, so the grant reaches the classifier as the user's own words.
+    assert.ok(transcript.includes('"user":"  Allowed marker: owned"'));
+    assert.ok(!transcript.includes('NON-USER SOURCE'));
+  } finally { await session.close(); }
 });
 
 test("PermissionRequest allow adds a session deny rule that survives the answer", async () => {

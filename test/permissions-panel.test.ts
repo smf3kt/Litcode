@@ -9,6 +9,9 @@ import {
   PERMISSION_ADD_RULE_VALUE, PERMISSION_GUIDE, PERMISSIONS_DISMISSED, PERMISSIONS_WORKSPACE_DISMISSED,
   PERMISSION_OFFERED_TABS, PERMISSION_RULE_TABS, PERMISSION_SAVE_DESTINATIONS, PERMISSION_TABS,
   PERMISSION_WORKSPACE_INTRO, PERMISSION_WORKSPACE_ORIGINAL, browsePermissions,
+  denialRows, denialsGrantReport, PERMISSION_RECENT_APPROVED_MARK, PERMISSION_RECENT_DENIED_MARK,
+  PERMISSION_RECENT_EMPTY, PERMISSION_RECENT_GUIDE, PERMISSION_RECENT_HEADER,
+  PERMISSION_RECENT_RETRY_KEY,
   permissionAddedReport, permissionDeleteFailedReport, permissionDeletedReport,
   permissionPanelRules, permissionRuleDecomposition, permissionRuleKey, permissionRuleLabels,
   PERMISSION_LABEL_LIMIT, permissionRulePaneRequest, permissionRuleRows, permissionRuleText, permissionSaveOptions,
@@ -17,6 +20,8 @@ import {
   workspaceAddedReport, workspaceDirectoryRows, workspaceDisplayText, workspaceRemoveRequest,
   workspaceRemovedReport, workspaceTabLines, type PermissionPanelRule,
 } from '../src/permissions-panel.js';
+import { AUTO_MODE_DENIAL_LIMIT, AutoModeDenialStore, autoModeDenialDisplay, autoModeDenialInputKey,
+  denialReasonText, type AutoModeDenial } from '../src/permission-denials.js';
 import type { PermissionUpdate } from '../src/permissions.js';
 
 function rule(toolName: string, ruleContent?: string, source = 'userSettings',
@@ -98,8 +103,8 @@ test('the tab table keeps the recovered order and titles', () => {
     ['recent', 'allow', 'ask', 'deny', 'automode', 'workspace']);
   assert.equal(permissionTabTitle('recent'), 'Recently denied');
   assert.equal(permissionTabTitle('automode'), 'Auto mode');
-  assert.deepEqual([...PERMISSION_OFFERED_TABS], ['allow', 'ask', 'deny', 'workspace']);
-  assert.equal(permissionTabRow('ask'), ' Allow [Ask] Deny  Workspace ');
+  assert.deepEqual([...PERMISSION_OFFERED_TABS], ['recent', 'allow', 'ask', 'deny', 'workspace']);
+  assert.equal(permissionTabRow('ask'), ' Recently denied  Allow [Ask] Deny  Workspace ');
   // The strip follows the caller's list, so a tab the build does not draw stays out.
   assert.equal(permissionTabRow('deny', PERMISSION_RULE_TABS), ' Allow  Ask [Deny]');
 });
@@ -130,14 +135,14 @@ test('the panel body carries the tab row, the intro and the empty state', () => 
   assert.ok(request.message.includes('No deny rules'));
   assert.ok(request.message.includes(PERMISSION_GUIDE));
   assert.deepEqual((request.choices ?? []).map(choice => choice.value),
-    ['tab:allow', 'tab:ask', 'tab:deny', 'tab:workspace', PERMISSION_ADD_RULE_VALUE]);
-  assert.equal(request.defaultIndex, 2);
+    ['tab:recent', 'tab:allow', 'tab:ask', 'tab:deny', 'tab:workspace', PERMISSION_ADD_RULE_VALUE]);
+  assert.equal(request.defaultIndex, 3);
 
   const listed = permissionsPanelRequest({ rules: [rule('Read'), rule('Bash', 'ls *', 'projectSettings')] }, 'allow');
   assert.ok(listed.message.includes('  Bash(ls *)'));
   assert.ok(listed.message.includes('  Read'));
   assert.ok(!listed.message.includes('No allow rules'));
-  assert.deepEqual((listed.choices ?? []).slice(4).map(choice => choice.label), [PERMISSION_ADD_RULE_LABEL, 'Bash(ls *)', 'Read']);
+  assert.deepEqual((listed.choices ?? []).slice(5).map(choice => choice.label), [PERMISSION_ADD_RULE_LABEL, 'Bash(ls *)', 'Read']);
 });
 
 test('the rule pane is read-only for managed, flag and command sources', () => {
@@ -275,13 +280,13 @@ test('the workspace tab draws the intro, the original directory and its rows', (
   assert.ok(request.message.includes('  /w/extras'));
   assert.ok(request.message.includes(PERMISSION_GUIDE));
   // The add row is last here, unlike the rule tabs where it leads.
-  assert.deepEqual((request.choices ?? []).slice(4).map(choice => choice.value), ['/w/extras', PERMISSION_ADD_DIRECTORY_VALUE]);
-  assert.deepEqual((request.choices ?? []).slice(4).map(choice => choice.label), ['/w/extras', PERMISSION_ADD_DIRECTORY_LABEL]);
-  assert.equal(request.defaultIndex, 3);
+  assert.deepEqual((request.choices ?? []).slice(5).map(choice => choice.value), ['/w/extras', PERMISSION_ADD_DIRECTORY_VALUE]);
+  assert.deepEqual((request.choices ?? []).slice(5).map(choice => choice.label), ['/w/extras', PERMISSION_ADD_DIRECTORY_LABEL]);
+  assert.equal(request.defaultIndex, 4);
   // With no directory the tab still offers the add row and shows no empty-state line.
   const empty = permissionsPanelRequest({ rules: [], directories: [], originalCwd: '/w' }, 'workspace');
   assert.ok(!empty.message.includes('No additional working directories'));
-  assert.deepEqual((empty.choices ?? []).slice(4).map(choice => choice.value), [PERMISSION_ADD_DIRECTORY_VALUE]);
+  assert.deepEqual((empty.choices ?? []).slice(5).map(choice => choice.value), [PERMISSION_ADD_DIRECTORY_VALUE]);
 });
 
 test('the workspace labels go through the display fold, then the dedup', () => {
@@ -378,4 +383,113 @@ test('the workspace surfaces carry the recovered wording', () => {
   assert.ok(remove.message.includes('Claude Code will no longer have access to files in this directory.'));
   assert.deepEqual(remove.choices, [{ label: 'Yes', value: 'confirm' }, { label: 'No', value: 'cancel' }]);
   assert.equal(remove.defaultIndex, 1);
+});
+
+/* ------------------------------------------------------- the recent tab (W228) */
+
+function denial(display: string, reason = ''): AutoModeDenial {
+  return { toolName: 'run_command', display, inputKey: JSON.stringify({ command: display }), reason };
+}
+
+test('the denial store keeps the newest twenty by identity', () => {
+  const store = new AutoModeDenialStore();
+  for (let index = 0; index < 25; index += 1) store.record(denial(`command ${index}`));
+  assert.equal(store.denials.length, AUTO_MODE_DENIAL_LIMIT);
+  // Source `recordDenial`: the newest leads and the oldest falls off the tail.
+  assert.equal(store.denials[0]!.display, 'command 24');
+  assert.equal(store.denials.at(-1)!.display, 'command 5');
+  // Source `removeDenial`: two identical records stay distinct until the held one goes.
+  const first = denial('same');
+  store.record(first);
+  store.record(denial('same'));
+  store.remove(first);
+  assert.equal(store.denials.filter(entry => entry.display === 'same').length, 1);
+});
+
+test('the denial record keys shell tools on the command and others on the whole input', () => {
+  // Source `B4` over `p_`: the shell tool's key drops the other fields.
+  assert.equal(autoModeDenialInputKey('run_command', { command: 'ls', timeout: 1000 }), '{"command":"ls"}');
+  assert.equal(autoModeDenialInputKey('write_file', { path: '/w/a', content: 'x' }),
+    '{"path":"/w/a","content":"x"}');
+});
+
+test('the denial display is the tool input on one line, and the reason collapses', () => {
+  const tool = { schema: { name: 'run_command' }, readOnly: false,
+    toAutoClassifierInput: (input: unknown) => (input as { command: string }).command };
+  assert.equal(autoModeDenialDisplay(tool as never, { command: 'rm -rf /w' }), 'rm -rf /w');
+  // Source `Ci`/`Bi`: a line separator and a control code point both become U+FFFD.
+  assert.equal(autoModeDenialDisplay(tool as never, { command: 'a\nb\u0007c' }), 'a�b�c');
+  assert.equal(denialReasonText('  too   broad \n for this call '), 'too broad � for this call');
+  assert.equal(denialReasonText(''), undefined);
+  assert.equal(denialReasonText('   '), undefined);
+});
+
+test('the recent rows carry the status mark, the retry suffix and the reason', () => {
+  // The second row folds onto the first's label, so `uFe` puts both back to their escaped raw text.
+  const denials = [denial('rm -rf /w é', 'Deletes files'), denial('rm -rf /w  é')];
+  const rows = denialRows(denials, new Set([0]), new Set([0]));
+  assert.equal(rows[0]!.label, `${PERMISSION_RECENT_APPROVED_MARK}rm -rf /w \\u00e9 (retry)`);
+  assert.equal(rows[1]!.label, `${PERMISSION_RECENT_DENIED_MARK}rm -rf /w  \\u00e9`);
+  assert.equal(rows[0]!.description, 'Deletes files');
+  assert.equal(rows[1]!.description, undefined);
+  assert.deepEqual(rows.map(row => row.value), ['0', '1']);
+  // A lone row keeps its plain label and shows no mark beyond the status icon.
+  assert.equal(denialRows([denial('rm -rf /w')], new Set(), new Set())[0]!.label,
+    `${PERMISSION_RECENT_DENIED_MARK}rm -rf /w`);
+});
+
+test('the recent tab draws its header, the empty state and the retry key', () => {
+  const empty = permissionsPanelRequest({ rules: [], denials: [] }, 'recent');
+  assert.ok(empty.message.includes(PERMISSION_RECENT_HEADER));
+  assert.ok(empty.message.includes(PERMISSION_RECENT_EMPTY));
+  assert.ok(empty.message.includes(PERMISSION_GUIDE));
+  assert.equal(empty.keys, undefined);
+
+  const listed = permissionsPanelRequest({ rules: [], denials: [denial('rm -rf /w', 'too broad')] }, 'recent');
+  assert.ok(listed.message.includes(PERMISSION_RECENT_GUIDE));
+  assert.deepEqual(listed.keys, [{ key: PERMISSION_RECENT_RETRY_KEY, label: 'r to retry' }]);
+  assert.deepEqual((listed.choices ?? []).slice(5).map(choice => choice.value), ['0']);
+  assert.equal((listed.choices ?? [])[5]!.description, 'too broad');
+  assert.equal(listed.defaultIndex, 0);
+});
+
+test('the panel opens on the recent tab and Esc applies the approved marks', async () => {
+  const denials = [denial('rm -rf /w', 'Deletes files'), denial('git push', 'Writes history')];
+  const removed: AutoModeDenial[] = [];
+  const script = [
+    { selected: ['0'] },              // Enter approves the first row
+    { selected: ['1'] },              // Enter approves the second
+    { selected: ['1'] },              // Enter again withdraws it
+    undefined,                        // Esc applies
+  ];
+  let step = 0;
+  const notice = await browsePermissions(() => ({ rules: [], denials }),
+    async () => script[step++], async () => ({}),
+    { removeDenial: record => removed.push(record) });
+  assert.deepEqual(removed, [denials[0]]);
+  assert.equal(notice, `Approved rm -rf /w\n${denialsGrantReport(['rm -rf /w'])}`);
+});
+
+test('a retry mark hands the labels back and leaves the store alone', async () => {
+  const denials = [denial('rm -rf /w')];
+  const retried: (readonly string[])[] = [];
+  const removed: AutoModeDenial[] = [];
+  const script = [{ selected: ['0'], key: 'r' }, undefined];
+  let step = 0;
+  const notice = await browsePermissions(() => ({ rules: [], denials }),
+    async () => script[step++], async () => ({}),
+    { removeDenial: record => removed.push(record), onRetryDenials: labels => retried.push(labels) });
+  assert.deepEqual(retried, [['rm -rf /w']]);
+  assert.deepEqual(removed, []);
+  assert.equal(notice, denialsGrantReport(['rm -rf /w']));
+});
+
+test('the recent tab dismisses plainly when nothing is marked', async () => {
+  const script = [undefined, undefined];
+  let step = 0;
+  assert.equal(await browsePermissions(() => ({ rules: [], denials: [denial('rm -rf /w')] }),
+    async () => script[step++], async () => ({}), {}), PERMISSIONS_DISMISSED);
+  // The rule grid is the opening tab only while the denial list is empty.
+  assert.equal(await browsePermissions(() => ({ rules: [], denials: [] }),
+    async () => script[step++], async () => ({}), {}), PERMISSIONS_DISMISSED);
 });
