@@ -594,6 +594,24 @@ export interface PromptDiffSelection {
   promptUuid: string;
   selection: import('./diff-selection.js').DiffSelection;
 }
+/** One pulled queue entry: its text and the IDE selection the source restores with it. */
+export interface TerminalQueuedPrompt {
+  text: string;
+  attachment?: PromptDiffSelection;
+}
+/**
+ * The input queue the composer can pull back (`Er` in the recovered app). The TUI reads it for
+ * the placeholder hints and the up/down selection, and popping removes the item from the queue
+ * the loop drains, so an edited prompt is handled once.
+ */
+export interface TerminalPromptQueue {
+  /** The editable prompts, oldest first, as `popEditableAt` indexes them. */
+  snapshot(): readonly string[];
+  /** Remove and return the prompt at `index`; a stale index returns undefined. */
+  pop(index: number): TerminalQueuedPrompt | undefined;
+  /** Remove and return every editable prompt joined in queue order, or undefined when none. */
+  popAll(): TerminalQueuedPrompt | undefined;
+}
 export interface TerminalCallbacks {
   onSubmit?: (text: string, attachment?: PromptDiffSelection) => void;
   onInterrupt?: () => void;
@@ -1302,6 +1320,10 @@ export interface TerminalSurface {
   start(): unknown;
   close(): void;
   setRunning(running: boolean): void;
+  /** The loop's editable prompt queue for the composer's selection UI. */
+  bindPromptQueue?(queue: TerminalPromptQueue): void;
+  /** Tell the composer its queue changed, so hints and a stale selection repaint. */
+  promptQueueChanged?(): void;
   setProgress?(event: import('./tui-progress.js').AgentProgressEvent): void;
   setTasks?(tasks: readonly import('./tasks.js').TaskRecord[]): void;
   bindInputHistory?(session: import('./session.js').Session): Promise<void>;
