@@ -79,7 +79,7 @@ rollback semantics, the fingerprint exclusion, and both acceptance arms.
 - `test/runtime-resources.test.ts`: 15/15; `test/interaction-runtime.test.ts` and
   `test/workspace-session.test.ts`: 14/14.
 - Compiled acceptance `.audit/w244-effort-live.mjs` (wide PTY `.audit/w244-effort-live.exp`):
-  10/10 at identity `6f893fe2c71184947e5bbf43dda7f5c2db1646f8e087c4dd48bb26f9bd08a052`.
+  10/10 at identity `2ae8a9fb6e94fc40ae0a37157eee1d3f741c7d93500c9aa01b063b553bc6b888`.
   A first turn starts on the stored `low` effort, `/effort high` runs while the turn is held,
   the turn's next request carries `high`; a second turn starts on `high`, the bare `/effort`
   slider opens mid-turn, Right+Enter accepts `xhigh`, and the next request carries `xhigh`.
