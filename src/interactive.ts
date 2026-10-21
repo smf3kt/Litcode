@@ -1787,12 +1787,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       return configPanelInput(session.config);
                     case 'progressBar': {
                       // y0 reads the merged setting (`hs`) with default true; re-read it after the write
-                      // so a higher authored layer keeps precedence.
+                      // so a higher authored layer keeps precedence. Row 20203 writes the global
+                      // config and the live flag, never a new session.
                       const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
                       const authored = loaded.settings.terminalProgressBarEnabled;
-                      config.terminalProgressBarEnabled = authored === undefined ? true
+                      const enabled = authored === undefined ? true
                         : configSchema.shape.terminalProgressBarEnabled.parse(authored);
-                      break;
+                      session.config.terminalProgressBarEnabled = enabled;
+                      terminal?.setTerminalProgressBar?.(enabled !== false);
+                      changes.set(update.id, `Set ${update.id} to ${enabled}`);
+                      return configPanelInput(session.config);
                     }
                     case 'permissionMode': {
                       // vWe [21907,22578), UTF-16: the row reads the merged settings default (`hs`),
@@ -1820,9 +1824,28 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       session.config.thinking = update.value;
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
                       return configPanelInput(session.config);
-                    case 'turnDuration': config.showTurnDuration = update.value; break;
-                    case 'timeFormat': config.timeFormat = update.value; break;
-                    case 'editor': config.editorMode = update.value; break;
+                    case 'turnDuration':
+                      // Row 20771: userSettings plus the global config, no session restart; the
+                      // terminal's duration switch is bound to that state.
+                      session.config.showTurnDuration = update.value;
+                      terminal?.setShowTurnDuration?.(update.value);
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
+                    case 'timeFormat':
+                      // Row 21614: persisted setting plus the settings cache; the progress
+                      // formatter reads the live value.
+                      session.config.timeFormat = update.value;
+                      terminal?.setProgressSettings?.({ timeFormat: session.config.timeFormat,
+                        timeZone: session.config.timeZone, spinnerVerbs: session.config.spinnerVerbs });
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
+                    case 'editor':
+                      // Row 26180: userSettings plus the global config; the editor mode is host
+                      // state and applies through `setEditorMode`.
+                      session.config.editorMode = update.value;
+                      terminal?.setEditorMode?.(update.value, session.config.vimInsertModeRemaps);
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
                     case 'askUserQuestionTimeout': config.askUserQuestionTimeout = update.value; break;
                     case 'dialogExpiry':
                       if (update.value === 'default') delete config.dialogExpiry; else config.dialogExpiry = update.value;
@@ -1849,8 +1872,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 if (value !== undefined) {
                   const update: ConfigUpdate = { id: 'timeFormat', value };
                   await saveConfigPanelSetting(update, session.config.workspace, session.config.configSources?.userDir);
-                  const config = structuredClone(session.config); config.timeFormat = value;
-                  await withTurn(signal => applyConfig(config, false, signal));
+                  // Row 21614 has no restart arm; the picker writes the live formatter directly.
+                  session.config.timeFormat = value;
+                  terminal?.setProgressSettings?.({ timeFormat: session.config.timeFormat,
+                    timeZone: session.config.timeZone, spinnerVerbs: session.config.spinnerVerbs });
                   changes.set('timeFormat', `Set timeFormat to ${value}`);
                 }
               } else if (result.open === 'theme') {

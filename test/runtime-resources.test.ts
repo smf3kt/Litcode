@@ -78,11 +78,14 @@ test('display-only config rows keep the owner tool set', async () => {
   const f = fixture();
   const runtime = await createRuntime(f.config, unused, f.controller.signal);
   try {
-    const pinned = pinToolSchemas(runtime.buildTools({ ...f.config, verbose: true, prefersReducedMotion: true }, 'display-owner'));
-    // The Verbose and Reduce motion rows write live state (`Te`/`vy`, chunk-nybcbd9t.js
-    // 9556/15296); rebuilding for the same owner must not see a stale tool set.
+    const pinned = pinToolSchemas(runtime.buildTools({ ...f.config, verbose: true, prefersReducedMotion: true,
+      showTurnDuration: false, timeFormat: '24-hour', editorMode: 'vim', terminalProgressBarEnabled: false }, 'display-owner'));
+    // The Verbose, Reduce motion, turn-duration, time-format, editor and progress-bar rows write
+    // live state (`Te`/`vy`, chunk-nybcbd9t.js 9556/15296; rows 20203/20771/21614/26180);
+    // rebuilding for the same owner must not see a stale tool set.
     assert.deepEqual(pinToolSchemas(runtime.buildTools({ ...f.config, verbose: false,
-      prefersReducedMotion: false }, 'display-owner')), pinned);
+      prefersReducedMotion: false, showTurnDuration: true, timeFormat: 'auto', editorMode: 'normal',
+      terminalProgressBarEnabled: true }, 'display-owner')), pinned);
   } finally {
     await runtime.close();
     f.cleanup();
