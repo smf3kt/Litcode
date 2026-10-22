@@ -670,3 +670,8 @@ Explicitly out of scope for this loop:
       with the next request and preserve the interrupt hint at 80 columns. Affected 178/178,
       compiled 26/26, config 35/35 and history 17/17 at identity `66d6817e...`.
       See `research/ports/W285-effort-feedback.md`.
+- [x] W286 stashed footer (WR/yn [723972,724107), Pre [481073,481106), UTF-16):
+      the dim nonshrinking marker follows the existing stash slot and uses the source separator
+      after feedback. Swap/pop/automatic restore, brief/diff and suggestion/search gates verified.
+      Affected 148/148, compiled 19/19 and effort 26/26 at identity `b1eaf3df...`.
+      See `research/ports/W286-stashed-footer.md`.

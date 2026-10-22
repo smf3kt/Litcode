@@ -152,6 +152,12 @@ test('the fullscreen Git sidebar preserves the draft, cycles bases, scrolls and 
     key('retained draft'); assert.equal(await tui.toggleDiffPanel(), 'Diff panel shown');
     await until(() => screenLines(output).some(row => row.includes('sample.txt')));
     assert.equal(tui.state.text, 'retained draft');
+    key('\x13');
+    assert.equal(tui.state.text, '');
+    assert.ok(screenLines(output).some(row => row.includes('› stashed')), 'diff holds notifications but keeps stash status');
+    key('\x13');
+    assert.equal(tui.state.text, 'retained draft');
+    assert.ok(screenLines(output).every(row => !row.includes('› stashed')));
     key('\u0018b'); await until(() => screenLines(output).some(row => row.includes('uncommitted (vs HEAD)')));
     const actions: string[] = [], submitted: string[] = [];
     tui.on('action', action => actions.push(action)); tui.on('submit', text => submitted.push(text));
@@ -3327,5 +3333,74 @@ test('effort feedback follows brief and ultracode gates beside status and paste 
     tui.setRunning(false);
   } finally {
     tui.close(); context.mock.timers.reset(); decoded.get(output)!.dispose(); Reflect.set(ge, 'level', colorLevel);
+  }
+});
+
+test('the stashed footer follows the slot through swap, feedback expiry, views and restore', context => {
+  const userDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'stashed-footer-')));
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 }); watchScreen(output);
+  const colorLevel = Reflect.get(ge, 'level'); Reflect.set(ge, 'level', 3);
+  const submitted: string[] = [];
+  const tui = new TuiTerminal({ input, output, userDir, onSubmit: text => submitted.push(text) }).start();
+  const key = (text: string) => input.emit('data', text);
+  const footer = () => screenLines(output).at(-1)!;
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  try {
+    tui.setPrefersReducedMotion(true);
+    assert.ok(!footer().includes('stashed'), footer());
+    key('retained\x13');
+    assert.equal(tui.state.text, '');
+    assert.ok(footer().endsWith(' › stashed'), footer());
+    assert.ok(!footer().includes(' · › stashed'), footer());
+    assert.equal(decoded.get(output)!.buffer.active.getLine(29)!.getCell(footer().indexOf('›'))!.getFgColor(),
+      0x999999);
+    tui.setEffortFeedback('xhigh');
+    assert.ok(footer().endsWith('◉ xhigh · /effort · › stashed'), footer());
+    tui.setUltracodeTag({ ultracode: true, workflows: true });
+    assert.ok(footer().endsWith('◉ xhigh · ultracode · /effort · › stashed'), footer());
+    context.mock.timers.tick(10_000);
+    assert.ok(footer().endsWith(' › stashed'), footer());
+    assert.ok(!footer().includes(' · › stashed'), 'expiry removes the feedback separator');
+    tui.setBriefTranscript(true);
+    assert.ok(footer().endsWith(' › stashed'), 'brief mode retains the stash status');
+    tui.setBriefTranscript(false);
+    Object.assign(output, { columns: 40 }); output.emit('resize');
+    assert.ok(footer().endsWith(' · › stashed'), footer());
+    assert.ok(cellWidth(footer()) <= 40, footer());
+    Object.assign(output, { columns: 80 }); output.emit('resize');
+    tui.setRunning(true);
+    assert.ok(footer().includes('ctrl+c to interrupt'), footer());
+    assert.ok(footer().endsWith(' · › stashed'), footer());
+    tui.setRunning(false);
+    Object.assign(output, { columns: 120 }); output.emit('resize');
+    key('/');
+    assert.ok(!footer().includes('stashed'), 'the suggestion band hides the fullscreen footer marker');
+    key('\x15');
+    assert.ok(footer().endsWith(' · › stashed'), footer());
+    key('\x12');
+    assert.ok(!screenLines(output).join('\n').includes('stashed'), 'history search has its own footer');
+    key('\x03');
+    assert.ok(footer().endsWith(' · › stashed'), footer());
+    key('other\x13');
+    assert.equal(tui.state.text, 'retained');
+    assert.ok(footer().endsWith(' · › stashed'), 'a swap retains the other slot');
+    key('\x15\x13');
+    assert.equal(tui.state.text, 'other');
+    assert.ok(!footer().includes('stashed'), 'pop clears the slot');
+    key('\x15submit-restore\x13');
+    key('sent\r');
+    assert.deepEqual(submitted, ['sent']);
+    assert.equal(tui.state.text, 'submit-restore');
+    assert.ok(!footer().includes('stashed'), 'automatic submit restore clears the slot');
+    key('\x15command-restore\x13');
+    assert.ok(footer().endsWith(' › stashed'), footer());
+    assert.equal(tui.restoreStashedDraft(), true);
+    assert.equal(tui.state.text, 'command-restore');
+    assert.ok(!footer().includes('stashed'), 'post-dispatch restore clears the slot');
+  } finally {
+    tui.close(); context.mock.timers.reset(); decoded.get(output)!.dispose();
+    Reflect.set(ge, 'level', colorLevel); fs.rmSync(userDir, { recursive: true, force: true });
   }
 });

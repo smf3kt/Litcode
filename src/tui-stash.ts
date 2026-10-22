@@ -28,6 +28,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { atomicWriteFile } from './atomic-write.js';
 import { CONFIG_LIMITS, defaultUserDir, readBoundedBytes } from './config.js';
+import { jsx as e, jsxs as r } from './tui-jsx.js';
+import { s, n } from './tui-base-components.js';
+import { te } from './tui-symbols.js';
+
+/** WR/yn, chunk-24k7d6mw.js [723972,724107), UTF-16. */
+export function stashedIndicator($e: boolean, Io: boolean) {
+  return $e&&r(s,{flexShrink:0,children:[e(n,{dimColor:!0,children:Io?" \xB7 ":" "},undefined),r(n,{dimColor:!0,children:[te.pointerSmall," stashed"]},undefined)]},undefined);
+}
 
 /** Source `XS` (721485): the tip's own timeout. */
 export const STASH_HINT_TIMEOUT_MS = 5_000;

@@ -14,6 +14,8 @@ import { Eg, Pd, xg, Kr, Kl, Rg, Ag, Ng, wg, kn, Hg, Lg, Vd, Bd, _g, Dg } from '
 import { zye } from './tui-text-style.js';
 import { composeBanner } from './session-color.js';
 import { cellWidth } from './terminal.js';
+import { stashedIndicator } from './tui-stash.js';
+import { te } from './tui-symbols.js';
 
 interface NativePoint { col: number; row: number }
 interface NativeSelection {
@@ -38,10 +40,13 @@ export type PromptLine = string | readonly PromptSegment[];
 /** A footer part painted in a theme slot's colour instead of the dim default. */
 export interface FooterPart { text: string; color?: string }
 type FooterContent = readonly (string | FooterPart)[] | ((columns: number) => readonly (string | FooterPart)[]);
+export interface FooterStatus { feedback?: string; hasStash?: boolean }
 
 /** Hfe/oue, qfjvvwpv [11971,12618), 24k7d6mw [789157,789881), UTF-16. */
-export function footerElement(footer: FooterContent, width: number, feedback?: string) {
-  const rightWidth = feedback === undefined ? 0 : Math.min(cellWidth(feedback), Math.floor(width / 2));
+export function footerElement(footer: FooterContent, width: number, { feedback, hasStash = false }: FooterStatus = {}) {
+  const stashWidth = hasStash ? cellWidth(te.pointerSmall + ' stashed') + (feedback === undefined ? 1 : 3) : 0;
+  const rightWidth = Math.min(width, stashWidth + (feedback === undefined ? 0
+    : Math.min(cellWidth(feedback), Math.max(0, Math.floor(width / 2) - stashWidth))));
   const leftWidth = rightWidth === 0 ? width : Math.max(0, width - rightWidth - 1);
   const parts = typeof footer === 'function' ? footer(leftWidth) : footer;
   const left = jsx(Tde, { width: leftWidth,
@@ -50,8 +55,12 @@ export function footerElement(footer: FooterContent, width: number, feedback?: s
       : jsx(n, { color: part.color, children: part.text }, String(index))) }, 'footer');
   if (rightWidth === 0) return left;
   return jsx(s, { height: 1, width, flexDirection: 'row', overflow: 'hidden', children: [left,
-    jsx(s, { width: rightWidth, flexShrink: 0, marginLeft: 'auto', alignItems: 'flex-end',
-      children: jsx(n, { dimColor: true, wrap: 'truncate', children: feedback }, 'feedback') }, 'notification')
+    jsx(s, { width: rightWidth, flexShrink: 0, marginLeft: 'auto', flexDirection: 'row',
+      alignItems: 'flex-end', overflow: 'hidden', children: [
+        feedback === undefined ? null : jsx(s, { width: Math.max(0, rightWidth - stashWidth), flexShrink: 1,
+          children: jsx(n, { dimColor: true, wrap: 'truncate', children: feedback }, 'feedback') }, 'notification'),
+        stashedIndicator(hasStash, feedback !== undefined)
+      ] }, 'right-footer')
   ] }, 'footer-row');
 }
 type HostNode = Omit<ReturnType<typeof Lr>, 'yogaNode' | 'focusManager' | 'onComputeLayout' | 'onRender'> & {
@@ -223,7 +232,7 @@ export class TuiRenderer {
     themeOverrides?: Record<string, string>, progress: readonly string[] = [], statusLine: readonly string[] = [],
     sidebar?: { width: number; element: unknown },
     banner?: { text: string; color: string }, composerMode: 'prompt' | 'bash' = 'prompt',
-    topBorderText?: { content: string; position: 'top'; align: 'end' | 'start' | 'center'; offset: number }, feedback?: string): void {
+    topBorderText?: { content: string; position: 'top'; align: 'end' | 'start' | 'center'; offset: number }, footerStatus?: FooterStatus): void {
     this.selection = selection;
     const conversationWidth = columns - (sidebar?.width ?? 0);
     // `Mk`: the composer's own rule, drawn above the box and painted in one colour. It is
@@ -240,7 +249,7 @@ export class TuiRenderer {
         jsx(s, { flexGrow: 1, flexShrink: 1, flexDirection: 'column',
           children: prompt.map((line, index) => jsx(s, { height: 1, flexShrink: 0,
             children: this.promptRow(line) }, String(index))) }, 'draft')] }, 'input');
-    const status = footerElement(footer, conversationWidth, feedback);
+    const status = footerElement(footer, conversationWidth, footerStatus);
     const bannerHeight = bannerRow === undefined ? 0 : 1;
     const transcriptHeight = Math.max(0,
       rows - prompt.length - 3 - bannerHeight - progress.length - statusLine.length);
