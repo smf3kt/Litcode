@@ -81,6 +81,7 @@ test('display-only config rows keep the owner tool set', async () => {
     const pinned = pinToolSchemas(runtime.buildTools({ ...f.config, verbose: true, prefersReducedMotion: true,
       showTurnDuration: false, timeFormat: '24-hour', editorMode: 'vim', terminalProgressBarEnabled: false,
       autoCompactEnabled: false, askUserQuestionTimeout: '60s', dialogExpiry: '5m',
+      spinnerTipsEnabled: false, spinnerTipsLayers: [{ source: 'userSettings', override: { tips: ['Local tip'] } }],
       permissions: { ...(f.config.permissions ?? { mode: 'default', allow: [], deny: [] }), defaultMode: 'plan' } }, 'display-owner'));
     // Allocate a resource record for the owner so a fingerprint mismatch would throw; without
     // this line the comparison below passes even with every exclusion deleted. `drainEvents`

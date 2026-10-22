@@ -1,0 +1,3 @@
+#!/usr/bin/expect -f
+set stty_init "rows 30 columns 100"
+source /Users/mant1ssa/Projects/cc_reverse/scripts/pty-cli.exp

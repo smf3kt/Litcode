@@ -25,7 +25,7 @@ export function configPanelInput(config: SessionConfig, state?: ConfigPanelState
   }
   return { config: { model: config.model, thinking: config.thinking, verbose: config.verbose,
     terminalProgressBarEnabled: config.terminalProgressBarEnabled, permissions: config.permissions,
-    autoCompactEnabled: config.autoCompactEnabled,
+    autoCompactEnabled: config.autoCompactEnabled, spinnerTipsEnabled: config.spinnerTipsEnabled,
     theme: config.theme, editorMode: config.editorMode,
     timeFormat: config.timeFormat, prefersReducedMotion: config.prefersReducedMotion, showTurnDuration: config.showTurnDuration,
     askUserQuestionTimeout: config.askUserQuestionTimeout, dialogExpiry: config.dialogExpiry }, hidden: [...hidden], state };

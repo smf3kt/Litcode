@@ -515,12 +515,11 @@ Next up, scoped but not started:
       `/usage` shows `t Last 7 days` and `/mcp` `r reconnect`; no-keys panels keep their hint.
       Host surface fix, not a recovered body. Focused 88/88, compiled 15/15 at identity
       `8d0d8699…`. See `research/ports/W269-panel-key-hints.md`.
-- [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
+- [ ] Config residuals without complete consumers. Notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any
       more; the unported rows are the ones named in the preceding sentence.
-      W292 source review corrects the tips exclusion: trusted custom entries plus excludeDefault
-      return before built-in/service content. The custom-only chain is a ready candidate below.
+      W293 carries the custom Tips/Show tips local chain. Built-in/vendor catalogs remain excluded.
       Other unported rows: prompt suggestions / timestamps / tab
       status / copy-on-select / auto-scroll (source rows sit behind `tengu_*` flags default off),
       recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no
@@ -715,10 +714,9 @@ Explicitly out of scope for this loop:
       The local max reminder gate selects warning/icon or subtle note; empty lists hide effort.
       Affected167/167, compiled14/14 per gate state plus picker23/23 and live9/9 at `9dec2deb...`.
       Independent review found no confirmed scoped defect. See `research/ports/W292-model-picker-effort-view.md`.
-- [ ] Candidate: custom spinner Tips + Show tips. Reader verified ecfjn15r local file/override
-      chain [1966,6672), hxewh5k1 hn [41590,42106) early custom-only return, gwwwxdvd selection
-      [1852,2499), 24k7d6mw per-turn held/publish chain [1384069,1386902), and f7x3yeg4 Cn
-      [21559,24232), UTF-16. Config Show tips is nybcbd9t [14860,15058), localSettings write.
-      Carry parser, trusted layers, file limits/cache, selection/history, turn lifecycle and
-      dim progress consumer as one package. Built-in vendor/account tips stay excluded.
-      Fresh package preflight must reverify module hashes and read exact bodies before edits.
+- [x] W293 custom spinner Tips + Show tips: parser, trusted inline/file layers, bounded process
+      cache, startup cooldown/history, held turn publication and native dim/wrap consumer are ported.
+      Show tips persists local settings and retains higher policy/flag precedence live. Rebind drains
+      old user-directory owners; failed startup acquisition can recover. Affected202/202, check/build
+      clean, compiled23/23 plus Config35/35 at `5ed6ac2a...`. Five independent repairs passed fresh
+      recheck; the sixth startup/flush omission passed final independent cleanup recheck1/1+7/7. See `research/ports/W293-custom-spinner-tips.md`.

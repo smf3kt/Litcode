@@ -110,6 +110,7 @@ export type ParsedRuntimeSettings = {
   timeFormat?: string;
   timeZone?: string;
   spinnerVerbs?: SpinnerVerbs;
+  spinnerTipsEnabled?: boolean;
   editorMode?: import('./tui-vim.js').EditorMode;
   vimInsertModeRemaps?: Record<string,unknown>;
   maxProseWidth?: number;
@@ -227,6 +228,7 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   // U2t/hs, nybcbd9t [5051,6155), js2bhabe [1114,1499), UTF-16: the merged boolean, default false.
   if ('verbose' in settings) out.verbose = settingBoolean(settings, 'verbose');
   if ('terminalProgressBarEnabled' in settings) out.terminalProgressBarEnabled = settingBoolean(settings, 'terminalProgressBarEnabled');
+  if ('spinnerTipsEnabled' in settings) out.spinnerTipsEnabled = settingBoolean(settings, 'spinnerTipsEnabled');
   if ('viewMode' in settings) out.viewMode = settingEnum(settings, 'viewMode', ['default', 'verbose', 'focus'] as const);
   if (settings.timeFormat !== undefined) out.timeFormat = z.string().parse(settings.timeFormat);
   if (settings.timeZone !== undefined) out.timeZone = z.string().parse(settings.timeZone);
@@ -509,7 +511,8 @@ export async function createRuntime(
   const displayOnly = { verbose: undefined, prefersReducedMotion: undefined,
     showTurnDuration: undefined, timeFormat: undefined, editorMode: undefined,
     terminalProgressBarEnabled: undefined, autoCompactEnabled: undefined,
-    askUserQuestionTimeout: undefined, dialogExpiry: undefined };
+    askUserQuestionTimeout: undefined, dialogExpiry: undefined,
+    spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined };
   // The default permission mode (row 21908) applies to new sessions, not this connection.
   const permissionsWithoutDefault = (current: SessionConfig) => current.permissions === undefined
     ? undefined : { ...current.permissions, defaultMode: undefined };
@@ -736,6 +739,7 @@ export async function createRuntime(
         timeFormat: undefined, editorMode: undefined, terminalProgressBarEnabled: undefined,
         // Rows 12035/26485/29983 write these live after the settings write; none shapes tools.
         autoCompactEnabled: undefined, askUserQuestionTimeout: undefined, dialogExpiry: undefined,
+        spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined,
         // The Default permission mode row (21908) only moves the default for new sessions.
         permissions: settings.permissions === undefined ? undefined
           : { ...settings.permissions, defaultMode: undefined },

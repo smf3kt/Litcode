@@ -49,6 +49,7 @@ function updated(state: ConfigPanelInput, change: ConfigUpdate): ConfigPanelInpu
     case 'verbose': return { ...state, config: { ...state.config, verbose: change.value } };
     case 'progressBar': return { ...state, config: { ...state.config, terminalProgressBarEnabled: change.value } };
     case 'reduceMotion': return { ...state, config: { ...state.config, prefersReducedMotion: change.value } };
+    case 'tips': return { ...state, config: { ...state.config, spinnerTipsEnabled: change.value } };
     case 'thinking': return { ...state, config: { ...state.config, thinking: change.value } };
     case 'turnDuration': return { ...state, config: { ...state.config, showTurnDuration: change.value } };
     case 'editor': return { ...state, config: { ...state.config, editorMode: change.value } };
@@ -72,7 +73,10 @@ test('config modal owns full query editing, immediate changes, errors and child 
     f.key('retained draft');
     let pending = f.tui.prompt({ message: '', configPanel: host() }, new AbortController().signal);
     assert.equal(f.lines().filter(row => /^(Verbose output|Terminal progress bar|Auto-compact|Reduce motion|Thinking mode|Show turn duration|Time format|Default permission mode|Theme|Editor mode|Question auto-continue timeout|Model|Dialog expiry)\s/.test(row)).length, 13);
-    f.key('MOTION\r\r'); await delay(0);
+    f.key('tips\r '); await delay(0);
+    assert.deepEqual(changes.pop(), { id: 'tips', value: false });
+    assert.ok(f.lines().includes('Show tips  false'));
+    f.key('/MOTION\r\r'); await delay(0);
     assert.deepEqual(changes, [{ id: 'reduceMotion', value: true }]);
     assert.ok(f.lines().includes('Reduce motion  true'));
     f.key('/vim\r\x1b[C'); await delay(0);
@@ -120,7 +124,7 @@ test('config viewport pages rendered rows, scrolls without selecting the hovered
     f.key('\r\x1b[6~');
     assert.ok(f.rowOf('Verbose output') >= 0); assert.ok(f.rowOf('↑ 2 more') >= 0);
     f.key('\x1b[6~');
-    assert.ok(f.rowOf('Dialog expiry') >= 0); assert.ok(f.rowOf('↑ 6 more') >= 0);
+    assert.ok(f.rowOf('Dialog expiry') >= 0); assert.ok(f.rowOf('↑ 7 more') >= 0);
     f.key('\x1b[5~\x1b[5~'); assert.ok(f.rowOf('Auto-compact') >= 0);
     f.mouse(65, f.rowOf('Thinking mode'), 3);
     assert.ok(f.rowOf('↑ 1 more') >= 0); assert.equal(f.rowOf('Auto-compact'), -1);
@@ -166,6 +170,7 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
     permissions: { allow: ['Bash'] }, modelSettings: { 'model-02': { unrelated: 7 } } }), { mode: 0o640 });
   try {
     await saveConfigPanelSetting({ id: 'reduceMotion', value: true }, workspace, userDir);
+    await saveConfigPanelSetting({ id: 'tips', value: false }, workspace, userDir);
     await Promise.all([
       saveConfigPanelSetting({ id: 'thinking', value: true }, workspace, userDir),
       saveConfigPanelSetting({ id: 'verbose', value: true }, workspace, userDir),
@@ -181,11 +186,12 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
       modelSettings: { 'model-02': { unrelated: 7, effortLevel: 'xhigh' } }, thinking: true, verbose: true,
       terminalProgressBarEnabled: false, editorMode: 'vim', dialogExpiry: '60s' });
     assert.equal(fs.statSync(userFile).mode & 0o777, 0o640);
-    assert.deepEqual(JSON.parse(fs.readFileSync(localFile, 'utf8')), { prefersReducedMotion: true });
+    assert.deepEqual(JSON.parse(fs.readFileSync(localFile, 'utf8')), { prefersReducedMotion: true, spinnerTipsEnabled: false });
     const beforeMax = fs.readFileSync(userFile, 'utf8'); await saveConfigModelEffort('model-02', 'max', userDir);
     assert.equal(fs.readFileSync(userFile, 'utf8'), beforeMax);
     const loaded = parseSettings(loadProjectConfig(workspace, { userDir, paths: [] }).settings);
     assert.equal(configuredEffort(loaded, 'model-02[1m]'), 'xhigh'); assert.equal(configuredEffort(loaded, 'other-model'), 'medium');
+    assert.equal(loaded.spinnerTipsEnabled, false);
     assert.equal(loaded.permissions?.mode, 'acceptEdits'); assert.equal(loaded.permissions?.defaultMode, 'acceptEdits');
     assert.equal(configPanelInput({ ...defaultConfig(workspace, []), permissions: loaded.permissions }).config.permissions?.defaultMode, 'acceptEdits');
     const config = { ...defaultConfig(workspace, []), model: 'model-02', thinking: true, modelSettings: loaded.modelSettings,

@@ -11,7 +11,7 @@ export const TIME_FORMATS = ['auto', '12-hour', '24-hour', '24-hour-utc'] as con
 export const PERMISSION_MODE_OPTIONS = ['default', 'plan', 'acceptEdits', 'auto', 'dontAsk'] as const;
 export type PermissionModeSetting = typeof PERMISSION_MODE_OPTIONS[number];
 export type ConfigUpdate =
-  | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration'; value: boolean }
+  | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration' | 'tips'; value: boolean }
   | { id: 'editor'; value: 'normal' | 'vim' }
   | { id: 'permissionMode'; value: PermissionModeSetting }
   | { id: 'timeFormat'; value: typeof TIME_FORMATS[number] }
@@ -25,7 +25,7 @@ type Row = { id: ConfigRowId; label: string } & (
 );
 export interface ConfigPanelState { query: string; cursor: number; focus: ConfigRowId; mode: 'search' | 'list' }
 export type ConfigPanelValues = Pick<SessionConfig, 'model' | 'thinking' | 'theme' | 'editorMode' | 'timeFormat'
-  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry'>;
+  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry' | 'spinnerTipsEnabled'>;
 export interface ConfigPanelInput { config: ConfigPanelValues; hidden: readonly ConfigRowId[]; state?: ConfigPanelState }
 export interface ConfigPanelHost {
   input: ConfigPanelInput;
@@ -57,6 +57,8 @@ function rows({ config, hidden }: ConfigPanelInput): Row[] {
   const all: Row[] = [
     // vWe, nybcbd9t [12034,12244), UTF-16; Ze, bk5ct2gw [558575,558596) supplies true when absent.
     { id: 'autoCompact', label: 'Auto-compact', kind: 'boolean', value: config.autoCompactEnabled ?? true },
+    // vWe, nybcbd9t [14860,15058), UTF-16.
+    { id: 'tips', label: 'Show tips', kind: 'boolean', value: config.spinnerTipsEnabled ?? true },
     { id: 'reduceMotion', label: 'Reduce motion', kind: 'boolean', value: config.prefersReducedMotion ?? false },
     { id: 'thinking', label: 'Thinking mode', kind: 'boolean', value: config.thinking },
     // vWe, nybcbd9t [20115,20201), UTF-16; Ze, bk5ct2gw [558427,559209) defaults false.
@@ -217,7 +219,7 @@ export class ConfigPanel {
     const value = row.kind === 'boolean' ? !row.value : row.kind === 'enum'
       ? row.options[(row.options.indexOf(row.value) + direction + row.options.length) % row.options.length] : undefined;
     switch (row.id) {
-      case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration':
+      case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration': case 'tips':
         if (typeof value === 'boolean') return { kind: 'change', update: { id: row.id, value } };
         return;
       case 'editor':

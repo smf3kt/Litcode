@@ -60,6 +60,10 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   if (settings.timeFormat !== undefined) next.timeFormat = settings.timeFormat;
   if (settings.timeZone !== undefined) next.timeZone = settings.timeZone;
   if (settings.spinnerVerbs !== undefined) next.spinnerVerbs = settings.spinnerVerbs;
+  if (settings.spinnerTipsEnabled === undefined) delete next.spinnerTipsEnabled;
+  else next.spinnerTipsEnabled = settings.spinnerTipsEnabled;
+  if (loaded.spinnerTipsLayers === undefined) delete next.spinnerTipsLayers;
+  else next.spinnerTipsLayers = loaded.spinnerTipsLayers;
   if(settings.editorMode!==undefined)next.editorMode=settings.editorMode;
   if(settings.vimInsertModeRemaps!==undefined)next.vimInsertModeRemaps=settings.vimInsertModeRemaps;
   if (settings.maxProseWidth !== undefined) next.maxProseWidth = settings.maxProseWidth;
