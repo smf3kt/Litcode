@@ -47,6 +47,8 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   else delete next.showTurnDuration;
   if (settings.showMessageTimestamps !== undefined) next.showMessageTimestamps = settings.showMessageTimestamps;
   else delete next.showMessageTimestamps;
+  if (settings.copyOnSelect !== undefined) next.copyOnSelect = settings.copyOnSelect;
+  else delete next.copyOnSelect;
   if (settings.viewMode !== undefined) next.viewMode = settings.viewMode;
   else delete next.viewMode;
   // It, 9shw4xrd [106333,106421), UTF-16: reload resolves the same way startup does, so a

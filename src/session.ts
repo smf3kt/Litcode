@@ -85,6 +85,7 @@ export type SessionConfig = {
   prefersReducedMotion?: boolean;
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
+  copyOnSelect?: boolean;
   /** `/focus`'s persisted view mode; `focus` is the brief transcript. */
   viewMode?: import('./focus-command.js').FocusMode;
   /** The live Verbose output switch (`Te`); `viewMode` supplies its startup value. */
@@ -239,6 +240,7 @@ export const configSchema = z.object({
   prefersReducedMotion: z.boolean().optional(),
   showTurnDuration: z.boolean().optional(),
   showMessageTimestamps: z.boolean().optional(),
+  copyOnSelect: z.boolean().optional(),
   viewMode: z.enum(['default', 'verbose', 'focus']).optional(),
   verbose: z.boolean().optional(),
   terminalProgressBarEnabled: z.boolean().optional(),

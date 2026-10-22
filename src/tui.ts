@@ -31,7 +31,7 @@ import { Writable, type Readable } from 'node:stream';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { reduceKillRing } from './kill-ring.js';
 import { TerminalModeController, type MouseTracking } from './tui-modes.js';
-import { Keymap, chordForAction, chordSequence, contextStack, type TuiContext } from './tui-keys.js';
+import { Keymap, chordForAction, chordSequence, contextStack, keyName, type TuiContext } from './tui-keys.js';
 import { HELP_FOOTER_HINT, HELP_HINT_MIN_COLUMNS } from './help-panel.js';
 import { STASH_HINT_TIMEOUT_MS, STASH_RESTORED, STASH_RESTORED_TIMEOUT_MS, StashHintGate,
   hasUsedStash, markStashUsed, stashHintText } from './tui-stash.js';
@@ -52,7 +52,7 @@ import { terminalProgressMux, terminalProgressSequence, terminalProgressSupporte
 import { paintedDecorations, normalizedRuns, highlightRows, type DecorationRun, type PaintedDecorations, type PromptSegment } from './tui-input-decorations.js';
 import { composerHighlights } from './tui-input-highlights.js';
 import { Art } from './tui-input-highlights-source.js';
-import { osc52Payload } from './clipboard-osc52.js';
+import { QLt, lbt, copySelectionText, selectionAutoCopy, selectionCopyFeedback, type SelectionKey } from './tui-selection-copy.js';
 import { layoutEngine } from './tui-layout.js';
 import { renderPreviewMarkdown } from './tui-markdown.js';
 import { TuiRenderer, footerElement, type FooterPart, type FooterStatus, type PromptLine } from './tui-renderer.js';
@@ -236,6 +236,7 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   prefersReducedMotion?: boolean;
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
+  copyOnSelect?: boolean;
   /** `/focus`: the brief transcript holds the streaming preview while tools run. */
   briefTranscript?: boolean;
   /** The live Verbose output switch at construction; Config and `/reload` update it through `setVerbose`. */
@@ -570,7 +571,23 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** The session's effective permission mode, the input to the footer's mode chip. */
   private permissionMode: string | undefined;
   private unsubscribePermissions: (() => void) | undefined;
-  private selection: SelectionState = createSelection();
+  private selectionState: SelectionState = createSelection();
+  private copyOnSelect = true;
+  private readonly selectionCopy = selectionAutoCopy({
+    getState: () => this.renderer?.selectionInstance.selection.anchor
+      ? this.renderer.selectionInstance.selection : { isDragging: this.selection.dragging },
+    hasSelection: () => this.hasTextSelection(),
+    copySelectionNoClear: () => this.copySelectionNoClear(),
+  }, () => ({ copyOnSelect: this.copyOnSelect }), text => this.selectionCopied(text));
+  private get selection(): SelectionState { return this.selectionState; }
+  private set selection(value: SelectionState) {
+    if (value === this.selectionState) return;
+    this.selectionState = value;
+    if (value.anchor === null) {
+      this.selectionCopy.reset();
+      this.renderer?.clearNativeSelection();
+    } else this.selectionChanged();
+  }
   private dialog: ActiveDialog | undefined;
   /** The grouped question dialog's AFK countdown, when the host enables it. */
   private afk: DialogAfk | undefined;
@@ -646,6 +663,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.showTurnDuration = options.showTurnDuration !== false;
     this.showMessageTimestamps = options.showMessageTimestamps === true;
+    this.copyOnSelect = options.copyOnSelect !== false;
     this.briefTranscript = options.briefTranscript === true;
     this.verbose = options.verbose === true;
     this.terminalProgressEnabled = options.terminalProgressBar !== false;
@@ -733,6 +751,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     historyDraftPastes:structuredClone(this.editor.historyDraftPastes),killRing: structuredClone(this.editor.killRing) }; }
   async bindInputHistory(session: import('./session.js').Session): Promise<void> {
     const generation = ++this.historyBinding;
+    this.selection = createSelection();
+    this.clearStatusNotice('selection-copied');
+    this.setCopyOnSelect(session.config.copyOnSelect);
     this.sourceSearch?.close(); this.sourceSearch = undefined;
     this.sourcePicker?.close(); this.sourcePicker = undefined;
     this.queryUndo.clear(); this.queryEditor = createEditorState();
@@ -1192,6 +1213,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const enabled = value === true;
     if (enabled === this.showMessageTimestamps) return;
     this.showMessageTimestamps = enabled; this.selection = createSelection(); this.render();
+  }
+
+  setCopyOnSelect(value?: boolean): void {
+    const enabled = value !== false;
+    if (this.copyOnSelect === enabled) return;
+    this.copyOnSelect = enabled;
+    this.render();
   }
 
   /** Source `vNt`'s `focusFoldHoldsPreview`, live half: `/focus` toggles the fold. */
@@ -1783,6 +1811,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.selectionCopy.reset();
     // `qa`'s unmount cleanup clears the progress indicator before the screen is restored.
     if (this.lastTerminalProgress !== '') this.emitTerminalProgress('completed', 0, true);
     this.sourceSearch?.close();this.sourceSearch=undefined;this.queryUndo.clear();this.queryEditor=createEditorState();
@@ -1924,6 +1953,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Same route shape as the line owner's `handleLinePicker` call.
     if (action.type !== 'running' && this.handleSourcePicker(action)) return;
     if (action.type !== 'running' && this.handleSourceSearch(action)) return;
+    if (!this.dialog && action.type !== 'running' && action.type !== 'terminalResponse' && action.type !== 'mouse') {
+      const raw = sequence ?? (action.type === 'key' ? action.sequence : chordSequence(action)
+        ?? (action.type === 'insert' ? action.text : undefined));
+      if (raw !== undefined && this.selectionKey(raw, action.type === 'key' ? action.command : undefined)) return;
+      if (action.type === 'paste' && this.hasTextSelection()) this.selection = createSelection();
+    }
     if(this.options.sourceInputGestures&&this.options.idleInterrupt===undefined&&!this.gestureHandling&&!this.editor.running
       &&!this.dialog&&(action.type==='interrupt'||action.type==='eof')){this.handleGesture(action.type);return;}
     if(action.type==='running'||action.type==='submit'||action.type==='return')this.gestures.reset();
@@ -2887,8 +2922,33 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
   }
 
+  // rI/QLt, 24k7d6mw [126888,130997), qh0w98pn [3815,4061), UTF-16.
+  private selectionKey(sequence: string, command?: EditorCommand): boolean {
+    if (!this.hasTextSelection() || this.dialog || this.screen === 'search') return false;
+    if (sequence === '\x03') { this.copySelection(true); return true; }
+    if (command === 'selectionCopy' || sequence === '\x1b[99;6u' || sequence === '\x1b[67;6u' || sequence === '\x1bc') return false;
+    const name = keyName(sequence), parts = name.split('+'), base = parts.at(-1);
+    const modifier = /^\x1b\[\d+;(\d+)[ABCDHF]$/.exec(sequence);
+    const bits = modifier ? Number(modifier[1]) - 1 : 0;
+    const final = modifier ? sequence.at(-1) : undefined;
+    const key: SelectionKey = {
+      ctrl: parts.includes('ctrl') || !!(bits & 4), shift: parts.includes('shift') || !!(bits & 1),
+      meta: parts.includes('meta') || !!(bits & 2), super: parts.includes('cmd') || !!(bits & 8),
+      escape: sequence === '\x1b', pageUp: base === 'pageup', pageDown: base === 'pagedown',
+      home: base === 'home' || final === 'H', end: base === 'end' || final === 'F',
+      leftArrow: base === 'left' || final === 'D', rightArrow: base === 'right' || final === 'C',
+      upArrow: base === 'up' || final === 'A', downArrow: base === 'down' || final === 'B',
+    };
+    if (command?.startsWith('extend')) key.shift = true;
+    const character = sequence.length === 1 && sequence.charCodeAt(0) < 32
+      ? String.fromCharCode(sequence.charCodeAt(0) + 96) : sequence;
+    if (this.screen === 'transcript' && lbt(character, key)) return false;
+    if (QLt(key)) this.selection = createSelection();
+    return false;
+  }
+
   private routeKey(sequence: string, command?: EditorCommand): void {
-    if (this.closed) return;
+    if (this.closed || this.selectionKey(sequence, command)) return;
     if (this.footerSelection !== null && this.vimEnabled && this.vim.mode === 'NORMAL') {
       const action = sequence === 'h' ? 'footer:previous' : sequence === 'j' ? 'footer:down'
         : sequence === 'k' ? 'footer:up' : sequence === 'l' ? 'footer:next' : undefined;
@@ -3096,6 +3156,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.dispatch({ type: 'submit' });
       this.emit('action', action); return true;
     }
+    if (action === 'app:interrupt' && !this.dialog && this.screen !== 'search' && this.hasTextSelection()) {
+      this.copySelection(true); return true;
+    }
     this.emit('action', action);
     // Source hands the open picker the whole keyboard: its Global shortcuts must not run while it
     // is up. Map the three that matter onto the picker's own actions and swallow the rest.
@@ -3133,10 +3196,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       case 'app:interrupt': this.dispatch({ type: 'interrupt' }); return true;
       case 'app:exit':
         if(this.options.sourceInputGestures)this.dispatch({type:'eof'});else{this.close();this.emit('exit');}return true;
+      // GZ/onExit, 24k7d6mw [141280,142056), UTF-16; legacy row anchors belong to the departing frame.
       case 'app:toggleTranscript':
+        this.selection = createSelection();
         this.screen = this.screen === 'transcript' ? 'chat' : 'transcript';
         this.render(); return true;
-      case 'transcript:exit': this.screen = 'chat'; this.render(); return true;
+      case 'transcript:exit':
+        this.selection = createSelection(); this.screen = 'chat'; this.render(); return true;
       case 'transcript:toggleShowAll':
         this.selection = createSelection();
         this.transcript = reduceTranscript(this.transcript, { type: 'toggleShowAll' },
@@ -3284,21 +3350,56 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
-  /** Copy the span through OSC 52, then take it down as the recovered app does. */
-  private copySelection(): void {
+  private hasTextSelection(): boolean {
+    return this.renderer?.selectionInstance.hasTextSelection() === true
+      || this.selection.anchor !== null && this.selection.focus !== null;
+  }
+
+  private selectionChanged(): void {
+    if (this.closed || this.dialog || this.screen === 'search' || this.editorSuspended || this.editorController) {
+      this.selectionCopy.reset(); return;
+    }
+    try { this.selectionCopy.change(); }
+    catch (error) { this.setStatus(error instanceof Error ? error.message : String(error)); }
+  }
+
+  private selectionCopied(text: string): void {
+    const feedback = selectionCopyFeedback(text);
+    this.showStatusNotice('selection-copied', feedback.text, feedback.timeoutMs);
+  }
+
+  private copySelectionNoClear(): string {
+    const native = this.renderer?.selectionInstance;
+    if (native?.hasTextSelection()) return native.copySelectionNoClear();
     const view = this.viewportSize();
     const rows = renderedTranscriptRows(this.transcript, view.columns, this.renderEntryRows, this.welcomePreamble(view.columns));
-    const native = this.renderer?.selectionInstance;
-    const text = native?.hasTextSelection() ? native.copySelectionNoClear()
-      : selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
-    if (!text) return;
-    let payload: string;
-    try { payload = osc52Payload(text); }
-    catch (error) { this.setStatus((error as Error).message); return; }
-    this.options.output.write(payload);
-    native?.clearTextSelection();
-    this.selection = reduceSelection(this.selection, { type: 'clear' });
-    this.setStatus('copy request sent');
+    const text = selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
+    if (text) copySelectionText(text, payload => { this.options.output.write(payload); });
+    return text;
+  }
+
+  // rI Ctrl+C, 24k7d6mw [126888,130997), UTF-16; cached auto-copy only clears and reports.
+  private copySelection(cached = false): void {
+    try {
+      const text = cached ? this.selectionCopy.peek() ?? this.copySelectionNoClear() : this.copySelectionNoClear();
+      this.selection = createSelection();
+      if (text) this.selectionCopied(text);
+      else this.render();
+    } catch (error) { this.setStatus(error instanceof Error ? error.message : String(error)); }
+  }
+
+  private ensureRenderer(): TuiRenderer {
+    if (!this.renderer) {
+      this.renderer = new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true, () => {
+        if (!this.closed) {
+          try { this.render(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
+        }
+      });
+      this.renderer.selectionInstance.subscribeToSelectionChange(() => {
+        if (this.selection.anchor === null) this.selectionChanged();
+      });
+    }
+    return this.renderer;
   }
 
   private ensureSourceSearch(): HistorySearch {
@@ -4158,8 +4259,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const pickerRows = this.sourcePicker.styled(columns, rowsBudget).map(row=>row.ansi);
       const listRows = pickerRows.slice(0, Math.max(0, pickerRows.length - 1));
       const target = rows - 1;
-      this.renderer ??= new TuiRenderer(this.options.output,this.options.synchronizedUpdate ?? true);
-      this.renderer.renderChat(listRows, prompt.lines, [pickerRows.at(-1) ?? ''], columns, rows, {row:target,
+      const renderer = this.ensureRenderer();
+      renderer.renderChat(listRows, prompt.lines, [pickerRows.at(-1) ?? ''], columns, rows, {row:target,
         column:prompt.cursorColumn,visible:true},
         this.running,undefined,this.theme.current,this.theme.overrides,[],[]);
       this.drawnRows=rows;this.cursorRow=0;this.cursorColumn=prompt.cursorColumn;return;
@@ -4174,8 +4275,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const viewport=layoutTranscript(this.transcript,columns,height,this.renderEntryRows,this.welcomePreamble(columns));
       const frame=Array.from({length:height},(_,index)=>viewport.rows[index]?.ansi ?? pad('',columns));
       const target=rows-1;
-      this.renderer ??= new TuiRenderer(this.options.output,this.options.synchronizedUpdate ?? true);
-      this.renderer.renderChat(frame,prompt.lines,[queryRows.at(-1) ?? ''],columns,rows,{row:target,
+      const renderer = this.ensureRenderer();
+      renderer.renderChat(frame,prompt.lines,[queryRows.at(-1) ?? ''],columns,rows,{row:target,
         column:this.sourceSearch.caretColumn(columns),visible:true},
         this.running,undefined,this.theme.current,this.theme.overrides,[],queryRows.slice(0,-1));
       this.drawnRows=rows;this.cursorRow=0;this.cursorColumn=this.queryEditor.cursor;return;
@@ -4206,17 +4307,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       frame.push(rendered?.ansi ?? pad(rendered?.text ?? '', conversationWidth));
     }
     const target = transcriptRows + progressRows.length + bannerRows + 1 + prompt.cursorRow;
-    this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true, () => {
-      if (!this.closed) {
-        try { this.render(); } catch (error) { this.onError(error instanceof Error ? error : new Error(String(error))); }
-      }
-    });
-    this.renderer.renderChat(frame, prompt.lines,
+    const renderer = this.ensureRenderer();
+    renderer.renderChat(frame, prompt.lines,
       width => this.statusFooter(width),
       columns, rows, { row: target, column: prompt.cursorColumn, visible: this.footerSelection === null }, this.running,
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
-        this.renderer.appContext, this.renderer.selectionInstance) } : undefined, banner, this.composerMode,
+        renderer.appContext, renderer.selectionInstance) } : undefined, banner, this.composerMode,
       this.composerBorderText(), this.footerStatus());
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
@@ -4310,8 +4407,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private drawFrame(lines: readonly string[], columns: number, rows: number,
     row: number, column: number, visible: boolean): void {
-    this.renderer ??= new TuiRenderer(this.options.output, this.options.synchronizedUpdate ?? true);
-    this.renderer.render(lines, columns, rows, { row, column, visible });
+    this.ensureRenderer().render(lines, columns, rows, { row, column, visible });
   }
 
   /** Hfe/hEe and D9, qfjvvwpv [11971,12618), 24k7d6mw [906888,907115), UTF-16. */
@@ -4366,11 +4462,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         : '↓ to manage';
     const taskHints = [this.running ? `${chordForAction('app:interrupt', 'Global', 'ctrl+c')} to interrupt` : '',
       taskHint].filter(Boolean).join(' · ');
-    const hints = this.statusLineSetting && this.screen === 'chat' ? ''
+    // Fz selection-copy, 24k7d6mw [768900,768948)/[769064,769330), UTF-16.
+    const selectionHint = !this.copyOnSelect && this.hasTextSelection() && !this.dialog && this.screen !== 'search'
+      ? 'ctrl+c to copy' : '';
+    const hints = selectionHint || (this.statusLineSetting && this.screen === 'chat' ? ''
       : background !== undefined ? taskHints
         : this.running && this.screen === 'chat'
           ? `${chordForAction('app:interrupt', 'Global', 'ctrl+c')} to interrupt`
-          : shortcuts + this.statusHints();
+          : shortcuts + this.statusHints());
     const chip = this.permissionMode === undefined ? '' : modeChip(this.permissionMode);
     const chipWidth = chip === '' ? 0 : cellWidth(chip) + 3;
     const backgroundWidth = background === undefined ? 0 : cellWidth(background) + 3;

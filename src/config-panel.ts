@@ -11,7 +11,7 @@ export const TIME_FORMATS = ['auto', '12-hour', '24-hour', '24-hour-utc'] as con
 export const PERMISSION_MODE_OPTIONS = ['default', 'plan', 'acceptEdits', 'auto', 'dontAsk'] as const;
 export type PermissionModeSetting = typeof PERMISSION_MODE_OPTIONS[number];
 export type ConfigUpdate =
-  | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration' | 'tips'; value: boolean }
+  | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration' | 'tips' | 'copyOnSelect'; value: boolean }
   | { id: 'editor'; value: 'normal' | 'vim' }
   | { id: 'permissionMode'; value: PermissionModeSetting }
   | { id: 'timeFormat'; value: typeof TIME_FORMATS[number] }
@@ -25,7 +25,7 @@ type Row = { id: ConfigRowId; label: string } & (
 );
 export interface ConfigPanelState { query: string; cursor: number; focus: ConfigRowId; mode: 'search' | 'list' }
 export type ConfigPanelValues = Pick<SessionConfig, 'model' | 'thinking' | 'theme' | 'editorMode' | 'timeFormat'
-  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry' | 'spinnerTipsEnabled'>;
+  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry' | 'spinnerTipsEnabled' | 'copyOnSelect'>;
 export interface ConfigPanelInput { config: ConfigPanelValues; hidden: readonly ConfigRowId[]; state?: ConfigPanelState }
 export interface ConfigPanelHost {
   input: ConfigPanelInput;
@@ -70,6 +70,8 @@ function rows({ config, hidden }: ConfigPanelInput): Row[] {
     // vWe, nybcbd9t [21907,22578), UTF-16: settings default, not the live session mode.
     { id: 'permissionMode', label: 'Default permission mode', kind: 'enum',
       value: config.permissions?.defaultMode || 'default', options: PERMISSION_MODE_OPTIONS },
+    // vWe, nybcbd9t [23905,24064), UTF-16; native selection is active in this host.
+    { id: 'copyOnSelect', label: 'Copy on select', kind: 'boolean', value: config.copyOnSelect ?? true },
     { id: 'theme', label: 'Theme', kind: 'picker', value: themeNames[config.theme ?? 'dark'] ?? config.theme ?? 'dark' },
     { id: 'editor', label: 'Editor mode', kind: 'enum', value: config.editorMode ?? 'normal', options: ['normal', 'vim'] },
     { id: 'askUserQuestionTimeout', label: 'Question auto-continue timeout', kind: 'enum', value: config.askUserQuestionTimeout ?? 'never',
@@ -219,7 +221,7 @@ export class ConfigPanel {
     const value = row.kind === 'boolean' ? !row.value : row.kind === 'enum'
       ? row.options[(row.options.indexOf(row.value) + direction + row.options.length) % row.options.length] : undefined;
     switch (row.id) {
-      case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration': case 'tips':
+      case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration': case 'tips': case 'copyOnSelect':
         if (typeof value === 'boolean') return { kind: 'change', update: { id: row.id, value } };
         return;
       case 'editor':

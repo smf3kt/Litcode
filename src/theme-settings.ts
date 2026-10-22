@@ -123,7 +123,7 @@ const SETTING_LABELS = {
   compactAt: 'saveAutoCompactSetting', model: 'saveModelSetting', modelSettings: 'saveConfigModelEffort', thinking: 'saveConfigPanelSetting',
   verbose: 'saveConfigPanelSetting', terminalProgressBarEnabled: 'saveConfigPanelSetting', autoCompactEnabled: 'saveConfigPanelSetting', prefersReducedMotion: 'saveConfigPanelSetting', showTurnDuration: 'saveConfigPanelSetting',
   timeFormat: 'saveConfigPanelSetting', askUserQuestionTimeout: 'saveConfigPanelSetting', dialogExpiry: 'saveConfigPanelSetting',
-  spinnerTipsEnabled: 'saveConfigPanelSetting',
+  spinnerTipsEnabled: 'saveConfigPanelSetting', copyOnSelect: 'saveConfigPanelSetting',
 } as const;
 
 function saveDisplaySetting(key: keyof typeof SETTING_LABELS,

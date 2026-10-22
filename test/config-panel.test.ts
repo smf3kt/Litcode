@@ -50,6 +50,7 @@ function updated(state: ConfigPanelInput, change: ConfigUpdate): ConfigPanelInpu
     case 'progressBar': return { ...state, config: { ...state.config, terminalProgressBarEnabled: change.value } };
     case 'reduceMotion': return { ...state, config: { ...state.config, prefersReducedMotion: change.value } };
     case 'tips': return { ...state, config: { ...state.config, spinnerTipsEnabled: change.value } };
+    case 'copyOnSelect': return { ...state, config: { ...state.config, copyOnSelect: change.value } };
     case 'thinking': return { ...state, config: { ...state.config, thinking: change.value } };
     case 'turnDuration': return { ...state, config: { ...state.config, showTurnDuration: change.value } };
     case 'editor': return { ...state, config: { ...state.config, editorMode: change.value } };
@@ -124,7 +125,7 @@ test('config viewport pages rendered rows, scrolls without selecting the hovered
     f.key('\r\x1b[6~');
     assert.ok(f.rowOf('Verbose output') >= 0); assert.ok(f.rowOf('↑ 2 more') >= 0);
     f.key('\x1b[6~');
-    assert.ok(f.rowOf('Dialog expiry') >= 0); assert.ok(f.rowOf('↑ 7 more') >= 0);
+    assert.ok(f.rowOf('Dialog expiry') >= 0); assert.ok(f.rowOf('↑ 8 more') >= 0);
     f.key('\x1b[5~\x1b[5~'); assert.ok(f.rowOf('Auto-compact') >= 0);
     f.mouse(65, f.rowOf('Thinking mode'), 3);
     assert.ok(f.rowOf('↑ 1 more') >= 0); assert.equal(f.rowOf('Auto-compact'), -1);

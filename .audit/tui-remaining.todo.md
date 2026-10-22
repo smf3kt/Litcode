@@ -401,8 +401,8 @@ Next up, scoped but not started:
       check/build pass; full suite 3002/3003 with the CLI-effort failure.
       See `research/ports/W252-config-last-live.md`.
 - [x] Config rows now all apply live; the successor-session path for `/config` is gone. Remaining
-      config work is the unported rows listed below (tips, notifications, terminal tab status,
-      selection flags).
+      config work is the unported rows listed below. W293 carries tips; W294 carries copy-on-select.
+      Notifications, terminal tab status and other selection consumers still need source preflight.
 - [x] W254 `/resume` interactive panel (`Jln`, chunk-er09v3xa.js 9331): search-as-you-type, fork
       groups with left/right expand, relative-time rows, recovered empty/no-match text and
       Escape-clear/Enter-select keys; multi-match arguments print the recovered sentence.
@@ -516,12 +516,12 @@ Next up, scoped but not started:
       Host surface fix, not a recovered body. Focused 88/88, compiled 15/15 at identity
       `8d0d8699…`. See `research/ports/W269-panel-key-hints.md`.
 - [ ] Config residuals without complete consumers. Notifications, terminal tab status
-      and selection flags remain unported. Read each source consumer closure before choosing the
-      next complete local package. No local config row uses the successor-session path any
-      more; the unported rows are the ones named in the preceding sentence.
-      W293 carries the custom Tips/Show tips local chain. Built-in/vendor catalogs remain excluded.
+      and other selection consumers still need source preflight. No local config row uses
+      the successor-session path. W293 carries custom Tips/Show tips and W294 carries Copy on select.
+      Built-in/vendor catalogs remain excluded. W294 corrects the earlier blanket selection
+      flag claim; Copy on select uses literal inAppSelection:true and defaults on.
       Other unported rows: prompt suggestions / timestamps / tab
-      status / copy-on-select / auto-scroll (source rows sit behind `tengu_*` flags default off),
+      status / auto-scroll (their source rows sit behind `tengu_*` flags default off),
       recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no
       matching host consumer), notifications (no local trigger set).
 
@@ -720,3 +720,10 @@ Explicitly out of scope for this loop:
       old user-directory owners; failed startup acquisition can recover. Affected202/202, check/build
       clean, compiled23/23 plus Config35/35 at `5ed6ac2a...`. Five independent repairs passed fresh
       recheck; the sixth startup/flush omission passed final independent cleanup recheck1/1+7/7. See `research/ports/W293-custom-spinner-tips.md`.
+- [x] W294 Copy on select (xBe/QLt, qh0w98pn [5223,5742)/[3815,4061), UTF-16):
+      source default-on user preference persists and applies live. Release copies once without
+      clearing highlight; Ctrl+C uses the cached text and yields the following interrupt.
+      Native and legacy selections share one owner; ordinary actions, frame exit and empty copies
+      clear correctly. Five independent defects repaired and final12+2 probes pass. Affected153/153,
+      check/build clean, compiled29/29 and Config35/35 at `14735b9e...`.
+      See `research/ports/W294-copy-on-select.md`.

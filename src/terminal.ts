@@ -1418,6 +1418,7 @@ export interface TerminalSurface {
   setPrefersReducedMotion?(value?: boolean): void;
   setShowTurnDuration?(value?: boolean): void;
   setShowMessageTimestamps?(value?: boolean): void;
+  setCopyOnSelect?(value?: boolean): void;
   setProgressSettings?(settings: import('./tui-progress-settings.js').ProgressDisplaySettings): void;
   bindSpinnerTips?(session: import('./session.js').Session): void;
   flushSpinnerTips?(): Promise<void>;

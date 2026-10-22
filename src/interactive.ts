@@ -566,6 +566,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setPrefersReducedMotion?.(session.config.prefersReducedMotion);
     terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
     terminal?.setShowMessageTimestamps?.(session.config.showMessageTimestamps);
+    terminal?.setCopyOnSelect?.(session.config.copyOnSelect);
     terminal?.setBriefTranscript?.(briefTranscriptEnabled(session.config));
     terminal?.setVerbose?.(session.config.verbose === true);
     terminal?.setTerminalProgressBar?.(session.config.terminalProgressBarEnabled !== false);
@@ -2455,6 +2456,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       changes.set(update.id, `Set ${update.id} to ${enabled !== false}`);
                       return configPanelInput(session.config);
                     }
+                    // vWe/G, nybcbd9t [23905,24064)/[8266,8318), UTF-16: global preference and live snapshot.
+                    case 'copyOnSelect':
+                      session.config.copyOnSelect = update.value;
+                      terminal?.setCopyOnSelect?.(update.value);
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
                     case 'reduceMotion':
                       // `vy` row, chunk-nybcbd9t.js: localSettings and the live app settings move
                       // together; the renderer and progress animations read the live value.
