@@ -104,8 +104,11 @@ test('the list budget is at most half the screen and never fewer than six rows',
   assert.equal(maxVisibleSuggestions(8), 5);
 });
 
+const layoutCommands = TUI_COMMANDS.map(command => command.name === 'model'
+  ? { ...command, description: 'Choose or enter a model, then start a session with completed history' }
+  : command);
 test('a row is the pointer, the padded command, the kind lane and the description', () => {
-  const suggestions = commandSuggestions('/mo', 3, TUI_COMMANDS);
+  const suggestions = commandSuggestions('/mo', 3, layoutCommands);
   const rows = layoutSuggestionRows(suggestions, 0, 100, '❯ ');
   assert.equal(rows.length, suggestions.length, 'the descriptions fit on one line at 100 columns');
   for (const row of rows) assert.equal([...row].length, 100);
@@ -126,7 +129,7 @@ test('a row is the pointer, the padded command, the kind lane and the descriptio
 });
 
 test('a description that does not fit wraps onto a second line under its own column', () => {
-  const suggestions = commandSuggestions('/mo', 3, TUI_COMMANDS);
+  const suggestions = commandSuggestions('/mo', 3, layoutCommands);
   const rows = layoutSuggestionRows(suggestions, 0, 60, '❯ ');
   assert.equal(rows.length, suggestions.length * 2, 'every row needs two lines at 60 columns');
   for (const row of rows) assert.equal([...row].length, 60);
@@ -422,4 +425,59 @@ test('the recovered usage aliases resolve to the usage row', () => {
     assert.equal(rows[0]?.matchedAlias, alias);
     assert.equal(rows[0]?.insertName, alias);
   }
+});
+
+test('the model description getter reads current state and keeps the recovered label cleanup', () => {
+  let model = 'fixture/one';
+  const catalog = tuiCommandsWithSkills([
+    { name: 'model', description: 'shadowed', userInvocable: true },
+    { name: 'review', description: 'Review changes', userInvocable: true },
+  ], { fleetFork: false, currentModel: () => model });
+  const row = () => commandSuggestions('/model', 6, catalog).find(command => command.name === 'model')!;
+  assert.equal(row().description, 'Set the AI model (currently fixture/one)');
+  for (const [input, shown] of [
+    ['gateway/custom-model', 'gateway/custom-model'],
+    ['\x1b[31m  custom\nmodel  \x1b[0m', 'custom model'],
+    ['`<tag>`[text](url)![image][label]:', 'tag[text] (url)! [image] [label] :'],
+    ['\ud800test', 'test'],
+    ['⠀', 'unknown model'],
+    ['a'.repeat(254) + '🦉', 'a'.repeat(254)],
+    ['gateway/foo[1m]', 'gateway/foo[1m]'],
+  ]) {
+    model = input!;
+    assert.equal(row().description, `Set the AI model (currently ${shown})`);
+  }
+  assert.equal(catalog.filter(command => command.name === 'model').length, 1);
+  assert.equal(catalog.find(command => command.name === 'review')?.description, 'Review changes');
+  assert.ok(!catalog.some(command => command.name === 'subtask'));
+  assert.equal(TUI_COMMANDS.find(command => command.name === 'model')?.description, 'Set the AI model');
+  assert.equal(commandSuggestions('/model', 6, [{ name: 'model', description: 'authored', kind: 'command' }])[0]?.description, 'authored');
+});
+
+test('the visible model suggestion refreshes its getter without changing the draft or accept path', () => {
+  let current = { model: 'first-model' };
+  const catalog = () => tuiCommandsWithSkills([], { currentModel: () => current.model });
+  const composer = startComposer(catalog());
+  const key = (text: string) => composer.input.emit('data', text);
+  try {
+    key('/model');
+    assert.ok(composer.screen().includes('(currently first-model)'), composer.screen());
+    current.model = 'second-model';
+    composer.tui.setStatus('repaint');
+    assert.ok(composer.screen().includes('(currently second-model)'), composer.screen());
+    assert.ok(!composer.screen().includes('(currently first-model)'));
+    assert.equal(composer.tui.state.text, '/model');
+    assert.deepEqual(composer.submitted, []);
+    current = { model: 'resumed-model' };
+    composer.tui.setCommands(catalog());
+    assert.ok(composer.screen().includes('(currently resumed-model)'), composer.screen());
+    assert.equal(composer.tui.state.text, '/model');
+    key('\r');
+    assert.deepEqual(composer.submitted, ['/model ']);
+    assert.equal(composer.tui.state.text, '');
+    key('/mo\t');
+    assert.equal(composer.tui.state.text, '/model ');
+    assert.deepEqual(composer.submitted, ['/model ']);
+    key('\x03');
+  } finally { composer.tui.close(); }
 });

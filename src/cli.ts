@@ -705,7 +705,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     process.stderr.write(`session: ${currentSession.id}\nworkspace: ${workspace}\n`);
     if (values.interactive) {
       const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
-        commands: tuiCommandsWithSkills(currentSession.config.skills),
+        commands: tuiCommandsWithSkills(currentSession.config.skills, { currentModel: () => currentSession.config.model }),
         agentTypes: currentSession.config.agentTypes,
         ...(currentRuntime.catalogListing ? { mcpCatalog: (signal: AbortSignal) =>
           currentRuntime.catalogListing!(signal).then(listing => ({

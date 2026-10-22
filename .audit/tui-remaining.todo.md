@@ -682,3 +682,10 @@ Explicitly out of scope for this loop:
       Review repair makes both handoffs use the mounted editor command. Affected 154/154,
       check/build clean, compiled 26/26 and stash 19/19; independent correction recheck passed.
       See `research/ports/W287-external-editor-hint.md`.
+- [x] W288 live model description (bWe getter [1650777,1650860), sfn1dbxq, UTF-16):
+      `/model` names the effective local model through a live session reader. Typed/picker
+      switches, config adoption, reload, skills refresh and resume follow that owner. AT's full
+      label cleanup closure is copied with a Node ANSI binding and a documented tt/qo adapter.
+      Affected 170/170, check/build clean, compiled 16/16 and effort 26/26 at `abd41170...`.
+      Independent review found no confirmed scoped defect.
+      See `research/ports/W288-live-model-description.md`.
