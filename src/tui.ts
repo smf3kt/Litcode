@@ -86,6 +86,8 @@ import {
   listWorkingDirectory, shapeAtDisplayText, FILE_SUGGESTION_LIMIT, type AtQuery,
 } from './tui-file-suggestions.js';
 import { ge } from './tui-color.js';
+import { ultracodeTagText, ultracodeRevealIndex, ultracodeRevealDone, topBorderText as composerBorderRecord,
+  ULTRA_TAG_FRAME } from './tui-composer-tag.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
 import { ResumePicker, resumePickerGuide, resumeRelativeTime, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
 import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
@@ -563,6 +565,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Composer gates `dg()` and `C7t()`: on until the session settings say otherwise. */
   private workflowKeywordAvailable = true;
   private workflowKeywordTriggerEnabled = true;
+  /**
+   * Source `Va`/`mn` and `ff=!Ii&&VC(Va,mn)` (chunk-24k7d6mw.js 866311/866374/893703): the
+   * composer's top-border `ultracode` tag. `Ii` is `isBriefOnly && !viewingAgentTaskId`; this host
+   * has no agent view, so the brief transcript stands in for it. `revealStart` is `oee`'s clock.
+   */
+  private ultracodeTagGates = { ultracode: false, workflows: true, modelSupportsUltracode: true };
+  private ultraTagRevealStart: number | undefined;
+  private ultraTagTimer: ReturnType<typeof setInterval> | undefined;
   /** Source `Kl().emojiCompletionEnabled !== false`: the `:name:` typeahead is on by default. */
   private emojiCompletionEnabled = true;
   /**
@@ -1153,7 +1163,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Source `vNt`'s `focusFoldHoldsPreview`, live half: `/focus` toggles the fold. */
   setBriefTranscript(enabled: boolean): void {
     if (enabled === this.briefTranscript) return;
+    const tagWasVisible = this.ultracodeTagVisible();
     this.briefTranscript = enabled;
+    // `Ii` is the `!` operand of the tag's gate, so leaving the fold starts the reveal afresh.
+    if (!tagWasVisible && this.ultracodeTagVisible()) this.startUltracodeTagReveal();
+    else if (tagWasVisible && !this.ultracodeTagVisible()) this.stopUltracodeTagReveal();
     // Leaving focus re-paints the preview the fold was holding back.
     if (!enabled) this.paintAssistantPreview();
     this.render();
@@ -1228,6 +1242,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   setPrefersReducedMotion(value?: boolean): void {
     if (this.prefersReducedMotion === value) return;
     this.prefersReducedMotion = value;
+    // `Eu()` short-circuits `oee`'s clock: with motion reduced the tag never reveals.
+    if (value === true) this.stopUltracodeTagReveal();
+    else if (this.ultracodeTagVisible()) this.startUltracodeTagReveal();
     this.progress.setReducedMotion(value === true);
     this.previewStore.setRaw(Zqn(value, this.windowsTerminal) ? this.previewCoalescer.peek() : null);
     if (this.assistantMessage && this.previewStore.getDerived().displayed !== null) this.paintAssistantPreview();
@@ -1273,6 +1290,59 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.workflowKeywordAvailable = settings.available;
     this.workflowKeywordTriggerEnabled = settings.triggerEnabled;
     this.render();
+  }
+
+  /**
+   * The composer tag's live inputs: `Va` (`ultracode`), the `dg()` half of `ZI`, and this host's
+   * stand-in for the model's `xhigh` support. The `oee` clock starts when the tag first has a
+   * reason to draw and stops itself `vkt` frames later; the tag then stands plain.
+   */
+  setUltracodeTag(settings: { ultracode: boolean; workflows: boolean; modelSupportsUltracode?: boolean }): void {
+    const next = { ultracode: settings.ultracode, workflows: settings.workflows,
+      modelSupportsUltracode: settings.modelSupportsUltracode !== false };
+    const same = this.ultracodeTagGates.ultracode === next.ultracode
+      && this.ultracodeTagGates.workflows === next.workflows
+      && this.ultracodeTagGates.modelSupportsUltracode === next.modelSupportsUltracode;
+    if (same) return;
+    const wasVisible = this.ultracodeTagVisible();
+    this.ultracodeTagGates = next;
+    if (!this.ultracodeTagVisible()) { this.stopUltracodeTagReveal(); this.render(); return; }
+    if (!wasVisible) this.startUltracodeTagReveal();
+    this.render();
+  }
+
+  /** `ff = !Ii && VC(Va, mn)`: the brief transcript stands in for `isBriefOnly`. */
+  private ultracodeTagVisible(): boolean {
+    const { ultracode, workflows, modelSupportsUltracode } = this.ultracodeTagGates;
+    return !this.briefTranscript && ultracode && workflows && modelSupportsUltracode;
+  }
+
+  private startUltracodeTagReveal(): void {
+    this.stopUltracodeTagReveal();
+    if (this.prefersReducedMotion) return;
+    this.ultraTagRevealStart = Date.now();
+    const timer = setInterval(() => {
+      if (this.closed || this.ultraTagRevealStart === undefined) { this.stopUltracodeTagReveal(); return; }
+      if (ultracodeRevealDone(this.ultraTagRevealStart, Date.now())) this.stopUltracodeTagReveal();
+      this.render();
+    }, ULTRA_TAG_FRAME);
+    timer.unref?.();
+    this.ultraTagTimer = timer;
+  }
+
+  private stopUltracodeTagReveal(): void {
+    if (this.ultraTagTimer !== undefined) clearInterval(this.ultraTagTimer);
+    this.ultraTagTimer = undefined;
+    this.ultraTagRevealStart = undefined;
+  }
+
+  /** `tee`/`nee` for this frame: the painted word and the border record the composer draws. */
+  private composerBorderText(): ReturnType<typeof composerBorderRecord> {
+    if (!this.ultracodeTagVisible()) return undefined;
+    const index = ultracodeRevealIndex(this.ultraTagRevealStart, Date.now());
+    const open = slotForeground(this.themeSlot('effortUltra'));
+    const paint = (text: string) => open === '' ? text : open + text + '\u001b[39m';
+    return composerBorderRecord([ultracodeTagText(true, index, paint)]);
   }
 
   /** Source `da`: dismiss or restore the keyword run for this draft. The handler only exists while
@@ -1592,6 +1662,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.statusNoticeTimer !== undefined) { clearTimeout(this.statusNoticeTimer); this.statusNoticeTimer = undefined; }
     this.statusNoticeOwner = undefined; this.statusNoticeText = undefined;
     this.pasteOwner.dispose();
+    this.stopUltracodeTagReveal();
     if (this.escapeTimer) clearTimeout(this.escapeTimer);
     this.decoder.reset(); this.keys.reset();
     this.options.input.off('data', this.onData);
@@ -3896,7 +3967,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
-        this.renderer.appContext, this.renderer.selectionInstance) } : undefined, banner, this.composerMode);
+        this.renderer.appContext, this.renderer.selectionInstance) } : undefined, banner, this.composerMode,
+      this.composerBorderText());
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
 
