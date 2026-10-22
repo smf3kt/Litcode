@@ -55,7 +55,7 @@ import { Art } from './tui-input-highlights-source.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { layoutEngine } from './tui-layout.js';
 import { renderPreviewMarkdown } from './tui-markdown.js';
-import { TuiRenderer, type FooterPart, type PromptLine } from './tui-renderer.js';
+import { TuiRenderer, footerElement, type FooterPart, type PromptLine } from './tui-renderer.js';
 import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
@@ -89,6 +89,7 @@ import { ge } from './tui-color.js';
 import { ultracodeTagText, ultracodeRevealIndex, ultracodeRevealDone, topBorderText as composerBorderRecord,
   ULTRA_TAG_FRAME } from './tui-composer-tag.js';
 import { historyBorderText } from './tui-history-position.js';
+import { effortIndicator, type EffortLevel } from './effort-command.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
 import { ResumePicker, resumePickerGuide, resumeRelativeTime, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
 import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
@@ -191,8 +192,7 @@ import { QUESTION_NOTES_ONLY } from './interaction-tools.js';
 const SOURCE_PICKER_OWNS_HISTORY_SEARCH = true;
 import { jde } from './tui-statusline-components.js';
 import { jsx } from './tui-jsx.js';
-import { s, n, Do } from './tui-base-components.js';
-import { Tde } from './tui-source-chrome.js';
+import { s, n } from './tui-base-components.js';
 import {
   createTranscriptState, layoutTranscript, reduceTranscript, renderedTranscriptRows, transcriptLines, wrapEntry,
   wrapEntryRows,
@@ -601,6 +601,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private statusNoticeOwner: string | undefined;
   private statusNoticeText: string | undefined;
   private statusNoticeTimer: ReturnType<typeof setTimeout> | undefined;
+  /** `Ix` is the effect's dependency; expiry clears the active slot without changing that key. */
+  private effortFeedbackLevel: EffortLevel | undefined;
+  private effortFeedbackLabel: string | undefined;
+  private effortFeedback: { text: string; timer: ReturnType<typeof setTimeout> } | undefined;
   /** Host-bound live background count and stop action for the kill chord. */
   private backgroundWorkProbe: (() => number) | undefined;
   private backgroundWorkStop: (() => void) | undefined;
@@ -1166,6 +1170,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (enabled === this.briefTranscript) return;
     const tagWasVisible = this.ultracodeTagVisible();
     this.briefTranscript = enabled;
+    this.refreshEffortFeedback();
     // `Ii` is the `!` operand of the tag's gate, so leaving the fold starts the reveal afresh.
     if (!tagWasVisible && this.ultracodeTagVisible()) this.startUltracodeTagReveal();
     else if (tagWasVisible && !this.ultracodeTagVisible()) this.stopUltracodeTagReveal();
@@ -1307,6 +1312,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (same) return;
     const wasVisible = this.ultracodeTagVisible();
     this.ultracodeTagGates = next;
+    this.refreshEffortFeedback();
     if (!this.ultracodeTagVisible()) { this.stopUltracodeTagReveal(); this.render(); return; }
     if (!wasVisible) this.startUltracodeTagReveal();
     this.render();
@@ -1348,6 +1354,33 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const open = slotForeground(this.themeSlot('effortUltra'));
     const paint = (text: string) => open === '' ? text : open + text + '\u001b[39m';
     return composerBorderRecord([ultracodeTagText(true, index, paint)]);
+  }
+
+  /** `Ix` effect, chunk-24k7d6mw.js [894148,894249), UTF-16. */
+  setEffortFeedback(level: EffortLevel): void {
+    this.effortFeedbackLevel = level;
+    if (this.refreshEffortFeedback()) this.render();
+  }
+
+  private refreshEffortFeedback(): boolean {
+    const label = effortIndicator(this.briefTranscript ? undefined : this.effortFeedbackLevel,
+      false, this.ultracodeTagVisible());
+    if (label === this.effortFeedbackLabel) return false;
+    this.effortFeedbackLabel = label;
+    this.clearEffortFeedback();
+    if (this.closed || label === undefined) return true;
+    const timer = setTimeout(() => {
+      this.effortFeedback = undefined;
+      if (!this.closed) this.render();
+    }, 10_000);
+    timer.unref?.();
+    this.effortFeedback = { text: label, timer };
+    return true;
+  }
+
+  private clearEffortFeedback(): void {
+    if (this.effortFeedback !== undefined) clearTimeout(this.effortFeedback.timer);
+    this.effortFeedback = undefined;
   }
 
   /** Source `da`: dismiss or restore the keyword run for this draft. The handler only exists while
@@ -1668,6 +1701,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.statusNoticeOwner = undefined; this.statusNoticeText = undefined;
     this.pasteOwner.dispose();
     this.stopUltracodeTagReveal();
+    this.clearEffortFeedback();
     if (this.escapeTimer) clearTimeout(this.escapeTimer);
     this.decoder.reset(); this.keys.reset();
     this.options.input.off('data', this.onData);
@@ -3968,12 +4002,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
     });
     this.renderer.renderChat(frame, prompt.lines,
-      this.statusFooter(conversationWidth),
+      width => this.statusFooter(width),
       columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
         this.renderer.appContext, this.renderer.selectionInstance) } : undefined, banner, this.composerMode,
-      this.composerBorderText());
+      this.composerBorderText(), this.visibleEffortFeedback());
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
 
@@ -4070,17 +4104,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.renderer.render(lines, columns, rows, { row, column, visible });
   }
 
-  /**
-   * The footer as painted rows, for screens that compose their own frame instead of going
-   * through `renderChat`. `Tde` is the same element `renderChat` uses, so the permission chip
-   * keeps its slot colour.
-   */
+  /** Hfe/hEe and D9, qfjvvwpv [11971,12618), 24k7d6mw [906888,907115), UTF-16. */
+  private visibleEffortFeedback(): string | undefined {
+    if (this.screen !== 'chat' || this.gestures.hint || this.statusNoticeText !== undefined
+      || this.diffPanel?.visible || !this.dialog && this.autocompleteState().suggestions.length > 0) return;
+    return this.effortFeedback?.text;
+  }
+
   private footerRows(columns: number): string[] {
     this.documentRenderer ??= new TuiDocumentRenderer();
-    return this.documentRenderer.renderElement(jsx(Tde, { width: columns, left: this.statusFooter(columns).map((part, index) =>
-      typeof part === 'string'
-        ? jsx(Do, { dimColor: true, children: part }, String(index))
-        : jsx(n, { color: part.color, children: part.text }, String(index))) }, undefined), columns,
+    return this.documentRenderer.renderElement(
+      footerElement(width => this.statusFooter(width), columns, this.visibleEffortFeedback()), columns,
       { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
   }
 
@@ -4104,8 +4138,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // the sparse/dense split and before the bash label, and `Pt` is the history-search flag. The
     // state is raised by the paste producer (`Bo(!0)`, 839453) for a collapse of at most `fVe`
     // characters and cleared after 8000 ms or by the expansion itself (`xl`, 821273). The source
-    // draws notices in their own band, which this host does not have: its notice is the footer's
-    // left text, so a live notice keeps the row and the hint waits behind it.
+    // keeps older status notices on the left; effort feedback owns the separate right column.
     if (this.showExpandPasteHint && this.screen !== 'search' && this.statusNoticeText === undefined) return ['paste again to expand'];
     // Source `Sce` 754626 and `LVe` 764050: bash mode replaces the row with its own label. The
     // dense footer paints `shell mode` dim and italic; this host's single footer row keeps the

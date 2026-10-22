@@ -8,6 +8,7 @@ import { loadPathInstructions } from "../src/config.js";
 import { reloadConfig } from "../src/reload.js";
 import { buildSystem } from "../src/runtime.js";
 import { reloadSkills } from "../src/skill-catalog.js";
+import { modelEffort } from '../src/effort-command.js';
 
 test("nested instructions follow accessed ancestors and bounded workspace imports", () => {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "nested-instructions-")));
@@ -35,6 +36,22 @@ test("reload refreshes local catalogs and policy without mutating pinned provide
     const current = defaultConfig(root, []); current.model = "pinned"; current.configSources = { userDir: path.join(root, "user") };
     const before = JSON.stringify(current); const next = reloadConfig(current);
     assert.equal(next.model, "pinned"); assert.equal(next.autoMemory, true); assert.equal(next.features?.media, false);
+    const inherited = { ...current, effort: 'low' as const, effortSelection: { kind: 'inherit' as const },
+      modelSettings: { pinned: { effortLevel: 'low' as const } } };
+    fs.writeFileSync(path.join(root, 'user/settings.json'), JSON.stringify({
+      modelSettings: { pinned: { effortLevel: 'xhigh' } } }));
+    const inheritedNext = reloadConfig(inherited);
+    assert.equal(inheritedNext.effort, 'xhigh');
+    assert.equal(inheritedNext.effort, modelEffort(inheritedNext, 'pinned'));
+    assert.equal(inherited.effort, 'low', 'reload preserves the previous owner snapshot');
+    const manual = reloadConfig({ ...inherited, effortSelection: { kind: 'level' } });
+    assert.equal(manual.effort, 'low', 'a manually selected effort stays pinned');
+    const automatic = reloadConfig({ ...inherited, effort: undefined, effortSelection: { kind: 'default' } });
+    assert.equal(automatic.effort, undefined, 'auto keeps the request default');
+    fs.writeFileSync(path.join(root, 'user/settings.json'), '{}');
+    const cleared = reloadConfig(inheritedNext);
+    assert.equal(cleared.effort, undefined, 'removing a model default clears the derived request snapshot');
+    fs.unlinkSync(path.join(root, 'user/settings.json'));
     assert.equal(next.stopHookBlockCap, 2);
     assert.equal(next.prefersReducedMotion, true);
     assert.equal(next.maxProseWidth, 60);

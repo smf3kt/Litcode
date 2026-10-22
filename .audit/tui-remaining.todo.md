@@ -662,3 +662,11 @@ Explicitly out of scope for this loop:
       it; history overrides ultracode, search suppresses it, and search cancel restores it.
       Two new regressions, affected 160/160, check/build clean, compiled 17/17 at identity
       `fb0f5add…`. See `research/ports/W284-composer-history-tag.md`.
+- [x] W285 effective effort feedback (`ZZ` [153220,153274), `eee` [153296,153407), `Ix`
+      [894148,894249) chunk-24k7d6mw.js; `Hfe` [11971,12618) chunk-qfjvvwpv.js): a dim,
+      right-aligned footer notice follows effective model effort and ultracode for 10000 ms.
+      Unchanged labels stay expired. Focus, suggestions and diff visibility gates are wired.
+      Status/paste hints retain the left column. Review repairs align inherited reload effort
+      with the next request and preserve the interrupt hint at 80 columns. Affected 178/178,
+      compiled 26/26, config 35/35 and history 17/17 at identity `66d6817e...`.
+      See `research/ports/W285-effort-feedback.md`.

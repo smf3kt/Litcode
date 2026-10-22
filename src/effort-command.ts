@@ -182,13 +182,13 @@ export function effortStatus(current: EffortLevel | undefined, fallback: EffortL
 }
 
 /**
- * Source `eee` in `chunk-24k7d6mw.js` 153296. The recovered call site at 894081 runs it from an
+ * Source `eee` in `chunk-24k7d6mw.js` [153296,153407), UTF-16. The call site at 894081 runs it from an
  * effect that watches the effective level, clearing and re-raising the `effort-level` notice on
- * every change with `timeoutMs: 1e4`; `withPrefix` is its `M` argument, which the settings
- * surface passes true.
+ * every change with `timeoutMs: 1e4`. The existing second argument is source `M`; the third is `T`.
  */
-export function effortIndicator(level: EffortLevel, withPrefix = false): string {
-  return `${withPrefix ? 'effort:' : effortGlyph(level)} ${level} · /effort`;
+export function effortIndicator(level: EffortLevel | undefined, withPrefix = false, ultracode = false): string | undefined {
+  if (!level) return;
+  return `${withPrefix ? 'effort:' : effortGlyph(level)} ${level}${ultracode ? ' · ultracode' : ''} · /effort`;
 }
 
 /**

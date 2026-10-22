@@ -1420,6 +1420,8 @@ export interface TerminalSurface {
   setWorkflowKeywordSettings?(settings: { available: boolean; triggerEnabled: boolean }): void;
   /** The composer's top-border `ultracode` tag (`ff = !Ii && VC(Va, mn)`). */
   setUltracodeTag?(settings: { ultracode: boolean; workflows: boolean; modelSupportsUltracode?: boolean }): void;
+  /** `ZZ`/`Ix`, chunk-24k7d6mw.js [153220,153274)/[894148,894249), UTF-16. */
+  setEffortFeedback?(level: import('./effort-command.js').EffortLevel): void;
   /** The `:name:` emoji typeahead switch. Absent means enabled. */
   setEmojiCompletion?(enabled: boolean): void;
   /** `/focus`'s brief transcript: hold the streaming preview while a turn runs through tools. */
