@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 import { ModelPicker, MODEL_PICKER_TITLE, modelPickerCaption, modelPickerEffortLine,
-  modelPickerEffortStep, modelPickerGuide, modelPickerRowDescription } from '../src/model-picker.js';
+  modelPickerEffortStep, modelPickerGuide, modelPickerRowDescription, modelPickerUltracodeSuffix } from '../src/model-picker.js';
 
 test('the picker takes the recovered title, caption and guide', () => {
   assert.equal(MODEL_PICKER_TITLE, 'Select model');
@@ -32,6 +32,20 @@ test('the effort line carries the glyph, the level and the default mark', () => 
 test('only the row already in use carries a synthesized description', () => {
   assert.equal(modelPickerRowDescription('gateway/model-a', 'gateway/model-a'), 'Current model');
   assert.equal(modelPickerRowDescription('gateway/model-b', 'gateway/model-a'), undefined);
+});
+
+test('the effort footer names ultracode only while the session flag and its workflow gate agree', () => {
+  assert.equal(modelPickerUltracodeSuffix(true), ' · Ultracode on (/effort)');
+  assert.equal(modelPickerUltracodeSuffix(true, true), ' · Ultracode on (/effort)');
+  assert.equal(modelPickerUltracodeSuffix(false), '');
+  assert.equal(modelPickerUltracodeSuffix(false, false), '');
+  assert.equal(modelPickerUltracodeSuffix(true, false), '');
+  const options = [{ label: 'One', value: 'one' }];
+  assert.deepEqual(new ModelPicker(options, { current: 'one', ultracode: true }).footer(),
+    ['● high effort (default)  Left/Right adjust · Ultracode on (/effort)']);
+  assert.deepEqual(new ModelPicker(options, { current: 'one', ultracode: true, workflowsEnabled: false }).footer(),
+    ['● high effort (default)  Left/Right adjust']);
+  assert.deepEqual(new ModelPicker(options, { current: 'one', effort: 'max', ultracode: true }).footer().length, 2);
 });
 
 test('manual effort survives focus changes, endpoint clamps and a round trip to the initial level', () => {

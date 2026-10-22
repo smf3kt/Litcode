@@ -1182,7 +1182,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       const answer = await readDialog(modelPickerRequest(modelPickerModels(), session.config.model,
         session.config.effort, true,
         session.config.effortSelection?.kind === 'inherit'
-          ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined),
+          ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined,
+        session.config.ultracode === true, session.config.features?.workflow !== false),
         live.signal);
       const selected = answer?.selected[0];
       if (!selected || selected === ':cancel') return;
@@ -2335,7 +2336,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const answer = await withTurn(signal => readDialog(
               modelPickerRequest(modelPickerModels(), session.config.model, session.config.effort, true,
                 session.config.effortSelection?.kind === 'inherit'
-                  ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined), signal));
+                  ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined,
+                session.config.ultracode === true, session.config.features?.workflow !== false), signal));
             selected = answer?.selected[0];
             if (answer?.adjusted !== undefined && isEffortLevel(answer.adjusted)) pendingEffort = answer.adjusted;
             pendingSessionOnly = answer?.key === 's';
@@ -2495,7 +2497,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                   .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
                 const inherited = session.config.effortSelection?.kind === 'inherit'
                   ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined;
-                const picked = await withTurn(signal => readDialog(modelPickerRequest(models, session.config.model, session.config.effort, false, inherited), signal));
+                const picked = await withTurn(signal => readDialog(modelPickerRequest(models, session.config.model, session.config.effort, false, inherited,
+                  session.config.ultracode === true, session.config.features?.workflow !== false), signal));
                 const model = picked?.selected[0];
                 if (model !== undefined) {
                   await withTurn(signal => selectModel(model, picked?.adjusted !== undefined && isEffortLevel(picked.adjusted) ? picked.adjusted : undefined, false, signal, true));
