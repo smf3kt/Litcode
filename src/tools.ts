@@ -31,6 +31,21 @@ export type ToolContext = {
   workingDirectories?: (readOnly: boolean) => readonly string[];
   /** A file-effecting tool reports the structured host result of the effect it just performed. */
   hostResult?: (value: ToolUseResult) => void;
+  /** Source `Czr`'s `emitToolProgress` progress frame, carrying the shell poll's snapshot. */
+  onProgress?: (progress: ShellProgress) => void;
+};
+
+/**
+ * Source `Czr` (chunk-sfn1dbxq.js 4340642): one shell poll frame. `output` is the tail kept for
+ * the row, `fullOutput` everything seen so far, and `totalLines`/`totalBytes` the running counts.
+ */
+export type ShellProgress = {
+  output: string;
+  fullOutput: string;
+  elapsedTimeSeconds: number;
+  totalLines: number;
+  totalBytes: number;
+  timeoutMs?: number;
 };
 
 export type ToolDefinition = {
@@ -59,6 +74,8 @@ const FALLBACK_MAX_OUTPUT_BYTES = 100_000;
 const AGENT_DIR = ".agent";
 const READ_STREAM_HIGH_WATER = 64 * 1024;
 const SHELL_PIPE_GRACE_MS = 200;
+/** Source `hOn` (chunk-sfn1dbxq.js 4322055): the shell's progress poll interval. */
+const SHELL_PROGRESS_INTERVAL_MS = 2000;
 
 // ---------------------------------------------------------------------------
 // Errors
@@ -640,6 +657,7 @@ function runShell(
   timeoutMs: number,
   maxBytes: number,
   signal: AbortSignal,
+  onProgress?: (progress: ShellProgress) => void,
 ): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     if (signal.aborted) {
@@ -666,9 +684,24 @@ function runShell(
     let exitSignal: NodeJS.Signals | null = null;
     let totalBytes = 0;
     let tail: Buffer = Buffer.alloc(0);
+    let totalLines = 0;
+
+    // Source `Czr` (chunk-sfn1dbxq.js 4340642) polls the shell's own output every `hOn` = 2000 ms
+    // (chunk-sfn1dbxq.js 4322055) and yields one `bash_progress` frame per poll. The host has no
+    // task-output store to poll, so the row is fed from the pipe instead: the same snapshot shape,
+    // taken on the source's own cadence rather than on every chunk.
+    const started = Date.now();
+    const emitProgress = () => {
+      if (onProgress === undefined) return;
+      onProgress({ output: tail.toString("utf8"), fullOutput: tail.toString("utf8"),
+        elapsedTimeSeconds: Math.floor((Date.now() - started) / 1000), totalLines, totalBytes,
+        ...(timeoutMs > 0 ? { timeoutMs } : {}) });
+    };
+    const progressTimer = onProgress === undefined ? undefined : setInterval(emitProgress, SHELL_PROGRESS_INTERVAL_MS);
 
     const append = (chunk: Buffer) => {
       totalBytes += chunk.length;
+      for (let at = chunk.indexOf(0x0a); at !== -1; at = chunk.indexOf(0x0a, at + 1)) totalLines += 1;
       tail = tail.length === 0 ? chunk : Buffer.concat([tail, chunk]);
       if (tail.length > maxBytes) tail = tail.subarray(tail.length - maxBytes);
     };
@@ -702,6 +735,7 @@ function runShell(
     const cleanup = () => {
       if (timer) clearTimeout(timer);
       if (grace) clearTimeout(grace);
+      if (progressTimer !== undefined) clearInterval(progressTimer);
       signal.removeEventListener("abort", onAbort);
     };
     const finish = () => {
@@ -1143,7 +1177,7 @@ function runCommandTool(): ToolDefinition {
       }
       const { command, timeout_ms = COMMAND_DEFAULT_TIMEOUT_MS } = runCommandSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      try { return await runShell(command, root, timeout_ms, maxBytesFor(context), context.signal); }
+      try { return await runShell(command, root, timeout_ms, maxBytesFor(context), context.signal, context.onProgress); }
       finally { context.fileHistory?.(); }
     },
   };
