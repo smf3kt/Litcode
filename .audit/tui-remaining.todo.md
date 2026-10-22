@@ -470,6 +470,14 @@ Next up, scoped but not started:
       piped `/status`, `/usage` and `/cost`. Excluded: login/org/email/cloud rows, diagnostics,
       IDE/MCP statuses, setting sources and the auto-mode server row. Unit 4/4 + 1/1, focused
       141/141, compiled 7/7 at identity `86ba21d1…`. See `research/ports/W262-status.md`.
+- [x] W263 `/mcp` (`wt`, chunk-6sz429bf.js 28713): the Manage MCP servers list. `wt` supplies the
+      title, the `N servers` subtitle, the scope order and the name sort; `Qo` (35295) the
+      connected/tool-count, reconnecting, disconnected, not-configured and failure wording. The
+      host lists its merged configured servers with live `Runtime.mcpServers()` statuses and
+      `mcp__<server>__` tool counts, and `r` reconnects the selected row. Not ported: scope
+      headings, the per-server detail page, enable/disable, authentication, agent, claude.ai and
+      built-in groups. Unit 3/3 + 1/1, focused 145/145, compiled 6/6 at identity `0dbe310c…`.
+      See `research/ports/W263-mcp.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any
