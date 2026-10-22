@@ -39,10 +39,17 @@ function Ict(e,n,r){if(n)e.advancePastText(n);if(r)for(let s of Object.keys(r))e
 function U5r(e){return null?.isSetupGuidePaste(e)??!1}
 function B5r(e){return null?.isSetupGuideLink(e)??!1}
 var $q=800;
-export function initializePasteSource({M,pn,In,Pw,Pq,dr,ji,wa,allocator=new Mct}) {
+/** The recovered `Bo`/`Ei`/`ys` triple (chunk-24k7d6mw.js 821244): the expand hint's setter, its
+ *  timer handle and its scheduler. The host supplies real ones; the defaults keep the copy inert. */
+export interface ExpandHintHooks {
+  Bo?: (visible: boolean) => void;
+  Ei?: { current: (() => void) | null };
+  ys?: { setTimeout: (flush: () => void, milliseconds: number) => () => void };
+}
+export function initializePasteSource({M,pn,In,Pw,Pq,dr,ji,wa,allocator=new Mct,
+  Bo=()=>{},Ei={current:null},ys={setTimeout:()=>null}}: ExpandHintHooks & Record<string, unknown>) {
 const hA=(text,contents)=>Ict(allocator,text,contents);
 const x_=()=>"prompt",Qn=()=>{},sI=text=>text,g=()=>{},WT=()=>false,upe=()=>false,__e=text=>({text}),mpe=()=>false,sY=contents=>contents;
-const Bo=()=>{},Ei={current:null},ys={setTimeout:()=>null};
 function xM(B7){let nC=wa.current==="link"?" ":"";wa.current=!1;let{value:dL,pastedContents:Aq}=M;let Xu=pn(B7).replace(/\r\n|\r/g,`
 `).replaceAll("\t","    ");if(dL.length===0){let U7=x_(Xu);if(U7!=="prompt")Qn(U7),Xu=sI(Xu)}let Px=Xu.trim();let Rw=B5r(Px);if(Rw)Xu=Px;let TS=ji.current;if(TS!==null&&Aq[TS]?.type==="text"&&Aq[TS].content===Xu&&Pq(TS)){return}let cy=HF(Xu);let j7=Math.max(0,Math.min(dr-10,2));if(Xu.length>$q||cy>j7||Rw){if(!Rw)g("input_paste_large");let cL=hA(dL,Aq);ji.current=cL;let Oxe={id:cL,type:"text",content:Xu};if(In((TM)=>({...TM,[cL]:Oxe})),Pw(nC+tJ(cL,cy,Rw||U5r(Xu)?RDe:void 0)),Rw)wa.current="link";if(Xu.length<=fVe)Bo(!0),Ei.current?.(),Ei.current=ys.setTimeout(()=>{Bo(!1),Ei.current=null},8000)}else{let $7=WT()&&(upe(Xu)||HF(__e(Xu).text)>j7);if($7||mpe(Xu))In((Nxe)=>sY(Nxe,Xu,$7));Pw(nC+Xu,{isTyped:!0})}}
 return {paste:xM};

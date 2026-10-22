@@ -3102,3 +3102,39 @@ test('the idle footer names the ? shortcut only where a whole hint survives the 
   assert.ok(!tiny.includes('? for shortcuts'), tiny);
   assert.ok(tiny.includes('ctrl+o'), tiny);
 });
+
+test('a collapsed paste raises the expand hint until the expansion or its timer takes it down', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk: string, _encoding: string, done: () => void) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 30 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const footer = () => screenLines(output).join('\n');
+  const paste = (text: string) => key(`\x1b[200~${text}\x1b[201~`);
+  try {
+    assert.ok(!footer().includes('paste again to expand'), footer());
+    // Source `xM` folds a paste over `$q = 800` characters into `[Pasted text #1]`, then raises
+    // `Bo(!0)` because the payload is under `fVe = 1e5`.
+    paste('x'.repeat(801));
+    assert.equal(tui.state.text, '[Pasted text #1]');
+    assert.ok(footer().includes('paste again to expand'), footer());
+    // Source `Y`'s long-key arm: the same payload pasted again expands in place through `Pq`,
+    // whose own `xl()` call takes the hint down before the producer could raise it.
+    paste('x'.repeat(801));
+    assert.equal(tui.state.text, 'x'.repeat(801));
+    assert.ok(!footer().includes('paste again to expand'), footer());
+  } finally { tui.close(); }
+  const timedInput = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  timedInput.isTTY = true; timedInput.setRawMode = () => {};
+  const timedOutput = new Writable({ write(_chunk: string, _encoding: string, done: () => void) { done(); } });
+  Object.assign(timedOutput, { isTTY: true, columns: 100, rows: 30 }); watchScreen(timedOutput);
+  const timed = new TuiTerminal({ input: timedInput, output: timedOutput }).start();
+  try {
+    timedInput.emit('data', `\x1b[200~${'y'.repeat(801)}\x1b[201~`);
+    assert.ok(screenLines(timedOutput).join('\n').includes('paste again to expand'));
+    // Source `ys.setTimeout(...,8000)`: the row clears itself, without any further key.
+    await delay(8_200);
+    assert.ok(!screenLines(timedOutput).join('\n').includes('paste again to expand'));
+  } finally { timed.close(); decoded.get(timedOutput)!.dispose(); }
+});
