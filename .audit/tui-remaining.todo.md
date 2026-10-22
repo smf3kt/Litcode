@@ -675,3 +675,10 @@ Explicitly out of scope for this loop:
       after feedback. Swap/pop/automatic restore, brief/diff and suggestion/search gates verified.
       Affected 148/148, compiled 19/19 and effort 26/26 at identity `b1eaf3df...`.
       See `research/ports/W286-stashed-footer.md`.
+- [x] W287 external editor hint (WR [722518,722821), Ire [481135,481165), UTF-16):
+      explicit multiline eligibility raises the resolved editor chord for 5000 ms. Same multiline
+      edits retain expiry, single-line clears and rearms, and close releases the timer. Copied Ub
+      and Unicode closure name the command. All text writers reach the shared draft owner.
+      Review repair makes both handoffs use the mounted editor command. Affected 154/154,
+      check/build clean, compiled 26/26 and stash 19/19; independent correction recheck passed.
+      See `research/ports/W287-external-editor-hint.md`.

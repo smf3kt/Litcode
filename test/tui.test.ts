@@ -3404,3 +3404,124 @@ test('the stashed footer follows the slot through swap, feedback expiry, views a
     Reflect.set(ge, 'level', colorLevel); fs.rmSync(userDir, { recursive: true, force: true });
   }
 });
+
+test('the external editor hint observes explicit newlines and retains its five-second dependency key', context => {
+  const previous = process.env.VISUAL; process.env.VISUAL = '/usr/bin/vi';
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  let written = 0;
+  const output = new Writable({ write(chunk, _encoding, done) { written += chunk.length; done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 30 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const footer = () => screenLines(output).at(-1)!;
+  const hint = 'ctrl+x ctrl+e to edit in Vim';
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  try {
+    key('x'.repeat(60));
+    assert.ok(!tui.state.text.includes('\n'));
+    assert.ok(!footer().includes('edit in'), 'visual wrapping alone does not satisfy Ire');
+    key('\x7f'.repeat(60) + 'first\x1b[13;2usecond');
+    assert.equal(tui.state.text, 'first\nsecond');
+    Object.assign(output, { columns: 120 }); output.emit('resize');
+    assert.ok(footer().endsWith(hint), footer());
+    tui.setEffortFeedback('high');
+    assert.ok(!footer().includes('/effort'), 'the immediate hint precedes effort');
+    context.mock.timers.tick(4_999);
+    key(' more');
+    assert.ok(footer().endsWith(hint), footer());
+    context.mock.timers.tick(1);
+    assert.ok(!footer().includes('edit in'), footer());
+    assert.ok(footer().endsWith('● high · /effort'), footer());
+    key(' still multiline');
+    assert.ok(!footer().includes('edit in'), 'editing an expired multiline value does not rearm');
+    key('\x15\x7f');
+    assert.equal(tui.state.text, 'first');
+    key('\x1b[13;2uthird');
+    assert.ok(footer().endsWith(hint), footer());
+    key('\x15\x7f');
+    assert.equal(tui.state.text, 'first');
+    assert.ok(!footer().includes('edit in'), 'losing the last newline removes the hint immediately');
+    key('\x1b[13;2ufourth');
+    context.mock.timers.tick(4_000);
+    tui.setStatus('repaint');
+    context.mock.timers.tick(999);
+    assert.ok(footer().endsWith(hint), footer());
+    context.mock.timers.tick(1);
+    assert.ok(!footer().includes('edit in'), 'an ordinary repaint retains the original deadline');
+    key('\x15\x7f\x1b[13;2uclosed');
+    tui.close(); const closedBytes = written;
+    context.mock.timers.tick(20_000);
+    assert.equal(written, closedBytes, 'close releases the pending hint clock');
+  } finally {
+    tui.close(); context.mock.timers.reset(); decoded.get(output)!.dispose();
+    if (previous === undefined) delete process.env.VISUAL; else process.env.VISUAL = previous;
+  }
+});
+
+test('editor hint follows stash, history, Vim, queue and gesture mutations through the shared draft owner', context => {
+  const userDir = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
+    ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'editor-hint-')));
+  const previous = process.env.VISUAL; process.env.VISUAL = '/usr/bin/vi';
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, userDir, history: ['prior\nentry'] }).start();
+  const key = (text: string) => input.emit('data', text);
+  const footer = () => screenLines(output).at(-1)!;
+  const hint = 'ctrl+x ctrl+e to edit in Vim';
+  const colorLevel = Reflect.get(ge, 'level'); Reflect.set(ge, 'level', 3);
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  try {
+    key('retained\x13first\x1b[13;2usecond');
+    assert.ok(footer().endsWith(hint + ' · › stashed'), footer());
+    assert.equal(decoded.get(output)!.buffer.active.getLine(29)!.getCell(footer().indexOf('ctrl+x'))!.getFgColor(), 0x999999);
+    tui.setBriefTranscript(true);
+    assert.ok(footer().endsWith(hint + ' · › stashed'), footer());
+    tui.setBriefTranscript(false);
+    key('\x12');
+    assert.ok(!footer().includes('edit in'), 'history search owns its footer');
+    key('\x03');
+    assert.ok(footer().endsWith(hint + ' · › stashed'), footer());
+    key('\x13');
+    assert.equal(tui.state.text, 'retained');
+    assert.ok(!footer().includes('edit in'));
+    key('\x13');
+    assert.equal(tui.state.text, 'first\nsecond');
+    assert.ok(footer().endsWith(hint + ' · › stashed'), footer());
+    key('\x15\x7f\x15\x1b[A');
+    assert.equal(tui.state.text, 'prior\nentry');
+    assert.ok(footer().endsWith(hint + ' · › stashed'), footer());
+    tui.setEditorMode('vim', { jj: '<Esc>' });
+    key('jjggJ');
+    assert.equal(tui.state.text, 'prior entry');
+    assert.ok(!footer().includes('edit in'));
+    key('o');
+    assert.equal(tui.state.text, 'prior entry\n');
+    assert.ok(footer().endsWith(hint + ' · › stashed'), footer());
+    tui.setEditorMode('normal');
+    key('\x03');
+    assert.equal(tui.state.text, '');
+    assert.ok(!footer().includes('edit in'), 'gesture clear publishes the single-line eligibility');
+    let items = ['queued\nentry'];
+    tui.bindPromptQueue({
+      snapshot: () => items,
+      pop: index => { const [text] = items.splice(index, 1); return text === undefined ? undefined : { text }; },
+      popAll: () => { if (!items.length) return; const text = items.join('\n'); items = []; return { text }; },
+    });
+    key('\x1b[A');
+    assert.equal(tui.state.text, 'queued\nentry');
+    assert.ok(footer().endsWith(hint + ' · › stashed'), footer());
+    context.mock.timers.tick(5_000);
+    key(' more');
+    assert.ok(!footer().includes('edit in'));
+    assert.ok(footer().endsWith(' › stashed'), footer());
+    key('\x03/');
+    assert.equal(tui.state.text, '/');
+    assert.ok(!footer().includes('edit in'), 'suggestions own the fullscreen footer');
+  } finally {
+    tui.close(); context.mock.timers.reset(); decoded.get(output)!.dispose();
+    Reflect.set(ge, 'level', colorLevel);
+    if (previous === undefined) delete process.env.VISUAL; else process.env.VISUAL = previous;
+    fs.rmSync(userDir, { recursive: true, force: true });
+  }
+});

@@ -1,0 +1,3 @@
+#!/usr/bin/expect -f
+set stty_init "rows $env(W287_ROWS) columns $env(W287_COLUMNS)"
+source [file join [file dirname [info script]] .. scripts pty-cli.exp]

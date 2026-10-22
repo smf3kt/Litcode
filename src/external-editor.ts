@@ -13,6 +13,7 @@ export interface EditorHandoff {
   resume(): void;
 }
 export interface ExternalEditorResult { content: string | null; error?: string }
+export interface ExternalEditorSelection { command: string | undefined }
 function executable(name: string): string | undefined {
   const candidates = name.includes(path.sep) ? [name] : (process.env.PATH ?? '').split(path.delimiter).map(directory => path.join(directory,name));
   for (const candidate of candidates) {
@@ -61,14 +62,14 @@ async function settleEditorProcesses(owner: string): Promise<void> {
 
 /** Source file/argument/refold lifecycle; Node owns the cancellable child and private directory. */
 export async function editExternal(snapshot: Omit<InputSnapshot, 'cursor' | 'pastedContents'> & Partial<Pick<InputSnapshot, 'cursor' | 'pastedContents'>>, handoff: EditorHandoff, signal: AbortSignal,
-  workspace = process.cwd()): Promise<ExternalEditorResult> {
+  workspace = process.cwd(), selection?: ExternalEditorSelection): Promise<ExternalEditorResult> {
   const directory = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR,'tmp') : os.tmpdir(),'litcode-editor-'));
   fs.chmodSync(directory,0o700);
   const filename = path.join(directory,'prompt.md');
   let suspended = false;
   const suspend = () => {suspended = true;handoff.suspend();};
   const resume = () => {};
-  const source = initializeExternalEditor(editorDependencies(suspend, resume, signal, workspace, filename));
+  const source = initializeExternalEditor(editorDependencies(suspend, resume, signal, workspace, filename, selection));
   try {
     if (signal.aborted) return {content:null};
     return await source.edit(snapshot.text,snapshot.pastedContents,undefined,snapshot.cursor);
@@ -84,15 +85,21 @@ export async function editExternal(snapshot: Omit<InputSnapshot, 'cursor' | 'pas
  * null` when the file is absent or the editor failed, with `error` set only for a failure.
  */
 export async function openExternalFile(file: string, handoff: EditorHandoff | undefined, signal: AbortSignal,
-  workspace = process.cwd()): Promise<ExternalEditorResult> {
+  workspace = process.cwd(), selection?: ExternalEditorSelection): Promise<ExternalEditorResult> {
   let suspended = false;
   const suspend = () => {suspended = true;handoff?.suspend();};
   const resume = () => {};
-  const source = initializeExternalEditor(editorDependencies(suspend, resume, signal, workspace, file));
+  const source = initializeExternalEditor(editorDependencies(suspend, resume, signal, workspace, file, selection));
   try {
     if (signal.aborted) return {content:null};
     return await source.open(file, undefined);
   } finally {if(suspended)handoff?.resume();}
+}
+
+/** hx, 7tnkhv2k [2859,2908), UTF-16: resolved command for the local editor consumer. */
+export function externalEditorCommand(): string | undefined {
+  const source = initializeExternalEditor(editorDependencies(() => {}, () => {}, new AbortController().signal, process.cwd(), ''));
+  return source.resolve();
 }
 
 /** hx/XG, 7tnkhv2k [2859,2988), UTF-16: use the same resolver as the editor handoff. */
@@ -102,10 +109,11 @@ export function externalEditorName(): string | undefined {
   return editor === undefined ? undefined : source.editorName(editor);
 }
 
-/** The host bindings both editor entries share: one resolver, one owned child, one handoff. */
+/** C/P/hx and Zie, 7tnkhv2k [2499,2908)/[3072,3957), UTF-16: one selection for both consumers. */
 function editorDependencies(suspend: () => void, resume: () => void, signal: AbortSignal,
-  workspace: string, filename: string) {
+  workspace: string, filename: string, selection?: ExternalEditorSelection) {
   return {
+    resolveEditor: selection === undefined ? undefined : () => selection.command,
     a:process.env, MN:executable, h:path.basename, oi:() => new Map([[process.stdout,{
       enterAlternateScreen:suspend,exitAlternateScreen:resume,
       prepareTerminalForHandoff:suspend,restoreTerminalAfterHandoff:resume,
