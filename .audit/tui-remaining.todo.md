@@ -478,6 +478,15 @@ Next up, scoped but not started:
       headings, the per-server detail page, enable/disable, authentication, agent, claude.ai and
       built-in groups. Unit 3/3 + 1/1, focused 145/145, compiled 6/6 at identity `0dbe310c…`.
       See `research/ports/W263-mcp.md`.
+- [x] W264 `/usage` (`/cost`, `/stats`) Stats tab (`Jn`, chunk-dag4qhha.js 92361; summary `ni` 98003):
+      `No` (80670) journal aggregation, `zd`/`gr` (89449/90466) totals and streaks, `Bs`/`rn`
+      (chunk-yn0pfn70.js 10886/9654) formatting. The host reads its workspace `.agent` journals,
+      stamps each message with its turn's `turn_end` timestamp, draws the two 28-column summary
+      rows plus the modality totals in a read-only dialog, and `t` cycles all/7d/30d; `/cost`
+      and `/stats` are recovered aliases in the composer table. Not ported: the account Usage
+      tab, the daily/hour charts, the per-model table and the random fun fact. Unit 7/7 + 2/2,
+      autocomplete 23/23, focused 34/34, compiled 12/12 at identity `0ae8aa21…`.
+      See `research/ports/W264-usage.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

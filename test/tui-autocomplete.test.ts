@@ -403,3 +403,12 @@ test('ctrl+p and ctrl+n walk the selection, and the draft keeps it by row', () =
       'the selection follows its row id across a draft edit');
   } finally { composer.tui.close(); }
 });
+
+test('the recovered usage aliases resolve to the usage row', () => {
+  for (const alias of ['cost', 'stats']) {
+    const rows = commandSuggestions(`/${alias}`, alias.length + 1, TUI_COMMANDS);
+    assert.equal(rows[0]?.name, 'usage');
+    assert.equal(rows[0]?.matchedAlias, alias);
+    assert.equal(rows[0]?.insertName, alias);
+  }
+});
