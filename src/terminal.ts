@@ -599,6 +599,8 @@ export interface PromptDiffSelection {
 export interface TerminalQueuedPrompt {
   text: string;
   attachment?: PromptDiffSelection;
+  /** Source `mode` (chunk-sfn1dbxq.js `dl` 236078): a shell entry pulls back into bash mode. */
+  mode?: 'prompt' | 'bash';
 }
 /**
  * The input queue the composer can pull back (`Er` in the recovered app). The TUI reads it for
@@ -608,10 +610,15 @@ export interface TerminalQueuedPrompt {
 export interface TerminalPromptQueue {
   /** The editable prompts, oldest first, as `popEditableAt` indexes them. */
   snapshot(): readonly string[];
+  /** The same rows' modes, so the composer can refuse a shell pull into a non-empty draft. */
+  modes?(): readonly ('prompt' | 'bash')[];
   /** Remove and return the prompt at `index`; a stale index returns undefined. */
   pop(index: number): TerminalQueuedPrompt | undefined;
-  /** Remove and return every editable prompt joined in queue order, or undefined when none. */
-  popAll(): TerminalQueuedPrompt | undefined;
+  /**
+   * Remove and return every editable prompt joined in queue order, or undefined when none. Source
+   * `pi` filters shell entries out unless the draft is empty (`zMe(entry, value === "")`).
+   */
+  popAll(allowBash?: boolean): TerminalQueuedPrompt | undefined;
 }
 export interface TerminalCallbacks {
   /** Source `r === "bash"` (chunk-er0mj94r.js 50100): a submitted shell command keeps its mode. */

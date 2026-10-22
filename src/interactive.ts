@@ -459,29 +459,34 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // The SessionStart message is host-generated, so it is source `isMeta`: the composer may not
   // pull it back as if a person had typed it.
   if (options.initialUserMessage !== undefined) queue.push({ prompt: options.initialUserMessage, source: 'user', meta: true });
-  // Source `Kp`/`zMe` (chunk-sfn1dbxq.js 2947200): the composer may pull back only a person's own
-  // queued prompt, not a meta entry, not an event, and not a shell command — `zMe` additionally
-  // requires an empty draft for a bash entry. This host's snapshot carries only the prompts, so a
-  // bash entry stays out of it and the composer never offers one to edit.
-  const editableQueued = (item: (typeof queue)[number]) => item.source === 'user' && item.meta !== true
-    && item.bashMode !== true;
+  // Source `Kp` (chunk-sfn1dbxq.js 218238): the composer may pull back only a person's own queued
+  // prompt — not a meta entry and not an event. A shell entry is pullable, and `zMe` only requires
+  // an empty draft for one (`n || e.mode !== "bash"`), so the snapshot carries its mode and the
+  // composer applies that rule before it pops.
+  const editableQueued = (item: (typeof queue)[number]) => item.source === 'user' && item.meta !== true;
+  const queuedMode = (item: (typeof queue)[number]): 'prompt' | 'bash' => item.bashMode === true ? 'bash' : 'prompt';
   const promptQueue = {
     snapshot: () => queue.filter(editableQueued).map(item => item.prompt),
+    modes: () => queue.filter(editableQueued).map(queuedMode),
     pop: (index: number) => {
       const target = queue.filter(editableQueued)[index];
       if (target === undefined) return undefined;
       queue.splice(queue.indexOf(target), 1);
-      return { text: target.prompt, ...(target.attachment === undefined ? {} : { attachment: target.attachment }) };
+      return { text: target.prompt, mode: queuedMode(target),
+        ...(target.attachment === undefined ? {} : { attachment: target.attachment }) };
     },
-    popAll: () => {
-      const editable = queue.filter(editableQueued);
+    popAll: (allowBash?: boolean) => {
+      // Source `pi`: `zMe(entry, value === "")` keeps a shell entry only into an empty draft.
+      const editable = queue.filter(item => editableQueued(item)
+        && (allowBash === true || queuedMode(item) !== 'bash'));
       if (editable.length === 0) return undefined;
       for (const target of editable) queue.splice(queue.indexOf(target), 1);
       // Source `pi` restores the first item carrying a non-empty IDE selection, else the first
-      // item with one at all.
+      // item with one at all; the pulled mode is `bash` only when every entry is one.
       const attachment = editable.find(item => Boolean(item.attachment?.selection.text))?.attachment
         ?? editable.find(item => item.attachment !== undefined)?.attachment;
-      return { text: editable.map(item => item.prompt).join('\n'),
+      const mode: 'prompt' | 'bash' = editable.every(item => queuedMode(item) === 'bash') ? 'bash' : 'prompt';
+      return { text: editable.map(item => item.prompt).join('\n'), mode,
         ...(attachment === undefined ? {} : { attachment }) };
     },
   };

@@ -617,3 +617,12 @@ Explicitly out of scope for this loop:
       `renderProgress` draws it above the agent's progress. Not ported: hover expansion, the sibling progress
       kinds. Unit 13/13, tools 32/32, focused 112/112, compiled 9/9 at identity `cdb8e734…`. See
       `research/ports/W279-drained-shell-row.md`.
+- [x] W280 queued shell command pull (`Kp` 218170, `zMe` 218238, `pi`/`popAllEditable` 235258,
+      `dl`/`popEditableAt` 236078 chunk-sfn1dbxq.js; `queue-pull-needs-empty-input` 872404,
+      `bash_needs_empty_draft` 872579, `po(_c.mode)` 872786, the batch pull 832728 chunk-24k7d6mw.js): a queued
+      `!` command pulls back into the composer, refused into a non-empty draft with the recovered notice, and
+      leaves the composer in bash mode on success; the batch pull keeps shell entries out of a non-empty draft.
+      `TerminalQueuedPrompt.mode` is optional, `TerminalPromptQueue` gains `modes()` and `popAll(allowBash)`, and
+      the interactive queue projects `bashMode`. Not ported: telemetry, `markCameBack`, the Vim caret mapping,
+      queued images. Unit 85/85, focused 67/67, compiled 11/11 at identity `32877cf3…`. See
+      `research/ports/W280-queued-shell-pull.md`.

@@ -2562,6 +2562,87 @@ test('a queued prompt is selectable, editable and pulled back into the composer'
   }
 });
 
+test('a queued shell command pulls back only into an empty draft, in bash mode', async () => {
+  const previous = process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+  process.env.CLAUDE_CODE_KB_COHESION_FIXES = '1';
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 12 }); watchScreen(output);
+  let items = ['queued shell'];
+  const tui = new TuiTerminal({ input, output, onSubmit: () => {} }).start();
+  const key = (text: string) => input.emit('data', text);
+  const screen = () => screenLines(output).join('\n');
+  tui.bindPromptQueue({
+    snapshot: () => items,
+    modes: () => items.map(() => 'bash' as const),
+    pop: index => { const [text] = items.splice(index, 1); return text === undefined ? undefined : { text, mode: 'bash' as const }; },
+    popAll: (allowBash?: boolean) => {
+      if (!items.length || allowBash !== true) return undefined;
+      const text = items.join('\n'); items = []; return { text, mode: 'bash' as const };
+    },
+  });
+  try {
+    // Source `zMe`: a shell entry needs an empty draft, so a typed draft refuses the pull.
+    key('typed draft');
+    key('\x1b[A');
+    key('\r');
+    assert.match(screen(), /Clear the input to edit this queued shell/);
+    assert.equal(tui.state.text, 'typed draft', 'the refused pull leaves the draft alone');
+    assert.deepEqual(items, ['queued shell'], 'the refused pull removes nothing');
+    // With the draft cleared the same pull succeeds and the composer enters bash mode.
+    key('\x7f'.repeat('typed draft'.length));
+    key('\x1b[A');
+    key('\r');
+    assert.equal(tui.state.text, 'queued shell');
+    assert.deepEqual(items, []);
+    assert.match(screen(), /shell mode/, 'the pulled shell entry leaves the composer in bash mode');
+  } finally {
+    if (previous === undefined) delete process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+    else process.env.CLAUDE_CODE_KB_COHESION_FIXES = previous;
+    tui.close();
+  }
+});
+
+test('the batch pull skips shell entries unless the draft is empty', () => {
+  const previous = process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+  delete process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 12 }); watchScreen(output);
+  let items = ['first queued', 'queued shell'];
+  const tui = new TuiTerminal({ input, output, onSubmit: () => {} }).start();
+  const screen = () => screenLines(output).join('\n');
+  tui.bindPromptQueue({
+    snapshot: () => items,
+    modes: () => items.map(text => text === 'queued shell' ? 'bash' as const : 'prompt' as const),
+    pop: index => { const [text] = items.splice(index, 1); return text === undefined ? undefined : { text }; },
+    popAll: (allowBash?: boolean) => {
+      const editable = items.filter(text => allowBash === true || text !== 'queued shell');
+      if (!editable.length) return undefined;
+      items = items.filter(text => !editable.includes(text));
+      return { text: editable.join('\n'), mode: editable.every(text => text === 'queued shell') ? 'bash' as const : 'prompt' as const };
+    },
+  });
+  try {
+    // The batch path only runs with a non-empty draft here, so the shell entry stays queued.
+    input.emit('data', 'draft');
+    input.emit('data', '\x1b[A');
+    assert.equal(tui.state.text, 'first queued\ndraft', 'the prompt entry lands above the draft');
+    assert.deepEqual(items, ['queued shell'], 'a non-empty batch keeps its shell entries out');
+    assert.doesNotMatch(screen(), /shell mode/, 'a prompt-only batch leaves the composer in prompt mode');
+    input.emit('data', '\x7f'.repeat('first queued\ndraft'.length));
+    input.emit('data', '\x1b[A');
+    assert.equal(tui.state.text, 'queued shell', 'an empty draft takes the shell entry');
+    assert.match(screen(), /shell mode/);
+  } finally {
+    if (previous === undefined) delete process.env.CLAUDE_CODE_KB_COHESION_FIXES;
+    else process.env.CLAUDE_CODE_KB_COHESION_FIXES = previous;
+    tui.close();
+  }
+});
+
 test('without the cohesion flag, up pulls every queued prompt into the draft', () => {
   const previous = process.env.CLAUDE_CODE_KB_COHESION_FIXES;
   delete process.env.CLAUDE_CODE_KB_COHESION_FIXES;

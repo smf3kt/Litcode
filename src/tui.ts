@@ -997,8 +997,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   /** Source `Zm`: pull every editable queued prompt into the draft; false when nothing popped. */
   private popAllQueuedPrompts(): boolean {
-    const pulled = this.promptQueue?.popAll();
+    // `zMe(entry, value === "")`: the batch may include shell entries only into an empty draft.
+    const pulled = this.promptQueue?.popAll(this.editor.text === '');
     if (pulled === undefined) return false;
+    // Source `pi` (chunk-sfn1dbxq.js 235258): the pulled batch's mode is `bash` only when every
+    // entry was one; the draft it lands in was empty on this path.
+    this.setComposerMode(pulled.mode ?? 'prompt');
     this.replaceDraftFromQueue(pulled);
     return true;
   }
@@ -1008,10 +1012,22 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.syncQueueSelection();
     const index = this.queueEditIndex;
     if (index === null) return false;
+    // Source `zE`'s pull path (chunk-24k7d6mw.js 872404): a shell entry needs an empty draft,
+    // because the pulled command has to land in a composer that is in bash mode.
+    const modes = this.promptQueue?.modes?.();
+    const mode = modes?.[index];
+    if (mode === 'bash' && this.editor.text !== '') {
+      this.queueEditIndex = null;
+      this.showStatusNotice('queue-pull-needs-empty-input',
+        'Clear the input to edit this queued shell command', 2_000);
+      return true;
+    }
     this.queueEditIndex = null;
     const pulled = this.promptQueue?.pop(index);
     // A stale index is the source's `stale_index` arm: the key is consumed but nothing submits.
     if (pulled === undefined) { this.render(); return true; }
+    // Source `po(_c.mode)`: the pulled entry's own mode becomes the composer's.
+    this.setComposerMode(pulled.mode ?? 'prompt');
     this.replaceDraftFromQueue(pulled);
     return true;
   }
