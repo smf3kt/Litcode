@@ -1384,7 +1384,10 @@ export interface TerminalSurface {
   /** Tell the composer its queue changed, so hints and a stale selection repaint. */
   promptQueueChanged?(): void;
   /** Running background jobs and the action that stops them, for the kill chord (`Jr`). */
-  bindBackgroundWork?(probe: () => number, stop: () => void): void;
+  bindBackgroundWork?(probe: () => number, stop: () => void,
+    tasks?: () => import('./tasks-panel.js').BackgroundTaskSnapshot): void;
+  /** pz's task-store subscription repaints without consuming notifications. */
+  backgroundWorkChanged?(): void;
   setProgress?(event: import('./tui-progress.js').AgentProgressEvent): void;
   setTasks?(tasks: readonly import('./tasks.js').TaskRecord[]): void;
   bindInputHistory?(session: import('./session.js').Session): Promise<void>;

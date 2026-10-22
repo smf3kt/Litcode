@@ -543,6 +543,65 @@ test('the clear chords repaint the screen and keep the draft and its undo step',
   } finally { tui.close(); }
 });
 
+test('the background footer follows its live snapshot through widths, overlays and close', async () => {
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  let written = 0;
+  const output = new Writable({ write(chunk, _encoding, done) { written += chunk.length; done(); } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 }); watchScreen(output);
+  const colorLevel = Reflect.get(ge, 'level'); Reflect.set(ge, 'level', 3);
+  const tui = new TuiTerminal({ input, output }).start();
+  const footer = () => screenLines(output).at(-1)!;
+  const key = (text: string) => input.emit('data', text);
+  let snapshot: import('../src/tasks-panel.js').BackgroundTaskSnapshot = { jobs: [], agents: [], crons: [] };
+  let reads = 0;
+  try {
+    tui.setPrefersReducedMotion(true);
+    tui.bindBackgroundWork(() => snapshot.jobs.length + snapshot.agents.length, () => {}, () => { reads++; return snapshot; });
+    assert.ok(footer().includes('? for shortcuts'), footer());
+    snapshot = { ...snapshot, jobs: [{ id: 'job', kind: 'run', state: 'running', command: 'sleep 60', description: '' }] };
+    tui.backgroundWorkChanged();
+    assert.ok(footer().startsWith('1 shell · ready'), footer());
+    assert.ok(!footer().includes('? for shortcuts'), footer());
+    assert.equal(decoded.get(output)!.buffer.active.getLine(29)!.getCell(0)!.getFgColor(), 0x00cccc);
+    key('retained draft');
+    tui.setEffortFeedback('high');
+    tui.setRunning(true);
+    assert.ok(footer().includes('1 shell'), footer());
+    assert.ok(footer().includes('ctrl+c to interrupt'), footer());
+    assert.ok(footer().endsWith('● high · /effort'), footer());
+    for (const columns of [40, 80, 120]) {
+      Object.assign(output, { columns }); output.emit('resize');
+      assert.ok(footer().includes('1 shell'), footer());
+      assert.ok(cellWidth(footer()) <= columns, footer());
+      assert.equal(tui.state.text, 'retained draft');
+    }
+    tui.setRunning(false);
+    key('\x12');
+    assert.ok(!footer().includes('1 shell'), footer());
+    key('\x1b');
+    await delay(60);
+    assert.ok(footer().includes('1 shell'), footer());
+    assert.equal(tui.state.text, 'retained draft');
+    key('\x15'); key('!');
+    assert.ok(!footer().includes('1 shell'), footer());
+    assert.ok(footer().includes('shell mode'), footer());
+    key('\x7f');
+    assert.ok(footer().includes('1 shell'), footer());
+    snapshot = { ...snapshot, jobs: [], agents: [{ id: 'child', status: 'running' }] };
+    tui.backgroundWorkChanged();
+    assert.ok(footer().startsWith('1 local agent'), footer());
+    snapshot = { jobs: [], agents: [], crons: [{ id: 'cron', cron: '* * * * *', prompt: '', recurring: true }] };
+    tui.backgroundWorkChanged();
+    assert.ok(!footer().includes('local agent'), footer());
+    assert.ok(footer().includes('? for shortcuts'), footer());
+    tui.close();
+    const closedBytes = written, closedReads = reads;
+    tui.backgroundWorkChanged();
+    assert.equal(written, closedBytes);
+    assert.equal(reads, closedReads);
+  } finally { tui.close(); decoded.get(output)!.dispose(); Reflect.set(ge, 'level', colorLevel); }
+});
+
 test('the kill chord reports that no background agents are running', async context => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};

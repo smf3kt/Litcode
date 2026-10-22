@@ -27,7 +27,7 @@ export interface BackgroundTaskItem {
 /** The live registries the panel reads; the runtime fills this snapshot. */
 export interface BackgroundTaskSnapshot {
   readonly jobs: readonly { readonly id: string; readonly kind: string; readonly state: string;
-    readonly command: string; readonly description: string }[];
+    readonly command: string; readonly description: string; readonly source?: 'websocket' }[];
   readonly agents: readonly { readonly id: string; readonly name?: string | null; readonly status: string }[];
   readonly crons: readonly { readonly id: string; readonly cron: string; readonly recurring: boolean; readonly prompt: string }[];
 }

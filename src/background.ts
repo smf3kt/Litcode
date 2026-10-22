@@ -467,11 +467,12 @@ export class BackgroundRegistry {
 
   /** Immediate snapshot of a job; throws for an unknown (or evicted) id. */
   /** Active jobs that count as background work; finished jobs stay out. */
-  active(): Array<Pick<BackgroundJobView, "id" | "kind" | "state" | "command" | "description">> {
-    const jobs: Array<Pick<BackgroundJobView, "id" | "kind" | "state" | "command" | "description">> = [];
+  active(): Array<Pick<BackgroundJobView, "id" | "kind" | "state" | "command" | "description" | "source">> {
+    const jobs: Array<Pick<BackgroundJobView, "id" | "kind" | "state" | "command" | "description" | "source">> = [];
     for (const job of this.jobs.values()) {
       if (job.state !== "running") continue;
-      jobs.push({ id: job.id, kind: job.kind, state: job.state, command: job.command, description: job.description });
+      jobs.push({ id: job.id, kind: job.kind, state: job.state, command: job.command, description: job.description,
+        ...(job.ws ? { source: 'websocket' as const } : {}) });
     }
     return jobs;
   }

@@ -689,3 +689,9 @@ Explicitly out of scope for this loop:
       Affected 170/170, check/build clean, compiled 16/16 and effort 26/26 at `abd41170...`.
       Independent review found no confirmed scoped defect.
       See `research/ports/W288-live-model-description.md`.
+- [x] W289 local background footer (LVe/pz, 24k7d6mw [768633,768681), UTF-16):
+      copied Sjr/vyt/i labels distinguish shells, monitors and local agents. The current runtime
+      snapshot and completion notifications update the footer without a second store or timer.
+      /tasks and the confirmed kill chord manage the same work. Affected200/200, compiled21/21,
+      effort26/26 and stash19/19; independent review found no confirmed scoped defect.
+      Crowded40-column allocation can hide the task label. See `research/ports/W289-background-footer.md`.
