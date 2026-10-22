@@ -74,6 +74,54 @@ test('model modal owns navigation, disabled search, numeric acceptance and manua
   } finally { f.close(); }
 });
 
+test('model effort paints source glyph, adjustment and max reminder styles through themes and empty lists', async () => {
+  const previousColor: unknown = Reflect.get(ge, 'level');
+  const previousReminder = process.env.LITCODE_MAX_EFFORT_REMINDER;
+  assert.equal(Reflect.set(ge, 'level', 3), true);
+  delete process.env.LITCODE_MAX_EFFORT_REMINDER;
+  const f = fixture();
+  const cellAt = (text: string, offset = 0) => {
+    const lines = f.lines(), row = lines.findIndex(line => line.includes(text));
+    assert.ok(row >= 0, `rendered ${text}`);
+    return f.screen.buffer.active.getLine(f.screen.buffer.active.viewportY + row)!.getCell(lines[row]!.indexOf(text) + offset)!;
+  };
+  try {
+    f.key('kept draft'); f.tui.setTheme('dark');
+    let pending = f.tui.prompt(modelPickerRequest(models, 'model-1', 'high'), new AbortController().signal);
+    assert.equal(cellAt('● high effort').getFgColor(), 0xe6e6e6);
+    assert.equal(cellAt('● high effort', 2).getFgColor(), 0x999999);
+    assert.equal(cellAt('←/→ to adjust').getFgColor(), 0x505050);
+    f.tui.setTheme('light');
+    assert.equal(cellAt('● high effort').getFgColor(), 0x505050);
+    assert.equal(cellAt('● high effort', 2).getFgColor(), 0x666666);
+    assert.equal(cellAt('←/→ to adjust').getFgColor(), 0xafafaf);
+    f.tui.setTheme('dark-ansi');
+    assert.equal(cellAt('● high effort').getFgColor(), 15);
+    assert.equal(cellAt('● high effort', 2).getFgColor(), 7);
+    f.key('\x03'); assert.equal(await pending, undefined);
+    f.tui.setTheme('dark');
+    for (const [value, warning] of [['', false], ['garbage', false], ['off', false], ['1', true], [' TRUE ', true], ['yes', true], ['on', true]] as const) {
+      process.env.LITCODE_MAX_EFFORT_REMINDER = value;
+      pending = f.tui.prompt(modelPickerRequest(models, 'model-1', 'max'), new AbortController().signal);
+      const line = f.lines().find(row => row.includes('May use excessive tokens'))!;
+      assert.equal(line.startsWith('⚠ '), warning);
+      assert.equal(cellAt('May use excessive tokens').getFgColor(), warning ? 0xffc107 : 0x505050);
+      f.key('\x1b[D');
+      assert.ok(f.lines().some(row => row.includes('◉ xHigh effort ←/→ to adjust')));
+      assert.equal(f.lines().some(row => row.includes('May use excessive tokens')), false);
+      f.key('\x03'); assert.equal(await pending, undefined);
+    }
+    pending = f.tui.prompt(modelPickerRequest([], 'missing', 'max'), new AbortController().signal);
+    assert.equal(f.lines().some(row => row.includes('effort') || row.includes('May use excessive tokens')), false);
+    f.key('\x03'); assert.equal(await pending, undefined);
+    assert.equal(f.tui.state.text, 'kept draft');
+  } finally {
+    f.close(); Reflect.set(ge, 'level', previousColor);
+    if (previousReminder === undefined) delete process.env.LITCODE_MAX_EFFORT_REMINDER;
+    else process.env.LITCODE_MAX_EFFORT_REMINDER = previousReminder;
+  }
+});
+
 test('model rows retain current and focus colors, scroll within the list and remeasure pointer targets on resize', async () => {
   const previousColor: unknown = Reflect.get(ge, 'level');
   assert.equal(typeof previousColor, 'number');

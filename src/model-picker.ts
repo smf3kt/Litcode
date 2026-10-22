@@ -47,6 +47,8 @@ import { clipEnd } from './tui-autocomplete.js';
 import { s, n } from './tui-base-components.js';
 import { jsx } from './tui-jsx.js';
 import { te } from './tui-symbols.js';
+import { formatActionHint } from './diff-dialog-chrome.js';
+import { Z0, ay, Ne } from './model-picker-effort-source.js';
 
 /** Source `uBe` at `chunk-24k7d6mw.js` 617998: `Select model`. */
 export const MODEL_PICKER_TITLE = 'Select model';
@@ -243,10 +245,18 @@ export class ModelPicker {
     return { rows, indices };
   }
 
-  /** uBe's effort footer, 24k7d6mw [622900,624627), UTF-16. */
-  footer(): string[] {
+  /** uBe, 24k7d6mw [622928,623491), UTF-16; local fde fallback and copied dependencies in W292. */
+  footer(): unknown[] {
+    if (this.focused === undefined) return [];
+    const level = this.effort;
     const suffix = modelPickerUltracodeSuffix(this.input.ultracode === true, this.input.workflowsEnabled !== false);
-    return [`${modelPickerEffortLine(this.effort)}  Left/Right adjust${suffix}`,
-      ...(this.effort === 'max' ? [MAX_EFFORT_NOTE] : [])];
+    const warning = Ne(process.env.LITCODE_MAX_EFFORT_REMINDER);
+    return [jsx(n, { dimColor: true, children: [
+      jsx(Z0, { effort: level }, 'glyph'), ' ', level === 'xhigh' ? 'xHigh' : level, ' effort',
+      level === DEFAULT_EFFORT ? ' (default)' : '',
+      jsx(n, { color: 'subtle', children: [' ', formatActionHint({ chord: ['left', 'right'], action: 'adjust' })] }, 'adjust'),
+      suffix,
+    ] }, 'effort'), ...(level === 'max' ? [jsx(n, { color: warning ? 'warning' : 'subtle',
+      children: warning ? [ay, ' ', MAX_EFFORT_NOTE] : MAX_EFFORT_NOTE }, 'max-note')] : [])];
   }
 }

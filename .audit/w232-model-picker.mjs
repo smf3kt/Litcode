@@ -117,7 +117,7 @@ try {
   await launch(); await open();
   pass('numbered model rows open with the current tick, caption and effort guide',
     focus()?.[2] === 'model-01' && screen().includes('model-01 ✔') && screen().includes('Current model')
-    && screen().includes('◐ medium effort  Left/Right adjust') && screen().includes('… +4 models')
+    && screen().includes('◐ medium effort ←/→ to adjust') && screen().includes('… +4 models')
     && !screen().includes('Selected:') && !screen().includes('Other'));
   captures.open = screen();
   const initial = fs.readFileSync(settingsFile, 'utf8');

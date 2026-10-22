@@ -519,7 +519,9 @@ Next up, scoped but not started:
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any
       more; the unported rows are the ones named in the preceding sentence.
-      Not portable now: tips (vendor/service content), prompt suggestions / timestamps / tab
+      W292 source review corrects the tips exclusion: trusted custom entries plus excludeDefault
+      return before built-in/service content. The custom-only chain is a ready candidate below.
+      Other unported rows: prompt suggestions / timestamps / tab
       status / copy-on-select / auto-scroll (source rows sit behind `tengu_*` flags default off),
       recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no
       matching host consumer), notifications (no local trigger set).
@@ -708,5 +710,15 @@ Explicitly out of scope for this loop:
       Three independent findings repaired and rechecked. Affected155/155, check/build clean,
       compiled33/33 plus effort26/26 and stash19/19 at `0d1b511b...`.
       See `research/ports/W291-footer-keyboard.md`.
-- [ ] Candidate: remaining local config/tips consumers at the earlier residual row. Verify
-      source producers, gates and ownership before choosing a package; account/OAuth remain excluded.
+- [x] W292 model effort view (uBe [622928,623491), Z0 [624680,624931), UTF-16):
+      copied glyphs retain theme color; level/default stays inactive, arrow chord subtle.
+      The local max reminder gate selects warning/icon or subtle note; empty lists hide effort.
+      Affected167/167, compiled14/14 per gate state plus picker23/23 and live9/9 at `9dec2deb...`.
+      Independent review found no confirmed scoped defect. See `research/ports/W292-model-picker-effort-view.md`.
+- [ ] Candidate: custom spinner Tips + Show tips. Reader verified ecfjn15r local file/override
+      chain [1966,6672), hxewh5k1 hn [41590,42106) early custom-only return, gwwwxdvd selection
+      [1852,2499), 24k7d6mw per-turn held/publish chain [1384069,1386902), and f7x3yeg4 Cn
+      [21559,24232), UTF-16. Config Show tips is nybcbd9t [14860,15058), localSettings write.
+      Carry parser, trusted layers, file limits/cache, selection/history, turn lifecycle and
+      dim progress consumer as one package. Built-in vendor/account tips stay excluded.
+      Fresh package preflight must reverify module hashes and read exact bodies before edits.
