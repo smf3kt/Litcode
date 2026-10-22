@@ -79,6 +79,7 @@ import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
 import { contextPanelText, contextUsageFromCounts } from './context-panel.js';
 import { STATUS_PANEL_TITLE, appVersion, latestSessionTitle, statusPanelRows, statusPanelText } from './status-panel.js';
 import { MCP_PANEL_TITLE, mcpPanelRows, mcpPanelText, mcpToolCounts } from './mcp-panel.js';
+import { STATS_PANEL_TITLE, STATS_RANGE_LABELS, nextUsageRange, readUsageSessions, usagePanelText, usageStats, type UsageRange } from './usage-panel.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
   EXPORT_DIALOG_TITLE, EXPORT_FILE_DESCRIPTION, EXPORT_FILE_LABEL, EXPORT_FILENAME_PROMPT,
@@ -140,7 +141,7 @@ export function configChangeSource(file: string, workspace: string, sources: {
 export const COMMAND_HELP = `/help       Show help and available commands
 /status     Show session, model, context settings and usage
 /context    Visualize current context usage as a colored grid
-/usage      Show recorded model usage
+/usage      Show session cost and activity stats
 /effort LEVEL  Set effort level for model usage (low/medium/high/xhigh/max/auto)
 /copy [N]   Copy the latest response to the clipboard (or the Nth-latest)
 /btw [question]  Ask a side question with no tools; it never joins the conversation
@@ -1966,6 +1967,22 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           });
           await withTurn(signal => readDialog({ title: STATUS_PANEL_TITLE,
             message: statusPanelText(rows), readOnly: true }, signal));
+          continue;
+        }
+        if ((prompt === '/usage' || prompt === '/cost' || prompt === '/stats') && terminal?.prompt) {
+          // `Xje` (chunk-sfn1dbxq.js 1148618) mounts the Settings Stats tab. The vendor's Usage
+          // tab reads account plan data, so only the local journal aggregate is ported; `t`
+          // cycles `all` -> `7d` -> `30d` through `zn` (chunk-dag4qhha.js 91891).
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+          const sessions = readUsageSessions(path.join(session.config.workspace, '.agent'));
+          let range: UsageRange = 'all';
+          for (;;) {
+            const answer = await withTurn(signal => readDialog({ title: STATS_PANEL_TITLE,
+              message: usagePanelText(usageStats(sessions, { range }), range), readOnly: true,
+              keys: [{ key: 't', label: STATS_RANGE_LABELS[nextUsageRange(range)] }] }, signal));
+            if (answer?.key !== 't') break;
+            range = nextUsageRange(range);
+          }
           continue;
         }
         if (prompt === '/status' || prompt === '/usage' || prompt === '/cost') {
