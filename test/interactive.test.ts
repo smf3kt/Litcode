@@ -57,21 +57,35 @@ test('interactive tasks, compact, fork and clear keep history and release every 
   });
   const stdout = output(), stderr = output();
   try {
+    // `/fork` is the open-fleet copy command: it starts a background session and keeps this one,
+    // so the successor path the guarded clear/fork calls observe now belongs to `/clear` alone.
+    const forked: string[] = [];
     await interactiveLoop(session, provider, stubRuntime(), {
       input: Readable.from(['first task\n/status\n/compact\n/fork\nsecond task\n/clear\n/sessions\n/unknown\n/exit\n']),
       output: stdout.stream, status: stderr.stream, signal: new AbortController().signal,
+      startBackground: ({ session: source, prompt }) => {
+        forked.push(prompt);
+        return { sessionId: `${source.id.slice(0, 8)}-copy`, pid: undefined, log: '/dev/null' };
+      },
     });
+    assert.deepEqual(forked, ['']);
     assert.equal(requests.length, 3);
     assert.match(stdout.value(), /first response/);
     assert.match(stdout.value(), /second response/);
     assert.match(stderr.value(), /Unknown command/);
-    assert.deepEqual(starts, ['fork', 'clear']);
+    assert.deepEqual(starts, ['clear']);
+    // The fork copy is the seam's own session id, so the journal holds the parent and `/clear`'s.
     const sessions = listSessions(workspace);
-    assert.equal(sessions.length, 3);
+    assert.equal(sessions.length, 2);
     assert.ok(sessions.every(s => !s.active));
     const original = Session.open(workspace, { id: session.id });
-    try { assert.equal(original.messages.length, 1); assert.match(String(original.messages[0]?.content), /summary of first task/); assert.equal(original.awaitingResponse, false); }
-    finally { original.close(); }
+    try {
+      // The open-fleet `/fork` leaves this session running, so the later task joins its own log
+      // behind the compact summary.
+      assert.equal(original.messages.length, 3);
+      assert.match(String(original.messages[0]?.content), /summary of first task/);
+      assert.equal(original.awaitingResponse, false);
+    } finally { original.close(); }
     assert.equal(fs.readdirSync(path.join(workspace, '.agent')).filter(f => f.endsWith('.lock')).length, 0);
   } finally {
     if (previous) Object.defineProperty(Agent.prototype as unknown as object, 'startSession', previous);
@@ -243,7 +257,7 @@ test('interactive rewind branches at a completed turn and preserves the original
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
 
-test('interactive clear, fork and exit run SessionEnd and release locks', async () => {
+test('interactive clear and exit run SessionEnd and release locks', async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-end-')));
   const marker = path.join(workspace, 'ended.jsonl');
   const config = defaultConfig(workspace, []); config.model = 'test';
@@ -252,10 +266,13 @@ test('interactive clear, fork and exit run SessionEnd and release locks', async 
   const stdout = output(), stderr = output();
   const provider: ModelProvider = { count: async () => 1, complete: async () => reply('done') };
   try {
-    await interactiveLoop(session, provider, stubRuntime(), { input: Readable.from(['/clear\n/fork\n/exit\n']), output: stdout.stream, status: stderr.stream, signal: new AbortController().signal });
+    // `/fork` copies into a background session and keeps this one, so the successor-session path
+    // is `/clear` alone; a closed fleet fork still ends this session and starts the successor.
+    await interactiveLoop(session, provider, stubRuntime(), { input: Readable.from(['/clear\n/exit\n']),
+      output: stdout.stream, status: stderr.stream, signal: new AbortController().signal });
     const ended = fs.readFileSync(marker, 'utf8').trim().split('\n').map(line => JSON.parse(line));
-    assert.deepEqual(ended.map(event => event.reason), ['clear', 'other', 'prompt_input_exit']);
-    assert.equal(new Set(ended.map(event => event.session_id)).size, 3);
+    assert.deepEqual(ended.map(event => event.reason), ['clear', 'prompt_input_exit']);
+    assert.equal(new Set(ended.map(event => event.session_id)).size, 2);
     assert.ok(listSessions(workspace).every(item => !item.active));
   } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });

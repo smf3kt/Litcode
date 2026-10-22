@@ -121,6 +121,8 @@ export type ParsedRuntimeSettings = {
   enableWorkflows?: boolean;
   workflowKeywordTriggerEnabled?: boolean;
   emojiCompletionEnabled?: boolean;
+  /** The agent-view switch the fleet-fork gate reads (chunk-wtdka69b.js `r`). */
+  disableAgentView?: boolean;
   theme?: ThemeSetting;
   statusLine?: import('./tui-statusline.js').StatusLineSetting;
   promptCaching?: boolean;
@@ -239,6 +241,7 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if (settings.enableWorkflows !== undefined) out.enableWorkflows = settingBoolean(settings, 'enableWorkflows');
   if (settings.workflowKeywordTriggerEnabled !== undefined) out.workflowKeywordTriggerEnabled = settingBoolean(settings, 'workflowKeywordTriggerEnabled');
   if (settings.emojiCompletionEnabled !== undefined) out.emojiCompletionEnabled = settingBoolean(settings, 'emojiCompletionEnabled');
+  if (settings.disableAgentView !== undefined) out.disableAgentView = settingBoolean(settings, 'disableAgentView');
   if (settings.statusLine !== undefined) out.statusLine = statusLineSchema.parse(settings.statusLine);
   const theme = parseTheme(settings.theme);
   if (theme !== undefined) out.theme = theme;

@@ -34,6 +34,8 @@ import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
 import { defaultUserDir, loadProjectConfig } from './config.js';
 import { permissionSettingsPaths } from './permission-settings.js';
+import { FORK_COORDINATOR, FORK_DESCRIPTION, FORK_DISABLED, FORK_FIRST_TURN, FORK_NOTHING, FORK_USAGE,
+  SESSION_RUNNING, SESSION_WAITING, fleetForkOpen, forkSessionLine } from './fork-command.js';
 import { SKILLS_TITLE, applySkillOverrideDiff, defaultSkillModes, nextSkillMode, readLocalSkillOverrides,
   saveSkillOverrides, skillOverrideDiff, skillPanelRows, skillsPanelMessage, skillsSaveError,
   skillsSaveMessage, type SkillMode } from './skills-panel.js';
@@ -188,7 +190,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /NAME args  Run an available skill by name
 /continue   Resume an interrupted turn
 /compact    Summarize completed history
-/fork       Fork completed history into a new session
+/fork       Copy this conversation into a new background session and keep working here
 /subtask <task>  Send a subagent off with your full context; its result comes back here
 /branch [NAME]  Branch the conversation here and continue in the new branch
 /background [PROMPT]  Fork this session into a detached background task
@@ -328,8 +330,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   initialUserMessage?: string;
   /** SessionStart `watchPaths` from the startup hooks run before this loop. */
   initialWatchPaths?: string[];
+  /** Test seam for `/fork`'s background copy; defaults to the real spawn. */
+  startBackground?: typeof startBackgroundSession;
 }): Promise<void> {
   let session = initial;
+  // Source `Ujt` (chunk-sfn1dbxq.js 1663949): the fleet-fork gate selects which `/fork`
+  // registration the command table carries and whether `/subtask` is offered at all.
+  const fleetFork = fleetForkOpen(process.env, initial.config);
+  const commandTable = (config: SessionConfig) => tuiCommandsWithSkills(config.skills, { fleetFork });
   const planResume = new InteractivePlanResume(initial.id);
   // The user settings file's `env` block is applied before anything probes the environment, so a
   // persisted `/scroll-speed` survives a restart. It runs here rather than at startup because the
@@ -1244,7 +1252,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const live = withLiveDialog('help', options.signal);
     try {
       const notice = await browseHelp({
-        commands: tuiCommandsWithSkills(session.config.skills),
+        commands: commandTable(session.config),
         rows: process.stdout.rows ?? 24,
         columns: Math.max(40, (process.stdout.columns ?? 80) - 4),
         chords: (action, context, fallback) => chordForAction(action, context, fallback),
@@ -1438,7 +1446,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // stays, which is what the same command prints for a piped session.
           if (terminal?.prompt) {
             const notice = await browseHelp({
-              commands: tuiCommandsWithSkills(session.config.skills),
+              commands: commandTable(session.config),
               rows: process.stdout.rows ?? 24,
               columns: Math.max(40, (process.stdout.columns ?? 80) - 4),
               chords: (action, context, fallback) => chordForAction(action, context, fallback),
@@ -1946,7 +1954,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const before = (session.config.skills ?? []).map(skill => skill.name);
           reloadSkills(session.config);
           const after = (session.config.skills ?? []).map(skill => skill.name);
-          terminal?.setCommands?.(tuiCommandsWithSkills(session.config.skills));
+          terminal?.setCommands?.(commandTable(session.config));
           output.write(`${reloadSkillsMessage(before, after)}\n`);
           continue;
         }
@@ -2091,7 +2099,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 localOverrides = applySkillOverrideDiff(localOverrides, diff);
                 // `VT()` at 1675922 invalidates the command table after a write.
                 reloadSkills(session.config);
-                terminal.setCommands?.(tuiCommandsWithSkills(session.config.skills));
+                terminal.setCommands?.(commandTable(session.config));
               }
               output.write(`${skillsSaveMessage(effectiveChanged)}\n`);
               break;
@@ -2750,7 +2758,45 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           output.write(subtaskForkLine(launched.name, launched.agentId) + '\n');
           continue;
         }
-        if (prompt === '/fork' || prompt === '/clear' || prompt.startsWith('/rewind')) {
+        if (prompt === '/fork' || prompt.startsWith('/fork ')) {
+          // Source `Ujt` (chunk-sfn1dbxq.js 1663949): an open fleet fork selects `njt`
+          // (chunk-sfn1dbxq.js 1638551, body `Ue` chunk-zsg1bb14.js 19311), which copies the
+          // conversation into a detached background session and keeps this one running; a closed
+          // fleet fork selects `tjt` (1638340, body `m` chunk-0krtqd6x.js 15000), whose directive
+          // arm is the same spawn `/subtask` runs (`Zjt`, chunk-940nvk4p.js 1241).
+          const argument = prompt.slice('/fork'.length).trim();
+          if (fleetFork) {
+            if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
+            // `Ue` refuses a session with nothing to seed before it opens the spawn.
+            if (session.messages.length === 0) { output.write(FORK_NOTHING + '\n'); continue; }
+            try {
+              const started = (options.startBackground ?? startBackgroundSession)({ session, prompt: argument });
+              // `Ue`'s `fe`: a prompt starts the copy running, a bare `/fork` leaves it waiting.
+              output.write(forkSessionLine({ state: argument === '' ? SESSION_WAITING : SESSION_RUNNING,
+                id: started.sessionId.slice(0, 8) }) + '\n');
+              output.write(`Log: ${started.log}\nResume it with: litcode --resume ${started.sessionId}\n`);
+            } catch (error) {
+              output.write(`Couldn't fork: ${error instanceof Error ? error.message : String(error)}\n`);
+            }
+            continue;
+          }
+          if (argument === '') { output.write(FORK_USAGE + '\n'); continue; }
+          // `m` refuses a coordinator session before it looks at anything else.
+          if (subtaskCoordinator(process.env, { interactive: terminal !== undefined, remote: false })) {
+            output.write(FORK_COORDINATOR + '\n'); continue;
+          }
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn before forking');
+          if (!activeRuntime.launchSubtask) throw new Error(FORK_DISABLED);
+          const launched = await withTurn(signal => activeRuntime.launchSubtask!(session.config, session.id,
+            argument, signal, session.messages));
+          if (launched.kind === 'unavailable') {
+            output.write((launched.reason === 'no-conversation' ? FORK_FIRST_TURN : FORK_DISABLED) + '\n');
+            continue;
+          }
+          output.write(subtaskForkLine(launched.name, launched.agentId) + '\n');
+          continue;
+        }
+        if (prompt === '/clear' || prompt.startsWith('/rewind')) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           let boundary: number | undefined;
           if (prompt.startsWith('/rewind')) {

@@ -9,7 +9,7 @@ import { defaultConfig } from '../src/agent.js';
 import { COMMAND_HELP, interactiveLoop } from '../src/interactive.js';
 import type { ModelProvider } from '../src/provider.js';
 import { createRuntime, type Runtime } from '../src/runtime.js';
-import { Session } from '../src/session.js';
+import { Session, type SessionConfig } from '../src/session.js';
 import { allocateSubtaskName, SUBTASK_COORDINATOR, SUBTASK_FIRST_TURN, SUBTASK_FORK, SUBTASK_USAGE,
   subtaskCoordinator, subtaskForkLine, subtaskName, type SubtaskLaunch } from '../src/subtask.js';
 import { TUI_COMMANDS } from '../src/tui-autocomplete.js';
