@@ -458,7 +458,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    *  buffer is baselined on, and whether a Vim INSERT run is already open. */
   private undoEditorMode: 'normal' | 'vim' | undefined;
   private undoGesture = false;
-  private readonly pasteOwner = new InputPaste();
+  /**
+   * Source `nf`/`fl` (chunk-24k7d6mw.js 868097) and its producer `Bo(!0)` (839453): a collapsed
+   * paste of at most `fVe` characters raises the footer's `paste again to expand` row for 8000 ms.
+   */
+  private showExpandPasteHint = false;
+  private readonly pasteOwner = new InputPaste(visible => {
+    this.showExpandPasteHint = visible;
+    // The paste path repaints itself once the draft lands; the 8000 ms timer does not, so only
+    // that late call needs a frame of its own.
+    if (!this.closed && !this.pasteOwner.pasting) this.render();
+  });
   private readonly gestures = new InputGestures();
   private gestureHandling = false;
   private stashedDraft: InputSnapshot | undefined;
@@ -1581,6 +1591,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.dialog?.finish();
     if (this.statusNoticeTimer !== undefined) { clearTimeout(this.statusNoticeTimer); this.statusNoticeTimer = undefined; }
     this.statusNoticeOwner = undefined; this.statusNoticeText = undefined;
+    this.pasteOwner.dispose();
     if (this.escapeTimer) clearTimeout(this.escapeTimer);
     this.decoder.reset(); this.keys.reset();
     this.options.input.off('data', this.onData);
@@ -4012,6 +4023,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    */
   private statusFooter(columns: number): Array<string | FooterPart> {
     if(this.gestures.hint)return [this.gestures.hint.slice(0,columns)];
+    // Source `Fz` 760326: `if(Ct&&!Pt)` returns the dim `paste again to expand` row alone, before
+    // the sparse/dense split and before the bash label, and `Pt` is the history-search flag. The
+    // state is raised by the paste producer (`Bo(!0)`, 839453) for a collapse of at most `fVe`
+    // characters and cleared after 8000 ms or by the expansion itself (`xl`, 821273). The source
+    // draws notices in their own band, which this host does not have: its notice is the footer's
+    // left text, so a live notice keeps the row and the hint waits behind it.
+    if (this.showExpandPasteHint && this.screen !== 'search' && this.statusNoticeText === undefined) return ['paste again to expand'];
     // Source `Sce` 754626 and `LVe` 764050: bash mode replaces the row with its own label. The
     // dense footer paints `shell mode` dim and italic; this host's single footer row keeps the
     // label in the same `bashBorder` the sparse hint uses, so the mode reads the same either way.

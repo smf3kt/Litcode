@@ -31,18 +31,37 @@ export function pasteGoneNotice(removed: readonly GonePaste[]): string {
   return Fdr(removed) as string;
 }
 
+/** Source `ys.setTimeout` (chunk-24k7d6mw.js 821244): the expand hint's one timer, cancellable. */
+export type PasteScheduler = (flush: () => void, milliseconds: number) => () => void;
+const defaultSchedule: PasteScheduler = (flush, milliseconds) => {
+  const timer = setTimeout(flush, milliseconds);
+  timer.unref?.();
+  return () => clearTimeout(timer);
+};
+
 /** Source xM closes over one editor owner; raw Unicode and Node insertion stay host-owned. */
 export class InputPaste {
   readonly allocator = new Mct();
   private draft: InputSnapshot = {text:'',cursor:0,pastedContents:{}};
   private rows = 24;
   private readonly source;
+  /** Source `Ei` (chunk-24k7d6mw.js 821244): the cancel handle of the armed hint timer. */
+  private readonly hintTimer: {current: (() => void) | null} = {current: null};
 
-  constructor() {
+  /**
+   * `onExpandPasteHintChange` is the recovered `Bo`/`onExpandPasteHintChange` pair: the producer at
+   * chunk-24k7d6mw.js [839453,839552) raises it after a collapse of at most `fVe` characters, and
+   * `xl` [821273,821331) clears it when the same paste is pasted again to expand.
+   */
+  constructor(private readonly onExpandPasteHintChange?: (visible: boolean) => void,
+    private readonly schedule: PasteScheduler = defaultSchedule) {
     const owner = this;
     const M = {get value() {return owner.draft.text;}, get pastedContents() {return owner.draft.pastedContents;}};
     this.source = initializePasteSource({
       M, allocator:this.allocator, dr:{valueOf:() => this.rows}, ji:{current:null}, wa:{current:false},
+      Bo:(visible: boolean) => {this.onExpandPasteHintChange?.(visible);},
+      Ei:this.hintTimer,
+      ys:{setTimeout:(flush: () => void, milliseconds: number) => this.schedule(flush, milliseconds)},
       pn:(text: string) => tokenizeAnsi(text).filter((token: {type:string}) => token.type === 'text')
         .map((token: {value:string}) => token.value).join('').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/g,''),
       In:(update: (contents: PastedContents) => PastedContents) => {this.draft.pastedContents = update(this.draft.pastedContents);},
@@ -55,6 +74,9 @@ export class InputPaste {
         if (expanded?.id !== id) return false;
         this.draft.text = expanded.expanded; this.draft.cursor = expanded.cursorOffset;
         this.draft.pastedContents = {...this.draft.pastedContents}; delete this.draft.pastedContents[id];
+        // Source `xl` runs inside `Pq` (chunk-24k7d6mw.js 838706): the expansion takes the hint down.
+        this.hintTimer.current?.(); this.hintTimer.current = null;
+        this.onExpandPasteHintChange?.(false);
         return true;
       },
     });
@@ -62,7 +84,17 @@ export class InputPaste {
 
   paste(snapshot: InputSnapshot, text: string, rows: number): InputSnapshot {
     this.draft = {...snapshot,pastedContents:structuredClone(snapshot.pastedContents)}; this.rows = rows;
+    this.pasting = true;
     try {this.source.paste(text); return this.draft;}
-    finally {this.draft = {text:'',cursor:0,pastedContents:{}};}
+    finally {this.pasting = false; this.draft = {text:'',cursor:0,pastedContents:{}};}
+  }
+
+  /** True while `paste` runs: the caller repaints itself once the draft lands, so the hint setter
+   *  only needs its own frame when the 8000 ms timer fires. */
+  pasting = false;
+
+  /** Source unmount cleanup (`od`, chunk-24k7d6mw.js 821400): the timer does not outlive the owner. */
+  dispose(): void {
+    this.hintTimer.current?.(); this.hintTimer.current = null;
   }
 }

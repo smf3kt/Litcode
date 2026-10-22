@@ -635,3 +635,13 @@ Explicitly out of scope for this loop:
       `Current model`/`Base model` rows and the override line belong to the per-request `model`
       field (`applyModel`, chunk-rx2nah4x.js 501705) and stay out. Unit 6/6, focused 5/5, compiled
       10/10 at identity `86ca6473…`. See `research/ports/W281-model-picker-ultracode.md`.
+- [x] W282 footer paste expand hint (`Fz` [760326,760469) chunk-24k7d6mw.js; producer
+      `Bo(!0)` [839453,839552), clear `xl` [821273,821331), `fVe` chunk-n3ykh62m.js 465508):
+      a collapsed paste of at most 100000 characters raises the dim `paste again to expand`
+      row for 8000 ms; the same payload pasted again expands it and takes the row down.
+      `initializePasteSource` takes the recovered `Bo`/`Ei`/`ys` hooks, `InputPaste` gained the
+      callback, the scheduler and `dispose()`. `Pasting…` [760198,760326) is not ported: its
+      `isPasting` producer is the recovered async clipboard read, and this host decodes a
+      bracketed paste atomically, so the row would have no observable interval. Unit 86/86 +
+      29/29, compiled 10/10 at identity `e1af61e6…`. See
+      `research/ports/W282-paste-expand-hint.md`.
