@@ -15,6 +15,7 @@ import { asciiPlot } from './ascii-chart.js';
  */
 export const STATS_PANEL_TITLE = 'Stats';
 export const STATS_EMPTY = 'No stats available yet.';
+export const NO_MODEL_USAGE = 'No model usage data available';
 
 export type UsageRange = 'all' | '7d' | '30d';
 export const STATS_RANGE_LABELS: Record<UsageRange, string> = {
@@ -206,6 +207,38 @@ export function usageStats(sessions: readonly UsageSession[],
   };
 }
 
+/** `go` (chunk-dag4qhha.js 97415): models ranked by input + output + cache tokens. */
+function rankedModels(modelUsage: Readonly<Record<string, UsageModelTokens>>): string[] {
+  return Object.keys(modelUsage)
+    .sort((left, right) => modelTokens(modelUsage[right]!) - modelTokens(modelUsage[left]!));
+}
+
+/** `ti` (chunk-dag4qhha.js 97500): one decimal, `0.0` when the total is empty. */
+function percentOf(usage: UsageModelTokens, total: number): string {
+  return total <= 0 ? '0.0' : (modelTokens(usage) / total * 100).toFixed(1);
+}
+
+/** `oi` (chunk-dag4qhha.js 97572). */
+function cacheLine(usage: UsageModelTokens): string {
+  return `Cache: ${compactNumber(usage.cacheReadInputTokens || 0)} read · `
+    + `${compactNumber(usage.cacheCreationInputTokens || 0)} write`;
+}
+
+/**
+ * `Uo` (chunk-dag4qhha.js 107961) in the plain layout `Hm` prints: one three-line group per
+ * model, the top three by rank. The dashboard's two-column four-row window is not ported.
+ */
+export function modelUsageRows(stats: UsageStats, limit = 3): string[] {
+  const lines: string[] = [];
+  for (const model of rankedModels(stats.modelUsage).slice(0, limit)) {
+    const usage = stats.modelUsage[model]!;
+    lines.push(`● ${model} (${percentOf(usage, stats.totalTokens)}%)`,
+      `  In: ${compactNumber(usage.inputTokens)} · Out: ${compactNumber(usage.outputTokens)}`,
+      `  ${cacheLine(usage)}`);
+  }
+  return lines;
+}
+
 /** `ei` (chunk-dag4qhha.js 97420). */
 export function usageTotalsLine(modelUsage: Readonly<Record<string, UsageModelTokens>>): string {
   let input = 0, output = 0, cacheRead = 0, cacheWrite = 0;
@@ -366,10 +399,10 @@ export function usagePanelText(stats: UsageStats, range: UsageRange = 'all', hea
       `Current streak: ${streakDays(stats.streaks.currentStreak)}`),
   );
   if (stats.totalTokens > 0) lines.push('', usageTotalsLine(stats.modelUsage));
-  const ranked = Object.keys(stats.modelUsage)
-    .sort((left, right) => modelTokens(stats.modelUsage[right]!) - modelTokens(stats.modelUsage[left]!));
-  const chart = modelTokenChart(stats.dailyModelTokens, ranked, columns);
+  const chart = modelTokenChart(stats.dailyModelTokens, rankedModels(stats.modelUsage), columns);
   if (chart !== null) lines.push('', 'Tokens per Day', chart.chart, chart.xAxisLabels, chart.legend.join(' · '));
+  const rows = modelUsageRows(stats);
+  lines.push('', ...(rows.length > 0 ? rows : [NO_MODEL_USAGE]));
   return lines.join('\n');
 }
 
