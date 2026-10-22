@@ -1,5 +1,8 @@
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
+import { TuiDocumentRenderer } from '../src/tui-document-renderer.js';
+import { s } from '../src/tui-base-components.js';
+import { jsx } from '../src/tui-jsx.js';
 import { ModelPicker, MODEL_PICKER_TITLE, modelPickerCaption, modelPickerEffortLine,
   modelPickerEffortStep, modelPickerGuide, modelPickerRowDescription, modelPickerUltracodeSuffix } from '../src/model-picker.js';
 
@@ -41,11 +44,16 @@ test('the effort footer names ultracode only while the session flag and its work
   assert.equal(modelPickerUltracodeSuffix(false, false), '');
   assert.equal(modelPickerUltracodeSuffix(true, false), '');
   const options = [{ label: 'One', value: 'one' }];
-  assert.deepEqual(new ModelPicker(options, { current: 'one', ultracode: true }).footer(),
-    ['● high effort (default)  Left/Right adjust · Ultracode on (/effort)']);
-  assert.deepEqual(new ModelPicker(options, { current: 'one', ultracode: true, workflowsEnabled: false }).footer(),
-    ['● high effort (default)  Left/Right adjust']);
-  assert.deepEqual(new ModelPicker(options, { current: 'one', effort: 'max', ultracode: true }).footer().length, 2);
+  const renderer = new TuiDocumentRenderer();
+  const footer = (input: ConstructorParameters<typeof ModelPicker>[1]) => renderer.renderElement(
+    jsx(s, { flexDirection: 'column', children: new ModelPicker(options, input).footer() }, undefined), 120).map(row => row.text);
+  try {
+    assert.deepEqual(footer({ current: 'one', ultracode: true }),
+      ['● high effort (default) ←/→ to adjust · Ultracode on (/effort)']);
+    assert.deepEqual(footer({ current: 'one', ultracode: true, workflowsEnabled: false }),
+      ['● high effort (default) ←/→ to adjust']);
+    assert.equal(new ModelPicker(options, { current: 'one', effort: 'max', ultracode: true }).footer().length, 2);
+  } finally { renderer.close(); }
 });
 
 test('manual effort survives focus changes, endpoint clamps and a round trip to the initial level', () => {

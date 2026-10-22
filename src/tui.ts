@@ -3743,8 +3743,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const paint = (tree: unknown) => this.documentRenderer!.renderElement(tree, columns,
       { theme: this.theme.current, themeOverrides: this.theme.overrides });
     const caption = paint(jsx(n, { dimColor: true, children: dialog.request.message }, undefined));
-    const effort = paint(jsx(s, { flexDirection: 'column', children: owner.footer().map((text, index) =>
-      jsx(n, { dimColor: true, children: text }, index)) }, undefined));
+    const effort = paint(jsx(s, { flexDirection: 'column', children: owner.footer() }, undefined));
     const terminalRows = this.options.output.rows ?? 24;
     const minimumListRows = Math.min(2, owner.options.length) * 2 + (owner.options.length > 2 ? 1 : 0);
     const height = Math.max(0, Math.min(terminalRows - 5,

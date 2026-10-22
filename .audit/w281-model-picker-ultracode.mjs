@@ -5,10 +5,12 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { StringDecoder } from 'node:string_decoder';
 import { TerminalScreen } from '../scripts/terminal-screen.mjs';
 import { captureIdentity } from '../scripts/identity.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+const effortView = process.env.W292_VIEW === '1';
 const temporary = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
   ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'w281-cli-')));
 const workspace = path.join(temporary, 'workspace'), user = path.join(temporary, 'user');
@@ -39,15 +41,18 @@ const server = http.createServer((request, response) => {
   });
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const env = { ...process.env, TERM: 'xterm-256color', LC_ALL: 'en_US.UTF-8', LLM_API_KEY: 'fixture',
+const env = { ...process.env, TERM: 'xterm-256color', FORCE_COLOR: '3', LC_ALL: 'en_US.UTF-8', LLM_API_KEY: 'fixture',
   LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate',
   LLM_MODEL: 'fixture' };
-for (const key of Object.keys(env)) if (/^ANTHROPIC_/.test(key) || ['TMUX', 'STY', 'TERM_PROGRAM'].includes(key)) delete env[key];
+for (const key of Object.keys(env)) if (/^ANTHROPIC_/.test(key) || ['TMUX', 'STY', 'TERM_PROGRAM', 'NO_COLOR', 'LLM_EFFORT'].includes(key)) delete env[key];
 
-const screen = () => {
-  const terminal = new TerminalScreen(120, 30); terminal.write(Buffer.concat(active.chunks).toString('utf8'));
-  const text = terminal.lines().join('\n'); terminal.close(); return text;
+const terminal = new TerminalScreen(120, 30), decoder = new StringDecoder('utf8');
+const cellAt = (text, offset = 0) => {
+  const lines = terminal.lines(), row = lines.findIndex(line => line.includes(text));
+  assert.ok(row >= 0, `rendered ${text}`);
+  return terminal.cell(lines[row].indexOf(text) + offset, row);
 };
+const screen = () => terminal.lines().join('\n');
 const ready = () => screen().includes('· ready');
 const openPicker = () => /^Select model$/m.test(screen());
 const send = value => active.child.stdin.write(value);
@@ -69,7 +74,7 @@ const child = spawn('/usr/bin/expect', [path.join(root, '.audit/w281-model-picke
   '--user-dir', user, '--no-inherit-gateway', '--permission-mode', 'bypass'],
   { cwd: root, env, stdio: ['pipe', 'pipe', 'pipe'] });
 active = { child, chunks: [], closed: new Promise(resolve => child.once('close', resolve)) };
-child.stdout.on('data', chunk => active.chunks.push(chunk));
+child.stdout.on('data', chunk => { active.chunks.push(chunk); terminal.write(decoder.write(chunk)); });
 child.stderr.on('data', chunk => active.chunks.push(chunk));
 
 try {
@@ -78,7 +83,19 @@ try {
   await open();
   captures.plain = screen();
   pass('without ultracode the effort footer carries no suffix',
-    screen().includes('Left/Right adjust') && !screen().includes('adjust · Ultracode'));
+    screen().includes('←/→ to adjust') && !screen().includes('adjust · Ultracode'));
+  if (effortView) {
+    pass('the copied effort glyph keeps its theme color beside inactive level text',
+      cellAt('● high effort').getFgColor() === 0xe6e6e6 && cellAt('● high effort', 2).getFgColor() === 0x999999);
+    pass('the copied arrow chord uses the subtle color', cellAt('←/→ to adjust').getFgColor() === 0x505050);
+    send('\x1b[C\x1b[C'); await until(() => screen().includes('◈ max effort'), 'max effort view');
+    const warning = process.env.LITCODE_MAX_EFFORT_REMINDER === '1';
+    pass('max reminder follows the local source gate and note color',
+      terminal.lines().find(line => line.includes('May use excessive tokens'))?.startsWith('⚠ ') === warning
+      && cellAt('May use excessive tokens').getFgColor() === (warning ? 0xffc107 : 0x505050));
+    send('\x1b[D'); await until(() => screen().includes('◉ xHigh effort') && !screen().includes('May use excessive tokens'), 'leaving max clears note');
+    pass('stepping below max removes the reminder without closing the picker');
+  }
   await close();
   send('/effort ultracode on\r');
   await until(() => screen().includes('Ultracode on (this session only)'), 'ultracode on');
@@ -86,7 +103,7 @@ try {
   await open();
   captures.ultracode = screen();
   pass('the picker footer names ultracode while the session flag is on',
-    /Left\/Right adjust · Ultracode on \(\/effort\)/u.test(screen()));
+    /←\/→ to adjust · Ultracode on \(\/effort\)/u.test(screen()));
   pass('the suffix rides the effort line and leaves the guide row alone',
     screen().includes('Enter set as default / s use this session only / Esc cancel'));
   send('\x1b[C');
@@ -100,7 +117,7 @@ try {
   pass('the effort command turns the session ultracode flag off');
   await open();
   pass('the suffix disappears with the flag',
-    screen().includes('Left/Right adjust') && !screen().includes('adjust · Ultracode'));
+    screen().includes('←/→ to adjust') && !screen().includes('adjust · Ultracode'));
   await close();
   send('turn\r');
   await until(() => screen().includes('answered 1'), 'a turn finished');
@@ -109,9 +126,12 @@ try {
   const status = await Promise.race([active.closed, delay(8000).then(() => 'timeout')]);
   pass('the CLI exits zero', status === 0);
   const identity = captureIdentity(root);
-  fs.writeFileSync(path.join(temporary, 'result.json'), JSON.stringify({ checks, captures, identity: identity.sha256 }, null, 2));
+  fs.writeFileSync(process.env.W281_RESULT ?? path.join(temporary, 'result.json'), JSON.stringify({ checks, captures,
+    identity: identity.sha256, inputs: identity.inputs.sha256, validation: identity.validation.sha256,
+    build: identity.build.sha256, requests: requests.length, paidUpstreamCalls: 0 }, null, 2));
   console.log(`RESULT ${checks.length} checks; identity ${identity.sha256}; ${temporary}`);
 } finally {
+  terminal.close();
   if (child.exitCode === null) child.kill('SIGKILL');
   await new Promise(resolve => server.close(resolve));
   fs.rmSync(temporary, { recursive: true, force: true });
