@@ -39,8 +39,7 @@ import { FORK_COORDINATOR, FORK_DESCRIPTION, FORK_DISABLED, FORK_FIRST_TURN, FOR
 import { SKILLS_TITLE, applySkillOverrideDiff, defaultSkillModes, nextSkillMode, readLocalSkillOverrides,
   saveSkillOverrides, skillOverrideDiff, skillPanelRows, skillsPanelMessage, skillsSaveError,
   skillsSaveMessage, type SkillMode } from './skills-panel.js';
-import { TASKS_EMPTY, TASKS_TITLE, backgroundTaskGoneMessage, backgroundTaskItems,
-  parseBackgroundTaskValue, tasksPanelRows, tasksPanelSubtitle } from './tasks-panel.js';
+import { backgroundTaskGoneMessage, backgroundTaskRequest, parseBackgroundTaskValue } from './tasks-panel.js';
 import { hooksSchema } from './hooks.js';
 import { HOOKS_NONE_YET, HOOKS_TITLE, attributeHooks, browseHooks, hookConfigLabel,
   hookListSubtitle, type HookLayer, type HookPanelHook } from './hooks-panel.js';
@@ -721,6 +720,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (!inputClosed && !approval) void openHelpPanelLive?.();
         return;
       }
+      // v1e.Ks/A4, 24k7d6mw [786385,786417)/[1487552,1487705), UTF-16: open beside a live turn.
+      if (action === 'chat:openTasks') {
+        if (!inputClosed && !approval && liveDialog === undefined) {
+          backgroundDialogWork = openTasksPanelLive?.();
+          void backgroundDialogWork?.finally(() => { backgroundDialogWork = undefined; });
+        }
+        return;
+      }
       const command = action === 'app:toggleTodos' ? '/tasks' : undefined;
       if (!command || inputClosed || approval) return;
       if (!queue.some(item => item.source === 'user' && item.prompt === command)) {
@@ -737,9 +744,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   let openModelPickerLive: (() => Promise<void>) | undefined;
   let applyThinkingToggle: (() => Promise<void>) | undefined;
   let openHelpPanelLive: (() => Promise<void>) | undefined;
+  let openTasksPanelLive: (() => Promise<void>) | undefined;
+  let backgroundDialogWork: Promise<void> | undefined;
   /** The dialog a live chord can close while it is open (the source's panel toggle). */
-  let liveDialog: { kind: 'model' | 'thinking' | 'help'; controller: AbortController } | undefined;
-  const withLiveDialog = (kind: 'model' | 'thinking' | 'help', signal: AbortSignal) => {
+  let liveDialog: { kind: 'model' | 'thinking' | 'help' | 'tasks'; controller: AbortController } | undefined;
+  const withLiveDialog = (kind: 'model' | 'thinking' | 'help' | 'tasks', signal: AbortSignal) => {
     const controller = new AbortController();
     liveDialog = { kind, controller };
     return { controller, signal: AbortSignal.any([signal, controller.signal]),
@@ -807,6 +816,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     options.status.write(`Peer held message ${decision}: ${result}\n`);
   };
   const readDialog = async (request: TerminalPromptRequest, signal: AbortSignal, form = false) => {
+    if (liveDialog?.kind === 'tasks' && request.backgroundTasks === undefined) liveDialog.controller.abort();
     if (!form) formController?.abort();
     if (approval) throw new Error('Another interaction already owns terminal input');
     if (inputClosed || signal.aborted) throw new Error('Interaction input closed');
@@ -961,6 +971,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   let formActive = false;
   const elicit: NonNullable<McpClientRequests['elicitation']> = async (params, signal, context) => {
+    if (liveDialog?.kind === 'tasks') liveDialog.controller.abort();
     if (inputClosed || signal.aborted || approval || formActive) return { action: 'cancel' };
     formActive = true;
     const controller = new AbortController(); formController = controller;
@@ -1202,6 +1213,32 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     }
     await agent().emitHook('PostModelSwitch', { from_model: previous, to_model: model, requested_model: model }, signal);
     options.status.write(`Model set to ${model}${saveSuffix}\n`);
+  };
+  /** A4/fLt, 24k7d6mw [1487552,1487705)/[674472,675750), UTF-16: session-owned live list. */
+  openTasksPanelLive = async () => {
+    if (!terminal?.prompt || !activeRuntime.backgroundTasks || liveDialog !== undefined) return;
+    const live = withLiveDialog('tasks', options.signal);
+    const read = () => activeRuntime.backgroundTasks!(session.id);
+    try {
+      let notice: string | undefined;
+      while (!live.signal.aborted) {
+        const answer = await readDialog({ ...backgroundTaskRequest(read(), notice), backgroundTasks: read }, live.signal);
+        if (answer === undefined) break;
+        if (answer.key !== 'x') continue;
+        const parsed = parseBackgroundTaskValue(answer.selected[0] ?? '');
+        if (parsed === undefined) continue;
+        const stopped = await activeRuntime.stopTask?.(session.id, parsed.id);
+        if (stopped === undefined) { notice = backgroundTaskGoneMessage(); continue; }
+        for (let attempt = 0; attempt < 80 && !live.signal.aborted; attempt++) {
+          if (!read().jobs.some(job => job.id === parsed.id)) break;
+          await new Promise(resolve => setTimeout(resolve, 25));
+        }
+        notice = undefined;
+      }
+    } catch (error) {
+      if (!options.signal.aborted && !live.controller.signal.aborted)
+        options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    } finally { live.release(); }
   };
   openModelPickerLive = async () => {
     if (!terminal?.prompt) return;
@@ -1971,37 +2008,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           continue;
         }
         if (prompt === '/tasks' && terminal?.prompt && activeRuntime.backgroundTasks) {
-          // Source `fLt` (`chunk-24k7d6mw.js` 674472): the `Background` dialog over the live
-          // registries. `x` is the stop chord; the selection it carries is the focused row.
-          let notice: string | undefined;
-          for (;;) {
-            const items = backgroundTaskItems(activeRuntime.backgroundTasks(session.id));
-            if (items.length === 0) {
-              await withTurn(signal => readDialog({ title: TASKS_TITLE, message: notice ?? TASKS_EMPTY,
-                readOnly: true }, signal));
-              break;
-            }
-            const rows = tasksPanelRows(items);
-            const answer = await withTurn(signal => readDialog({
-              title: TASKS_TITLE,
-              message: [tasksPanelSubtitle(items), notice].filter((part): part is string => part !== undefined).join('\n\n'),
-              choices: rows.map(row => ({ label: row.label, value: row.value, description: row.description })),
-              keys: [{ key: 'x', label: 'stop' }],
-            }, signal));
-            if (answer === undefined) break;
-            if (answer.key !== 'x') continue;
-            const parsed = parseBackgroundTaskValue(answer.selected[0] ?? '');
-            if (parsed === undefined) continue;
-            const stopped = await activeRuntime.stopTask?.(session.id, parsed.id);
-            if (stopped === undefined) { notice = backgroundTaskGoneMessage(); continue; }
-            // A stopped shell leaves `active()` only when its process group exits, so
-            // hold the panel briefly for the registry to reflect the stop.
-            for (let attempt = 0; attempt < 80; attempt++) {
-              if (!activeRuntime.backgroundTasks(session.id).jobs.some(job => job.id === parsed.id)) break;
-              await new Promise(resolve => setTimeout(resolve, 25));
-            }
-            notice = undefined;
-          }
+          await openTasksPanelLive?.();
           continue;
         }
         if (prompt === '/tasks' || prompt === '/cron' || /^\/diff(?:\s|$)/.test(prompt)) {
@@ -3043,6 +3050,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     configWatch?.close();
     options.signal.removeEventListener('abort', abort);
     unsubscribe?.(); unsubscribeTerminal?.(); rl?.off('line', onLine); rl?.off('close', onClose);
+    if (liveDialog?.kind === 'tasks') liveDialog.controller.abort();
+    await backgroundDialogWork;
     rl?.close(); terminal?.close();
     await editorWork;editorWork=undefined;
     await terminal?.flushStatusLine?.();

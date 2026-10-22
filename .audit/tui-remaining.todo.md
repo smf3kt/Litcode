@@ -695,3 +695,11 @@ Explicitly out of scope for this loop:
       /tasks and the confirmed kill chord manage the same work. Affected200/200, compiled21/21,
       effort26/26 and stash19/19; independent review found no confirmed scoped defect.
       Crowded40-column allocation can hide the task label. See `research/ports/W289-background-footer.md`.
+- [x] W290 background footer click (Vde [740694,741175), v1e.Ks [786385,786417), UTF-16):
+      copied hover/release dispatch opens a live Background list during a model turn. Stop, natural
+      completion and cancel retain the draft. Review repairs yield input before MCP form admission
+      and reset disappearance protection for every focus navigation path. Affected137/137,
+      check/build clean, compiled20/20 plus effort26/26 and stash19/19 at `b41aa5b7...`.
+      Independent repair recheck passed. See `research/ports/W290-background-footer-click.md`.
+- [ ] Candidate: footer keyboard selection and task opening. Verify the source focus/open key
+      owner and chord resolution before choosing a package; no shortcut is inferred from its name.

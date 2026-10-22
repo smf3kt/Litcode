@@ -3,7 +3,7 @@ import { jsx } from './tui-jsx.js';
 import { Gt, Lr, TE, ff, Zd, Rd, Cd, vs, go, ZDr, Wfe, ef, Zt, po } from './tui-render-engine.js';
 import { yLr } from './tui-render-output.js';
 import { s, n, Do } from './tui-base-components.js';
-import { GE, nP, Tde } from './tui-source-chrome.js';
+import { GE, nP } from './tui-source-chrome.js';
 import { ThemeContext } from './tui-theme.js';
 import { S1 } from './tui-theme-colors.js';
 import { i9t } from './tui-theme-overrides-source.js';
@@ -16,6 +16,8 @@ import { composeBanner } from './session-color.js';
 import { cellWidth } from './terminal.js';
 import { stashedIndicator } from './tui-stash.js';
 import { te } from './tui-symbols.js';
+import { Vde } from './tui-background-click-source.js';
+import { rv } from './tui-hover-source.js';
 
 interface NativePoint { col: number; row: number }
 interface NativeSelection {
@@ -38,21 +40,25 @@ export interface FrameCursor { row: number; column: number; visible: boolean }
 /** One prompt row: plain text, or the runs a chain answer painted over it. */
 export type PromptLine = string | readonly PromptSegment[];
 /** A footer part painted in a theme slot's colour instead of the dim default. */
-export interface FooterPart { text: string; color?: string }
+export interface FooterPart { text: string; color?: string; onClick?: () => void }
 type FooterContent = readonly (string | FooterPart)[] | ((columns: number) => readonly (string | FooterPart)[]);
 export interface FooterStatus { feedback?: string; hasStash?: boolean }
 
-/** Hfe/oue, qfjvvwpv [11971,12618), 24k7d6mw [789157,789881), UTF-16. */
+/** Hfe/oue/LVe, qfjvvwpv [11971,12618), 24k7d6mw [770079,771241)/[789157,789881), UTF-16. */
 export function footerElement(footer: FooterContent, width: number, { feedback, hasStash = false }: FooterStatus = {}) {
   const stashWidth = hasStash ? cellWidth(te.pointerSmall + ' stashed') + (feedback === undefined ? 1 : 3) : 0;
   const rightWidth = Math.min(width, stashWidth + (feedback === undefined ? 0
     : Math.min(cellWidth(feedback), Math.max(0, Math.floor(width / 2) - stashWidth))));
   const leftWidth = rightWidth === 0 ? width : Math.max(0, width - rightWidth - 1);
   const parts = typeof footer === 'function' ? footer(leftWidth) : footer;
-  const left = jsx(Tde, { width: leftWidth,
-    left: parts.map((part, index) => typeof part === 'string'
-      ? jsx(Do, { dimColor: true, children: part }, String(index))
-      : jsx(n, { color: part.color, children: part.text }, String(index))) }, 'footer');
+  const left = jsx(s, { width: leftWidth, height: 1, flexDirection: 'row', overflow: 'hidden',
+    children: parts.filter(part => typeof part !== 'string' || part !== '').map((part, index) =>
+      jsx(s, { flexShrink: 0, children: [
+        index === 0 ? null : jsx(n, { dimColor: true, children: ' · ' }, 'separator'),
+        typeof part === 'string' ? jsx(Do, { dimColor: true, children: part }, 'text')
+          : part.onClick === undefined ? jsx(n, { color: part.color, children: part.text }, 'text')
+            : jsx(Vde, { selected: false, onClick: part.onClick, children: part.text }, 'task')
+      ] }, String(index))) }, 'footer');
   if (rightWidth === 0) return left;
   return jsx(s, { height: 1, width, flexDirection: 'row', overflow: 'hidden', children: [left,
     jsx(s, { width: rightWidth, flexShrink: 0, marginLeft: 'auto', flexDirection: 'row',
@@ -101,6 +107,7 @@ export class TuiRenderer {
   private paintQueued = false;
   private readonly nativeSelection: NativeSelection = Eg();
   private readonly selectionListeners = new Set<() => void>();
+  private readonly hoveredNodes = new Set<unknown>();
   readonly selectionInstance = {
     copySelection: () => { const text = Hg(this.nativeSelection, this.front.screen); this.clearNativeSelection(); return text; },
     copySelectionNoClear: () => Hg(this.nativeSelection, this.front.screen) as string,
@@ -160,6 +167,12 @@ export class TuiRenderer {
   click(column: number, row: number, modifiers: { ctrl: boolean; shift: boolean; alt: boolean }): boolean {
     const cell = this.cell(column, row);
     return ov(this.root, new _4n(column, row, !cell?.char.trim(), cell?.hyperlink, false, modifiers));
+  }
+
+  /** dispatchHover/rv, 06azbynj [347186,347597)/[251135,251446), UTF-16. */
+  hover(column: number, row: number): void {
+    Reflect.apply(rv, undefined, [this.root, column, row, this.hoveredNodes, this.front.screen]);
+    Gt.flushSyncWork();
   }
 
   wheel(column: number, row: number, delta: number, modifiers: { ctrl: boolean; shift: boolean; meta: boolean }): boolean {
@@ -365,6 +378,7 @@ export class TuiRenderer {
     finally {
       TE(this.root); this.config.free(); this.snapshot = []; this.cursor = undefined;
       Kl(this.nativeSelection); this.selectionListeners.clear(); this.layoutListeners.clear();
+      this.hoveredNodes.clear();
     }
   }
 }
