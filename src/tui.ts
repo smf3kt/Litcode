@@ -55,7 +55,7 @@ import { Art } from './tui-input-highlights-source.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { layoutEngine } from './tui-layout.js';
 import { renderPreviewMarkdown } from './tui-markdown.js';
-import { TuiRenderer, footerElement, type FooterPart, type PromptLine } from './tui-renderer.js';
+import { TuiRenderer, footerElement, type FooterPart, type FooterStatus, type PromptLine } from './tui-renderer.js';
 import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
@@ -4007,7 +4007,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
         this.renderer.appContext, this.renderer.selectionInstance) } : undefined, banner, this.composerMode,
-      this.composerBorderText(), this.visibleEffortFeedback());
+      this.composerBorderText(), this.footerStatus());
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
 
@@ -4111,10 +4111,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return this.effortFeedback?.text;
   }
 
+  /** WR/Pre/D9, 24k7d6mw [481073,481106)/[723972,724107)/[906888,907115), UTF-16. */
+  private footerStatus(): FooterStatus {
+    const visible = this.screen === 'chat' && !this.gestures.hint
+      && (this.dialog !== undefined || this.autocompleteState().suggestions.length === 0);
+    return { feedback: this.visibleEffortFeedback(), hasStash: visible && this.stashedDraft !== undefined };
+  }
+
   private footerRows(columns: number): string[] {
     this.documentRenderer ??= new TuiDocumentRenderer();
     return this.documentRenderer.renderElement(
-      footerElement(width => this.statusFooter(width), columns, this.visibleEffortFeedback()), columns,
+      footerElement(width => this.statusFooter(width), columns, this.footerStatus()), columns,
       { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
   }
 
