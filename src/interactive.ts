@@ -103,6 +103,7 @@ import { HELP_DISMISSED, browseHelp } from './help-panel.js';
 import { tuiReport } from './tui-command.js';
 import { ADD_DIR_USAGE, addedForSessionMessage, addDirectoryMessage, validateAddDirectory } from './add-dir-command.js';
 import { chordForAction } from './tui-keys.js';
+import { BASH_CAVEAT, bashInputText, bashResultText } from './tui-bash-mode.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import { reloadSkillsMessage } from './reload-skills.js';
 import { briefTranscriptEnabled, focusModeFor, focusReport, focusUnknownArgument, parseFocusArgument,
@@ -390,6 +391,48 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       return await action(signal);
     } finally { unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false); }
   };
+  /**
+   * Source `processBashCommand` (chunk-w79px1ss.js 14067): one drained shell command. The host's
+   * `run_command` tool is the shell lane (`/bin/sh -c`, own process group, timeout and abort
+   * kill), so this call reuses it instead of spawning a second shell. The two rows the recovered
+   * body appends — the `<bash-input>` command and the `<bash-stdout>`/`<bash-stderr>` result —
+   * land in the transcript through the same tag text the recovered body writes; the local
+   * `run_command` result already ends with its exit-code note, and that note is the stderr side.
+   * `respondToBashCommands` (`ft().respondToBashCommands ?? true`) decides whether the model
+   * answers: on, the result is a user row and the turn continues; off, the result is meta and the
+   * command ends there.
+   */
+  const runBashCommand = async (command: string, signal: AbortSignal): Promise<{ shouldQuery: boolean }> => {
+    const tool = activeRuntime.buildTools(session.config, session.id).find(candidate => candidate.schema.name === 'run_command');
+    if (!tool) throw new Error('Shell commands are disabled in this session');
+    // Source `processBashCommand` 14067 calls the shell tool's `call` directly, with
+    // `dangerouslyDisableSandbox: true` and no permission decision: the person typed the command
+    // into their own composer, so it runs as they would run it. The one gate is the host's
+    // `allowShell` switch, the counterpart of that disable flag; no approval prompt is invented.
+    const text = await tool.execute({ command }, { workspace: session.config.workspace, signal,
+      allowShell: session.config.allowShell, maxOutputBytes: session.config.maxOutputBytes });
+    // Source `processBashCommand` 14067: `g = respond && !interrupted && !background && !aborted`.
+    // This host's lane reports interruption and the exit status through its trailing note.
+    const note = /\n?\[run_command: [^\n]*\]$/.exec(text)?.[0]?.trim() ?? '';
+    const interrupted = /\[run_command: aborted; process group killed\]$/.test(text);
+    const respond = session.config.respondToBashCommands ?? true;
+    const shouldQuery = respond && !interrupted && !signal.aborted;
+    const stdout = note === '' ? text : text.slice(0, text.length - note.length - 1);
+    // Source `tye()` (chunk-sfn1dbxq.js 4382813): a command the model is not asked about carries
+    // the caveat row, so a later turn reads the result as context rather than as a request. The
+    // recovered sentence names its own product; this build keeps the sentence and its own name.
+    if (!shouldQuery) session.append({ kind: 'message', isMeta: true,
+      message: { role: 'user', content: [{ type: 'text', text: BASH_CAVEAT }] } });
+    session.append({ kind: 'message', message: { role: 'user',
+      content: [{ type: 'text', text: bashInputText(command) }] } });
+    session.append({ kind: 'message', message: { role: 'user',
+      content: [{ type: 'text', text: bashResultText(stdout, note) }] } });
+    terminal?.appendBashResult?.(bashResultText(stdout, note));
+    // A command the model is not asked about ends here; without the turn boundary the session
+    // would stay awaiting a response no one will run.
+    if (!shouldQuery) session.append({ kind: 'turn_end', reason: 'bash_command' });
+    return { shouldQuery };
+  };
   options.signal.addEventListener('abort', abort, { once: true });
   // `we`, chunk-qskwh3r4.js [1877,8641), UTF-16: side answers live for the session and never
   // enter the transcript, so the panel's history is this list.
@@ -398,6 +441,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     peer?: { from: string | null };
     /** Source `isMeta`: an entry this host queued itself, not one a person may pull back and edit. */
     meta?: boolean;
+    /** Source `r === "bash"` (chunk-er0mj94r.js 50100): a shell command, not a model prompt. */
+    bashMode?: true;
     attachment?: import('./terminal.js').PromptDiffSelection }[] = [];
   // The recovered prologue prepends the SessionStart message to the user input
   // queue (`prependUserMessage`, chunk-rx2nah4x.js offset 472137), so it runs
@@ -405,9 +450,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // The SessionStart message is host-generated, so it is source `isMeta`: the composer may not
   // pull it back as if a person had typed it.
   if (options.initialUserMessage !== undefined) queue.push({ prompt: options.initialUserMessage, source: 'user', meta: true });
-  // Source `Kp`: the composer may pull back only a person's own queued prompt, not a meta entry,
-  // an event and not a bash-mode command (this host has no bash queue mode).
-  const editableQueued = (item: (typeof queue)[number]) => item.source === 'user' && item.meta !== true;
+  // Source `Kp`/`zMe` (chunk-sfn1dbxq.js 2947200): the composer may pull back only a person's own
+  // queued prompt, not a meta entry, not an event, and not a shell command — `zMe` additionally
+  // requires an empty draft for a bash entry. This host's snapshot carries only the prompts, so a
+  // bash entry stays out of it and the composer never offers one to edit.
+  const editableQueued = (item: (typeof queue)[number]) => item.source === 'user' && item.meta !== true
+    && item.bashMode !== true;
   const promptQueue = {
     snapshot: () => queue.filter(editableQueued).map(item => item.prompt),
     pop: (index: number) => {
@@ -549,7 +597,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       } catch (error) { options.status.write(`Config watch error: ${String(error)}\n`); }
     }
   };
-  const onLine = (line: string, attachment?: import('./terminal.js').PromptDiffSelection) => {
+  const onLine = (line: string, attachment?: import('./terminal.js').PromptDiffSelection,
+    mode?: 'prompt' | 'bash') => {
     if (approval) { approval(line); return; }
     // `kEo` (chunk-sfn1dbxq.js 1659192) and `bWe` (1650535) are `immediate`; the recovered submit
     // gate runs them while the turn guard is active (`zn`, chunk-24k7d6mw.js 1491124) instead of
@@ -567,7 +616,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       });
       return;
     }
-    queue.push({ prompt: line, source: 'user', ...(attachment ? { attachment } : {}) });
+    queue.push({ prompt: line, source: 'user', ...(attachment ? { attachment } : {}),
+      ...(mode === 'bash' ? { bashMode: true as const } : {}) });
     promptQueueChanged(); awaken();
   };
   const onClose = () => {
@@ -1353,6 +1403,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
       }
       if (item.source === 'user' && prompt === '/exit') break;
+      // Source `processBashCommand` (chunk-w79px1ss.js 14067) and the dispatch at
+      // chunk-er0mj94r.js 50100: a shell command runs through the shell lane, its result is
+      // recorded as a user row, and `respondToBashCommands` decides whether the model answers it.
+      if (item.source === 'user' && item.bashMode === true) {
+        try {
+          const bash = await withTurn(signal => runBashCommand(prompt, signal));
+          if (bash.shouldQuery) {
+            const result = await withTurn(signal => agent().run(undefined, signal));
+            if (result.modelCalls === 0 && result.text) output.write(result.text);
+            output.write('\n');
+          }
+          options.status.write(`finished: ${bash.shouldQuery ? 'bash' : 'bash_command'}; model calls: ${bash.shouldQuery ? 1 : 0}\n`);
+        } catch (error) {
+          if (options.signal.aborted) break;
+          options.status.write(`error: ${error instanceof Error ? error.message : String(error)}\n`);
+        }
+        continue;
+      }
       if (item.source === 'event') {
         if (session.awaitingResponse) { options.status.write('Event deferred until the interrupted turn is continued.\n'); queue.push(item); }
         else {

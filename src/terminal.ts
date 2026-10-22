@@ -12,6 +12,7 @@ import { InputPaste, expandPastedText, pasteGoneNotice, referencedPastes, stripG
 import { parseTerminalResponse } from './tui-response-source.js';
 import { editExternal, openExternalFile, type ExternalEditorResult } from './external-editor.js';
 import { InputVim, type EditorMode, type VimBridge } from './tui-vim.js';
+import { bashInputText, composerPointer, switchedToBash, type ComposerMode } from './tui-bash-mode.js';
 import { vimKey } from './tui-vim-keys.js';
 import { applyReturnGesture } from './tui-input-return.js';
 import { InputGestures } from './tui-input-gestures.js';
@@ -613,7 +614,8 @@ export interface TerminalPromptQueue {
   popAll(): TerminalQueuedPrompt | undefined;
 }
 export interface TerminalCallbacks {
-  onSubmit?: (text: string, attachment?: PromptDiffSelection) => void;
+  /** Source `r === "bash"` (chunk-er0mj94r.js 50100): a submitted shell command keeps its mode. */
+  onSubmit?: (text: string, attachment?: PromptDiffSelection, mode?: 'prompt' | 'bash') => void;
   onInterrupt?: () => void;
   onExit?: () => void;
   onAction?: (action: string) => void;
@@ -628,7 +630,7 @@ export interface TerminalOptions extends EditorPolicy, TerminalCallbacks {
   escapeTimeoutMs?: number;
 }
 type TerminalEvents = {
-  submit: [text: string]; interrupt: []; exit: []; pasteRejected: [bytes: number]; pasteGone: [text: string]; inputError: [error: Error]; action:[action:string]; historyError:[error:unknown];
+  submit: [text: string, attachment?: PromptDiffSelection, mode?: 'prompt' | 'bash']; interrupt: []; exit: []; pasteRejected: [bytes: number]; pasteGone: [text: string]; inputError: [error: Error]; action:[action:string]; historyError:[error:unknown];
 };
 
 /** In-memory editor. Queue submit events and route streamed writes through outputStream. */
@@ -636,6 +638,8 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
   readonly isTTY: boolean;
   readonly outputStream: Writable;
   private editor: EditorState;
+  /** Source `bZ`/`QE`: the line composer's bash mode, entered by a `!` and left on submit. */
+  private composerMode: ComposerMode = 'prompt';
   /** Pre-change snapshots and one pending source timer live until close. */
   private readonly undo = new InputUndo();
   private readonly pasteOwner = new InputPaste();
@@ -1027,22 +1031,54 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
     if(action.type==='paste')this.vim.externalMutation();
     if(this.vimEnabled&&!this.vimHandling&&action.type!=='running'
       &&!(action.type==='interrupt'&&this.editor.running)&&this.handleVim(action))return;
-    const transition = reduceEditorWithUndo(this.editor, action, { ...this.options,
+    // Source `QE` (chunk-24k7d6mw.js 815713): with the caret at 0, Escape, Delete and
+    // Backspace/ctrl+u leave bash mode before the edit runs. The recovered handler reads a key
+    // event's `name`; this host's reducer reads an `EditorCommand`, so Escape arrives as the
+    // interrupt command the gesture layer would otherwise send.
+    if (this.composerMode === 'bash' && (this.editor.cursor === 0 || action.type === 'interrupt')
+      && (action.type === 'interrupt' || action.type === 'delete' || action.type === 'backspace' || action.type === 'killLineStart')) {
+      this.composerMode = 'prompt';
+      if (action.type === 'interrupt') { this.render(); return; }
+    }
+    const draftBefore = { text: this.editor.text, cursor: this.editor.cursor };
+    // Source `bZ` (84911): `!` enters bash mode from the empty composer, or as a prepend at caret
+    // 0, and never enters the value.
+    let modeAction = action;
+    if ((action.type === 'insert' || action.type === 'paste') && this.composerMode === 'prompt') {
+      if (this.editor.text === '' && action.text.startsWith('!')) {
+        this.composerMode = 'bash'; modeAction = { type: action.type, text: action.text.slice(1) };
+      } else if (this.editor.cursor === 0 && action.text.startsWith('!')
+        && switchedToBash({ nextValue: '!' + this.editor.text, value: this.editor.text,
+          cursorOffset: 0, mode: this.composerMode })) {
+        this.composerMode = 'bash'; modeAction = { type: action.type, text: action.text.slice(1) };
+      }
+    }
+    // Source `mSt`'s `setBash` unwind (84762): Backspace on an empty bash composer drops the mode.
+    if (this.composerMode === 'bash' && action.type === 'backspace' && this.editor.text === '') {
+      this.composerMode = 'prompt'; this.render(); return;
+    }
+    const transition = reduceEditorWithUndo(this.editor, modeAction, { ...this.options,
       navigationColumns: this.inputColumns(), pasteOwner:this.pasteOwner,
       terminalRows:this.options.output.rows ?? 24 }, this.undo);
     if (transition.effects.some(effect => effect.type === 'submit')) this.inputHistory.add({display:this.editor.text,pastedContents:this.editor.pastedContents});
     this.editor = transition.state;
     if(transition.effects.some(effect=>effect.type==='submit')||action.type==='interrupt'&&!this.editor.running)this.vim.reset();
     const submitted = transition.effects.find(effect => effect.type === 'submit');
+    // Source submit exit 1492848: a drained command returns the composer to prompt mode.
+    const submittedMode = this.composerMode;
+    if (submitted?.type === 'submit') this.composerMode = 'prompt';
     if (submitted?.type === 'submit' && this.isTTY && this.started) {
       this.clearPrompt(); this.separatedOutput = false;
-      this.options.output.write(`${cleanInput(this.options.prompt ?? '> ')}${submitted.text.replace(/\n/g, '\r\n')}\r\n`);
+      // Source 1310609: bash mode's echoed row is its `<bash-input>` tag.
+      const echoed = submittedMode === 'bash' ? bashInputText(submitted.text) : submitted.text;
+      const mark = submittedMode === 'bash' ? composerPointer('bash', '') : this.options.prompt ?? '> ';
+      this.options.output.write(`${cleanInput(mark)}${echoed.replace(/\n/g, '\r\n')}\r\n`);
       this.outputColumn = 0;
     }
     this.render();
     for (const effect of transition.effects) {
       if (effect.type === 'exit') { this.close(); this.emit('exit'); }
-      else if (effect.type === 'submit') this.emit('submit', effect.text);
+      else if (effect.type === 'submit') this.emit('submit', effect.text, undefined, submittedMode);
       else if (effect.type === 'interrupt') this.emit('interrupt');
       else if (effect.type === 'pasteGone') this.emit('pasteGone', effect.text);
       else this.emit('pasteRejected', effect.bytes);
@@ -1132,9 +1168,13 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
     const body = layoutInput(this.editor, this.inputColumns(), Math.max(1, (this.options.output.rows ?? 24) - 1),
       this.vimEnabled?{mode:this.vim.mode,anchor:this.vim.anchor}:undefined,this.focus.focused);
     const prompt = cleanInput(this.options.prompt ?? '> ').replace(/\n/g, '');
+    // Source `uT` (chunk-24k7d6mw.js 815565) and `Rzt` (814893): bash mode leads the row with `!`
+    // in the `bashBorder` slot and paints the composer rule in it. The line editor has no rule,
+    // so the colour rides the prompt marker the way the full-screen pointer does.
+    const promptMark = this.composerMode === 'bash' ? composerPointer('bash', '') : prompt;
     const continuation = cleanInput(this.options.continuationPrompt ?? '  ').replace(/\n/g, '');
-    const lines = body.lines.map((line, index) => (index === 0 && body.viewportStartRow === 0 ? prompt : continuation) + line);
-    const cursorPrefix = body.cursorRow === 0 && body.viewportStartRow === 0 ? prompt : continuation;
+    const lines = body.lines.map((line, index) => (index === 0 && body.viewportStartRow === 0 ? promptMark : continuation) + line);
+    const cursorPrefix = body.cursorRow === 0 && body.viewportStartRow === 0 ? promptMark : continuation;
     const picking=this.linePicker?.snapshot.searching===true;
     if(picking){
       lines.push(...this.linePicker!.styled(this.columns(),Math.max(4,(this.options.output.rows ?? 24)-lines.length-1)).map((row:{ansi:string})=>row.ansi));
@@ -1381,6 +1421,8 @@ export interface TerminalSurface {
   setTerminalProgressBar?(enabled: boolean): void;
   /** One finished tool call, after any post hook replaced its result. */
   appendToolResult?(result: import('./tui-tool-result.js').ToolDisplayResult): void;
+  /** Source `processBashCommand` 14067: the `<bash-stdout>`/`<bash-stderr>` row a drained command leaves. */
+  appendBashResult?(result: string): void;
   /** The composer's slash-command rows; a skill rescan hands back the list it rebuilt. */
   setCommands?(commands: readonly import('./tui-autocomplete.js').TuiCommand[]): void;
   setTheme?(value?: import('./tui-theme-state.js').ThemeSetting): void;

@@ -3,7 +3,7 @@ import { jsx } from './tui-jsx.js';
 import { Gt, Lr, TE, ff, Zd, Rd, Cd, vs, go, ZDr, Wfe, ef, Zt, po } from './tui-render-engine.js';
 import { yLr } from './tui-render-output.js';
 import { s, n, Do } from './tui-base-components.js';
-import { GE, tH, Tde } from './tui-source-chrome.js';
+import { GE, nP, Tde } from './tui-source-chrome.js';
 import { ThemeContext } from './tui-theme.js';
 import { S1 } from './tui-theme-colors.js';
 import { i9t } from './tui-theme-overrides-source.js';
@@ -204,7 +204,7 @@ export class TuiRenderer {
     selection?: { state: SelectionState; offset: number; rows: number }, theme = 'dark',
     themeOverrides?: Record<string, string>, progress: readonly string[] = [], statusLine: readonly string[] = [],
     sidebar?: { width: number; element: unknown },
-    banner?: { text: string; color: string }): void {
+    banner?: { text: string; color: string }, composerMode: 'prompt' | 'bash' = 'prompt'): void {
     this.selection = selection;
     const conversationWidth = columns - (sidebar?.width ?? 0);
     // `Mk`: the composer's own rule, drawn above the box and painted in one colour. It is
@@ -213,8 +213,8 @@ export class TuiRenderer {
       : jsx(s, { height: 1, flexShrink: 0, width: '100%',
         children: jsx(n, { color: banner.color, wrap: 'truncate-end',
           children: composeBanner(banner.text, conversationWidth) }, 'rule') }, 'banner');
-    const input = jsx(s, { ...GE('prompt', false), width: '100%', alignItems: 'flex-start',
-      children: [jsx(tH, { isLoading: running, isScreenReader: false }, 'pointer'),
+    const input = jsx(s, { ...GE(composerMode, false), width: '100%', alignItems: 'flex-start',
+      children: [jsx(nP, { mode: composerMode }, 'pointer'),
         jsx(s, { flexGrow: 1, flexShrink: 1, flexDirection: 'column',
           children: prompt.map((line, index) => jsx(s, { height: 1, flexShrink: 0,
             children: this.promptRow(line) }, String(index))) }, 'draft')] }, 'input');

@@ -106,6 +106,9 @@ export type SessionConfig = {
   workflowKeywordTriggerEnabled?: boolean;
   /** The `:name:` emoji typeahead. Absent or true enables it. */
   emojiCompletionEnabled?: boolean;
+  /** Source `ft().respondToBashCommands ?? !0` (chunk-w79px1ss.js 14067): whether a drained `!`
+   *  command's result is sent to the model or recorded as context only. */
+  respondToBashCommands?: boolean;
   /** Source `r` (chunk-wtdka69b.js 887): the `disableAgentView` setting closes the fleet fork. */
   disableAgentView?: boolean;
   theme?: ThemeSetting;
@@ -252,6 +255,8 @@ export const configSchema = z.object({
   workflowKeywordTriggerEnabled: z.boolean().optional(),
   // The `:name:` emoji typeahead switch (`chunk-24k7d6mw.js` `Kl().emojiCompletionEnabled`).
   emojiCompletionEnabled: z.boolean().optional(),
+  // `ft().respondToBashCommands ?? !0`: the drained-command answer switch (chunk-w79px1ss.js 14067).
+  respondToBashCommands: z.boolean().optional(),
   // The agent-view switch `r` reads beside its environment flag (chunk-wtdka69b.js 887).
   disableAgentView: z.boolean().optional(),
   theme: z.string().refine(value => parseTheme(value) !== undefined, 'Invalid theme').optional(),
