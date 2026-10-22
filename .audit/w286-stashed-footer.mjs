@@ -95,7 +95,8 @@ async function launch(columns = 120) {
   child.stdout.on('data', chunk => screen.write(decoder.write(chunk)));
   child.stderr.on('data', chunk => { current.stderr += chunk.toString('utf8'); });
   children.push(current); active = current;
-  await until(() => footer()?.includes('ready'), 'startup ready');
+  await until(() => frame().includes('Welcome to LiTcode') && /^❯\s*$/mu.test(frame())
+    && footer()?.includes('bypass permissions on'), 'startup composer');
 }
 async function stop() {
   send('\x15/exit\r');

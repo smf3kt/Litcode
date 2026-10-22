@@ -56,6 +56,7 @@ import { osc52Payload } from './clipboard-osc52.js';
 import { layoutEngine } from './tui-layout.js';
 import { renderPreviewMarkdown } from './tui-markdown.js';
 import { TuiRenderer, footerElement, type FooterPart, type FooterStatus, type PromptLine } from './tui-renderer.js';
+import { backgroundFooterLabel } from './tui-background.js';
 import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
@@ -611,6 +612,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private externalEditorHintTimer: ReturnType<typeof setTimeout> | undefined;
   /** Host-bound live background count and stop action for the kill chord. */
   private backgroundWorkProbe: (() => number) | undefined;
+  private backgroundTasksProbe: (() => import('./tasks-panel.js').BackgroundTaskSnapshot) | undefined;
   private backgroundWorkStop: (() => void) | undefined;
   /** Source `go.current`: the last kill-chord press while a confirmation is armed. */
   private killAgentsArmed: number | undefined;
@@ -958,10 +960,18 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
-  /** Source `Jr` reads the task store directly; this host hands the composer the same live count. */
-  bindBackgroundWork(probe: () => number, stop: () => void): void {
+  /** Jr/pz, 24k7d6mw at 435644 and [740155,740694), UTF-16: live owner readers. */
+  bindBackgroundWork(probe: () => number, stop: () => void,
+    tasks?: () => import('./tasks-panel.js').BackgroundTaskSnapshot): void {
     this.backgroundWorkProbe = probe;
     this.backgroundWorkStop = stop;
+    this.backgroundTasksProbe = tasks;
+    this.render();
+  }
+
+  /** pz's V(XVt) subscription, 24k7d6mw [740155,740694), UTF-16. */
+  backgroundWorkChanged(): void {
+    this.render();
   }
 
   /** Source store subscription: a changed queue repaints the hint and clamps a stale index. */
@@ -1466,6 +1476,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     try { return this.backgroundWorkProbe?.() ?? 0; } catch { return 0; }
   }
 
+  private backgroundLabel(): string | undefined {
+    if (this.screen !== 'chat') return;
+    const snapshot = this.backgroundTasksProbe?.();
+    return snapshot === undefined ? undefined : backgroundFooterLabel(snapshot);
+  }
+
   private showStatusNotice(owner: string, text: string, timeoutMs: number): void {
     this.statusNoticeOwner = owner;
     this.statusNoticeText = text;
@@ -1721,6 +1737,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.progress.close(); this.progressRenderer?.close();
     this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
     this.unsubscribePermissions?.(); this.unsubscribePermissions = undefined;
+    this.backgroundTasksProbe = undefined; this.backgroundWorkProbe = undefined; this.backgroundWorkStop = undefined;
     this.welcomeRenderer?.close(); this.welcomeRenderer = undefined; this.welcomeRows = []; this.welcomeKey = '';
     this.assistantMessage = undefined;
     this.previewCoalescer.dispose();
@@ -4160,14 +4177,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       : 'ctrl+o transcript  ctrl+r search  ctrl+c interrupt';
   }
 
-  /**
-   * The footer row. Source `LVe` leads it with the permission-mode chip (`DR`, `jy` here) and
-   * gives the right side one indicator from the `Ei` priority chain; the interrupt branch is the
-   * only one whose data this terminal has, so running shows its chord and idle keeps the local
-   * hints. The recovered idle indicator (`LVe` 765495 through `s2`, chunk-24k7d6mw.js 789074) is
-   * `? for shortcuts`, shown while the draft is empty because that is when `?` opens the panel;
-   * it leads the row so the half-width clip cannot drop it.
-   */
+  /** LVe/pz, 24k7d6mw [768633,768681)/[770079,771241), UTF-16: fixed task width before trailing hints. */
   private statusFooter(columns: number): Array<string | FooterPart> {
     if(this.gestures.hint)return [this.gestures.hint.slice(0,columns)];
     // Source `Fz` 760326: `if(Ct&&!Pt)` returns the dim `paste again to expand` row alone, before
@@ -4182,27 +4192,24 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.composerMode === 'bash' && this.screen === 'chat') return [{ text: SHELL_MODE_LABEL, color: 'bashBorder' }];
     const attachment = this.diffSelection.pending;
     if (attachment) return [pad(`${this.diffAttachmentFocused ? '> ' : ''}${attachment.lineCount} ${attachment.lineCount === 1 ? 'line' : 'lines'} from diff${attachment.filePath ? ` in ${attachment.filePath}` : ''}`, columns)];
-    // The recovered row replaces the other indicators with `? for shortcuts`; this host has no
-    // other indicator, so the source row leads its own local navigation hints whenever the
-    // half-width clip still leaves a key behind the shortcut name.
-    const shortcuts = this.screen === 'chat' && !this.running && this.editor.text === ''
+    const background = this.backgroundLabel();
+    const shortcuts = background === undefined && this.screen === 'chat' && !this.running && this.editor.text === ''
       && Math.floor(columns / 2) >= HELP_HINT_MIN_COLUMNS ? `${HELP_FOOTER_HINT}  ` : '';
     const hints = this.statusLineSetting && this.screen === 'chat' ? ''
       : this.running && this.screen === 'chat'
         ? `${chordForAction('app:interrupt', 'Global', 'ctrl+c')} to interrupt`
         : shortcuts + this.statusHints();
-    // The hints are the part a person needs when they are lost, so they keep as
-    // much room as they need up to half the row, and status text is clipped
-    // into what is left rather than allowed to push the hints off the screen.
-    const shown = hints.slice(0, Math.min(hints.length, Math.floor(columns / 2)));
     const chip = this.permissionMode === undefined ? '' : modeChip(this.permissionMode);
-    // The footer's parts render through `Se`, which joins them with ` · `.
     const chipWidth = chip === '' ? 0 : cellWidth(chip) + 3;
+    const backgroundWidth = background === undefined ? 0 : cellWidth(background) + 3;
+    const available = Math.max(0, columns - chipWidth - backgroundWidth);
+    const shown = hints.slice(0, Math.min(hints.length, Math.floor(columns / 2), Math.max(0, available - 1)));
     const left = `${this.running ? 'running' : 'ready'}${this.vimEnabled&&!this.statusLineSetting?.hideVimModeIndicator&&this.vim.mode!=='NORMAL'&&this.screen!=='search'?' -- '+this.vim.mode+' --':''}${this.status ? `  ${this.status}` : ''}`
-      .slice(0, Math.max(0, columns - shown.length - chipWidth - 1));
-    const gap = Math.max(1, columns - chipWidth - cellWidth(left) - shown.length);
+      .slice(0, Math.max(0, available - shown.length - 1));
+    const gap = Math.max(1, available - cellWidth(left) - shown.length);
     const parts: Array<string | FooterPart> = [];
     if (chip !== '') parts.push({ text: chip, color: modeColorSlot(this.permissionMode!) });
+    if (background !== undefined) parts.push({ text: background, color: 'background' });
     parts.push(left + ' '.repeat(gap) + shown);
     return parts;
   }

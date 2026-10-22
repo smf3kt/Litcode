@@ -499,13 +499,23 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     () => {
       try { return activeRuntime.backgroundWorkCount?.(session.id) ?? 0; } catch { return 0; }
     },
-    () => { try { activeRuntime.stopBackground?.(session.id); } catch (error) { options.status.write(`Background stop error: ${String(error)}\n`); } });
+    () => { try { activeRuntime.stopBackground?.(session.id); } catch (error) { options.status.write(`Background stop error: ${String(error)}\n`); } },
+    () => {
+      try { return activeRuntime.backgroundTasks?.(session.id) ?? { jobs: [], agents: [], crons: [] }; }
+      catch { return { jobs: [], agents: [], crons: [] }; }
+    });
   const promptQueueChanged = () => { terminal?.promptQueueChanged?.(); };
   let editorWork: Promise<import('./external-editor.js').ExternalEditorResult> | undefined;
   let inputClosed = false;
   let approval: ((value: string | undefined) => void) | undefined;
   let wake: (() => void) | undefined;
   const awaken = () => { wake?.(); wake = undefined; };
+  // pz's V(XVt), 24k7d6mw [740155,740694), UTF-16: repaint the live store without draining it.
+  const runtimeChanged = (owner: string) => {
+    if (owner !== session.id) return;
+    terminal?.backgroundWorkChanged?.();
+    awaken();
+  };
   let configDirty = false;
   let configWatch: ConfigWatcher | undefined;
   let taskUnsubscribe: (() => void) | undefined;
@@ -1052,7 +1062,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     bindConfigWatch();
     await terminal?.bindInputHistory?.(session);
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
-    unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
+    unsubscribe = activeRuntime.subscribe?.(runtimeChanged);
   };
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand) => {
     signal.throwIfAborted();
@@ -1373,13 +1383,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.bindDiffPanel?.(session);
     terminal?.bindInlineDiff?.(session);
     terminal?.start();
-    unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
+    unsubscribe = activeRuntime.subscribe?.(runtimeChanged);
     const bound = await bindNext(activeRuntime, session);
     if (bound !== activeRuntime) {
       unsubscribe?.();
       try { await activeRuntime.close(); } catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
       activeRuntime = bound;
-      unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) awaken(); });
+      unsubscribe = activeRuntime.subscribe?.(runtimeChanged);
     }
     options.status.write('Personal harness. /help for commands.\n');
     await startPeer(session.config);

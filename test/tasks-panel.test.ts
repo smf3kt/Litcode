@@ -5,6 +5,7 @@ import {
   parseBackgroundTaskValue, tasksPanelRows, tasksPanelSubtitle,
 } from '../src/tasks-panel.js';
 
+import { backgroundFooterLabel } from '../src/tui-background.js';
 const snapshot = {
   jobs: [
     { id: 'job-1', kind: 'run', state: 'running', command: 'npm test', description: 'Run the suite' },
@@ -58,4 +59,24 @@ test('the panel strings match the recovered shell', () => {
   assert.equal(TASKS_TITLE, 'Background');
   assert.equal(TASKS_EMPTY, 'No tasks currently running');
   assert.equal(backgroundTaskGoneMessage(), 'That task is no longer running');
+});
+
+test('the footer classifies live background execution and omits scheduled or finished work', () => {
+  const run = snapshot.jobs[0]!, monitor = snapshot.jobs[1]!;
+  const ws = { ...monitor, source: 'websocket' as const };
+  const label = (jobs: (typeof run & { source?: 'websocket' })[], agents = snapshot.agents.slice(0, 0)) =>
+    backgroundFooterLabel({ jobs, agents, crons: snapshot.crons });
+  assert.equal(label([]), undefined);
+  assert.equal(label([run]), '1 shell');
+  assert.equal(label([run, { ...run, id: 'run-2' }]), '2 shells');
+  assert.equal(label([monitor]), '1 monitor');
+  assert.equal(label([run, monitor]), '1 shell, 1 monitor');
+  assert.equal(label([ws]), '1 monitor');
+  assert.equal(label([ws, { ...ws, id: 'ws-2' }]), '2 monitors');
+  assert.equal(label([ws, monitor]), '2 background tasks');
+  assert.equal(label([], snapshot.agents), '1 local agent');
+  assert.equal(label([], [snapshot.agents[0]!, { ...snapshot.agents[0]!, id: 'agent-3' }]), '2 local agents');
+  assert.equal(label([run], snapshot.agents), '2 background tasks');
+  assert.equal(label([{ ...run, state: 'completed' }], [{ ...snapshot.agents[0]!, status: 'failed' }]), undefined);
+  assert.equal(label([], [{ ...snapshot.agents[0]!, status: 'pending' }]), undefined);
 });
