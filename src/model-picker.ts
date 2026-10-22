@@ -8,7 +8,7 @@
  * | ↳ | | 620947 | `modelPicker:decreaseEffort` / `increaseEffort` / `thisSessionOnly` |
  * | ↳ | | 622189 / 622237 | the title and the caption |
  * | ↳ | | 622880 | `No models match "<q>"` |
- * | ↳ | | 623104 / 623444 | the `effort` word and `Effort not supported` |
+ * | ↳ | | 623104 / 623257 / 623444 | the `effort` word, its ` · Ultracode on (/effort)` suffix and `Effort not supported` |
  * | ↳ | | 624054 / 624441 | the `set as default` and `use this session only` guides |
  * | ↳ | | `KHe` 624931, `yG` 625236 | the stepper and the per-model effort record |
  * | `chunk-6ccen3s8.js` | `4c2e21990fe16d3840515bf681f2efd149ba0b54f282aaaab23c991bfc2c609d` | 7848 | the `ModelPicker` context: `left`/`right` step the effort, `s` accepts session-only |
@@ -96,6 +96,16 @@ export function modelPickerRowDescription(model: string, currentModel: string): 
   return model === currentModel ? 'Current model' : undefined;
 }
 
+/**
+ * The suffix at `chunk-24k7d6mw.js` 623257, `gr&&VC(Nn,gr)?" · Ultracode on (/effort)":""`.
+ * `VC`/`ZI` (`chunk-9vcaezw1.js` 5819/5771) are the session flag AND the workflow gate AND the
+ * model's `xhigh` support; this host has no per-model effort table (W212), so every model
+ * supports every level and the gate is the session's own workflow feature flag.
+ */
+export function modelPickerUltracodeSuffix(ultracode: boolean, workflowsEnabled = true): string {
+  return ultracode && workflowsEnabled ? ' · Ultracode on (/effort)' : '';
+}
+
 type PickerEffort = { kind: 'implicit'; value: EffortLevel } | { kind: 'adjusted'; value: EffortLevel };
 
 export interface ModelPickerInput {
@@ -103,14 +113,20 @@ export interface ModelPickerInput {
   effort?: EffortLevel;
   defaults?: { modelSettings: ModelSettings; fallback?: EffortLevel };
   setDefault?: boolean;
+  /** `Nn` in `uBe`: the session ultracode flag. */
+  ultracode?: boolean;
+  /** `dg()` behind `ZI`: the session's dynamic-workflow feature flag. */
+  workflowsEnabled?: boolean;
 }
 
 /** uBe, 24k7d6mw [617998,624627), UTF-16; source closure and host differences in W232. */
 export function modelPickerRequest(models: readonly string[], current: string, effort?: EffortLevel, setDefault = true,
-  defaults?: ModelPickerInput['defaults']): TerminalPromptRequest {
+  defaults?: ModelPickerInput['defaults'], ultracode?: ModelPickerInput['ultracode'],
+  workflowsEnabled?: boolean): TerminalPromptRequest {
   return { title: MODEL_PICKER_TITLE, message: modelPickerCaption(),
     choices: models.map(model => ({ label: model, value: model, description: modelPickerRowDescription(model, current) })),
-    modelPicker: { current, setDefault, ...(effort === undefined ? {} : { effort }), ...(defaults === undefined ? {} : { defaults }) } };
+    modelPicker: { current, setDefault, ...(effort === undefined ? {} : { effort }), ...(defaults === undefined ? {} : { defaults }),
+      ...(ultracode === true ? { ultracode } : {}), ...(workflowsEnabled === false ? { workflowsEnabled } : {}) } };
 }
 
 /** uBe ys/Cr/dr plus W3n/lc, yygmb66g [34632,40138), UTF-16. */
@@ -229,6 +245,8 @@ export class ModelPicker {
 
   /** uBe's effort footer, 24k7d6mw [622900,624627), UTF-16. */
   footer(): string[] {
-    return [`${modelPickerEffortLine(this.effort)}  Left/Right adjust`, ...(this.effort === 'max' ? [MAX_EFFORT_NOTE] : [])];
+    const suffix = modelPickerUltracodeSuffix(this.input.ultracode === true, this.input.workflowsEnabled !== false);
+    return [`${modelPickerEffortLine(this.effort)}  Left/Right adjust${suffix}`,
+      ...(this.effort === 'max' ? [MAX_EFFORT_NOTE] : [])];
   }
 }

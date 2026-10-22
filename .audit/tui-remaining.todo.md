@@ -626,3 +626,12 @@ Explicitly out of scope for this loop:
       the interactive queue projects `bashMode`. Not ported: telemetry, `markCameBack`, the Vim caret mapping,
       queued images. Unit 85/85, focused 67/67, compiled 11/11 at identity `32877cf3…`. See
       `research/ports/W280-queued-shell-pull.md`.
+- [x] W281 model picker ultracode suffix (`VC`/`ZI` chunk-9vcaezw1.js 5819/5771, `Nn` selector
+      chunk-24k7d6mw.js 619077, the suffix at 623257): the effort line ends with
+      ` · Ultracode on (/effort)` while the session flag and the workflow gate agree. The per-model
+      `xhigh` half of `VC` has no local table, so the gate is `config.ultracode` plus
+      `features.workflow`, passed from all three picker call sites. Re-reading the producer corrects
+      W232: the picker's accept path (`w9` 894465) clears `mainLoopModelForSession`, so the synthetic
+      `Current model`/`Base model` rows and the override line belong to the per-request `model`
+      field (`applyModel`, chunk-rx2nah4x.js 501705) and stay out. Unit 6/6, focused 5/5, compiled
+      10/10 at identity `86ca6473…`. See `research/ports/W281-model-picker-ultracode.md`.
