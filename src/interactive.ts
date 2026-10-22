@@ -86,6 +86,8 @@ import { RELOAD_PLUGINS_DECLINED, diffPluginServers, lspToolChange, pluginCacheW
   pluginReloadSummary, reloadPluginsForced } from './reload-plugins.js';
 import { branchFailureMessage, branchMessage, branchTitle, customBranchTitle, deriveFirstPrompt,
   type BranchPromptSources } from './branch.js';
+import { SUBTASK_COORDINATOR, SUBTASK_DISABLED, SUBTASK_FIRST_TURN, SUBTASK_USAGE,
+  subtaskCoordinator, subtaskForkLine } from './subtask.js';
 import { STATS_PANEL_TITLE, STATS_RANGE_LABELS, activityHeatmap, nextUsageRange, readUsageSessions, usagePanelText, usageStats, type UsageRange } from './usage-panel.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
@@ -187,6 +189,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /continue   Resume an interrupted turn
 /compact    Summarize completed history
 /fork       Fork completed history into a new session
+/subtask <task>  Send a subagent off with your full context; its result comes back here
 /branch [NAME]  Branch the conversation here and continue in the new branch
 /background [PROMPT]  Fork this session into a detached background task
 /rewind N   Branch conversation at completed turn N (files stay as they are; alias: /undo)
@@ -2723,6 +2726,28 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           } catch (error) {
             output.write(branchFailureMessage(error) + '\n');
           }
+          continue;
+        }
+        if (prompt === '/subtask' || prompt.startsWith('/subtask ')) {
+          // Source `m` (chunk-57v1bkyr.js 15000): trim the argument, refuse an empty one, spawn a
+          // fork child through `Zjt` (chunk-940nvk4p.js 1241) seeded with the whole conversation,
+          // and report `${OR} forked ${name} (${id.slice(-4)})`. The spawn does not wait; the
+          // child's result arrives on the child-agent event stream this loop already drains.
+          const task = prompt.slice('/subtask'.length).trim();
+          if (task === '') { output.write(SUBTASK_USAGE + '\n'); continue; }
+          // `Zjt` refuses a coordinator session before it looks at anything else.
+          if (subtaskCoordinator(process.env, { interactive: terminal !== undefined, remote: false })) {
+            output.write(SUBTASK_COORDINATOR + '\n'); continue;
+          }
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn before starting a subtask');
+          if (!activeRuntime.launchSubtask) throw new Error(SUBTASK_DISABLED);
+          const launched = await withTurn(signal => activeRuntime.launchSubtask!(session.config, session.id, task, signal,
+            session.messages));
+          if (launched.kind === 'unavailable') {
+            output.write((launched.reason === 'no-conversation' ? SUBTASK_FIRST_TURN : SUBTASK_DISABLED) + '\n');
+            continue;
+          }
+          output.write(subtaskForkLine(launched.name, launched.agentId) + '\n');
           continue;
         }
         if (prompt === '/fork' || prompt === '/clear' || prompt.startsWith('/rewind')) {

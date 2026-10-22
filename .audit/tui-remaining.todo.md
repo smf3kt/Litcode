@@ -561,3 +561,14 @@ Explicitly out of scope for this loop:
       footer gains the recovered `? for shortcuts` row ahead of the local hints, dropped below a
       23-cell half-row. Unit 82/82 + 2 new, focused 37/37, compiled 10/10 at identity
       `947f4a82…`. See `research/ports/W274-help-key.md`.
+- [x] W275 `/subtask <task>` (registration `ojt` chunk-sfn1dbxq.js 1638723; body `m`
+      chunk-57v1bkyr.js 15000; fork spawn `Zjt` chunk-940nvk4p.js 1241, name hint `_` 4214;
+      coordinator gate `xa` chunk-vj0cwgx.js 758; glyph `OR` chunk-3cynezh1.js 65963): an empty
+      argument prints `Usage: /subtask \<task\>`, a spawn before any completed turn prints
+      `Cannot start a subtask before the first conversation turn`, and a spawn otherwise writes
+      `⑂ forked <name> (<last4>)` while the child runs asynchronously with the whole conversation
+      and the parent's exact tools. New `Runtime.launchSubtask` plus a per-owner registry seam so
+      the spawn does not depend on the messaging tool set; the result returns on the existing
+      child-agent event stream. Not ported: the launch telemetry, `endedByModel`, the worktree
+      result hook, the coordinator surface. Unit 9/9, focused 112/112, compiled 12/12 at identity
+      `5b5e9e2e…`. See `research/ports/W275-subtask.md`.
