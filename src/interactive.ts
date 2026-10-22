@@ -157,12 +157,12 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /hooks      View hook configurations for tool events
 /sessions [QUERY]  List/search workspace sessions by title, model or UUID
 /resume [UUID|QUERY]  Resume a matching session or choose from a local list
-/rename TITLE  Set the current session title
+/rename TITLE  Set the current session title (alias: /name)
 /skills     List available skills
 /agents     List configured local agent types
 /mcp        Show configured MCP servers and adapter limitations
 /mcp-reconnect [SERVER]  Reconnect one server in place, or all servers into a new session
-/tasks      Show workspace task dependencies and readiness
+/tasks      Show workspace task dependencies and readiness (alias: /bashes)
 /workflows  Browse running and completed workflows
 /cron       Show scheduled prompts in the active session
 /loop [interval] [prompt]  Repeat a prompt or command on an interval (e.g. /loop 5m /foo)
@@ -179,7 +179,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /compact    Summarize completed history
 /fork       Fork completed history into a new session
 /background [PROMPT]  Fork this session into a detached background task
-/rewind N   Branch conversation at completed turn N (files stay as they are)
+/rewind N   Branch conversation at completed turn N (files stay as they are; alias: /undo)
 /checkpoint NAME  Associate a file snapshot with the current completed turn
 /checkpoint-recover  Resolve a proven interrupted restore; changed files stay preserved
 /rewind N --files  Preview files and history together (N=0 means initial history)
@@ -192,15 +192,33 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /theme [NAME] Preview, choose and save a terminal theme
 /thinking [on|off] Toggle or set thinking in a new session with completed history
 /plan       Start a read-only session
-/permissions  Manage allow and deny tool permission rules
+/permissions  Manage allow and deny tool permission rules (alias: /allowed-tools)
 /permissions MODE  Start a session in default/plan/acceptEdits/ask/bypass mode
 /editor     Edit the current draft in VISUAL/EDITOR (Ctrl+G at a terminal)
 /config     Browse and change local settings
 /config editor=normal|vim  Save and apply the input editor mode
 /vim        Open the Editor mode setting
-/clear      Start a new session without changing existing logs
-/exit       Close the interactive session
+/clear      Start a new session without changing existing logs (aliases: /reset, /new)
+/exit       Close the interactive session (alias: /quit)
 Other text is sent as a task.`;
+
+/**
+ * Recovered aliases from the `local-jsx` registrations (chunk-sfn1dbxq.js): `rename` -> `name`
+ * 1165018, `tasks` -> `bashes` 1167415, `permissions` -> `allowed-tools` 1636668, `exit` -> `quit`
+ * 1647455, `clear` -> `reset`, `new` 1121013, `rewind` -> `checkpoint`, `undo` 1640413. The
+ * vendor's `resume` alias `continue` is not taken here because this host's `/continue` resumes an
+ * interrupted turn, `config` -> `settings` is not taken because `/settings` does not exist, and
+ * `rewind`'s `checkpoint` alias is dropped because this host has a real `/checkpoint`.
+ */
+export const COMMAND_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+  name: 'rename', bashes: 'tasks', 'allowed-tools': 'permissions', quit: 'exit',
+  reset: 'clear', new: 'clear', undo: 'rewind',
+});
+
+/** The canonical command for a typed name, or the name itself. */
+export function canonicalCommand(name: string): string {
+  return Object.hasOwn(COMMAND_ALIASES, name) ? COMMAND_ALIASES[name]! : name;
+}
 
 /** Recovered `O9n` (chunk-fyhzvvp0.js offset 5041): a pending permission prompt
  *  raises Notification after `aVt` = 6000 ms (chunk-sfn1dbxq.js offset
@@ -1227,7 +1245,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       promptQueueChanged();
       let prompt = item.prompt.trim();
       if (!prompt) continue;
-      if (item.source === 'user' && (prompt === '/exit' || prompt === '/quit')) break;
+      if (item.source === 'user' && prompt.startsWith('/')) {
+        const typed = parseSlashCommand(prompt);
+        if (typed !== undefined) {
+          const canonical = canonicalCommand(typed.name);
+          if (canonical !== typed.name) prompt = `/${canonical}` + (typed.args === '' ? '' : ` ${typed.args}`);
+        }
+      }
+      if (item.source === 'user' && prompt === '/exit') break;
       if (item.source === 'event') {
         if (session.awaitingResponse) { options.status.write('Event deferred until the interrupted turn is continued.\n'); queue.push(item); }
         else {

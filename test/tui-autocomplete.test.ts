@@ -404,6 +404,16 @@ test('ctrl+p and ctrl+n walk the selection, and the draft keeps it by row', () =
   } finally { composer.tui.close(); }
 });
 
+test('the recovered aliases resolve to their canonical rows', () => {
+  const rows: [string, string][] = [['name', 'rename'], ['bashes', 'tasks'], ['allowed-tools', 'permissions'],
+    ['quit', 'exit'], ['reset', 'clear'], ['new', 'clear'], ['undo', 'rewind']];
+  for (const [alias, canonical] of rows) {
+    const found = commandSuggestions(`/${alias}`, alias.length + 1, TUI_COMMANDS);
+    assert.equal(found[0]?.name, canonical, alias);
+    assert.equal(found[0]?.matchedAlias, alias);
+  }
+});
+
 test('the recovered usage aliases resolve to the usage row', () => {
   for (const alias of ['cost', 'stats']) {
     const rows = commandSuggestions(`/${alias}`, alias.length + 1, TUI_COMMANDS);

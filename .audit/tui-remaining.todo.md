@@ -504,6 +504,13 @@ Next up, scoped but not started:
       models, `No model usage data available` when empty. Flat list instead of the dashboard's
       two-column four-row scroll window; no accent colour. Unit 11/11, focused 39/39, compiled
       14/14 at identity `e5431057…`. See `research/ports/W267-model-rows.md`.
+- [x] W268 recovered command aliases (chunk-sfn1dbxq.js registrations): `name` 1165018,
+      `bashes` 1167415, `allowed-tools` 1636668, `quit` 1647455, `reset`/`new` 1121013,
+      `undo` 1640413. Typed aliases rewrite to the canonical command before dispatch, appear on the
+      canonical composer rows, and are named in `COMMAND_HELP`. Not taken: `continue` (host
+      `/continue` resumes a turn), `settings` (no such command), `checkpoint` (real local command),
+      and the `plugin`/`pause-memory` groups. Unit 4/4 + 24/24, focused 69/69, compiled 4/4 at
+      identity `9c620fc2…`. See `research/ports/W268-command-aliases.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any
