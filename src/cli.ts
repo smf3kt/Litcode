@@ -324,6 +324,7 @@ function newConfig(
   if (settings.enableWorkflows !== undefined) config.enableWorkflows = settings.enableWorkflows;
   if (settings.workflowKeywordTriggerEnabled !== undefined) config.workflowKeywordTriggerEnabled = settings.workflowKeywordTriggerEnabled;
   if (settings.emojiCompletionEnabled !== undefined) config.emojiCompletionEnabled = settings.emojiCompletionEnabled;
+  if (settings.respondToBashCommands !== undefined) config.respondToBashCommands = settings.respondToBashCommands;
   if (settings.disableAgentView !== undefined) config.disableAgentView = settings.disableAgentView;
   if (settings.theme !== undefined) config.theme = settings.theme;
   if (settings.statusLine !== undefined) config.statusLine = settings.statusLine;

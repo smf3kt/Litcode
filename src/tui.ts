@@ -35,6 +35,8 @@ import { Keymap, chordForAction, chordSequence, contextStack, type TuiContext } 
 import { HELP_FOOTER_HINT, HELP_HINT_MIN_COLUMNS } from './help-panel.js';
 import { STASH_HINT_TIMEOUT_MS, STASH_RESTORED, STASH_RESTORED_TIMEOUT_MS, StashHintGate,
   hasUsedStash, markStashUsed, stashHintText } from './tui-stash.js';
+import { BASH_STDERR_TAG, BASH_STDOUT_TAG, SHELL_MODE_LABEL, bashInputText, bashPointerMark,
+  readBashInput, readBashResult, switchedToBash, type ComposerMode } from './tui-bash-mode.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
   createSelection, dragSpan, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
@@ -246,7 +248,7 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
 }
 
 type TuiEvents = {
-  submit: [text: string, attachment?: import('./terminal.js').PromptDiffSelection]; interrupt: []; exit: []; pasteRejected: [bytes: number]; inputError: [error: Error];
+  submit: [text: string, attachment?: import('./terminal.js').PromptDiffSelection, mode?: ComposerMode]; interrupt: []; exit: []; pasteRejected: [bytes: number]; inputError: [error: Error];
   action: [action: string];
 };
 
@@ -351,13 +353,16 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       && cached.progressGeneration === this.progressGeneration && cached.stamp === stamp
       && cached.detailed === detailed) return cached.rows;
     this.documentRenderer ??= new TuiDocumentRenderer();
-    const body = entry.tool ? toolResultRows(entry.tool, detailed, columns)
+    // Source `hXe`/`wp` (chunk-phg89898.js 3761/3801): a drained result row is its two stream
+    // blocks, not one bracketed string; the input row is the command alone behind its `! `.
+    const bash = this.bashEntryRows(entry, columns);
+    const body = bash ?? (entry.tool ? toolResultRows(entry.tool, detailed, columns)
       : entry.duration ? this.documentRenderer.renderElement(jsx(ProgressCompletion, {message:entry.duration, formatTime:this.timeFormatter.format}, entry.duration.uuid), columns,
       {theme:this.theme.current, themeOverrides:this.theme.overrides}) : document ? this.documentRenderer.renderMarkdown(entry.markdown ?? entry.text, columns,
       { speaker: entry.speaker, streaming: entry.streaming, messageKey: entry.messageKey,
         hideTrailingLine: entry.hideTrailingLine, maxProseWidth: this.maxProseWidth,
         syntaxHighlightingDisabled: this.syntaxHighlightingDisabled, theme: this.theme.current,
-        themeOverrides: this.theme.overrides }) : wrapEntryRows(entry, columns);
+        themeOverrides: this.theme.overrides }) : wrapEntryRows(entry, columns));
     // Source `Va`: the stamp is its own dim row above the message, so it never reflows the body.
     const stampRows = stamp === '' ? [] : document
       ? this.documentRenderer.renderElement(jsx(n, {dimColor:true, children:stamp}, 'stamp'),
@@ -369,6 +374,34 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       themeGeneration: this.theme.generation, progressGeneration:this.progressGeneration, stamp, detailed, rows });
     return rows;
   };
+
+  /**
+   * Source `umt` (chunk-phg89898.js 3225) and `Qi`/`wXe` (chunk-crw1fpdp.js 3923): the two row
+   * shapes a drained command leaves. `umt` reads the `<bash-input>` tag back out and paints the
+   * command behind a `bashBorder` `! `; `wp` splits the result row into its `<bash-stdout>` and
+   * `<bash-stderr>` blocks, and the stdout block keeps the code-block style the source gives it.
+   * A row that carries neither tag falls through to the ordinary wrappers.
+   */
+  private bashEntryRows(entry: TranscriptEntry, columns: number): RenderedRow[] | undefined {
+    const command = readBashInput(entry.text);
+    if (command !== null) {
+      return this.bashTagRows(`${bashPointerMark()}${command}`, 'bashMessageBackgroundColor', columns);
+    }
+    if (!entry.text.startsWith(`<${BASH_STDOUT_TAG}`) && !entry.text.startsWith(`<${BASH_STDERR_TAG}`)) return undefined;
+    const { stdout, stderr } = readBashResult(entry.text);
+    const rows = this.bashTagRows(stdout, 'bashMessageBackgroundColor', columns);
+    const error = stderr.trim();
+    if (error !== '') rows.push(...this.bashTagRows(error, 'bashMessageBackgroundColor', columns, 'error'));
+    return rows;
+  }
+
+  /** One painted block: the source's `backgroundColor`, `paddingRight: 1` row over the body. */
+  private bashTagRows(text: string, background: string, columns: number, color?: string): RenderedRow[] {
+    const rendered = this.documentRenderer!.renderElement(jsx(n, { color, backgroundColor: background,
+      children: text }, 'bash'), columns, { theme: this.theme.current, themeOverrides: this.theme.overrides });
+    return rendered.map(row => ({ text: row.text, ansi: row.ansi, continuation: row.continuation,
+      indent: row.indent, end: row.end, elidedSeparator: row.elidedSeparator }));
+  }
 
   /**
    * Source `Os` decides which messages carry a stamp and `Va` which clock it shows: the transcript
@@ -520,6 +553,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private workflowKeywordTriggerEnabled = true;
   /** Source `Kl().emojiCompletionEnabled !== false`: the `:name:` typeahead is on by default. */
   private emojiCompletionEnabled = true;
+  /**
+   * Source `bZ` (chunk-24k7d6mw.js 84911) and `QE` (815713): the composer's bash mode. A `!` typed
+   * into an empty composer, or prepended with the caret at 0, turns the draft into a shell
+   * command; submitting, Escape, or backspace/delete/ctrl+u at caret 0 returns it to prompt mode.
+   * The draft carries no `!` itself, so the pointer (`uT`) and the border (`Rzt`) are the mode's
+   * only surface on the row.
+   */
+  private composerMode: ComposerMode = 'prompt';
   /** The `@path` index (`mnn`), filled in the background from the workspace's file list. */
   private readonly fileIndex = new FileIndex();
   private fileIndexStarted = false;
@@ -1104,6 +1145,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   /**
+   * Source `processBashCommand` 14067 and `Qi`/`wXe` (chunk-phg89898.js 3881): the result row a
+   * drained command leaves. The command's own `<bash-input>` row went in at submit; this is the
+   * `<bash-stdout>`/`<bash-stderr>` pair, which the row renderer splits back into its two streams.
+   */
+  appendBashResult(result: string): void {
+    this.append({ kind: 'system', text: result });
+  }
+
+  /**
    * The fold holds the in-flight preview while the turn is inside a tool call or the tail
    * line is still incomplete (`vNt`: `streamingToolUses > 0 || tailBlank`). The completed
    * paint in `endAssistantMessage` is never held, so the finished text always lands.
@@ -1634,12 +1684,46 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       && !this.keys.pendingChord && keyboardCohesion() && this.queueEditIndex !== null
       && (action.type !== 'return' || (!action.meta && !action.shift))
       && this.popSelectedQueuedPrompt()) return;
-    const transition = reduceEditorWithUndo(this.editor, action, { ...this.options,
+    // Source `QE` (chunk-24k7d6mw.js 815713): Escape, Delete, or Backspace/ctrl+u with the caret at
+    // 0 leaves bash mode before the edit runs, so the key that emptied the command does not also
+    // type into a prompt composer. The recovered handler reads a key event's `name`; this host's
+    // reducer reads an `EditorCommand`, so Escape arrives as the interrupt command.
+    if (this.composerMode === 'bash' && this.screen === 'chat' && !this.dialog && !this.keys.pendingChord
+      && (this.editor.cursor === 0 || action.type === 'interrupt')
+      && (action.type === 'interrupt' || action.type === 'delete' || action.type === 'backspace'
+        || (action.type === 'killLineStart'))) {
+      this.setComposerMode('prompt');
+      if (action.type === 'interrupt') return;
+    }
+    const draftBefore = { text: this.editor.text, cursor: this.editor.cursor };
+    // Source `bZ` (84911): a `!` typed or pasted into the empty composer, or prepended with the
+    // caret at 0, switches to bash mode and never enters the value; `J1o` gates the prepend case on
+    // the previous caret and a one-character growth.
+    let modeAction = action;
+    if (this.screen === 'chat' && !this.dialog
+      && (action.type === 'insert' || action.type === 'paste') && this.composerMode === 'prompt') {
+      if (this.editor.text === '' && action.text.startsWith('!')) {
+        this.setComposerMode('bash');
+        modeAction = { type: action.type, text: action.text.slice(1) };
+      } else if (this.editor.cursor === 0 && action.text.startsWith('!')
+        && switchedToBash({ nextValue: '!' + this.editor.text, value: this.editor.text,
+          cursorOffset: 0, mode: this.composerMode })) {
+        this.setComposerMode('bash');
+        modeAction = { type: action.type, text: action.text.slice(1) };
+      }
+    }
+    // Source `mSt`'s `setBash` unwind (84762): Backspace on an empty bash composer drops the mode
+    // instead of deleting anything.
+    if (this.composerMode === 'bash' && action.type === 'backspace' && this.editor.text === '') {
+      this.setComposerMode('prompt');
+      this.render();
+      return;
+    }
+    const transition = reduceEditorWithUndo(this.editor, modeAction, { ...this.options,
       navigationColumns: this.conversationColumns() - 2,
       undoPush: (text, cursor, pastedContents, ownSnapshot) => this.pushUndo(text, cursor, pastedContents, ownSnapshot),
       pasteOwner:this.pasteOwner,terminalRows:this.options.output.rows ?? 24 }, this.undo);
     if (transition.effects.some(effect => effect.type === 'submit')) this.inputHistory.add({display:this.editor.text,pastedContents:this.editor.pastedContents});
-    const draftBefore = { text: this.editor.text, cursor: this.editor.cursor };
     // Source input subscription: a keystroke that completes a known `:name:` swaps the
     // whole shortcode for its glyph before anything else reads the draft.
     const inline = this.emojiCompletionEnabled
@@ -1661,11 +1745,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.relayEdit(action, draftBefore, sequence);
     if(transition.effects.some(effect=>effect.type==='submit')||action.type==='interrupt'&&!this.editor.running)this.vim.reset();
     const submitted = transition.effects.find(effect => effect.type === 'submit');
+    // The mode the submit was typed in, read before the exit below returns the composer to prompt.
+    const beforeMode = this.composerMode;
+    // Source submit exit 1492848: the composer returns to prompt mode before anything reads the
+    // emptied draft, so a bash submit leaves no `shell mode` row behind.
+    if (submitted) this.setComposerMode('prompt');
     // Source submit path (chunk-24k7d6mw.js 1492930): once the prompt is accepted and it is not a
     // slash command, a stashed draft comes back into the emptied composer with `Draft restored`.
     if (submitted !== undefined && !submitted.text.trim().startsWith('/')) this.restoreStashedDraft();
     if (submitted) this.transcript = reduceTranscript(this.transcript,
-      { type: 'append', entry: { kind: 'user', text: submitted.text, timestamp: Date.now() } },
+      { type: 'append', entry: { kind: 'user', text: beforeMode === 'bash' ? bashInputText(submitted.text) : submitted.text,
+        timestamp: Date.now() } },
       { rows: this.viewportSize().rows, total: this.transcriptTotal(this.viewportSize().columns) });
     this.render();
     for (const effect of transition.effects) {
@@ -1673,7 +1763,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       else if (effect.type === 'submit') {
         const promptUuid = randomUUID(), selection = this.diffSelection.take(effect.text, promptUuid);
         this.diffAttachmentFocused = false;
-        this.emit('submit', effect.text, selection && this.diffPanel ? { sessionId: this.diffPanel.sessionId, promptUuid, selection } : undefined);
+        this.emit('submit', effect.text, selection && this.diffPanel ? { sessionId: this.diffPanel.sessionId, promptUuid, selection } : undefined,
+          beforeMode);
       }
       else if (effect.type === 'interrupt') this.emit('interrupt');
       else if (effect.type === 'pasteGone') this.showPasteGoneNotice(effect.text);
@@ -2766,6 +2857,23 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
   }
 
+  /**
+   * Source `bZ`/`QE` (chunk-24k7d6mw.js 84305/815713): the composer's mode. Bash mode paints the
+   * pointer `!` and the `bashBorder`, and its value carries no marker of its own. `replace` swaps
+   * the draft in the same transition, so a typed `!` never enters the value.
+   */
+  private setComposerMode(mode: ComposerMode, replace?: string): void {
+    const changed = mode !== this.composerMode;
+    this.composerMode = mode;
+    if (replace !== undefined) {
+      this.undo.clear();
+      this.replaceDraft({ ...this.editor, text: replace, cursor: replace.length,
+        historyIndex: this.editor.history.length, historyDraft: replace, historyDraftPastes: this.editor.pastedContents });
+      this.publishDraft();
+    }
+    if (changed) this.render();
+  }
+
   private stashDraft(): void {
     const current = this.editor.text.trim() ? { text:this.editor.text,cursor:this.editor.cursor,
       pastedContents:structuredClone(this.editor.pastedContents) } : undefined;
@@ -3759,7 +3867,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
-        this.renderer.appContext, this.renderer.selectionInstance) } : undefined, banner);
+        this.renderer.appContext, this.renderer.selectionInstance) } : undefined, banner, this.composerMode);
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
 
@@ -3844,6 +3952,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    */
   private statusFooter(columns: number): Array<string | FooterPart> {
     if(this.gestures.hint)return [this.gestures.hint.slice(0,columns)];
+    // Source `Sce` 754626 and `LVe` 764050: bash mode replaces the row with its own label. The
+    // dense footer paints `shell mode` dim and italic; this host's single footer row keeps the
+    // label in the same `bashBorder` the sparse hint uses, so the mode reads the same either way.
+    if (this.composerMode === 'bash' && this.screen === 'chat') return [{ text: SHELL_MODE_LABEL, color: 'bashBorder' }];
     const attachment = this.diffSelection.pending;
     if (attachment) return [pad(`${this.diffAttachmentFocused ? '> ' : ''}${attachment.lineCount} ${attachment.lineCount === 1 ? 'line' : 'lines'} from diff${attachment.filePath ? ` in ${attachment.filePath}` : ''}`, columns)];
     // The recovered row replaces the other indicators with `? for shortcuts`; this host has no

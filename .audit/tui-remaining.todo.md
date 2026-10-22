@@ -590,3 +590,19 @@ Explicitly out of scope for this loop:
       `Draft restored`. The latch is a settings-document key here. Not ported: the `input_stash`
       telemetry, cross-session slot persistence, `l9n` launch warnings. Unit 5/5, focused 91/91,
       compiled 11/11 at identity `13ec59f0…`. See `research/ports/W277-stash.md`.
+- [x] W278 composer bash mode (`x_`/`sI`/`Jgt`/`J1o`/`BEe` chunk-k0f477m1.js 686/727/797/833/615;
+      `bZ` 84305 with its unwind 84746 and entry 84909, `gSt` 85305, `QE` 815713, `uT` 815556,
+      `Rzt` 814893, `Pzt` 815001, `nP` 815008, `Sce` 754674, `LVe` 764095, submit reset 1492848,
+      user-row wrap 1310609, `tTe` row 1522655, `y4` 1368887, `showDrainedShellLine` 1372925
+      chunk-24k7d6mw.js; `processBashCommand` `V` chunk-w79px1ss.js 14067; `$t`
+      chunk-ts42ykgs.js 24080; `fIe`/`UHr` chunk-3yqee67r.js 1148/2503; `umt`/`hXe`/`wp`
+      chunk-phg89898.js 109053/109547/109629; `fwe`/`Dpe`/`lG`/`cG` chunk-gsnbskq4.js
+      8822/8947; `Zxs` chunk-3cynezh1.js 66130; `Mle`/`tye` chunk-sfn1dbxq.js
+      4357386/4382813; `wXe` chunk-crw1fpdp.js 3923): `!` enters bash mode from an empty or
+      caret-0 composer without entering the value, the pointer becomes `!` in `bashBorder`, the
+      footer reads `shell mode`, escape/delete/backspace at caret 0 leave it, submit resets the
+      mode and records the `<bash-input>` row, the drained command runs through `run_command`,
+      and its result row splits back into `<bash-stdout>`/`<bash-stderr>`. The
+      `respondToBashCommands` switch rides the four settings points. Not ported: the live
+      drained-shell row, PowerShell, `backgroundTaskId`, the IDE-selection handoff. Unit 10/10,
+      focused 38/38, compiled 10/10 at identity `b6aa68f4…`. See `research/ports/W278-bash-mode.md`.
