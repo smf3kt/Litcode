@@ -2366,6 +2366,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.render();
       } else if (command === 'submit') this.advanceDialog(dialog, { selected: [] });
       else {
+        // Source `effortSlider:toggleUltracode` (chunk-76jkr621.js 22794): tab flips the
+        // flag and leaves the dialog open; the axis answer reports it as `toggled`. The
+        // decoder reports tab as a `key` action with an empty command, so match its sequence.
+        if (adjust.toggle !== undefined
+          && ((action.type === 'insert' && action.text === adjust.toggle.key)
+            || (action.type === 'key' && sequence === '\t' && adjust.toggle.key === 'tab'))) {
+          adjust.toggle = { ...adjust.toggle, on: !adjust.toggle.on };
+          this.render(); return;
+        }
         const keyed = dialog.request.keys?.find(entry => action.type === 'insert' && action.text === entry.key);
         if (keyed !== undefined) this.advanceDialog(dialog, { selected: [], key: keyed.key });
       }
@@ -2961,7 +2970,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private advanceDialog(dialog: ActiveDialog, answer: TerminalPromptAnswer): void {
     const adjust = dialog.request.adjust;
     const settled = adjust === undefined ? answer
-      : { ...answer, adjusted: adjust.values[dialog.adjustIndex] ?? adjust.initial };
+      : { ...answer, adjusted: adjust.values[dialog.adjustIndex] ?? adjust.initial,
+        ...(adjust.toggle === undefined ? {} : { toggled: adjust.toggle.on }) };
     const groups = dialog.request.groups ?? [];
     if (!groups.length) { dialog.finish(settled); return; }
     const group = groups[dialog.step];
@@ -3389,7 +3399,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.documentRenderer ??= new TuiDocumentRenderer();
       const frame = Math.floor((Date.now() - (dialog.adjustClock?.startedAt ?? Date.now())) / 100);
       const scale = this.documentRenderer.renderElement(
-        axis.render(axis.values[dialog.adjustIndex] ?? axis.initial, frame, this.prefersReducedMotion === true), columns,
+        axis.render(axis.values[dialog.adjustIndex] ?? axis.initial, frame, this.prefersReducedMotion === true,
+          axis.toggle === undefined ? undefined : { toggle: axis.toggle.on }), columns,
         { theme: this.theme.current, themeOverrides: this.theme.overrides });
       const visible = ['', ...scale.map(row => row.ansi)].slice(0, height);
       while (visible.length < height) visible.push('');

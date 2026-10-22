@@ -1280,10 +1280,16 @@ export type TerminalPromptAdjust = {
   values: readonly string[];
   initial: string;
   guide?: string;
+  /**
+   * Source `effortSlider:toggleUltracode` (chunk-76jkr621.js 22794): a key that flips a boolean
+   * on the axis without resolving the dialog. The renderer reads `adjustToggle.on`.
+   */
+  toggle?: { key: string; label: string; on: boolean };
 } & (
   | { kind: 'line'; label(value: string): string }
   /** It, chunk-76jkr621.js [22174,30123), UTF-16: a standalone axis owns the modal body. */
-  | { kind: 'slider'; render(value: string, frame: number, reducedMotion: boolean): unknown }
+  | { kind: 'slider'; render(value: string, frame: number, reducedMotion: boolean,
+    state?: { readonly toggle?: boolean }): unknown }
 );
 export interface TerminalPromptKey {
   /** The character that triggers it. */
@@ -1301,6 +1307,8 @@ export interface TerminalPromptAnswer {
   text?: string;
   /** The value the request's `adjust` axis held when the dialog resolved. */
   adjusted?: string;
+  /** The `adjust.toggle` state when the dialog resolved, when the axis declared one. */
+  toggled?: boolean;
   /** The key from the request's `keys` that resolved the dialog, when one did. */
   key?: string;
   /** Present for grouped requests: one answer per group, in group order. */

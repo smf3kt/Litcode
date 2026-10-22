@@ -174,3 +174,42 @@ test('request effort honors concrete and auto overrides while preserving the cho
     if (previous === undefined) delete process.env.LLM_EFFORT; else process.env.LLM_EFFORT = previous;
   }
 });
+
+test('the ultracode row appears only with workflows, and tab flips it without closing', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode(raw: boolean): void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const decoded = screen(100, 24);
+  const output = new Writable({ write(chunk, _encoding, done) { decoded.write(String(chunk)); done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 });
+  const previous = process.env.LLM_EFFORT;
+  delete process.env.LLM_EFFORT;
+  const tui = new TuiTerminal({ input, output, prefersReducedMotion: true }).start();
+  const key = (value: string) => input.emit('data', value);
+  try {
+    // Without dynamic workflows the axis keeps its old shape and declares no toggle.
+    assert.equal(effortSliderRequest('high').adjust?.toggle, undefined);
+    let pending = tui.prompt(effortSliderRequest('high'), new AbortController().signal);
+    assert.equal(decoded.lines().some(row => row.includes('Ultracode')), false);
+    key('\x1b');
+    assert.equal(await pending, undefined);
+
+    // With them, the row is drawn off, tab flips it on, and the axis answer carries it.
+    pending = tui.prompt(effortSliderRequest('high', { workflowsEnabled: true }), new AbortController().signal);
+    assert.ok(decoded.lines().some(row => row.includes('Ultracode') && row.includes('off')));
+    key('\t');
+    assert.ok(decoded.lines().some(row => row.includes('Ultracode  on')));
+    assert.ok(decoded.lines().some(row => row.includes('dynamic workflows on every task')));
+    key('\r');
+    assert.deepEqual(await pending, { selected: [], adjusted: 'high', toggled: true });
+
+    // An existing flag starts on, and tab turns it back off.
+    pending = tui.prompt(effortSliderRequest('low', { workflowsEnabled: true, ultracode: true }),
+      new AbortController().signal);
+    assert.ok(decoded.lines().some(row => row.includes('Ultracode  on')));
+    key('\t\r');
+    assert.deepEqual(await pending, { selected: [], adjusted: 'low', toggled: false });
+  } finally {
+    tui.close();
+    if (previous === undefined) delete process.env.LLM_EFFORT; else process.env.LLM_EFFORT = previous;
+  }
+});
