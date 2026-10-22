@@ -446,6 +446,15 @@ Next up, scoped but not started:
       vendor-only task kinds are not produced, and piped sessions keep the durable `task_list`
       report. Unit 6/6 + 1/1, focused 33/33, compiled 7/7 at identity `c44dd8ab…`. See
       `research/ports/W259-tasks-panel.md`.
+- [x] W260 `/btw` (`kmt`, chunk-d3s5r8h5.js 1289): the side-question panel. One call with the
+      tool set empty and `tool_choice` none over the conversation plus prior side exchanges and
+      the recovered reminder; `N` joins the answer text and appends the tool-call or truncation
+      note, or returns a synthetic tool-call/API-error line. The answer never joins the
+      transcript. The read-only panel shows `/btw <question>` and the answer; `[`/`]` browse,
+      `x` clears, `c` copies via OSC 52, Escape closes. Not ported: the `f` fork action, the
+      retry spinner and the remote thin-client dispatch; piped sessions print the answer. Unit
+      8/8 + 3/3, focused 157/157, compiled 8/8 at identity `d8e66304…`. See
+      `research/ports/W260-btw.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

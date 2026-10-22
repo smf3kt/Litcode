@@ -2389,10 +2389,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.render(); return;
     }
     // The request's own keys take the focused row, the way the recovered picker's `s`
-    // accepts a session-only pick while `enter` also makes it the default.
-    const keyed = textEntry ? undefined : dialog.request.keys?.find(entry => action.type === 'insert' && action.text === entry.key);
-    if (keyed !== undefined && !dialog.notesEditing && choices.length) {
-      this.advanceDialog(dialog, { selected: [choices[dialog.index]!.value], key: keyed.key });
+    // accepts a session-only pick while `enter` also makes it the default. A read-only
+    // panel with no rows has no input to own the keys, so `/btw` can bind browsing there.
+    const readOnlyKeyed = dialog.request.readOnly === true && choices.length === 0;
+    const keyed = textEntry && !readOnlyKeyed ? undefined : dialog.request.keys?.find(entry => action.type === 'insert' && action.text === entry.key);
+    if (keyed !== undefined && !dialog.notesEditing && (choices.length || readOnlyKeyed)) {
+      this.advanceDialog(dialog, { selected: choices.length ? [choices[dialog.index]!.value] : [], key: keyed.key });
       return;
     }
     // Source `a3` binds plain `n` on the choice list to the notes input.

@@ -2002,7 +2002,7 @@ test('a custom theme slot paints the suggestion band for every spelling an overr
     while (!predicate()) { if (Date.now() >= deadline) throw new Error('Band colour did not update'); await delay(25); }
   };
   try {
-    input.emit('data', '/');
+    input.emit('data', '/co');
     assert.ok(screenLines(output).some(row => row.includes('/config')), screenLines(output).join('\n'));
     await until(() => writes.includes('\u001b[38;2;1;2;3m'));
     writeTheme('ansi256(42)'); await until(() => writes.includes('\u001b[38;5;42m'));

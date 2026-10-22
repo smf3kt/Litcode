@@ -29,6 +29,8 @@ import { STRUCTURED_OUTPUT_NUDGE } from './structured-output.js';
 import { selectedDiffMessage, type DiffSelection } from './diff-selection.js';
 import { effortOverride } from './effort-command.js';
 import { automaticCompactionEnabled, contextBlockingLimit, manualCompactionEnabled } from './compaction-policy.js';
+import { classifySideQuestion, sideQuestionHistoryText, sideQuestionUserContent,
+  type SideQuestionExchange, type SideQuestionOutcome } from './side-question.js';
 
 export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
 Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
@@ -1047,6 +1049,31 @@ export class Agent {
     const config = this.session.config;
     return { inputTokens: await this.provider.count(this.request(), signal), contextTokens: config.contextTokens,
       compactAt: config.compactAt, maxTokens: config.maxTokens, counting: config.gateway?.tokenCounting ?? 'provider' };
+  }
+
+  /**
+   * `kmt`, chunk-d3s5r8h5.js [1289,3457), UTF-16: one tool-free call over the conversation plus the
+   * prior side exchanges. The reminder tells the model not to act; `skipTranscript` is why nothing
+   * is appended here. The recovered fork-context placeholder (`x` at 3457) has no host counterpart
+   * because every host message is already paired; the recovered refusal fallback stays out.
+   */
+  async askSideQuestion(question: string, exchanges: readonly SideQuestionExchange[],
+    signal: AbortSignal): Promise<SideQuestionOutcome> {
+    const history = exchanges.flatMap(exchange => [
+      { role: 'user' as const, content: [{ type: 'text' as const, text: exchange.question }] },
+      { role: 'assistant' as const, content: [{ type: 'text' as const, text: sideQuestionHistoryText(exchange.response) }] },
+    ]);
+    const request = this.request([...this.session.messages, ...history,
+      { role: 'user', content: sideQuestionUserContent(question) }]);
+    // `canUseTool` denies every tool in the recovered call; an empty tool set is the same answer.
+    request.tools = [];
+    request.tool_choice = { type: 'none' };
+    try {
+      return classifySideQuestion([await this.provider.complete(request, signal)]);
+    } catch (error) {
+      if (signal.aborted) return { response: null, synthetic: false };
+      throw error;
+    }
   }
 
   async compactContext(signal: AbortSignal = new AbortController().signal, customInstructions?: string): Promise<void> {
