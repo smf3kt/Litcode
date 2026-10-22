@@ -51,10 +51,12 @@ async function drive(commands: readonly string[]) {
 test('the recovered alias table maps every taken name', () => {
   assert.deepEqual(COMMAND_ALIASES, {
     name: 'rename', bashes: 'tasks', 'allowed-tools': 'permissions', quit: 'exit',
-    reset: 'clear', new: 'clear', undo: 'rewind',
+    reset: 'clear', new: 'clear', undo: 'rewind', plugins: 'plugin', marketplace: 'plugin',
   });
   assert.equal(canonicalCommand('bashes'), 'tasks');
   assert.equal(canonicalCommand('tasks'), 'tasks');
+  assert.equal(canonicalCommand('plugins'), 'plugin');
+  assert.equal(canonicalCommand('marketplace'), 'plugin');
   assert.equal(canonicalCommand('toString'), 'toString');
 });
 

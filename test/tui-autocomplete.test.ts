@@ -406,7 +406,8 @@ test('ctrl+p and ctrl+n walk the selection, and the draft keeps it by row', () =
 
 test('the recovered aliases resolve to their canonical rows', () => {
   const rows: [string, string][] = [['name', 'rename'], ['bashes', 'tasks'], ['allowed-tools', 'permissions'],
-    ['quit', 'exit'], ['reset', 'clear'], ['new', 'clear'], ['undo', 'rewind']];
+    ['quit', 'exit'], ['reset', 'clear'], ['new', 'clear'], ['undo', 'rewind'],
+    ['plugins', 'plugin'], ['marketplace', 'plugin']];
   for (const [alias, canonical] of rows) {
     const found = commandSuggestions(`/${alias}`, alias.length + 1, TUI_COMMANDS);
     assert.equal(found[0]?.name, canonical, alias);

@@ -79,6 +79,9 @@ import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
 import { contextPanelText, contextUsageFromCounts } from './context-panel.js';
 import { STATUS_PANEL_TITLE, appVersion, latestSessionTitle, statusPanelRows, statusPanelText } from './status-panel.js';
 import { MCP_PANEL_TITLE, mcpPanelRows, mcpPanelText, mcpToolCounts } from './mcp-panel.js';
+import { PLUGIN_PANEL_TITLE, filterPluginEntries, pluginFilteredEmpty, pluginPanelRows,
+  pluginPanelText, type PluginListFilter, type PluginPanelEntry } from './plugin-panel.js';
+import { readPluginStore } from './plugins.js';
 import { STATS_PANEL_TITLE, STATS_RANGE_LABELS, activityHeatmap, nextUsageRange, readUsageSessions, usagePanelText, usageStats, type UsageRange } from './usage-panel.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
@@ -162,6 +165,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /agents     List configured local agent types
 /mcp        Show configured MCP servers and adapter limitations
 /mcp-reconnect [SERVER]  Reconnect one server in place, or all servers into a new session
+/plugin list [--enabled|--disabled]  List installed local plugins (aliases: /plugins, /marketplace)
 /tasks      Show workspace task dependencies and readiness (alias: /bashes)
 /workflows  Browse running and completed workflows
 /cron       Show scheduled prompts in the active session
@@ -212,7 +216,7 @@ Other text is sent as a task.`;
  */
 export const COMMAND_ALIASES: Readonly<Record<string, string>> = Object.freeze({
   name: 'rename', bashes: 'tasks', 'allowed-tools': 'permissions', quit: 'exit',
-  reset: 'clear', new: 'clear', undo: 'rewind',
+  reset: 'clear', new: 'clear', undo: 'rewind', plugins: 'plugin', marketplace: 'plugin',
 });
 
 /** The canonical command for a typed name, or the name itself. */
@@ -1961,6 +1965,43 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (row === undefined || row.locked !== undefined) continue;
             modes = { ...modes, [row.name]: nextSkillMode(modes[row.name] ?? 'on') };
             focus = rows.indexOf(row);
+          }
+          continue;
+        }
+        if (prompt === '/plugin' || prompt.startsWith('/plugin ') || prompt === '/plugins' ||
+          prompt === '/marketplace' || prompt.startsWith('/marketplace ')) {
+          // Source `fc` (chunk-tw1h5pks.js 216895): the Installed tab's list. This host keeps one
+          // workspace-local store (`.harness/plugins`), so every row's scope is `project`; the
+          // marketplace, Discover, enable/disable, install and uninstall arms have no local
+          // producer here and stay out.
+          const typed = parseSlashCommand(prompt);
+          const argument = typed?.args ?? '';
+          const listArgument = argument.replace(/^list\s*/, '');
+          const filter: PluginListFilter | undefined = listArgument === '--enabled' ? 'enabled'
+            : listArgument === '--disabled' ? 'disabled' : undefined;
+          if (argument !== '' && !argument.startsWith('list')) {
+            throw new Error('Use /plugin list [--enabled|--disabled]');
+          }
+          const store = readPluginStore(session.config.workspace, session.config.plugins);
+          const entries: PluginPanelEntry[] = store.entries.map(entry => ({ name: entry.name,
+            version: entry.version, scope: 'project', verified: !entry.modified, enabled: store.enabled }));
+          if (!terminal?.prompt) {
+            output.write(pluginPanelText(filterPluginEntries(entries, filter)) + '\n');
+            continue;
+          }
+          const FILTERS: readonly (PluginListFilter | undefined)[] = [undefined, 'enabled', 'disabled'];
+          let active = filter;
+          let notice: string | undefined;
+          for (;;) {
+            const shown = filterPluginEntries(entries, active);
+            const body = shown.length === 0 && active !== undefined && entries.length > 0
+              ? pluginFilteredEmpty(active) : pluginPanelText(shown);
+            const answer = await withTurn(signal => readDialog({ title: PLUGIN_PANEL_TITLE,
+              message: notice === undefined ? body : `${body}\n\n${notice}`, readOnly: true,
+              keys: [{ key: 'f', label: active === undefined ? 'filter enabled' : active === 'enabled' ? 'filter disabled' : 'clear filter' }] }, signal));
+            if (answer?.key !== 'f') break;
+            active = FILTERS[(FILTERS.indexOf(active) + 1) % FILTERS.length];
+            notice = undefined;
           }
           continue;
         }
