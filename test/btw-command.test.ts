@@ -21,8 +21,9 @@ test('/btw answers with no tools and keeps the side answer out of the transcript
     complete: async request => {
       requests.push(request as unknown as Record<string, unknown>);
       return { id: 'msg_side', type: 'message', role: 'assistant', model: 'test',
-        content: [{ type: 'text', text: 'Blue light scatters.' }], stop_reason: 'end_turn',
-        stop_sequence: null, usage: { input_tokens: 5, output_tokens: 3 } };
+        content: [{ type: 'text', text: 'Blue light scatters.', citations: null }], stop_reason: 'end_turn',
+        stop_sequence: null, usage: { input_tokens: 5, output_tokens: 3, cache_creation: null, cache_creation_input_tokens: null, cache_read_input_tokens: null, inference_geo: null, output_tokens_details: null, server_tool_use: null, service_tier: null },
+        container: null, diagnostics: null, stop_details: null };
     },
   };
   const session = Session.open(workspace, { config });
@@ -83,8 +84,9 @@ test('bare /btw asks for the question in a text dialog', async () => {
   const provider: ModelProvider = {
     count: async () => 0,
     complete: async () => ({ id: 'msg_side', type: 'message', role: 'assistant', model: 'test',
-      content: [{ type: 'text', text: 'Because Rayleigh scattering.' }], stop_reason: 'end_turn',
-      stop_sequence: null, usage: { input_tokens: 5, output_tokens: 3 } }),
+      content: [{ type: 'text', text: 'Because Rayleigh scattering.', citations: null }], stop_reason: 'end_turn',
+      stop_sequence: null, usage: { input_tokens: 5, output_tokens: 3, cache_creation: null, cache_creation_input_tokens: null, cache_read_input_tokens: null, inference_geo: null, output_tokens_details: null, server_tool_use: null, service_tier: null },
+      container: null, diagnostics: null, stop_details: null }),
   };
   const session = Session.open(workspace, { config });
   const watcher = new Writable({ write(_chunk, _encoding, done) { done(); } });
@@ -129,8 +131,9 @@ test('a second /btw threads the first side exchange into the call', async () => 
     complete: async request => {
       const call = messagesSeen.push(request.messages as unknown[]);
       return { id: `msg_side_${call}`, type: 'message', role: 'assistant', model: 'test',
-        content: [{ type: 'text', text: `answer ${call}` }], stop_reason: 'end_turn',
-        stop_sequence: null, usage: { input_tokens: 5, output_tokens: 3 } };
+        content: [{ type: 'text', text: `answer ${call}`, citations: null }], stop_reason: 'end_turn',
+        stop_sequence: null, usage: { input_tokens: 5, output_tokens: 3, cache_creation: null, cache_creation_input_tokens: null, cache_read_input_tokens: null, inference_geo: null, output_tokens_details: null, server_tool_use: null, service_tier: null },
+        container: null, diagnostics: null, stop_details: null };
     },
   };
   const session = Session.open(workspace, { config });
