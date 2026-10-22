@@ -31,13 +31,14 @@ export function renderedRowStartOffsets(state: Pick<EditorState, 'text' | 'curso
 }
 
 export function layoutInput(state: Pick<EditorState, 'text' | 'cursor'>, columns: number,
-  maxRows: number, vim?: {mode:string;anchor:number|null}, terminalFocused = true): EditorLayout & { viewportStartRow: number; rowStartOffsets: number[] } {
+  maxRows: number, vim?: {mode:string;anchor:number|null}, terminalFocused = true, showCursor = true): EditorLayout & { viewportStartRow: number; rowStartOffsets: number[] } {
   const cursor = inputCursor(state.text, columns, state.cursor);
   const rows = Math.max(1, Math.floor(maxRows));
   const start = cursor.getViewportStartLine(rows);
   const position = cursor.getPosition();
-  const lines = cursor.render(vim&&vim.mode!=='INSERT'?' ':'', '',
-    (text:string)=>vim&&vim.mode!=='INSERT'?inputInvert(terminalFocused)(text):text,undefined,rows,
+  // wr.showCursor, s7977spq [7424,11062), UTF-16, gates the painted cursor as well as its glyph.
+  const lines = cursor.render(showCursor&&vim&&vim.mode!=='INSERT'?' ':'', '',
+    (text:string)=>vim&&vim.mode!=='INSERT'?inputInvert(terminalFocused && (showCursor || vim.anchor !== null))(text):text,undefined,rows,
     vim?.anchor??undefined,vim?.mode==='VISUAL LINE',true).split('\n');
   return { lines, cursorRow: position.line - start, cursorColumn: position.column,
     hiddenRows: Math.max(0, cursor.measuredText.lineCount - rows), viewportStartRow: start,

@@ -543,6 +543,109 @@ test('the clear chords repaint the screen and keep the draft and its undo step',
   } finally { tui.close(); }
 });
 
+test('keyboard task footer focus follows history, navigation, edits and task lifetime', async () => {
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 }); watchScreen(output);
+  const actions: string[] = [], submissions: string[] = [];
+  const tui = new TuiTerminal({ input, output, prefersReducedMotion: true,
+    commands: [{ name: '/model', description: 'Choose model', kind: 'command' },
+      { name: '/memory', description: 'Memory', kind: 'command' }],
+    onAction: action => actions.push(action), onSubmit: text => submissions.push(text) }).start();
+  const key = (text: string) => input.emit('data', text);
+  const footer = () => screenLines(output).at(-1)!;
+  const selected = () => {
+    const column = footer().indexOf('1 shell');
+    return column >= 0 && Boolean(decoded.get(output)!.buffer.active.getLine(29)!.getCell(column)!.isInverse());
+  };
+  let jobs = [{ id: 'job', kind: 'run', state: 'running', command: 'owned job', description: '' }];
+  try {
+    tui.bindBackgroundWork(() => jobs.length, () => {}, () => ({ jobs, agents: [], crons: [] }));
+    assert.ok(footer().includes('↓ to manage'), footer());
+    key('older prompt\r'); key('current draft'); key('\x1b[A');
+    assert.equal(tui.state.text, 'older prompt');
+    key('\x1b[B'); assert.equal(tui.state.text, 'current draft'); assert.equal(selected(), false);
+    key('\x1b[B'); assert.equal(selected(), true); assert.ok(footer().includes('enter to view tasks'), footer());
+    assert.equal(Reflect.get(Reflect.get(Reflect.get(decoded.get(output)!, '_core'), 'coreService'), 'isCursorHidden'), true);
+    key('\x1b[D\x1b[C'); assert.equal(selected(), true, 'adjacent navigation does not wrap');
+    key('\x1b[A'); assert.equal(selected(), false); assert.equal(tui.state.text, 'current draft');
+    key('\x1b[B\x1b'); await delay(60); assert.equal(selected(), false); assert.equal(tui.state.text, 'current draft');
+    key('\x1b[Bz'); assert.equal(tui.state.text, 'current draftz'); assert.equal(selected(), false);
+    key('\x15a\x1b[13;2ub\x1b[A\x1b[B'); assert.equal(selected(), false);
+    key('\x1b[B'); assert.equal(selected(), true); key('\x1b[A');
+    key('\x01\x0b\x7f\x01\x0b/m'); assert.equal(selected(), false); key('\x1b[B'); assert.equal(selected(), false);
+    key('\x15' + 'x'.repeat(130) + '\x01\x1b[B'); assert.equal(selected(), false);
+    key('\x1b[B'); assert.equal(selected(), true);
+    jobs = []; tui.backgroundWorkChanged(); assert.equal(selected(), false);
+    key('\r'); assert.equal(submissions.at(-1), 'x'.repeat(130));
+    jobs = [{ id: 'job', kind: 'run', state: 'running', command: 'owned job', description: '' }]; tui.backgroundWorkChanged();
+    key('vim draft'); tui.setEditorMode('vim'); key('\x1b'); await delay(60);
+    const vimCursorInverse = () => {
+      const row = screenLines(output).findIndex(line => line.includes('❯ vim draft'));
+      return Boolean(decoded.get(output)!.buffer.active.getLine(row)!.getCell(10)!.isInverse());
+    };
+    assert.equal(vimCursorInverse(), true);
+    key('\x1b[B'); assert.equal(selected(), true); assert.equal(vimCursorInverse(), false);
+    key('h'); key('l'); assert.equal(selected(), true);
+    key('k'); assert.equal(selected(), false); assert.equal(vimCursorInverse(), true);
+    key('j'); assert.equal(selected(), true);
+    key('j'); assert.ok(actions.includes('chat:openTasks')); assert.equal(selected(), false);
+    assert.equal(tui.state.text, 'vim draft');
+  } finally { tui.close(); decoded.get(output)!.dispose(); }
+});
+
+test('keyboard footer opening hands the input batch to the live dialog and clears selection on cancel', async () => {
+  const { backgroundTaskRequest } = await import('../src/tasks-panel.js');
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, sourceInputGestures: true, prefersReducedMotion: true }).start();
+  const key = (text: string) => input.emit('data', text);
+  const read = () => ({ jobs: [{ id: 'job', kind: 'run', state: 'running', command: 'owned job', description: '' }], agents: [], crons: [] });
+  const controller = new AbortController();
+  const panels: Promise<unknown>[] = [];
+  tui.on('action', action => { if (action === 'chat:openTasks') panels.push(tui.prompt({
+    ...backgroundTaskRequest(read()), backgroundTasks: read }, controller.signal)); });
+  try {
+    tui.bindBackgroundWork(() => 1, () => {}, read); tui.setRunning(true); key('retained');
+    for (const open of ['\r', '\x1b[B', '\x0e']) {
+      key('\x1b[B'); key(open + 'x');
+      assert.equal(tui.currentScreen, 'dialog', 'the trailing x in the opener batch never stops a task');
+      key('\x03'); assert.equal(await panels.at(-1), undefined);
+      assert.equal(tui.state.text, 'retained');
+      assert.ok(!screenLines(output).at(-1)!.includes('enter to view tasks'));
+    }
+    key('\x1b[B'); key('\x1b'); await delay(60);
+    assert.equal(tui.state.text, 'retained'); assert.equal(panels.length, 3);
+    const { DEFAULT_KEYBINDINGS } = await import('../src/terminal.js');
+    let interrupts = 0;
+    tui.on('interrupt', () => { interrupts++; });
+    for (const bindings of [{}, DEFAULT_KEYBINDINGS]) {
+      tui.setKeybindings(bindings); tui.setRunning(true);
+      key('\x1b[B');
+      assert.ok(screenLines(output).at(-1)!.includes('enter to view tasks'));
+      const before = interrupts;
+      key('\x03');
+      assert.equal(interrupts, before + 1, 'Ctrl-C keeps its global interrupt owner while Footer is selected');
+      assert.equal(tui.state.interruptRequested, true);
+      assert.equal(tui.state.text, 'retained');
+      key('\x03'); assert.equal(interrupts, before + 1, 'the running turn receives only one interrupt');
+      assert.equal(panels.length, 3); key('\x1b[A');
+    }
+    tui.setKeybindings(DEFAULT_KEYBINDINGS);
+    for (const open of ['\r', '\x1b[B']) {
+      key('\x1b[B'); key('\x1b[D\x1b[C'); key(open + 'x');
+      assert.equal(tui.currentScreen, 'dialog', 'explicit decoder defaults preserve the selected footer owner');
+      key('\x03'); assert.equal(await panels.at(-1), undefined);
+      assert.equal(tui.state.text, 'retained');
+    }
+    tui.setKeybindings({ '\x1b[15~': 'down', '\x1b[17~': 'submit' });
+    key('\x1b[15~\x1b[17~x'); assert.equal(tui.currentScreen, 'dialog');
+    key('\x03'); assert.equal(await panels.at(-1), undefined);
+    assert.equal(tui.state.text, 'retained');
+  } finally { controller.abort(); tui.close(); decoded.get(output)!.dispose(); }
+});
+
 test('the background footer uses native hover and release hits without consuming the draft', async () => {
   for (const mouseTracking of ['full', 'scroll', 'off'] as const) {
     const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });

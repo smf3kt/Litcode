@@ -47,16 +47,15 @@ test('source double Escape stores folded raw history while Vim and running cance
 });
 
 test('confirmation timers reset at modal, configuration and editor handoff, then close without later output',async()=>{
+  const previous=process.env.VISUAL;process.env.VISUAL='/usr/bin/true';
   const f=fixture('tui');const tui=f.terminal as TuiTerminal;try{
     await f.key('\u0003');const dialog=tui.prompt({message:'Answer',allowText:true},new AbortController().signal);await f.key('answer\r');await dialog;
     await f.key('\u0003');assert.equal(f.exits(),0);assert.equal(f.hint(),'Press Ctrl-C again to exit');
     tui.setEditorMode('vim');assert.equal(f.hint(),undefined);tui.setEditorMode('normal');
     await f.key('\u0003');tui.setKeybindings({'\u0003':null});assert.equal(f.hint(),undefined);tui.setKeybindings();
-    const previous=process.env.VISUAL;process.env.VISUAL='/usr/bin/true';
-    try{await f.key('\u0003');await tui.editDraft(new AbortController().signal);assert.equal(f.hint(),undefined);await f.key('\u0003');assert.equal(f.exits(),0);}
-    finally{if(previous===undefined)delete process.env.VISUAL;else process.env.VISUAL=previous;}
+    await f.key('\u0003');await tui.editDraft(new AbortController().signal);assert.equal(f.hint(),undefined);await f.key('\u0003');assert.equal(f.exits(),0);
     f.close();const before=f.output();await delay(850);assert.equal(f.output(),before);
-  }finally{f.close();}
+  }finally{f.close();if(previous===undefined)delete process.env.VISUAL;else process.env.VISUAL=previous;}
   for(const mode of ['line','tui'] as const){const narrow=fixture(mode,20);try{
     await narrow.key('\u0003');await delay(850);await narrow.key('fresh');
     assert.equal(narrow.lines().some(row=>row.includes('Press Ctrl')),false);assert.equal(narrow.terminal.state.text,'fresh');

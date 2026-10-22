@@ -65,7 +65,7 @@ import { TuiDocumentRenderer } from './tui-document-renderer.js';
 import { Welcome, welcomeDensity } from './tui-welcome.js';
 import { clt, tLo } from './tui-stream-preview.js';
 import { Zqn, l$t } from './tui-preview-visibility.js';
-import { layoutInput } from './tui-input-navigation.js';
+import { inputCursor, layoutInput } from './tui-input-navigation.js';
 import { InputUndo } from './tui-input-undo.js';
 import { InputPaste, expandPastedText, referencedPastes, type InputSnapshot } from './tui-input-paste.js';
 import { ThemeState, parseTheme, themeChoices, type ThemeSetting, type BuiltinTheme } from './tui-theme-state.js';
@@ -338,7 +338,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private diffPointer: { column: number; row: number; moved: boolean } | undefined;
   private footerPointer: { column: number; row: number; moved: boolean } | undefined;
   private readonly diffSelection = new DiffSelectionOwner(() => this.render());
-  private diffAttachmentFocused = false;
+  private footerSelection: 'tasks' | 'ideSelection' | null = null;
   private documentRenderer: TuiDocumentRenderer | undefined;
   private welcomeRenderer: TuiDocumentRenderer | undefined;
   private welcomeRows: string[] = [];
@@ -746,7 +746,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   bindDiffPanel(session: import('./session.js').Session): void {
     if (this.diffPanel?.sessionId === session.id) return;
     this.diffPanel?.close();
-    this.diffPointer = undefined; this.diffSelection.dismiss(); this.diffAttachmentFocused = false;
+    this.diffPointer = undefined; this.diffSelection.dismiss(); this.footerSelection = null;
     this.renderer?.clearNativeSelection();
     this.diffPanel = new DiffPanel(session, () => {
       if (!this.closed) {
@@ -1489,6 +1489,23 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return snapshot === undefined ? undefined : backgroundFooterLabel(snapshot);
   }
 
+  /** rh/pf/Wp, 24k7d6mw [870856,871116)/[889030,889398), UTF-16; local rows only. */
+  private moveFooter(direction: -1 | 1, leave = false): boolean {
+    const items = this.footerItems();
+    const index = this.footerSelection === null ? -1 : items.indexOf(this.footerSelection);
+    const next = items[index + direction];
+    if (next !== undefined) { this.footerSelection = next; this.render(); return true; }
+    if (direction < 0 && leave) { this.footerSelection = null; this.render(); return true; }
+    return false;
+  }
+
+  private footerItems(): Array<'tasks' | 'ideSelection'> {
+    if (this.screen !== 'chat' || this.composerMode !== 'prompt' || this.gestures.hint
+      || this.showExpandPasteHint && this.statusNoticeText === undefined) return [];
+    if (this.diffSelection.pending) return ['ideSelection'];
+    return this.backgroundLabel() === undefined ? [] : ['tasks'];
+  }
+
   private showStatusNotice(owner: string, text: string, timeoutMs: number): void {
     this.statusNoticeOwner = owner;
     this.statusNoticeText = text;
@@ -1528,6 +1545,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Input-store subscriptions `ul` and Ire/WR, 24k7d6mw [481135,481165)/[864462,864475), UTF-16.
    * Text mutations share the selector even outside the reducer. */
   private replaceDraft(next: EditorState): void {
+    if (next.text !== this.editor.text) this.footerSelection = null;
     this.editor = next;
     this.refreshExternalEditorHint();
     this.settleWorkflowKeyword();
@@ -1742,7 +1760,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.editor = {...this.editor,pastedContents:{},historyPastes:[],historyDraftPastes:{}};
     this.stashedDraft = undefined; this.searchDraft = {text:'',cursor:0,pastedContents:{}};
     this.diffPanel?.close(); this.diffPanel = undefined;
-    this.diffPointer = undefined; this.diffSelection.dismiss(); this.diffAttachmentFocused = false;
+    this.diffPointer = undefined; this.diffSelection.dismiss(); this.footerSelection = null;
     this.progress.close(); this.progressRenderer?.close();
     this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
     this.unsubscribePermissions?.(); this.unsubscribePermissions = undefined;
@@ -1853,6 +1871,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   dispatch(action: EditorAction, sequence?: string): void {
     if (this.closed || this.editorSuspended || this.editorController) return;
+    if (this.footerSelection !== null && !this.dialog) {
+      const footerAction = action.type === 'submit' ? 'footer:openSelected'
+        : action.type === 'down' ? 'footer:down' : action.type === 'up' ? 'footer:up'
+          : action.type === 'left' ? 'footer:previous' : action.type === 'right' ? 'footer:next' : undefined;
+      if (footerAction !== undefined) { this.applyAction(footerAction); return; }
+    }
     // Source `Er`/`at.enter()`: Enter on an open suggestion accepts it first. The
     // accepted draft ends with a space, so the follow-up submit passes this gate.
     if ((action.type === 'return' || action.type === 'submit') && !this.keys.pendingChord
@@ -1880,6 +1904,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       && !this.keys.pendingChord && keyboardCohesion() && this.queueEditIndex !== null
       && (action.type !== 'return' || (!action.meta && !action.shift))
       && this.popSelectedQueuedPrompt()) return;
+    // bS/Yo/JA, 24k7d6mw [834853,835119)/[791954,796268)/[871891,871990), UTF-16.
+    if (action.type === 'down' && this.screen === 'chat' && !this.dialog
+      && this.editor.historyIndex === this.editor.history.length
+      && this.editor.cursor > this.editor.text.lastIndexOf('\n')
+      && this.autocompleteState().suggestions.length <= 1) {
+      const cursor = inputCursor(this.editor.text, this.conversationColumns() - 2, this.editor.cursor);
+      if (cursor.getPosition().line === cursor.measuredText.lineCount - 1 && this.moveFooter(1)) return;
+    }
     // Source `QE` (chunk-24k7d6mw.js 815713): Escape, Delete, or Backspace/ctrl+u with the caret at
     // 0 leaves bash mode before the edit runs, so the key that emptied the command does not also
     // type into a prompt composer. The recovered handler reads a key event's `name`; this host's
@@ -1957,7 +1989,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (effect.type === 'exit') { this.close(); this.emit('exit'); }
       else if (effect.type === 'submit') {
         const promptUuid = randomUUID(), selection = this.diffSelection.take(effect.text, promptUuid);
-        this.diffAttachmentFocused = false;
+        this.footerSelection = null;
         this.emit('submit', effect.text, selection && this.diffPanel ? { sessionId: this.diffPanel.sessionId, promptUuid, selection } : undefined,
           beforeMode);
       }
@@ -2034,7 +2066,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private inputLayout(columns: number, rows: number) {
     const maximum = Math.max(1, Math.min(this.options.promptRows ?? Math.max(3, Math.floor(rows / 2) - 5), rows - 4));
-    const body = layoutInput(this.editor, columns - 2, maximum,this.vimEnabled?{mode:this.vim.mode,anchor:this.vim.anchor}:undefined,this.focus.focused);
+    const body = layoutInput(this.editor, columns - 2, maximum,this.vimEnabled?{mode:this.vim.mode,anchor:this.vim.anchor}:undefined,
+      this.focus.focused, this.footerSelection === null);
     // Source text input: an empty draft draws its `placeholder` dim instead of the value.
     const queueHint = this.queuePlaceholder();
     if (queueHint !== undefined) {
@@ -2068,7 +2101,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Source `nn(La,{context:"Autocomplete",isActive:ya&&!Wr})`: the list owns
     // Tab/Escape/arrows while it is visible, and the chat context keeps the rest.
     const autocomplete: TuiContext[] = this.autocompleteVisible() ? ['Autocomplete'] : [];
-    return [...new Set([...autocomplete, ...(this.diffAttachmentFocused ? ['Footer' as const] : []), ...native, 'Chat', 'Scroll', 'Global'] as TuiContext[])];
+    return [...new Set([...autocomplete, ...(this.footerSelection !== null ? ['Footer' as const] : []), ...native, 'Chat', 'Scroll', 'Global'] as TuiContext[])];
   }
 
   /** Slash suggestions for the current draft, or an empty list outside command entry. */
@@ -2359,8 +2392,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         continue;
       }
       if (this.handleSourceSearch(action)) continue;
-      if(action.type==='return'&&(this.keys.pendingChord||this.screen!=='chat')){
-        this.routeKey(action.sequence,action.meta||action.shift?'newline':'submit');continue;
+      if(action.type==='return'&&(this.keys.pendingChord||this.screen!=='chat'||this.footerSelection!==null)){
+        const owner = this.dialog;
+        this.routeKey(action.sequence,action.meta||action.shift?'newline':'submit');
+        if (this.dialog !== owner) { this.decoder.discardPending(); handedOff = true; }
+        continue;
       }
       if (action.type === 'mouse') {
         const owner = this.dialog;
@@ -2368,11 +2404,18 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         if (this.dialog !== owner) { this.decoder.discardPending(); handedOff = true; }
         continue;
       }
-      if (action.type === 'key') { this.routeKey(action.sequence, action.command); continue; }
-      if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord || this.diffAttachmentFocused)) {
+      if (action.type === 'key') {
+        const owner = this.dialog;
+        this.routeKey(action.sequence, action.command);
+        if (this.dialog !== owner) { this.decoder.discardPending(); handedOff = true; }
+        continue;
+      }
+      if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord || this.footerSelection !== null)) {
         for (const character of action.text) {
           if (this.closed || this.editorController) return;
+          const owner: ActiveDialog | undefined = this.dialog;
           this.routeKey(character);
+          if (this.dialog !== owner) { this.decoder.discardPending(); handedOff = true; break; }
         }
         continue;
       }
@@ -2384,7 +2427,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         // Source input handler (chunk-24k7d6mw.js 880989): an empty draft turns `?` into the help
         // panel before `typeText` runs; a non-empty draft still inserts the character.
         this.emit('action', 'app:toggleHelp');
-      } else this.dispatch(action, action.type === 'insert' ? action.text : undefined);
+      } else {
+        const owner = this.dialog;
+        this.dispatch(action, action.type === 'insert' ? action.text : undefined);
+        if (this.dialog !== owner) { this.decoder.discardPending(); handedOff = true; }
+      }
     }
     if (!this.closed && this.decoder.pendingStandaloneEscape) {
       this.escapeTimer = setTimeout(() => {
@@ -2808,6 +2855,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private routeKey(sequence: string, command?: EditorCommand): void {
     if (this.closed) return;
+    if (this.footerSelection !== null && this.vimEnabled && this.vim.mode === 'NORMAL') {
+      const action = sequence === 'h' ? 'footer:previous' : sequence === 'j' ? 'footer:down'
+        : sequence === 'k' ? 'footer:up' : sequence === 'l' ? 'footer:next' : undefined;
+      if (action !== undefined) { this.applyAction(action); return; }
+    }
+    if (this.footerSelection !== null && sequence === '\x1b' && !this.keys.pendingChord
+      && this.handleKey(sequence, command)) return;
     if ((!command || !['yank', 'yankPop', 'killLineStart', 'killLineEnd', 'killWordForward', 'killWordBackward', 'killWORDBackward'].includes(command))
       && !this.keys.pendingChord) this.resetKillMode();
     if(sequence==='\x1b'&&this.keys.pendingChord){this.handleKey(sequence,command);return;}
@@ -2832,9 +2886,6 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private handleKey(sequence: string, command?: EditorCommand): boolean {
     if (command === 'newline') { this.dispatch({ type: command }, sequence); return true; }
-    if (sequence === '\x1b[B' && this.diffSelection.pending && !this.editor.text) {
-      this.diffAttachmentFocused = true; this.render(); return true;
-    }
     // Source `Js` hardcodes ctrl+n/ctrl+p beside the registry's arrow bindings.
     if ((sequence === '\u000e' || sequence === '\u0010') && !this.keys.pendingChord
       && this.autocompleteVisible()) {
@@ -3023,10 +3074,21 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (action !== 'chat:defaultToNewerModel') this.resetKillMode();
     switch (action) {
       case 'footer:close':
-        if (!this.diffAttachmentFocused) return false;
-        this.diffAttachmentFocused = false; this.diffSelection.dismiss(); this.render(); return true;
-      case 'footer:up': case 'footer:clearSelection':
-        this.diffAttachmentFocused = false; this.render(); return true;
+        if (this.footerSelection !== 'ideSelection') return false;
+        this.footerSelection = null; this.diffSelection.dismiss(); this.render(); return true;
+      case 'footer:up': this.moveFooter(-1, true); return true;
+      case 'footer:previous': this.moveFooter(-1); return true;
+      case 'footer:next': this.moveFooter(1); return true;
+      case 'footer:down':
+        if (this.moveFooter(1)) return true;
+        if (this.footerSelection !== 'tasks') return true;
+      case 'footer:openSelected':
+        if (this.footerSelection === 'tasks') {
+          this.footerSelection = null; this.openBackgroundTasks(); this.render();
+        }
+        return true;
+      case 'footer:clearSelection':
+        this.footerSelection = null; this.queueEditIndex = null; this.render(); return true;
       case 'selection:copy': this.copySelection(); return true;
       case 'selection:extendLeft': this.extendSelection(-1, 0); return true;
       case 'selection:extendRight': this.extendSelection(1, 0); return true;
@@ -3995,6 +4057,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private render(): void {
     if (this.screen !== 'chat') this.footerPointer = undefined;
+    if (this.footerSelection !== null && (this.dialog || this.sourceSearch?.snapshot.searching
+      || this.sourcePicker?.snapshot.searching || !this.footerItems().includes(this.footerSelection))) this.footerSelection = null;
     if (!this.isTTY || !this.started || this.closed || this.editorSuspended) return;
     // A queue that changed without a repaint (the loop drained a row) still owns the selection.
     this.syncQueueSelection();
@@ -4116,7 +4180,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     });
     this.renderer.renderChat(frame, prompt.lines,
       width => this.statusFooter(width),
-      columns, rows, { row: target, column: prompt.cursorColumn, visible: true }, this.running,
+      columns, rows, { row: target, column: prompt.cursorColumn, visible: this.footerSelection === null }, this.running,
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
         this.renderer.appContext, this.renderer.selectionInstance) } : undefined, banner, this.composerMode,
@@ -4259,14 +4323,21 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // label in the same `bashBorder` the sparse hint uses, so the mode reads the same either way.
     if (this.composerMode === 'bash' && this.screen === 'chat') return [{ text: SHELL_MODE_LABEL, color: 'bashBorder' }];
     const attachment = this.diffSelection.pending;
-    if (attachment) return [pad(`${this.diffAttachmentFocused ? '> ' : ''}${attachment.lineCount} ${attachment.lineCount === 1 ? 'line' : 'lines'} from diff${attachment.filePath ? ` in ${attachment.filePath}` : ''}`, columns)];
+    if (attachment) return [pad(`${this.footerSelection === 'ideSelection' ? '> ' : ''}${attachment.lineCount} ${attachment.lineCount === 1 ? 'line' : 'lines'} from diff${attachment.filePath ? ` in ${attachment.filePath}` : ''}`, columns)];
     const background = this.backgroundLabel();
     const shortcuts = background === undefined && this.screen === 'chat' && !this.running && this.editor.text === ''
       && Math.floor(columns / 2) >= HELP_HINT_MIN_COLUMNS ? `${HELP_FOOTER_HINT}  ` : '';
+    const taskHint = background === undefined || this.statusLineSetting && this.screen === 'chat' ? ''
+      : this.footerSelection === 'tasks'
+        ? `${chordForAction('footer:openSelected', 'Footer', 'enter')} to view tasks`
+        : '↓ to manage';
+    const taskHints = [this.running ? `${chordForAction('app:interrupt', 'Global', 'ctrl+c')} to interrupt` : '',
+      taskHint].filter(Boolean).join(' · ');
     const hints = this.statusLineSetting && this.screen === 'chat' ? ''
-      : this.running && this.screen === 'chat'
-        ? `${chordForAction('app:interrupt', 'Global', 'ctrl+c')} to interrupt`
-        : shortcuts + this.statusHints();
+      : background !== undefined ? taskHints
+        : this.running && this.screen === 'chat'
+          ? `${chordForAction('app:interrupt', 'Global', 'ctrl+c')} to interrupt`
+          : shortcuts + this.statusHints();
     const chip = this.permissionMode === undefined ? '' : modeChip(this.permissionMode);
     const chipWidth = chip === '' ? 0 : cellWidth(chip) + 3;
     const backgroundWidth = background === undefined ? 0 : cellWidth(background) + 3;
@@ -4278,7 +4349,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const parts: Array<string | FooterPart> = [];
     if (chip !== '') parts.push({ text: chip, color: modeColorSlot(this.permissionMode!) });
     if (background !== undefined) parts.push({ text: background, color: 'background',
-      onClick: this.openBackgroundTasks });
+      selected: this.footerSelection === 'tasks', onClick: this.openBackgroundTasks });
     parts.push(left + ' '.repeat(gap) + shown);
     return parts;
   }
