@@ -1,6 +1,6 @@
 // @ts-nocheck
-// Source bodies and await-only adaptations: research/ports/W44-external-editor-copies.json.
-export function initializeExternalEditor({a,MN,h,oi,ie,I,lPe,A8e,sce,HF,tJ,Ub}) {
+// Source bodies: research/ports/W44-external-editor-copies.json. Resolver binding: research/ports/W287-external-editor-hint.md.
+export function initializeExternalEditor({a,MN,h,oi,ie,I,lPe,A8e,sce,HF,tJ,Ub,resolveEditor}) {
 const zRr=()=>({}),k=()=>"";
 function v(n){return!!MN(n)}
 var L=new Set(["start","cmd","cmd.exe"]);
@@ -18,7 +18,8 @@ var S="# \u2500\u2500\u2500 Write your reply below this line \u2500\u2500\u2500\
 function W(n){let e=n.indexOf(S);if(e===-1)return n;return n.slice(e+S.length).replace(/^\r?\n\r?\n?/,"")}
 function Qe(t,n){let e=t.indexOf(n);return e===-1?t:t.slice(0,e)}
 function Lt(t,n,e=0){let r=0,i=t.indexOf(n,e);while(i!==-1)r++,i=t.indexOf(n,i+1);return r}
-const resolver=new C;const hx=()=>resolver.resolve();
+// C/P/hx, 7tnkhv2k [2499,2908), UTF-16: both consumers read the host's cached selection.
+const resolver=new C;const hx=resolveEditor??(()=>resolver.resolve());
 async function Zie(n,e){let r=ie(),o=oi().get(process.stdout);if(!o)throw Error("Ink instance not found - cannot pause rendering");let c=hx();if(!c)return{content:null};try{r.statSync(n)}catch{return{content:null}}let d=E(c)===void 0;if(d)o.enterAlternateScreen();else o.prepareTerminalForHandoff();try{let g=N[c]??c,u=g.split(" "),m=u[0]??g,p=u.slice(1),l=R(c,n,e),i;{let f=zRr();if(i=await I(m,[...p,...l],{stdio:"inherit",...f}),i.error&&f.cgroup!==void 0)i=await I(m,[...p,...l],{stdio:"inherit"})}if(i.error||i.signal||i.status!==null&&i.status!==0){let f=Ub(c);return{content:null,error:i.error?`Couldn't open ${f} \u2014 ${i.error.message}`:i.signal?`${f} closed unexpectedly (${i.signal})`:`${f} quit unexpectedly (exit code ${i.status})`}}return{content:r.readFileSync(n,{encoding:"utf-8"})}}catch{return{content:null}}finally{if(d)o.exitAlternateScreen();else o.restoreTerminalAfterHandoff()}}
 async function $j(n,e,r,o){let c=ie(),d=lPe();try{let g=e?sce(n,e):n,u=r?k(r):"",m=u+g,p=n.slice(0,o),l=o===void 0?void 0:1+Lt(u,`
 `)+Lt(e?sce(p,e):p,`

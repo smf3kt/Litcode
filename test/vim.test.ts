@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { PassThrough, Writable } from 'node:stream';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createTerminalInput } from '../src/terminal.js';
@@ -40,7 +43,12 @@ test('source Vim operators, counts, dot and visual ranges submit through both te
 
 test('source remap timing and registers preserve raw Unicode, folded payloads and undo',async context=>{
   let time=10000;context.mock.method(Date,'now',()=>time);
-  for(const mode of ['line','tui'] as const){const owned=fixture(mode,{jj:'<Esc>',jk:'<Esc>',bad:'<Esc>',xx:'ignored',invalid:42});const {terminal,key,submitted}=owned;
+  const previous={VISUAL:process.env.VISUAL,EDITOR:process.env.EDITOR};
+  const directory=fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR,'tmp') : os.tmpdir(),'vim-editor-'));
+  const script=path.join(directory,'editor.mjs');
+  fs.writeFileSync(script,'process.exit(0);');
+  process.env.VISUAL=process.execPath+' '+script;process.env.EDITOR='unused';
+  try {for(const mode of ['line','tui'] as const){const owned=fixture(mode,{jj:'<Esc>',jk:'<Esc>',bad:'<Esc>',xx:'ignored',invalid:42});const {terminal,key,submitted}=owned;
     try{
       await key('draftj');await key('j');assert.equal(terminal.state.text,'draft');await key('0xiQjk.');assert.equal(terminal.state.text,'QQraft');await key('\r');
       await key('j');time+=1001;await key('j');assert.equal(terminal.state.text,'jj');await key('\r');
@@ -48,18 +56,19 @@ test('source remap timing and registers preserve raw Unicode, folded payloads an
       const raw='one\ntwo\nthree\nfour';await key('\x1b[200~'+raw+'\x1b[201~');await key('\x1b');await key('0dd');assert.deepEqual(terminal.state.pastedContents,{});await key('u');assert.equal(Object.values(terminal.state.pastedContents)[0]?.content,raw);await key('ddp');assert.equal(terminal.state.text,'\n'+raw);await key('\r');
       await key('\x1b');await key('p');assert.equal(terminal.state.text,'\n'+raw);await key('\r');
       assert.deepEqual(submitted,['QQraft','jj','é👩‍💻','\n'+raw,'\n'+raw]);
-      const previous={VISUAL:process.env.VISUAL,EDITOR:process.env.EDITOR};
-      try{
-        for(const executable of ['/usr/bin/true','/usr/bin/false']){
-          process.env.VISUAL=executable;process.env.EDITOR='unused';await key('draftj');
-          await terminal.editDraft(new AbortController().signal);await key('j');assert.equal(terminal.state.text,'draftjj');
-          await key('\u0003');
-        }
-      }finally{for(const [name,value]of Object.entries(previous))if(value===undefined)delete process.env[name];else process.env[name]=value;}
+      for(const status of [0,1]){
+        fs.writeFileSync(script,`process.exit(${status});`);await key('draftj');
+        const result=await terminal.editDraft(new AbortController().signal);
+        if(status===0)assert.equal(result.error,undefined);else assert.match(result.error!,/exit code 1/);
+        await key('j');assert.equal(terminal.state.text,'draftjj');await key('\u0003');
+      }
       let interrupts=0;const unsubscribe=terminal.subscribe({onInterrupt:()=>{interrupts++;}});
       await key('active');await key('\x1b');await key('v');terminal.setRunning(true);await key('\u0003');
       assert.equal(interrupts,1);assert.equal(terminal.state.interruptRequested,true);await key('\u0003');assert.equal(interrupts,1);unsubscribe();terminal.setRunning(false);
     }finally{owned.close();}
+  }}finally{
+    for(const [name,value]of Object.entries(previous))if(value===undefined)delete process.env[name];else process.env[name]=value;
+    fs.rmSync(directory,{recursive:true,force:true});
   }
 });
 

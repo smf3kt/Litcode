@@ -175,7 +175,8 @@ import { acceptanceText, commandSuggestions, emojiRows, maxVisibleSuggestions, s
   suggestionsEmptyMessage, TUI_COMMANDS, type CommandSuggestion,
   type TuiCommand } from './tui-autocomplete.js';
 import { te as symbols } from './tui-symbols.js';
-import { editExternal, openExternalFile, type EditorHandoff, type ExternalEditorResult } from './external-editor.js';
+import { editExternal, openExternalFile, externalEditorCommand, type EditorHandoff, type ExternalEditorResult } from './external-editor.js';
+import { Ub as editorDisplayName } from './tui-editor-name-source.js';
 import { InputVim, type EditorMode, type VimBridge } from './tui-vim.js';
 import { vimKey } from './tui-vim-keys.js';
 import { InputGestures } from './tui-input-gestures.js';
@@ -605,6 +606,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private effortFeedbackLevel: EffortLevel | undefined;
   private effortFeedbackLabel: string | undefined;
   private effortFeedback: { text: string; timer: ReturnType<typeof setTimeout> } | undefined;
+  private externalEditorHintCommand: string | undefined;
+  private externalEditorHintEligible = false;
+  private externalEditorHintTimer: ReturnType<typeof setTimeout> | undefined;
   /** Host-bound live background count and stop action for the kill chord. */
   private backgroundWorkProbe: (() => number) | undefined;
   private backgroundWorkStop: (() => void) | undefined;
@@ -806,14 +810,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return result;
   }
 
-  /** `/keybindings` (`Zie`): the same handoff, opening one existing file instead of the draft. */
+  /** Zie/hx, 7tnkhv2k [3072,3957)/[2859,2908), UTF-16: the same selection opens existing files. */
   async openFile(file: string, signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult> {
     if (!this.isTTY || !this.started || this.closed || this.running || this.dialog || this.editorController) return {content:null};
     this.sourceSearch?.cancel();
     this.sourcePicker?.cancel();
     const controller=new AbortController();this.editorController=controller;
     const handoff=this.editorHandoff();
-    const task = openExternalFile(file,handoff,AbortSignal.any([signal,controller.signal]),workspace)
+    const task = openExternalFile(file,handoff,AbortSignal.any([signal,controller.signal]),workspace,
+      {command:this.externalEditorHintCommand})
       .then(result => controller.signal.aborted ? {content:null} : result)
       .finally(() => {
         if(this.editorSuspended)handoff.resume();
@@ -823,10 +828,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return task;
   }
 
+  /** $j/Zie/hx, 7tnkhv2k [3072,3957)/[2859,2908), UTF-16: reuse the hint's mounted selection. */
   private handoffEditor(snapshot: Parameters<typeof editExternal>[0], signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult> {
     const controller=new AbortController();this.editorController=controller;
     const handoff=this.editorHandoff();
-    const task = editExternal(snapshot,handoff,AbortSignal.any([signal,controller.signal]),workspace)
+    const task = editExternal(snapshot,handoff,AbortSignal.any([signal,controller.signal]),workspace,
+      {command:this.externalEditorHintCommand})
       .then(result => controller.signal.aborted ? {content:null} : result)
       .finally(() => {
         if(this.editorSuspended)handoff.resume();
@@ -935,7 +942,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         if(raw===this.editor.text)return;
         this.pushUndo(previous?.value??this.editor.text,previous?.cursorOffset??this.editor.cursor,this.editor.pastedContents);
         const pastedContents=referencedPastes(raw,this.editor.pastedContents);
-        this.editor={...this.editor,text:raw,pastedContents,historyIndex:this.editor.history.length,historyDraft:raw,historyDraftPastes:pastedContents};
+        this.replaceDraft({...this.editor,text:raw,pastedContents,historyIndex:this.editor.history.length,historyDraft:raw,historyDraftPastes:pastedContents});
       },offset:cursor=>{this.editor={...this.editor,cursor};},register:text=>expandPastedText(text,this.editor.pastedContents),
       fallback:event=>{if(action.type==='insert')this.dispatch({type:'insert',text:event.key});
         else if(action.type==='key'){if(action.command)this.dispatch({type:action.command});else if(/^[^\u0000-\u001f]+$/u.test(event.key))this.dispatch({type:'insert',text:event.key});}
@@ -1068,13 +1075,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const queueText = pulled.text;
     const text = draft === '' ? queueText : `${queueText}\n${draft}`;
     const cursor = draft === '' ? text.length : queueText.length + 1 + this.editor.cursor;
-    this.editor = { ...this.editor, text, cursor, historyIndex: this.editor.history.length,
-      historyDraft: text, historyDraftPastes: this.editor.pastedContents };
+    this.replaceDraft({ ...this.editor, text, cursor, historyIndex: this.editor.history.length,
+      historyDraft: text, historyDraftPastes: this.editor.pastedContents });
     if (pulled.attachment !== undefined && (this.diffPanel === undefined
       || pulled.attachment.sessionId === this.diffPanel.sessionId))
       this.diffSelection.set(pulled.attachment.selection);
     else this.diffSelection.dismiss();
-    this.settleWorkflowKeyword();
     this.publishDraft();
     this.render();
   }
@@ -1082,7 +1088,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private handleGesture(key:'interrupt'|'eof'|'escape'):void{
     this.gestureHandling=true;
     try{this.gestures.key(key,{text:this.editor.text,pastedContents:structuredClone(this.editor.pastedContents),
-      clear:()=>{this.undo.clear();this.vim.reset();this.editor={...createEditorState(this.editor.history),historyPastes:this.editor.historyPastes,killRing:this.editor.killRing};},
+      clear:()=>{this.undo.clear();this.vim.reset();this.replaceDraft({...createEditorState(this.editor.history),historyPastes:this.editor.historyPastes,killRing:this.editor.killRing});},
       delete:()=>this.dispatch({type:'delete'}),exit:()=>{this.close();this.emit('exit');},
       history:(text,contents)=>{this.inputHistory.add({display:text,pastedContents:contents});const limit=Math.max(0,this.options.historyLimit??100);if(limit)this.editor={...this.editor,
         history:[...this.editor.history,text].slice(-limit),historyPastes:[...this.editor.historyPastes,structuredClone(contents)].slice(-limit)};},
@@ -1382,6 +1388,25 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.effortFeedback !== undefined) clearTimeout(this.effortFeedback.timer);
     this.effortFeedback = undefined;
   }
+  /** WR's Uo/Ire effect, 24k7d6mw [481135,481165)/[722518,722821), UTF-16. */
+  private refreshExternalEditorHint(): void {
+    const eligible = this.editor.text.includes('\n') && Boolean(this.externalEditorHintCommand);
+    if (eligible === this.externalEditorHintEligible) return;
+    this.externalEditorHintEligible = eligible;
+    this.clearExternalEditorHint();
+    if (!eligible || this.closed) return;
+    this.externalEditorHintTimer = setTimeout(() => {
+      this.externalEditorHintTimer = undefined;
+      if (!this.closed) this.render();
+    }, 5_000);
+    this.externalEditorHintTimer.unref?.();
+  }
+
+  private clearExternalEditorHint(): void {
+    if (this.externalEditorHintTimer !== undefined) clearTimeout(this.externalEditorHintTimer);
+    this.externalEditorHintTimer = undefined;
+  }
+
 
   /** Source `da`: dismiss or restore the keyword run for this draft. The handler only exists while
    *  `dg() && C7t()` and the draft holds a keyword run (`Pi.length > 0`), so an inactive press falls
@@ -1477,9 +1502,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.clearWorkflowKeywordNotice();
   }
 
-  /** Every draft replacement passes the source subscription `ul`, not only reducer transitions. */
+  /** Input-store subscriptions `ul` and Ire/WR, 24k7d6mw [481135,481165)/[864462,864475), UTF-16.
+   * Text mutations share the selector even outside the reducer. */
   private replaceDraft(next: EditorState): void {
     this.editor = next;
+    this.refreshExternalEditorHint();
     this.settleWorkflowKeyword();
   }
 
@@ -1664,6 +1691,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.options.input.on('close', this.onEnd);
         this.options.output.on('resize', this.onResize);
         this.modes.enter();
+        this.externalEditorHintCommand = externalEditorCommand();
+        this.refreshExternalEditorHint();
         this.render();
         this.options.input.resume();
         this.syncSystemTheme();
@@ -1703,6 +1732,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.stopUltracodeTagReveal();
     this.clearEffortFeedback();
     if (this.escapeTimer) clearTimeout(this.escapeTimer);
+    this.clearExternalEditorHint();
     this.decoder.reset(); this.keys.reset();
     this.options.input.off('data', this.onData);
     this.options.input.off('end', this.onEnd);
@@ -1868,12 +1898,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const inline = this.emojiCompletionEnabled
       ? inlineEmojiCompletion(transition.state.text, draftBefore.text, transition.state.cursor)
       : undefined;
-    this.editor = inline === undefined ? transition.state
-      : { ...transition.state, text: inline.text, cursor: inline.cursor };
+    this.replaceDraft(inline === undefined ? transition.state
+      : { ...transition.state, text: inline.text, cursor: inline.cursor });
     // Source `ls`: a draft that moved by an edit drops the queued-row selection. The pull path
     // writes the draft outside this reducer and clears the index itself.
     if (this.queueEditIndex !== null && this.editor.text !== draftBefore.text) this.queueEditIndex = null;
-    this.settleWorkflowKeyword();
     this.publishDraft();
     if (this.editor.text.length !== draftBefore.text.length) {
       // Source `cq` (chunk-24k7d6mw.js 830089): a typed change clears the tip row; the length
@@ -2186,7 +2215,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
             needsQuotes: suggestion.displayText.includes(' '), isComplete: true });
       const applied = applyFileSuggestion(this.editor.text, at, replacement);
       const before = { text: this.editor.text, cursor: this.editor.cursor };
-      this.editor = { ...this.editor, text: applied.text, cursor: applied.cursor };
+      this.replaceDraft({ ...this.editor, text: applied.text, cursor: applied.cursor });
       this.publishDraft();
       this.autocompleteForText = applied.text;
       this.autocompleteDismissedText = undefined;
@@ -2199,7 +2228,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const replaced = acceptEmojiQuery(this.editor.text, this.editor.cursor, suggestion.displayText);
       if (replaced === undefined) return false;
       const before = { text: this.editor.text, cursor: this.editor.cursor };
-      this.editor = { ...this.editor, text: replaced.text, cursor: replaced.cursor };
+      this.replaceDraft({ ...this.editor, text: replaced.text, cursor: replaced.cursor });
       this.publishDraft();
       this.autocompleteForText = replaced.text;
       this.autocompleteDismissedText = undefined;
@@ -2210,8 +2239,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     const text = acceptanceText(suggestion);
     const before = { text: this.editor.text, cursor: this.editor.cursor };
-    this.editor = { ...this.editor, text, cursor: text.length };
-    this.settleWorkflowKeyword();
+    this.replaceDraft({ ...this.editor, text, cursor: text.length });
     this.publishDraft();
     this.autocompleteForText = text;
     this.autocompleteDismissedText = undefined;
@@ -4105,17 +4133,18 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   /** Hfe/hEe and D9, qfjvvwpv [11971,12618), 24k7d6mw [906888,907115), UTF-16. */
-  private visibleEffortFeedback(): string | undefined {
+  private visibleFooterFeedback(): string | undefined {
     if (this.screen !== 'chat' || this.gestures.hint || this.statusNoticeText !== undefined
       || this.diffPanel?.visible || !this.dialog && this.autocompleteState().suggestions.length > 0) return;
-    return this.effortFeedback?.text;
+    return this.externalEditorHintTimer === undefined ? this.effortFeedback?.text
+      : `${chordForAction('chat:externalEditor', 'Chat', 'ctrl+g')} to edit in ${editorDisplayName(this.externalEditorHintCommand)}`;
   }
 
   /** WR/Pre/D9, 24k7d6mw [481073,481106)/[723972,724107)/[906888,907115), UTF-16. */
   private footerStatus(): FooterStatus {
     const visible = this.screen === 'chat' && !this.gestures.hint
       && (this.dialog !== undefined || this.autocompleteState().suggestions.length === 0);
-    return { feedback: this.visibleEffortFeedback(), hasStash: visible && this.stashedDraft !== undefined };
+    return { feedback: this.visibleFooterFeedback(), hasStash: visible && this.stashedDraft !== undefined };
   }
 
   private footerRows(columns: number): string[] {

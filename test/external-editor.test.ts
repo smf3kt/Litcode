@@ -3,9 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { PassThrough, Writable } from 'node:stream';
+import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { setTimeout as delay } from 'node:timers/promises';
-import { editExternal } from '../src/external-editor.js';
+import { editExternal, externalEditorCommand } from '../src/external-editor.js';
+import { Ub as editorDisplayName } from '../src/tui-editor-name-source.js';
 import { createTerminalInput } from '../src/terminal.js';
 import { TuiTerminal } from '../src/tui.js';
 
@@ -65,9 +67,9 @@ test('TUI external editor handoff refolds payload and restores modes through suc
   const owned=fixture();const input=new PassThrough() as PassThrough & {isTTY:boolean;isRaw:boolean;setRawMode:(raw:boolean)=>void};
   input.isTTY=true;input.isRaw=false;input.setRawMode=value=>{input.isRaw=value;};let writes='';
   const output=new Writable({write(chunk,_encoding,done){writes+=String(chunk);done();}});Object.assign(output,{isTTY:true,columns:40,rows:24});
+  owned.configure(`import fs from 'node:fs';const file=process.argv.at(-1);fs.writeFileSync(file,fs.readFileSync(file,'utf8')+' suffix\\n');`);
   const submitted:string[]=[];const tui=new TuiTerminal({input,output,onSubmit:text=>submitted.push(text)}).start();
   try {
-    owned.configure(`import fs from 'node:fs';const file=process.argv.at(-1);fs.writeFileSync(file,fs.readFileSync(file,'utf8')+' suffix\\n');`);
     input.emit('data','\x1b[200~one\ntwo\nthree\nfour\x1b[201~');await tui.editDraft(new AbortController().signal,owned.root);
     assert.equal(tui.state.text,'[Pasted text #1 +3 lines] suffix');assert.equal(input.isRaw,true);
     assert.ok(writes.includes('\x1b[?1049l'));assert.ok(writes.lastIndexOf('\x1b[?1049h')>writes.lastIndexOf('\x1b[?1049l'));
@@ -77,4 +79,57 @@ test('TUI external editor handoff refolds payload and restores modes through suc
     input.emit('data','\r');assert.deepEqual(submitted,['one\ntwo\nthree\nfour']);
   } finally {tui.close();owned.close();}
   assert.equal(input.isRaw,false);assert.equal(input.listenerCount('data'),0);
+});
+
+test('hint resolver preserves source editor precedence, aliases, Unicode and the absent-editor gate', async () => {
+  const previous = { VISUAL: process.env.VISUAL, EDITOR: process.env.EDITOR, PATH: process.env.PATH };
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  const { Terminal } = createRequire(import.meta.url)('@xterm/headless');
+  const screen = new Terminal({ cols: 120, rows: 30, allowProposedApi: true, logLevel: 'off' });
+  const output = new Writable({ write(chunk, _encoding, done) { screen._core.writeSync(String(chunk)); done(); } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 });
+  const frame = () => Array.from({ length: 30 }, (_, row) =>
+    screen.buffer.active.getLine(screen.buffer.active.viewportY + row)?.translateToString(true) ?? '').join('\n');
+  let tui: TuiTerminal | undefined;
+  try {
+    process.env.VISUAL = 'code --wait'; process.env.EDITOR = '/usr/bin/vim';
+    assert.equal(externalEditorCommand(), 'code --wait');
+    assert.equal(editorDisplayName(externalEditorCommand()), 'VS Code');
+    delete process.env.VISUAL;
+    assert.equal(externalEditorCommand(), '/usr/bin/vim');
+    assert.equal(editorDisplayName(externalEditorCommand()), 'Vim');
+    assert.deepEqual(['nano', '/tmp/my-editor', '🦉edit', 'intellij'].map(editorDisplayName),
+      ['nano', 'My-editor', '🦉edit', 'IntelliJ IDEA']);
+    delete process.env.EDITOR; process.env.PATH = '';
+    assert.equal(externalEditorCommand(), undefined);
+    tui = new TuiTerminal({ input, output }).start();
+    input.emit('data', 'first\x1b[13;2usecond');
+    assert.equal(tui.state.text, 'first\nsecond');
+    assert.ok(!frame().includes('edit in'), 'no editor keeps the hint absent');
+    process.env.VISUAL = '/usr/bin/vi';
+    input.emit('data', '\x15\x7f\x1b[13;2uagain');
+    assert.ok(!frame().includes('edit in'), 'editor discovery stays cached at mount');
+    assert.deepEqual(await tui.editDraft(new AbortController().signal), { content: null });
+    tui.close();
+    if (previous.PATH === undefined) delete process.env.PATH; else process.env.PATH = previous.PATH;
+    process.env.VISUAL = '/usr/bin/true';
+    const next = new TuiTerminal({ input, output }).start();
+    const directory = fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
+      ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'editor-selection-'));
+    try {
+      input.emit('data', 'first\x1b[13;2usecond');
+      assert.ok(frame().includes('to edit in True'), frame());
+      process.env.VISUAL = '/usr/bin/false';
+      assert.deepEqual(await next.editDraft(new AbortController().signal), { content: 'first\nsecond' });
+      assert.ok(frame().includes('to edit in True'), frame());
+      assert.equal(next.state.text, 'first\nsecond');
+      const file = path.join(directory, 'notes.txt'); fs.writeFileSync(file, 'notes');
+      assert.deepEqual(await next.openFile(file, new AbortController().signal), { content: 'notes' });
+    } finally { next.close(); fs.rmSync(directory, { recursive: true, force: true }); }
+  } finally {
+    tui?.close(); screen.dispose();
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name]; else process.env[name] = value;
+    }
+  }
 });
