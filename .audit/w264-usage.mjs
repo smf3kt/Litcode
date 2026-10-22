@@ -72,11 +72,14 @@ try {
   await until(() => screen().includes('Stats'), 'stats panel');
   captures.panel = screen();
   pass('/usage opens the Stats panel');
+  pass('the daily activity heatmap renders', screen().includes('Less ░ ▒ ▓ █ More'));
   pass('the range line starts at all time', screen().includes('Range: All time'));
   pass('the journal aggregate names its favorite model', screen().includes('Favorite model: fixture'));
   pass('the session count comes from the journals', screen().includes('Sessions: 1'));
   pass('the activity row reports the day span', screen().includes('Active days: 1/1'));
-  pass('the modality totals use the recovered formatter', screen().includes('Input 1.0k · Output 500'));
+  send('\x1b[6~');
+  await until(() => screen().includes('Input 1.0k · Output 500'), 'totals line');
+  pass('the modality totals use the recovered formatter');
 
   send('t');
   await until(() => screen().includes('Range: Last 7 days'), '7d range');

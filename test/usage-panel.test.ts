@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { STATS_EMPTY, STATS_PANEL_TITLE, compactNumber, formatDuration, nextUsageRange,
+import { STATS_EMPTY, STATS_PANEL_TITLE, activityHeatmap, compactNumber, formatDuration, nextUsageRange,
   parseUsageJournal, readUsageSessions, shortDate, usagePanelText, usageStats, usageStreaks,
   usageTotalsLine, type UsageMessage, type UsageSession } from '../src/usage-panel.js';
 
@@ -78,6 +78,13 @@ test('the panel text lays the summary out in two 28-column cells', () => {
     '',
     'Input 8.0k · Output 3.0k · Cache read 0 · Cache write 0',
   ]);
+  const withHeatmap = usagePanelText(stats, 'all', activityHeatmap(stats.dailyActivity,
+    { columns: 14, now: new Date(AT(22, 12)) })).split('\n');
+  assert.equal(withHeatmap[0], '    AugSepOct');
+  assert.equal(withHeatmap[9], '    Less ░ ▒ ▓ █ More');
+  assert.equal(withHeatmap[10], '');
+  assert.equal(withHeatmap[11], 'Range: All time');
+  assert.equal(withHeatmap.at(-1), 'Input 8.0k · Output 3.0k · Cache read 0 · Cache write 0');
   const longModel = usageStats([{ id: 'c', startedAt: AT(20, 10), messages: [
     message(AT(20, 10), { model: 'model-name-longer-than-cell', inputTokens: 1000 })] }],
   { now: new Date(AT(21, 12)) });
@@ -99,6 +106,31 @@ test('a range drops sessions and days before the window', () => {
   assert.equal(old.totalMessages, 0);
   assert.equal(old.activeDays, 0);
   assert.equal(old.longestSession, null);
+});
+
+test('the heatmap keeps the recovered week grid, labels and legend', () => {
+  const activity = [
+    { date: '2026-08-16', messageCount: 1 },
+    { date: '2026-08-17', messageCount: 2 },
+    { date: '2026-08-18', messageCount: 5 },
+  ];
+  const now = new Date(Date.UTC(2026, 9, 22, 12));
+  assert.deepEqual(activityHeatmap(activity, { columns: 14, now }).split('\n'), [
+    '    AugSepOct',
+    '    ▒·········',
+    'Mon ▓·········',
+    '    █·········',
+    'Wed ··········',
+    '    ··········',
+    'Fri ········· ',
+    '    ········· ',
+    '',
+    '    Less ░ ▒ ▓ █ More',
+  ]);
+  const wide = activityHeatmap(activity, { columns: 200, now }).split('\n');
+  assert.equal(wide.length, 10);
+  assert.equal(wide[1]!.length, 56);
+  assert.equal(activityHeatmap([], { columns: 4, now }).split('\n')[1]!.length, 14);
 });
 
 test('a journal stamps messages from the turn_end that closes their turn', () => {

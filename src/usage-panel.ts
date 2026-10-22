@@ -226,13 +226,75 @@ function statRow(left: string, right: string): string {
   return `${statCell(left)}${right}`.trimEnd();
 }
 
-/** The `ni` summary block: two 28-column cells per row, then the modality totals. */
-export function usagePanelText(stats: UsageStats, range: UsageRange = 'all'): string {
-  const lines = [`Range: ${STATS_RANGE_LABELS[range]}`];
-  if (stats.totalSessions === 0) {
-    lines.push('', STATS_EMPTY);
-    return lines.join('\n');
+/**
+ * `Fn` (chunk-dag4qhha.js 69459): the daily activity heatmap. Seven weekday rows over at most
+ * 52 weeks, month labels above and `Less ░ ▒ ▓ █ More` below; `Dd` (69243) supplies the
+ * percentile thresholds and `Md` (70861) the glyph. The vendor keys these cells with local
+ * dates while `No` builds the activity with UTC dates, so the host keys both with
+ * `usageDayKey` and drops the fixed accent colour.
+ */
+export function activityHeatmap(activity: readonly { date: string; messageCount: number }[],
+  options: { columns?: number; now?: Date } = {}): string {
+  const gutter = 4;
+  const weeks = Math.min(52, Math.max(10, (options.columns ?? 80) - gutter));
+  const byDay = new Map(activity.map(day => [day.date, day]));
+  const counts = activity.map(day => day.messageCount).filter(count => count > 0).sort((left, right) => left - right);
+  const percentile = counts.length === 0 ? null : {
+    p25: counts[Math.floor(counts.length * 0.25)]!,
+    p50: counts[Math.floor(counts.length * 0.5)]!,
+    p75: counts[Math.floor(counts.length * 0.75)]!,
+  };
+  const today = Date.parse(`${usageDayKey(options.now ?? new Date())}T00:00:00Z`);
+  const weekStart = today - new Date(today).getUTCDay() * 86400000;
+  const start = weekStart - (weeks - 1) * 7 * 86400000;
+  const grid = Array.from({ length: 7 }, () => Array<string>(weeks).fill(''));
+  const months: { month: number; week: number }[] = [];
+  let lastMonth = -1;
+  let cursor = start;
+  for (let week = 0; week < weeks; week++) {
+    for (let day = 0; day < 7; day++) {
+      if (cursor > today) { grid[day]![week] = ' '; cursor += 86400000; continue; }
+      const date = new Date(cursor);
+      if (day === 0) {
+        const month = date.getUTCMonth();
+        if (month !== lastMonth) { months.push({ month, week }); lastMonth = month; }
+      }
+      grid[day]![week] = heatmapGlyph(heatmapBucket(byDay.get(usageDayKey(date))?.messageCount ?? 0, percentile));
+      cursor += 86400000;
+    }
   }
+  const lines = [' '.repeat(gutter) + months.map(entry => MONTH_NAMES[entry.month]!
+    .padEnd(Math.floor(weeks / Math.max(months.length, 1)))).join('')];
+  for (let day = 0; day < 7; day++) {
+    const label = ([1, 3, 5].includes(day) ? WEEKDAY_NAMES[day]!.padEnd(3) : '   ') + ' ';
+    lines.push(label + grid[day]!.join(''));
+  }
+  lines.push('', '    Less ░ ▒ ▓ █ More');
+  return lines.join('\n');
+}
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** `xd` (chunk-dag4qhha.js 70638). */
+function heatmapBucket(count: number, percentile: { p25: number; p50: number; p75: number } | null): number {
+  if (count === 0 || percentile === null) return 0;
+  if (count >= percentile.p75) return 4;
+  if (count >= percentile.p50) return 3;
+  if (count >= percentile.p25) return 2;
+  return 1;
+}
+
+/** `Md` (chunk-dag4qhha.js 70861) without the accent colour. */
+function heatmapGlyph(bucket: number): string {
+  return bucket === 4 ? '█' : bucket === 3 ? '▓' : bucket === 2 ? '▒' : bucket === 1 ? '░' : '·';
+}
+
+/** The `ni` summary block: two 28-column cells per row, then the modality totals. */
+export function usagePanelText(stats: UsageStats, range: UsageRange = 'all', heatmap?: string): string {
+  if (stats.totalSessions === 0) return [`Range: ${STATS_RANGE_LABELS[range]}`, '', STATS_EMPTY].join('\n');
+  const lines = heatmap === undefined || heatmap === '' ? [] : [heatmap, ''];
+  lines.push(`Range: ${STATS_RANGE_LABELS[range]}`);
   const favorite = stats.favoriteModel === null ? '' : `Favorite model: ${stats.favoriteModel}`;
   const longest = stats.longestSession === null ? ''
     : `Longest session: ${formatDuration(stats.longestSession.duration)}`;
