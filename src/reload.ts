@@ -16,6 +16,8 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   if (settings.modelSettings !== undefined) next.modelSettings = settings.modelSettings;
   else delete next.modelSettings;
   next.skills = loaded.skills;
+  if (loaded.pluginComponentDiagnostics !== undefined) next.pluginComponentDiagnostics = loaded.pluginComponentDiagnostics;
+  else delete next.pluginComponentDiagnostics;
   next.instructionSources = instructionSources(loaded.instructions);
   next.conditionalRules = loaded.conditionalRules ?? [];
   next.agentTypes = loaded.agentTypes ?? [];

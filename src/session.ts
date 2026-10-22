@@ -63,6 +63,8 @@ export type SessionConfig = {
   skills?: SkillInfo[];
   /** Bumped when the installed plugin catalog changes under a live session. */
   pluginGeneration?: number;
+  /** Load failures the plugin component reader reported on the last full config read. */
+  pluginComponentDiagnostics?: import('./plugin-components.js').ComponentDiagnostic[];
   /** Conditional skills held back by `paths`; activation moves them into `skills`.
    *  Journaled with the session metadata: a resumed session keeps the same held
    *  list, and activation survives a reload because the list is replaced from
@@ -270,6 +272,8 @@ export const configSchema = z.object({
   }).strict().optional() }).strict().optional(),
   lspServers: lspConfigSchema.optional(),
   pluginGeneration: z.number().int().nonnegative().optional(),
+  pluginComponentDiagnostics: z.array(z.object({ plugin: z.string(), component: z.enum(['skills', 'agents', 'commands']),
+    path: z.string(), message: z.string() }).strict()).optional(),
   features: z.object({ tasks: z.boolean(), subagents: z.boolean(), notebooks: z.boolean().optional(), background: z.boolean().optional(), scheduler: z.boolean().optional(),
     workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(),
     taskProjections: z.boolean().optional(),

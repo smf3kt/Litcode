@@ -81,7 +81,9 @@ import { STATUS_PANEL_TITLE, appVersion, latestSessionTitle, statusPanelRows, st
 import { MCP_PANEL_TITLE, mcpPanelRows, mcpPanelText, mcpToolCounts } from './mcp-panel.js';
 import { PLUGIN_PANEL_TITLE, filterPluginEntries, pluginFilteredEmpty, pluginPanelRows,
   pluginPanelText, type PluginListFilter, type PluginPanelEntry } from './plugin-panel.js';
-import { readPluginStore } from './plugins.js';
+import { discoverInstalledPluginComponents, readPluginStore } from './plugins.js';
+import { RELOAD_PLUGINS_DECLINED, diffPluginServers, lspToolChange, pluginCacheWarning,
+  pluginReloadSummary, reloadPluginsForced } from './reload-plugins.js';
 import { STATS_PANEL_TITLE, STATS_RANGE_LABELS, activityHeatmap, nextUsageRange, readUsageSessions, usagePanelText, usageStats, type UsageRange } from './usage-panel.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
@@ -176,6 +178,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /diff NAME [OFFSET]  Show a page of file changes against a checkpoint
 /reload     Reload local instructions, skills, hooks, tools and settings into a new session
 /reload-skills  Pick up skills added or changed on disk during this session
+/reload-plugins [--force]  Activate pending plugin changes in the current session
 /attach PATH [--pages RANGE] PROMPT  Submit an image/PDF with a task (quote paths with spaces)
 /paste-image PROMPT  Read a PNG image from the clipboard and submit it with a task
 /NAME args  Run an available skill by name
@@ -1863,6 +1866,57 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const after = (session.config.skills ?? []).map(skill => skill.name);
           terminal?.setCommands?.(tuiCommandsWithSkills(session.config.skills));
           output.write(`${reloadSkillsMessage(before, after)}\n`);
+          continue;
+        }
+        if (prompt === '/reload-plugins' || prompt.startsWith('/reload-plugins ')) {
+          // Source `Yr` (chunk-x876fw6t.js 16694): re-scan the plugin store, re-apply the catalogs
+          // and report the counts. The source keeps the previous session and patches the live
+          // store in place; this host's catalogs are pinned on the session config, so the rescan
+          // goes through the same successor-session path `/reload` uses. A session that never
+          // reached a local runtime is the source's declined arm.
+          const argument = parseSlashCommand(prompt)?.args ?? '';
+          if (argument.trim() !== '' && !reloadPluginsForced(argument))
+            throw new Error('Use /reload-plugins [--force]');
+          if (!activeRuntime.reconfigure) { output.write(RELOAD_PLUGINS_DECLINED + '\n'); continue; }
+          const force = reloadPluginsForced(argument);
+          const nonInteractive = !terminal?.prompt;
+          const next = reloadConfig(session.config);
+          // The source compares the resolved server sets before it applies anything (`q4`) and
+          // stops with the cache warning unless `--force` was passed; a forced run applies and
+          // reports the same warning in its summary.
+          const serverDiff = diffPluginServers(Object.keys(session.config.mcpServers ?? {}),
+            Object.keys(next.mcpServers ?? {}));
+          const lspChange = lspToolChange(session.config.features?.lsp === true, next.features?.lsp === true);
+          const warning = pluginCacheWarning({ ...serverDiff, lspToolChange: lspChange }, nonInteractive);
+          if (warning !== null && !force) { output.write(warning + '\n'); continue; }
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn before reloading');
+          await applyConfig(next, false, options.signal);
+          // `pluginComponentDiagnostics` is the local `errors` list; `loadPluginComponents` writes it
+          // on every full config read, so a fresh reload carries the current load failures.
+          const store = readPluginStore(session.config.workspace, session.config.plugins);
+          const diagnostics = session.config.pluginComponentDiagnostics ?? [];
+          // The source counts what the plugin loader produced (`t.enabled_count`, `hook_count`,
+          // `mcp_count`), not every configured hook or server.
+          let pluginHooks = 0, pluginServers = 0;
+          try {
+            for (const item of discoverInstalledPluginComponents(session.config.workspace, session.config.plugins)) {
+              for (const entries of Object.values(item.hooks ?? {})) pluginHooks += (entries ?? []).reduce((sum, entry) =>
+                sum + ('hooks' in entry ? entry.hooks.length : 1), 0);
+              pluginServers += Object.keys(item.mcpServers ?? {}).length;
+            }
+          } catch { /* the reload already reported the failure */ }
+          const counts = {
+            plugins: store.enabled ? store.entries.length : 0,
+            skills: (session.config.skills ?? []).filter(skill => skill.plugin !== undefined).length,
+            agents: (session.config.agentTypes ?? []).filter(agent => agent.plugin !== undefined).length,
+            hooks: pluginHooks,
+            mcpServers: pluginServers,
+            // Plugin manifests carry no LSP declarations in this host, so the loader never adds one.
+            lspServers: 0,
+            errors: diagnostics.length,
+          };
+          output.write(pluginReloadSummary(counts, { nonInteractive,
+            mcpChanged: serverDiff.wouldInvalidateCache, cacheWarning: warning }) + '\n');
           continue;
         }
         if (prompt === '/reload' || prompt === '/mcp-reconnect') {
