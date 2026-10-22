@@ -114,6 +114,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'diff', description: 'Show a page of file changes against a checkpoint', kind: 'command', lane: 'info' },
   { name: 'reload', description: 'Reload local instructions, skills, hooks, tools and settings into a new session', kind: 'command', lane: 'action' },
   { name: 'reload-skills', description: 'Pick up skills added or changed on disk during this session', kind: 'command', lane: 'action' },
+  { name: 'reload-plugins', description: 'Activate pending plugin changes in the current session', kind: 'command', lane: 'action' },
   { name: 'attach', description: 'Submit an image/PDF with a task (quote paths with spaces)', kind: 'command', lane: 'action' },
   { name: 'paste-image', description: 'Read a PNG image from the clipboard and submit it with a task', kind: 'command', lane: 'action' },
   { name: 'continue', description: 'Resume an interrupted turn', kind: 'command', lane: 'action' },
