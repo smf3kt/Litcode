@@ -78,6 +78,7 @@ import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
   SIDE_QUESTION_USAGE, sideQuestionPanelText, type SideQuestionExchange } from './side-question.js';
 import { contextPanelText, contextUsageFromCounts } from './context-panel.js';
 import { STATUS_PANEL_TITLE, appVersion, latestSessionTitle, statusPanelRows, statusPanelText } from './status-panel.js';
+import { MCP_PANEL_TITLE, mcpPanelRows, mcpPanelText, mcpToolCounts } from './mcp-panel.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
   EXPORT_DIALOG_TITLE, EXPORT_FILE_DESCRIPTION, EXPORT_FILE_LABEL, EXPORT_FILENAME_PROMPT,
@@ -1691,6 +1692,27 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               mode: type.mode, model: type.model ?? 'inherit' })) }, null, 2);
           if (Buffer.byteLength(text) > session.config.maxOutputBytes) throw new Error('Agent catalog exceeds display budget');
           output.write(text + '\n'); continue;
+        }
+        if (prompt === '/mcp' && terminal?.prompt) {
+          const configured = Object.keys(session.config.mcpServers ?? {});
+          if (configured.length === 0) { options.status.write('No MCP servers configured.\n'); continue; }
+          for (;;) {
+            const statuses = activeRuntime.mcpServers?.() ?? {};
+            const counts = mcpToolCounts(configured, session.config.tools.map(tool => tool.name));
+            const rows = mcpPanelRows(configured, statuses, counts);
+            const answer = await withTurn(signal => readDialog({ title: MCP_PANEL_TITLE,
+              message: mcpPanelText(rows),
+              choices: rows.map(row => ({ label: row.name, value: row.name, description: row.status })),
+              keys: [{ key: 'r', label: 'reconnect' }] }, signal));
+            if (answer === undefined) break;
+            if (answer.key !== 'r') continue;
+            const server = answer.selected[0];
+            if (server === undefined) continue;
+            if (session.awaitingResponse) throw new Error('Finish or continue the current turn before reconnecting');
+            if (!activeRuntime.reconnectMcp) throw new Error('Runtime MCP reconnect is unavailable');
+            await withTurn(signal => activeRuntime.reconnectMcp!(server, signal));
+          }
+          continue;
         }
         if (prompt === '/mcp') {
           const text = JSON.stringify({ servers: Object.keys(session.config.mcpServers ?? {}), limits: activeRuntime.limits,
