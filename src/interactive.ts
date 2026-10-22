@@ -1340,6 +1340,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
       const item = queue.splice(nextIndex, 1)[0]!;
       promptQueueChanged();
+      // Source `#s` (chunk-24k7d6mw.js 1495345): once the dispatched prompt is accepted, a stashed
+      // draft comes back into the composer the dispatch emptied, with `Draft restored`.
+      if (item.source === 'user') terminal?.restoreStashedDraft?.();
       let prompt = item.prompt.trim();
       if (!prompt) continue;
       if (item.source === 'user' && prompt.startsWith('/')) {

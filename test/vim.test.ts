@@ -71,6 +71,8 @@ test('Vim configuration changes and TUI global keys retain draft and modal owner
     const answer=tui.prompt({message:'Answer',allowText:true},new AbortController().signal);await key('jj');await key('\r');assert.deepEqual(await answer,{selected:[],text:'jj'});assert.equal(tui.state.text,'draft');
     tui.setEditorMode('normal');await key('j');assert.equal(tui.state.text,'drafjt');tui.setEditorMode('vim',{jj:'<Esc>'});await key('j');tui.setEditorMode('vim',{jk:'<Esc>'});await key('k');assert.equal(tui.state.text,'drafjjkt');
     tui.setKeybindings({q:'submit'});await key('q');assert.deepEqual(owned.submitted,['drafjjkt']);
+    // `#s`: the submit brings the waiting `scratch` draft back into the emptied composer.
+    assert.equal(tui.state.text,'scratch');await key('\x7f'.repeat('scratch'.length));assert.equal(tui.state.text,'');
     await key('pending');await key('\x1b');await key('\u000c');assert.equal(tui.state.text,'pending','the redraw chord leaves the draft untouched');
     tui.setEditorMode('normal');await key('\u0001');while(tui.state.text!=='')await key('\u000b');assert.equal(tui.state.text,'');await key('fresh');assert.equal(tui.state.text,'fresh');
     tui.setEditorMode('vim',{jj:'<Esc>'});await key('j');const remapDialog=tui.prompt({message:'Boundary',allowText:true},new AbortController().signal);

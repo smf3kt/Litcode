@@ -582,3 +582,11 @@ Explicitly out of scope for this loop:
       Not ported: the fork briefing, the remote path, the relocation chips, the telemetry, the row
       reader `Bcn`, the launch-flag refusal. Unit 14/14, focused 72/72, compiled 17/17 at identity
       `7222caea…`. See `research/ports/W276-fork.md`.
+- [x] W277 composer stash (`qq` chunk-24k7d6mw.js 843876; `stash` 484409, `popStash` 484692,
+      `t$r` chunk-sxm1dh4y.js 1640; tip `Yc` 828570, `Cl` 828513, `Pr` 828775, `XS` 721485; latch
+      `bJt` 817896, `Ce` 844018; restore 1492930/1493000 and `#s` 1495345/1495489): ctrl+s swaps the
+      draft with the slot silently, a 20→5 shrink raises `Tip: ctrl+s to stash` once until the first
+      stash latches `hasUsedStash`, and a submit or post-command restore brings the stash back with
+      `Draft restored`. The latch is a settings-document key here. Not ported: the `input_stash`
+      telemetry, cross-session slot persistence, `l9n` launch warnings. Unit 5/5, focused 91/91,
+      compiled 11/11 at identity `13ec59f0…`. See `research/ports/W277-stash.md`.

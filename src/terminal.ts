@@ -1357,6 +1357,11 @@ export interface TerminalSurface {
   endAssistantMessage?(): void;
   /** A dialog's own report lines, returned as the command's result and shown as a system entry. */
   writeNotice?(text: string): void;
+  /**
+   * Source `#s` (chunk-24k7d6mw.js 1495345): a stashed draft returns to an empty composer once the
+   * prompt just dispatched is accepted, with the recovered `Draft restored` notification.
+   */
+  restoreStashedDraft?(notice?: boolean): boolean;
   setKeybindings(keybindings?: Keybindings): void;
   setPrefersReducedMotion?(value?: boolean): void;
   setShowTurnDuration?(value?: boolean): void;
