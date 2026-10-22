@@ -493,6 +493,12 @@ Next up, scoped but not started:
       keys on both sides (vendor mixed local keys with UTC activity) and no accent colour. Not
       ported: the per-model 7d/30d bars and the hour histogram. Unit 8/8 + 2/2, focused 36/36,
       compiled 13/13 at identity `acacd460…`. See `research/ports/W265-usage-heatmap.md`.
+- [x] W266 `/usage` `Tokens per Day` chart (`plot` chunk-dag4qhha.js [6162,7637); `ai` 110439;
+      `Um` 111305): bundled asciichart glyphs, series repeated/sliced to `min(52, max(20, w-7))`,
+      top three models with tokens, height 8, `B`/`M`/`k` labels, four day ticks, `●` legend.
+      `usageStats` now returns `dailyModelTokens`. Not ported: the per-model rows under the legend
+      and the hour histogram. Unit 10/10 + 2/2, focused 38/38, compiled 14/14 at identity
+      `2f152ae6…`. See `research/ports/W266-tokens-chart.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

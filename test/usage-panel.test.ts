@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { STATS_EMPTY, STATS_PANEL_TITLE, activityHeatmap, compactNumber, formatDuration, nextUsageRange,
+import { asciiPlot } from '../src/ascii-chart.js';
+import { STATS_EMPTY, STATS_PANEL_TITLE, activityHeatmap, compactNumber, formatDuration, modelTokenChart, nextUsageRange,
   parseUsageJournal, readUsageSessions, shortDate, usagePanelText, usageStats, usageStreaks,
   usageTotalsLine, type UsageMessage, type UsageSession } from '../src/usage-panel.js';
 
@@ -69,7 +70,8 @@ test('the aggregate matches the recovered dashboard fields', () => {
 test('the panel text lays the summary out in two 28-column cells', () => {
   const stats = usageStats(fixture(), { now: new Date(AT(21, 12)) });
   const cell = (text: string) => text.padEnd(32);
-  assert.deepEqual(usagePanelText(stats).split('\n'), [
+  const plain = usagePanelText(stats).split('\n');
+  assert.deepEqual(plain.slice(0, 7), [
     'Range: All time',
     cell('Favorite model: m2') + 'Total tokens: 11.0k',
     cell('Sessions: 2') + 'Longest session: 30m 0s',
@@ -78,13 +80,18 @@ test('the panel text lays the summary out in two 28-column cells', () => {
     '',
     'Input 8.0k · Output 3.0k · Cache read 0 · Cache write 0',
   ]);
+  assert.equal(plain[7], '');
+  assert.equal(plain[8], 'Tokens per Day');
+  assert.equal(plain.at(-2), '        Oct 20         Oct 20         Oct 21         Oct 21');
+  assert.equal(plain.at(-1), '● m2 · ● m1');
   const withHeatmap = usagePanelText(stats, 'all', activityHeatmap(stats.dailyActivity,
     { columns: 14, now: new Date(AT(22, 12)) })).split('\n');
   assert.equal(withHeatmap[0], '    AugSepOct');
   assert.equal(withHeatmap[9], '    Less ░ ▒ ▓ █ More');
   assert.equal(withHeatmap[10], '');
   assert.equal(withHeatmap[11], 'Range: All time');
-  assert.equal(withHeatmap.at(-1), 'Input 8.0k · Output 3.0k · Cache read 0 · Cache write 0');
+  assert.equal(withHeatmap[17], 'Input 8.0k · Output 3.0k · Cache read 0 · Cache write 0');
+  assert.equal(withHeatmap[19], 'Tokens per Day');
   const longModel = usageStats([{ id: 'c', startedAt: AT(20, 10), messages: [
     message(AT(20, 10), { model: 'model-name-longer-than-cell', inputTokens: 1000 })] }],
   { now: new Date(AT(21, 12)) });
@@ -106,6 +113,26 @@ test('a range drops sessions and days before the window', () => {
   assert.equal(old.totalMessages, 0);
   assert.equal(old.activeDays, 0);
   assert.equal(old.longestSession, null);
+});
+
+test('the plotter keeps the recovered glyph cells', () => {
+  assert.deepEqual(asciiPlot([[0, 1]], { height: 2, format: value => String(value).padStart(3) }).split('\n'),
+    ['  1 ┼╭ ', '0.5 ┤│ ', '  0 ┼╯ ']);
+});
+
+test('the tokens-per-day chart follows the recovered arity and legend', () => {
+  const days = [
+    { date: '2026-10-20', tokensByModel: { m1: 4500 } },
+    { date: '2026-10-21', tokensByModel: { m2: 6500 } },
+  ];
+  const chart = modelTokenChart(days, ['m2', 'm1']);
+  assert.ok(chart !== null);
+  assert.equal(chart.chart.split('\n').length, 9);
+  assert.equal(chart.chart.split('\n')[0], '    7k ┼                         ╭───────────────────────── ');
+  assert.deepEqual(chart.legend, ['● m2', '● m1']);
+  assert.equal(modelTokenChart(days.slice(0, 1), ['m1']), null);
+  assert.equal(modelTokenChart(days, []), null);
+  assert.equal(modelTokenChart(days, ['absent']), null);
 });
 
 test('the heatmap keeps the recovered week grid, labels and legend', () => {

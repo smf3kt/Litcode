@@ -1981,7 +1981,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           let range: UsageRange = 'all';
           for (;;) {
             const answer = await withTurn(signal => readDialog({ title: STATS_PANEL_TITLE,
-              message: usagePanelText(usageStats(sessions, { range }), range, heatmap), readOnly: true,
+              message: usagePanelText(usageStats(sessions, { range }), range, heatmap,
+                process.stdout.columns ?? 80), readOnly: true,
               keys: [{ key: 't', label: STATS_RANGE_LABELS[nextUsageRange(range)] }] }, signal));
             if (answer?.key !== 't') break;
             range = nextUsageRange(range);
