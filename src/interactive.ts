@@ -74,6 +74,8 @@ import { openExternalFile, externalEditorName } from './external-editor.js';
 import { persistAutoModeUpdate, readAutoModePolicy } from './auto-mode-rules.js';
 import { type AutoModeEditorHost } from './auto-mode-editor.js';
 import { osc52Payload } from './clipboard-osc52.js';
+import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
+  SIDE_QUESTION_USAGE, sideQuestionPanelText, type SideQuestionExchange } from './side-question.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
   EXPORT_DIALOG_TITLE, EXPORT_FILE_DESCRIPTION, EXPORT_FILE_LABEL, EXPORT_FILENAME_PROMPT,
@@ -138,6 +140,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /usage      Show recorded model usage
 /effort LEVEL  Set effort level for model usage (low/medium/high/xhigh/max/auto)
 /copy [N]   Copy the latest response to the clipboard (or the Nth-latest)
+/btw [question]  Ask a side question with no tools; it never joins the conversation
 /export [filename]  Export the conversation to a file or clipboard
 /autocompact [auto|<tokens>]  Set how full the context gets before auto-summarizing
 /color ${sessionColorArgumentHint()}  Set the prompt bar color for this session
@@ -327,6 +330,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     } finally { unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false); }
   };
   options.signal.addEventListener('abort', abort, { once: true });
+  // `we`, chunk-qskwh3r4.js [1877,8641), UTF-16: side answers live for the session and never
+  // enter the transcript, so the panel's history is this list.
+  const btwExchanges: SideQuestionExchange[] = [];
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
     peer?: { from: string | null };
     /** Source `isMeta`: an entry this host queued itself, not one a person may pull back and edit. */
@@ -1341,6 +1347,53 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           let file: string | undefined;
           try { file = writeCopyFile(text); } catch { file = undefined; }
           output.write(`${copyReport(text, file)}\n`);
+          continue;
+        }
+        if (prompt === '/btw' || prompt.startsWith('/btw ')) {
+          // `kmt`, chunk-d3s5r8h5.js [1289,3457): one tool-free call over the conversation. The
+          // answer is shown in `we`'s panel (chunk-qskwh3r4.js [1877,8641)) and never appended to
+          // the transcript. The recovered fork action (`f`) and remote thin-client dispatch are
+          // not ported; browsing, clearing and copying are.
+          let question = prompt.slice('/btw'.length).trim();
+          if (question === '') {
+            if (!terminal?.prompt) { output.write(`${SIDE_QUESTION_USAGE}\n`); continue; }
+            const typed = await withTurn(signal => readDialog({ title: 'Btw', message: SIDE_QUESTION_PROMPT,
+              allowText: true, maxTextChars: 4000 }, signal));
+            question = typed?.text?.trim() ?? '';
+            if (question === '') continue;
+          }
+          const outcome = await withTurn(signal => agent().askSideQuestion(question, btwExchanges, signal));
+          if (outcome.response === null) { output.write(`${SIDE_QUESTION_NO_RESPONSE}\n`); continue; }
+          const current: SideQuestionExchange = { question, response: outcome.response };
+          // `N`'s synthetic replies are shown but never joined to the side history.
+          if (!outcome.synthetic) btwExchanges.push(current);
+          if (!terminal?.prompt) { output.write(`${outcome.response}\n`); continue; }
+          let browse: number | null = null;
+          for (;;) {
+            const shown = browse === null ? current : btwExchanges[browse] ?? current;
+            const answer = await withTurn(signal => readDialog({ title: 'Btw', readOnly: true,
+              message: sideQuestionPanelText(shown.question, shown.response),
+              keys: [{ key: '[', label: 'older' }, { key: ']', label: 'newer' },
+                { key: 'x', label: 'clear history' }, { key: 'c', label: 'copy' }] }, signal));
+            if (answer === undefined) break;
+            if (answer.key === 'c') {
+              let payload: string;
+              try { payload = osc52Payload(shown.response); }
+              catch (error) { output.write(`${(error as Error).message}\n`); continue; }
+              if (terminal.writeClipboard) terminal.writeClipboard(payload); else output.write(payload);
+              options.status.write(`${SIDE_QUESTION_COPIED}\n`);
+              continue;
+            }
+            if (answer.key === 'x') { btwExchanges.length = 0; browse = null; continue; }
+            if (answer.key === '[') {
+              if (btwExchanges.length > 0) browse = browse === null ? btwExchanges.length - 1 : Math.max(0, browse - 1);
+              continue;
+            }
+            if (answer.key === ']') {
+              if (browse !== null) browse = browse + 1 < btwExchanges.length ? browse + 1 : null;
+              continue;
+            }
+          }
           continue;
         }
         // `ho` (chunk-3f62mcb0.js 25000-ish): an argument writes at once; the bare command opens
