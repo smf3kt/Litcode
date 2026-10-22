@@ -15,16 +15,19 @@ const workspace = path.join(temporary, 'workspace'), user = path.join(temporary,
 fs.mkdirSync(workspace); fs.mkdirSync(user);
 fs.mkdirSync(path.join(workspace, '.agent'));
 const fixtureId = '11111111-1111-4111-8111-111111111111';
-fs.writeFileSync(path.join(workspace, '.agent', `${fixtureId}.jsonl`), [
-  JSON.stringify({ kind: 'metadata', version: 1, id: fixtureId, config: { model: 'fixture', workspace },
-    fingerprint: 'fixture', startedAt: Date.UTC(2026, 9, 20, 10) }),
+const journal = (id, day, model, input, output) => [
+  JSON.stringify({ kind: 'metadata', version: 1, id, config: { model, workspace },
+    fingerprint: 'fixture', startedAt: Date.UTC(2026, 9, day, 10) }),
   JSON.stringify({ kind: 'message', message: { role: 'user', content: 'hi' } }),
   JSON.stringify({ kind: 'message', message: { role: 'assistant', content: [] },
-    response: { model: 'fixture', usage: { input_tokens: 1000, output_tokens: 500,
+    response: { model, usage: { input_tokens: input, output_tokens: output,
       cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } } }),
   JSON.stringify({ kind: 'turn_end', reason: 'done', duration: { durationMs: 1,
-    timestamp: '2026-10-20T10:30:00.000Z' } }),
-].join('\n') + '\n');
+    timestamp: `2026-10-${day + 10}T10:30:00.000Z` } }),
+].join('\n') + '\n';
+fs.writeFileSync(path.join(workspace, '.agent', `${fixtureId}.jsonl`), journal(fixtureId, 10, 'fixture', 1000, 500));
+fs.writeFileSync(path.join(workspace, '.agent', '22222222-2222-4222-8222-222222222222.jsonl'),
+  journal('22222222-2222-4222-8222-222222222222', 11, 'other', 2000, 1000));
 fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ model: 'fixture-model', thinking: false }));
 const checks = [], captures = {};
 let active;
@@ -74,12 +77,15 @@ try {
   pass('/usage opens the Stats panel');
   pass('the daily activity heatmap renders', screen().includes('Less ░ ▒ ▓ █ More'));
   pass('the range line starts at all time', screen().includes('Range: All time'));
-  pass('the journal aggregate names its favorite model', screen().includes('Favorite model: fixture'));
-  pass('the session count comes from the journals', screen().includes('Sessions: 1'));
-  pass('the activity row reports the day span', screen().includes('Active days: 1/1'));
+  pass('the journal aggregate names its favorite model', screen().includes('Favorite model: other'));
+  pass('the session count comes from the journals', screen().includes('Sessions: 2'));
+  pass('the activity row reports the day span', screen().includes('Active days: 2/2'));
   send('\x1b[6~');
-  await until(() => screen().includes('Input 1.0k · Output 500'), 'totals line');
+  await until(() => screen().includes('Input 3.0k · Output 1.5k'), 'totals line');
   pass('the modality totals use the recovered formatter');
+
+  await until(() => screen().includes('Tokens per Day'), 'tokens chart');
+  pass('the tokens-per-day chart renders with its legend', screen().includes('● other · ● fixture'));
 
   send('t');
   await until(() => screen().includes('Range: Last 7 days'), '7d range');

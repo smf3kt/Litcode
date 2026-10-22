@@ -35,7 +35,8 @@ units, ranges half-open.
 
 ## Validation
 
-- `test/usage-panel.test.ts`: 8/8, including a hand-computed 10-week grid (month labels, three
+- `test/usage-panel.test.ts`: 8/8 at the W265 commit (the W266 chart section adds two tests),
+  including a hand-computed 10-week grid (month labels, three
   bucketed days, future cells as spaces, legend) and the width clamps (52 weeks at 200 columns,
   10 at 4).
 - `test/usage-command.test.ts`: 2/2 (the heatmap precedes the range line; the range still cycles).

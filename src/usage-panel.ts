@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { asciiPlot } from './ascii-chart.js';
 
 /**
  * The Settings Stats tab (`ni`, chunk-dag4qhha.js 99921) over the local session journals.
@@ -36,6 +37,7 @@ export type UsageStats = {
   totalSessions: number; totalMessages: number; totalDays: number; activeDays: number;
   streaks: UsageStreaks;
   dailyActivity: UsageDay[];
+  dailyModelTokens: { date: string; tokensByModel: Record<string, number> }[];
   longestSession: { duration: number; messageCount: number } | null;
   modelUsage: Record<string, UsageModelTokens>;
   firstSessionDate: string | null; lastSessionDate: string | null;
@@ -196,7 +198,10 @@ export function usageStats(sessions: readonly UsageSession[],
   return {
     totalSessions, totalMessages, totalDays, activeDays: dailyActivity.length,
     streaks: usageStreaks(dailyActivity.map(day => day.date), options.now === undefined ? undefined : usageDayKey(options.now)),
-    dailyActivity, longestSession: longest, modelUsage, firstSessionDate, lastSessionDate,
+    dailyActivity,
+    dailyModelTokens: Array.from(perDayModels.entries()).map(([date, tokensByModel]) => ({ date, tokensByModel }))
+      .sort((left, right) => left.date.localeCompare(right.date)),
+    longestSession: longest, modelUsage, firstSessionDate, lastSessionDate,
     peakActivityDay, favoriteModel, totalTokens,
   };
 }
@@ -273,6 +278,58 @@ export function activityHeatmap(activity: readonly { date: string; messageCount:
   return lines.join('\n');
 }
 
+/** `ai` (chunk-dag4qhha.js 110439): the `Tokens per Day` chart over the top three models. */
+export function modelTokenChart(days: readonly { date: string; tokensByModel: Record<string, number> }[],
+  models: readonly string[], columns = 80): { chart: string; xAxisLabels: string; legend: string[] } | null {
+  if (days.length < 2 || models.length === 0) return null;
+  const gutter = 7;
+  const width = Math.min(52, Math.max(20, columns - gutter));
+  const series: { date: string; tokensByModel: Record<string, number> }[] = [];
+  if (days.length >= width) series.push(...days.slice(-width));
+  else {
+    const repeat = Math.floor(width / days.length);
+    for (const day of days) for (let copy = 0; copy < repeat; copy++) series.push(day);
+  }
+  const values: number[][] = [];
+  const legend: string[] = [];
+  for (const model of models.slice(0, 3)) {
+    const line = series.map(day => day.tokensByModel[model] ?? 0);
+    if (!line.some(value => value > 0)) continue;
+    values.push(line);
+    legend.push(`● ${model}`);
+  }
+  if (values.length === 0) return null;
+  return { chart: asciiPlot(values, { height: 8, format: chartTokenLabel }), legend,
+    xAxisLabels: modelTokenAxis(series, gutter) };
+}
+
+/** The `format` closure `ai` passes to the plotter. */
+function chartTokenLabel(value: number): string {
+  let text: string;
+  if (value >= 999950000) text = `${(value / 1e9).toFixed(1)}B`;
+  else if (value >= 1e6) text = `${(value / 1e6).toFixed(1)}M`;
+  else if (value >= 1000) text = `${(value / 1000).toFixed(0)}k`;
+  else text = value.toFixed(0);
+  return text.padStart(6);
+}
+
+/** `Um` (chunk-dag4qhha.js 111294): up to four day ticks under the chart. */
+function modelTokenAxis(series: readonly { date: string }[], gutter: number): string {
+  if (series.length === 0) return '';
+  const ticks = Math.min(4, Math.max(2, Math.floor(series.length / 8)));
+  const span = series.length - 6;
+  const step = Math.floor(span / (ticks - 1)) || 1;
+  let line = ' '.repeat(gutter);
+  let end = 0;
+  for (let tick = 0; tick < ticks; tick++) {
+    const position = Math.min(tick * step, series.length - 1);
+    const label = shortDate(series[position]!.date);
+    line += ' '.repeat(Math.max(1, position - end)) + label;
+    end = position + label.length;
+  }
+  return line;
+}
+
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -291,7 +348,8 @@ function heatmapGlyph(bucket: number): string {
 }
 
 /** The `ni` summary block: two 28-column cells per row, then the modality totals. */
-export function usagePanelText(stats: UsageStats, range: UsageRange = 'all', heatmap?: string): string {
+export function usagePanelText(stats: UsageStats, range: UsageRange = 'all', heatmap?: string,
+  columns = 80): string {
   if (stats.totalSessions === 0) return [`Range: ${STATS_RANGE_LABELS[range]}`, '', STATS_EMPTY].join('\n');
   const lines = heatmap === undefined || heatmap === '' ? [] : [heatmap, ''];
   lines.push(`Range: ${STATS_RANGE_LABELS[range]}`);
@@ -308,6 +366,10 @@ export function usagePanelText(stats: UsageStats, range: UsageRange = 'all', hea
       `Current streak: ${streakDays(stats.streaks.currentStreak)}`),
   );
   if (stats.totalTokens > 0) lines.push('', usageTotalsLine(stats.modelUsage));
+  const ranked = Object.keys(stats.modelUsage)
+    .sort((left, right) => modelTokens(stats.modelUsage[right]!) - modelTokens(stats.modelUsage[left]!));
+  const chart = modelTokenChart(stats.dailyModelTokens, ranked, columns);
+  if (chart !== null) lines.push('', 'Tokens per Day', chart.chart, chart.xAxisLabels, chart.legend.join(' · '));
   return lines.join('\n');
 }
 
