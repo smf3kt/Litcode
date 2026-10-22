@@ -13,6 +13,7 @@ import { TerminalScreen } from '../scripts/terminal-screen.mjs';
 import { captureIdentity } from '../scripts/identity.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
+const keyboard = process.env.W291_KEYBOARD === '1';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'extracted-v2/manifest.json'), 'utf8'));
 const source = file => {
@@ -108,7 +109,7 @@ const server = http.createServer(async (request, response) => {
     const input = { command: `exec ${quote(process.execPath)} ${quote(worker)} ${quote(pidFile)} ${quote(release)}`,
       description: `W290 ${id}`, timeout_ms: 120_000 };
     emit(response, { type: 'tool_use', id: 'start-' + id, name: 'run_background', input: {} }, input, 'tool_use', true);
-  } else if (/^W290_(HOLD|QUESTION|FORM)$/.test(text)) {
+  } else if (/^W290_(HOLD|QUESTION|FORM|INTERRUPT)$/.test(text)) {
     const held = { response, aborted: false };
     response.on('close', () => { if (!response.writableEnded) held.aborted = true; });
     holds.set(text, held);
@@ -156,8 +157,14 @@ async function start(id, label) {
   return jobs.get(id);
 }
 async function open(label) {
-  const column = taskColumn(label); pointer(0, column, 30); pointer(0, column, 30, 'm');
-  await until(() => /^Background$/mu.test(frame()), 'native footer opens Background');
+  if (keyboard) {
+    send('\x1b[B');
+    await until(() => Boolean(active.screen.cell(taskColumn(label) - 1, 29).isInverse()), 'keyboard selects task');
+    send('\r');
+  } else {
+    const column = taskColumn(label); pointer(0, column, 30); pointer(0, column, 30, 'm');
+  }
+  await until(() => /^Background$/mu.test(frame()), 'footer opens Background');
 }
 async function close() { send('\x03'); await until(() => /^❯/mu.test(frame()) && !/^Background$/mu.test(frame()), 'close Background'); }
 async function clear() { send('\x15'); await until(() => /^❯\s*$/mu.test(frame()), 'clear draft'); }
@@ -179,6 +186,26 @@ try {
   pointer(0, column, 30); pointer(32, column + 2, 30); pointer(0, column + 2, 30, 'm'); await delay(75);
   pass('a drag leaves the task running and the composer open', !/^Background$/mu.test(frame()) && alive(pid(first)));
   await clear();
+  if (keyboard) {
+    pointer(0, 1, 1); pointer(0, 1, 1, 'm'); pointer(35, 1, 1);
+    send('keyboard draft\x1b[B');
+    await until(() => Boolean(active.screen.cell(taskColumn('1 shell') - 1, 29).isInverse())
+      && footer().includes('enter to view tasks'), 'keyboard task focus');
+    pass('Down selects the task label and paints its Enter hint');
+    pass('selected task hides the composer cursor', active.screen.terminal._core.coreService.isCursorHidden);
+    send('\x1b[D\x1b[C'); await delay(75);
+    pass('left and right keep the single task selected without wrapping', Boolean(active.screen.cell(taskColumn('1 shell') - 1, 29).isInverse()));
+    send('\x1b[A'); await until(() => !Boolean(active.screen.cell(taskColumn('1 shell') - 1, 29).isInverse()), 'Up leaves footer');
+    pass('Up restores composer focus with the exact draft', frame().includes('❯ keyboard draft'));
+    send('\x1b[B'); await until(() => Boolean(active.screen.cell(taskColumn('1 shell') - 1, 29).isInverse()), 'select before Escape');
+    send('\x1b'); await until(() => !Boolean(active.screen.cell(taskColumn('1 shell') - 1, 29).isInverse()), 'Escape leaves footer');
+    pass('Escape clears task focus without clearing the draft', frame().includes('❯ keyboard draft'));
+    send('\x1b[Bz'); await until(() => frame().includes('❯ keyboard draftz'), 'edit leaves footer');
+    pass('typing edits the draft and clears task focus', !Boolean(active.screen.cell(taskColumn('1 shell') - 1, 29).isInverse()));
+    send('\x1b[B\x1b[Bx'); await until(() => /^Background$/mu.test(frame()), 'Down opens selected task');
+    pass('second Down opens Background and drops the trailing stop key', alive(pid(first)) && frame().includes('1 active shell'));
+    await close(); await clear();
+  }
   send('W290_HOLD\r'); await until(() => holds.has('W290_HOLD') && footer().includes('running'), 'held main request');
   send('draft during request'); await until(() => frame().includes('❯ draft during request'), 'held draft');
   await open('1 shell'); await close();
@@ -194,6 +221,26 @@ try {
   fs.writeFileSync(natural.release, 'done');
   await until(() => frame().includes('No tasks currently running') && !alive(pid(natural)), 'live natural completion');
   pass('natural task completion updates an open panel without input'); await close();
+  if (keyboard) {
+    const disappearing = await start('focus_exit', '1 shell');
+    send('surviving draft\x1b[B');
+    await until(() => Boolean(active.screen.cell(taskColumn('1 shell') - 1, 29).isInverse()), 'focus task before exit');
+    fs.writeFileSync(disappearing.release, 'done');
+    await until(() => !footer().includes('1 shell') && !alive(pid(disappearing)), 'focused task exits');
+    pass('a finished focused task restores composer input', !footer().includes('view tasks') && frame().includes('❯ surviving draft'));
+    await clear();
+    const interrupted = await start('interrupt', '1 shell');
+    send('W290_INTERRUPT\r'); await until(() => holds.has('W290_INTERRUPT') && footer().includes('running'), 'request before footer interrupt');
+    send('interrupt draft\x1b[B');
+    await until(() => footer().includes('enter to view tasks'), 'selected task before Ctrl-C');
+    send('\x03');
+    await until(() => holds.get('W290_INTERRUPT').aborted && !footer().includes('running'), 'selected footer interrupts main request');
+    pass('Ctrl-C interrupts the selected footer request and retains its draft and shell', frame().includes('❯ interrupt draft')
+      && !/^Background$/mu.test(frame()) && alive(pid(interrupted)));
+    send('\x1b[A'); await open('1 shell'); send('x');
+    await until(() => frame().includes('No tasks currently running') && !alive(pid(interrupted)), 'interrupt worker stopped');
+    await close(); await clear();
+  }
   const question = await start('question', '1 shell');
   send('W290_QUESTION\r'); await until(() => holds.has('W290_QUESTION') && footer().includes('running'), 'held question request');
   send('question draft'); await open('1 shell');
@@ -227,6 +274,32 @@ try {
   pass('80 columns keeps the native footer click reachable', frame().includes('1 active shell'));
   send('x'); await until(() => frame().includes('No tasks currently running') && !alive(pid(narrow)), 'narrow stopped');
   await close(); await exit();
+  if (keyboard) {
+    const settingsFile = path.join(user, 'settings.json');
+    fs.writeFileSync(settingsFile, JSON.stringify({ ...JSON.parse(fs.readFileSync(settingsFile, 'utf8')), editorMode: 'vim' }));
+    fs.writeFileSync(path.join(user, 'keybindings.json'), JSON.stringify({ '\r': 'submit', '\x1b[B': 'down',
+      '\x1b[A': 'up', '\x1b[C': 'right', '\x1b[D': 'left' }));
+    await launch(120); const vimJob = await start('vim_keys', '1 shell');
+    send('vim draft'); await until(() => frame().includes('❯ vim draft'), 'Vim draft');
+    const vimCursorInverse = () => {
+      const row = active.screen.lines().findIndex(line => line.includes('❯ vim draft'));
+      if (row < 0) return false;
+      const column = active.screen.lines()[row].indexOf('draft') + 4;
+      return Boolean(active.screen.cell(column, row).isInverse());
+    };
+    send('\x1b'); await until(vimCursorInverse, 'Vim NORMAL cursor');
+    send('\x1b[B'); await until(() => Boolean(active.screen.cell(taskColumn('1 shell') - 1, 29).isInverse()), 'explicit Down selects');
+    pass('Vim footer selection hides both hardware and painted text cursors', !vimCursorInverse()
+      && active.screen.terminal._core.coreService.isCursorHidden);
+    send('\x1b[A'); await until(vimCursorInverse, 'explicit Up restores Vim cursor');
+    pass('explicit Up restores the single Vim input cursor', !Boolean(active.screen.cell(taskColumn('1 shell') - 1, 29).isInverse()));
+    send('\x1b[B\rx'); await until(() => /^Background$/mu.test(frame()), 'explicit Enter opens');
+    pass('explicit Enter opens Background and drops the trailing x', alive(pid(vimJob)));
+    await close(); pass('explicit binding cancel keeps the exact Vim draft', frame().includes('❯ vim draft'));
+    await open('1 shell'); send('x');
+    await until(() => frame().includes('No tasks currently running') && !alive(pid(vimJob)), 'Vim task stops');
+    await close(); send('a\x15'); await until(() => /^❯\s*$/mu.test(frame()), 'Vim clear'); await exit();
+  }
   pass('all compiled processes exit zero', processes.every(process => process.child.exitCode === 0));
   pass('all owned task processes have exited', [...jobs.values()].every(job => !alive(pid(job))));
   const journalDir = path.join(workspace, '.agent'), files = fs.readdirSync(journalDir, { recursive: true });

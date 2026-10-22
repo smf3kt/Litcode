@@ -193,7 +193,8 @@ test('a footer click opens Background during a held turn without replacing its o
     await delay(0);
     assert.equal(modelSignal?.aborted, false);
     assert.equal(tui.state.text, 'retained draft');
-    click(); await until(() => tui.currentScreen === 'dialog');
+    key('\x1b[B\r'); await until(() => tui.currentScreen === 'dialog');
+    assert.equal(modelSignal?.aborted, false);
     assert.ok(elicitation);
     const form = elicitation({ mode: 'form', message: 'Choose a local label', requestedSchema: {
       type: 'object', properties: { label: { type: 'string' } }, required: ['label'],

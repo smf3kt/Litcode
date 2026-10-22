@@ -40,7 +40,7 @@ export interface FrameCursor { row: number; column: number; visible: boolean }
 /** One prompt row: plain text, or the runs a chain answer painted over it. */
 export type PromptLine = string | readonly PromptSegment[];
 /** A footer part painted in a theme slot's colour instead of the dim default. */
-export interface FooterPart { text: string; color?: string; onClick?: () => void }
+export interface FooterPart { text: string; color?: string; onClick?: () => void; selected?: boolean }
 type FooterContent = readonly (string | FooterPart)[] | ((columns: number) => readonly (string | FooterPart)[]);
 export interface FooterStatus { feedback?: string; hasStash?: boolean }
 
@@ -57,7 +57,7 @@ export function footerElement(footer: FooterContent, width: number, { feedback, 
         index === 0 ? null : jsx(n, { dimColor: true, children: ' · ' }, 'separator'),
         typeof part === 'string' ? jsx(Do, { dimColor: true, children: part }, 'text')
           : part.onClick === undefined ? jsx(n, { color: part.color, children: part.text }, 'text')
-            : jsx(Vde, { selected: false, onClick: part.onClick, children: part.text }, 'task')
+            : jsx(Vde, { selected: part.selected ?? false, onClick: part.onClick, children: part.text }, 'task')
       ] }, String(index))) }, 'footer');
   if (rightWidth === 0) return left;
   return jsx(s, { height: 1, width, flexDirection: 'row', overflow: 'hidden', children: [left,

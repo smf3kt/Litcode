@@ -701,5 +701,12 @@ Explicitly out of scope for this loop:
       and reset disappearance protection for every focus navigation path. Affected137/137,
       check/build clean, compiled20/20 plus effort26/26 and stash19/19 at `b41aa5b7...`.
       Independent repair recheck passed. See `research/ports/W290-background-footer-click.md`.
-- [ ] Candidate: footer keyboard selection and task opening. Verify the source focus/open key
-      owner and chord resolution before choosing a package; no shortcut is inferred from its name.
+- [x] W291 footer keyboard (bS/lue/JA -> rh/pf/Wp/kL, 24k7d6mw, UTF-16):
+      current-history Down selects the label, inverse and Enter hint. Enter/Down/Ctrl+N opens
+      live Background; Up/Escape/edit/task loss restores composer ownership. Explicit bindings,
+      Vim navigation and hardware/painted cursor consumers share that focus. Ctrl+C stays global.
+      Three independent findings repaired and rechecked. Affected155/155, check/build clean,
+      compiled33/33 plus effort26/26 and stash19/19 at `0d1b511b...`.
+      See `research/ports/W291-footer-keyboard.md`.
+- [ ] Candidate: remaining local config/tips consumers at the earlier residual row. Verify
+      source producers, gates and ownership before choosing a package; account/OAuth remain excluded.
