@@ -36,7 +36,7 @@ import { HELP_FOOTER_HINT, HELP_HINT_MIN_COLUMNS } from './help-panel.js';
 import { STASH_HINT_TIMEOUT_MS, STASH_RESTORED, STASH_RESTORED_TIMEOUT_MS, StashHintGate,
   hasUsedStash, markStashUsed, stashHintText } from './tui-stash.js';
 import { BASH_STDERR_TAG, BASH_STDOUT_TAG, SHELL_MODE_LABEL, bashInputText, bashPointerMark,
-  readBashInput, readBashResult, switchedToBash, type ComposerMode } from './tui-bash-mode.js';
+  drainedShellRow, readBashInput, readBashResult, switchedToBash, type ComposerMode } from './tui-bash-mode.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
   createSelection, dragSpan, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
@@ -531,6 +531,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   });
   private progressRenderer: TuiDocumentRenderer | undefined;
   private progressHeight = 0;
+  /** Source `showDrainedShellLine`: the live row a running drained command owns. */
+  private drainedShell: (import('./tools.js').ShellProgress & { verbose: boolean }) | undefined;
   private completedDuration: string | undefined;
   /** Source status-line owner and document rows share this terminal's mount lifetime. */
   private readonly statusLine = new StatusLine();
@@ -3905,15 +3907,57 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   private renderProgress(columns: number, rows: number, maximum: number): string[] {
+    // Source `Y4` (chunk-24k7d6mw.js 1524370): the progress region holds every entry in the
+    // store, so a drained shell's live row shares it with the agent's own progress.
+    const drained = this.drainedShell === undefined ? [] : this.renderDrainedShell(columns, rows);
     if (!this.progress.running && !this.progress.hasTasks) {
-      this.progressRenderer?.renderElement(null, columns); this.progressHeight = 0; return [];
+      this.progressRenderer?.renderElement(null, columns);
+      this.progressHeight = drained.length;
+      return drained.slice(0, maximum);
     }
     this.progressRenderer ??= new TuiDocumentRenderer();
     const content = this.progressRenderer.renderElement(this.progress.element(columns), columns,
       {theme:this.theme.current, themeOverrides:this.theme.overrides, terminalRows:rows}).map(row => row.ansi);
-    const visible = content.slice(0, maximum);
+    const visible = [...drained, ...content].slice(0, maximum);
     this.progressHeight = visible.length;
     return visible;
+  }
+
+  /**
+   * Source `tTe` (chunk-24k7d6mw.js 1521987) with its body `fIe` (chunk-3yqee67r.js 1148): the
+   * row a drained command owns while it runs. `tTe` puts the `<bash-input>` line first, which this
+   * host already appended to the transcript at submit, so only `fIe`'s body and its three columns
+   * are drawn here.
+   */
+  private renderDrainedShell(columns: number, rows: number): string[] {
+    const snapshot = this.drainedShell!;
+    const row = drainedShellRow({ ...snapshot, verbose: snapshot.verbose || this.verbose }, columns);
+    this.progressRenderer ??= new TuiDocumentRenderer();
+    const parts = row.running
+      ? [jsx(n, { dimColor: true, children: 'Running\u2026 ' }, 'running'),
+        ...(row.elapsed === null ? [] : [jsx(n, { dimColor: true, children: row.elapsed }, 'elapsed')])]
+      : [jsx(n, { dimColor: true, children: row.text }, 'body'),
+        jsx(s, { flexDirection: 'row', gap: 1, children: [
+          ...(row.count === '' ? [] : [jsx(n, { dimColor: true, children: row.count }, 'count')]),
+          ...(row.elapsed === null ? [] : [jsx(n, { dimColor: true, children: row.elapsed }, 'elapsed')]),
+          ...(row.bytes === null ? [] : [jsx(n, { dimColor: true, children: row.bytes }, 'bytes')]),
+        ] }, 'columns')];
+    return this.progressRenderer.renderElement(jsx(s, { flexDirection: 'column', children: parts }, 'drained'),
+      columns, { theme: this.theme.current, themeOverrides: this.theme.overrides, terminalRows: rows })
+      .map(rendered => rendered.ansi);
+  }
+
+  /**
+   * Source `showDrainedShellLine` (chunk-24k7d6mw.js 1372925): one row under the fixed
+   * `drained-shell-line` id, replaced by the next command and removed when the command ends.
+   */
+  setDrainedShell(progress: import('./tools.js').ShellProgress | undefined): void {
+    if (this.closed) return;
+    const next = progress === undefined ? undefined
+      : { ...progress, verbose: this.verbose };
+    if (JSON.stringify(next) === JSON.stringify(this.drainedShell)) return;
+    this.drainedShell = next;
+    this.render();
   }
 
   private drawFrame(lines: readonly string[], columns: number, rows: number,

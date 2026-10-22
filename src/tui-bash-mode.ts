@@ -172,7 +172,7 @@ export const BASH_PROGRESS_GUTTER = 5;
  */
 export function drainedShellTail(output: string, columns: number): { text: string; clipped: boolean; dropped: number } {
   const width = Math.max(1, columns - BASH_PROGRESS_GUTTER);
-  const lines = output.replace(/\r\n?/g, '\n').split('\n').filter(line => line.length > 0);
+  const lines = stripAnsi(output.trim()).replace(/\r\n?/g, '\n').split('\n').filter(line => line.length > 0);
   const kept: string[] = [];
   let used = 0;
   let index = lines.length;
@@ -200,4 +200,115 @@ function wrapHard(text: string, width: number): string[] {
 export function drainedShellLineVisible(output: string, fullOutput: string, columns: number, totalLines?: number): boolean {
   if (!fullOutput.trim()) return false;
   return (totalLines ?? 0) > BASH_PROGRESS_LINES || drainedShellTail(output, columns).clipped;
+}
+
+/** Source `Qt` (chunk-5sxzysbh.js 615): the row's byte count, in the source's own units. */
+export function shellBytesText(bytes: number): string {
+  const kilobytes = bytes / 1024;
+  if (kilobytes < 1) return `${bytes} bytes`;
+  if (kilobytes < 1024) return `${kilobytes.toFixed(1).replace(/\.0$/, '')}KB`;
+  const megabytes = kilobytes / 1024;
+  if (megabytes < 1024) return `${megabytes.toFixed(1).replace(/\.0$/, '')}MB`;
+  return `${(megabytes / 1024).toFixed(1).replace(/\.0$/, '')}GB`;
+}
+
+/**
+ * Source `rn` (chunk-yn0pfn70.js 9654): the duration grammar the elapsed column prints. `fIe`
+ * calls it with milliseconds; `_ie` calls it with `elapsedTimeSeconds * 1000`.
+ */
+export function shellDurationText(milliseconds: number, options?: { hideTrailingZeros?: boolean }): string {
+  if (milliseconds < 60000) {
+    if (milliseconds === 0) return '0s';
+    if (milliseconds < 1) return `${(milliseconds / 1000).toFixed(1)}s`;
+    return `${Math.floor(milliseconds / 1000).toString()}s`;
+  }
+  let days = Math.floor(milliseconds / 86400000);
+  let hours = Math.floor((milliseconds % 86400000) / 3600000);
+  let minutes = Math.floor((milliseconds % 3600000) / 60000);
+  let seconds = Math.round((milliseconds % 60000) / 1000);
+  if (seconds === 60) { seconds = 0; minutes += 1; }
+  if (minutes === 60) { minutes = 0; hours += 1; }
+  if (hours === 24) { hours = 0; days += 1; }
+  const trim = options?.hideTrailingZeros === true;
+  if (days > 0) {
+    if (trim && hours === 0 && minutes === 0) return `${days}d`;
+    if (trim && minutes === 0) return `${days}d ${hours}h`;
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+  if (hours > 0) {
+    if (trim && minutes === 0 && seconds === 0) return `${hours}h`;
+    if (trim && seconds === 0) return `${hours}h ${minutes}m`;
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  if (minutes > 0) {
+    if (trim && seconds === 0) return `${minutes}m`;
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
+/**
+ * Source `_ie` (chunk-w174g2nz.js 956): the dim `(12s · timeout 30s)` column beside the row.
+ * A running command with no elapsed reading prints only its timeout.
+ */
+export function shellElapsedText(elapsedTimeSeconds: number | undefined, timeoutMs: number | undefined): string | null {
+  if (elapsedTimeSeconds === undefined && !timeoutMs) return null;
+  const timeout = timeoutMs ? shellDurationText(timeoutMs, { hideTrailingZeros: true }) : undefined;
+  if (elapsedTimeSeconds === undefined) return `(timeout ${timeout})`;
+  const elapsed = shellDurationText(elapsedTimeSeconds * 1000);
+  return timeout ? `(${elapsed} · timeout ${timeout})` : `(${elapsed})`;
+}
+
+export type DrainedShellSnapshot = {
+  output: string;
+  fullOutput: string;
+  elapsedTimeSeconds?: number;
+  totalLines?: number;
+  totalBytes?: number;
+  timeoutMs?: number;
+  verbose?: boolean;
+};
+
+export type DrainedShellRow = {
+  /** The output body the row prints, dim; empty means the `Running… ` arm. */
+  text: string;
+  /** The count column: `~12 lines`, or `+3 lines` once the tail dropped some. */
+  count: string;
+  /** The dim elapsed/timeout column, or null while the command has not reported a time. */
+  elapsed: string | null;
+  /** The byte column, or null when the command has written nothing. */
+  bytes: string | null;
+  /** Source `fIe`: with no body the row is `Running… ` and the elapsed column. */
+  running: boolean;
+};
+
+/**
+ * Source `fIe` (chunk-3yqee67r.js 1148): the live row a drained command owns while it runs. The
+ * body is the clipped tail (`v`), or the whole output when the clip is off; the count column
+ * prefers the running line total (`~N lines`) and falls back to the dropped-line count; the
+ * elapsed and byte columns sit beside it on one row.
+ */
+export function drainedShellRow(snapshot: DrainedShellSnapshot, columns: number): DrainedShellRow {
+  const clipped = snapshot.verbose === true ? null : drainedShellTail(snapshot.output, columns);
+  const text = clipped ? clipped.text : stripAnsi(snapshot.fullOutput.trim());
+  const elapsed = shellElapsedText(snapshot.elapsedTimeSeconds, snapshot.timeoutMs);
+  if (!text) return { text: '', count: '', elapsed, bytes: null, running: true };
+  const shown = clipped ? BASH_PROGRESS_LINES : countNewlines(snapshot.fullOutput) + 1;
+  const totalLines = snapshot.totalLines ?? 0;
+  const dropped = (totalLines ? Math.max(0, totalLines - shown) : 0) + (clipped?.dropped ?? 0);
+  const count = snapshot.totalBytes && totalLines ? `~${totalLines} lines` : dropped > 0 ? `+${dropped} lines` : '';
+  return { text, count, elapsed, bytes: snapshot.totalBytes ? shellBytesText(snapshot.totalBytes) : null, running: false };
+}
+
+/** Source `$N` (chunk-gyf58rwf.js 9160): drop ANSI escapes from every run of printable text. */
+function stripAnsi(text: string): string {
+  return text.replace(/[^\n\r\v\f\x85\u2028\u2029]+/g, run =>
+    run.replace(/\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07]*(?:\x07|\x1b\\)/g, ''));
+}
+
+/** Source `Lt` (chunk-ax7r0qj7.js 3561): how many times `needle` occurs in `text`. */
+function countNewlines(text: string): number {
+  let count = 0;
+  for (let at = text.indexOf('\n'); at !== -1; at = text.indexOf('\n', at + 1)) count += 1;
+  return count;
 }

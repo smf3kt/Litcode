@@ -606,3 +606,14 @@ Explicitly out of scope for this loop:
       `respondToBashCommands` switch rides the four settings points. Not ported: the live
       drained-shell row, PowerShell, `backgroundTaskId`, the IDE-selection handoff. Unit 10/10,
       focused 38/38, compiled 10/10 at identity `b6aa68f4…`. See `research/ports/W278-bash-mode.md`.
+- [x] W279 live drained-shell row (`y4` 1368887, `showDrainedShellLine` 1372925, `emitToolProgress` 1372743,
+      `tTe` 1521987, `Y4` 1524370, `nTo` 1523589 chunk-24k7d6mw.js; `fIe` 1148 with `x=5`/`G=5` 1136, `UHr` 2503,
+      `v` 2609 chunk-3yqee67r.js; `hOn` 4322055 and the `bash_progress` frame 4340642 chunk-sfn1dbxq.js;
+      `_ie` chunk-w174g2nz.js 956; `rn` chunk-yn0pfn70.js 9654; `Qt` chunk-5sxzysbh.js 615; `$N`
+      chunk-gyf58rwf.js 9160; `Lt` chunk-ax7r0qj7.js 3561): the progress row a drained command owns while it runs,
+      `Running… ` first and then the clipped five-row tail with its count, elapsed/timeout and byte columns, the
+      collapse gate and the verbose arm. `runShell` now reports the source's 2000 ms snapshot through
+      `ToolContext.onProgress`; `runBashCommand` publishes the empty row and clears it in `finally`, and
+      `renderProgress` draws it above the agent's progress. Not ported: hover expansion, the sibling progress
+      kinds. Unit 13/13, tools 32/32, focused 112/112, compiled 9/9 at identity `cdb8e734…`. See
+      `research/ports/W279-drained-shell-row.md`.

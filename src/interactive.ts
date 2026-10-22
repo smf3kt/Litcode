@@ -409,8 +409,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     // `dangerouslyDisableSandbox: true` and no permission decision: the person typed the command
     // into their own composer, so it runs as they would run it. The one gate is the host's
     // `allowShell` switch, the counterpart of that disable flag; no approval prompt is invented.
-    const text = await tool.execute({ command }, { workspace: session.config.workspace, signal,
-      allowShell: session.config.allowShell, maxOutputBytes: session.config.maxOutputBytes });
+    // Source `showDrainedShellLine` (chunk-24k7d6mw.js 1372925) publishes the row before the
+    // shell starts and its disposer clears it when the call returns, so the row never outlives
+    // the command it belongs to.
+    terminal?.setDrainedShell?.({ output: '', fullOutput: '', elapsedTimeSeconds: 0,
+      totalLines: 0, totalBytes: 0 });
+    let text: string;
+    try {
+      text = await tool.execute({ command }, { workspace: session.config.workspace, signal,
+        allowShell: session.config.allowShell, maxOutputBytes: session.config.maxOutputBytes,
+        onProgress: progress => terminal?.setDrainedShell?.(progress) });
+    } finally { terminal?.setDrainedShell?.(undefined); }
     // Source `processBashCommand` 14067: `g = respond && !interrupted && !background && !aborted`.
     // This host's lane reports interruption and the exit status through its trailing note.
     const note = /\n?\[run_command: [^\n]*\]$/.exec(text)?.[0]?.trim() ?? '';

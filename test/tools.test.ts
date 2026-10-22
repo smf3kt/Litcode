@@ -317,6 +317,23 @@ test("run_command abort signal kills the process group", async () => {
   assert.equal(fs.statSync(ticks).size, sizeAfterKill, "process group should be dead after abort");
 });
 
+test("run_command reports a shell progress frame on the source's 2000 ms cadence", async () => {
+  const ws = tmpDir();
+  const frames: Array<{ elapsedTimeSeconds: number; totalBytes: number; fullOutput: string }> = [];
+  const out = await run(
+    "run_command",
+    { command: "echo first; sleep 2.4; echo second" },
+    makeContext(ws, { allowShell: true, onProgress: progress => frames.push(progress) }),
+  );
+  assert.match(out, /first/);
+  assert.match(out, /second/);
+  // Source `hOn` = 2000: a 2.4 s command yields one frame, and that frame sees the first line.
+  assert.equal(frames.length, 1);
+  assert.match(frames[0]!.fullOutput, /first/);
+  assert.ok(frames[0]!.totalBytes > 0);
+  assert.equal(frames[0]!.elapsedTimeSeconds, 2);
+});
+
 test("search treats a leading-dash literal pattern as data, not an option", async () => {
   const ws = tmpDir();
   write(ws, "dash.txt", "-leading dash\nplain line\n");

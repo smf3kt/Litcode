@@ -1423,6 +1423,8 @@ export interface TerminalSurface {
   appendToolResult?(result: import('./tui-tool-result.js').ToolDisplayResult): void;
   /** Source `processBashCommand` 14067: the `<bash-stdout>`/`<bash-stderr>` row a drained command leaves. */
   appendBashResult?(result: string): void;
+  /** Source `showDrainedShellLine` 1372925: the live row while a drained command runs. */
+  setDrainedShell?(progress: import('./tools.js').ShellProgress | undefined): void;
   /** The composer's slash-command rows; a skill rescan hands back the list it rebuilt. */
   setCommands?(commands: readonly import('./tui-autocomplete.js').TuiCommand[]): void;
   setTheme?(value?: import('./tui-theme-state.js').ThemeSetting): void;
