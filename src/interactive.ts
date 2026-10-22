@@ -2,7 +2,7 @@ import { createInterface } from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
 import { Agent } from './agent.js';
 import { automaticCompactionEnabled } from './compaction-policy.js';
-import type { ModelProvider } from './provider.js';
+import { DEFAULT_GATEWAY, type ModelProvider } from './provider.js';
 import { Session, configSchema, type SessionConfig } from './session.js';
 import { createTerminalInput, questionPreviewText, type TerminalSurface, type TerminalPromptRequest } from './terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
@@ -77,6 +77,7 @@ import { osc52Payload } from './clipboard-osc52.js';
 import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
   SIDE_QUESTION_USAGE, sideQuestionPanelText, type SideQuestionExchange } from './side-question.js';
 import { contextPanelText, contextUsageFromCounts } from './context-panel.js';
+import { STATUS_PANEL_TITLE, appVersion, latestSessionTitle, statusPanelRows, statusPanelText } from './status-panel.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
   EXPORT_DIALOG_TITLE, EXPORT_FILE_DESCRIPTION, EXPORT_FILE_LABEL, EXPORT_FILENAME_PROMPT,
@@ -1925,6 +1926,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const usage = contextUsageFromCounts({ ...counts, columns: process.stdout.columns ?? 80 });
           await withTurn(signal => readDialog({ title: 'Context', message: contextPanelText(usage),
             readOnly: true }, signal));
+          continue;
+        }
+        if (prompt === '/status' && terminal?.prompt) {
+          // `Ofe` mounts the Status tab with the rows `t3n`/`n3n` can answer locally.
+          const rows = statusPanelRows({
+            version: appVersion(),
+            sessionName: latestSessionTitle(session.events),
+            sessionId: session.id,
+            sessionKind: 'interactive',
+            tmux: process.env.TMUX,
+            cwd: session.config.workspace,
+            model: session.config.model,
+            gatewayURL: session.config.gateway !== undefined &&
+              session.config.gateway.baseURL !== DEFAULT_GATEWAY.baseURL
+              ? session.config.gateway.baseURL : undefined,
+          });
+          await withTurn(signal => readDialog({ title: STATUS_PANEL_TITLE,
+            message: statusPanelText(rows), readOnly: true }, signal));
           continue;
         }
         if (prompt === '/status' || prompt === '/usage' || prompt === '/cost') {

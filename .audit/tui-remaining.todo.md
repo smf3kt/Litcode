@@ -463,6 +463,13 @@ Next up, scoped but not started:
       sessions keep the JSON. Not ported: `[all]` detail sections, colour roles and the
       auto-compact window line. Unit 5/5 + 1/1, focused 144/144, compiled 7/7 at identity
       `f9175e46…`. See `research/ports/W261-context.md`.
+- [x] W262 `/status` (`Ofe`, chunk-dag4qhha.js 114000): the Settings Status tab. `t3n`
+      (chunk-8x0s4t30.js 3424) supplies Version, Session name with the `/rename to add a name`
+      fallback, Session ID, Session kind, tmux session and cwd; `n3n` (5523) adds Model and a
+      configured `Gateway URL`. The host opens a read-only dialog and keeps the shared JSON for
+      piped `/status`, `/usage` and `/cost`. Excluded: login/org/email/cloud rows, diagnostics,
+      IDE/MCP statuses, setting sources and the auto-mode server row. Unit 4/4 + 1/1, focused
+      141/141, compiled 7/7 at identity `86ba21d1…`. See `research/ports/W262-status.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any
