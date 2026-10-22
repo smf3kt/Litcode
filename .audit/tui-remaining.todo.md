@@ -499,6 +499,11 @@ Next up, scoped but not started:
       `usageStats` now returns `dailyModelTokens`. Not ported: the per-model rows under the legend
       and the hour histogram. Unit 10/10 + 2/2, focused 38/38, compiled 14/14 at identity
       `2f152ae6…`. See `research/ports/W266-tokens-chart.md`.
+- [x] W267 `/usage` per-model rows (`Uo` chunk-dag4qhha.js [109350,110439); `ti` 97816, `oi` 97884,
+      `Hm` 113186): `● model (pct%)`, `In: … · Out: …`, `Cache: … read · … write`, three ranked
+      models, `No model usage data available` when empty. Flat list instead of the dashboard's
+      two-column four-row scroll window; no accent colour. Unit 11/11, focused 39/39, compiled
+      14/14 at identity `e5431057…`. See `research/ports/W267-model-rows.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

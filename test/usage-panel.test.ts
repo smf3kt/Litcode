@@ -4,8 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { asciiPlot } from '../src/ascii-chart.js';
-import { STATS_EMPTY, STATS_PANEL_TITLE, activityHeatmap, compactNumber, formatDuration, modelTokenChart, nextUsageRange,
-  parseUsageJournal, readUsageSessions, shortDate, usagePanelText, usageStats, usageStreaks,
+import { NO_MODEL_USAGE, STATS_EMPTY, STATS_PANEL_TITLE, activityHeatmap, compactNumber, formatDuration, modelTokenChart, nextUsageRange,
+  modelUsageRows, parseUsageJournal, readUsageSessions, shortDate, usagePanelText, usageStats, usageStreaks,
   usageTotalsLine, type UsageMessage, type UsageSession } from '../src/usage-panel.js';
 
 const AT = (day: number, hour: number) => Date.UTC(2026, 9, day, hour, 0, 0);
@@ -82,8 +82,12 @@ test('the panel text lays the summary out in two 28-column cells', () => {
   ]);
   assert.equal(plain[7], '');
   assert.equal(plain[8], 'Tokens per Day');
-  assert.equal(plain.at(-2), '        Oct 20         Oct 20         Oct 21         Oct 21');
-  assert.equal(plain.at(-1), '● m2 · ● m1');
+  assert.equal(plain[18], '        Oct 20         Oct 20         Oct 21         Oct 21');
+  assert.equal(plain[19], '● m2 · ● m1');
+  assert.deepEqual(plain.slice(21), [
+    '● m2 (59.1%)', '  In: 5.0k · Out: 1.5k', '  Cache: 0 read · 0 write',
+    '● m1 (40.9%)', '  In: 3.0k · Out: 1.5k', '  Cache: 0 read · 0 write',
+  ]);
   const withHeatmap = usagePanelText(stats, 'all', activityHeatmap(stats.dailyActivity,
     { columns: 14, now: new Date(AT(22, 12)) })).split('\n');
   assert.equal(withHeatmap[0], '    AugSepOct');
@@ -115,13 +119,26 @@ test('a range drops sessions and days before the window', () => {
   assert.equal(old.longestSession, null);
 });
 
+test('the model rows use the recovered percentage, in/out and cache lines', () => {
+  const stats = usageStats(fixture(), { now: new Date(AT(21, 12)) });
+  assert.deepEqual(modelUsageRows(stats), [
+    '● m2 (59.1%)', '  In: 5.0k · Out: 1.5k', '  Cache: 0 read · 0 write',
+    '● m1 (40.9%)', '  In: 3.0k · Out: 1.5k', '  Cache: 0 read · 0 write',
+  ]);
+  assert.equal(modelUsageRows(stats, 1).length, 3);
+  const bare = usageStats([{ id: 'd', startedAt: AT(20, 10), messages: [message(AT(20, 10))] }],
+    { now: new Date(AT(21, 12)) });
+  assert.deepEqual(modelUsageRows(bare), []);
+  assert.equal(usagePanelText(bare).split('\n').at(-1), NO_MODEL_USAGE);
+});
+
 test('the plotter keeps the recovered glyph cells', () => {
   assert.deepEqual(asciiPlot([[0, 1]], { height: 2, format: value => String(value).padStart(3) }).split('\n'),
     ['  1 ┼╭ ', '0.5 ┤│ ', '  0 ┼╯ ']);
 });
 
 test('the tokens-per-day chart follows the recovered arity and legend', () => {
-  const days = [
+  const days: { date: string; tokensByModel: Record<string, number> }[] = [
     { date: '2026-10-20', tokensByModel: { m1: 4500 } },
     { date: '2026-10-21', tokensByModel: { m2: 6500 } },
   ];

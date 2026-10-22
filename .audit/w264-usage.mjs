@@ -81,11 +81,12 @@ try {
   pass('the session count comes from the journals', screen().includes('Sessions: 2'));
   pass('the activity row reports the day span', screen().includes('Active days: 2/2'));
   send('\x1b[6~');
-  await until(() => screen().includes('Input 3.0k · Output 1.5k'), 'totals line');
-  pass('the modality totals use the recovered formatter');
-
-  await until(() => screen().includes('Tokens per Day'), 'tokens chart');
-  pass('the tokens-per-day chart renders with its legend', screen().includes('● other · ● fixture'));
+  await until(() => screen().includes('● other · ● fixture'), 'tokens chart');
+  pass('the tokens-per-day chart renders with its legend',
+    screen().includes('┼') && screen().includes('Oct 20'));
+  pass('the per-model rows carry the recovered percentage and totals',
+    screen().includes('● other (66.7%)') && screen().includes('In: 2.0k · Out: 1.0k')
+    && screen().includes('Cache: 0 read · 0 write'));
 
   send('t');
   await until(() => screen().includes('Range: Last 7 days'), '7d range');
