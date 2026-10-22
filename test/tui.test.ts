@@ -2921,3 +2921,45 @@ test('focus does not fold outside a tool call or outside a running turn', contex
     assert.equal(idle.transcriptState.entries[0]?.streaming, true);
   } finally { idle.close(); }
 });
+
+test('an empty draft turns ? into the help panel and keeps it as text otherwise', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk: string, _encoding: string, done: () => void) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 30 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const actions: string[] = [];
+  tui.on('action', (action: string) => actions.push(action));
+  try {
+    // `chunk-24k7d6mw.js` 880989: the empty-draft branch runs before `typeText`, so the
+    // character never reaches the editor.
+    input.emit('data', '?');
+    assert.deepEqual(actions, ['app:toggleHelp']);
+    assert.equal(tui.state.text, '');
+    // A non-empty draft keeps the recovered `typeText` arm.
+    input.emit('data', 'why');
+    input.emit('data', '?');
+    assert.deepEqual(actions, ['app:toggleHelp']);
+    assert.equal(tui.state.text, 'why?');
+  } finally { tui.close(); }
+});
+
+test('the idle footer names the ? shortcut only where a whole hint survives the clip', () => {
+  const draw = (columns: number) => {
+    const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+    input.isTTY = true; input.setRawMode = () => {};
+    const output = new Writable({ write(_chunk: string, _encoding: string, done: () => void) { done(); } });
+    Object.assign(output, { isTTY: true, columns, rows: 30 }); watchScreen(output);
+    const tui = new TuiTerminal({ input, output }).start();
+    try { return screenLines(output).join('\n'); } finally { tui.close(); }
+  };
+  // Source `LVe` 765495 through `s2` (chunk-24k7d6mw.js 789074): `? for shortcuts` replaces the
+  // other indicators, here the local navigation hints, only while the row can still show one.
+  assert.ok(draw(120).includes('? for shortcuts'));
+  const wide = draw(80);
+  assert.ok(wide.includes('? for shortcuts'), wide);
+  assert.ok(wide.includes('ctrl+o'), wide);
+  const tiny = draw(40);
+  assert.ok(!tiny.includes('? for shortcuts'), tiny);
+  assert.ok(tiny.includes('ctrl+o'), tiny);
+});

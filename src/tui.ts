@@ -32,6 +32,7 @@ import { formatHookTerminalSequence } from './hook-terminal.js';
 import { reduceKillRing } from './kill-ring.js';
 import { TerminalModeController, type MouseTracking } from './tui-modes.js';
 import { Keymap, chordForAction, chordSequence, contextStack, type TuiContext } from './tui-keys.js';
+import { HELP_FOOTER_HINT, HELP_HINT_MIN_COLUMNS } from './help-panel.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
   createSelection, dragSpan, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
@@ -2073,6 +2074,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       // Explicit local keybinding commands and paste keep their decoded intent.
       if (action.type.startsWith('extend') || action.type === 'selectionCopy') {
         this.routeKey(chordSequence(action)!);
+      } else if (action.type === 'insert' && action.text === '?' && this.screen === 'chat'
+        && this.editor.text === '') {
+        // Source input handler (chunk-24k7d6mw.js 880989): an empty draft turns `?` into the help
+        // panel before `typeText` runs; a non-empty draft still inserts the character.
+        this.emit('action', 'app:toggleHelp');
       } else this.dispatch(action, action.type === 'insert' ? action.text : undefined);
     }
     if (!this.closed && this.decoder.pendingStandaloneEscape) {
@@ -3772,16 +3778,23 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    * The footer row. Source `LVe` leads it with the permission-mode chip (`DR`, `jy` here) and
    * gives the right side one indicator from the `Ei` priority chain; the interrupt branch is the
    * only one whose data this terminal has, so running shows its chord and idle keeps the local
-   * hints.
+   * hints. The recovered idle indicator (`LVe` 765495 through `s2`, chunk-24k7d6mw.js 789074) is
+   * `? for shortcuts`, shown while the draft is empty because that is when `?` opens the panel;
+   * it leads the row so the half-width clip cannot drop it.
    */
   private statusFooter(columns: number): Array<string | FooterPart> {
     if(this.gestures.hint)return [this.gestures.hint.slice(0,columns)];
     const attachment = this.diffSelection.pending;
     if (attachment) return [pad(`${this.diffAttachmentFocused ? '> ' : ''}${attachment.lineCount} ${attachment.lineCount === 1 ? 'line' : 'lines'} from diff${attachment.filePath ? ` in ${attachment.filePath}` : ''}`, columns)];
+    // The recovered row replaces the other indicators with `? for shortcuts`; this host has no
+    // other indicator, so the source row leads its own local navigation hints whenever the
+    // half-width clip still leaves a key behind the shortcut name.
+    const shortcuts = this.screen === 'chat' && !this.running && this.editor.text === ''
+      && Math.floor(columns / 2) >= HELP_HINT_MIN_COLUMNS ? `${HELP_FOOTER_HINT}  ` : '';
     const hints = this.statusLineSetting && this.screen === 'chat' ? ''
       : this.running && this.screen === 'chat'
         ? `${chordForAction('app:interrupt', 'Global', 'ctrl+c')} to interrupt`
-        : this.statusHints();
+        : shortcuts + this.statusHints();
     // The hints are the part a person needs when they are lost, so they keep as
     // much room as they need up to half the row, and status text is clipped
     // into what is left rather than allowed to push the hints off the screen.
