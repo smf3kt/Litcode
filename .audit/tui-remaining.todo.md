@@ -511,6 +511,10 @@ Next up, scoped but not started:
       `/continue` resumes a turn), `settings` (no such command), `checkpoint` (real local command),
       and the `plugin`/`pause-memory` groups. Unit 4/4 + 24/24, focused 69/69, compiled 4/4 at
       identity `9c620fc2…`. See `research/ports/W268-command-aliases.md`.
+- [x] W269 panel key hints: `renderDialog` appends ` / <key> <label>` for every request key, so
+      `/usage` shows `t Last 7 days` and `/mcp` `r reconnect`; no-keys panels keep their hint.
+      Host surface fix, not a recovered body. Focused 88/88, compiled 15/15 at identity
+      `8d0d8699…`. See `research/ports/W269-panel-key-hints.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

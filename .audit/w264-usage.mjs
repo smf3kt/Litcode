@@ -75,6 +75,7 @@ try {
   await until(() => screen().includes('Stats'), 'stats panel');
   captures.panel = screen();
   pass('/usage opens the Stats panel');
+  pass('the panel advertises its range key', /t Last 7 days/.test(screen()));
   pass('the daily activity heatmap renders', screen().includes('Less ░ ▒ ▓ █ More'));
   pass('the range line starts at all time', screen().includes('Range: All time'));
   pass('the journal aggregate names its favorite model', screen().includes('Favorite model: other'));

@@ -3494,6 +3494,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       columns - 2, 1).lines[0] ?? '');
     const progress = groups.length ? `Question ${dialog.step + 1} of ${groups.length}` : undefined;
     // A read-only panel keeps its rows selectable but draws no input row of its own.
+    // A request key is advertised beside the navigation hint so the panel names every action it
+    // accepts; the recovered panels carry their own key row and this host draws one hint line.
+    const keyHint = (dialog.request.keys ?? []).map(entry => `${entry.key} ${entry.label}`).join(' / ');
     const hint = readOnly ? (choices.length ? 'Enter next / Esc back / PgUp/PgDn' : 'Esc close / PgUp/PgDn')
       : dialog.notesEditing ? 'Notes · Enter save / Esc exit'
         : active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'
@@ -3505,7 +3508,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       readOnly && textEntry ? '' : textEntry || dialog.notesEditing ? answer : dialog.index === clarification ? 'Chat about this'
         : `Selected: ${oneLine(choices[dialog.index]?.label ?? '')}`,
       ...(axisLine === undefined ? [] : [axisLine]),
-      dialog.error ?? (progress ? `${progress} · ${hint}` : hint),
+      dialog.error ?? (progress ? `${progress} · ${hint}` : keyHint === '' ? hint : `${hint} / ${keyHint}`),
       ...(countdown === undefined ? [] : [countdown])].map((line, row) =>
         row > 0 && row <= height ? themeRows.get(dialog.scroll + row - 1) ?? pad(line, columns) : pad(line, columns));
   }
