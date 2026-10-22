@@ -3228,3 +3228,104 @@ test('the composer carries the ultracode tag on its top border only while every 
     assert.ok(!frame().includes('ultracode'), frame());
   } finally { tui.close(); decoded.get(output)!.dispose(); }
 });
+
+test('effort feedback expires without rearming unchanged labels and replaces the old deadline', context => {
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  let written = 0;
+  const output = new Writable({ write(chunk, _encoding, done) { written += chunk.length; done(); } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const frame = () => screenLines(output).join('\n');
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  try {
+    tui.setEffortFeedback('low');
+    assert.ok(frame().includes('○ low · /effort'), frame());
+    context.mock.timers.tick(9_000);
+    tui.setEffortFeedback('low');
+    context.mock.timers.tick(999);
+    assert.ok(frame().includes('○ low · /effort'), frame());
+    context.mock.timers.tick(1);
+    assert.ok(!frame().includes('○ low · /effort'), frame());
+    tui.setEffortFeedback('low');
+    assert.ok(!frame().includes('○ low · /effort'), 'an expired dependency stays unchanged');
+
+    tui.setEffortFeedback('high');
+    context.mock.timers.tick(5_000);
+    tui.setEffortFeedback('max');
+    assert.ok(!frame().includes('● high · /effort'), frame());
+    context.mock.timers.tick(5_000);
+    assert.ok(frame().includes('◈ max · /effort'), 'the previous deadline was cancelled');
+    context.mock.timers.tick(4_999);
+    assert.ok(frame().includes('◈ max · /effort'), frame());
+    context.mock.timers.tick(1);
+    assert.ok(!frame().includes('◈ max · /effort'), frame());
+
+    tui.setEffortFeedback('medium');
+    tui.close();
+    const closedBytes = written;
+    context.mock.timers.tick(20_000);
+    tui.setEffortFeedback('xhigh');
+    assert.equal(written, closedBytes, 'closing releases the clock and prevents later output');
+  } finally {
+    tui.close(); context.mock.timers.reset(); decoded.get(output)!.dispose();
+  }
+});
+
+test('effort feedback follows brief and ultracode gates beside status and paste hints', context => {
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 }); watchScreen(output);
+  const colorLevel = Reflect.get(ge, 'level');
+  Reflect.set(ge, 'level', 3);
+  const tui = new TuiTerminal({ input, output }).start();
+  const footer = () => screenLines(output).at(-1)!;
+  context.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  try {
+    tui.setPrefersReducedMotion(true);
+    tui.setEffortFeedback('xhigh');
+    tui.setStatus('status fixture');
+    assert.ok(footer().startsWith('ready  status fixture'), footer());
+    assert.ok(footer().endsWith('◉ xhigh · /effort'), footer());
+    tui.setUltracodeTag({ ultracode: true, workflows: true });
+    assert.ok(footer().endsWith('◉ xhigh · ultracode · /effort'), footer());
+    assert.equal(decoded.get(output)!.buffer.active.getLine(29)!.getCell(footer().indexOf('◉'))!.getFgColor(),
+      0x999999, 'source dimColor resolves to the dark theme inactive foreground');
+    tui.setUltracodeTag({ ultracode: true, workflows: false });
+    assert.ok(footer().endsWith('◉ xhigh · /effort'), footer());
+    tui.setUltracodeTag({ ultracode: true, workflows: true, modelSupportsUltracode: false });
+    assert.ok(footer().endsWith('◉ xhigh · /effort'), footer());
+    tui.setBriefTranscript(true);
+    assert.ok(!footer().includes('xhigh'), footer());
+    tui.setBriefTranscript(false);
+    assert.ok(footer().endsWith('◉ xhigh · /effort'), footer());
+    input.emit('data', `\x1b[200~${'x'.repeat(801)}\x1b[201~`);
+    assert.ok(footer().startsWith('paste again to expand'), footer());
+    assert.ok(footer().endsWith('◉ xhigh · /effort'), footer());
+    Object.assign(output, { columns: 40 }); output.emit('resize');
+    assert.ok(footer().startsWith('paste again to exp'), footer());
+    assert.ok(footer().includes('◉ xhigh'), footer());
+    assert.ok(cellWidth(footer()) <= 40, footer());
+    Object.assign(output, { columns: 120 }); output.emit('resize');
+    assert.ok(footer().endsWith('◉ xhigh · /effort'), footer());
+    context.mock.timers.tick(8_000);
+    input.emit('data', '\x15');
+    input.emit('data', '\x18\x0b');
+    assert.ok(footer().includes('No background agents running'), footer());
+    assert.ok(!footer().includes('xhigh'), 'the existing transient notice keeps priority');
+    context.mock.timers.tick(2_000);
+    assert.ok(!footer().includes('xhigh'), 'effort expires while another notice is visible');
+    tui.setEffortFeedback('high');
+    input.emit('data', '/');
+    assert.ok(!footer().includes('● high'), 'suggestions hide the fullscreen notification');
+    input.emit('data', '\x15');
+    assert.ok(footer().endsWith('● high · /effort'), footer());
+    tui.setRunning(true);
+    Object.assign(output, { columns: 80 }); output.emit('resize');
+    assert.ok(footer().includes('ctrl+c to interrupt'), footer());
+    assert.ok(footer().endsWith('● high · /effort'), footer());
+    Object.assign(output, { columns: 120 }); output.emit('resize');
+    tui.setRunning(false);
+  } finally {
+    tui.close(); context.mock.timers.reset(); decoded.get(output)!.dispose(); Reflect.set(ge, 'level', colorLevel);
+  }
+});

@@ -13,6 +13,7 @@ import { _4n, jd, cq, ov, $C } from './tui-native-input-source.js';
 import { Eg, Pd, xg, Kr, Kl, Rg, Ag, Ng, wg, kn, Hg, Lg, Vd, Bd, _g, Dg } from './tui-native-selection-source.js';
 import { zye } from './tui-text-style.js';
 import { composeBanner } from './session-color.js';
+import { cellWidth } from './terminal.js';
 
 interface NativePoint { col: number; row: number }
 interface NativeSelection {
@@ -36,6 +37,23 @@ export interface FrameCursor { row: number; column: number; visible: boolean }
 export type PromptLine = string | readonly PromptSegment[];
 /** A footer part painted in a theme slot's colour instead of the dim default. */
 export interface FooterPart { text: string; color?: string }
+type FooterContent = readonly (string | FooterPart)[] | ((columns: number) => readonly (string | FooterPart)[]);
+
+/** Hfe/oue, qfjvvwpv [11971,12618), 24k7d6mw [789157,789881), UTF-16. */
+export function footerElement(footer: FooterContent, width: number, feedback?: string) {
+  const rightWidth = feedback === undefined ? 0 : Math.min(cellWidth(feedback), Math.floor(width / 2));
+  const leftWidth = rightWidth === 0 ? width : Math.max(0, width - rightWidth - 1);
+  const parts = typeof footer === 'function' ? footer(leftWidth) : footer;
+  const left = jsx(Tde, { width: leftWidth,
+    left: parts.map((part, index) => typeof part === 'string'
+      ? jsx(Do, { dimColor: true, children: part }, String(index))
+      : jsx(n, { color: part.color, children: part.text }, String(index))) }, 'footer');
+  if (rightWidth === 0) return left;
+  return jsx(s, { height: 1, width, flexDirection: 'row', overflow: 'hidden', children: [left,
+    jsx(s, { width: rightWidth, flexShrink: 0, marginLeft: 'auto', alignItems: 'flex-end',
+      children: jsx(n, { dimColor: true, wrap: 'truncate', children: feedback }, 'feedback') }, 'notification')
+  ] }, 'footer-row');
+}
 type HostNode = Omit<ReturnType<typeof Lr>, 'yogaNode' | 'focusManager' | 'onComputeLayout' | 'onRender'> & {
   yogaNode: ReturnType<typeof layoutEngine.Node.create>;
   focusManager: InstanceType<typeof ZDr>;
@@ -199,13 +217,13 @@ export class TuiRenderer {
       flexGrow: 0, flexShrink: 0, children }, undefined), columns, rows, cursor);
   }
 
-  renderChat(transcript: readonly string[], prompt: readonly PromptLine[], footer: readonly (string | FooterPart)[],
+  renderChat(transcript: readonly string[], prompt: readonly PromptLine[], footer: FooterContent,
     columns: number, rows: number, cursor: FrameCursor, running: boolean,
     selection?: { state: SelectionState; offset: number; rows: number }, theme = 'dark',
     themeOverrides?: Record<string, string>, progress: readonly string[] = [], statusLine: readonly string[] = [],
     sidebar?: { width: number; element: unknown },
     banner?: { text: string; color: string }, composerMode: 'prompt' | 'bash' = 'prompt',
-    topBorderText?: { content: string; position: 'top'; align: 'end' | 'start' | 'center'; offset: number }): void {
+    topBorderText?: { content: string; position: 'top'; align: 'end' | 'start' | 'center'; offset: number }, feedback?: string): void {
     this.selection = selection;
     const conversationWidth = columns - (sidebar?.width ?? 0);
     // `Mk`: the composer's own rule, drawn above the box and painted in one colour. It is
@@ -222,10 +240,7 @@ export class TuiRenderer {
         jsx(s, { flexGrow: 1, flexShrink: 1, flexDirection: 'column',
           children: prompt.map((line, index) => jsx(s, { height: 1, flexShrink: 0,
             children: this.promptRow(line) }, String(index))) }, 'draft')] }, 'input');
-    const status = jsx(Tde, { width: conversationWidth, left: footer.map((part, index) =>
-      typeof part === 'string'
-        ? jsx(Do, { dimColor: true, children: part }, String(index))
-        : jsx(n, { color: part.color, children: part.text }, String(index))) }, 'footer');
+    const status = footerElement(footer, conversationWidth, feedback);
     const bannerHeight = bannerRow === undefined ? 0 : 1;
     const transcriptHeight = Math.max(0,
       rows - prompt.length - 3 - bannerHeight - progress.length - statusLine.length);

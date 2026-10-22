@@ -5,6 +5,7 @@ import { configSchema, applyManagedPolicy, type SessionConfig } from "./session.
 import { loadKeybindings } from "./keybindings.js";
 import { agentTypesSection, setHeldSkills } from "./skill-catalog.js";
 import { startupVerbose } from "./focus-command.js";
+import { modelEffort } from './effort-command.js';
 
 /** Reload local policy/catalogs while retaining the live provider and call limits. */
 export function reloadConfig(current: SessionConfig): SessionConfig {
@@ -12,9 +13,14 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   const settings = parseSettings(loaded.settings);
   const next = structuredClone(current);
   const overrides = current.configSources?.overrides ?? {};
-  // se/uc, 9vcaezw1 [10462,12624), UTF-16: refresh the defaults while preserving the selected session effort.
+  // se/uc, 9vcaezw1 [10679,11697)/[12346,12719), UTF-16: inherit re-reads the refreshed table.
   if (settings.modelSettings !== undefined) next.modelSettings = settings.modelSettings;
   else delete next.modelSettings;
+  if (next.effortSelection?.kind === 'inherit') {
+    next.effortSelection = { kind: 'inherit', fallback: settings.effort };
+    const effort = modelEffort(next, next.model);
+    if (effort === undefined) delete next.effort; else next.effort = effort;
+  }
   next.skills = loaded.skills;
   if (loaded.pluginComponentDiagnostics !== undefined) next.pluginComponentDiagnostics = loaded.pluginComponentDiagnostics;
   else delete next.pluginComponentDiagnostics;

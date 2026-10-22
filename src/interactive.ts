@@ -52,7 +52,7 @@ import { parseTheme, themeChoices, type ThemeSetting } from './tui-theme-state.j
 import { workflowsAvailable } from './tui-input-highlights.js';
 import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from './loop-command.js';
 import { DEFAULT_EFFORT, effortCommand, isEffortLevel, modelEffort, modelSettingsKey, persistableEffort,
-  effortIndicator, type EffortLevel } from './effort-command.js';
+  effortIndicator, effortOverride, type EffortLevel } from './effort-command.js';
 import { effortSliderRequest } from './effort-slider.js';
 import { modelPickerRequest } from './model-picker.js';
 import { thinkingDialogRequest, THINKING_DIALOG_TITLE, THINKING_MID_CONVERSATION_WARNING } from './thinking-dialog.js';
@@ -532,6 +532,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // (chunk-sfn1dbxq.js offset 2483234, helpers at 1680634); the startup run
   // happened before this loop, so its paths arrive as an option.
   if (options.initialWatchPaths?.length) addInstructionPaths(options.initialWatchPaths);
+  /** `ZZ`/`qC` and `Ix`, 24k7d6mw [153220,153274)/[894148,894249), UTF-16. */
+  const refreshEffortUi = () => {
+    terminal?.setUltracodeTag?.({
+      ultracode: session.config.ultracode === true,
+      workflows: workflowsAvailable(session.config.enableWorkflows),
+      modelSupportsUltracode: true,
+    });
+    const selected = modelEffort(session.config, session.config.model);
+    const override = effortOverride();
+    terminal?.setEffortFeedback?.((override === null ? selected : override.level) ?? DEFAULT_EFFORT);
+  };
   const bindConfigWatch = () => {
     configWatch?.close(); configWatch = undefined; configDirty = false;
     if (watchedWorkspace !== session.config.workspace) { dynamicWatchPaths.clear(); watchedWorkspace = session.config.workspace; }
@@ -555,12 +566,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       available: workflowsAvailable(session.config.enableWorkflows),
       triggerEnabled: session.config.workflowKeywordTriggerEnabled ?? true,
     });
-    terminal?.setUltracodeTag?.({
-      ultracode: session.config.ultracode === true,
-      workflows: workflowsAvailable(session.config.enableWorkflows),
-      // `Vb`'s per-model `xhigh` probe has no local table (W212); the model gate is the workflow one.
-      modelSupportsUltracode: true,
-    });
+    refreshEffortUi();
     terminal?.bindThemeCatalog?.(session.config.configSources?.userDir, session.config.workspace, session.config.plugins);
     terminal?.setTheme?.(session.config.theme);
     terminal?.bindStatusLine?.(session);
@@ -1165,6 +1171,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (inherited === undefined) delete session.config.effort; else session.config.effort = inherited;
     }
     let saveSuffix = ' for this session only';
+    refreshEffortUi();
     if (!sessionOnly && userDir !== undefined) {
       try {
         saveModelSetting(model, userDir);
@@ -1282,15 +1289,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     }
     // Source `Ce` joins a level change and an ultracode change with ` · `.
     output.write(`${[result.message, ultracodeNotice].filter((part): part is string => part !== undefined).join(' · ')}\n`);
-    // `eee` at `chunk-24k7d6mw.js` 153296 guards on a present level, so `auto` has none.
-    if (session.config.effort !== undefined) options.status.write(`${effortIndicator(session.config.effort)}\n`);
-    // The session flag the composer tag reads (`Va` at 866374) changed in place, so the tag does
-    // not wait for the next config reload to follow it.
-    terminal?.setUltracodeTag?.({
-      ultracode: session.config.ultracode === true,
-      workflows: workflowsAvailable(session.config.enableWorkflows),
-      modelSupportsUltracode: true,
-    });  }
+    if (!terminal?.setEffortFeedback && session.config.effort !== undefined)
+      options.status.write(`${effortIndicator(session.config.effort)}\n`);
+    refreshEffortUi();
+  }
   /**
    * `lL` (chunk-24k7d6mw.js 882215) opens the `SG` dialog; accept `kp` (898567) and cancel `ph`
    * (898638). The accept writes the live state, and `SG` asks once more for a changed value

@@ -93,9 +93,12 @@ test('status reports the level with its description, and auto reports what it re
   assert.equal(effortCommand('status', base).effort, undefined);
 });
 
-test('the indicator is the glyph and the command name', () => {
+test('the indicator preserves the absent level, glyph, prefix and ultracode source arms', () => {
+  assert.equal(effortIndicator(undefined), undefined);
   assert.equal(effortIndicator('high'), '● high · /effort');
   assert.equal(effortIndicator('low', true), 'effort: low · /effort');
+  assert.equal(effortIndicator('xhigh', false, true), '◉ xhigh · ultracode · /effort');
+  assert.equal(effortIndicator('high', true, true), 'effort: high · ultracode · /effort');
 });
 
 test('LLM_EFFORT overrides the session and the message names the raw value', () => {
