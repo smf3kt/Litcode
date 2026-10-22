@@ -45,6 +45,8 @@ export type SessionConfig = {
   automaticCheckpoints?: boolean;
   thinking: boolean;
   effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+  /** Source `k` in `chunk-0q6c90q6.js` 5283: ultracode rides the session, not the settings. */
+  ultracode?: boolean;
   modelSettings?: ModelSettings;
   effortSelection?: EffortSelection;
   childMode?: 'explore' | 'general';
@@ -189,6 +191,7 @@ export const configSchema = z.object({
   stopHookBlockCap: z.number().int().min(0).max(1024).optional(),
   automaticCheckpoints: z.boolean().optional(),
   effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(),
+  ultracode: z.boolean().optional(),
   modelSettings: modelSettingsSchema.optional(),
   effortSelection: effortSelectionSchema.optional(),
   childMode: z.enum(['explore', 'general']).optional(),

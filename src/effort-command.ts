@@ -142,6 +142,35 @@ export function effortArgumentHint(): string {
   return `<${EFFORT_LEVELS.join('|')}|auto>`;
 }
 
+/** Source `wyt` in `chunk-0q6c90q6.js` 1313: what ultracode turns on. */
+export const ULTRACODE_DESCRIPTION = 'dynamic workflows on every task';
+
+/** Source `A` in `chunk-0q6c90q6.js` 5896: `ultracode`, `ultracode on` and `ultracode off`. */
+export function parseUltracodeArgument(argument: string): boolean | undefined {
+  const [head, mode, ...rest] = argument.trim().split(/\s+/);
+  if (head !== 'ultracode' || rest.length > 0) return undefined;
+  if (mode === undefined || mode === 'on') return true;
+  return mode === 'off' ? false : undefined;
+}
+
+/** Source `g` in `chunk-0q6c90q6.js` 1668, with the dynamic-workflow gate open. */
+export function validOptionsWithUltracode(): string {
+  return `${EFFORT_LEVELS.join(', ')}, auto, ultracode`;
+}
+
+/** Source `yhn` in `chunk-0q6c90q6.js` 1351, with the ultracode paragraph. */
+export function effortUsageWithUltracode(): string {
+  return `${effortUsage()}
+
+Ultracode (any effort level, ${ULTRACODE_DESCRIPTION}):
+- ultracode [on|off]: Turn ultracode on or off for this session`;
+}
+
+/** Source `Mjt` in `chunk-sfn1dbxq.js` 1659192, with the ultracode arm. */
+export function effortArgumentHintWithUltracode(): string {
+  return `<${EFFORT_LEVELS.join('|')}|auto|ultracode [on|off]>`;
+}
+
 /**
  * Source `VBt` in `chunk-0q6c90q6.js` 4189, without the ultracode suffix (`VC`, 5819) and the
  * organization suffix (`NNe` at 7175). `current` is the session's effort, undefined on `auto`;
@@ -185,6 +214,8 @@ export type EffortCommandResult = {
   effort?: EffortLevel | null;
   /** The level to persist as the default, `null` to clear it; absent keeps the stored value. */
   saved?: EffortLevel | null;
+  /** The session ultracode flag, absent when the command does not touch it. */
+  ultracode?: boolean;
 };
 
 /**
@@ -222,24 +253,62 @@ function setAuto(save: boolean): EffortCommandResult {
 
 /**
  * Source `P` in `chunk-0q6c90q6.js` 6037, the argument dispatch `MOe` at 6286 applies. The
- * ultracode branch (`A` at 5896, `k` at 5283) is absent, so `auto`/`unset` and the levels are the
- * whole grammar. `save` is the recovered `r` argument, which the interactive handler passes true.
+ * order is `auto`/`unset`, then the ultracode arm (`A` at 5896, `k` at 5283), then a level.
+ * `save` is the recovered `r` argument, which the interactive handler passes true.
  */
 export function effortCommand(argument: string, options: {
   current: EffortLevel | undefined; fallback: EffortLevel; save: boolean;
+  /** The current session ultracode flag; absent means off. */
+  ultracode?: boolean;
+  /** Source `ZI()`: whether dynamic workflows are enabled. */
+  workflowsEnabled?: boolean;
+  /** Source `ZI(model)`: whether the model supports them. */
+  modelSupportsUltracode?: boolean;
+  model?: string;
 }): EffortCommandResult {
   const value = argument.trim();
   const lower = value.toLowerCase();
+  const workflows = options.workflowsEnabled === true;
   // Source `UP` in `chunk-gsnbskq4.js` 10522, tested against the trimmed argument.
-  if (['help', '-h', '--help'].includes(lower)) return { message: effortUsage() };
+  if (['help', '-h', '--help'].includes(lower)) {
+    return { message: workflows ? effortUsageWithUltracode() : effortUsage() };
+  }
   if (lower === 'current' || lower === 'status') {
     return { message: effortStatus(options.current, options.fallback) };
   }
   // Source the handler's `if(!e)` at `chunk-tf9zceev.js` [4922,5480).
-  if (value === '') return { message: `Usage: /effort ${effortArgumentHint()}` };
+  if (value === '') return { message: `Usage: /effort ${workflows ? effortArgumentHintWithUltracode() : effortArgumentHint()}` };
   if (lower === 'auto' || lower === 'unset') return setAuto(options.save);
+  // Source `A`/`k`: a malformed ultracode argument falls through to the level parser below,
+  // which reports it as invalid.
+  const ultracode = parseUltracodeArgument(lower);
+  if (ultracode !== undefined) return setUltracode(ultracode, options);
   const level = parseEffortLevel(value);
   // Source `g(tt())`, whose list the invalid-argument message carries.
-  if (level === undefined) return { message: `Invalid argument: ${value}. Valid options are: ${validOptions()}` };
+  if (level === undefined) {
+    return { message: `Invalid argument: ${value}. Valid options are: ${workflows ? validOptionsWithUltracode() : validOptions()}` };
+  }
   return setLevel(level, options.save);
+}
+
+/**
+ * Source `k` in `chunk-0q6c90q6.js` 5283: the ultracode toggle. It refuses when dynamic
+ * workflows are off or the model does not support them, and the message names the effort that
+ * stays in force.
+ */
+function setUltracode(ultracode: boolean, options: { current?: EffortLevel; fallback: EffortLevel;
+  workflowsEnabled?: boolean; modelSupportsUltracode?: boolean; model?: string }): EffortCommandResult {
+  if (ultracode && options.workflowsEnabled !== true) {
+    return { message: `Ultracode needs dynamic workflows enabled (see /config). Valid options are: ${validOptions()}` };
+  }
+  if (ultracode && options.modelSupportsUltracode === false) {
+    return { message: `Ultracode isn't available on ${options.model ?? 'this model'}. Valid options are: ${validOptions()}` };
+  }
+  const effort = options.current ?? options.fallback;
+  return {
+    message: ultracode
+      ? `Ultracode on (this session only): ${ULTRACODE_DESCRIPTION}. Effort stays ${effort}.`
+      : `Ultracode off. Effort stays ${effort}.`,
+    ultracode,
+  };
 }

@@ -1,5 +1,5 @@
-import { DEFAULT_EFFORT, EFFORT_LEVELS, MAX_EFFORT_NOTE, effortOverride, isEffortLevel,
-  type EffortLevel } from './effort-command.js';
+import { DEFAULT_EFFORT, EFFORT_LEVELS, MAX_EFFORT_NOTE, ULTRACODE_DESCRIPTION, effortOverride,
+  isEffortLevel, type EffortLevel } from './effort-command.js';
 import type { TerminalPromptRequest } from './terminal.js';
 import { s, n } from './tui-base-components.js';
 import { jsx } from './tui-jsx.js';
@@ -64,14 +64,41 @@ function renderSlider(value: string, frame: number, reducedMotion: boolean): unk
   ] }, undefined);
 }
 
-/** Te/It/Ce, chunk-76jkr621.js [21789,30123), UTF-16, with local levels and no workflow toggle. */
-export function effortSliderRequest(current: EffortLevel | undefined): TerminalPromptRequest {
+/** Source `Lt` in `chunk-76jkr621.js` 30123: the `Ultracode  on` / `Ultracode  off` line and its chord. */
+function ultracodeRow(on: boolean, chord: string | undefined): unknown {
+  const state = on
+    ? jsx(n, { color: 'effortUltra', children: 'Ultracode  on' }, undefined)
+    : jsx(n, { children: [jsx(n, { bold: true, children: 'Ultracode' }, undefined),
+      jsx(n, { children: '  ' }, undefined), jsx(n, { dimColor: true, children: 'off' }, undefined)] }, undefined);
+  return jsx(s, { flexDirection: 'column', children: [
+    state,
+    chord === undefined ? null : jsx(n, { dimColor: true, children: `${chord} to toggle` }, undefined),
+  ] }, undefined);
+}
+
+/** Te/It/Ce, chunk-76jkr621.js [21789,30123), UTF-16, with local levels and the ultracode row. */
+export function effortSliderRequest(current: EffortLevel | undefined,
+  options: { ultracode?: boolean; workflowsEnabled?: boolean } = {}): TerminalPromptRequest {
   const override = effortOverride();
   const initial = override?.level === null ? DEFAULT_EFFORT : override?.level ?? current ?? DEFAULT_EFFORT;
+  const ultracode = options.ultracode === true;
+  const toggle = options.workflowsEnabled === true;
   return {
     title: 'Effort', message: '',
-    adjust: { kind: 'slider', values: EFFORT_LEVELS, initial, render: renderSlider,
-      guide: 'Left/Right adjust / Enter confirm / s for this session only / Esc cancel' },
-    keys: [{ key: 's', label: 'for this session only' }],
+    adjust: { kind: 'slider', values: EFFORT_LEVELS, initial,
+      ...(toggle ? { toggle: { key: 'tab', label: 'toggle ultracode', on: ultracode } } : {}),
+      render: (value, frame, reducedMotion, state) => toggle
+        ? jsx(s, { flexDirection: 'column', alignItems: 'center', width: '100%', children: [
+          renderSlider(value, frame, reducedMotion),
+          state?.toggle === true ? jsx(n, { dimColor: true, wrap: 'truncate-end',
+            children: `Ultracode: ${ULTRACODE_DESCRIPTION}` }, 'ultracode-note') : null,
+          jsx(s, { height: 1 }, 'gap'),
+          ultracodeRow(state?.toggle === true, 'tab'),
+        ] }, undefined)
+        : renderSlider(value, frame, reducedMotion),
+      guide: toggle
+        ? 'Left/Right adjust / Enter confirm / tab toggles ultracode / s for this session only / Esc cancel'
+        : 'Left/Right adjust / Enter confirm / s for this session only / Esc cancel' },
+    keys: [{ key: 's', label: 'for this session only' }, ...(toggle ? [{ key: 'tab', label: 'toggle ultracode' }] : [])],
   };
 }

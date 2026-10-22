@@ -1122,25 +1122,51 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   /** `MOe`, chunk-0q6c90q6.js 6286: apply the level to live state; the write is the only default arm. */
   async function applyEffortCommand(prompt: string): Promise<void> {
     let sessionOnly = false;
+    let ultracodeNotice: string | undefined;
     if (prompt === '/effort' && terminal?.prompt) {
       // It/Ce, chunk-76jkr621.js [22174,30123)/[17514,17916), UTF-16:
-      // Enter applies the displayed level even unchanged; s skips the default write.
-      const answer = await readDialog(effortSliderRequest(session.config.effort), options.signal);
+      // Enter applies the displayed level even unchanged; s skips the default write and tab
+      // toggles the session ultracode flag alongside the level.
+      const answer = await readDialog(effortSliderRequest(session.config.effort, {
+        ultracode: session.config.ultracode === true,
+        workflowsEnabled: session.config.features?.workflow === true,
+      }), options.signal);
       const picked = answer?.adjusted;
       if (picked === undefined) { options.status.write('Effort selection cancelled.\n'); return; }
       if (!isEffortLevel(picked)) throw new Error('Invalid effort selection');
       sessionOnly = answer?.key === 's';
+      // Source `Ce` in `chunk-76jkr621.js` 17497: a changed ultracode flag rides the same accept
+      // as the level, and the notice joins the level message with ` · `.
+      if (answer?.toggled !== undefined && answer.toggled !== (session.config.ultracode === true)) {
+        const toggle = effortCommand(answer.toggled ? 'ultracode on' : 'ultracode off', {
+          current: session.config.effort, fallback: DEFAULT_EFFORT, save: false,
+          workflowsEnabled: session.config.features?.workflow === true,
+          modelSupportsUltracode: session.config.features?.workflow !== false, model: session.config.model });
+        if (toggle.ultracode === undefined) { output.write(`${toggle.message}\n`); return; }
+        if (toggle.ultracode) session.config.ultracode = true; else delete session.config.ultracode;
+        ultracodeNotice = toggle.message;
+      }
       prompt = `/effort ${picked}`;
     }
     const result = effortCommand(prompt.slice('/effort'.length), {
-      current: session.config.effort, fallback: DEFAULT_EFFORT, save: !sessionOnly });
+      current: session.config.effort, fallback: DEFAULT_EFFORT, save: !sessionOnly,
+      ultracode: session.config.ultracode === true,
+      workflowsEnabled: session.config.features?.workflow === true,
+      modelSupportsUltracode: session.config.features?.workflow !== false,
+      model: session.config.model });
     // A read-only answer (usage, help, a status report, an invalid argument) leaves the session
     // alone. The recovered handler returns its answer as a `{type:"text"}` value (`u` at
     // `chunk-tf9zceev.js` [4922,5480)), which the dispatcher prints as text; the `eee` notice is
     // the separate status-row surface.
-    if (result.effort === undefined && result.saved === undefined) { output.write(`${result.message}\n`); return; }
+    if (result.effort === undefined && result.saved === undefined && result.ultracode === undefined) {
+      output.write(`${result.message}\n`); return;
+    }
     const previousEffort = session.config.effort;
     const previousSelection = session.config.effortSelection;
+    if (result.ultracode !== undefined) {
+      // Source `k`'s `o?.({ultracode:e})`: the flag lives on the session, never the settings.
+      if (result.ultracode) session.config.ultracode = true; else delete session.config.ultracode;
+    }
     if (result.effort === null) {
       delete session.config.effort; session.config.effortSelection = { kind: 'default' };
     } else if (result.effort !== undefined) {
@@ -1163,7 +1189,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         session.config.modelSettings = { ...session.config.modelSettings, [key]: entry };
       }
     }
-    output.write(`${result.message}\n`);
+    // Source `Ce` joins a level change and an ultracode change with ` · `.
+    output.write(`${[result.message, ultracodeNotice].filter((part): part is string => part !== undefined).join(' · ')}\n`);
     // `eee` at `chunk-24k7d6mw.js` 153296 guards on a present level, so `auto` has none.
     if (session.config.effort !== undefined) options.status.write(`${effortIndicator(session.config.effort)}\n`);
   }

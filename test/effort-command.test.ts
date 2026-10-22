@@ -1,7 +1,8 @@
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
-import { DEFAULT_EFFORT, EFFORT_LEVELS, effortArgumentHint, effortCommand, effortDescription,
-  effortGlyph, effortIndicator, effortOverride, effortStatus, effortUsage, parseEffortLevel,
+import { DEFAULT_EFFORT, EFFORT_LEVELS, effortArgumentHint, effortArgumentHintWithUltracode,
+  effortCommand, effortDescription, effortGlyph, effortIndicator, effortOverride, effortStatus,
+  effortUsage, effortUsageWithUltracode, parseEffortLevel, parseUltracodeArgument,
   persistableEffort } from '../src/effort-command.js';
 
 const base = { current: undefined as 'low' | 'medium' | 'high' | 'xhigh' | 'max' | undefined,
@@ -122,4 +123,41 @@ test('LLM_EFFORT overrides the session and the message names the raw value', () 
   } finally {
     if (previous === undefined) delete process.env.LLM_EFFORT; else process.env.LLM_EFFORT = previous;
   }
+});
+
+test('ultracode parses only its own verb and mode', () => {
+  assert.equal(parseUltracodeArgument('ultracode'), true);
+  assert.equal(parseUltracodeArgument('ultracode on'), true);
+  assert.equal(parseUltracodeArgument('ultracode off'), false);
+  assert.equal(parseUltracodeArgument('ultracode maybe'), undefined);
+  assert.equal(parseUltracodeArgument('ultracode on extra'), undefined);
+  assert.equal(parseUltracodeArgument('high'), undefined);
+});
+
+test('the ultracode arm reports the effort that stays in force', () => {
+  const workflows = { ...base, workflowsEnabled: true };
+  assert.deepEqual(effortCommand('ultracode', workflows),
+    { message: 'Ultracode on (this session only): dynamic workflows on every task. Effort stays high.',
+      ultracode: true });
+  assert.deepEqual(effortCommand('ultracode off', { ...workflows, current: 'low' }),
+    { message: 'Ultracode off. Effort stays low.', ultracode: false });
+});
+
+test('ultracode refuses without dynamic workflows', () => {
+  const refused = effortCommand('ultracode', base);
+  assert.equal(refused.message, 'Ultracode needs dynamic workflows enabled (see /config). ' +
+    'Valid options are: low, medium, high, xhigh, max, auto');
+  assert.equal(refused.ultracode, undefined);
+  // Turning it off is always allowed, even with workflows disabled.
+  assert.equal(effortCommand('ultracode off', base).ultracode, false);
+});
+
+test('the usage and option list grow only with dynamic workflows', () => {
+  assert.ok(!effortUsage().includes('ultracode'));
+  assert.ok(effortUsageWithUltracode().includes('Ultracode (any effort level, dynamic workflows on every task)'));
+  assert.equal(effortArgumentHintWithUltracode(), '<low|medium|high|xhigh|max|auto|ultracode [on|off]>');
+  assert.equal(effortCommand('', { ...base, workflowsEnabled: true }).message,
+    'Usage: /effort <low|medium|high|xhigh|max|auto|ultracode [on|off]>');
+  assert.equal(effortCommand('nope', { ...base, workflowsEnabled: true }).message,
+    'Invalid argument: nope. Valid options are: low, medium, high, xhigh, max, auto, ultracode');
 });
