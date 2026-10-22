@@ -3148,3 +3148,5 @@ W283 puts the `ultracode` tag on the composer's top border: the recovered `tee`/
 the `!isBriefOnly && ultracode && workflows` gate, and an eleven-frame 120 ms reveal that clears
 itself. `renderChat` now carries the `borderText` record the engine already paints. Unit 87/87 +
 29/29 + 23/23, full 3201/3202, compiled 7/7 at identity `3c07dd53…`. [W283 record](ports/W283-composer-ultracode-tag.md).
+
+W284 ports the composer's `History n/total` top-border hint and its precedence over ultracode, using the existing history snapshot. Affected 160/160, check/build clean, compiled 17/17 at identity `fb0f5add…`. [W284 record](ports/W284-composer-history-tag.md).

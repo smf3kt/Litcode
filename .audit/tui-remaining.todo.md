@@ -655,3 +655,10 @@ Explicitly out of scope for this loop:
       `gf` (the internal tag, whose `j9r` feed is `Lio() === false`) are not ported, and `Bit` has
       no local table. Unit 87/87 + 29/29 + 23/23, compiled 7/7 at identity `3c07dd53…`. See
       `research/ports/W283-composer-ultracode-tag.md`.
+- [x] W284 composer history position (`gue` [809815,809924), `tRe` [848742,848808), precedence
+      [853051,853071), chunk-24k7d6mw.js, UTF-16): Up/Down shows the dim `History n/total`
+      tag at the start of the top border with offset 2. The editor's own index/length and
+      current-text comparison provide the state. Editing or returning to the live draft hides
+      it; history overrides ultracode, search suppresses it, and search cancel restores it.
+      Two new regressions, affected 160/160, check/build clean, compiled 17/17 at identity
+      `fb0f5add…`. See `research/ports/W284-composer-history-tag.md`.
