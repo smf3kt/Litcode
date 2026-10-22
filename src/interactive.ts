@@ -76,6 +76,7 @@ import { type AutoModeEditorHost } from './auto-mode-editor.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
   SIDE_QUESTION_USAGE, sideQuestionPanelText, type SideQuestionExchange } from './side-question.js';
+import { contextPanelText, contextUsageFromCounts } from './context-panel.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
   EXPORT_DIALOG_TITLE, EXPORT_FILE_DESCRIPTION, EXPORT_FILE_LABEL, EXPORT_FILENAME_PROMPT,
@@ -136,7 +137,7 @@ export function configChangeSource(file: string, workspace: string, sources: {
 
 export const COMMAND_HELP = `/help       Show help and available commands
 /status     Show session, model, context settings and usage
-/context    Count current request against the configured context budget
+/context    Visualize current context usage as a colored grid
 /usage      Show recorded model usage
 /effort LEVEL  Set effort level for model usage (low/medium/high/xhigh/max/auto)
 /copy [N]   Copy the latest response to the clipboard (or the Nth-latest)
@@ -1915,7 +1916,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           continue;
         }
         if (prompt === '/context') {
-          output.write(JSON.stringify(await withTurn(signal => agent().contextStatus(signal)), null, 2) + '\n');
+          // Piped sessions keep the JSON contract; the modal surface opens `G`'s panel.
+          if (!terminal?.prompt) {
+            output.write(JSON.stringify(await withTurn(signal => agent().contextStatus(signal)), null, 2) + '\n');
+            continue;
+          }
+          const counts = await withTurn(signal => agent().contextBreakdown(signal));
+          const usage = contextUsageFromCounts({ ...counts, columns: process.stdout.columns ?? 80 });
+          await withTurn(signal => readDialog({ title: 'Context', message: contextPanelText(usage),
+            readOnly: true }, signal));
           continue;
         }
         if (prompt === '/status' || prompt === '/usage' || prompt === '/cost') {

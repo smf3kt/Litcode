@@ -455,6 +455,14 @@ Next up, scoped but not started:
       retry spinner and the remote thin-client dispatch; piped sessions print the answer. Unit
       8/8 + 3/3, focused 157/157, compiled 8/8 at identity `d8e66304…`. See
       `research/ports/W260-btw.md`.
+- [x] W261 `/context` (`DCn`, chunk-sfn1dbxq.js 2109980): the context grid. Categories, the
+      `window - threshold` autocompact reserve (or the 3000-token `Compact buffer` when
+      automatic compaction is off), free space, the 5/20/10-column geometry and `G`'s legend
+      and `⛁`/`⛀`/`⛶`/`⛝` rows. The host separates system, tools and messages with three
+      provider counts, passes `process.stdout.columns`, and opens a read-only dialog; piped
+      sessions keep the JSON. Not ported: `[all]` detail sections, colour roles and the
+      auto-compact window line. Unit 5/5 + 1/1, focused 144/144, compiled 7/7 at identity
+      `f9175e46…`. See `research/ports/W261-context.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any

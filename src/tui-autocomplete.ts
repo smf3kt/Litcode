@@ -78,7 +78,7 @@ export interface CommandSuggestion {
 export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'help', description: 'Show help and available commands', kind: 'command', lane: 'info' },
   { name: 'status', description: 'Show session, model, context settings and usage', kind: 'command', lane: 'info' },
-  { name: 'context', description: 'Count current request against the configured context budget', kind: 'command', lane: 'info' },
+  { name: 'context', description: 'Visualize current context usage as a colored grid', kind: 'command', lane: 'info' },
   { name: 'usage', description: 'Show recorded model usage', kind: 'command', lane: 'info' },
   { name: 'effort', description: 'Set effort level for model usage', kind: 'command', lane: 'config' },
   { name: 'copy', description: "Copy Claude's last response to clipboard (or /copy N for the Nth-latest)", kind: 'command', lane: 'action' },

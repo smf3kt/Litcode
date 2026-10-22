@@ -31,6 +31,7 @@ import { effortOverride } from './effort-command.js';
 import { automaticCompactionEnabled, contextBlockingLimit, manualCompactionEnabled } from './compaction-policy.js';
 import { classifySideQuestion, sideQuestionHistoryText, sideQuestionUserContent,
   type SideQuestionExchange, type SideQuestionOutcome } from './side-question.js';
+import type { ContextCounts } from './context-panel.js';
 
 export const DEFAULT_SYSTEM = `You are a personal coding agent. Complete the user's task using the workspace tools.
 Read relevant files before editing them. Preserve unrelated changes. Verify changes with appropriate checks.
@@ -1049,6 +1050,29 @@ export class Agent {
     const config = this.session.config;
     return { inputTokens: await this.provider.count(this.request(), signal), contextTokens: config.contextTokens,
       compactAt: config.compactAt, maxTokens: config.maxTokens, counting: config.gateway?.tokenCounting ?? 'provider' };
+  }
+
+  /**
+   * `DCn`'s funnels through the provider count, which bundles system, tools and messages into one
+   * number. Three counts separate them: the request without messages and tools, the same with the
+   * tool schemas, and the live request. The constant the provider adds to each estimate cancels in
+   * the differences.
+   */
+  async contextBreakdown(signal: AbortSignal = new AbortController().signal): Promise<ContextCounts> {
+    if (this.busy) throw new Error('Wait for the active turn before counting context');
+    assertPaired(this.session.messages);
+    const config = this.session.config;
+    const withoutMessages = this.request([]);
+    const withoutTools = { ...withoutMessages, tools: [] as ModelRequest['tools'] };
+    const [system, tools, full] = await Promise.all([
+      this.provider.count(withoutTools, signal),
+      this.provider.count(withoutMessages, signal),
+      this.provider.count(this.request(), signal),
+    ]);
+    return { model: config.model, systemTokens: system,
+      toolTokens: Math.max(0, tools - system), messageTokens: Math.max(0, full - tools),
+      maxTokens: config.contextTokens, compactAt: config.compactAt,
+      autoCompact: automaticCompactionEnabled(config) };
   }
 
   /**
