@@ -730,6 +730,61 @@ test('actual TUI input reaches contextual navigation while paste and overrides k
   } finally { tui.close(); }
 });
 
+test('history browsing paints its position above the draft and restores the ultracode tag on edit', () => {
+  const previousColorLevel = Reflect.get(ge, 'level');
+  Reflect.set(ge, 'level', 3);
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 30 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, history: ['old entry', 'middle entry', 'new entry'],
+    prefersReducedMotion: true }).start();
+  const key = (text: string) => input.emit('data', text);
+  const border = () => screenLines(output)[26]!;
+  try {
+    tui.setUltracodeTag({ ultracode: true, workflows: true });
+    key('retained draft');
+    assert.match(border(), /ultracode/);
+    for (const label of ['History 3/3', 'History 2/3', 'History 1/3', 'History 1/3']) {
+      key('\x1b[A');
+      assert.equal(border(), ('─'.repeat(3) + ` ${label} `).padEnd(100, '─'));
+      const cell = decoded.get(output)!.buffer.active.getLine(26)!.getCell(4)!;
+      assert.ok(cell.isDim());
+    }
+    for (const label of ['History 2/3', 'History 3/3']) {
+      key('\x1b[B'); assert.ok(border().includes(label), border());
+    }
+    key('\x1b[B');
+    assert.equal(tui.state.text, 'retained draft'); assert.match(border(), /ultracode/);
+    key('\x1b[A'); key('X');
+    assert.equal(tui.state.text, 'new entryX');
+    assert.doesNotMatch(border(), /History/); assert.match(border(), /ultracode/);
+    key('\x1b[A'); key('\r');
+    assert.equal(tui.state.text, ''); assert.doesNotMatch(border(), /History/);
+  } finally { tui.close(); decoded.get(output)!.dispose(); Reflect.set(ge, 'level', previousColorLevel); }
+});
+
+test('visual-row navigation retains the history position while search and replacement drafts suppress it', () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 40, rows: 18 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output, history: ['old entry', 'first row\nlast row'] }).start();
+  const key = (text: string) => input.emit('data', text);
+  const historyRow = () => screenLines(output).find(line => line.includes('History '));
+  try {
+    key('\x1b[A');
+    assert.ok(historyRow()?.includes('History 2/2'));
+    key('\x05\x1b[B');
+    assert.equal(tui.state.text, 'first row\nlast row');
+    assert.ok(historyRow()?.includes('History 2/2'));
+    key('\x12'); assert.equal(tui.currentScreen, 'search'); assert.equal(historyRow(), undefined);
+    key('\x03'); assert.equal(tui.currentScreen, 'chat');
+    assert.ok(historyRow()?.includes('History 2/2'));
+    key('\x15replacement draft'); assert.equal(historyRow(), undefined);
+  } finally { tui.close(); decoded.get(output)!.dispose(); }
+});
+
 test('copied input rows keep visible navigation and raw submission aligned through resize and history', () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};

@@ -88,6 +88,7 @@ import {
 import { ge } from './tui-color.js';
 import { ultracodeTagText, ultracodeRevealIndex, ultracodeRevealDone, topBorderText as composerBorderRecord,
   ULTRA_TAG_FRAME } from './tui-composer-tag.js';
+import { historyBorderText } from './tui-history-position.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
 import { ResumePicker, resumePickerGuide, resumeRelativeTime, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
 import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
@@ -1336,8 +1337,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.ultraTagRevealStart = undefined;
   }
 
-  /** `tee`/`nee` for this frame: the painted word and the border record the composer draws. */
-  private composerBorderText(): ReturnType<typeof composerBorderRecord> {
+  /** `bf=tRe??Vo`, chunk-24k7d6mw.js [853051,853071), UTF-16: history wins over the tag. */
+  private composerBorderText(): ReturnType<typeof composerBorderRecord> | ReturnType<typeof historyBorderText> {
+    if (this.screen === 'chat') {
+      const history = historyBorderText(this.editor);
+      if (history !== undefined) return history;
+    }
     if (!this.ultracodeTagVisible()) return undefined;
     const index = ultracodeRevealIndex(this.ultraTagRevealStart, Date.now());
     const open = slotForeground(this.themeSlot('effortUltra'));
