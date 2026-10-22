@@ -84,8 +84,8 @@ export async function saveConfigPanelSetting(update: ConfigUpdate, workspace: st
     await queuePermissionSettingsWrite(paths.userSettings!, () => writePermissionDefaultMode(paths.userSettings!, update.value));
     return;
   }
-  const file = update.id === 'reduceMotion' ? paths.localSettings! : paths.userSettings!;
-  const key = update.id === 'reduceMotion' ? 'prefersReducedMotion' : update.id === 'turnDuration' ? 'showTurnDuration'
+  const file = update.id === 'reduceMotion' || update.id === 'tips' ? paths.localSettings! : paths.userSettings!;
+  const key = update.id === 'tips' ? 'spinnerTipsEnabled' : update.id === 'reduceMotion' ? 'prefersReducedMotion' : update.id === 'turnDuration' ? 'showTurnDuration'
     : update.id === 'editor' ? 'editorMode' : update.id === 'autoCompact' ? 'autoCompactEnabled'
     : update.id === 'progressBar' ? 'terminalProgressBarEnabled' : update.id;
   const value = update.id === 'dialogExpiry' && update.value === 'default' ? undefined : update.value;
@@ -123,6 +123,7 @@ const SETTING_LABELS = {
   compactAt: 'saveAutoCompactSetting', model: 'saveModelSetting', modelSettings: 'saveConfigModelEffort', thinking: 'saveConfigPanelSetting',
   verbose: 'saveConfigPanelSetting', terminalProgressBarEnabled: 'saveConfigPanelSetting', autoCompactEnabled: 'saveConfigPanelSetting', prefersReducedMotion: 'saveConfigPanelSetting', showTurnDuration: 'saveConfigPanelSetting',
   timeFormat: 'saveConfigPanelSetting', askUserQuestionTimeout: 'saveConfigPanelSetting', dialogExpiry: 'saveConfigPanelSetting',
+  spinnerTipsEnabled: 'saveConfigPanelSetting',
 } as const;
 
 function saveDisplaySetting(key: keyof typeof SETTING_LABELS,

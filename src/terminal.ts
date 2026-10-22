@@ -1419,6 +1419,8 @@ export interface TerminalSurface {
   setShowTurnDuration?(value?: boolean): void;
   setShowMessageTimestamps?(value?: boolean): void;
   setProgressSettings?(settings: import('./tui-progress-settings.js').ProgressDisplaySettings): void;
+  bindSpinnerTips?(session: import('./session.js').Session): void;
+  flushSpinnerTips?(): Promise<void>;
   setMaxProseWidth?(value?: number): void;
   setSyntaxHighlightingDisabled?(value?: boolean): void;
   /** The composer's `dg()`/`C7t()` gates; the keyword run and its alt+w toggle exist only while both hold. */

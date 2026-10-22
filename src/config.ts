@@ -126,7 +126,10 @@ export interface SkillInfo {
   limitations?: string[];
 }
 
+import { spinnerTipsSettingsSchema, spinnerTipsOverrideSchema, type SpinnerTipsSettings, type SpinnerTipsLayer } from './spinner-tips-settings.js';
+
 export interface LoadedConfig {
+  spinnerTipsLayers?: SpinnerTipsLayer[];
   pluginComponentDiagnostics?: ComponentDiagnostic[];
   settings: Record<string, unknown>;
   permissionLayers: NonNullable<PermissionPolicy['layers']>;
@@ -197,6 +200,7 @@ export interface ManagedSettingsReport {
 }
 
 const MANAGED_POLICY_KEYS: ReadonlySet<string> = new Set(["allowShell", "permissions", "features", "mcpClient", "allowManagedPermissionRulesOnly", "useAutoModeDuringPlan", "autoMode"]);
+const MANAGED_DISPLAY_KEYS = new Set(['spinnerTipsEnabled', 'spinnerTipsOverride']);
 
 function errnoOf(error: unknown): string | undefined {
   const own = (error as NodeJS.ErrnoException | undefined)?.code;
@@ -216,11 +220,12 @@ function errnoOf(error: unknown): string | undefined {
  * A missing directory or file is absence; any other read or parse failure is
  * reported and that document contributes nothing.
  */
-export function loadManagedSettingsDirectory(directory: string): { settings?: Record<string, unknown>; report: ManagedSettingsReport } {
+export function loadManagedSettingsDirectory(directory: string): { settings?: Record<string, unknown>; displaySettings?: SpinnerTipsSettings; report: ManagedSettingsReport } {
   const documents: string[] = [];
   const ignoredKeys: string[] = [];
   const errors: { file: string; message: string }[] = [];
   const merged: Record<string, unknown> = {};
+  const display: Record<string, unknown> = {};
   let found = false;
   const read = (file: string): void => {
     let text: string;
@@ -247,10 +252,15 @@ export function loadManagedSettingsDirectory(directory: string): { settings?: Re
       return;
     }
     const accepted: Record<string, unknown> = {};
+    const displayLayer: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
       if (MANAGED_POLICY_KEYS.has(key)) accepted[key] = value;
+      else if (MANAGED_DISPLAY_KEYS.has(key)) displayLayer[key] = value;
       else if (!ignoredKeys.includes(key)) ignoredKeys.push(key);
     }
+    const tips = spinnerTipsSettingsSchema.safeParse(displayLayer);
+    if (!tips.success) { errors.push({ file, message: `managed display settings rejected (${tips.error.message})` }); return; }
+    mergeSettings(display, tips.data);
     if (Object.keys(accepted).length === 0) return;
     found = true;
     mergeSettings(merged, accepted);
@@ -271,13 +281,14 @@ export function loadManagedSettingsDirectory(directory: string): { settings?: Re
     .sort();
   for (const name of names) read(path.join(dropIn, name));
   const report: ManagedSettingsReport = { source: "directory", directory, documents, ignoredKeys, errors };
-  if (!found) return { report };
+  const displaySettings = spinnerTipsSettingsSchema.parse(display);
+  if (!found) return { report, displaySettings };
   const parsed = managedPolicySchema.safeParse(cloneSafe(merged));
   if (!parsed.success) {
     errors.push({ file: directory, message: `managed settings rejected (${parsed.error.message})` });
     return { report };
   }
-  return { settings: parsed.data, report };
+  return { settings: parsed.data, displaySettings, report };
 }
 
 
@@ -1150,14 +1161,17 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   }
 
   const settings: Record<string, unknown> = {};
+  const spinnerTipsLayers: SpinnerTipsLayer[] = [];
+  let managedDisplay: SpinnerTipsSettings | undefined;
   let managedSettings: Record<string, unknown> | undefined;
   let managedSettingsReport: ManagedSettingsReport | undefined;
   if (options.managedSettingsFile !== undefined) {
     const file = path.resolve(workspaceRoot, options.managedSettingsFile);
     const parsed = readSettingsLayer(file, true)!;
-    const allowed = new Set(["allowShell", "permissions", "features", "mcpClient", "allowManagedPermissionRulesOnly", "useAutoModeDuringPlan", "autoMode"]);
-    if (Object.keys(parsed).some(key => !allowed.has(key))) throw new ConfigError("managed settings accepts only allowShell, permissions, features, mcpClient, allowManagedPermissionRulesOnly, useAutoModeDuringPlan and autoMode", file);
-    managedSettings = managedPolicySchema.parse(cloneSafe(parsed));
+    const allowed = new Set([...MANAGED_POLICY_KEYS, ...MANAGED_DISPLAY_KEYS]);
+    if (Object.keys(parsed).some(key => !allowed.has(key))) throw new ConfigError("managed settings accepts only allowShell, permissions, features, mcpClient, allowManagedPermissionRulesOnly, useAutoModeDuringPlan, autoMode and spinner Tips settings", file);
+    managedDisplay = spinnerTipsSettingsSchema.parse(parsed);
+    managedSettings = managedPolicySchema.parse(cloneSafe(Object.fromEntries(Object.entries(parsed).filter(([key])=>MANAGED_POLICY_KEYS.has(key)))));
     managedSettingsReport = { source: "explicit", documents: [file], ignoredKeys: [], errors: [] };
   } else {
     // The OS-managed directory is read when no explicit file replaces it, as
@@ -1165,6 +1179,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     const directory = path.resolve(options.managedSettingsDir ?? managedSettingsDir());
     const loaded = loadManagedSettingsDirectory(directory);
     managedSettings = loaded.settings;
+    managedDisplay = loaded.displaySettings;
     if (loaded.report.documents.length > 0 || loaded.report.ignoredKeys.length > 0 || loaded.report.errors.length > 0) {
       managedSettingsReport = loaded.report;
     }
@@ -1199,6 +1214,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
           classifyAllShell: isPlainObject(parsed.autoMode) ? parsed.autoMode.classifyAllShell : undefined,
           allow: rules.allow ?? [], deny: rules.deny ?? [], ask: rules.ask ?? [], additionalDirectories: rules.additionalDirectories ?? [] }));
       }
+      const override = spinnerTipsOverrideSchema.parse(parsed.spinnerTipsOverride);
+      if (override !== undefined) spinnerTipsLayers.push({ source: layer.source, override });
       mergeInto(settings, parsed);
       if (parsed.approveAllProjectMcpServers !== undefined) {
         if (typeof parsed.approveAllProjectMcpServers !== "boolean") {
@@ -1229,6 +1246,10 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
       settings[key] = { ...(isPlainObject(settings[key]) ? settings[key] : {}), ...(managedSettings[key] as Record<string, unknown>) };
     }
   }
+
+  if (managedDisplay?.spinnerTipsEnabled !== undefined) settings.spinnerTipsEnabled = managedDisplay.spinnerTipsEnabled;
+  if (managedDisplay?.spinnerTipsOverride !== undefined)
+    spinnerTipsLayers.push({ source: 'policySettings', override: managedDisplay.spinnerTipsOverride });
 
   let plugins: PluginConfig | undefined;
   if (settings.plugins !== undefined) {
@@ -1409,7 +1430,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
       throw new ConfigError(`installed plugin changed during config load (${(error as Error).message})`, path.join(harnessDir, "plugins"), { cause: error });
     }
   }
-  const result: LoadedConfig = { settings, permissionLayers, instructions, skills: [...skills.values()] };
+  const result: LoadedConfig = { settings, permissionLayers, instructions, skills: [...skills.values()],
+    ...(spinnerTipsLayers.length ? { spinnerTipsLayers } : {}) };
   agentCatalog.agentTypes.push(...pluginCatalog.agents);
   if (pluginCatalog.diagnostics.length) result.pluginComponentDiagnostics = pluginCatalog.diagnostics;
   for (const agent of pluginCatalog.agents) agentCatalog.reports.push({ path: agent.path, source: 'plugin', status: 'loaded', name: agent.name, message: 'plugin agent loaded' });

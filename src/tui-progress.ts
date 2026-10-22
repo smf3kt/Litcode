@@ -5,7 +5,8 @@ import { createProgressClock, rn } from './tui-progress-source.js';
 import { progressVerbs, type SpinnerVerbs } from './tui-progress-settings.js';
 import { initializeProgressText } from './tui-progress-time.js';
 import { jsx } from './tui-jsx.js';
-import { s } from './tui-base-components.js';
+import { n, s } from './tui-base-components.js';
+import type { SpinnerTipText } from './spinner-tips.js';
 import { cellWidth } from './terminal.js';
 import { ra } from './tui-graphemes.js';
 import type { TaskRecord } from './tasks.js';
@@ -42,6 +43,7 @@ export class ThinkingProgress {
   private verb = 'Working';
   private verbsSetting: SpinnerVerbs | undefined;
   private taskRows: readonly TaskRecord[] = [];
+  private spinnerTip: SpinnerTipText | undefined;
   private readonly Spinner;
   private readonly Tasks;
 
@@ -88,6 +90,7 @@ export class ThinkingProgress {
   hasActiveTools(): boolean { return this.active && this.phase === 'tool-use'; }
   text(value: string): void {if (this.active) {this.response.current += value.length; this.phase = 'responding';}}
   tasks(rows: readonly TaskRecord[]): void {this.taskRows = rows;}
+  tip(value: SpinnerTipText | undefined): void { this.spinnerTip = value; }
   setVerbs(setting?: SpinnerVerbs): void {this.verbsSetting = setting ? structuredClone(setting) : undefined;}
   setReducedMotion(value: boolean): void {this.reduced = value; this.syncClock();}
   setFocused(value: boolean): void {this.focused = value; this.clock.setTickInterval(value ? 16 : 32);}
@@ -122,7 +125,14 @@ export class ThinkingProgress {
         loadingStartTimeRef:this.started, totalPausedMsRef:this.paused, pauseStartTimeRef:this.pauseStart,
         verbose:false, columns, effortSuffix:'', agentId:this.uuid,
       }, this.uuid),
-      this.hasTasks && jsx(this.Tasks, {tasks:this.taskRows, isStandalone:true}, 'tasks'),
+      this.hasTasks ? jsx(this.Tasks, {tasks:this.taskRows, isStandalone:true}, 'tasks')
+        : this.active && this.spinnerTip ? jsx(s, { width:'100%', flexDirection:'column', children:
+          // Cn/$e, f7x3yeg4 [21559,24232), rrrfrwjr [1610,2287), UTF-16; native renderer owns offscreen layout.
+          jsx(s, { flexDirection:'row', children:[
+            jsx(n, { dimColor:true, children:'  ⎿  ' }, 'indent'),
+            jsx(s, { flexShrink:1, flexGrow:1, children:jsx(n, { dimColor:true, wrap:'wrap',
+              children:`${this.spinnerTip.label || 'Tip'}: ${this.spinnerTip.text}` }, 'text') }, 'body'),
+          ] }, 'line') }, 'tip') : null,
     ]}, undefined);
   }
 

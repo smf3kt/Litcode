@@ -73,6 +73,8 @@ import { SystemThemeMonitor } from './tui-system-theme.js';
 import { CustomThemeCatalog } from './tui-custom-themes.js';
 import { ThemeEditor, themeFileWriter } from './theme-editor.js';
 import { ThinkingProgress, type AgentProgressEvent, type TurnDuration } from './tui-progress.js';
+import { beginSpinnerTipsStartup, SpinnerTips } from './spinner-tips.js';
+import { defaultUserDir } from './config.js';
 import { ProgressCompletion } from './tui-progress-completion.js';
 import type { TaskRecord } from './tasks.js';
 import { progressTime, type ProgressDisplaySettings } from './tui-progress-settings.js';
@@ -518,6 +520,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** `/color`'s pick; `Mk`'s banner row exists only while this is set. */
   private sessionColor: SessionColor | undefined;
   private progressSettings: ProgressDisplaySettings = {};
+  private spinnerTips: SpinnerTips | undefined;
+  private spinnerTipsUserDir = '';
+  private readonly spinnerTipsPending = new Set<Promise<void>>();
   private progressGeneration = 0;
   private timeFormatter = progressTime({});
   private maxProseWidth: number | undefined;
@@ -1115,13 +1120,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   setRunning(running: boolean): void {
     this.running = running;
+    this.spinnerTips?.setActive(running);
     if (!running) { this.progress.stop(); this.diffPanel?.refresh(); }
     this.dispatch({ type: 'running', value: running });
   }
 
   setProgress(event: AgentProgressEvent): void {
     if (this.closed) return;
-    if (event.kind === 'start') this.progress.start(event.uuid, event.startedAt);
+    if (event.kind === 'start') { this.spinnerTips?.start(); this.progress.start(event.uuid, event.startedAt); }
     else if (event.kind === 'phase') {
       if (!this.progress.mode(event.mode)) return;
       // Source `Ue`: while the fold holds, the streaming block is not rendered. The entry
@@ -1130,7 +1136,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (this.holdsFocusPreview()) this.hideStreamingPreview();
     }
     else {
-      this.progress.stop();
+      this.progress.stop(); this.spinnerTips?.finish();
       if (event.reason !== 'error' && event.reason !== 'aborted') this.restoreTurnDuration(event.duration);
     }
     // `qa`/`om` (3gz7s57c [138656,139637)): any active agent work is indeterminate;
@@ -1240,6 +1246,34 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   setSessionColor(color: SessionColor | undefined): void {
     if (this.closed || color === this.sessionColor) return;
     this.sessionColor = color; this.selection = createSelection(); this.render();
+  }
+
+  bindSpinnerTips(session: import('./session.js').Session): void {
+    if (this.closed || !this.spinnerTips && !session.config.spinnerTipsLayers?.length) return;
+    const userDir = path.resolve(session.config.configSources?.userDir ?? this.options.userDir ?? defaultUserDir());
+    if (this.spinnerTipsUserDir !== userDir) {
+      this.spinnerTips?.close();
+      const retired = this.spinnerTips?.flush();
+      if (retired) {
+        this.spinnerTipsPending.add(retired);
+        void retired.finally(()=>this.spinnerTipsPending.delete(retired));
+      }
+      this.spinnerTips = undefined; this.spinnerTipsUserDir = userDir;
+      this.progress.tip(undefined);
+    }
+    if (!this.spinnerTips) {
+      const history = beginSpinnerTipsStartup(userDir);
+      this.spinnerTips = new SpinnerTips(()=>beginSpinnerTipsStartup(userDir), tip=>{ if (!this.closed) { this.progress.tip(tip); this.render(); } },
+        message=>{ if (!this.closed) this.setStatus(message); });
+      const startup = history.then(()=>{},error=>{ if (!this.closed) this.setStatus(`Spinner Tips history: ${String(error)}`); });
+      this.spinnerTipsPending.add(startup);
+      void startup.finally(()=>this.spinnerTipsPending.delete(startup));
+      this.spinnerTips.setActive(this.running);
+    }
+    this.spinnerTips.bind(session.id, session.config.spinnerTipsEnabled, session.config.spinnerTipsLayers);
+  }
+  async flushSpinnerTips(): Promise<void> {
+    await Promise.all([...this.spinnerTipsPending, this.spinnerTips?.flush()]);
   }
 
   setProgressSettings(settings: ProgressDisplaySettings): void {
@@ -1761,7 +1795,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.stashedDraft = undefined; this.searchDraft = {text:'',cursor:0,pastedContents:{}};
     this.diffPanel?.close(); this.diffPanel = undefined;
     this.diffPointer = undefined; this.diffSelection.dismiss(); this.footerSelection = null;
-    this.progress.close(); this.progressRenderer?.close();
+    this.spinnerTips?.close(); this.progress.close(); this.progressRenderer?.close();
     this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
     this.unsubscribePermissions?.(); this.unsubscribePermissions = undefined;
     this.backgroundTasksProbe = undefined; this.backgroundWorkProbe = undefined; this.backgroundWorkStop = undefined;

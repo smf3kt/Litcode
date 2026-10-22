@@ -13,6 +13,7 @@ import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import { briefTranscriptEnabled, startupVerbose } from './focus-command.js';
 import { configuredEffort } from './effort-command.js';
 import { createTuiTerminal } from './tui.js';
+import { beginSpinnerTipsStartup } from './spinner-tips.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { agentTypesSection, setHeldSkills } from './skill-catalog.js';
@@ -315,6 +316,8 @@ function newConfig(
   if (settings.timeFormat !== undefined) config.timeFormat = settings.timeFormat;
   if (settings.timeZone !== undefined) config.timeZone = settings.timeZone;
   if (settings.spinnerVerbs !== undefined) config.spinnerVerbs = settings.spinnerVerbs;
+  if (settings.spinnerTipsEnabled !== undefined) config.spinnerTipsEnabled = settings.spinnerTipsEnabled;
+  if (loaded?.spinnerTipsLayers !== undefined) config.spinnerTipsLayers = loaded.spinnerTipsLayers;
   if(settings.editorMode!==undefined)config.editorMode=settings.editorMode;
   if(settings.vimInsertModeRemaps!==undefined)config.vimInsertModeRemaps=settings.vimInsertModeRemaps;
   if (settings.maxProseWidth !== undefined) config.maxProseWidth = settings.maxProseWidth;
@@ -671,6 +674,10 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       session = Session.open(workspace, { config });
     }
     const currentSession = session;
+    if (!demo) {
+      try { await beginSpinnerTipsStartup(currentSession.config.configSources?.userDir ?? userDir); }
+      catch (error) { process.stderr.write(`Spinner Tips history: ${error instanceof Error ? error.message : String(error)}\n`); }
+    }
     if (!currentSession || !runtime) throw new Error('Runtime failed to initialize');
     // Opt-in managed-settings helper: read once before the session runs and then
     // on its configured interval, applying whichever tier is governing. The

@@ -25,6 +25,7 @@ import { pluginConfigSchema, type PluginConfig } from './plugins.js';
 import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
 import { clearCheckpointAssociation, recoverCheckpointAssociations } from './checkpoints.js';
 import { spinnerVerbsSchema } from './tui-progress-settings.js';
+import { spinnerTipsLayersSchema } from './spinner-tips-settings.js';
 import { statusLineSchema } from './tui-statusline-schema.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 import type { StoredToolUseResult } from './tool-use-result.js';
@@ -93,6 +94,8 @@ export type SessionConfig = {
   timeFormat?: string;
   timeZone?: string;
   spinnerVerbs?: import('./tui-progress-settings.js').SpinnerVerbs;
+  spinnerTipsEnabled?: boolean;
+  spinnerTipsLayers?: import('./spinner-tips-settings.js').SpinnerTipsLayer[];
   editorMode?: import('./tui-vim.js').EditorMode;
   vimInsertModeRemaps?: Record<string,unknown>;
   maxProseWidth?: number;
@@ -242,6 +245,8 @@ export const configSchema = z.object({
   timeFormat: z.string().optional(),
   timeZone: z.string().optional(),
   spinnerVerbs: spinnerVerbsSchema.optional(),
+  spinnerTipsEnabled: z.boolean().optional(),
+  spinnerTipsLayers: spinnerTipsLayersSchema.optional(),
   editorMode: editorModeSchema,
   vimInsertModeRemaps: vimRemapsSchema,
   maxProseWidth: z.number().int().min(40).optional(),

@@ -569,6 +569,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setBriefTranscript?.(briefTranscriptEnabled(session.config));
     terminal?.setVerbose?.(session.config.verbose === true);
     terminal?.setTerminalProgressBar?.(session.config.terminalProgressBarEnabled !== false);
+    terminal?.bindSpinnerTips?.(session);
     terminal?.setProgressSettings?.({timeFormat:session.config.timeFormat, timeZone:session.config.timeZone,
       spinnerVerbs:session.config.spinnerVerbs});
     terminal?.setMaxProseWidth?.(session.config.maxProseWidth);
@@ -2445,6 +2446,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
                       return configPanelInput(session.config);
                     }
+                    // vWe/me, nybcbd9t [14860,15058)/[8029,8318), UTF-16: local settings and live snapshot.
+                    case 'tips': {
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const enabled = configSchema.shape.spinnerTipsEnabled.parse(loaded.settings.spinnerTipsEnabled);
+                      session.config.spinnerTipsEnabled = enabled;
+                      terminal?.bindSpinnerTips?.(session);
+                      changes.set(update.id, `Set ${update.id} to ${enabled !== false}`);
+                      return configPanelInput(session.config);
+                    }
                     case 'reduceMotion':
                       // `vy` row, chunk-nybcbd9t.js: localSettings and the live app settings move
                       // together; the renderer and progress animations read the live value.
@@ -3056,6 +3066,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await editorWork;editorWork=undefined;
     await terminal?.flushStatusLine?.();
     await terminal?.flushInputHistory?.();
+    await terminal?.flushSpinnerTips?.();
     await stopPeer();
     try { await (activeAgent ?? agent()).endSession(options.signal.aborted ? 'interrupt' : 'prompt_input_exit'); }
     catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
