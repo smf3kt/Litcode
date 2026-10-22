@@ -645,3 +645,13 @@ Explicitly out of scope for this loop:
       bracketed paste atomically, so the row would have no observable interval. Unit 86/86 +
       29/29, compiled 10/10 at identity `e1af61e6…`. See
       `research/ports/W282-paste-expand-hint.md`.
+- [x] W283 composer ultracode tag (`tee` [153563,153784), `oee` [153841,154093), `nee`
+      [154093,154223), gate `ff=!Ii&&VC(Va,mn)` 893703, `borderText` 853246, all in
+      chunk-24k7d6mw.js): the composer's top border carries `ultracode` in the `effortUltra` slot,
+      revealed over `vkt = 11` frames of `$Ie = 120` ms with a `#d0b4ff` shimmer, while the session
+      flag, the workflow gate and the model gate hold and the brief transcript is off.
+      `src/tui-composer-tag.ts` carries the three copied bodies; `renderChat` gained the
+      `borderText` parameter the engine's `rC` already paints. `tRe` (history argument hint) and
+      `gf` (the internal tag, whose `j9r` feed is `Lio() === false`) are not ported, and `Bit` has
+      no local table. Unit 87/87 + 29/29 + 23/23, compiled 7/7 at identity `3c07dd53…`. See
+      `research/ports/W283-composer-ultracode-tag.md`.

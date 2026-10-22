@@ -3138,3 +3138,38 @@ test('a collapsed paste raises the expand hint until the expansion or its timer 
     assert.ok(!screenLines(timedOutput).join('\n').includes('paste again to expand'));
   } finally { timed.close(); decoded.get(timedOutput)!.dispose(); }
 });
+
+test('the composer carries the ultracode tag on its top border only while every gate holds', async () => {
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk: string, _encoding: string, done: () => void) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 30 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const frame = () => screenLines(output).join('\n');
+  try {
+    // Source `ff = !Ii && VC(Va, mn)`: the tag starts absent because the session flag is off.
+    assert.ok(!frame().includes('ultracode'), frame());
+    // `oee` reveals over `vkt = 11` frames of `$Ie = 120` ms, so the tag is settled after that.
+    tui.setUltracodeTag({ ultracode: true, workflows: true });
+    await delay(1_400);
+    const row = screenLines(output).findIndex(line => line.includes('ultracode'));
+    assert.ok(row >= 0, frame());
+    // `nee` puts it on the composer's top border, aligned to the end: the row ends the tag + pad.
+    assert.ok(screenLines(output)[row]!.trimEnd().endsWith('ultracode ─'), JSON.stringify(screenLines(output)[row]));
+    // `VC`'s `ZI` gate: without workflows the tag is off even with the session flag set.
+    tui.setUltracodeTag({ ultracode: true, workflows: false });
+    assert.ok(!frame().includes('ultracode'), frame());
+    tui.setUltracodeTag({ ultracode: true, workflows: true });
+    await delay(1_400);
+    assert.ok(frame().includes('ultracode'), frame());
+    // `Ii` is the `isBriefOnly` operand: the brief transcript hides the tag.
+    tui.setBriefTranscript(true);
+    assert.ok(!frame().includes('ultracode'), frame());
+    tui.setBriefTranscript(false);
+    await delay(1_400);
+    assert.ok(frame().includes('ultracode'), frame());
+    // The session flag going off takes it down with no timer.
+    tui.setUltracodeTag({ ultracode: false, workflows: true });
+    assert.ok(!frame().includes('ultracode'), frame());
+  } finally { tui.close(); decoded.get(output)!.dispose(); }
+});

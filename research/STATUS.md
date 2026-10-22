@@ -3143,3 +3143,8 @@ W179 connects the question's Chat about this action to Qet clarification feedbac
 W180 connects the recovered fullscreen Git sidebar through the real reconciler, session-owned Git collection, native selection and queued prompt attachments. Source verification covers 29 blocks and 40073 UTF-16 units. Full 2598/2598, check/build and compiled PTY pass; four independent findings were fixed and reverified. Identity e662b499. [W180 record](ports/W180-native-diff-panel.md).
 
 W282 raises the composer footer's `paste again to expand` row from the recovered producer and clears it on the expansion or after 8000 ms. Unit 86/86 + 29/29, full 3200/3201, compiled 10/10 at identity `e1af61e6…`. [W282 record](ports/W282-paste-expand-hint.md).
+
+W283 puts the `ultracode` tag on the composer's top border: the recovered `tee`/`oee`/`nee` bodies,
+the `!isBriefOnly && ultracode && workflows` gate, and an eleven-frame 120 ms reveal that clears
+itself. `renderChat` now carries the `borderText` record the engine already paints. Unit 87/87 +
+29/29 + 23/23, full 3201/3202, compiled 7/7 at identity `3c07dd53…`. [W283 record](ports/W283-composer-ultracode-tag.md).

@@ -1418,6 +1418,8 @@ export interface TerminalSurface {
   setSyntaxHighlightingDisabled?(value?: boolean): void;
   /** The composer's `dg()`/`C7t()` gates; the keyword run and its alt+w toggle exist only while both hold. */
   setWorkflowKeywordSettings?(settings: { available: boolean; triggerEnabled: boolean }): void;
+  /** The composer's top-border `ultracode` tag (`ff = !Ii && VC(Va, mn)`). */
+  setUltracodeTag?(settings: { ultracode: boolean; workflows: boolean; modelSupportsUltracode?: boolean }): void;
   /** The `:name:` emoji typeahead switch. Absent means enabled. */
   setEmojiCompletion?(enabled: boolean): void;
   /** `/focus`'s brief transcript: hold the streaming preview while a turn runs through tools. */

@@ -555,6 +555,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       available: workflowsAvailable(session.config.enableWorkflows),
       triggerEnabled: session.config.workflowKeywordTriggerEnabled ?? true,
     });
+    terminal?.setUltracodeTag?.({
+      ultracode: session.config.ultracode === true,
+      workflows: workflowsAvailable(session.config.enableWorkflows),
+      // `Vb`'s per-model `xhigh` probe has no local table (W212); the model gate is the workflow one.
+      modelSupportsUltracode: true,
+    });
     terminal?.bindThemeCatalog?.(session.config.configSources?.userDir, session.config.workspace, session.config.plugins);
     terminal?.setTheme?.(session.config.theme);
     terminal?.bindStatusLine?.(session);
@@ -1278,7 +1284,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     output.write(`${[result.message, ultracodeNotice].filter((part): part is string => part !== undefined).join(' · ')}\n`);
     // `eee` at `chunk-24k7d6mw.js` 153296 guards on a present level, so `auto` has none.
     if (session.config.effort !== undefined) options.status.write(`${effortIndicator(session.config.effort)}\n`);
-  }
+    // The session flag the composer tag reads (`Va` at 866374) changed in place, so the tag does
+    // not wait for the next config reload to follow it.
+    terminal?.setUltracodeTag?.({
+      ultracode: session.config.ultracode === true,
+      workflows: workflowsAvailable(session.config.enableWorkflows),
+      modelSupportsUltracode: true,
+    });  }
   /**
    * `lL` (chunk-24k7d6mw.js 882215) opens the `SG` dialog; accept `kp` (898567) and cancel `ph`
    * (898638). The accept writes the live state, and `SG` asks once more for a changed value
