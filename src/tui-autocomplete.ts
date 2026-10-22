@@ -1,3 +1,4 @@
+import { FORK_BACKGROUND_DESCRIPTION, FORK_DESCRIPTION } from './fork-command.js';
 import { cellWidth } from './terminal.js';
 import { EMOJI_QUERY, emojiSuggestions } from './tui-emoji.js';
 
@@ -119,7 +120,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'paste-image', description: 'Read a PNG image from the clipboard and submit it with a task', kind: 'command', lane: 'action' },
   { name: 'continue', description: 'Resume an interrupted turn', kind: 'command', lane: 'action' },
   { name: 'compact', description: 'Summarize completed history', kind: 'command', lane: 'action' },
-  { name: 'fork', description: 'Fork completed history into a new session', kind: 'command', lane: 'agent' },
+  { name: 'fork', description: FORK_BACKGROUND_DESCRIPTION, kind: 'command', lane: 'agent' },
   { name: 'subtask', description: 'Send a subagent off with your full context; its result comes back here', kind: 'command', lane: 'agent' },
   { name: 'branch', description: 'Create a branch of the current conversation at this point', kind: 'command', lane: 'agent' },
   { name: 'background', description: 'Fork this session into a detached background task', kind: 'command', lane: 'action' },
@@ -152,7 +153,8 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
 /** Base commands plus the session's user-invocable skills. A skill whose name
  *  collides with a local command is not offered, because the local command wins
  *  in `interactiveLoop`'s dispatch. */
-export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | undefined): readonly TuiCommand[] {
+export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | undefined,
+  options: { readonly fleetFork?: boolean } = {}): readonly TuiCommand[] {
   const localNames = new Set(TUI_COMMANDS.map(command => command.name));
   const extra: TuiCommand[] = [];
   for (const skill of skills ?? []) {
@@ -162,7 +164,14 @@ export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | un
       sourceTag: skill.source === 'projectSettings' ? 'project' : undefined,
       requiresArguments: (skill.argumentNames?.length ?? 0) > 0 });
   }
-  return [...TUI_COMMANDS, ...extra];
+  // Source `Ujt` (chunk-sfn1dbxq.js 1663949): the open fleet fork selects `njt` and adds `ojt`
+  // (`/subtask`); the closed branch selects `tjt` and lists no subtask row.
+  const commands = options.fleetFork === false
+    ? TUI_COMMANDS.map(command => command.name === 'subtask' ? undefined
+      : command.name === 'fork' ? { ...command, description: FORK_DESCRIPTION } : command)
+      .filter((command): command is TuiCommand => command !== undefined)
+    : TUI_COMMANDS;
+  return [...commands, ...extra];
 }
 
 /** `hR`: the draft is a slash command name with no arguments. */

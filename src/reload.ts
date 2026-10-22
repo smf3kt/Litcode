@@ -70,6 +70,8 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   else delete next.workflowKeywordTriggerEnabled;
   if (settings.emojiCompletionEnabled !== undefined) next.emojiCompletionEnabled = settings.emojiCompletionEnabled;
   else delete next.emojiCompletionEnabled;
+  if (settings.disableAgentView !== undefined) next.disableAgentView = settings.disableAgentView;
+  else delete next.disableAgentView;
   if (settings.theme !== undefined) next.theme = settings.theme;
   else delete next.theme;
   if (settings.statusLine !== undefined) next.statusLine = settings.statusLine;

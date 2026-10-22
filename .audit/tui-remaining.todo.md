@@ -572,3 +572,13 @@ Explicitly out of scope for this loop:
       child-agent event stream. Not ported: the launch telemetry, `endedByModel`, the worktree
       result hook, the coordinator surface. Unit 9/9, focused 112/112, compiled 12/12 at identity
       `5b5e9e2e…`. See `research/ports/W275-subtask.md`.
+- [x] W276 `/fork` in both registrations (`Ujt` chunk-sfn1dbxq.js 1663949; open `njt` 1638551,
+      closed `tjt` 1638340 with body `m` chunk-0krtqd6x.js 15000; gate `Tkt`/`r`/`gw`
+      chunk-wtdka69b.js 854/887/1096; open body `Ue` chunk-zsg1bb14.js 19311, dialog `U` 20040;
+      rows `Ucn`/`rFt`/`_e`/`TMr`/`UKn` chunk-t721xmjm.js 46831/46881/46909/46946/47819): the
+      gate is read once at loop start and drives the composer table, `/help` and the command arm,
+      so an open fleet fork copies into a detached background session and keeps this one while a
+      closed one runs the directive spawn. `/clear` and `/rewind` no longer share the fork arm.
+      Not ported: the fork briefing, the remote path, the relocation chips, the telemetry, the row
+      reader `Bcn`, the launch-flag refusal. Unit 14/14, focused 72/72, compiled 17/17 at identity
+      `7222caea…`. See `research/ports/W276-fork.md`.
