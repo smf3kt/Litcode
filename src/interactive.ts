@@ -79,7 +79,7 @@ import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
 import { contextPanelText, contextUsageFromCounts } from './context-panel.js';
 import { STATUS_PANEL_TITLE, appVersion, latestSessionTitle, statusPanelRows, statusPanelText } from './status-panel.js';
 import { MCP_PANEL_TITLE, mcpPanelRows, mcpPanelText, mcpToolCounts } from './mcp-panel.js';
-import { STATS_PANEL_TITLE, STATS_RANGE_LABELS, nextUsageRange, readUsageSessions, usagePanelText, usageStats, type UsageRange } from './usage-panel.js';
+import { STATS_PANEL_TITLE, STATS_RANGE_LABELS, activityHeatmap, nextUsageRange, readUsageSessions, usagePanelText, usageStats, type UsageRange } from './usage-panel.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
   EXPORT_DIALOG_TITLE, EXPORT_FILE_DESCRIPTION, EXPORT_FILE_LABEL, EXPORT_FILENAME_PROMPT,
@@ -1975,10 +1975,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // cycles `all` -> `7d` -> `30d` through `zn` (chunk-dag4qhha.js 91891).
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           const sessions = readUsageSessions(path.join(session.config.workspace, '.agent'));
+          // `ni` draws `Fn` from the all-time activity while the rows follow the selected range.
+          const heatmap = activityHeatmap(usageStats(sessions, { range: 'all' }).dailyActivity,
+            { columns: process.stdout.columns ?? 80 });
           let range: UsageRange = 'all';
           for (;;) {
             const answer = await withTurn(signal => readDialog({ title: STATS_PANEL_TITLE,
-              message: usagePanelText(usageStats(sessions, { range }), range), readOnly: true,
+              message: usagePanelText(usageStats(sessions, { range }), range, heatmap), readOnly: true,
               keys: [{ key: 't', label: STATS_RANGE_LABELS[nextUsageRange(range)] }] }, signal));
             if (answer?.key !== 't') break;
             range = nextUsageRange(range);

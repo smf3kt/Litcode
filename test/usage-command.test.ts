@@ -72,11 +72,14 @@ test('/usage opens the Stats tab and cycles the range', async () => {
     assert.equal(run.prompts.length, 2);
     assert.equal(run.prompts[0]!.title, 'Stats');
     const lines = run.prompts[0]!.message.split('\n');
-    assert.equal(lines[0], 'Range: All time');
-    assert.ok(lines[1]!.startsWith('Favorite model: fixture'));
+    assert.ok(lines.includes('    Less ░ ▒ ▓ █ More'), 'the heatmap legend');
+    const rangeLine = lines.indexOf('Range: All time');
+    assert.ok(rangeLine > 8, 'the heatmap precedes the range line');
+    assert.equal(lines[rangeLine - 1], '');
+    assert.ok(lines[rangeLine + 1]!.startsWith('Favorite model: fixture'));
     assert.ok(run.prompts[0]!.message.includes('Input 1.0k · Output 500 · Cache read 0 · Cache write 0'));
     assert.deepEqual(run.prompts[0]!.keys, [{ key: 't', label: 'Last 7 days' }]);
-    assert.equal(run.prompts[1]!.message.split('\n')[0], 'Range: Last 7 days');
+    assert.ok(run.prompts[1]!.message.includes('\nRange: Last 7 days\n'), 'the second range');
     assert.deepEqual(run.prompts[1]!.keys, [{ key: 't', label: 'Last 30 days' }]);
     run.callbacks.onExit!();
     await run.loop;

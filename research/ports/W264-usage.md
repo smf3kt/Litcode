@@ -48,8 +48,9 @@ half-open.
 ## Not ported
 
 - The Usage tab (plan, credits and spend) reads account data.
-- The daily activity chart (`Fn`), the per-model token table with its 7d/30d bars (`ai`) and the
-  hour histogram (`Do`), all of which need the vendor chart components and per-model series.
+- The per-model token table with its 7d/30d bars (`ai`) and the hour histogram (`Do`), which
+  need the vendor chart components and per-model series. The daily activity heatmap `Fn` is
+  ported separately in [W265](W265-usage-heatmap.md).
 - The comparison fun fact (`si`), which picks a random line per render.
 - The session-duration panel (`Gd`/`Tr`) and the thin-client dispatch.
 

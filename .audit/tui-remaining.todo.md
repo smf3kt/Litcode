@@ -487,6 +487,12 @@ Next up, scoped but not started:
       tab, the daily/hour charts, the per-model table and the random fun fact. Unit 7/7 + 2/2,
       autocomplete 23/23, focused 34/34, compiled 12/12 at identity `0ae8aa21…`.
       See `research/ports/W264-usage.md`.
+- [x] W265 `/usage` daily activity heatmap (`Fn`, chunk-dag4qhha.js 69459; `Dd` 69243, `xd` 70725,
+      `Md` 70861): seven weekday rows over `min(52, max(10, width - 4))` weeks, month labels,
+      4-column gutter, `Less ░ ▒ ▓ █ More` legend, percentile buckets over positive days. UTC day
+      keys on both sides (vendor mixed local keys with UTC activity) and no accent colour. Not
+      ported: the per-model 7d/30d bars and the hour histogram. Unit 8/8 + 2/2, focused 36/36,
+      compiled 13/13 at identity `acacd460…`. See `research/ports/W265-usage-heatmap.md`.
 - [ ] Config residuals without complete consumers. Tips, notifications, terminal tab status
       and selection flags remain unported. Read each source consumer closure before choosing the
       next complete local package. No local config row uses the successor-session path any
