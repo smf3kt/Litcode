@@ -34,6 +34,14 @@ export const HELP_MORE_HELP_PREFIX = 'For more help: ';
 export const HELP_MORE_HELP_URL = 'https://code.claude.com/docs/en/overview';
 export const HELP_FEEDBACK = 'Something else? Use /feedback to report bugs or request features.';
 export const HELP_KEYBINDINGS_HINT = '/keybindings to customize';
+/** Source `LVe` 766656: the idle footer row that stands in for the other indicators. */
+export const HELP_FOOTER_HINT = '? for shortcuts';
+/**
+ * The narrowest half-row that still shows the recovered row and the first key after the clip:
+ * `? for shortcuts` plus two spaces plus `ctrl+o` is 23 cells. Below it the local hints stand
+ * alone, so a narrow pty keeps a key it can read instead of a cut-off shortcut name.
+ */
+export const HELP_HINT_MIN_COLUMNS = 23;
 
 /** Source `to`: above this many rows the panel has room for the feedback line. */
 export const HELP_TALL_ROWS = 44;

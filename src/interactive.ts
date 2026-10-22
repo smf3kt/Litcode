@@ -613,6 +613,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (!inputClosed && !approval) void applyThinkingToggle?.();
         return;
       }
+      // Source input handler (chunk-24k7d6mw.js 880989): an empty draft turns `?` into the help
+      // panel; `QE` (815713) closes it on escape or backspace with an empty draft, which is the
+      // dialog's own cancel, so the chord only needs to open one panel at a time.
+      if (action === 'app:toggleHelp') {
+        if (liveDialog?.kind === 'help') return;
+        if (!inputClosed && !approval) void openHelpPanelLive?.();
+        return;
+      }
       const command = action === 'app:toggleTodos' ? '/tasks' : undefined;
       if (!command || inputClosed || approval) return;
       if (!queue.some(item => item.source === 'user' && item.prompt === command)) {
@@ -628,9 +636,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   /** Bound after the picker helpers; the chord handler above runs only after terminal start. */
   let openModelPickerLive: (() => Promise<void>) | undefined;
   let applyThinkingToggle: (() => Promise<void>) | undefined;
+  let openHelpPanelLive: (() => Promise<void>) | undefined;
   /** The dialog a live chord can close while it is open (the source's panel toggle). */
-  let liveDialog: { kind: 'model' | 'thinking'; controller: AbortController } | undefined;
-  const withLiveDialog = (kind: 'model' | 'thinking', signal: AbortSignal) => {
+  let liveDialog: { kind: 'model' | 'thinking' | 'help'; controller: AbortController } | undefined;
+  const withLiveDialog = (kind: 'model' | 'thinking' | 'help', signal: AbortSignal) => {
     const controller = new AbortController();
     liveDialog = { kind, controller };
     return { controller, signal: AbortSignal.any([signal, controller.signal]),
@@ -1216,6 +1225,28 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
       session.config.thinking = next;
       options.status.write(`Thinking ${next ? 'on' : 'off'}\n`);
+    } catch (error) {
+      if (!options.signal.aborted && !live.controller.signal.aborted)
+        options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    } finally { live.release(); }
+  };
+  /**
+   * Source input handler (chunk-24k7d6mw.js 880989): `?` on an empty draft opens the help panel
+   * through `dw`, which is `aw` (871746) calling `Nn(e8t)` — the same `G` panel `/help` renders.
+   * The recovered `QE` (815713) closes it on escape or backspace, which the dialog already does;
+   * the live guard only stops a second request from stacking on the open panel.
+   */
+  openHelpPanelLive = async () => {
+    if (!terminal?.prompt) return;
+    const live = withLiveDialog('help', options.signal);
+    try {
+      const notice = await browseHelp({
+        commands: tuiCommandsWithSkills(session.config.skills),
+        rows: process.stdout.rows ?? 24,
+        columns: Math.max(40, (process.stdout.columns ?? 80) - 4),
+        chords: (action, context, fallback) => chordForAction(action, context, fallback),
+      }, request => readDialog(request, live.signal));
+      if (notice) options.status.write(notice + '\n');
     } catch (error) {
       if (!options.signal.aborted && !live.controller.signal.aborted)
         options.status.write(`${error instanceof Error ? error.message : String(error)}\n`);
