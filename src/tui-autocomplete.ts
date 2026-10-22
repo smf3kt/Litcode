@@ -1,6 +1,7 @@
 import { FORK_BACKGROUND_DESCRIPTION, FORK_DESCRIPTION } from './fork-command.js';
 import { cellWidth } from './terminal.js';
 import { EMOJI_QUERY, emojiSuggestions } from './tui-emoji.js';
+import { AT as modelDisplayText } from './tui-model-description-source.js';
 
 /**
  * Slash-command suggestions for the composer, adapted from the recovered
@@ -134,7 +135,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'worktree', description: 'Create/enter an owned checkout and relocate completed history', kind: 'command', lane: 'action' },
   { name: 'worktree-exit', description: 'Return; optionally archive history and remove owned checkout/branch', kind: 'command', lane: 'action' },
   { name: 'worktree-history', description: 'List preserved worktree histories; restore one to its original name', kind: 'command', lane: 'action' },
-  { name: 'model', description: 'Choose or enter a model, then start a session with completed history', kind: 'command', lane: 'config' },
+  { name: 'model', description: 'Set the AI model', kind: 'command', lane: 'config' },
   { name: 'theme', description: 'Preview, choose and save a terminal theme', kind: 'command', lane: 'config' },
   { name: 'thinking', description: 'Toggle or set thinking in a new session with completed history', kind: 'command', lane: 'config' },
   { name: 'plan', description: 'Start a read-only session', kind: 'command', lane: 'config' },
@@ -152,9 +153,10 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
 
 /** Base commands plus the session's user-invocable skills. A skill whose name
  *  collides with a local command is not offered, because the local command wins
- *  in `interactiveLoop`'s dispatch. */
+ *  in `interactiveLoop`'s dispatch. bWe.description, sfn1dbxq [1650777,1650860), UTF-16,
+ *  reads the live model when Wre/jtt builds each row. */
 export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | undefined,
-  options: { readonly fleetFork?: boolean } = {}): readonly TuiCommand[] {
+  options: { readonly fleetFork?: boolean; readonly currentModel?: () => string } = {}): readonly TuiCommand[] {
   const localNames = new Set(TUI_COMMANDS.map(command => command.name));
   const extra: TuiCommand[] = [];
   for (const skill of skills ?? []) {
@@ -171,7 +173,12 @@ export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | un
       : command.name === 'fork' ? { ...command, description: FORK_DESCRIPTION } : command)
       .filter((command): command is TuiCommand => command !== undefined)
     : TUI_COMMANDS;
-  return [...commands, ...extra];
+  const currentModel = options.currentModel;
+  return [...commands.map(command => command.name === 'model' && currentModel !== undefined
+    ? { ...command, get description() {
+      return `Set the AI model (currently ${modelDisplayText(currentModel()) || 'unknown model'})`;
+    } }
+    : command), ...extra];
 }
 
 /** `hR`: the draft is a slash command name with no arguments. */

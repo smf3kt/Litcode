@@ -338,7 +338,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // Source `Ujt` (chunk-sfn1dbxq.js 1663949): the fleet-fork gate selects which `/fork`
   // registration the command table carries and whether `/subtask` is offered at all.
   const fleetFork = fleetForkOpen(process.env, initial.config);
-  const commandTable = (config: SessionConfig) => tuiCommandsWithSkills(config.skills, { fleetFork });
+  const commandTable = (config: SessionConfig) => tuiCommandsWithSkills(config.skills,
+    { fleetFork, currentModel: () => session.config.model });
   const planResume = new InteractivePlanResume(initial.id);
   // The user settings file's `env` block is applied before anything probes the environment, so a
   // persisted `/scroll-speed` survives a restart. It runs here rather than at startup because the
@@ -550,6 +551,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       for (const file of event.paths) if (dynamicWatchPaths.size < 2048 && Buffer.byteLength(JSON.stringify([...dynamicWatchPaths, file])) <= 65536) dynamicWatchPaths.add(file);
     }
     terminal?.setKeybindings(session.config.keybindings);
+    // bWe/Wre/jtt, sfn1dbxq [1650777,1650860)/[1666990,1667469), UTF-16: bind the live getter.
+    terminal?.setCommands?.(commandTable(session.config));
     terminal?.setEditorMode?.(session.config.editorMode,session.config.vimInsertModeRemaps);
     terminal?.setPrefersReducedMotion?.(session.config.prefersReducedMotion);
     terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
@@ -1171,6 +1174,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (inherited === undefined) delete session.config.effort; else session.config.effort = inherited;
     }
     let saveSuffix = ' for this session only';
+    // bWe.description, sfn1dbxq [1650777,1650860), UTF-16: a live model write repaints its getter.
+    terminal?.setCommands?.(commandTable(session.config));
     refreshEffortUi();
     if (!sessionOnly && userDir !== undefined) {
       try {
