@@ -101,6 +101,8 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'agents', description: 'List configured local agent types', kind: 'command', lane: 'config' },
   { name: 'mcp', description: 'Show configured MCP servers and adapter limitations', kind: 'command', lane: 'config' },
   { name: 'mcp-reconnect', description: 'Reconnect one server in place, or all servers into a new session', kind: 'command', lane: 'action' },
+  { name: 'plugin', description: 'Manage local plugins', kind: 'command', lane: 'config',
+    aliases: ['plugins', 'marketplace'] },
   { name: 'tasks', description: 'Show workspace task dependencies and readiness', kind: 'command', lane: 'agent',
     aliases: ['bashes'] },
   { name: 'workflows', description: 'Browse running and completed workflows', kind: 'command', lane: 'agent' },

@@ -545,6 +545,44 @@ export function discoverInstalledSkillDirectories(workspace: string, config?: Pl
   return discoverInstalledPluginComponents(workspace, config).flatMap(item => item.skillDirectory ? [item.skillDirectory] : []);
 }
 
+/** One index record with its live state, for `/plugin`'s list. `plugin_list` reports the same
+ *  record and digest check; this reader takes the store lock once and returns the rows instead
+ *  of the tool's JSON envelope, so the panel never re-verifies per row. */
+export interface PluginStoreEntry {
+  readonly name: string;
+  readonly version: string;
+  readonly digest: string;
+  readonly files: number;
+  readonly bytes: number;
+  readonly directory: string;
+  readonly modified: boolean;
+}
+
+export interface PluginStoreSnapshot {
+  /** Whether `plugins.enabled` opens the store at all. */
+  readonly enabled: boolean;
+  /** The index digest, or `disabled`/the empty-index digest when there is no store. */
+  readonly identity: string;
+  readonly entries: readonly PluginStoreEntry[];
+}
+
+export function readPluginStore(workspace: string, config?: PluginConfig): PluginStoreSnapshot {
+  const options = pluginConfigSchema.parse(config ?? {});
+  const store = storeFor(workspace);
+  if (!store) return { enabled: options.enabled, identity: makeIndex([]).digest, entries: [] };
+  return locked(store, () => {
+    assertNoPending(store);
+    const state = load(store, options);
+    const entries = state.index.plugins.map(item => {
+      const current = snapshot(path.join(store, item.manifest.name), options);
+      return { name: item.manifest.name, version: item.manifest.version, digest: item.digest,
+        files: item.files, bytes: item.bytes, directory: path.join(store, item.manifest.name),
+        modified: JSON.stringify(record(current)) !== JSON.stringify(item) };
+    });
+    return { enabled: options.enabled, identity: options.enabled ? state.index.digest : 'disabled', entries };
+  });
+}
+
 /** Explicit, inert discovery of declared components in verified installed snapshots. */
 export function installedPluginCatalogIdentity(workspace: string, config?: PluginConfig): string {
   const options = pluginConfigSchema.parse(config ?? {});
