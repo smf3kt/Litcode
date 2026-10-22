@@ -33,6 +33,8 @@ import { reduceKillRing } from './kill-ring.js';
 import { TerminalModeController, type MouseTracking } from './tui-modes.js';
 import { Keymap, chordForAction, chordSequence, contextStack, type TuiContext } from './tui-keys.js';
 import { HELP_FOOTER_HINT, HELP_HINT_MIN_COLUMNS } from './help-panel.js';
+import { STASH_HINT_TIMEOUT_MS, STASH_RESTORED, STASH_RESTORED_TIMEOUT_MS, StashHintGate,
+  hasUsedStash, markStashUsed, stashHintText } from './tui-stash.js';
 import type { TerminalMouseEvent } from './terminal-mouse.js';
 import {
   createSelection, dragSpan, lineSpan, moveSelectionColumn, reduceSelection, selectionColumn,
@@ -427,6 +429,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private readonly gestures = new InputGestures();
   private gestureHandling = false;
   private stashedDraft: InputSnapshot | undefined;
+  /** Source `Yc` (chunk-24k7d6mw.js 828570): the draft-length gate behind the stash tip. */
+  private readonly stashHint = new StashHintGate();
   private editorController: AbortController | undefined;
   private editorTask: Promise<ExternalEditorResult> | undefined;
   private editorDialog: ActiveDialog | undefined;
@@ -580,6 +584,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.originalPaused = options.input.readableFlowing !== true;
     this.editor = createEditorState(options.historyLimit === 0 ? []
       : options.history?.slice(-Math.max(1, options.historyLimit ?? 100)));
+    // Source `R(Io.length)` at the composer's mount: both counters start at the draft length.
+    this.stashHint.observe(this.editor.text.length);
     this.transcript = createTranscriptState();
     // The composer's edit relay (research/ports/W45-chain-runner.md#slice-3): the copied `cue` hook
     // with this product's composer as its host. It records nothing until a loaded module hooks
@@ -1646,9 +1652,18 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.queueEditIndex !== null && this.editor.text !== draftBefore.text) this.queueEditIndex = null;
     this.settleWorkflowKeyword();
     this.publishDraft();
+    if (this.editor.text.length !== draftBefore.text.length) {
+      // Source `cq` (chunk-24k7d6mw.js 830089): a typed change clears the tip row; the length
+      // effect below may raise it again when this change is the shrink it watches for.
+      this.clearStatusNotice('stash-hint');
+      this.stashTip(this.editor.text.length);
+    }
     this.relayEdit(action, draftBefore, sequence);
     if(transition.effects.some(effect=>effect.type==='submit')||action.type==='interrupt'&&!this.editor.running)this.vim.reset();
     const submitted = transition.effects.find(effect => effect.type === 'submit');
+    // Source submit path (chunk-24k7d6mw.js 1492930): once the prompt is accepted and it is not a
+    // slash command, a stashed draft comes back into the emptied composer with `Draft restored`.
+    if (submitted !== undefined && !submitted.text.trim().startsWith('/')) this.restoreStashedDraft();
     if (submitted) this.transcript = reduceTranscript(this.transcript,
       { type: 'append', entry: { kind: 'user', text: submitted.text, timestamp: Date.now() } },
       { rows: this.viewportSize().rows, total: this.transcriptTotal(this.viewportSize().columns) });
@@ -2761,7 +2776,52 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.replaceDraft({ ...this.editor, text: restored?.text ?? '', cursor: restored?.cursor ?? 0,
       pastedContents:structuredClone(restored?.pastedContents ?? {}),
       historyIndex: this.editor.history.length, historyDraft: restored?.text ?? '',historyDraftPastes:structuredClone(restored?.pastedContents ?? {}) });
-    this.setStatus(restored ? current ? 'drafts swapped' : 'draft restored' : 'draft stashed');
+    // Source `qq` (chunk-24k7d6mw.js 843876): the non-empty branch stashes, latches
+    // `hasUsedStash` through `bJt`, clears the tip (`af`) and records `input_stash`. The
+    // restored-draft branch pops the slot; the restore notice belongs to the submit and
+    // post-command paths (`#s`), not to this chord, so the swap itself reports nothing.
+    if (current) {
+      this.clearStatusNotice('stash-hint');
+      if (this.options.userDir !== undefined) {
+        try { markStashUsed(this.options.userDir); } catch { /* a latch that cannot be written does not block the swap */ }
+      }
+    }
+    // The source store notifies its subscribers after the swap; this terminal's composer is drawn
+    // from the editor it just replaced, so the frame is repainted here.
+    this.render();
+  }
+
+  /**
+   * Source `Yc` (chunk-24k7d6mw.js 828570): a draft shrinking from at least 20 characters to at
+   * most 5 raises `Tip: ctrl+s to stash` for `XS` (5000 ms), once, until a stash latches
+   * `hasUsedStash`. `Pr` is the keyed notification store, which this terminal models as its one
+   * status row; `Cl` is that row's clear.
+   */
+  private stashTip(length: number): void {
+    if (!this.stashHint.observe(length)) return;
+    if (this.options.userDir !== undefined && hasUsedStash(this.options.userDir)) return;
+    this.showStatusNotice('stash-hint', stashHintText(chordForAction('chat:stash', 'Chat', 'ctrl+s')),
+      STASH_HINT_TIMEOUT_MS);
+  }
+
+  /**
+   * Source `#s` (chunk-24k7d6mw.js 1495345) and the submit path at 1492930: when a stashed draft
+   * is waiting and the composer is empty, the slot is popped back into the draft and
+   * `{key:"stash-restored",kind:"feedback",text:"Draft restored",priority:"high",timeoutMs:5000}`
+   * is raised. Returns whether anything was restored.
+   */
+  restoreStashedDraft(notice = true): boolean {
+    if (this.closed || this.stashedDraft === undefined || this.editor.text.trim() !== '') return false;
+    const restored = this.stashedDraft;
+    this.stashedDraft = undefined;
+    this.undo.clear();
+    this.replaceDraft({ ...this.editor, text: restored.text, cursor: restored.cursor,
+      pastedContents:structuredClone(restored.pastedContents),
+      historyIndex: this.editor.history.length, historyDraft: restored.text,
+      historyDraftPastes:structuredClone(restored.pastedContents) });
+    if (notice) this.showStatusNotice('stash-restored', STASH_RESTORED, STASH_RESTORED_TIMEOUT_MS);
+    this.render();
+    return true;
   }
 
   /** Move the selection focus by a line/cell delta, clamping to the transcript. */

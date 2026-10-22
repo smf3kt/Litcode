@@ -1349,9 +1349,11 @@ try {
     child.stdin.write('\x1bt');
     await until(() => frame().includes('Thinking: on'));
     child.stdin.write('\u0013');
-    await until(() => frame().includes('draft stashed'));
+    // `qq` (chunk-24k7d6mw.js 843876) reports nothing; the swap is observable as the emptied
+    // composer and its placeholder.
+    await until(() => !draft('retained'));
     child.stdin.write('scratch\u0013');
-    await until(() => frame().includes('drafts swapped'));
+    await until(() => draft('retained'));
     child.stdin.write('\u0014');
     await until(() => topLine() === '[]');
     assert.equal(requests.length, 0);

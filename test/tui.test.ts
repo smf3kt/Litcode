@@ -21,6 +21,7 @@ import type { TaskRecord } from '../src/tasks.js';
 import { SKo } from '../src/tui-system-theme-source.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { welcomeDensity, WELCOME_ART_ROWS } from '../src/tui-welcome.js';
+import { hasUsedStash } from '../src/tui-stash.js';
 
 /** Terminal rows the composer, status line and margins take from the transcript. */
 const WELCOME_CHROME_ROWS = 4;
@@ -831,6 +832,56 @@ test('TUI kill and yank commands fall through context bindings and isolate modal
     const snapshot = tui.state; snapshot.killRing.ring.length = 0;
     assert.ok(tui.state.killRing.ring.length > 0);
   } finally { tui.close(); decoded.get(output)!.dispose(); }
+});
+
+test('the stash chord swaps drafts, raises the shrink tip and restores after a submit', () => {
+  const userDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-stash-tui-')));
+  const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
+  input.isTTY = true; input.setRawMode = () => {};
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 80, rows: 12 }); watchScreen(output);
+  const submitted: string[] = [];
+  const tui = new TuiTerminal({ input, output, userDir, onSubmit: text => submitted.push(text) }).start();
+  const key = (text: string) => input.emit('data', text);
+  const footer = () => screenLines(output).join('\n');
+  /** Delete the whole draft one character at a time, so the length gate sees each step. */
+  const erase = (length: number) => { for (let i = 0; i < length; i += 1) key('\x7f'); };
+  try {
+    // `Yc` (chunk-24k7d6mw.js 828570): crossing 20 characters and then shrinking to at most 5
+    // raises `Tip: ctrl+s to stash` for `XS`; typing clears the row first (`cq`, 830089).
+    key('x'.repeat(25)); assert.equal(footer().includes('Tip:'), false);
+    erase(20);
+    assert.equal(tui.state.text, 'xxxxx');
+    assert.ok(footer().includes('Tip: ctrl+s to stash'));
+    key('f');
+    assert.equal(footer().includes('Tip: ctrl+s to stash'), false);
+    // `qq` (843876): a non-empty draft stashes and reports nothing itself; the second press pops
+    // the slot back and raises no notice either, because the restore notice belongs to `#s`.
+    erase(6); assert.equal(tui.state.text, '');
+    key('retained\u0013');
+    assert.equal(tui.state.text, '');
+    assert.equal(footer().includes('draft stashed'), false);
+    assert.equal(footer().includes('Draft restored'), false);
+    key('\u0013');
+    assert.equal(tui.state.text, 'retained');
+    assert.equal(footer().includes('Draft restored'), false);
+    // The stash latched `hasUsedStash` (`bJt`, 817896).
+    assert.equal(hasUsedStash(userDir), true);
+    // Submitting a prompt while a stash waits brings it back with `Draft restored`.
+    erase('retained'.length); assert.equal(tui.state.text, '');
+    key('first\u0013');
+    assert.equal(tui.state.text, '');
+    key('second');
+    key('\r');
+    assert.deepEqual(submitted, ['second']);
+    assert.equal(tui.state.text, 'first');
+    assert.ok(footer().includes('Draft restored'));
+    // The tip never returns once the latch is written.
+    erase('first'.length); assert.equal(tui.state.text, '');
+    key('y'.repeat(25)); erase(20);
+    assert.equal(tui.state.text, 'yyyyy');
+    assert.equal(footer().includes('Tip: ctrl+s to stash'), false);
+  } finally { tui.close(); decoded.get(output)!.dispose(); fs.rmSync(userDir, { recursive: true, force: true }); }
 });
 
 test('TUI undo restores measured caret and isolates stash, dialog and rejected answer snapshots', async context => {
@@ -2076,6 +2127,9 @@ test('TUI folded paste survives stash, history search, undo and isolated modal i
     const modal=tui.prompt({message:'Fixture',allowText:true},new AbortController().signal);
     input.emit('data','ok\r');assert.deepEqual(await modal,{selected:[],text:'ok'});assert.equal(tui.state.pastedContents['1']!.content,raw);
     input.emit('data','\r');assert.deepEqual(submitted,[raw]);
+    // The submit emptied the composer, so the stashed `scratch` draft comes back (`#s`).
+    assert.equal(tui.state.text,'scratch');
+    input.emit('data','\x7f'.repeat('scratch'.length));
     input.emit('data','\u0012second\u0012\r');assert.deepEqual(submitted,[raw,raw]);
     input.emit('data',paste);Object.assign(output,{columns:100});output.emit('resize');
     assert.match(screenLines(output).join('\n'),/\[Pasted text #2 \+3 lines\]/);
@@ -2431,7 +2485,11 @@ test('common action keys preserve drafts and stash swaps text with its cursor', 
     key('\u0013'); assert.equal(tui.state.text, '');
     key('other\u0013'); assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, cursor);
     key('\u0013'); assert.equal(tui.state.text, 'other');
-    key('\r\u0013'); assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, cursor);
+    // The submit empties the composer and the waiting stash comes straight back (`#s`), so the
+    // draft is already in place before the next stash press.
+    key('\r'); assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, cursor);
+    key('\u0013'); assert.equal(tui.state.text, '');
+    key('\u0013'); assert.equal(tui.state.text, 'draft'); assert.equal(tui.state.cursor, cursor);
   } finally { tui.close(); }
 });
 
