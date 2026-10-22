@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -8,11 +9,17 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { defaultConfig } from '../src/agent.js';
 import { interactiveLoop } from '../src/interactive.js';
 import type { ModelProvider } from '../src/provider.js';
+import type { McpClientRequests } from '../src/mcp-client-requests.js';
 import { Session } from '../src/session.js';
 import type { TerminalCallbacks, TerminalPromptRequest, TerminalSurface } from '../src/terminal.js';
+import { TuiTerminal } from '../src/tui.js';
 
 import { backgroundFooterLabel } from '../src/tui-background.js';
+import type { Terminal } from '@xterm/headless';
 import type { BackgroundTaskSnapshot } from '../src/tasks-panel.js';
+
+const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/headless') as { Terminal: typeof Terminal };
+
 test('/tasks lists live background work and stops the focused row with x', async () => {
   const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-tasks-panel-')));
   const config = { ...defaultConfig(workspace, []), model: 'test' };
@@ -117,5 +124,97 @@ test('background notifications repaint only the current session and unsubscribe 
     assert.equal(listeners.size, 0);
   } finally {
     controller.abort(); await loop; session.close(); fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('a footer click opens Background during a held turn without replacing its owner', async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
+    ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'harness-live-task-click-')));
+  const userDir = path.join(workspace, 'user'); fs.mkdirSync(userDir);
+  const config = { ...defaultConfig(workspace, []), model: 'test', configSources: { userDir }, watchConfig: false };
+  const session = Session.open(workspace, { config });
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  const screen = new HeadlessTerminal({ cols: 120, rows: 30, allowProposedApi: true, logLevel: 'off' });
+  const output = new Writable({ write(chunk, _encoding, done) {
+    Reflect.apply(Reflect.get(Reflect.get(screen, '_core'), 'writeSync'), Reflect.get(screen, '_core'), [String(chunk)]); done();
+  } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 });
+  const tui = new TuiTerminal({ input, output, prefersReducedMotion: true, userDir });
+  const frame = () => Array.from({ length: 30 }, (_, row) => screen.buffer.active.getLine(row)?.translateToString(true) ?? '').join('\n');
+  const key = (text: string) => input.emit('data', text);
+  let modelSignal: AbortSignal | undefined;
+  let release: (() => void) | undefined;
+  const provider: ModelProvider = { count: async () => 0, complete: async (_request, signal) => {
+    modelSignal = signal;
+    await new Promise<void>(resolve => { release = resolve; });
+    return { id: 'fixture', model: 'test', type: 'message', role: 'assistant',
+      content: [{ type: 'text', text: 'done', citations: null }], container: null, diagnostics: null,
+      stop_details: null, stop_reason: 'end_turn', stop_sequence: null, usage: {
+        input_tokens: 1, output_tokens: 1, cache_creation: null, cache_creation_input_tokens: null,
+        cache_read_input_tokens: null, inference_geo: null, output_tokens_details: null,
+        server_tool_use: null, service_tier: null,
+      } };
+  } };
+  let jobs = [{ id: 'job', kind: 'run', state: 'running', command: 'owned shell', description: '' }];
+  const stopped: string[] = [];
+  const listeners = new Set<(owner: string) => void>();
+  let elicitation: NonNullable<McpClientRequests['elicitation']> | undefined;
+  const runtime = {
+    tools: [], buildTools: () => [], close: async () => {}, limits: [],
+    registerElicitation(_owner: string, callback: NonNullable<McpClientRequests['elicitation']>) {
+      elicitation = callback; return () => { elicitation = undefined; };
+    },
+    subscribe(listener: (owner: string) => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    backgroundWorkCount: () => jobs.length,
+    backgroundTasks: () => ({ jobs, agents: [], crons: [] }),
+    stopTask: async (_owner: string, id: string) => {
+      stopped.push(id); jobs = []; for (const listener of listeners) listener(session.id); return 'shell' as const;
+    },
+  };
+  const controller = new AbortController();
+  const loop = interactiveLoop(session, provider, runtime, { input, output, status: tui.statusStream,
+    signal: controller.signal, terminal: tui });
+  const until = async (check: () => boolean) => {
+    const end = Date.now() + 5_000;
+    while (!check()) { assert.ok(Date.now() < end, frame()); await delay(10); }
+  };
+  const click = () => {
+    const footer = screen.buffer.active.getLine(29)?.translateToString(true) ?? '';
+    const column = footer.indexOf('1 shell') + 1; assert.ok(column > 0, footer);
+    key(`\x1b[<0;${column};30M\x1b[<0;${column};30m`);
+  };
+  try {
+    await until(() => listeners.size === 1 && frame().includes('1 shell'));
+    key('hold request\r'); await until(() => release !== undefined);
+    key('retained draft'); click();
+    await until(() => tui.currentScreen === 'dialog' && frame().includes('1 active shell'));
+    assert.equal(modelSignal?.aborted, false);
+    key('\x03'); await until(() => tui.currentScreen === 'chat');
+    await delay(0);
+    assert.equal(modelSignal?.aborted, false);
+    assert.equal(tui.state.text, 'retained draft');
+    click(); await until(() => tui.currentScreen === 'dialog');
+    assert.ok(elicitation);
+    const form = elicitation({ mode: 'form', message: 'Choose a local label', requestedSchema: {
+      type: 'object', properties: { label: { type: 'string' } }, required: ['label'],
+    } }, controller.signal, { serverName: 'fixture', requestId: 'background-form' });
+    await until(() => frame().includes('MCP form from fixture') && !frame().includes('1 active shell'));
+    key('{"label":"chosen"}\r');
+    assert.deepEqual(await form, { action: 'accept', content: { label: 'chosen' } });
+    assert.equal(modelSignal?.aborted, false);
+    assert.equal(tui.state.text, 'retained draft');
+    await delay(0);
+    click(); await until(() => tui.currentScreen === 'dialog');
+    key('x'); await until(() => frame().includes('No tasks currently running'));
+    assert.deepEqual(stopped, ['job']);
+    assert.equal(modelSignal?.aborted, false);
+    key('\x03'); await until(() => tui.currentScreen === 'chat');
+    assert.equal(tui.state.text, 'retained draft');
+    release!(); await until(() => frame().includes('done') && !session.awaitingResponse);
+    key('\x15/exit\r'); await loop;
+    assert.equal(listeners.size, 0);
+  } finally {
+    release?.(); controller.abort(); await loop; tui.close(); screen.dispose(); session.close();
+    fs.rmSync(workspace, { recursive: true, force: true });
   }
 });

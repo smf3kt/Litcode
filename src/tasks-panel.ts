@@ -98,3 +98,13 @@ export function parseBackgroundTaskValue(value: string): { kind: BackgroundTaskK
 export function backgroundTaskGoneMessage(): string {
   return 'That task is no longer running';
 }
+
+/** fLt's V(tjt) and list projection, 24k7d6mw [674472,677240), UTF-16. */
+export function backgroundTaskRequest(snapshot: BackgroundTaskSnapshot, notice?: string): import('./terminal.js').TerminalPromptRequest {
+  const items = backgroundTaskItems(snapshot);
+  if (items.length === 0) return { title: TASKS_TITLE, message: notice ?? TASKS_EMPTY, readOnly: true };
+  return { title: TASKS_TITLE,
+    message: [tasksPanelSubtitle(items), notice].filter((part): part is string => part !== undefined).join('\n\n'),
+    choices: tasksPanelRows(items).map(row => ({ label: row.label, value: row.value, description: row.description })),
+    keys: [{ key: 'x', label: 'stop' }] };
+}

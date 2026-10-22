@@ -1275,6 +1275,8 @@ export interface TerminalPromptRequest {
   modelPicker?: import('./model-picker.js').ModelPickerInput;
   /** bs/vWe, dag4qhha [17007,42182), nybcbd9t [7247,31899), UTF-16: immediate local settings. */
   configPanel?: import('./config-panel.js').ConfigPanelHost;
+  /** fLt's V(tjt), 24k7d6mw [674472,675750), UTF-16: live local Background rows. */
+  backgroundTasks?: () => import('./tasks-panel.js').BackgroundTaskSnapshot;
   /**
    * When present the request runs as a sequence of groups followed by a review
    * page, and the answer carries one entry per group. Copied from the recovered

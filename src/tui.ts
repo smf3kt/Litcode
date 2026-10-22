@@ -57,6 +57,7 @@ import { layoutEngine } from './tui-layout.js';
 import { renderPreviewMarkdown } from './tui-markdown.js';
 import { TuiRenderer, footerElement, type FooterPart, type FooterStatus, type PromptLine } from './tui-renderer.js';
 import { backgroundFooterLabel } from './tui-background.js';
+import { backgroundTaskRequest } from './tasks-panel.js';
 import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
@@ -267,6 +268,7 @@ interface ActiveDialog {
     pressed?: { kind: 'row'; id: ConfigRowId; value: boolean } | { kind: 'search' };
     searchRows: Set<number>; pending?: Promise<void> };
   resumePicker?: { owner: ResumePicker; hits: Map<number, number> };
+  backgroundFocusLost?: boolean;
   busy?: boolean;
   editor: EditorState;
   undo: InputUndo;
@@ -334,6 +336,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private renderer: TuiRenderer | undefined;
   private diffPanel: DiffPanel | undefined;
   private diffPointer: { column: number; row: number; moved: boolean } | undefined;
+  private footerPointer: { column: number; row: number; moved: boolean } | undefined;
   private readonly diffSelection = new DiffSelectionOwner(() => this.render());
   private diffAttachmentFocused = false;
   private documentRenderer: TuiDocumentRenderer | undefined;
@@ -423,6 +426,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const clock = this.showMessageTimestamps ? this.timeFormatter.stamp : this.timeFormatter.short;
     return typeof clock === 'function' ? clock(entry.timestamp) : '';
   }
+  /** v1e.Ks/A4, 24k7d6mw [786385,786417)/[1487552,1487705), UTF-16. */
+  private readonly openBackgroundTasks = () => { this.emit('action', 'chat:openTasks'); };
+
   private readonly keys = new Keymap();
   private readonly wheelKeys = new Keymap();
   private readonly decoder: TerminalKeyDecoder;
@@ -971,6 +977,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   /** pz's V(XVt) subscription, 24k7d6mw [740155,740694), UTF-16. */
   backgroundWorkChanged(): void {
+    this.refreshBackgroundDialog();
     this.render();
   }
 
@@ -1606,11 +1613,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       return Promise.reject(new Error('Dialog exceeds its display budget'));
     }
     this.sourceSearch?.cancel();
+    this.footerPointer = undefined; this.renderer?.hover(-1, -1);
     this.sourcePicker?.cancel();
     // Formatter and settings callbacks retain their host ownership outside the cloned display data.
     // The resume picker's preview/rename callbacks are host closures too; only its rows are data.
-    const { adjust: axis, configPanel, resumePicker, ...plain } = request;
+    const { adjust: axis, configPanel, resumePicker, backgroundTasks, ...plain } = request;
     const snapshot: TerminalPromptRequest = structuredClone(plain);
+    if (backgroundTasks !== undefined) snapshot.backgroundTasks = backgroundTasks;
     if (axis !== undefined) snapshot.adjust = axis;
     if (configPanel !== undefined) snapshot.configPanel = configPanel;
     if (resumePicker !== undefined) snapshot.resumePicker = { ...resumePicker, logs: structuredClone(resumePicker.logs) };
@@ -1738,6 +1747,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
     this.unsubscribePermissions?.(); this.unsubscribePermissions = undefined;
     this.backgroundTasksProbe = undefined; this.backgroundWorkProbe = undefined; this.backgroundWorkStop = undefined;
+    this.footerPointer = undefined;
     this.welcomeRenderer?.close(); this.welcomeRenderer = undefined; this.welcomeRows = []; this.welcomeKey = '';
     this.assistantMessage = undefined;
     this.previewCoalescer.dispose();
@@ -2352,7 +2362,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if(action.type==='return'&&(this.keys.pendingChord||this.screen!=='chat')){
         this.routeKey(action.sequence,action.meta||action.shift?'newline':'submit');continue;
       }
-      if (action.type === 'mouse') { this.handleMouse(action); continue; }
+      if (action.type === 'mouse') {
+        const owner = this.dialog;
+        this.handleMouse(action);
+        if (this.dialog !== owner) { this.decoder.discardPending(); handedOff = true; }
+        continue;
+      }
       if (action.type === 'key') { this.routeKey(action.sequence, action.command); continue; }
       if (action.type === 'insert' && (this.screen === 'transcript' || this.keys.pendingChord || this.diffAttachmentFocused)) {
         for (const character of action.text) {
@@ -2645,6 +2660,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Recovered `a3`: the notes input owns keys while it is open; Esc exits it,
     // and Enter saves the text and takes the focused/stored answer when present.
     if (dialog.notesEditing) { this.handleNotesAction(dialog, action, command, sequence); return; }
+    // fLt.Kc, 24k7d6mw [682045,682255), UTF-16: a vanished focus consumes the next stop.
+    if (dialog.request.backgroundTasks !== undefined) {
+      this.refreshBackgroundDialog();
+      if (action.type === 'insert' && action.text === 'x' && dialog.backgroundFocusLost) {
+        dialog.backgroundFocusLost = false; this.render(); return;
+      }
+    }
     if (command === 'interrupt' || command === 'eof' || sequence === '\x1b') { dialog.finish(); return; }
     // A read-only panel has no answer input: Enter picks the focused row when there is one,
     // and does nothing when the panel is only a record to read.
@@ -2711,6 +2733,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       dialog.followFocus = false; this.render(); return;
     }
     if (choices.length && (command === 'up' || command === 'down' || sequence === '\t' || sequence === '\x1b[Z')) {
+      dialog.backgroundFocusLost = false;
       const count = choices.length + (step?.allowText ? 1 : 0) + (clarification === undefined ? 0 : 1);
       const delta = command === 'up' || sequence === '\x1b[Z' ? -1 : 1;
       const before = dialog.index;
@@ -2721,6 +2744,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     if (choices.length && !textEntry && (command === 'home' || command === 'end'
       || command === 'logicalHome' || command === 'logicalEnd')) {
+      dialog.backgroundFocusLost = false;
       const before = dialog.index;
       dialog.index = command === 'home' || command === 'logicalHome' ? 0 : choices.length - 1;
       if (dialog.index !== before) dialog.optionTouched = true;
@@ -2836,6 +2860,30 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private handleMouse(event: TerminalMouseEvent): void {
     if (this.options.mouseTracking === 'off' || this.screen === 'search') return;
     const view = this.viewportSize();
+    // Ax, 06azbynj [242075,244661), UTF-16: release without a drag dispatches the native click.
+    const footerRow = Math.max(4, this.options.output.rows ?? 24) - 1;
+    const footerHit = event.row - 1 === footerRow && event.col >= 1 && event.col <= view.columns;
+    if (footerHit || this.footerPointer) {
+      if ((this.options.mouseTracking ?? 'full') !== 'full') return;
+      const column = event.col - 1, row = event.row - 1;
+      this.renderer?.hover(column, row);
+      if (event.action === 'press' && (event.button & 3) === 0) {
+        this.selection = createSelection();
+        this.footerPointer = { column, row, moved: false };
+        this.renderer?.selectNative('start', column, row, 1);
+      } else if (this.footerPointer && (event.action === 'move' || event.action === 'release')) {
+        const pointer = this.footerPointer;
+        pointer.moved ||= column !== pointer.column || row !== pointer.row;
+        this.renderer?.selectNative(event.action === 'release' ? 'end' : 'drag', column, row);
+        if (event.action === 'release') {
+          this.footerPointer = undefined;
+          if (footerHit && !pointer.moved && !this.renderer?.selectionInstance.hasTextSelection())
+            this.renderer?.click(column, row, { ctrl: event.ctrl, shift: event.shift, alt: event.meta });
+        }
+      }
+      this.render(); return;
+    }
+    if ((this.options.mouseTracking ?? 'full') === 'full') this.renderer?.hover(event.col - 1, event.row - 1);
     if (this.diffPanel?.width(this.options.output.columns ?? 80) && (event.col > view.columns || this.diffPointer)) {
       const column = event.col - 1, row = event.row - 1;
       if (event.action === 'wheelup' || event.action === 'wheeldown') {
@@ -3317,7 +3365,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private readonly onResize = () => {
     if (this.dialog?.modelPicker) this.dialog.modelPicker.pressed = undefined;
     if (this.dialog?.configPanel) this.dialog.configPanel.pressed = undefined;
-    this.selection = createSelection(); this.diffPointer = undefined; this.renderer?.clearNativeSelection(); this.render();
+    this.selection = createSelection(); this.diffPointer = undefined; this.footerPointer = undefined;
+    this.renderer?.hover(-1, -1); this.renderer?.clearNativeSelection(); this.render();
   };
 
   /**
@@ -3735,6 +3784,24 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       pad(resumePickerGuide(picker.modeName), columns)];
   }
 
+  /** fLt focus id/index and V(tjt), 24k7d6mw [674472,675750)/[677240,678145), UTF-16. */
+  private refreshBackgroundDialog(): void {
+    const dialog = this.dialog, read = dialog?.request.backgroundTasks;
+    if (dialog === undefined || read === undefined) return;
+    const previous = dialog.request.choices ?? [];
+    const selected = previous[dialog.index]?.value;
+    const next = backgroundTaskRequest(read());
+    const choices = next.choices ?? [];
+    const index = selected === undefined ? -1 : choices.findIndex(choice => choice.value === selected);
+    if (selected !== undefined && index < 0) dialog.backgroundFocusLost = true;
+    dialog.request.message = next.message;
+    dialog.request.choices = next.choices;
+    dialog.request.keys = next.keys;
+    dialog.request.readOnly = next.readOnly;
+    dialog.index = index < 0 ? Math.max(0, Math.min(dialog.index, choices.length - 1)) : index;
+    if (selected !== choices[dialog.index]?.value) dialog.followFocus = true;
+  }
+
   private renderDialog(columns: number, bodyRows: number): string[] {
     const dialog = this.dialog!;
     if (dialog.resumePicker) return this.renderResumePicker(dialog, columns, bodyRows);
@@ -3927,6 +3994,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   private render(): void {
+    if (this.screen !== 'chat') this.footerPointer = undefined;
     if (!this.isTTY || !this.started || this.closed || this.editorSuspended) return;
     // A queue that changed without a repaint (the loop drained a row) still owns the selection.
     this.syncQueueSelection();
@@ -4209,7 +4277,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const gap = Math.max(1, available - cellWidth(left) - shown.length);
     const parts: Array<string | FooterPart> = [];
     if (chip !== '') parts.push({ text: chip, color: modeColorSlot(this.permissionMode!) });
-    if (background !== undefined) parts.push({ text: background, color: 'background' });
+    if (background !== undefined) parts.push({ text: background, color: 'background',
+      onClick: this.openBackgroundTasks });
     parts.push(left + ' '.repeat(gap) + shown);
     return parts;
   }

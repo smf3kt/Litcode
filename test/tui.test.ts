@@ -543,6 +543,96 @@ test('the clear chords repaint the screen and keep the draft and its undo step',
   } finally { tui.close(); }
 });
 
+test('the background footer uses native hover and release hits without consuming the draft', async () => {
+  for (const mouseTracking of ['full', 'scroll', 'off'] as const) {
+    const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+    const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+    Object.assign(output, { isTTY: true, columns: 120, rows: 30 }); watchScreen(output);
+    const actions: string[] = [];
+    const tui = new TuiTerminal({ input, output, mouseTracking, onAction: action => actions.push(action) }).start();
+    const footer = () => screenLines(output).at(-1)!;
+    const key = (text: string) => input.emit('data', text);
+    const pointer = (button: number, column: number, row: number, ending = 'M') => key(`\x1b[<${button};${column};${row}${ending}`);
+    let jobs = [{ id: 'job', kind: 'run', state: 'running', command: 'sleep 60', description: '' }];
+    try {
+      tui.bindBackgroundWork(() => jobs.length, () => {}, () => ({ jobs, agents: [], crons: [] }));
+      key('retained');
+      const column = footer().indexOf('1 shell') + 1;
+      pointer(35, column, 30); await delay(0);
+      assert.equal(Boolean(decoded.get(output)!.buffer.active.getLine(29)!.getCell(column - 1)!.isInverse()), mouseTracking === 'full');
+      pointer(0, column, 30);
+      assert.deepEqual(actions, []);
+      pointer(0, column, 30, 'm');
+      assert.deepEqual(actions, mouseTracking === 'full' ? ['chat:openTasks'] : []);
+      assert.equal(tui.state.text, 'retained');
+      if (mouseTracking !== 'full') continue;
+      pointer(35, column, 1); await delay(0);
+      assert.equal(Boolean(decoded.get(output)!.buffer.active.getLine(29)!.getCell(column - 1)!.isInverse()), false);
+      pointer(0, column, 30); pointer(32, column + 2, 30); pointer(0, column + 2, 30, 'm');
+      pointer(2, column, 30); pointer(2, column, 30, 'm');
+      pointer(0, column, 30); pointer(0, column, 29, 'm');
+      pointer(0, column, 30); Object.assign(output, { columns: 80 }); output.emit('resize');
+      pointer(0, column, 30, 'm');
+      assert.deepEqual(actions, ['chat:openTasks']);
+      jobs = []; tui.backgroundWorkChanged();
+      pointer(0, column, 30); pointer(0, column, 30, 'm');
+      assert.deepEqual(actions, ['chat:openTasks']);
+      assert.equal(tui.state.text, 'retained');
+    } finally { tui.close(); decoded.get(output)!.dispose(); }
+  }
+});
+
+test('a live Background dialog follows task identity and guards a disappeared focused row', async () => {
+  const { backgroundTaskRequest } = await import('../src/tasks-panel.js');
+  const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 120, rows: 30 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).join('\n');
+  const first = { id: 'first', kind: 'run', state: 'running', command: 'first command', description: '' };
+  const second = { ...first, id: 'second', command: 'second command' };
+  let jobs = [first, second];
+  const read = () => ({ jobs, agents: [], crons: [] });
+  const signal = new AbortController();
+  try {
+    key('parent draft');
+    tui.setRunning(true);
+    let pending = tui.prompt({ ...backgroundTaskRequest(read()), backgroundTasks: read }, signal.signal);
+    key('\x1b[B');
+    assert.ok(frame().includes('Selected: second command'), frame());
+    jobs = [second, first]; tui.backgroundWorkChanged();
+    assert.ok(frame().includes('Selected: second command'), frame());
+    jobs = [first]; tui.backgroundWorkChanged();
+    assert.ok(!frame().includes('second command'), frame());
+    let resolved = false; void pending.then(() => { resolved = true; });
+    key('x'); await delay(0);
+    assert.equal(resolved, false, 'the first x after focus loss leaves the replacement running');
+    key('x');
+    assert.deepEqual(await pending, { selected: ['task:shell:first'], key: 'x' });
+    assert.equal(tui.state.text, 'parent draft');
+    const third = { ...first, id: 'third', command: 'third command' };
+    for (const [sequence, selected] of [['\t', 'first'], ['\x1b[Z', 'first'],
+      ['\x1b[H', 'first'], ['\x1b[F', 'third']] as const) {
+      jobs = [first, second, third];
+      pending = tui.prompt({ ...backgroundTaskRequest(read()), backgroundTasks: read }, signal.signal);
+      key('\x1b[B'); jobs = [first, third]; tui.backgroundWorkChanged();
+      key(sequence); key('x');
+      assert.deepEqual(await pending, { selected: ['task:shell:' + selected], key: 'x' },
+        'explicit navigation clears disappeared-focus protection');
+    }
+    pending = tui.prompt({ ...backgroundTaskRequest(read()), backgroundTasks: read }, signal.signal);
+    jobs = []; tui.backgroundWorkChanged();
+    assert.ok(frame().includes('No tasks currently running'), frame());
+    assert.ok(!frame().includes('first command'), frame());
+    key('\x03'); assert.equal(await pending, undefined);
+    assert.equal(tui.state.text, 'parent draft');
+    assert.equal(tui.currentScreen, 'chat');
+    pending = tui.prompt({ ...backgroundTaskRequest(read()), backgroundTasks: read }, signal.signal);
+    tui.close(); assert.equal(await pending, undefined);
+  } finally { signal.abort(); tui.close(); decoded.get(output)!.dispose(); }
+});
+
 test('the background footer follows its live snapshot through widths, overlays and close', async () => {
   const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode() {} });
   let written = 0;
