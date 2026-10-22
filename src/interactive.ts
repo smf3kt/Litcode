@@ -84,6 +84,8 @@ import { PLUGIN_PANEL_TITLE, filterPluginEntries, pluginFilteredEmpty, pluginPan
 import { discoverInstalledPluginComponents, readPluginStore } from './plugins.js';
 import { RELOAD_PLUGINS_DECLINED, diffPluginServers, lspToolChange, pluginCacheWarning,
   pluginReloadSummary, reloadPluginsForced } from './reload-plugins.js';
+import { branchFailureMessage, branchMessage, branchTitle, customBranchTitle, deriveFirstPrompt,
+  type BranchPromptSources } from './branch.js';
 import { STATS_PANEL_TITLE, STATS_RANGE_LABELS, activityHeatmap, nextUsageRange, readUsageSessions, usagePanelText, usageStats, type UsageRange } from './usage-panel.js';
 import {
   EXPORT_CANCELLED, EXPORT_CLIPBOARD_DESCRIPTION, EXPORT_CLIPBOARD_LABEL, EXPORT_DIALOG_SUBTITLE,
@@ -185,6 +187,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /continue   Resume an interrupted turn
 /compact    Summarize completed history
 /fork       Fork completed history into a new session
+/branch [NAME]  Branch the conversation here and continue in the new branch
 /background [PROMPT]  Fork this session into a detached background task
 /rewind N   Branch conversation at completed turn N (files stay as they are; alias: /undo)
 /checkpoint NAME  Associate a file snapshot with the current completed turn
@@ -342,6 +345,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         editorMode:initial.config.editorMode,vimInsertModeRemaps:initial.config.vimInsertModeRemaps })
       : undefined);
   const rl = terminal ? undefined : createInterface({ input: options.input, terminal: false });
+  /**
+   * Source `d8e`/`te` (chunk-nkvcn1t9.js 824, chunk-8a6bg1at.js 14328) read the first user row's
+   * text. A message row is a prompt unless it is meta or its content is a tool result; a compact
+   * summary is the source's `isCompactSummary`.
+   */
+  const branchPromptSources = (events: readonly import('./session.js').SessionEvent[]): BranchPromptSources[] => {
+    const sources: BranchPromptSources[] = [];
+    for (const event of events) {
+      if (event.kind === 'compact') { sources.push({ texts: [event.summary], meta: false, compactSummary: true }); continue; }
+      if (event.kind !== 'message' || event.message.role !== 'user') continue;
+      const content = event.message.content;
+      const toolResult = Array.isArray(content) && content.some(block => block.type === 'tool_result');
+      const texts = typeof content === 'string' ? [content] : Array.isArray(content)
+        ? content.flatMap(block => block.type === 'text' ? [block.text] : []) : [];
+      sources.push({ texts, meta: event.isMeta === true, toolResult });
+    }
+    return sources;
+  };
   // `251130`: the reader takes the colour from the session's own record, `??=` on resume.
   terminal?.setSessionColor?.(session.sessionColor);
   const output = terminal?.outputStream ?? options.output;
@@ -2614,6 +2635,36 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           await acceptNext(next, nextRuntime);
           announce(); await startAgentSession('fork');
           output.write(`Rewound files and conversation to turn ${turn}; restored ${preview.operations.length} file operations; preserved ${preview.preserved.length} directory/symlink changes.\n`);
+          continue;
+        }
+        if (prompt === '/branch' || prompt.startsWith('/branch ')) {
+          // Source `CTo` (chunk-sfn1dbxq.js 1638151) and `oe` (chunk-8a6bg1at.js 20188): copy the
+          // conversation into a new session and switch to it. A custom name is stored as typed
+          // (collapsed and trimmed); only a bare `/branch` derives a title and passes it through
+          // `re`'s `<base> (Branch)` ordinal allocation. The source writes a new transcript through
+          // its storage layer and resumes it; this host uses the same `forkSession` the local
+          // `/fork` uses, which copies completed history and appends the branch record.
+          if (session.awaitingResponse) throw new Error('Finish or continue the current turn before branching');
+          const named = prompt.slice('/branch'.length).trim();
+          try {
+            const next = forkSession(session);
+            const currentTitle = (session.events.findLast(event => event.kind === 'title') as
+              { title?: string } | undefined)?.title;
+            const customTitle = named === '' ? undefined : customBranchTitle(named);
+            const title = customTitle ?? branchTitle(deriveFirstPrompt(branchPromptSources(session.events)),
+              listSessions(session.config.workspace).map(item => item.title)
+                .filter((value): value is string => value !== undefined));
+            next.append({ kind: 'title', title });
+            const nextRuntime = await bindNext(activeRuntime, next);
+            try { await agent().endSession('fork'); }
+            catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }
+            await acceptNext(next, nextRuntime); announce();
+            await startAgentSession('fork');
+            output.write(branchMessage({ ...(customTitle === undefined ? {} : { customTitle }), sessionId: next.id,
+              originalSessionId: session.id, originalTitle: currentTitle, resumed: terminal !== undefined }) + '\n');
+          } catch (error) {
+            output.write(branchFailureMessage(error) + '\n');
+          }
           continue;
         }
         if (prompt === '/fork' || prompt === '/clear' || prompt.startsWith('/rewind')) {

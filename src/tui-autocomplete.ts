@@ -120,6 +120,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'continue', description: 'Resume an interrupted turn', kind: 'command', lane: 'action' },
   { name: 'compact', description: 'Summarize completed history', kind: 'command', lane: 'action' },
   { name: 'fork', description: 'Fork completed history into a new session', kind: 'command', lane: 'agent' },
+  { name: 'branch', description: 'Create a branch of the current conversation at this point', kind: 'command', lane: 'agent' },
   { name: 'background', description: 'Fork this session into a detached background task', kind: 'command', lane: 'action' },
   // The recovered `checkpoint` alias is not offered: this host has a real `/checkpoint`, and the
   // alias row would insert that name instead of `/rewind`.
