@@ -18,6 +18,7 @@ import { stashedIndicator } from './tui-stash.js';
 import { te } from './tui-symbols.js';
 import { Vde } from './tui-background-click-source.js';
 import { rv } from './tui-hover-source.js';
+import { copySelectionText } from './tui-selection-copy.js';
 
 interface NativePoint { col: number; row: number }
 interface NativeSelection {
@@ -109,8 +110,18 @@ export class TuiRenderer {
   private readonly selectionListeners = new Set<() => void>();
   private readonly hoveredNodes = new Set<unknown>();
   readonly selectionInstance = {
-    copySelection: () => { const text = Hg(this.nativeSelection, this.front.screen); this.clearNativeSelection(); return text; },
-    copySelectionNoClear: () => Hg(this.nativeSelection, this.front.screen) as string,
+    // Aje, 06azbynj [343960,344249), UTF-16; W37 supplies the owned OSC52 writer.
+    copySelection: () => {
+      if (!kn(this.nativeSelection)) return '';
+      const text = this.selectionInstance.copySelectionNoClear();
+      this.clearNativeSelection();
+      return text;
+    },
+    copySelectionNoClear: (): string => {
+      const text = Hg(this.nativeSelection, this.front.screen) as string;
+      if (text) copySelectionText(text, payload => { this.terminal.stdout.write(payload); });
+      return text;
+    },
     getSelectedText: () => Hg(this.nativeSelection, this.front.screen) as string,
     clearTextSelection: () => this.clearNativeSelection(),
     hasTextSelection: () => kn(this.nativeSelection) as boolean,

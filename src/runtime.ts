@@ -104,6 +104,7 @@ export type ParsedRuntimeSettings = {
   prefersReducedMotion?: boolean;
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
+  copyOnSelect?: boolean;
   verbose?: boolean;
   terminalProgressBarEnabled?: boolean;
   viewMode?: 'default' | 'verbose' | 'focus';
@@ -225,6 +226,7 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if ('prefersReducedMotion' in settings) out.prefersReducedMotion = settingBoolean(settings, 'prefersReducedMotion');
   if ('showTurnDuration' in settings) out.showTurnDuration = settingBoolean(settings, 'showTurnDuration');
   if ('showMessageTimestamps' in settings) out.showMessageTimestamps = settingBoolean(settings, 'showMessageTimestamps');
+  if ('copyOnSelect' in settings) out.copyOnSelect = settingBoolean(settings, 'copyOnSelect');
   // U2t/hs, nybcbd9t [5051,6155), js2bhabe [1114,1499), UTF-16: the merged boolean, default false.
   if ('verbose' in settings) out.verbose = settingBoolean(settings, 'verbose');
   if ('terminalProgressBarEnabled' in settings) out.terminalProgressBarEnabled = settingBoolean(settings, 'terminalProgressBarEnabled');
@@ -512,7 +514,7 @@ export async function createRuntime(
     showTurnDuration: undefined, timeFormat: undefined, editorMode: undefined,
     terminalProgressBarEnabled: undefined, autoCompactEnabled: undefined,
     askUserQuestionTimeout: undefined, dialogExpiry: undefined,
-    spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined };
+    spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined };
   // The default permission mode (row 21908) applies to new sessions, not this connection.
   const permissionsWithoutDefault = (current: SessionConfig) => current.permissions === undefined
     ? undefined : { ...current.permissions, defaultMode: undefined };
@@ -739,7 +741,7 @@ export async function createRuntime(
         timeFormat: undefined, editorMode: undefined, terminalProgressBarEnabled: undefined,
         // Rows 12035/26485/29983 write these live after the settings write; none shapes tools.
         autoCompactEnabled: undefined, askUserQuestionTimeout: undefined, dialogExpiry: undefined,
-        spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined,
+        spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined,
         // The Default permission mode row (21908) only moves the default for new sessions.
         permissions: settings.permissions === undefined ? undefined
           : { ...settings.permissions, defaultMode: undefined },

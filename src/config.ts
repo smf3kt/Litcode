@@ -1162,6 +1162,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
 
   const settings: Record<string, unknown> = {};
   const spinnerTipsLayers: SpinnerTipsLayer[] = [];
+  let copyOnSelect: unknown;
   let managedDisplay: SpinnerTipsSettings | undefined;
   let managedSettings: Record<string, unknown> | undefined;
   let managedSettingsReport: ManagedSettingsReport | undefined;
@@ -1217,6 +1218,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
       const override = spinnerTipsOverrideSchema.parse(parsed.spinnerTipsOverride);
       if (override !== undefined) spinnerTipsLayers.push({ source: layer.source, override });
       mergeInto(settings, parsed);
+      if (layer.source === 'userSettings') copyOnSelect = parsed.copyOnSelect;
       if (parsed.approveAllProjectMcpServers !== undefined) {
         if (typeof parsed.approveAllProjectMcpServers !== "boolean") {
           throw new ConfigError("approveAllProjectMcpServers must be true or false", layer.file);
@@ -1232,6 +1234,9 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     }
   }
   delete settings.approveAllProjectMcpServers;
+  // Ce global preference, nybcbd9t [23905,24064), UTF-16; the host stores it in the user document.
+  if (copyOnSelect === undefined) delete settings.copyOnSelect;
+  else settings.copyOnSelect = copyOnSelect;
   if (managedSettings) {
     if (isPlainObject(managedSettings.permissions) || managedSettings.useAutoModeDuringPlan !== undefined || managedSettings.autoMode !== undefined) {
       const rules = isPlainObject(managedSettings.permissions) ? managedSettings.permissions : {};
