@@ -80,7 +80,7 @@ import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
   SIDE_QUESTION_USAGE, sideQuestionPanelText, type SideQuestionExchange } from './side-question.js';
 import { contextPanelText, contextUsageFromCounts } from './context-panel.js';
 import { STATUS_PANEL_TITLE, appVersion, latestSessionTitle, statusPanelRows, statusPanelText } from './status-panel.js';
-import { MCP_PANEL_TITLE, mcpPanelRows, mcpPanelText, mcpToolCounts } from './mcp-panel.js';
+import { MCP_PANEL_TITLE, mcpPanelRows, mcpPanelText, mcpToolCounts, mcpServerRequest, mcpToolsRequest, mcpToolRequest } from './mcp-panel.js';
 import { PLUGIN_PANEL_TITLE, filterPluginEntries, parsePluginCommand, pluginDetailRequest, pluginFilteredEmpty, pluginPanelRows,
   pluginPanelText, type PluginListFilter, type PluginPanelEntry } from './plugin-panel.js';
 import { discoverInstalledPluginComponents, pluginEnabled, readPluginStore } from './plugins.js';
@@ -564,6 +564,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setKeybindings(session.config.keybindings);
     // bWe/Wre/jtt, sfn1dbxq [1650777,1650860)/[1666990,1667469), UTF-16: bind the live getter.
     terminal?.setCommands?.(commandTable(session.config));
+    terminal?.bindMcpCatalog?.(activeRuntime.catalogListing);
     terminal?.setEditorMode?.(session.config.editorMode,session.config.vimInsertModeRemaps);
     terminal?.setPrefersReducedMotion?.(session.config.prefersReducedMotion);
     terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
@@ -2010,23 +2011,59 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           output.write(text + '\n'); continue;
         }
         if (prompt === '/mcp' && terminal?.prompt) {
+          // At/icn/cNt/lNt, 6sz429bf [36657,42135), tw1h5pks [114759,123419), UTF-16.
           const configured = Object.keys(session.config.mcpServers ?? {});
           if (configured.length === 0) { options.status.write('No MCP servers configured.\n'); continue; }
-          for (;;) {
-            const statuses = activeRuntime.mcpServers?.() ?? {};
-            const counts = mcpToolCounts(configured, session.config.tools.map(tool => tool.name));
-            const rows = mcpPanelRows(configured, statuses, counts);
-            const answer = await withTurn(signal => readDialog({ title: MCP_PANEL_TITLE,
-              message: mcpPanelText(rows),
-              choices: rows.map(row => ({ label: row.name, value: row.name, description: row.status })),
-              keys: [{ key: 'r', label: 'reconnect' }] }, signal));
-            if (answer === undefined) break;
-            if (answer.key !== 'r') continue;
-            const server = answer.selected[0];
-            if (server === undefined) continue;
+          const serverTools = (name: string) => activeRuntime.buildTools(session.config, session.id)
+            .filter(tool => tool.schema.name.startsWith(`mcp__${name.replace(/[^A-Za-z0-9_-]/g, '_')}__`));
+          const reconnect = async (server: string) => {
             if (session.awaitingResponse) throw new Error('Finish or continue the current turn before reconnecting');
             if (!activeRuntime.reconnectMcp) throw new Error('Runtime MCP reconnect is unavailable');
-            await withTurn(signal => activeRuntime.reconnectMcp!(server, signal));
+            try { await withTurn(signal => activeRuntime.reconnectMcp!(server, signal)); }
+            finally {
+              session.config.tools = pinToolSchemas(activeRuntime.buildTools(session.config, session.id)); activeAgent = undefined;
+              terminal?.bindMcpCatalog?.(activeRuntime.catalogListing);
+            }
+          };
+          let focus = 0;
+          for (;;) {
+            const statuses = activeRuntime.mcpServers?.() ?? {};
+            const counts = mcpToolCounts(configured, activeRuntime.buildTools(session.config, session.id).map(tool => tool.schema.name));
+            const rows = mcpPanelRows(configured, statuses, counts);
+            const answer = await withTurn(signal => readDialog({ title: MCP_PANEL_TITLE, message: mcpPanelText(rows),
+              choices: rows.map(row => ({ label: row.name, value: row.name, description: row.status })), defaultIndex: focus,
+              keys: [{ key: 'r', label: 'reconnect' }] }, signal));
+            if (answer === undefined) break;
+            const server = answer.selected[0], definition = server === undefined ? undefined : session.config.mcpServers?.[server];
+            if (server === undefined || definition === undefined) continue;
+            focus = rows.findIndex(row => row.name === server);
+            if (answer.key === 'r') { await reconnect(server); continue; }
+            for (;;) {
+              const status = activeRuntime.mcpServers?.()[server];
+              const detail = await withTurn(signal => readDialog(mcpServerRequest(server, definition, status, serverTools(server).length), signal));
+              if (!detail) break;
+              const action = detail.selected[0];
+              if (action === 'reconnectMcpServer') { await reconnect(server); break; }
+              if (action === 'toggle-enabled') {
+                if (session.awaitingResponse) throw new Error('Finish or continue the current turn before changing MCP servers');
+                if (!activeRuntime.setMcpEnabled) throw new Error('Runtime MCP toggle is unavailable');
+                try { await withTurn(signal => activeRuntime.setMcpEnabled!(server, status?.state === 'disabled', signal)); }
+                finally {
+                  session.config.tools = pinToolSchemas(activeRuntime.buildTools(session.config, session.id)); activeAgent = undefined;
+                  terminal?.bindMcpCatalog?.(activeRuntime.catalogListing);
+                }
+                break;
+              }
+              if (action === 'tools') {
+                for (;;) {
+                  const tools = serverTools(server);
+                  const choice = await withTurn(signal => readDialog(mcpToolsRequest(server, tools), signal));
+                  if (!choice) break;
+                  const selected = tools.find(tool => tool.schema.name === choice.selected[0]);
+                  if (selected) await withTurn(signal => readDialog(mcpToolRequest(server, selected), signal));
+                }
+              }
+            }
           }
           continue;
         }

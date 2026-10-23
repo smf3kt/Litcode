@@ -51,6 +51,7 @@ export type ShellProgress = {
 export type ToolDefinition = {
   schema: Anthropic.Tool;
   readOnly: boolean;
+  mcpAnnotations?: { destructive: boolean; openWorld: boolean; toolName?: string; title?: string };
   toAutoClassifierInput?(input: unknown): unknown;
   requiresUserInteraction?: boolean;
   classifierOnly?: boolean;

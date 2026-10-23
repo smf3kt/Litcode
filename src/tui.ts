@@ -2265,6 +2265,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }));
   }
 
+  // RTe.kn/Bn, 24k7d6mw [1560490,1586785), UTF-16; a changed server replaces its resource surface.
+  bindMcpCatalog(load?: TuiOptions['mcpCatalog']): void {
+    this.mcpCatalogAbort?.abort(); this.mcpCatalogAbort = undefined; this.mcpCatalogStarted = false;
+    this.mcpResources = {}; this.mcpResourceTemplates = {}; this.options.mcpCatalog = load;
+  }
   /** `ose`'s companion: the source reads a live MCP store; the local render path is
    *  synchronous, so the listing is read once in the background and the band repaints when
    *  it lands. A failed listing leaves the MCP families empty rather than failing the list. */
@@ -2275,7 +2280,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const controller = new AbortController();
     this.mcpCatalogAbort = controller;
     void load(controller.signal).then(listing => {
-      if (this.closed) return;
+      if (this.closed || controller.signal.aborted || this.mcpCatalogAbort !== controller) return;
       this.mcpResources = listing.resources;
       this.mcpResourceTemplates = listing.templates;
       if (this.started) this.render();
