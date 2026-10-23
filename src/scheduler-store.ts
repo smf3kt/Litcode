@@ -1,21 +1,10 @@
 /**
- * The durable half of the session scheduler: `scheduled_tasks.json` and its lock.
- *
- * Recovered from `chunk-atzjaveb.js`, sha256
- * `71378d5821cac631dfe41fe2db138ed7853b6008545668f423b89cbf4d060a2a` — the store path `RCe` at
- * [5187,5276), the reader `D9t` at [5276,6340), the atomic writer `w0n` at [6340,6991) and the
- * session-registering create `Pot` at [6991,7366). Also `chunk-jrz2zk22.js`, sha256
- * `da64f780f2b184a92cd87a21d03c8a02ca80ec4124edf791eccd988a67c980a3` — the lock path `U`, the
- * lock schema `Ne`, the lock reader `Fe`, the exclusive create `Ie`, the acquire `de` at
- * [3263,4046), the release `N` at [4046,4236), the aged-out test `He` at [4469,4560) and the
- * missed-task prompt `Ke` at [11476,11900). Offsets are zero-based UTF-16 code units.
- *
- * The source stores under `<project>/.claude/`; this harness's own state directory is
- * `.harness`, so the store keeps the file name and lock name and changes only the parent.
- * Two source gates have no counterpart here and are recorded as limitations in the port
- * record: `b0n` (durable refused under `--project-config-root`) and `mso`/`Pfr` (durable
- * refused under restricted workspace roots or teammate mode). Neither option exists in this
- * host, so both resolve to "durable is available".
+ * Durable cron files, their watcher and lease. Half-open zero-based UTF-16 source ranges:
+ * chunk-atzjaveb.js SHA-256 71378d5821cac631dfe41fe2db138ed7853b6008545668f423b89cbf4d060a2a,
+ * D9t [5270,6340), w0n [6582,6985), Pot [6985,7298), s_e/bds [7298,7656).
+ * chunk-jrz2zk22.js SHA-256 da64f780f2b184a92cd87a21d03c8a02ca80ec4124edf791eccd988a67c980a3,
+ * de/N [3257,4238), He [4469,4566), pe [10444,10901), Ke [11476,11998).
+ * The product stores these files under .harness. See research/ports/W310-cron-watch.md.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -27,6 +16,62 @@ import { HARNESS_DIR } from './config.js';
 import { processGone, processStart } from './local-peer.js';
 import { writeFileWithAtomicOptions } from './plugin-chain-atomic.js';
 import { describeCron, nextOccurrence, parseCron } from './scheduler.js';
+import { ww } from './tui-theme-watcher-source.js';
+
+export const STORE_LOCK_RETRY_MS = 5_000;
+
+export interface TaskStoreWatch {
+  ready: Promise<void>;
+  close(): Promise<void>;
+}
+
+/** `pe` [10444,10901), chunk-jrz2zk22.js: rebind after atomic replacement before reading again. */
+export function watchStoredTasks(workspace: string, callbacks: {
+  changed(): void;
+  removed(): void;
+  error(error: unknown): void;
+}): TaskStoreWatch {
+  let stopped = false;
+  const retiring = new Set<Promise<void>>();
+  const retire = (watcher: ReturnType<typeof ww.watch>): void => {
+    const closing = watcher.close().catch(callbacks.error);
+    retiring.add(closing);
+    void closing.finally(() => retiring.delete(closing));
+  };
+  const open = (): ReturnType<typeof ww.watch> => {
+    const watcher = ww.watch(scheduledTasksPath(workspace), {
+      persistent: false, ignoreInitial: true,
+      awaitWriteFinish: { stabilityThreshold: 300 }, ignorePermissionErrors: true,
+    });
+    const replace = (): void => {
+      if (stopped || current !== watcher) return;
+      const next = open();
+      current = next;
+      next.once('ready', () => { if (!stopped && current === next) callbacks.changed(); });
+      retire(watcher);
+    };
+    watcher.on('error', callbacks.error);
+    watcher.on('add', replace);
+    watcher.on('change', replace);
+    watcher.on('unlink', () => { if (!stopped && current === watcher) callbacks.removed(); });
+    return watcher;
+  };
+  let current = open();
+  let ready: () => void = () => {};
+  const initialized = new Promise<void>(resolve => { ready = resolve; });
+  current.once('ready', ready);
+  return {
+    ready: initialized,
+    async close() {
+      if (!stopped) {
+        stopped = true;
+        ready();
+        retire(current);
+      }
+      await Promise.all(retiring);
+    },
+  };
+}
 
 /** The store's file name inside the harness directory (`A` in `chunk-atzjaveb.js`). */
 export const SCHEDULED_TASKS_FILE = 'scheduled_tasks.json';

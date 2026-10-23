@@ -9,7 +9,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { defaultConfig } from '../src/agent.js';
 import { createRuntime, parseSettings, pinToolSchemas, type Runtime } from '../src/runtime.js';
 import { LocalScheduler, createSchedulerTools, type SchedulerTimer } from '../src/scheduler.js';
-import { readStoredTasks, writeStoredTasks } from '../src/scheduler-store.js';
+import { readSchedulerLock, readStoredTasks, writeStoredTasks } from '../src/scheduler-store.js';
 import { BackgroundRegistry, createBackgroundTools } from '../src/background.js';
 import { AgentRegistry, createAgentRegistryTools } from '../src/agent-registry.js';
 import { WorkflowRegistry, createWorkflowTools } from '../src/workflow.js';
@@ -457,7 +457,7 @@ test('effort settings accepts exactly five levels without introducing a default'
   for (const effort of ['auto', '', null, 1, undefined]) assert.throws(() => parseSettings({ effort }), /settings.effort/);
 });
 
-test('schedulerDurable binds the recovered store and surfaces a missed one-shot', async () => {
+test('durable schema construction stays passive and catch-up belongs to the real session', async () => {
   const f = fixture();
   f.config.features = { ...f.config.features!, schedulerDurable: true };
   await writeStoredTasks(f.config.workspace, [{ id: 'deadbeef', cron: '0 9 * * *', prompt: 'catch up',
@@ -465,12 +465,22 @@ test('schedulerDurable binds the recovered store and surfaces a missed one-shot'
   const runtime = await createRuntime(f.config, unused, f.controller.signal,
     { scheduler: { timer: f.timer, now: () => new Date(2026, 9, 10, 12, 0) } });
   try {
-    const created = JSON.parse(await tool(runtime, 'cron_create')
+    const tools = runtime.buildTools(f.config, 'actual-session');
+    assert.equal(f.starts(), 0);
+    assert.equal(await readSchedulerLock(f.workspace), undefined);
+    assert.deepEqual(runtime.drainEvents!('initial'), []);
+    await runtime.settleScheduler!('actual-session');
+    assert.equal(f.starts(), 1);
+    assert.equal((await readSchedulerLock(f.workspace))?.sessionId, 'actual-session');
+    const events = runtime.drainEvents!('actual-session');
+    assert.equal(events.filter(event => event.kind === 'scheduled' && /catch up/.test(event.prompt)).length, 1);
+    assert.deepEqual(runtime.drainEvents!('initial'), []);
+    const created = JSON.parse(await selected(tools, 'cron_create')
       .execute({ cron: '0 9 * * *', prompt: 'persisted', durable: true }, f.context)) as { id: string; durable: boolean };
     assert.equal(created.durable, true);
     assert.deepEqual((await readStoredTasks(f.config.workspace)).map(task => task.prompt), ['persisted']);
-    const events = runtime.drainEvents!('initial');
-    const missed = events.find(event => event.kind === 'scheduled' && /missed while the harness was not running/.test(event.prompt));
-    assert.ok(missed, 'the catch-up prompt is queued for the session');
+    await runtime.releaseSession!('actual-session');
+    assert.equal(f.active.size, 0);
+    assert.equal(await readSchedulerLock(f.workspace), undefined);
   } finally { await runtime.close(); f.cleanup(); }
 });
