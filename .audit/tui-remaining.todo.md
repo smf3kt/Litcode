@@ -515,7 +515,7 @@ Next up, scoped but not started:
       `/usage` shows `t Last 7 days` and `/mcp` `r reconnect`; no-keys panels keep their hint.
       Host surface fix, not a recovered body. Focused 88/88, compiled 15/15 at identity
       `8d0d8699…`. See `research/ports/W269-panel-key-hints.md`.
-- [ ] Config residuals without complete consumers. Notifications, terminal tab status
+- [ ] Config residuals without complete consumers. Terminal titles/tab status
       and other selection consumers still need source preflight. No local config row uses
       the successor-session path. W293 carries custom Tips/Show tips and W294 carries Copy on select.
       Built-in/vendor catalogs remain excluded. W294 corrects the earlier blanket selection
@@ -524,8 +524,10 @@ Next up, scoped but not started:
       inAppSelection:true. Other unported rows still need individual source preflight: prompt
       suggestions / timestamps / tab status,
       recap (no local consumer), fast mode (model routing), gitignore (no matching host consumer),
-      notifications (no local trigger set). W296 connects copyFullResponse to its obtained /copy
-      consumer and supersedes the earlier missing-consumer claim.
+      other notification triggers. W297 supplies the obtained mounted permission trigger and
+      seven-channel Local notifications setting. The ordinary terminal title is the next source
+      candidate; experimental sidebar status remains false-gated. W296 connects copyFullResponse
+      to its obtained /copy consumer and supersedes the earlier missing-consumer claim.
 
 Scoped out:
 
@@ -741,3 +743,9 @@ Explicitly out of scope for this loop:
       repeated overflow clicks, Nr labels and 20x8 focus visibility repaired and independently checked.
       Affected161/161, check/build clean, compiled22/22 plus Config35/35 at `da1c4c08...`.
       See `research/ports/W296-copy-picker.md`.
+- [x] W297 Local notifications (tY/A/I/y/qve, ppsy9aeg [619,717), m18zhdb2 [2913,4544),
+      24k7d6mw [1318654,1318983), UTF-16): seven-channel merged Config and user persistence,
+      local OSC/BEL protocols, real activity gate, hook ordering, one-attempt timer and cancellation.
+      Per-layer invalid-value fallback repaired and independently rechecked13/13. Affected274/274,
+      check/build clean, compiled42/42 plus Config35/35 at `3a545e61...`.
+      See `research/ports/W297-local-notifications.md`.

@@ -96,6 +96,7 @@ import { historyBorderText } from './tui-history-position.js';
 import { effortIndicator, type EffortLevel } from './effort-command.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
 import { CopyPicker, type CopyPickerEffect } from './copy-picker.js';
+import { TerminalNotifications, type NotificationChannel, type LocalNotification } from './terminal-notifications.js';
 import { ResumePicker, resumePickerGuide, resumeRelativeTime, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
 import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
 
@@ -239,6 +240,7 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
   copyOnSelect?: boolean;
+  preferredNotifChannel?: NotificationChannel;
   autoScrollEnabled?: boolean;
   /** `/focus`: the brief transcript holds the streaming preview while tools run. */
   briefTranscript?: boolean;
@@ -499,6 +501,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private editorSuspended = false;
   /** Per-terminal focus state; close releases its rendering/clock subscribers. */
   private readonly focus = new TerminalFocus();
+  private lastInteraction = Date.now();
+  private readonly notifications = new TerminalNotifications(text => this.options.output.write(text),
+    () => this.isTTY && this.started && !this.closed && !this.editorSuspended);
   private readonly inputHistory = new InputHistory(error => this.setStatus(`History: ${String(error)}`));
   private historyBinding = 0;
   private readonly vim = new InputVim();
@@ -672,6 +677,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.showTurnDuration = options.showTurnDuration !== false;
     this.showMessageTimestamps = options.showMessageTimestamps === true;
     this.copyOnSelect = options.copyOnSelect !== false;
+    this.notifications.setChannel(options.preferredNotifChannel);
     this.transcriptScroll.setEnabled(options.autoScrollEnabled);
     this.briefTranscript = options.briefTranscript === true;
     this.verbose = options.verbose === true;
@@ -763,6 +769,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.selection = createSelection();
     this.clearStatusNotice('selection-copied');
     this.setCopyOnSelect(session.config.copyOnSelect);
+    this.setNotificationChannel(session.config.preferredNotifChannel);
     this.setAutoScrollEnabled(session.config.autoScrollEnabled);
     if (this.searchSessionId !== session.id) { this.transcriptScroll.reset(); this.scrollPointer = undefined; }
     this.sourceSearch?.close(); this.sourceSearch = undefined;
@@ -1230,6 +1237,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (enabled === this.showMessageTimestamps) return;
     this.showMessageTimestamps = enabled; this.selection = createSelection(); this.render();
   }
+
+  setNotificationChannel(value?: NotificationChannel): void { this.notifications.setChannel(value); }
+  notifyLocal(notification: LocalNotification, signal: AbortSignal): Promise<string> { return this.notifications.send(notification, signal); }
+  lastInteractionTime(): number { return this.lastInteraction; }
 
   setCopyOnSelect(value?: boolean): void {
     const enabled = value !== false;
@@ -1815,6 +1826,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.notifications.close();
     this.transcriptScroll.reset(); this.scrollPointer = undefined;
     this.selectionCopy.reset();
     // `qa`'s unmount cleanup clears the progress indicator before the screen is restored.
@@ -2445,6 +2457,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     let handedOff = false;
     for (const action of this.decoder.push(chunk)) {
       if (this.closed || this.editorController) return;
+      // Id/Yd/Cx, 06azbynj [239213,239367)/[241153,241196), UTF-16; pointer motion without a pressed button is excluded.
+      if (action.type !== 'terminalResponse' && action.type !== 'focus'
+        && (action.type !== 'mouse' || !((action.button & 32) !== 0 && (action.button & 3) === 3))) this.lastInteraction = Date.now();
       if (action.type === 'terminalResponse') { this.systemTheme?.onResponse(action.response); continue; }
       if (action.type === 'focus') {
         this.dialog?.copyPicker?.owner.windowFocus(action.focused);
@@ -2516,6 +2531,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.escapeTimer = setTimeout(() => {
         this.escapeTimer = undefined;
         this.decoder.flushEscape();
+        this.lastInteraction = Date.now();
         if (!this.focus.focused) this.focus.set(true);
         if (this.dialog) this.handleDialogAction({ type: 'key', sequence: '\x1b' });
         else if (!this.handleSourceSearch({type:'key',sequence:'\x1b'})) this.routeKey('\x1b');

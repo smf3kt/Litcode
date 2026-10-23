@@ -23,6 +23,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { z } from 'zod';
+import { notificationChannelSchema } from './terminal-notifications.js';
 import { modelSettingsSchema, type ModelSettings } from './effort-command.js';
 import { statusLineSchema } from './tui-statusline-schema.js';
 
@@ -106,6 +107,7 @@ export type ParsedRuntimeSettings = {
   showMessageTimestamps?: boolean;
   copyOnSelect?: boolean;
   copyFullResponse?: boolean;
+  preferredNotifChannel?: import('./terminal-notifications.js').NotificationChannel;
   autoScrollEnabled?: boolean;
   verbose?: boolean;
   terminalProgressBarEnabled?: boolean;
@@ -230,6 +232,7 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if ('showMessageTimestamps' in settings) out.showMessageTimestamps = settingBoolean(settings, 'showMessageTimestamps');
   if ('copyOnSelect' in settings) out.copyOnSelect = settingBoolean(settings, 'copyOnSelect');
   if ('copyFullResponse' in settings) out.copyFullResponse = settingBoolean(settings, 'copyFullResponse');
+  if ('preferredNotifChannel' in settings) out.preferredNotifChannel = notificationChannelSchema.parse(settings.preferredNotifChannel);
   if ('autoScrollEnabled' in settings) out.autoScrollEnabled = settingBoolean(settings, 'autoScrollEnabled');
   // U2t/hs, nybcbd9t [5051,6155), js2bhabe [1114,1499), UTF-16: the merged boolean, default false.
   if ('verbose' in settings) out.verbose = settingBoolean(settings, 'verbose');
@@ -518,7 +521,7 @@ export async function createRuntime(
     showTurnDuration: undefined, timeFormat: undefined, editorMode: undefined,
     terminalProgressBarEnabled: undefined, autoCompactEnabled: undefined,
     askUserQuestionTimeout: undefined, dialogExpiry: undefined,
-    spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined };
+    spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, preferredNotifChannel: undefined };
   // The default permission mode (row 21908) applies to new sessions, not this connection.
   const permissionsWithoutDefault = (current: SessionConfig) => current.permissions === undefined
     ? undefined : { ...current.permissions, defaultMode: undefined };
@@ -745,7 +748,7 @@ export async function createRuntime(
         timeFormat: undefined, editorMode: undefined, terminalProgressBarEnabled: undefined,
         // Rows 12035/26485/29983 write these live after the settings write; none shapes tools.
         autoCompactEnabled: undefined, askUserQuestionTimeout: undefined, dialogExpiry: undefined,
-        spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined,
+        spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, preferredNotifChannel: undefined,
         // The Default permission mode row (21908) only moves the default for new sessions.
         permissions: settings.permissions === undefined ? undefined
           : { ...settings.permissions, defaultMode: undefined },

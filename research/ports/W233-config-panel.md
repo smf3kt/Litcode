@@ -57,6 +57,8 @@ Theme and Model reuse their existing local pickers. Source category grouping Hhe
 panel stays flat. Message timestamps are gated off in vWe and stay absent from this panel.
 Verbose, Auto-compact enable, tips, terminal progress, notifications and selection flags have no
 complete local consumers yet and stay explicitly unported; no pretend controls are added.
+W297 supersedes the notifications exclusion with the obtained seven-channel Config and mounted
+permission trigger. Its record holds the source closure, cancellation and local validation.
 
 Search starts active. Vc in dag4qhha [16553,16761) clips only the rendered prefix to columns-11,
 while filtering and editing retain the full query. rS uses the literal `⌕` prefix and clamps the

@@ -1420,6 +1420,9 @@ export interface TerminalSurface {
   setShowTurnDuration?(value?: boolean): void;
   setShowMessageTimestamps?(value?: boolean): void;
   setCopyOnSelect?(value?: boolean): void;
+  setNotificationChannel?(value?: import('./terminal-notifications.js').NotificationChannel): void;
+  notifyLocal?(notification: import('./terminal-notifications.js').LocalNotification, signal: AbortSignal): Promise<string>;
+  lastInteractionTime?(): number;
   setAutoScrollEnabled?(value?: boolean): void;
   setProgressSettings?(settings: import('./tui-progress-settings.js').ProgressDisplaySettings): void;
   bindSpinnerTips?(session: import('./session.js').Session): void;

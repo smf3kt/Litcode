@@ -311,6 +311,7 @@ function newConfig(
   if (settings.showMessageTimestamps !== undefined) config.showMessageTimestamps = settings.showMessageTimestamps;
   if (settings.copyOnSelect !== undefined) config.copyOnSelect = settings.copyOnSelect;
   if (settings.copyFullResponse !== undefined) config.copyFullResponse = settings.copyFullResponse;
+  if (settings.preferredNotifChannel !== undefined) config.preferredNotifChannel = settings.preferredNotifChannel;
   if (settings.autoScrollEnabled !== undefined) config.autoScrollEnabled = settings.autoScrollEnabled;
   if (settings.viewMode !== undefined) config.viewMode = settings.viewMode;
   // It, 9shw4xrd [106333,106421), UTF-16: the stored boolean wins; viewMode seeds it when absent.
@@ -727,6 +728,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         showTurnDuration: currentSession.config.showTurnDuration,
         showMessageTimestamps: currentSession.config.showMessageTimestamps,
         copyOnSelect: currentSession.config.copyOnSelect,
+        preferredNotifChannel: currentSession.config.preferredNotifChannel,
         autoScrollEnabled: currentSession.config.autoScrollEnabled,
         briefTranscript: briefTranscriptEnabled(currentSession.config),
         verbose: currentSession.config.verbose === true,

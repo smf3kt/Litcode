@@ -27,6 +27,7 @@ export function configPanelInput(config: SessionConfig, state?: ConfigPanelState
     terminalProgressBarEnabled: config.terminalProgressBarEnabled, permissions: config.permissions,
     autoCompactEnabled: config.autoCompactEnabled, spinnerTipsEnabled: config.spinnerTipsEnabled,
     copyOnSelect: config.copyOnSelect, copyFullResponse: config.copyFullResponse, autoScrollEnabled: config.autoScrollEnabled,
+    preferredNotifChannel: config.preferredNotifChannel,
     theme: config.theme, editorMode: config.editorMode,
     timeFormat: config.timeFormat, prefersReducedMotion: config.prefersReducedMotion, showTurnDuration: config.showTurnDuration,
     askUserQuestionTimeout: config.askUserQuestionTimeout, dialogExpiry: config.dialogExpiry }, hidden: [...hidden], state };
