@@ -199,10 +199,11 @@ import { jde } from './tui-statusline-components.js';
 import { jsx } from './tui-jsx.js';
 import { s, n } from './tui-base-components.js';
 import {
-  createTranscriptState, layoutTranscript, reduceTranscript, renderedTranscriptRows, transcriptLines, wrapEntry,
+  createTranscriptState, layoutTranscript, renderedTranscriptRows, transcriptLines, wrapEntry,
   wrapEntryRows,
   type TranscriptEntry, type TranscriptScrollCommand, type TranscriptState, type RenderedRow,
 } from './tui-transcript.js';
+import { TranscriptScroll } from './tui-scroll.js';
 import { toolResultRows, type ToolDisplayResult } from './tui-tool-result.js';
 import {
   cellWidth, createEditorState, questionPreviewText, reduceEditor, reduceEditorWithUndo, TerminalKeyDecoder,
@@ -237,6 +238,7 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
   copyOnSelect?: boolean;
+  autoScrollEnabled?: boolean;
   /** `/focus`: the brief transcript holds the streaming preview while tools run. */
   briefTranscript?: boolean;
   /** The live Verbose output switch at construction; Config and `/reload` update it through `setVerbose`. */
@@ -504,6 +506,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private lastClick: { time: number; line: number; column: number; screen: TuiScreen } | undefined;
   private screen: TuiScreen = 'chat';
   private transcript: TranscriptState;
+  private readonly transcriptScroll = new TranscriptScroll();
+  private scrollPointer: { column: number; row: number; moved: boolean } | undefined;
+  private mouseSeen = false;
   /** One provider response owns this cumulative raw source; end/close releases it. */
   private assistantMessage: { index?: number; source: string; key: string; startedAt: number } | undefined;
   private messageSequence = 0;
@@ -664,6 +669,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.showTurnDuration = options.showTurnDuration !== false;
     this.showMessageTimestamps = options.showMessageTimestamps === true;
     this.copyOnSelect = options.copyOnSelect !== false;
+    this.transcriptScroll.setEnabled(options.autoScrollEnabled);
     this.briefTranscript = options.briefTranscript === true;
     this.verbose = options.verbose === true;
     this.terminalProgressEnabled = options.terminalProgressBar !== false;
@@ -754,6 +760,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.selection = createSelection();
     this.clearStatusNotice('selection-copied');
     this.setCopyOnSelect(session.config.copyOnSelect);
+    this.setAutoScrollEnabled(session.config.autoScrollEnabled);
+    if (this.searchSessionId !== session.id) { this.transcriptScroll.reset(); this.scrollPointer = undefined; }
     this.sourceSearch?.close(); this.sourceSearch = undefined;
     this.sourcePicker?.close(); this.sourcePicker = undefined;
     this.queryUndo.clear(); this.queryEditor = createEditorState();
@@ -812,12 +820,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   get currentScreen(): TuiScreen { return this.screen; }
   get transcriptState(): TranscriptState { return this.transcript; }
 
-  /** Append one entry to the transcript, following the tail unless scrolled away. */
+  /** p4.onUserRowLanded, 24k7d6mw [1333944,1336535), UTF-16; the terminal owns projected rows. */
   append(entry: TranscriptEntry): void {
-    const view = this.viewportSize();
-    this.transcript = reduceTranscript(this.transcript,
-      { type: 'append', entry: entry.timestamp === undefined ? { ...entry, timestamp: Date.now() } : entry },
-      { rows: view.rows, total: this.transcriptTotal(view.columns) });
+    this.transcript = { ...this.transcript, entries: [...this.transcript.entries,
+      entry.timestamp === undefined ? { ...entry, timestamp: Date.now() } : entry] };
+    if (entry.kind === 'user') this.transcriptScroll.onUserRowLanded(false);
     this.render();
   }
 
@@ -1203,6 +1210,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.selection = createSelection();
   }
 
+  /** nmt/followGrowth, 3gz7s57c [29232,37785), UTF-16; the flag preserves existing sticky state. */
+  setAutoScrollEnabled(value?: boolean): void {
+    this.transcriptScroll.setEnabled(value);
+    this.render();
+  }
+
   setShowTurnDuration(value?: boolean): void {
     const enabled = value !== false;
     if (enabled === this.showTurnDuration) return;
@@ -1306,12 +1319,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   setProgressSettings(settings: ProgressDisplaySettings): void {
     if (this.closed || JSON.stringify(this.progressSettings) === JSON.stringify(settings)) return;
-    const view = this.viewportSize();
-    const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
     this.progressSettings = structuredClone(settings); this.timeFormatter = progressTime(this.progressSettings);
     this.progress.setVerbs(settings.spinnerVerbs); this.progressGeneration++;
     this.selection = createSelection();
-    if (pinned) this.transcript = {...this.transcript, offset:Number.MAX_SAFE_INTEGER};
     this.render();
   }
 
@@ -1344,21 +1354,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   setMaxProseWidth(value?: number): void {
     if (this.maxProseWidth === value) return;
-    const view = this.viewportSize();
-    const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
     this.maxProseWidth = value;
     this.selection = createSelection();
-    if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
     this.render();
   }
 
   setSyntaxHighlightingDisabled(value?: boolean): void {
     if (this.syntaxHighlightingDisabled === value) return;
-    const view = this.viewportSize();
-    const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
     this.syntaxHighlightingDisabled = value;
     this.selection = createSelection();
-    if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
     this.render();
   }
 
@@ -1607,6 +1611,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Input-store subscriptions `ul` and Ire/WR, 24k7d6mw [481135,481165)/[864462,864475), UTF-16.
    * Text mutations share the selector even outside the reducer. */
   private replaceDraft(next: EditorState): void {
+    // p4.onPromptEdit, 24k7d6mw [1333944,1336535), UTF-16; the edit subscription shares this owner.
+    if (this.screen === 'chat' && !this.dialog) this.transcriptScroll.onPromptEdit(next.text, this.editor.text);
     if (next.text !== this.editor.text) this.footerSelection = null;
     this.editor = next;
     this.refreshExternalEditorHint();
@@ -1614,12 +1620,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   setTheme(value?: ThemeSetting): void {
-    const view = this.viewportSize();
-    const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
     this.theme.reset(value);
     this.syncSystemTheme();
     this.selection = createSelection();
-    if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
     this.render();
   }
 
@@ -1627,10 +1630,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!this.isTTY || !this.started || this.closed) return;
     this.customThemes ??= new CustomThemeCatalog(themes => {
       if (this.closed) return;
-      const view = this.viewportSize();
-      const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
       this.theme.setCustomThemes(themes); this.selection = createSelection();
-      if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
       this.render();
     }, message => { if (!this.closed) this.setStatus(message); });
     this.themeUserDir = userDir;
@@ -1669,11 +1669,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!this.isTTY || !this.started || this.closed || this.editorSuspended) return;
     this.systemTheme ??= new SystemThemeMonitor(this.options.output, value => {
       if (this.closed) return;
-      const view = this.viewportSize();
-      const pinned = this.transcript.offset >= Math.max(0, this.transcriptTotal(view.columns) - view.rows);
       this.theme.setSystemTheme(value);
       this.selection = createSelection();
-      if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
       this.render();
     }, error => this.onError(error));
     this.systemTheme.setActive(this.theme.automatic);
@@ -1811,6 +1808,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.transcriptScroll.reset(); this.scrollPointer = undefined;
     this.selectionCopy.reset();
     // `qa`'s unmount cleanup clears the progress indicator before the screen is restored.
     if (this.lastTerminalProgress !== '') this.emitTerminalProgress('completed', 0, true);
@@ -1892,9 +1890,6 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (!completed && this.holdsFocusPreview()) return;
     const displayed = completed ? message.source : this.previewStore.getDerived().displayed;
     if (!displayed) return;
-    const view = this.viewportSize();
-    const total = this.transcriptTotal(view.columns);
-    const pinned = this.transcript.offset >= Math.max(0, total - view.rows);
     const entry: TranscriptEntry = { kind: 'assistant', text: renderPreviewMarkdown(displayed),
       markdown: displayed, speaker: true, timestamp: message.startedAt, ...(!completed ? { streaming: true, messageKey: message.key,
         hideTrailingLine: this.previewStore.getDerived().hideTrailingLine } : {}) };
@@ -1905,7 +1900,6 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const entries = [...this.transcript.entries]; entries[message.index] = entry;
       this.transcript = { ...this.transcript, entries };
     }
-    if (pinned) this.transcript = { ...this.transcript, offset: Number.MAX_SAFE_INTEGER };
     this.selection = createSelection();
     this.render();
   }
@@ -2049,10 +2043,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Source submit path (chunk-24k7d6mw.js 1492930): once the prompt is accepted and it is not a
     // slash command, a stashed draft comes back into the emptied composer with `Draft restored`.
     if (submitted !== undefined && !submitted.text.trim().startsWith('/')) this.restoreStashedDraft();
-    if (submitted) this.transcript = reduceTranscript(this.transcript,
-      { type: 'append', entry: { kind: 'user', text: beforeMode === 'bash' ? bashInputText(submitted.text) : submitted.text,
-        timestamp: Date.now() } },
-      { rows: this.viewportSize().rows, total: this.transcriptTotal(this.viewportSize().columns) });
+    // p4.repin/onUserRowLanded, 24k7d6mw [1333944,1336535), UTF-16; own submissions may repin after user scrolling.
+    if (submitted) {
+      this.transcriptScroll.onUserRowLanded(true);
+      this.transcript = { ...this.transcript, entries: [...this.transcript.entries,
+        { kind: 'user', text: beforeMode === 'bash' ? bashInputText(submitted.text) : submitted.text, timestamp: Date.now() }] };
+    }
     this.render();
     for (const effect of transition.effects) {
       if (effect.type === 'exit') { this.close(); this.emit('exit'); }
@@ -3005,6 +3001,23 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private handleMouse(event: TerminalMouseEvent): void {
     if (this.options.mouseTracking === 'off' || this.screen === 'search') return;
     const view = this.viewportSize();
+    if (event.action !== 'press') this.mouseSeen = true;
+    // Vc/Ax, 3gz7s57c [41715,43141), 06azbynj [242075,244661), UTF-16; noSelect keeps pill clicks out of copying.
+    const pillHit = this.renderer?.scrollPillAt(event.col - 1, event.row - 1) === true;
+    if ((pillHit || this.scrollPointer) && event.action !== 'wheelup' && event.action !== 'wheeldown') {
+      const column = event.col - 1, row = event.row - 1;
+      this.renderer?.hover(column, row);
+      if (event.action === 'press' && (event.button & 3) === 0) {
+        this.selection = createSelection(); this.scrollPointer = { column, row, moved: false };
+      } else if (this.scrollPointer) {
+        this.scrollPointer.moved ||= column !== this.scrollPointer.column || row !== this.scrollPointer.row;
+        if (event.action === 'release') {
+          const pointer = this.scrollPointer; this.scrollPointer = undefined;
+          if (pillHit && !pointer.moved) this.renderer?.click(column, row, { ctrl: event.ctrl, shift: event.shift, alt: event.meta });
+        }
+      }
+      this.render(); return;
+    }
     // Ax, 06azbynj [242075,244661), UTF-16: release without a drag dispatches the native click.
     const footerRow = Math.max(4, this.options.output.rows ?? 24) - 1;
     const footerHit = event.row - 1 === footerRow && event.col >= 1 && event.col <= view.columns;
@@ -3059,7 +3072,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (event.action === 'wheelup' || event.action === 'wheeldown') {
       if (!inside) return;
       const outcome = this.wheelKeys.push(event.action, ['Scroll', 'Global']);
-      if (outcome.kind === 'match') this.applyAction(outcome.match.action);
+      if (outcome.kind === 'match') {
+        const action = outcome.match.action;
+        if (action.startsWith('scroll:')) {
+          this.transcriptScroll.scroll(action.slice('scroll:'.length) as TranscriptScrollCommand, true);
+          this.render();
+        } else this.applyAction(action);
+      }
       return;
     }
     // The suggestion band is drawn above the composer, past the transcript rows, and
@@ -3205,15 +3224,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.selection = createSelection(); this.screen = 'chat'; this.render(); return true;
       case 'transcript:toggleShowAll':
         this.selection = createSelection();
-        this.transcript = reduceTranscript(this.transcript, { type: 'toggleShowAll' },
-          { rows: this.viewportSize().rows, total: this.transcriptTotal(this.viewportSize().columns) });
+        this.transcript = { ...this.transcript, showAll: !this.transcript.showAll };
         this.render(); return true;
       case 'scroll:lineUp': case 'scroll:lineDown': case 'scroll:halfPageUp': case 'scroll:halfPageDown':
       case 'scroll:fullPageUp': case 'scroll:fullPageDown': case 'scroll:pageUp': case 'scroll:pageDown':
       case 'scroll:top': case 'scroll:bottom': {
-        this.transcript = reduceTranscript(this.transcript,
-          { type: 'scroll', command: action.slice('scroll:'.length) as TranscriptScrollCommand },
-          { rows: this.viewportSize().rows, total: this.transcriptTotal(this.viewportSize().columns) });
+        // rI/pee/bbt, 24k7d6mw [126888,132084), UTF-16; explicit bottom forces sticky.
+        this.transcriptScroll.scroll(action.slice('scroll:'.length) as TranscriptScrollCommand);
         this.render(); return true;
       }
       case 'history:search': this.enterSearch(); return true;
@@ -3345,8 +3362,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.selection = reduceSelection(this.selection, { type: 'extend', to: { line, column } });
     const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows,
       this.welcomePreamble(view.columns));
-    if (line < viewport.offset) this.transcript = { ...this.transcript, offset: line };
-    else if (line >= viewport.offset + view.rows) this.transcript = { ...this.transcript, offset: line - view.rows + 1 };
+    // rI/Mt, 24k7d6mw [126888,130997), UTF-16; selection scrolling leaves the sticky tail.
+    if (line < viewport.offset) this.transcriptScroll.reveal(line);
+    else if (line >= viewport.offset + view.rows) this.transcriptScroll.reveal(line - view.rows + 1);
     this.render();
   }
 
@@ -3562,7 +3580,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private readonly onResize = () => {
     if (this.dialog?.modelPicker) this.dialog.modelPicker.pressed = undefined;
     if (this.dialog?.configPanel) this.dialog.configPanel.pressed = undefined;
-    this.selection = createSelection(); this.diffPointer = undefined; this.footerPointer = undefined;
+    this.selection = createSelection(); this.diffPointer = undefined; this.footerPointer = undefined; this.scrollPointer = undefined;
     this.renderer?.hover(-1, -1); this.renderer?.clearNativeSelection(); this.render();
   };
 
@@ -4190,6 +4208,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   private render(): void {
+    // nmt's modal selection teardown and Ax click admission, 3gz7s57c [29232,37785), 06azbynj [242075,244661), UTF-16.
+    if (this.dialog || this.screen === 'search' || this.sourceSearch?.snapshot.searching
+      || this.sourcePicker?.snapshot.searching || this.editorSuspended) this.scrollPointer = undefined;
     if (this.screen !== 'chat') this.footerPointer = undefined;
     if (this.footerSelection !== null && (this.dialog || this.sourceSearch?.snapshot.searching
       || this.sourcePicker?.snapshot.searching || !this.footerItems().includes(this.footerSelection))) this.footerSelection = null;
@@ -4228,6 +4249,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
       if (this.dialog.modelPicker) this.dialog.modelPicker.hitRows = new Map(
         [...this.dialog.modelPicker.hitRows].map(([row, index]) => [row + transcriptRows, index]));
+      // Us, 06azbynj [286619,287950), UTF-16; a smaller modal viewport must measure the same sticky owner.
+      this.transcript = { ...this.transcript, offset: this.transcriptScroll.layout(
+        this.transcriptTotal(columns), transcriptRows, this.transcript.entries) };
       const viewport = layoutTranscript(this.transcript, columns, transcriptRows, this.renderEntryRows,
         this.welcomePreamble(columns));
       const lines: string[] = [];
@@ -4272,6 +4296,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         {theme:this.theme.current,themeOverrides:this.theme.overrides});
       const queryRows = queryDocument.map(row=>row.ansi);
       const height = Math.max(0,rows-prompt.lines.length-queryRows.length-3);
+      this.transcript = { ...this.transcript, offset: this.transcriptScroll.layout(
+        this.transcriptTotal(columns), height, this.transcript.entries) };
       const viewport=layoutTranscript(this.transcript,columns,height,this.renderEntryRows,this.welcomePreamble(columns));
       const frame=Array.from({length:height},(_,index)=>viewport.rows[index]?.ansi ?? pad('',columns));
       const target=rows-1;
@@ -4298,8 +4324,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.autocompleteBand = hintRows.length === 0 ? undefined : {
       top: transcriptRows + progressRows.length - hintRows.length,
       owners: this.autocompleteOwners };
+    // p4/Us, 24k7d6mw [1333944,1336535), 06azbynj [286619,287950), UTF-16; one measured viewport owns the projection.
+    this.transcriptScroll.onBelowTranscriptSlotChange(this.running || progressRows.length > 0);
+    const total = this.transcriptTotal(conversationWidth);
+    this.transcript = { ...this.transcript,
+      offset: this.transcriptScroll.layout(total, transcriptRows, this.transcript.entries) };
     const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows,
       this.welcomePreamble(conversationWidth));
+    const pill = this.transcriptScroll.pill;
+    if (pill === undefined) this.scrollPointer = undefined;
 
     const frame: string[] = [];
     for (let row = 0; row < transcriptRows; row++) {
@@ -4314,7 +4347,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
         renderer.appContext, renderer.selectionInstance) } : undefined, banner, this.composerMode,
-      this.composerBorderText(), this.footerStatus());
+      this.composerBorderText(), this.footerStatus(), pill === undefined ? undefined : {
+        count: pill.count, mouse: (this.options.mouseTracking ?? 'full') === 'full' && this.mouseSeen,
+        onClick: () => { this.selection = createSelection(); this.transcriptScroll.jumpToNew(); this.render(); },
+      });
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
 

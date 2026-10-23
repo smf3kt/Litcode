@@ -520,8 +520,9 @@ Next up, scoped but not started:
       the successor-session path. W293 carries custom Tips/Show tips and W294 carries Copy on select.
       Built-in/vendor catalogs remain excluded. W294 corrects the earlier blanket selection
       flag claim; Copy on select uses literal inAppSelection:true and defaults on.
-      Other unported rows: prompt suggestions / timestamps / tab
-      status / auto-scroll (their source rows sit behind `tengu_*` flags default off),
+      W295 carries Auto-scroll and corrects its earlier false-default gate claim; its row shares
+      inAppSelection:true. Other unported rows still need individual source preflight: prompt
+      suggestions / timestamps / tab status,
       recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no
       matching host consumer), notifications (no local trigger set).
 
@@ -727,3 +728,9 @@ Explicitly out of scope for this loop:
       clear correctly. Five independent defects repaired and final12+2 probes pass. Affected153/153,
       check/build clean, compiled29/29 and Config35/35 at `14735b9e...`.
       See `research/ports/W294-copy-on-select.md`.
+- [x] W295 Auto-scroll (rMe/pee/ybt/Sbt/bbt/p4, 24k7d6mw [130997,132084)/[1333944,1336535), UTF-16):
+      source default-on merged settings, explicit sticky/fixed/high-water viewport, edit/submit/stream
+      and modal/search consumers, plus native bottom indicator hover/click. Off retains existing sticky;
+      incremental bottom fixes its position and Ctrl+End/click force following. Three independent
+      findings repaired and rechecked. Affected153/153, check/build clean, compiled23/23 plus Config35/35
+      at `d22f5e42...`. See `research/ports/W295-auto-scroll.md`.
