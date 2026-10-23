@@ -553,13 +553,71 @@ const DEFAULT_TIMEOUT_SECONDS = 600;
 const PROMPT_HOOK_TIMEOUT_SECONDS = 30;
 const AGENT_HOOK_TIMEOUT_SECONDS = 60;
 
-/** The deadline a definition runs under, in seconds, before the runner converts it. */
-export function hookTimeoutSeconds(definition: HookDefinition): number {
-  return typeof definition.timeout === "number" && definition.timeout > 0
-    ? definition.timeout
-    : definition.type === "prompt" ? PROMPT_HOOK_TIMEOUT_SECONDS
-    : definition.type === "agent" ? AGENT_HOOK_TIMEOUT_SECONDS
-    : DEFAULT_TIMEOUT_SECONDS;
+/**
+ * The caller deadlines the source passes at dispatch, in seconds, for the events
+ * that do not use `lu`. UserPromptSubmit passes `n5e=30000` from both dispatch
+ * sites (chunk-sfn1dbxq.js 2952261, 2952631); the two model-switch dispatches
+ * pass `o5e=30000` (2938116, 2939949); SessionEnd's `ues()` returns `des=1500`
+ * unless `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS` overrides it (2955428,
+ * 2955193). Every other event passes `lu` or a wrapper parameter that defaults
+ * to it (WorktreeCreate/Remove 2953048/2954405, UserPromptExpansion 2947850).
+ */
+const CALLER_TIMEOUT_SECONDS: Partial<Record<HookEvent, number>> = {
+  UserPromptSubmit: 30,
+  PreModelSwitch: 30,
+  PostModelSwitch: 30,
+  SessionEnd: 1.5,
+};
+const SESSION_END_HOOK_TIMEOUT_SECONDS = 1.5;
+const SESSION_END_HOOK_BOUND_CAP_SECONDS = 60;
+
+/** `ues()` (chunk-sfn1dbxq.js 2955428): the env value is milliseconds, else `des`. */
+function sessionEndDeadlineSeconds(env: NodeJS.ProcessEnv): number {
+  const raw = env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS?.trim();
+  if (raw !== undefined && raw !== "") {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed / 1000;
+  }
+  return SESSION_END_HOOK_TIMEOUT_SECONDS;
+}
+
+/**
+ * `oAe()` (chunk-sfn1dbxq.js 2955497): the outer bound the SessionEnd raiser
+ * waits for, in milliseconds. The env value wins; otherwise it is the largest
+ * configured SessionEnd timeout, floored at `des=1500` and capped at 60000.
+ */
+export function sessionEndHookBoundMs(hooks: HooksConfig | undefined,
+  env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS?.trim();
+  if (raw !== undefined && raw !== "") {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  let longest = 0;
+  for (const entry of hooks?.SessionEnd ?? []) {
+    for (const definition of "hooks" in entry ? entry.hooks : [entry]) {
+      const timeout = definition.timeout;
+      if (typeof timeout === "number" && timeout > 0) longest = Math.max(longest, timeout * 1000);
+    }
+  }
+  return Math.max(SESSION_END_HOOK_TIMEOUT_SECONDS * 1000,
+    Math.min(longest, SESSION_END_HOOK_BOUND_CAP_SECONDS * 1000));
+}
+
+/**
+ * The deadline a definition runs under, in seconds, before the runner converts
+ * it. An explicit `timeout` wins; then the model hook kinds use their own
+ * fallbacks (`e.timeout?e.timeout*1000:30000/60000`), which no caller deadline
+ * reaches; then the event's caller deadline; then `lu`.
+ */
+export function hookTimeoutSeconds(definition: HookDefinition, event?: HookEvent,
+  env: NodeJS.ProcessEnv = process.env): number {
+  if (typeof definition.timeout === "number" && definition.timeout > 0) return definition.timeout;
+  if (definition.type === "prompt") return PROMPT_HOOK_TIMEOUT_SECONDS;
+  if (definition.type === "agent") return AGENT_HOOK_TIMEOUT_SECONDS;
+  if (event === "SessionEnd") return sessionEndDeadlineSeconds(env);
+  const caller = event === undefined ? undefined : CALLER_TIMEOUT_SECONDS[event];
+  return caller ?? DEFAULT_TIMEOUT_SECONDS;
 }
 const MAX_HOOK_OUTPUT_BYTES = 64 * 1024;
 const MAX_HOOK_INPUT_BYTES = 1024 * 1024;
@@ -1519,7 +1577,7 @@ export async function runHooks(
       break;
     }
 
-    const seconds = hookTimeoutSeconds(definition);
+    const seconds = hookTimeoutSeconds(definition, event, options.environment ?? process.env);
     const timeoutMs = Math.max(1, Math.floor(seconds * 1000));
     const modelHook = definition.type === "prompt" || definition.type === "agent";
     const asyncCommand = (definition.type === undefined || definition.type === "command") &&

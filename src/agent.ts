@@ -7,7 +7,7 @@ import { Session, type SessionConfig, type ToolResult } from './session.js';
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
 import type { ToolDefinition, ToolContext } from './tools.js';
 import { randomUUID } from 'node:crypto';
-import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
+import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, sessionEndHookBoundMs, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
 import { parsePermissionRule, permissionDecision, effectivePermissionPolicy, permissionUpdateListSchema } from './permissions.js';
 import { bashCommandClampDenial, checkBashCommandClamp, CLAMPED_SHELL_TOOLS } from './agent-tool-restrictions.js';
 import path from 'node:path';
@@ -452,7 +452,10 @@ export class Agent {
       : reason === 'session_switch' ? 'resume'
       : reason === 'exit' ? 'prompt_input_exit' : 'other';
     // Shutdown hooks get their own bounded signal even after task cancellation.
-    const signal = AbortSignal.timeout(2_000);
+    // The bound is the source's SessionEnd raiser window (`oAe`, chunk-sfn1dbxq.js
+    // 2955497): the largest configured SessionEnd timeout, floored at 1500 ms and
+    // capped at 60000, or `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS` when set.
+    const signal = AbortSignal.timeout(sessionEndHookBoundMs(this.session.config.hooks));
     await this.hook('SessionEnd', { reason: sourceReason }, signal);
   }
 

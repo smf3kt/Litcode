@@ -10,6 +10,7 @@ import {
   hookDefinitionSchema,
   hookMatcherValue,
   hookTimeoutSeconds,
+  sessionEndHookBoundMs,
   hooksSchema,
   normalizeSessionTitle,
   runHooks,
@@ -1158,12 +1159,36 @@ test("model hook timeout and malformed output remain explicit and bounded", asyn
 test("each hook kind falls back to its own recovered deadline", () => {
   // Command/HTTP/MCP/callback default to `lu=600000`; prompt hooks to 30000 and
   // agent hooks to 60000 (chunk-sfn1dbxq.js offsets 2915815, 2899971, 2910918).
-  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ command: "true" })), 600);
-  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "http", url: "http://127.0.0.1:1/h" })), 600);
-  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "prompt", prompt: "check" })), 30);
-  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "agent", prompt: "check" })), 60);
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ command: "true" }), "PreToolUse"), 600);
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "http", url: "http://127.0.0.1:1/h" }), "PreToolUse"), 600);
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "prompt", prompt: "check" }), "PreToolUse"), 30);
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "agent", prompt: "check" }), "PreToolUse"), 60);
   // An explicit `timeout` wins for every kind.
-  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "prompt", prompt: "check", timeout: 5 })), 5);
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "prompt", prompt: "check", timeout: 5 }), "PreToolUse"), 5);
+  // The caller deadlines: `n5e=30000` for UserPromptSubmit (2952261/2952631),
+  // `o5e=30000` for the two model-switch dispatches (2938116/2939949), and
+  // SessionEnd's `ues()` at `des=1500` (2955428) unless the env overrides it.
+  const command = hookDefinitionSchema.parse({ command: "true" });
+  assert.equal(hookTimeoutSeconds(command, "UserPromptSubmit"), 30);
+  assert.equal(hookTimeoutSeconds(command, "PreModelSwitch"), 30);
+  assert.equal(hookTimeoutSeconds(command, "PostModelSwitch"), 30);
+  assert.equal(hookTimeoutSeconds(command, "SessionEnd", {}), 1.5);
+  assert.equal(hookTimeoutSeconds(command, "SessionEnd", { CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS: "9000" }), 9);
+  // WorktreeCreate/Remove and UserPromptExpansion keep the generic `lu`.
+  assert.equal(hookTimeoutSeconds(command, "WorktreeCreate"), 600);
+  assert.equal(hookTimeoutSeconds(command, "WorktreeRemove"), 600);
+  assert.equal(hookTimeoutSeconds(command, "UserPromptExpansion"), 600);
+});
+
+test("the SessionEnd raiser bound is the largest configured timeout within its window", () => {
+  // `oAe` (chunk-sfn1dbxq.js 2955497): env wins, else the longest configured
+  // SessionEnd timeout floored at `des=1500` and capped at 60000.
+  assert.equal(sessionEndHookBoundMs(undefined, {}), 1500);
+  assert.equal(sessionEndHookBoundMs({ SessionEnd: [{ command: "true" }] }, {}), 1500);
+  assert.equal(sessionEndHookBoundMs({ SessionEnd: [{ command: "true", timeout: 5 }] }, {}), 5000);
+  assert.equal(sessionEndHookBoundMs({ SessionEnd: [{ command: "true", timeout: 120 }] }, {}), 60000);
+  assert.equal(sessionEndHookBoundMs({ SessionEnd: [{ hooks: [{ command: "true", timeout: 12 }] }] }, {}), 12000);
+  assert.equal(sessionEndHookBoundMs(undefined, { CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS: "4200" }), 4200);
 });
 
 test("command output caps discard a truncated JSON verdict and report truncation", async () => {
