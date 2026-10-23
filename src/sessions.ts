@@ -109,7 +109,8 @@ export function forkSession(source: Session, eventBoundary?: number): Session {
     // Copy conversation epochs, not tool side-effect journals or locks.
     const boundaries = new Map<number, number>([[0, 0]]);
     for (const [index, event] of history.entries()) {
-      if (event.kind === 'message' || event.kind === 'compact' || event.kind === 'turn_end') {
+      // v/RRn [16667,17235)/[4502962,4503404), UTF-16; fold metadata travels with retained messages.
+      if (event.kind === 'message' || event.kind === 'compact' || event.kind === 'turn_end' || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary') {
         fork.append(event);
         if (event.kind === 'turn_end') boundaries.set(index, fork.events.length - 1);
       }

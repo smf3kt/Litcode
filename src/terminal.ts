@@ -1386,6 +1386,9 @@ export interface TerminalSurface {
   start(): unknown;
   close(): void;
   setRunning(running: boolean): void;
+  /** Ie/v/Dd, appb2dtz [16667,19295), 3gz7s57c [107529,107778), UTF-16. */
+  scheduledFire?(marker: import('./loop-noop-fold.js').ScheduledFire): void;
+  resetLoopSpan?(): void;
   /** The loop's editable prompt queue for the composer's selection UI. */
   bindPromptQueue?(queue: TerminalPromptQueue): void;
   /** Tell the composer its queue changed, so hints and a stale selection repaint. */

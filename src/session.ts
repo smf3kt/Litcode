@@ -30,6 +30,7 @@ import { notificationChannelSchema, type NotificationChannel } from './terminal-
 import { statusLineSchema } from './tui-statusline-schema.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 import type { StoredToolUseResult } from './tool-use-result.js';
+import { scheduledFireSchema, loopNoopCompanion, type ScheduledFire } from './loop-noop-fold.js';
 
 export type SessionConfig = {
   model: string;
@@ -157,6 +158,8 @@ export type SessionConfig = {
 export type ToolResult = Anthropic.ToolResultBlockParam;
 import { permissionModeCommandSchema, type PermissionModeCommand } from './plan-resume.js';
 export type SessionEvent =
+  | ScheduledFire
+  | { kind: 'loop_boundary'; reason: 'foreign_user_input' | 'tool_abort' }
   | PermissionModeCommand
   | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string; startedAt?: number }
   | { kind: 'file_history'; path?: string; tracked: boolean }
@@ -329,6 +332,8 @@ const storedToolUseResultSchema = z.union([
   z.object({ filePath: z.string().min(1), oldString: z.string(), newString: z.string(), structuredPatch: z.array(patchHunkSchema), replaceAll: z.boolean() }).strict(),
 ]);
 const eventSchema = z.discriminatedUnion('kind', [
+  scheduledFireSchema,
+  z.object({ kind: z.literal('loop_boundary'), reason: z.enum(['foreign_user_input', 'tool_abort']) }).strict(),
   z.object({ kind: z.literal('metadata'), version: z.literal(1), id: z.string().uuid(), config: configSchema,
     fingerprint: z.string(), startedAt: z.number().finite().nonnegative().optional() }).strict(),
   z.object({ kind: z.literal('permission_mode_command'), operation: z.enum(['enter', 'exit', 'select']),
@@ -720,6 +725,11 @@ export class Session {
         const message = structuredClone(event.message);
         markClassifierMessage(message, event.classifier ?? { origin: { kind: 'unknown' } });
         messages.push(message);
+      }
+      // x/v, appb2dtz [16520,17235), UTF-16; source identities are in W317's port record.
+      if (event.kind === 'scheduled_task_fire' && event.noOpStreak !== undefined) {
+        messages.push(markClassifierMessage({ role: 'user', content: loopNoopCompanion(event.noOpStreak) },
+          { origin: { kind: 'generated', source: 'loop-noop-companion' } }));
       }
       if (event.kind === 'compact') messages = [markClassifierMessage({ role: 'user', content: `Session summary (prior conversation data):\n${event.summary}` }, { origin: { kind: 'summary' } })];
     }
