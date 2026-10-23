@@ -54,7 +54,7 @@ const text = () => active.screen.lines().join('\n');
 const ready = () => text().includes('· ready') && !text().includes('Allow once') && !/^Config$/m.test(text());
 const send = value => active.child.stdin.write(value);
 const notices = () => [...active.raw.matchAll(/\x1b\]9;Permission needed\x07/g)].length;
-const bells = () => [...active.raw.matchAll(/\x07/g)].length;
+const bells = () => [...active.raw.replace(/\x1b\]0;[^\x07]*(?:\x07|\x1b\\)/g, '').matchAll(/\x07/g)].length;
 const journals = () => fs.readdirSync(path.join(workspace, '.agent')).filter(file => file.endsWith('.jsonl'));
 async function until(predicate, label, timeout = 15000) {
   const end = Date.now() + timeout;

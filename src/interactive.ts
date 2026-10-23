@@ -832,11 +832,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const release = () => { if (approval === owner) approval = undefined; };
     approval = owner; combined.addEventListener('abort', release, { once: true });
     try {
-      return await terminal!.prompt!(request, combined);
+      return await terminal!.prompt!({ ...request, titleOrigin: request.titleOrigin ?? 'local-command' }, combined);
     } finally { combined.removeEventListener('abort', release); release(); }
   };
   const readAnswer = (prompt: string, signal: AbortSignal, form = false): Promise<string> => {
-    if (terminal?.prompt) return readDialog({ message: prompt, allowText: true }, signal, form).then(answer => {
+    if (terminal?.prompt) return readDialog({ message: prompt, allowText: true, ...(form ? { titleWaitingFor: 'input needed' } : {}) }, signal, form).then(answer => {
       if (answer?.text === undefined) throw new Error('Interaction cancelled');
       return answer.text;
     });
@@ -859,7 +859,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (terminal?.prompt) {
       // `confirm:yes` binds enter and `confirm:no` escape (`chunk-6ccen3s8.js` 4063), so the
       // focused row must be Yes: Enter approves and Escape cancels.
-      const answer = await readDialog({ title, message, choices: [
+      const answer = await readDialog({ title, message, titleWaitingFor: 'permission prompt', choices: [
         { label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' },
       ], defaultIndex: 0 }, signal);
       return answer?.selected[0] === 'yes';
@@ -891,7 +891,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // timeout prop; `never` and an absent setting both disable AFK, while
           // `CLAUDE_AFK_TIMEOUT_MS` still overrides inside the TUI.
           const afkTimeoutMs = askUserQuestionTimeoutMs(session.config.askUserQuestionTimeout);
-          const answer = await readDialog({ title: 'Questions', message: '', allowClarification: true,
+          const answer = await readDialog({ title: 'Questions', message: '', titleWaitingFor: 'input needed', allowClarification: true,
             afkTimeoutMs, groups: request.questions.map(question => ({
             key: question.question,
             title: question.header ?? 'Question', message: question.question,
@@ -919,7 +919,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         const answers = [];
         for (const [questionIndex, question] of request.questions.entries()) {
           if (terminal?.prompt) {
-            const answer = await readDialog({ title: question.header ?? 'Question', message: question.question,
+            const answer = await readDialog({ title: question.header ?? 'Question', message: question.question, titleWaitingFor: 'input needed',
               choices: question.options.map(option => ({ ...option, value: option.label })),
               multiple: question.multiSelect, allowText: true, maxTextChars: 4000 }, signal);
             if (!answer) throw new Error('Interaction cancelled');
@@ -1238,7 +1238,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     try {
       let notice: string | undefined;
       while (!live.signal.aborted) {
-        const answer = await readDialog({ ...backgroundTaskRequest(read(), notice), backgroundTasks: read }, live.signal);
+        const answer = await readDialog({ ...backgroundTaskRequest(read(), notice), titleOrigin: 'live-picker', backgroundTasks: read }, live.signal);
         if (answer === undefined) break;
         if (answer.key !== 'x') continue;
         const parsed = parseBackgroundTaskValue(answer.selected[0] ?? '');
@@ -1260,11 +1260,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (!terminal?.prompt) return;
     const live = withLiveDialog('model', options.signal);
     try {
-      const answer = await readDialog(modelPickerRequest(modelPickerModels(), session.config.model,
+      const answer = await readDialog({ ...modelPickerRequest(modelPickerModels(), session.config.model,
         session.config.effort, true,
         session.config.effortSelection?.kind === 'inherit'
           ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined,
-        session.config.ultracode === true, session.config.features?.workflow !== false),
+        session.config.ultracode === true, session.config.features?.workflow !== false), titleOrigin: 'live-picker' },
         live.signal);
       const selected = answer?.selected[0];
       if (!selected || selected === ':cancel') return;
@@ -1372,7 +1372,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const live = withLiveDialog('thinking', options.signal);
     try {
       const current = session.config.thinking;
-      const answer = await readDialog(thinkingDialogRequest(current), live.signal);
+      const answer = await readDialog({ ...thinkingDialogRequest(current), titleOrigin: 'live-picker' }, live.signal);
       const value = answer?.selected[0];
       if (value !== 'true' && value !== 'false') return;
       const next = value === 'true';
@@ -1403,7 +1403,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         rows: process.stdout.rows ?? 24,
         columns: Math.max(40, (process.stdout.columns ?? 80) - 4),
         chords: (action, context, fallback) => chordForAction(action, context, fallback),
-      }, request => readDialog(request, live.signal));
+      }, request => readDialog({ ...request, titleOrigin: 'live-picker' }, live.signal));
       if (notice) options.status.write(notice + '\n');
     } catch (error) {
       if (!options.signal.aborted && !live.controller.signal.aborted)

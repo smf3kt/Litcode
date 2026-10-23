@@ -312,6 +312,7 @@ function newConfig(
   if (settings.copyOnSelect !== undefined) config.copyOnSelect = settings.copyOnSelect;
   if (settings.copyFullResponse !== undefined) config.copyFullResponse = settings.copyFullResponse;
   if (settings.preferredNotifChannel !== undefined) config.preferredNotifChannel = settings.preferredNotifChannel;
+  if (settings.terminalTitleFromRename !== undefined) config.terminalTitleFromRename = settings.terminalTitleFromRename;
   if (settings.autoScrollEnabled !== undefined) config.autoScrollEnabled = settings.autoScrollEnabled;
   if (settings.viewMode !== undefined) config.viewMode = settings.viewMode;
   // It, 9shw4xrd [106333,106421), UTF-16: the stored boolean wins; viewMode seeds it when absent.

@@ -97,6 +97,7 @@ import { effortIndicator, type EffortLevel } from './effort-command.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
 import { CopyPicker, type CopyPickerEffect } from './copy-picker.js';
 import { TerminalNotifications, type NotificationChannel, type LocalNotification } from './terminal-notifications.js';
+import { TerminalTitle } from './terminal-title.js';
 import { ResumePicker, resumePickerGuide, resumeRelativeTime, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
 import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
 
@@ -504,6 +505,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private lastInteraction = Date.now();
   private readonly notifications = new TerminalNotifications(text => this.options.output.write(text),
     () => this.isTTY && this.started && !this.closed && !this.editorSuspended);
+  private readonly terminalTitle = new TerminalTitle(sequence => this.options.output.write(sequence));
+  private titleSession: import('./session.js').Session | undefined;
+  private unsubscribeTitle: (() => void) | undefined;
   private readonly inputHistory = new InputHistory(error => this.setStatus(`History: ${String(error)}`));
   private historyBinding = 0;
   private readonly vim = new InputVim();
@@ -765,6 +769,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     pastedContents:structuredClone(this.editor.pastedContents),historyPastes:structuredClone(this.editor.historyPastes),
     historyDraftPastes:structuredClone(this.editor.historyDraftPastes),killRing: structuredClone(this.editor.killRing) }; }
   async bindInputHistory(session: import('./session.js').Session): Promise<void> {
+    this.unsubscribeTitle?.(); this.titleSession = session;
+    this.unsubscribeTitle = session.subscribeTitle(() => this.syncTerminalTitle());
+    this.syncTerminalTitle();
     const generation = ++this.historyBinding;
     this.selection = createSelection();
     this.clearStatusNotice('selection-copied');
@@ -897,7 +904,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private editorHandoff(): EditorHandoff {
     const suspend=()=>{
       this.gestures.reset();this.vim.externalMutation();
-      this.editorSuspended=true;this.options.input.off('data',this.onData);this.options.input.pause();
+      this.editorSuspended=true;this.syncTerminalTitle();this.options.input.off('data',this.onData);this.options.input.pause();
       if(this.escapeTimer){clearTimeout(this.escapeTimer);this.escapeTimer=undefined;}this.decoder.reset();this.keys.reset();
       this.selection=createSelection();this.progress.pause(true);this.progress.setVisible(false);this.statusLine.setActive(false);this.systemTheme?.setActive(false);
       this.modes.leave();this.options.input.setRawMode!(false);
@@ -1826,7 +1833,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
-    this.notifications.close();
+    this.notifications.close(); this.terminalTitle.close();
+    this.unsubscribeTitle?.(); this.unsubscribeTitle = undefined; this.titleSession = undefined;
     this.transcriptScroll.reset(); this.scrollPointer = undefined;
     this.selectionCopy.reset();
     // `qa`'s unmount cleanup clears the progress indicator before the screen is restored.
@@ -1890,6 +1898,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.previewStore.setRewrite(null);
     this.previewStore.setSalvage(null, false);
     this.assistantMessage = { source: '', key: String(++this.messageSequence), startedAt: Date.now() };
+    this.syncTerminalTitle();
   }
 
   /** Raw text is retained immediately; source clt publishes the aggregate every 100ms. */
@@ -1929,6 +1938,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     finally {
       this.assistantMessage = undefined;
       this.previewStore.setRaw(null);
+      this.syncTerminalTitle();
     }
   }
 
@@ -4285,7 +4295,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       pad(error ?? hint, columns)];
   }
 
+  // rV/_6/E6, 24k7d6mw [164310,165246)/[1293039,1293366)/[1301960,1304882), UTF-16.
+  private syncTerminalTitle(): void {
+    this.terminalTitle.update({ sessionTitle: this.titleSession?.title,
+      fromRename: this.titleSession?.config.terminalTitleFromRename,
+      focused: this.focus.focused,
+      active: this.isTTY && this.started && !this.closed && !this.editorSuspended,
+      activity: { isLoading: this.progress.running, isQueryActive: this.progress.running,
+        topDialogWaitingFor: this.dialog?.request.titleWaitingFor,
+        isShowingLocalJSXCommand: this.dialog?.request.titleOrigin === 'local-command',
+        isResponseStreaming: this.assistantMessage !== undefined } });
+  }
+
   private render(): void {
+    this.syncTerminalTitle();
     // nmt's modal selection teardown and Ax click admission, 3gz7s57c [29232,37785), 06azbynj [242075,244661), UTF-16.
     if (this.dialog || this.screen === 'search' || this.sourceSearch?.snapshot.searching
       || this.sourcePicker?.snapshot.searching || this.editorSuspended) this.scrollPointer = undefined;

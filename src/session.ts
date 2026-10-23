@@ -89,6 +89,7 @@ export type SessionConfig = {
   copyOnSelect?: boolean;
   copyFullResponse?: boolean;
   preferredNotifChannel?: NotificationChannel;
+  terminalTitleFromRename?: boolean;
   autoScrollEnabled?: boolean;
   /** `/focus`'s persisted view mode; `focus` is the brief transcript. */
   viewMode?: import('./focus-command.js').FocusMode;
@@ -247,6 +248,7 @@ export const configSchema = z.object({
   copyOnSelect: z.boolean().optional(),
   copyFullResponse: z.boolean().optional(),
   preferredNotifChannel: notificationChannelSchema,
+  terminalTitleFromRename: z.boolean().optional(),
   autoScrollEnabled: z.boolean().optional(),
   viewMode: z.enum(['default', 'verbose', 'focus']).optional(),
   verbose: z.boolean().optional(),
@@ -379,6 +381,7 @@ export class Session {
   readonly startedAt: number;
   private fileHistoryValue = { trackSequence: 0, trackedFiles: new Set<string>() };
   private readonly fileHistoryListeners = new Set<() => void>();
+  private readonly titleListeners = new Set<() => void>();
   /** Destination buckets are session-owned; settings writes settle independently of memory. */
   permissionUpdates: SessionPermissionUpdates = emptySessionPermissionUpdates();
   readonly permissionWriteResults: PermissionWriteResult[] = [];
@@ -642,10 +645,21 @@ export class Session {
     Session.writeAll(this.fd, Buffer.from(JSON.stringify(event) + '\n'));
     fs.fsyncSync(this.fd);
     this.events.push(structuredClone(event));
+    if (event.kind === 'title') for (const listener of this.titleListeners) listener();
     if (event.kind === 'file_history') {
       this.updateFileHistory(event);
       for (const listener of this.fileHistoryListeners) listener();
     }
+  }
+
+  // vm/JKt, sfn1dbxq [4651858,4651923)/[4658174,4658235), UTF-16.
+  get title(): string | undefined {
+    const event = this.events.findLast(event => event.kind === 'title');
+    return event?.kind === 'title' ? event.title : undefined;
+  }
+  subscribeTitle(listener: () => void): () => void {
+    this.titleListeners.add(listener);
+    return () => { this.titleListeners.delete(listener); };
   }
 
   get fileHistory(): { trackSequence: number; trackedFiles: ReadonlySet<string> } { return this.fileHistoryValue; }
@@ -730,6 +744,7 @@ export class Session {
     if (this.closed) return this.drainPermissionWrites().then(() => {});
     this.closed = true;
     this.fileHistoryListeners.clear();
+    this.titleListeners.clear();
     this.permissionListeners.clear();
     fs.closeSync(this.fd);
     const owner = JSON.parse(fs.readFileSync(this.lock, 'utf8')) as { token: string };

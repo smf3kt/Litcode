@@ -53,6 +53,8 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   else delete next.copyFullResponse;
   if (settings.preferredNotifChannel !== undefined) next.preferredNotifChannel = settings.preferredNotifChannel;
   else delete next.preferredNotifChannel;
+  if (settings.terminalTitleFromRename !== undefined) next.terminalTitleFromRename = settings.terminalTitleFromRename;
+  else delete next.terminalTitleFromRename;
   if (settings.autoScrollEnabled !== undefined) next.autoScrollEnabled = settings.autoScrollEnabled;
   else delete next.autoScrollEnabled;
   if (settings.viewMode !== undefined) next.viewMode = settings.viewMode;

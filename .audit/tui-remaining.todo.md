@@ -515,18 +515,19 @@ Next up, scoped but not started:
       `/usage` shows `t Last 7 days` and `/mcp` `r reconnect`; no-keys panels keep their hint.
       Host surface fix, not a recovered body. Focused 88/88, compiled 15/15 at identity
       `8d0d8699…`. See `research/ports/W269-panel-key-hints.md`.
-- [ ] Config residuals without complete consumers. Terminal titles/tab status
-      and other selection consumers still need source preflight. No local config row uses
+- [ ] Config residuals without complete consumers. Remaining prompt suggestions, gated
+      timestamps and other selection consumers still need source preflight. No local config row uses
       the successor-session path. W293 carries custom Tips/Show tips and W294 carries Copy on select.
       Built-in/vendor catalogs remain excluded. W294 corrects the earlier blanket selection
       flag claim; Copy on select uses literal inAppSelection:true and defaults on.
       W295 carries Auto-scroll and corrects its earlier false-default gate claim; its row shares
       inAppSelection:true. Other unported rows still need individual source preflight: prompt
-      suggestions / timestamps / tab status,
+      suggestions / timestamps,
       recap (no local consumer), fast mode (model routing), gitignore (no matching host consumer),
       other notification triggers. W297 supplies the obtained mounted permission trigger and
-      seven-channel Local notifications setting. The ordinary terminal title is the next source
-      candidate; experimental sidebar status remains false-gated. W296 connects copyFullResponse
+      seven-channel Local notifications setting. W298 connects ordinary terminal titles to rename,
+      progress, typed waiting, focus and lifetime. Experimental sidebar status remains false-gated.
+      W296 connects copyFullResponse
       to its obtained /copy consumer and supersedes the earlier missing-consumer claim.
 
 Scoped out:
@@ -749,3 +750,9 @@ Explicitly out of scope for this loop:
       Per-layer invalid-value fallback repaired and independently rechecked13/13. Affected274/274,
       check/build clean, compiled42/42 plus Config35/35 at `3a545e61...`.
       See `research/ports/W297-local-notifications.md`.
+- [x] W298 ordinary terminal title (eve/Ryo/rV/_6, 24k7d6mw [1292353,1293366)/[164141,165246), UTF-16):
+      durable rename and current-session binding, authored fromRename, model960ms animation,
+      explicit waiting, focus/editor/mux/close lifetime and original settings resume. Live-picker
+      origin repair independently rechecked10/10. Affected261/261, check/build clean, final compiled29/29
+      at `37618384...`. Notifications42/42 and Config35/35 passed before comment-only edits;
+      all596 final compiled ASTs match. See `research/ports/W298-terminal-title.md`.
