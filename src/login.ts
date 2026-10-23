@@ -24,6 +24,7 @@ export const UNCONFIGURED_MODEL = 'unconfigured';
 export const CREDENTIALS_FILE = 'credentials.json';
 export const CREDENTIAL_FILE_BYTES = 64 * 1024;
 export const OAUTH_CALLBACK_TIMEOUT_MS = 300_000;
+export const TOKEN_EXCHANGE_TIMEOUT_MS = 60_000;
 
 export interface LoginProfile {
   id: string;
@@ -150,13 +151,21 @@ export function readStoredCredential(userDir: string): StoredCredential | undefi
   return id === undefined ? undefined : file.providers[id];
 }
 
-/** Persist one credential as the active one. The file is regular, mode 0600, atomically replaced. */
-export function writeStoredCredential(userDir: string, credential: StoredCredential): void {
+/**
+ * Persist one credential. The file is regular, mode 0600, atomically replaced. A sign-in makes
+ * the credential active; a token refresh passes `activate: false`, so it neither steals the
+ * active choice from a later sign-in nor resurrects a credential the person removed.
+ */
+export function writeStoredCredential(userDir: string, credential: StoredCredential,
+  options: { activate?: boolean } = {}): void {
   const file = credentialsPath(userDir);
   const current = readCredentialFile(userDir);
+  const activate = options.activate !== false;
+  if (!activate && current.providers[credential.provider] === undefined) return;
+  const active = activate ? credential.provider : current.active;
   const next: CredentialFile = {
     version: 1,
-    active: credential.provider,
+    ...(active === undefined ? {} : { active }),
     providers: { ...current.providers, [credential.provider]: credential },
   };
   const content = JSON.stringify(next, null, 2) + '\n';
@@ -297,18 +306,37 @@ function waitForCode(server: http.Server, state: string, signal: AbortSignal, ti
   });
 }
 
-async function exchangeToken(tokenURL: string, body: URLSearchParams, signal: AbortSignal): Promise<Record<string, unknown>> {
+/**
+ * Ask the token endpoint for a token. A failure names the status and a bounded, sanitized
+ * description only: a token endpoint (or a proxy in front of one) can echo the code, the refresh
+ * token or the access token in its error body, and that message reaches stderr and the status row.
+ */
+async function exchangeToken(tokenURL: string, body: URLSearchParams, signal: AbortSignal,
+  timeoutMs = TOKEN_EXCHANGE_TIMEOUT_MS): Promise<Record<string, unknown>> {
+  const deadline = AbortSignal.timeout(timeoutMs);
   const response = await fetch(tokenURL, {
     method: 'POST',
     headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
-    body: body.toString(), signal,
+    body: body.toString(), signal: AbortSignal.any([signal, deadline]),
   });
   const text = (await response.text()).slice(0, 16 * 1024);
-  if (!response.ok) throw new Error(`Token endpoint answered ${response.status}${text === '' ? '' : `: ${text.replace(/\s+/g, ' ').slice(0, 300)}`}`);
+  if (!response.ok) throw new Error(`Token endpoint answered ${response.status}${tokenErrorDetail(text)}`);
   let parsed: unknown;
   try { parsed = JSON.parse(text); } catch { throw new Error('Token endpoint did not return JSON'); }
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Token endpoint returned no object');
   return parsed as Record<string, unknown>;
+}
+
+/** The `error`/`error_description` fields of a failed token response, when it is a JSON object. */
+function tokenErrorDetail(text: string): string {
+  let parsed: unknown;
+  try { parsed = JSON.parse(text); } catch { return ''; }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return '';
+  const fields = parsed as Record<string, unknown>;
+  const code = cleanText(fields.error, 64);
+  const description = cleanText(fields.error_description, 200);
+  if (code === undefined && description === undefined) return '';
+  return `: ${code ?? 'error'}${description === undefined ? '' : ` (${description})`}`;
 }
 
 async function oauthLogin(options: RunLoginOptions, prompts: LoginPrompts): Promise<StoredCredential> {
@@ -426,19 +454,19 @@ class OAuthProvider implements ModelProvider {
     this.inner = new GatewayProvider(credential.key, gateway, transport);
   }
 
-  private async ensureFresh(): Promise<void> {
+  private async ensureFresh(signal: AbortSignal): Promise<void> {
     if (this.credential.expiresAt === undefined || this.credential.refreshToken === undefined) return;
     if (Date.now() < this.credential.expiresAt - 60_000) return;
-    await this.refresh();
+    await this.refresh(signal);
   }
 
-  private async refresh(): Promise<boolean> {
+  private async refresh(signal: AbortSignal): Promise<boolean> {
     const { refreshToken, tokenURL, clientId } = this.credential;
     if (refreshToken === undefined || tokenURL === undefined) return false;
     const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken });
     if (clientId !== undefined) body.set('client_id', clientId);
     if (this.credential.scope !== undefined) body.set('scope', this.credential.scope);
-    const token = await exchangeToken(tokenURL, body, new AbortController().signal);
+    const token = await exchangeToken(tokenURL, body, signal);
     const accessToken = cleanSecret(token.access_token);
     if (accessToken === undefined) return false;
     const expiresIn = typeof token.expires_in === 'number' && Number.isFinite(token.expires_in) && token.expires_in > 0 ? token.expires_in : undefined;
@@ -451,25 +479,28 @@ class OAuthProvider implements ModelProvider {
     };
     this.inner = new GatewayProvider(accessToken, this.gateway, this.transport);
     if (this.userDir !== undefined) {
-      try { writeStoredCredential(this.userDir, this.credential); } catch { /* the session keeps the refreshed token */ }
+      // A refresh keeps the credential current but does not make it the default again: the
+      // person's later sign-in, or another session's, owns that choice.
+      try { writeStoredCredential(this.userDir, this.credential, { activate: false }); }
+      catch { /* the session keeps the refreshed token */ }
     }
     return true;
   }
 
   async complete(request: ModelRequest, signal: AbortSignal, onText?: (text: string) => void, onThinking?: () => void) {
-    await this.ensureFresh();
+    await this.ensureFresh(signal);
     try { return await this.inner.complete(request, signal, onText, onThinking); }
     catch (error) {
-      if (!isUnauthorized(error) || !(await this.refresh())) throw error;
+      if (!isUnauthorized(error) || !(await this.refresh(signal))) throw error;
       return this.inner.complete(request, signal, onText, onThinking);
     }
   }
 
   async count(request: ModelRequest, signal: AbortSignal): Promise<number> {
-    await this.ensureFresh();
+    await this.ensureFresh(signal);
     try { return await this.inner.count(request, signal); }
     catch (error) {
-      if (!isUnauthorized(error) || !(await this.refresh())) throw error;
+      if (!isUnauthorized(error) || !(await this.refresh(signal))) throw error;
       return this.inner.count(request, signal);
     }
   }

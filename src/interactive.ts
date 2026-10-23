@@ -53,7 +53,7 @@ import { loopAutonomousInterval, loopAutonomousPrompt, loopCommandPrompt } from 
 import { DEFAULT_EFFORT, effortCommand, isEffortLevel, modelEffort, modelSettingsKey, persistableEffort,
   effortIndicator, effortOverride, type EffortLevel } from './effort-command.js';
 import { effortSliderRequest } from './effort-slider.js';
-import { modelPickerRequest } from './model-picker.js';
+import { modelPickerRequest, MODEL_PICKER_TITLE } from './model-picker.js';
 import { LOGIN_KINDS, UNCONFIGURED_MODEL, runLogin, type LoginPrompts, type StoredCredential } from './login.js';
 import { thinkingDialogRequest, THINKING_DIALOG_TITLE, THINKING_MID_CONVERSATION_WARNING } from './thinking-dialog.js';
 import { TIME_FORMATS, type ConfigPanelState, type ConfigUpdate } from './config-panel.js';
@@ -344,7 +344,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
    * A reason the model cannot answer yet, or undefined when it can. Checked before a turn is
    * recorded, so a run that has not signed in leaves no unfinished user row behind.
    */
-  providerBlocked?: () => string | undefined;
+  providerBlocked?: (config: SessionConfig) => string | undefined;
 }): Promise<void> {
   let session = initial;
   // Source `Ujt` (chunk-sfn1dbxq.js 1663949): the fleet-fork gate selects which `/fork`
@@ -466,6 +466,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     /** Source `r === "bash"` (chunk-er0mj94r.js 50100): a shell command, not a model prompt. */
     bashMode?: true;
     attachment?: import('./terminal.js').PromptDiffSelection }[] = [];
+  // Events that arrived before a credential did. They re-enter the queue once `/login` adopts
+  // one, so a startup or peer event is not lost to a session that had nowhere to send it.
+  const heldEvents: (typeof queue)[number][] = [];
   // The recovered prologue prepends the SessionStart message to the user input
   // queue (`prependUserMessage`, chunk-rx2nah4x.js offset 472137), so it runs
   // before anything typed or piped at startup.
@@ -1278,7 +1281,18 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (!terminal?.prompt) return;
     const live = withLiveDialog('model', options.signal);
     try {
-      const answer = await readDialog({ ...modelPickerRequest(modelPickerModels(), session.config.model,
+      const models = modelPickerModels();
+      // A session that has a credential but no model yet has nothing to list; the same dialog
+      // takes a typed ID so `/model` can still set one.
+      if (models.length === 0) {
+        const answer = await readDialog({ title: MODEL_PICKER_TITLE,
+          message: 'No model is configured. Enter the model ID this endpoint expects.', allowText: true }, live.signal);
+        const typed = answer?.text?.trim();
+        if (typed === undefined || typed === '') return;
+        await switchModelInPlace(typed, undefined, false, options.signal);
+        return;
+      }
+      const answer = await readDialog({ ...modelPickerRequest(models, session.config.model,
         session.config.effort, true,
         session.config.effortSelection?.kind === 'inherit'
           ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined,
@@ -1530,7 +1544,25 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await startPeer(session.config);
     announce();
     bindConfigWatch();
+    /**
+     * Every lane that reaches a model asks this first, so a session with no credential refuses
+     * before the user row is journaled. The message is recomputed each time: `/login` and `/model`
+     * change what the live session can answer.
+     */
+    const blockedReason = (): string | undefined => options.providerBlocked?.(session.config);
+    /** Report the block without entering a turn; true when the caller must skip its turn. */
+    const refuseWhenBlocked = (): boolean => {
+      const blocked = blockedReason();
+      if (blocked === undefined) return false;
+      options.status.write(`${blocked}\n`);
+      return true;
+    };
     while (!options.signal.aborted) {
+      // A credential arrived since the last pass: events held for it run before anything else.
+      if (heldEvents.length > 0 && blockedReason() === undefined) {
+        queue.unshift(...heldEvents.splice(0));
+        promptQueueChanged(); awaken();
+      }
       if (configDirty && !session.awaitingResponse && !inputClosed) {
         configDirty = false;
         if (!queue.some(item => item.source === 'user' && item.prompt.trim() === '/reload')) {
@@ -1588,7 +1620,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (item.source === 'user' && item.bashMode === true) {
         try {
           const bash = await withTurn(signal => runBashCommand(prompt, signal));
-          if (bash.shouldQuery) {
+          // The shell command ran; only the model's answer to its result needs a credential.
+          if (bash.shouldQuery && !refuseWhenBlocked()) {
             const result = await withTurn(signal => agent().run(undefined, signal));
             if (result.modelCalls === 0 && result.text) output.write(result.text);
             output.write('\n');
@@ -1602,6 +1635,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
       if (item.source === 'event') {
         if (session.awaitingResponse) { options.status.write('Event deferred until the interrupted turn is continued.\n'); queue.push(item); }
+        else if (blockedReason() !== undefined) {
+          // A queued event, including a SessionStart message, waits for the credential instead of
+          // being journaled against a model that cannot answer. It runs once `/login` adopts one.
+          options.status.write(`${blockedReason()!}\n`);
+          heldEvents.push(item);
+        }
         else {
           try {
             const result = await withTurn(async signal => {
@@ -3172,6 +3211,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (!task) throw new Error('Use /paste-image PROMPT');
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           if (session.config.features?.media === false) throw new Error('Media input is disabled in this session');
+          if (refuseWhenBlocked()) continue;
           const result = await withTurn(async signal => {
             const attachment = await captureClipboardImage(session.config.workspace, signal);
             const target = path.join(session.config.workspace, attachment.path);
@@ -3191,6 +3231,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
         if (/^\/attach(?:\s|$)/.test(prompt)) {
           const { attachment, prompt: task } = parseAttachmentCommand(prompt.slice(7));
+          if (refuseWhenBlocked()) continue;
           const result = await withTurn(signal => agent().run(task, signal, attachment));
           if (result.modelCalls === 0 && result.text) output.write(result.text);
           output.write('\n');
@@ -3218,6 +3259,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               options.status.write('finished: hook_blocked; model calls: 0\n');
               continue;
             }
+            if (refuseWhenBlocked()) continue;
             const result = await withTurn(signal => activeRuntime.runSkill!(session.config, session.id, skill, parsed.args, signal,
               async (tool, input, decision) => {
                 if (inputClosed || signal.aborted) return { decision: 'deny', reason: 'Input closed' };
@@ -3236,6 +3278,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             output.write('\n'); options.status.write(`finished: ${completed.reason}; model calls: ${completed.modelCalls}\n`); continue;
           }
           const expanded = expandUserSkill(skill, parsed.args, session.config);
+          if (refuseWhenBlocked()) continue;
           const result = await withTurn(signal => agent().run(expanded, signal, undefined, expansion));
           if (result.modelCalls === 0 && result.text) output.write(result.text);
           output.write('\n');
@@ -3246,8 +3289,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         const attachment = item.attachment?.sessionId === session.id ? item.attachment : undefined;
         // A run with no credential is refused before the prompt is recorded, so signing in and
         // retrying does not first have to finish a turn that never reached a model.
-        const blocked = prompt === '/continue' ? undefined : options.providerBlocked?.();
-        if (blocked !== undefined) { options.status.write(`${blocked}\n`); continue; }
+        if (prompt !== '/continue' && refuseWhenBlocked()) continue;
         let result;
         try {
           result = await withTurn(signal => agent().run(prompt === '/continue' ? undefined : prompt, signal,
