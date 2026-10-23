@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+# Drive `litcode --login deepseek` at a real terminal: paste a key, accept the model row.
+set timeout 120
+set user_dir [lindex $argv 0]
+set key [lindex $argv 1]
+set litcode [lindex $argv 2]
+log_user 0
+fconfigure stdin -blocking 0 -translation binary -buffering none
+fconfigure stdout -translation binary -buffering none
+spawn -noecho $litcode --user-dir $user_dir --no-inherit-gateway --login deepseek
+fconfigure $spawn_id -encoding binary -translation binary
+expect -re {API key} { send -- "$key\r" }
+expect -re {DeepSeek model} { send -- "\r" }
+expect {
+  -re {Signed in to deepseek} { puts -nonewline stdout "SIGNED_IN\n" }
+  eof { }
+}
+catch { expect eof }
+exit 0

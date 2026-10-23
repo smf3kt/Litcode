@@ -34,6 +34,22 @@ litcode
 
 三条规则：**显式优先**——本 harness 的 flag、`LLM_*` 变量与其自身`settings.json`始终压过继承值；**网关匹配**——借来的凭证只用于该客户端自己声明的那个端点，`--base-url`改成别的端点时不会被送出；**只报来源**——启动时在 stderr 打印一行`gateway: inherited …`，只写变量名与文件路径，不写任何值，凭证也不入会话。`--no-inherit-gateway`或`LLM_INHERIT_GATEWAY=false`可整体关闭；`--resume`按其固定端点重新取凭证，不受当前环境覆盖。
 
+## 本地登录
+
+本机完全没有 LLM 配置时，交互会话不再拒绝启动：会话正常打开，第一次请求会在写入日志之前被拒绝并提示先登录。登录两种方式等价：
+
+```sh
+litcode --login deepseek     # 粘贴 API key，存到 ~/.harness/credentials.json（0600）
+```
+
+会话内 `/login deepseek` 走同一流程，登录后立即用该凭证与新模型继续，无需重启。
+
+- `deepseek`：DeepSeek 官方未提供 OAuth 授权服务，按其文档使用 API key（`x-api-key`），端点 `https://api.deepseek.com/anthropic`，模型 `deepseek-flash` / `deepseek-v4-pro`。
+- `oauth`：给确实运行授权码流程的网关用；本地回环回调 + PKCE，访问令牌过期时用刷新令牌自动续期。
+- `custom`：任意 Anthropic 兼容端点，可选 Bearer 或 `x-api-key`。
+
+凭证只写入 `<userDir>/credentials.json`（模式 0600），不进日志、不进会话、不打印；只用于签发它的那个端点，换成别的 `--base-url` 不会被送出。`litcode --logout` 删除凭证。一次性任务（`litcode "任务"`）没有可提问的地方，缺凭证时仍立即报错并给出登录命令。
+
 `litcode` 不带参数时按终端决定行为：在可用终端中打开全屏交互会话（等同 `--interactive`，`--no-tui` 可保留行编辑器），管道或无终端时打印用法并以 0 退出（`litcode --help`、`litcode --version` 同样如此）。`--demo`、`--continue`、`--resume`、`--list-sessions` 以及 `--mcp-elicitation`/`--watch-config` 不会被当作空调用。`litcode-magpie` 与旧名 `personal-harness` 一并安装。
 
 ## 运行
@@ -124,7 +140,7 @@ litcode-magpie --model MODEL --start-app /Applications/magpie.app -- --workspace
 
 | 配置 | CLI 参数 | 默认/行为 |
 | --- | --- | --- |
-| `LLM_API_KEY` | 环境变量 | 网关凭证；不写入会话配置。未设置时按端点匹配继承已配置客户端的凭证（`--no-inherit-gateway`关闭） |
+| `LLM_API_KEY` | 环境变量 | 网关凭证；不写入会话配置。未设置时按端点匹配继承已配置客户端的凭证（`--no-inherit-gateway`关闭），再退到 `--login` 存下的凭证 |
 | `LLM_BASE_URL` | `--base-url` | `http://127.0.0.1:3425`，由 SDK 拼接 `/v1/messages` |
 | `LLM_MODEL` | `--model` | 必填网关模型 ID，原样传递 |
 | `LLM_EFFORT` | `--effort` | 可选 low/medium/high/xhigh/max，发送 output_config.effort；默认省略 |

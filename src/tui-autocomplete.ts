@@ -80,6 +80,7 @@ export interface CommandSuggestion {
 export const TUI_COMMANDS: readonly TuiCommand[] = [
   { name: 'help', description: 'Show help and available commands', kind: 'command', lane: 'info' },
   { name: 'status', description: 'Show session, model, context settings and usage', kind: 'command', lane: 'info' },
+  { name: 'login', description: 'Sign in to a local provider (deepseek | oauth | custom)', kind: 'command', lane: 'config' },
   { name: 'context', description: 'Visualize current context usage as a colored grid', kind: 'command', lane: 'info' },
   { name: 'usage', description: 'Show session cost and activity stats', kind: 'command', lane: 'info',
     aliases: ['cost', 'stats'] },
