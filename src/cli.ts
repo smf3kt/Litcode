@@ -727,8 +727,12 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
 
   const controller = new AbortController();
   const onInterrupt = () => controller.abort(new Error('Interrupted'));
-  process.once('SIGINT', onInterrupt);
-  process.once('SIGTERM', onInterrupt);
+  // `ni`/`Vd` (chunk-rx2nah4x.js 492237/492335): the recovered registers both handlers with
+  // `process.on`, never `once`. A `once` wrapper unregisters itself as it runs, so signal-exit
+  // (loaded with the session lockfile) sees its own handler as the only listener and re-raises
+  // the signal, which kills the process by signal before the aborted run can report 130.
+  process.on('SIGINT', onInterrupt);
+  process.on('SIGTERM', onInterrupt);
   let session: Session | undefined;
   let runtime: Runtime | undefined;
   let activeAgent: Agent | undefined;
