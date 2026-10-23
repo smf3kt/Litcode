@@ -89,10 +89,10 @@ must agree.
 - `test/plugin-chain*.test.ts` + `test/skills-hooks.test.ts` 980/980.
 - `test/agent-lifecycle` + `interactive` + `agent-registry` 134/134.
 - `test/hooks` + `async-hooks` + `interactive` + `agent` 118/118.
-- Full suite: three tests time out (`statusline` multiline ANSI footer, `terminal-focus` Vim draft
-  handoff, `plugin-toggle` live catalog). All three reproduce in a clean worktree at `c54daf7` with
-  this package reverted, so they are pre-existing and not caused by the deadline change; everything
-  else in the suite passes.
+- Full suite: 3267 tests, 3262 pass, 1 fail, 4 cancelled. The three timeouts are `statusline`
+  (multiline ANSI footer), `terminal-focus` (Vim draft handoff) and `plugin-toggle` (live catalog);
+  each reproduces in a clean worktree at `c54daf7` with this package reverted, so all three are
+  pre-existing and not caused by the deadline change.
 - `npm run build` succeeded.
 - Compiled CLI against an owned loopback provider: a workspace settings file naming
   `timeout: 7200` loads without a settings error, the turn completes, exit 0, one request. Before
