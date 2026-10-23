@@ -818,7 +818,7 @@ test('/model makes a typed pick the default for new sessions', { timeout: 8000 }
     // The picker's enter arm writes the default. A typed pick always re-applies (the recovered
     // `R` validates and switches without a same-model check), so the second line repeats it.
     assert.equal(stored().model, 'second-model');
-    assert.match(stderr.value(), /Model: second-model/);
+    assert.match(stderr.value(), /Set model to second-model and saved as your default for new sessions/);
     assert.doesNotMatch(stdout.value() + stderr.value(), /Unknown command; use \/help/);
   } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
@@ -850,4 +850,49 @@ test('bare /config opens the editor mode choice and saves the picked mode', { ti
     assert.doesNotMatch(stderr.value(), /Unknown command; use \/help/);
     assert.doesNotMatch(stderr.value(), /Use \/config editor=normal\|vim/);
   } finally { session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('a cold cache asks before a model switch and a cancelled answer keeps the model', { timeout: 12_000 }, async () => {
+  const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-switch-gate-')));
+  const config = defaultConfig(workspace, []);
+  config.model = 'first-model';
+  // The gate needs caching on and a turn that ended before the cache lifetime.
+  config.gateway = { ...config.gateway!, promptCaching: true };
+  const session = Session.open(workspace, { config });
+  session.append({ kind: 'message', message: { role: 'user', content: 'earlier' } });
+  session.append({ kind: 'message', message: { role: 'assistant', content: [{ type: 'text', text: 'earlier' }] },
+    response: { ...reply('earlier'), usage: { ...reply('earlier').usage, output_tokens: 30 } } });
+  session.append({ kind: 'turn_end', reason: 'end_turn',
+    duration: { uuid: '00000000-0000-4000-8000-000000000000', durationMs: 1,
+      timestamp: new Date(Date.now() - 2 * 3_600_000).toISOString() } });
+  const provider: ModelProvider = { count: async () => 0, complete: async () => reply('unused') };
+  const stdout = output(), stderr = output();
+  const input = new PassThrough();
+  const waitFor = async (check: () => boolean, label: string) => {
+    const deadline = Date.now() + 5000;
+    while (!check()) { if (Date.now() > deadline) assert.fail(`wait expired: ${label}`); await new Promise(resolve => setTimeout(resolve, 5)); }
+  };
+  try {
+    const loop = interactiveLoop(session, provider, stubRuntime(),
+      { input, output: stdout.stream, status: stderr.stream, signal: new AbortController().signal });
+    input.write('/model second-model\n');
+    // The recovered dialog names the target and carries the cache warning.
+    await waitFor(() => stdout.value().includes('Yes, switch to second-model'), 'first confirmation');
+    assert.match(stdout.value(), /Your next response will be slower and use more tokens/);
+    input.write('n\n');
+    await waitFor(() => stderr.value().includes('Kept model as first-model'), 'cancel verdict');
+    assert.equal(session.config.model, 'first-model');
+    // A refusal does not acknowledge the tokens, so the same change asks again.
+    input.write('/model second-model\n');
+    await waitFor(() => stdout.value().split('Yes, switch to second-model').length === 3, 'second confirmation');
+    input.write('y\n');
+    // The switch moves the loop onto a successor session, so the outcome is read from the notice.
+    await waitFor(() => stderr.value().includes('Set model to second-model'), 'switch notice');
+    // The confirmation acknowledged the token count, so a later switch no longer asks.
+    input.write('/model third-model\n');
+    await waitFor(() => stderr.value().includes('Set model to third-model'), 'unasked switch');
+    assert.equal(stdout.value().split('Yes, switch to third-model').length, 1);
+    input.write('/exit\n');
+    await loop;
+  } finally { session.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });

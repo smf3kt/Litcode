@@ -54,6 +54,9 @@ import { DEFAULT_EFFORT, effortCommand, isEffortLevel, modelEffort, modelSetting
   effortIndicator, effortOverride, type EffortLevel } from './effort-command.js';
 import { effortSliderRequest } from './effort-slider.js';
 import { modelPickerRequest, MODEL_PICKER_TITLE } from './model-picker.js';
+import { cacheIsCold, cacheMissGate, effortChangeGate, effortKeptMessage, effortSwitchConfirm,
+  lastResponseModel, maxEffortReminderEnabled, modelKeptMessage, modelNotice, modelSwitchConfirm,
+  SWITCH_CACHE_WARNING, totalOutputTokens } from './switch-confirm.js';
 import { LOGIN_KINDS, UNCONFIGURED_MODEL, runLogin, type LoginPrompts, type StoredCredential } from './login.js';
 import { thinkingDialogRequest, THINKING_DIALOG_TITLE, THINKING_MID_CONVERSATION_WARNING } from './thinking-dialog.js';
 import { TIME_FORMATS, type ConfigPanelState, type ConfigUpdate } from './config-panel.js';
@@ -882,6 +885,22 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     }
     return /^(y|yes)$/i.test((await readAnswer(`\n${message}\n${title}? [y/N] `, signal)).trim());
   };
+  /**
+   * `cie` (chunk-24k7d6mw.js [858783,859961)): the switch confirmation carries its own button
+   * labels and the cache warning as its subtitle. `confirm()` above keeps the generic Yes/No
+   * pair for permission prompts, so this dialog has its own surface.
+   */
+  const confirmSwitch = async (request: ReturnType<typeof modelSwitchConfirm>, signal: AbortSignal): Promise<boolean> => {
+    if (terminal?.prompt) {
+      const answer = await readDialog({ title: request.title,
+        message: `${SWITCH_CACHE_WARNING}\n\n${request.body}`, titleWaitingFor: 'permission prompt',
+        confirmLabel: request.confirmLabel,
+        choices: [{ label: request.confirmLabel, value: 'yes' }, { label: request.cancelLabel, value: 'no' }],
+        defaultIndex: 0 }, signal);
+      return answer?.selected[0] === 'yes';
+    }
+    return /^(y|yes)$/i.test((await readAnswer(`\n${request.title}\n${SWITCH_CACHE_WARNING}\n${request.body}\n${request.confirmLabel}? [y/N] `, signal)).trim());
+  };
   const agent = () => {
     // A plugin catalog change replaces the tool set a later turn can reach; a
     // turn boundary is the only point the session's pinned schemas move.
@@ -1177,7 +1196,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
    * The gate reads the session model before the hooks and re-runs once if a hook moved it, so a
    * slow hook cannot let an accept overwrite a newer choice; a second move blocks the switch.
    */
-  const preModelSwitch = async (model: string, signal: AbortSignal, revalidating = false): Promise<void> => {
+  const preModelSwitch = async (model: string, signal: AbortSignal, revalidating = false): Promise<{ skipConfirm: boolean }> => {
     // `fw(o())` (chunk-sfn1dbxq.js 2937319) reads the model together with the live permission
     // mode, so a mode change during a hook revalidates just like a model change.
     const identity = () => `${session.config.model ?? ''}\0${session.permissionOwner.state().mode}`;
@@ -1194,6 +1213,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (revalidating) throw new Error('the session model changed while a PreModelSwitch hook was running; pick again');
       return preModelSwitch(model, signal, true);
     }
+    // `oXr` records an allow as `skipConfirm` (W110); `lt` (chunk-f5wjy38g.js 21771) passes it
+    // as `_` and skips the cache-miss model gate when it is set.
+    return { skipConfirm: pre.permissionDecision === 'allow' };
   };
   const modelPickerModels = (): string[] =>
     [...new Set([session.config.model,
@@ -1202,6 +1224,43 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       ...listSessions(session.config.workspace).map(item => item.model)])]
       .filter((model): model is string => Boolean(model) && model !== 'inherit' && model !== UNCONFIGURED_MODEL)
       .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
+  /**
+   * `BJt` (chunk-24k7d6mw.js 858708): the total output tokens the user last confirmed a cache
+   * miss at. The recovered keeps it in the app state, not the transcript, and this host does the
+   * same: a resumed session starts unacknowledged.
+   */
+  let cacheMissAckedAtOutputTokens: number | undefined;
+  const cacheState = () => {
+    const events = session.events;
+    return { totalOutputTokens: totalOutputTokens(events), ackedAtOutputTokens: cacheMissAckedAtOutputTokens,
+      lastResponseModel: lastResponseModel(events),
+      cacheCold: cacheIsCold(events, session.config.gateway?.promptCaching === true, Date.now()) };
+  };
+  /**
+   * `KJn` (chunk-hh0bresc.js 13170): the model switch asks first when the conversation has grown
+   * since the last confirmation and the new model is a different family. A cancelled confirmation
+   * leaves the session untouched and says so.
+   */
+  const confirmCacheMissModel = async (model: string, signal: AbortSignal, skipConfirm = false): Promise<boolean> => {
+    if (skipConfirm) return true;
+    if (!cacheMissGate({ ...cacheState(), nextModel: model, currentModel: session.config.model ?? '' })) return true;
+    if (!await confirmSwitch(modelSwitchConfirm(model), signal)) {
+      options.status.write(`${modelKeptMessage(session.config.model ?? model)}\n`);
+      return false;
+    }
+    cacheMissAckedAtOutputTokens = totalOutputTokens(session.events);
+    return true;
+  };
+  /** `FNe` (chunk-9vcaezw1.js 13584): the same gate for a level that would actually change. */
+  const confirmCacheMissEffort = async (level: EffortLevel | undefined, signal: AbortSignal): Promise<boolean> => {
+    if (!effortChangeGate({ ...cacheState(), nextEffort: level, currentEffort: session.config.effort })) return true;
+    if (!await confirmSwitch(effortSwitchConfirm(level ?? 'auto'), signal)) {
+      options.status.write(`${effortKeptMessage(session.config.effort)}\n`);
+      return false;
+    }
+    cacheMissAckedAtOutputTokens = totalOutputTokens(session.events);
+    return true;
+  };
   /**
    * Picker `w9`/`FL` (chunk-24k7d6mw.js 894465/895434): the chosen model is written to the live
    * session state (`mainLoopModel`, `sessionEffort`) instead of opening a successor session, so
@@ -1213,7 +1272,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
     const previous = session.config.model;
     const userDir = session.config.configSources?.userDir;
-    await preModelSwitch(model, signal);
+    const { skipConfirm } = await preModelSwitch(model, signal);
+    // `lt` (chunk-f5wjy38g.js 21771): the model gate runs before the effort gate, and a refusal
+    // at either one abandons the switch. A PreModelSwitch hook's `allow` sets `skipConfirm` and
+    // bypasses the model question, exactly as the source does.
+    if (!await confirmCacheMissModel(model, signal, skipConfirm)) return;
+    if (!await confirmCacheMissEffort(effort, signal)) return;
     // `X9(Ex, iae(lC), k9, Xn)` at chunk-24k7d6mw.js 894527 is called without `await`, so the
     // live switch never waits on the settings queue and a failed effort-table write does not
     // undo the switch; `s` skips it with the model default.
@@ -1231,14 +1295,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       const inherited = modelEffort(session.config, model);
       if (inherited === undefined) delete session.config.effort; else session.config.effort = inherited;
     }
-    let saveSuffix = ' for this session only';
+    let saveSuffix = '';
+    let saved = false;
     // bWe.description, sfn1dbxq [1650777,1650860), UTF-16: a live model write repaints its getter.
     terminal?.setCommands?.(commandTable(session.config));
     refreshEffortUi();
     if (!sessionOnly && userDir !== undefined) {
       try {
         saveModelSetting(model, userDir);
-        saveSuffix = ' and saved as your default for new sessions';
+        saved = true;
       } catch (error) {
         // `x_t` (chunk-hh0bresc.js 10783): the model stays applied and the notice carries why the
         // default write failed.
@@ -1249,7 +1314,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
     }
     await agent().emitHook('PostModelSwitch', { from_model: previous, to_model: model, requested_model: model }, signal);
-    options.status.write(`Model set to ${model}${saveSuffix}\n`);
+    options.status.write(`${modelNotice(model, { saved, effort,
+      ...(effort === undefined ? {} : { effortPersistable: persistableEffort(effort) !== undefined }),
+      ...(saveSuffix === '' ? {} : { saveFailure: saveSuffix }) })}\n`);
   };
   /** A4/fLt, 24k7d6mw [1487552,1487705)/[674472,675750), UTF-16: session-owned live list. */
   openTasksPanelLive = async () => {
@@ -1380,6 +1447,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   async function applyEffortCommand(prompt: string): Promise<void> {
     let sessionOnly = false;
     let ultracodeNotice: string | undefined;
+    let pendingToggle: boolean | undefined;
     if (prompt === '/effort' && terminal?.prompt) {
       // It/Ce, chunk-76jkr621.js [22174,30123)/[17514,17916), UTF-16:
       // Enter applies the displayed level even unchanged; s skips the default write and tab
@@ -1389,18 +1457,19 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         workflowsEnabled: session.config.features?.workflow === true,
       }), options.signal);
       const picked = answer?.adjusted;
-      if (picked === undefined) { options.status.write('Effort selection cancelled.\n'); return; }
+      if (picked === undefined) { options.status.write(`${effortKeptMessage(session.config.effort)}\n`); return; }
       if (!isEffortLevel(picked)) throw new Error('Invalid effort selection');
       sessionOnly = answer?.key === 's';
       // Source `Ce` in `chunk-76jkr621.js` 17497: a changed ultracode flag rides the same accept
-      // as the level, and the notice joins the level message with ` · `.
+      // as the level, and the notice joins the level message with ` · `. `Ce` runs only after the
+      // `FNe` gate has accepted, so the flag waits for that answer instead of moving early.
       if (answer?.toggled !== undefined && answer.toggled !== (session.config.ultracode === true)) {
         const toggle = effortCommand(answer.toggled ? 'ultracode on' : 'ultracode off', {
           current: session.config.effort, fallback: DEFAULT_EFFORT, save: false,
           workflowsEnabled: session.config.features?.workflow === true,
           modelSupportsUltracode: session.config.features?.workflow !== false, model: session.config.model });
         if (toggle.ultracode === undefined) { output.write(`${toggle.message}\n`); return; }
-        if (toggle.ultracode) session.config.ultracode = true; else delete session.config.ultracode;
+        pendingToggle = toggle.ultracode;
         ultracodeNotice = toggle.message;
       }
       prompt = `/effort ${picked}`;
@@ -1420,6 +1489,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     }
     const previousEffort = session.config.effort;
     const previousSelection = session.config.effortSelection;
+    // `FNe` (chunk-9vcaezw1.js 13584) guards the slider and the typed level alike: a level that
+    // would actually change after the conversation has grown asks once before it applies.
+    if (result.effort !== undefined
+      && !await confirmCacheMissEffort(result.effort === null ? undefined : result.effort, options.signal)) return;
+    if (pendingToggle !== undefined) {
+      if (pendingToggle) session.config.ultracode = true; else delete session.config.ultracode;
+    }
     if (result.ultracode !== undefined) {
       // Source `k`'s `o?.({ultracode:e})`: the flag lives on the session, never the settings.
       if (result.ultracode) session.config.ultracode = true; else delete session.config.ultracode;
@@ -1505,7 +1581,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const selectModel = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal, fromConfig = false) => {
     if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
     const config = structuredClone(session.config);
-    await preModelSwitch(model, signal);
+    const { skipConfirm } = await preModelSwitch(model, signal);
+    // `lt` (chunk-f5wjy38g.js 21771) runs for the typed and picker arms alike.
+    if (!await confirmCacheMissModel(model, signal, skipConfirm)) return;
+    if (!await confirmCacheMissEffort(effort, signal)) return;
     if (fromConfig && effort !== undefined) {
       await saveConfigModelEffort(model, effort, config.configSources?.userDir);
       const value = persistableEffort(effort), key = modelSettingsKey(model);
@@ -1520,7 +1599,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (inherited === undefined) delete config.effort; else config.effort = inherited;
     }
     await applyConfig(config, true, signal);
-    options.status.write(`Model: ${model}\n`);
+    // `he` (chunk-f5wjy38g.js 23096) builds the same `fle` notice for the typed command and the
+    // picker; only the default-save arm differs.
+    options.status.write(`${modelNotice(model, { saved: !sessionOnly && config.configSources?.userDir !== undefined,
+      ...(effort === undefined ? {} : { effort, effortPersistable: persistableEffort(effort) !== undefined }) })}\n`);
   };
   try {
     await terminal?.bindInputHistory?.(session);
@@ -2587,7 +2669,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (answer?.adjusted !== undefined && isEffortLevel(answer.adjusted)) pendingEffort = answer.adjusted;
             pendingSessionOnly = answer?.key === 's';
           } else selected = (await withTurn(signal => readAnswer(`Current model: ${session.config.model}\nModel ID, or :cancel: `, signal))).trim();
-          if (!selected || selected === ':cancel') { options.status.write('Model selection cancelled.\n'); continue; }
+          if (!selected || selected === ':cancel') { options.status.write(`${modelKeptMessage(session.config.model)}\n`); continue; }
           // Pr has no same-model early return; Enter can promote the live choice to a default.
           // xWe, hh0bresc [9916,10415), UTF-16, likewise runs the default-save condition.
           prompt = `/model ${selected}`;
