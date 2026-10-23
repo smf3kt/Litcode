@@ -13,11 +13,18 @@ const compiled = process.argv.includes("--compiled");
 const creators = process.argv.includes("--creators");
 const idle = process.argv.includes("--idle");
 const headlessIdle = process.argv.includes("--idle-headless");
+const headlessWakeup = process.argv.includes("--wakeup-headless");
+const headlessStop = process.argv.includes("--stop-pending");
+const headlessInterrupt = process.argv.includes("--interrupt-wait");
+const headlessBudget = process.argv.includes("--budget");
+const headlessNoRearm = process.argv.includes("--no-rearm");
+const headlessStream = process.argv.includes("--stream");
+const headlessSchema = process.argv.includes("--schema");
 const wakeupTiming = process.argv.includes("--wakeup-timing");
 const keepalive = process.argv.includes("--keepalive");
 const keepaliveDisabled = process.argv.includes("--keepalive-disabled");
 const wakeupChain = wakeupTiming || process.argv.includes("--wakeup");
-const durable = idle || headlessIdle || creators || process.argv.includes("--durable");
+const durable = idle || headlessIdle || headlessWakeup || creators || process.argv.includes("--durable");
 const fixture = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "scheduler-cli-")));
 const workspace = path.join(fixture, "workspace");
 const clock = path.join(fixture, "clock");
@@ -41,7 +48,8 @@ try {
   fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { schedulerJitter: true,
     ...(durable ? { schedulerDurable: true } : {}) }, permissions: { mode: "bypass", allow: [], deny: [] } }));
   const storeFile = path.join(workspace, ".harness/scheduled_tasks.json");
-  if (durable) fs.writeFileSync(storeFile, JSON.stringify({ tasks: creators || idle || headlessIdle ? [] : [{ id: "deadbeef", cron: "0 0 * * *",
+  if (durable) fs.writeFileSync(storeFile, JSON.stringify({ tasks: headlessWakeup ? [{ id: "headless-cron", cron: "* * * * *",
+    prompt: "ordinary cron must stay idle", createdAt: initial - 600_000 }] : creators || idle || headlessIdle ? [] : [{ id: "deadbeef", cron: "0 0 * * *",
     prompt: "missed fixture task", createdAt: initial - 2 * 86400000 }] }));
   const replaceStore = tasks => {
     const staging = path.join(fixture, "store-next.json");
@@ -58,7 +66,14 @@ try {
       const index = requests.length;
       const latest = body.messages.at(-1)?.content;
       const resultTurn = Array.isArray(latest) && latest.some(block => block.type === "tool_result");
-      const block = keepalive
+      const block = headlessWakeup
+        ? index === 1 || index === 3 && !headlessNoRearm
+          ? { type: "tool_use", id: `headless-wakeup-${index}`, name: "schedule_wakeup",
+            input: { delaySeconds: 60, prompt: "headless dynamic fixture", reason: "Await owned headless fixture", noop: false } }
+          : index === 4 && headlessStop
+            ? { type: "tool_use", id: "headless-stop", name: "schedule_wakeup", input: { stop: true } }
+            : { type: "text", text: headlessSchema ? '{"done":true}' : "headless dynamic complete" }
+        : keepalive
         ? !resultTurn && /stop keepalive fixture/.test(JSON.stringify(latest))
           ? { type: "tool_use", id: `keepalive-stop-${index}`, name: "schedule_wakeup", input: { stop: true } }
           : !resultTurn && /arm keepalive fixture/.test(JSON.stringify(latest))
@@ -99,7 +114,7 @@ try {
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const env = { ...process.env };
   for (const key of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(key)) delete env[key];
-  Object.assign(env, { SMOKE_CLOCK: clock, SMOKE_CLOCK_FROZEN: String(keepalive || wakeupChain && !wakeupTiming),
+  Object.assign(env, { SMOKE_CLOCK: clock, SMOKE_CLOCK_FROZEN: String(headlessWakeup || keepalive || wakeupChain && !wakeupTiming),
     HARNESS_LOOP_KEEPALIVE: keepaliveDisabled ? "off" : keepalive ? "on" : "off",
     LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/scheduler",
     LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate",
@@ -108,14 +123,17 @@ try {
     stderr = ""; stdout = ""; done = false;
     child = spawn(process.execPath, ["--import", preload,
       ...(compiled ? [path.join(root, "bin/litcode.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")]),
-      "--workspace", workspace, ...(extra.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), ...(headlessIdle ? ["hold headless fixture"] : ["--interactive"]), ...extra],
+      "--workspace", workspace, ...(extra.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), ...(headlessIdle ? ["hold headless fixture"] : headlessWakeup
+        ? ["--output-format", headlessStream ? "stream-json" : "json",
+          ...(headlessSchema ? ["--json-schema", '{"type":"object","properties":{"done":{"type":"boolean"}},"required":["done"],"additionalProperties":false}'] : []),
+          ...(headlessBudget ? ["--max-model-calls", "2"] : []), "arm headless dynamic fixture"] : ["--interactive"]), ...extra],
       { cwd: root, stdio: ["pipe", "pipe", "pipe"], env });
     child.stderr.on("data", chunk => { stderr = (stderr + chunk).slice(-64000); wake?.(); });
     child.stdout.on("data", chunk => { stdout = (stdout + chunk).slice(-32000); wake?.(); });
     return new Promise((resolve, reject) => { child.on("error", reject); child.on("close", code => { done = true; wake?.(); resolve(code); }); });
   };
   let exited = launch();
-  if (!headlessIdle) await wait(() => stderr.includes("Personal harness."));
+  if (!headlessIdle && !headlessWakeup) await wait(() => stderr.includes("Personal harness."));
   const inspect = async expected => {
     const deadline = Date.now() + 5_000;
     while (Date.now() < deadline) {
@@ -131,7 +149,58 @@ try {
     }
     throw new Error(`Cron inspection did not reach ${expected ?? "empty"}`);
   };
-  if (keepalive) {
+  if (headlessWakeup) {
+    const beforeStore = fs.readFileSync(storeFile, "utf8");
+    const resultAt = index => {
+      const content = requests[index].messages.at(-1).content;
+      const block = content.find(item => item.type === "tool_result");
+      assert.equal(block.is_error, undefined);
+      return JSON.parse(typeof block.content === "string" ? block.content : block.content[0].text);
+    };
+    child.stdin.end();
+    await wait(() => requests.length >= 2);
+    const first = resultAt(1);
+    assert.equal(first.clampedDelaySeconds, 60);
+    if (headlessInterrupt) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      child.kill("SIGINT");
+      assert.equal(await exited, 130);
+    } else if (headlessBudget) {
+      assert.equal(await exited, 0, "an exactly exhausted budget permits the completed result and ends waiting");
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      assert.equal(done, false, "the closed input retains a pending dynamic wakeup");
+      fs.writeFileSync(clock, String(first.scheduledFor));
+      await wait(() => requests.length >= (headlessNoRearm ? 3 : 4));
+      assert.match(JSON.stringify(requests[2].messages.at(-1)), /headless dynamic fixture/);
+      if (headlessStop) {
+        await wait(() => requests.length === 5);
+        assert.equal(resultAt(4).cancelledWakeups, 1);
+        assert.equal(resultAt(4).stopped, true);
+      } else if (!headlessNoRearm) {
+        const second = resultAt(3);
+        assert.equal(second.scheduledFor, first.scheduledFor + 60_000);
+        fs.writeFileSync(clock, String(second.scheduledFor));
+        await wait(() => requests.length === 5);
+        assert.match(JSON.stringify(requests[4].messages.at(-1)), /headless dynamic fixture/);
+      }
+      assert.equal(await exited, 0);
+    }
+    child = undefined;
+    const stream = headlessStream ? stdout.trim().split("\n").map(line => JSON.parse(line)) : [];
+    const result = headlessStream ? stream.find(event => event.type === "result").result : JSON.parse(stdout.trim());
+    if (headlessStream) assert.equal(stream.filter(event => event.type === "result").length, 1);
+    if (headlessSchema) assert.deepEqual(result.structured_output, { done: true });
+    assert.equal(result.reason, headlessInterrupt ? "aborted" : "end_turn");
+    assert.equal(result.model_calls, requests.length);
+    assert.equal(fs.readFileSync(storeFile, "utf8"), beforeStore, "ordinary file cron remains untouched at EOF");
+    assert.equal(fs.existsSync(path.join(workspace, ".harness/scheduled_tasks.lock")), false);
+    assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
+    console.log(JSON.stringify({ cli: "passed", compiled, headlessWakeup: true, stopPending: headlessStop,
+      interrupted: headlessInterrupt, exhaustedBudget: headlessBudget, omittedRearmEnds: headlessNoRearm,
+      streamOutput: headlessStream, structuredOutput: headlessSchema,
+      ordinaryCronUntouched: true, locksReleased: true, modelRequests: requests.length, gateway: "owned loopback SSE" }));
+  } else if (keepalive) {
     let completed = 0;
     const waitTurn = async () => {
       completed++;

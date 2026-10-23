@@ -67,7 +67,7 @@ import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 import { createTools, type ToolContext, type ToolDefinition } from './tools.js';
 import { createNotebookTools } from './notebooks.js';
 import { BackgroundRegistry, createBackgroundTools } from './background.js';
-import { LocalScheduler, createSchedulerTools, type LocalSchedulerOptions } from './scheduler.js';
+import { LocalScheduler, createSchedulerTools, loopKeepaliveEnabled, type LocalSchedulerOptions } from './scheduler.js';
 import { isLoopDefaultSentinel, newLoopDeliveryState, readLoopFile, resolveLoopDefaultFire,
   type LoopDeliveryState } from './loop-file.js';
 import { SKILL_TOOL_NAME, skillsSection, refreshPluginComponents } from './skill-catalog.js';
@@ -476,6 +476,9 @@ export type Runtime = {
   checkScheduler?(owner: string): void;
   /** KL [562879,563257), chunk-rx2nah4x.js binds loading without starting file delivery. */
   bindSchedulerLoading?(owner: string, isLoading: () => boolean): void;
+  bindHeadlessScheduler?(owner: string, isLoading: () => boolean): void;
+  loopWakeup?(owner: string): Pick<import('./scheduler.js').DynamicWakeup, 'id' | 'scheduledFor'> | null;
+  drainLoopWakeups?(owner: string): Extract<RuntimeEvent, { kind: 'scheduled' }>[];
   subscribe?(listener: (owner: string) => void): () => void;
   taskRecords?(config: SessionConfig): TaskRecord[];
   subscribeTasks?(config: SessionConfig, listener: () => void): () => void;
@@ -634,6 +637,14 @@ export async function createRuntime(
     lsp?: ReturnType<typeof createLspTools>; worktrees?: WorktreeManager;
     queued: RuntimeEvent[]; instructionPaths: Set<string>; terminalQueued: Extract<RuntimeEvent, { kind: 'hook_terminal' }>[]; terminalDropped: number;
     dropped: number; reportedDropped: number; reportedAgentDrops: number; loopDelivery?: LoopDeliveryState };
+  // Headless source digests and zero-based UTF-16 ranges: research/ports/W316-headless-wakeup.md.
+  // Hc.resolveLoopDefaultFire [562811,562865), chunk-rx2nah4x.js resolves before notification dispatch.
+  const resolveScheduledPrompt = (resources: Resources, event: Extract<RuntimeEvent, { kind: 'scheduled' }>): void => {
+    if (!isLoopDefaultSentinel(event.prompt)) return;
+    const delivery = resources.loopDelivery ??= newLoopDeliveryState();
+    event.prompt = resolveLoopDefaultFire(delivery, event.prompt,
+      () => readLoopFile(config.workspace, config.configSources?.userDir ?? defaultUserDir()));
+  };
   const owners = new Map<string, Resources>();
   const ownerScopes = new Map<string, object>();
   const toolSets = new Map<string, { fingerprint: string; tools: ToolDefinition[] }>();
@@ -649,6 +660,7 @@ export async function createRuntime(
   const schedulerAccessors = new Map<string, () => LocalScheduler>();
   const schedulerSessions = new Set<string>();
   const schedulerLoading = new Map<string, () => boolean>();
+  const headlessSchedulers = new Set<string>();
   const namedCatalogs = new Map<string, { catalog: NamedWorkflowCatalog; workspace: string }>();
   const listeners = new Set<(owner: string) => void>();
   const taskSubscriptions = new Set<() => void>();
@@ -858,6 +870,10 @@ export async function createRuntime(
         const scheduler = new LocalScheduler({ ...options.scheduler, jitter: current.features?.schedulerJitter === true,
           // Ie [18880,18897), chunk-appb2dtz.js: read the latest loading owner at each tick.
           isLoading: () => schedulerLoading.get(owner)?.() ?? false,
+          // KL [562879,563257), chunk-rx2nah4x.js closes ordinary cron delivery and file leasing at EOF.
+          filter: kind => !headlessSchedulers.has(owner) || kind === 'wakeup',
+          leaseFileTasks: () => !headlessSchedulers.has(owner),
+          keepalive: () => !headlessSchedulers.has(owner) && loopKeepaliveEnabled(),
           // `x0r` [5233,5610), chunk-jrz2zk22.js: the session owns its lease and delivery queue.
           ...(durable ? { store: { workspace: current.workspace, sessionId: owner, sessionIds: schedulerSessions,
             ...(catalogSession?.id === owner ? { transcriptDirectory: path.dirname(catalogSession.file) } : {}),
@@ -1264,6 +1280,7 @@ export async function createRuntime(
     workflowAccessors.delete(owner);
     schedulerAccessors.delete(owner);
     schedulerLoading.delete(owner);
+    headlessSchedulers.delete(owner);
     subtaskSeams.delete(owner);
     namedCatalogs.get(owner)?.catalog.close();
     namedCatalogs.delete(owner);
@@ -1529,19 +1546,30 @@ export async function createRuntime(
       bindSchedulerLoading(owner, isLoading) {
         schedulerLoading.set(owner, isLoading);
       },
+      // KL [562879,563257), chunk-rx2nah4x.js binds the closed-input scheduler to the parked model owner.
+      bindHeadlessScheduler(owner, isLoading) {
+        headlessSchedulers.add(owner);
+        schedulerLoading.set(owner, isLoading);
+      },
+      // KL.er/Zy [484728,484814)/[87478,87623), chunk-rx2nah4x.js reads only pending loop tasks.
+      loopWakeup(owner) {
+        const task = owners.get(owner)?.scheduler?.getWakeup();
+        return task ? { id: task.id, scheduledFor: task.scheduledFor } : null;
+      },
+      // KL.ae [562457,562875), chunk-rx2nah4x.js admits dynamic notifications after input closes.
+      drainLoopWakeups(owner) {
+        const resources = owners.get(owner);
+        if (!resources) return [];
+        const events = resources.queued.filter((event): event is Extract<RuntimeEvent, { kind: 'scheduled' }> =>
+          event.kind === 'scheduled' && event.dynamic === true);
+        resources.queued = resources.queued.filter(event => event.kind !== 'scheduled' || !event.dynamic);
+        for (const event of events) resolveScheduledPrompt(resources, event);
+        return events;
+      },
       drainEvents(owner) {
         const resources = owners.get(owner);
         if (!resources) return [];
-        // Source `Hc.resolveLoopDefaultFireAsync(e.autonomousLoopPreamble, Se, gt)` in
-        // `chunk-rx2nah4x.js` [562724): a scheduled fire resolves a loop sentinel into its tick
-        // text before it reaches the turn, carrying the delivery state across fires. The async
-        // variant differs only in awaiting the file read; this host reads it synchronously.
-        const loopDelivery = resources.loopDelivery ??= newLoopDeliveryState();
-        for (const event of resources.queued) {
-          if (event.kind !== 'scheduled' || !isLoopDefaultSentinel(event.prompt)) continue;
-          event.prompt = resolveLoopDefaultFire(loopDelivery, event.prompt,
-            () => readLoopFile(config.workspace, config.configSources?.userDir ?? defaultUserDir()));
-        }
+        for (const event of resources.queued) if (event.kind === 'scheduled') resolveScheduledPrompt(resources, event);
         const events: RuntimeEvent[] = [...resources.terminalQueued.splice(0),
           ...(resources.instructionPaths.size ? [{ kind: "instruction_paths" as const, paths: [...resources.instructionPaths] }] : []), ...resources.queued.splice(0)];
         resources.instructionPaths.clear();

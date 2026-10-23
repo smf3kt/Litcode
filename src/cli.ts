@@ -12,6 +12,7 @@ import { resolveInheritedGateway, sameGateway, type InheritedField, type Inherit
 import { Session, applyManagedPolicy, managedPolicySchema, type SessionConfig } from './session.js';
 import { PolicyHelper } from './policy-helper.js';
 import { interactiveLoop } from './interactive.js';
+import { drainHeadlessWakeups } from './headless-wakeup.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
 import { briefTranscriptEnabled, startupVerbose } from './focus-command.js';
 import { configuredEffort } from './effort-command.js';
@@ -918,8 +919,19 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       hookOptions: currentRuntime.hookOptions?.(currentSession.config, currentSession.id),
       stopState: () => currentRuntime.stopState?.(currentSession.id) ?? { background_tasks: [], session_crons: [] },
     });
-    // KL [562879,563257), chunk-rx2nah4x.js: headless cron reads the active model owner.
-    currentRuntime.bindSchedulerLoading?.(currentSession.id, () => agent.isRunning());
+    // Source module digest and zero-based UTF-16 ranges: research/ports/W316-headless-wakeup.md.
+    // KL [562879,563257), chunk-rx2nah4x.js closes the input lane and parks dynamic wakeups only.
+    currentRuntime.bindHeadlessScheduler?.(currentSession.id, () => agent.isRunning());
+    const drainWakeups = (result: import('./agent.js').RunResult) => drainHeadlessWakeups({
+      runtime: currentRuntime, owner: currentSession.id, agent, result, signal: controller.signal,
+      budgetExhausted: () => budget.snapshot().exhausted,
+      onWait: () => {
+        // oS [88801,88917), chunk-rx2nah4x.js avoids stderr wait notices beside machine output on a terminal.
+        if (process.stderr.isTTY && !((format === 'json' || format === 'stream-json') && process.stdout.isTTY)) {
+          process.stderr.write('\nWaiting for background work to finish (scheduled wakeup). Press Ctrl+C to exit now.\n');
+        }
+      },
+    });
     // Run SessionStart hooks once, for startup or resume.
     const started = await agent.startSession(values.resume ? 'resume' : 'startup', controller.signal);
     // The recovered headless prologue prepends the hook's initial user message
@@ -965,7 +977,8 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         const child = JSON.parse(output) as { reason: string; model_calls: number; text: string };
         await finish(child.reason, schema === undefined ? output : child.text, child.model_calls); return;
       }
-      const result = await agent.run(output, controller.signal, undefined, { expansion_type: 'slash_command', command_name: slash!.name, command_args: slash!.args, prompt: rawPrompt });
+      const result = await drainWakeups(await agent.run(output, controller.signal, undefined,
+        { expansion_type: 'slash_command', command_name: slash!.name, command_args: slash!.args, prompt: rawPrompt }));
       await finish(result.reason, result.text, result.modelCalls);
       return;
     }
@@ -975,9 +988,9 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         ? 'Write hello.txt and read it back.'
         : expandOneShot(positionals.join(' '), currentSession.config);
     if (schema !== undefined && prompt !== undefined) prompt += `\nReturn a complete JSON value matching this schema:\n${JSON.stringify(schema)}`;
-    const result = await agent.run(prompt, controller.signal, values.attach === undefined ? undefined
+    const result = await drainWakeups(await agent.run(prompt, controller.signal, values.attach === undefined ? undefined
       : { path: values.attach, ...(values.pages === undefined ? {} : { pages: values.pages }) }, selectedSkill && slash
-        ? { expansion_type: 'slash_command', command_name: slash.name, command_args: slash.args, prompt: rawPrompt } : undefined);
+        ? { expansion_type: 'slash_command', command_name: slash.name, command_args: slash.args, prompt: rawPrompt } : undefined));
     await finish(result.reason, result.text, result.modelCalls);
     if (demo && fs.readFileSync(path.join(workspace, 'hello.txt'), 'utf8') !== 'Hello from the independent agent.\n') throw new Error('Demo verification failed');
   } catch (error) {
