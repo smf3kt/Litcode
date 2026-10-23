@@ -241,7 +241,7 @@ test('describeCron summarises common shapes and falls back to the raw string', (
 // ---------------------------------------------------------------------------
 // Scheduler lifecycle
 
-test('opt-in jitter bounds cron fires and preserves exact wakeups and legacy timing', () => {
+test('opt-in jitter bounds cron fires and preserves legacy exact timing', () => {
   const start = new Date(2024, 0, 1, 0, 0, 0);
   const { c, scheduler } = fixture(start, { jitter: true });
   const nominal = start.getTime() + 60000;
@@ -258,11 +258,10 @@ test('opt-in jitter bounds cron fires and preserves exact wakeups and legacy tim
   assert.ok(early.nextAt <= halfHour && early.nextAt >= halfHour - 90000 && early.nextAt >= c.at());
   const exact = scheduler.create({ cron: '31 0 * * *', prompt: 'exact', recurring: false });
   assert.equal(exact.nextAt, halfHour + 60000);
-  const wakeup = scheduler.scheduleWakeup(60, 'wake');
-  assert.equal(wakeup.scheduledFor, c.at() + 60000);
   scheduler.close();
   const legacy = fixture(start).scheduler;
   assert.equal(legacy.create({ cron: '* * * * *', prompt: 'legacy' }).nextAt, nominal);
+  assert.equal(legacy.scheduleWakeup(60, 'wake').scheduledFor, start.getTime() + 60000);
   legacy.close();
 });
 

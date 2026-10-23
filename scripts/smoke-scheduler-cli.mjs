@@ -13,7 +13,8 @@ const compiled = process.argv.includes("--compiled");
 const creators = process.argv.includes("--creators");
 const idle = process.argv.includes("--idle");
 const headlessIdle = process.argv.includes("--idle-headless");
-const wakeupChain = process.argv.includes("--wakeup");
+const wakeupTiming = process.argv.includes("--wakeup-timing");
+const wakeupChain = wakeupTiming || process.argv.includes("--wakeup");
 const durable = idle || headlessIdle || creators || process.argv.includes("--durable");
 const fixture = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "scheduler-cli-")));
 const workspace = path.join(fixture, "workspace");
@@ -25,7 +26,7 @@ const birth = pid => execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
 }).trim();
 let stderr = "", stdout = "", done = false;
 const requests = [];
-const initial = new Date(2024, 0, 1, 0, 0).getTime();
+const initial = new Date(2024, 0, 1, 0, 0, wakeupTiming ? 30 : 0).getTime();
 const wait = predicate => new Promise((resolve, reject) => {
   const timer = setTimeout(() => { wake = undefined; reject(new Error(`CLI wait expired: ${stderr}`)); }, 10000);
   wake = () => {
@@ -47,7 +48,7 @@ try {
   };
   fs.writeFileSync(clock, String(initial));
   // Only this owned child process sees the controllable clock. Wall timers stay real.
-  fs.writeFileSync(preload, `import fs from "node:fs";\nconst OriginalDate=Date;\nlet stamp, anchor=OriginalDate.now();\nconst now=()=>{const next=Number(fs.readFileSync(process.env.SMOKE_CLOCK,"utf8"));if(next!==stamp){stamp=next;anchor=OriginalDate.now();}return stamp+OriginalDate.now()-anchor;};\nglobalThis.Date=class extends OriginalDate { constructor(...args){super(...(args.length?args:[now()]));} static now(){return now();} };\n`);
+  fs.writeFileSync(preload, `import fs from "node:fs";\nconst OriginalDate=Date;\nlet stamp, anchor=OriginalDate.now();\nconst now=()=>{const next=Number(fs.readFileSync(process.env.SMOKE_CLOCK,"utf8"));if(next!==stamp){stamp=next;anchor=OriginalDate.now();}return stamp+(process.env.SMOKE_CLOCK_FROZEN==="true"?0:OriginalDate.now()-anchor);};\nglobalThis.Date=class extends OriginalDate { constructor(...args){super(...(args.length?args:[now()]));} static now(){return now();} };\n`);
   server = http.createServer((req, res) => {
     const chunks = []; req.on("data", chunk => chunks.push(chunk));
     req.on("end", () => {
@@ -60,7 +61,7 @@ try {
           ? { type: "tool_use", id: `wakeup-stop-${index}`, name: "schedule_wakeup", input: { stop: true } }
           : !resultTurn && /(?:dynamic chain fixture|arm wakeup fixture)/.test(JSON.stringify(latest)) && continueChain
             ? { type: "tool_use", id: `wakeup-${index}`, name: "schedule_wakeup",
-              input: { delaySeconds: 3600, prompt: "dynamic chain fixture", reason: "Continue owned chain fixture", noop: true } }
+              input: { delaySeconds: wakeupTiming ? 300 : 3600, prompt: "dynamic chain fixture", reason: "Continue owned chain fixture", noop: true } }
             : { type: "text", text: "wakeup fixture complete" }
         : headlessIdle && index === 1
         ? { type: "tool_use", id: "headless-create", name: "cron_create", input: { cron: "* * * * *", prompt: "headless held task", recurring: true, durable: true } }
@@ -89,7 +90,8 @@ try {
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const env = { ...process.env };
   for (const key of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(key)) delete env[key];
-  Object.assign(env, { SMOKE_CLOCK: clock, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/scheduler",
+  Object.assign(env, { SMOKE_CLOCK: clock, SMOKE_CLOCK_FROZEN: String(wakeupChain && !wakeupTiming),
+    LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/scheduler",
     LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate",
     LLM_EFFORT: "medium", LLM_THINKING: "false" });
   const launch = (extra = []) => {
@@ -135,21 +137,40 @@ try {
     };
     child.stdin.write("arm wakeup fixture\n");
     let result = await waitTurn();
-    assert.ok(result.scheduledFor >= initial + 3_600_000);
-    let lastFireAt;
-    for (let hour = 1; hour <= 168; hour++) {
-      lastFireAt = result.scheduledFor;
-      fs.writeFileSync(clock, String(lastFireAt));
+    if (wakeupTiming) {
+      assert.equal(result.clampedDelaySeconds, 300);
+      assert.equal(result.wasClamped, false);
+      assert.equal(result.scheduledFor, initial + 270_000, "the source cache lead selects the earlier minute");
+      const due = result.scheduledFor;
+      const before = requests.length;
+      fs.writeFileSync(clock, String(due - 1000));
+      await new Promise(resolve => setTimeout(resolve, 350));
+      assert.equal(requests.length, before);
+      continueChain = false;
+      fs.writeFileSync(clock, String(due));
+      await waitTurn();
+      assert.match(JSON.stringify(requests.at(-1).messages.at(-1)), /dynamic chain fixture/);
+      continueChain = true;
+      child.stdin.write("arm wakeup fixture\n");
       result = await waitTurn();
-      assert.equal(result.scheduledFor === 0, hour === 168, `chain age ${hour}h`);
+      assert.equal(result.scheduledFor, due + 240_000);
+    } else {
+      assert.ok(result.scheduledFor >= initial + 3_600_000);
+      let lastFireAt;
+      for (let hour = 1; hour <= 168; hour++) {
+        lastFireAt = result.scheduledFor;
+        fs.writeFileSync(clock, String(lastFireAt));
+        result = await waitTurn();
+        assert.equal(result.scheduledFor === 0, hour === 168, `chain age ${hour}h`);
+      }
+      const expiredRequests = requests.length;
+      fs.writeFileSync(clock, String(lastFireAt + 60_001));
+      await new Promise(resolve => setTimeout(resolve, 1100));
+      assert.equal(requests.length, expiredRequests, "an expired chain has no armed wakeup");
+      child.stdin.write("arm wakeup fixture\n");
+      result = await waitTurn();
+      assert.ok(result.scheduledFor > 0, "a stale aged-out tombstone permits a new chain");
     }
-    const expiredRequests = requests.length;
-    fs.writeFileSync(clock, String(lastFireAt + 60_001));
-    await new Promise(resolve => setTimeout(resolve, 1100));
-    assert.equal(requests.length, expiredRequests, "an expired chain has no armed wakeup");
-    child.stdin.write("arm wakeup fixture\n");
-    result = await waitTurn();
-    assert.ok(result.scheduledFor > 0, "a stale aged-out tombstone permits a new chain");
     const cancelledAt = result.scheduledFor;
     child.stdin.write("stop wakeup fixture\n");
     result = await waitTurn();
@@ -167,8 +188,9 @@ try {
     child.stdin.end("/exit\n");
     assert.equal(await exited, 0); child = undefined;
     assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
-    console.log(JSON.stringify({ cli: "passed", compiled, wakeupChain: true, continuousHours: 168,
-      expiredWithoutRearm: true, stopAndRestart: true, noopAccepted: true, modelRequests: requests.length,
+    console.log(JSON.stringify({ cli: "passed", compiled, wakeupChain: true,
+      ...(wakeupTiming ? { sourceTiming: true, minuteCeilingAndCacheLead: true } : { continuousHours: 168, expiredWithoutRearm: true }),
+      stopAndRestart: true, noopAccepted: true, modelRequests: requests.length,
       gateway: "owned loopback SSE", locksReleased: true }));
   } else if (headlessIdle) {
     await wait(() => requests.length === 2 && releaseResponse !== undefined);
