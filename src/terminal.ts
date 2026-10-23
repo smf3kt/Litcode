@@ -1280,6 +1280,8 @@ export interface TerminalPromptRequest {
   configPanel?: import('./config-panel.js').ConfigPanelHost;
   /** fLt's V(tjt), 24k7d6mw [674472,675750), UTF-16: live local Background rows. */
   backgroundTasks?: () => import('./tasks-panel.js').BackgroundTaskSnapshot;
+  /** YG, 24k7d6mw [667173,670211), UTF-16: one dialog-owned live shell/monitor snapshot. */
+  backgroundTaskDetail?: () => import('./task-details.js').BackgroundTaskDetail | undefined;
   /**
    * When present the request runs as a sequence of groups followed by a review
    * page, and the answer carries one entry per group. Copied from the recovered
@@ -1353,6 +1355,8 @@ export interface TerminalPromptKey {
 }
 export interface TerminalPromptAnswer {
   selected: string[];
+  /** fLt.Gs [677501,677704), chunk-24k7d6mw.js, UTF-16: index in the live accepted list. */
+  backgroundTaskIndex?: number;
   clarify?: true;
   themeEdit?: boolean;
   /** Jln, chunk-er09v3xa.js 9331: the picked session id from the `/resume` panel. */

@@ -712,7 +712,7 @@ test('a live Background dialog follows task identity and guards a disappeared fo
     key('x'); await delay(0);
     assert.equal(resolved, false, 'the first x after focus loss leaves the replacement running');
     key('x');
-    assert.deepEqual(await pending, { selected: ['task:shell:first'], key: 'x' });
+    assert.deepEqual(await pending, { selected: ['task:shell:first'], key: 'x', backgroundTaskIndex: 0 });
     assert.equal(tui.state.text, 'parent draft');
     const third = { ...first, id: 'third', command: 'third command' };
     for (const [sequence, selected] of [['\t', 'first'], ['\x1b[Z', 'first'],
@@ -721,8 +721,9 @@ test('a live Background dialog follows task identity and guards a disappeared fo
       pending = tui.prompt({ ...backgroundTaskRequest(read()), backgroundTasks: read }, signal.signal);
       key('\x1b[B'); jobs = [first, third]; tui.backgroundWorkChanged();
       key(sequence); key('x');
-      assert.deepEqual(await pending, { selected: ['task:shell:' + selected], key: 'x' },
-        'explicit navigation clears disappeared-focus protection');
+      assert.deepEqual(await pending, { selected: ['task:shell:' + selected], key: 'x',
+        backgroundTaskIndex: selected === 'third' ? 1 : 0 },
+      'explicit navigation clears disappeared-focus protection and reports the live row index');
     }
     pending = tui.prompt({ ...backgroundTaskRequest(read()), backgroundTasks: read }, signal.signal);
     jobs = []; tui.backgroundWorkChanged();

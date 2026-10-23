@@ -58,6 +58,7 @@ import { renderPreviewMarkdown } from './tui-markdown.js';
 import { TuiRenderer, footerElement, type FooterPart, type FooterStatus, type PromptLine } from './tui-renderer.js';
 import { backgroundFooterLabel } from './tui-background.js';
 import { backgroundTaskRequest } from './tasks-panel.js';
+import { taskDetailFrame, type BackgroundTaskDetail } from './task-details.js';
 import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
@@ -285,6 +286,7 @@ interface ActiveDialog {
     searchRows: Set<number>; pending?: Promise<void> };
   resumePicker?: { owner: ResumePicker; hits: Map<number, number> };
   backgroundFocusLost?: boolean;
+  backgroundDetail?: { snapshot: BackgroundTaskDetail | undefined; timer?: ReturnType<typeof setInterval> };
   busy?: boolean;
   editor: EditorState;
   undo: InputUndo;
@@ -1788,9 +1790,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.sourcePicker?.cancel();
     // Formatter and settings callbacks retain their host ownership outside the cloned display data.
     // The resume picker's preview/rename callbacks are host closures too; only its rows are data.
-    const { adjust: axis, configPanel, resumePicker, backgroundTasks, ...plain } = request;
+    const { adjust: axis, configPanel, resumePicker, backgroundTasks, backgroundTaskDetail, ...plain } = request;
     const snapshot: TerminalPromptRequest = structuredClone(plain);
     if (backgroundTasks !== undefined) snapshot.backgroundTasks = backgroundTasks;
+    if (backgroundTaskDetail !== undefined) snapshot.backgroundTaskDetail = backgroundTaskDetail;
     if (axis !== undefined) snapshot.adjust = axis;
     if (configPanel !== undefined) snapshot.configPanel = configPanel;
     if (resumePicker !== undefined) snapshot.resumePicker = { ...resumePicker, logs: structuredClone(resumePicker.logs) };
@@ -1806,6 +1809,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         if (settled) return;
         settled = true; signal.removeEventListener('abort', cancelled);
         if (dialog.adjustClock !== undefined) clearInterval(dialog.adjustClock.timer);
+        if (dialog.backgroundDetail?.timer !== undefined) clearInterval(dialog.backgroundDetail.timer);
         // Source removal is in-memory only; this host also unlinks the private
         // attachments it captured for the dialog.
         dialog.imageCapture?.abort();
@@ -1850,7 +1854,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (snapshot.resumePicker !== undefined) {
         dialog.resumePicker = { owner: new ResumePicker(snapshot.resumePicker), hits: new Map() };
       }
+      if (snapshot.backgroundTaskDetail !== undefined) dialog.backgroundDetail = { snapshot: undefined };
       this.dialog = dialog;
+      // YG/Di, 24k7d6mw [667173,670211), 1r9zp6s1 [24622,24861), UTF-16.
+      if (dialog.backgroundDetail !== undefined) {
+        this.refreshBackgroundDialog();
+        if (this.dialog !== dialog) return;
+        if (dialog.backgroundDetail.snapshot?.state === 'running') {
+          dialog.backgroundDetail.timer = setInterval(() => {
+            if (this.dialog !== dialog) return;
+            this.refreshBackgroundDialog(); this.render();
+          }, 1000);
+          dialog.backgroundDetail.timer.unref?.();
+        }
+      }
       // Pt/he, 76jkr621 [21105,21789), UTF-16: repaint from a modal-owned 100 ms clock.
       if (snapshot.adjust?.kind === 'slider') {
         const timer = setInterval(() => {
@@ -2925,8 +2942,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Recovered `a3`: the notes input owns keys while it is open; Esc exits it,
     // and Enter saves the text and takes the focused/stored answer when present.
     if (dialog.notesEditing) { this.handleNotesAction(dialog, action, command, sequence); return; }
+    // bj [1038,1312), chunk-n7mc1kmr.js, UTF-16: details own close/back/stop keys.
+    if (dialog.backgroundDetail !== undefined) {
+      this.refreshBackgroundDialog();
+      if (this.dialog !== dialog) return;
+      if (command === 'left') { dialog.finish({ selected: [], key: 'back' }); return; }
+      if (command === 'submit' || action.type === 'insert' && action.text === ' ') { dialog.finish(); return; }
+    }
     // fLt.Kc, 24k7d6mw [682045,682255), UTF-16: a vanished focus consumes the next stop.
-    if (dialog.request.backgroundTasks !== undefined) {
+    if (dialog.request.backgroundTasks !== undefined && dialog.backgroundDetail === undefined) {
       this.refreshBackgroundDialog();
       if (action.type === 'insert' && action.text === 'x' && dialog.backgroundFocusLost) {
         dialog.backgroundFocusLost = false; this.render(); return;
@@ -3749,7 +3773,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       : { ...answer, adjusted: adjust.values[dialog.adjustIndex] ?? adjust.initial,
         ...(adjust.toggle === undefined ? {} : { toggled: adjust.toggle.on }) };
     const groups = dialog.request.groups ?? [];
-    if (!groups.length) { dialog.finish(settled); return; }
+    if (!groups.length) {
+      dialog.finish(dialog.request.backgroundTasks !== undefined && dialog.backgroundDetail === undefined
+        ? { ...settled, backgroundTaskIndex: dialog.index } : settled);
+      return;
+    }
     const group = groups[dialog.step];
     if (group) {
       const notes = dialog.notes.get(group.key)?.trim();
@@ -4156,6 +4184,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private refreshBackgroundDialog(): void {
     const dialog = this.dialog, read = dialog?.request.backgroundTasks;
     if (dialog === undefined || read === undefined) return;
+    if (dialog.backgroundDetail !== undefined) {
+      const snapshot = dialog.request.backgroundTaskDetail?.();
+      dialog.backgroundDetail.snapshot = snapshot;
+      if (snapshot === undefined || snapshot.state !== 'running') {
+        dialog.finish({ selected: [], key: 'gone' }); return;
+      }
+      const frame = taskDetailFrame(snapshot, Math.max(20, this.options.output.columns ?? 80));
+      dialog.request.title = frame.title;
+      dialog.request.message = frame.lines.join('\n');
+      dialog.request.choices = undefined;
+      dialog.request.readOnly = true;
+      dialog.request.keys = [{ key: 'x', label: 'stop' }];
+      return;
+    }
     const previous = dialog.request.choices ?? [];
     const selected = previous[dialog.index]?.value;
     const next = backgroundTaskRequest(read());
@@ -4189,6 +4231,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (dialog.resumePicker) return this.renderResumePicker(dialog, columns, bodyRows);
     if (dialog.modelPicker) return this.renderModelPicker(dialog, columns, bodyRows);
     if (dialog.copyPicker) return this.renderCopyPicker(dialog, columns, bodyRows);
+    if (dialog.backgroundDetail?.snapshot !== undefined) {
+      const frame = taskDetailFrame(dialog.backgroundDetail.snapshot, columns);
+      const height = Math.max(0, bodyRows);
+      dialog.scroll = Math.min(dialog.scroll, Math.max(0, frame.lines.length - height));
+      const visible = frame.lines.slice(dialog.scroll, dialog.scroll + height);
+      while (visible.length < height) visible.push('');
+      return [frame.title, ...visible, SEPARATOR.repeat(columns), '',
+        'Left go back / Esc Enter Space close / x stop / PgUp/PgDn'].map(line => pad(line, columns));
+    }
     const clean = (text: string) => text.replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
     const oneLine = (text: string) => clean(text).replace(/[\t\n]/g, ' ');
     const groups = dialog.request.groups ?? [];

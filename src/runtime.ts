@@ -497,6 +497,8 @@ export type Runtime = {
   stopBackground?(owner: string): number;
   /** Live jobs, running child agents and scheduled crons, the `/tasks` panel's snapshot. */
   backgroundTasks?(owner: string): import('./tasks-panel.js').BackgroundTaskSnapshot;
+  /** zG/iKe, 24k7d6mw [667037,667173), f0442373 [14457,14501), UTF-16: passive owned output. */
+  backgroundTaskDetail?(owner: string, id: string): import('./task-details.js').BackgroundTaskDetail | undefined;
   /** Stop one job, child agent or cron by id; undefined when the id is no longer live. */
   stopTask?(owner: string, id: string): Promise<import('./tasks-panel.js').BackgroundTaskKind | undefined>;
   releaseSession?(owner: string): Promise<void>;
@@ -1521,6 +1523,15 @@ export async function createRuntime(
       backgroundWorkCount(owner) { return backgroundWorkCountForOwner(owner); },
       stopBackground(owner) { return stopBackgroundForOwner(owner); },
       backgroundTasks(owner) { return backgroundTasksForOwner(owner); },
+      backgroundTaskDetail(owner, id) {
+        if (closed || signal.aborted) return undefined;
+        const registry = owners.get(owner)?.background;
+        if (registry === undefined) return undefined;
+        try {
+          const job = registry.snapshot(id);
+          return job.source === 'websocket' ? undefined : job;
+        } catch { return undefined; }
+      },
       stopTask(owner, id) { return stopTaskForOwner(owner, id); },
       subscribeTasks(current, listener) {
         if (closed || !current.features?.tasks) return () => {};
