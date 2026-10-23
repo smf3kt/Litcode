@@ -424,6 +424,9 @@ export interface LocalSchedulerOptions {
   isLoading?: () => boolean;
   assistantMode?: boolean;
   keepalive?: () => boolean;
+  /** x0r B/Q [5233,5610), chunk-jrz2zk22.js controls task admission and file leasing. */
+  filter?: (kind: SchedulerEvent['kind']) => boolean;
+  leaseFileTasks?: () => boolean;
   /** Injectable clock. Defaults to `() => new Date()`. */
   now?: () => Date;
   /**
@@ -477,6 +480,8 @@ export class LocalScheduler {
   private readonly isLoading: () => boolean;
   private readonly assistantMode: boolean;
   private readonly keepalive: () => boolean;
+  private readonly filter: (kind: SchedulerEvent['kind']) => boolean;
+  private readonly leaseFileTasks: () => boolean;
   private readonly now: () => Date;
   private readonly maxJobs: number;
   private readonly recurringMaxAgeMs: number;
@@ -514,6 +519,8 @@ export class LocalScheduler {
     this.isLoading = options.isLoading ?? (() => false);
     this.assistantMode = options.assistantMode === true;
     this.keepalive = options.keepalive ?? loopKeepaliveEnabled;
+    this.filter = options.filter ?? (() => true);
+    this.leaseFileTasks = options.leaseFileTasks ?? (() => true);
     this.now = options.now ?? (() => new Date());
     this.maxJobs = options.maxJobs ?? MAX_JOBS;
     this.recurringMaxAgeMs = options.recurringMaxAgeMs ?? RECURRING_MAX_AGE_MS;
@@ -641,8 +648,8 @@ export class LocalScheduler {
   /** `oe` [9890,10444), chunk-jrz2zk22.js: acquire, read, watch, then retry a contended lease. */
   private async startStore(): Promise<boolean> {
     const store = this.store!;
-    const acquired = await acquireSchedulerLock(store.workspace, { sessionId: this.storeSessionId });
-    if (this.closed || this.storeClosing) {
+    const acquired = this.leaseFileTasks() && await acquireSchedulerLock(store.workspace, { sessionId: this.storeSessionId });
+    if (this.closed || this.storeClosing || acquired && !this.leaseFileTasks()) {
       if (acquired) await releaseSchedulerLock(store.workspace, this.storeSessionId);
       return false;
     }
@@ -664,11 +671,11 @@ export class LocalScheduler {
   }
 
   private retryStoreLock(): void {
-    if (this.closed || this.storeClosing || this.storeLease !== 'waiting' || this.lockAttempt) return;
+    if (this.closed || this.storeClosing || this.storeLease !== 'waiting' || this.lockAttempt || !this.leaseFileTasks()) return;
     const store = this.store!;
     this.lockAttempt = (async () => {
       const acquired = await acquireSchedulerLock(store.workspace, { sessionId: this.storeSessionId });
-      if (this.closed || this.storeClosing) {
+      if (this.closed || this.storeClosing || !this.leaseFileTasks()) {
         if (acquired) await releaseSchedulerLock(store.workspace, this.storeSessionId);
         return;
       }
@@ -716,7 +723,7 @@ export class LocalScheduler {
     for (const id of this.fileDeadlines) if (!ids.has(id)) this.fileDeadlines.delete(id);
     if (startup) {
       const missed = missedTasks(stored, this.clock())
-        .filter(task => task.recurring !== true && !this.deliveredFileTasks.has(task.id)
+        .filter(task => this.filter('cron') && task.recurring !== true && !this.deliveredFileTasks.has(task.id)
           && this.creators!.eligible(task, this.hasStoreLock()));
       if (missed.length) {
         for (const task of missed) this.deliveredFileTasks.add(task.id);
@@ -889,6 +896,11 @@ export class LocalScheduler {
   tick(): SchedulerEvent[] {
     if (this.closed) return [];
     if (this.storeClosing) return [];
+    // x0r.ne [7616,7735), chunk-jrz2zk22.js releases the lease when input ownership ends.
+    if (this.storeLease === 'held' && !this.leaseFileTasks()) {
+      this.storeLease = 'waiting';
+      void this.storeOperation(() => releaseSchedulerLock(this.store!.workspace, this.storeSessionId));
+    }
     // x0r.ne [7616,7735), chunk-jrz2zk22.js: leave deadlines and file rows untouched while busy.
     if (this.isLoading() && !this.assistantMode) return [];
     const now = this.now();
@@ -903,7 +915,7 @@ export class LocalScheduler {
     // `ne` [7616,9890): ke runs before b creates or retains an id-keyed deadline.
     const due: ScheduledJob[] = [];
     for (const job of this.jobs.values()) {
-      if (this.deliveredFileTasks.has(job.id)) continue;
+      if (!this.filter('cron') || this.deliveredFileTasks.has(job.id)) continue;
       if (job.durable) {
         if (!this.creators!.eligible(job, this.hasStoreLock())) { this.fileDeadlines.delete(job.id); continue; }
         if (!this.fileDeadlines.has(job.id)) {
@@ -951,7 +963,7 @@ export class LocalScheduler {
     }
 
     // ne.b [7616,9890), chunk-jrz2zk22.js uses E0n for the source loop's actual deadline.
-    if (this.dynamic && this.dynamic.nextAt <= firedAt) {
+    if (this.dynamic && this.filter('wakeup') && this.dynamic.nextAt <= firedAt) {
       const wakeup = this.dynamic;
       this.dynamic = null;
       // Ie.onFireTask [18384,18879), chunk-appb2dtz.js retains the original prompt through the turn.
