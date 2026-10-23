@@ -1263,6 +1263,8 @@ export interface TerminalPromptGroup {
 }
 export interface TerminalPromptRequest {
   title?: string;
+  titleWaitingFor?: string;
+  titleOrigin?: 'local-command' | 'live-picker';
   message: string;
   choices?: readonly TerminalPromptChoice[];
   multiple?: boolean;

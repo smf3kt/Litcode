@@ -141,7 +141,7 @@ test('live Config persists merged channels and a mounted tool permission hooks b
   const loop = interactiveLoop(session, provider, runtime, { input: f.input, output: f.output, status: f.output, signal: controller.signal, terminal: f.tui });
   const until = async (predicate: () => boolean) => { for (let i = 0; i < 500; i++) { if (predicate()) return; await turn(); } assert.fail(f.text()); };
   const stored = () => JSON.parse(fs.readFileSync(file, 'utf8'));
-  const bells = () => [...f.raw().matchAll(/\x07/g)].length;
+  const bells = () => [...f.raw().replace(/\x1b\]0;[^\x07]*(?:\x07|\x1b\\)/g, '').matchAll(/\x07/g)].length;
   const selectChannel = async (expected: string) => { f.key('/config\r'); await until(() => f.tui.currentScreen === 'dialog'); f.key('Local notifications\r\x1b[C'); await until(() => stored().preferredNotifChannel === expected && !f.text().includes('Saving settings')); };
   try {
     await delay(20); const id = session.id;
