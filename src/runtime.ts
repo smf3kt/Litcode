@@ -471,7 +471,7 @@ export type Runtime = {
    * Source `me(!0)` before `ne`: the durable scheduler's first read happens before the loop
    * drains, so a restart's missed-task catch-up is in the queue for the first turn.
    */
-  settleScheduler?(owner: string): Promise<void>;
+  settleScheduler?(owner: string, sessionIds?: ReadonlySet<string>): Promise<void>;
   subscribe?(listener: (owner: string) => void): () => void;
   taskRecords?(config: SessionConfig): TaskRecord[];
   subscribeTasks?(config: SessionConfig, listener: () => void): () => void;
@@ -639,6 +639,7 @@ export async function createRuntime(
   const childInstructionCallbacks = new WeakMap<ToolDefinition[], (workspace: string, paths: string[]) => void>();
   const workflowAccessors = new Map<string, () => WorkflowRegistry>();
   const schedulerAccessors = new Map<string, () => LocalScheduler>();
+  const schedulerSessions = new Set<string>();
   const namedCatalogs = new Map<string, { catalog: NamedWorkflowCatalog; workspace: string }>();
   const listeners = new Set<(owner: string) => void>();
   const taskSubscriptions = new Set<() => void>();
@@ -843,13 +844,13 @@ export async function createRuntime(
     const scheduler = () => {
       const target = resources();
       return target.scheduler ??= (() => {
-        // `schedulerDurable` binds the recovered store (`chunk-jrz2zk22.js` `oe`): jobs marked
-        // durable land in `<workspace>/.harness/scheduled_tasks.json`, the session takes the
-        // store lock, and a fire only happens while that lock is held.
+        // `x0r.ke/me` [5987,7616), chunk-jrz2zk22.js: creator eligibility precedes delivery.
         const durable = current.features?.schedulerDurable === true;
         const scheduler = new LocalScheduler({ ...options.scheduler, jitter: current.features?.schedulerJitter === true,
           // `x0r` [5233,5610), chunk-jrz2zk22.js: the session owns its lease and delivery queue.
-          ...(durable ? { store: { workspace: current.workspace, sessionId: owner, onMissed: (prompt: string) => {
+          ...(durable ? { store: { workspace: current.workspace, sessionId: owner, sessionIds: schedulerSessions,
+            ...(catalogSession?.id === owner ? { transcriptDirectory: path.dirname(catalogSession.file) } : {}),
+            onMissed: (prompt: string) => {
             if (ownerScopes.get(owner) !== scope) return;
             if (target.queued.length >= 50) { target.queued.shift(); target.dropped++; }
             target.queued.push({ kind: 'scheduled', id: 'missed', prompt }); notify(owner);
@@ -1472,7 +1473,10 @@ export async function createRuntime(
         taskSubscriptions.add(stop); return stop;
       },
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
-      async settleScheduler(owner) {
+      async settleScheduler(owner, sessionIds) {
+        // `x0r.start`/`vd` [10901,11476): retain only sessions observed by this interactive owner.
+        for (const id of sessionIds ?? []) schedulerSessions.add(id);
+        schedulerSessions.add(owner);
         const accessor = schedulerAccessors.get(owner);
         if (accessor === undefined) return;
         // The attach is the first store read; a missed one-shot is queued by the time it resolves,

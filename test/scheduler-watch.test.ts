@@ -77,8 +77,9 @@ test('a contended file lease retries without blocking local jobs and a closing a
     await fs.rm(workspace, { recursive: true, force: true });
   });
   await first.ensureAttached();
-  first.create({ cron: '* * * * *', prompt: 'file job', durable: true });
-  await first.flushStore();
+  await writeStoredTasks(workspace, [{ id: '80000000', cron: '* * * * *', prompt: 'file job',
+    createdAt: at, recurring: true }]);
+  await until(() => first.getJob('80000000') !== null);
   assert.equal(await second.ensureAttached(), false);
   second.create({ cron: '* * * * *', prompt: 'local job' });
   at += 60_000;
@@ -89,8 +90,19 @@ test('a contended file lease retries without blocking local jobs and a closing a
   await first.close();
   const retry = [...handlers.values()].find(entry => entry.ms === STORE_LOCK_RETRY_MS);
   assert.ok(retry, 'the source five-second lease retry is armed');
-  retry.run();
-  await until(() => second.hasStoreLock());
+  const readFile = fs.readFile;
+  let releaseRead = () => {};
+  const pausedRead = new Promise<void>(resolve => { releaseRead = resolve; });
+  let readStarted = false;
+  fs.readFile = (async (...args: Parameters<typeof fs.readFile>) => {
+    if (String(args[0]) === scheduledTasksPath(workspace)) { readStarted = true; await pausedRead; }
+    return readFile(...args);
+  }) as typeof fs.readFile;
+  try {
+    retry.run();
+    await until(() => readStarted && second.hasStoreLock());
+    assert.deepEqual(second.tick(), [], 'a timer during acquisition cannot reuse the stale file stamp');
+  } finally { releaseRead(); fs.readFile = readFile; }
   await second.flushStore();
   assert.deepEqual(secondFires, ['local job'], 'the holder already fired this file occurrence');
   at += 60_000;
