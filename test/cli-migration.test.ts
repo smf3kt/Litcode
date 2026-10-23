@@ -74,7 +74,7 @@ async function until(condition: () => boolean, timeout = 4000): Promise<void> {
 test('CLI permission help lists all seven accepted modes', TIMEOUT, async () => {
   const result = await run(['--help']).done; assert.equal(result.code, 0, result.stderr);
   assert.equal(result.stdout.split('\n').find(line => line.startsWith('  --permission-mode MODE')),
-    '  --permission-mode MODE default, plan, acceptEdits, ask, bypass, auto or dontAsk (default default)');
+    '  --permission-mode MODE default, plan, acceptEdits, ask, bypass, auto or dontAsk (default bypass)');
   assert.match(result.stdout, /--effort LEVEL.*low, medium, high, xhigh or max/);
 });
 

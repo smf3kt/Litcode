@@ -108,7 +108,7 @@ test("reload refreshes local catalogs and policy without mutating pinned provide
     fs.writeFileSync(path.join(root, '.harness/settings.json'), JSON.stringify({ dialogExpiry: 'default' }));
     assert.equal(reloadConfig(next).dialogExpiry, undefined);
     assert.equal(reset.keybindings, undefined);
-    assert.equal(reset.mcpClient?.sampling, undefined); assert.equal(reset.permissions?.mode, "default");
+    assert.equal(reset.mcpClient?.sampling, undefined); assert.equal(reset.permissions?.mode, "bypass");
     fs.writeFileSync(path.join(root, ".harness/settings.json"), "{");
     assert.throws(() => reloadConfig(current), /JSON/);
     assert.equal(JSON.stringify(current), before);

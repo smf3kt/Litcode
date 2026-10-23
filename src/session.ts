@@ -138,7 +138,8 @@ export type SessionConfig = {
   watchConfig?: boolean;
   worktreeReturn?: string;
   configSources?: { userDir?: string; settingsFile?: string; managedSettingsFile?: string; overrides?: {
-    autoMemory?: boolean; watchConfig?: boolean; allowShell?: boolean; permissions?: PermissionPolicy;
+    autoMemory?: boolean; watchConfig?: boolean; allowShell?: boolean;
+    permissions?: Omit<PermissionPolicy, 'mode'> & { mode?: PermissionPolicy['mode'] };
     mcpClient?: { roots?: boolean; sampling?: boolean; samplingImages?: boolean; samplingArrays?: boolean; samplingAudio?: boolean; elicitation?: boolean }; tasks?: boolean; subagents?: boolean;
   } };
   lspServers?: LspConfig;
@@ -295,7 +296,7 @@ export const configSchema = z.object({
   watchConfig: z.boolean().optional(),
   worktreeReturn: z.string().min(1).optional(),
   configSources: z.object({ userDir: z.string().optional(), settingsFile: z.string().optional(), managedSettingsFile: z.string().optional(), overrides: z.object({
-    autoMemory: z.boolean().optional(), watchConfig: z.boolean().optional(), allowShell: z.boolean().optional(), permissions: permissionPolicySchema.optional(),
+    autoMemory: z.boolean().optional(), watchConfig: z.boolean().optional(), allowShell: z.boolean().optional(), permissions: permissionPolicySchema.partial({ mode: true }).optional(),
     mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), samplingArrays: z.boolean().optional(), samplingAudio: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional(),
     tasks: z.boolean().optional(), subagents: z.boolean().optional(),
   }).strict().optional() }).strict().optional(),

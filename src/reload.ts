@@ -6,6 +6,7 @@ import { loadKeybindings } from "./keybindings.js";
 import { agentTypesSection, setHeldSkills } from "./skill-catalog.js";
 import { startupVerbose } from "./focus-command.js";
 import { modelEffort } from './effort-command.js';
+import { DEFAULT_PERMISSION_MODE } from './permissions.js';
 
 /** Reload local policy/catalogs while retaining the live provider and call limits. */
 export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'preview' = 'apply'): SessionConfig {
@@ -108,8 +109,8 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
   next.allowShell = overrides.allowShell ?? settings.allowShell ?? false;
   next.mcpServers = settings.mcpServers ?? {};
   next.lspServers = settings.lspServers ?? {};
-  next.permissions = { ...(settings.permissions ?? { mode: "default", allow: [], deny: [] }),
-    ...(overrides.permissions === undefined ? {} : { mode: overrides.permissions.mode }),
+  next.permissions = { ...(settings.permissions ?? { mode: DEFAULT_PERMISSION_MODE.mode, allow: [], deny: [] }),
+    ...(overrides.permissions?.mode === undefined ? {} : { mode: overrides.permissions.mode }),
     layers: [...loaded.permissionLayers, ...(overrides.permissions?.layers ??
       (overrides.permissions ? [{ source: 'cliArg' as const, root: current.workspace, allow: overrides.permissions.allow,
         deny: overrides.permissions.deny, ask: overrides.permissions.ask ?? [], additionalDirectories: [] }] : []))] };

@@ -26,7 +26,7 @@ import { bindSettingsStore } from './plugin-chain-settings-store.js';
 import { bindWheelSettingsHost } from './plugin-chain-wheel-glue-host.js';
 import { compileJsonSchema, createHeadlessOutput, UsageBudget, UsageBudgetExceeded, withUsageBudget,
   type HeadlessOutput, type OutputFormat } from './structured-output.js';
-import type { PermissionPolicy } from './permissions.js';
+import { DEFAULT_PERMISSION_MODE, type PermissionPolicy } from './permissions.js';
 import {
   buildSystem,
   createRuntime,
@@ -72,7 +72,7 @@ Options (flags override LLM_* environment values for new sessions):
   --settings FILE        Explicit settings file loaded last (highest precedence)
   --managed-settings FILE  Pin authored permission/shell/feature/MCP policy fields
   --user-dir DIR         Harness user directory (default ~/.harness)
-  --permission-mode MODE default, plan, acceptEdits, ask, bypass, auto or dontAsk (default default)
+  --permission-mode MODE default, plan, acceptEdits, ask, bypass, auto or dontAsk (default bypass)
   --allow-tool RULE      Permit a tool rule (repeatable); outside the list is denied
   --deny-tool RULE       Deny a tool rule (repeatable)
   --tasks               Enable durable task tools (new sessions; default on)
@@ -183,8 +183,8 @@ function expandOneShot(prompt: string, config: SessionConfig): string {
 
 function resolvePermissions(base: PermissionPolicy | undefined, values: Record<string, unknown>): PermissionPolicy {
   const mode = values['permission-mode'] === undefined
-    ? base?.mode ?? 'default'
-    : choice(values['permission-mode'] as string, ['default', 'plan', 'acceptEdits', 'ask', 'bypass', 'auto', 'dontAsk'], 'default');
+    ? base?.mode ?? DEFAULT_PERMISSION_MODE.mode
+    : choice(values['permission-mode'] as string, ['default', 'plan', 'acceptEdits', 'ask', 'bypass', 'auto', 'dontAsk'], DEFAULT_PERMISSION_MODE.mode);
   const allow = dedupe([...(base?.allow ?? []), ...((values['allow-tool'] as string[] | undefined) ?? [])]);
   const deny = dedupe([...(base?.deny ?? []), ...((values['deny-tool'] as string[] | undefined) ?? [])]);
   return { ...base, mode, allow, deny };
@@ -426,9 +426,7 @@ function newConfig(
     const cliPermissions = resolvePermissions(undefined, values);
     config.permissions = { ...resolvePermissions(settings.permissions, values), layers: [...loaded.permissionLayers,
       { source: 'cliArg', root: workspace, allow: cliPermissions.allow, deny: cliPermissions.deny, ask: [], additionalDirectories: [] }] };
-    // The mode that skips every check stops meaning "stop asking me" when the
-    // process is root outside a container, so it is refused before anything
-    // runs rather than warned about afterwards.
+    applyManagedPolicy(config, loaded.managedSettings);
     const bypassRefusal = refuseBypassUnderRoot({ mode: config.permissions.mode });
     if (bypassRefusal.refused) {
       process.stderr.write(`${bypassRefusal.message}\n`);
@@ -440,13 +438,16 @@ function newConfig(
       ...(values['allow-shell'] === undefined ? {} : { allowShell: values['allow-shell'] as boolean }),
       ...(values.tasks === undefined ? {} : { tasks: values.tasks as boolean }),
       ...(values.subagents === undefined ? {} : { subagents: values.subagents as boolean }),
-      ...(["permission-mode", "allow-tool", "deny-tool"].some(key => values[key] !== undefined) ? { permissions: structuredClone({ ...cliPermissions, layers: [config.permissions.layers!.at(-1)!] }) } : {}),
+      ...(["permission-mode", "allow-tool", "deny-tool"].some(key => values[key] !== undefined) ? { permissions: {
+        ...(values['permission-mode'] === undefined ? {} : { mode: cliPermissions.mode }),
+        allow: cliPermissions.allow, deny: cliPermissions.deny,
+        layers: structuredClone([config.permissions.layers!.at(-1)!]),
+      } } : {}),
       ...(values['mcp-roots'] || values['mcp-sampling'] || values['mcp-elicitation'] ? { mcpClient: {
         ...(values['mcp-roots'] ? { roots: true } : {}), ...(values['mcp-sampling'] ? { sampling: true } : {}),
         ...(values['mcp-elicitation'] ? { elicitation: true } : {}),
       } } : {}),
     };
-    applyManagedPolicy(config, loaded.managedSettings);
   }
   return config;
 }
