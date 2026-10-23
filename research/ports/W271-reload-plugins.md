@@ -39,6 +39,8 @@ zero-based UTF-16 code units, ranges half-open.
 
 ## Host adaptations
 
+W299 adds explicit runtime reconfiguration before binding the successor, so applying plugin state replaces connected resources as well as pinned catalogs. Preflight and pure observers do not adopt hooks. Both accepted reload paths await hooks before SessionStart, including watchConfig. Counts use only active installed plugins. Warning and failed replacement/bind retain the old resource owner. See [W299](W299-plugin-toggle.md).
+
 - **Session.** The source keeps the current session and patches the live plugin store in place.
   This host's catalogs are pinned on the session config, so the rescan goes through the same
   successor-session path `/reload` uses (`applyConfig`), which re-reads the store, re-merges plugin

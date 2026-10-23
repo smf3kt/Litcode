@@ -527,8 +527,9 @@ Next up, scoped but not started:
       other notification triggers. W297 supplies the obtained mounted permission trigger and
       seven-channel Local notifications setting. W298 connects ordinary terminal titles to rename,
       progress, typed waiting, focus and lifetime. Experimental sidebar status remains false-gated.
-      W296 connects copyFullResponse
-      to its obtained /copy consumer and supersedes the earlier missing-consumer claim.
+      W296 connects copyFullResponse to its obtained /copy consumer and supersedes the earlier missing-consumer claim.
+      W299 preflight confirms prompt suggestions need the separate prediction request and a
+      default-false Config gate. Its complete producer remains a later dependency.
 
 Scoped out:
 
@@ -756,3 +757,9 @@ Explicitly out of scope for this loop:
       origin repair independently rechecked10/10. Affected261/261, check/build clean, final compiled29/29
       at `37618384...`. Notifications42/42 and Config35/35 passed before comment-only edits;
       all596 final compiled ASTs match. See `research/ports/W298-terminal-title.md`.
+- [x] W299 local Installed plugin toggles (Sn/jn/fc/Bm/Ec and q4/oL): Space, details,
+      typed enable/disable, deciding settings layer, pending active snapshot and complete accepted
+      runtime reload. Warning, failed replacement/bind, watcher and pure observations retain old
+      hooks/MCP. Two independent adoption defects repaired; fresh manual17, watcher14 and
+      observer20 checks pass. Affected334/334, check/build clean, compiled42/42 plus Config35/35
+      and old plugin10/10/reload8/8 at `f2ee3584...`. See `research/ports/W299-plugin-toggle.md`.

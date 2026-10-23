@@ -8,8 +8,8 @@ import { startupVerbose } from "./focus-command.js";
 import { modelEffort } from './effort-command.js';
 
 /** Reload local policy/catalogs while retaining the live provider and call limits. */
-export function reloadConfig(current: SessionConfig): SessionConfig {
-  const loaded = loadProjectConfig(current.workspace, { ...current.configSources, paths: [] });
+export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'preview' = 'apply'): SessionConfig {
+  const loaded = loadProjectConfig(current.workspace, { ...current.configSources, paths: [], pluginHooks });
   const settings = parseSettings(loaded.settings);
   const next = structuredClone(current);
   const overrides = current.configSources?.overrides ?? {};

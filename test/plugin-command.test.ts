@@ -86,7 +86,8 @@ test('/plugin opens the Installed list with each row and its state', async () =>
   assert.equal(run.prompts[0]!.readOnly, true);
   assert.equal(run.prompts[0]!.message, ['Installed plugins:',
     '  • alpha (v1.0.0, project) ✔ enabled', '  • zeta (v2.0.0, project) ✔ enabled'].join('\n'));
-  assert.deepEqual(run.prompts[0]!.keys, [{ key: 'f', label: 'filter enabled' }]);
+  assert.deepEqual(run.prompts[0]!.keys, [{ key: 'f', label: 'filter enabled' }, { key: ' ', label: 'toggle' }]);
+  assert.deepEqual(run.prompts[0]!.choices?.map(row => row.value), ['alpha', 'zeta']);
 });
 
 test('/plugins and /marketplace reach the same panel', async () => {

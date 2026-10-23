@@ -69,8 +69,8 @@ test('the enabled and disabled filters split the store and report an empty side'
     { name: 'off', scope: 'project', verified: true, enabled: false },
     { name: 'broken', scope: 'project', verified: false, enabled: true },
   ];
-  assert.deepEqual(filterPluginEntries(entries, 'enabled').map(entry => entry.name), ['on']);
-  assert.deepEqual(filterPluginEntries(entries, 'disabled').map(entry => entry.name), ['off', 'broken']);
+  assert.deepEqual(filterPluginEntries(entries, 'enabled').map(entry => entry.name), ['on', 'broken']);
+  assert.deepEqual(filterPluginEntries(entries, 'disabled').map(entry => entry.name), ['off']);
   assert.deepEqual(filterPluginEntries(entries).map(entry => entry.name), ['on', 'off', 'broken']);
   assert.equal(pluginFilteredEmpty('enabled'), 'No enabled plugins.');
 });

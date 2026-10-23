@@ -28,7 +28,7 @@ import path from "node:path";
 import ignore from "ignore";
 import { isMap, isSeq, parseDocument } from "yaml";
 import { hooksSchema, type HooksConfig } from "./hooks.js";
-import { discoverInstalledPluginComponents, pluginConfigSchema, type PluginConfig } from "./plugins.js";
+import { discoverInstalledPluginComponents, pluginConfigSchema, type InstalledPluginComponents, type PluginConfig } from "./plugins.js";
 import { loadPluginComponents, type ComponentDiagnostic } from './plugin-components.js';
 import { mergeSettings } from "./plugin-chain-settings-merge.js";
 import { managedSettingsDir } from "./plugin-chain-settings-source.js";
@@ -184,6 +184,7 @@ export interface LoadProjectOptions {
   /** Workspace-relative or absolute paths used to select conditional rules.
    * Omission preserves the original unconditional loading behavior. */
   paths?: string[];
+  pluginHooks?: 'apply' | 'preview';
 }
 
 /** Where an OS-managed policy came from and what the loader had to drop. */
@@ -1143,6 +1144,15 @@ export function defaultUserDir(): string {
  *  plugin must be unloaded, and an empty declaration list *is* that removal. */
 let pluginHooksAdoptionStarted = false;
 
+// q4/oL, 9yh2xzb7 [3332,4231)/[1781,3332), UTF-16; preview never adopts executable modules.
+export function applyPluginHooks(components: readonly InstalledPluginComponents[]): Promise<void> {
+  const declarations = components.flatMap(item => item.hooksModulePath
+    ? [{ name: item.plugin.manifest.name, modulePath: item.hooksModulePath, path: item.directory }] : []);
+  if (declarations.length === 0 && !pluginHooksAdoptionStarted) return Promise.resolve();
+  pluginHooksAdoptionStarted = true;
+  return import('./plugin-chain-registry.js').then(chain => chain.adoptPluginHooksModules(declarations));
+}
+
 export function loadProjectConfig(workspace: string, options: LoadProjectOptions = {}): LoadedConfig {
   const workspaceRoot = path.resolve(workspace);
   const workspaceReal = tryRealpath(workspaceRoot);
@@ -1352,19 +1362,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   let installedComponents: ReturnType<typeof discoverInstalledPluginComponents>;
   try {
     installedComponents = discoverInstalledPluginComponents(workspaceReal, plugins);
-    // The chain's side of the same discovery: a plugin whose hooks file names a module hands the chain
-    // its descriptor (`{name, modulePath, path}` — the source's own fields, `cIo`), which loads the
-    // module in the background because the module is code and discovery is synchronous. Once a process
-    // has adopted anything, every later read adopts again even with nothing declared, because that
-    // empty list is how a removed plugin is unloaded. Imported lazily until then, so a config read with
-    // no such plugin never pulls the chain in.
-    const declarations = installedComponents.flatMap(item => item.hooksModulePath
-      ? [{name: item.plugin.manifest.name, modulePath: item.hooksModulePath, path: item.directory}]
-      : []);
-    if (declarations.length > 0 || pluginHooksAdoptionStarted) {
-      pluginHooksAdoptionStarted = true;
-      void import("./plugin-chain-registry.js").then(chain => chain.adoptPluginHooksModules(declarations));
-    }
+    if (options.pluginHooks !== 'preview') void applyPluginHooks(installedComponents);
     // Plugin hooks run first; each explicit layer keeps its actual precedence.
     const pluginHooks: Record<string, unknown[]> = {};
     const pluginServers = Object.fromEntries(installedComponents.flatMap(item => Object.entries(item.mcpServers ?? {})));

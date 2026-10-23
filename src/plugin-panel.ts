@@ -10,6 +10,7 @@
  */
 
 import { te } from './tui-symbols.js';
+import type { TerminalPromptRequest } from './terminal.js';
 
 export const PLUGIN_PANEL_TITLE = 'Plugins';
 export const PLUGIN_PANEL_HEADER = 'Installed plugins:';
@@ -23,8 +24,9 @@ export interface PluginPanelEntry {
   readonly scope: string;
   /** The installed tree still matches its index digest. */
   readonly verified: boolean;
-  /** The store's global gate (`plugins.enabled`); a disabled store loads nothing. */
   readonly enabled: boolean;
+  readonly description?: string;
+  readonly appliedEnabled?: boolean;
 }
 
 /** Source `AKt`: the first real version among the candidates, prefixed with `v`. */
@@ -38,10 +40,12 @@ function cut(value: string): string {
   return value.length > 100 ? `${value.slice(0, 100)}…` : value;
 }
 
-/** `fc`'s status cell: a failed verification wins, then the store's enabled gate. */
+/** fc, tw1h5pks [216895,218065), UTF-16; failed load, desired state and pending application. */
 export function pluginStatusText(entry: PluginPanelEntry): string {
   if (!entry.verified) return `${te.cross} failed to load`;
-  return entry.enabled ? `${te.tick} enabled` : `${te.cross} disabled`;
+  const pending = entry.appliedEnabled !== undefined && entry.appliedEnabled !== entry.enabled
+    ? ' — run /reload-plugins to apply' : '';
+  return (entry.enabled ? `${te.tick} enabled` : `${te.cross} disabled`) + pending;
 }
 
 /** `fc`: `<id> (<version>, <scope>)`, with the version cell only when one resolves. */
@@ -73,5 +77,29 @@ export type PluginListFilter = 'enabled' | 'disabled';
 export function filterPluginEntries(entries: readonly PluginPanelEntry[], filter?: PluginListFilter): PluginPanelEntry[] {
   if (filter === undefined) return [...entries];
   const wantEnabled = filter === 'enabled';
-  return entries.filter(entry => (entry.verified && entry.enabled) === wantEnabled);
+  return entries.filter(entry => entry.enabled === wantEnabled);
+}
+
+export type PluginCommand = { type: 'menu' } | { type: 'list'; filter?: PluginListFilter }
+  | { type: 'enable' | 'disable'; plugin?: string } | { type: 'unsupported' };
+// FOe, g5swwp2g [665,2698), UTF-16; only installed local operations are present.
+export function parsePluginCommand(a: string): PluginCommand {
+  if (!a) return { type: 'menu' };
+  const t = a.trim().split(/\s+/);
+  switch (t[0]?.toLowerCase()) {
+    case 'list': case 'ls': {
+      const r = t.slice(1).find(e => e === '--enabled' || e === '--disabled');
+      if (r) return { type: 'list', filter: r === '--enabled' ? 'enabled' : 'disabled' };
+      return { type: 'list' };
+    }
+    case 'enable': return { type: 'enable', plugin: t[1] };
+    case 'disable': return { type: 'disable', plugin: t[1] };
+    default: return { type: 'unsupported' };
+  }
+}
+
+// Ec/ar/ft, tw1h5pks [172681,172787)/[166093,168579)/[155146,155218), UTF-16.
+export function pluginDetailRequest(entry: PluginPanelEntry): TerminalPromptRequest {
+  return { title: entry.name, message: [pluginRowLabel(entry), pluginStatusText(entry), entry.description].filter(Boolean).join('\n'),
+    choices: [{ label: entry.enabled ? 'Disable plugin' : 'Enable plugin', value: 'toggle-enabled' }] };
 }

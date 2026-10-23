@@ -115,7 +115,8 @@ export function replaceSkillsSection(system: string, skills: readonly SkillInfo[
  */
 export function reloadSkills(current: SessionConfig): void {
   if (current.skills === undefined) return;
-  const loaded = loadProjectConfig(current.workspace, { ...current.configSources, paths: [] });
+  // WRn/v, sfn1dbxq [3399814,3399910), hyft8yrm [13938,14479), UTF-16; a skill rescan does not apply hooks modules.
+  const loaded = loadProjectConfig(current.workspace, { ...current.configSources, paths: [], pluginHooks: 'preview' });
   current.skills.splice(0, current.skills.length, ...loaded.skills);
   setHeldSkills(current, loaded.conditionalSkills);
   current.system = replaceSkillsSection(current.system, current.skills);
