@@ -157,6 +157,7 @@ export type SessionEvent =
   | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string; startedAt?: number }
   | { kind: 'file_history'; path?: string; tracked: boolean }
   | { kind: 'message'; message: Anthropic.MessageParam; response?: Anthropic.Message; isMeta?: boolean; classifier?: import('./message-origin.js').ClassifierMessage }
+  | { kind: 'mcp_catalog'; configDigest: string; disabledServers: string[]; unavailableServers?: string[]; tools: SessionConfig['tools'] }
   | { kind: 'mcp_subscription'; server: string; configDigest: string; method: 'resources/subscribe' | 'resources/unsubscribe'; uri: string }
   | { kind: 'mcp_task'; server: string; configDigest: string; taskId: string; tool: string; createdAt: string; ttl: number | null; resolved: boolean; result?: string; isError?: boolean }
   | { kind: 'tool_start'; id: string; name: string }
@@ -327,6 +328,9 @@ const eventSchema = z.discriminatedUnion('kind', [
     mode: permissionPolicySchema.shape.mode, command: z.enum(['plan', 'permissions']) }).strict(),
   z.object({ kind: z.literal('file_history'), path: z.string().min(1).optional(), tracked: z.boolean() }).strict(),
   z.object({ kind: z.literal('message'), message: messageSchema, response: responseSchema.optional(), isMeta: z.boolean().optional(), classifier: classifierMessageSchema.optional() }).strict(),
+  z.object({ kind: z.literal('mcp_catalog'), configDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    disabledServers: z.array(z.string().min(1).max(256)).max(1024),
+    unavailableServers: z.array(z.string().min(1).max(256)).max(1024).optional(), tools: configSchema.shape.tools }).strict(),
   z.object({ kind: z.literal('mcp_subscription'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/),
     method: z.enum(['resources/subscribe', 'resources/unsubscribe']), uri: z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096 && !/[\x00-\x20\x7f]/.test(value)) }).strict(),
   z.object({ kind: z.literal('mcp_task'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/), taskId: z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/), tool: z.string().min(1).max(256), createdAt: z.string().datetime({ offset: true }), ttl: z.number().finite().int().nonnegative().nullable(), resolved: z.boolean(), isError: z.boolean().optional(), result: z.string().refine(value => Buffer.byteLength(value) <= 24000).optional() }).strict(),
@@ -524,6 +528,12 @@ export class Session {
     if (meta?.kind !== 'metadata') throw new Error('Session metadata is missing');
     this.id = meta.id;
     this.config = structuredClone(meta.config);
+    // RTe.kn/Bn, 24k7d6mw [1562359,1572850)/[1585446,1586735), UTF-16; replay only this configuration's accepted catalog.
+    const catalog = events.findLast(event => event.kind === 'mcp_catalog');
+    if (catalog?.kind === 'mcp_catalog') {
+      if (catalog.configDigest !== fingerprintOf(this.config.mcpServers ?? {})) throw new Error('MCP catalog configuration mismatch');
+      this.config.tools = structuredClone(catalog.tools);
+    }
     this.permissionUpdates = seedPermissionUpdates(this.config.permissions, this.config.workspace,
       this.config.configSources?.userDir ?? defaultUserDir());
     this.workingDirectories(false);
@@ -645,6 +655,7 @@ export class Session {
     Session.writeAll(this.fd, Buffer.from(JSON.stringify(event) + '\n'));
     fs.fsyncSync(this.fd);
     this.events.push(structuredClone(event));
+    if (event.kind === 'mcp_catalog') this.config.tools = structuredClone(event.tools);
     if (event.kind === 'title') for (const listener of this.titleListeners) listener();
     if (event.kind === 'file_history') {
       this.updateFileHistory(event);

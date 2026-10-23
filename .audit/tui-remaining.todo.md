@@ -475,8 +475,8 @@ Next up, scoped but not started:
       connected/tool-count, reconnecting, disconnected, not-configured and failure wording. The
       host lists its merged configured servers with live `Runtime.mcpServers()` statuses and
       `mcp__<server>__` tool counts, and `r` reconnects the selected row. Not ported: scope
-      headings, the per-server detail page, enable/disable, authentication, agent, claude.ai and
-      built-in groups. Unit 3/3 + 1/1, focused 145/145, compiled 6/6 at identity `0dbe310c…`.
+      headings, authentication, agent, claude.ai and built-in groups. W300 below supersedes the
+      detail/enable/disable exclusions. Unit 3/3 + 1/1, focused 145/145, compiled 6/6 at identity `0dbe310c…`.
       See `research/ports/W263-mcp.md`.
 - [x] W264 `/usage` (`/cost`, `/stats`) Stats tab (`Jn`, chunk-dag4qhha.js 92361; summary `ni` 98003):
       `No` (80670) journal aggregation, `zd`/`gr` (89449/90466) totals and streaks, `Bs`/`rn`
@@ -763,3 +763,8 @@ Explicitly out of scope for this loop:
       hooks/MCP. Two independent adoption defects repaired; fresh manual17, watcher14 and
       observer20 checks pass. Affected334/334, check/build clean, compiled42/42 plus Config35/35
       and old plugin10/10/reload8/8 at `f2ee3584...`. See `research/ports/W299-plugin-toggle.md`.
+- [x] W300 local /mcp management (At/icn/cNt/lNt, RTe.Bn/kn): server/tool details, Back,
+      reconnect and durable workspace enable/disable, in-place owner/child tool catalogs,
+      resource invalidation, original resume and failed-enable recovery. Five lifecycle/publication
+      defects repaired; independent30/30 plus24/24 pass. Affected452/452, check/build clean,
+      compiled37/37 at `c7da0655...`. See `research/ports/W300-mcp-management.md`.

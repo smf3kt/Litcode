@@ -149,8 +149,9 @@ export type McpConnectOptions = {
   notificationStream?: boolean;
   /** Trusted in-memory host callbacks; absent by default and excluded from persisted config. */
   clientRequests?: McpClientRequests;
+  disabledServers?: readonly string[];
 };
-export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal" | "toolIdleTimeoutMs" | "onProgress">> & Pick<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal" | "toolIdleTimeoutMs" | "onProgress">;
+export type McpConnectSettings = Required<Omit<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal" | "toolIdleTimeoutMs" | "onProgress" | "disabledServers">> & Pick<McpConnectOptions, "clientRequests" | "persistence" | "tasks" | "standardTasks" | "taskJournal" | "toolIdleTimeoutMs" | "onProgress">;
 
 export type McpConnection = {
   tools: ToolDefinition[];
@@ -160,6 +161,7 @@ export type McpConnection = {
   /** Present only in catalog mode: each capable server's resources and templates. */
   catalogListing?: (signal: AbortSignal) => Promise<McpCatalogListing>;
   reconnect?: (server: string, signal: AbortSignal) => Promise<McpServerStatus>;
+  setEnabled?: (server: string, enabled: boolean, signal: AbortSignal) => Promise<McpServerStatus>;
   resumeTask?: (server: string, task: StandardMcpTask, signal: AbortSignal, toolName?: string) => Promise<McpToolResult>;
   bindSubscriptions?: (state: Record<string, readonly string[]>, commit: (server: string, method: McpSubscriptionMethod, uri: string) => void, signal: AbortSignal) => Promise<void>;
   /** Fresh per-server transport state, present only for opted-in HTTP streams. */
@@ -167,7 +169,7 @@ export type McpConnection = {
 };
 
 export type McpServerStatus = {
-  state: "connected" | "disconnected" | "reconnecting" | "closed";
+  state: "connected" | "disconnected" | "reconnecting" | "disabled" | "closed";
   generation: number;
   attempts: number;
   automaticAttempts?: number;
@@ -189,6 +191,9 @@ export type McpToolInfo = {
   /** The server's declared result contract; its presence is what makes a result checked. */
   outputSchema?: unknown;
   readOnly: boolean;
+  destructive?: boolean;
+  openWorld?: boolean;
+  title?: string;
   taskSupport?: 'required' | 'optional' | 'forbidden';
 };
 
@@ -201,6 +206,7 @@ export type McpToolResult = {
 export type McpCatalogMethod = "resources/list" | "resources/templates/list" | "resources/read" | "prompts/list" | "prompts/get";
 
 export interface McpClient {
+  readonly disabled?: boolean;
   onDisconnected?(listener: () => void): () => void;
   readonly notificationStreamStatus?: McpNotificationStreamStatus;
   readonly resourceSubscriptions?: McpResourceSubscriptions;
@@ -409,6 +415,7 @@ function renderToolResult(result: McpToolResult): string {
   return JSON.stringify(payload, null, 2);
 }
 
+// nd, sb190ksj 0a1c2aa1 [127220,130322), UTF-16; MCP annotations remain display metadata.
 function parseToolInfo(raw: unknown, serverName: string): McpToolInfo {
   if (!isRecord(raw) || typeof raw.name !== "string" || raw.name.length === 0) {
     throw new Error(`MCP server "${serverName}" returned a tool without a valid name`);
@@ -420,6 +427,9 @@ function parseToolInfo(raw: unknown, serverName: string): McpToolInfo {
     inputSchema: raw.inputSchema,
     ...(raw.outputSchema === undefined ? {} : { outputSchema: raw.outputSchema }),
     readOnly: annotations?.readOnlyHint === true,
+    destructive: annotations?.destructiveHint === true,
+    openWorld: annotations?.openWorldHint === true,
+    ...(typeof annotations?.title === 'string' ? { title: annotations.title.replace(/\s+/g, ' ').trim() } : {}),
     ...(isRecord(raw.execution) && raw.execution.taskSupport !== undefined ? { taskSupport: standardTaskSupport(raw.execution) } : {}),
   };
 }
@@ -948,6 +958,7 @@ class McpStdioClient implements McpClient {
 // Tool adapter
 // ---------------------------------------------------------------------------
 
+// nd, sb190ksj 0a1c2aa1 [127220,130322), UTF-16; retain the source's local label and hints.
 function makeMcpTool(
   client: McpClient,
   serverName: string,
@@ -958,6 +969,9 @@ function makeMcpTool(
 ): ToolDefinition {
   return {
     readOnly: info.readOnly,
+    mcpAnnotations: { destructive: info.destructive === true, openWorld: info.openWorld === true,
+      toolName: sanitizeNamePart(info.name),
+      ...(info.title ? { title: info.title } : {}) },
     schema: {
       name,
       description:
@@ -1160,7 +1174,7 @@ function boundedJson(value: unknown, cap: number): string {
 }
 
 function makeSubscriptionTools(clients: Map<string, McpClient>, context: McpConnectContext, persistence = false): ToolDefinition[] {
-  const servers = [...clients].filter(([, client]) => persistence || client.resourceSubscriptions?.supports()).map(([name]) => name);
+  const servers = [...clients].filter(([, client]) => !client.disabled && (persistence || client.resourceSubscriptions?.supports())).map(([name]) => name);
   if (!servers.length) return [];
   return ["resource_subscribe", "resource_unsubscribe", "resource_notifications"].map((operation): ToolDefinition => {
     const name = `mcp_${operation}`;
@@ -1184,7 +1198,10 @@ function makeSubscriptionTools(clients: Map<string, McpClient>, context: McpConn
         const args = toArguments(name, input);
         if (Object.keys(args).some((key) => !["server", poll ? "limit" : "uri"].includes(key))) throw new Error("MCP subscription tool received an unknown field");
         if (typeof args.server !== "string" || !servers.includes(args.server)) throw new Error("MCP subscriptions require a configured server advertising resources.subscribe === true");
-        const subscriptions = clients.get(args.server)!.resourceSubscriptions!;
+        const client = clients.get(args.server)!;
+        if (client.disabled) throw new Error('MCP server is disabled; enable it in /mcp first');
+        const subscriptions = client.resourceSubscriptions;
+        if (!subscriptions) throw new Error('MCP subscription transport is unavailable');
         const signal = toolContext.signal ?? context.signal;
         const cap = positiveLimit(toolContext.maxOutputBytes) ?? positiveLimit(context.maxOutputBytes) ?? FALLBACK_MAX_OUTPUT_BYTES;
         if (poll) return subscriptions.poll(args.server, args.limit === undefined ? MCP_MAX_RESOURCE_NOTIFICATIONS : args.limit as number, cap, signal);
@@ -1219,7 +1236,10 @@ function makeLoggingTools(clients: Map<string, McpClient>, context: McpConnectCo
         const args = toArguments(name, input);
         if (Object.keys(args).some((key) => !["server", poll ? "limit" : "level"].includes(key))) throw new Error("MCP logging tool received an unknown field");
         if (typeof args.server !== "string" || !servers.includes(args.server)) throw new Error("MCP logging requires a configured server advertising a logging object");
-        const logging = clients.get(args.server)!.logging!;
+        const client = clients.get(args.server)!;
+        if (client.disabled) throw new Error('MCP server is disabled; enable it in /mcp first');
+        const logging = client.logging;
+        if (!logging) throw new Error('MCP logging transport is unavailable');
         const signal = toolContext.signal ?? context.signal;
         const cap = positiveLimit(toolContext.maxOutputBytes) ?? positiveLimit(context.maxOutputBytes) ?? FALLBACK_MAX_OUTPUT_BYTES;
         if (poll) return logging.poll(args.server, args.limit === undefined ? MCP_MAX_LOG_NOTIFICATIONS : args.limit as number, cap, signal);
@@ -1445,12 +1465,14 @@ async function closeAll(clients: McpClient[]): Promise<void> {
 
 /** Keep adapter closures stable while replacing one transport generation. */
 class ManagedMcpClient implements McpClient {
-  private current: McpClient;
+  private current: McpClient | undefined;
   private inventory: McpToolInfo[] = [];
   private listeners = new Set<() => void>();
   private unbind: (() => void)[] = [];
   private status: McpServerStatus = { state: "connected", generation: 1, attempts: 0 };
   private replacing: Promise<McpServerStatus> | undefined;
+  private replacementController: AbortController | undefined;
+  private toggleRevision = 0;
   private controller = new AbortController();
   private closing: Promise<void> | undefined;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1464,14 +1486,21 @@ class ManagedMcpClient implements McpClient {
   constructor(private factory: () => McpClient, private context: McpConnectContext, private automatic: boolean,
     // The recovered client keeps no background timer for stdio: a failed transport is closed and the
     // next use dials a fresh process. onDemand marks the transports whose replacement is use-driven.
-    private onDemand: boolean, private validate: (listed: McpToolInfo[]) => void, private settings: McpConnectSettings) {
-    this.current = factory();
-    this.bind();
+    private onDemand: boolean, private validate: (listed: McpToolInfo[]) => void, private settings: McpConnectSettings, disabled = false) {
+    if (disabled) this.status = { state: 'disabled', generation: 0, attempts: 0 };
+    else { this.current = factory(); this.bind(); }
+  }
+  private active(): McpClient {
+    if (this.status.state === 'disabled') throw new Error('MCP server is disabled; enable it in /mcp first');
+    if (!this.current || this.status.state === 'closed') throw new Error('MCP connection is unavailable');
+    return this.current;
   }
   private bind(): void {
     for (const unsubscribe of this.unbind) unsubscribe();
-    this.unbind = [this.current.onToolsChanged(() => { for (const listener of this.listeners) listener(); })];
+    this.unbind = [];
     const client = this.current;
+    if (!client) return;
+    this.unbind = [client.onToolsChanged(() => { for (const listener of this.listeners) listener(); })];
     const subscriptions = client.resourceSubscriptions;
     if (subscriptions && this.acknowledgement) {
       const commit = this.acknowledgement;
@@ -1485,7 +1514,7 @@ class ManagedMcpClient implements McpClient {
       this.unbind.push(() => subscriptions.setAcknowledgement(undefined));
     }
     const unsubscribe = client.onDisconnected?.(() => {
-      if (this.current !== client || this.status.state === "closed") return;
+      if (this.current !== client || this.status.state === "closed" || this.status.state === 'disabled') return;
       if (this.status.state === "disconnected") return;
       this.status.state = "disconnected";
       if (this.automatic && this.automaticReady && !this.replacing) this.scheduleRetry(0, ++this.retryEpoch);
@@ -1499,7 +1528,7 @@ class ManagedMcpClient implements McpClient {
   prepareSubscriptionBinding(uris: readonly string[]): ReturnType<McpResourceSubscriptions["prepareReplacement"]> | undefined {
     if (this.journalFailure) throw this.journalFailure;
     if (this.replacing) throw new Error("MCP session binding blocked during transport replacement");
-    const subscriptions = this.current.resourceSubscriptions;
+    const subscriptions = this.current?.resourceSubscriptions;
     if (subscriptions?.snapshot().length) throw new Error("MCP session binding requires a fresh connection without prior subscriptions");
     const frozen = subscriptions?.prepareReplacement();
     this.desired = new Set(uris);
@@ -1509,8 +1538,8 @@ class ManagedMcpClient implements McpClient {
     if (this.journalFailure) throw this.journalFailure;
     const activeSignal = AbortSignal.any([signal, this.context.signal, this.controller.signal]);
     activeSignal.throwIfAborted();
-    if (this.status.state === "disconnected" || !this.desired?.size) return;
-    await this.current.resourceSubscriptions!.restore(Object.freeze([...this.desired]), activeSignal);
+    if (this.status.state === "disconnected" || this.status.state === 'disabled' || !this.desired?.size) return;
+    await this.active().resourceSubscriptions!.restore(Object.freeze([...this.desired]), activeSignal);
     activeSignal.throwIfAborted();
   }
   commitSubscriptionBinding(commit: (method: McpSubscriptionMethod, uri: string) => void): void {
@@ -1519,7 +1548,7 @@ class ManagedMcpClient implements McpClient {
   }
   poisonSubscriptionBinding(error: McpSubscriptionPersistenceError): void {
     this.journalFailure ??= error;
-    this.current.resourceSubscriptions?.poisonPersistence(error);
+    this.current?.resourceSubscriptions?.poisonPersistence(error);
     this.cancelRetry();
     this.status.retryPhase = "stopped";
     this.status.lastError = "MCP subscription journal binding poisoned; reconcile the journal before using a fresh connection";
@@ -1530,21 +1559,23 @@ class ManagedMcpClient implements McpClient {
     this.inventory = [];
     for (const unsubscribe of this.unbind) unsubscribe();
     this.unbind = [];
-    await this.current.close();
+    await this.current?.close();
   }
   view(): McpServerStatus { return { ...this.status }; }
+  get disabled(): boolean { return this.status.state === 'disabled'; }
   listed(): McpToolInfo[] { return this.inventory; }
-  get notificationStreamStatus() { return this.current.notificationStreamStatus; }
-  get resourceSubscriptions() { return this.current.resourceSubscriptions; }
-  get logging() { return this.current.logging; }
+  get notificationStreamStatus() { return this.current?.notificationStreamStatus; }
+  get resourceSubscriptions() { return this.current?.resourceSubscriptions; }
+  get logging() { return this.current?.logging; }
   async initialize(signal: AbortSignal) {
-    await this.current.initialize(signal);
+    if (this.status.state === 'disabled') return;
+    await this.active().initialize(signal);
     signal.throwIfAborted();
     this.status.state = "connected";
   }
   async listTools(signal: AbortSignal): Promise<McpToolInfo[]> {
-    if (this.status.state === "disconnected") return this.inventory;
-    const client = this.current;
+    if (this.status.state === "disconnected" || this.status.state === 'disabled') return this.inventory;
+    const client = this.active();
     const listed = await client.listTools(signal);
     if (this.current !== client) throw new Error("MCP connection changed during discovery; retry discovery");
     this.inventory = listed;
@@ -1555,7 +1586,7 @@ class ManagedMcpClient implements McpClient {
     if (this.status.state === "closed") throw new Error("MCP connection closed");
     if (this.status.state === "disconnected") await this.redialBeforeUse(signal, "reconnect before calling tools");
     if (pinned) this.assertPinned(pinned);
-    return this.current.callTool(tool, args, signal, pinned);
+    return this.active().callTool(tool, args, signal, pinned);
   }
   /**
    * One use-driven replacement attempt on a disconnected transport. The recovered client dials a fresh
@@ -1570,14 +1601,15 @@ class ManagedMcpClient implements McpClient {
   }
   resumeTask(task: StandardMcpTask, signal: AbortSignal, toolName?: string): Promise<McpToolResult> {
     signal.throwIfAborted();
-    if (this.status.state !== 'connected' || !this.current.resumeTask) return Promise.reject(new Error('MCP task recovery requires a connected HTTP server'));
-    return this.current.resumeTask(task, signal, toolName);
+    const current = this.current;
+    if (this.status.state !== 'connected' || !current?.resumeTask) return Promise.reject(new Error('MCP task recovery requires a connected HTTP server'));
+    return current.resumeTask(task, signal, toolName);
   }
-  supportsCatalog(family: "resources" | "prompts") { return this.current.supportsCatalog(family); }
+  supportsCatalog(family: "resources" | "prompts") { return this.status.state !== 'disabled' && (this.current?.supportsCatalog(family) ?? false); }
   async catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown> {
     if (this.status.state === "closed") throw new Error("MCP connection closed");
     if (this.status.state === "disconnected") await this.redialBeforeUse(signal, "reconnect before catalog requests");
-    return this.current.catalogRequest(method, params, signal);
+    return this.active().catalogRequest(method, params, signal);
   }
   onToolsChanged(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   assertPinned(info: McpToolInfo): void {
@@ -1593,7 +1625,7 @@ class ManagedMcpClient implements McpClient {
     this.automaticDial?.abort();
   }
   private scheduleRetry(attempt: number, epoch: number): void {
-    if (this.journalFailure || epoch !== this.retryEpoch || this.status.state === "closed" || this.context.signal.aborted) return;
+    if (this.journalFailure || epoch !== this.retryEpoch || this.status.state === "closed" || this.status.state === 'disabled' || this.context.signal.aborted) return;
     const delay = mcpReconnectDelay(attempt, this.settings.recovery);
     if (delay === undefined) {
       this.status.retryPhase = "exhausted";
@@ -1615,7 +1647,9 @@ class ManagedMcpClient implements McpClient {
     }, delay);
     this.retryTimer.unref();
   }
+  // Hyt/UOe, yze9xmwg [1005,1270), UTF-16; reconnect never enables a disabled server.
   reconnect(signal: AbortSignal): Promise<McpServerStatus> {
+    if (this.status.state === 'disabled') return Promise.reject(new Error('MCP server is disabled; enable it in /mcp first'));
     if (this.journalFailure) return Promise.reject(this.journalFailure);
     signal.throwIfAborted();
     const automatic = this.automaticDial ? this.replacing : undefined;
@@ -1626,17 +1660,48 @@ class ManagedMcpClient implements McpClient {
     });
     return this.replace(signal);
   }
+  // RTe.Bn, 24k7d6mw [1585446,1586735), UTF-16; the manager survives a transport disable.
+  async setEnabled(enabled: boolean, signal: AbortSignal): Promise<McpServerStatus> {
+    signal.throwIfAborted();
+    if (this.status.state === 'closed') throw new Error('MCP connection closed');
+    const revision = ++this.toggleRevision;
+    if (!enabled) {
+      this.cancelRetry(); this.replacementController?.abort();
+      this.status = { state: 'disabled', generation: this.status.generation, attempts: this.status.attempts };
+      for (const unsubscribe of this.unbind) unsubscribe(); this.unbind = [];
+      const old = this.current; this.current = undefined; this.inventory = [];
+      for (const listener of this.listeners) listener();
+      await Promise.all([old?.close(), this.replacing?.catch(() => undefined)]);
+      return this.view();
+    }
+    if (this.status.state !== 'disabled') return this.view();
+    const pending = this.replacing;
+    if (pending) await pending.catch(() => undefined);
+    signal.throwIfAborted();
+    if (this.view().state === 'closed') throw new Error('MCP connection closed');
+    if (revision !== this.toggleRevision) throw new Error('MCP enable was superseded by a newer choice');
+    this.status.state = 'disconnected';
+    try { return await this.replace(signal); }
+    catch (error) {
+      const state = this.view().state;
+      if (state !== 'closed' && state !== 'disabled') {
+        this.status.state = 'disconnected'; this.status.lastError = 'MCP enable failed; reconnect to retry';
+      }
+      throw error;
+    }
+  }
   private replace(signal: AbortSignal): Promise<McpServerStatus> {
     if (this.journalFailure) return Promise.reject(this.journalFailure);
     if (this.status.state === "closed") return Promise.reject(new Error("MCP connection closed"));
     if (this.replacing) return this.replacing;
-    const operationSignal = AbortSignal.any([signal, this.context.signal, this.controller.signal]);
+    const replacementController = new AbortController(); this.replacementController = replacementController;
+    const operationSignal = AbortSignal.any([signal, this.context.signal, this.controller.signal, replacementController.signal]);
     const old = this.current;
     let subscriptions: ReturnType<McpResourceSubscriptions["prepareReplacement"]> | undefined;
     let desired: readonly string[] = [];
     try {
       operationSignal.throwIfAborted();
-      if (this.settings.recovery && this.settings.subscriptions) subscriptions = old.resourceSubscriptions?.prepareReplacement();
+      if (this.settings.recovery && this.settings.subscriptions) subscriptions = old?.resourceSubscriptions?.prepareReplacement();
       desired = Object.freeze([...new Set([...(subscriptions?.uris ?? []), ...(this.desired ?? [])])]);
       if (desired.length > MCP_MAX_RESOURCE_SUBSCRIPTIONS) throw new Error("MCP resource subscription limit reached (32)");
     } catch (error) { subscriptions?.release(); return Promise.reject(error); }
@@ -1670,11 +1735,11 @@ class ManagedMcpClient implements McpClient {
           ...(this.status.automaticAttempts === undefined ? {} : { automaticAttempts: this.status.automaticAttempts }) };
         this.bind();
         for (const listener of this.listeners) listener();
-        await old.close().catch(() => undefined);
+        await old?.close().catch(() => undefined);
         return this.view();
       } catch (error) {
         if (candidate && this.current !== candidate) await candidate.close().catch(() => undefined);
-        if (this.status.state !== "closed" && this.current === old) {
+        if (this.status.state !== "closed" && this.status.state !== 'disabled' && this.current === old) {
           this.status.state = previous === "disconnected" || this.status.state === "disconnected" ? "disconnected" : "connected";
           this.status.lastError = "MCP reconnect failed; previous transport retained";
         }
@@ -1682,6 +1747,7 @@ class ManagedMcpClient implements McpClient {
       } finally {
         subscriptions?.release();
         this.replacing = undefined;
+        if (this.replacementController === replacementController) this.replacementController = undefined;
       }
     });
     return this.replacing;
@@ -1691,14 +1757,14 @@ class ManagedMcpClient implements McpClient {
     this.status.state = "closed";
     this.cancelRetry();
     this.controller.abort();
-    this.current.resourceSubscriptions?.close();
+    this.current?.resourceSubscriptions?.close();
     this.acknowledgement = undefined;
     this.desired?.clear();
     for (const unsubscribe of this.unbind) unsubscribe();
     this.listeners.clear();
     return this.closing = (async () => {
       await this.replacing?.catch(() => undefined);
-      await this.current.close();
+      await this.current?.close();
     })();
   }
 }
@@ -1805,7 +1871,7 @@ export async function connectMcpServers(
           }
         }
         if (count > MCP_MAX_TOTAL_TOOLS || bytes > MCP_MAX_TOOL_CATALOG_BYTES) throw new Error("MCP reconnect catalog exceeds limits");
-      }, settings);
+      }, settings, options.disabledServers?.includes(serverName) === true);
       clients.push(client);
       namedClients.set(serverName, client);
       if (settings.dynamic) initialUnsubscribe.push(client.onToolsChanged(() => initialDirty.add(serverName)));
@@ -1888,6 +1954,23 @@ export async function connectMcpServers(
       `HTTP GET notification stream: one owned stream after initialize; same URL/session/protocol/auth headers and redirect restrictions; ${settings.requestTimeoutMs}ms header/read idle deadline; ${settings.recovery ? "recovery enables at most 5 GET-only reopens per transport lifetime after EOF, idle timeout or transport failure, delayed by the latest server SSE retry value when present and otherwise by 1/2/4/8/8 seconds; a reopen sends the last observed SSE event id as last-event-id, which a bare id field clears, so the server keeps ownership of payload replay; 404/405 unavailable and 204 ended are terminal, as are authentication, redirect, malformed/oversized SSE and other HTTP status failures; no client-side payload replay, and a stream that carried a client request is never reopened" : "404/405 unavailable, 204/EOF ended; no retry, reconnect or event replay"}; failures do not disable POST`,
       `HTTP GET dispatch: logging/resource updates/tools list changes/cancellation notifications; every client request (roots/list, form elicitation/create, sampling/createMessage) is dispatched under the same callback, capability, ownership, cancellation and bounded POST-reply contract as POST SSE, so an unsupported method receives a bounded error reply;; a replayed request is served again, so replay dedupe remains the server responsibility RPC responses are ignored; a stream that carried a request is not auto-reopened; incremental bounds 1MiB/event, 64KiB/line, 8MiB/read chunk without whole-stream accumulation or total event limit; close aborts reader and awaits at most 1000ms`]
     : finalLimits;
+  const retiredCatalogs = new Set<string>();
+  const publishTools = () => {
+    const next: ToolDefinition[] = [];
+    for (const [server, raw] of namedClients) {
+      const client = raw as ManagedMcpClient;
+      if (settings.deferred) continue;
+      for (const info of client.listed()) next.push(makeMcpTool(client, server, info, mcpToolName(server, info.name), context, async signal => {
+        if (settings.dynamic) await dynamicCatalog!.assertPinned(server, info, signal);
+        client.assertPinned(info);
+      }));
+    }
+    if (dynamicCatalog) next.push(...dynamicCatalog.tools(context));
+    if (settings.catalog) next.push(...makeCatalogTools(namedClients, context));
+    if (settings.subscriptions) next.push(...makeSubscriptionTools(namedClients, context, settings.persistence && settings.recovery));
+    if (settings.logging) next.push(...makeLoggingTools(namedClients, context));
+    tools.splice(0, tools.length, ...next);
+  };
   let closed = false;
   let subscriptionsBound = false;
   const lifecycleLimits = settings.recovery ? [...streamLimits,
@@ -1942,7 +2025,19 @@ export async function connectMcpServers(
       if (!client) throw new Error("MCP requires a configured server name");
       const result = await client.reconnect(signal);
       inventories.set(server, client.listed());
+      if (retiredCatalogs.delete(server)) publishTools();
       return result;
+    },
+    setEnabled: async (server, enabled, signal) => {
+      if (closed) throw new Error('MCP connections closed');
+      const client = namedClients.get(server) as ManagedMcpClient | undefined;
+      if (!client) throw new Error('MCP requires a configured server name');
+      retiredCatalogs.add(server);
+      try { return await client.setEnabled(enabled, signal); }
+      finally {
+        inventories.set(server, client.listed()); publishTools();
+        if (client.view().state === 'connected') retiredCatalogs.delete(server);
+      }
     },
     limits: settings.standardTasks ? [...lifecycleLimits, 'MCP standard tasks: opt-in 2025-11-25 requestor; server capability and tool execution.taskSupport gates; foreground get/result, related-task result metadata and bounded cancellation; no receiving task-augmented client requests or background reattachment'] : settings.tasks ? [...lifecycleLimits,
       ...(settings.dynamic ? MCP_DYNAMIC_LIMITS : []),

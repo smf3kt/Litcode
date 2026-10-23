@@ -57,6 +57,7 @@ import { permissionPolicySchema, type PermissionPolicy, type PermissionDecision 
 import type { ModelProvider } from './provider.js';
 import type { StopRuntimeState } from './agent.js';
 import { configSchema, fingerprint as sessionFingerprint, fingerprintOf } from './session.js';
+import { disabledMcpServers, saveMcpEnabled } from './mcp-state.js';
 import type { Session, SessionConfig } from './session.js';
 import { mcpSubscriptionState, commitMcpSubscription } from './mcp-session-subscriptions.js';
 import { createSubagentTool, type ChildEnvironmentFactory } from './subagents.js';
@@ -448,6 +449,7 @@ export type Runtime = {
   /** Catalog mode only: the connected servers' resources and templates, for the composer. */
   catalogListing?: NonNullable<McpConnection["catalogListing"]>;
   reconnectMcp?: NonNullable<McpConnection["reconnect"]>;
+  setMcpEnabled?: NonNullable<McpConnection['setEnabled']>;
   notificationStreams?: NonNullable<McpConnection["notificationStreams"]>;
   listWorkflows?(config: SessionConfig, owner: string): import('./workflow.js').WorkflowView[];
   registerElicitation?(owner: string, callback: NonNullable<McpClientRequests['elicitation']>, onComplete?: NonNullable<McpClientRequests['elicitationComplete']>): () => void;
@@ -587,7 +589,8 @@ export async function createRuntime(
     workspace: config.workspace,
     signal,
     maxOutputBytes: config.maxOutputBytes,
-  }, { catalog: config.features?.mcpCatalog === true, dynamic: config.features?.mcpDynamic === true,
+  }, { disabledServers: disabledMcpServers(config.workspace, config.configSources?.userDir ?? defaultUserDir()),
+    catalog: config.features?.mcpCatalog === true, dynamic: config.features?.mcpDynamic === true,
     subscriptions: config.features?.mcpSubscriptions === true,
     logging: config.features?.mcpLogging === true,
     notificationStream: config.features?.mcpNotificationStream === true,
@@ -610,6 +613,8 @@ export async function createRuntime(
   const owners = new Map<string, Resources>();
   const ownerScopes = new Map<string, object>();
   const toolSets = new Map<string, { fingerprint: string; tools: ToolDefinition[] }>();
+  const refreshMcpTools = new Map<string, () => void>();
+  let catalogSession: Session | undefined;
   const agentAccessors = new WeakMap<ToolDefinition[], () => AgentRegistry>();
   // `/subtask` reaches the owner's registry and bound tool set whether or not the messaging
   // tool set is built; `Zjt` spawns with the parent's tools and no narrowing.
@@ -872,6 +877,7 @@ export async function createRuntime(
         new WorktreeManager({ workspace: current.workspace, signal, maxOutputBytes: current.maxOutputBytes }))));
     }
     const mcpTools = mcp.tools.map(scopedMcpTool);
+    const childMcpToolIndex = tools.length;
     const childTools = [...tools, ...mcpTools];
     let worktreeOperation: Promise<unknown> = Promise.resolve();
     const serializeWorktree = <T>(action: () => Promise<T>): Promise<T> => {
@@ -1052,6 +1058,7 @@ export async function createRuntime(
         },
       });
     }
+    const mcpToolIndex = tools.length;
     tools.push(...mcpTools);
     if (persistsMcpTasks({ config: current })) tools.push({
       readOnly: false,
@@ -1159,7 +1166,21 @@ export async function createRuntime(
     if (current.features?.agentMessaging && abilities.subagents) agentAccessors.set(selected, agents);
     // The registry validates an execution against its own child pool, so the seam carries the
     // child-facing tools, not the parent's bound list.
-    if (abilities.subagents) subtaskSeams.set(owner, { registry: agents, tools: [...childTools] });
+    if (abilities.subagents) subtaskSeams.set(owner, { registry: agents, tools: childTools });
+    // RTe.Bn/kn, 24k7d6mw [1585446,1586735)/[1560490,1586785), UTF-16; catalog publication keeps peer owners alive.
+    const mcpToolNames = new Set(mcpTools.map(tool => tool.schema.name));
+    refreshMcpTools.set(owner, () => {
+      const replacements = mcp.tools.map(tool => bind(scopedMcpTool(tool)));
+      const replace = (target: ToolDefinition[], values: ToolDefinition[], fallback: number) => {
+        const index = target.findIndex(tool => mcpToolNames.has(tool.schema.name));
+        const kept = target.filter(tool => !mcpToolNames.has(tool.schema.name));
+        kept.splice(index < 0 ? fallback : index, 0, ...values); target.splice(0, target.length, ...kept);
+      };
+      const index = current.childMode === 'explore' ? bound.slice(0, mcpToolIndex).filter(tool => tool.readOnly).length : mcpToolIndex;
+      replace(selected, current.childMode === 'explore' ? replacements.filter(tool => tool.readOnly) : replacements, index);
+      replace(childTools, replacements.map(tool => tool.forChild?.() ?? tool), childMcpToolIndex);
+      mcpToolNames.clear(); for (const tool of replacements) mcpToolNames.add(tool.schema.name);
+    });
     childTerminalCallbacks.set(selected, childTerminal);
     childInstructionCallbacks.set(selected, childInstructions);
     toolSets.set(owner, { fingerprint, tools: selected });
@@ -1173,6 +1194,8 @@ export async function createRuntime(
     owners.delete(owner);
     ownerScopes.delete(owner);
     toolSets.delete(owner);
+    refreshMcpTools.delete(owner);
+    if (catalogSession?.id === owner) catalogSession = undefined;
     workflowAccessors.delete(owner);
     subtaskSeams.delete(owner);
     namedCatalogs.get(owner)?.catalog.close();
@@ -1197,6 +1220,43 @@ export async function createRuntime(
       finally { await mcp.close(); }
     })();
     return closing;
+  };
+  // RTe.kn/Bn, 24k7d6mw [1562359,1572850)/[1585446,1586735), UTF-16; journal the accepted live MCP projection.
+  const publishMcpCatalog = (session: Session, startup = false): void => {
+    if (!Object.keys(session.config.mcpServers ?? {}).length || startup && session.config.tools.length === 0) return;
+    const tools = pinToolSchemas(buildTools(session.config, session.id));
+    const states = Object.entries(mcp.servers?.() ?? {});
+    const disabled = states.filter(([, state]) => state.state === 'disabled').map(([name]) => name).sort();
+    const unavailable = states.filter(([, state]) => state.state !== 'disabled' && state.state !== 'connected').map(([name]) => name).sort();
+    const last = session.events.findLast(event => event.kind === 'mcp_catalog');
+    const previous = last?.kind === 'mcp_catalog' ? last.disabledServers : [];
+    if (startup && JSON.stringify(tools) !== JSON.stringify(session.config.tools)) {
+      const recovered = last?.kind === 'mcp_catalog' ? (last.unavailableServers ?? []).filter(name =>
+        states.some(([server, state]) => server === name && state.state === 'connected')) : [];
+      const changed = new Set([...previous, ...disabled].filter(name => previous.includes(name) !== disabled.includes(name)).concat(recovered));
+      const prefixes = [...changed].map(name => `mcp__${name.replace(/[^A-Za-z0-9_-]/g, '_')}__`);
+      const helpers = new Set(['mcp_resources_list', 'mcp_resource_read', 'mcp_prompts_list', 'mcp_prompt_get',
+        'mcp_resource_subscribe', 'mcp_resource_unsubscribe', 'mcp_resource_notifications', 'mcp_logging_set_level', 'mcp_logging_notifications']);
+      const stable = (schemas: SessionConfig['tools']) => schemas.flatMap(tool => {
+        if (prefixes.some(prefix => tool.name.startsWith(prefix))) return [];
+        if (!changed.size || !helpers.has(tool.name)) return [tool];
+        const copy = structuredClone(tool), properties = copy.input_schema.properties;
+        const property = properties && typeof properties === 'object' && 'server' in properties ? properties.server : undefined;
+        if (property && typeof property === 'object' && 'enum' in property && Array.isArray(property.enum)) {
+          const names = property.enum.filter((name: unknown) => typeof name !== 'string' || !changed.has(name));
+          property.enum = names;
+          if (!names.length) return [];
+        }
+        return [copy];
+      });
+      if (JSON.stringify(stable(tools)) !== JSON.stringify(stable(session.config.tools)))
+        throw new Error('Session tool schemas changed; start a new session');
+    }
+    if (last?.kind === 'mcp_catalog' && JSON.stringify(last.tools) === JSON.stringify(tools)
+      && JSON.stringify(previous) === JSON.stringify(disabled)
+      && JSON.stringify(last.unavailableServers ?? []) === JSON.stringify(unavailable)) return;
+    session.append({ kind: 'mcp_catalog', configDigest: fingerprintOf(session.config.mcpServers ?? {}),
+      disabledServers: disabled, unavailableServers: unavailable, tools });
   };
   const onAbort = () => { void close(); };
   signal.addEventListener('abort', onAbort, { once: true });
@@ -1260,7 +1320,23 @@ export async function createRuntime(
       },
       ...(mcp.servers ? { mcpServers: () => mcp.servers!() } : {}),
       ...(mcp.catalogListing ? { catalogListing: (signal: AbortSignal) => mcp.catalogListing!(signal) } : {}),
-      ...(mcp.reconnect ? { reconnectMcp: (server: string, requestSignal: AbortSignal) => mcp.reconnect!(server, requestSignal) } : {}),
+      ...(mcp.reconnect ? { reconnectMcp: async (server: string, requestSignal: AbortSignal) => {
+        try { return await mcp.reconnect!(server, requestSignal); }
+        finally {
+          for (const refresh of refreshMcpTools.values()) refresh();
+          if (catalogSession) publishMcpCatalog(catalogSession);
+        }
+      } } : {}),
+      ...(mcp.setEnabled ? { setMcpEnabled: async (server: string, enabled: boolean, requestSignal: AbortSignal) => {
+        requestSignal.throwIfAborted();
+        if (!Object.hasOwn(config.mcpServers ?? {}, server)) throw new Error('MCP requires a configured server name');
+        await saveMcpEnabled(config.workspace, config.configSources?.userDir ?? defaultUserDir(), server, enabled);
+        try { return await mcp.setEnabled!(server, enabled, requestSignal); }
+        finally {
+          for (const refresh of refreshMcpTools.values()) refresh();
+          if (catalogSession) publishMcpCatalog(catalogSession);
+        }
+      } } : {}),
       ...(mcp.notificationStreams ? { notificationStreams: () => mcp.notificationStreams!() } : {}),
       listWorkflows(current, owner) {
         buildTools(current, owner);
@@ -1406,6 +1482,12 @@ export async function createRuntime(
             (persistence ? 'Acknowledged URI subscriptions persist after binding to the owning session journal; new sessions start with their own subscription events.' : 'URI subscriptions remain connection-local.')
           : 'MCP lifecycle: single-server replacement retains other resources; HTTP session expiry or three transport failures trigger up to five attempts (immediate, 1/2/4/8s); authentication/protocol failures end retries; no tool replay or slow retry phase.',
         'Child agents omit background and scheduler tools. Optional cron jitter uses the harness timing algorithm; jobs remain session-only.'], close,
+    };
+    const bindCatalogSession = runtime.bindSession!;
+    runtime.bindSession = async session => {
+      const bound = await bindCatalogSession(session);
+      if (bound === runtime) { publishMcpCatalog(session, true); catalogSession = session; }
+      return bound;
     };
     return runtime;
   } catch (error) { await close(); throw error; }

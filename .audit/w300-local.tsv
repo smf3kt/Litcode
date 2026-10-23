@@ -1,0 +1,9 @@
+step	decision	evidence
+source	Read recovered At/icn/cNt/lNt, Bn/kn and project state before edits	research/ports/W300-mcp-management.md
+owner	Retain per-server manager; replace only its transport and catalog	src/mcp.ts
+workspace	Persist ordinary disabled names in user-owned workspace map	src/mcp-state.ts
+publication	Refresh owner and child pools in place; journal accepted projection	src/runtime.ts; src/session.ts
+validation	Three new regression groups use owned transports and actual terminal	test/mcp-management.test.ts
+independent	Repair latest-intent race, empty reconnect catalog and disabled subscription entry	w300-independent-race-probe.mjs; w300-independent-reconnect-probe.mjs
+compiled	33 assertions include source navigation, model request schemas, restart/resume and cleanup	.audit/w300-mcp-management.mjs
+external	No publication or push; paid upstream calls zero	research/ports/W300-mcp-management.md
