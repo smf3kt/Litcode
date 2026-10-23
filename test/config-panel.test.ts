@@ -32,7 +32,7 @@ function fixture() {
   const tui = new TuiTerminal({ input, output, prefersReducedMotion: true }).start();
   const key = (value: string) => input.emit('data', value);
   const lines = () => Array.from({ length: screen.rows }, (_, row) =>
-    screen.buffer.active.getLine(screen.buffer.active.viewportY + row)?.translateToString(true) ?? '');
+    screen.buffer.active.getLine(screen.buffer.active.viewportY + row)?.translateToString(true).trimEnd() ?? '');
   const rowOf = (text: string) => lines().findIndex(row => row.trim() === text);
   const mouse = (button: number, row: number, col: number, release = false) => key(`\x1b[<${button};${col};${row + 1}${release ? 'm' : 'M'}`);
   const escape = async () => { key('\x1b'); await delay(65); };
@@ -79,7 +79,7 @@ test('config modal owns full query editing, immediate changes, errors and child 
     assert.equal(f.lines().filter(row => /^(Verbose output|Terminal progress bar|Auto-compact|Reduce motion|Thinking mode|Show turn duration|Time format|Default permission mode|Theme|Editor mode|Question auto-continue timeout|Model|Dialog expiry)\s/.test(row)).length, 13);
     f.key('tips\r '); await delay(0);
     assert.deepEqual(changes.pop(), { id: 'tips', value: false });
-    assert.ok(f.lines().includes('Show tips  false'));
+    assert.ok(f.lines().includes('Show tips  false'), f.lines().join('\n'));
     f.key('/MOTION\r\r'); await delay(0);
     assert.deepEqual(changes, [{ id: 'reduceMotion', value: true }]);
     assert.ok(f.lines().includes('Reduce motion  true'));

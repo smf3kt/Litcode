@@ -6,10 +6,11 @@ import { jsx } from './tui-jsx.js';
 import { n, s } from './tui-base-components.js';
 import { te } from './tui-symbols.js';
 import { NOTIFICATION_CHANNELS, type NotificationChannel } from './terminal-notifications.js';
+import { DEFAULT_PERMISSION_MODE } from './permissions.js';
 
 export const TIME_FORMATS = ['auto', '12-hour', '24-hour', '24-hour-utc'] as const;
-/** BE, chunk-a60ee1ne.js 765, minus default/plan/bypassPermissions, prefixed by Z's two. */
-export const PERMISSION_MODE_OPTIONS = ['default', 'plan', 'acceptEdits', 'auto', 'dontAsk'] as const;
+/** CH/BE, a60ee1ne [678,782), UTF-16; W303 retains bypass for the user's selectable default. */
+export const PERMISSION_MODE_OPTIONS = ['default', 'plan', 'acceptEdits', 'auto', 'bypassPermissions', 'dontAsk'] as const;
 export type PermissionModeSetting = typeof PERMISSION_MODE_OPTIONS[number];
 export type ConfigUpdate =
   | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration' | 'tips' | 'copyOnSelect' | 'copyFullResponse' | 'autoScroll'; value: boolean }
@@ -71,7 +72,7 @@ function rows({ config, hidden }: ConfigPanelInput): Row[] {
     { id: 'timeFormat', label: 'Time format', kind: 'picker', value: config.timeFormat ?? 'auto', options: TIME_FORMATS },
     // vWe, nybcbd9t [21907,22578), UTF-16: settings default, not the live session mode.
     { id: 'permissionMode', label: 'Default permission mode', kind: 'enum',
-      value: config.permissions?.defaultMode || 'default', options: PERMISSION_MODE_OPTIONS },
+      value: config.permissions?.defaultMode || DEFAULT_PERMISSION_MODE.defaultMode, options: PERMISSION_MODE_OPTIONS },
     // vWe, nybcbd9t [23698,23897), UTF-16; ce() reads the default-false user preference.
     { id: 'copyFullResponse', label: 'Skip the /copy picker', kind: 'boolean', value: config.copyFullResponse ?? false },
     // vWe, nybcbd9t [23905,24064), UTF-16; native selection is active in this host.

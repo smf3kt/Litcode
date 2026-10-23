@@ -188,6 +188,8 @@ Rules目录现有界递归加载Markdown至depth3（root为0），遍历entries�
 
 新会话按 defaults → `~/.harness/settings.json` → 项目 `.harness/settings.json` → `.harness/settings.local.json` → `--settings FILE` → 已设置的 `LLM_*` 环境变量 → CLI flags 合并。`--user-dir DIR` 可指定独立用户目录；恢复会话使用原快照。
 
+新 CLI 会话默认使用 Bypass Permissions。`/config` 的 Default permission mode 可保存 `bypassPermissions`，下次启动生效；`--permission-mode bypass` 可显式选择，其他显式模式和托管策略继续优先。仅设置权限规则也沿用默认 Bypass；显式 `deny`、`ask` 和工具 allow-list 继续生效。Shell 执行仍由 `allowShell` 或 `--allow-shell` 开启。恢复旧会话保留原模式。
+
 `/config` 的 Auto-compact 默认开启，修改后即时写入用户设置 `autoCompactEnabled`。关闭后自动摘要暂停，`/compact` 仍可手动压缩，`/autocompact` 继续调整阈值。`LLM_DISABLE_AUTO_COMPACT` 控制当前进程的自动压缩，`LLM_DISABLE_COMPACT` 同时关闭自动和手动入口；两者以去空白、忽略大小写的 `1`、`true`、`yes`、`on` 表示开启禁用。这些环境覆盖在运行时读取，恢复会话也生效，上下文容量检查持续有效。
 
 `/mcp-reconnect SERVER` 使用固定配置替换单个连接，保留当前会话、其他server及后台资源；模型也可调用 `mcp_reconnect` 工具，沿用常规权限与工具日志。新连接完成握手和目录校验后才提交，失败保留旧连接。`/mcp` 展示状态、generation、尝试次数和重连错误。HTTP session过期或连续3次transport错误触发最多5次自动拨号，间隔为立即、1/2/4/8秒；认证与协议错误结束重试，stdio崩溃使用显式恢复。调用效果始终只执行一次，重连后的日志/订阅队列从空开始。发布schema保持固定，发生变化时旧工具报错；启用动态目录后可重新发现，或使用整体重连接入新的发布schema。
@@ -216,7 +218,7 @@ Agent 定义从项目 `.harness/agents/*.md`、用户 `~/.harness/agents/*.md` �
   "allowShell": true,
   "autoMemory": true,
   "dynamicInstructions": true,
-  "permissions": { "mode": "default", "allow": [], "deny": [] },
+  "permissions": { "defaultMode": "bypassPermissions", "allow": [], "deny": [] },
   "features": { "tasks": true, "taskProjections": true, "subagents": true, "agentMessaging": true, "agentTypes": true, "interaction": true, "notebooks": true, "background": true, "scheduler": true, "media": true, "memory": true, "checkpoints": true, "worktrees": true, "workflow": true, "workflowPersistence": true, "mcpSubscriptions": false },
   "hooks": { "PreToolUse": [{ "matcher": "write_file|edit_file", "command": "[HOOK_COMMAND]", "timeout": 10 }] },
   "mcpServers": { "local": { "command": "[MCP_EXECUTABLE]", "args": [] } }

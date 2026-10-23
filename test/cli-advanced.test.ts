@@ -111,6 +111,29 @@ function readSession(workspace: string, id: string, check: (session: Session) =>
   try { assertPaired(session.messages); check(session); } finally { session.close(); }
 }
 
+test('CLI defaults to bypass for real file and enabled shell effects and pins that mode on resume', { timeout: 60_000 }, async () => {
+  let step = 0;
+  const fx = await fixture(() => {
+    switch (++step) {
+      case 1: return { id: 'default-write', name: 'write_file', input: { path: 'bypass.txt', content: 'file effect' } };
+      case 2: return { id: 'default-shell', name: 'run_command', input: { command: 'printf shell-effect > shell.txt', timeout_ms: 2000 } };
+      default: return;
+    }
+  });
+  try {
+    fx.settings({ allowShell: true });
+    const first = await fx.run('DEFAULT_BYPASS');
+    assert.equal(fs.readFileSync(path.join(fx.workspace, 'bypass.txt'), 'utf8'), 'file effect');
+    assert.equal(fs.readFileSync(path.join(fx.workspace, 'shell.txt'), 'utf8'), 'shell-effect');
+    assert.equal(results(fx.requests.at(-1)!).length, 2);
+    assert.ok(results(fx.requests.at(-1)!).every(result => result.is_error !== true));
+    readSession(fx.workspace, first.id, session => assert.equal(session.config.permissions?.mode, 'bypass'));
+    fx.settings({ permissions: { mode: 'plan' } });
+    await fx.run('PINNED_BYPASS', first.id);
+    readSession(fx.workspace, first.id, session => assert.equal(session.config.permissions?.mode, 'bypass'));
+  } finally { await fx.close(); }
+});
+
 test('CLI custom types select literal models and fork paired history; resume pins the catalog', { timeout: 60_000 }, async () => {
   let parentCalls = 0; let resumed = false;
   const fx = await fixture(body => {

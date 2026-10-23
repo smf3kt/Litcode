@@ -1,0 +1,43 @@
+# W303 default bypass permissions
+
+Status: verified locally on 2026-10-23. Explicit user request to implement bypass permissions and make it the default. W301 and its cancelled loop remain paused. Local implementation, validation and commit only; no push or automatic attribution.
+
+Task card.
+- Entry and outcome. Fresh CLI sessions start in bypass without a flag. Config includes bypassPermissions and persists the next-session default.
+- Source. Obtained Config permissionMode row, permission-mode enum, bypass decision order, footer descriptors and cycle availability.
+- Targets. permissions.ts, cli.ts, runtime.ts, reload.ts, config-panel.ts and the persisted CLI override schema in session.ts.
+- Method. Adapt existing source-backed bypass and Config writer. The user's explicit default request overrides the source's default fallback and filtered Config option.
+- Precedence. Explicit CLI mode, authored settings and managed policy retain their priority. Rule-only flags carry rules without inventing a mode override. Original resume retains its pinned config and live permission owner.
+- Boundaries. Existing deny/ask, allow-list, PLAN, host interaction, root guard, shell capability and MCP admission retain their contracts.
+- Actual CLI. Owned loopback tool calls write a file and run an explicitly enabled shell without ordinary approval; drive the compiled Config row, cycle, restart, explicit overrides and original resume.
+- Checks. At most three necessary regression groups, affected existing tests, check/build, fresh independent review and content identity.
+
+Source preflight. Sample2.1.296 SHA-256 c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937. All ranges are zero-based UTF-16 half-open. Modules remain inert. Exact source text was read before product edits.
+
+| Module | SHA-256 | Symbol and range | Adaptation |
+| --- | --- | --- | --- |
+| chunk-nybcbd9t.js | 0abe0d704940977466d81c1efab7f953d8f9dac0f30cd758c4a3d0286b5c1bca | vWe permissionMode [21907,22578) | Retain row and nested persistence; expose bypass and change absent default per user request |
+| chunk-a60ee1ne.js | fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1 | CH/BE [678,782), rh [782,829), $m [829,882) | Retain six external modes and internal bypass spelling adapter |
+| chunk-nw76x9y3.js | ad5bcf821ca92d9cf7554a77bec08fb05b9d89a085ff5d6a6569fe4df6edc4a8 | Dj/UBt/BBt/sjr [805,1450) | Existing cycle and launch availability remain |
+| chunk-3cynezh1.js | c3fc78a29a64dc725d32fe549b7dc11190e7646368c939bb8d61e755799955b3 | ur/V3/Pt/vc/mT [69464,70560) | Existing bypass footer and internal/external names remain |
+| chunk-sfn1dbxq.js | 4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da | Apn [3320869,3320984), axr [3321472,3323500), $pn [3360771,3364305) | Existing decision order retains explicit deny/ask and interaction floors before bypass allowance |
+
+S-7 exception. The obtainable Config source defaults to default and filters bypassPermissions. Those two choices conflict with the user's explicit request. This package adapts them and centralizes the internal/external default pair. It does not claim the recovered application defaulted to bypass. Host CLI/settings/reload mapping remains an owned adapter. No replacement permission evaluator is needed.
+
+Domain and throughput checkpoint. A typed default pair owns the internal mode and external settings spelling. Existing PermissionPolicy and destination layers own rules. Main edits the coupled configuration readers sequentially in place. The completed bounded read-only precedence explanation located reload/resume consumers; a fresh independent reviewer follows the stable diff. No parallel writer, network research or recovered entrypoint execution. apply_patch is absent, verified by command lookup, so the established dedicated Write/Edit fallback applies.
+
+Implementation. DEFAULT_PERMISSION_MODE owns the internal bypass and external bypassPermissions spellings. CLI, parsed rule-only permissions, reload and Config read that pair. Config retains the six-mode source order with its existing default/plan prefix and removes only the source's bypass exclusion. The permission evaluator is unchanged. CLI snapshots store mode only when --permission-mode was authored, with the override boundary schema and SessionConfig type both admitting absent mode. Managed policy applies before the existing root guard. The guard and shell/MCP capability contracts remain. defaultConfig's low-level legacy shape and old metadata receive no new schema defaults.
+
+Actual user setting. The existing compiled Config writer saved permissions.defaultMode=bypassPermissions in ~/.harness/settings.json. A before/after structural comparison verified all other keys and file mode were retained. Only permission fields were printed; credentials were excluded. Effective parsed mode is bypass. /opt/homebrew/bin/litcode resolves to this checkout's bin/litcode.mjs and therefore its rebuilt dist. Existing sessions retain their pinned mode; a new launch uses the new default unless explicitly overridden.
+
+Validation. npm run check and npm run build exit0. Focused147/147 pass across default, Config, reload, evaluator, cycle, root guard, runtime, storage, permission panel, advanced CLI and ordinary CLI tests. Three added regression groups cover default/rules/overrides, Config/restart/original resume and real CLI file/shell effects. The wider affected run is157/159. Its effort-priority failure (medium vs xhigh) and background-skill SIGINT failure (null vs130) both reproduce in a clean git archive of original8c8ce2e with shared dependencies. Neither existing assertion was weakened or marked skipped. Background interruption is a confirmed/open separate task90. Historical effort remains open.
+
+Actual compiled verification. node .audit/w303-bypass.mjs passes30/30 using bin/litcode.mjs through an actual Expect PTY. It verifies no-mode bypass startup, real atomic file write and explicitly enabled shell effects, paired results without ordinary approval, Config cycling/persistence with unrelated keys retained, a changed future default without live-mode mutation, new-session restart, both original manual and bypass resumes, explicit CLI plan, explicit ask then accepted write, rule-only CLI snapshot/reload precedence, Shift+Tab and eight zero-exit CLI lifetimes with released locks. Five owned loopback requests; paid upstream0. Final captures are decoded terminal text in $CLAUDE_JOB_DIR/tmp/w303-cli-result.json. The driver binds current metadata to its active lock. The historical .audit/w237-permission.mjs driver now uses an explicit manual fixture where required, expects the new absent bypass default and preserves original pinned metadata on resume; its compiled compatibility run passes13/13.
+
+Independent review. A fresh inherited-model read-only reviewer inspected the coupled diff and ran default-bypass, cycle and reload tests11/11. No confirmed scoped defect was found. Compiled CLI, full suite and root-identity execution were outside that review. Main inspected comments and final diff, retaining source provenance and the user-default exception. No new suppression or dependency. Model the Domain selected one typed default pair and optional authored override; Prove It Works selected real CLI file/shell effects and pinned resume.
+
+Identity. Combined SHA-2565d87af5595bd41bd08c3795aa6b6294e2c2d1298bf5f3d3909b32c7c737fa18e. Inputs4799c27587f6c4ed398f64adccbf1d4889876b03f2cf461b692bd940af663c23,839files. Validation713d01f4cad860068133138ef4fefbb105618db122b54d61a3810a34713d9a5f,311files. Build0301cd77028bb8b2d22ea6b15bdc57ab2729aab29d17393b04904214957f5620,600files. Final compiled run reports the same identity. Logs include w303-focused-final.log, w303-affected.log, w303-baseline-tests.log, w303-independent-core.log, w303-check-final.log, w303-build-final.log and w303-cli-final.log under the job temporary directory.
+
+S-1/S-7 verify source bodies and the explicit exception before code. S-2 keeps rule, host and resume contracts. S-3 checks decoded labels separately from styled blank padding. S-4 retains the live owner and releases processes/locks. S-5 observes file effects, durable settings and active metadata; S-6 includes all default, override and UI readers. Rework is recorded in question.md and covered by existing rules. Full suite, package smoke, live Magpie and root-identity CLI are not_run.
+
+Existing tracked user changes in .audit/w45-77-evidence.mjs and test/skills-command.test.ts remain outside this package. The supplied root PNG remains untouched. W301 and its cancelled loop remain paused; no push.

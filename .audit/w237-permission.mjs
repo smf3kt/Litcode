@@ -16,7 +16,7 @@ fs.mkdirSync(workspace); fs.mkdirSync(user);
 const settingsFile = path.join(user, 'settings.json');
 const seed = permissions => JSON.stringify({ model: 'fixture', thinking: false, keep: 'authored',
   ...(permissions === undefined ? {} : { permissions }) });
-fs.writeFileSync(settingsFile, seed({ allow: ['Bash'] }));
+fs.writeFileSync(settingsFile, seed({ allow: ['Bash'], defaultMode: 'default' }));
 const stored = () => JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
 const children = [], checks = [], captures = {};
 let active;
@@ -99,7 +99,7 @@ try {
     .sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0]
     ?.replace(/^.*\/([^/]+)\.jsonl$/, '$1');
   await launch({ resume: session }); await openConfig(); captures.resumeRow = screen();
-  pass('a resumed session keeps plan from its pinned config', /Default permission mode\s+plan/.test(screen()));
+  pass('a resumed session keeps the default from its original pinned config', /Default permission mode\s+default/.test(screen()));
   await closeConfig(); await stop();
 
   await launch({ permission: false }); captures.freshPlan = screen();
@@ -108,15 +108,15 @@ try {
 
   fs.writeFileSync(settingsFile, seed(undefined));
   await launch({ permission: false }); captures.freshDefault = screen();
-  pass('an absent key starts the fresh session in manual mode', screen().includes('manual mode on'));
+  pass('an absent key starts the fresh session in bypass mode', screen().includes('bypass permissions on'));
   await openConfig();
-  pass('the absent key reads as default', /Default permission mode\s+default/.test(screen()));
-  await selectRow(); await cycle('plan');
+  pass('the absent key reads as bypassPermissions', /Default permission mode\s+bypassPermissions/.test(screen()));
+  await selectRow(); await cycle('dontAsk'); await cycle('default'); await cycle('plan');
   pass('writing into an absent permissions object creates it',
     JSON.stringify(stored().permissions) === JSON.stringify({ defaultMode: 'plan' }));
   await closeConfig(); await stop();
 
-  fs.writeFileSync(settingsFile, seed(undefined));
+  fs.writeFileSync(settingsFile, seed({ defaultMode: 'default' }));
   fs.mkdirSync(path.join(workspace, '.harness'), { recursive: true });
   fs.writeFileSync(path.join(workspace, '.harness', 'settings.json'), JSON.stringify({ permissions: { defaultMode: 'plan' } }));
   await launch({ permission: false }); await openConfig();

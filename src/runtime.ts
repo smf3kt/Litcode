@@ -53,7 +53,7 @@ import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
 import { createCheckpointTools } from './checkpoints.js';
 import { WorktreeManager, createWorktreeTools, hasDotSegment, requireHookWorktreeDirectory, screenWorktreeAncestry } from './worktrees.js';
 import { classicEventHooked, classicHookInput, raiseClassicEvent } from './plugin-chain-classic-raise.js';
-import { permissionPolicySchema, type PermissionPolicy, type PermissionDecision } from './permissions.js';
+import { DEFAULT_PERMISSION_MODE, permissionPolicySchema, type PermissionPolicy, type PermissionDecision } from './permissions.js';
 import type { ModelProvider } from './provider.js';
 import type { StopRuntimeState } from './agent.js';
 import { configSchema, fingerprint as sessionFingerprint, fingerprintOf } from './session.js';
@@ -275,7 +275,7 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if ('hooks' in settings) out.hooks = hooksSchema.parse(settings.hooks) as HooksConfig;
   if ('permissions' in settings) {
     const raw = z.record(z.unknown()).parse(settings.permissions);
-    out.permissions = permissionsSchema.parse({ mode: raw.defaultMode === 'bypassPermissions' ? 'bypass' : raw.defaultMode ?? 'default',
+    out.permissions = permissionsSchema.parse({ mode: raw.defaultMode === 'bypassPermissions' ? 'bypass' : raw.defaultMode ?? DEFAULT_PERMISSION_MODE.mode,
       allow: [], deny: [], ...raw }) as PermissionPolicy;
   }
   if ('mcpServers' in settings) out.mcpServers = mcpServersSchema.parse(settings.mcpServers);
