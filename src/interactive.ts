@@ -470,6 +470,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const btwExchanges: SideQuestionExchange[] = [];
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
     peer?: { from: string | null };
+    wakeupId?: string;
     /** Source `isMeta`: an entry this host queued itself, not one a person may pull back and edit. */
     meta?: boolean;
     /** Source `r === "bash"` (chunk-er0mj94r.js 50100): a shell command, not a model prompt. */
@@ -696,7 +697,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   if (options.signal.aborted) abort();
   rl?.on('line', onLine); rl?.on('close', onClose);
   const unsubscribeTerminal = terminal?.subscribe({ onSubmit: onLine, onExit: onClose,
-    onInterrupt: () => turnController?.abort(new Error('Task interrupted')),
+    onInterrupt: () => {
+      // wo [432968,434531), chunk-24k7d6mw.js invokes N8n before cancelling the live turn.
+      activeRuntime.cancelLoopWakeup?.(session.id);
+      for (const pending of [queue, heldEvents]) {
+        for (let index = pending.length - 1; index >= 0; index--) {
+          if (pending[index]?.wakeupId !== undefined) pending.splice(index, 1);
+        }
+      }
+      promptQueueChanged();
+      turnController?.abort(new Error('Task interrupted'));
+    },
     onAction: action => {
       if(action==='chat:externalEditor') {
         if(inputClosed||approval||turnController||editorWork||!terminal?.editDraft)return;
@@ -1720,6 +1731,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             options.status.write('Event queue full; dropped the oldest event.\n');
           }
           queue.push({ prompt: event.prompt, source: 'event',
+            ...(event.kind === 'scheduled' && event.dynamic ? { wakeupId: event.id } : {}),
             ...(event.kind === 'teammate_idle' ? { idle: { id: event.agentId, name: event.name } } : {}) });
         }
       }
@@ -1774,6 +1786,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           heldEvents.push(item);
         }
         else {
+          // Ie [17435,19295), chunk-appb2dtz.js preserves scheduled identity until dispatch.
+          if (item.wakeupId !== undefined && activeRuntime.beginLoopWakeup?.(session.id, item.wakeupId) === false) continue;
           try {
             const result = await withTurn(async signal => {
               if (item.idle) {
@@ -1793,6 +1807,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             // messages: a mode change during the turn may now accept them.
             if (item.peer === undefined) releasePeerHeld('turn-complete');
           } catch (error) { options.status.write(`error: ${error instanceof Error ? error.message : String(error)}\n`); }
+          finally {
+            // Ie [19175,19294), chunk-appb2dtz.js clears the delivered tick after its turn.
+            if (item.wakeupId !== undefined) activeRuntime.finishLoopWakeup?.(session.id, item.wakeupId);
+          }
         }
         continue;
       }

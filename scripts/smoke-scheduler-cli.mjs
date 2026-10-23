@@ -13,12 +13,13 @@ const compiled = process.argv.includes("--compiled");
 const creators = process.argv.includes("--creators");
 const idle = process.argv.includes("--idle");
 const headlessIdle = process.argv.includes("--idle-headless");
+const wakeupChain = process.argv.includes("--wakeup");
 const durable = idle || headlessIdle || creators || process.argv.includes("--durable");
 const fixture = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "scheduler-cli-")));
 const workspace = path.join(fixture, "workspace");
 const clock = path.join(fixture, "clock");
 const preload = path.join(fixture, "clock.mjs");
-let child, creator, creatorExited, server, wake, job, releaseResponse;
+let child, creator, creatorExited, server, wake, job, releaseResponse, continueChain = true;
 const birth = pid => execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
   timeout: 1000, encoding: "utf8", env: { ...process.env, LC_ALL: "C", TZ: "UTC" },
 }).trim();
@@ -52,7 +53,16 @@ try {
     req.on("end", () => {
       const body = JSON.parse(Buffer.concat(chunks)); requests.push(body);
       const index = requests.length;
-      const block = headlessIdle && index === 1
+      const latest = body.messages.at(-1)?.content;
+      const resultTurn = Array.isArray(latest) && latest.some(block => block.type === "tool_result");
+      const block = wakeupChain
+        ? !resultTurn && /stop wakeup fixture/.test(JSON.stringify(latest))
+          ? { type: "tool_use", id: `wakeup-stop-${index}`, name: "schedule_wakeup", input: { stop: true } }
+          : !resultTurn && /(?:dynamic chain fixture|arm wakeup fixture)/.test(JSON.stringify(latest)) && continueChain
+            ? { type: "tool_use", id: `wakeup-${index}`, name: "schedule_wakeup",
+              input: { delaySeconds: 3600, prompt: "dynamic chain fixture", reason: "Continue owned chain fixture", noop: true } }
+            : { type: "text", text: "wakeup fixture complete" }
+        : headlessIdle && index === 1
         ? { type: "tool_use", id: "headless-create", name: "cron_create", input: { cron: "* * * * *", prompt: "headless held task", recurring: true, durable: true } }
         : creators && /create owned fixture/.test(JSON.stringify(body.messages.at(-1)))
         ? { type: "tool_use", id: "owned-create", name: "cron_create", input: { cron: "* * * * *", prompt: "owned creator task", recurring: true, durable: true } }
@@ -109,7 +119,58 @@ try {
     }
     throw new Error(`Cron inspection did not reach ${expected ?? "empty"}`);
   };
-  if (headlessIdle) {
+  if (wakeupChain) {
+    let completed = 0;
+    const results = () => requests.flatMap(request => {
+      const content = request.messages.at(-1)?.content;
+      return Array.isArray(content) ? content.filter(block => block.type === "tool_result").map(block => {
+        assert.equal(block.is_error, undefined);
+        return JSON.parse(typeof block.content === "string" ? block.content : block.content[0].text);
+      }) : [];
+    });
+    const waitTurn = async () => {
+      completed++;
+      await wait(() => stderr.split("finished: end_turn").length - 1 >= completed);
+      return results().at(-1);
+    };
+    child.stdin.write("arm wakeup fixture\n");
+    let result = await waitTurn();
+    assert.ok(result.scheduledFor >= initial + 3_600_000);
+    let lastFireAt;
+    for (let hour = 1; hour <= 168; hour++) {
+      lastFireAt = result.scheduledFor;
+      fs.writeFileSync(clock, String(lastFireAt));
+      result = await waitTurn();
+      assert.equal(result.scheduledFor === 0, hour === 168, `chain age ${hour}h`);
+    }
+    const expiredRequests = requests.length;
+    fs.writeFileSync(clock, String(lastFireAt + 60_001));
+    await new Promise(resolve => setTimeout(resolve, 1100));
+    assert.equal(requests.length, expiredRequests, "an expired chain has no armed wakeup");
+    child.stdin.write("arm wakeup fixture\n");
+    result = await waitTurn();
+    assert.ok(result.scheduledFor > 0, "a stale aged-out tombstone permits a new chain");
+    const cancelledAt = result.scheduledFor;
+    child.stdin.write("stop wakeup fixture\n");
+    result = await waitTurn();
+    assert.equal(result.stopped, true);
+    assert.equal(result.cancelledWakeups, 1);
+    const stoppedRequests = requests.length;
+    fs.writeFileSync(clock, String(cancelledAt + 3_600_000));
+    await new Promise(resolve => setTimeout(resolve, 1100));
+    assert.equal(requests.length, stoppedRequests);
+    child.stdin.write("stop wakeup fixture\n");
+    result = await waitTurn();
+    assert.equal(result.stopped, true);
+    assert.equal(result.cancelledWakeups, 0);
+    continueChain = false;
+    child.stdin.end("/exit\n");
+    assert.equal(await exited, 0); child = undefined;
+    assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
+    console.log(JSON.stringify({ cli: "passed", compiled, wakeupChain: true, continuousHours: 168,
+      expiredWithoutRearm: true, stopAndRestart: true, noopAccepted: true, modelRequests: requests.length,
+      gateway: "owned loopback SSE", locksReleased: true }));
+  } else if (headlessIdle) {
     await wait(() => requests.length === 2 && releaseResponse !== undefined);
     const before = JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks;
     assert.equal(before.length, 1);

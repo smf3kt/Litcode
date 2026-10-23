@@ -477,7 +477,7 @@ test('schedule_wakeup tool clamps, replaces and stops', () => {
   const { scheduler } = fixture(new Date(2024, 0, 1, 0, 0, 0));
   const { schedule_wakeup } = createSchedulerTools(scheduler);
 
-  const armed = schedule_wakeup.run({ delaySeconds: 30, prompt: 'soon' });
+  const armed = schedule_wakeup.run({ delaySeconds: 30, prompt: 'soon', reason: 'Check again', noop: false });
   assert.equal(armed.ok, true);
   assert.equal((armed.data as { clampedDelaySeconds: number }).clampedDelaySeconds, 60);
   assert.equal((armed.data as { wasClamped: boolean }).wasClamped, true);
