@@ -350,6 +350,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   providerBlocked?: (config: SessionConfig) => string | undefined;
 }): Promise<void> {
   let session = initial;
+  // `x0r.Y`/`vd` [10901,11476), chunk-jrz2zk22.js: history survives runtime replacement.
+  const schedulerSessions = new Set([initial.id]);
   // Source `Ujt` (chunk-sfn1dbxq.js 1663949): the fleet-fork gate selects which `/fork`
   // registration the command table carries and whether `/subtask` is offered at all.
   const fleetFork = fleetForkOpen(process.env, initial.config);
@@ -1162,7 +1164,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     unsubscribe = activeRuntime.subscribe?.(runtimeChanged);
     // `x0r.start/stop` [10901,11476), chunk-jrz2zk22.js: the successor starts after old cleanup.
     activeRuntime.buildTools(session.config, session.id);
-    await activeRuntime.settleScheduler?.(session.id);
+    schedulerSessions.add(session.id);
+    await activeRuntime.settleScheduler?.(session.id, schedulerSessions);
   };
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand, reconfigureRuntime = false) => {
     signal.throwIfAborted();
@@ -1664,7 +1667,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await startPeer(session.config);
     // Source `me(!0).then(ne)`: the durable scheduler reads its store before the loop drains,
     // so a restart's missed one-shot catch-up is queued for the first turn.
-    await activeRuntime.settleScheduler?.(session.id).catch(() => {});
+    await activeRuntime.settleScheduler?.(session.id, schedulerSessions).catch(() => {});
     announce();
     bindConfigWatch();
     /**

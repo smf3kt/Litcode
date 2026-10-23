@@ -7,6 +7,7 @@
 
 import { randomUUID } from 'node:crypto';
 
+import { schedulerProcessBirth, TaskCreators } from './scheduler-creators.js';
 import {
   acquireSchedulerLock, agedOut, missedTasks, missedTasksPrompt, readStoredTasks, releaseSchedulerLock,
   removeStoredTasks, scheduledTasksPath, stampStoredTasks, watchStoredTasks, writeStoredTasks,
@@ -387,11 +388,7 @@ export interface LocalSchedulerOptions {
   tickIntervalMs?: number;
   /** Opt in to bounded, deterministic cron timing jitter. Wakeups stay exact. */
   jitter?: boolean;
-  /**
-   * The durable store's workspace. When set, every mutation is mirrored into
-   * `<workspace>/.harness/scheduled_tasks.json` and the scheduler only fires while it holds the
-   * store's lock; absent, the scheduler stays session-only (`chunk-jrz2zk22.js` `ne`/`oe`).
-   */
+  /** Durable tasks use the workspace store and source creator eligibility (`ke`/`ne`). */
   store?: SchedulerStoreOptions;
 }
 
@@ -400,6 +397,10 @@ export interface SchedulerStoreOptions {
   workspace: string;
   /** This session's lock identity. Defaults to a fresh UUID. */
   sessionId?: string;
+  /** Sessions observed by the same interactive process (`x0r.Y`/`vd`). */
+  sessionIds?: ReadonlySet<string>;
+  /** The current project's local journal directory (`Je`/`Oh`). */
+  transcriptDirectory?: string;
   /** The catch-up prompt for one-shot tasks that came due while nothing was running. */
   onMissed?: (prompt: string) => void;
 }
@@ -429,6 +430,8 @@ export class LocalScheduler {
   private readonly jobs = new Map<string, ScheduledJob>();
   private readonly store: SchedulerStoreOptions | undefined;
   private readonly storeSessionId: string;
+  private readonly creators: TaskCreators | undefined;
+  private readonly fileDeadlines = new Set<string>();
   private dynamic: DynamicWakeup | null = null;
   private timerHandle: unknown = undefined;
   private closed = false;
@@ -453,6 +456,7 @@ export class LocalScheduler {
     this.jitter = options.jitter === true;
     this.store = options.store;
     this.storeSessionId = options.store?.sessionId ?? randomUUID();
+    this.creators = options.store && new TaskCreators({ ...options.store, sessionId: this.storeSessionId });
     this.timer = options.timer === undefined ? realTimer : options.timer;
     if (this.timer) {
       const interval = options.tickIntervalMs ?? DEFAULT_TICK_MS;
@@ -527,8 +531,9 @@ export class LocalScheduler {
       const task: StoredTask = { id: job.id, cron, prompt: job.prompt, createdAt,
         ...(job.recurring ? { recurring: true } : {}),
         createdBySessionId: this.storeSessionId, createdByPid: process.pid,
-        createdInProject: this.store!.workspace };
+        createdByProcStart: schedulerProcessBirth(), createdInProject: this.store!.workspace };
       Object.assign(job, task);
+      this.fileDeadlines.add(job.id);
       void this.storeOperation(async () => {
         const tasks = await readStoredTasks(this.store!.workspace);
         tasks.push(task);
@@ -604,8 +609,13 @@ export class LocalScheduler {
         return;
       }
       if (!acquired) return;
-      // `ke` before `b`, ne [7616,9890): an unleased file task never owns a due cache.
-      for (const job of this.jobs.values()) if (job.durable) this.jobs.delete(job.id);
+      // `ke` precedes `b` in ne [7616,9890): only an eligible creator owns a deadline.
+      for (const job of this.jobs.values()) {
+        if (job.durable && !this.creators!.eligible(job, false)) {
+          this.jobs.delete(job.id);
+          this.fileDeadlines.delete(job.id);
+        }
+      }
       this.storeLease = 'held';
       this.clearLockRetry();
       await this.storeOperation(async () => { await this.reloadStoredTasks(); this.tick(); });
@@ -622,13 +632,28 @@ export class LocalScheduler {
     if (this.closed || this.storeClosing) return;
     const store = this.store!;
     const stored = await readStoredTasks(store.workspace);
+    await this.creators!.readTranscripts(stored);
+    if (this.closed || this.storeClosing) return;
+    // `me` [6337,7616): an original-session resume refreshes its creator process before catch-up.
+    if (startup) {
+      let refreshed = false;
+      for (const task of stored) {
+        if (task.createdBySessionId === this.storeSessionId && task.createdByPid !== process.pid) {
+          task.createdByPid = process.pid;
+          task.createdByProcStart = schedulerProcessBirth();
+          refreshed = true;
+        }
+      }
+      if (refreshed) await writeStoredTasks(store.workspace, stored).catch(error => { this.storeError = error; });
+    }
     if (this.closed || this.storeClosing) return;
     const ids = new Set(stored.map(task => task.id));
     for (const id of this.deliveredFileTasks) if (!ids.has(id)) this.deliveredFileTasks.delete(id);
-    const mine = stored.filter(task => task.createdInProject === undefined || task.createdInProject === store.workspace);
-    if (startup && this.hasStoreLock()) {
-      const missed = missedTasks(mine, this.clock())
-        .filter(task => task.recurring !== true && !this.deliveredFileTasks.has(task.id));
+    for (const id of this.fileDeadlines) if (!ids.has(id)) this.fileDeadlines.delete(id);
+    if (startup) {
+      const missed = missedTasks(stored, this.clock())
+        .filter(task => task.recurring !== true && !this.deliveredFileTasks.has(task.id)
+          && this.creators!.eligible(task, this.hasStoreLock()));
       if (missed.length) {
         for (const task of missed) this.deliveredFileTasks.add(task.id);
         try {
@@ -640,9 +665,8 @@ export class LocalScheduler {
       }
     }
     if (this.closed || this.storeClosing) return;
-    const fileIds = new Set(mine.map(task => task.id));
-    for (const job of this.jobs.values()) if (job.durable && !fileIds.has(job.id)) this.jobs.delete(job.id);
-    for (const task of mine) {
+    for (const job of this.jobs.values()) if (job.durable && !ids.has(job.id)) this.jobs.delete(job.id);
+    for (const task of stored) {
       if (this.deliveredFileTasks.has(task.id)) { this.jobs.delete(task.id); continue; }
       const parsed = parseCron(task.cron);
       if (!parsed) continue;
@@ -652,7 +676,11 @@ export class LocalScheduler {
       if (!nominal) continue;
       const job: ScheduledJob = { ...task, recurring: task.recurring === true, durable: true,
         nextAt: nominal.getTime(), humanSchedule: describeCron(task.cron) };
-      job.nextAt = previous?.nextAt ?? this.fireTime(job, parsed, nominal.getTime(), from);
+      const eligible = this.creators!.eligible(task, this.hasStoreLock());
+      job.nextAt = eligible && this.fileDeadlines.has(task.id) && previous
+        ? previous.nextAt : this.fireTime(job, parsed, nominal.getTime(), from);
+      if (eligible) this.fileDeadlines.add(task.id);
+      else this.fileDeadlines.delete(task.id);
       this.jobs.set(job.id, job);
     }
   }
@@ -746,7 +774,6 @@ export class LocalScheduler {
    */
   tick(): SchedulerEvent[] {
     if (this.closed) return [];
-    // Source `ne`: the durable driver fires nothing until this session holds the store lock.
     if (this.storeClosing) return [];
     const now = this.now();
     const firedAt = now instanceof Date ? now.getTime() : NaN;
@@ -757,10 +784,23 @@ export class LocalScheduler {
     const fired: string[] = [];
     const removed: string[] = [];
 
-    const due = Array.from(this.jobs.values())
-      .filter((job) => job.nextAt <= firedAt && (!job.durable || this.hasStoreLock())
-        && !this.deliveredFileTasks.has(job.id))
-      .sort((a, b) => a.nextAt - b.nextAt || a.createdAt - b.createdAt);
+    // `ne` [7616,9890): ke runs before b creates or retains an id-keyed deadline.
+    const due: ScheduledJob[] = [];
+    for (const job of this.jobs.values()) {
+      if (this.deliveredFileTasks.has(job.id)) continue;
+      if (job.durable) {
+        if (!this.creators!.eligible(job, this.hasStoreLock())) { this.fileDeadlines.delete(job.id); continue; }
+        if (!this.fileDeadlines.has(job.id)) {
+          const parsed = parseCron(job.cron);
+          const from = job.recurring ? (job.lastFiredAt ?? job.createdAt) : job.createdAt;
+          const next = parsed && nextOccurrence(parsed, new Date(from));
+          job.nextAt = next ? this.fireTime(job, parsed!, next.getTime(), from) : Infinity;
+          this.fileDeadlines.add(job.id);
+        }
+      }
+      if (job.nextAt <= firedAt) due.push(job);
+    }
+    due.sort((a, b) => a.nextAt - b.nextAt || a.createdAt - b.createdAt);
 
     for (const job of due) {
       if (!this.jobs.has(job.id)) continue; // already handled this tick
@@ -816,6 +856,7 @@ export class LocalScheduler {
     if (!this.closed) {
       this.closed = true;
       this.jobs.clear();
+      this.fileDeadlines.clear();
       this.dynamic = null;
       if (this.timer && this.timerHandle !== undefined) {
         this.timer.clearInterval(this.timerHandle);

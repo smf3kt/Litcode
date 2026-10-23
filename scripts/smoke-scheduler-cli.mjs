@@ -3,17 +3,23 @@ import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { once } from "node:events";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const compiled = process.argv.includes("--compiled");
-const durable = process.argv.includes("--durable");
+const creators = process.argv.includes("--creators");
+const durable = creators || process.argv.includes("--durable");
 const fixture = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "scheduler-cli-")));
 const workspace = path.join(fixture, "workspace");
 const clock = path.join(fixture, "clock");
 const preload = path.join(fixture, "clock.mjs");
-let child, server, wake, job;
+let child, creator, creatorExited, server, wake, job;
+const birth = pid => execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+  timeout: 1000, encoding: "utf8", env: { ...process.env, LC_ALL: "C", TZ: "UTC" },
+}).trim();
 let stderr = "", stdout = "", done = false;
 const requests = [];
 const initial = new Date(2024, 0, 1, 0, 0).getTime();
@@ -29,7 +35,7 @@ try {
   fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { schedulerJitter: true,
     ...(durable ? { schedulerDurable: true } : {}) }, permissions: { mode: "bypass", allow: [], deny: [] } }));
   const storeFile = path.join(workspace, ".harness/scheduled_tasks.json");
-  if (durable) fs.writeFileSync(storeFile, JSON.stringify({ tasks: [{ id: "deadbeef", cron: "0 0 * * *",
+  if (durable) fs.writeFileSync(storeFile, JSON.stringify({ tasks: creators ? [] : [{ id: "deadbeef", cron: "0 0 * * *",
     prompt: "missed fixture task", createdAt: initial - 2 * 86400000 }] }));
   const replaceStore = tasks => {
     const staging = path.join(fixture, "store-next.json");
@@ -44,7 +50,9 @@ try {
     req.on("end", () => {
       const body = JSON.parse(Buffer.concat(chunks)); requests.push(body);
       const index = requests.length;
-      const block = durable ? { type: "text", text: "durable fixture complete" }
+      const block = creators && /create owned fixture/.test(JSON.stringify(body.messages.at(-1)))
+        ? { type: "tool_use", id: "owned-create", name: "cron_create", input: { cron: "* * * * *", prompt: "owned creator task", recurring: true, durable: true } }
+        : durable ? { type: "text", text: "durable fixture complete" }
         : index === 1 ? { type: "tool_use", id: "cron-create", name: "cron_create", input: { cron: "* * * * *", prompt: "scheduled fixture task", recurring: true } }
           : index === 2 ? { type: "tool_use", id: "cron-list", name: "cron_list", input: {} }
           : index === 5 ? { type: "tool_use", id: "cron-delete", name: "cron_delete", input: { id: job.id } }
@@ -68,38 +76,99 @@ try {
   Object.assign(env, { SMOKE_CLOCK: clock, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/scheduler",
     LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate",
     LLM_EFFORT: "medium", LLM_THINKING: "false" });
-  child = spawn(process.execPath, ["--import", preload,
-    ...(compiled ? [path.join(root, "bin/litcode.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")]),
-    "--workspace", workspace, "--user-dir", path.join(workspace, "user"), "--interactive"],
-    { cwd: root, stdio: ["pipe", "pipe", "pipe"], env });
-  child.stderr.on("data", chunk => { stderr = (stderr + chunk).slice(-64000); wake?.(); });
-  child.stdout.on("data", chunk => { stdout = (stdout + chunk).slice(-32000); wake?.(); });
-  const exited = new Promise((resolve, reject) => { child.on("error", reject); child.on("close", code => { done = true; wake?.(); resolve(code); }); });
+  const launch = (extra = []) => {
+    stderr = ""; stdout = ""; done = false;
+    child = spawn(process.execPath, ["--import", preload,
+      ...(compiled ? [path.join(root, "bin/litcode.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")]),
+      "--workspace", workspace, ...(extra.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), "--interactive", ...extra],
+      { cwd: root, stdio: ["pipe", "pipe", "pipe"], env });
+    child.stderr.on("data", chunk => { stderr = (stderr + chunk).slice(-64000); wake?.(); });
+    child.stdout.on("data", chunk => { stdout = (stdout + chunk).slice(-32000); wake?.(); });
+    return new Promise((resolve, reject) => { child.on("error", reject); child.on("close", code => { done = true; wake?.(); resolve(code); }); });
+  };
+  let exited = launch();
   await wait(() => stderr.includes("Personal harness."));
-  if (durable) {
+  const inspect = async expected => {
+    const deadline = Date.now() + 5_000;
+    while (Date.now() < deadline) {
+      const offset = stdout.length;
+      child.stdin.write("/cron\n");
+      await wait(() => stdout.slice(offset).includes('"jobs"'));
+      const payload = stdout.slice(offset).split("\n").find(line => line.startsWith('{"jobs":'));
+      if (payload) {
+        const jobs = JSON.parse(payload).jobs;
+        if (expected === undefined ? jobs.length === 0 : jobs.some(row => row.prompt === expected)) return jobs;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    throw new Error(`Cron inspection did not reach ${expected ?? "empty"}`);
+  };
+  if (creators) {
+    creator = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "ignore" });
+    await once(creator, "spawn");
+    creatorExited = once(creator, "exit");
+    const foreign = { id: "80000000", cron: "* * * * *", prompt: "live foreign task", createdAt: initial,
+      recurring: true, permanent: true, createdBySessionId: randomUUID(), createdByPid: creator.pid,
+      createdByProcStart: birth(creator.pid), createdInProject: workspace };
+    replaceStore([foreign]);
+    await inspect(foreign.prompt);
+    fs.writeFileSync(clock, String(initial + 90_000));
+    child.stdin.write("/cron\n");
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    assert.equal(requests.length, 0, "a live foreign creator remains silent even when this session holds the lease");
+    assert.equal(JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks[0].lastFiredAt, undefined);
+    creator.kill(); await creatorExited; creator = undefined;
+    await wait(() => requests.length === 1 && stderr.includes("event finished: end_turn"));
+    assert.match(JSON.stringify(requests[0].messages.at(-1)), /live foreign task/);
+    child.stdin.write("create owned fixture\n");
+    await wait(() => requests.length === 3 && stderr.includes("finished: end_turn"));
+    const leaseFile = path.join(workspace, ".harness/scheduled_tasks.lock");
+    const firstOwner = JSON.parse(fs.readFileSync(leaseFile, "utf8")).sessionId;
+    const own = JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks.find(row => row.prompt === "owned creator task");
+    assert.equal(own.createdBySessionId, firstOwner);
+    assert.equal(own.createdByPid, child.pid);
+    assert.equal(own.createdByProcStart, birth(child.pid));
+    const clearOffset = stderr.length;
+    child.stdin.write("/clear\n");
+    await wait(() => stderr.slice(clearOffset).includes("session: "));
+    const successor = JSON.parse(fs.readFileSync(leaseFile, "utf8")).sessionId;
+    assert.notEqual(successor, firstOwner);
+    const rows = await inspect("owned creator task");
+    const ownedDeadline = rows.find(row => row.id === own.id).nextAt;
+    fs.writeFileSync(clock, String(ownedDeadline));
+    await wait(() => requests.some(body => /owned creator task/.test(JSON.stringify(body.messages.at(-1))))
+      && JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks.some(row => row.id === own.id && row.lastFiredAt >= ownedDeadline));
+    child.stdin.end("/exit\n"); assert.equal(await exited, 0); child = undefined;
+    const restartAt = ownedDeadline + 1_000;
+    fs.writeFileSync(clock, String(restartAt));
+    exited = launch(["--resume", firstOwner]);
+    await wait(() => stderr.includes("Personal harness."));
+    const resumeDeadline = Date.now() + 5_000;
+    while (JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks.find(row => row.id === own.id)?.createdByPid !== child.pid) {
+      assert.ok(Date.now() < resumeDeadline, "original-session resume refreshes creator PID");
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    const refreshed = JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks.find(row => row.id === own.id);
+    assert.equal(refreshed.createdByProcStart, birth(child.pid));
+    const beforeResume = requests.length;
+    const resumeJobs = await inspect("owned creator task");
+    fs.writeFileSync(clock, String(Math.max(restartAt, resumeJobs.find(row => row.id === own.id).nextAt)));
+    await wait(() => requests.slice(beforeResume).some(body => /owned creator task/.test(JSON.stringify(body.messages.at(-1))))
+      && stderr.includes("event finished: end_turn"));
+    child.stdin.end("/exit\n"); assert.equal(await exited, 0); child = undefined;
+    assert.equal(fs.existsSync(leaseFile), false);
+    assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
+    console.log(JSON.stringify({ cli: "passed", compiled, creatorEligibility: true, liveCreatorExcluded: true,
+      creatorExitTakeover: true, ownedBirthWritten: true, clearHistory: true, originalResumeRefresh: true,
+      modelRequests: requests.length, gateway: "owned loopback SSE", locksReleased: true }));
+  } else if (durable) {
     await wait(() => stderr.includes("event finished: end_turn"));
     assert.equal(requests.length, 1);
     assert.match(JSON.stringify(requests[0].messages.at(-1)), /missed fixture task/);
     assert.deepEqual(JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks, []);
     const scheduled = { id: "80000000", cron: "* * * * *", prompt: "external original",
-      createdAt: initial, recurring: true, permanent: true, createdBySessionId: "previous-session" };
+      createdAt: initial, recurring: true, permanent: true, createdBySessionId: "previous-session", createdInProject: workspace };
     replaceStore([scheduled]);
-    const inspect = async expected => {
-      const deadline = Date.now() + 5_000;
-      while (Date.now() < deadline) {
-        const offset = stdout.length;
-        child.stdin.write("/cron\n");
-        await wait(() => stdout.slice(offset).includes('"jobs"'));
-        const lines = stdout.slice(offset).split("\n");
-        const payload = lines.find(line => line.startsWith('{"jobs":'));
-        if (payload) {
-          const jobs = JSON.parse(payload).jobs;
-          if (expected === undefined ? jobs.length === 0 : jobs.some(row => row.prompt === expected)) return jobs;
-        }
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      throw new Error(`Cron inspection did not reach ${expected ?? "empty"}`);
-    };
     const jobs = await inspect("external original");
     assert.equal(jobs[0].nextAt, initial + 75_000);
     replaceStore([{ ...scheduled, prompt: "external updated" }]);
@@ -172,6 +241,7 @@ try {
   }
 } finally {
   child?.kill("SIGKILL");
+  if (creator && creator.exitCode === null && creator.signalCode === null) { creator.kill(); await creatorExited; }
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
   fs.rmSync(fixture, { recursive: true, force: true });
 }
