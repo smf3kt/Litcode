@@ -523,8 +523,9 @@ Next up, scoped but not started:
       W295 carries Auto-scroll and corrects its earlier false-default gate claim; its row shares
       inAppSelection:true. Other unported rows still need individual source preflight: prompt
       suggestions / timestamps / tab status,
-      recap (no local consumer), fast mode (model routing), gitignore/copyFullResponse (no
-      matching host consumer), notifications (no local trigger set).
+      recap (no local consumer), fast mode (model routing), gitignore (no matching host consumer),
+      notifications (no local trigger set). W296 connects copyFullResponse to its obtained /copy
+      consumer and supersedes the earlier missing-consumer claim.
 
 Scoped out:
 
@@ -734,3 +735,9 @@ Explicitly out of scope for this loop:
       incremental bottom fixes its position and Ctrl+End/click force following. Three independent
       findings repaired and rechecked. Affected153/153, check/build clean, compiled23/23 plus Config35/35
       at `d22f5e42...`. See `research/ports/W295-auto-scroll.md`.
+- [x] W296 copy picker (c283tj3z Be/cn [18528,22896), UTF-16): source table/quote/code parsing,
+      full/code/quote/always rows, Enter/click copy, w file-only, cancel timers, global default-false
+      copyFullResponse and live Config/reset/reload/session chain. Mount/activation filtering,
+      repeated overflow clicks, Nr labels and 20x8 focus visibility repaired and independently checked.
+      Affected161/161, check/build clean, compiled22/22 plus Config35/35 at `da1c4c08...`.
+      See `research/ports/W296-copy-picker.md`.

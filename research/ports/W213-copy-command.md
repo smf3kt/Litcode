@@ -2,6 +2,8 @@
 
 Status: implemented locally on `work/w43-choice-preview`. No push, no upstream calls.
 
+W296 supersedes the selector, table-normalization and advisory exclusions below. It ports the obtained parser/formatter closure, code/quote/full/always picker and global Config preference. The advisory is the recovered VS Code OSC52 UTF-8 warning. See [W296](W296-copy-picker.md).
+
 ## Request
 
 Part of the loop that ports the TUI surfaces behind the composer's slash commands. `/copy` was the

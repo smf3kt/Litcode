@@ -1163,6 +1163,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   const settings: Record<string, unknown> = {};
   const spinnerTipsLayers: SpinnerTipsLayer[] = [];
   let copyOnSelect: unknown;
+  let copyFullResponse: unknown;
   let managedDisplay: SpinnerTipsSettings | undefined;
   let managedSettings: Record<string, unknown> | undefined;
   let managedSettingsReport: ManagedSettingsReport | undefined;
@@ -1218,7 +1219,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
       const override = spinnerTipsOverrideSchema.parse(parsed.spinnerTipsOverride);
       if (override !== undefined) spinnerTipsLayers.push({ source: layer.source, override });
       mergeInto(settings, parsed);
-      if (layer.source === 'userSettings') copyOnSelect = parsed.copyOnSelect;
+      if (layer.source === 'userSettings') { copyOnSelect = parsed.copyOnSelect; copyFullResponse = parsed.copyFullResponse; }
       if (parsed.approveAllProjectMcpServers !== undefined) {
         if (typeof parsed.approveAllProjectMcpServers !== "boolean") {
           throw new ConfigError("approveAllProjectMcpServers must be true or false", layer.file);
@@ -1237,6 +1238,9 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   // Ce global preference, nybcbd9t [23905,24064), UTF-16; the host stores it in the user document.
   if (copyOnSelect === undefined) delete settings.copyOnSelect;
   else settings.copyOnSelect = copyOnSelect;
+  // Be reads ce(), not merged project settings, c283tj3z [22233,22896), UTF-16.
+  if (copyFullResponse === undefined) delete settings.copyFullResponse;
+  else settings.copyFullResponse = copyFullResponse;
   if (managedSettings) {
     if (isPlainObject(managedSettings.permissions) || managedSettings.useAutoModeDuringPlan !== undefined || managedSettings.autoMode !== undefined) {
       const rules = isPlainObject(managedSettings.permissions) ? managedSettings.permissions : {};

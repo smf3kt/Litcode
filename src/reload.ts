@@ -49,6 +49,8 @@ export function reloadConfig(current: SessionConfig): SessionConfig {
   else delete next.showMessageTimestamps;
   if (settings.copyOnSelect !== undefined) next.copyOnSelect = settings.copyOnSelect;
   else delete next.copyOnSelect;
+  if (settings.copyFullResponse !== undefined) next.copyFullResponse = settings.copyFullResponse;
+  else delete next.copyFullResponse;
   if (settings.autoScrollEnabled !== undefined) next.autoScrollEnabled = settings.autoScrollEnabled;
   else delete next.autoScrollEnabled;
   if (settings.viewMode !== undefined) next.viewMode = settings.viewMode;

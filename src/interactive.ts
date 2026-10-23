@@ -58,7 +58,7 @@ import { thinkingDialogRequest, THINKING_DIALOG_TITLE, THINKING_MID_CONVERSATION
 import { TIME_FORMATS, type ConfigPanelState, type ConfigUpdate } from './config-panel.js';
 import { configPanelInput } from './config-panel-input.js';
 import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUsageMessage,
-  parseCopyArgument, writeCopyFile } from './copy-command.js';
+  copyBlocks, copyPickerRows, copyResponseText, copyTarget, parseCopyArgument, writeCopyFile } from './copy-command.js';
 import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
   autoCompactDialogMessage, autoCompactLimit, autoCompactSelection, autoCompactSelectionValue,
   autoCompactStatus, autoCompactUnchangedMessage, resolveAutoCompactWindow } from './autocompact-command.js';
@@ -1618,16 +1618,35 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const argument = parseCopyArgument(prompt.slice('/copy'.length), responses.length);
           if (argument.kind === 'usage') { output.write(`${copyUsageMessage(argument.got)}\n`); continue; }
           if (argument.kind === 'too-many') { output.write(`${copyTooManyMessage(argument.count)}\n`); continue; }
-          const text = responses[argument.kind === 'latest' ? 0 : argument.index]!;
+          // cn/Be, c283tj3z [18528,22896), UTF-16; display rows never own the raw response.
+          const text = copyResponseText(responses[argument.kind === 'latest' ? 0 : argument.index]!);
+          const blocks = copyBlocks(text);
+          let selected = 'full', write = false;
+          if (blocks.length > 0 && !session.config.copyFullResponse && terminal?.prompt) {
+            const answer = await withTurn(signal => readDialog({ message: 'Select content to copy:',
+              copyPicker: { rows: copyPickerRows(text, blocks) } }, signal));
+            if (!answer?.selected[0]) { output.write('Copy cancelled\n'); continue; }
+            selected = answer.selected[0]; write = answer.key === 'w';
+          }
+          const target = copyTarget(text, blocks, selected);
+          if (write) {
+            try { output.write(`Written to ${writeCopyFile(target.text, undefined, target.filename)}\n`); }
+            catch (error) { output.write(`Failed to write file: ${error instanceof Error ? error.message : error}\n`); }
+            continue;
+          }
+          if (selected === 'always' && !session.config.copyFullResponse) {
+            await saveConfigPanelSetting({ id: 'copyFullResponse', value: true }, session.config.workspace,
+              session.config.configSources?.userDir ?? defaultUserDir());
+            session.config.copyFullResponse = true;
+          }
           let payload: string;
-          try { payload = osc52Payload(text); }
+          try { payload = osc52Payload(target.text); }
           catch (error) { output.write(`${(error as Error).message}\n`); continue; }
           if (terminal?.writeClipboard) terminal.writeClipboard(payload); else output.write(payload);
-          // The recovered `A` still returns its report when the file write fails, so a scratch
-          // directory that cannot be created only drops the `Also written to` line.
           let file: string | undefined;
-          try { file = writeCopyFile(text); } catch { file = undefined; }
-          output.write(`${copyReport(text, file)}\n`);
+          try { file = writeCopyFile(target.text, undefined, target.filename); } catch { file = undefined; }
+          output.write(`${copyReport(target.text, file)}${selected === 'always'
+            ? '\nPreference saved. Use /config to change copyFullResponse' : ''}\n`);
           continue;
         }
         if (prompt === '/btw' || prompt.startsWith('/btw ')) {
@@ -2457,6 +2476,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       changes.set(update.id, `Set ${update.id} to ${enabled !== false}`);
                       return configPanelInput(session.config);
                     }
+                    case 'copyFullResponse':
+                      session.config.copyFullResponse = update.value;
+                      changes.set(update.id, `Set ${update.id} to ${update.value}`);
+                      return configPanelInput(session.config);
                     // vWe/G, nybcbd9t [23905,24064)/[8266,8318), UTF-16: global preference and live snapshot.
                     case 'copyOnSelect':
                       session.config.copyOnSelect = update.value;
