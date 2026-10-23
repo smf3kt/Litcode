@@ -89,6 +89,9 @@ export type SessionConfig = {
   copyOnSelect?: boolean;
   copyFullResponse?: boolean;
   preferredNotifChannel?: NotificationChannel;
+  /** `messageIdleNotifThresholdMs`: idle time before the `idle_prompt` notification; 60000 when absent
+   *  (`ce().messageIdleNotifThresholdMs`, chunk-24k7d6mw.js 1679555, default at chunk-bk5ct2gw.js 558979). */
+  messageIdleNotifThresholdMs?: number;
   terminalTitleFromRename?: boolean;
   autoScrollEnabled?: boolean;
   /** `/focus`'s persisted view mode; `focus` is the brief transcript. */
@@ -250,6 +253,9 @@ export const configSchema = z.object({
   copyOnSelect: z.boolean().optional(),
   copyFullResponse: z.boolean().optional(),
   preferredNotifChannel: notificationChannelSchema,
+  // `messageIdleNotifThresholdMs` (chunk-24k7d6mw.js 1679555, default 60000 at chunk-bk5ct2gw.js
+  // 558979): a millisecond delay, so a non-positive value would arm nothing and is unset.
+  messageIdleNotifThresholdMs: z.number().int().positive().optional().catch(undefined),
   terminalTitleFromRename: z.boolean().optional(),
   autoScrollEnabled: z.boolean().optional(),
   viewMode: z.enum(['default', 'verbose', 'focus']).optional(),

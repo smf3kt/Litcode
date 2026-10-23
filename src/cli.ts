@@ -375,6 +375,7 @@ function newConfig(
   if (settings.copyOnSelect !== undefined) config.copyOnSelect = settings.copyOnSelect;
   if (settings.copyFullResponse !== undefined) config.copyFullResponse = settings.copyFullResponse;
   if (settings.preferredNotifChannel !== undefined) config.preferredNotifChannel = settings.preferredNotifChannel;
+  if (settings.messageIdleNotifThresholdMs !== undefined) config.messageIdleNotifThresholdMs = settings.messageIdleNotifThresholdMs;
   if (settings.terminalTitleFromRename !== undefined) config.terminalTitleFromRename = settings.terminalTitleFromRename;
   if (settings.autoScrollEnabled !== undefined) config.autoScrollEnabled = settings.autoScrollEnabled;
   if (settings.viewMode !== undefined) config.viewMode = settings.viewMode;
@@ -865,6 +866,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         showMessageTimestamps: currentSession.config.showMessageTimestamps,
         copyOnSelect: currentSession.config.copyOnSelect,
         preferredNotifChannel: currentSession.config.preferredNotifChannel,
+        messageIdleNotifThresholdMs: currentSession.config.messageIdleNotifThresholdMs,
         autoScrollEnabled: currentSession.config.autoScrollEnabled,
         briefTranscript: briefTranscriptEnabled(currentSession.config),
         verbose: currentSession.config.verbose === true,

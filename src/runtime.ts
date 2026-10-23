@@ -109,6 +109,8 @@ export type ParsedRuntimeSettings = {
   copyOnSelect?: boolean;
   copyFullResponse?: boolean;
   preferredNotifChannel?: import('./terminal-notifications.js').NotificationChannel;
+  /** `messageIdleNotifThresholdMs`, in milliseconds; the idle notification's own default is 60000. */
+  messageIdleNotifThresholdMs?: number;
   terminalTitleFromRename?: boolean;
   autoScrollEnabled?: boolean;
   verbose?: boolean;
@@ -235,6 +237,12 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if ('copyOnSelect' in settings) out.copyOnSelect = settingBoolean(settings, 'copyOnSelect');
   if ('copyFullResponse' in settings) out.copyFullResponse = settingBoolean(settings, 'copyFullResponse');
   if ('preferredNotifChannel' in settings) out.preferredNotifChannel = notificationChannelSchema.parse(settings.preferredNotifChannel);
+  // `ce().messageIdleNotifThresholdMs` (chunk-24k7d6mw.js 1679555): a millisecond delay; a value
+  // that cannot arm a timer is absent rather than an error, so the 60000 default applies.
+  if ('messageIdleNotifThresholdMs' in settings) {
+    const threshold = z.number().int().positive().optional().catch(undefined).parse(settings.messageIdleNotifThresholdMs);
+    if (threshold !== undefined) out.messageIdleNotifThresholdMs = threshold;
+  }
   if ('terminalTitleFromRename' in settings) out.terminalTitleFromRename = settingBoolean(settings, 'terminalTitleFromRename');
   if ('autoScrollEnabled' in settings) out.autoScrollEnabled = settingBoolean(settings, 'autoScrollEnabled');
   // U2t/hs, nybcbd9t [5051,6155), js2bhabe [1114,1499), UTF-16: the merged boolean, default false.
@@ -464,6 +472,9 @@ export type Runtime = {
   subscribeTasks?(config: SessionConfig, listener: () => void): () => void;
   /** Stop/SubagentStop background jobs and session cron tasks (`Sle`). */
   stopState?(owner: string): StopRuntimeState;
+  /** `BG()` (`chunk-68g5e6vr.js` 4875): a loop wakeup is armed. This host's dynamic wakeup is the
+   *  loop's heartbeat, so an armed one is a pending loop wakeup. */
+  pendingLoopWakeup?(owner: string): boolean;
   /** Running background jobs plus running child agents, the local `ane` set. */
   backgroundWorkCount?(owner: string): number;
   /** Stop every running background job and child agent for an owner; returns how many. */
@@ -525,7 +536,7 @@ export async function createRuntime(
     showTurnDuration: undefined, timeFormat: undefined, editorMode: undefined,
     terminalProgressBarEnabled: undefined, autoCompactEnabled: undefined,
     askUserQuestionTimeout: undefined, dialogExpiry: undefined,
-    spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, preferredNotifChannel: undefined, terminalTitleFromRename: undefined };
+    spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, preferredNotifChannel: undefined, messageIdleNotifThresholdMs: undefined, terminalTitleFromRename: undefined };
   // The default permission mode (row 21908) applies to new sessions, not this connection.
   const permissionsWithoutDefault = (current: SessionConfig) => current.permissions === undefined
     ? undefined : { ...current.permissions, defaultMode: undefined };
@@ -755,7 +766,7 @@ export async function createRuntime(
         timeFormat: undefined, editorMode: undefined, terminalProgressBarEnabled: undefined,
         // Rows 12035/26485/29983 write these live after the settings write; none shapes tools.
         autoCompactEnabled: undefined, askUserQuestionTimeout: undefined, dialogExpiry: undefined,
-        spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, preferredNotifChannel: undefined, terminalTitleFromRename: undefined,
+        spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, preferredNotifChannel: undefined, messageIdleNotifThresholdMs: undefined, terminalTitleFromRename: undefined,
         // The Default permission mode row (21908) only moves the default for new sessions.
         permissions: settings.permissions === undefined ? undefined
           : { ...settings.permissions, defaultMode: undefined },
@@ -1414,6 +1425,10 @@ export async function createRuntime(
       },
       taskRecords(current) {if (closed) return []; return current.features?.tasks ? readTaskRecords(current.workspace) : [];},
       stopState(owner) { return stopStateForOwner(owner); },
+      pendingLoopWakeup(owner) {
+        const resources = owners.get(owner);
+        return resources?.scheduler !== undefined && resources.scheduler.getWakeup() !== null;
+      },
       backgroundWorkCount(owner) { return backgroundWorkCountForOwner(owner); },
       stopBackground(owner) { return stopBackgroundForOwner(owner); },
       backgroundTasks(owner) { return backgroundTasksForOwner(owner); },

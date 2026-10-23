@@ -99,6 +99,7 @@ import { maxEffortReminderEnabled, maxEffortTip } from './switch-confirm.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
 import { CopyPicker, type CopyPickerEffect } from './copy-picker.js';
 import { TerminalNotifications, type NotificationChannel, type LocalNotification } from './terminal-notifications.js';
+import { DEFAULT_IDLE_NOTIF_THRESHOLD_MS, IdleNotifier } from './idle-notification.js';
 import { TerminalTitle } from './terminal-title.js';
 import { ResumePicker, resumePickerGuide, resumeRelativeTime, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
 import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
@@ -244,6 +245,8 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   showMessageTimestamps?: boolean;
   copyOnSelect?: boolean;
   preferredNotifChannel?: NotificationChannel;
+  /** `messageIdleNotifThresholdMs`: the idle-prompt notification's delay; absent means 60000. */
+  messageIdleNotifThresholdMs?: number;
   autoScrollEnabled?: boolean;
   /** `/focus`: the brief transcript holds the streaming preview while tools run. */
   briefTranscript?: boolean;
@@ -508,6 +511,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private lastInteraction = Date.now();
   private readonly notifications = new TerminalNotifications(text => this.options.output.write(text),
     () => this.isTTY && this.started && !this.closed && !this.editorSuspended);
+  /**
+   * `_$`'s owner-supplied side (chunk-24k7d6mw.js 1691362): the idle machine reads the live turn,
+   * the interaction clock, the dialog screen, the loop and quota guards, and the background-agent
+   * registry. The terminal owns all but the last three, which the session owner binds.
+   */
+  private idleOwner: { send(): void; hasPendingLoopWakeup(): boolean; liveBackgroundAgents(): boolean;
+    subscribeBackgroundAgents(listener: () => void): () => void } | undefined;
   private readonly terminalTitle = new TerminalTitle(sequence => this.options.output.write(sequence));
   private titleSession: import('./session.js').Session | undefined;
   private unsubscribeTitle: (() => void) | undefined;
@@ -613,6 +623,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private afk: DialogAfk | undefined;
   private status = '';
   private running = false;
+  /** The completion stamp `_$` reads as `lastQueryCompletionTime`; 0 before the first finished turn. */
+  private queryCompletionTime = 0;
+  /** The turn count `_$` reads as `submitCount`; 0 before the first submitted turn. */
+  private submittedTurns = 0;
+  /** `_$` itself (chunk-24k7d6mw.js 76055); bound once the owner installs its send path. */
+  private idleNotification: IdleNotifier | undefined;
   /** Composer gates `dg()` and `C7t()`: on until the session settings say otherwise. */
   private workflowKeywordAvailable = true;
   private workflowKeywordTriggerEnabled = true;
@@ -1168,6 +1184,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   setRunning(running: boolean): void {
     this.running = running;
+    // `_$`'s turn snapshot (chunk-24k7d6mw.js 76055): a new submit bumps `submitCount`; a finished
+    // turn stamps `lastQueryCompletionTime`, which is what re-arms the idle notification.
+    if (running) this.submittedTurns += 1;
+    else if (this.submittedTurns > 0) this.queryCompletionTime = Date.now();
+    this.idleNotification?.refresh();
     this.spinnerTips?.setActive(running);
     if (!running) { this.progress.stop(); this.diffPanel?.refresh(); }
     this.dispatch({ type: 'running', value: running });
@@ -1251,6 +1272,40 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   setNotificationChannel(value?: NotificationChannel): void { this.notifications.setChannel(value); }
   notifyLocal(notification: LocalNotification, signal: AbortSignal): Promise<string> { return this.notifications.send(notification, signal); }
   lastInteractionTime(): number { return this.lastInteraction; }
+  /** `_$`'s `setLocalOverlayShowing`: this renderer's dialog screen and its keyed notices are the
+   *  overlays that sit over the composer (chunk-24k7d6mw.js 1691779). */
+  composerOverlayShowing(): boolean { return this.screen !== 'chat' || this.dialog !== undefined; }
+
+  /**
+   * Bind the idle-prompt machine's owner side and start it. `send` is the source's
+   * `sendIdleNotification` (`YD({message:"Claude is waiting for your input",
+   * notificationType:"idle_prompt"})`, chunk-24k7d6mw.js 1691362); `hasPendingLoopWakeup` is `BG`
+   * (chunk-68g5e6vr.js 4875); `hasArmedQuotaAutoResume` is `tz` (chunk-9sq8whr4.js 3981), which has
+   * no counterpart here because this host arms no quota auto-resume.
+   */
+  bindIdleNotification(owner: { send(): void; hasPendingLoopWakeup(): boolean; liveBackgroundAgents(): boolean;
+    subscribeBackgroundAgents(listener: () => void): () => void }): void {
+    this.idleOwner = owner;
+    this.idleNotification?.dispose();
+    this.idleNotification = new IdleNotifier({
+      now: () => Date.now(),
+      setTimeout: (callback, milliseconds) => {
+        const timer = setTimeout(callback, milliseconds); timer.unref?.();
+        return { cancel: () => clearTimeout(timer) };
+      },
+      snapshot: () => ({ isLoading: this.running, submitCount: this.submittedTurns,
+        lastQueryCompletionTime: this.queryCompletionTime }),
+      lastInteractionTime: () => this.lastInteraction,
+      isDialogOnScreen: () => this.dialog !== undefined,
+      hasPendingLoopWakeup: () => this.idleOwner?.hasPendingLoopWakeup() ?? false,
+      hasArmedQuotaAutoResume: () => false,
+      liveBackgroundAgents: () => this.idleOwner?.liveBackgroundAgents() ?? false,
+      subscribeBackgroundAgents: listener => this.idleOwner?.subscribeBackgroundAgents(listener) ?? (() => {}),
+      // `yEo` (chunk-24k7d6mw.js 1679555): `ce().messageIdleNotifThresholdMs`, default 60000.
+      thresholdMs: () => this.options.messageIdleNotifThresholdMs ?? DEFAULT_IDLE_NOTIF_THRESHOLD_MS,
+      send: () => this.idleOwner?.send(),
+    });
+  }
 
   setCopyOnSelect(value?: boolean): void {
     const enabled = value !== false;
@@ -1837,6 +1892,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.closed) return;
     this.closed = true;
     this.notifications.close(); this.terminalTitle.close(); this.owl.close();
+    this.idleNotification?.dispose(); this.idleNotification = undefined;
     this.unsubscribeTitle?.(); this.unsubscribeTitle = undefined; this.titleSession = undefined;
     this.transcriptScroll.reset(); this.scrollPointer = undefined;
     this.selectionCopy.reset();
@@ -4316,6 +4372,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   private render(): void {
+    // `_$`'s `setLocalOverlayShowing` (chunk-24k7d6mw.js 1691779) is called with the dialog and
+    // overlay flags on every render of the owning frame; the machine ignores an unchanged value.
+    this.idleNotification?.setLocalOverlayShowing(this.composerOverlayShowing());
     this.syncTerminalTitle();
     // nmt's modal selection teardown and Ax click admission, 3gz7s57c [29232,37785), 06azbynj [242075,244661), UTF-16.
     if (this.dialog || this.screen === 'search' || this.sourceSearch?.snapshot.searching

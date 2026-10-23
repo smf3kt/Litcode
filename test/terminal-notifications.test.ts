@@ -26,7 +26,7 @@ const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/he
 const temporary = () => fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
   ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'w297-notifications-')));
 const profile = '<?xml version="1.0"?><plist version="1.0"><dict><key>Window Settings</key><dict><key>Test &amp; Local</key><dict><key>Bell</key><false/></dict></dict></dict></plist>';
-function fixture(userDir?: string) {
+function fixture(userDir?: string, extra: Record<string, unknown> = {}) {
   const screen = new HeadlessTerminal({ cols: 100, rows: 30, allowProposedApi: true, logLevel: 'off' });
   const core: unknown = Reflect.get(screen, '_core');
   if (!core || typeof core !== 'object' || !('writeSync' in core) || typeof core.writeSync !== 'function') throw new Error('Pinned xterm decoder unavailable');
@@ -34,7 +34,7 @@ function fixture(userDir?: string) {
   const input = Object.assign(new PassThrough(), { isTTY: true, setRawMode(_value: boolean) {} });
   const output = Object.assign(new Writable({ write(chunk, _encoding, done) { raw += String(chunk); write(String(chunk)); done(); } }),
     { isTTY: true, columns: 100, rows: 30 });
-  const tui = new TuiTerminal({ input, output, userDir, prefersReducedMotion: true, sourceInputGestures: true }).start();
+  const tui = new TuiTerminal({ input, output, userDir, prefersReducedMotion: true, sourceInputGestures: true, ...extra }).start();
   return { tui, input, output, key: (text: string) => input.emit('data', text), raw: () => raw,
     text: () => Array.from({ length: screen.rows }, (_, row) => screen.buffer.active.getLine(screen.buffer.active.viewportY + row)?.translateToString(true) ?? '').join('\n'),
     close() { tui.close(); screen.dispose(); } };
@@ -181,5 +181,49 @@ test('live Config persists merged channels and a mounted tool permission hooks b
     const resumed = Session.open(workspace, { id: pinnedId }); assert.equal(resumed.config.preferredNotifChannel, 'kitty'); resumed.close();
     fs.writeFileSync(file, JSON.stringify({ model: 'fixture', keep: 7 })); assert.equal(reloadConfig({ ...config, preferredNotifChannel: 'ghostty' }).preferredNotifChannel, undefined);
     assert.equal(parseSettings({ preferredNotifChannel: 'wrong' }).preferredNotifChannel, undefined);
+    // `messageIdleNotifThresholdMs` (chunk-24k7d6mw.js 1679555): a positive millisecond delay is
+    // carried, and a value that cannot arm a timer is absent rather than an error.
+    assert.equal(parseSettings({ messageIdleNotifThresholdMs: 2500 }).messageIdleNotifThresholdMs, 2500);
+    assert.equal(parseSettings({ messageIdleNotifThresholdMs: 0 }).messageIdleNotifThresholdMs, undefined);
+    assert.equal(parseSettings({ messageIdleNotifThresholdMs: -1 }).messageIdleNotifThresholdMs, undefined);
+    assert.equal(parseSettings({ messageIdleNotifThresholdMs: 'soon' }).messageIdleNotifThresholdMs, undefined);
+    assert.equal(configSchema.parse({ ...config, messageIdleNotifThresholdMs: 2500 }).messageIdleNotifThresholdMs, 2500);
+    assert.equal(configSchema.parse({ ...config, messageIdleNotifThresholdMs: 0 }).messageIdleNotifThresholdMs, undefined);
+    fs.writeFileSync(project, JSON.stringify({ messageIdleNotifThresholdMs: 2500 }));
+    assert.equal(reloadConfig(config).messageIdleNotifThresholdMs, 2500);
+    fs.writeFileSync(project, JSON.stringify({ messageIdleNotifThresholdMs: 'soon' }));
+    assert.equal(reloadConfig(config).messageIdleNotifThresholdMs, undefined, 'a malformed delay falls through');
+    fs.rmSync(project);
   } finally { hold?.(); t.mock.timers.reset(); controller.abort(); await loop; f.close(); session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
+});
+
+test('an idle turn raises the idle_prompt Notification hook before the local channel', { timeout: 20000 }, async t => {
+  const workspace = temporary(), user = path.join(workspace, 'user'); fs.mkdirSync(user); fs.mkdirSync(path.join(workspace, '.git'));
+  // `messageIdleNotifThresholdMs` (chunk-24k7d6mw.js 1679555) shortens the recovered 60000 ms.
+  const config = { ...defaultConfig(workspace, []), model: 'fixture', configSources: { userDir: user },
+    prefersReducedMotion: true, permissions: { mode: 'ask' as const, allow: [], deny: [] }, messageIdleNotifThresholdMs: 1_500,
+    hooks: { Notification: [{ type: 'callback' as const, name: 'observe' }] } };
+  const controller = new AbortController(), f = fixture(user, { messageIdleNotifThresholdMs: 1_500 }), hooks: Array<{ message: string; type: string }> = [];
+  const provider: ModelProvider = { count: async () => 1, complete: async () => reply([{ type: 'text', text: 'finished', citations: null }], 'end_turn') };
+  const runtime = await createRuntime(config, provider, controller.signal, { hookCallbacks: () => ({ observe: async (_definition, _event, payload) => {
+    hooks.push({ message: typeof payload.message === 'string' ? payload.message : '', type: typeof payload.notification_type === 'string' ? payload.notification_type : '' });
+    return {};
+  } }) });
+  const session = Session.open(workspace, { config });
+  const loop = interactiveLoop(session, provider, runtime, { input: f.input, output: f.output, status: f.output, signal: controller.signal, terminal: f.tui });
+  const until = async (predicate: () => boolean) => { for (let i = 0; i < 500; i++) { if (predicate()) return; await turn(); } assert.fail(f.text()); };
+  try {
+    await delay(20);
+    t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.now() });
+    f.key('idle fixture\r');
+    await until(() => session.awaitingResponse === false && f.text().includes('finished'));
+    await delay(20);
+    t.mock.timers.tick(1_500);
+    await until(() => hooks.some(hook => hook.type === 'idle_prompt'));
+    assert.deepEqual(hooks.filter(hook => hook.type === 'idle_prompt'),
+      [{ message: 'Claude is waiting for your input', type: 'idle_prompt' }]);
+    // One notification per completion: a later tick raises nothing further.
+    t.mock.timers.tick(30_000); await turn();
+    assert.equal(hooks.filter(hook => hook.type === 'idle_prompt').length, 1);
+  } finally { t.mock.timers.reset(); controller.abort(); await loop; f.close(); session.close(); await runtime.close(); fs.rmSync(workspace, { recursive: true, force: true }); }
 });
