@@ -4,6 +4,8 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+// The suite must not open the host browser; every login path prints its URL regardless.
+process.env.LITCODE_NO_BROWSER = '1';
 import {
   CREDENTIALS_FILE, LOGIN_PROFILES, UNCONFIGURED_MODEL, createProviderSlot, credentialsPath,
   providerFromCredential, readCredentialFile, readStoredCredential, removeStoredCredential,
@@ -202,6 +204,8 @@ test('the OAuth login runs the PKCE loopback flow and refreshes an expired token
     assert.equal(requests[1]!.grant, 'refresh_token');
     assert.match(seen[0]!, /Bearer access-second/);
     assert.equal(readStoredCredential(dir)!.key, 'access-second');
+    // A refresh keeps the entry current without making it the active choice again.
+    assert.equal(readCredentialFile(dir).active, 'oauth');
   } finally {
     server.close();
     fs.rmSync(dir, { recursive: true, force: true });
@@ -222,4 +226,74 @@ test('a provider slot fails with the sign-in message until a credential is adopt
   slot.adopt(adopted);
   assert.equal(slot.adopted(), true);
   assert.equal(slot.current(), adopted);
+});
+
+test('a failed token response never echoes the body it answered', async () => {
+  const dir = userDir();
+  const server = http.createServer((_request, response) => {
+    response.writeHead(400, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ error: 'invalid_grant', error_description: 'code-1 expired',
+      refresh_token: 'refresh-first', access_token: 'access-first' }));
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as { port: number }).port;
+  const controller = new AbortController();
+  try {
+    const prompts: LoginPrompts = {
+      notice: text => {
+        const match = /^https?:\/\/\S+$/m.exec(text);
+        if (match === null) return;
+        const target = new URL(match[0]);
+        setTimeout(() => {
+          http.get(`${target.searchParams.get('redirect_uri')}?code=code-1&state=${target.searchParams.get('state')}`,
+            response => response.resume());
+        }, 10);
+      },
+      text: async (_title, message) => message.includes('authorization') ? 'https://auth.example.test/authorize'
+        : message.includes('endpoint base') ? 'https://gateway.example.test'
+        : message.includes('token') ? `http://127.0.0.1:${port}/token` : 'model-oauth',
+      choose: async () => undefined,
+    };
+    await assert.rejects(runLogin({ kind: 'oauth', userDir: dir, signal: controller.signal, prompts,
+      oauth: { clientId: 'client-fixture' } }), (error: Error) => {
+      assert.match(error.message, /Token endpoint answered 400/);
+      assert.match(error.message, /invalid_grant/);
+      assert.doesNotMatch(error.message, /refresh-first|access-first/);
+      return true;
+    });
+    assert.deepEqual(readCredentialFile(dir).providers, {});
+  } finally {
+    server.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a refresh keeps another provider active', async () => {
+  const dir = userDir();
+  const server = http.createServer((_request, response) => {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ access_token: 'access-second', expires_in: 3600 }));
+  });
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as { port: number }).port;
+  try {
+    writeStoredCredential(dir, storedCredential({ provider: 'deepseek', key: 'sk-stored-value' }));
+    const oauth = storedCredential({ provider: 'oauth', kind: 'oauth', baseURL: 'https://gateway.example.test',
+      auth: 'bearer', model: 'model-oauth', key: 'access-stale', refreshToken: 'refresh-first',
+      tokenURL: `http://127.0.0.1:${port}/token`, clientId: 'client-fixture', expiresAt: Date.now() + 1_000 });
+    writeStoredCredential(dir, oauth);
+    assert.equal(readCredentialFile(dir).active, 'oauth');
+    // A later sign-in for the other provider owns the active choice from here on.
+    writeStoredCredential(dir, storedCredential({ provider: 'deepseek', key: 'sk-newer-value' }));
+    const provider = providerFromCredential(oauth, { ...DEFAULT_GATEWAY, baseURL: oauth.baseURL, auth: 'bearer' }, dir);
+    await provider.count({ model: 'model-oauth', max_tokens: 8, messages: [{ role: 'user', content: 'hi' }] } as ModelRequest,
+      new AbortController().signal);
+    const file = readCredentialFile(dir);
+    assert.equal(file.active, 'deepseek');
+    assert.equal(file.providers.oauth!.key, 'access-second');
+    assert.equal(readStoredCredential(dir)!.key, 'sk-newer-value');
+  } finally {
+    server.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

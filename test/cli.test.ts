@@ -254,17 +254,20 @@ test('an explicit value still outranks the client configuration', () => {
 test('inheritance can be turned off and is off for the offline demo', () => {
   const dir = clientDir({ ANTHROPIC_AUTH_TOKEN: 'fixture-inherited-token', ANTHROPIC_MODEL: 'inherited-model' });
   const ws = workspace();
+  // A stored credential from an earlier sign-in would otherwise be picked up here, so this case
+  // owns its user directory the way it already owns its client configuration.
+  const user = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-user-'));
   try {
-    const off = invokeEnv(['--workspace', ws, '--no-inherit-gateway', 'task'], liveEnv(dir));
+    const off = invokeEnv(['--workspace', ws, '--user-dir', user, '--no-inherit-gateway', 'task'], liveEnv(dir));
     assert.equal(off.status, 1);
     assert.match(off.stderr, /Set LLM_API_KEY/);
-    const offByEnvironment = invokeEnv(['--workspace', ws, 'task'], liveEnv(dir, { LLM_INHERIT_GATEWAY: 'false' }));
+    const offByEnvironment = invokeEnv(['--workspace', ws, '--user-dir', user, 'task'], liveEnv(dir, { LLM_INHERIT_GATEWAY: 'false' }));
     assert.equal(offByEnvironment.status, 1);
     assert.match(offByEnvironment.stderr, /Set LLM_API_KEY/);
-    const both = invokeEnv(['--workspace', ws, '--inherit-gateway', '--no-inherit-gateway', 'task'], liveEnv(dir));
+    const both = invokeEnv(['--workspace', ws, '--user-dir', user, '--inherit-gateway', '--no-inherit-gateway', 'task'], liveEnv(dir));
     assert.equal(both.status, 1);
     assert.match(both.stderr, /Choose --inherit-gateway or --no-inherit-gateway/);
-  } finally { fs.rmSync(ws, { recursive: true, force: true }); fs.rmSync(dir, { recursive: true, force: true }); }
+  } finally { fs.rmSync(ws, { recursive: true, force: true }); fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(user, { recursive: true, force: true }); }
 });
 
 test('a resumed session borrows a credential for its pinned endpoint', () => {

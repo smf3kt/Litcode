@@ -253,15 +253,20 @@ function gatewayCredential(baseURL: string, inherited: InheritedGateway | undefi
   const own = process.env.LLM_API_KEY;
   if (own !== undefined && own.trim() !== '') return { key: own };
   const borrowed = inherited?.credential;
+  const borrowedMatches = borrowed !== undefined && inherited !== undefined
+    && inherited.baseURL !== undefined && sameGateway(inherited.baseURL, baseURL);
+  if (borrowedMatches) {
+    return { key: borrowed!.value, auth: borrowed!.auth, source: inherited!.sources.find(entry => entry.field === 'credential')?.source };
+  }
+  // A stored credential for this exact endpoint is usable even when the other client
+  // configured a credential for a different one: the mismatch only rules out that one.
+  if (stored !== undefined && sameGateway(stored.baseURL, baseURL)) {
+    return { key: stored.key, auth: stored.auth, stored };
+  }
   if (borrowed !== undefined && inherited !== undefined) {
-    if (inherited.baseURL === undefined) return { refusedFor: 'the client names no endpoint' };
-    if (!sameGateway(inherited.baseURL, baseURL)) return { refusedFor: inherited.baseURL };
-    return { key: borrowed.value, auth: borrowed.auth, source: inherited.sources.find(entry => entry.field === 'credential')?.source };
+    return { refusedFor: inherited.baseURL ?? 'the client names no endpoint' };
   }
-  if (stored !== undefined) {
-    if (sameGateway(stored.baseURL, baseURL)) return { key: stored.key, auth: stored.auth, stored };
-    return { refusedFor: stored.baseURL };
-  }
+  if (stored !== undefined) return { refusedFor: stored.baseURL };
   return {};
 }
 
@@ -290,6 +295,9 @@ function terminalLoginPrompts(signal: AbortSignal): { prompts: LoginPrompts; clo
   });
   const ask = (question: string): Promise<string> => Promise.race([
     new Promise<string>(resolve => { rl.question(question, resolve); }), cancelled]);
+  // The race only consumes `cancelled` while a question is pending; a signal that lands
+  // between prompts would otherwise leave the rejection unhandled and terminate the process.
+  cancelled.catch(() => { /* the signal ends the login; the caller sees it through the aborted flow */ });
   return {
     close: () => rl.close(),
     prompts: {
@@ -713,6 +721,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
   // The live provider is a stable slot: `/login` swaps what it delegates to without
   // rebuilding the loop, the runtime or the agent that already hold this object.
   const unconfigured = 'No model credential yet. Run /login to sign in, or set LLM_API_KEY.';
+  const noModelMessage = 'No model chosen yet. Pick one with /model.';
   let pendingMessage = unconfigured;
   const slot = createProviderSlot(() => pendingMessage);
 
@@ -878,7 +887,11 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         ...(started.initialUserMessage === undefined ? {} : { initialUserMessage: started.initialUserMessage }),
         ...(started.watchPaths === undefined ? {} : { initialWatchPaths: started.watchPaths }),
         ...(startupNotice === undefined ? {} : { startupNotice }),
-        providerBlocked: () => slot.adopted() ? undefined : pendingMessage,
+        // The slot alone is not enough: a credential with no model would send the sentinel, so
+        // the turn waits for `/model` as well as for a sign-in.
+        providerBlocked: config => slot.adopted() && config.model.trim() !== UNCONFIGURED_MODEL && config.model.trim() !== ''
+          ? undefined
+          : slot.adopted() ? noModelMessage : pendingMessage,
         adoptProvider: (storedCredential, config) => {
           // The credential names its own endpoint and header, so the slot dials that one.
           const nextGateway: GatewayConfig = { ...(config.gateway ?? DEFAULT_GATEWAY),
