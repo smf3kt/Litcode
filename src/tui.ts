@@ -370,6 +370,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // jw, 3gz7s57c [167024,183767), UTF-16: the transcript screen forces detailed rows; the
     // live screen takes only the Verbose switch.
     const detailed = this.verbose || this.screen === 'transcript';
+    // jw/Dd, 3gz7s57c [168313,168319)/[107529,107778), UTF-16; raw entries remain available.
+    if (!detailed && entry.loopFireId !== undefined && this.foldedLoopFires.has(entry.loopFireId)) return [];
     const stamp = this.entryStamp(entry);
     const cached = this.messageRows.get(entry);
     if (cached?.columns === columns && cached.maxProseWidth === this.maxProseWidth
@@ -591,6 +593,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Source `showDrainedShellLine`: the live row a running drained command owns. */
   private drainedShell: (import('./tools.js').ShellProgress & { verbose: boolean }) | undefined;
   private completedDuration: string | undefined;
+  // Dd, 3gz7s57c [107529,107778), UTF-16; membership lasts until the next fire or session handoff.
+  private loopFireId: string | undefined;
+  private readonly foldedLoopFires = new Set<string>();
   /** Source status-line owner and document rows share this terminal's mount lifetime. */
   private readonly statusLine = new StatusLine();
   private statusLineSetting: import('./tui-statusline.js').StatusLineSetting | undefined;
@@ -859,10 +864,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** p4.onUserRowLanded, 24k7d6mw [1333944,1336535), UTF-16; the terminal owns projected rows. */
   append(entry: TranscriptEntry): void {
     this.transcript = { ...this.transcript, entries: [...this.transcript.entries,
-      entry.timestamp === undefined ? { ...entry, timestamp: Date.now() } : entry] };
+      { ...entry, timestamp: entry.timestamp ?? Date.now(), ...(this.loopFireId ? { loopFireId: this.loopFireId } : {}) }] };
     if (entry.kind === 'user') this.transcriptScroll.onUserRowLanded(false);
     this.render();
   }
+
+  /** v/RRn/Dd, appb2dtz [16667,17235), sfn1dbxq [4502962,4503404), 3gz7s57c [107529,107778), UTF-16. */
+  scheduledFire(marker: import('./loop-noop-fold.js').ScheduledFire): void {
+    for (const id of marker.foldedFireIds ?? []) this.foldedLoopFires.add(id);
+    this.loopFireId = marker.uuid;
+    this.selection = createSelection();
+    this.append({ kind: 'system', text: marker.content, timestamp: Date.parse(marker.timestamp) });
+  }
+
+  resetLoopSpan(): void { this.loopFireId = undefined; }
 
   setStatus(text: string): void {
     // Status output arrives as whole lines; the row shows the newest one.
@@ -1915,6 +1930,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.footerPointer = undefined;
     this.welcomeRenderer?.close(); this.welcomeRenderer = undefined; this.welcomeRows = []; this.welcomeKey = '';
     this.assistantMessage = undefined;
+    this.loopFireId = undefined; this.foldedLoopFires.clear();
     this.previewCoalescer.dispose();
     this.previewStore.setRaw(null);
     this.dialog?.finish();
@@ -1978,7 +1994,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const displayed = completed ? message.source : this.previewStore.getDerived().displayed;
     if (!displayed) return;
     const entry: TranscriptEntry = { kind: 'assistant', text: renderPreviewMarkdown(displayed),
-      markdown: displayed, speaker: true, timestamp: message.startedAt, ...(!completed ? { streaming: true, messageKey: message.key,
+      markdown: displayed, speaker: true, timestamp: message.startedAt,
+      ...(this.loopFireId ? { loopFireId: this.loopFireId } : {}), ...(!completed ? { streaming: true, messageKey: message.key,
         hideTrailingLine: this.previewStore.getDerived().hideTrailingLine } : {}) };
     if (message.index === undefined) {
       message.index = this.transcript.entries.length;

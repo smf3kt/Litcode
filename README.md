@@ -434,6 +434,8 @@ WebSocket 模式接收文本消息，每条消息作为一个事件保留其中�
 
 交互会话的动态唤醒执行完毕后，如果模型没有重新排程，默认补一次 1200 秒回退。回退执行后仍未排程就结束；模型显式排程会重置这一次预算。回退保留原提示词并沿用上述计时规则，停止、用户中断和会话退出会清理它。设置 `HARNESS_LOOP_KEEPALIVE=off` 关闭回退，也接受 `0`、`false`、`no`。此功能依赖正在运行的交互会话。验证见 `research/ports/W315-loop-keepalive.md`。
 
+交互会话中，模型用 `schedule_wakeup` 报告 `noop:true` 后，下一次动态唤醒会把连续空转的显示行折叠为计数标记。Verbose 或 Ctrl+O transcript 可查看完整历史；原始日志与模型消息仍保留。用户输入、其他通知、工具错误、中断、普通 cron 和压缩边界会阻止对应跨度折叠。验证见 `research/ports/W317-loop-noop-fold.md`。
+
 一次性 CLI 调用若排程了动态唤醒，会在初始模型任务结束后保留当前进程，并把唤醒交给同一会话继续执行。模型显式重排可延续，漏掉重排就退出；headless 不补交互模式的回退。等待只保留动态 loop，普通 cron 不延长这类调用的寿命，也不在输入结束后持有文件调度锁。SIGINT 可退出等待；调用预算耗尽后结束等待。JSON 与 stream-json 在唤醒链完成后输出一个最终结果。验证见 `research/ports/W316-headless-wakeup.md`。
 
 `features.workflowPersistence` 和 `features.taskProjections` 在新 CLI 会话默认 true，旧会话缺少字段保持原 schema。Workflow snapshot 位于 `.agent/workflows/SESSION_UUID/RUN_UUID.json`，最多 128 runs、每份 2 MiB，含完整 DAG/settings digest 和有界 summary。`workflow_run` 提交相同完整定义并带 `resume_from` 时创建新 run，复用 completed summaries，failed/cancelled/skipped 重新执行；崩溃遗留 running 效果未知，检查 child session 后显式设置 `retry_interrupted: true`。活跃 owner lock 保留；恢复 guard 崩溃需核对 PID 后显式处理 `owner.lock.recovery`。持久化失败中止调度并报告错误，容量满需显式归档；原版脚本 Workflow、子进程重挂和效果回滚仍待实现。

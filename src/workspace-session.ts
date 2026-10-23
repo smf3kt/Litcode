@@ -40,7 +40,9 @@ function completedHistory(source: Session): SessionEvent[] {
     throw new Error("Finish or continue the unfinished session before relocating its workspace");
   }
   assertPaired(source.messages);
-  return history.filter((event) => event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === 'permission_mode_command');
+  // v/RRn [16667,17235)/[4502962,4503404), UTF-16; retain the companion's marker across relocation.
+  return history.filter((event) => event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === 'permission_mode_command'
+    || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary');
 }
 
 /**

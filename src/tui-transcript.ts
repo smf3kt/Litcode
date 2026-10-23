@@ -33,6 +33,8 @@ export interface TranscriptEntry {
   markdown?: string;
   streaming?: boolean;
   messageKey?: string;
+  /** Dd [107529,107778), chunk-3gz7s57c.js; the host projects one fire's UUID onto its display span. */
+  loopFireId?: string;
   hideTrailingLine?: boolean;
   duration?: import('./tui-progress.js').TurnDuration;
   /** Arrival time in epoch milliseconds, the input to the footer's message stamp. */

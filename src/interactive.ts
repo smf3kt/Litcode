@@ -2,6 +2,7 @@ import { createInterface } from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
 import { Agent } from './agent.js';
 import { automaticCompactionEnabled } from './compaction-policy.js';
+import { scheduledFire } from './loop-noop-fold.js';
 import { DEFAULT_GATEWAY, type ModelProvider } from './provider.js';
 import { Session, configSchema, type SessionConfig } from './session.js';
 import { createTerminalInput, questionPreviewText, type TerminalSurface, type TerminalPromptRequest } from './terminal.js';
@@ -472,6 +473,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
     peer?: { from: string | null };
     wakeupId?: string;
+    scheduledId?: string;
     /** Source `isMeta`: an entry this host queued itself, not one a person may pull back and edit. */
     meta?: boolean;
     /** Source `r === "bash"` (chunk-er0mj94r.js 50100): a shell command, not a model prompt. */
@@ -670,6 +672,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const onLine = (line: string, attachment?: import('./terminal.js').PromptDiffSelection,
     mode?: 'prompt' | 'bash') => {
     if (approval) { approval(line); return; }
+    // A [15225,16520), appb2dtz, UTF-16; queued and immediate human commands end a quiet span.
+    if (line.trim() && session.events.some(event => event.kind === 'scheduled_task_fire')) {
+      session.append({ kind: 'loop_boundary', reason: 'foreign_user_input' });
+    }
     // `kEo` (chunk-sfn1dbxq.js 1659192) and `bWe` (1650535) are `immediate`; the recovered submit
     // gate runs them while the turn guard is active (`zn`, chunk-24k7d6mw.js 1491124) instead of
     // queueing them behind the turn.
@@ -699,6 +705,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   rl?.on('line', onLine); rl?.on('close', onClose);
   const unsubscribeTerminal = terminal?.subscribe({ onSubmit: onLine, onExit: onClose,
     onInterrupt: () => {
+      // A [15225,16520), appb2dtz, UTF-16; an interrupted span stays visible.
+      if (session.events.some(event => event.kind === 'scheduled_task_fire')) session.append({ kind: 'loop_boundary', reason: 'tool_abort' });
       // wo [432968,434531), chunk-24k7d6mw.js invokes N8n before cancelling the live turn.
       activeRuntime.cancelLoopWakeup?.(session.id);
       for (const pending of [queue, heldEvents]) {
@@ -1173,6 +1181,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       else await activeRuntime.releaseSession?.(session.id);
     } catch (error) { options.status.write(`Old runtime cleanup error: ${String(error)}\n`); }
     session.close(); session = next; planResume.accept(next.id); activeRuntime = nextRuntime; activeAgent = undefined; rewindPreview = undefined;
+    terminal?.resetLoopSpan?.();
     terminal?.setSessionColor?.(session.sessionColor);
     bindConfigWatch();
     await terminal?.bindInputHistory?.(session);
@@ -1202,7 +1211,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (copied.response) copied.response.content = copied.response.content.filter(block => block.type !== 'thinking' && block.type !== 'redacted_thinking');
           next.append(copied);
         }
-        if (event.kind === 'compact' || event.kind === 'turn_end') {
+        // v/RRn [16667,17235)/[4502962,4503404), UTF-16; copy fold metadata with its conversation.
+        if (event.kind === 'compact' || event.kind === 'turn_end' || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary') {
           next.append(event);
           if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
         }
@@ -1732,6 +1742,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             options.status.write('Event queue full; dropped the oldest event.\n');
           }
           queue.push({ prompt: event.prompt, source: 'event',
+            ...(event.kind === 'scheduled' ? { scheduledId: event.id } : {}),
             ...(event.kind === 'scheduled' && event.dynamic ? { wakeupId: event.id } : {}),
             ...(event.kind === 'teammate_idle' ? { idle: { id: event.agentId, name: event.name } } : {}) });
         }
@@ -1791,6 +1802,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (item.wakeupId !== undefined && activeRuntime.beginLoopWakeup?.(session.id, item.wakeupId) === false) continue;
           try {
             const result = await withTurn(async signal => {
+              // Ie/v [16667,19295), appb2dtz, UTF-16; the claimed fire's cleanup also owns marker failures.
+              const fire = item.scheduledId === undefined ? undefined
+                : scheduledFire(session.events, item.scheduledId, item.wakeupId !== undefined, session.config.timeZone);
+              if (fire) { session.append(fire); terminal?.scheduledFire?.(fire); }
               if (item.idle) {
                 // Recovered payload (`qir`, chunk-sfn1dbxq.js [2946651,2946915)) carries the teammate
                 // name and team name plus the common agent fields; this runtime has no team name.
@@ -1799,7 +1814,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 if (hook.blocked || hook.stopRequested) { options.status.write('TeammateIdle hook suppressed this idle notification turn.\n'); return { reason: 'hook_blocked', text: "", modelCalls: 0 }; }
               }
               return agent().run(prompt, signal, undefined, undefined, [], undefined,
-                item.peer === undefined ? { kind: 'generated', source: 'interactive-event' } : { kind: 'peer', source: 'uds' });
+                item.peer === undefined ? { kind: 'generated', source: fire?.cronKind === 'loop' ? `loop-wakeup:${fire.uuid}` : 'interactive-event' }
+                  : { kind: 'peer', source: 'uds' });
             }, item.wakeupId);
             if (result.modelCalls === 0 && result.text) output.write(result.text);
             output.write('\n');
@@ -2495,7 +2511,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                   block.type !== 'thinking' && block.type !== 'redacted_thinking');
                 next.append(copied);
               }
-              if (event.kind === 'compact' || event.kind === 'turn_end') {
+              // v/RRn [16667,17235)/[4502962,4503404), UTF-16; copy fold metadata with its conversation.
+              if (event.kind === 'compact' || event.kind === 'turn_end' || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary') {
                 next.append(event);
                 if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
               }
