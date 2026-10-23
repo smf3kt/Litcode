@@ -14,6 +14,8 @@ const creators = process.argv.includes("--creators");
 const idle = process.argv.includes("--idle");
 const headlessIdle = process.argv.includes("--idle-headless");
 const wakeupTiming = process.argv.includes("--wakeup-timing");
+const keepalive = process.argv.includes("--keepalive");
+const keepaliveDisabled = process.argv.includes("--keepalive-disabled");
 const wakeupChain = wakeupTiming || process.argv.includes("--wakeup");
 const durable = idle || headlessIdle || creators || process.argv.includes("--durable");
 const fixture = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "scheduler-cli-")));
@@ -56,7 +58,14 @@ try {
       const index = requests.length;
       const latest = body.messages.at(-1)?.content;
       const resultTurn = Array.isArray(latest) && latest.some(block => block.type === "tool_result");
-      const block = wakeupChain
+      const block = keepalive
+        ? !resultTurn && /stop keepalive fixture/.test(JSON.stringify(latest))
+          ? { type: "tool_use", id: `keepalive-stop-${index}`, name: "schedule_wakeup", input: { stop: true } }
+          : !resultTurn && /arm keepalive fixture/.test(JSON.stringify(latest))
+            ? { type: "tool_use", id: `keepalive-arm-${index}`, name: "schedule_wakeup",
+              input: { delaySeconds: 60, prompt: "idle keepalive fixture", reason: "Await owned fixture", noop: false } }
+            : { type: "text", text: "keepalive fixture complete" }
+        : wakeupChain
         ? !resultTurn && /stop wakeup fixture/.test(JSON.stringify(latest))
           ? { type: "tool_use", id: `wakeup-stop-${index}`, name: "schedule_wakeup", input: { stop: true } }
           : !resultTurn && /(?:dynamic chain fixture|arm wakeup fixture)/.test(JSON.stringify(latest)) && continueChain
@@ -90,7 +99,8 @@ try {
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const env = { ...process.env };
   for (const key of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(key)) delete env[key];
-  Object.assign(env, { SMOKE_CLOCK: clock, SMOKE_CLOCK_FROZEN: String(wakeupChain && !wakeupTiming),
+  Object.assign(env, { SMOKE_CLOCK: clock, SMOKE_CLOCK_FROZEN: String(keepalive || wakeupChain && !wakeupTiming),
+    HARNESS_LOOP_KEEPALIVE: keepaliveDisabled ? "off" : keepalive ? "on" : "off",
     LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/scheduler",
     LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate",
     LLM_EFFORT: "medium", LLM_THINKING: "false" });
@@ -121,7 +131,62 @@ try {
     }
     throw new Error(`Cron inspection did not reach ${expected ?? "empty"}`);
   };
-  if (wakeupChain) {
+  if (keepalive) {
+    let completed = 0;
+    const waitTurn = async () => {
+      completed++;
+      await wait(() => stderr.split("finished: end_turn").length - 1 >= completed);
+    };
+    const lastResult = () => {
+      const block = requests.at(-1).messages.at(-1).content.find(item => item.type === "tool_result");
+      assert.equal(block.is_error, undefined);
+      return JSON.parse(typeof block.content === "string" ? block.content : block.content[0].text);
+    };
+    const armAndFire = async () => {
+      child.stdin.write("arm keepalive fixture\n");
+      await waitTurn();
+      const result = lastResult();
+      assert.equal(result.clampedDelaySeconds, 60);
+      fs.writeFileSync(clock, String(result.scheduledFor));
+      await waitTurn();
+      assert.match(JSON.stringify(requests.at(-1).messages.at(-1)), /idle keepalive fixture/);
+      return result.scheduledFor;
+    };
+    let due = await armAndFire();
+    if (keepaliveDisabled) {
+      const before = requests.length;
+      fs.writeFileSync(clock, String(due + 1_260_000));
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      assert.equal(requests.length, before, "disabled keepalive leaves the loop idle");
+    } else {
+      const before = requests.length;
+      fs.writeFileSync(clock, String(due + 1_140_000));
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      assert.equal(requests.length, before, "fallback waits for its source 1200-second deadline");
+      fs.writeFileSync(clock, String(due + 1_200_000));
+      await waitTurn();
+      assert.match(JSON.stringify(requests.at(-1).messages.at(-1)), /idle keepalive fixture/);
+      const exhausted = requests.length;
+      fs.writeFileSync(clock, String(due + 2_460_000));
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      assert.equal(requests.length, exhausted, "a second omitted rearm ends the loop");
+      due = await armAndFire();
+      child.stdin.write("stop keepalive fixture\n");
+      await waitTurn();
+      assert.equal(lastResult().cancelledWakeups, 1, "explicit rearm restores one fallback budget");
+      assert.equal(lastResult().stopped, true);
+      const stopped = requests.length;
+      fs.writeFileSync(clock, String(due + 1_260_000));
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      assert.equal(requests.length, stopped, "stop clears the pending fallback");
+    }
+    child.stdin.end("/exit\n");
+    assert.equal(await exited, 0); child = undefined;
+    assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
+    console.log(JSON.stringify({ cli: "passed", compiled, keepalive: !keepaliveDisabled, disabledGate: keepaliveDisabled,
+      fallbackSeconds: 1200, oneFallbackBudget: true, locksReleased: true, modelRequests: requests.length,
+      gateway: "owned loopback SSE" }));
+  } else if (wakeupChain) {
     let completed = 0;
     const results = () => requests.flatMap(request => {
       const content = request.messages.at(-1)?.content;

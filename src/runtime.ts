@@ -1497,7 +1497,7 @@ export async function createRuntime(
       beginLoopWakeup(owner, id) {
         return owners.get(owner)?.scheduler?.beginWakeup(id) ?? false;
       },
-      // Ie [19175,19294), chunk-appb2dtz.js clears the delivered prompt after loading settles.
+      // Ie [19175,19294), chunk-appb2dtz.js retires the tick and considers its idle keepalive.
       finishLoopWakeup(owner, id) {
         owners.get(owner)?.scheduler?.finishWakeup(id);
       },

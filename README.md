@@ -432,6 +432,8 @@ WebSocket 模式接收文本消息，每条消息作为一个事件保留其中�
 
 调度设置 `"features": { "schedulerJitter": true }` 会固定入新会话。开启后，recurring 使用任务 ID 前八位的比例，延后至多半个间隔并封顶 30 分钟；五分钟 `*/N` 调度适用 15 秒缓存提前，one-shot 的目标分钟为 00/30 时最多提前 90 秒。动态唤醒先向上取整到本地分钟，300 秒以内的延时再按缓存提前规则调整，实际投递时间沿用 one-shot 算法。工具返回的 `scheduledFor` 是目标分钟，实际投递可更早。省略或关闭该设置时保留精确延时。动态循环七天到期；停止或用户中断清除其待唤醒和已排队任务。`features.schedulerDurable` 另行开启 cron 文件存储和重启补报，动态唤醒仍由当前进程持有。来源、验证及恢复依赖见 `research/ports/W314-wakeup-timing.md`。
 
+交互会话的动态唤醒执行完毕后，如果模型没有重新排程，默认补一次 1200 秒回退。回退执行后仍未排程就结束；模型显式排程会重置这一次预算。回退保留原提示词并沿用上述计时规则，停止、用户中断和会话退出会清理它。设置 `HARNESS_LOOP_KEEPALIVE=off` 关闭回退，也接受 `0`、`false`、`no`。此功能依赖正在运行的交互会话。验证见 `research/ports/W315-loop-keepalive.md`。
+
 `features.workflowPersistence` 和 `features.taskProjections` 在新 CLI 会话默认 true，旧会话缺少字段保持原 schema。Workflow snapshot 位于 `.agent/workflows/SESSION_UUID/RUN_UUID.json`，最多 128 runs、每份 2 MiB，含完整 DAG/settings digest 和有界 summary。`workflow_run` 提交相同完整定义并带 `resume_from` 时创建新 run，复用 completed summaries，failed/cancelled/skipped 重新执行；崩溃遗留 running 效果未知，检查 child session 后显式设置 `retry_interrupted: true`。活跃 owner lock 保留；恢复 guard 崩溃需核对 PID 后显式处理 `owner.lock.recovery`。持久化失败中止调度并报告错误，容量满需显式归档；原版脚本 Workflow、子进程重挂和效果回滚仍待实现。
 
 文件工具只接受相对路径，解析现有祖先的 symlink，检查工作区边界，并排除 `.agent` 及其 symlink 别名。搜索/列表包含隐藏文件，遵循 ripgrep 的其他忽略规则。这些检查针对正常文件系统状态；并发路径替换和硬链接别名没有经过敌对场景验证。
