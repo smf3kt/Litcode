@@ -72,7 +72,10 @@ export type HookEvent = (typeof HOOK_EVENTS)[number];
 
 const commonHookFields = {
   matcher: z.string().max(4096).optional(),
-  timeout: z.number().positive().finite().max(3600).optional(),
+  // `timeout:v().positive().optional()` (chunk-3cynezh1.js offset 100695 and the same
+  // field on the prompt/agent/http/mcp/script schemas): the source sets no upper bound.
+  // `finite` stays so an infinite deadline cannot be scheduled.
+  timeout: z.number().positive().finite().optional(),
   once: z.boolean().optional(),
 };
 const commandHookSchema = z.object({
@@ -535,7 +538,29 @@ export function promptBlockMessage(
   return suppressOriginalPrompt ? base : `${base}\n\nOriginal prompt: ${prompt}`;
 }
 
-const DEFAULT_TIMEOUT_SECONDS = 60;
+/**
+ * The deadline a hook runs under when it names no `timeout`.
+ *
+ * `lu=600000` (chunk-sfn1dbxq.js offset 2915815) is the source's default for every
+ * command/HTTP/MCP/callback/script hook: `Bkr`'s `timeoutMs:b=lu` parameter
+ * (offset 3013410) and `js=uo.timeout?uo.timeout*1000:b` (offset 3021682) reach
+ * `UF`'s `nn=e.timeout?e.timeout*1000:lu` (offset 2973302), while the HTTP and MCP
+ * senders default their own parameter the same way (offsets 2919869, 2923125).
+ * The two model hook kinds override it: a prompt hook falls back to 30000
+ * (offset 2899971) and an agent hook to 60000 (offset 2910918).
+ */
+const DEFAULT_TIMEOUT_SECONDS = 600;
+const PROMPT_HOOK_TIMEOUT_SECONDS = 30;
+const AGENT_HOOK_TIMEOUT_SECONDS = 60;
+
+/** The deadline a definition runs under, in seconds, before the runner converts it. */
+export function hookTimeoutSeconds(definition: HookDefinition): number {
+  return typeof definition.timeout === "number" && definition.timeout > 0
+    ? definition.timeout
+    : definition.type === "prompt" ? PROMPT_HOOK_TIMEOUT_SECONDS
+    : definition.type === "agent" ? AGENT_HOOK_TIMEOUT_SECONDS
+    : DEFAULT_TIMEOUT_SECONDS;
+}
 const MAX_HOOK_OUTPUT_BYTES = 64 * 1024;
 const MAX_HOOK_INPUT_BYTES = 1024 * 1024;
 const MAX_TERMINAL_SEQUENCES = 128;
@@ -1494,10 +1519,7 @@ export async function runHooks(
       break;
     }
 
-    const seconds =
-      typeof definition.timeout === "number" && definition.timeout > 0
-        ? definition.timeout
-        : DEFAULT_TIMEOUT_SECONDS;
+    const seconds = hookTimeoutSeconds(definition);
     const timeoutMs = Math.max(1, Math.floor(seconds * 1000));
     const modelHook = definition.type === "prompt" || definition.type === "agent";
     const asyncCommand = (definition.type === undefined || definition.type === "command") &&

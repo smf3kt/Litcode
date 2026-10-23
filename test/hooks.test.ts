@@ -9,6 +9,7 @@ import {
   HOOK_EVENTS,
   hookDefinitionSchema,
   hookMatcherValue,
+  hookTimeoutSeconds,
   hooksSchema,
   normalizeSessionTitle,
   runHooks,
@@ -88,6 +89,10 @@ test("HOOK_EVENTS lists every lifecycle event and the shared schemas map each on
   assert.throws(() => hookDefinitionSchema.parse({ command: "true", extra: 1 }));
   assert.throws(() => hookDefinitionSchema.parse({ command: "true", timeout: 0 }));
   assert.throws(() => hookDefinitionSchema.parse({ command: "" }));
+  // `timeout:v().positive().optional()` (chunk-3cynezh1.js offset 100695) sets no
+  // upper bound, so a long explicit deadline is accepted; only a non-finite one is not.
+  assert.equal(hookDefinitionSchema.parse({ command: "true", timeout: 7200 }).timeout, 7200);
+  assert.throws(() => hookDefinitionSchema.parse({ command: "true", timeout: Number.POSITIVE_INFINITY }));
 
   // The session schema is strict: an unknown event name is rejected, not dropped.
   assert.throws(() => hooksSchema.parse({ NotARealEvent: [{ command: "x" }] }));
@@ -1150,6 +1155,17 @@ test("model hook timeout and malformed output remain explicit and bounded", asyn
   assert.ok(malformed.additionalContext.some(text => text.includes("malformed JSON")));
 });
 
+test("each hook kind falls back to its own recovered deadline", () => {
+  // Command/HTTP/MCP/callback default to `lu=600000`; prompt hooks to 30000 and
+  // agent hooks to 60000 (chunk-sfn1dbxq.js offsets 2915815, 2899971, 2910918).
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ command: "true" })), 600);
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "http", url: "http://127.0.0.1:1/h" })), 600);
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "prompt", prompt: "check" })), 30);
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "agent", prompt: "check" })), 60);
+  // An explicit `timeout` wins for every kind.
+  assert.equal(hookTimeoutSeconds(hookDefinitionSchema.parse({ type: "prompt", prompt: "check", timeout: 5 })), 5);
+});
+
 test("command output caps discard a truncated JSON verdict and report truncation", async () => {
   const command = `printf '%s' '{"continue":false}'; awk 'BEGIN { for (i = 0; i < 70000; i++) printf " " }'`;
   const result = await runHooks({ PreToolUse: [{ command }] }, "PreToolUse", preTool());
@@ -1225,7 +1241,9 @@ test("async command hooks explicitly require an owned registry and return regist
     assert.equal(request.definition.command, definition.command);
     assert.equal(JSON.parse(request.input).hook_event_name, "SessionStart");
     assert.equal(request.cwd, dir);
-    assert.equal(request.timeoutMs, 60_000);
+    // `lu=600000` (chunk-sfn1dbxq.js offset 2915815) is the default deadline for a
+    // command hook that names no `timeout`.
+    assert.equal(request.timeoutMs, 600_000);
     return "owned-hook-task";
   } });
   assert.deepEqual(result.backgroundTasks, ["owned-hook-task"]);
