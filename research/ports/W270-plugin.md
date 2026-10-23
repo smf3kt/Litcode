@@ -37,6 +37,8 @@ Offsets are zero-based UTF-16 code units, ranges half-open.
 
 ## Not ported
 
+W299 supersedes the enable/disable and details exclusions with local Installed selection, per-plugin settings and pending reload. The global gate remains. See [W299](W299-plugin-toggle.md). The historical boundary below describes W270.
+
 - The `enable`, `disable`, `install`, `uninstall`, `configure` and `update` arms: this host has no
   per-plugin enable list and no marketplace client, and the store's mutating tools stay
   model-facing. A typed arm other than `list` is refused with `Use /plugin list

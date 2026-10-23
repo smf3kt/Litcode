@@ -48,8 +48,11 @@ export const pluginManifestSchema = z.object({
   }, "mcpServers must be a relative JSON file path").optional(),
 }).strict();
 export type PluginManifest = z.infer<typeof pluginManifestSchema>;
+export const pluginEnabledMapSchema = z.record(nameSchema, z.boolean()).refine(value =>
+  Object.keys(value).length <= PLUGIN_LIMITS.entries, 'Plugin enable map exceeds entry cap');
 export const pluginConfigSchema = z.object({
   enabled: z.boolean().default(false),
+  enabledPlugins: pluginEnabledMapSchema.optional(),
   maxFiles: z.number().int().min(1).max(PLUGIN_LIMITS.files).default(PLUGIN_LIMITS.files),
   maxBytes: z.number().int().min(1).max(PLUGIN_LIMITS.bytes).default(PLUGIN_LIMITS.bytes),
   maxFileBytes: z.number().int().min(1).max(PLUGIN_LIMITS.fileBytes).default(PLUGIN_LIMITS.fileBytes),
@@ -57,6 +60,10 @@ export const pluginConfigSchema = z.object({
 }).strict();
 export type PluginConfig = z.input<typeof pluginConfigSchema>;
 type Options = z.output<typeof pluginConfigSchema>;
+/** mIt/Clt, nrk8z90j [10632,11384), UTF-16; installed local copies default on. */
+export function pluginEnabled(name: string, config?: PluginConfig): boolean {
+  return config?.enabled === true && config.enabledPlugins?.[name] !== false;
+}
 const recordSchema = z.object({
   manifest: pluginManifestSchema, digest: digestSchema,
   files: z.number().int().min(1).max(PLUGIN_LIMITS.files),
@@ -551,6 +558,8 @@ export function discoverInstalledSkillDirectories(workspace: string, config?: Pl
 export interface PluginStoreEntry {
   readonly name: string;
   readonly version: string;
+  readonly description?: string;
+  readonly enabled: boolean;
   readonly digest: string;
   readonly files: number;
   readonly bytes: number;
@@ -575,7 +584,8 @@ export function readPluginStore(workspace: string, config?: PluginConfig): Plugi
     const state = load(store, options);
     const entries = state.index.plugins.map(item => {
       const current = snapshot(path.join(store, item.manifest.name), options);
-      return { name: item.manifest.name, version: item.manifest.version, digest: item.digest,
+      return { name: item.manifest.name, version: item.manifest.version, description: item.manifest.description,
+        enabled: pluginEnabled(item.manifest.name, options), digest: item.digest,
         files: item.files, bytes: item.bytes, directory: path.join(store, item.manifest.name),
         modified: JSON.stringify(record(current)) !== JSON.stringify(item) };
     });
@@ -591,7 +601,9 @@ export function installedPluginCatalogIdentity(workspace: string, config?: Plugi
   if (!store) return makeIndex([]).digest;
   return locked(store, () => {
     assertNoPending(store);
-    return load(store, options).index.digest;
+    const state = load(store, options);
+    const disabled = state.index.plugins.filter(item => !pluginEnabled(item.manifest.name, options)).map(item => item.manifest.name);
+    return disabled.length === 0 ? state.index.digest : hash(JSON.stringify({ index: state.index.digest, disabled }));
   });
 }
 
@@ -604,7 +616,7 @@ export function discoverInstalledPluginComponents(workspace: string, config?: Pl
   return locked(store, () => {
     assertNoPending(store);
     const state = load(store, options);
-    const components = state.index.plugins.map(item => {
+    const components = state.index.plugins.filter(item => pluginEnabled(item.manifest.name, options)).map(item => {
       const current = verifyInstalled(store, item, options);
       const root = path.join(store, item.manifest.name);
       return {
@@ -696,7 +708,7 @@ export function createPluginTools(config?: PluginConfig): ToolDefinition[] {
         const state = load(store, options, context.signal);
         const plugins = state.index.plugins.map(item => {
           const current = snapshot(path.join(store, item.manifest.name), options, context.signal);
-          return { ...item, directory: path.join(store, item.manifest.name), current_digest: current.digest,
+          return { ...item, enabled: pluginEnabled(item.manifest.name, options), directory: path.join(store, item.manifest.name), current_digest: current.digest,
             modified: JSON.stringify(record(current)) !== JSON.stringify(item) };
         });
         return encode({ plugins, total: plugins.length, index_digest: state.index.digest }, context);

@@ -32,7 +32,7 @@ import { captureClipboardImage } from './clipboard.js';
 import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree, restoreWorktreeArchive } from './worktree-session.js';
 import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
-import { defaultUserDir, loadProjectConfig } from './config.js';
+import { applyPluginHooks, defaultUserDir, loadProjectConfig } from './config.js';
 import { permissionSettingsPaths } from './permission-settings.js';
 import { FORK_COORDINATOR, FORK_DESCRIPTION, FORK_DISABLED, FORK_FIRST_TURN, FORK_NOTHING, FORK_USAGE,
   SESSION_RUNNING, SESSION_WAITING, fleetForkOpen, forkSessionLine } from './fork-command.js';
@@ -81,9 +81,10 @@ import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
 import { contextPanelText, contextUsageFromCounts } from './context-panel.js';
 import { STATUS_PANEL_TITLE, appVersion, latestSessionTitle, statusPanelRows, statusPanelText } from './status-panel.js';
 import { MCP_PANEL_TITLE, mcpPanelRows, mcpPanelText, mcpToolCounts } from './mcp-panel.js';
-import { PLUGIN_PANEL_TITLE, filterPluginEntries, pluginFilteredEmpty, pluginPanelRows,
+import { PLUGIN_PANEL_TITLE, filterPluginEntries, parsePluginCommand, pluginDetailRequest, pluginFilteredEmpty, pluginPanelRows,
   pluginPanelText, type PluginListFilter, type PluginPanelEntry } from './plugin-panel.js';
-import { discoverInstalledPluginComponents, readPluginStore } from './plugins.js';
+import { discoverInstalledPluginComponents, pluginEnabled, readPluginStore } from './plugins.js';
+import { desiredPluginConfig, setPluginEnabled } from './plugin-toggle.js';
 import { RELOAD_PLUGINS_DECLINED, diffPluginServers, lspToolChange, pluginCacheWarning,
   pluginReloadSummary, reloadPluginsForced } from './reload-plugins.js';
 import { branchFailureMessage, branchMessage, branchTitle, customBranchTitle, deriveFirstPrompt,
@@ -174,7 +175,7 @@ export const COMMAND_HELP = `/help       Show help and available commands
 /agents     List configured local agent types
 /mcp        Show configured MCP servers and adapter limitations
 /mcp-reconnect [SERVER]  Reconnect one server in place, or all servers into a new session
-/plugin list [--enabled|--disabled]  List installed local plugins (aliases: /plugins, /marketplace)
+/plugin [list|enable|disable] [plugin]  Manage installed local plugins (aliases: /plugins, /marketplace)
 /tasks      Show workspace task dependencies and readiness (alias: /bashes)
 /workflows  Browse running and completed workflows
 /cron       Show scheduled prompts in the active session
@@ -599,7 +600,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       let instructionPaths: string[] = [];
       let contentDirectories: string[] = [];
       try {
-        const loaded = loadProjectConfig(session.config.workspace, { ...session.config.configSources, paths: [] });
+        const loaded = loadProjectConfig(session.config.workspace, { ...session.config.configSources, paths: [], pluginHooks: 'preview' });
         instructionPaths = [...loaded.instructions, ...(loaded.conditionalRules ?? []).flatMap(rule => [rule, ...(rule.imports ?? [])])]
           .map(instruction => instruction.path);
         contentDirectories = loaded.watchDirectories ?? [];
@@ -1091,7 +1092,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
     unsubscribe = activeRuntime.subscribe?.(runtimeChanged);
   };
-  const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand) => {
+  const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand, reconfigureRuntime = false) => {
     signal.throwIfAborted();
     const previousModel = session.config.model;
     const next = Session.open(config.workspace, { config, startedAt: session.startedAt });
@@ -1123,9 +1124,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         next.append(modeCommand);
       }
     } catch (error) { next.close(); throw error; }
-    const nextRuntime = await bindNext(activeRuntime, next);
+    let nextRuntime: Runtime;
+    try {
+      const candidate = reconfigureRuntime && activeRuntime.reconfigure ? await activeRuntime.reconfigure(config) : activeRuntime;
+      nextRuntime = await bindNext(candidate, next);
+    } catch (error) { next.close(); throw error; }
     try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
     await acceptNext(next, nextRuntime);
+    if (reconfigureRuntime) await applyPluginHooks(discoverInstalledPluginComponents(session.config.workspace, session.config.plugins));
     // The Verbose config row applies to the live surface through the successor session,
     // the same owner handoff `Te` performs beside its settings write.
     terminal?.setVerbose?.(next.config.verbose === true);
@@ -1803,7 +1809,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const userDir = session.config.configSources?.userDir ?? defaultUserDir();
           let rows: MemoryPanelRow[];
           try {
-            const loaded = loadProjectConfig(session.config.workspace, { userDir });
+            const loaded = loadProjectConfig(session.config.workspace, { userDir, pluginHooks: 'preview' });
             rows = memoryPanelRows({
               instructions: [...loaded.instructions,
                 ...(loaded.conditionalRules ?? []).flatMap(rule => [rule, ...(rule.imports ?? [])])],
@@ -2127,7 +2133,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (!activeRuntime.reconfigure) { output.write(RELOAD_PLUGINS_DECLINED + '\n'); continue; }
           const force = reloadPluginsForced(argument);
           const nonInteractive = !terminal?.prompt;
-          const next = reloadConfig(session.config);
+          const next = reloadConfig(session.config, 'preview');
           // The source compares the resolved server sets before it applies anything (`q4`) and
           // stops with the cache warning unless `--force` was passed; a forced run applies and
           // reports the same warning in its summary.
@@ -2137,7 +2143,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const warning = pluginCacheWarning({ ...serverDiff, lspToolChange: lspChange }, nonInteractive);
           if (warning !== null && !force) { output.write(warning + '\n'); continue; }
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn before reloading');
-          await applyConfig(next, false, options.signal);
+          await applyConfig(next, false, options.signal, undefined, true);
           // `pluginComponentDiagnostics` is the local `errors` list; `loadPluginComponents` writes it
           // on every full config read, so a fresh reload carries the current load failures.
           const store = readPluginStore(session.config.workspace, session.config.plugins);
@@ -2153,7 +2159,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             }
           } catch { /* the reload already reported the failure */ }
           const counts = {
-            plugins: store.enabled ? store.entries.length : 0,
+            plugins: store.entries.filter(entry => entry.enabled).length,
             skills: (session.config.skills ?? []).filter(skill => skill.plugin !== undefined).length,
             agents: (session.config.agentTypes ?? []).filter(agent => agent.plugin !== undefined).length,
             hooks: pluginHooks,
@@ -2171,7 +2177,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (!activeRuntime.reconfigure) throw new Error('Runtime configuration reload is unavailable');
           const reconnect = prompt === '/mcp-reconnect';
           if (reconnect && !Object.keys(session.config.mcpServers ?? {}).length) throw new Error('No configured MCP servers to reconnect');
-          const config = reconnect ? structuredClone(session.config) : reloadConfig(session.config);
+          const config = reconnect ? structuredClone(session.config) : reloadConfig(session.config, 'preview');
           let nextRuntime = await activeRuntime.reconfigure(config);
           let next: Session | undefined;
           try {
@@ -2204,6 +2210,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           try { await agent().endSession('config_reload'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
           await acceptNext(next, nextRuntime);
+          if (!reconnect) await applyPluginHooks(discoverInstalledPluginComponents(session.config.workspace, session.config.plugins));
           // The merged Verbose value reaches the live surface with the reloaded owner.
           terminal?.setVerbose?.(next.config.verbose === true);
           terminal?.setTerminalProgressBar?.(next.config.terminalProgressBarEnabled !== false);
@@ -2271,38 +2278,54 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
         if (prompt === '/plugin' || prompt.startsWith('/plugin ') || prompt === '/plugins' ||
           prompt === '/marketplace' || prompt.startsWith('/marketplace ')) {
-          // Source `fc` (chunk-tw1h5pks.js 216895): the Installed tab's list. This host keeps one
-          // workspace-local store (`.harness/plugins`), so every row's scope is `project`; the
-          // marketplace, Discover, enable/disable, install and uninstall arms have no local
-          // producer here and stay out.
-          const typed = parseSlashCommand(prompt);
-          const argument = typed?.args ?? '';
-          const listArgument = argument.replace(/^list\s*/, '');
-          const filter: PluginListFilter | undefined = listArgument === '--enabled' ? 'enabled'
-            : listArgument === '--disabled' ? 'disabled' : undefined;
-          if (argument !== '' && !argument.startsWith('list')) {
-            throw new Error('Use /plugin list [--enabled|--disabled]');
+          // fc/Bm/Ec, tw1h5pks [216895,218065)/[168900,171028)/[172681,172787), UTF-16.
+          const command = parsePluginCommand(parseSlashCommand(prompt)?.args ?? '');
+          if (command.type === 'unsupported') throw new Error('Use /plugin list [--enabled|--disabled], enable <plugin> or disable <plugin>');
+          const entries = (): PluginPanelEntry[] => {
+            const desired = desiredPluginConfig(session.config);
+            return readPluginStore(session.config.workspace, session.config.plugins).entries.map(entry => ({ name: entry.name,
+              version: entry.version, description: entry.description, scope: 'project', verified: !entry.modified,
+              enabled: pluginEnabled(entry.name, desired), appliedEnabled: entry.enabled }));
+          };
+          const toggle = async (name: string, enabled: boolean) => {
+            const result = await setPluginEnabled(session.config, name, enabled);
+            return result.success ? `${result.message}. Run /reload-plugins to apply.` : result.message;
+          };
+          if ((command.type === 'enable' || command.type === 'disable') && command.plugin) {
+            output.write(await toggle(command.plugin, command.type === 'enable') + '\n');
+            continue;
           }
-          const store = readPluginStore(session.config.workspace, session.config.plugins);
-          const entries: PluginPanelEntry[] = store.entries.map(entry => ({ name: entry.name,
-            version: entry.version, scope: 'project', verified: !entry.modified, enabled: store.enabled }));
+          const filter = command.type === 'list' ? command.filter : command.type === 'enable' ? 'disabled'
+            : command.type === 'disable' ? 'enabled' : undefined;
           if (!terminal?.prompt) {
-            output.write(pluginPanelText(filterPluginEntries(entries, filter)) + '\n');
+            output.write(pluginPanelText(filterPluginEntries(entries(), filter)) + '\n');
             continue;
           }
           const FILTERS: readonly (PluginListFilter | undefined)[] = [undefined, 'enabled', 'disabled'];
-          let active = filter;
+          let active = filter, focus = 0;
           let notice: string | undefined;
           for (;;) {
-            const shown = filterPluginEntries(entries, active);
-            const body = shown.length === 0 && active !== undefined && entries.length > 0
+            const all = entries(), shown = filterPluginEntries(all, active);
+            const body = shown.length === 0 && active !== undefined && all.length > 0
               ? pluginFilteredEmpty(active) : pluginPanelText(shown);
             const answer = await withTurn(signal => readDialog({ title: PLUGIN_PANEL_TITLE,
               message: notice === undefined ? body : `${body}\n\n${notice}`, readOnly: true,
-              keys: [{ key: 'f', label: active === undefined ? 'filter enabled' : active === 'enabled' ? 'filter disabled' : 'clear filter' }] }, signal));
-            if (answer?.key !== 'f') break;
-            active = FILTERS[(FILTERS.indexOf(active) + 1) % FILTERS.length];
-            notice = undefined;
+              choices: pluginPanelRows(shown), defaultIndex: focus,
+              keys: [{ key: 'f', label: active === undefined ? 'filter enabled' : active === 'enabled' ? 'filter disabled' : 'clear filter' },
+                { key: ' ', label: 'toggle' }] }, signal));
+            if (!answer) break;
+            if (answer.key === 'f') { active = FILTERS[(FILTERS.indexOf(active) + 1) % FILTERS.length]; focus = 0; notice = undefined; continue; }
+            const entry = shown.find(entry => entry.name === answer.selected[0]);
+            if (!entry) continue;
+            focus = pluginPanelRows(shown).findIndex(row => row.value === entry.name);
+            try {
+              if (answer.key === ' ' || command.type === 'enable' || command.type === 'disable') {
+                notice = await toggle(entry.name, command.type === 'enable' || command.type !== 'disable' && !entry.enabled);
+              } else {
+                const detail = await withTurn(signal => readDialog(pluginDetailRequest(entry), signal));
+                if (detail?.selected[0] === 'toggle-enabled') notice = await toggle(entry.name, !entry.enabled);
+              }
+            } catch (error) { notice = `Failed to toggle: ${error instanceof Error ? error.message : String(error)}`; }
           }
           continue;
         }
@@ -2437,7 +2460,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                     case 'autoCompact': {
                       // Row 12035: userSettings plus the global config, no restart. The merged
                       // setting is re-read first so a higher authored layer keeps precedence.
-                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [], pluginHooks: 'preview' });
                       const enabled = configSchema.shape.autoCompactEnabled.parse(loaded.settings.autoCompactEnabled);
                       session.config.autoCompactEnabled = enabled;
                       changes.set(update.id, `Set ${update.id} to ${enabled}`);
@@ -2455,7 +2478,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       // y0 reads the merged setting (`hs`) with default true; re-read it after the write
                       // so a higher authored layer keeps precedence. Row 20203 writes the global
                       // config and the live flag, never a new session.
-                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [], pluginHooks: 'preview' });
                       const authored = loaded.settings.terminalProgressBarEnabled;
                       const enabled = authored === undefined ? true
                         : configSchema.shape.terminalProgressBarEnabled.parse(authored);
@@ -2467,7 +2490,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                     case 'permissionMode': {
                       // vWe 21908: the settings cache moves without changing the live mode; the
                       // row's value is the merged default (`hs`), so re-read it after the write.
-                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [], pluginHooks: 'preview' });
                       const raw = loaded.settings.permissions;
                       const defaultMode = raw !== null && typeof raw === 'object' && !Array.isArray(raw)
                         ? permissionPolicySchema.shape.defaultMode.parse((raw as Record<string, unknown>).defaultMode) : undefined;
@@ -2482,7 +2505,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                     }
                     // vWe/me, nybcbd9t [14860,15058)/[8029,8318), UTF-16: local settings and live snapshot.
                     case 'tips': {
-                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [], pluginHooks: 'preview' });
                       const enabled = configSchema.shape.spinnerTipsEnabled.parse(loaded.settings.spinnerTipsEnabled);
                       session.config.spinnerTipsEnabled = enabled;
                       terminal?.bindSpinnerTips?.(session);
@@ -2491,7 +2514,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                     }
                     // he/U2t, nybcbd9t [9662,9747)/[5051,6113), UTF-16; effective merged value stays authoritative.
                     case 'notifChannel': {
-                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [], pluginHooks: 'preview' });
                       const channel = configSchema.shape.preferredNotifChannel.parse(loaded.settings.preferredNotifChannel);
                       if (channel === undefined) delete session.config.preferredNotifChannel;
                       else session.config.preferredNotifChannel = channel;
@@ -2511,7 +2534,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       return configPanelInput(session.config);
                     // vWe/hs/D6, nybcbd9t [24065,24243), js2bhabe [1114,1554), UTF-16.
                     case 'autoScroll': {
-                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [], pluginHooks: 'preview' });
                       const enabled = configSchema.shape.autoScrollEnabled.parse(loaded.settings.autoScrollEnabled);
                       if (enabled === undefined) delete session.config.autoScrollEnabled;
                       else session.config.autoScrollEnabled = enabled;
@@ -2725,7 +2748,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             { onRetryDenials: labels => { session.appendPermissionRetry(labels); retried = true; },
               removeDenial: denial => session.autoModeDenials.remove(denial), autoMode });
           // di refreshes ve/me after writes; FVt's existing configuration branch refreshes the live classifier owner.
-          if (autoModeSaved) await withTurn(signal => applyConfig(reloadConfig(session.config), false, signal));
+          if (autoModeSaved) await withTurn(signal => applyConfig(reloadConfig(session.config, 'preview'), false, signal));
           // The recovered dialog returns its accumulated lines as the command's own result text
           // (`display: "system"`), so the whole block lands in the transcript, not on the status row.
           if (notice) terminal.writeNotice?.(notice);
