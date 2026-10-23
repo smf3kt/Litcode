@@ -1,3 +1,5 @@
+2026-10-24 W312 cron idle delivery verified locally. Source loading guard and idle check use the active Agent owner across interactive/headless entrypoints. Affected103/103, CLI/background31/31, check/build, compiled idle3/headless2/creator7/watch3 requests and independent3/3 pass. Teammate cron remains blocked on its absent execution owner. [Record](ports/W312-cron-idle.md). Local only, no push.
+
 2026-10-24 W311 cron creator eligibility and session history verified locally. Source predicates, PID/birth writes and refresh, legacy transcript evidence and clear/runtime inheritance pass affected100/100, CLI/background31/31, check/build, compiled creator7/watch3/session6 requests and independent acquisition repair1/1. [Record](ports/W311-cron-creators.md). Local only, no push.
 
 2026-10-24 W310 cron file watcher and session ownership verified locally. Source watch/retry/cleanup, metadata-preserving mutations, real-session catch-up and duplicate-free lease handoff pass affected97/97, CLI31/31, independent1/1 and compiled3-request chain. [Record](ports/W310-cron-watch.md). Local only, no push.

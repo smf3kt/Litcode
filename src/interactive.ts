@@ -407,7 +407,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         elicit(params, AbortSignal.any([signal, requestSignal]), context),
         event => options.status.write(`MCP server "${event.serverName}" confirmed elicitation ${event.elicitationId} complete\n`));
       return await action(signal);
-    } finally { unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false); }
+    } finally {
+      unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false);
+      // Ie idle effect [17435,19295), chunk-appb2dtz.js: checkNow follows the loading reset.
+      activeRuntime.checkScheduler?.(session.id);
+    }
   };
   /**
    * Source `processBashCommand` (chunk-w79px1ss.js 14067): one drained shell command. The host's
@@ -1165,7 +1169,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     // `x0r.start/stop` [10901,11476), chunk-jrz2zk22.js: the successor starts after old cleanup.
     activeRuntime.buildTools(session.config, session.id);
     schedulerSessions.add(session.id);
-    await activeRuntime.settleScheduler?.(session.id, schedulerSessions);
+    await activeRuntime.settleScheduler?.(session.id, schedulerSessions, () => activeAgent?.isRunning() ?? false);
   };
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand, reconfigureRuntime = false) => {
     signal.throwIfAborted();
@@ -1667,7 +1671,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await startPeer(session.config);
     // Source `me(!0).then(ne)`: the durable scheduler reads its store before the loop drains,
     // so a restart's missed one-shot catch-up is queued for the first turn.
-    await activeRuntime.settleScheduler?.(session.id, schedulerSessions).catch(() => {});
+    await activeRuntime.settleScheduler?.(session.id, schedulerSessions, () => activeAgent?.isRunning() ?? false).catch(() => {});
     announce();
     bindConfigWatch();
     /**

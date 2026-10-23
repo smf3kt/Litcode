@@ -471,7 +471,11 @@ export type Runtime = {
    * Source `me(!0)` before `ne`: the durable scheduler's first read happens before the loop
    * drains, so a restart's missed-task catch-up is in the queue for the first turn.
    */
-  settleScheduler?(owner: string, sessionIds?: ReadonlySet<string>): Promise<void>;
+  settleScheduler?(owner: string, sessionIds?: ReadonlySet<string>, isLoading?: () => boolean): Promise<void>;
+  /** Ie idle effect [17435,19295), chunk-appb2dtz.js checks the existing driver after loading. */
+  checkScheduler?(owner: string): void;
+  /** KL [562879,563257), chunk-rx2nah4x.js binds loading without starting file delivery. */
+  bindSchedulerLoading?(owner: string, isLoading: () => boolean): void;
   subscribe?(listener: (owner: string) => void): () => void;
   taskRecords?(config: SessionConfig): TaskRecord[];
   subscribeTasks?(config: SessionConfig, listener: () => void): () => void;
@@ -640,6 +644,7 @@ export async function createRuntime(
   const workflowAccessors = new Map<string, () => WorkflowRegistry>();
   const schedulerAccessors = new Map<string, () => LocalScheduler>();
   const schedulerSessions = new Set<string>();
+  const schedulerLoading = new Map<string, () => boolean>();
   const namedCatalogs = new Map<string, { catalog: NamedWorkflowCatalog; workspace: string }>();
   const listeners = new Set<(owner: string) => void>();
   const taskSubscriptions = new Set<() => void>();
@@ -847,6 +852,8 @@ export async function createRuntime(
         // `x0r.ke/me` [5987,7616), chunk-jrz2zk22.js: creator eligibility precedes delivery.
         const durable = current.features?.schedulerDurable === true;
         const scheduler = new LocalScheduler({ ...options.scheduler, jitter: current.features?.schedulerJitter === true,
+          // Ie [18880,18897), chunk-appb2dtz.js: read the latest loading owner at each tick.
+          isLoading: () => schedulerLoading.get(owner)?.() ?? false,
           // `x0r` [5233,5610), chunk-jrz2zk22.js: the session owns its lease and delivery queue.
           ...(durable ? { store: { workspace: current.workspace, sessionId: owner, sessionIds: schedulerSessions,
             ...(catalogSession?.id === owner ? { transcriptDirectory: path.dirname(catalogSession.file) } : {}),
@@ -1240,6 +1247,7 @@ export async function createRuntime(
     if (catalogSession?.id === owner) catalogSession = undefined;
     workflowAccessors.delete(owner);
     schedulerAccessors.delete(owner);
+    schedulerLoading.delete(owner);
     subtaskSeams.delete(owner);
     namedCatalogs.get(owner)?.catalog.close();
     namedCatalogs.delete(owner);
@@ -1473,7 +1481,8 @@ export async function createRuntime(
         taskSubscriptions.add(stop); return stop;
       },
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
-      async settleScheduler(owner, sessionIds) {
+      async settleScheduler(owner, sessionIds, isLoading) {
+        if (isLoading) schedulerLoading.set(owner, isLoading);
         // `x0r.start`/`vd` [10901,11476): retain only sessions observed by this interactive owner.
         for (const id of sessionIds ?? []) schedulerSessions.add(id);
         schedulerSessions.add(owner);
@@ -1482,6 +1491,12 @@ export async function createRuntime(
         // The attach is the first store read; a missed one-shot is queued by the time it resolves,
         // so the turn that follows sees it (`me(!0).then(ne)`).
         await accessor().ensureAttached().catch(() => false);
+      },
+      checkScheduler(owner) {
+        owners.get(owner)?.scheduler?.tick();
+      },
+      bindSchedulerLoading(owner, isLoading) {
+        schedulerLoading.set(owner, isLoading);
       },
       drainEvents(owner) {
         const resources = owners.get(owner);

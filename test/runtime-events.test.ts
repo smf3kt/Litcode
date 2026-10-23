@@ -279,8 +279,11 @@ test('idle scheduler fires after the active turn; slash text in an event never e
   let now = new Date(2026, 9, 10, 12, 0); const ticks: (() => void)[] = [];
   const provider: ModelProvider = { count: async () => 1, complete: async request => {
     requests.push(String(request.messages.at(-1)!.content));
-    if (requests.length === 1) { now = new Date(2026, 9, 10, 12, 1); ticks.forEach(tick => tick()); }
-    else input.write('/exit\n');
+    if (requests.length === 1) {
+      now = new Date(2026, 9, 10, 12, 1); ticks.forEach(tick => tick());
+      assert.equal(runtime.backgroundTasks!(session.id).crons.length, 1, 'the busy model turn retains its due one-shot');
+      assert.deepEqual(runtime.drainEvents!(session.id), [], 'the active turn has not accepted the scheduled prompt');
+    } else input.write('/exit\n');
     return reply('done');
   } };
   const runtime = await createRuntime(f.config, provider, f.context.signal, { scheduler: {

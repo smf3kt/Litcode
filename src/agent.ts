@@ -168,6 +168,8 @@ function createdTaskFields(input: unknown, content: ToolResult['content']): { id
 
 export class Agent {
   private busy = false;
+  /** Ie.isLoading [18880,18897), chunk-appb2dtz.js reads the live model-turn owner. */
+  isRunning(): boolean { return this.busy; }
   /** Source tool result `endsTurn`: the current batch ended the turn. */
   private endedByTool = false;
   private ended = false;
