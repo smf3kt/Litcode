@@ -141,7 +141,7 @@ export class AsyncHookRegistry {
     if (!HOOK_EVENTS.includes(request.event)) throw new Error("Invalid async hook event.");
     const definition = hookDefinitionSchema.parse(request.definition);
     if (!("command" in definition)) throw new Error("Async hook registry accepts command definitions only.");
-    if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0 || request.timeoutMs > 3600_000) throw new Error("Async hook deadline must be positive and at most one hour.");
+    if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0) throw new Error("Async hook deadline must be positive.");
     if (Buffer.byteLength(request.input) > MAX_INPUT_BYTES) throw new Error("Async hook input exceeds byte cap.");
     const payload = JSON.parse(request.input) as Record<string, unknown>;
     if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.hook_event_name !== request.event || request.input !== `${JSON.stringify({ ...request.payload, hook_event_name: request.event })}\n`) throw new Error("Async hook stdin must match the original newline-terminated event payload.");
@@ -154,7 +154,13 @@ export class AsyncHookRegistry {
     if (!fs.statSync(requestedCwd).isDirectory()) throw new Error("Async hook cwd must be a directory.");
     const forwarded = structuredClone(request.payload);
     const correlation = minimalPayload(forwarded);
-    const timeout = Math.min(request.timeoutMs, (definition.timeout ?? 60) * 1000) / 1000;
+    // The source resolves one deadline and uses it on both sides: the foreground
+    // run takes `js=uo.timeout?uo.timeout*1000:b` (chunk-sfn1dbxq.js offset
+    // 3021682) and the async record is registered with the same expression
+    // (`asyncTimeout:e.timeout?e.timeout*1000:lu`, offset 2970018), where `b` is
+    // the caller's deadline and `lu` is 600000 (offset 2915815).
+    const timeout = typeof definition.timeout === "number" && definition.timeout > 0
+      ? definition.timeout : request.timeoutMs / 1000;
     const controller = new AbortController();
     const id = crypto.randomUUID();
     const descriptor: AsyncHookDescriptor = { id, event: request.event, state: "running", started_at: Date.now() };
@@ -200,7 +206,7 @@ export class AsyncHookRegistry {
     if (!HOOK_EVENTS.includes(request.event)) throw new Error("Invalid async hook event.");
     const definition = hookDefinitionSchema.parse(request.definition);
     if (!("command" in definition)) throw new Error("Async hook registry accepts command definitions only.");
-    if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0 || request.timeoutMs > 3600_000) throw new Error("Async hook deadline must be positive and at most one hour.");
+    if (!Number.isFinite(request.timeoutMs) || request.timeoutMs <= 0) throw new Error("Async hook deadline must be positive.");
     if (Buffer.byteLength(request.input) > MAX_INPUT_BYTES) throw new Error("Async hook input exceeds byte cap.");
     const payload = JSON.parse(request.input) as Record<string, unknown>;
     if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.hook_event_name !== request.event ||
