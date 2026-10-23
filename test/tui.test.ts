@@ -64,7 +64,7 @@ function screenLines(output: Writable): string[] {
  */
 function dialogLines(output: Writable): string[] {
   return screenLines(output).map(line => line.trim()).filter(Boolean)
-    .filter(line => !/[█▟▙]/.test(line) && !line.includes('Welcome to LiTcode'))
+    .filter(line => !/[█▟▙▀▄]/.test(line) && !line.includes('Welcome to LiTcode'))
     .filter(line => !line.includes('ctrl+o transcript'));
 }
 import fs from 'node:fs';
@@ -3285,7 +3285,7 @@ test('the startup header stays in the log and scrolls with it', () => {
     // Typing must not clear it: the header is the log's head, not a splash.
     tui.append({ kind: 'user', text: 'first task' });
     assert.equal(header(), 0);
-    assert.ok(screenLines(output).some(line => line.includes('█◉██▽██◉█')));
+    assert.ok(screenLines(output).some(line => line.includes('▄█▀█▄  ▄█▀█▄')));
     // It scrolls away with the log and comes back on a wheel-up.
     for (let index = 0; index < 60; index++) tui.append({ kind: 'assistant', text: `row ${index}` });
     assert.equal(header(), -1);
