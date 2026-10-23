@@ -62,7 +62,8 @@ import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
 import { TuiDocumentRenderer } from './tui-document-renderer.js';
-import { Welcome, welcomeDensity } from './tui-welcome.js';
+import { Welcome, welcomeDensity, WELCOME_ART_ROWS } from './tui-welcome.js';
+import { OwlAnimation } from './tui-owl.js';
 import { clt, tLo } from './tui-stream-preview.js';
 import { Zqn, l$t } from './tui-preview-visibility.js';
 import { inputCursor, layoutInput } from './tui-input-navigation.js';
@@ -354,6 +355,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private welcomeRenderer: TuiDocumentRenderer | undefined;
   private welcomeRows: string[] = [];
   private welcomeKey = '';
+  private readonly owl = new OwlAnimation(() => this.render());
   private readonly messageRows = new WeakMap<TranscriptEntry, { columns: number; maxProseWidth?: number;
     syntaxHighlightingDisabled?: boolean; theme: BuiltinTheme; themeGeneration: number; progressGeneration: number;
     stamp?: string; detailed?: boolean; rows: RenderedRow[] }>();
@@ -904,7 +906,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private editorHandoff(): EditorHandoff {
     const suspend=()=>{
       this.gestures.reset();this.vim.externalMutation();
-      this.editorSuspended=true;this.syncTerminalTitle();this.options.input.off('data',this.onData);this.options.input.pause();
+      this.editorSuspended=true;this.syncTerminalTitle();this.syncOwl(false);this.options.input.off('data',this.onData);this.options.input.pause();
       if(this.escapeTimer){clearTimeout(this.escapeTimer);this.escapeTimer=undefined;}this.decoder.reset();this.keys.reset();
       this.selection=createSelection();this.progress.pause(true);this.progress.setVisible(false);this.statusLine.setActive(false);this.systemTheme?.setActive(false);
       this.modes.leave();this.options.input.setRawMode!(false);
@@ -1833,7 +1835,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
-    this.notifications.close(); this.terminalTitle.close();
+    this.notifications.close(); this.terminalTitle.close(); this.owl.close();
     this.unsubscribeTitle?.(); this.unsubscribeTitle = undefined; this.titleSession = undefined;
     this.transcriptScroll.reset(); this.scrollPointer = undefined;
     this.selectionCopy.reset();
@@ -4320,7 +4322,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.screen !== 'chat') this.footerPointer = undefined;
     if (this.footerSelection !== null && (this.dialog || this.sourceSearch?.snapshot.searching
       || this.sourcePicker?.snapshot.searching || !this.footerItems().includes(this.footerSelection))) this.footerSelection = null;
-    if (!this.isTTY || !this.started || this.closed || this.editorSuspended) return;
+    if (!this.isTTY || !this.started || this.closed || this.editorSuspended) { this.syncOwl(false); return; }
+    if (this.dialog || this.screen !== 'chat' || this.sourceSearch?.snapshot.searching
+      || this.sourcePicker?.snapshot.searching) this.syncOwl(false);
     // A queue that changed without a repaint (the loop drained a row) still owns the selection.
     this.syncQueueSelection();
     const columns = Math.max(20, this.options.output.columns ?? 80);
@@ -4437,6 +4441,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const total = this.transcriptTotal(conversationWidth);
     this.transcript = { ...this.transcript,
       offset: this.transcriptScroll.layout(total, transcriptRows, this.transcript.entries) };
+    this.syncOwl(this.screen === 'chat' && transcriptRows >= WELCOME_ART_ROWS
+      && this.transcript.offset === 0 && welcomeDensity(this.viewportSize().rows) === 'art');
     const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows,
       this.welcomePreamble(conversationWidth));
     const pill = this.transcriptScroll.pill;
@@ -4462,6 +4468,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
 
+  private syncOwl(visible: boolean): void {
+    this.owl.update(visible && this.isTTY && this.started && !this.closed && !this.editorSuspended
+      && this.focus.focused && !this.dialog && !this.hasTextSelection(),
+    this.progress.running, this.prefersReducedMotion === true);
+  }
+
   /**
    * The startup header (`Hee`) leads the transcript's rendered rows without being
    * an entry, so it stays in the log and scrolls with it instead of vanishing on
@@ -4470,11 +4482,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private welcomePreamble(columns: number): RenderedRow[] {
     const density = welcomeDensity(this.viewportSize().rows);
     const version = this.options.version ?? '';
-    const key = JSON.stringify([columns, density, version, this.theme.current, this.theme.overrides]);
+    const key = JSON.stringify([columns, density, version, this.theme.current, this.theme.overrides, this.owl.pose]);
     if (key !== this.welcomeKey) {
       this.welcomeRenderer ??= new TuiDocumentRenderer();
       this.welcomeRows = this.welcomeRenderer.renderElement(
-        jsx(Welcome, { theme: this.theme.current, version, density }, undefined), columns,
+        jsx(Welcome, { theme: this.theme.current, version, density, columns, pose: this.owl.pose }, undefined), columns,
         { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
       this.welcomeKey = key;
     }

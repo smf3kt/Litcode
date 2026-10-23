@@ -1,23 +1,12 @@
-// @ts-nocheck
-// The startup header. The recovered `Hee` (chunk-9c78dh5n.js [960,15899), zero-based
-// UTF-16 code units) supplied the row accounting and the colour slots this product
-// still uses (`clawd_body` plumage, `clawd_background` detail and backdrop); its
-// landscape, its 58-cell width, its Apple_Terminal variant `V` and its binary compact
-// flag are dropped in favour of one small owl mark, because the recovered art reads as
-// a pastiche of another product's splash rather than this one's identity. See
-// research/ports/W194-compact-owl.md.
+// Hee, 9c78dh5n [960,15899), UTF-16: retain the compact fallback; user artwork replaces the splash (W302).
 import { jsx as e } from './tui-jsx.js';
 import { s, n } from './tui-base-components.js';
+import { owlPixels, OWL_WIDTH, OWL_HEIGHT, type OwlPixel, type OwlPose } from './tui-owl.js';
 
-/** Widest row of the lockup: the owl, two spaces, and the title line. */
 export const WELCOME_ART_WIDTH = 36;
-/** Rows the lockup occupies. */
-export const WELCOME_ART_ROWS = 4;
-/** Log rows the header must leave free before it is worth drawing at all. */
+export const WELCOME_ART_ROWS = OWL_HEIGHT / 2 + 1;
 const LOG_SLACK = 4;
 export const WELCOME_MESSAGE = 'Welcome to LiTcode';
-
-/** How much of the header fits; below the lockup the title stands alone. */
 export type WelcomeDensity = 'art' | 'line';
 
 export function welcomeDensity(availableRows: number): WelcomeDensity {
@@ -28,48 +17,49 @@ export interface WelcomeProps {
   theme: string;
   version: string;
   density: WelcomeDensity;
+  pose?: OwlPose;
+  columns?: number;
 }
 
-export function Welcome({ theme, version, density }: WelcomeProps) {
-  if (density === 'line') {
-    return e(n, { children: [
-      e(n, { color: 'text', children: [WELCOME_MESSAGE, ' '] }),
-      e(n, { dimColor: true, children: ['v', version] }),
-    ] });
+type Palette = Record<Exclude<OwlPixel, ' '>, string>;
+function palette(theme: string): Palette {
+  if (theme.endsWith('-ansi')) return {
+    w: 'ansi:whiteBright', g: 'ansi:blackBright',
+    y: 'ansi:yellow', k: 'ansi:black',
+  };
+  return { w: '#f6f7fa', g: '#b8c0ca', y: '#ffd12d', k: '#30323c' };
+}
+
+export function Welcome({ theme, version, density, pose = 'rest', columns = 100 }: WelcomeProps) {
+  const title = () => e(n, { children: [
+    e(n, { color: 'text', children: [columns < 28 ? 'LiTcode' : WELCOME_MESSAGE, ' '] }, 'title'),
+    e(n, { dimColor: true, children: ['v', version] }, 'version'),
+  ] }, 'lockup-title');
+  if (density === 'line') return title();
+  const pixels = owlPixels(pose), colors = palette(theme);
+  const light = theme === 'light' || theme.startsWith('light-');
+  const occupied = (x: number, y: number) => pixels[y]?.[x] !== undefined && pixels[y]![x] !== ' ';
+  const color = (x: number, y: number): string | undefined => {
+    const pixel = pixels[y]?.[x];
+    if (pixel === undefined || pixel === ' ') return;
+    // On light backgrounds the thin feather edge preserves the white silhouette without a panel.
+    if (pixel === 'w' && light &&
+      (!occupied(x - 1, y) || !occupied(x + 1, y) || !occupied(x, y - 1) || !occupied(x, y + 1))) return colors.g;
+    return colors[pixel];
+  };
+  const rows = [title()];
+  for (let row = 0; row < OWL_HEIGHT / 2; row++) {
+    const cells = [];
+    for (let x = 0; x < OWL_WIDTH; x++) {
+      const top = color(x, row * 2), bottom = color(x, row * 2 + 1);
+      const props = top === undefined && bottom === undefined ? { children: ' ' }
+        : top === undefined ? { children: '▄', color: bottom }
+        : bottom === undefined ? { children: '▀', color: top }
+        : top === bottom ? { children: '█', color: top }
+        : { children: '▀', color: top, backgroundColor: bottom };
+      cells.push(e(n, props, x));
+    }
+    rows.push(e(n, { children: cells }, row));
   }
-  return e(s, { width: WELCOME_ART_WIDTH, children: e(s, { flexDirection: 'column', children: owlLockup(version) }) });
-}
-
-/** `clawd_body` is the owl's plumage, `clawd_background` its eye and beak detail. */
-const body = (children: string) => e(n, { color: 'clawd_body', children });
-/** Detail sits inside the plumage, so it swaps the two slots and reads as a hole. */
-const detail = (children: string) => e(n, { color: 'clawd_background', backgroundColor: 'clawd_body', children });
-
-/** The mark: four rows of nine cells, tufts, face, body, feet. */
-const OWL_SHAPE = [' ▟█▙ ▟█▙ ', '█◉██▽██◉█', '█████████', ' ██   ██ '];
-
-/**
- * The owl paints no background of its own: an explicit panel would show as a grey
- * box on any terminal whose background is not exactly `clawd_background`. The two
- * colour slots already follow the theme, so the plumage contrasts with the
- * terminal as long as the theme matches it; see `/theme` to pin or auto-detect it.
- */
-function owlRow(cells: string, suffix: unknown = '') {
-  const children: unknown[] = [];
-  for (const cell of cells) children.push(cell === '◉' || cell === '▽' ? detail(cell) : body(cell));
-  children.push(suffix);
-  return e(n, { children });
-}
-
-function owlLockup(version: string) {
-  return [
-    owlRow(OWL_SHAPE[0]!, e(n, { children: [
-      '  ',
-      e(n, { color: 'text', children: [WELCOME_MESSAGE, ' '] }),
-      e(n, { dimColor: true, children: ['v', version] }),
-    ] })),
-    owlRow(OWL_SHAPE[1]!),
-    owlRow(OWL_SHAPE[2]!),
-    owlRow(OWL_SHAPE[3]!),
-  ];
+  return e(s, { flexDirection: 'column', width: Math.min(columns, WELCOME_ART_WIDTH), children: rows }, 'welcome');
 }
