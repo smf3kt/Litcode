@@ -41,6 +41,7 @@ import { SKILLS_TITLE, applySkillOverrideDiff, defaultSkillModes, nextSkillMode,
   saveSkillOverrides, skillOverrideDiff, skillPanelRows, skillsPanelMessage, skillsSaveError,
   skillsSaveMessage, type SkillMode } from './skills-panel.js';
 import { backgroundTaskGoneMessage, backgroundTaskRequest, parseBackgroundTaskValue } from './tasks-panel.js';
+import { initialTaskDetail } from './task-details.js';
 import { hooksSchema } from './hooks.js';
 import { HOOKS_NONE_YET, HOOKS_TITLE, attributeHooks, browseHooks, hookConfigLabel,
   hookListSubtitle, type HookLayer, type HookPanelHook } from './hooks-panel.js';
@@ -1390,21 +1391,60 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (!terminal?.prompt || !activeRuntime.backgroundTasks || liveDialog !== undefined) return;
     const live = withLiveDialog('tasks', options.signal);
     const read = () => activeRuntime.backgroundTasks!(session.id);
+    const initial = activeRuntime.backgroundTaskDetail ? initialTaskDetail(read()) : undefined;
+    let state: { kind: 'list' } | { kind: 'detail'; id: string } = initial === undefined
+      ? { kind: 'list' } : { kind: 'detail', id: initial };
+    let initialDetail = initial !== undefined;
+    let focus: { id?: string; index: number } = { index: 0 };
     try {
       let notice: string | undefined;
       while (!live.signal.aborted) {
-        const answer = await readDialog({ ...backgroundTaskRequest(read(), notice), titleOrigin: 'live-picker', backgroundTasks: read }, live.signal);
-        if (answer === undefined) break;
-        if (answer.key !== 'x') continue;
-        const parsed = parseBackgroundTaskValue(answer.selected[0] ?? '');
-        if (parsed === undefined) continue;
-        const stopped = await activeRuntime.stopTask?.(session.id, parsed.id);
-        if (stopped === undefined) { notice = backgroundTaskGoneMessage(); continue; }
+        // fLt/bj, 24k7d6mw [682000,685800), n7mc1kmr [1038,1312), UTF-16.
+        const detailId = state.kind === 'detail' ? state.id : undefined;
+        const list = backgroundTaskRequest(read(), notice);
+        const focused = list.choices?.findIndex(choice => parseBackgroundTaskValue(choice.value)?.id === focus.id) ?? -1;
+        const answer = detailId === undefined
+          ? await readDialog({ ...list, defaultIndex: focused < 0 ? focus.index : focused,
+              titleOrigin: 'live-picker', backgroundTasks: read }, live.signal)
+          : await readDialog({ title: 'Shell details', message: '', readOnly: true, titleOrigin: 'live-picker', backgroundTasks: read,
+              backgroundTaskDetail: () => activeRuntime.backgroundTaskDetail?.(session.id, detailId) }, live.signal);
+        if (live.signal.aborted) break;
+        if (detailId !== undefined) {
+          if (answer === undefined) { options.status.write('Shell details dismissed\n'); break; }
+          if (answer.key === 'gone') {
+            if (initialDetail) break;
+            state = { kind: 'list' }; continue;
+          }
+          if (answer.key === 'back') {
+            const snapshot = read();
+            if (initialDetail && snapshot.jobs.length + snapshot.agents.length + snapshot.crons.length <= 1) break;
+            initialDetail = false; state = { kind: 'list' }; continue;
+          }
+          if (answer.key !== 'x') continue;
+        } else {
+          if (answer === undefined) break;
+          const selectedValue = answer.selected[0];
+          const selectedTask = parseBackgroundTaskValue(selectedValue ?? '');
+          if (selectedTask !== undefined) focus = { id: selectedTask.id,
+            index: answer.backgroundTaskIndex ?? Math.max(0, list.choices?.findIndex(choice => choice.value === selectedValue) ?? 0) };
+          if (answer.key !== 'x') {
+            const selected = selectedTask;
+            const snapshot = selected && activeRuntime.backgroundTaskDetail?.(session.id, selected.id);
+            if ((selected?.kind === 'shell' || selected?.kind === 'monitor') && snapshot !== undefined)
+              state = { kind: 'detail', id: selected.id };
+            continue;
+          }
+        }
+        const id = detailId ?? parseBackgroundTaskValue(answer?.selected[0] ?? '')?.id;
+        if (id === undefined) continue;
+        const stopped = await activeRuntime.stopTask?.(session.id, id);
+        if (stopped === undefined) { notice = backgroundTaskGoneMessage(); state = { kind: 'list' }; continue; }
         for (let attempt = 0; attempt < 80 && !live.signal.aborted; attempt++) {
-          if (!read().jobs.some(job => job.id === parsed.id)) break;
+          if (!read().jobs.some(job => job.id === id)) break;
           await new Promise(resolve => setTimeout(resolve, 25));
         }
-        notice = undefined;
+        if (initialDetail) break;
+        state = { kind: 'list' }; notice = undefined;
       }
     } catch (error) {
       if (!options.signal.aborted && !live.controller.signal.aborted)
