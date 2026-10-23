@@ -292,7 +292,8 @@ export function nextOneShotFire(cron: string, createdAt: number, id: string, tim
   if (nominal === null) return null;
   if (new Date(nominal).getMinutes() % timing.oneShotMinuteMod !== 0) return nominal;
   const early = timing.oneShotFloorMs + jitterFraction(id) * (timing.oneShotMaxMs - timing.oneShotFloorMs);
-  return Math.floor(Math.max(nominal - early, createdAt));
+  // E0n [8395,8604), chunk-atzjaveb.js preserves the fraction for ne's numeric clock comparison.
+  return Math.max(nominal - early, createdAt);
 }
 
 /** Source `Pot`: a job id is the first eight hex characters of a fresh UUID. */
@@ -309,6 +310,35 @@ export const DEFAULT_TICK_MS = 1000;
 /** Dynamic wakeup delay bounds, in seconds. */
 export const WAKEUP_MIN_SECONDS = 60;
 export const WAKEUP_MAX_SECONDS = 3600;
+/** F/O [4151,4658), chunk-68g5e6vr.js. */
+export function dynamicWakeupTiming(delaySeconds: number, now: number, cacheLeadMs: number = SCHEDULER_TIMING.cacheLeadMs): {
+  clamped: number; wasClamped: boolean; targetMs: number; createdAt: number;
+} {
+  let rounded;
+  if (Number.isNaN(delaySeconds)) rounded = WAKEUP_MIN_SECONDS;
+  else if (delaySeconds === Infinity) rounded = WAKEUP_MAX_SECONDS;
+  else if (delaySeconds === -Infinity) rounded = WAKEUP_MIN_SECONDS;
+  else rounded = Math.round(delaySeconds);
+  const clamped = Math.max(WAKEUP_MIN_SECONDS, Math.min(WAKEUP_MAX_SECONDS, rounded));
+  const wasClamped = !Number.isFinite(delaySeconds) || rounded !== clamped;
+  const planned = now + clamped * 1000;
+  const target = new Date(planned);
+  if (target.getSeconds() > 0 || target.getMilliseconds() > 0) target.setMinutes(target.getMinutes() + 1);
+  target.setSeconds(0, 0);
+  let targetMs = target.getTime();
+  if (cacheLeadMs > 0 && clamped * 1000 <= CACHE_LEAD_INTERVAL_MS) {
+    const window = CACHE_LEAD_INTERVAL_MS - cacheLeadMs;
+    while (targetMs - now > window && targetMs - 60_000 >= now + WAKEUP_MIN_SECONDS * 1000) targetMs -= 60_000;
+  }
+  const createdAt = planned < targetMs ? planned : targetMs - 1;
+  return { clamped, wasClamped, targetMs, createdAt };
+}
+
+/** T [4658,4744), chunk-68g5e6vr.js supplies the dynamic task's early-fire fraction. */
+function newWakeupId(): string {
+  return Math.floor(Math.random() * 4294967295).toString(16).padStart(8, '0');
+}
+
 /** Input budgets enforced by {@link LocalScheduler.create}. */
 export const MAX_CRON_LENGTH = 200;
 export const MAX_PROMPT_LENGTH = 100000;
@@ -353,6 +383,7 @@ export interface DynamicWakeup {
   scheduledFor: number;
   createdAt: number;
   chainStartedAt: number;
+  nextAt: number;
   reason?: string;
 }
 
@@ -397,7 +428,7 @@ export interface LocalSchedulerOptions {
   recurringMaxAgeMs?: number;
   /** Auto-tick interval for the default timer. Defaults to {@link DEFAULT_TICK_MS}. */
   tickIntervalMs?: number;
-  /** Opt in to bounded, deterministic cron timing jitter. Wakeups stay exact. */
+  /** Opt in to recovered cron jitter and dynamic minute/cache-lead timing. */
   jitter?: boolean;
   /** Durable tasks use the workspace store and source creator eligibility (`ke`/`ne`). */
   store?: SchedulerStoreOptions;
@@ -743,7 +774,7 @@ export class LocalScheduler {
       .map((job) => ({ ...job }));
   }
 
-  /** C/w [2208,4151), chunk-68g5e6vr.js; this host retains its exact-delay contract. */
+  /** C/w/F [2208,4515), chunk-68g5e6vr.js; source timing follows the existing jitter gate. */
   scheduleWakeup(delaySeconds: number, prompt: string, reason?: string): {
     scheduledFor: number;
     clampedDelaySeconds: number;
@@ -773,16 +804,22 @@ export class LocalScheduler {
       return { scheduledFor: 0, clampedDelaySeconds: 0, wasClamped: false };
     }
     const clamped = Math.min(WAKEUP_MAX_SECONDS, Math.max(WAKEUP_MIN_SECONDS, Math.round(delaySeconds)));
+    const timing = this.jitter ? dynamicWakeupTiming(delaySeconds, createdAt)
+      : { clamped, wasClamped: clamped !== delaySeconds, targetMs: createdAt + clamped * 1000, createdAt };
+    const id = this.jitter ? newWakeupId() : randomUUID();
+    const target = new Date(timing.targetMs);
+    const cron = `${target.getMinutes()} ${target.getHours()} * * *`;
     this.dynamic = {
-      id: randomUUID(),
+      id,
       prompt,
-      scheduledFor: createdAt + clamped * 1000,
-      createdAt,
+      scheduledFor: timing.targetMs,
+      createdAt: timing.createdAt,
       chainStartedAt: startedAt,
+      nextAt: this.jitter ? nextOneShotFire(cron, timing.createdAt, id) ?? Infinity : timing.targetMs,
       ...(reason !== undefined ? { reason } : {}),
     };
     this.wakeupChains.set(prompt, { startedAt, lastScheduledFor: this.dynamic.scheduledFor });
-    return { scheduledFor: this.dynamic.scheduledFor, clampedDelaySeconds: clamped, wasClamped: clamped !== delaySeconds };
+    return { scheduledFor: this.dynamic.scheduledFor, clampedDelaySeconds: timing.clamped, wasClamped: timing.wasClamped };
   }
 
   /** The armed dynamic wakeup, or null. */
@@ -886,12 +923,13 @@ export class LocalScheduler {
       if (job.durable) { job.lastFiredAt = firedAt; fired.push(job.id); }
     }
 
-    if (this.dynamic && this.dynamic.scheduledFor <= firedAt) {
+    // ne.b [7616,9890), chunk-jrz2zk22.js uses E0n for the source loop's actual deadline.
+    if (this.dynamic && this.dynamic.nextAt <= firedAt) {
       const wakeup = this.dynamic;
       this.dynamic = null;
       // Ie.onFireTask [18384,18879), chunk-appb2dtz.js retains the original prompt through the turn.
       this.deliveredWakeups.set(wakeup.id, wakeup.prompt);
-      this.emit(wakeup.prompt, wakeup.id, emitted, { kind: 'wakeup', dueAt: wakeup.scheduledFor, firedAt });
+      this.emit(wakeup.prompt, wakeup.id, emitted, { kind: 'wakeup', dueAt: wakeup.nextAt, firedAt });
     }
 
     // Source `bds`: a durable recurring task records the fire that just happened, so a later
