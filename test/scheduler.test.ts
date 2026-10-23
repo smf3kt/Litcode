@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 
 import {
@@ -16,6 +19,9 @@ import {
   SchedulerError,
   type SchedulerTimer,
 } from '../src/scheduler.js';
+import {
+  readSchedulerLock, readStoredTasks, scheduledTasksDir, schedulerLockPath, writeStoredTasks,
+} from '../src/scheduler-store.js';
 
 // A deterministic, injectable clock. Tests advance it explicitly instead of
 // sleeping, so every fixture is reproducible.
@@ -240,15 +246,16 @@ test('opt-in jitter bounds cron fires and preserves exact wakeups and legacy tim
   const { c, scheduler } = fixture(start, { jitter: true });
   const nominal = start.getTime() + 60000;
   const recurring = scheduler.create({ cron: '* * * * *', prompt: 'spread' });
-  assert.ok(recurring.nextAt >= nominal && recurring.nextAt < nominal + 6000);
+  // Recovered `L9t`: later by at most half the interval, capped at 30 minutes.
+  assert.ok(recurring.nextAt >= nominal && recurring.nextAt <= nominal + 30000);
   c.set(recurring.nextAt - 1); assert.equal(scheduler.tick().length, 0);
   c.set(recurring.nextAt); assert.equal(scheduler.tick().length, 1);
   assert.equal(scheduler.tick().length, 0);
   const second = scheduler.getJob(recurring.id)!;
-  assert.ok(second.nextAt >= nominal + 60000 && second.nextAt < nominal + 66000);
+  assert.ok(second.nextAt >= nominal + 60000 && second.nextAt <= nominal + 90000);
   const early = scheduler.create({ cron: '30 0 * * *', prompt: 'early', recurring: false });
   const halfHour = new Date(2024, 0, 1, 0, 30).getTime();
-  assert.ok(early.nextAt <= halfHour && early.nextAt > halfHour - 90000 && early.nextAt > c.at());
+  assert.ok(early.nextAt <= halfHour && early.nextAt >= halfHour - 90000 && early.nextAt >= c.at());
   const exact = scheduler.create({ cron: '31 0 * * *', prompt: 'exact', recurring: false });
   assert.equal(exact.nextAt, halfHour + 60000);
   const wakeup = scheduler.scheduleWakeup(60, 'wake');
@@ -257,6 +264,15 @@ test('opt-in jitter bounds cron fires and preserves exact wakeups and legacy tim
   const legacy = fixture(start).scheduler;
   assert.equal(legacy.create({ cron: '* * * * *', prompt: 'legacy' }).nextAt, nominal);
   legacy.close();
+});
+
+test('a */5 schedule fires cacheLeadMs early under jitter (recovered `L9t`)', () => {
+  const start = new Date(2024, 0, 1, 0, 0, 0);
+  const { scheduler } = fixture(start, { jitter: true });
+  const job = scheduler.create({ cron: '*/5 * * * *', prompt: 'warm' });
+  // Interval 5 minutes: the recovered arm returns `from + interval - 15000`.
+  assert.equal(job.nextAt, start.getTime() + 300_000 - 15_000);
+  scheduler.close();
 });
 // ---------------------------------------------------------------------------
 
@@ -442,7 +458,8 @@ test('cron tools create, list and delete through the scheduler', () => {
   const created = tools.cron_create.run({ cron: '*/10 * * * *', prompt: 'poll' });
   assert.equal(created.ok, true);
   const id = (created.data as { id: string }).id;
-  assert.match(id, /^[0-9a-f-]{36}$/);
+  // Source `Pot`: the id is the first eight hex characters of a fresh UUID.
+  assert.match(id, /^[0-9a-f]{8}$/);
 
   const invalid = tools.cron_create.run({ cron: 'nope', prompt: 'x' });
   assert.equal(invalid.ok, false);
@@ -576,4 +593,125 @@ test('tools strictly reject unknown keys and wrong types', () => {
   const deleteUnknown = tools.cron_delete.run({ id: 'a', extra: true });
   assert.equal(deleteUnknown.ok, false);
   assert.equal(deleteUnknown.code, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Durable store (`chunk-atzjaveb.js`, `chunk-jrz2zk22.js`)
+// ---------------------------------------------------------------------------
+
+function workspace(): string {
+  return fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'scheduler-store-')));
+}
+
+test('a durable job survives a restart through the store and the lock', async () => {
+  const dir = workspace();
+  const first = new LocalScheduler({ now: () => new Date(2024, 0, 1, 0, 0, 0), timer: null,
+    onPrompt: () => {}, store: { workspace: dir, sessionId: 'session-a' } });
+  assert.equal(await first.attachStore(), true);
+  const job = first.create({ cron: '0 9 * * *', prompt: 'daily', durable: true });
+  assert.equal(job.durable, true);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  const stored = await readStoredTasks(dir);
+  assert.deepEqual(stored.map(task => ({ id: task.id, cron: task.cron, prompt: task.prompt })),
+    [{ id: job.id, cron: '0 9 * * *', prompt: 'daily' }]);
+  first.close();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(await readSchedulerLock(dir), undefined);
+
+  const second = new LocalScheduler({ now: () => new Date(2024, 0, 1, 0, 1, 0), timer: null,
+    onPrompt: () => {}, store: { workspace: dir, sessionId: 'session-b' } });
+  assert.equal(await second.attachStore(), true);
+  assert.deepEqual(second.list().map(entry => entry.id), [job.id]);
+  second.close();
+});
+
+test('a second session cannot take a lock a live process holds', async () => {
+  const dir = workspace();
+  const first = new LocalScheduler({ timer: null, onPrompt: () => {}, store: { workspace: dir, sessionId: 'a' } });
+  assert.equal(await first.attachStore(), true);
+  const second = new LocalScheduler({ timer: null, onPrompt: () => {}, store: { workspace: dir, sessionId: 'b' } });
+  assert.equal(await second.attachStore(), false);
+  // A session that does not hold the lock fires nothing.
+  second.create({ cron: '* * * * *', prompt: 'silent' });
+  assert.equal(second.tick().length, 0);
+  first.close();
+  second.close();
+});
+
+test('a lock left by a dead process is recovered', async () => {
+  const dir = workspace();
+  await fs.promises.mkdir(scheduledTasksDir(dir), { recursive: true });
+  await fs.promises.writeFile(schedulerLockPath(dir), JSON.stringify({ sessionId: 'dead', pid: 999_999, acquiredAt: 0 }));
+  const scheduler = new LocalScheduler({ timer: null, onPrompt: () => {}, store: { workspace: dir, sessionId: 'live' } });
+  assert.equal(await scheduler.attachStore(), true);
+  scheduler.close();
+});
+
+test('a missed one-shot task is surfaced once and removed, a recurring one stays', async () => {
+  const dir = workspace();
+  await writeStoredTasks(dir, [
+    { id: 'aaaa1111', cron: '0 9 * * *', prompt: 'missed one', createdAt: new Date(2024, 0, 1, 0, 0).getTime() },
+    { id: 'bbbb2222', cron: '0 9 * * *', prompt: 'recurring', createdAt: new Date(2024, 0, 1, 0, 0).getTime(), recurring: true },
+  ]);
+  const seen: string[] = [];
+  const scheduler = new LocalScheduler({ now: () => new Date(2024, 0, 2, 12, 0, 0), timer: null, onPrompt: () => {},
+    store: { workspace: dir, sessionId: 'catch-up', onMissed: prompt => seen.push(prompt) } });
+  assert.equal(await scheduler.attachStore(), true);
+  assert.equal(seen.length, 1);
+  assert.match(seen[0], /^The following one-shot scheduled task was missed while the harness was not running\./);
+  assert.match(seen[0], /Do NOT execute this prompt yet\. First use the AskUserQuestion tool/);
+  assert.match(seen[0], /```\nmissed one\n```/);
+  assert.deepEqual((await readStoredTasks(dir)).map(task => task.id), ['bbbb2222']);
+  assert.deepEqual(scheduler.list().map(entry => entry.id), ['bbbb2222']);
+  scheduler.close();
+});
+
+test('a durable recurring fire stamps lastFiredAt and an aged-out job is removed', async () => {
+  const dir = workspace();
+  let at = new Date(2024, 0, 1, 0, 0, 0).getTime();
+  const scheduler = new LocalScheduler({ now: () => new Date(at), timer: null, onPrompt: () => {},
+    store: { workspace: dir, sessionId: 'stamp' }, recurringMaxAgeMs: 2 * 60_000 });
+  await scheduler.attachStore();
+  const job = scheduler.create({ cron: '* * * * *', prompt: 'tick', durable: true });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  at += 60_000;
+  assert.equal(scheduler.tick().length, 1);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal((await readStoredTasks(dir))[0]?.lastFiredAt, at);
+  // The next tick is past the two-minute expiry: the final fire removes the stored task.
+  at += 120_000;
+  assert.equal(scheduler.tick().length, 1);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(await readStoredTasks(dir), []);
+  scheduler.close();
+});
+
+test('a session-only job never reaches the store', async () => {
+  const dir = workspace();
+  const scheduler = new LocalScheduler({ timer: null, onPrompt: () => {}, store: { workspace: dir, sessionId: 'x' } });
+  await scheduler.attachStore();
+  const job = scheduler.create({ cron: '0 9 * * *', prompt: 'local' });
+  assert.equal(job.durable, false);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.deepEqual(await readStoredTasks(dir), []);
+  scheduler.close();
+});
+
+test('a scheduler with the same lock identity adopts the held lock (`de`)', async () => {
+  const dir = workspace();
+  const first = new LocalScheduler({ timer: null, onPrompt: () => {}, store: { workspace: dir, sessionId: 'pid-1' } });
+  assert.equal(await first.attachStore(), true);
+  // Same identity: the lock is adopted, not refused. A different identity is refused.
+  const same = new LocalScheduler({ timer: null, onPrompt: () => {}, store: { workspace: dir, sessionId: 'pid-1' } });
+  assert.equal(await same.attachStore(), true);
+  const other = new LocalScheduler({ timer: null, onPrompt: () => {}, store: { workspace: dir, sessionId: 'pid-2' } });
+  assert.equal(await other.attachStore(), false);
+  // The identity that owns the lock releases it; another identity leaves it alone.
+  await other.detachStore();
+  assert.notEqual(await readSchedulerLock(dir), undefined);
+  await same.detachStore();
+  assert.equal(await readSchedulerLock(dir), undefined);
+  first.close();
+  other.close();
+  same.close();
 });

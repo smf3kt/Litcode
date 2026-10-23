@@ -434,6 +434,7 @@ function newConfig(
       background: settings.features?.background ?? true,
       scheduler: settings.features?.scheduler ?? true,
       ...(settings.features?.schedulerJitter === undefined ? {} : { schedulerJitter: settings.features.schedulerJitter }),
+      ...(settings.features?.schedulerDurable === undefined ? {} : { schedulerDurable: settings.features.schedulerDurable }),
       ...(settings.features?.skillInlineCommands === undefined ? {} : { skillInlineCommands: settings.features.skillInlineCommands }),
       ...(settings.features?.skillQuotedArguments === undefined ? {} : { skillQuotedArguments: settings.features.skillQuotedArguments }),
       ...(settings.features?.skillArgumentFallback === undefined ? {} : { skillArgumentFallback: settings.features.skillArgumentFallback }),
