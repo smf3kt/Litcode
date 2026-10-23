@@ -437,7 +437,7 @@ export function validateRuntimeConfig(config: SessionConfig): void {
 // Runtime
 // ---------------------------------------------------------------------------
 
-export type RuntimeEvent = { kind: 'scheduled'; id: string; prompt: string } |
+export type RuntimeEvent = { kind: 'scheduled'; id: string; prompt: string; dynamic?: true } |
   { kind: 'instruction_paths'; paths: string[]; prompt?: never } |
   { kind: 'hook_terminal'; id: string; event: string; sequences: string[]; prompt?: never } |
   { kind: 'notification'; prompt: string; hookTerminal?: { id: string; event: string; sequences: string[] } } |
@@ -445,7 +445,7 @@ export type RuntimeEvent = { kind: 'scheduled'; id: string; prompt: string } |
 export type RuntimeOptions = {
   /** Host-owned named callbacks; executable functions are never loaded from settings. */
   hookCallbacks?: (config: SessionConfig) => Readonly<Record<string, NonNullable<HookRunOptions['resolveCallbackHook']>>>;
-  scheduler?: Pick<LocalSchedulerOptions, 'now' | 'timer' | 'tickIntervalMs'>;
+  scheduler?: Pick<LocalSchedulerOptions, 'now' | 'timer' | 'tickIntervalMs' | 'recurringMaxAgeMs'>;
   /** Rebuild trusted callbacks for each workspace; callbacks are never journaled. */
   mcpClientRequests?: (config: SessionConfig) => McpClientRequests;
   /** Host-owned observer for progress reported by a server during its own tool call. */
@@ -484,6 +484,10 @@ export type Runtime = {
   /** `BG()` (`chunk-68g5e6vr.js` 4875): a loop wakeup is armed. This host's dynamic wakeup is the
    *  loop's heartbeat, so an armed one is a pending loop wakeup. */
   pendingLoopWakeup?(owner: string): boolean;
+  /** N8n [4928,5325), chunk-68g5e6vr.js clears only the owner's dynamic chain. */
+  cancelLoopWakeup?(owner: string): void;
+  beginLoopWakeup?(owner: string, id: string): boolean;
+  finishLoopWakeup?(owner: string, id: string): void;
   /** Running background jobs plus running child agents, the local `ane` set. */
   backgroundWorkCount?(owner: string): number;
   /** Stop every running background job and child agent for an owner; returns how many. */
@@ -862,10 +866,12 @@ export async function createRuntime(
             if (target.queued.length >= 50) { target.queued.shift(); target.dropped++; }
             target.queued.push({ kind: 'scheduled', id: 'missed', prompt }); notify(owner);
           } } } : {}),
-          onPrompt: (prompt, id) => {
+          onPrompt: (prompt, id, kind) => {
             if (ownerScopes.get(owner) !== scope) return;
             if (target.queued.length >= 50) { target.queued.shift(); target.dropped++; }
-            target.queued.push({ kind: 'scheduled', id, prompt }); notify(owner);
+            // Ie.onFireTask [18384,18879), chunk-appb2dtz.js distinguishes loop delivery from cron.
+            target.queued.push({ kind: 'scheduled', id, prompt, ...(kind === 'wakeup' ? { dynamic: true as const } : {}) });
+            notify(owner);
           } });
         if (durable) void scheduler.ensureAttached().catch(() => {});
         return scheduler;
@@ -1086,7 +1092,11 @@ export async function createRuntime(
       else schedulerAccessors.delete(owner);
       // `x0r.start` owns initialization. Schema construction stays passive; settleScheduler
       // starts the actual session before its first drain (`oe` [9890,10444)).
-      for (const tool of Object.values(createSchedulerTools(lazyResource(scheduler)))) tools.push({
+      const pinnedWakeup = current.tools.find(tool => tool.name === 'schedule_wakeup');
+      const wakeupProperties = pinnedWakeup?.input_schema.properties;
+      const legacyWakeup = pinnedWakeup !== undefined && !(wakeupProperties !== null
+        && typeof wakeupProperties === 'object' && 'noop' in wakeupProperties);
+      for (const tool of Object.values(createSchedulerTools(lazyResource(scheduler), { legacyWakeup }))) tools.push({
         readOnly: tool.name === 'cron_list',
         schema: { name: tool.name, description: tool.description, input_schema: { ...tool.input_schema } },
         async execute(input, context) {
@@ -1095,6 +1105,12 @@ export async function createRuntime(
           // mutation, so a create can never race the catch-up read that follows it.
           if (current.features?.schedulerDurable === true) await scheduler().ensureAttached();
           const result = tool.run(input as Record<string, unknown>);
+          // T2o [1671,2208), chunk-68g5e6vr.js clears the pending tick already queued for delivery.
+          if (tool.name === 'schedule_wakeup' && result.ok && result.data !== null
+            && typeof result.data === 'object' && 'stopped' in result.data && result.data.stopped === true) {
+            const target = resources();
+            target.queued = target.queued.filter(event => event.kind !== 'scheduled' || !event.dynamic);
+          }
           // Source `Pot` awaits the store write before it returns the id.
           if (current.features?.schedulerDurable === true) await scheduler().flushStore();
           if (!result.ok) throw new Error(result.error ?? 'Scheduler operation failed');
@@ -1469,6 +1485,21 @@ export async function createRuntime(
       pendingLoopWakeup(owner) {
         const resources = owners.get(owner);
         return resources?.scheduler !== undefined && resources.scheduler.getWakeup() !== null;
+      },
+      cancelLoopWakeup(owner) {
+        const resources = owners.get(owner);
+        if (!resources) return;
+        resources.scheduler?.stop();
+        // N8n [4928,5325), chunk-68g5e6vr.js removes the dynamic tick already in flight too.
+        resources.queued = resources.queued.filter(event => event.kind !== 'scheduled' || !event.dynamic);
+      },
+      // Ie.k [17621,17841), chunk-appb2dtz.js preserves scheduled identity through dispatch.
+      beginLoopWakeup(owner, id) {
+        return owners.get(owner)?.scheduler?.beginWakeup(id) ?? false;
+      },
+      // Ie [19175,19294), chunk-appb2dtz.js clears the delivered prompt after loading settles.
+      finishLoopWakeup(owner, id) {
+        owners.get(owner)?.scheduler?.finishWakeup(id);
       },
       backgroundWorkCount(owner) { return backgroundWorkCountForOwner(owner); },
       stopBackground(owner) { return stopBackgroundForOwner(owner); },

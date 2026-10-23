@@ -352,6 +352,14 @@ export interface DynamicWakeup {
   prompt: string;
   scheduledFor: number;
   createdAt: number;
+  chainStartedAt: number;
+  reason?: string;
+}
+
+interface WakeupChain {
+  startedAt: number;
+  lastScheduledFor: number;
+  agedOut?: true;
 }
 
 /** Create-job input. */
@@ -371,7 +379,7 @@ export interface SchedulerTimer {
 
 export interface LocalSchedulerOptions {
   /** Consumes fired prompts. The only output path; never a model call. */
-  onPrompt: (prompt: string, id: string) => void;
+  onPrompt: (prompt: string, id: string, kind?: SchedulerEvent['kind']) => void;
   /** x0r.ne [7616,7735), chunk-jrz2zk22.js: hold delivery while the owner is loading. */
   isLoading?: () => boolean;
   assistantMode?: boolean;
@@ -424,7 +432,7 @@ const realTimer: SchedulerTimer = {
  * In-memory, session-only scheduler with an injectable clock and timer.
  */
 export class LocalScheduler {
-  private readonly onPrompt: (prompt: string, id: string) => void;
+  private readonly onPrompt: (prompt: string, id: string, kind?: SchedulerEvent['kind']) => void;
   private readonly isLoading: () => boolean;
   private readonly assistantMode: boolean;
   private readonly now: () => Date;
@@ -438,6 +446,10 @@ export class LocalScheduler {
   private readonly creators: TaskCreators | undefined;
   private readonly fileDeadlines = new Set<string>();
   private dynamic: DynamicWakeup | null = null;
+  // he [34628,35290), chunk-4bw62nzm.js: prompt history survives a fire and resets on cancellation/close.
+  private readonly wakeupChains = new Map<string, WakeupChain>();
+  private readonly deliveredWakeups = new Map<string, string>();
+  private inFlightWakeup: Pick<DynamicWakeup, 'id' | 'prompt'> | null = null;
   private timerHandle: unknown = undefined;
   private closed = false;
   private storeLease: 'detached' | 'waiting' | 'held' = 'detached';
@@ -731,11 +743,8 @@ export class LocalScheduler {
       .map((job) => ({ ...job }));
   }
 
-  /**
-   * Arm or replace the single dynamic wakeup. Delay is clamped to
-   * [60, 3600] seconds; any previously armed wakeup is discarded.
-   */
-  scheduleWakeup(delaySeconds: number, prompt: string): {
+  /** C/w [2208,4151), chunk-68g5e6vr.js; this host retains its exact-delay contract. */
+  scheduleWakeup(delaySeconds: number, prompt: string, reason?: string): {
     scheduledFor: number;
     clampedDelaySeconds: number;
     wasClamped: boolean;
@@ -750,14 +759,29 @@ export class LocalScheduler {
     if (prompt.length > MAX_PROMPT_LENGTH) {
       throw new SchedulerError(`prompt exceeds the ${MAX_PROMPT_LENGTH}-character budget.`, 1);
     }
-    const clamped = Math.min(WAKEUP_MAX_SECONDS, Math.max(WAKEUP_MIN_SECONDS, Math.round(delaySeconds)));
     const createdAt = this.clock();
+    this.dynamic = null;
+    const chain = this.wakeupChains.get(prompt);
+    const stale = chain !== undefined && createdAt > chain.lastScheduledFor + WAKEUP_MAX_SECONDS * 1000;
+    const startedAt = chain === undefined || stale ? createdAt : chain.startedAt;
+    if (this.recurringMaxAgeMs > 0 && createdAt - startedAt >= this.recurringMaxAgeMs) {
+      if (!chain?.agedOut) this.wakeupChains.set(prompt, {
+        startedAt,
+        lastScheduledFor: createdAt - (WAKEUP_MAX_SECONDS - WAKEUP_MIN_SECONDS) * 1000,
+        agedOut: true,
+      });
+      return { scheduledFor: 0, clampedDelaySeconds: 0, wasClamped: false };
+    }
+    const clamped = Math.min(WAKEUP_MAX_SECONDS, Math.max(WAKEUP_MIN_SECONDS, Math.round(delaySeconds)));
     this.dynamic = {
       id: randomUUID(),
       prompt,
       scheduledFor: createdAt + clamped * 1000,
       createdAt,
+      chainStartedAt: startedAt,
+      ...(reason !== undefined ? { reason } : {}),
     };
+    this.wakeupChains.set(prompt, { startedAt, lastScheduledFor: this.dynamic.scheduledFor });
     return { scheduledFor: this.dynamic.scheduledFor, clampedDelaySeconds: clamped, wasClamped: clamped !== delaySeconds };
   }
 
@@ -766,11 +790,30 @@ export class LocalScheduler {
     return this.dynamic ? { ...this.dynamic } : null;
   }
 
-  /** Clear the dynamic wakeup only (cron jobs are untouched). Returns true if one existed. */
+  /** T2o/N8n [1671,2208)/[4928,5325), chunk-68g5e6vr.js forget cancelled prompts. */
   stop(): boolean {
     const had = this.dynamic !== null;
+    if (this.dynamic) this.wakeupChains.delete(this.dynamic.prompt);
+    for (const prompt of this.deliveredWakeups.values()) this.wakeupChains.delete(prompt);
+    if (this.inFlightWakeup !== null) this.wakeupChains.delete(this.inFlightWakeup.prompt);
     this.dynamic = null;
+    this.deliveredWakeups.clear();
+    this.inFlightWakeup = null;
     return had;
+  }
+
+  /** Ie [17435,19295), chunk-appb2dtz.js carries task identity through the host's extra queue. */
+  beginWakeup(id: string): boolean {
+    const prompt = this.deliveredWakeups.get(id);
+    if (prompt === undefined) return false;
+    this.inFlightWakeup = { id, prompt };
+    return true;
+  }
+
+  /** Ie [19175,19294), chunk-appb2dtz.js retires the delivered prompt on idle. */
+  finishWakeup(id: string): void {
+    this.deliveredWakeups.delete(id);
+    if (this.inFlightWakeup?.id === id) this.inFlightWakeup = null;
   }
 
   /**
@@ -846,6 +889,8 @@ export class LocalScheduler {
     if (this.dynamic && this.dynamic.scheduledFor <= firedAt) {
       const wakeup = this.dynamic;
       this.dynamic = null;
+      // Ie.onFireTask [18384,18879), chunk-appb2dtz.js retains the original prompt through the turn.
+      this.deliveredWakeups.set(wakeup.id, wakeup.prompt);
       this.emit(wakeup.prompt, wakeup.id, emitted, { kind: 'wakeup', dueAt: wakeup.scheduledFor, firedAt });
     }
 
@@ -867,6 +912,10 @@ export class LocalScheduler {
       this.jobs.clear();
       this.fileDeadlines.clear();
       this.dynamic = null;
+      // he.reset [34628,35290), chunk-4bw62nzm.js clears session-owned chain history.
+      this.wakeupChains.clear();
+      this.deliveredWakeups.clear();
+      this.inFlightWakeup = null;
       if (this.timer && this.timerHandle !== undefined) {
         this.timer.clearInterval(this.timerHandle);
         this.timerHandle = undefined;
@@ -896,7 +945,7 @@ export class LocalScheduler {
     if (meta.recurring !== undefined) event.recurring = meta.recurring;
     sink.push(event);
     try {
-      this.onPrompt(prompt, id);
+      this.onPrompt(prompt, id, meta.kind);
     } catch (error) {
       // Contain per event: a throwing callback must not strand other due jobs.
       event.callbackError = error instanceof Error ? error.message : String(error);
@@ -991,7 +1040,7 @@ function optionalString(value: unknown, name: string): string | undefined {
  * compactly; `run` never throws (validation failures return `{ok:false,code}`),
  * and every result is a plain object the outer loop can enqueue safely.
  */
-export function createSchedulerTools(scheduler: LocalScheduler): SchedulerTools {
+export function createSchedulerTools(scheduler: LocalScheduler, options: { legacyWakeup?: boolean } = {}): SchedulerTools {
   const cron_create: SchedulerTool = {
     name: 'cron_create',
     description:
@@ -1107,23 +1156,33 @@ export function createSchedulerTools(scheduler: LocalScheduler): SchedulerTools 
         prompt: { type: 'string', description: 'The prompt to fire on wake-up. Required unless stop is true.' },
         reason: { type: 'string', description: 'One short sentence explaining the chosen delay.' },
         stop: { type: 'boolean', description: 'true = clear the dynamic wakeup instead of arming one.' },
+        ...(!options.legacyWakeup ? { noop: { type: 'boolean', description: 'Whether this tick changed nothing. Required unless stop is true.' } } : {}),
       },
       additionalProperties: false,
     },
+    // yo.call [46241,50040), chunk-tar639dc.js returns a terminal result even with no pending slot.
     run(input) {
       try {
         const value = asObject(input);
-        assertOnlyKeys(value, ['delaySeconds', 'prompt', 'reason', 'stop']);
+        assertOnlyKeys(value, ['delaySeconds', 'prompt', 'reason', 'stop', 'noop']);
         const stop = optionalBoolean(value.stop, 'stop');
-        if (stop === true) return { ok: true, data: { stopped: scheduler.stop() } };
-        optionalString(value.reason, 'reason'); // accepted for fidelity; unused
+        if (stop === true) {
+          const cancelledWakeups = scheduler.stop() ? 1 : 0;
+          return { ok: true, data: { scheduledFor: 0, clampedDelaySeconds: 0, wasClamped: false,
+            stopped: true, cancelledWakeups } };
+        }
+        const reason = optionalString(value.reason, 'reason');
+        const noop = optionalBoolean(value.noop, 'noop');
+        if (!options.legacyWakeup && (reason === undefined || noop === undefined)) {
+          throw new SchedulerError('reason and noop are required unless stop is true.', 1);
+        }
         if (typeof value.delaySeconds !== 'number' || !Number.isFinite(value.delaySeconds)) {
           throw new SchedulerError('delaySeconds must be a finite number in [60, 3600] unless stop is true.', 1);
         }
         if (typeof value.prompt !== 'string' || value.prompt.length === 0) {
           throw new SchedulerError('prompt must be a non-empty string unless stop is true.', 1);
         }
-        const result = scheduler.scheduleWakeup(value.delaySeconds, value.prompt);
+        const result = scheduler.scheduleWakeup(value.delaySeconds, value.prompt, reason);
         return {
           ok: true,
           data: {
