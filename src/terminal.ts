@@ -1290,6 +1290,8 @@ export interface TerminalPromptRequest {
   reviewTitle?: string;
   submitLabel?: string;
   cancelLabel?: string;
+  /** `cie` 858961: the focused confirm button's own label, when the dialog names it. */
+  confirmLabel?: string;
   /** Trusted local theme chooser; focus previews are restored when it closes. */
   themePreview?: boolean;
   themeEdit?: boolean;

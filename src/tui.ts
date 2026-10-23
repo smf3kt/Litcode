@@ -94,7 +94,8 @@ import { ge } from './tui-color.js';
 import { ultracodeTagText, ultracodeRevealIndex, ultracodeRevealDone, topBorderText as composerBorderRecord,
   ULTRA_TAG_FRAME } from './tui-composer-tag.js';
 import { historyBorderText } from './tui-history-position.js';
-import { effortIndicator, type EffortLevel } from './effort-command.js';
+import { effortIndicator, MAX_EFFORT_NOTE, type EffortLevel } from './effort-command.js';
+import { maxEffortReminderEnabled, maxEffortTip } from './switch-confirm.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
 import { CopyPicker, type CopyPickerEffect } from './copy-picker.js';
 import { TerminalNotifications, type NotificationChannel, type LocalNotification } from './terminal-notifications.js';
@@ -4511,17 +4512,31 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Source `Y4` (chunk-24k7d6mw.js 1524370): the progress region holds every entry in the
     // store, so a drained shell's live row shares it with the agent's own progress.
     const drained = this.drainedShell === undefined ? [] : this.renderDrainedShell(columns, rows);
+    const pinned = this.renderMaxEffortTip(columns);
     if (!this.progress.running && !this.progress.hasTasks) {
       this.progressRenderer?.renderElement(null, columns);
-      this.progressHeight = drained.length;
-      return drained.slice(0, maximum);
+      this.progressHeight = drained.length + pinned.length;
+      return [...drained, ...pinned].slice(0, maximum);
     }
     this.progressRenderer ??= new TuiDocumentRenderer();
     const content = this.progressRenderer.renderElement(this.progress.element(columns), columns,
       {theme:this.theme.current, themeOverrides:this.theme.overrides, terminalRows:rows}).map(row => row.ansi);
-    const visible = [...drained, ...content].slice(0, maximum);
+    const visible = [...drained, ...content, ...pinned].slice(0, maximum);
     this.progressHeight = visible.length;
     return visible;
+  }
+
+  /**
+   * `FQ` (chunk-24k7d6mw.js 712145): while the session sits at `max` effort and the reminder is
+   * on, a pinned row names the level and points at `/effort`. `kh` registers it as a pinned
+   * notification keyed `max-effort`; this host has no notification store, so the row is drawn in
+   * the progress band, which is where the pinned notifications land.
+   */
+  private renderMaxEffortTip(columns: number): string[] {
+    if (this.screen !== 'chat' || this.effortFeedbackLevel !== 'max'
+      || !maxEffortReminderEnabled()) return [];
+    const text = maxEffortTip(MAX_EFFORT_NOTE);
+    return [pad(text.length > columns ? text.slice(0, Math.max(0, columns - 1)) + '…' : text, columns)];
   }
 
   /**
