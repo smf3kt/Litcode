@@ -22,5 +22,10 @@
 - [x] **Gates.** `npx tsc --noEmit` 0, `npm run build` 0, `npm run check` 0,
   `git diff --check` clean, `test/login.test.ts` 7/7, related group 50/50,
   compiled driver 17/17, identity `fe83b1aa…`, paid upstream 0.
-- [ ] **Independent review.** Dispatched; the first attempt died on an unavailable
-  model. Awaiting the retry verdict before the commit.
+- [x] **Independent review.** The retry ran read-only against `7b8a8cd` and reported eight
+  defects: a token error body echoed into the message, a foreign inherited credential hiding
+  the store, `providerBlocked` covering one lane, an unhandled rejection on SIGINT, the suite
+  opening the host browser, an unsignalled refresh, a refresh re-activating its provider, and
+  the `unconfigured` sentinel reaching the gateway.
+- [x] **Review fixes.** All eight fixed in `12521be`; `test/login.test.ts` 9/9, related group
+  52/52, loop tests 13/13, `tsc` and `build` 0, driver 17/17 at identity `710ee21b…`.
