@@ -398,7 +398,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const output = terminal?.outputStream ?? options.output;
   let turnController: AbortController | undefined;
   const abort = () => { rl?.close(); terminal?.close(); onClose(); };
-  const withTurn = async <T>(action: (signal: AbortSignal) => Promise<T>): Promise<T> => {
+  const withTurn = async <T>(action: (signal: AbortSignal) => Promise<T>, wakeupId?: string): Promise<T> => {
     turnController = new AbortController(); terminal?.setRunning(true);
     const signal = AbortSignal.any([options.signal, turnController.signal]);
     let unregister: (() => void) | undefined;
@@ -409,7 +409,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       return await action(signal);
     } finally {
       unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false);
-      // Ie idle effect [17435,19295), chunk-appb2dtz.js: checkNow follows the loading reset.
+      // Ie idle effect [19175,19294), chunk-appb2dtz.js considers fallback before checkNow.
+      if (wakeupId !== undefined) activeRuntime.finishLoopWakeup?.(session.id, wakeupId);
       activeRuntime.checkScheduler?.(session.id);
     }
   };
@@ -1799,7 +1800,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               }
               return agent().run(prompt, signal, undefined, undefined, [], undefined,
                 item.peer === undefined ? { kind: 'generated', source: 'interactive-event' } : { kind: 'peer', source: 'uds' });
-            });
+            }, item.wakeupId);
             if (result.modelCalls === 0 && result.text) output.write(result.text);
             output.write('\n');
             options.status.write(`event finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
@@ -1807,10 +1808,6 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             // messages: a mode change during the turn may now accept them.
             if (item.peer === undefined) releasePeerHeld('turn-complete');
           } catch (error) { options.status.write(`error: ${error instanceof Error ? error.message : String(error)}\n`); }
-          finally {
-            // Ie [19175,19294), chunk-appb2dtz.js clears the delivered tick after its turn.
-            if (item.wakeupId !== undefined) activeRuntime.finishLoopWakeup?.(session.id, item.wakeupId);
-          }
         }
         continue;
       }

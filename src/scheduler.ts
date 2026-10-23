@@ -376,6 +376,14 @@ export interface SchedulerEvent {
   callbackError?: string;
 }
 
+/** k2o [1246,1362), chunk-68g5e6vr.js; triBool/Ne/Es use the neutral environment name. */
+export function loopKeepaliveEnabled(value = process.env.HARNESS_LOOP_KEEPALIVE): boolean {
+  const normalized = value?.toLowerCase().trim();
+  if (normalized !== undefined && ['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (normalized !== undefined && ['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return true;
+}
+
 /** The single dynamic wakeup slot. */
 export interface DynamicWakeup {
   id: string;
@@ -385,6 +393,7 @@ export interface DynamicWakeup {
   chainStartedAt: number;
   nextAt: number;
   reason?: string;
+  keepalive?: true;
 }
 
 interface WakeupChain {
@@ -414,6 +423,7 @@ export interface LocalSchedulerOptions {
   /** x0r.ne [7616,7735), chunk-jrz2zk22.js: hold delivery while the owner is loading. */
   isLoading?: () => boolean;
   assistantMode?: boolean;
+  keepalive?: () => boolean;
   /** Injectable clock. Defaults to `() => new Date()`. */
   now?: () => Date;
   /**
@@ -466,6 +476,7 @@ export class LocalScheduler {
   private readonly onPrompt: (prompt: string, id: string, kind?: SchedulerEvent['kind']) => void;
   private readonly isLoading: () => boolean;
   private readonly assistantMode: boolean;
+  private readonly keepalive: () => boolean;
   private readonly now: () => Date;
   private readonly maxJobs: number;
   private readonly recurringMaxAgeMs: number;
@@ -481,6 +492,8 @@ export class LocalScheduler {
   private readonly wakeupChains = new Map<string, WakeupChain>();
   private readonly deliveredWakeups = new Map<string, string>();
   private inFlightWakeup: Pick<DynamicWakeup, 'id' | 'prompt'> | null = null;
+  // he [34628,35290), chunk-4bw62nzm.js; C2o [1437,1642), chunk-68g5e6vr.js owns the budget.
+  private consecutiveKeepalives = 0;
   private timerHandle: unknown = undefined;
   private closed = false;
   private storeLease: 'detached' | 'waiting' | 'held' = 'detached';
@@ -500,6 +513,7 @@ export class LocalScheduler {
     this.onPrompt = options.onPrompt;
     this.isLoading = options.isLoading ?? (() => false);
     this.assistantMode = options.assistantMode === true;
+    this.keepalive = options.keepalive ?? loopKeepaliveEnabled;
     this.now = options.now ?? (() => new Date());
     this.maxJobs = options.maxJobs ?? MAX_JOBS;
     this.recurringMaxAgeMs = options.recurringMaxAgeMs ?? RECURRING_MAX_AGE_MS;
@@ -780,6 +794,11 @@ export class LocalScheduler {
     clampedDelaySeconds: number;
     wasClamped: boolean;
   } {
+    return this.armWakeup(delaySeconds, prompt, reason, false);
+  }
+
+  /** C [2208,3481), chunk-68g5e6vr.js distinguishes model schedules from fallback schedules. */
+  private armWakeup(delaySeconds: number, prompt: string, reason: string | undefined, viaKeepalive: boolean) {
     if (this.closed) throw new SchedulerError('scheduler is closed', 3);
     if (typeof delaySeconds !== 'number' || !Number.isFinite(delaySeconds)) {
       throw new SchedulerError('delaySeconds must be a finite number.', 1);
@@ -790,6 +809,7 @@ export class LocalScheduler {
     if (prompt.length > MAX_PROMPT_LENGTH) {
       throw new SchedulerError(`prompt exceeds the ${MAX_PROMPT_LENGTH}-character budget.`, 1);
     }
+    if (!viaKeepalive) this.consecutiveKeepalives = 0;
     const createdAt = this.clock();
     this.dynamic = null;
     const chain = this.wakeupChains.get(prompt);
@@ -817,8 +837,10 @@ export class LocalScheduler {
       chainStartedAt: startedAt,
       nextAt: this.jitter ? nextOneShotFire(cron, timing.createdAt, id) ?? Infinity : timing.targetMs,
       ...(reason !== undefined ? { reason } : {}),
+      ...(viaKeepalive ? { keepalive: true } : {}),
     };
     this.wakeupChains.set(prompt, { startedAt, lastScheduledFor: this.dynamic.scheduledFor });
+    if (viaKeepalive) this.consecutiveKeepalives++;
     return { scheduledFor: this.dynamic.scheduledFor, clampedDelaySeconds: timing.clamped, wasClamped: timing.wasClamped };
   }
 
@@ -836,6 +858,7 @@ export class LocalScheduler {
     this.dynamic = null;
     this.deliveredWakeups.clear();
     this.inFlightWakeup = null;
+    this.consecutiveKeepalives = 0;
     return had;
   }
 
@@ -847,10 +870,14 @@ export class LocalScheduler {
     return true;
   }
 
-  /** Ie [19175,19294), chunk-appb2dtz.js retires the delivered prompt on idle. */
+  /** Ie [19175,19294), chunk-appb2dtz.js; C2o [1437,1642), chunk-68g5e6vr.js budgets one fallback. */
   finishWakeup(id: string): void {
     this.deliveredWakeups.delete(id);
-    if (this.inFlightWakeup?.id === id) this.inFlightWakeup = null;
+    if (this.inFlightWakeup?.id !== id) return;
+    const prompt = this.inFlightWakeup.prompt;
+    this.inFlightWakeup = null;
+    if (this.closed || this.dynamic !== null || !this.keepalive() || this.consecutiveKeepalives >= 1) return;
+    this.armWakeup(1200, prompt, undefined, true);
   }
 
   /**
@@ -954,6 +981,7 @@ export class LocalScheduler {
       this.wakeupChains.clear();
       this.deliveredWakeups.clear();
       this.inFlightWakeup = null;
+      this.consecutiveKeepalives = 0;
       if (this.timer && this.timerHandle !== undefined) {
         this.timer.clearInterval(this.timerHandle);
         this.timerHandle = undefined;
