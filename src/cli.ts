@@ -2,9 +2,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { createInterface } from 'node:readline';
 import type Anthropic from '@anthropic-ai/sdk';
 import { Agent, DEFAULT_SYSTEM, defaultConfig } from './agent.js';
-import { DEFAULT_GATEWAY, GatewayProvider, type ModelProvider } from './provider.js';
+import { DEFAULT_GATEWAY, GatewayProvider, type GatewayConfig, type ModelProvider } from './provider.js';
+import { LOGIN_KINDS, UNCONFIGURED_MODEL, createProviderSlot, providerFromCredential,
+  readStoredCredential, removeStoredCredential, runLogin, type LoginPrompts, type StoredCredential } from './login.js';
 import { resolveInheritedGateway, sameGateway, type InheritedField, type InheritedGateway } from './gateway-inherit.js';
 import { Session, applyManagedPolicy, managedPolicySchema, type SessionConfig } from './session.js';
 import { PolicyHelper } from './policy-helper.js';
@@ -49,6 +52,8 @@ const help = `LiTcode
   litcode --resume UUID "task"     Continue a stored session with a new task
   litcode --resume UUID --continue Continue a turn interrupted before completion
   litcode --demo                   Offline demonstration, no model call
+  litcode --login deepseek         Sign in locally and store the credential (0600)
+  litcode --logout                 Remove the stored credential
 
 Options (flags override LLM_* environment values for new sessions):
   --workspace DIR        Existing workspace (default current directory)
@@ -100,6 +105,12 @@ Options (flags override LLM_* environment values for new sessions):
   --max-output-tokens N Actual output token budget for this invocation
   --max-total-tokens N  Actual combined token budget for this invocation
   --list-sessions       List workspace sessions without a model call
+  --login KIND          Sign in to deepseek, oauth or custom; stores ~/.harness/credentials.json
+  --logout              Remove the stored credential
+  --authorize-url URL   OAuth authorization endpoint (with --login oauth)
+  --token-url URL       OAuth token endpoint (with --login oauth)
+  --client-id ID        OAuth client identifier (with --login oauth)
+  --scope SCOPE         OAuth scope (with --login oauth)
   --demo                Offline demonstration in a temporary workspace
   --version             Show the version
   --help                Show this text
@@ -213,35 +224,45 @@ function resolveGatewayChoice(
   settings: ParsedRuntimeSettings,
   inherited: InheritedGateway | undefined,
   demo: boolean,
+  stored: StoredCredential | undefined,
 ): GatewayChoice {
   const baseURL = (values['base-url'] as string | undefined) ?? process.env.LLM_BASE_URL
-    ?? settings.baseURL ?? inherited?.baseURL ?? DEFAULT_GATEWAY.baseURL;
+    ?? settings.baseURL ?? inherited?.baseURL ?? stored?.baseURL ?? DEFAULT_GATEWAY.baseURL;
   const model = demo
     ? 'offline-fixture'
-    : ((values.model as string | undefined) ?? process.env.LLM_MODEL ?? settings.model ?? inherited?.model ?? '');
-  const credential = gatewayCredential(baseURL, inherited);
+    : ((values.model as string | undefined) ?? process.env.LLM_MODEL ?? settings.model ?? inherited?.model ?? stored?.model ?? '');
+  const credential = gatewayCredential(baseURL, inherited, stored);
   return { baseURL, model, ...(credential.auth === undefined ? {} : { authDefault: credential.auth }) };
 }
 
 /**
  * The credential for `baseURL`: this harness's own key first, then the one the other
- * client configured - and only when that client named this exact endpoint, so a
- * borrowed credential is never sent to a gateway it was not issued for.
+ * client configured, then the one stored by `--login` - each only when it names this
+ * exact endpoint, so a borrowed credential is never sent to a gateway it was not
+ * issued for.
  */
-function gatewayCredential(baseURL: string, inherited: InheritedGateway | undefined): {
+function gatewayCredential(baseURL: string, inherited: InheritedGateway | undefined, stored?: StoredCredential): {
   key?: string;
   auth?: 'bearer' | 'api-key';
   source?: string;
+  /** The stored credential this run uses; absent when the key came from elsewhere. */
+  stored?: StoredCredential;
   /** Set when a credential was found but belongs to a different endpoint. */
   refusedFor?: string;
 } {
   const own = process.env.LLM_API_KEY;
   if (own !== undefined && own.trim() !== '') return { key: own };
   const borrowed = inherited?.credential;
-  if (borrowed === undefined || inherited === undefined) return {};
-  if (inherited.baseURL === undefined) return { refusedFor: 'the client names no endpoint' };
-  if (!sameGateway(inherited.baseURL, baseURL)) return { refusedFor: inherited.baseURL };
-  return { key: borrowed.value, auth: borrowed.auth, source: inherited.sources.find(entry => entry.field === 'credential')?.source };
+  if (borrowed !== undefined && inherited !== undefined) {
+    if (inherited.baseURL === undefined) return { refusedFor: 'the client names no endpoint' };
+    if (!sameGateway(inherited.baseURL, baseURL)) return { refusedFor: inherited.baseURL };
+    return { key: borrowed.value, auth: borrowed.auth, source: inherited.sources.find(entry => entry.field === 'credential')?.source };
+  }
+  if (stored !== undefined) {
+    if (sameGateway(stored.baseURL, baseURL)) return { key: stored.key, auth: stored.auth, stored };
+    return { refusedFor: stored.baseURL };
+  }
+  return {};
 }
 
 /** What to do when no credential applies to the endpoint this run will use. */
@@ -250,10 +271,44 @@ function missingCredentialError(
   baseURL: string,
 ): string {
   const opening = 'Set LLM_API_KEY in your environment before a live run (export LLM_API_KEY=…), '
-    + 'or run `litcode --demo` for an offline demonstration';
+    + 'sign in with `/login` or `litcode --login deepseek`, or run `litcode --demo` for an offline demonstration';
   if (credential.refusedFor === undefined) return opening;
-  return `${opening}. A client credential was found, but it belongs to ${credential.refusedFor} and this run uses ${baseURL}`;
+  return `${opening}. A credential was found, but it belongs to ${credential.refusedFor} and this run uses ${baseURL}`;
 }
+
+/** One line naming the provider, endpoint and model a sign-in stored; never the value. */
+function loginNotice(credential: StoredCredential, userDir: string): string {
+  return `Signed in to ${credential.provider} · ${credential.baseURL} · model ${credential.model}\n`
+    + `Credential stored in ${path.join(userDir, 'credentials.json')} (mode 0600)\n`;
+}
+
+/** Line prompts for `litcode --login`: one numbered choice, one free-text answer. */
+function terminalLoginPrompts(signal: AbortSignal): { prompts: LoginPrompts; close(): void } {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const cancelled = new Promise<never>((_, reject) => {
+    signal.addEventListener('abort', () => reject(new Error('Login cancelled')), { once: true });
+  });
+  const ask = (question: string): Promise<string> => Promise.race([
+    new Promise<string>(resolve => { rl.question(question, resolve); }), cancelled]);
+  return {
+    close: () => rl.close(),
+    prompts: {
+      notice: text => { process.stdout.write(text + '\n'); },
+      async text(title, message) {
+        const answer = await ask(`${title}: ${message}\n> `);
+        return answer.trim() === '' ? undefined : answer;
+      },
+      async choose(title, message, choices) {
+        process.stdout.write(`${title}: ${message}\n`);
+        choices.forEach((choice, index) => process.stdout.write(`  ${index + 1}. ${choice.label}${choice.description === undefined ? '' : ` — ${choice.description}`}\n`));
+        const answer = await ask('Choose a number (blank cancels): ');
+        const index = Number(answer.trim());
+        return Number.isInteger(index) && index >= 1 && index <= choices.length ? choices[index - 1]!.value : undefined;
+      },
+    },
+  };
+}
+
 
 /** Report borrowed values on stderr: the source is named, a value never is. */
 function announceInheritance(inherited: InheritedGateway | undefined, used: InheritedField[]): void {
@@ -486,6 +541,8 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     'watch-config': { type: 'boolean' },
     'approve-mcp-server': { type: 'string', multiple: true },
     'reject-mcp-server': { type: 'string', multiple: true },
+    login: { type: 'string' }, logout: { type: 'boolean' }, 'authorize-url': { type: 'string' },
+    'token-url': { type: 'string' }, 'client-id': { type: 'string' }, scope: { type: 'string' },
     'mcp-roots': { type: 'boolean' }, 'mcp-sampling': { type: 'boolean' },
     'mcp-elicitation': { type: 'boolean' },
     'output-format': { type: 'string' }, 'json-schema': { type: 'string' },
@@ -563,6 +620,41 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     parseLegacySetting: () => undefined,
   });
   const userDir = path.resolve((values['user-dir'] as string | undefined) ?? defaultUserDir());
+  // Signing in and out are complete actions of their own: they write or remove the local
+  // credential store and start nothing.
+  if (values.logout === true) {
+    const removed = removeStoredCredential(userDir);
+    process.stdout.write(removed ? `Signed out; the stored credential was removed from ${path.join(userDir, 'credentials.json')}\n`
+      : 'No stored credential to remove\n');
+    return;
+  }
+  if (values.login !== undefined) {
+    const kind = String(values.login);
+    if (!(LOGIN_KINDS as readonly string[]).includes(kind)) {
+      throw new Error(`--login takes one of ${LOGIN_KINDS.join(', ')}`);
+    }
+    if (values.resume || demo || values.continue || positionals.length) throw new Error('--login takes no task, resume, continue or demo option');
+    if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error('--login reads its answers from a terminal');
+    const controller = new AbortController();
+    const onInterrupt = () => controller.abort(new Error('Interrupted'));
+    process.once('SIGINT', onInterrupt);
+    const promptHost = terminalLoginPrompts(controller.signal);
+    try {
+      const credential = await runLogin({
+        kind, prompts: promptHost.prompts, userDir, signal: controller.signal,
+        ...(values['base-url'] === undefined ? {} : { baseURL: String(values['base-url']) }),
+        ...(values.model === undefined ? {} : { model: String(values.model) }),
+        oauth: {
+          ...(values['authorize-url'] === undefined ? {} : { authorizeURL: String(values['authorize-url']) }),
+          ...(values['token-url'] === undefined ? {} : { tokenURL: String(values['token-url']) }),
+          ...(values['client-id'] === undefined ? {} : { clientId: String(values['client-id']) }),
+          ...(values.scope === undefined ? {} : { scope: String(values.scope) }),
+        },
+      });
+      process.stdout.write(loginNotice(credential, userDir));
+    } finally { process.removeListener('SIGINT', onInterrupt); promptHost.close(); }
+    return;
+  }
   // Answering for a project-declared server is its own action: it records the
   // declaration the person answered for and starts nothing.
   const approve = (values['approve-mcp-server'] as string[] | undefined) ?? [];
@@ -596,6 +688,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
   // Approval is a complete action on its own; every other path needs work to do. A bare invocation
   // with no terminal still has no way to read a task, so the help is the answer there.
   if (impliedInteractive) values.interactive = true;
+  // Sign-in and sign-out already returned above, so this branch only sees a run with work to do.
   else if (!values.demo && !values.continue && !values.interactive && !values.resume
     && !values['list-sessions'] && positionals.length === 0
     && values['approve-mcp-server'] === undefined && values['reject-mcp-server'] === undefined) {
@@ -608,11 +701,20 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     : values['inherit-gateway'] === true ? true
     : (optionalBoolean('LLM_INHERIT_GATEWAY') ?? true);
   const inherited = resolveInheritedGateway({ enabled: inheritEnabled && !demo });
-  const gateway = resolveGatewayChoice(values, settings, inherited, demo);
-  const credential = gatewayCredential(gateway.baseURL, inherited);
-  if (!demo && !values.resume && credential.key === undefined) {
+  // A credential stored by `--login` sits below every explicit source and above the
+  // built-in default, so a signed-in person starts without exporting anything.
+  const stored = demo ? undefined : readStoredCredential(userDir);
+  const gateway = resolveGatewayChoice(values, settings, inherited, demo, stored);
+  const credential = gatewayCredential(gateway.baseURL, inherited, stored);
+  const interactiveStart = values.interactive === true;
+  if (!demo && !values.resume && credential.key === undefined && !interactiveStart) {
     throw new Error(missingCredentialError(credential, gateway.baseURL));
   }
+  // The live provider is a stable slot: `/login` swaps what it delegates to without
+  // rebuilding the loop, the runtime or the agent that already hold this object.
+  const unconfigured = 'No model credential yet. Run /login to sign in, or set LLM_API_KEY.';
+  let pendingMessage = unconfigured;
+  const slot = createProviderSlot(() => pendingMessage);
 
   const controller = new AbortController();
   const onInterrupt = () => controller.abort(new Error('Interrupted'));
@@ -658,22 +760,39 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       session.config.verbose = startupVerbose(session.config.viewMode, session.config.verbose);
       // A resumed session keeps its pinned endpoint, so the credential has to suit that
       // endpoint rather than whatever a new session would have chosen.
-      const pinned = gatewayCredential(session.config.gateway.baseURL, inherited);
-      if (pinned.key === undefined) throw new Error(missingCredentialError(pinned, session.config.gateway.baseURL));
+      const pinned = gatewayCredential(session.config.gateway.baseURL, inherited, stored);
+      if (pinned.key === undefined && !interactiveStart) throw new Error(missingCredentialError(pinned, session.config.gateway.baseURL));
       announceInheritance(inherited, pinned.source === undefined ? [] : ['credential']);
-      provider = wrapProvider(new GatewayProvider(pinned.key, session.config.gateway));
+      if (pinned.key === undefined) {
+        pendingMessage = unconfigured;
+      } else {
+        slot.adopt(pinned.stored === undefined
+          ? new GatewayProvider(pinned.key, session.config.gateway)
+          : providerFromCredential(pinned.stored, session.config.gateway, userDir));
+      }
+      provider = wrapProvider(slot.provider);
       runtime = await createRuntime(session.config, provider, controller.signal);
     } else {
       const config = newConfig(values, workspace, loaded, settings, false, gateway);
       const keybindings = loadKeybindings(workspace, values['user-dir']);
       if (Object.keys(keybindings).length) config.keybindings = keybindings;
-      if (!config.model.trim()) throw new Error('Set LLM_MODEL or --model to your gateway model ID');
+      // A session with no model still opens in the interactive loop: `/model` or `/login`
+      // supplies one before the first request. A one-shot task has nowhere to ask.
+      if (!config.model.trim() && !interactiveStart) throw new Error('Set LLM_MODEL or --model to your gateway model ID');
+      if (!config.model.trim()) config.model = UNCONFIGURED_MODEL;
       announceInheritance(inherited, [
         ...(credential.source === undefined ? [] : ['credential'] as InheritedField[]),
         ...(inherited?.baseURL === undefined || values['base-url'] !== undefined || process.env.LLM_BASE_URL !== undefined || settings.baseURL !== undefined ? [] : ['baseURL'] as InheritedField[]),
         ...(inherited?.model === undefined || values.model !== undefined || process.env.LLM_MODEL !== undefined || settings.model !== undefined ? [] : ['model'] as InheritedField[]),
       ]);
-      provider = wrapProvider(new GatewayProvider(credential.key!, config.gateway!));
+      if (credential.key === undefined) {
+        pendingMessage = unconfigured;
+      } else {
+        slot.adopt(credential.stored === undefined
+          ? new GatewayProvider(credential.key, config.gateway!)
+          : providerFromCredential(credential.stored, config.gateway!, userDir));
+      }
+      provider = wrapProvider(slot.provider);
       runtime = await createRuntime(config, provider, controller.signal);
       config.tools = pinToolSchemas(runtime.tools);
       validateRuntimeConfig(config);
@@ -716,6 +835,8 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     runtime = await runtime.bindSession?.(currentSession) ?? runtime;
     const currentRuntime = runtime;
     process.stderr.write(`session: ${currentSession.id}\nworkspace: ${workspace}\n`);
+    // The terminal owns the screen from here, so an unconfigured start says so inside the loop.
+    const startupNotice = slot.adopted() ? undefined : pendingMessage;
     if (values.interactive) {
       const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
         commands: tuiCommandsWithSkills(currentSession.config.skills, { currentModel: () => currentSession.config.model }),
@@ -756,6 +877,15 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         status: tui ? tui.statusStream : process.stderr, signal: controller.signal,
         ...(started.initialUserMessage === undefined ? {} : { initialUserMessage: started.initialUserMessage }),
         ...(started.watchPaths === undefined ? {} : { initialWatchPaths: started.watchPaths }),
+        ...(startupNotice === undefined ? {} : { startupNotice }),
+        providerBlocked: () => slot.adopted() ? undefined : pendingMessage,
+        adoptProvider: (storedCredential, config) => {
+          // The credential names its own endpoint and header, so the slot dials that one.
+          const nextGateway: GatewayConfig = { ...(config.gateway ?? DEFAULT_GATEWAY),
+            baseURL: storedCredential.baseURL, auth: storedCredential.auth };
+          slot.adopt(providerFromCredential(storedCredential, nextGateway,
+            config.configSources?.userDir ?? userDir));
+        },
         ...(tui ? { terminal: tui } : {}) });
       if (controller.signal.aborted) process.exitCode = 130;
       return;

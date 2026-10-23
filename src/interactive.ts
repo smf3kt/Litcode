@@ -54,6 +54,7 @@ import { DEFAULT_EFFORT, effortCommand, isEffortLevel, modelEffort, modelSetting
   effortIndicator, effortOverride, type EffortLevel } from './effort-command.js';
 import { effortSliderRequest } from './effort-slider.js';
 import { modelPickerRequest } from './model-picker.js';
+import { LOGIN_KINDS, UNCONFIGURED_MODEL, runLogin, type LoginPrompts, type StoredCredential } from './login.js';
 import { thinkingDialogRequest, THINKING_DIALOG_TITLE, THINKING_MID_CONVERSATION_WARNING } from './thinking-dialog.js';
 import { TIME_FORMATS, type ConfigPanelState, type ConfigUpdate } from './config-panel.js';
 import { configPanelInput } from './config-panel-input.js';
@@ -153,6 +154,7 @@ export function configChangeSource(file: string, workspace: string, sources: {
 
 export const COMMAND_HELP = `/help       Show help and available commands
 /status     Show session, model, context settings and usage
+/login [deepseek|oauth|custom]  Sign in to a local provider; stores the credential with mode 0600
 /context    Visualize current context usage as a colored grid
 /usage      Show session cost and activity stats
 /effort LEVEL  Set effort level for model usage (low/medium/high/xhigh/max/auto)
@@ -334,6 +336,15 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   initialWatchPaths?: string[];
   /** Test seam for `/fork`'s background copy; defaults to the real spawn. */
   startBackground?: typeof startBackgroundSession;
+  /** Adopt a credential `/login` obtained; the loop's provider slot swaps what it delegates to. */
+  adoptProvider?: (credential: StoredCredential, config: SessionConfig) => void;
+  /** One line shown after the terminal owns the screen, before the first prompt. */
+  startupNotice?: string;
+  /**
+   * A reason the model cannot answer yet, or undefined when it can. Checked before a turn is
+   * recorded, so a run that has not signed in leaves no unfinished user row behind.
+   */
+  providerBlocked?: () => string | undefined;
 }): Promise<void> {
   let session = initial;
   // Source `Ujt` (chunk-sfn1dbxq.js 1663949): the fleet-fork gate selects which `/fork`
@@ -1186,7 +1197,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       ...(session.config.agentTypes ?? []).map(type => type.model),
       ...(session.config.skills ?? []).map(skill => skill.model),
       ...listSessions(session.config.workspace).map(item => item.model)])]
-      .filter((model): model is string => Boolean(model) && model !== 'inherit')
+      .filter((model): model is string => Boolean(model) && model !== 'inherit' && model !== UNCONFIGURED_MODEL)
       .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
   /**
    * Picker `w9`/`FL` (chunk-24k7d6mw.js 894465/895434): the chosen model is written to the live
@@ -1291,6 +1302,65 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   async function applyModelCommand(argument: string): Promise<void> {
     if (argument === '') { await openModelPickerLive?.(); return; }
     await switchModelInPlace(argument, undefined, false, options.signal);
+  }
+  /**
+   * `/login [deepseek|oauth|custom]`: the same local sign-in as `litcode --login`, run over the
+   * session's own prompt surface. The credential is written to the user directory; the provider
+   * slot adopts it, so the next request uses it without restarting the session.
+   */
+  async function runLoginCommand(argument: string): Promise<void> {
+    const requested = argument.split(/\s+/)[0] ?? '';
+    if (requested !== '' && !(LOGIN_KINDS as readonly string[]).includes(requested)) {
+      throw new Error(`Use /login ${LOGIN_KINDS.join('|')}`);
+    }
+    // The modal surface owns the dialog when it exists; a piped session answers on its own lines.
+    const askText = async (title: string, message: string): Promise<string | undefined> => {
+      if (terminal?.prompt) return (await withTurn(signal => readDialog({ title, message, allowText: true }, signal)))?.text;
+      const answer = (await withTurn(signal => readAnswer(`${title}: ${message}\n> `, signal))).trim();
+      return answer === '' ? undefined : answer;
+    };
+    const askChoice = async (title: string, message: string,
+      choices: readonly { label: string; value: string; description?: string }[]): Promise<string | undefined> => {
+      if (terminal?.prompt) return (await withTurn(signal => readDialog({ title, message,
+        choices: choices.map(choice => ({ label: choice.label, value: choice.value,
+          ...(choice.description === undefined ? {} : { description: choice.description }) })) }, signal)))?.selected[0];
+      const list = choices.map((choice, index) => `${index + 1}. ${choice.label}${choice.description === undefined ? '' : ` — ${choice.description}`}`).join('\n');
+      const answer = (await withTurn(signal => readAnswer(`${title}: ${message}\n${list}\nChoose a number: `, signal))).trim();
+      const index = Number(answer);
+      return Number.isInteger(index) && index >= 1 && index <= choices.length ? choices[index - 1]!.value : undefined;
+    };
+    const kind = requested !== '' ? requested : await askChoice('Login', 'Where do you want to sign in?', [
+      { label: 'DeepSeek', value: 'deepseek', description: 'API key against https://api.deepseek.com/anthropic' },
+      { label: 'OAuth gateway', value: 'oauth', description: 'Authorization-code flow with a loopback callback' },
+      { label: 'Custom endpoint', value: 'custom', description: 'Any Anthropic-compatible gateway' },
+    ]);
+    if (kind === undefined) { options.status.write('Login cancelled.\n'); return; }
+    const userDir = session.config.configSources?.userDir ?? defaultUserDir();
+    const prompts: LoginPrompts = {
+      notice: text => { options.status.write(text + '\n'); },
+      text: askText,
+      choose: askChoice,
+    };
+    const credential = await runLogin({ kind, prompts, userDir, signal: options.signal });
+    options.adoptProvider?.(credential, session.config);
+    // The sign-in summary belongs in the transcript: the status row is overwritten by the
+    // session notice the configuration change writes next.
+    const summary = `Signed in to ${credential.provider} · ${credential.baseURL} · model ${credential.model}`;
+    if (terminal?.writeNotice) terminal.writeNotice(summary); else output.write(`${summary}\n`);
+    // The session adopts the endpoint and model the credential was issued for; a gateway change
+    // rebuilds the runtime so the next request dials the new one.
+    const config = structuredClone(session.config);
+    config.gateway = { ...(config.gateway ?? DEFAULT_GATEWAY), baseURL: credential.baseURL, auth: credential.auth };
+    const modelChanged = config.model === UNCONFIGURED_MODEL || config.model === '';
+    if (modelChanged) config.model = credential.model;
+    await applyConfig(config, modelChanged, options.signal, undefined, true);
+    if (modelChanged) {
+      const userDirForSave = config.configSources?.userDir;
+      if (userDirForSave !== undefined) {
+        try { saveModelSetting(credential.model, userDirForSave); }
+        catch { options.status.write('Signed in; the model was not saved as your default.\n'); }
+      }
+    }
   }
   /** `MOe`, chunk-0q6c90q6.js 6286: apply the level to live state; the write is the only default arm. */
   async function applyEffortCommand(prompt: string): Promise<void> {
@@ -1452,6 +1522,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       unsubscribe = activeRuntime.subscribe?.(runtimeChanged);
     }
     options.status.write('Personal harness. /help for commands.\n');
+    // A terminal owns its own transcript, so the notice has to enter it rather than the status row.
+    if (options.startupNotice !== undefined) {
+      if (terminal?.writeNotice) terminal.writeNotice(options.startupNotice);
+      else options.status.write(`${options.startupNotice}\n`);
+    }
     await startPeer(session.config);
     announce();
     bindConfigWatch();
@@ -2663,7 +2738,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               } else {
                 const models = [...new Set([session.config.model, ...(session.config.agentTypes ?? []).map(type => type.model),
                   ...(session.config.skills ?? []).map(skill => skill.model), ...listSessions(session.config.workspace).map(item => item.model)])]
-                  .filter((model): model is string => Boolean(model) && model !== 'inherit')
+                  .filter((model): model is string => Boolean(model) && model !== 'inherit' && model !== UNCONFIGURED_MODEL)
                   .filter(model => model.length <= 256 && !/[\x00-\x1f\x7f-\x9f]/.test(model)).slice(0, 20);
                 const inherited = session.config.effortSelection?.kind === 'inherit'
                   ? { modelSettings: session.config.modelSettings ?? {}, fallback: session.config.effortSelection.fallback } : undefined;
@@ -2802,6 +2877,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         // applies the level to live state, so no successor session is opened here either.
         if (prompt === '/effort' || prompt.startsWith('/effort ')) {
           await applyEffortCommand(prompt);
+          continue;
+        }
+        if (prompt === '/login' || prompt.startsWith('/login ')) {
+          // Signing in never touches the transcript, so an unfinished turn does not block it;
+          // the turn that failed for lack of a credential is the reason to sign in.
+          await runLoginCommand(prompt.slice('/login'.length).trim());
           continue;
         }
         if (prompt.startsWith('/model ') || prompt.startsWith('/theme ') || /^\/thinking(?:\s|$)/.test(prompt)
@@ -3163,6 +3244,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
         const before = session.events.length;
         const attachment = item.attachment?.sessionId === session.id ? item.attachment : undefined;
+        // A run with no credential is refused before the prompt is recorded, so signing in and
+        // retrying does not first have to finish a turn that never reached a model.
+        const blocked = prompt === '/continue' ? undefined : options.providerBlocked?.();
+        if (blocked !== undefined) { options.status.write(`${blocked}\n`); continue; }
         let result;
         try {
           result = await withTurn(signal => agent().run(prompt === '/continue' ? undefined : prompt, signal,
