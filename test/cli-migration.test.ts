@@ -78,20 +78,31 @@ test('CLI permission help lists all seven accepted modes', TIMEOUT, async () => 
   assert.match(result.stdout, /--effort LEVEL.*low, medium, high, xhigh or max/);
 });
 
-test('CLI effort flag overrides environment/settings and resume retains the pinned level', TIMEOUT, async t => {
+test('CLI effort flag overrides settings and resume retains the pinned level', TIMEOUT, async t => {
   const root = workspace(t); write(root, '.harness/settings.json', JSON.stringify({ effort: 'low' }));
   const local = await gateway((_request, res) => send(res, 'effort checked')); let pending: ReturnType<typeof run> | undefined;
   try {
-    pending = run(['--workspace', root, '--user-dir', path.join(root, 'user'), '--effort', 'xhigh', 'task'], local.url, 'medium');
+    // `Vit(r.effort)` (chunk-9vcaezw1.js 14114) writes the flag as the session effort, so it beats
+    // a settings default; `kE` (12972) still puts `Y0()`'s environment value first, which the next
+    // case asserts.
+    pending = run(['--workspace', root, '--user-dir', path.join(root, 'user'), '--effort', 'xhigh', 'task'], local.url);
     const result = await pending.done; assert.equal(result.code, 0, result.stderr);
     assert.equal(local.requests[0].output_config.effort, 'xhigh');
     const id = /session: ([\w-]+)/.exec(result.stderr)?.[1]; assert.ok(id);
     const session = Session.open(root, { id }); try { assert.equal(session.config.effort, 'xhigh'); } finally { session.close(); }
     pending = run(['--workspace', root, '--resume', id, 'again'], local.url, 'max');
-    assert.equal((await pending.done).code, 0); assert.equal(local.requests[1].output_config.effort, 'xhigh');
+    assert.equal((await pending.done).code, 0);
+    // `kE` puts `Y0()`'s environment value ahead of the session level, so the resumed request
+    // carries the environment override while the journal keeps the pinned level.
+    assert.equal(local.requests[1].output_config.effort, 'max');
+    const resumed = Session.open(root, { id }); try { assert.equal(resumed.config.effort, 'xhigh'); } finally { resumed.close(); }
     const locked = await run(['--workspace', root, '--resume', id, '--effort', 'high', 'again'], local.url).done;
     assert.equal(locked.code, 1); assert.match(locked.stderr, /Resume uses stored settings/);
     assert.equal(local.requests.length, 2);
+    // A fresh session with both: `kE` resolves the environment override before the session level.
+    pending = run(['--workspace', root, '--user-dir', path.join(root, 'user'), '--effort', 'xhigh', 'task'], local.url, 'medium');
+    assert.equal((await pending.done).code, 0);
+    assert.equal(local.requests[2].output_config.effort, 'medium');
   } finally { pending?.child.kill('SIGKILL'); await pending?.done; await local.close(); }
 });
 

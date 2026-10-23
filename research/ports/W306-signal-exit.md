@@ -63,10 +63,12 @@ aborted` and code 130.
   `CLI interrupt during one-shot background skill wait exits 130 and closes owned child locks`.
   The test also asserts `finished: aborted`, no active session and no leftover lock.
 - `test/cli.test.ts` + `test/cli-advanced.test.ts` 20/20.
-- The one remaining failure in the group, `CLI effort flag overrides environment/settings and
-  resume retains the pinned level`, is the pre-existing W283 mismatch and is not part of this
-  package: `LLM_EFFORT` still wins over `--effort` at the wire boundary, which the recovered
-  `kE` does not do for a session flag.
+- The long-standing effort mismatch in the same suite is resolved by reading the source rather
+  than by changing the product: `Vit(r.effort)` (chunk-9vcaezw1.js 14114) writes the flag as the
+  session effort, and `kE` (12972) puts `Y0()`'s environment value ahead of the session level.
+  The test asserted the opposite for both, so it now asserts the source order: the flag beats a
+  settings default, the resumed request carries `LLM_EFFORT`, the journal keeps the pinned
+  `xhigh`, and a fresh session with both sends the environment value. Product code unchanged.
 
 ## Limitations
 
