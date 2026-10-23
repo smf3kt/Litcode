@@ -744,12 +744,12 @@ export class LocalScheduler {
       const previous = this.jobs.get(task.id);
       const from = task.recurring ? (task.lastFiredAt ?? task.createdAt) : task.createdAt;
       const nominal = nextOccurrence(parsed, new Date(from));
-      if (!nominal) continue;
+      // ne.b [7731,9544), chunk-jrz2zk22.js, UTF-16 caches unresolved deadlines as Infinity.
       const job: ScheduledJob = { ...task, recurring: task.recurring === true, durable: true,
-        nextAt: nominal.getTime(), humanSchedule: describeCron(task.cron) };
+        nextAt: nominal?.getTime() ?? Infinity, humanSchedule: describeCron(task.cron) };
       const eligible = this.creators!.eligible(task, this.hasStoreLock());
       job.nextAt = eligible && this.fileDeadlines.has(task.id) && previous
-        ? previous.nextAt : this.fireTime(job, parsed, nominal.getTime(), from);
+        ? previous.nextAt : nominal ? this.fireTime(job, parsed, nominal.getTime(), from) : Infinity;
       if (eligible) this.fileDeadlines.add(task.id);
       else this.fileDeadlines.delete(task.id);
       this.jobs.set(job.id, job);
@@ -951,13 +951,8 @@ export class LocalScheduler {
       }
       const parsed = parseCron(job.cron);
       const next = parsed ? nextOccurrence(parsed, new Date(firedAt)) : null;
-      if (!next) {
-        this.jobs.delete(job.id);
-        if (job.durable) { this.deliveredFileTasks.add(job.id); removed.push(job.id); }
-        this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: true });
-        continue;
-      }
-      job.nextAt = this.fireTime(job, parsed!, next.getTime(), firedAt);
+      // b [7731,9544), chunk-jrz2zk22.js, UTF-16 retains unresolved recurring rows and stamps the fire.
+      job.nextAt = next ? this.fireTime(job, parsed!, next.getTime(), firedAt) : Infinity;
       this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: true });
       if (job.durable) { job.lastFiredAt = firedAt; fired.push(job.id); }
     }

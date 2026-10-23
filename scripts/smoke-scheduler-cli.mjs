@@ -12,6 +12,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const compiled = process.argv.includes("--compiled");
 const creators = process.argv.includes("--creators");
 const deliveryFailure = process.argv.includes("--delivery-failure");
+const unresolvedRecurring = process.argv.includes("--unresolved-recurring");
 const idle = process.argv.includes("--idle");
 const headlessIdle = process.argv.includes("--idle-headless");
 const headlessWakeup = process.argv.includes("--wakeup-headless");
@@ -25,7 +26,7 @@ const wakeupTiming = process.argv.includes("--wakeup-timing");
 const keepalive = process.argv.includes("--keepalive");
 const keepaliveDisabled = process.argv.includes("--keepalive-disabled");
 const wakeupChain = wakeupTiming || process.argv.includes("--wakeup");
-const durable = deliveryFailure || idle || headlessIdle || headlessWakeup || creators || process.argv.includes("--durable");
+const durable = unresolvedRecurring || deliveryFailure || idle || headlessIdle || headlessWakeup || creators || process.argv.includes("--durable");
 const fixture = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : os.tmpdir(), "scheduler-cli-")));
 const workspace = path.join(fixture, "workspace");
 const clock = path.join(fixture, "clock");
@@ -36,7 +37,8 @@ const birth = pid => execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
 }).trim();
 let stderr = "", stdout = "", done = false;
 const requests = [];
-const initial = new Date(2024, 0, 1, 0, 0, wakeupTiming ? 30 : 0).getTime();
+const initial = unresolvedRecurring ? new Date(2024, 1, 28, 23, 58).getTime()
+  : new Date(2024, 0, 1, 0, 0, wakeupTiming ? 30 : 0).getTime();
 const wait = predicate => new Promise((resolve, reject) => {
   const timer = setTimeout(() => { wake = undefined; reject(new Error(`CLI wait expired: ${stderr}`)); }, 10000);
   wake = () => {
@@ -50,7 +52,7 @@ try {
     ...(durable ? { schedulerDurable: true } : {}) }, permissions: { mode: "bypass", allow: [], deny: [] } }));
   const storeFile = path.join(workspace, ".harness/scheduled_tasks.json");
   if (durable) fs.writeFileSync(storeFile, JSON.stringify({ tasks: headlessWakeup ? [{ id: "headless-cron", cron: "* * * * *",
-    prompt: "ordinary cron must stay idle", createdAt: initial - 600_000 }] : deliveryFailure || creators || idle || headlessIdle ? [] : [{ id: "deadbeef", cron: "0 0 * * *",
+    prompt: "ordinary cron must stay idle", createdAt: initial - 600_000 }] : unresolvedRecurring || deliveryFailure || creators || idle || headlessIdle ? [] : [{ id: "deadbeef", cron: "0 0 * * *",
     prompt: "missed fixture task", createdAt: initial - 2 * 86400000 }] }));
   const replaceStore = tasks => {
     const staging = path.join(fixture, "store-next.json");
@@ -94,6 +96,8 @@ try {
         ? { type: "tool_use", id: "headless-create", name: "cron_create", input: { cron: "* * * * *", prompt: "headless held task", recurring: true, durable: true } }
         : creators && /create owned fixture/.test(JSON.stringify(body.messages.at(-1)))
         ? { type: "tool_use", id: "owned-create", name: "cron_create", input: { cron: "* * * * *", prompt: "owned creator task", recurring: true, durable: true } }
+        : unresolvedRecurring && !resultTurn && /cancel unresolved fixture/.test(JSON.stringify(latest))
+        ? { type: "tool_use", id: "unresolved-delete", name: "cron_delete", input: { id: "80000000" } }
         : durable ? { type: "text", text: "durable fixture complete" }
         : index === 1 ? { type: "tool_use", id: "cron-create", name: "cron_create", input: { cron: "* * * * *", prompt: "scheduled fixture task", recurring: true } }
           : index === 2 ? { type: "tool_use", id: "cron-list", name: "cron_list", input: {} }
@@ -436,6 +440,44 @@ try {
     assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
     console.log(JSON.stringify({ cli: "passed", compiled, creatorEligibility: true, liveCreatorExcluded: true,
       creatorExitTakeover: true, ownedBirthWritten: true, clearHistory: true, originalResumeRefresh: true,
+      modelRequests: requests.length, gateway: "owned loopback SSE", locksReleased: true }));
+  } else if (unresolvedRecurring) {
+    const leap = { id: "80000000", cron: "0 0 29 2 *", prompt: "unresolved leap fixture", createdAt: initial, recurring: true };
+    replaceStore([leap]);
+    const armed = await inspect(leap.prompt);
+    assert.equal(armed.find(row => row.id === leap.id).nextAt, new Date(2024, 1, 29).getTime());
+    fs.writeFileSync(clock, String(new Date(2024, 1, 29).getTime()));
+    await wait(() => requests.length === 1 && stderr.includes("event finished: end_turn"));
+    assert.match(JSON.stringify(requests[0].messages.at(-1)), /unresolved leap fixture/);
+    const deadline = Date.now() + 5000;
+    while (!JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks.some(row => row.id === leap.id && row.lastFiredAt >= new Date(2024, 1, 29).getTime())) {
+      assert.ok(Date.now() < deadline, "an unresolved recurring fire retains and stamps its durable row");
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    const dormant = await inspect(leap.prompt);
+    assert.equal(dormant.find(row => row.id === leap.id).nextAt, null, "the unresolved deadline is null at the JSON boundary");
+    child.stdin.end("/exit\n"); await wait(() => done); assert.equal(await exited, 0); child = undefined;
+    assert.equal(fs.existsSync(path.join(workspace, ".harness/scheduled_tasks.lock")), false);
+    exited = launch();
+    await wait(() => stderr.includes("Personal harness."));
+    const resumed = await inspect(leap.prompt);
+    assert.equal(resumed.find(row => row.id === leap.id).nextAt, null);
+    assert.equal(requests.length, 1, "restart does not replay a recurring task without a deadline");
+    child.stdin.write("cancel unresolved fixture\n");
+    await wait(() => requests.length === 3 && stderr.includes("finished: end_turn"));
+    const cancelled = requests[2].messages.at(-1).content.find(block => block.type === "tool_result");
+    assert.equal(JSON.parse(typeof cancelled.content === "string" ? cancelled.content : cancelled.content[0].text).deleted, true);
+    await inspect(undefined);
+    const removedDeadline = Date.now() + 5000;
+    while (JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks.length) {
+      assert.ok(Date.now() < removedDeadline, "explicit cancellation removes the unresolved row");
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    child.stdin.end("/exit\n"); await wait(() => done); assert.equal(await exited, 0); child = undefined;
+    assert.equal(fs.existsSync(path.join(workspace, ".harness/scheduled_tasks.lock")), false);
+    assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
+    console.log(JSON.stringify({ cli: "passed", compiled, unresolvedRecurring: true, rowRetainedAndStamped: true,
+      listedWithoutFiniteDeadline: true, restartRetainsWithoutReplay: true, explicitCancellation: true,
       modelRequests: requests.length, gateway: "owned loopback SSE", locksReleased: true }));
   } else if (deliveryFailure) {
     const failed = { id: "bad00000", cron: "* * * * *", prompt: "failed durable once", createdAt: initial };
