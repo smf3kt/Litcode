@@ -567,6 +567,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
     terminal?.setShowMessageTimestamps?.(session.config.showMessageTimestamps);
     terminal?.setCopyOnSelect?.(session.config.copyOnSelect);
+    terminal?.setAutoScrollEnabled?.(session.config.autoScrollEnabled);
     terminal?.setBriefTranscript?.(briefTranscriptEnabled(session.config));
     terminal?.setVerbose?.(session.config.verbose === true);
     terminal?.setTerminalProgressBar?.(session.config.terminalProgressBarEnabled !== false);
@@ -2462,6 +2463,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       terminal?.setCopyOnSelect?.(update.value);
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
                       return configPanelInput(session.config);
+                    // vWe/hs/D6, nybcbd9t [24065,24243), js2bhabe [1114,1554), UTF-16.
+                    case 'autoScroll': {
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const enabled = configSchema.shape.autoScrollEnabled.parse(loaded.settings.autoScrollEnabled);
+                      if (enabled === undefined) delete session.config.autoScrollEnabled;
+                      else session.config.autoScrollEnabled = enabled;
+                      terminal?.setAutoScrollEnabled?.(enabled);
+                      changes.set(update.id, enabled !== false ? 'Enabled auto-scroll' : 'Disabled auto-scroll');
+                      return configPanelInput(session.config);
+                    }
                     case 'reduceMotion':
                       // `vy` row, chunk-nybcbd9t.js: localSettings and the live app settings move
                       // together; the renderer and progress animations read the live value.

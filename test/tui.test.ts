@@ -966,7 +966,8 @@ test('actual TUI input reaches contextual navigation while paste and overrides k
     key('\u0005'); assert.equal(tui.transcriptState.showAll, true);
     key('g'); assert.equal(tui.transcriptState.offset, 0);
     key('G'); assert.equal(tui.transcriptState.offset, 35);
-    key('\x1b[5~'); assert.equal(tui.transcriptState.offset, 29);
+    // rI/pee, 24k7d6mw [127400,128768), UTF-16: page keys move half the viewport.
+    key('\x1b[5~'); assert.equal(tui.transcriptState.offset, 32);
     key('q'); assert.equal(tui.currentScreen, 'chat');
     assert.equal(tui.state.text, 'draft');
     key('\u000f\x1b'); await wait();
@@ -2073,8 +2074,9 @@ test('prose setting changes invalidate transcript rows and selection without cha
     assert.equal(screenLines(output).filter(row => row.includes('ProseWord')).length, 1);
     assert.equal(tui.transcriptState.entries, entries);
     assert.equal(entries[0]?.markdown, source + '\n\npartial');
-    assert.ok(tui.transcriptState.offset === Number.MAX_SAFE_INTEGER);
+    assert.equal(tui.transcriptState.offset, 0);
     for (let index = 0; index < 30; index++) tui.append({ kind: 'assistant', text: 'row ' + index });
+    assert.ok(screenLines(output).some(row => row === 'row 29'), 'layout changes retain following the newest output');
     input.emit('data', '\x1b[<64;2;3M'); const offset = tui.transcriptState.offset;
     tui.setMaxProseWidth(40); assert.equal(tui.transcriptState.offset, offset);
   } finally { tui.close(); decoded.get(output)!.dispose(); context.mock.timers.reset(); }
@@ -2144,8 +2146,9 @@ test('highlight setting invalidates streamed and completed transcript caches wit
     tui.setSyntaxHighlightingDisabled(undefined); const restored = check(true);
     assert.equal(decoded.get(output)!.buffer.active.getLine(restored)!.getCell(2)!.isInverse(), 0);
     assert.equal(tui.transcriptState.entries, entries); assert.equal(entries[0]?.markdown, source);
-    assert.equal(tui.transcriptState.offset, Number.MAX_SAFE_INTEGER);
+    assert.equal(tui.transcriptState.offset, 0);
     for (let index = 0; index < 30; index++) tui.append({ kind: 'assistant', text: 'row ' + index });
+    assert.ok(screenLines(output).some(row => row === 'row 29'), 'highlight changes retain following the newest output');
     input.emit('data', '\x1b[<64;2;3M'); const offset = tui.transcriptState.offset;
     tui.setSyntaxHighlightingDisabled(true); assert.equal(tui.transcriptState.offset, offset);
   } finally { tui.close(); decoded.get(output)!.dispose(); colors.level = previous; context.mock.timers.reset(); }
