@@ -5,6 +5,7 @@ import { Keymap, chordSequence } from './tui-keys.js';
 import { jsx } from './tui-jsx.js';
 import { n, s } from './tui-base-components.js';
 import { te } from './tui-symbols.js';
+import { NOTIFICATION_CHANNELS, type NotificationChannel } from './terminal-notifications.js';
 
 export const TIME_FORMATS = ['auto', '12-hour', '24-hour', '24-hour-utc'] as const;
 /** BE, chunk-a60ee1ne.js 765, minus default/plan/bypassPermissions, prefixed by Z's two. */
@@ -15,6 +16,7 @@ export type ConfigUpdate =
   | { id: 'editor'; value: 'normal' | 'vim' }
   | { id: 'permissionMode'; value: PermissionModeSetting }
   | { id: 'timeFormat'; value: typeof TIME_FORMATS[number] }
+  | { id: 'notifChannel'; value: NotificationChannel }
   | { id: 'askUserQuestionTimeout'; value: 'never' | '60s' | '5m' | '10m' }
   | { id: 'dialogExpiry'; value: 'default' | 'never' | '60s' | '5m' | '10m' };
 export type ConfigRowId = ConfigUpdate['id'] | 'theme' | 'model';
@@ -25,7 +27,7 @@ type Row = { id: ConfigRowId; label: string } & (
 );
 export interface ConfigPanelState { query: string; cursor: number; focus: ConfigRowId; mode: 'search' | 'list' }
 export type ConfigPanelValues = Pick<SessionConfig, 'model' | 'thinking' | 'theme' | 'editorMode' | 'timeFormat'
-  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry' | 'spinnerTipsEnabled' | 'copyOnSelect' | 'copyFullResponse' | 'autoScrollEnabled'>;
+  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry' | 'spinnerTipsEnabled' | 'copyOnSelect' | 'copyFullResponse' | 'autoScrollEnabled' | 'preferredNotifChannel'>;
 export interface ConfigPanelInput { config: ConfigPanelValues; hidden: readonly ConfigRowId[]; state?: ConfigPanelState }
 export interface ConfigPanelHost {
   input: ConfigPanelInput;
@@ -77,6 +79,8 @@ function rows({ config, hidden }: ConfigPanelInput): Row[] {
     // vWe, nybcbd9t [24065,24243), UTF-16; Hhe defaults to the Auto-scroll label.
     { id: 'autoScroll', label: 'Auto-scroll', kind: 'boolean', value: config.autoScrollEnabled ?? true },
     { id: 'theme', label: 'Theme', kind: 'picker', value: themeNames[config.theme ?? 'dark'] ?? config.theme ?? 'dark' },
+    // Le/he, nybcbd9t [11635,11752)/[9662,9747), UTF-16; Hhe=false retains the local enum.
+    { id: 'notifChannel', label: 'Local notifications', kind: 'enum', value: config.preferredNotifChannel ?? 'auto', options: NOTIFICATION_CHANNELS },
     { id: 'editor', label: 'Editor mode', kind: 'enum', value: config.editorMode ?? 'normal', options: ['normal', 'vim'] },
     { id: 'askUserQuestionTimeout', label: 'Question auto-continue timeout', kind: 'enum', value: config.askUserQuestionTimeout ?? 'never',
       options: ['never', '60s', '5m', '10m'] },
@@ -228,6 +232,10 @@ export class ConfigPanel {
       case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration': case 'tips': case 'copyOnSelect': case 'copyFullResponse': case 'autoScroll':
         if (typeof value === 'boolean') return { kind: 'change', update: { id: row.id, value } };
         return;
+      case 'notifChannel': {
+        const channel = NOTIFICATION_CHANNELS.find(channel => channel === value);
+        return channel === undefined ? undefined : { kind: 'change', update: { id: row.id, value: channel } };
+      }
       case 'editor':
         if (value === 'normal' || value === 'vim') return { kind: 'change', update: { id: row.id, value } };
         return;

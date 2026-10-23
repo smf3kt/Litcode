@@ -57,6 +57,7 @@ import { modelPickerRequest } from './model-picker.js';
 import { thinkingDialogRequest, THINKING_DIALOG_TITLE, THINKING_MID_CONVERSATION_WARNING } from './thinking-dialog.js';
 import { TIME_FORMATS, type ConfigPanelState, type ConfigUpdate } from './config-panel.js';
 import { configPanelInput } from './config-panel-input.js';
+import { pendingPermissionNotification } from './terminal-notifications.js';
 import { copyEmptyMessage, copyReport, copyResponses, copyTooManyMessage, copyUsageMessage,
   copyBlocks, copyPickerRows, copyResponseText, copyTarget, parseCopyArgument, writeCopyFile } from './copy-command.js';
 import { AUTO_COMPACT_FALLBACK, applyAutoCompactWindow, autoCompactChoices,
@@ -567,6 +568,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
     terminal?.setShowMessageTimestamps?.(session.config.showMessageTimestamps);
     terminal?.setCopyOnSelect?.(session.config.copyOnSelect);
+    terminal?.setNotificationChannel?.(session.config.preferredNotifChannel);
     terminal?.setAutoScrollEnabled?.(session.config.autoScrollEnabled);
     terminal?.setBriefTranscript?.(briefTranscriptEnabled(session.config));
     terminal?.setVerbose?.(session.config.verbose === true);
@@ -965,10 +967,21 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       const cancelNotification = notifyPermissionPrompt(request.tool, payload => {
         void agent().emitHook('Notification', payload, request.signal).catch(() => {});
       });
+      // qve/YD/ZMr, 24k7d6mw [1318710,1318983), m18zhdb2 [2366,2893), UTF-16.
+      const notice = new AbortController();
+      const noticeSignal = AbortSignal.any([request.signal, notice.signal]);
+      const born = Date.now();
+      const cancelLocal = terminal?.prompt && terminal.notifyLocal ? pendingPermissionNotification(
+        () => terminal.lastInteractionTime?.() ?? born, () => {
+          const payload = { message: 'Permission needed', notification_type: 'permission_prompt' };
+          void agent().emitHook('Notification', payload, noticeSignal).then(async () => {
+            if (!noticeSignal.aborted) await terminal.notifyLocal?.({ message: payload.message }, noticeSignal);
+          }).catch(() => {});
+        }) : () => {};
       try {
         return await confirm('Allow once', `${request.reason}\n${request.tool}: ${JSON.stringify(request.input).slice(0, 2000)}`, request.signal);
       } catch { return false; }
-      finally { cancelNotification(); }
+      finally { cancelNotification(); cancelLocal(); notice.abort(); }
     },
     });
   };
@@ -2474,6 +2487,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       session.config.spinnerTipsEnabled = enabled;
                       terminal?.bindSpinnerTips?.(session);
                       changes.set(update.id, `Set ${update.id} to ${enabled !== false}`);
+                      return configPanelInput(session.config);
+                    }
+                    // he/U2t, nybcbd9t [9662,9747)/[5051,6113), UTF-16; effective merged value stays authoritative.
+                    case 'notifChannel': {
+                      const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [] });
+                      const channel = configSchema.shape.preferredNotifChannel.parse(loaded.settings.preferredNotifChannel);
+                      if (channel === undefined) delete session.config.preferredNotifChannel;
+                      else session.config.preferredNotifChannel = channel;
+                      terminal?.setNotificationChannel?.(channel);
+                      changes.set(update.id, `Set ${update.id} to ${channel ?? 'auto'}`);
                       return configPanelInput(session.config);
                     }
                     case 'copyFullResponse':

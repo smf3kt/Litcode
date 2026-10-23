@@ -27,6 +27,7 @@ export interface TerminalStateView {
 export interface AttacherCaps {
   wheelFlood?: boolean;
   terminal?: string;
+  mux?: string | null;
   wtSession?: boolean;
   isVscodeTerm?: boolean;
 }

@@ -38,7 +38,7 @@ import { skillOverrideMode } from './skills-panel.js';
 import { mcpServersSchema, type McpServerConfig } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
 import { LinkVetError, vetLinkChain } from "./link-vetting.js";
-import { managedPolicySchema } from "./session.js";
+import { configSchema, managedPolicySchema } from "./session.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -611,6 +611,12 @@ function readSettingsLayer(file: string, required: boolean): Record<string, unkn
     throw new ConfigError(`invalid JSON in settings file (${(error as Error).message})`, file, { cause: error });
   }
   if (!isPlainObject(parsed)) throw new ConfigError("settings file must contain a JSON object", file);
+  // Uw/hs, 3cynezh1 [395555,396291), js2bhabe [1114,1499), UTF-16: invalid channels are absent before precedence merges.
+  if ('preferredNotifChannel' in parsed) {
+    const channel = configSchema.shape.preferredNotifChannel.parse(parsed.preferredNotifChannel);
+    if (channel === undefined) delete parsed.preferredNotifChannel;
+    else parsed.preferredNotifChannel = channel;
+  }
   return parsed;
 }
 

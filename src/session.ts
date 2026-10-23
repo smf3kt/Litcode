@@ -26,6 +26,7 @@ import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
 import { clearCheckpointAssociation, recoverCheckpointAssociations } from './checkpoints.js';
 import { spinnerVerbsSchema } from './tui-progress-settings.js';
 import { spinnerTipsLayersSchema } from './spinner-tips-settings.js';
+import { notificationChannelSchema, type NotificationChannel } from './terminal-notifications.js';
 import { statusLineSchema } from './tui-statusline-schema.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 import type { StoredToolUseResult } from './tool-use-result.js';
@@ -87,6 +88,7 @@ export type SessionConfig = {
   showMessageTimestamps?: boolean;
   copyOnSelect?: boolean;
   copyFullResponse?: boolean;
+  preferredNotifChannel?: NotificationChannel;
   autoScrollEnabled?: boolean;
   /** `/focus`'s persisted view mode; `focus` is the brief transcript. */
   viewMode?: import('./focus-command.js').FocusMode;
@@ -244,6 +246,7 @@ export const configSchema = z.object({
   showMessageTimestamps: z.boolean().optional(),
   copyOnSelect: z.boolean().optional(),
   copyFullResponse: z.boolean().optional(),
+  preferredNotifChannel: notificationChannelSchema,
   autoScrollEnabled: z.boolean().optional(),
   viewMode: z.enum(['default', 'verbose', 'focus']).optional(),
   verbose: z.boolean().optional(),
