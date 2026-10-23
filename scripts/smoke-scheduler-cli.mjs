@@ -11,12 +11,14 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const compiled = process.argv.includes("--compiled");
 const creators = process.argv.includes("--creators");
-const durable = creators || process.argv.includes("--durable");
+const idle = process.argv.includes("--idle");
+const headlessIdle = process.argv.includes("--idle-headless");
+const durable = idle || headlessIdle || creators || process.argv.includes("--durable");
 const fixture = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "scheduler-cli-")));
 const workspace = path.join(fixture, "workspace");
 const clock = path.join(fixture, "clock");
 const preload = path.join(fixture, "clock.mjs");
-let child, creator, creatorExited, server, wake, job;
+let child, creator, creatorExited, server, wake, job, releaseResponse;
 const birth = pid => execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], {
   timeout: 1000, encoding: "utf8", env: { ...process.env, LC_ALL: "C", TZ: "UTC" },
 }).trim();
@@ -35,7 +37,7 @@ try {
   fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { schedulerJitter: true,
     ...(durable ? { schedulerDurable: true } : {}) }, permissions: { mode: "bypass", allow: [], deny: [] } }));
   const storeFile = path.join(workspace, ".harness/scheduled_tasks.json");
-  if (durable) fs.writeFileSync(storeFile, JSON.stringify({ tasks: creators ? [] : [{ id: "deadbeef", cron: "0 0 * * *",
+  if (durable) fs.writeFileSync(storeFile, JSON.stringify({ tasks: creators || idle || headlessIdle ? [] : [{ id: "deadbeef", cron: "0 0 * * *",
     prompt: "missed fixture task", createdAt: initial - 2 * 86400000 }] }));
   const replaceStore = tasks => {
     const staging = path.join(fixture, "store-next.json");
@@ -50,7 +52,9 @@ try {
     req.on("end", () => {
       const body = JSON.parse(Buffer.concat(chunks)); requests.push(body);
       const index = requests.length;
-      const block = creators && /create owned fixture/.test(JSON.stringify(body.messages.at(-1)))
+      const block = headlessIdle && index === 1
+        ? { type: "tool_use", id: "headless-create", name: "cron_create", input: { cron: "* * * * *", prompt: "headless held task", recurring: true, durable: true } }
+        : creators && /create owned fixture/.test(JSON.stringify(body.messages.at(-1)))
         ? { type: "tool_use", id: "owned-create", name: "cron_create", input: { cron: "* * * * *", prompt: "owned creator task", recurring: true, durable: true } }
         : durable ? { type: "text", text: "durable fixture complete" }
         : index === 1 ? { type: "tool_use", id: "cron-create", name: "cron_create", input: { cron: "* * * * *", prompt: "scheduled fixture task", recurring: true } }
@@ -65,8 +69,10 @@ try {
         { type: "message_delta", delta: { stop_reason: block.type === "text" ? "end_turn" : "tool_use", stop_sequence: null }, usage: { output_tokens: 5 } },
         { type: "message_stop" },
       ];
-      res.writeHead(200, { "content-type": "text/event-stream" });
-      res.end(events.map(event => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(""));
+      const payload = events.map(event => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join("");
+      const respond = () => { res.writeHead(200, { "content-type": "text/event-stream" }); res.end(payload); };
+      if (idle && /hold idle fixture/.test(JSON.stringify(body.messages.at(-1))) || headlessIdle && index === 2) releaseResponse = respond;
+      else respond();
       wake?.();
     });
   });
@@ -80,14 +86,14 @@ try {
     stderr = ""; stdout = ""; done = false;
     child = spawn(process.execPath, ["--import", preload,
       ...(compiled ? [path.join(root, "bin/litcode.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")]),
-      "--workspace", workspace, ...(extra.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), "--interactive", ...extra],
+      "--workspace", workspace, ...(extra.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), ...(headlessIdle ? ["hold headless fixture"] : ["--interactive"]), ...extra],
       { cwd: root, stdio: ["pipe", "pipe", "pipe"], env });
     child.stderr.on("data", chunk => { stderr = (stderr + chunk).slice(-64000); wake?.(); });
     child.stdout.on("data", chunk => { stdout = (stdout + chunk).slice(-32000); wake?.(); });
     return new Promise((resolve, reject) => { child.on("error", reject); child.on("close", code => { done = true; wake?.(); resolve(code); }); });
   };
   let exited = launch();
-  await wait(() => stderr.includes("Personal harness."));
+  if (!headlessIdle) await wait(() => stderr.includes("Personal harness."));
   const inspect = async expected => {
     const deadline = Date.now() + 5_000;
     while (Date.now() < deadline) {
@@ -103,7 +109,56 @@ try {
     }
     throw new Error(`Cron inspection did not reach ${expected ?? "empty"}`);
   };
-  if (creators) {
+  if (headlessIdle) {
+    await wait(() => requests.length === 2 && releaseResponse !== undefined);
+    const before = JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks;
+    assert.equal(before.length, 1);
+    assert.equal(before[0].prompt, "headless held task");
+    fs.writeFileSync(clock, String(initial + 210_000));
+    await new Promise(resolve => setTimeout(resolve, 2200));
+    assert.deepEqual(JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks, before);
+    releaseResponse(); releaseResponse = undefined;
+    assert.equal(await exited, 0); child = undefined;
+    assert.equal(requests.length, 2);
+    assert.equal(fs.existsSync(path.join(workspace, ".harness/scheduled_tasks.lock")), false);
+    assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
+    console.log(JSON.stringify({ cli: "passed", compiled, headlessIdleDelivery: true, busyDiskUnchanged: true,
+      modelRequests: requests.length, gateway: "owned loopback SSE", locksReleased: true }));
+  } else if (idle) {
+    const task = { id: "80000000", cron: "* * * * *", prompt: "idle recurring task", createdAt: initial,
+      recurring: true, permanent: true };
+    replaceStore([task]);
+    const original = (await inspect(task.prompt))[0];
+    const busyAt = initial + 210_000;
+    child.stdin.write("hold idle fixture\n");
+    await wait(() => requests.length === 1 && releaseResponse !== undefined);
+    fs.writeFileSync(clock, String(busyAt));
+    await new Promise(resolve => setTimeout(resolve, 2200));
+    assert.equal(requests.length, 1, "a busy model does not receive another scheduled request");
+    assert.deepEqual(JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks, [task], "busy ticks do not stamp a recurring file row");
+    releaseResponse(); releaseResponse = undefined;
+    await wait(() => requests.length === 2 && stderr.includes("event finished: end_turn"));
+    assert.match(JSON.stringify(requests[1].messages.at(-1)), /idle recurring task/);
+    const jobs = await inspect(task.prompt);
+    assert.equal(original.nextAt, initial + 75_000);
+    assert.equal(jobs[0].nextAt, initial + 255_000, "rescheduling starts from the actual idle fire time");
+    const deadline = Date.now() + 5_000;
+    while ((JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks[0]?.lastFiredAt ?? 0) < busyAt) {
+      assert.ok(Date.now() < deadline, "idle delivery writes its actual fire time");
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    fs.writeFileSync(clock, String(initial + 245_000));
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    assert.equal(requests.length, 2, "elapsed busy occurrences produce one deferred turn");
+    fs.writeFileSync(clock, String(jobs[0].nextAt));
+    await wait(() => requests.length === 3 && stderr.split("event finished: end_turn").length === 3);
+    child.stdin.end("/exit\n"); assert.equal(await exited, 0); child = undefined;
+    assert.equal(fs.existsSync(path.join(workspace, ".harness/scheduled_tasks.lock")), false);
+    assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
+    console.log(JSON.stringify({ cli: "passed", compiled, idleDelivery: true, busyDiskUnchanged: true,
+      oneDeferredFire: true, nextFromIdleFire: true, modelRequests: requests.length,
+      gateway: "owned loopback SSE", locksReleased: true }));
+  } else if (creators) {
     creator = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { stdio: "ignore" });
     await once(creator, "spawn");
     creatorExited = once(creator, "exit");

@@ -372,6 +372,9 @@ export interface SchedulerTimer {
 export interface LocalSchedulerOptions {
   /** Consumes fired prompts. The only output path; never a model call. */
   onPrompt: (prompt: string, id: string) => void;
+  /** x0r.ne [7616,7735), chunk-jrz2zk22.js: hold delivery while the owner is loading. */
+  isLoading?: () => boolean;
+  assistantMode?: boolean;
   /** Injectable clock. Defaults to `() => new Date()`. */
   now?: () => Date;
   /**
@@ -422,6 +425,8 @@ const realTimer: SchedulerTimer = {
  */
 export class LocalScheduler {
   private readonly onPrompt: (prompt: string, id: string) => void;
+  private readonly isLoading: () => boolean;
+  private readonly assistantMode: boolean;
   private readonly now: () => Date;
   private readonly maxJobs: number;
   private readonly recurringMaxAgeMs: number;
@@ -450,6 +455,8 @@ export class LocalScheduler {
       throw new TypeError('LocalScheduler requires an onPrompt callback');
     }
     this.onPrompt = options.onPrompt;
+    this.isLoading = options.isLoading ?? (() => false);
+    this.assistantMode = options.assistantMode === true;
     this.now = options.now ?? (() => new Date());
     this.maxJobs = options.maxJobs ?? MAX_JOBS;
     this.recurringMaxAgeMs = options.recurringMaxAgeMs ?? RECURRING_MAX_AGE_MS;
@@ -775,6 +782,8 @@ export class LocalScheduler {
   tick(): SchedulerEvent[] {
     if (this.closed) return [];
     if (this.storeClosing) return [];
+    // x0r.ne [7616,7735), chunk-jrz2zk22.js: leave deadlines and file rows untouched while busy.
+    if (this.isLoading() && !this.assistantMode) return [];
     const now = this.now();
     const firedAt = now instanceof Date ? now.getTime() : NaN;
     if (!Number.isFinite(firedAt)) return []; // invalid clock: no-op, never throw from a timer

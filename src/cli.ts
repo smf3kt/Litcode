@@ -918,6 +918,8 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       hookOptions: currentRuntime.hookOptions?.(currentSession.config, currentSession.id),
       stopState: () => currentRuntime.stopState?.(currentSession.id) ?? { background_tasks: [], session_crons: [] },
     });
+    // KL [562879,563257), chunk-rx2nah4x.js: headless cron reads the active model owner.
+    currentRuntime.bindSchedulerLoading?.(currentSession.id, () => agent.isRunning());
     // Run SessionStart hooks once, for startup or resume.
     const started = await agent.startSession(values.resume ? 'resume' : 'startup', controller.signal);
     // The recovered headless prologue prepends the hook's initial user message
