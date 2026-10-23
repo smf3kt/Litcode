@@ -11,7 +11,7 @@ export const TIME_FORMATS = ['auto', '12-hour', '24-hour', '24-hour-utc'] as con
 export const PERMISSION_MODE_OPTIONS = ['default', 'plan', 'acceptEdits', 'auto', 'dontAsk'] as const;
 export type PermissionModeSetting = typeof PERMISSION_MODE_OPTIONS[number];
 export type ConfigUpdate =
-  | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration' | 'tips' | 'copyOnSelect' | 'autoScroll'; value: boolean }
+  | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration' | 'tips' | 'copyOnSelect' | 'copyFullResponse' | 'autoScroll'; value: boolean }
   | { id: 'editor'; value: 'normal' | 'vim' }
   | { id: 'permissionMode'; value: PermissionModeSetting }
   | { id: 'timeFormat'; value: typeof TIME_FORMATS[number] }
@@ -25,7 +25,7 @@ type Row = { id: ConfigRowId; label: string } & (
 );
 export interface ConfigPanelState { query: string; cursor: number; focus: ConfigRowId; mode: 'search' | 'list' }
 export type ConfigPanelValues = Pick<SessionConfig, 'model' | 'thinking' | 'theme' | 'editorMode' | 'timeFormat'
-  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry' | 'spinnerTipsEnabled' | 'copyOnSelect' | 'autoScrollEnabled'>;
+  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry' | 'spinnerTipsEnabled' | 'copyOnSelect' | 'copyFullResponse' | 'autoScrollEnabled'>;
 export interface ConfigPanelInput { config: ConfigPanelValues; hidden: readonly ConfigRowId[]; state?: ConfigPanelState }
 export interface ConfigPanelHost {
   input: ConfigPanelInput;
@@ -70,6 +70,8 @@ function rows({ config, hidden }: ConfigPanelInput): Row[] {
     // vWe, nybcbd9t [21907,22578), UTF-16: settings default, not the live session mode.
     { id: 'permissionMode', label: 'Default permission mode', kind: 'enum',
       value: config.permissions?.defaultMode || 'default', options: PERMISSION_MODE_OPTIONS },
+    // vWe, nybcbd9t [23698,23897), UTF-16; ce() reads the default-false user preference.
+    { id: 'copyFullResponse', label: 'Skip the /copy picker', kind: 'boolean', value: config.copyFullResponse ?? false },
     // vWe, nybcbd9t [23905,24064), UTF-16; native selection is active in this host.
     { id: 'copyOnSelect', label: 'Copy on select', kind: 'boolean', value: config.copyOnSelect ?? true },
     // vWe, nybcbd9t [24065,24243), UTF-16; Hhe defaults to the Auto-scroll label.
@@ -86,7 +88,7 @@ function rows({ config, hidden }: ConfigPanelInput): Row[] {
 }
 
 /** mn/fn/Qe, 0wtqg4zf [7642,12509)/[15880,18925), UTF-16, specialized to the ungrouped field rows. */
-function settingsWindow(rowHeights: readonly number[], height: number, cursor: number, preferred: number | null, scroll: number) {
+export function settingsWindow(rowHeights: readonly number[], height: number, cursor: number, preferred: number | null, scroll: number) {
   const overflow = rowHeights.reduce((sum, value) => sum + value, 0) > height;
   const visible = overflow ? Math.max(1, height - 2) : height;
   const marker = overflow && visible === height - 2 ? 1 : 0;
@@ -223,7 +225,7 @@ export class ConfigPanel {
     const value = row.kind === 'boolean' ? !row.value : row.kind === 'enum'
       ? row.options[(row.options.indexOf(row.value) + direction + row.options.length) % row.options.length] : undefined;
     switch (row.id) {
-      case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration': case 'tips': case 'copyOnSelect': case 'autoScroll':
+      case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration': case 'tips': case 'copyOnSelect': case 'copyFullResponse': case 'autoScroll':
         if (typeof value === 'boolean') return { kind: 'change', update: { id: row.id, value } };
         return;
       case 'editor':

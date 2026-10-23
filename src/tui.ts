@@ -95,6 +95,7 @@ import { ultracodeTagText, ultracodeRevealIndex, ultracodeRevealDone, topBorderT
 import { historyBorderText } from './tui-history-position.js';
 import { effortIndicator, type EffortLevel } from './effort-command.js';
 import { ModelPicker, modelPickerGuide } from './model-picker.js';
+import { CopyPicker, type CopyPickerEffect } from './copy-picker.js';
 import { ResumePicker, resumePickerGuide, resumeRelativeTime, RESUME_EMPTY_TEXT, resumeNoMatchText } from './resume-picker.js';
 import { ConfigPanel, type ConfigPanelEffect, type ConfigRowId } from './config-panel.js';
 
@@ -269,6 +270,8 @@ interface ActiveDialog {
   request: TerminalPromptRequest;
   themeEditor?: ThemeEditor;
   modelPicker?: { owner: ModelPicker; hitRows: Map<number, number>; pressed?: number };
+  copyPicker?: { owner: CopyPicker; hitRows: Map<number, number>;
+    pressed?: { index: number; row: number; activation: boolean } };
   configPanel?: { owner: ConfigPanel; hits: Map<number, { id: ConfigRowId; valueColumn: number }>;
     pressed?: { kind: 'row'; id: ConfigRowId; value: boolean } | { kind: 'search' };
     searchRows: Set<number>; pending?: Promise<void> };
@@ -1720,6 +1723,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         if (editorTask) this.editorController?.abort();
         this.stopAfk();
         this.dialog?.themeEditor?.close();
+        dialog.copyPicker?.owner.close();
         this.dialog?.undo.clear();
         if (snapshot.themePreview) { this.theme.cancelPreview(); this.syncSystemTheme(); }
         this.dialog = undefined; this.screen = previousScreen;
@@ -1744,6 +1748,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         adjustIndex: Math.max(0, snapshot.adjust?.values.indexOf(snapshot.adjust.initial) ?? 0), finish };
       if (snapshot.modelPicker !== undefined) dialog.modelPicker = {
         owner: new ModelPicker(snapshot.choices ?? [], snapshot.modelPicker), hitRows: new Map(),
+      };
+      if (snapshot.copyPicker !== undefined) dialog.copyPicker = {
+        owner: new CopyPicker(snapshot.copyPicker.rows, () => { if (this.dialog === dialog) this.render(); }), hitRows: new Map(),
       };
       if (snapshot.configPanel !== undefined) {
         dialog.configPanel = { owner: new ConfigPanel(snapshot.configPanel.input), hits: new Map(), searchRows: new Set() };
@@ -2439,9 +2446,16 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     for (const action of this.decoder.push(chunk)) {
       if (this.closed || this.editorController) return;
       if (action.type === 'terminalResponse') { this.systemTheme?.onResponse(action.response); continue; }
-      if (action.type === 'focus') { this.focus.set(action.focused); continue; }
+      if (action.type === 'focus') {
+        this.dialog?.copyPicker?.owner.windowFocus(action.focused);
+        this.focus.set(action.focused); continue;
+      }
       if (handedOff) continue;
-      if (!this.focus.focused && (action.type !== 'mouse' || action.action === 'press')) this.focus.set(true);
+      if (!this.focus.focused && (action.type !== 'mouse' || action.action === 'press')) {
+        this.dialog?.copyPicker?.owner.windowFocus(true);
+        this.focus.set(true);
+      }
+      if (action.type !== 'mouse') this.dialog?.copyPicker?.owner.activationInput();
       if (this.dialog) {
         const owner = this.dialog;
         // The source's picker and thinking panels close from their own chord while open
@@ -2729,11 +2743,43 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.render();
   }
 
+  /** Be/tn/Qe, c283tj3z [18528,22085), 0wtqg4zf [15880,18925), UTF-16. */
+  private handleCopyPickerAction(dialog: ActiveDialog, action: EditorAction): void {
+    const picker = dialog.copyPicker!, owner = picker.owner;
+    let effect: CopyPickerEffect | undefined;
+    if (action.type === 'mouse') {
+      if (this.options.mouseTracking === 'off' || action.col < 1 || action.col > (this.options.output.columns ?? 80)) return;
+      const index = picker.hitRows.get(action.row - 1);
+      if (action.action === 'wheelup' || action.action === 'wheeldown') {
+        picker.pressed = undefined;
+        if (index !== undefined) owner.scroll(action.action === 'wheelup' ? -1 : 1);
+      } else if ((this.options.mouseTracking ?? 'full') === 'full' && (action.button & 3) === 0) {
+        if (action.action === 'press') {
+          const activation = owner.activationInput();
+          picker.pressed = index === undefined ? undefined : { index, row: action.row, activation };
+        } else if (action.action === 'release') {
+          const pressed = picker.pressed; picker.pressed = undefined;
+          if (index !== undefined && pressed?.index === index && pressed.row === action.row
+            && !owner.dropsClick(action.row, pressed.activation)) {
+            if (index < 0) { owner.edge(index === -2); owner.pressEdge(action.row); }
+            else effect = owner.accept(false, index);
+          }
+        } else if (action.action === 'move' && index !== picker.pressed?.index) picker.pressed = undefined;
+      }
+    } else effect = owner.key(action);
+    if (effect?.kind === 'cancel') { dialog.finish(); return; }
+    if (effect?.kind === 'select') {
+      dialog.finish({ selected: [effect.value], ...(effect.write ? { key: 'w' } : {}) }); return;
+    }
+    this.render();
+  }
+
   private handleDialogAction(action: EditorAction): void {
     const dialog = this.dialog;
     if (!dialog) return;
     if (dialog.configPanel) { this.handleConfigPanelAction(dialog, action); return; }
     if (dialog.modelPicker) { this.handleModelPickerAction(dialog, action); return; }
+    if (dialog.copyPicker) { this.handleCopyPickerAction(dialog, action); return; }
     if (dialog.resumePicker) { this.handleResumePickerAction(dialog, action); return; }
     if (action.type === 'mouse') return;
     // Source presence records the interaction behind `Ip()`, so any key defers AFK.
@@ -3579,6 +3625,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   };
   private readonly onResize = () => {
     if (this.dialog?.modelPicker) this.dialog.modelPicker.pressed = undefined;
+    if (this.dialog?.copyPicker) this.dialog.copyPicker.pressed = undefined;
     if (this.dialog?.configPanel) this.dialog.configPanel.pressed = undefined;
     this.selection = createSelection(); this.diffPointer = undefined; this.footerPointer = undefined; this.scrollPointer = undefined;
     this.renderer?.hover(-1, -1); this.renderer?.clearNativeSelection(); this.render();
@@ -4016,10 +4063,25 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (selected !== choices[dialog.index]?.value) dialog.followFocus = true;
   }
 
+  private renderCopyPicker(dialog: ActiveDialog, columns: number, bodyRows: number): string[] {
+    const picker = dialog.copyPicker!, owner = picker.owner;
+    this.documentRenderer ??= new TuiDocumentRenderer();
+    const paint = (tree: unknown) => this.documentRenderer!.renderElement(tree, columns,
+      { theme: this.theme.current, themeOverrides: this.theme.overrides }).map(row => row.ansi);
+    const caption = paint(jsx(n, { dimColor: true, children: 'Select content to copy:' }, undefined));
+    const height = Math.max(1, bodyRows - caption.length - 3);
+    const body = owner.render(columns, height, paint);
+    picker.hitRows = new Map([...body.hits].map(([row, index]) => [row + caption.length + 1, index]));
+    for (const [row, last] of body.edges) if (row < height) picker.hitRows.set(row + caption.length + 1, last ? -2 : -1);
+    return [...caption, '', ...body.lines, '', ...paint(jsx(n, { dimColor: true,
+      wrap: 'truncate-end', children: owner.guide }, undefined))];
+  }
+
   private renderDialog(columns: number, bodyRows: number): string[] {
     const dialog = this.dialog!;
     if (dialog.resumePicker) return this.renderResumePicker(dialog, columns, bodyRows);
     if (dialog.modelPicker) return this.renderModelPicker(dialog, columns, bodyRows);
+    if (dialog.copyPicker) return this.renderCopyPicker(dialog, columns, bodyRows);
     const clean = (text: string) => text.replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
     const oneLine = (text: string) => clean(text).replace(/[\t\n]/g, ' ');
     const groups = dialog.request.groups ?? [];
@@ -4249,6 +4311,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
       if (this.dialog.modelPicker) this.dialog.modelPicker.hitRows = new Map(
         [...this.dialog.modelPicker.hitRows].map(([row, index]) => [row + transcriptRows, index]));
+      if (this.dialog.copyPicker) this.dialog.copyPicker.hitRows = new Map(
+        [...this.dialog.copyPicker.hitRows].map(([row, index]) => [row + transcriptRows, index]));
       // Us, 06azbynj [286619,287950), UTF-16; a smaller modal viewport must measure the same sticky owner.
       this.transcript = { ...this.transcript, offset: this.transcriptScroll.layout(
         this.transcriptTotal(columns), transcriptRows, this.transcript.entries) };
@@ -4269,7 +4333,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (this.dialog.notesEditing) {
         const cursor = layoutInput(this.dialog.notesEditor, columns - 2, 1).cursorColumn + 2;
         this.drawFrame(lines, columns, rows, answerRow, cursor, true);
-      } else if (this.dialog.modelPicker || this.dialog.request.readOnly === true || this.dialog.request.adjust?.kind === 'slider')
+      } else if (this.dialog.modelPicker || this.dialog.copyPicker || this.dialog.request.readOnly === true || this.dialog.request.adjust?.kind === 'slider')
         this.drawFrame(lines, columns, rows, answerRow, 0, false);
       else if (reviewing || !choices.length || this.dialog.index === choices.length) {
         const cursor = layoutInput(this.dialog.editor, columns - 2, 1).cursorColumn + 2;

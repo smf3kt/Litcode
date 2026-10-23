@@ -44,8 +44,9 @@ export const Xoo = (href: string) => [href];
 export const vfr = (_href: string, _variants: readonly string[]) => false;
 const memoryTags = ['cc-memory', 'cc_memory', 'ccmemory', 'CC-MEMORY', 'CC_MEMORY', 'CCMEMORY'].join('|');
 const memoryTagPattern = new RegExp(`</?(?:${memoryTags})(?=[\\s/>])[^>]{0,1024}>`, 'g');
-export const mK = (text: string) => text.replace(/<(commit_analysis|context|function_analysis|pr_analysis)>.*?<\/\1>\n?/gs, '')
-  .replace(memoryTagPattern, '').replace(/^\n+/, '');
+// zh, 2bcyxj9q [83349,83388), UTF-16; full-response copying retains analysis content.
+export function zh(e: string) { return e.replace(memoryTagPattern, ''); }
+export const mK = (text: string) => zh(text.replace(/<(commit_analysis|context|function_analysis|pr_analysis)>.*?<\/\1>\n?/gs, '')).replace(/^\n+/, '');
 export const WTr = () => null;
 export const DP = (_host: unknown) => '';
 export const f8e = (host: string) => host;

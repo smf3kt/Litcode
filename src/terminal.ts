@@ -1273,6 +1273,7 @@ export interface TerminalPromptRequest {
   initialText?: string;
   /** uBe, 24k7d6mw [617998,624627), UTF-16: local model list with its own focus and effort state. */
   modelPicker?: import('./model-picker.js').ModelPickerInput;
+  copyPicker?: { rows: readonly import('./copy-command.js').CopyPickerRow[] };
   /** bs/vWe, dag4qhha [17007,42182), nybcbd9t [7247,31899), UTF-16: immediate local settings. */
   configPanel?: import('./config-panel.js').ConfigPanelHost;
   /** fLt's V(tjt), 24k7d6mw [674472,675750), UTF-16: live local Background rows. */

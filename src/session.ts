@@ -86,6 +86,7 @@ export type SessionConfig = {
   showTurnDuration?: boolean;
   showMessageTimestamps?: boolean;
   copyOnSelect?: boolean;
+  copyFullResponse?: boolean;
   autoScrollEnabled?: boolean;
   /** `/focus`'s persisted view mode; `focus` is the brief transcript. */
   viewMode?: import('./focus-command.js').FocusMode;
@@ -242,6 +243,7 @@ export const configSchema = z.object({
   showTurnDuration: z.boolean().optional(),
   showMessageTimestamps: z.boolean().optional(),
   copyOnSelect: z.boolean().optional(),
+  copyFullResponse: z.boolean().optional(),
   autoScrollEnabled: z.boolean().optional(),
   viewMode: z.enum(['default', 'verbose', 'focus']).optional(),
   verbose: z.boolean().optional(),

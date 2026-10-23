@@ -26,7 +26,7 @@ export function configPanelInput(config: SessionConfig, state?: ConfigPanelState
   return { config: { model: config.model, thinking: config.thinking, verbose: config.verbose,
     terminalProgressBarEnabled: config.terminalProgressBarEnabled, permissions: config.permissions,
     autoCompactEnabled: config.autoCompactEnabled, spinnerTipsEnabled: config.spinnerTipsEnabled,
-    copyOnSelect: config.copyOnSelect, autoScrollEnabled: config.autoScrollEnabled,
+    copyOnSelect: config.copyOnSelect, copyFullResponse: config.copyFullResponse, autoScrollEnabled: config.autoScrollEnabled,
     theme: config.theme, editorMode: config.editorMode,
     timeFormat: config.timeFormat, prefersReducedMotion: config.prefersReducedMotion, showTurnDuration: config.showTurnDuration,
     askUserQuestionTimeout: config.askUserQuestionTimeout, dialogExpiry: config.dialogExpiry }, hidden: [...hidden], state };

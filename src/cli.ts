@@ -310,6 +310,7 @@ function newConfig(
   if (settings.showTurnDuration !== undefined) config.showTurnDuration = settings.showTurnDuration;
   if (settings.showMessageTimestamps !== undefined) config.showMessageTimestamps = settings.showMessageTimestamps;
   if (settings.copyOnSelect !== undefined) config.copyOnSelect = settings.copyOnSelect;
+  if (settings.copyFullResponse !== undefined) config.copyFullResponse = settings.copyFullResponse;
   if (settings.autoScrollEnabled !== undefined) config.autoScrollEnabled = settings.autoScrollEnabled;
   if (settings.viewMode !== undefined) config.viewMode = settings.viewMode;
   // It, 9shw4xrd [106333,106421), UTF-16: the stored boolean wins; viewMode seeds it when absent.
