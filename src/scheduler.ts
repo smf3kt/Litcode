@@ -934,11 +934,11 @@ export class LocalScheduler {
       if (!this.jobs.has(job.id)) continue; // already handled this tick
       const dueAt = job.nextAt; // the occurrence being fired, before any reschedule
       if (!job.recurring) {
-        this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: false });
+        const delivered = this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: false });
         this.jobs.delete(job.id);
         if (job.durable) {
           this.deliveredFileTasks.add(job.id);
-          if (!emitted.at(-1)?.callbackError) removed.push(job.id);
+          if (delivered) removed.push(job.id);
         }
         continue;
       }
@@ -1007,12 +1007,14 @@ export class LocalScheduler {
     return this.closed;
   }
 
+  // b [7731,9544) / Ee [11998,12190), chunk-jrz2zk22.js, UTF-16: outcome owns retention;
+  // diagnostic conversion has a fixed fallback. Host string adaptation: research/ports/W318-scheduler-delivery-recovery.md.
   private emit(
     prompt: string,
     id: string,
     sink: SchedulerEvent[],
     meta: { kind: 'cron' | 'wakeup'; dueAt: number; firedAt: number; recurring?: boolean },
-  ): void {
+  ): boolean {
     const event: SchedulerEvent = {
       id,
       prompt,
@@ -1024,9 +1026,14 @@ export class LocalScheduler {
     sink.push(event);
     try {
       this.onPrompt(prompt, id, meta.kind);
+      return true;
     } catch (error) {
-      // Contain per event: a throwing callback must not strand other due jobs.
-      event.callbackError = error instanceof Error ? error.message : String(error);
+      try {
+        event.callbackError = error instanceof Error ? error.message : String(error);
+      } catch {
+        event.callbackError = 'scheduled task handler threw (message not reported: it may contain user text)';
+      }
+      return false;
     }
   }
 
