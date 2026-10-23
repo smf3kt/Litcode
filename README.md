@@ -432,6 +432,8 @@ WebSocket 模式接收文本消息，每条消息作为一个事件保留其中�
 
 调度设置 `"features": { "schedulerJitter": true }` 会固定入新会话。开启后，recurring 使用任务 ID 前八位的比例，延后至多半个间隔并封顶 30 分钟；五分钟 `*/N` 调度适用 15 秒缓存提前，one-shot 的目标分钟为 00/30 时最多提前 90 秒。动态唤醒先向上取整到本地分钟，300 秒以内的延时再按缓存提前规则调整，实际投递时间沿用 one-shot 算法。工具返回的 `scheduledFor` 是目标分钟，实际投递可更早。省略或关闭该设置时保留精确延时。动态循环七天到期；停止或用户中断清除其待唤醒和已排队任务。`features.schedulerDurable` 另行开启 cron 文件存储和重启补报，动态唤醒仍由当前进程持有。来源、验证及恢复依赖见 `research/ports/W314-wakeup-timing.md`。
 
+持久单次 cron 的投递回调抛错时，任务保留在文件中，同会话不重试，后续会话通过既有补报提示询问是否执行。错误文案为空或转换失败也遵循此规则，同批其他到期任务继续处理。周期任务投递失败后仍推进下一次时间并落盘；到期后的最后一次尝试会清理记录。验证见 `research/ports/W318-scheduler-delivery-recovery.md`。
+
 交互会话的动态唤醒执行完毕后，如果模型没有重新排程，默认补一次 1200 秒回退。回退执行后仍未排程就结束；模型显式排程会重置这一次预算。回退保留原提示词并沿用上述计时规则，停止、用户中断和会话退出会清理它。设置 `HARNESS_LOOP_KEEPALIVE=off` 关闭回退，也接受 `0`、`false`、`no`。此功能依赖正在运行的交互会话。验证见 `research/ports/W315-loop-keepalive.md`。
 
 交互会话中，模型用 `schedule_wakeup` 报告 `noop:true` 后，下一次动态唤醒会把连续空转的显示行折叠为计数标记。Verbose 或 Ctrl+O transcript 可查看完整历史；原始日志与模型消息仍保留。用户输入、其他通知、工具错误、中断、普通 cron 和压缩边界会阻止对应跨度折叠。验证见 `research/ports/W317-loop-noop-fold.md`。

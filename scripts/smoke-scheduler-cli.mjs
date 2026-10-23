@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const compiled = process.argv.includes("--compiled");
 const creators = process.argv.includes("--creators");
+const deliveryFailure = process.argv.includes("--delivery-failure");
 const idle = process.argv.includes("--idle");
 const headlessIdle = process.argv.includes("--idle-headless");
 const headlessWakeup = process.argv.includes("--wakeup-headless");
@@ -24,8 +25,8 @@ const wakeupTiming = process.argv.includes("--wakeup-timing");
 const keepalive = process.argv.includes("--keepalive");
 const keepaliveDisabled = process.argv.includes("--keepalive-disabled");
 const wakeupChain = wakeupTiming || process.argv.includes("--wakeup");
-const durable = idle || headlessIdle || headlessWakeup || creators || process.argv.includes("--durable");
-const fixture = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "scheduler-cli-")));
+const durable = deliveryFailure || idle || headlessIdle || headlessWakeup || creators || process.argv.includes("--durable");
+const fixture = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : os.tmpdir(), "scheduler-cli-")));
 const workspace = path.join(fixture, "workspace");
 const clock = path.join(fixture, "clock");
 const preload = path.join(fixture, "clock.mjs");
@@ -49,7 +50,7 @@ try {
     ...(durable ? { schedulerDurable: true } : {}) }, permissions: { mode: "bypass", allow: [], deny: [] } }));
   const storeFile = path.join(workspace, ".harness/scheduled_tasks.json");
   if (durable) fs.writeFileSync(storeFile, JSON.stringify({ tasks: headlessWakeup ? [{ id: "headless-cron", cron: "* * * * *",
-    prompt: "ordinary cron must stay idle", createdAt: initial - 600_000 }] : creators || idle || headlessIdle ? [] : [{ id: "deadbeef", cron: "0 0 * * *",
+    prompt: "ordinary cron must stay idle", createdAt: initial - 600_000 }] : deliveryFailure || creators || idle || headlessIdle ? [] : [{ id: "deadbeef", cron: "0 0 * * *",
     prompt: "missed fixture task", createdAt: initial - 2 * 86400000 }] }));
   const replaceStore = tasks => {
     const staging = path.join(fixture, "store-next.json");
@@ -59,6 +60,8 @@ try {
   fs.writeFileSync(clock, String(initial));
   // Only this owned child process sees the controllable clock. Wall timers stay real.
   fs.writeFileSync(preload, `import fs from "node:fs";\nconst OriginalDate=Date;\nlet stamp, anchor=OriginalDate.now();\nconst now=()=>{const next=Number(fs.readFileSync(process.env.SMOKE_CLOCK,"utf8"));if(next!==stamp){stamp=next;anchor=OriginalDate.now();}return stamp+(process.env.SMOKE_CLOCK_FROZEN==="true"?0:OriginalDate.now()-anchor);};\nglobalThis.Date=class extends OriginalDate { constructor(...args){super(...(args.length?args:[now()]));} static now(){return now();} };\n`);
+  const failurePreload = path.join(fixture, "delivery-failure.mjs");
+  if (deliveryFailure) fs.writeFileSync(failurePreload, `import {LocalScheduler} from ${JSON.stringify(new URL(compiled ? "../dist/scheduler.js" : "../src/scheduler.ts", import.meta.url).href)};\nconst tick=LocalScheduler.prototype.tick;let armed=false,failed=false;LocalScheduler.prototype.tick=function(){if(!armed){armed=true;const original=this.onPrompt;this.onPrompt=(prompt,...args)=>{if(prompt===\"failed durable once\"&&!failed){failed=true;throw Error(\"\");}return original(prompt,...args);};}return tick.call(this);};\n`);
   server = http.createServer((req, res) => {
     const chunks = []; req.on("data", chunk => chunks.push(chunk));
     req.on("end", () => {
@@ -122,7 +125,8 @@ try {
   const launch = (extra = []) => {
     stderr = ""; stdout = ""; done = false;
     child = spawn(process.execPath, ["--import", preload,
-      ...(compiled ? [path.join(root, "bin/litcode.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")]),
+      ...(!compiled ? ["--import", "tsx"] : []), ...(deliveryFailure ? ["--import", failurePreload] : []),
+      path.join(root, compiled ? "bin/litcode.mjs" : "src/cli.ts"),
       "--workspace", workspace, ...(extra.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), ...(headlessIdle ? ["hold headless fixture"] : headlessWakeup
         ? ["--output-format", headlessStream ? "stream-json" : "json",
           ...(headlessSchema ? ["--json-schema", '{"type":"object","properties":{"done":{"type":"boolean"}},"required":["done"],"additionalProperties":false}'] : []),
@@ -433,6 +437,37 @@ try {
     console.log(JSON.stringify({ cli: "passed", compiled, creatorEligibility: true, liveCreatorExcluded: true,
       creatorExitTakeover: true, ownedBirthWritten: true, clearHistory: true, originalResumeRefresh: true,
       modelRequests: requests.length, gateway: "owned loopback SSE", locksReleased: true }));
+  } else if (deliveryFailure) {
+    const failed = { id: "bad00000", cron: "* * * * *", prompt: "failed durable once", createdAt: initial };
+    const good = { id: "good0000", cron: "* * * * *", prompt: "other durable once", createdAt: initial };
+    replaceStore([failed, good]);
+    await inspect(failed.prompt);
+    fs.writeFileSync(clock, String(initial + 60_000));
+    await wait(() => requests.length === 1 && stderr.includes("event finished: end_turn"));
+    assert.match(JSON.stringify(requests[0].messages.at(-1)), /other durable once/);
+    const deadline = Date.now() + 5000;
+    while (JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks.some(task => task.id === good.id)) {
+      assert.ok(Date.now() < deadline, "successful sibling is removed from the file");
+      await new Promise(resolve => setTimeout(resolve, 20));
+    }
+    assert.deepEqual(JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks, [failed], "an empty-message callback failure retains the durable row");
+    replaceStore([{ ...failed, permanent: true }]);
+    fs.writeFileSync(clock, String(initial + 120_000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    assert.equal(requests.length, 1, "same-session reload does not retry the failed one-shot");
+    child.stdin.end("/exit\n"); await wait(() => done); assert.equal(await exited, 0); child = undefined;
+    assert.equal(fs.existsSync(path.join(workspace, ".harness/scheduled_tasks.lock")), false);
+    exited = launch();
+    await wait(() => requests.length === 2 && stderr.includes("event finished: end_turn"));
+    assert.match(JSON.stringify(requests[1].messages.at(-1)), /failed durable once/);
+    assert.match(JSON.stringify(requests[1].messages.at(-1)), /First use the AskUserQuestion tool/);
+    assert.deepEqual(JSON.parse(fs.readFileSync(storeFile, "utf8")).tasks, []);
+    child.stdin.end("/exit\n"); await wait(() => done); assert.equal(await exited, 0); child = undefined;
+    assert.equal(fs.existsSync(path.join(workspace, ".harness/scheduled_tasks.lock")), false);
+    assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
+    console.log(JSON.stringify({ cli: "passed", compiled, deliveryFailure: true, emptyErrorRetainsOneShot: true,
+      successfulSiblingDelivered: true, reloadSuppressesRetry: true, restartCatchupOnce: true, modelRequests: requests.length,
+      gateway: "owned loopback SSE", locksReleased: true }));
   } else if (durable) {
     await wait(() => stderr.includes("event finished: end_turn"));
     assert.equal(requests.length, 1);
