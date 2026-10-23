@@ -1428,6 +1428,11 @@ export interface TerminalSurface {
   setNotificationChannel?(value?: import('./terminal-notifications.js').NotificationChannel): void;
   notifyLocal?(notification: import('./terminal-notifications.js').LocalNotification, signal: AbortSignal): Promise<string>;
   lastInteractionTime?(): number;
+  /** `_$`'s `setLocalOverlayShowing` (chunk-24k7d6mw.js 76239): a composer overlay is on screen. */
+  composerOverlayShowing?(): boolean;
+  /** Start `_$` (chunk-24k7d6mw.js 76055) with its owner-supplied guards and send path. */
+  bindIdleNotification?(owner: { send(): void; hasPendingLoopWakeup(): boolean;
+    liveBackgroundAgents(): boolean; subscribeBackgroundAgents(listener: () => void): () => void }): void;
   setAutoScrollEnabled?(value?: boolean): void;
   setProgressSettings?(settings: import('./tui-progress-settings.js').ProgressDisplaySettings): void;
   bindSpinnerTips?(session: import('./session.js').Session): void;

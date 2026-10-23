@@ -54,6 +54,8 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
   else delete next.copyFullResponse;
   if (settings.preferredNotifChannel !== undefined) next.preferredNotifChannel = settings.preferredNotifChannel;
   else delete next.preferredNotifChannel;
+  if (settings.messageIdleNotifThresholdMs !== undefined) next.messageIdleNotifThresholdMs = settings.messageIdleNotifThresholdMs;
+  else delete next.messageIdleNotifThresholdMs;
   if (settings.terminalTitleFromRename !== undefined) next.terminalTitleFromRename = settings.terminalTitleFromRename;
   else delete next.terminalTitleFromRename;
   if (settings.autoScrollEnabled !== undefined) next.autoScrollEnabled = settings.autoScrollEnabled;

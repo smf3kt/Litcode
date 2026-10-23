@@ -901,6 +901,42 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     }
     return /^(y|yes)$/i.test((await readAnswer(`\n${request.title}\n${SWITCH_CACHE_WARNING}\n${request.body}\n${request.confirmLabel}? [y/N] `, signal)).trim());
   };
+
+  /**
+   * `YD`/`ZMr` (chunk-m18zhdb2.js 2372/2417): every OS notification raises the Notification hook
+   * first and only then reaches the configured channel. `S0` (chunk-sfn1dbxq.js 2941910) sends
+   * `{hook_event_name:"Notification", message, title, notification_type}` and matches on
+   * `notification_type`. A live signal skips the hook once its turn is gone, matching the two
+   * call sites that pass the request's signal.
+   */
+  const deliverNotification = async (notification: { message: string; title?: string; notification_type: string },
+    signal: AbortSignal): Promise<void> => {
+    if (signal.aborted) return;
+    await agent().emitHook('Notification', notification, signal).catch(() => {});
+    if (signal.aborted) return;
+    await terminal?.notifyLocal?.(notification, signal).catch(() => {});
+  };
+  // The idle-prompt machine's owner side: `_$` (chunk-24k7d6mw.js 1691362) reads the background
+  // agent registry, the armed loop wakeup and this send path.
+  terminal?.bindIdleNotification?.({
+    send: () => { void deliverNotification({ message: 'Claude is waiting for your input',
+      notification_type: 'idle_prompt' }, options.signal); },
+    hasPendingLoopWakeup: () => {
+      try { return activeRuntime.pendingLoopWakeup?.(session.id) === true; } catch { return false; }
+    },
+    liveBackgroundAgents: () => {
+      // `exn` (chunk-6p4kvraw.js 946) counts a non-paused task as live; this host's agent
+      // registry spells that `queued` or `running`.
+      try {
+        return (activeRuntime.backgroundTasks?.(session.id).agents ?? [])
+          .some(agent => agent.status === 'running' || agent.status === 'queued');
+      } catch { return false; }
+    },
+    subscribeBackgroundAgents: listener => {
+      const unsubscribe = activeRuntime.subscribe?.(owner => { if (owner === session.id) listener(); });
+      return unsubscribe ?? (() => {});
+    },
+  });
   const agent = () => {
     // A plugin catalog change replaces the tool set a later turn can reach; a
     // turn boundary is the only point the session's pinned schemas move.
@@ -1000,6 +1036,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     permission: async request => {
       if (inputClosed || request.signal.aborted) return false;
       const cancelNotification = notifyPermissionPrompt(request.tool, payload => {
+        // `O9n` (chunk-fyhzvvp0.js 4925) calls `S0` alone: this arm raises the hook and never
+        // reaches a delivery channel, unlike `qve`'s `YD`.
         void agent().emitHook('Notification', payload, request.signal).catch(() => {});
       });
       // qve/YD/ZMr, 24k7d6mw [1318710,1318983), m18zhdb2 [2366,2893), UTF-16.
@@ -1008,10 +1046,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       const born = Date.now();
       const cancelLocal = terminal?.prompt && terminal.notifyLocal ? pendingPermissionNotification(
         () => terminal.lastInteractionTime?.() ?? born, () => {
-          const payload = { message: 'Permission needed', notification_type: 'permission_prompt' };
-          void agent().emitHook('Notification', payload, noticeSignal).then(async () => {
-            if (!noticeSignal.aborted) await terminal.notifyLocal?.({ message: payload.message }, noticeSignal);
-          }).catch(() => {});
+          void deliverNotification({ message: 'Permission needed', notification_type: 'permission_prompt' }, noticeSignal);
         }) : () => {};
       try {
         return await confirm('Allow once', `${request.reason}\n${request.tool}: ${JSON.stringify(request.input).slice(0, 2000)}`, request.signal);

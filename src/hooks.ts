@@ -355,6 +355,10 @@ export type HookPayload = {
   task_description?: string;
   teammate_name?: string;
   team_name?: string;
+  /** Notification (`uK`, chunk-r2vtj1kh.js 194097): the shown message, its optional title and the
+   *  kind `S0` sends as `notification_type`. */
+  message?: string;
+  title?: string;
   notification_type?: string;
   /** Elicitation / ElicitationResult: the MCP server asking. */
   mcp_server_name?: string;
