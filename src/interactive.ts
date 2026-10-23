@@ -1160,6 +1160,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     await terminal?.bindInputHistory?.(session);
     for (let i = queue.length - 1; i >= 0; i--) if (queue[i]!.source === 'event') queue.splice(i, 1);
     unsubscribe = activeRuntime.subscribe?.(runtimeChanged);
+    // `x0r.start/stop` [10901,11476), chunk-jrz2zk22.js: the successor starts after old cleanup.
+    activeRuntime.buildTools(session.config, session.id);
+    await activeRuntime.settleScheduler?.(session.id);
   };
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand, reconfigureRuntime = false) => {
     signal.throwIfAborted();

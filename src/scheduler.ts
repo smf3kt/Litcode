@@ -1,36 +1,16 @@
-// Session scheduler for the independent personal harness.
-//
-// This module is a dependency-free, self-contained reimplementation of the
-// local scheduling surface (CronCreate /
-// CronDelete / CronList / ScheduleWakeup). It owns:
-//
-//   - a local 5-field cron parser ("M H DoM Mon DoW") supporting `*`, ranges,
-//     comma lists and `/step` values, with classic Vixie day matching (when
-//     day-of-month and day-of-week are both restricted the fields are OR-ed,
-//     otherwise they are AND-ed);
-//   - next-occurrence search in the process's local timezone, bounded to one
-//     year, mirroring the original validator's "no match in the next year"
-//     bound;
-//   - an in-memory, session-only scheduler with an injectable clock and timer.
-//     Jobs are bounded to 50, one-shot jobs auto-delete after they fire, and
-//     recurring jobs auto-expire after 7 days (one final fire, then delete);
-//   - a separate dynamic-wakeup slot (a single "wake me in N seconds" timer)
-//     that is replaced on each arm and cleared by `stop()` without touching
-//     cron jobs;
-//   - a small tool factory that exposes the four tools with compact schemas
-//     matching the originals, so an outer loop can wire them to a model.
-//
-// Design boundaries: prompts produced by fires are handed to an injected
-// callback only. This module never imports a model, network, provider or any
-// other harness module, never writes to disk, and never replays recovered
-// code. Optional hash-derived jitter spreads fire times; absent options preserve
-// exact historical timing. The algorithm is owned by this harness.
+// Local cron jobs and one dynamic wakeup slot. The parser retains this host's DST contract.
+// Durable watching adapts x0r [5233,11476) from chunk-jrz2zk22.js, SHA-256
+// da64f780f2b184a92cd87a21d03c8a02ca80ec4124edf791eccd988a67c980a3.
+// File mutations adapt Pot/s_e/bds [6985,7656) from chunk-atzjaveb.js, SHA-256
+// 71378d5821cac631dfe41fe2db138ed7853b6008545668f423b89cbf4d060a2a.
+// Coordinates are zero-based UTF-16. See research/ports/W310-cron-watch.md.
 
 import { randomUUID } from 'node:crypto';
 
 import {
-  acquireSchedulerLock, missedTasks, missedTasksPrompt, readStoredTasks, releaseSchedulerLock,
-  removeStoredTasks, scheduledTasksPath, stampStoredTasks, writeStoredTasks, type StoredTask,
+  acquireSchedulerLock, agedOut, missedTasks, missedTasksPrompt, readStoredTasks, releaseSchedulerLock,
+  removeStoredTasks, scheduledTasksPath, stampStoredTasks, watchStoredTasks, writeStoredTasks,
+  STORE_LOCK_RETRY_MS, type StoredTask, type TaskStoreWatch,
 } from './scheduler-store.js';
 
 // ---------------------------------------------------------------------------
@@ -342,15 +322,10 @@ export class SchedulerError extends Error {
   }
 }
 
-/** A stored cron job. All times are epoch milliseconds in local time. */
-export interface ScheduledJob {
-  id: string;
-  cron: string;
-  prompt: string;
+/** Stored task metadata plus this session's due-time cache. */
+export interface ScheduledJob extends Omit<StoredTask, 'recurring'> {
   recurring: boolean;
-  /** Always false here: this harness has no durable store. */
   durable: boolean;
-  createdAt: number;
   nextAt: number;
   humanSchedule: string;
 }
@@ -457,9 +432,15 @@ export class LocalScheduler {
   private dynamic: DynamicWakeup | null = null;
   private timerHandle: unknown = undefined;
   private closed = false;
-  private holdsLock = false;
+  private storeLease: 'detached' | 'waiting' | 'held' = 'detached';
   private attachPromise: Promise<boolean> | undefined;
+  private storeWatch: TaskStoreWatch | undefined;
+  private lockRetry: unknown;
+  private lockAttempt: Promise<void> | undefined;
+  private storeClosing: Promise<void> | undefined;
   private pendingWrite: Promise<void> = Promise.resolve();
+  private storeError: unknown;
+  private readonly deliveredFileTasks = new Set<string>();
 
   constructor(options: LocalSchedulerOptions) {
     if (!options || typeof options.onPrompt !== 'function') {
@@ -541,15 +522,32 @@ export class LocalScheduler {
     };
     job.nextAt = this.fireTime(job, parsed, next.getTime(), createdAt);
     this.jobs.set(job.id, job);
-    if (job.durable) this.persist();
+    if (job.durable) {
+      // `Pot` [6985,7298), chunk-atzjaveb.js: append to the latest file, retaining other rows.
+      const task: StoredTask = { id: job.id, cron, prompt: job.prompt, createdAt,
+        ...(job.recurring ? { recurring: true } : {}),
+        createdBySessionId: this.storeSessionId, createdByPid: process.pid,
+        createdInProject: this.store!.workspace };
+      Object.assign(job, task);
+      void this.storeOperation(async () => {
+        const tasks = await readStoredTasks(this.store!.workspace);
+        tasks.push(task);
+        await writeStoredTasks(this.store!.workspace, tasks);
+      });
+    }
     return { ...job };
   }
 
   /** Remove a job by id. Returns true when a job was removed. */
   delete(id: string): boolean {
-    const removed = this.jobs.delete(id);
-    if (removed) this.persist();
-    return removed;
+    const job = this.jobs.get(id);
+    if (!job) return false;
+    this.jobs.delete(id);
+    if (job.durable) {
+      this.deliveredFileTasks.add(id);
+      void this.storeOperation(() => removeStoredTasks(this.store!.workspace, [id]));
+    }
+    return true;
   }
 
   /** Copy of a single job, or null. */
@@ -558,89 +556,137 @@ export class LocalScheduler {
     return job ? { ...job } : null;
   }
 
-  /** Whether this session holds the durable store's lock (`de`). */
   hasStoreLock(): boolean {
-    return this.holdsLock;
+    return this.storeLease === 'held' && this.storeClosing === undefined;
   }
 
-  /**
-   * The one attach this scheduler performs. A tool call awaits it before its first mutation, so a
-   * `cron_create` can never race the catch-up read and then be overwritten by it.
-   */
   ensureAttached(): Promise<boolean> {
-    if (this.store === undefined) return Promise.resolve(false);
-    this.attachPromise ??= this.attachStore();
-    return this.attachPromise;
+    if (this.store === undefined || this.closed || this.storeClosing) return Promise.resolve(false);
+    return this.attachPromise ??= this.startStore();
   }
 
-  /**
-   * Source `de` + `me`: take the lock and load the store. Recurring tasks come back with their
-   * last fire time, one-shot tasks that came due while nothing was running are surfaced through
-   * `onMissed` and removed (`Ke`, `s_e`). Returns whether this session holds the lock.
-   */
-  async attachStore(): Promise<boolean> {
-    if (this.store === undefined) return false;
-    this.holdsLock = await acquireSchedulerLock(this.store.workspace, { sessionId: this.storeSessionId });
-    if (!this.holdsLock) return false;
-    const now = this.clock();
-    const stored = await readStoredTasks(this.store.workspace);
-    const mine = stored.filter((task) => task.createdInProject === undefined || task.createdInProject === this.store!.workspace);
-    const missed = missedTasks(mine, now).filter((task) => task.recurring !== true);
-    if (missed.length > 0) {
-      const ids = new Set(missed.map((task) => task.id));
-      const prompt = missedTasksPrompt(missed, scheduledTasksPath(this.store.workspace));
-      this.store.onMissed?.(prompt);
-      await removeStoredTasks(this.store.workspace, [...ids]);
-      for (const task of mine) if (ids.has(task.id)) this.jobs.delete(task.id);
+  attachStore(): Promise<boolean> {
+    return this.ensureAttached();
+  }
+
+  /** `oe` [9890,10444), chunk-jrz2zk22.js: acquire, read, watch, then retry a contended lease. */
+  private async startStore(): Promise<boolean> {
+    const store = this.store!;
+    const acquired = await acquireSchedulerLock(store.workspace, { sessionId: this.storeSessionId });
+    if (this.closed || this.storeClosing) {
+      if (acquired) await releaseSchedulerLock(store.workspace, this.storeSessionId);
+      return false;
     }
+    this.storeLease = acquired ? 'held' : 'waiting';
+    await this.storeOperation(() => this.reloadStoredTasks(true));
+    if (this.closed || this.storeClosing) return false;
+    this.storeWatch = watchStoredTasks(store.workspace, {
+      changed: () => { void this.storeOperation(async () => { await this.reloadStoredTasks(); this.tick(); }); },
+      removed: () => { void this.storeOperation(() => this.reloadStoredTasks()); },
+      error: error => { this.storeError = error; },
+    });
+    await this.storeWatch.ready;
+    if (this.closed || this.storeClosing) return false;
+    if (!acquired && this.timer) {
+      this.lockRetry = this.timer.setInterval(() => this.retryStoreLock(), STORE_LOCK_RETRY_MS);
+      this.timer.unref?.(this.lockRetry);
+    }
+    return acquired;
+  }
+
+  private retryStoreLock(): void {
+    if (this.closed || this.storeClosing || this.storeLease !== 'waiting' || this.lockAttempt) return;
+    const store = this.store!;
+    this.lockAttempt = (async () => {
+      const acquired = await acquireSchedulerLock(store.workspace, { sessionId: this.storeSessionId });
+      if (this.closed || this.storeClosing) {
+        if (acquired) await releaseSchedulerLock(store.workspace, this.storeSessionId);
+        return;
+      }
+      if (!acquired) return;
+      // `ke` before `b`, ne [7616,9890): an unleased file task never owns a due cache.
+      for (const job of this.jobs.values()) if (job.durable) this.jobs.delete(job.id);
+      this.storeLease = 'held';
+      this.clearLockRetry();
+      await this.storeOperation(async () => { await this.reloadStoredTasks(); this.tick(); });
+    })().catch(error => { this.storeError = error; }).finally(() => { this.lockAttempt = undefined; });
+  }
+
+  private clearLockRetry(): void {
+    if (this.lockRetry !== undefined) this.timer?.clearInterval(this.lockRetry);
+    this.lockRetry = undefined;
+  }
+
+  /** `me` [6337,7616) and `pe`: replace file rows, retain the id-keyed due cache and session rows. */
+  private async reloadStoredTasks(startup = false): Promise<void> {
+    if (this.closed || this.storeClosing) return;
+    const store = this.store!;
+    const stored = await readStoredTasks(store.workspace);
+    if (this.closed || this.storeClosing) return;
+    const ids = new Set(stored.map(task => task.id));
+    for (const id of this.deliveredFileTasks) if (!ids.has(id)) this.deliveredFileTasks.delete(id);
+    const mine = stored.filter(task => task.createdInProject === undefined || task.createdInProject === store.workspace);
+    if (startup && this.hasStoreLock()) {
+      const missed = missedTasks(mine, this.clock())
+        .filter(task => task.recurring !== true && !this.deliveredFileTasks.has(task.id));
+      if (missed.length) {
+        for (const task of missed) this.deliveredFileTasks.add(task.id);
+        try {
+          const prompt = missedTasksPrompt(missed, scheduledTasksPath(store.workspace));
+          if (store.onMissed) store.onMissed(prompt);
+          else this.onPrompt(prompt, 'missed');
+          await removeStoredTasks(store.workspace, missed.map(task => task.id));
+        } catch (error) { this.storeError = error; }
+      }
+    }
+    if (this.closed || this.storeClosing) return;
+    const fileIds = new Set(mine.map(task => task.id));
+    for (const job of this.jobs.values()) if (job.durable && !fileIds.has(job.id)) this.jobs.delete(job.id);
     for (const task of mine) {
-      if (missed.some((entry) => entry.id === task.id)) continue;
+      if (this.deliveredFileTasks.has(task.id)) { this.jobs.delete(task.id); continue; }
       const parsed = parseCron(task.cron);
       if (!parsed) continue;
-      const recurring = task.recurring === true;
-      const from = recurring ? (task.lastFiredAt ?? task.createdAt) : task.createdAt;
-      const next = recurring ? nextRecurringFire(task.cron, from, task.id) : nextOneShotFire(task.cron, from, task.id);
-      if (next === null) continue;
-      this.jobs.set(task.id, {
-        id: task.id,
-        cron: task.cron,
-        prompt: task.prompt,
-        recurring,
-        durable: true,
-        createdAt: task.createdAt,
-        nextAt: next,
-        humanSchedule: describeCron(task.cron),
-      });
+      const previous = this.jobs.get(task.id);
+      const from = task.recurring ? (task.lastFiredAt ?? task.createdAt) : task.createdAt;
+      const nominal = nextOccurrence(parsed, new Date(from));
+      if (!nominal) continue;
+      const job: ScheduledJob = { ...task, recurring: task.recurring === true, durable: true,
+        nextAt: nominal.getTime(), humanSchedule: describeCron(task.cron) };
+      job.nextAt = previous?.nextAt ?? this.fireTime(job, parsed, nominal.getTime(), from);
+      this.jobs.set(job.id, job);
     }
-    return true;
   }
 
-  /** Source `N`: release the lock when this session holds it. */
-  async detachStore(): Promise<void> {
-    if (this.store === undefined || !this.holdsLock) return;
-    this.holdsLock = false;
-    await this.flushStore();
-    await releaseSchedulerLock(this.store.workspace, this.storeSessionId);
+  /** `N` and x0r.stop: close is awaited so no late acquisition can outlive its session. */
+  detachStore(): Promise<void> {
+    if (this.storeClosing) return this.storeClosing;
+    if (!this.store) return Promise.resolve();
+    this.clearLockRetry();
+    const watcherClosing = this.storeWatch?.close();
+    this.storeWatch = undefined;
+    this.storeClosing = (async () => {
+      await this.attachPromise?.catch(() => false);
+      await this.lockAttempt;
+      await watcherClosing;
+      await this.pendingWrite;
+      if (this.storeLease === 'held') await releaseSchedulerLock(this.store!.workspace, this.storeSessionId);
+      this.storeLease = 'detached';
+    })();
+    return this.storeClosing;
   }
 
-  /**
-   * Mirror the durable jobs into the store (`w0n`). The write is chained so a later mutation never
-   * overtakes an earlier one, and {@link flushStore} lets a caller await the chain: source `Pot`
-   * awaits `w0n` before it returns the new id.
-   */
-  private persist(): void {
-    if (this.store === undefined) return;
-    const tasks = this.list().filter((job) => job.durable).map((job) => ({
-      id: job.id, cron: job.cron, prompt: job.prompt, createdAt: job.createdAt, recurring: job.recurring || undefined,
-    } as StoredTask));
-    this.pendingWrite = this.pendingWrite
-      .then(() => writeStoredTasks(this.store!.workspace, tasks))
-      .catch(() => {});
+  private storeOperation(operation: () => Promise<void>): Promise<void> {
+    this.pendingWrite = this.pendingWrite.then(operation).catch(error => { this.storeError = error; });
+    return this.pendingWrite;
   }
 
-  /** Await every store write issued so far. */
   async flushStore(): Promise<void> {
     await this.pendingWrite;
+    if (this.storeError !== undefined) {
+      const error = this.storeError;
+      this.storeError = undefined;
+      throw error;
+    }
   }
 
   /** All jobs, ordered by next fire time. */
@@ -701,7 +747,7 @@ export class LocalScheduler {
   tick(): SchedulerEvent[] {
     if (this.closed) return [];
     // Source `ne`: the durable driver fires nothing until this session holds the store lock.
-    if (this.store !== undefined && !this.holdsLock) return [];
+    if (this.storeClosing) return [];
     const now = this.now();
     const firedAt = now instanceof Date ? now.getTime() : NaN;
     if (!Number.isFinite(firedAt)) return []; // invalid clock: no-op, never throw from a timer
@@ -712,22 +758,26 @@ export class LocalScheduler {
     const removed: string[] = [];
 
     const due = Array.from(this.jobs.values())
-      .filter((job) => job.nextAt <= firedAt)
+      .filter((job) => job.nextAt <= firedAt && (!job.durable || this.hasStoreLock())
+        && !this.deliveredFileTasks.has(job.id))
       .sort((a, b) => a.nextAt - b.nextAt || a.createdAt - b.createdAt);
 
     for (const job of due) {
       if (!this.jobs.has(job.id)) continue; // already handled this tick
       const dueAt = job.nextAt; // the occurrence being fired, before any reschedule
       if (!job.recurring) {
-        this.jobs.delete(job.id);
-        if (job.durable) removed.push(job.id);
         this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: false });
+        this.jobs.delete(job.id);
+        if (job.durable) {
+          this.deliveredFileTasks.add(job.id);
+          if (!emitted.at(-1)?.callbackError) removed.push(job.id);
+        }
         continue;
       }
-      if (firedAt - job.createdAt >= this.recurringMaxAgeMs) {
+      if (agedOut(job, firedAt, this.recurringMaxAgeMs)) {
         // Final fire at/after the expiry age, then delete.
         this.jobs.delete(job.id);
-        if (job.durable) removed.push(job.id);
+        if (job.durable) { this.deliveredFileTasks.add(job.id); removed.push(job.id); }
         this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: true });
         continue;
       }
@@ -735,12 +785,13 @@ export class LocalScheduler {
       const next = parsed ? nextOccurrence(parsed, new Date(firedAt)) : null;
       if (!next) {
         this.jobs.delete(job.id);
+        if (job.durable) { this.deliveredFileTasks.add(job.id); removed.push(job.id); }
         this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: true });
         continue;
       }
       job.nextAt = this.fireTime(job, parsed!, next.getTime(), firedAt);
       this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: true });
-      if (job.durable) fired.push(job.id);
+      if (job.durable) { job.lastFiredAt = firedAt; fired.push(job.id); }
     }
 
     if (this.dynamic && this.dynamic.scheduledFor <= firedAt) {
@@ -751,26 +802,27 @@ export class LocalScheduler {
 
     // Source `bds`: a durable recurring task records the fire that just happened, so a later
     // process resumes from the last fire instead of replaying it.
-    if (this.store !== undefined && fired.length > 0) {
-      void stampStoredTasks(this.store.workspace, fired, firedAt).catch(() => {});
-    }
-    if (this.store !== undefined && removed.length > 0) {
-      void removeStoredTasks(this.store.workspace, removed).catch(() => {});
+    if (this.store !== undefined && (fired.length > 0 || removed.length > 0)) {
+      void this.storeOperation(async () => {
+        await stampStoredTasks(this.store!.workspace, fired, firedAt);
+        await removeStoredTasks(this.store!.workspace, removed);
+      });
     }
     return emitted;
   }
 
   /** Clear all jobs and the wakeup, and stop the timer. */
-  close(): void {
-    if (this.closed) return;
-    this.closed = true;
-    this.jobs.clear();
-    this.dynamic = null;
-    if (this.store !== undefined && this.holdsLock) void this.detachStore().catch(() => {});
-    if (this.timer && this.timerHandle !== undefined) {
-      this.timer.clearInterval(this.timerHandle);
-      this.timerHandle = undefined;
+  close(): Promise<void> {
+    if (!this.closed) {
+      this.closed = true;
+      this.jobs.clear();
+      this.dynamic = null;
+      if (this.timer && this.timerHandle !== undefined) {
+        this.timer.clearInterval(this.timerHandle);
+        this.timerHandle = undefined;
+      }
     }
+    return this.detachStore();
   }
 
   /** Whether {@link LocalScheduler.close} has run. */

@@ -848,9 +848,8 @@ export async function createRuntime(
         // store lock, and a fire only happens while that lock is held.
         const durable = current.features?.schedulerDurable === true;
         const scheduler = new LocalScheduler({ ...options.scheduler, jitter: current.features?.schedulerJitter === true,
-          // The lock identity is the process: one process holds one session's store, and a second
-          // scheduler built for the same process adopts that lock (`de`'s `l.sessionId===y` arm).
-          ...(durable ? { store: { workspace: current.workspace, sessionId: `pid-${process.pid}`, onMissed: (prompt: string) => {
+          // `x0r` [5233,5610), chunk-jrz2zk22.js: the session owns its lease and delivery queue.
+          ...(durable ? { store: { workspace: current.workspace, sessionId: owner, onMissed: (prompt: string) => {
             if (ownerScopes.get(owner) !== scope) return;
             if (target.queued.length >= 50) { target.queued.shift(); target.dropped++; }
             target.queued.push({ kind: 'scheduled', id: 'missed', prompt }); notify(owner);
@@ -1075,10 +1074,10 @@ export async function createRuntime(
       tools.push(...createBackgroundTools(registry, { websocket }));
     }
     if (current.features?.scheduler) {
-      schedulerAccessors.set(owner, scheduler);
-      // Source `oe()`: the durable driver starts with the session, not on the first tool call,
-      // so a restart surfaces its missed one-shot tasks before the first turn drains events.
-      if (current.features.schedulerDurable === true) scheduler();
+      if (current.features.schedulerDurable === true) schedulerAccessors.set(owner, scheduler);
+      else schedulerAccessors.delete(owner);
+      // `x0r.start` owns initialization. Schema construction stays passive; settleScheduler
+      // starts the actual session before its first drain (`oe` [9890,10444)).
       for (const tool of Object.values(createSchedulerTools(lazyResource(scheduler)))) tools.push({
         readOnly: tool.name === 'cron_list',
         schema: { name: tool.name, description: tool.description, input_schema: { ...tool.input_schema } },
@@ -1244,10 +1243,11 @@ export async function createRuntime(
     namedCatalogs.get(owner)?.catalog.close();
     namedCatalogs.delete(owner);
     if (!resources) return;
-    resources.scheduler?.close();
+    const schedulerClosing = resources.scheduler?.close();
     // Children may still use LSP/tools; stop them before closing their shared clients.
     try { await resources.workflows?.close(); }
     finally {
+      await schedulerClosing;
       try { await resources.agents?.close(); }
       finally { await Promise.allSettled([resources.hooks?.close(), resources.background?.close(), resources.lsp?.close(), resources.worktrees?.close()]); }
     }
