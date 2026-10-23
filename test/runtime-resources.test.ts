@@ -9,6 +9,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { defaultConfig } from '../src/agent.js';
 import { createRuntime, parseSettings, pinToolSchemas, type Runtime } from '../src/runtime.js';
 import { LocalScheduler, createSchedulerTools, type SchedulerTimer } from '../src/scheduler.js';
+import { readStoredTasks, writeStoredTasks } from '../src/scheduler-store.js';
 import { BackgroundRegistry, createBackgroundTools } from '../src/background.js';
 import { AgentRegistry, createAgentRegistryTools } from '../src/agent-registry.js';
 import { WorkflowRegistry, createWorkflowTools } from '../src/workflow.js';
@@ -454,4 +455,22 @@ test('effort settings accepts exactly five levels without introducing a default'
   assert.deepEqual(parseSettings({}), {});
   for (const effort of ['low', 'medium', 'high', 'xhigh', 'max']) assert.deepEqual(parseSettings({ effort }), { effort });
   for (const effort of ['auto', '', null, 1, undefined]) assert.throws(() => parseSettings({ effort }), /settings.effort/);
+});
+
+test('schedulerDurable binds the recovered store and surfaces a missed one-shot', async () => {
+  const f = fixture();
+  f.config.features = { ...f.config.features!, schedulerDurable: true };
+  await writeStoredTasks(f.config.workspace, [{ id: 'deadbeef', cron: '0 9 * * *', prompt: 'catch up',
+    createdAt: new Date(2026, 9, 1, 0, 0).getTime() }]);
+  const runtime = await createRuntime(f.config, unused, f.controller.signal,
+    { scheduler: { timer: f.timer, now: () => new Date(2026, 9, 10, 12, 0) } });
+  try {
+    const created = JSON.parse(await tool(runtime, 'cron_create')
+      .execute({ cron: '0 9 * * *', prompt: 'persisted', durable: true }, f.context)) as { id: string; durable: boolean };
+    assert.equal(created.durable, true);
+    assert.deepEqual((await readStoredTasks(f.config.workspace)).map(task => task.prompt), ['persisted']);
+    const events = runtime.drainEvents!('initial');
+    const missed = events.find(event => event.kind === 'scheduled' && /missed while the harness was not running/.test(event.prompt));
+    assert.ok(missed, 'the catch-up prompt is queued for the session');
+  } finally { await runtime.close(); f.cleanup(); }
 });

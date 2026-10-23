@@ -1659,6 +1659,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       else options.status.write(`${options.startupNotice}\n`);
     }
     await startPeer(session.config);
+    // Source `me(!0).then(ne)`: the durable scheduler reads its store before the loop drains,
+    // so a restart's missed one-shot catch-up is queued for the first turn.
+    await activeRuntime.settleScheduler?.(session.id).catch(() => {});
     announce();
     bindConfigWatch();
     /**
@@ -1686,7 +1689,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           queue.unshift({ prompt: '/reload', source: 'user', meta: true }); promptQueueChanged();
         }
       }
-      if (!session.awaitingResponse && !inputClosed) {
+      // Drain before the input gate: a scheduled fire or a missed-task catch-up is an event, not
+      // typed input, so a closed stdin must not strand it (`ne` fires regardless of the composer).
+      if (!session.awaitingResponse) {
         for (const event of activeRuntime.drainEvents?.(session.id) ?? []) {
           if (event.kind === "instruction_paths") { addInstructionPaths(event.paths); continue; }
           if (event.kind === 'hook_terminal') {

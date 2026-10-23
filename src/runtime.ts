@@ -164,7 +164,7 @@ export type ParsedRuntimeSettings = {
   features?: { tasks?: boolean; subagents?: boolean; notebooks?: boolean; background?: boolean; scheduler?: boolean;
     workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean; mcpPersistence?: boolean; mcpTasks?: boolean; mcpStandardTasks?: boolean;
     taskProjections?: boolean;
-    schedulerJitter?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; pluginSkillNamespaces?: boolean;
+    schedulerJitter?: boolean; schedulerDurable?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; pluginSkillNamespaces?: boolean;
     agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; crossSessionMessaging?: boolean };
 };
 
@@ -180,7 +180,7 @@ const featuresSchema = z
   .object({ tasks: z.boolean().optional(), subagents: z.boolean().optional(), notebooks: z.boolean().optional(), background: z.boolean().optional(), scheduler: z.boolean().optional(),
     workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(),
     taskProjections: z.boolean().optional(),
-    schedulerJitter: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
+    schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
     agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), crossSessionMessaging: z.boolean().optional() })
   .strict();
 
@@ -467,6 +467,11 @@ export type Runtime = {
   buildTools(config?: SessionConfig, owner?: string): ToolDefinition[];
   /** Drain session-owned events only between completed turns. */
   drainEvents?(owner: string): RuntimeEvent[];
+  /**
+   * Source `me(!0)` before `ne`: the durable scheduler's first read happens before the loop
+   * drains, so a restart's missed-task catch-up is in the queue for the first turn.
+   */
+  settleScheduler?(owner: string): Promise<void>;
   subscribe?(listener: (owner: string) => void): () => void;
   taskRecords?(config: SessionConfig): TaskRecord[];
   subscribeTasks?(config: SessionConfig, listener: () => void): () => void;
@@ -633,6 +638,7 @@ export async function createRuntime(
   const childTerminalCallbacks = new WeakMap<ToolDefinition[], (child: string, sequence: string) => void>();
   const childInstructionCallbacks = new WeakMap<ToolDefinition[], (workspace: string, paths: string[]) => void>();
   const workflowAccessors = new Map<string, () => WorkflowRegistry>();
+  const schedulerAccessors = new Map<string, () => LocalScheduler>();
   const namedCatalogs = new Map<string, { catalog: NamedWorkflowCatalog; workspace: string }>();
   const listeners = new Set<(owner: string) => void>();
   const taskSubscriptions = new Set<() => void>();
@@ -836,11 +842,27 @@ export async function createRuntime(
       maxOutputBytes: current.maxOutputBytes, onNotification: () => { if (ownerScopes.get(owner) === scope) notify(owner); } });
     const scheduler = () => {
       const target = resources();
-      return target.scheduler ??= new LocalScheduler({ ...options.scheduler, jitter: current.features?.schedulerJitter === true, onPrompt: (prompt, id) => {
-        if (ownerScopes.get(owner) !== scope) return;
-        if (target.queued.length >= 50) { target.queued.shift(); target.dropped++; }
-        target.queued.push({ kind: 'scheduled', id, prompt }); notify(owner);
-      } });
+      return target.scheduler ??= (() => {
+        // `schedulerDurable` binds the recovered store (`chunk-jrz2zk22.js` `oe`): jobs marked
+        // durable land in `<workspace>/.harness/scheduled_tasks.json`, the session takes the
+        // store lock, and a fire only happens while that lock is held.
+        const durable = current.features?.schedulerDurable === true;
+        const scheduler = new LocalScheduler({ ...options.scheduler, jitter: current.features?.schedulerJitter === true,
+          // The lock identity is the process: one process holds one session's store, and a second
+          // scheduler built for the same process adopts that lock (`de`'s `l.sessionId===y` arm).
+          ...(durable ? { store: { workspace: current.workspace, sessionId: `pid-${process.pid}`, onMissed: (prompt: string) => {
+            if (ownerScopes.get(owner) !== scope) return;
+            if (target.queued.length >= 50) { target.queued.shift(); target.dropped++; }
+            target.queued.push({ kind: 'scheduled', id: 'missed', prompt }); notify(owner);
+          } } } : {}),
+          onPrompt: (prompt, id) => {
+            if (ownerScopes.get(owner) !== scope) return;
+            if (target.queued.length >= 50) { target.queued.shift(); target.dropped++; }
+            target.queued.push({ kind: 'scheduled', id, prompt }); notify(owner);
+          } });
+        if (durable) void scheduler.ensureAttached().catch(() => {});
+        return scheduler;
+      })();
     };
     const abilities = runtimeAbilities(current);
     const tools: ToolDefinition[] = [...base];
@@ -1053,12 +1075,21 @@ export async function createRuntime(
       tools.push(...createBackgroundTools(registry, { websocket }));
     }
     if (current.features?.scheduler) {
+      schedulerAccessors.set(owner, scheduler);
+      // Source `oe()`: the durable driver starts with the session, not on the first tool call,
+      // so a restart surfaces its missed one-shot tasks before the first turn drains events.
+      if (current.features.schedulerDurable === true) scheduler();
       for (const tool of Object.values(createSchedulerTools(lazyResource(scheduler)))) tools.push({
         readOnly: tool.name === 'cron_list',
         schema: { name: tool.name, description: tool.description, input_schema: { ...tool.input_schema } },
         async execute(input, context) {
           context.signal.throwIfAborted();
+          // `ne`/`b`: a durable session reads the store and takes the lock before the first
+          // mutation, so a create can never race the catch-up read that follows it.
+          if (current.features?.schedulerDurable === true) await scheduler().ensureAttached();
           const result = tool.run(input as Record<string, unknown>);
+          // Source `Pot` awaits the store write before it returns the id.
+          if (current.features?.schedulerDurable === true) await scheduler().flushStore();
           if (!result.ok) throw new Error(result.error ?? 'Scheduler operation failed');
           const text = JSON.stringify(result.data);
           const bytes = Buffer.from(text);
@@ -1208,6 +1239,7 @@ export async function createRuntime(
     refreshMcpTools.delete(owner);
     if (catalogSession?.id === owner) catalogSession = undefined;
     workflowAccessors.delete(owner);
+    schedulerAccessors.delete(owner);
     subtaskSeams.delete(owner);
     namedCatalogs.get(owner)?.catalog.close();
     namedCatalogs.delete(owner);
@@ -1440,6 +1472,13 @@ export async function createRuntime(
         taskSubscriptions.add(stop); return stop;
       },
       subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+      async settleScheduler(owner) {
+        const accessor = schedulerAccessors.get(owner);
+        if (accessor === undefined) return;
+        // The attach is the first store read; a missed one-shot is queued by the time it resolves,
+        // so the turn that follows sees it (`me(!0).then(ne)`).
+        await accessor().ensureAttached().catch(() => false);
+      },
       drainEvents(owner) {
         const resources = owners.get(owner);
         if (!resources) return [];

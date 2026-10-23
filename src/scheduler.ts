@@ -26,7 +26,12 @@
 // code. Optional hash-derived jitter spreads fire times; absent options preserve
 // exact historical timing. The algorithm is owned by this harness.
 
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+
+import {
+  acquireSchedulerLock, missedTasks, missedTasksPrompt, readStoredTasks, releaseSchedulerLock,
+  removeStoredTasks, scheduledTasksPath, stampStoredTasks, writeStoredTasks, type StoredTask,
+} from './scheduler-store.js';
 
 // ---------------------------------------------------------------------------
 // Cron parsing (local time)
@@ -239,6 +244,81 @@ export function describeCron(expression: string): string {
 // Scheduler
 // ---------------------------------------------------------------------------
 
+/**
+ * Source `_9` (chunk-atzjaveb.js 7983): the timing constants the recovered scheduler uses for
+ * every fire. `recurringFrac`/`recurringCapMs` bound the recurring spread, `oneShotMaxMs`/
+ * `oneShotFloorMs`/`oneShotMinuteMod` bound the one-shot early fire, `recurringMaxAgeMs` is the
+ * seven-day expiry and `cacheLeadMs` is the warm-up lead a `*\/N` schedule gets.
+ */
+export const SCHEDULER_TIMING = {
+  recurringFrac: 0.5,
+  recurringCapMs: 1_800_000,
+  oneShotMaxMs: 90_000,
+  oneShotFloorMs: 0,
+  oneShotMinuteMod: 30,
+  recurringMaxAgeMs: 604_800_000,
+  cacheLeadMs: 15_000,
+} as const;
+
+/** Source `D`: the schedules that get the cache lead (a bare `*\/N` minute field). */
+const CACHE_LEAD_CRON = /^\*\/\d+ \* \* \* \*$/;
+/** Source `S0n`: the shortest interval the cache lead applies to. */
+const CACHE_LEAD_INTERVAL_MS = 300_000;
+
+/**
+ * Source `C(n)`: the deterministic spread factor, the first eight hex characters of the job id
+ * read as a fraction of 2^32. Not a digest of the schedule; the id alone decides.
+ */
+export function jitterFraction(id: string): number {
+  const value = parseInt(id.slice(0, 8), 16) / 0x1_0000_0000;
+  return Number.isFinite(value) ? value : 0;
+}
+
+/** `wqe`: the first occurrence strictly after `from`, as epoch ms. */
+function occurrenceAfter(cron: string, from: number): number | null {
+  const parsed = parseCron(cron);
+  if (!parsed) return null;
+  const next = nextOccurrence(parsed, new Date(from));
+  return next ? next.getTime() : null;
+}
+
+/**
+ * Source `L9t`: the next fire of a recurring task. The nominal occurrence moves later by up to
+ * `recurringFrac` of the interval, capped at `recurringCapMs`; a `*\/N` schedule whose interval
+ * sits just above five minutes instead fires `cacheLeadMs` early so the cache is warm.
+ */
+export function nextRecurringFire(cron: string, from: number, id: string, timing = SCHEDULER_TIMING): number | null {
+  const nominal = occurrenceAfter(cron, from);
+  if (nominal === null) return null;
+  const following = occurrenceAfter(cron, nominal);
+  if (following === null) return nominal;
+  const interval = following - nominal;
+  if (CACHE_LEAD_CRON.test(cron) && timing.cacheLeadMs > 0 && timing.cacheLeadMs < interval
+    && interval >= CACHE_LEAD_INTERVAL_MS && interval - timing.cacheLeadMs < CACHE_LEAD_INTERVAL_MS) {
+    return from + interval - timing.cacheLeadMs;
+  }
+  // The source keeps the fractional offset and hands it to `Date`, which truncates to whole
+  // milliseconds; flooring here makes the same instant explicit.
+  return Math.floor(nominal + Math.min(jitterFraction(id) * timing.recurringFrac * interval, timing.recurringCapMs));
+}
+
+/**
+ * Source `E0n`: the fire of a one-shot task. A task landing on :00 or :30 fires up to
+ * `oneShotMaxMs` early, never before it was created.
+ */
+export function nextOneShotFire(cron: string, createdAt: number, id: string, timing = SCHEDULER_TIMING): number | null {
+  const nominal = occurrenceAfter(cron, createdAt);
+  if (nominal === null) return null;
+  if (new Date(nominal).getMinutes() % timing.oneShotMinuteMod !== 0) return nominal;
+  const early = timing.oneShotFloorMs + jitterFraction(id) * (timing.oneShotMaxMs - timing.oneShotFloorMs);
+  return Math.floor(Math.max(nominal - early, createdAt));
+}
+
+/** Source `Pot`: a job id is the first eight hex characters of a fresh UUID. */
+export function newTaskId(): string {
+  return randomUUID().slice(0, 8);
+}
+
 /** Hard cap on concurrent cron jobs, matching the original bound. */
 export const MAX_JOBS = 50;
 /** Recurring jobs auto-expire after this age, with one final fire. */
@@ -332,6 +412,21 @@ export interface LocalSchedulerOptions {
   tickIntervalMs?: number;
   /** Opt in to bounded, deterministic cron timing jitter. Wakeups stay exact. */
   jitter?: boolean;
+  /**
+   * The durable store's workspace. When set, every mutation is mirrored into
+   * `<workspace>/.harness/scheduled_tasks.json` and the scheduler only fires while it holds the
+   * store's lock; absent, the scheduler stays session-only (`chunk-jrz2zk22.js` `ne`/`oe`).
+   */
+  store?: SchedulerStoreOptions;
+}
+
+/** The durable store's injectable surface, so a test can drive it without a workspace. */
+export interface SchedulerStoreOptions {
+  workspace: string;
+  /** This session's lock identity. Defaults to a fresh UUID. */
+  sessionId?: string;
+  /** The catch-up prompt for one-shot tasks that came due while nothing was running. */
+  onMissed?: (prompt: string) => void;
 }
 
 const realTimer: SchedulerTimer = {
@@ -357,9 +452,14 @@ export class LocalScheduler {
   private readonly jitter: boolean;
   private readonly timer: SchedulerTimer | null;
   private readonly jobs = new Map<string, ScheduledJob>();
+  private readonly store: SchedulerStoreOptions | undefined;
+  private readonly storeSessionId: string;
   private dynamic: DynamicWakeup | null = null;
   private timerHandle: unknown = undefined;
   private closed = false;
+  private holdsLock = false;
+  private attachPromise: Promise<boolean> | undefined;
+  private pendingWrite: Promise<void> = Promise.resolve();
 
   constructor(options: LocalSchedulerOptions) {
     if (!options || typeof options.onPrompt !== 'function') {
@@ -370,6 +470,8 @@ export class LocalScheduler {
     this.maxJobs = options.maxJobs ?? MAX_JOBS;
     this.recurringMaxAgeMs = options.recurringMaxAgeMs ?? RECURRING_MAX_AGE_MS;
     this.jitter = options.jitter === true;
+    this.store = options.store;
+    this.storeSessionId = options.store?.sessionId ?? randomUUID();
     this.timer = options.timer === undefined ? realTimer : options.timer;
     if (this.timer) {
       const interval = options.tickIntervalMs ?? DEFAULT_TICK_MS;
@@ -425,29 +527,120 @@ export class LocalScheduler {
       throw new SchedulerError(`Cron expression '${cron}' does not match any calendar date in the next year.`, 2);
     }
     const job: ScheduledJob = {
-      id: randomUUID(),
+      // Source `Pot`: eight hex characters of a fresh UUID, not the whole UUID.
+      id: newTaskId(),
       cron,
       prompt: raw.prompt,
       recurring: raw.recurring === undefined ? true : raw.recurring,
-      durable: false, // session-only: durable input is accepted but no store exists
+      // Durable is only ever true when a store is bound and the caller asked for it; without a
+      // store the input is accepted and the job stays session-only.
+      durable: raw.durable === true && this.store !== undefined,
       createdAt,
       nextAt: next.getTime(),
       humanSchedule: describeCron(cron),
     };
     job.nextAt = this.fireTime(job, parsed, next.getTime(), createdAt);
     this.jobs.set(job.id, job);
+    if (job.durable) this.persist();
     return { ...job };
   }
 
   /** Remove a job by id. Returns true when a job was removed. */
   delete(id: string): boolean {
-    return this.jobs.delete(id);
+    const removed = this.jobs.delete(id);
+    if (removed) this.persist();
+    return removed;
   }
 
   /** Copy of a single job, or null. */
   getJob(id: string): ScheduledJob | null {
     const job = this.jobs.get(id);
     return job ? { ...job } : null;
+  }
+
+  /** Whether this session holds the durable store's lock (`de`). */
+  hasStoreLock(): boolean {
+    return this.holdsLock;
+  }
+
+  /**
+   * The one attach this scheduler performs. A tool call awaits it before its first mutation, so a
+   * `cron_create` can never race the catch-up read and then be overwritten by it.
+   */
+  ensureAttached(): Promise<boolean> {
+    if (this.store === undefined) return Promise.resolve(false);
+    this.attachPromise ??= this.attachStore();
+    return this.attachPromise;
+  }
+
+  /**
+   * Source `de` + `me`: take the lock and load the store. Recurring tasks come back with their
+   * last fire time, one-shot tasks that came due while nothing was running are surfaced through
+   * `onMissed` and removed (`Ke`, `s_e`). Returns whether this session holds the lock.
+   */
+  async attachStore(): Promise<boolean> {
+    if (this.store === undefined) return false;
+    this.holdsLock = await acquireSchedulerLock(this.store.workspace, { sessionId: this.storeSessionId });
+    if (!this.holdsLock) return false;
+    const now = this.clock();
+    const stored = await readStoredTasks(this.store.workspace);
+    const mine = stored.filter((task) => task.createdInProject === undefined || task.createdInProject === this.store!.workspace);
+    const missed = missedTasks(mine, now).filter((task) => task.recurring !== true);
+    if (missed.length > 0) {
+      const ids = new Set(missed.map((task) => task.id));
+      const prompt = missedTasksPrompt(missed, scheduledTasksPath(this.store.workspace));
+      this.store.onMissed?.(prompt);
+      await removeStoredTasks(this.store.workspace, [...ids]);
+      for (const task of mine) if (ids.has(task.id)) this.jobs.delete(task.id);
+    }
+    for (const task of mine) {
+      if (missed.some((entry) => entry.id === task.id)) continue;
+      const parsed = parseCron(task.cron);
+      if (!parsed) continue;
+      const recurring = task.recurring === true;
+      const from = recurring ? (task.lastFiredAt ?? task.createdAt) : task.createdAt;
+      const next = recurring ? nextRecurringFire(task.cron, from, task.id) : nextOneShotFire(task.cron, from, task.id);
+      if (next === null) continue;
+      this.jobs.set(task.id, {
+        id: task.id,
+        cron: task.cron,
+        prompt: task.prompt,
+        recurring,
+        durable: true,
+        createdAt: task.createdAt,
+        nextAt: next,
+        humanSchedule: describeCron(task.cron),
+      });
+    }
+    return true;
+  }
+
+  /** Source `N`: release the lock when this session holds it. */
+  async detachStore(): Promise<void> {
+    if (this.store === undefined || !this.holdsLock) return;
+    this.holdsLock = false;
+    await this.flushStore();
+    await releaseSchedulerLock(this.store.workspace, this.storeSessionId);
+  }
+
+  /**
+   * Mirror the durable jobs into the store (`w0n`). The write is chained so a later mutation never
+   * overtakes an earlier one, and {@link flushStore} lets a caller await the chain: source `Pot`
+   * awaits `w0n` before it returns the new id.
+   */
+  private persist(): void {
+    if (this.store === undefined) return;
+    const tasks = this.list().filter((job) => job.durable).map((job) => ({
+      id: job.id, cron: job.cron, prompt: job.prompt, createdAt: job.createdAt, recurring: job.recurring || undefined,
+    } as StoredTask));
+    this.pendingWrite = this.pendingWrite
+      .then(() => writeStoredTasks(this.store!.workspace, tasks))
+      .catch(() => {});
+  }
+
+  /** Await every store write issued so far. */
+  async flushStore(): Promise<void> {
+    await this.pendingWrite;
   }
 
   /** All jobs, ordered by next fire time. */
@@ -507,10 +700,16 @@ export class LocalScheduler {
    */
   tick(): SchedulerEvent[] {
     if (this.closed) return [];
+    // Source `ne`: the durable driver fires nothing until this session holds the store lock.
+    if (this.store !== undefined && !this.holdsLock) return [];
     const now = this.now();
     const firedAt = now instanceof Date ? now.getTime() : NaN;
     if (!Number.isFinite(firedAt)) return []; // invalid clock: no-op, never throw from a timer
     const emitted: SchedulerEvent[] = [];
+    // Source `b`/`w`: durable recurring fires are stamped, durable one-shot and aged-out jobs are
+    // removed from the store once they have fired.
+    const fired: string[] = [];
+    const removed: string[] = [];
 
     const due = Array.from(this.jobs.values())
       .filter((job) => job.nextAt <= firedAt)
@@ -521,12 +720,14 @@ export class LocalScheduler {
       const dueAt = job.nextAt; // the occurrence being fired, before any reschedule
       if (!job.recurring) {
         this.jobs.delete(job.id);
+        if (job.durable) removed.push(job.id);
         this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: false });
         continue;
       }
       if (firedAt - job.createdAt >= this.recurringMaxAgeMs) {
         // Final fire at/after the expiry age, then delete.
         this.jobs.delete(job.id);
+        if (job.durable) removed.push(job.id);
         this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: true });
         continue;
       }
@@ -539,6 +740,7 @@ export class LocalScheduler {
       }
       job.nextAt = this.fireTime(job, parsed!, next.getTime(), firedAt);
       this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: true });
+      if (job.durable) fired.push(job.id);
     }
 
     if (this.dynamic && this.dynamic.scheduledFor <= firedAt) {
@@ -547,6 +749,14 @@ export class LocalScheduler {
       this.emit(wakeup.prompt, wakeup.id, emitted, { kind: 'wakeup', dueAt: wakeup.scheduledFor, firedAt });
     }
 
+    // Source `bds`: a durable recurring task records the fire that just happened, so a later
+    // process resumes from the last fire instead of replaying it.
+    if (this.store !== undefined && fired.length > 0) {
+      void stampStoredTasks(this.store.workspace, fired, firedAt).catch(() => {});
+    }
+    if (this.store !== undefined && removed.length > 0) {
+      void removeStoredTasks(this.store.workspace, removed).catch(() => {});
+    }
     return emitted;
   }
 
@@ -556,6 +766,7 @@ export class LocalScheduler {
     this.closed = true;
     this.jobs.clear();
     this.dynamic = null;
+    if (this.store !== undefined && this.holdsLock) void this.detachStore().catch(() => {});
     if (this.timer && this.timerHandle !== undefined) {
       this.timer.clearInterval(this.timerHandle);
       this.timerHandle = undefined;
@@ -592,16 +803,12 @@ export class LocalScheduler {
 
   private fireTime(job: ScheduledJob, parsed: ParsedCron, nominal: number, after: number): number {
     if (!this.jitter) return nominal;
-    const fraction = createHash('sha256').update(`${job.id}:${nominal}`).digest().readUInt32BE(0) / 0x100000000;
-    if (job.recurring) {
-      const following = nextOccurrence(parsed, new Date(nominal));
-      const window = Math.min(900_000, Math.max(0, (following?.getTime() ?? nominal) - nominal) / 10);
-      return nominal + Math.floor(fraction * window);
-    }
-    const minute = new Date(nominal).getMinutes();
-    if (minute !== 0 && minute !== 30) return nominal;
-    const early = Math.floor(fraction * 90_000);
-    return Math.max(after + 1, nominal - early);
+    // The recovered arm (chunk-atzjaveb.js `L9t`/`E0n`): recurring jobs spread later by a
+    // fraction of their interval, one-shot jobs landing on :00/:30 fire early.
+    const recovered = job.recurring
+      ? nextRecurringFire(job.cron, after, job.id)
+      : nextOneShotFire(job.cron, job.createdAt, job.id);
+    return recovered ?? nominal;
   }
 
   /** Current time in epoch ms; throws code 1 when the clock is not a valid Date. */
@@ -688,7 +895,8 @@ export function createSchedulerTools(scheduler: LocalScheduler): SchedulerTools 
     description:
       'Schedule a prompt to be enqueued at a future time. Uses standard 5-field cron in local time: ' +
       'minute hour day-of-month month day-of-week. recurring defaults to true; recurring:false fires once ' +
-      'then auto-deletes. Recurring jobs auto-expire after 7 days. Session-only (no disk persistence).',
+      'then auto-deletes. Recurring jobs auto-expire after 7 days. durable:true persists the job to the ' +
+      'harness store so it survives a restart; otherwise the job is session-only.',
     input_schema: {
       type: 'object',
       properties: {
@@ -703,7 +911,7 @@ export function createSchedulerTools(scheduler: LocalScheduler): SchedulerTools 
         },
         durable: {
           type: 'boolean',
-          description: 'Has no effect in this harness: all jobs are session-only (in-memory).',
+          description: 'true = persist to the harness store and survive restarts. false (default) = in-memory only, gone when the session ends.',
         },
       },
       required: ['cron', 'prompt'],
