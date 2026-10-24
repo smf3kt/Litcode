@@ -2867,9 +2867,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             gatewayURL: session.config.gateway !== undefined &&
               session.config.gateway.baseURL !== DEFAULT_GATEWAY.baseURL
               ? session.config.gateway.baseURL : undefined,
+            mcpServers: activeRuntime.mcpServers?.(),
           });
           await withTurn(signal => readDialog({ title: STATUS_PANEL_TITLE,
-            message: statusPanelText(rows), readOnly: true }, signal));
+            message: statusPanelText(rows), statusRows: rows, readOnly: true }, signal));
           continue;
         }
         if ((prompt === '/usage' || prompt === '/cost' || prompt === '/stats') && terminal?.prompt) {
