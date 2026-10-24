@@ -1,4 +1,5 @@
 // YG/zG/Eae [667037,671410), chunk-24k7d6mw.js, zero-based UTF-16.
+// Agent source digests and host adapters: research/ports/W321-agent-details.md.
 // Registry/output/width adapters and module digests: research/ports/W320-task-details.md.
 import { stripVTControlCharacters } from 'node:util';
 import type { BackgroundJobView } from './background.js';
@@ -7,14 +8,23 @@ import { shellBytesText, shellDurationText } from './tui-bash-mode.js';
 import { ra } from './tui-graphemes.js';
 import { ae } from './tui-render-host.js';
 import { wrapMessageText } from './tui-wrap.js';
+import { agentTaskFrame, type AgentTaskDetail } from './agent-details.js';
 
-export type BackgroundTaskDetail = Pick<BackgroundJobView, 'id' | 'kind' | 'state' | 'command' | 'duration_ms'
+export type ShellTaskDetail = Pick<BackgroundJobView, 'id' | 'kind' | 'state' | 'command' | 'duration_ms'
   | 'exit_code' | 'stdout' | 'stderr' | 'stdout_bytes' | 'stderr_bytes'>;
+export type BackgroundTaskDetail = ShellTaskDetail | AgentTaskDetail;
 
+// kG/YG [633300,637661)/[667173,670211), chunk-24k7d6mw.js, UTF-16: local status variants.
+export function taskDetailRunning(detail: BackgroundTaskDetail): boolean {
+  return detail.kind === 'agent' ? detail.status === 'running' : detail.state === 'running';
+}
+
+// fLt initial [674926,675189), chunk-24k7d6mw.js, UTF-16: one supported local task auto-opens.
 export function initialTaskDetail(snapshot: BackgroundTaskSnapshot): string | undefined {
   if (snapshot.jobs.length + snapshot.agents.length + snapshot.crons.length !== 1) return;
   const job = snapshot.jobs[0];
-  return job?.source === 'websocket' ? undefined : job?.id;
+  if (job !== undefined) return job.source === 'websocket' ? undefined : job.id;
+  return snapshot.agents[0]?.id;
 }
 
 // ct [8443,8612), chunk-yn0pfn70.js, UTF-16; ae and ra use existing source host seams.
@@ -30,7 +40,7 @@ export function taskDetailClip(text: string, width: number): string {
   return result + '…';
 }
 
-export function taskDetailOutput(detail: BackgroundTaskDetail): { content: string; bytesTotal: number; lines: string[] } {
+export function taskDetailOutput(detail: ShellTaskDetail): { content: string; bytesTotal: number; lines: string[] } {
   const bytes = Buffer.from(detail.stdout + detail.stderr);
   let start = Math.max(0, bytes.length - 8192);
   while (start < bytes.length && (bytes[start]! & 0xc0) === 0x80) start++;
@@ -51,7 +61,9 @@ export function taskDetailOutput(detail: BackgroundTaskDetail): { content: strin
   return { content, bytesTotal: detail.stdout_bytes + detail.stderr_bytes, lines };
 }
 
+// kG/YG [633300,637661)/[667173,670211), chunk-24k7d6mw.js, UTF-16: dispatch the local view.
 export function taskDetailFrame(detail: BackgroundTaskDetail, columns: number): { title: string; lines: string[] } {
+  if (detail.kind === 'agent') return agentTaskFrame(detail, columns);
   const output = taskDetailOutput(detail);
   const clean = (text: string) => stripVTControlCharacters(text).replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
   const boxWidth = Math.max(4, columns - 6), innerWidth = Math.max(1, boxWidth - 4);

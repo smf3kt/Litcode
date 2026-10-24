@@ -1387,6 +1387,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       ...(saveSuffix === '' ? {} : { saveFailure: saveSuffix }) })}\n`);
   };
   /** A4/fLt, 24k7d6mw [1487552,1487705)/[674472,675750), UTF-16: session-owned live list. */
+  // kG dispatch, same module [685700,687200), UTF-16: existing modal owner opens local agent details.
   openTasksPanelLive = async () => {
     if (!terminal?.prompt || !activeRuntime.backgroundTasks || liveDialog !== undefined) return;
     const live = withLiveDialog('tasks', options.signal);
@@ -1410,7 +1411,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               backgroundTaskDetail: () => activeRuntime.backgroundTaskDetail?.(session.id, detailId) }, live.signal);
         if (live.signal.aborted) break;
         if (detailId !== undefined) {
-          if (answer === undefined) { options.status.write('Shell details dismissed\n'); break; }
+          if (answer === undefined) {
+            const agent = read().agents.some(item => item.id === detailId);
+            options.status.write(agent ? 'Background dialog dismissed\n' : 'Shell details dismissed\n');
+            break;
+          }
           if (answer.key === 'gone') {
             if (initialDetail) break;
             state = { kind: 'list' }; continue;
@@ -1430,7 +1435,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (answer.key !== 'x') {
             const selected = selectedTask;
             const snapshot = selected && activeRuntime.backgroundTaskDetail?.(session.id, selected.id);
-            if ((selected?.kind === 'shell' || selected?.kind === 'monitor') && snapshot !== undefined)
+            if ((selected?.kind === 'shell' || selected?.kind === 'monitor' || selected?.kind === 'agent') && snapshot !== undefined)
               state = { kind: 'detail', id: selected.id };
             continue;
           }
