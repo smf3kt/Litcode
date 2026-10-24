@@ -14,7 +14,7 @@ export const TASKS_TITLE = 'Background';
 export const TASKS_EMPTY = 'No tasks currently running';
 export const TASKS_DISMISSED = 'Background dialog dismissed';
 
-/** One live row, after `EWe`'s per-kind label choice. */
+/** One selectable row, after `EWe`'s per-kind label choice. */
 export interface BackgroundTaskItem {
   readonly id: string;
   readonly kind: BackgroundTaskKind;
@@ -28,7 +28,7 @@ export interface BackgroundTaskItem {
 export interface BackgroundTaskSnapshot {
   readonly jobs: readonly { readonly id: string; readonly kind: string; readonly state: string;
     readonly command: string; readonly description: string; readonly source?: 'websocket' }[];
-  readonly agents: readonly { readonly id: string; readonly name?: string | null; readonly status: string }[];
+  readonly agents: readonly { readonly id: string; readonly name?: string | null; readonly status: string; readonly startedAt?: number }[];
   readonly crons: readonly { readonly id: string; readonly cron: string; readonly recurring: boolean; readonly prompt: string }[];
 }
 
@@ -41,7 +41,13 @@ export function backgroundTaskItems(snapshot: BackgroundTaskSnapshot): Backgroun
       label: monitor ? job.description : job.command,
       ...(monitor ? { detail: job.command } : job.description ? { detail: job.description } : {}) });
   }
-  for (const agent of snapshot.agents) {
+  // rjt/UR, 24k7d6mw [671514,671738)/[699743,699801), UTF-16.
+  const agents = [...snapshot.agents].sort((left, right) => {
+    if (left.status === 'running' && right.status !== 'running') return -1;
+    if (left.status !== 'running' && right.status === 'running') return 1;
+    return (right.startedAt ?? 0) - (left.startedAt ?? 0);
+  });
+  for (const agent of agents) {
     items.push({ id: agent.id, kind: 'agent', status: agent.status,
       label: agent.name ?? agent.id, detail: 'child agent' });
   }
@@ -54,7 +60,7 @@ export function backgroundTaskItems(snapshot: BackgroundTaskSnapshot): Backgroun
 
 /** The counts line at 693613: `N active shells · N active agents`. */
 export function tasksPanelSubtitle(items: readonly BackgroundTaskItem[]): string {
-  const count = (kind: BackgroundTaskKind) => items.filter(item => item.kind === kind).length;
+  const count = (kind: BackgroundTaskKind) => items.filter(item => item.kind === kind && backgroundTaskStoppable(item)).length;
   const parts: string[] = [];
   const shells = count('shell') + count('monitor');
   const agents = count('agent');
@@ -74,17 +80,28 @@ export interface BackgroundTaskRow {
   readonly value: string;
   readonly label: string;
   readonly description: string;
+  readonly heading?: string;
   readonly item: BackgroundTaskItem;
 }
 
 /** Each row is the label plus `kind · status`, with the command or prompt beneath it. */
 export function tasksPanelRows(items: readonly BackgroundTaskItem[]): BackgroundTaskRow[] {
-  return items.map(item => ({
-    value: `task:${item.kind}:${item.id}`,
-    label: item.label,
-    description: [item.kind, item.status, item.detail].filter((part): part is string => typeof part === 'string' && part !== '').join(' · '),
-    item,
-  }));
+  const completed = items.filter(item => item.kind === 'agent' && item.status === 'completed');
+  const grouped = completed.length > 0;
+  const count = (kind: BackgroundTaskKind) => items.filter(item => item.kind === kind && item.status !== 'completed').length;
+  let previousGroup: string | undefined;
+  return items.map(item => {
+    // fLt groups/Bjt/lm, 24k7d6mw [695272,696081)/[673070,673434)/[701090,701330), UTF-16.
+    const group = item.kind === 'agent' ? item.status === 'completed' ? 'completed' : 'agents'
+      : item.kind === 'cron' ? 'cron' : 'shells';
+    const heading = !grouped || group === previousGroup ? undefined : group === 'completed' ? `Completed (${completed.length})`
+      : group === 'agents' ? `Local agents (${count('agent')})` : group === 'cron' ? `Scheduled (${count('cron')})`
+        : `Shells (${count('shell') + count('monitor')})`;
+    previousGroup = group;
+    return { value: `task:${item.kind}:${item.id}`, label: item.label,
+      description: [item.kind, item.status, item.detail].filter((part): part is string => typeof part === 'string' && part !== '').join(' · '),
+      ...(heading === undefined ? {} : { heading }), item };
+  });
 }
 
 /** The value encodes kind and id; the separator is the first colon after `task:`. */
@@ -105,6 +122,8 @@ export function backgroundTaskRequest(snapshot: BackgroundTaskSnapshot, notice?:
   if (items.length === 0) return { title: TASKS_TITLE, message: notice ?? TASKS_EMPTY, readOnly: true };
   return { title: TASKS_TITLE,
     message: [tasksPanelSubtitle(items), notice].filter((part): part is string => part !== undefined).join('\n\n'),
-    choices: tasksPanelRows(items).map(row => ({ label: row.label, value: row.value, description: row.description })),
-    keys: [{ key: 'x', label: 'stop' }] };
+    choices: tasksPanelRows(items).map(row => ({ label: row.label, value: row.value, description: row.description,
+      ...(row.heading === undefined ? {} : { heading: row.heading }) })),
+    keys: [...(items.some(backgroundTaskStoppable) ? [{ key: 'x', label: 'stop' }] : []),
+      ...(items.some(item => item.kind === 'agent') ? [{ key: 'f', label: 'view agent' }] : [])] };
 }

@@ -1229,6 +1229,8 @@ export interface TerminalPromptChoice {
   label: string;
   value: string;
   description?: string;
+  /** fLt/Bjt, 24k7d6mw [695272,696081)/[673070,673434), UTF-16: a heading is not a selectable row. */
+  heading?: string;
   /** Text or Markdown source displayed when this option is focused. */
   preview?: string;
 }

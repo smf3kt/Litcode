@@ -726,15 +726,14 @@ export async function createRuntime(
     const resources = resourcesFor(owner, scopeFor(owner));
     return (resources.background?.active().length ?? 0) + runningChildren(resources).length;
   };
-  // `fLt`'s list inputs (`EWe` at 699801): running background jobs, running child
-  // agents and the session's scheduled crons. A closed runtime has no live rows.
+  // fLt/CE/EWe, 24k7d6mw [674264,677240)/[699801,701039), UTF-16: retained local rows.
   const backgroundTasksForOwner = (owner: string): import('./tasks-panel.js').BackgroundTaskSnapshot => {
     if (closed || signal.aborted) return { jobs: [], agents: [], crons: [] };
     const resources = owners.get(owner);
     if (resources === undefined) return { jobs: [], agents: [], crons: [] };
     return {
       jobs: resources.background?.active() ?? [],
-      agents: runningChildren(resources).map(child => ({ id: child.id, name: child.name, status: child.status })),
+      agents: resources.agents?.backgroundTasks() ?? [],
       crons: (resources.scheduler?.list() ?? []).map(job => ({ id: job.id, cron: job.cron,
         recurring: job.recurring === true, prompt: job.prompt })),
     };
