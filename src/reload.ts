@@ -6,7 +6,7 @@ import { loadKeybindings } from "./keybindings.js";
 import { agentTypesSection, setHeldSkills } from "./skill-catalog.js";
 import { startupVerbose } from "./focus-command.js";
 import { modelEffort } from './effort-command.js';
-import { DEFAULT_PERMISSION_MODE } from './permissions.js';
+import { DEFAULT_ALLOW_SHELL, DEFAULT_PERMISSION_MODE } from './permissions.js';
 
 /** Reload local policy/catalogs while retaining the live provider and call limits. */
 export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'preview' = 'apply'): SessionConfig {
@@ -111,7 +111,8 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
   setHeldSkills(next, loaded.conditionalSkills);
   if (next.features.subagents && next.features.agentTypes) next.system += agentTypesSection(next.agentTypes);
   next.hooks = settings.hooks ?? {};
-  next.allowShell = overrides.allowShell ?? settings.allowShell ?? false;
+  // fl/Kt, chunk-hwpb27as.js [120818,120979)/[121053,123737), UTF-16: absent settings restore the enabled default.
+  next.allowShell = overrides.allowShell ?? settings.allowShell ?? DEFAULT_ALLOW_SHELL;
   next.mcpServers = settings.mcpServers ?? {};
   next.lspServers = settings.lspServers ?? {};
   next.permissions = { ...(settings.permissions ?? { mode: DEFAULT_PERMISSION_MODE.mode, allow: [], deny: [] }),

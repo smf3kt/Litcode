@@ -51,6 +51,8 @@ export const permissionPolicySchema = z.object({
 export type PermissionPolicy = z.infer<typeof permissionPolicySchema>;
 // W303 user-default adaptation of nybcbd9t [21907,22578), UTF-16; settings retain the external spelling.
 export const DEFAULT_PERMISSION_MODE = { mode: 'bypass', defaultMode: 'bypassPermissions' } as const satisfies Pick<PermissionPolicy, 'mode' | 'defaultMode'>;
+// fl/Kt, chunk-hwpb27as.js [120818,120979)/[121053,123737), UTF-16: Shell is enabled unless explicitly narrowed.
+export const DEFAULT_ALLOW_SHELL = true;
 /** One settings layer, derived from the schema the config parses. */
 export type PermissionLayer = NonNullable<PermissionPolicy['layers']>[number];
 export type PermissionDecision = { decision: 'allow' | 'deny' | 'ask'; reason?: string;

@@ -3,9 +3,8 @@
 // File tools use the workspace and explicit live directory grants, vet every
 // symlink spelling, and preserve the reserved `.agent` boundary.
 // Searches and listings include hidden files but always exclude `.agent`.
-// The `run_command` tool is opt-in via `context.allowShell` and is explicitly
-// NOT path-confined: shell commands run unrestricted inside the OS user's
-// permissions, only file tools are confined.
+// Shell commands run with the OS user's permissions and are not path-confined;
+// only file tools are confined.
 
 import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";

@@ -70,7 +70,7 @@ Options (flags override LLM_* environment values for new sessions):
   --no-thinking         Omit thinking parameter
   --prompt-cache        Enable ephemeral cache (LLM_PROMPT_CACHE; default false)
   --eager-tool-input    Enable eager input streaming (LLM_EAGER_TOOL_INPUT; default false)
-  --allow-shell         Enable commands with current OS user permissions
+  --allow-shell         Enable commands with current OS user permissions (default on)
   --max-turns N         Model calls per task (default 30)
   --context-tokens N     Configured window (default 1000000; verify deployment capacity)
   --compact-at N         Summarize above input budget (default 512000)
@@ -360,7 +360,8 @@ function newConfig(
     promptCaching: (values['prompt-cache'] as boolean | undefined) ?? (demo ? false : optionalBoolean('LLM_PROMPT_CACHE')) ?? settings.promptCaching ?? false,
     eagerToolInput: (values['eager-tool-input'] as boolean | undefined) ?? (demo ? false : optionalBoolean('LLM_EAGER_TOOL_INPUT')) ?? settings.eagerToolInput ?? false,
   };
-  config.allowShell = (values['allow-shell'] as boolean | undefined) ?? settings.allowShell ?? false;
+  // fl/Kt, chunk-hwpb27as.js [120818,120979)/[121053,123737), UTF-16: retain the enabled default after authored overrides.
+  config.allowShell = (values['allow-shell'] as boolean | undefined) ?? settings.allowShell ?? config.allowShell;
   config.maxTurns = positive(values['max-turns'] as string | undefined, settings.maxTurns ?? config.maxTurns);
   if (!demo) config.stopHookBlockCap = settings.stopHookBlockCap ?? 8;
   if (!demo && settings.automaticCheckpoints !== undefined) config.automaticCheckpoints = settings.automaticCheckpoints;

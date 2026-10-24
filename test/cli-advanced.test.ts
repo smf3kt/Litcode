@@ -111,7 +111,7 @@ function readSession(workspace: string, id: string, check: (session: Session) =>
   try { assertPaired(session.messages); check(session); } finally { session.close(); }
 }
 
-test('CLI defaults to bypass for real file and enabled shell effects and pins that mode on resume', { timeout: 60_000 }, async () => {
+test('CLI defaults to bypass and enabled shell for real effects and pins them on resume', { timeout: 60_000 }, async () => {
   let step = 0;
   const fx = await fixture(() => {
     switch (++step) {
@@ -121,16 +121,20 @@ test('CLI defaults to bypass for real file and enabled shell effects and pins th
     }
   });
   try {
-    fx.settings({ allowShell: true });
+    fx.settings({});
     const first = await fx.run('DEFAULT_BYPASS');
     assert.equal(fs.readFileSync(path.join(fx.workspace, 'bypass.txt'), 'utf8'), 'file effect');
     assert.equal(fs.readFileSync(path.join(fx.workspace, 'shell.txt'), 'utf8'), 'shell-effect');
     assert.equal(results(fx.requests.at(-1)!).length, 2);
     assert.ok(results(fx.requests.at(-1)!).every(result => result.is_error !== true));
-    readSession(fx.workspace, first.id, session => assert.equal(session.config.permissions?.mode, 'bypass'));
-    fx.settings({ permissions: { mode: 'plan' } });
+    readSession(fx.workspace, first.id, session => {
+      assert.equal(session.config.permissions?.mode, 'bypass'); assert.equal(session.config.allowShell, true);
+    });
+    fx.settings({ allowShell: false, permissions: { mode: 'plan' } });
     await fx.run('PINNED_BYPASS', first.id);
-    readSession(fx.workspace, first.id, session => assert.equal(session.config.permissions?.mode, 'bypass'));
+    readSession(fx.workspace, first.id, session => {
+      assert.equal(session.config.permissions?.mode, 'bypass'); assert.equal(session.config.allowShell, true);
+    });
   } finally { await fx.close(); }
 });
 
