@@ -59,6 +59,7 @@ import { TuiRenderer, footerElement, type FooterPart, type FooterStatus, type Pr
 import { backgroundFooterLabel } from './tui-background.js';
 import { backgroundTaskRequest } from './tasks-panel.js';
 import { taskDetailFrame, taskDetailRunning, type BackgroundTaskDetail } from './task-details.js';
+import { agentTranscriptEntries, type AgentTranscript, type AgentViewHost } from './agent-transcript.js';
 import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
@@ -219,6 +220,7 @@ import {
   type TerminalPromptQueue, type TerminalPromptRequest, type TerminalQueuedPrompt,
 } from './terminal.js';
 import { keyboardCohesion } from './diff-dialog-frame-host.js';
+import { applyReturnGesture } from './tui-input-return.js';
 
 export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   input: Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode?: (raw: boolean) => unknown };
@@ -536,6 +538,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private screen: TuiScreen = 'chat';
   private transcript: TranscriptState;
   private readonly transcriptScroll = new TranscriptScroll();
+  /** im/am/WO, 24k7d6mw [398352,399172)/[1305590,1309198), UTF-16; clear on exit/rebind/close. */
+  private agentView: { host: AgentViewHost; snapshot: AgentTranscript; transcript: TranscriptState; feedback?: string } | undefined;
+  private agentSubmit: Promise<void> | undefined;
+  // Lns, j8hqhz0c [44085,44378), UTF-16: the selected conversation supplies loading.
+  private get visibleRunning(): boolean { return this.agentView ? this.agentView.snapshot.status === 'running' : this.running; }
+  // Zee/gie, 24k7d6mw [210978,211342), 3gz7s57c [185681,188242), UTF-16.
+  private get visibleTranscript(): TranscriptState { return this.agentView?.transcript ?? this.transcript; }
+  // WO, 24k7d6mw [1305590,1309198), UTF-16; the native viewport stores only the selected projection.
+  private set visibleTranscript(value: TranscriptState) {
+    if (this.agentView) this.agentView.transcript = value; else this.transcript = value;
+  }
   private scrollPointer: { column: number; row: number; moved: boolean } | undefined;
   private mouseSeen = false;
   /** One provider response owns this cumulative raw source; end/close releases it. */
@@ -795,6 +808,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     pastedContents:structuredClone(this.editor.pastedContents),historyPastes:structuredClone(this.editor.historyPastes),
     historyDraftPastes:structuredClone(this.editor.historyDraftPastes),killRing: structuredClone(this.editor.killRing) }; }
   async bindInputHistory(session: import('./session.js').Session): Promise<void> {
+    if (this.searchSessionId !== session.id) this.clearAgentView();
     this.unsubscribeTitle?.(); this.titleSession = session;
     this.unsubscribeTitle = session.subscribeTitle(() => this.syncTerminalTitle());
     this.syncTerminalTitle();
@@ -875,7 +889,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   scheduledFire(marker: import('./loop-noop-fold.js').ScheduledFire): void {
     for (const id of marker.foldedFireIds ?? []) this.foldedLoopFires.add(id);
     this.loopFireId = marker.uuid;
-    this.selection = createSelection();
+    // gie, 3gz7s57c [185681,188242), UTF-16: hidden main markers preserve the focused child's selection.
+    if (!this.agentView) this.selection = createSelection();
     this.append({ kind: 'system', text: marker.content, timestamp: Date.parse(marker.timestamp) });
   }
 
@@ -1064,7 +1079,67 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** pz's V(XVt) subscription, 24k7d6mw [740155,740694), UTF-16. */
   backgroundWorkChanged(): void {
     this.refreshBackgroundDialog();
+    this.refreshAgentView();
     this.render();
+  }
+
+  // im/am/Zee/WO, 24k7d6mw [398352,399172)/[210978,211342)/[1305590,1309198), UTF-16.
+  viewAgent(host: AgentViewHost): void {
+    const snapshot = host.read();
+    if (this.closed || snapshot === undefined) { host.release(); return; }
+    this.clearAgentView();
+    this.agentView = { host, snapshot, transcript: createTranscriptState(agentTranscriptEntries(snapshot)) };
+    this.selection = createSelection(); this.scrollPointer = undefined;
+    this.renderer?.selectionInstance.clearTextSelection(); this.selectionCopy.reset();
+    this.transcriptScroll.reset(); this.transcriptScroll.repin(true);
+    this.render();
+  }
+
+  // am/WO, 24k7d6mw [398888,399172)/[1305590,1309198), UTF-16.
+  clearAgentView(): void {
+    const view = this.agentView;
+    if (view === undefined) return;
+    this.agentView = undefined;
+    view.host.release();
+    this.selection = createSelection(); this.scrollPointer = undefined;
+    this.renderer?.selectionInstance.clearTextSelection(); this.selectionCopy.reset();
+    this.transcriptScroll.reset(); this.transcriptScroll.repin(true);
+    if (!this.closed) this.render();
+  }
+
+  // Zee/OCe, 24k7d6mw [210978,211342)/[1501794,1502367), UTF-16.
+  private refreshAgentView(): void {
+    const view = this.agentView;
+    if (view === undefined) return;
+    const snapshot = view.host.read();
+    if (snapshot === undefined) { this.clearAgentView(); return; }
+    view.snapshot = snapshot;
+    view.transcript = { ...view.transcript, entries: agentTranscriptEntries(snapshot) };
+  }
+
+  // N4.submitToAgent/JYe, 24k7d6mw [1497670,1498885)/[875160,878682), UTF-16.
+  private submitToViewedAgent(): void {
+    const view = this.agentView;
+    if (view === undefined || this.agentSubmit !== undefined) return;
+    const draft = { text: this.editor.text, cursor: this.editor.cursor,
+      pastedContents: structuredClone(this.editor.pastedContents) };
+    const transition = reduceEditor(this.editor, { type: 'submit' }, this.options);
+    const submitted = transition.effects.find(effect => effect.type === 'submit');
+    if (submitted === undefined) return;
+    const current = () => !this.closed && this.agentView === view && this.editor.text === draft.text
+      && this.editor.cursor === draft.cursor && JSON.stringify(this.editor.pastedContents) === JSON.stringify(draft.pastedContents);
+    const work = view.host.submit(submitted.text, current).then(destination => {
+      if (!destination || !current()) return;
+      if (typeof destination === 'object') { view.feedback = destination.text; this.render(); return; }
+      view.feedback = undefined;
+      this.inputHistory.add({ display: draft.text, pastedContents: draft.pastedContents });
+      this.undo.clear(); this.replaceDraft(transition.state); this.setComposerMode('prompt'); this.vim.reset();
+      if (destination === 'main') this.transcript = { ...this.transcript, entries: [...this.transcript.entries,
+        { kind: 'user', text: submitted.text, timestamp: Date.now() }] };
+      this.refreshAgentView(); this.render();
+    }).catch(error => { if (!this.closed) this.setStatus(error instanceof Error ? error.message : String(error)); })
+      .finally(() => { if (this.agentSubmit === work) this.agentSubmit = undefined; });
+    this.agentSubmit = work;
   }
 
   /** Source store subscription: a changed queue repaints the hint and clamps a stale index. */
@@ -1265,7 +1340,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (entries.length === this.transcript.entries.length) return;
     this.transcript = { ...this.transcript, entries };
     message.index = undefined;
-    this.selection = createSelection();
+    // gie, 3gz7s57c [185681,188242), UTF-16: the hidden main projection has no selected child rows.
+    if (!this.agentView) this.selection = createSelection();
   }
 
   /** nmt/followGrowth, 3gz7s57c [29232,37785), UTF-16; the flag preserves existing sticky state. */
@@ -1923,6 +1999,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.clearAgentView();
     this.notifications.close(); this.terminalTitle.close(); this.owl.close();
     this.idleNotification?.dispose(); this.idleNotification = undefined;
     this.unsubscribeTitle?.(); this.unsubscribeTitle = undefined; this.titleSession = undefined;
@@ -2021,7 +2098,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const entries = [...this.transcript.entries]; entries[message.index] = entry;
       this.transcript = { ...this.transcript, entries };
     }
-    this.selection = createSelection();
+    // gie, 3gz7s57c [185681,188242), UTF-16: main preview updates leave the child selection alone.
+    if (!this.agentView) this.selection = createSelection();
     this.render();
   }
 
@@ -2061,6 +2139,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if ((action.type === 'return' || action.type === 'submit') && !this.keys.pendingChord
       && (action.type !== 'return' || (!action.meta && !action.shift)) && this.autocompleteVisible()) {
       if (this.acceptAutocomplete(true)) return;
+    }
+    // N4.submitToAgent, 24k7d6mw [1497670,1498885), UTF-16: route before main row/selection effects.
+    if (this.agentView && !this.dialog && this.screen === 'chat' && (action.type === 'submit'
+      || action.type === 'return' && !action.meta && !action.shift
+        && applyReturnGesture(this.editor.text, this.editor.cursor, this.conversationColumns() - 2, action).submitted)) {
+      this.submitToViewedAgent(); return;
     }
     if (action.type === 'focus') { this.focus.set(action.focused); return; }
     if (action.type === 'search' && !this.sourceSearch?.snapshot.searching) { this.enterSearch(); return; }
@@ -2278,7 +2362,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   private transcriptTotal(columns: number): number {
-    return transcriptLines(this.transcript, columns, this.renderEntryRows, this.welcomePreamble(columns)).length;
+    return transcriptLines(this.visibleTranscript, columns, this.renderEntryRows, this.welcomePreamble(columns)).length;
   }
 
   private contexts(): TuiContext[] {
@@ -2551,9 +2635,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /**
    * `xzt`: the banner is `{text: he || agent || "", bgColor}` and is `null` when neither a
    * standalone-agent name, an agent chip nor a colour override gives it a reason. This host
-   * has no title or agent chip on the composer yet, so only `/color` can create one.
+   * maps the selected local agent to its existing banner text slot (Zee [210978,211342), UTF-16).
    */
   private sessionBanner(): { text: string; color: string } | undefined {
+    if (this.agentView) return { text: `Viewing agent ${this.agentView.snapshot.name ?? this.agentView.snapshot.id} (${this.agentView.snapshot.status})`, color: 'background' };
     if (this.sessionColor === undefined) return undefined;
     return { text: '', color: sessionColorSlot(effectiveSessionColor({ userOverride: this.sessionColor }),
       PROMPT_BORDER_SLOT) };
@@ -2946,6 +3031,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (dialog.backgroundDetail !== undefined) {
       this.refreshBackgroundDialog();
       if (this.dialog !== dialog) return;
+      // kG.f, 24k7d6mw [633300,637661), UTF-16: only supported local-agent details expose f.
+      if (dialog.backgroundDetail.snapshot?.kind === 'agent' && action.type === 'insert' && action.text === 'f'
+        && dialog.request.keys?.some(key => key.key === 'f')) { dialog.finish({ selected: [], key: 'f' }); return; }
       if (command === 'left') { dialog.finish({ selected: [], key: 'back' }); return; }
       if (command === 'submit' || action.type === 'insert' && action.text === ' ') { dialog.finish(); return; }
     }
@@ -3139,6 +3227,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     // Source `ds` (autocomplete:dismiss): Escape closes the list before any gesture handling.
     if (sequence === '\x1b' && this.autocompleteVisible()) { this.dismissAutocomplete(); return; }
+    // kve, 24k7d6mw [1304882,1305454), UTF-16; transcript and input overlays retain Escape priority.
+    if (sequence === '\x1b' && this.screen === 'chat' && this.agentView && !this.dialog) {
+      // JYe inputOwnsEscape, 24k7d6mw [864995,865015)/[879594,880250), UTF-16.
+      if (this.vimEnabled && this.vim.mode !== 'NORMAL') { this.handleVim({ type: 'key', sequence, command }); return; }
+      if (this.composerMode === 'bash') { this.setComposerMode('prompt'); return; }
+      this.agentView.host.escape(); return;
+    }
     if(sequence==='\x1b'&&this.options.sourceInputGestures&&this.screen==='chat'&&!this.vimEnabled&&!this.running){
       this.handleGesture('escape');return;
     }
@@ -3320,7 +3415,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Rendered text of one absolute transcript row, when it is on screen. */
   private renderedRow(line: number): string | undefined {
     const view = this.viewportSize();
-    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows,
+    const viewport = layoutTranscript(this.visibleTranscript, view.columns, view.rows, this.renderEntryRows,
       this.welcomePreamble(view.columns));
     return viewport.lines[line - viewport.offset];
   }
@@ -3328,7 +3423,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** Map a terminal coordinate to the transcript line and cell it lands on. */
   private anchorAt(col: number, row: number): SelectionAnchor | null {
     const view = this.viewportSize();
-    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows,
+    const viewport = layoutTranscript(this.visibleTranscript, view.columns, view.rows, this.renderEntryRows,
       this.welcomePreamble(view.columns));
     const text = viewport.lines[row - 1];
     if (text === undefined) return null;
@@ -3401,7 +3496,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         this.selection = createSelection(); this.screen = 'chat'; this.render(); return true;
       case 'transcript:toggleShowAll':
         this.selection = createSelection();
-        this.transcript = { ...this.transcript, showAll: !this.transcript.showAll };
+        this.visibleTranscript = { ...this.visibleTranscript, showAll: !this.visibleTranscript.showAll };
         this.render(); return true;
       case 'scroll:lineUp': case 'scroll:lineDown': case 'scroll:halfPageUp': case 'scroll:halfPageDown':
       case 'scroll:fullPageUp': case 'scroll:fullPageDown': case 'scroll:pageUp': case 'scroll:pageDown':
@@ -3528,7 +3623,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.renderer.selectionInstance.moveSelectionFocus(direction); this.render(); return;
     }
     const view = this.viewportSize();
-    const lines = transcriptLines(this.transcript, view.columns, this.renderEntryRows, this.welcomePreamble(view.columns));
+    const lines = transcriptLines(this.visibleTranscript, view.columns, this.renderEntryRows, this.welcomePreamble(view.columns));
     if (!lines.length) return;
     const from = this.selection.focus ?? this.selection.anchor ?? this.anchorAt(1, 1)!;
     if (!this.selection.anchor) this.selection = reduceSelection(this.selection, { type: 'start', at: from });
@@ -3537,7 +3632,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const column = !Number.isFinite(dx) ? selectionColumn(text, dx < 0 ? 0 : Infinity)
       : dy ? selectionColumn(text, from.column) : moveSelectionColumn(text, from.column, dx);
     this.selection = reduceSelection(this.selection, { type: 'extend', to: { line, column } });
-    const viewport = layoutTranscript(this.transcript, view.columns, view.rows, this.renderEntryRows,
+    const viewport = layoutTranscript(this.visibleTranscript, view.columns, view.rows, this.renderEntryRows,
       this.welcomePreamble(view.columns));
     // rI/Mt, 24k7d6mw [126888,130997), UTF-16; selection scrolling leaves the sticky tail.
     if (line < viewport.offset) this.transcriptScroll.reveal(line);
@@ -3567,7 +3662,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const native = this.renderer?.selectionInstance;
     if (native?.hasTextSelection()) return native.copySelectionNoClear();
     const view = this.viewportSize();
-    const rows = renderedTranscriptRows(this.transcript, view.columns, this.renderEntryRows, this.welcomePreamble(view.columns));
+    const rows = renderedTranscriptRows(this.visibleTranscript, view.columns, this.renderEntryRows, this.welcomePreamble(view.columns));
     const text = selectionTextFromRows(this.selection, rows as readonly SelectionRow[]);
     if (text) copySelectionText(text, payload => { this.options.output.write(payload); });
     return text;
@@ -4182,6 +4277,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   /** fLt focus id/index and V(tjt), 24k7d6mw [674472,675750)/[677240,678145), UTF-16. */
   // kG [633300,637661), same module/units: running-agent gate feeds the existing task-loss owner.
+  // fLt/kG, 24k7d6mw [674472,675750)/[633300,637661), UTF-16: live refresh preserves available callbacks.
   private refreshBackgroundDialog(): void {
     const dialog = this.dialog, read = dialog?.request.backgroundTasks;
     if (dialog === undefined || read === undefined) return;
@@ -4196,7 +4292,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       dialog.request.message = frame.lines.join('\n');
       dialog.request.choices = undefined;
       dialog.request.readOnly = true;
-      dialog.request.keys = [{ key: 'x', label: 'stop' }];
+      dialog.request.keys = [{ key: 'x', label: 'stop' },
+        ...(snapshot.kind === 'agent' ? (dialog.request.keys ?? []).filter(key => key.key === 'f') : [])];
       return;
     }
     const previous = dialog.request.choices ?? [];
@@ -4227,6 +4324,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       wrap: 'truncate-end', children: owner.guide }, undefined))];
   }
 
+  // kG.f, 24k7d6mw [633300,637661), UTF-16: advertise the mounted local-agent callback.
   private renderDialog(columns: number, bodyRows: number): string[] {
     const dialog = this.dialog!;
     if (dialog.resumePicker) return this.renderResumePicker(dialog, columns, bodyRows);
@@ -4239,7 +4337,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const visible = frame.lines.slice(dialog.scroll, dialog.scroll + height);
       while (visible.length < height) visible.push('');
       return [frame.title, ...visible, SEPARATOR.repeat(columns), '',
-        'Left go back / Esc Enter Space close / x stop / PgUp/PgDn'].map(line => pad(line, columns));
+        'Left go back / Esc Enter Space close / x stop / PgUp/PgDn'
+          + (dialog.backgroundDetail.snapshot.kind === 'agent' && dialog.request.keys?.some(key => key.key === 'f') ? ' / f view agent' : '')]
+        .map(line => pad(line, columns));
     }
     const clean = (text: string) => text.replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
     const oneLine = (text: string) => clean(text).replace(/[\t\n]/g, ' ');
@@ -4491,9 +4591,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (this.dialog.copyPicker) this.dialog.copyPicker.hitRows = new Map(
         [...this.dialog.copyPicker.hitRows].map(([row, index]) => [row + transcriptRows, index]));
       // Us, 06azbynj [286619,287950), UTF-16; a smaller modal viewport must measure the same sticky owner.
-      this.transcript = { ...this.transcript, offset: this.transcriptScroll.layout(
-        this.transcriptTotal(columns), transcriptRows, this.transcript.entries) };
-      const viewport = layoutTranscript(this.transcript, columns, transcriptRows, this.renderEntryRows,
+      this.visibleTranscript = { ...this.visibleTranscript, offset: this.transcriptScroll.layout(
+        this.transcriptTotal(columns), transcriptRows, this.visibleTranscript.entries) };
+      const viewport = layoutTranscript(this.visibleTranscript, columns, transcriptRows, this.renderEntryRows,
         this.welcomePreamble(columns));
       const lines: string[] = [];
       for (let row = 0; row < transcriptRows; row++) {
@@ -4537,9 +4637,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         {theme:this.theme.current,themeOverrides:this.theme.overrides});
       const queryRows = queryDocument.map(row=>row.ansi);
       const height = Math.max(0,rows-prompt.lines.length-queryRows.length-3);
-      this.transcript = { ...this.transcript, offset: this.transcriptScroll.layout(
-        this.transcriptTotal(columns), height, this.transcript.entries) };
-      const viewport=layoutTranscript(this.transcript,columns,height,this.renderEntryRows,this.welcomePreamble(columns));
+      this.visibleTranscript = { ...this.visibleTranscript, offset: this.transcriptScroll.layout(
+        this.transcriptTotal(columns), height, this.visibleTranscript.entries) };
+      const viewport=layoutTranscript(this.visibleTranscript,columns,height,this.renderEntryRows,this.welcomePreamble(columns));
       const frame=Array.from({length:height},(_,index)=>viewport.rows[index]?.ansi ?? pad('',columns));
       const target=rows-1;
       const renderer = this.ensureRenderer();
@@ -4557,7 +4657,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // whenever it is drawn.
     const banner = this.sessionBanner();
     const bannerRows = banner === undefined ? 0 : 1;
-    const statusRows = this.renderStatusLine(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4 - bannerRows - hintRows.length));
+    const statusRows = [...(this.agentView?.feedback === undefined ? [] : [pad(this.agentView.feedback, conversationWidth)]),
+      ...this.renderStatusLine(conversationWidth, rows, Math.max(0, rows - prompt.lines.length - 4 - bannerRows - hintRows.length))];
     const progressRows = [...this.renderProgress(conversationWidth, rows,
       Math.max(0, rows - prompt.lines.length - 4 - bannerRows - statusRows.length - hintRows.length)), ...hintRows];
     const transcriptRows = Math.max(0, rows - prompt.lines.length - 3 - bannerRows - progressRows.length - statusRows.length);
@@ -4566,13 +4667,13 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       top: transcriptRows + progressRows.length - hintRows.length,
       owners: this.autocompleteOwners };
     // p4/Us, 24k7d6mw [1333944,1336535), 06azbynj [286619,287950), UTF-16; one measured viewport owns the projection.
-    this.transcriptScroll.onBelowTranscriptSlotChange(this.running || progressRows.length > 0);
+    this.transcriptScroll.onBelowTranscriptSlotChange(this.visibleRunning || progressRows.length > 0);
     const total = this.transcriptTotal(conversationWidth);
-    this.transcript = { ...this.transcript,
-      offset: this.transcriptScroll.layout(total, transcriptRows, this.transcript.entries) };
-    this.syncOwl(this.screen === 'chat' && transcriptRows >= WELCOME_ART_ROWS
-      && this.transcript.offset === 0 && welcomeDensity(this.viewportSize().rows) === 'art');
-    const viewport = layoutTranscript(this.transcript, conversationWidth, transcriptRows, this.renderEntryRows,
+    this.visibleTranscript = { ...this.visibleTranscript,
+      offset: this.transcriptScroll.layout(total, transcriptRows, this.visibleTranscript.entries) };
+    this.syncOwl(!this.agentView && this.screen === 'chat' && transcriptRows >= WELCOME_ART_ROWS
+      && this.visibleTranscript.offset === 0 && welcomeDensity(this.viewportSize().rows) === 'art');
+    const viewport = layoutTranscript(this.visibleTranscript, conversationWidth, transcriptRows, this.renderEntryRows,
       this.welcomePreamble(conversationWidth));
     const pill = this.transcriptScroll.pill;
     if (pill === undefined) this.scrollPointer = undefined;
@@ -4586,7 +4687,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const renderer = this.ensureRenderer();
     renderer.renderChat(frame, prompt.lines,
       width => this.statusFooter(width),
-      columns, rows, { row: target, column: prompt.cursorColumn, visible: this.footerSelection === null }, this.running,
+      columns, rows, { row: target, column: prompt.cursorColumn, visible: this.footerSelection === null }, this.visibleRunning,
       { state: this.selection, offset: viewport.offset, rows: transcriptRows }, this.theme.current, this.theme.overrides, progressRows, statusRows,
       sidebarWidth ? { width: sidebarWidth, element: this.diffPanel!.element(sidebarWidth, columns, rows,
         renderer.appContext, renderer.selectionInstance) } : undefined, banner, this.composerMode,
@@ -4608,7 +4709,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    * an entry, so it stays in the log and scrolls with it instead of vanishing on
    * the first keystroke. The density follows the transcript's own row budget.
    */
+  // c4 focused projection, 24k7d6mw [1330762,1333395), UTF-16: main welcome belongs to the main conversation.
   private welcomePreamble(columns: number): RenderedRow[] {
+    if (this.agentView) return [];
     const density = welcomeDensity(this.viewportSize().rows);
     const version = this.options.version ?? '';
     const key = JSON.stringify([columns, density, version, this.theme.current, this.theme.overrides, this.owl.pose]);
@@ -4637,6 +4740,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   private renderProgress(columns: number, rows: number, maximum: number): string[] {
+    // Zee/Lns/gie, 24k7d6mw [210978,211342), j8hqhz0c [44085,44378), 3gz7s57c [185681,188242), UTF-16.
+    if (this.agentView) return [];
     // Source `Y4` (chunk-24k7d6mw.js 1524370): the progress region holds every entry in the
     // store, so a drained shell's live row shares it with the agent's own progress.
     const drained = this.drainedShell === undefined ? [] : this.renderDrainedShell(columns, rows);
@@ -4737,7 +4842,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       : 'ctrl+o transcript  ctrl+r search  ctrl+c interrupt';
   }
 
-  /** LVe/pz, 24k7d6mw [768633,768681)/[770079,771241), UTF-16: fixed task width before trailing hints. */
+  /** LVe/pz/Lns, 24k7d6mw [768633,768681)/[770079,771241), j8hqhz0c [44085,44378), UTF-16. */
   private statusFooter(columns: number): Array<string | FooterPart> {
     if(this.gestures.hint)return [this.gestures.hint.slice(0,columns)];
     // Source `Fz` 760326: `if(Ct&&!Pt)` returns the dim `paste again to expand` row alone, before
@@ -4774,7 +4879,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const backgroundWidth = background === undefined ? 0 : cellWidth(background) + 3;
     const available = Math.max(0, columns - chipWidth - backgroundWidth);
     const shown = hints.slice(0, Math.min(hints.length, Math.floor(columns / 2), Math.max(0, available - 1)));
-    const left = `${this.running ? 'running' : 'ready'}${this.vimEnabled&&!this.statusLineSetting?.hideVimModeIndicator&&this.vim.mode!=='NORMAL'&&this.screen!=='search'?' -- '+this.vim.mode+' --':''}${this.status ? `  ${this.status}` : ''}`
+    const left = `${this.visibleRunning ? 'running' : 'ready'}${this.vimEnabled&&!this.statusLineSetting?.hideVimModeIndicator&&this.vim.mode!=='NORMAL'&&this.screen!=='search'?' -- '+this.vim.mode+' --':''}${this.status ? `  ${this.status}` : ''}`
       .slice(0, Math.max(0, available - shown.length - 1));
     const gap = Math.max(1, available - cellWidth(left) - shown.length);
     const parts: Array<string | FooterPart> = [];

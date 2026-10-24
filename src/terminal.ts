@@ -1402,6 +1402,9 @@ export interface TerminalSurface {
     tasks?: () => import('./tasks-panel.js').BackgroundTaskSnapshot): void;
   /** pz's task-store subscription repaints without consuming notifications. */
   backgroundWorkChanged?(): void;
+  /** im/am/Zee, 24k7d6mw [398352,399172)/[210978,211342), UTF-16: one local view owner. */
+  viewAgent?(host: import('./agent-transcript.js').AgentViewHost): void;
+  clearAgentView?(): void;
   setProgress?(event: import('./tui-progress.js').AgentProgressEvent): void;
   setTasks?(tasks: readonly import('./tasks.js').TaskRecord[]): void;
   bindInputHistory?(session: import('./session.js').Session): Promise<void>;
