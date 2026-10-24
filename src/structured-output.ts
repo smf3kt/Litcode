@@ -374,13 +374,13 @@ export class UsageBudget {
   snapshot(): UsageBudgetSnapshot { return { model_calls: this.calls, usage: { ...this.usage }, exhausted: this.dimensions(true).length > 0, exceeded: this.dimensions(false) }; }
 }
 
-/** Wrap once before sharing the provider with Agent, hooks and compaction. */
+/** kmt.onRetry, d3s5r8h5 [1698,4364), UTF-16: preserve observers through the shared budget boundary. */
 export function withUsageBudget(provider: ModelProvider, budget: UsageBudget, onUsage?: (usage: TokenUsage) => void): ModelProvider {
   return {
-    async complete(request, signal, onText) {
-      signal.throwIfAborted();
+    async complete(...args) {
+      args[1].throwIfAborted();
       budget.beginCall();
-      const response = await provider.complete(request, signal, onText);
+      const response = await provider.complete(...args);
       const usage = validUsage({
         input_tokens: response.usage.input_tokens,
         output_tokens: response.usage.output_tokens,

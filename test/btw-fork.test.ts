@@ -42,6 +42,7 @@ async function drive(options: { actions: readonly string[]; synthetic?: boolean;
     start() { queueMicrotask(() => callbacks?.onSubmit?.('/btw REVIEW_THIS_QUESTION')); },
     close() {}, setRunning() {}, setKeybindings() {}, writeTerminalSequence() {},
     async prompt(request) {
+      if (request.sideQuestion) { await request.sideQuestion.settled; return { selected: [], key: 'side-settled' }; }
       prompts.push(request);
       const action = options.actions[ordinal++];
       if (ordinal >= options.actions.length) setImmediate(() => callbacks?.onExit?.());

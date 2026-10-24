@@ -41,6 +41,7 @@ test('/btw answers with no tools and keeps the side answer out of the transcript
     close() {}, setRunning() {}, setKeybindings() {}, writeTerminalSequence() {},
     writeClipboard(payload) { clipboard.push(payload); },
     async prompt(request) {
+      if (request.sideQuestion) { await request.sideQuestion.settled; return { selected: [], key: 'side-settled' }; }
       prompts.push(request);
       if (prompts.length === 1) return { selected: [], key: 'c' };
       setImmediate(answered);
@@ -100,6 +101,7 @@ test('bare /btw asks for the question in a text dialog', async () => {
     start() { queueMicrotask(() => callbacks!.onSubmit!('/btw')); },
     close() {}, setRunning() {}, setKeybindings() {}, writeTerminalSequence() {},
     async prompt(request) {
+      if (request.sideQuestion) { await request.sideQuestion.settled; return { selected: [], key: 'side-settled' }; }
       prompts.push(request);
       if (prompts.length === 1) return { selected: [], text: 'why is the sky blue' };
       setImmediate(answered);
@@ -149,7 +151,8 @@ test('a second /btw threads the first side exchange into the call', async () => 
     subscribe(value) { callbacks = value; return () => { callbacks = undefined; }; },
     start() { queueMicrotask(() => callbacks!.onSubmit!('/btw first question')); },
     close() {}, setRunning() {}, setKeybindings() {}, writeTerminalSequence() {},
-    async prompt() {
+    async prompt(request) {
+      if (request.sideQuestion) { await request.sideQuestion.settled; return { selected: [], key: 'side-settled' }; }
       panels += 1;
       if (panels === 1) { firstPanel(); return undefined; }
       secondPanel();
