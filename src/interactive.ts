@@ -2820,16 +2820,20 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           }
           continue;
         }
-        if (prompt === '/context') {
-          // Piped sessions keep the JSON contract; the modal surface opens `G`'s panel.
-          if (!terminal?.prompt) {
+        if (prompt === '/context' || prompt.startsWith('/context ')) {
+          // In/G, 5d7rhstd [29624,31095)/[22707,29624), UTF-16; piped sessions retain JSON.
+          if (!terminal?.prompt && !terminal?.isTTY) {
             output.write(JSON.stringify(await withTurn(signal => agent().contextStatus(signal)), null, 2) + '\n');
             continue;
           }
           const counts = await withTurn(signal => agent().contextBreakdown(signal));
           const usage = contextUsageFromCounts({ ...counts, columns: process.stdout.columns ?? 80 });
-          await withTurn(signal => readDialog({ title: 'Context', message: contextPanelText(usage),
-            readOnly: true }, signal));
+          const message = contextPanelText(usage, {
+            collapseDetails: terminal?.presentation === 'fullscreen' && prompt.slice('/context'.length).trim().toLowerCase() !== 'all',
+            workspace: session.config.workspace,
+          });
+          if (terminal?.prompt) await withTurn(signal => readDialog({ title: 'Context', message, readOnly: true }, signal));
+          else output.write(message + '\n');
           continue;
         }
         if (prompt === '/status' && terminal?.prompt) {

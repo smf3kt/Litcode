@@ -350,6 +350,7 @@ const SEPARATOR = '─';
 const NOTES_MAX_CHARS = 8192;
 
 export class TuiTerminal extends EventEmitter<TuiEvents> {
+  readonly presentation = 'fullscreen' as const;
   readonly isTTY: boolean;
   /** Committed output (model text, command output) is appended to the transcript. */
   readonly outputStream: Writable;

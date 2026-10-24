@@ -644,6 +644,7 @@ type TerminalEvents = {
 
 /** In-memory editor. Queue submit events and route streamed writes through outputStream. */
 export class TerminalInput extends EventEmitter<TerminalEvents> {
+  readonly presentation = 'inline' as const;
   readonly isTTY: boolean;
   readonly outputStream: Writable;
   private editor: EditorState;
@@ -1388,6 +1389,8 @@ export interface TerminalPromptGroupAnswer { key: string; selected: string[]; te
 
 /** Shared line/full-screen surface; modal support is optional for legacy hosts. */
 export interface TerminalSurface {
+  /** In, 5d7rhstd [29624,31095), UTF-16: full-screen context detail sections collapse by default. */
+  readonly presentation?: 'fullscreen' | 'inline';
   readonly isTTY: boolean;
   readonly outputStream: Writable;
   subscribe(callbacks: TerminalCallbacks): () => void;
