@@ -1,3 +1,5 @@
+import path from 'node:path';
+import os from 'node:os';
 import { formatTokens } from './autocompact-command.js';
 
 /**
@@ -24,6 +26,17 @@ export const COMPACT_BUFFER_TOKENS = 3000;
 export type ContextCategoryKind = 'category' | 'buffer' | 'free';
 export interface ContextCategory { name: string; tokens: number; kind: ContextCategoryKind }
 export interface ContextGridCell { categoryName: string; fullness: number }
+export interface ContextDetail { name: string; tokens: number }
+export interface ContextCatalogDetail extends ContextDetail {
+  source: 'projectSettings' | 'userSettings' | 'localSettings' | 'flagSettings' | 'policySettings' | 'plugin' | 'mcp' | 'built-in';
+  pluginName?: string;
+}
+export interface ContextDetails {
+  mcpTools: ContextDetail[];
+  agents: ContextCatalogDetail[];
+  memoryFiles: ContextDetail[];
+  skills: ContextCatalogDetail[];
+}
 export interface ContextUsage {
   model: string;
   totalTokens: number;
@@ -31,6 +44,7 @@ export interface ContextUsage {
   percentage: number;
   categories: ContextCategory[];
   gridRows: ContextGridCell[][];
+  details?: ContextDetails;
 }
 
 export interface ContextCounts {
@@ -44,6 +58,7 @@ export interface ContextCounts {
   autoCompact: boolean;
   /** Terminal width picks the 5x5 grid below 80 columns, as the recovered `hr` flag does. */
   columns?: number;
+  details?: ContextDetails;
 }
 
 /** Source `FYr`: the three kinds the caption and grid switch on. */
@@ -64,10 +79,19 @@ export function contextUsageFromCounts(counts: ContextCounts): ContextUsage {
   const tools = Math.max(0, counts.toolTokens);
   const messages = Math.max(0, counts.messageTokens);
   const used = system + tools + messages;
+  // DCn, sfn1dbxq [2109980,2115882), UTF-16: detail categories partition the counted system/tool totals.
+  const details = counts.details;
+  const sum = (rows: readonly ContextDetail[] | undefined) => rows?.reduce((total, row) => total + row.tokens, 0) ?? 0;
+  const mcp = sum(details?.mcpTools), agents = sum(details?.agents), files = sum(details?.memoryFiles), skills = sum(details?.skills);
   const categories: ContextCategory[] = [];
-  if (system > 0) categories.push({ name: 'System prompt', tokens: system, kind: 'category' });
-  if (tools > 0) categories.push({ name: 'System tools', tokens: tools, kind: 'category' });
-  if (messages > 0) categories.push({ name: 'Messages', tokens: messages, kind: 'category' });
+  const add = (name: string, tokens: number) => { if (tokens > 0) categories.push({ name, tokens, kind: 'category' }); };
+  add('System prompt', Math.max(0, system - agents - files - skills));
+  add('System tools', Math.max(0, tools - mcp));
+  add('MCP tools', mcp);
+  add('Custom agents', agents);
+  add('Memory files', files);
+  add('Skills', skills);
+  add('Messages', messages);
   const buffer = !counts.autoCompact ? COMPACT_BUFFER_TOKENS
     : counts.compactAt === undefined ? 0 : Math.max(0, window - counts.compactAt);
   if (buffer > 0) categories.push({ name: counts.autoCompact ? AUTOCOMPACT_BUFFER : COMPACT_BUFFER,
@@ -76,7 +100,8 @@ export function contextUsageFromCounts(counts: ContextCounts): ContextUsage {
   categories.push({ name: FREE_SPACE, tokens: Math.max(0, window - reserved), kind: 'free' });
   return { model: counts.model, totalTokens: used, maxTokens: window,
     percentage: Math.round(used / window * 100), categories,
-    gridRows: contextGrid(categories, window, counts.columns) };
+    gridRows: contextGrid(categories, window, counts.columns),
+    ...(details === undefined ? {} : { details }) };
 }
 
 /**
@@ -135,7 +160,7 @@ function percent(tokens: number, window: number): string {
  * word "tokens" exactly as the source line does, and every non-free category uses the filled
  * glyph in the legend.
  */
-export function contextPanelText(usage: ContextUsage): string {
+export function contextPanelText(usage: ContextUsage, options: { collapseDetails?: boolean; workspace?: string } = {}): string {
   const lines = [CONTEXT_PANEL_TITLE, usage.model,
     `${formatTokens(usage.totalTokens)}/${formatTokens(usage.maxTokens)} tokens (${usage.percentage}%)`,
     '', 'Estimated usage by category'];
@@ -149,5 +174,61 @@ export function contextPanelText(usage: ContextUsage): string {
   }
   lines.push('');
   for (const row of usage.gridRows) lines.push(row.map(cell => `${contextCellGlyph(cell)} `).join('').trimEnd());
+  if (usage.details) lines.push(...contextDetailLines(usage.details, options));
   return lines.join('\n');
+}
+
+// ue/Po, 5d7rhstd [21935,22350)/[21874,21934), wtch2p0g [4166,4516), UTF-16; synced account groups stay absent.
+export function contextDetailGroups(rows: readonly ContextCatalogDetail[]): Map<string, ContextCatalogDetail[]> {
+  const labels = { projectSettings: 'Project', userSettings: 'User', localSettings: 'Local', flagSettings: 'Flag',
+    policySettings: 'Managed', plugin: 'Plugin', mcp: 'MCP', 'built-in': 'Built-in' };
+  const groups = new Map<string, ContextCatalogDetail[]>();
+  for (const row of rows) {
+    const key = labels[row.source] + (row.pluginName ? ` (${row.pluginName})` : '');
+    const group = groups.get(key) ?? []; group.push(row); groups.set(key, group);
+  }
+  for (const [key, group] of groups) groups.set(key, group.sort((left, right) => right.tokens - left.tokens));
+  const ordered = new Map<string, ContextCatalogDetail[]>();
+  for (const label of ['Project', 'User', 'Managed', 'Plugin', 'MCP', 'Built-in']) {
+    const group = groups.get(label); if (group) ordered.set(label, group);
+    for (const key of [...groups.keys()].filter(key => key.startsWith(label + ' (')).sort()) ordered.set(key, groups.get(key)!);
+  }
+  for (const [key, group] of groups) if (!ordered.has(key)) ordered.set(key, group);
+  return ordered;
+}
+
+// G/h/It/Vt/Ht/jt, 5d7rhstd [22707,29624)/[22350,22707)/[20874,21196)/[21400,21682), UTF-16.
+function contextDetailLines(details: ContextDetails, options: { collapseDetails?: boolean; workspace?: string }): string[] {
+  const lines: string[] = [];
+  const sections = [
+    { title: 'MCP tools · /mcp', noun: 'tool', rows: details.mcpTools, kind: 'tools' },
+    { title: 'Custom agents · .harness/agents/', noun: 'agent', rows: details.agents, kind: 'agents' },
+    { title: 'Memory files · /memory', noun: 'file', rows: details.memoryFiles, kind: 'files' },
+    { title: 'Skills · /skills', noun: 'skill', rows: details.skills, kind: 'skills' },
+  ] as const;
+  const fileLabel = (name: string) => {
+    const relative = options.workspace ? path.relative(options.workspace, name) : undefined;
+    if (relative && relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative)) return relative;
+    const home = os.homedir(); return name.startsWith(home + path.sep) ? '~' + name.slice(home.length) : name;
+  };
+  for (const section of sections) {
+    if (section.rows.length === 0) continue;
+    lines.push('', section.title);
+    if (options.collapseDetails) {
+      lines.push(`  ${section.rows.length} ${section.noun}${section.rows.length === 1 ? '' : 's'} · ${formatTokens(section.rows.reduce((sum, row) => sum + row.tokens, 0))} tokens`);
+    } else if (section.kind === 'agents' || section.kind === 'skills') {
+      const rows = section.kind === 'agents' ? details.agents : details.skills;
+      for (const [group, entries] of contextDetailGroups(rows)) {
+        lines.push(`  ${group}`);
+        for (const row of entries) {
+          const tokens = section.kind === 'skills' ? row.tokens < 20 ? '< 20' : `~${formatTokens(Math.round(row.tokens / 10) * 10)}` : formatTokens(row.tokens);
+          lines.push(`    ${row.name}: ${tokens} tokens`);
+        }
+      }
+    } else {
+      for (const row of section.rows) lines.push(`  ${section.kind === 'files' ? fileLabel(row.name) : row.name}: ${formatTokens(row.tokens)} tokens`);
+    }
+  }
+  if (options.collapseDetails && sections.some(section => section.rows.length > 0)) lines.push('', '/context all to expand');
+  return lines;
 }

@@ -34,6 +34,7 @@ import { automaticCompactionEnabled, contextBlockingLimit, manualCompactionEnabl
 import { classifySideQuestion, sideQuestionHistoryText, sideQuestionUserContent,
   type SideQuestionExchange, type SideQuestionOutcome } from './side-question.js';
 import type { ContextCounts } from './context-panel.js';
+import { contextDetails } from './context-details.js';
 import { HOST_IDENTITY, hostContext } from './host-context.js';
 
 // Nl, chunk-14rnebpd.js [275300,275362), UTF-16; adapt the primary product identity to LiTcode.
@@ -1073,18 +1074,21 @@ export class Agent {
   async contextBreakdown(signal: AbortSignal = new AbortController().signal): Promise<ContextCounts> {
     if (this.busy) throw new Error('Wait for the active turn before counting context');
     assertPaired(this.session.messages);
-    const config = this.session.config;
-    const withoutMessages = this.request([]);
+    // DCn/eUo/GHo, sfn1dbxq [2109980,2115882)/[2106161,2107704)/[2100640,2101021), UTF-16.
+    const config = structuredClone(this.session.config), request = structuredClone(this.request());
+    const withoutMessages = { ...request, messages: [] };
     const withoutTools = { ...withoutMessages, tools: [] as ModelRequest['tools'] };
     const [system, tools, full] = await Promise.all([
       this.provider.count(withoutTools, signal),
       this.provider.count(withoutMessages, signal),
-      this.provider.count(this.request(), signal),
+      this.provider.count(request, signal),
     ]);
+    const toolTokens = Math.max(0, tools - system);
     return { model: config.model, systemTokens: system,
-      toolTokens: Math.max(0, tools - system), messageTokens: Math.max(0, full - tools),
+      toolTokens, messageTokens: Math.max(0, full - tools),
       maxTokens: config.contextTokens, compactAt: config.compactAt,
-      autoCompact: automaticCompactionEnabled(config) };
+      autoCompact: automaticCompactionEnabled(config),
+      details: contextDetails(config, typeof request.system === 'string' ? request.system : config.system, system, toolTokens) };
   }
 
   /**
