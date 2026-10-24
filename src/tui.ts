@@ -58,7 +58,7 @@ import { renderPreviewMarkdown } from './tui-markdown.js';
 import { TuiRenderer, footerElement, type FooterPart, type FooterStatus, type PromptLine } from './tui-renderer.js';
 import { backgroundFooterLabel } from './tui-background.js';
 import { backgroundTaskRequest } from './tasks-panel.js';
-import { taskDetailFrame, type BackgroundTaskDetail } from './task-details.js';
+import { taskDetailFrame, taskDetailRunning, type BackgroundTaskDetail } from './task-details.js';
 import { DiffPanel } from './diff-panel.js';
 import { DiffSelectionOwner } from './diff-selection.js';
 import { randomUUID } from 'node:crypto';
@@ -1856,11 +1856,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
       if (snapshot.backgroundTaskDetail !== undefined) dialog.backgroundDetail = { snapshot: undefined };
       this.dialog = dialog;
-      // YG/Di, 24k7d6mw [667173,670211), 1r9zp6s1 [24622,24861), UTF-16.
+      // kG/YG, 24k7d6mw [633300,637661)/[667173,670211); GD, n7mc1kmr [812,1038), UTF-16.
       if (dialog.backgroundDetail !== undefined) {
         this.refreshBackgroundDialog();
         if (this.dialog !== dialog) return;
-        if (dialog.backgroundDetail.snapshot?.state === 'running') {
+        if (dialog.backgroundDetail.snapshot !== undefined && taskDetailRunning(dialog.backgroundDetail.snapshot)) {
           dialog.backgroundDetail.timer = setInterval(() => {
             if (this.dialog !== dialog) return;
             this.refreshBackgroundDialog(); this.render();
@@ -4181,13 +4181,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   /** fLt focus id/index and V(tjt), 24k7d6mw [674472,675750)/[677240,678145), UTF-16. */
+  // kG [633300,637661), same module/units: running-agent gate feeds the existing task-loss owner.
   private refreshBackgroundDialog(): void {
     const dialog = this.dialog, read = dialog?.request.backgroundTasks;
     if (dialog === undefined || read === undefined) return;
     if (dialog.backgroundDetail !== undefined) {
       const snapshot = dialog.request.backgroundTaskDetail?.();
       dialog.backgroundDetail.snapshot = snapshot;
-      if (snapshot === undefined || snapshot.state !== 'running') {
+      if (snapshot === undefined || !taskDetailRunning(snapshot)) {
         dialog.finish({ selected: [], key: 'gone' }); return;
       }
       const frame = taskDetailFrame(snapshot, Math.max(20, this.options.output.columns ?? 80));

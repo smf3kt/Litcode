@@ -1280,7 +1280,7 @@ export interface TerminalPromptRequest {
   configPanel?: import('./config-panel.js').ConfigPanelHost;
   /** fLt's V(tjt), 24k7d6mw [674472,675750), UTF-16: live local Background rows. */
   backgroundTasks?: () => import('./tasks-panel.js').BackgroundTaskSnapshot;
-  /** YG, 24k7d6mw [667173,670211), UTF-16: one dialog-owned live shell/monitor snapshot. */
+  /** kG/YG, 24k7d6mw [633300,637661)/[667173,670211), UTF-16: one dialog-owned live task snapshot. */
   backgroundTaskDetail?: () => import('./task-details.js').BackgroundTaskDetail | undefined;
   /**
    * When present the request runs as a sequence of groups followed by a review

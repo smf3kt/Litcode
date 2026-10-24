@@ -12,6 +12,9 @@ import { capChildOutput, childConfig, selectChildTools, createChildHookLifecycle
   type ChildEnvironmentLease, type ChildLaunchOptions } from './subagents.js';
 import { scrubSubagentOutput } from './subagent-output-scrub.js';
 import type Anthropic from '@anthropic-ai/sdk';
+import { createAgentProgress, agentProgressSnapshot, observeAgentResponse, observeAgentStream,
+  type AgentProgressTracker } from './agent-progress.js';
+import type { AgentTaskDetail } from './agent-details.js';
 import { compileStructuredOutputSchema, formatSchemaIssues, STRUCTURED_OUTPUT_RETRY_LIMIT, STRUCTURED_OUTPUT_SUCCESS,
   STRUCTURED_OUTPUT_SYSTEM_NOTE, STRUCTURED_OUTPUT_TOOL_NAME, STRUCTURED_OUTPUT_TOOL_PROMPT,
   type CompiledJsonSchema, type JsonValue } from './structured-output.js';
@@ -118,6 +121,7 @@ type Child = {
   environment?: ChildEnvironmentLease; environmentClosing?: Promise<void>; fork?: boolean;
   structured?: StructuredOutputState;
   liveOwner: LivePermissionOwner; adoptionOnly: boolean;
+  prompt: string; startedAt: number; endedAt?: number; progress: AgentProgressTracker; streamedChars: number;
 };
 
 /** One instance belongs to one parent session; selectors never resolve outside it. */
@@ -172,6 +176,18 @@ export class AgentRegistry {
   }
 
   list(): AgentDescriptor[] { return [...this.children.values()].map(child => this.snapshot(child)); }
+
+  /** kG/dne, 24k7d6mw [633300,637661), sfn1dbxq [4233793,4234807), UTF-16: passive retained task fields. */
+  detail(id: string): AgentTaskDetail | undefined {
+    if (this.closed || this.options.signal?.aborted) return;
+    const child = this.children.get(id);
+    if (child === undefined) return;
+    return { kind: 'agent', id: child.view.id, name: child.view.name, status: child.view.status,
+      mode: child.view.mode, model: child.view.model, error: child.view.error, prompt: child.prompt,
+      agentType: child.view.subagent_type ?? child.view.mode,
+      ...(child.config.effort === undefined ? {} : { effort: child.config.effort }), startedAt: child.startedAt,
+      ...(child.endedAt === undefined ? {} : { endedAt: child.endedAt }), progress: agentProgressSnapshot(child.progress) };
+  }
 
   private changed(): void {
     this.revision++;
@@ -269,6 +285,7 @@ export class AgentRegistry {
     child.mailbox.push(message); child.mailboxBytes += bytes; child.accepted++;
   }
 
+  // dne/iCn, sfn1dbxq [4233793,4234807)/[4219665,4219883), UTF-16: retain launch data and progress.
   async launch(raw: AgentLaunch, callerSignal?: AbortSignal, execution?: {
     config: SessionConfig; tools: ToolDefinition[]; conversation?: readonly Anthropic.MessageParam[];
     beforeTool?: (tool: ToolDefinition, input: unknown, signal: AbortSignal) => Promise<void>;
@@ -428,6 +445,8 @@ export class AgentRegistry {
       hooks = createChildHookLifecycle(session, this.options);
       const childId = session.id;
       const agent = new Agent(session, this.options.provider, tools, { hookOptions: hooks.hookOptions,
+        textStart: () => { if (child) this.beginResponse(child); },
+        text: text => { if (child) this.streamResponse(child, text); },
         // A denying PermissionRequest hook with `interrupt:true` aborts this
         // child's turn (source subagent consumer, chunk-fk088dyb.js offset 89115).
         interruptTurn: () => controller.abort(new Error('Hook interrupt')),
@@ -440,6 +459,7 @@ export class AgentRegistry {
           mode: launch.mode, model: config.model, summary: '', error: null, reason: null, model_calls: 0, queued_messages: 0,
           ...(this.options.enableAdvanced ? { workspace: config.workspace, ...(args.subagent_type ? { subagent_type: args.subagent_type } : {}) } : {}) },
         config: session.config, tools, controller, mailbox: [], mailboxBytes: 0, liveOwner, adoptionOnly: execution?.beforeTool !== undefined,
+        prompt: args.prompt, startedAt: Date.now(), progress: createAgentProgress(), streamedChars: 0,
         accepted: 0, session, agent, hooks, journalEvents: session.events.length, journalBytes: metadataBytes + seedBytes + seedBoundaryBytes,
         ...(structuredState ? { structured: structuredState } : {}),
         ...(environment ? { environment } : {}), fork: seededFork,
@@ -496,12 +516,13 @@ export class AgentRegistry {
     return this.snapshot(child);
   }
 
+  // _k, sfn1dbxq [4228512,4230112), UTF-16: stamp terminal task time through the owned stop path.
   async stop(selector: string): Promise<AgentDescriptor> {
     const child = this.resolve(selector);
     child.controller.abort();
     child.mailbox = []; child.mailboxBytes = 0;
     if (child.worker) await child.worker;
-    else { child.view.status = 'cancelled'; this.notify(child); this.deliverIdle(child); }
+    else { child.view.status = 'cancelled'; child.endedAt = Date.now(); this.notify(child); this.deliverIdle(child); }
     await this.releaseEnvironment(child);
     return this.snapshot(child);
   }
@@ -521,6 +542,20 @@ export class AgentRegistry {
     });
   }
 
+  // IX [107910,110110), 40cepjpq, UTF-16; host final-message usage adapter recorded in W321.
+  private beginResponse(child: Child): void {
+    child.streamedChars = 0;
+    observeAgentStream(child.progress, { type: 'response_start' });
+  }
+
+  // Td, hwpb27as [4137,4218), UTF-16: estimate the accumulated text rather than rounded chunks.
+  private streamResponse(child: Child, text: string): void {
+    const previous = Math.round(child.streamedChars / 4);
+    child.streamedChars += text.length;
+    observeAgentStream(child.progress, { type: 'tokens', estimatedTokensDelta: Math.round(child.streamedChars / 4) - previous });
+  }
+
+  // IX, 40cepjpq [107910,110110), UTF-16: observe only newly committed assistant responses.
   private boundJournal(child: Child): void {
     const session = child.session!;
     child.journalEvents = session.events.length;
@@ -539,9 +574,15 @@ export class AgentRegistry {
       }
       append(event);
       child.journalEvents++; child.journalBytes += bytes;
+      if (event.kind === 'message' && event.response !== undefined) {
+        child.progress.streamedTokenEstimate = child.progress.streamedTokenEstimateAtResponseStart;
+        observeAgentResponse(child.progress, event.response);
+        child.streamedChars = 0;
+      }
     };
   }
 
+  // IX, 40cepjpq [104577,115399); iYr/nsr, sfn1dbxq [4232306,4233793), UTF-16: owned run and terminal time.
   private async run(child: Child): Promise<void> {
     const signal = child.controller.signal;
     try {
@@ -555,6 +596,7 @@ export class AgentRegistry {
         child.hooks = createChildHookLifecycle(child.session, this.options);
         const childId = child.session.id;
         child.agent = new Agent(child.session, this.options.provider, child.tools, { hookOptions: child.hooks.hookOptions,
+          textStart: () => this.beginResponse(child), text: text => this.streamResponse(child, text),
           interruptTurn: () => child.controller.abort(new Error('Hook interrupt')),
           ...(child.structured ? { requiredTool: STRUCTURED_OUTPUT_TOOL_NAME } : {}),
           ...(this.options.instructionFiles ? { instructionFiles: paths => this.options.instructionFiles!(child.config.workspace, paths) } : {}),
@@ -562,6 +604,7 @@ export class AgentRegistry {
           ...(this.options.stopState ? { stopState: this.options.stopState } : {}) });
       }
       this.boundJournal(child);
+      delete child.endedAt;
       child.view.status = 'running'; this.changed();
       await child.agent!.startSession(resumed ? 'resume' : child.fork ? 'fork' : 'startup', signal);
       while (child.mailbox.length) {
@@ -626,6 +669,7 @@ export class AgentRegistry {
           child.session = undefined; child.agent = undefined; child.hooks = undefined;
         }
       }
+      child.endedAt = Date.now();
       this.notify(child);
     }
   }

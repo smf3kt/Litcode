@@ -428,7 +428,7 @@ Monitor 可选 `command` 或 `ws`，二者互斥。例如：
 
 WebSocket 模式接收文本消息，每条消息作为一个事件保留其中换行；二进制只报告字节数。连接失败和关闭码通过通知与作业状态显示；取消、超时和会话清理会关闭连接。它共用会话作业限额，不依赖 `allowShell`；Shell 模式仍需开启该配置。旧会话恢复时保留原有 command-only schema。与原版的静态行为差异见 `research/MONITOR.md`。
 
-`/tasks` 或 Background 页脚可查看运行中的 Shell 和脚本 Monitor。后台列表只有一个 Shell 或脚本 Monitor 时直接打开详情；列表中 Enter 打开，Left 返回，Esc、Enter 或 Space 关闭，x 停止。详情显示状态、耗时、命令和输出尾部，每秒刷新；PgUp/PgDn 查看超出视口的内容。查看详情保留当前草稿和模型回合。验证命令为 `node scripts/smoke-task-details-cli.mjs`，来源与输出流适配见 `research/ports/W320-task-details.md`。
+`/tasks` 或 Background 页脚可查看运行中的 Shell、脚本 Monitor 和本地子代理。后台列表只有一个可查看的任务时直接打开详情；列表中 Enter 打开，Left 返回，Esc、Enter 或 Space 关闭，x 停止。Shell 和 Monitor 显示状态、耗时、命令和输出尾部。代理显示原始任务 prompt、模型、effort、耗时、token 与工具计数，以及最近工具活动。详情每秒刷新，Reduce motion 下也保留数据更新；PgUp/PgDn 查看超出视口的内容。查看详情保留当前草稿和模型回合。验证命令为 `node scripts/smoke-task-details-cli.mjs` 和 `node scripts/smoke-agent-details-cli.mjs`，来源与适配见 `research/ports/W320-task-details.md`、`research/ports/W321-agent-details.md`。
 
 后台作业默认最多 16 个并发、保留 100 个已结束作业；通知有数量/字节限额和丢弃计数。调度与代理目录保持进程内状态。子代理共享工作区和 task store；worktree isolation 创建独立 runtime、父工作区子日志及可续跑 lease，stop/失败/淘汰/父关闭清理，dirty/unmerged checkout 保留并报告 cleanup_error。主会话 worktree 入口见上文，tmux 与跨进程 peers 仍有差距。MCP stdio 保持 2024-11-05 handshake（form 为显式扩展），HTTP 协商 2025-03-26/2025-06-18。开启 `mcpNotificationStream` 后，GET 流上的任意客户端请求按 POST 合同派发（能力门控、关联任务所有权、取消与有界回复），未配置的方法回 -32601；承载过请求的流不再自动重开，仅通知的流保持有限重开预算。回调有独立取消/期限、32 KiB 输入、1 MiB 结果/frame、每连接 16 个实际活跃槽，超时后占槽至结束，close 忽略晚到结果；JavaScript 回调依赖协作取消。MCP tasks、重连与 sampling 扩展仍为 Partial，OAuth 为 Excluded。
 

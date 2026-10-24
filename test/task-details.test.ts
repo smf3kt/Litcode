@@ -15,7 +15,7 @@ import type { ModelProvider } from '../src/provider.js';
 import { createRuntime } from '../src/runtime.js';
 import { Session } from '../src/session.js';
 import { initialTaskDetail, taskDetailClip, taskDetailFrame, taskDetailOutput,
-  type BackgroundTaskDetail } from '../src/task-details.js';
+  type ShellTaskDetail } from '../src/task-details.js';
 import type { BackgroundTaskSnapshot } from '../src/tasks-panel.js';
 import type { ToolContext, ToolDefinition } from '../src/tools.js';
 import { TuiTerminal } from '../src/tui.js';
@@ -24,7 +24,7 @@ import { backgroundFooterLabel } from '../src/tui-background.js';
 const { Terminal: HeadlessTerminal } = createRequire(import.meta.url)('@xterm/headless') as { Terminal: typeof Terminal };
 const temporary = () => fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
   ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), 'task-detail-test-')));
-const detail = (id: string, kind: BackgroundTaskDetail['kind'] = 'run'): BackgroundTaskDetail => ({
+const detail = (id: string, kind: ShellTaskDetail['kind'] = 'run'): ShellTaskDetail => ({
   id, kind, state: 'running', command: `owned ${id}`, duration_ms: 1250, exit_code: null,
   stdout: 'first output\n', stderr: '', stdout_bytes: 13, stderr_bytes: 0,
 });
@@ -60,7 +60,7 @@ test('task details retain source tail selection, grapheme clipping and supported
   const row = { id: job.id, kind: job.kind, state: job.state, command: job.command, description: '' };
   assert.equal(initialTaskDetail({ ...empty, jobs: [row] }), 'shell');
   assert.equal(initialTaskDetail({ ...empty, jobs: [{ ...row, source: 'websocket' }] }), undefined);
-  assert.equal(initialTaskDetail({ ...empty, agents: [{ id: 'agent', status: 'running' }] }), undefined);
+  assert.equal(initialTaskDetail({ ...empty, agents: [{ id: 'agent', status: 'running' }] }), 'agent');
   assert.equal(initialTaskDetail({ ...empty, jobs: [row], crons: [{ id: 'cron', cron: '* * * * *', prompt: 'tick', recurring: true }] }), undefined);
 });
 
@@ -79,7 +79,9 @@ test('runtime details read only the existing owner without draining monitor even
     const command = `${quote(process.execPath)} -e ${quote("process.stdout.write('queued line\\n');process.stderr.write('stderr output\\n');setInterval(()=>{},1000)")}`;
     const started = JSON.parse(await selected(tools, 'monitor').execute({ command }, context)) as { id: string };
     const end = Date.now() + 5000;
-    while (!runtime.backgroundTaskDetail!('owned', started.id)?.stderr.includes('stderr output')) {
+    while (true) {
+      const current = runtime.backgroundTaskDetail!('owned', started.id);
+      if (current?.kind === 'monitor' && current.stderr.includes('stderr output')) break;
       assert.ok(Date.now() < end, 'monitor output arrived'); await delay(10);
     }
     const first = runtime.backgroundTaskDetail!('owned', started.id)!;
@@ -87,7 +89,8 @@ test('runtime details read only the existing owner without draining monitor even
     assert.equal(first.stdout, 'queued line\n'); assert.equal(first.stderr, 'stderr output\n');
     assert.equal(runtime.backgroundTaskDetail!('other', started.id), undefined);
     assert.equal(runtime.backgroundTaskDetail!('owned', 'missing'), undefined);
-    assert.equal(runtime.backgroundTaskDetail!('owned', started.id)!.stdout_bytes, 12);
+    const second = runtime.backgroundTaskDetail!('owned', started.id)!;
+    assert.equal(second.kind, 'monitor'); assert.equal(second.stdout_bytes, 12);
     const notifications = JSON.parse(await selected(tools, 'read_notifications').execute({}, context)) as { events: { lines: string[] }[] };
     assert.ok(notifications.events.some(event => event.lines.includes('queued line')));
     const drained = JSON.parse(await selected(tools, 'read_notifications').execute({}, context)) as { events: unknown[] };
@@ -113,7 +116,7 @@ test('live details keep model and draft owners while polling, navigating, preemp
   const tui = new TuiTerminal({ input, output, prefersReducedMotion: true, userDir });
   const frame = () => Array.from({ length: 40 }, (_, row) => screen.buffer.active.getLine(row)?.translateToString(true) ?? '').join('\n');
   const key = (value: string) => input.emit('data', value);
-  const jobs = new Map<string, BackgroundTaskDetail>([['shell', detail('shell')]]);
+  const jobs = new Map<string, ShellTaskDetail>([['shell', detail('shell')]]);
   const snapshot = (): BackgroundTaskSnapshot => ({ ...empty, jobs: [...jobs.values()].filter(job => job.state === 'running')
     .map(job => ({ id: job.id, kind: job.kind, state: job.state, command: job.command, description: job.id })) });
   let polls = 0, calls = 0, modelSignal: AbortSignal | undefined, release: (() => void) | undefined;
