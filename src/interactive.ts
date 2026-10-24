@@ -42,6 +42,7 @@ import { SKILLS_TITLE, applySkillOverrideDiff, defaultSkillModes, nextSkillMode,
   skillsSaveMessage, type SkillMode } from './skills-panel.js';
 import { backgroundTaskGoneMessage, backgroundTaskRequest, parseBackgroundTaskValue } from './tasks-panel.js';
 import { initialTaskDetail } from './task-details.js';
+import { agentViewCommandGate } from './agent-transcript.js';
 import { hooksSchema } from './hooks.js';
 import { HOOKS_NONE_YET, HOOKS_TITLE, attributeHooks, browseHooks, hookConfigLabel,
   hookListSubtitle, type HookLayer, type HookPanelHook } from './hooks-panel.js';
@@ -1175,7 +1176,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       throw error;
     }
   };
+  // am/OCe, 24k7d6mw [398888,399172)/[1501794,1502367), UTF-16: release the departing view owner.
   const acceptNext = async (next: Session, nextRuntime: Runtime): Promise<void> => {
+    terminal?.clearAgentView?.();
     unsubscribe?.();
     try {
       if (nextRuntime !== activeRuntime) await activeRuntime.close();
@@ -1386,6 +1389,46 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       ...(effort === undefined ? {} : { effortPersistable: persistableEffort(effort) !== undefined }),
       ...(saveSuffix === '' ? {} : { saveFailure: saveSuffix }) })}\n`);
   };
+  // im/am/N4/Ble, 24k7d6mw [398352,399172)/[1497670,1498885)/[705483,706014), UTF-16.
+  const openAgentView = (id: string) => {
+    const owner = session.id, runtime = activeRuntime;
+    if (!terminal?.viewAgent || !runtime.agentTranscript || !runtime.submitAgentInput) return;
+    const release = runtime.retainAgentView?.(owner, id);
+    if (release === undefined) return;
+    let released = false;
+    const controller = new AbortController();
+    const current = () => !released && !inputClosed && session.id === owner && activeRuntime === runtime;
+    terminal.viewAgent({
+      read: () => current() ? runtime.agentTranscript!(owner, id) : undefined,
+      release: () => { if (!released) { released = true; controller.abort(); release(); } },
+      escape: () => {
+        const snapshot = current() ? runtime.agentTranscript!(owner, id) : undefined;
+        if (snapshot?.status === 'running' || snapshot?.status === 'queued') {
+          void runtime.stopTask?.(owner, id).catch(error => options.status.write(`${String(error)}\n`));
+        } else terminal.clearAgentView?.();
+      },
+      submit: async (text, draftCurrent) => {
+        if (!current() || !draftCurrent() || approval || formActive) return false;
+        const parsed = parseSlashCommand(text);
+        const name = parsed === undefined ? undefined : canonicalCommand(parsed.name);
+        const command = name === undefined ? undefined : commandTable(session.config).find(row => row.kind === 'command' && row.name === name);
+        const gate = name === undefined ? undefined : agentViewCommandGate(name, parsed!.name);
+        if (gate?.kind === 'block') return { kind: 'feedback', text: gate.message };
+        if (gate?.kind === 'confirm') {
+          const answer = await readDialog({ title: gate.title, message: gate.title, choices: [
+            { label: gate.label, value: 'run' }, { label: 'Cancel', value: 'cancel' },
+          ] }, AbortSignal.any([options.signal, controller.signal]));
+          if (answer?.selected[0] !== 'run' || !current() || !draftCurrent()) return false;
+        }
+        if (command !== undefined || gate?.kind === 'confirm') {
+          onLine(text); return 'main';
+        }
+        if (!current()) return false;
+        await runtime.submitAgentInput!(owner, id, text);
+        return 'child';
+      },
+    });
+  };
   /** A4/fLt, 24k7d6mw [1487552,1487705)/[674472,675750), UTF-16: session-owned live list. */
   // kG dispatch, same module [685700,687200), UTF-16: existing modal owner opens local agent details.
   openTasksPanelLive = async () => {
@@ -1408,13 +1451,18 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           ? await readDialog({ ...list, defaultIndex: focused < 0 ? focus.index : focused,
               titleOrigin: 'live-picker', backgroundTasks: read }, live.signal)
           : await readDialog({ title: 'Shell details', message: '', readOnly: true, titleOrigin: 'live-picker', backgroundTasks: read,
-              backgroundTaskDetail: () => activeRuntime.backgroundTaskDetail?.(session.id, detailId) }, live.signal);
+              backgroundTaskDetail: () => activeRuntime.backgroundTaskDetail?.(session.id, detailId),
+              ...(terminal.viewAgent && activeRuntime.agentTranscript && activeRuntime.submitAgentInput
+                ? { keys: [{ key: 'f', label: 'view agent' }] } : {}) }, live.signal);
         if (live.signal.aborted) break;
         if (detailId !== undefined) {
           if (answer === undefined) {
             const agent = read().agents.some(item => item.id === detailId);
             options.status.write(agent ? 'Background dialog dismissed\n' : 'Shell details dismissed\n');
             break;
+          }
+          if (answer.key === 'f') {
+            live.release(); openAgentView(detailId); break;
           }
           if (answer.key === 'gone') {
             if (initialDetail) break;

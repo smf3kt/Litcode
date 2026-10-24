@@ -499,6 +499,10 @@ export type Runtime = {
   backgroundTasks?(owner: string): import('./tasks-panel.js').BackgroundTaskSnapshot;
   /** kG/zG, 24k7d6mw [633300,637661)/[667037,667173), UTF-16: passive owned task details. */
   backgroundTaskDetail?(owner: string, id: string): import('./task-details.js').BackgroundTaskDetail | undefined;
+  /** im/am/Vp/N4, 24k7d6mw [398352,399172)/[210906,211342)/[1497670,1498885), UTF-16. */
+  agentTranscript?(owner: string, id: string): import('./agent-transcript.js').AgentTranscript | undefined;
+  retainAgentView?(owner: string, id: string): (() => void) | undefined;
+  submitAgentInput?(owner: string, id: string, text: string): Promise<void>;
   /** Stop one job, child agent or cron by id; undefined when the id is no longer live. */
   stopTask?(owner: string, id: string): Promise<import('./tasks-panel.js').BackgroundTaskKind | undefined>;
   releaseSession?(owner: string): Promise<void>;
@@ -1082,6 +1086,7 @@ export async function createRuntime(
       instructionFiles: childInstructions,
       stopState: () => stopStateForOwner(owner),
       enableAdvanced: current.features?.agentTypes === true, agentTypes: current.agentTypes, childEnvironmentFactory,
+      onChange: () => { if (ownerScopes.get(owner) === scope) notify(owner); },
       onNotification: event => {
         if (ownerScopes.get(owner) !== scope) return;
         if (event.subscription?.state === 'idle') {
@@ -1287,6 +1292,8 @@ export async function createRuntime(
     namedCatalogs.get(owner)?.catalog.close();
     namedCatalogs.delete(owner);
     if (!resources) return;
+    // OCe, 24k7d6mw [1501794,1502367), UTF-16: removing an owner invalidates a mounted child view.
+    notify(owner);
     const schedulerClosing = resources.scheduler?.close();
     // Children may still use LSP/tools; stop them before closing their shared clients.
     try { await resources.workflows?.close(); }
@@ -1534,6 +1541,14 @@ export async function createRuntime(
           const job = resources.background.snapshot(id);
           return job.source === 'websocket' ? undefined : job;
         } catch { return undefined; }
+      },
+      // Vp/im/am/N4, 24k7d6mw [210906,211342)/[398352,399172)/[1497670,1498885), UTF-16.
+      agentTranscript(owner, id) { return closed || signal.aborted ? undefined : owners.get(owner)?.agents?.transcript(id); },
+      retainAgentView(owner, id) { return closed || signal.aborted ? undefined : owners.get(owner)?.agents?.retainView(id); },
+      async submitAgentInput(owner, id, text) {
+        const registry = closed || signal.aborted ? undefined : owners.get(owner)?.agents;
+        if (registry === undefined) throw new Error('Agent view owner is no longer available');
+        await registry.sendMessage(id, text, signal, { human: true });
       },
       stopTask(owner, id) { return stopTaskForOwner(owner, id); },
       subscribeTasks(current, listener) {

@@ -15,6 +15,8 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { createAgentProgress, agentProgressSnapshot, observeAgentResponse, observeAgentStream,
   type AgentProgressTracker } from './agent-progress.js';
 import type { AgentTaskDetail } from './agent-details.js';
+import { transcriptEvent, type AgentTranscript, type AgentTranscriptRecord } from './agent-transcript.js';
+import type { MessageOrigin } from './message-origin.js';
 import { compileStructuredOutputSchema, formatSchemaIssues, STRUCTURED_OUTPUT_RETRY_LIMIT, STRUCTURED_OUTPUT_SUCCESS,
   STRUCTURED_OUTPUT_SYSTEM_NOTE, STRUCTURED_OUTPUT_TOOL_NAME, STRUCTURED_OUTPUT_TOOL_PROMPT,
   type CompiledJsonSchema, type JsonValue } from './structured-output.js';
@@ -40,6 +42,7 @@ export type AgentRegistryLimits = {
 export type AgentRegistryOptions = ChildHookOptions & AdvancedChildOptions & {
   source: SessionConfig | (() => SessionConfig); provider: ModelProvider; tools: ToolDefinition[];
   signal?: AbortSignal; onNotification?: (event: AgentNotification) => void;
+  onChange?: () => void;
   limits?: Partial<AgentRegistryLimits>;
 };
 export type AgentLaunch = ChildLaunchOptions & {
@@ -113,9 +116,11 @@ function createStructuredOutputTool(schema: unknown, state: StructuredOutputStat
   };
 }
 
+type MailboxMessage = { text: string; origin: MessageOrigin; displayId?: string };
 type Child = {
   view: AgentDescriptor; config: SessionConfig; tools: ToolDefinition[]; controller: AbortController;
-  mailbox: string[]; mailboxBytes: number; accepted: number; session?: Session;
+  mailbox: MailboxMessage[]; mailboxBytes: number; accepted: number; session?: Session;
+  transcript: AgentTranscriptRecord[]; inProgressToolUseIDs: Set<string>; viewLeases: Set<symbol>; activeInput?: string;
   agent?: Agent; hooks?: ReturnType<typeof createChildHookLifecycle>;
   worker?: Promise<void>; journalEvents: number; journalBytes: number;
   environment?: ChildEnvironmentLease; environmentClosing?: Promise<void>; fork?: boolean;
@@ -189,9 +194,32 @@ export class AgentRegistry {
       ...(child.endedAt === undefined ? {} : { endedAt: child.endedAt }), progress: agentProgressSnapshot(child.progress) };
   }
 
+  // Vp/Zee/im/am, 24k7d6mw [210906,211342)/[398352,399172), UTF-16: existing-owner views.
+  transcript(id: string): AgentTranscript | undefined {
+    if (this.closed || this.options.signal?.aborted) return;
+    const child = this.children.get(id);
+    if (child === undefined) return;
+    return structuredClone({ id, name: child.view.name, model: child.view.model, status: child.view.status,
+      records: child.transcript, inProgressToolUseIDs: [...child.inProgressToolUseIDs] });
+  }
+
+  // im/am/aoe, 24k7d6mw [398164,399172), UTF-16; the host retains against its history count cap.
+  retainView(id: string): (() => void) | undefined {
+    if (this.closed || this.options.signal?.aborted) return;
+    const child = this.children.get(id);
+    if (child === undefined) return;
+    const lease = Symbol(id);
+    child.viewLeases.add(lease);
+    return () => {
+      if (!child.viewLeases.delete(lease)) return;
+      void this.trimHistory();
+    };
+  }
+
   private changed(): void {
     this.revision++;
     for (const listener of [...this.changes]) listener();
+    this.options.onChange?.();
   }
 
   async poll(options: { waitMs?: number; since?: number; signal?: AbortSignal } = {}): Promise<AgentPollResult> {
@@ -257,8 +285,9 @@ export class AgentRegistry {
     return child.environmentClosing;
   }
 
+  // im/aoe, 24k7d6mw [398164,398888), UTF-16: selected transcripts survive normal task eviction.
   private async trimHistory(): Promise<void> {
-    const finished = [...this.children.values()].filter(child => !child.worker && terminal(child.view.status));
+    const finished = [...this.children.values()].filter(child => !child.worker && !child.viewLeases.size && terminal(child.view.status));
     while (finished.length > this.limits.maxHistory) {
       const old = finished.shift()!;
       this.children.delete(old.view.id); this.changed();
@@ -271,7 +300,8 @@ export class AgentRegistry {
     if (this.active >= this.limits.maxConcurrency) throw new Error('Child agent concurrency limit reached');
   }
 
-  private enqueue(child: Child, message: string): void {
+  // N4.submitToAgent/tqt/eqt, 24k7d6mw [1497670,1498885), sfn1dbxq [4223404,4224352), UTF-16.
+  private enqueue(child: Child, message: string, human = false): void {
     messageSchema.parse(message);
     const bytes = Buffer.byteLength(message);
     if (bytes > this.limits.maxMessageBytes) throw new Error('Child message byte limit exceeded');
@@ -282,7 +312,11 @@ export class AgentRegistry {
     if (child.journalEvents >= this.limits.maxJournalEvents || child.journalBytes >= this.limits.maxJournalBytes) {
       throw new Error('Child journal limit reached');
     }
-    child.mailbox.push(message); child.mailboxBytes += bytes; child.accepted++;
+    const displayId = human ? randomUUID() : undefined;
+    child.mailbox.push({ text: message, origin: human ? { kind: 'human' } : { kind: 'peer', source: 'mailbox' },
+      ...(displayId === undefined ? {} : { displayId }) });
+    if (displayId !== undefined) child.transcript.push({ kind: 'pending_input', id: displayId, text: message });
+    child.mailboxBytes += bytes; child.accepted++;
   }
 
   // dne/iCn, sfn1dbxq [4233793,4234807)/[4219665,4219883), UTF-16: retain launch data and progress.
@@ -459,6 +493,7 @@ export class AgentRegistry {
           mode: launch.mode, model: config.model, summary: '', error: null, reason: null, model_calls: 0, queued_messages: 0,
           ...(this.options.enableAdvanced ? { workspace: config.workspace, ...(args.subagent_type ? { subagent_type: args.subagent_type } : {}) } : {}) },
         config: session.config, tools, controller, mailbox: [], mailboxBytes: 0, liveOwner, adoptionOnly: execution?.beforeTool !== undefined,
+        transcript: session.events.filter(transcriptEvent), inProgressToolUseIDs: new Set(), viewLeases: new Set(),
         prompt: args.prompt, startedAt: Date.now(), progress: createAgentProgress(), streamedChars: 0,
         accepted: 0, session, agent, hooks, journalEvents: session.events.length, journalBytes: metadataBytes + seedBytes + seedBoundaryBytes,
         ...(structuredState ? { structured: structuredState } : {}),
@@ -488,8 +523,9 @@ export class AgentRegistry {
     return this.snapshot(child!);
   }
 
+  // N4.submitToAgent/xX/Ve, 24k7d6mw [1497670,1498885), qw2csqy5 [8817,9345), UTF-16.
   async sendMessage(selector: string, message?: string, callerSignal?: AbortSignal, options: {
-    notifyWhenIdle?: boolean; expiresMs?: number;
+    notifyWhenIdle?: boolean; expiresMs?: number; human?: boolean;
   } = {}): Promise<AgentDescriptor> {
     this.assertOpen(callerSignal);
     const child = this.resolve(selector);
@@ -498,9 +534,20 @@ export class AgentRegistry {
     if (message === undefined && !notifyWhenIdle) throw new Error('Message or idle subscription is required');
     if (notifyWhenIdle && this.subscriptions.size >= this.limits.maxIdleSubscriptions) throw new Error('Agent idle subscription limit reached');
     if (message !== undefined) {
-      if (child.controller.signal.aborted || child.view.status === 'failed') throw new Error(`Child agent is ${child.view.status}`);
+      // _kt/kn, j8hqhz0c [42796,42945), qw2csqy5 [9345,31492), UTF-16: publish the human restart after admission.
+      while (options.human && child.worker && (child.controller.signal.aborted || child.view.status === 'failed')) {
+        await child.worker;
+        this.assertOpen(callerSignal);
+        if (this.children.get(child.view.id) !== child) throw new Error('Agent view owner is no longer available');
+      }
+      const restarting = child.controller.signal.aborted || child.view.status === 'failed';
+      if (restarting) {
+        if (!options.human) throw new Error(`Child agent is ${child.view.status}`);
+        if (child.environmentClosing) throw new Error('The isolated agent environment has closed; start a new agent');
+      }
       if (!child.worker) this.capacity();
-      this.enqueue(child, message);
+      this.enqueue(child, message, options.human);
+      if (restarting) { child.controller = new AbortController(); child.view.error = null; }
       if (!child.worker) { child.view.status = 'queued'; this.start(child); }
       this.changed();
     }
@@ -555,7 +602,8 @@ export class AgentRegistry {
     observeAgentStream(child.progress, { type: 'tokens', estimatedTokensDelta: Math.round(child.streamedChars / 4) - previous });
   }
 
-  // IX, 40cepjpq [107910,110110), UTF-16: observe only newly committed assistant responses.
+  // IX, 40cepjpq [107910,110110); tqt/eqt, sfn1dbxq [4223404,4224352), UTF-16.
+  // The journal adapter replaces its pending human echo and publishes committed tool/message rows.
   private boundJournal(child: Child): void {
     const session = child.session!;
     child.journalEvents = session.events.length;
@@ -574,6 +622,19 @@ export class AgentRegistry {
       }
       append(event);
       child.journalEvents++; child.journalBytes += bytes;
+      if (transcriptEvent(event)) {
+        let replaced = false;
+        if (event.kind === 'message' && event.classifier?.origin.kind === 'human' && child.activeInput !== undefined) {
+          const index = child.transcript.findIndex(row => row.kind === 'pending_input' && row.id === child.activeInput);
+          if (index >= 0) { child.transcript[index] = structuredClone(event); replaced = true; }
+          child.activeInput = undefined;
+        }
+        if (!replaced) child.transcript.push(structuredClone(event));
+        if (event.kind === 'tool_start') child.inProgressToolUseIDs.add(event.id);
+        if (event.kind === 'tool_result') child.inProgressToolUseIDs.delete(event.result.tool_use_id);
+        if (event.kind === 'turn_end') child.inProgressToolUseIDs.clear();
+        this.options.onChange?.();
+      }
       if (event.kind === 'message' && event.response !== undefined) {
         child.progress.streamedTokenEstimate = child.progress.streamedTokenEstimateAtResponseStart;
         observeAgentResponse(child.progress, event.response);
@@ -610,8 +671,9 @@ export class AgentRegistry {
       while (child.mailbox.length) {
         signal.throwIfAborted();
         const prompt = child.mailbox.shift()!;
-        child.mailboxBytes -= Buffer.byteLength(prompt);
-        const result = await child.agent!.run(prompt, signal, undefined, undefined, [], undefined, { kind: 'peer', source: 'mailbox' });
+        child.mailboxBytes -= Buffer.byteLength(prompt.text);
+        child.activeInput = prompt.displayId;
+        const result = await child.agent!.run(prompt.text, signal, undefined, undefined, [], undefined, prompt.origin);
         child.view.reason = field(result.reason, this.limits.maxOutputBytes);
         child.view.summary = field(result.text, this.limits.maxOutputBytes);
         if (child.structured !== undefined) {
