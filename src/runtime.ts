@@ -48,7 +48,7 @@ import { executeSkill, skillRequiresExecution } from './skill-runtime.js';
 import { SkillEffectJournal } from './skill-effects.js';
 import { WorkflowRegistry, createWorkflowTools } from './workflow.js';
 import { AgentRegistry, createAgentRegistryTools } from './agent-registry.js';
-import { allocateSubtaskName, subtaskName, type SubtaskLaunch } from './subtask.js';
+import { allocateSubtaskName, subtaskDirective, subtaskName, type SubtaskLaunch } from './subtask.js';
 import { agentTypesSchema, type AgentTypeInfo } from './agent-types.js';
 import { createCheckpointTools } from './checkpoints.js';
 import { WorktreeManager, createWorktreeTools, hasDotSegment, requireHookWorktreeDirectory, screenWorktreeAncestry } from './worktrees.js';
@@ -518,7 +518,7 @@ export type Runtime = {
    * wait; the result arrives through the child-agent event stream `drainEvents` already carries.
    */
   launchSubtask?(config: SessionConfig, owner: string, task: string, signal: AbortSignal,
-    conversation: readonly Anthropic.MessageParam[]): Promise<SubtaskLaunch>;
+    conversation: readonly Anthropic.MessageParam[], extraMessages?: readonly Anthropic.MessageParam[]): Promise<SubtaskLaunch>;
   reconfigure?(config: SessionConfig): Promise<Runtime>;
   /** Bind durable MCP subscriptions to one journal; a new owner may return a fresh runtime. */
   bindSession?(session: Session): Promise<Runtime>;
@@ -1483,13 +1483,8 @@ export async function createRuntime(
           terminalSequence: childTerminalCallbacks.get(tools), instructionFiles: childInstructionCallbacks.get(tools),
           stopState: () => stopStateForOwner(owner), effectJournal: new SkillEffectJournal(current.workspace, owner) });
       },
-      /**
-       * Source `Zjt` (chunk-940nvk4p.js 1241): the fork child inherits the parent's system
-       * prompt and the whole conversation, gets an allocated name, and runs asynchronously. The
-       * source refuses a spawn with no rendered prompt and no conversation; this host refuses
-       * only the empty conversation, because the child config always carries a system prompt.
-       */
-      async launchSubtask(current, owner, task, launchSignal, conversation): Promise<SubtaskLaunch> {
+      // Zjt, 940nvk4p [1235,3817), UTF-16; the host keeps its existing empty-conversation gate.
+      async launchSubtask(current, owner, task, launchSignal, conversation, extraMessages = []): Promise<SubtaskLaunch> {
         if (current.features?.subagents === false) return { kind: 'unavailable', reason: 'disabled' };
         if (conversation.length === 0) return { kind: 'unavailable', reason: 'no-conversation' };
         // Building the tool set installs this owner's registry and its bound tools.
@@ -1500,12 +1495,10 @@ export async function createRuntime(
         const taken = new Set(registry.list().map(agent => agent.name)
           .filter((name): name is string => name !== null));
         const name = allocateSubtaskName(subtaskName(task), taken);
-        // Source `Zjt` (chunk-940nvk4p.js 1241): the fork runs the parent's exact tools
-        // (`useExactTools: true`) and inherits the parent model. `conversation` alone seeds the
-        // fork, so the advanced `subagent_type` is only named where that feature is on.
         const descriptor = await registry.launch({ prompt: task, mode: 'general', background: true, name,
           ...(current.features?.agentTypes === true ? { subagent_type: 'fork' as const } : {}) },
-          launchSignal, { config: current, tools: seam.tools }, conversation);
+          launchSignal, { config: current, tools: seam.tools, conversation: [...conversation, ...extraMessages],
+            initialPrompt: subtaskDirective(task) });
         return { kind: 'forked', name: descriptor.name ?? name, agentId: descriptor.id };
       },
       taskRecords(current) {if (closed) return []; return current.features?.tasks ? readTaskRecords(current.workspace) : [];},

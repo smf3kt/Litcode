@@ -434,6 +434,8 @@ WebSocket 模式接收文本消息，每条消息作为一个事件保留其中�
 
 `/tasks` 或 Background 页脚可查看运行中的 Shell、脚本 Monitor 和本地子代理。后台列表只有一个可查看的任务时直接打开详情；列表中 Enter 打开，Left 返回，Esc、Enter 或 Space 关闭，x 停止。Shell 和 Monitor 显示状态、耗时、命令和输出尾部。代理显示原始任务 prompt、模型、effort、耗时、token 与工具计数，以及最近工具活动。详情每秒刷新，Reduce motion 下也保留数据更新；PgUp/PgDn 查看超出视口的内容。查看详情保留当前草稿和模型回合。验证命令为 `node scripts/smoke-task-details-cli.mjs` 和 `node scripts/smoke-agent-details-cli.mjs`，来源与适配见 `research/ports/W320-task-details.md`、`research/ports/W321-agent-details.md`。
 
+`/btw 问题` 显示一次无工具的旁问回答。当前正常回答按 f 可交给后台代理继续执行，分支继承主会话上下文和这组问答，主会话保留原位置。浏览旧回答或显示错误占位回复时隐藏 fork；空主会话沿用首回合门控。后台代理使用现有权限、任务限额和清理流程，结果通过正常通知返回；`/tasks` 可查看和续聊同一个代理。旁问原始答案保持在独立历史中。验证命令为 `node scripts/smoke-btw-fork-cli.mjs`，关闭高级代理类型的路径加 `--legacy`；来源与适配见 `research/ports/W326-btw-fork.md`。
+
 `/tasks` 还会在 `Completed` 分组列出当前进程保留的已完成后台代理，活动项在前，同组按启动时间从新到旧排列。完成项不增加页脚活动计数，Enter 或 f 直接打开该代理的对话；运行中的详情在完成后保留，Left 返回列表，停止键随完成状态撤下。历史沿用有界保留和查看租约，跨重启重建另列后续工作。验证命令为 `node scripts/smoke-agent-transcript-cli.mjs --completed-history`，来源与适配见 `research/ports/W323-completed-task-history.md`。
 
 代理详情按 f 进入该代理的会话。普通输入直接交给所选代理，排队后立即显示，完成后仍可查看和续聊。主会话继续保留自己的输出。`/model` 和 `/fast` 显示归属提示并保留草稿；`/compact`、`/clear`、`/rewind` 先确认，再作用于主会话。Escape 停止运行中的代理，结束后再次 Escape 返回主会话；Vim 编辑模式先消费首次 Escape。Ctrl+O 查看代理 transcript，q 返回代理聊天。停止或失败的普通本地代理接受人类主动续聊；已关闭的隔离环境提示重新创建代理。同进程查看保留有界记录，退出查看恢复原有淘汰规则。验证命令为 `node scripts/smoke-agent-transcript-cli.mjs`，来源与适配见 `research/ports/W322-agent-transcript.md`。

@@ -2109,10 +2109,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           continue;
         }
         if (prompt === '/btw' || prompt.startsWith('/btw ')) {
-          // `kmt`, chunk-d3s5r8h5.js [1289,3457): one tool-free call over the conversation. The
-          // answer is shown in `we`'s panel (chunk-qskwh3r4.js [1877,8641)) and never appended to
-          // the transcript. The recovered fork action (`f`) and remote thin-client dispatch are
-          // not ported; browsing, clearing and copying are.
+          // we.f, qskwh3r4 [19989,20853), UTF-16: only the current nonsynthetic answer forks.
           let question = prompt.slice('/btw'.length).trim();
           if (question === '') {
             if (!terminal?.prompt) { output.write(`${SIDE_QUESTION_USAGE}\n`); continue; }
@@ -2133,8 +2130,25 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const answer = await withTurn(signal => readDialog({ title: 'Btw', readOnly: true,
               message: sideQuestionPanelText(shown.question, shown.response),
               keys: [{ key: '[', label: 'older' }, { key: ']', label: 'newer' },
-                { key: 'x', label: 'clear history' }, { key: 'c', label: 'copy' }] }, signal));
+                { key: 'x', label: 'clear history' }, { key: 'c', label: 'copy' },
+                ...(!outcome.synthetic && browse === null && activeRuntime.launchSubtask
+                  && !subtaskCoordinator(process.env, { interactive: true, remote: false })
+                  ? [{ key: 'f', label: 'fork' }] : [])] }, signal));
             if (answer === undefined) break;
+            if (answer.key === 'f' && !outcome.synthetic && browse === null && activeRuntime.launchSubtask
+              && !subtaskCoordinator(process.env, { interactive: true, remote: false })) {
+              try {
+                const launched = await withTurn(signal => activeRuntime.launchSubtask!(session.config, session.id,
+                  current.question, signal, session.messages, [
+                    { role: 'user', content: current.question }, { role: 'assistant', content: current.response },
+                  ]));
+                output.write((launched.kind === 'forked' ? subtaskForkLine(launched.name, launched.agentId)
+                  : launched.reason === 'no-conversation' ? FORK_FIRST_TURN : FORK_DISABLED) + '\n');
+              } catch (error) {
+                output.write(`Failed to fork: ${error instanceof Error ? error.message : String(error)}\n`);
+              }
+              break;
+            }
             if (answer.key === 'c') {
               let payload: string;
               try { payload = osc52Payload(shown.response); }
