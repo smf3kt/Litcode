@@ -20,6 +20,7 @@ import { Vde } from './tui-background-click-source.js';
 import { rv } from './tui-hover-source.js';
 import { copySelectionText } from './tui-selection-copy.js';
 import { ScrollPill, type ScrollPillProps } from './tui-scroll-pill.js';
+import { ShellProgressRegion, type ShellProgressRegionProps } from './tui-shell-progress.js';
 
 interface NativePoint { col: number; row: number }
 interface NativeSelection {
@@ -190,6 +191,16 @@ export class TuiRenderer {
     return false;
   }
 
+  // tTe, 24k7d6mw [1521987,1523589), UTF-16; use the painted native group rather than estimated row coordinates.
+  shellProgressAt(column: number, row: number): boolean {
+    let node = cq(this.root, column, row);
+    while (node) {
+      if (node.style?.shellProgress) return true;
+      node = node.parentNode;
+    }
+    return false;
+  }
+
   /** dispatchHover/rv, 06azbynj [347186,347597)/[251135,251446), UTF-16. */
   hover(column: number, row: number): void {
     Reflect.apply(rv, undefined, [this.root, column, row, this.hoveredNodes, this.front.screen]);
@@ -267,7 +278,8 @@ export class TuiRenderer {
     sidebar?: { width: number; element: unknown },
     banner?: { text: string; color: string }, composerMode: 'prompt' | 'bash' = 'prompt',
     topBorderText?: { content: string; position: 'top'; align: 'end' | 'start' | 'center'; offset: number }, footerStatus?: FooterStatus,
-    scrollPill?: Omit<ScrollPillProps, 'columns'>): void {
+    scrollPill?: Omit<ScrollPillProps, 'columns'>,
+    shellProgress?: Omit<ShellProgressRegionProps, 'children'> & { rows: number }): void {
     this.selection = selection;
     const conversationWidth = columns - (sidebar?.width ?? 0);
     // `Mk`: the composer's own rule, drawn above the box and painted in one colour. It is
@@ -289,12 +301,17 @@ export class TuiRenderer {
     const transcriptHeight = Math.max(0,
       rows - prompt.length - 3 - bannerHeight - progress.length - statusLine.length);
     // nmt/Vc, 3gz7s57c [29232,37785)/[41715,43141), UTF-16; the pill overlays the transcript's last row.
+    const progressNodes = progress.map((line, index) => this.rawRow(line, conversationWidth, 'progress-' + index));
+    if (shellProgress && shellProgress.rows > 0) {
+      progressNodes.splice(0, shellProgress.rows, jsx(ShellProgressRegion, { ...shellProgress,
+        children: progressNodes.slice(0, shellProgress.rows) }, 'shell-progress'));
+    }
     const children = [jsx(s, { height: transcriptHeight, flexDirection: 'column', flexShrink: 0,
       children: [...Array.from({ length: transcriptHeight }, (_, index) =>
         this.rawRow(transcript[index] ?? '', conversationWidth, String(index))),
         scrollPill === undefined || transcriptHeight === 0 ? null
           : jsx(ScrollPill, { ...scrollPill, columns: conversationWidth }, 'scroll-pill')] }, 'transcript'),
-      ...progress.map((line, index) => this.rawRow(line, conversationWidth, 'progress-' + index)),
+      ...progressNodes,
       ...(bannerRow === undefined ? [] : [bannerRow]), input,
       ...statusLine.map((line, index) => this.rawRow(line, conversationWidth, 'status-line-' + index)), status];
     const conversation = jsx(s, { width: conversationWidth, height: rows, flexDirection: 'column',

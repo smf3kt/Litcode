@@ -432,6 +432,8 @@ Monitor 可选 `command` 或 `ws`，二者互斥。例如：
 
 WebSocket 模式接收文本消息，每条消息作为一个事件保留其中换行；二进制只报告字节数。连接失败和关闭码通过通知与作业状态显示；取消、超时和会话清理会关闭连接。它共用会话作业限额，不依赖 `allowShell`；Shell 模式仍需开启该配置。旧会话恢复时保留原有 command-only schema。与原版的静态行为差异见 `research/MONITOR.md`。
 
+输入 `!命令` 后，运行中的 Shell 输出默认显示五行尾部。内容被折叠时点击文字可展开当前保留的完整输出，再次点击可折叠；展开后点击该块空白处也可折叠。悬停只突出文字，拖动仍用于选择文本。新命令重新从折叠状态开始。验证使用 `node scripts/smoke-shell-expand-cli.mjs`，来源与适配见 `research/ports/W329-shell-expand.md`。
+
 `/tasks` 或 Background 页脚可查看运行中的 Shell、脚本 Monitor 和本地子代理。后台列表只有一个可查看的任务时直接打开详情；列表中 Enter 打开，Left 返回，Esc、Enter 或 Space 关闭，x 停止。Shell 和 Monitor 显示状态、耗时、命令和输出尾部。代理显示原始任务 prompt、模型、effort、耗时、token 与工具计数，以及最近工具活动。详情每秒刷新，Reduce motion 下也保留数据更新；PgUp/PgDn 查看超出视口的内容。查看详情保留当前草稿和模型回合。验证命令为 `node scripts/smoke-task-details-cli.mjs` 和 `node scripts/smoke-agent-details-cli.mjs`，来源与适配见 `research/ports/W320-task-details.md`、`research/ports/W321-agent-details.md`。
 
 `/btw 问题` 在全屏终端立即显示等待面板，网关明确给出重试间隔时显示状态、次数和倒计时；Escape、Enter 或空格关闭并取消这次旁问，错误仍在旁问面板显示。成功后显示一次无工具的回答。当前正常回答按 f 可交给后台代理继续执行，分支继承主会话上下文和这组问答，主会话保留原位置。浏览旧回答或显示错误占位回复时隐藏 fork；空主会话沿用首回合门控。后台代理使用现有权限、任务限额和清理流程，结果通过正常通知返回；`/tasks` 可查看和续聊同一个代理。旁问原始答案保持在独立历史中。验证命令为 `node scripts/smoke-btw-fork-cli.mjs`，关闭高级代理类型的路径加 `--legacy`；来源与适配见 `research/ports/W326-btw-fork.md`。等待、重试、取消和错误恢复验证使用 `node scripts/smoke-btw-progress-cli.mjs`，记录见 `research/ports/W328-btw-progress.md`。

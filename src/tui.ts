@@ -207,7 +207,8 @@ import { QUESTION_NOTES_ONLY } from './interaction-tools.js';
 const SOURCE_PICKER_OWNS_HISTORY_SEARCH = true;
 import { jde } from './tui-statusline-components.js';
 import { jsx } from './tui-jsx.js';
-import { s, n } from './tui-base-components.js';
+import { s, n, QXe } from './tui-base-components.js';
+import { ShellProgressInteraction } from './tui-shell-progress.js';
 import {
   createTranscriptState, layoutTranscript, renderedTranscriptRows, transcriptLines, wrapEntry,
   wrapEntryRows,
@@ -613,7 +614,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private progressRenderer: TuiDocumentRenderer | undefined;
   private progressHeight = 0;
   /** Source `showDrainedShellLine`: the live row a running drained command owns. */
-  private drainedShell: (import('./tools.js').ShellProgress & { verbose: boolean }) | undefined;
+  private drainedShell: import('./tools.js').ShellProgress | undefined;
+  private shellInteraction: ShellProgressInteraction | undefined;
+  private shellRows = 0;
+  private shellPointer: { owner: ShellProgressInteraction; column: number; row: number; moved: boolean } | undefined;
   private completedDuration: string | undefined;
   // Dd, 3gz7s57c [107529,107778), UTF-16; membership lasts until the next fire or session handoff.
   private loopFireId: string | undefined;
@@ -1921,7 +1925,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       return Promise.reject(new Error('Dialog exceeds its display budget'));
     }
     this.sourceSearch?.cancel();
-    this.footerPointer = undefined; this.renderer?.hover(-1, -1);
+    this.footerPointer = undefined; this.clearShellPointer(); this.renderer?.hover(-1, -1);
     this.sourcePicker?.cancel();
     // Formatter and settings callbacks retain their host ownership outside the cloned display data.
     // The resume picker's preview/rename callbacks are host closures too; only its rows are data.
@@ -2097,6 +2101,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.diffPanel?.close(); this.diffPanel = undefined;
     this.diffPointer = undefined; this.diffSelection.dismiss(); this.footerSelection = null;
     this.spinnerTips?.close(); this.progress.close(); this.progressRenderer?.close();
+    this.drainedShell = undefined; this.shellInteraction = undefined; this.shellPointer = undefined; this.shellRows = 0;
     this.statusLine.close(); this.statusLineRenderer?.close(); this.statusLineRows = [];
     this.unsubscribePermissions?.(); this.unsubscribePermissions = undefined;
     this.backgroundTasksProbe = undefined; this.backgroundWorkProbe = undefined; this.backgroundWorkStop = undefined;
@@ -3364,10 +3369,45 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return this.applyAction(outcome.match.action);
   }
 
+  // nmt/Ax, 3gz7s57c [29232,37785), 06azbynj [242075,244661), UTF-16; interrupted captures end their click chain.
+  private clearShellPointer(): void {
+    if (this.shellPointer) {
+      this.renderer?.clearNativeSelection(); this.lastClick = undefined; this.clickCountValue = 0;
+      this.shellPointer = undefined;
+    }
+  }
+
   private handleMouse(event: TerminalMouseEvent): void {
     if (this.options.mouseTracking === 'off' || this.screen === 'search') return;
     const view = this.viewportSize();
     if (event.action !== 'press') this.mouseSeen = true;
+    // tTe/Ax, 24k7d6mw [1521987,1523589), 06azbynj [242075,244661), UTF-16; a drag keeps native selection ownership.
+    const shellHit = this.renderer?.shellProgressAt(event.col - 1, event.row - 1) === true;
+    if ((shellHit && !this.selection.dragging && !this.diffPointer && !this.footerPointer && !this.scrollPointer
+      || this.shellPointer) && event.action !== 'wheelup' && event.action !== 'wheeldown') {
+      if ((this.options.mouseTracking ?? 'full') !== 'full') return;
+      const column = event.col - 1, row = event.row - 1;
+      this.renderer?.hover(column, row);
+      if (event.action === 'press' && (event.button & 3) !== 0) {
+        this.lastClick = undefined; this.clickCountValue = 0;
+      }
+      if (event.action === 'press' && (event.button & 3) === 0 && this.shellInteraction) {
+        this.selection = createSelection();
+        this.shellPointer = { owner: this.shellInteraction, column, row, moved: false };
+        this.renderer?.selectNative('start', column, row, this.clickCount({ column, line: row }));
+      } else if (this.shellPointer && (event.action === 'move' || event.action === 'release')) {
+        const pointer = this.shellPointer;
+        pointer.moved ||= column !== pointer.column || row !== pointer.row;
+        this.renderer?.selectNative(event.action === 'release' ? 'end' : 'drag', column, row);
+        if (event.action === 'release') {
+          this.shellPointer = undefined;
+          if (shellHit && pointer.owner === this.shellInteraction && !pointer.moved
+            && !this.renderer?.selectionInstance.hasTextSelection())
+            this.renderer?.click(column, row, { ctrl: event.ctrl, shift: event.shift, alt: event.meta });
+        }
+      }
+      this.render(); return;
+    }
     // Vc/Ax, 3gz7s57c [41715,43141), 06azbynj [242075,244661), UTF-16; noSelect keeps pill clicks out of copying.
     const pillHit = this.renderer?.scrollPillAt(event.col - 1, event.row - 1) === true;
     if ((pillHit || this.scrollPointer) && event.action !== 'wheelup' && event.action !== 'wheeldown') {
@@ -3948,6 +3988,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.dialog?.copyPicker) this.dialog.copyPicker.pressed = undefined;
     if (this.dialog?.configPanel) this.dialog.configPanel.pressed = undefined;
     this.selection = createSelection(); this.diffPointer = undefined; this.footerPointer = undefined; this.scrollPointer = undefined;
+    this.clearShellPointer(); if (this.shellInteraction) this.shellInteraction.hovered = false;
     this.renderer?.hover(-1, -1); this.renderer?.clearNativeSelection(); this.render();
   };
 
@@ -4653,6 +4694,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // nmt's modal selection teardown and Ax click admission, 3gz7s57c [29232,37785), 06azbynj [242075,244661), UTF-16.
     if (this.dialog || this.screen === 'search' || this.sourceSearch?.snapshot.searching
       || this.sourcePicker?.snapshot.searching || this.editorSuspended) this.scrollPointer = undefined;
+    if (this.dialog || this.screen !== 'chat' || this.sourceSearch?.snapshot.searching
+      || this.sourcePicker?.snapshot.searching || this.editorSuspended) {
+      this.clearShellPointer(); this.shellRows = 0;
+      if (this.shellInteraction) this.shellInteraction.hovered = false;
+    }
     if (this.screen !== 'chat') this.footerPointer = undefined;
     if (this.footerSelection !== null && (this.dialog || this.sourceSearch?.snapshot.searching
       || this.sourcePicker?.snapshot.searching || !this.footerItems().includes(this.footerSelection))) this.footerSelection = null;
@@ -4799,7 +4845,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.composerBorderText(), this.footerStatus(), pill === undefined ? undefined : {
         count: pill.count, mouse: (this.options.mouseTracking ?? 'full') === 'full' && this.mouseSeen,
         onClick: () => { this.selection = createSelection(); this.transcriptScroll.jumpToNew(); this.render(); },
-      });
+      }, this.shellInteraction && this.drainedShell ? {
+        interaction: this.shellInteraction, rows: this.shellRows,
+        clickable: this.shellInteraction.clickable(this.drainedShell, conversationWidth, this.verbose),
+        changed: () => this.render(),
+      } : undefined);
     this.drawnRows = rows; this.cursorRow = Math.max(0, rows - 1 - target); this.cursorColumn = prompt.cursorColumn;
   }
 
@@ -4846,15 +4896,18 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
 
   private renderProgress(columns: number, rows: number, maximum: number): string[] {
     // Zee/Lns/gie, 24k7d6mw [210978,211342), j8hqhz0c [44085,44378), 3gz7s57c [185681,188242), UTF-16.
+    this.shellRows = 0;
     if (this.agentView) return [];
     // Source `Y4` (chunk-24k7d6mw.js 1524370): the progress region holds every entry in the
     // store, so a drained shell's live row shares it with the agent's own progress.
     const drained = this.drainedShell === undefined ? [] : this.renderDrainedShell(columns, rows);
+    this.shellRows = Math.min(drained.length, maximum);
     const pinned = this.renderMaxEffortTip(columns);
     if (!this.progress.running && !this.progress.hasTasks) {
       this.progressRenderer?.renderElement(null, columns);
-      this.progressHeight = drained.length + pinned.length;
-      return [...drained, ...pinned].slice(0, maximum);
+      const visible = [...drained, ...pinned].slice(0, maximum);
+      this.progressHeight = visible.length;
+      return visible;
     }
     this.progressRenderer ??= new TuiDocumentRenderer();
     const content = this.progressRenderer.renderElement(this.progress.element(columns), columns,
@@ -4885,7 +4938,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    */
   private renderDrainedShell(columns: number, rows: number): string[] {
     const snapshot = this.drainedShell!;
-    const row = drainedShellRow({ ...snapshot, verbose: snapshot.verbose || this.verbose }, columns);
+    const interaction = this.shellInteraction;
+    const row = drainedShellRow({ ...snapshot, verbose: this.verbose || interaction?.expanded }, columns);
     this.progressRenderer ??= new TuiDocumentRenderer();
     const parts = row.running
       ? [jsx(n, { dimColor: true, children: 'Running\u2026 ' }, 'running'),
@@ -4896,7 +4950,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
           ...(row.elapsed === null ? [] : [jsx(n, { dimColor: true, children: row.elapsed }, 'elapsed')]),
           ...(row.bytes === null ? [] : [jsx(n, { dimColor: true, children: row.bytes }, 'bytes')]),
         ] }, 'columns')];
-    return this.progressRenderer.renderElement(jsx(s, { flexDirection: 'column', children: parts }, 'drained'),
+    const hovered = interaction !== undefined && interaction.clickable(snapshot, columns, this.verbose)
+      && interaction.hovered && !interaction.expanded;
+    return this.progressRenderer.renderElement(jsx(QXe.Provider, { value: hovered,
+      children: jsx(s, { flexDirection: 'column', backgroundColor: interaction?.expanded ? 'userMessageBackgroundHover' : undefined,
+        children: parts }, 'drained') }, 'shell-hover'),
       columns, { theme: this.theme.current, themeOverrides: this.theme.overrides, terminalRows: rows })
       .map(rendered => rendered.ansi);
   }
@@ -4907,9 +4965,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
    */
   setDrainedShell(progress: import('./tools.js').ShellProgress | undefined): void {
     if (this.closed) return;
-    const next = progress === undefined ? undefined
-      : { ...progress, verbose: this.verbose };
+    const next = progress === undefined ? undefined : { ...progress };
     if (JSON.stringify(next) === JSON.stringify(this.drainedShell)) return;
+    if (next === undefined || this.drainedShell === undefined) {
+      this.clearShellPointer();
+      this.shellInteraction = next === undefined ? undefined : new ShellProgressInteraction();
+    }
     this.drainedShell = next;
     this.render();
   }
