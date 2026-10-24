@@ -200,7 +200,9 @@ test("a thinking block with its signature is preserved and multi-tool results pa
     // The request carries the thinking config, tools with eager streaming, and the prompt.
     assert.deepEqual(provider.requests[0]!.thinking, { type: "adaptive" });
     assert.equal(provider.requests[0]!.max_tokens, cfg.maxTokens);
-    assert.equal(provider.requests[0]!.system, cfg.system);
+    assert.ok(typeof provider.requests[0]!.system === 'string');
+    assert.ok(provider.requests[0]!.system.startsWith(`${cfg.system}\n\n`));
+    assert.match(provider.requests[0]!.system, /# Current application host\nYou are LiTcode,/);
     assert.equal((provider.requests[0]!.tools as Anthropic.Tool[])[0]!.eager_input_streaming, true);
     assert.deepEqual(provider.requests[0]!.messages, [{ role: "user", content: "go" }]);
     assert.deepEqual(streamed, ["working on it", "done"]);
@@ -774,6 +776,7 @@ test("the default config is accepted by the agent without a schema mismatch", ()
     assert.equal(session.config.contextTokens, 1_000_000);
     assert.equal(session.config.compactAt, 512_000);
     assert.equal(session.config.gateway?.baseURL, 'http://127.0.0.1:3425');
+    assert.match(cfg.system, /^You are LiTcode,/);
     assert.match(cfg.system, /Do not automatically add co-author trailers/);
     assert.doesNotMatch(cfg.system, /[​‌‍⁠﻿]/);
   } finally {
