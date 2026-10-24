@@ -330,7 +330,7 @@ export class AgentRegistry {
 
   // dne/iCn, sfn1dbxq [4233793,4234807)/[4219665,4219883), UTF-16: retain launch data and progress.
   async launch(raw: AgentLaunch, callerSignal?: AbortSignal, execution?: {
-    config: SessionConfig; tools: ToolDefinition[]; conversation?: readonly Anthropic.MessageParam[];
+    config: SessionConfig; tools: ToolDefinition[]; conversation?: readonly Anthropic.MessageParam[]; initialPrompt?: string;
     beforeTool?: (tool: ToolDefinition, input: unknown, signal: AbortSignal) => Promise<void>;
     permissionOwner?: LivePermissionOwner;
   }, conversation?: readonly Anthropic.MessageParam[]): Promise<AgentDescriptor> {
@@ -359,6 +359,9 @@ export class AgentRegistry {
       throw new Error(`Child agent name already exists: ${args.name}`);
     }
     if (Buffer.byteLength(args.prompt) > this.limits.maxMessageBytes) throw new Error('Child message byte limit exceeded');
+    // Zjt, 940nvk4p [1235,3817), UTF-16: task prompt stays raw while the worker receives Ykn(t).
+    const initialPrompt = execution?.initialPrompt ?? args.prompt;
+    if (Buffer.byteLength(initialPrompt) > this.limits.maxMessageBytes) throw new Error('Child message byte limit exceeded');
     const parent = this.source();
     let supplied = this.options.tools;
     if (execution) {
@@ -508,7 +511,7 @@ export class AgentRegistry {
         ...(structuredState ? { structured: structuredState } : {}),
         ...(environment ? { environment } : {}), fork: seededFork,
       };
-      this.enqueue(child, args.prompt);
+      this.enqueue(child, initialPrompt);
       this.children.set(session.id, child);
       this.start(child, true); started = true; this.changed();
     } catch (error) {
