@@ -33,4 +33,4 @@ function Q(o){return o.color!==void 0||o.backgroundColor!==void 0||o.dim===!0||o
 function pe(o){let r=w(14),l,u,c,p;if(r[0]!==o)({bold:l,dim:c,children:u,...p}=o),r[0]=o,r[1]=l,r[2]=u,r[3]=c,r[4]=p;else l=r[1],u=r[2],c=r[3],p=r[4];if(c){let m;if(r[5]!==u||r[6]!==p)m=e(kd,{...p,dim:!0,children:u}),r[5]=u,r[6]=p,r[7]=m;else m=r[7];return m}if(l){let m;if(r[8]!==u||r[9]!==p)m=e(kd,{...p,bold:!0,children:u}),r[8]=u,r[9]=p,r[10]=m;else m=r[10];return m}let m;if(r[11]!==u||r[12]!==p)m=e(kd,{...p,children:u}),r[11]=u,r[12]=p,r[13]=m;else m=r[13];return m}
 function nt(){return Ae(y4n)}
 
-export { s,n,Do,Tj,nt,Se as RenderCacheContext,Re as createRenderCache,Fe };
+export { s,n,Do,Tj,nt,QXe,Se as RenderCacheContext,Re as createRenderCache,Fe };
