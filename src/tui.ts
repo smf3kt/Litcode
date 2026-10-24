@@ -4542,7 +4542,20 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const previews = choices.map(choice => questionPreviewText(choice.preview));
     const hasPreview = previews.some(preview => preview !== undefined);
     const previewText = previews[dialog.index] ?? 'No preview available';
-    const body = wrapEntry({ kind: 'assistant', text: clean(active.message) }, columns);
+    // Ye/j, 8x0s4t30 [2977,3226)/[5849,6293), UTF-16; keep colored values in native Text.
+    const messageRows = new Map<number, string>();
+    const body: string[] = [];
+    if (dialog.request.statusRows !== undefined) {
+      this.documentRenderer ??= new TuiDocumentRenderer();
+      for (const row of dialog.request.statusRows) {
+        const rendered = this.documentRenderer.renderElement(jsx(n, { children: [
+          `${clean(row.label)}: `,
+          ...(row.spans ?? [{ text: row.value }]).map((span, index) =>
+            jsx(n, { color: span.color, children: clean(span.text) }, String(index))),
+        ] }, undefined), columns, { theme: this.theme.current, themeOverrides: this.theme.overrides });
+        for (const line of rendered) { messageRows.set(body.length, line.ansi); body.push(line.text); }
+      }
+    } else body.push(...wrapEntry({ kind: 'assistant', text: clean(active.message) }, columns));
     const questionRows = body.length;
     const previewColumn = hasPreview && columns >= PREVIEW_LIST_WIDTH + 4 + PREVIEW_MIN_WIDTH + 4
       && height - questionRows >= 4;
@@ -4622,7 +4635,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       ...(axisLine === undefined ? [] : [axisLine]),
       dialog.error ?? (progress ? `${progress} · ${hint}` : keyHint === '' ? hint : `${hint} / ${keyHint}`),
       ...(countdown === undefined ? [] : [countdown])].map((line, row) =>
-        row > 0 && row <= height ? themeRows.get(dialog.scroll + row - 1) ?? pad(line, columns) : pad(line, columns));
+        row > 0 && row <= height ? messageRows.get(dialog.scroll + row - 1) ?? themeRows.get(dialog.scroll + row - 1) ?? pad(line, columns) : pad(line, columns));
   }
 
   private renderThemeEditor(dialog: ActiveDialog, columns: number, rows: number): string[] {

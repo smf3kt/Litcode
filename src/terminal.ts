@@ -1271,6 +1271,8 @@ export interface TerminalPromptRequest {
   titleWaitingFor?: string;
   titleOrigin?: 'local-command' | 'live-picker';
   message: string;
+  /** Ye/j, 8x0s4t30 [2977,3226)/[5849,6293), UTF-16: Status values retain native color spans. */
+  statusRows?: readonly import('./status-panel.js').StatusRow[];
   choices?: readonly TerminalPromptChoice[];
   multiple?: boolean;
   allowText?: boolean;
