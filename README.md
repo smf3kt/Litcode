@@ -4,6 +4,8 @@
 
 模型 ID、网关地址、认证方式与能力字段均可配置。产品名称、提示词和输出保持中立；上游响应按原样传递。凭证默认使用 `LLM_API_KEY`，未设置时继承本机已配置客户端的网关设置（见安装一节），默认上下文为1M、压缩阈值为512k，工具文本结果最多24,000 UTF-8字节。
 
+主任务、压缩、预测和旁路提问等通过共享 Agent 构造器发出的请求，会携带 LiTcode 宿主身份及实际配置、技能和插件目录，底层模型名称与 CLI 身份分开。默认用户技能目录为 `~/.harness/skills/<name>/SKILL.md`，`--user-dir DIR` 时使用 `DIR/skills/<name>/SKILL.md`；项目技能目录为工作区 `.harness/skills`。其他客户端目录如 `~/.codex` 的存在不改变这些目标。恢复会话也收到宿主信息，原日志和固定配置保持原样。
+
 开发遵循 [标准工作流](WORKFLOW.md)：报告定位、来源核验、copy/adapt优先、完整子系统接入、实际CLI验收和版本证据绑定。[当前工作清单](research/CURRENT.md) 管理优先级与审核问题状态；历史报告保留溯源，开工先从当前清单选择ready工作包。
 
 当前版本支持文件/Notebook/媒体、会话恢复与分支、摘要压缩、配置与技能执行、任务依赖、MCP stdio/HTTP、本地后台代理与消息、声明式 Workflow、LSP、WebFetch、memory、checkpoint、Git worktree、后台 Shell、Monitor、cron 和动态唤醒。连续迁移已接入 Workflow 持久恢复、任务双向投影、插件组件、MCP form/订阅/logging、剪贴板、主worktree、规则/快捷键重载、有限会话picker/lineage、skill类型路由与编译包。Hook接线见HOOKS。工具目录随能力开关、后端和旧会话快照变化，按工具名称与行为验收。当前基线和审核状态见`research/CURRENT.md`；948/948为历史记录，尚未完成全部产品迁移。
