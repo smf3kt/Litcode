@@ -7,6 +7,8 @@ import { Session, type SessionConfig, type ToolResult } from './session.js';
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
 import type { ToolDefinition, ToolContext } from './tools.js';
 import { randomUUID } from 'node:crypto';
+import { PROMPT_PREDICTION_INSTRUCTION, normalizePromptSuggestion, promptPredictionEligible,
+  promptSuggestionRejection, type PromptPrediction } from './prompt-suggestions.js';
 import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, sessionEndHookBoundMs, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
 import { parsePermissionRule, permissionDecision, effectivePermissionPolicy, permissionUpdateListSchema } from './permissions.js';
 import { bashCommandClampDenial, checkBashCommandClamp, CLAMPED_SHELL_TOOLS } from './agent-tool-restrictions.js';
@@ -1103,6 +1105,22 @@ export class Agent {
       if (signal.aborted) return { response: null, synthetic: false };
       throw error;
     }
+  }
+
+  // oNr/I/N and F5/MC, p2ct4tzw [3519,4154)/[7029,8489), sfn1dbxq [2535884,2536130)/[2544122,2548467), UTF-16.
+  // The host's tool-free request replaces the fork's denied-tool loop and never enters the journal.
+  async predictPrompt(signal: AbortSignal): Promise<PromptPrediction | undefined> {
+    if (signal.aborted || this.busy || this.session.awaitingResponse
+      || !promptPredictionEligible(this.session.messages, this.session.lastResponse)) return undefined;
+    const request = this.request(structuredClone([...this.session.messages,
+      { role: 'user', content: PROMPT_PREDICTION_INSTRUCTION } satisfies Anthropic.MessageParam]));
+    request.tools = [];
+    request.tool_choice = { type: 'none' };
+    const response = await this.provider.complete(request, signal);
+    if (signal.aborted || response.stop_reason === 'refusal') return undefined;
+    const text = normalizePromptSuggestion(response.content.find(block => block.type === 'text')?.text ?? '');
+    if (promptSuggestionRejection(text) !== undefined) return undefined;
+    return { text, generationRequestId: response.id ?? null };
   }
 
   async compactContext(signal: AbortSignal = new AbortController().signal, customInstructions?: string): Promise<void> {

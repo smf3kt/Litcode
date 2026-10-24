@@ -113,6 +113,7 @@ export type ParsedRuntimeSettings = {
   messageIdleNotifThresholdMs?: number;
   terminalTitleFromRename?: boolean;
   autoScrollEnabled?: boolean;
+  promptSuggestionEnabled?: boolean;
   verbose?: boolean;
   terminalProgressBarEnabled?: boolean;
   viewMode?: 'default' | 'verbose' | 'focus';
@@ -163,7 +164,7 @@ export type ParsedRuntimeSettings = {
   agentTypes?: AgentTypeInfo[];
   features?: { tasks?: boolean; subagents?: boolean; notebooks?: boolean; background?: boolean; scheduler?: boolean;
     workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean; mcpPersistence?: boolean; mcpTasks?: boolean; mcpStandardTasks?: boolean;
-    taskProjections?: boolean;
+    taskProjections?: boolean; promptSuggestions?: boolean;
     schedulerJitter?: boolean; schedulerDurable?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; pluginSkillNamespaces?: boolean;
     agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; crossSessionMessaging?: boolean };
 };
@@ -179,7 +180,7 @@ const permissionsSchema = permissionPolicySchema;
 const featuresSchema = z
   .object({ tasks: z.boolean().optional(), subagents: z.boolean().optional(), notebooks: z.boolean().optional(), background: z.boolean().optional(), scheduler: z.boolean().optional(),
     workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(),
-    taskProjections: z.boolean().optional(),
+    taskProjections: z.boolean().optional(), promptSuggestions: z.boolean().optional(),
     schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
     agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), crossSessionMessaging: z.boolean().optional() })
   .strict();
@@ -245,6 +246,8 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   }
   if ('terminalTitleFromRename' in settings) out.terminalTitleFromRename = settingBoolean(settings, 'terminalTitleFromRename');
   if ('autoScrollEnabled' in settings) out.autoScrollEnabled = settingBoolean(settings, 'autoScrollEnabled');
+  // TN.catch, chunk-qtksmp3x.js [41417,41484), UTF-16: invalid preferences remain absent.
+  if ('promptSuggestionEnabled' in settings) out.promptSuggestionEnabled = configSchema.shape.promptSuggestionEnabled.parse(settings.promptSuggestionEnabled);
   // U2t/hs, nybcbd9t [5051,6155), js2bhabe [1114,1499), UTF-16: the merged boolean, default false.
   if ('verbose' in settings) out.verbose = settingBoolean(settings, 'verbose');
   if ('terminalProgressBarEnabled' in settings) out.terminalProgressBarEnabled = settingBoolean(settings, 'terminalProgressBarEnabled');
@@ -558,7 +561,7 @@ export async function createRuntime(
     showTurnDuration: undefined, timeFormat: undefined, editorMode: undefined,
     terminalProgressBarEnabled: undefined, autoCompactEnabled: undefined,
     askUserQuestionTimeout: undefined, dialogExpiry: undefined,
-    spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, preferredNotifChannel: undefined, messageIdleNotifThresholdMs: undefined, terminalTitleFromRename: undefined };
+    spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, promptSuggestionEnabled: undefined, preferredNotifChannel: undefined, messageIdleNotifThresholdMs: undefined, terminalTitleFromRename: undefined };
   // The default permission mode (row 21908) applies to new sessions, not this connection.
   const permissionsWithoutDefault = (current: SessionConfig) => current.permissions === undefined
     ? undefined : { ...current.permissions, defaultMode: undefined };
@@ -800,7 +803,7 @@ export async function createRuntime(
         timeFormat: undefined, editorMode: undefined, terminalProgressBarEnabled: undefined,
         // Rows 12035/26485/29983 write these live after the settings write; none shapes tools.
         autoCompactEnabled: undefined, askUserQuestionTimeout: undefined, dialogExpiry: undefined,
-        spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, preferredNotifChannel: undefined, messageIdleNotifThresholdMs: undefined, terminalTitleFromRename: undefined,
+        spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, promptSuggestionEnabled: undefined, preferredNotifChannel: undefined, messageIdleNotifThresholdMs: undefined, terminalTitleFromRename: undefined,
         // The Default permission mode row (21908) only moves the default for new sessions.
         permissions: settings.permissions === undefined ? undefined
           : { ...settings.permissions, defaultMode: undefined },

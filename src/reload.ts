@@ -60,6 +60,9 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
   else delete next.terminalTitleFromRename;
   if (settings.autoScrollEnabled !== undefined) next.autoScrollEnabled = settings.autoScrollEnabled;
   else delete next.autoScrollEnabled;
+  // hs, chunk-js2bhabe.js [1114,1499), UTF-16; zun, chunk-p2ct4tzw.js [2928,3053): re-resolve removed settings.
+  if (settings.promptSuggestionEnabled !== undefined) next.promptSuggestionEnabled = settings.promptSuggestionEnabled;
+  else delete next.promptSuggestionEnabled;
   if (settings.viewMode !== undefined) next.viewMode = settings.viewMode;
   else delete next.viewMode;
   // It, 9shw4xrd [106333,106421), UTF-16: reload resolves the same way startup does, so a

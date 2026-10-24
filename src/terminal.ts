@@ -626,6 +626,8 @@ export interface TerminalCallbacks {
   onInterrupt?: () => void;
   onExit?: () => void;
   onAction?: (action: string) => void;
+  onComposerChanged?: () => void;
+  onSuggestionOutcome?: (accepted: boolean) => void;
 }
 export interface TerminalOptions extends EditorPolicy, TerminalCallbacks {
   input: Readable & { isTTY?: boolean; isRaw?: boolean; setRawMode?: (raw: boolean) => unknown };
@@ -1390,6 +1392,9 @@ export interface TerminalSurface {
   start(): unknown;
   close(): void;
   setRunning(running: boolean): void;
+  promptSuggestionAvailable?(): boolean;
+  proposePromptSuggestion?(prediction: import('./prompt-suggestions.js').PromptPrediction): { isShown: boolean };
+  clearPromptSuggestion?(): void;
   /** Ie/v/Dd, appb2dtz [16667,19295), 3gz7s57c [107529,107778), UTF-16. */
   scheduledFire?(marker: import('./loop-noop-fold.js').ScheduledFire): void;
   resetLoopSpan?(): void;
