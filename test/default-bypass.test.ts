@@ -24,6 +24,26 @@ function fixture() {
   return { workspace, userDir, file, config, close() { fs.rmSync(root, { recursive: true, force: true }); } };
 }
 
+test('Shell defaults on through configuration and reload while explicit false and original resume stay pinned', () => {
+  const f = fixture();
+  let saved: Session | undefined;
+  try {
+    assert.equal(f.config.allowShell, true);
+    assert.equal(reloadConfig(f.config).allowShell, true);
+    assert.equal(parseSettings({}).allowShell, undefined);
+    fs.writeFileSync(f.file, JSON.stringify({ allowShell: false }));
+    assert.equal(reloadConfig(f.config).allowShell, false);
+    const override = { ...f.config, configSources: { userDir: f.userDir, overrides: { allowShell: true } } };
+    assert.equal(reloadConfig(override).allowShell, true);
+    fs.writeFileSync(f.file, '{}');
+    assert.equal(reloadConfig({ ...override, configSources: { userDir: f.userDir, overrides: { allowShell: false } } }).allowShell, false);
+    assert.equal(reloadConfig(f.config).allowShell, true);
+    saved = Session.open(f.workspace, { config: { ...f.config, allowShell: false } });
+    const id = saved.id; saved.close(); saved = Session.open(f.workspace, { id });
+    assert.equal(saved.config.allowShell, false);
+  } finally { saved?.close(); f.close(); }
+});
+
 const write: ToolDefinition = { schema: { name: 'write_file', description: 'fixture',
   input_schema: { type: 'object', properties: {} } }, readOnly: false, execute: async () => 'fixture' };
 

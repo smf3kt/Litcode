@@ -166,13 +166,13 @@ npm run source:bundle -- /absolute/path/to/new-litcode-source
 源码目录包含src、锁定依赖、构建配置、scripts、test和notice，附逐文件摘要manifest。进入交付目录执行`npm ci --ignore-scripts`、`npm run check`、`npm run build`即可重建；本地缓存齐备时可增加`--offline`。源码包排除原始样本、提取目录、研究索引及私人运行数据。缺失的上游license文本在`research/ports/dependency-notices.json`明确列出，当前交付保持private。
 
 
-Shell 工具需要显式开启：
+Shell 工具默认开启：
 
 ```sh
-npm run agent -- --workspace /absolute/path/to/project --allow-shell "运行测试并修复失败"
+npm run agent -- --workspace /absolute/path/to/project "运行测试并修复失败"
 ```
 
-`--allow-shell` 允许命令按当前 OS 用户权限执行。命令的 cwd 为工作区，这个设置本身不构成 OS sandbox。环境变量会继承到命令子进程。
+命令按当前 OS 用户权限执行，cwd 为工作区，环境变量继承到命令子进程。`allowShell: false` 可显式关闭，托管策略继续优先；`--allow-shell` 可显式开启。这个设置本身不构成 OS sandbox。恢复原会话保留其固定的 Shell 开关。
 
 ## 会话与恢复
 
@@ -204,7 +204,7 @@ Rules目录现有界递归加载Markdown至depth3（root为0），遍历entries�
 
 新会话按 defaults → `~/.harness/settings.json` → 项目 `.harness/settings.json` → `.harness/settings.local.json` → `--settings FILE` → 已设置的 `LLM_*` 环境变量 → CLI flags 合并。`--user-dir DIR` 可指定独立用户目录；恢复会话使用原快照。
 
-新 CLI 会话默认使用 Bypass Permissions。`/config` 的 Default permission mode 可保存 `bypassPermissions`，下次启动生效；`--permission-mode bypass` 可显式选择，其他显式模式和托管策略继续优先。仅设置权限规则也沿用默认 Bypass；显式 `deny`、`ask` 和工具 allow-list 继续生效。Shell 执行仍由 `allowShell` 或 `--allow-shell` 开启。恢复旧会话保留原模式。
+新 CLI 会话默认使用 Bypass Permissions。`/config` 的 Default permission mode 可保存 `bypassPermissions`，下次启动生效；`--permission-mode bypass` 可显式选择，其他显式模式和托管策略继续优先。仅设置权限规则也沿用默认 Bypass；显式 `deny`、`ask` 和工具 allow-list 继续生效。Shell 默认开启，显式 `allowShell: false` 和托管策略可关闭；恢复旧会话保留原模式及 Shell 开关。
 
 输入建议通过 `features.promptSuggestions: true` 开启，本地默认关闭。开启后，主会话至少已有两条 assistant 消息且上下文缓存门控满足时，会通过现有 provider 额外预测一句后续输入。建议显示在空输入栏，Right 或 Tab 将它填入草稿，Enter 再发送；输入、切换会话和退出会取消未完成预测。`/config` 的 Prompt suggestions 可即时开关并保存 `promptSuggestionEnabled`；`HARNESS_PROMPT_SUGGESTIONS=on/off` 覆盖启动值。预测沿用当前模型，保留主会话日志和工具调用的归属。
 

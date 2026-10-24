@@ -411,6 +411,7 @@ test('CLI executes WebSocket monitoring without shell access and closes it on ex
     });
     gateways.push(gateway);
     const ws = workspace(); const user = userDir();
+    fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ allowShell: false }));
     const result = await runCli(['--workspace', ws, '--user-dir', user, '--model', MODEL,
       '--base-url', gateway.url, '--max-turns', '5', 'Watch the local event feed.'], gatewayEnv(KEY));
     assert.equal(result.timedOut, false); assert.equal(result.code, 0, result.stderr);
