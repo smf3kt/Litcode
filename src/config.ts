@@ -618,6 +618,12 @@ function readSettingsLayer(file: string, required: boolean): Record<string, unkn
     if (channel === undefined) delete parsed.preferredNotifChannel;
     else parsed.preferredNotifChannel = channel;
   }
+  // TN.catch/hs, qtksmp3x [41417,41484), js2bhabe [1114,1499), UTF-16: discard invalid values per layer.
+  if ('promptSuggestionEnabled' in parsed) {
+    const enabled = configSchema.shape.promptSuggestionEnabled.parse(parsed.promptSuggestionEnabled);
+    if (enabled === undefined) delete parsed.promptSuggestionEnabled;
+    else parsed.promptSuggestionEnabled = enabled;
+  }
   return parsed;
 }
 

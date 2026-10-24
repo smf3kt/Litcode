@@ -379,6 +379,8 @@ function newConfig(
   if (settings.messageIdleNotifThresholdMs !== undefined) config.messageIdleNotifThresholdMs = settings.messageIdleNotifThresholdMs;
   if (settings.terminalTitleFromRename !== undefined) config.terminalTitleFromRename = settings.terminalTitleFromRename;
   if (settings.autoScrollEnabled !== undefined) config.autoScrollEnabled = settings.autoScrollEnabled;
+  // Gun/zun, chunk-p2ct4tzw.js [2280,3053), UTF-16: retain the stored preference for startup resolution.
+  if (settings.promptSuggestionEnabled !== undefined) config.promptSuggestionEnabled = settings.promptSuggestionEnabled;
   if (settings.viewMode !== undefined) config.viewMode = settings.viewMode;
   // It, 9shw4xrd [106333,106421), UTF-16: the stored boolean wins; viewMode seeds it when absent.
   config.verbose = startupVerbose(config.viewMode, settings.verbose);
@@ -430,6 +432,7 @@ function newConfig(
     config.features = {
       tasks: (values.tasks as boolean | undefined) ?? settings.features?.tasks ?? true,
       taskProjections: settings.features?.taskProjections ?? true,
+      ...(settings.features?.promptSuggestions === undefined ? {} : { promptSuggestions: settings.features.promptSuggestions }),
       subagents: (values.subagents as boolean | undefined) ?? settings.features?.subagents ?? true,
       notebooks: settings.features?.notebooks ?? true,
       background: settings.features?.background ?? true,

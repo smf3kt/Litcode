@@ -30,6 +30,8 @@ import { StringDecoder } from 'node:string_decoder';
 import { Writable, type Readable } from 'node:stream';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { reduceKillRing } from './kill-ring.js';
+import type { PromptPrediction, PromptSuggestion } from './prompt-suggestions.js';
+import { composerMode as predictionComposerMode, bashCommand as predictionBashCommand } from './tui-bash-mode.js';
 import { TerminalModeController, type MouseTracking } from './tui-modes.js';
 import { Keymap, chordForAction, chordSequence, contextStack, keyName, type TuiContext } from './tui-keys.js';
 import { HELP_FOOTER_HINT, HELP_HINT_MIN_COLUMNS } from './help-panel.js';
@@ -273,6 +275,8 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
 type TuiEvents = {
   submit: [text: string, attachment?: import('./terminal.js').PromptDiffSelection, mode?: ComposerMode]; interrupt: []; exit: []; pasteRejected: [bytes: number]; inputError: [error: Error];
   action: [action: string];
+  composerChanged: [];
+  suggestionOutcome: [accepted: boolean];
 };
 
 export type TuiScreen = 'chat' | 'transcript' | 'search' | 'dialog';
@@ -689,6 +693,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private statusNoticeTimer: ReturnType<typeof setTimeout> | undefined;
   /** `Ix` is the effect's dependency; expiry clears the active slot without changing that key. */
   private effortFeedbackLevel: EffortLevel | undefined;
+  private promptSuggestion: PromptSuggestion = { status: 'empty' };
+  private composerWasAvailable = false;
   private effortFeedbackLabel: string | undefined;
   private effortFeedback: { text: string; timer: ReturnType<typeof setTimeout> } | undefined;
   private externalEditorHintCommand: string | undefined;
@@ -796,11 +802,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (callbacks.onInterrupt) this.on('interrupt', callbacks.onInterrupt);
     if (callbacks.onExit) this.on('exit', callbacks.onExit);
     if (callbacks.onAction) this.on('action', callbacks.onAction);
+    if (callbacks.onComposerChanged) this.on('composerChanged', callbacks.onComposerChanged);
+    if (callbacks.onSuggestionOutcome) this.on('suggestionOutcome', callbacks.onSuggestionOutcome);
     return () => {
       if (callbacks.onSubmit) this.off('submit', callbacks.onSubmit);
       if (callbacks.onInterrupt) this.off('interrupt', callbacks.onInterrupt);
       if (callbacks.onExit) this.off('exit', callbacks.onExit);
       if (callbacks.onAction) this.off('action', callbacks.onAction);
+      if (callbacks.onComposerChanged) this.off('composerChanged', callbacks.onComposerChanged);
+      if (callbacks.onSuggestionOutcome) this.off('suggestionOutcome', callbacks.onSuggestionOutcome);
     };
   }
 
@@ -808,7 +818,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     pastedContents:structuredClone(this.editor.pastedContents),historyPastes:structuredClone(this.editor.historyPastes),
     historyDraftPastes:structuredClone(this.editor.historyDraftPastes),killRing: structuredClone(this.editor.killRing) }; }
   async bindInputHistory(session: import('./session.js').Session): Promise<void> {
-    if (this.searchSessionId !== session.id) this.clearAgentView();
+    if (this.searchSessionId !== session.id) { this.clearAgentView(); this.clearPromptSuggestion(); }
     this.unsubscribeTitle?.(); this.titleSession = session;
     this.unsubscribeTitle = session.subscribeTitle(() => this.syncTerminalTitle());
     this.syncTerminalTitle();
@@ -1126,6 +1136,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const transition = reduceEditor(this.editor, { type: 'submit' }, this.options);
     const submitted = transition.effects.find(effect => effect.type === 'submit');
     if (submitted === undefined) return;
+    // JYe YA/K2t, chunk-24k7d6mw.js [875500,877400), UTF-16: settle before main/child routing.
+    this.promptSuggestionSubmitted(submitted.text);
     const current = () => !this.closed && this.agentView === view && this.editor.text === draft.text
       && this.editor.cursor === draft.cursor && JSON.stringify(this.editor.pastedContents) === JSON.stringify(draft.pastedContents);
     const work = view.host.submit(submitted.text, current).then(destination => {
@@ -1368,6 +1380,45 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** `_$`'s `setLocalOverlayShowing`: this renderer's dialog screen and its keyed notices are the
    *  overlays that sit over the composer (chunk-24k7d6mw.js 1691779). */
   composerOverlayShowing(): boolean { return this.screen !== 'chat' || this.dialog !== undefined; }
+
+  // JYe/Ore/suggestDraft, 24k7d6mw [489702,491353)/[881057,881087)/[1499780,1500033), UTF-16.
+  promptSuggestionAvailable(): boolean {
+    return this.isTTY && this.started && !this.closed && this.focus.focused && this.screen === 'chat'
+      && !this.dialog && !this.editorSuspended && !this.editorController && !this.agentView
+      && !this.running && this.editor.text === '' && this.composerMode === 'prompt'
+      && this.footerSelection === null && !this.sourceSearch?.snapshot.searching
+      && !this.sourcePicker?.snapshot.searching && !this.autocompleteVisible() && this.queuePlaceholder() === undefined;
+  }
+  proposePromptSuggestion(prediction: PromptPrediction): { isShown: boolean } {
+    if (prediction.text.trim() === '' || !this.promptSuggestionAvailable()) return { isShown: false };
+    this.promptSuggestion = { status: 'generated', ...prediction };
+    this.render();
+    return { isShown: true };
+  }
+  clearPromptSuggestion(): void {
+    if (this.promptSuggestion.status === 'empty') return;
+    this.promptSuggestion = { status: 'empty' }; this.render();
+  }
+  // mse Js/Vs, 24k7d6mw [569848,592289), UTF-16; acceptance fills the draft and keeps its mode.
+  private acceptPromptSuggestion(): boolean {
+    const suggestion = this.promptSuggestion;
+    if (!this.promptSuggestionAvailable() || suggestion.status !== 'shown') return false;
+    this.promptSuggestion = { ...suggestion, status: 'accepted', acceptedAt: Date.now() };
+    this.pushUndo(this.editor.text, this.editor.cursor, this.editor.pastedContents, true);
+    const mode = predictionComposerMode(suggestion.text), text = predictionBashCommand(suggestion.text);
+    this.setComposerMode(mode);
+    this.replaceDraft({ ...this.editor, text, cursor: text.length, historyIndex: this.editor.history.length,
+      historyDraft: text, historyDraftPastes: {} });
+    this.publishDraft(); this.render();
+    return true;
+  }
+  // Ore Ct, 24k7d6mw [489702,491353), UTF-16; edited accepted drafts retain the source accepted outcome.
+  private promptSuggestionSubmitted(text: string): void {
+    const suggestion = this.promptSuggestion;
+    if (suggestion.status === 'shown' || suggestion.status === 'accepted')
+      this.emit('suggestionOutcome', suggestion.status === 'accepted' || text.toLowerCase() === suggestion.text.toLowerCase());
+    this.promptSuggestion = { status: 'empty' };
+  }
 
   /**
    * Bind the idle-prompt machine's owner side and start it. `send` is the source's
@@ -1785,7 +1836,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private replaceDraft(next: EditorState): void {
     // p4.onPromptEdit, 24k7d6mw [1333944,1336535), UTF-16; the edit subscription shares this owner.
     if (this.screen === 'chat' && !this.dialog) this.transcriptScroll.onPromptEdit(next.text, this.editor.text);
-    if (next.text !== this.editor.text) this.footerSelection = null;
+    if (next.text !== this.editor.text) {
+      this.footerSelection = null;
+      // DQe, chunk-24k7d6mw.js [830000,830650), UTF-16: every edit cancels pending prediction.
+      this.emit('composerChanged');
+      if (this.promptSuggestion.status === 'generated') this.promptSuggestion = { status: 'empty' };
+    }
     this.editor = next;
     this.refreshExternalEditorHint();
     this.settleWorkflowKeyword();
@@ -1999,6 +2055,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.promptSuggestion = { status: 'empty' }; this.emit('composerChanged');
     this.clearAgentView();
     this.notifications.close(); this.terminalTitle.close(); this.owl.close();
     this.idleNotification?.dispose(); this.idleNotification = undefined;
@@ -2136,6 +2193,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     // Source `Er`/`at.enter()`: Enter on an open suggestion accepts it first. The
     // accepted draft ends with a space, so the follow-up submit passes this gate.
+    if (action.type === 'right' && !this.keys.pendingChord && this.acceptPromptSuggestion()) return;
     if ((action.type === 'return' || action.type === 'submit') && !this.keys.pendingChord
       && (action.type !== 'return' || (!action.meta && !action.shift)) && this.autocompleteVisible()) {
       if (this.acceptAutocomplete(true)) return;
@@ -2243,6 +2301,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const submitted = transition.effects.find(effect => effect.type === 'submit');
     // The mode the submit was typed in, read before the exit below returns the composer to prompt.
     const beforeMode = this.composerMode;
+    if (submitted) this.promptSuggestionSubmitted(beforeMode === 'bash' ? `!${submitted.text}` : submitted.text);
     // Source submit exit 1492848: the composer returns to prompt mode before anything reads the
     // emptied draft, so a bash submit leaves no `shell mode` row behind.
     if (submitted) this.setComposerMode('prompt');
@@ -2343,6 +2402,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const queueHint = this.queuePlaceholder();
     if (queueHint !== undefined) {
       return { ...body, lines: [[{ text: queueHint, style: { dimColor: true } }]],
+        cursorColumn: body.cursorColumn + 2 };
+    }
+    if (this.promptSuggestionAvailable() && this.promptSuggestion.status !== 'empty') {
+      // Ore markShown/JYe b9, 24k7d6mw [489702,491353)/[894366,894381), UTF-16.
+      if (this.promptSuggestion.status === 'generated')
+        this.promptSuggestion = { ...this.promptSuggestion, status: 'shown', shownAt: Date.now() };
+      const ghost = layoutInput({ ...this.editor, text: this.promptSuggestion.text }, columns - 2, maximum);
+      return { ...body, lines: ghost.lines.map(text => [{ text, style: { dimColor: true } }]),
         cursorColumn: body.cursorColumn + 2 };
     }
     // The composer's own highlights are built first (the `/btw` notice, the keyword rainbows, the
@@ -3238,6 +3305,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.handleGesture('escape');return;
     }
     if (sequence!=='\x1b' && this.handleKey(sequence, command)) return;
+    if (!this.keys.pendingChord && (command === 'right' || sequence === '\t') && this.acceptPromptSuggestion()) return;
     if(this.vimEnabled&&this.screen==='chat'&&!this.dialog&&!this.vimHandling
       && this.handleVim({type:'key',sequence,command}))return;
     if (sequence==='\x1b' && this.handleKey(sequence, command)) return;
@@ -4541,6 +4609,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   private render(): void {
+    const composerAvailable = this.promptSuggestionAvailable();
+    if (composerAvailable !== this.composerWasAvailable) {
+      this.composerWasAvailable = composerAvailable;
+      if (!composerAvailable) this.emit('composerChanged');
+    }
     // `_$`'s `setLocalOverlayShowing` (chunk-24k7d6mw.js 1691779) is called with the dialog and
     // overlay flags on every render of the owning frame; the machine ignores an unchanged value.
     this.idleNotification?.setLocalOverlayShowing(this.composerOverlayShowing());

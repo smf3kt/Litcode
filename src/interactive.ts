@@ -1,6 +1,10 @@
 import { createInterface } from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
-import { Agent } from './agent.js';
+import { Agent, type RunResult } from './agent.js';
+import { PromptSuggestionRun, promptPredictionEligible, promptSuggestionBackedOff, promptSuggestionTurnEligible,
+  promptSuggestionsInitiallyEnabled } from './prompt-suggestions.js';
+import { PromptSuggestionStore } from './prompt-suggestion-store.js';
+import { publishPromptSuggestion } from './prompt-suggestion-publish.js';
 import { automaticCompactionEnabled } from './compaction-policy.js';
 import { scheduledFire } from './loop-noop-fold.js';
 import { DEFAULT_GATEWAY, type ModelProvider } from './provider.js';
@@ -400,8 +404,43 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   terminal?.setSessionColor?.(session.sessionColor);
   const output = terminal?.outputStream ?? options.output;
   let turnController: AbortController | undefined;
+  let suggestionRun = new PromptSuggestionRun();
+  let suggestionStore = new PromptSuggestionStore(session.config.configSources?.userDir);
+  let suggestionsEnabled = promptSuggestionsInitiallyEnabled(session.config);
+  const suggestionWork = new Set<Promise<void>>();
+  const cancelPrediction = () => { suggestionRun.reset(); };
+  // Y$o/oNr, p2ct4tzw [3519,5190), UTF-16; publication rechecks live owner identity after every await.
+  const predictAfterTurn = (result: RunResult) => {
+    cancelPrediction();
+    if (!terminal?.proposePromptSuggestion || !terminal.promptSuggestionAvailable?.() || !suggestionsEnabled
+      || result.modelCalls === 0 || result.reason !== 'end_turn' || inputClosed || options.signal.aborted
+      || session.permissionOwner.state().mode === 'plan' || session.awaitingResponse || queue.length > 0 || approval
+      || !promptPredictionEligible(session.messages, session.lastResponse)) return;
+    const target = session, current = agent(), run = suggestionRun, store = suggestionStore;
+    const controller = run.arm();
+    const signal = AbortSignal.any([options.signal, controller.signal]);
+    const available = () => !signal.aborted && target === session && run === suggestionRun && suggestionsEnabled
+      && !inputClosed && !turnController && !approval && queue.length === 0
+      && session.permissionOwner.state().mode !== 'plan' && terminal.promptSuggestionAvailable?.() === true;
+    const work = (async () => {
+      try {
+        if (!promptSuggestionTurnEligible(run, promptSuggestionBackedOff(store.read()))) return;
+        const prediction = await current.predictPrompt(signal);
+        if (!prediction || !available()) return;
+        await publishPromptSuggestion(prediction.text, signal, text => available()
+          ? terminal.proposePromptSuggestion!({ ...prediction, text }) : { isShown: false });
+        if (available() && await store.claimNotice())
+          options.status.write('Showing fewer prompt suggestions · use one to bring them back\n');
+      } catch (error) {
+        if (!signal.aborted && target === session)
+          options.status.write(`Prompt suggestion skipped: ${error instanceof Error ? error.message : String(error)}\n`);
+      } finally { if (run.abortController === controller) run.abortController = null; }
+    })();
+    suggestionWork.add(work); void work.finally(() => suggestionWork.delete(work));
+  };
   const abort = () => { rl?.close(); terminal?.close(); onClose(); };
   const withTurn = async <T>(action: (signal: AbortSignal) => Promise<T>, wakeupId?: string): Promise<T> => {
+    cancelPrediction(); terminal?.clearPromptSuggestion?.();
     turnController = new AbortController(); terminal?.setRunning(true);
     const signal = AbortSignal.any([options.signal, turnController.signal]);
     let unregister: (() => void) | undefined;
@@ -416,6 +455,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (wakeupId !== undefined) activeRuntime.finishLoopWakeup?.(session.id, wakeupId);
       activeRuntime.checkScheduler?.(session.id);
     }
+  };
+  // Ga, chunk-5b2hxy2e.js [65908,77691), UTF-16: adapt the main-query completion trigger.
+  const withModelTurn = async (action: (signal: AbortSignal) => Promise<RunResult>): Promise<RunResult> => {
+    const result = await withTurn(action);
+    predictAfterTurn(result);
+    return result;
   };
   /**
    * Source `processBashCommand` (chunk-w79px1ss.js 14067): one drained shell command. The host's
@@ -534,7 +579,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       try { return activeRuntime.backgroundTasks?.(session.id) ?? { jobs: [], agents: [], crons: [] }; }
       catch { return { jobs: [], agents: [], crons: [] }; }
     });
-  const promptQueueChanged = () => { terminal?.promptQueueChanged?.(); };
+  const promptQueueChanged = () => { cancelPrediction(); terminal?.promptQueueChanged?.(); };
   let editorWork: Promise<import('./external-editor.js').ExternalEditorResult> | undefined;
   let inputClosed = false;
   let approval: ((value: string | undefined) => void) | undefined;
@@ -601,6 +646,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setCopyOnSelect?.(session.config.copyOnSelect);
     terminal?.setNotificationChannel?.(session.config.preferredNotifChannel);
     terminal?.setAutoScrollEnabled?.(session.config.autoScrollEnabled);
+    cancelPrediction(); terminal?.clearPromptSuggestion?.();
+    suggestionsEnabled = promptSuggestionsInitiallyEnabled(session.config);
     terminal?.setBriefTranscript?.(briefTranscriptEnabled(session.config));
     terminal?.setVerbose?.(session.config.verbose === true);
     terminal?.setTerminalProgressBar?.(session.config.terminalProgressBarEnabled !== false);
@@ -699,6 +746,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     promptQueueChanged(); awaken();
   };
   const onClose = () => {
+    cancelPrediction(); terminal?.clearPromptSuggestion?.();
     inputClosed = true;
     if (terminal) turnController?.abort(new Error('Terminal input closed'));
     approval?.(undefined); awaken();
@@ -706,6 +754,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   if (options.signal.aborted) abort();
   rl?.on('line', onLine); rl?.on('close', onClose);
   const unsubscribeTerminal = terminal?.subscribe({ onSubmit: onLine, onExit: onClose,
+    onComposerChanged: cancelPrediction,
+    // Ore/Ct, chunk-24k7d6mw.js [489702,491353), UTF-16; K2t/yKo, chunk-kyy5nfa1.js [1284,1483), UTF-16.
+    onSuggestionOutcome: accepted => {
+      const run = suggestionRun, store = suggestionStore;
+      if (accepted) run.askOnNextTurn();
+      const work = store.outcome(accepted, run).catch(error => {
+        options.status.write(`Prompt suggestion settings error: ${error instanceof Error ? error.message : String(error)}\n`);
+      });
+      suggestionWork.add(work); void work.finally(() => suggestionWork.delete(work));
+    },
     onInterrupt: () => {
       // A [15225,16520), appb2dtz, UTF-16; an interrupted span stays visible.
       if (session.events.some(event => event.kind === 'scheduled_task_fire')) session.append({ kind: 'loop_boundary', reason: 'tool_abort' });
@@ -1178,6 +1236,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   // am/OCe, 24k7d6mw [398888,399172)/[1501794,1502367), UTF-16: release the departing view owner.
   const acceptNext = async (next: Session, nextRuntime: Runtime): Promise<void> => {
+    cancelPrediction(); terminal?.clearPromptSuggestion?.();
+    suggestionRun = new PromptSuggestionRun();
+    suggestionStore = new PromptSuggestionStore(next.config.configSources?.userDir);
     terminal?.clearAgentView?.();
     unsubscribe?.();
     try {
@@ -1871,7 +1932,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const bash = await withTurn(signal => runBashCommand(prompt, signal));
           // The shell command ran; only the model's answer to its result needs a credential.
           if (bash.shouldQuery && !refuseWhenBlocked()) {
-            const result = await withTurn(signal => agent().run(undefined, signal));
+            const result = await withModelTurn(signal => agent().run(undefined, signal));
             if (result.modelCalls === 0 && result.text) output.write(result.text);
             output.write('\n');
           }
@@ -2857,7 +2918,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // bs/Hl/Co, dag4qhha [17007,42182), UTF-16: accepted rows persist immediately; closing only reports.
           for (;;) {
             const answer = await withTurn(signal => readDialog({ title: 'Config', message: '', configPanel: {
-              input: configPanelInput(session.config, state),
+              input: configPanelInput(session.config, state, suggestionsEnabled),
               change: async update => {
                 signal.throwIfAborted();
                 const config = structuredClone(session.config);
@@ -2872,7 +2933,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       const enabled = configSchema.shape.autoCompactEnabled.parse(loaded.settings.autoCompactEnabled);
                       session.config.autoCompactEnabled = enabled;
                       changes.set(update.id, `Set ${update.id} to ${enabled}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     }
                     case 'verbose':
                       // `Te`, chunk-nybcbd9t.js 20116: the row writes userSettings, the global
@@ -2881,7 +2942,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       session.config.verbose = update.value;
                       terminal?.setVerbose?.(update.value === true);
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     case 'progressBar': {
                       // y0 reads the merged setting (`hs`) with default true; re-read it after the write
                       // so a higher authored layer keeps precedence. Row 20203 writes the global
@@ -2893,7 +2954,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       session.config.terminalProgressBarEnabled = enabled;
                       terminal?.setTerminalProgressBar?.(enabled !== false);
                       changes.set(update.id, `Set ${update.id} to ${enabled}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     }
                     case 'permissionMode': {
                       // vWe 21908: the settings cache moves without changing the live mode; the
@@ -2909,7 +2970,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       // policy object is new so child agents and skills still see the live mode.
                       bindPermissionOwner(session.config.permissions, session.permissionOwner);
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     }
                     // vWe/me, nybcbd9t [14860,15058)/[8029,8318), UTF-16: local settings and live snapshot.
                     case 'tips': {
@@ -2918,7 +2979,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       session.config.spinnerTipsEnabled = enabled;
                       terminal?.bindSpinnerTips?.(session);
                       changes.set(update.id, `Set ${update.id} to ${enabled !== false}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     }
                     // he/U2t, nybcbd9t [9662,9747)/[5051,6113), UTF-16; effective merged value stays authoritative.
                     case 'notifChannel': {
@@ -2928,18 +2989,18 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       else session.config.preferredNotifChannel = channel;
                       terminal?.setNotificationChannel?.(channel);
                       changes.set(update.id, `Set ${update.id} to ${channel ?? 'auto'}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     }
                     case 'copyFullResponse':
                       session.config.copyFullResponse = update.value;
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     // vWe/G, nybcbd9t [23905,24064)/[8266,8318), UTF-16: global preference and live snapshot.
                     case 'copyOnSelect':
                       session.config.copyOnSelect = update.value;
                       terminal?.setCopyOnSelect?.(update.value);
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     // vWe/hs/D6, nybcbd9t [24065,24243), js2bhabe [1114,1554), UTF-16.
                     case 'autoScroll': {
                       const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [], pluginHooks: 'preview' });
@@ -2948,7 +3009,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       else session.config.autoScrollEnabled = enabled;
                       terminal?.setAutoScrollEnabled?.(enabled);
                       changes.set(update.id, enabled !== false ? 'Enabled auto-scroll' : 'Disabled auto-scroll');
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
+                    }
+                    // vWe/yKo, nybcbd9t [17552,17759), kyy5nfa1 [1435,1483), UTF-16.
+                    case 'promptSuggestionEnabled': {
+                      const wasEnabled = suggestionsEnabled;
+                      session.config.promptSuggestionEnabled = update.value;
+                      suggestionsEnabled = update.value;
+                      cancelPrediction(); terminal?.clearPromptSuggestion?.();
+                      if (update.value && !wasEnabled) await suggestionStore.enable(suggestionRun);
+                      changes.set(update.id, `Set prompt suggestions to ${update.value}`);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     }
                     case 'reduceMotion':
                       // `vy` row, chunk-nybcbd9t.js: localSettings and the live app settings move
@@ -2956,21 +3027,21 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       session.config.prefersReducedMotion = update.value;
                       terminal?.setPrefersReducedMotion?.(update.value === true);
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     case 'thinking':
                       // `nybcbd9t` 15590: the row writes live `thinkingEnabled` and persists its
                       // setting; this host's settings key is `thinking`, written just above, so
                       // the change applies in place instead of opening a successor session.
                       session.config.thinking = update.value;
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     case 'turnDuration':
                       // Row 20771: userSettings plus the global config, no session restart; the
                       // terminal's duration switch is bound to that state.
                       session.config.showTurnDuration = update.value;
                       terminal?.setShowTurnDuration?.(update.value);
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     case 'timeFormat':
                       // Row 21614: persisted setting plus the settings cache; the progress
                       // formatter reads the live value.
@@ -2978,26 +3049,26 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                       terminal?.setProgressSettings?.({ timeFormat: session.config.timeFormat,
                         timeZone: session.config.timeZone, spinnerVerbs: session.config.spinnerVerbs });
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     case 'editor':
                       // Row 26180: userSettings plus the global config; the editor mode is host
                       // state and applies through `setEditorMode`.
                       session.config.editorMode = update.value;
                       terminal?.setEditorMode?.(update.value, session.config.vimInsertModeRemaps);
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     case 'askUserQuestionTimeout':
                       // vWe 26485: the settings cache moves after the write; the live field is
                       // what a new question dialog reads.
                       session.config.askUserQuestionTimeout = update.value;
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                     case 'dialogExpiry':
                       // vWe 29983: `default` removes the stored key; dialog expiry is read live.
                       if (update.value === 'default') delete session.config.dialogExpiry;
                       else session.config.dialogExpiry = update.value;
                       changes.set(update.id, `Set ${update.id} to ${update.value}`);
-                      return configPanelInput(session.config);
+                      return configPanelInput(session.config, undefined, suggestionsEnabled);
                   }
                 } catch (error) {
                   terminal.writeNotice?.(`Setting change failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -3161,7 +3232,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // (`display: "system"`), so the whole block lands in the transcript, not on the status row.
           if (notice) terminal.writeNotice?.(notice);
           if (retried) {
-            const result = await withTurn(signal => agent().run(undefined, signal));
+            const result = await withModelTurn(signal => agent().run(undefined, signal));
             if (result.modelCalls === 0 && result.text) output.write(result.text);
             output.write('\n');
             options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
@@ -3469,7 +3540,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
           if (session.config.features?.media === false) throw new Error('Media input is disabled in this session');
           if (refuseWhenBlocked()) continue;
-          const result = await withTurn(async signal => {
+          const result = await withModelTurn(async signal => {
             const attachment = await captureClipboardImage(session.config.workspace, signal);
             const target = path.join(session.config.workspace, attachment.path);
             const before = fs.lstatSync(target);
@@ -3489,7 +3560,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (/^\/attach(?:\s|$)/.test(prompt)) {
           const { attachment, prompt: task } = parseAttachmentCommand(prompt.slice(7));
           if (refuseWhenBlocked()) continue;
-          const result = await withTurn(signal => agent().run(task, signal, attachment));
+          const result = await withModelTurn(signal => agent().run(task, signal, attachment));
           if (result.modelCalls === 0 && result.text) output.write(result.text);
           output.write('\n');
           options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
@@ -3530,13 +3601,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               output.write(result + '\n'); continue;
             }
             // at, chunk-htgmc2p1.js [38703,39841), UTF-16, returns hookMessages after one raise.
-            const completed = await withTurn(signal => agent().run(result, signal, undefined,
+            const completed = await withModelTurn(signal => agent().run(result, signal, undefined,
               { kind: 'raised', payload: expansion }, pre.additionalContext));
             output.write('\n'); options.status.write(`finished: ${completed.reason}; model calls: ${completed.modelCalls}\n`); continue;
           }
           const expanded = expandUserSkill(skill, parsed.args, session.config);
           if (refuseWhenBlocked()) continue;
-          const result = await withTurn(signal => agent().run(expanded, signal, undefined, expansion));
+          const result = await withModelTurn(signal => agent().run(expanded, signal, undefined, expansion));
           if (result.modelCalls === 0 && result.text) output.write(result.text);
           output.write('\n');
           options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
@@ -3549,7 +3620,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (prompt !== '/continue' && refuseWhenBlocked()) continue;
         let result;
         try {
-          result = await withTurn(signal => agent().run(prompt === '/continue' ? undefined : prompt, signal,
+          result = await withModelTurn(signal => agent().run(prompt === '/continue' ? undefined : prompt, signal,
             undefined, undefined, [], attachment?.selection));
         } finally {
           if (attachment && !session.events.slice(before).some(event => event.kind === 'message'
@@ -3564,6 +3635,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       }
     }
   } finally {
+    cancelPrediction(); terminal?.clearPromptSuggestion?.();
+    await Promise.all(suggestionWork);
     taskUnsubscribe?.(); taskUnsubscribe = undefined;
     configWatch?.close();
     options.signal.removeEventListener('abort', abort);

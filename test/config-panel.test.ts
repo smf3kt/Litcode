@@ -41,7 +41,7 @@ function fixture() {
     close() { tui.close(); screen.dispose(); } };
 }
 
-const input: ConfigPanelInput = { config: { model: 'model-01', thinking: false }, hidden: [] };
+const input: ConfigPanelInput = { config: { model: 'model-01', thinking: false }, hidden: ['promptSuggestionEnabled'] };
 
 function updated(state: ConfigPanelInput, change: ConfigUpdate): ConfigPanelInput {
   switch (change.id) {
@@ -50,6 +50,7 @@ function updated(state: ConfigPanelInput, change: ConfigUpdate): ConfigPanelInpu
     case 'progressBar': return { ...state, config: { ...state.config, terminalProgressBarEnabled: change.value } };
     case 'reduceMotion': return { ...state, config: { ...state.config, prefersReducedMotion: change.value } };
     case 'tips': return { ...state, config: { ...state.config, spinnerTipsEnabled: change.value } };
+    case 'promptSuggestionEnabled': return { ...state, config: { ...state.config, promptSuggestionEnabled: change.value } };
     case 'copyOnSelect': return { ...state, config: { ...state.config, copyOnSelect: change.value } };
     case 'copyFullResponse': return { ...state, config: { ...state.config, copyFullResponse: change.value } };
     case 'notifChannel': return { ...state, config: { ...state.config, preferredNotifChannel: change.value } };
@@ -216,7 +217,7 @@ test('config settings preserve authored data, hide foreign timeout rows and rest
     const target = path.join(workspace, 'settings-target.json'), link = path.join(workspace, 'settings-link.json');
     fs.writeFileSync(target, JSON.stringify({ askUserQuestionTimeout: '5m', dialogExpiry: '10m' }));
     fs.symlinkSync(target, link);
-    assert.deepEqual(configPanelInput({ ...config, configSources: { userDir, settingsFile: link } }).hidden, ['askUserQuestionTimeout', 'dialogExpiry']);
+    assert.deepEqual(configPanelInput({ ...config, configSources: { userDir, settingsFile: link } }).hidden, ['promptSuggestionEnabled', 'askUserQuestionTimeout', 'dialogExpiry']);
     await saveConfigPanelSetting({ id: 'dialogExpiry', value: 'default' }, workspace, userDir);
     authored = JSON.parse(fs.readFileSync(userFile, 'utf8')); assert.equal(Object.hasOwn(authored, 'dialogExpiry'), false);
     fs.writeFileSync(userFile, JSON.stringify({ permissions: 'legacy' }));

@@ -4,14 +4,16 @@ import { CONFIG_LIMITS, defaultUserDir, readBoundedBytes } from './config.js';
 import { permissionSettingsPaths } from './permission-settings.js';
 import type { ConfigPanelInput, ConfigPanelState, ConfigRowId } from './config-panel.js';
 import type { SessionConfig } from './session.js';
+import { promptSuggestionsAvailable, promptSuggestionsInitiallyEnabled } from './prompt-suggestions.js';
 
 /** ke/vWe, nybcbd9t [4744,4817)/[26484,26977), UTF-16: a higher authored timeout source hides its row. */
-export function configPanelInput(config: SessionConfig, state?: ConfigPanelState): ConfigPanelInput {
+export function configPanelInput(config: SessionConfig, state?: ConfigPanelState, livePromptSuggestionEnabled?: boolean): ConfigPanelInput {
   const userDir = config.configSources?.userDir ?? defaultUserDir();
   const files = permissionSettingsPaths(config.workspace, userDir);
   const higher = [files.projectSettings, files.legacyLocalSettings, files.localSettings,
     config.configSources?.settingsFile === undefined ? undefined : path.resolve(config.workspace, config.configSources.settingsFile)];
   const hidden = new Set<ConfigRowId>();
+  if (!promptSuggestionsAvailable(config)) hidden.add('promptSuggestionEnabled');
   for (const file of [...new Set(higher)]) {
     if (file === undefined) continue;
     if (!fs.existsSync(file)) continue;
@@ -28,6 +30,8 @@ export function configPanelInput(config: SessionConfig, state?: ConfigPanelState
     autoCompactEnabled: config.autoCompactEnabled, spinnerTipsEnabled: config.spinnerTipsEnabled,
     copyOnSelect: config.copyOnSelect, copyFullResponse: config.copyFullResponse, autoScrollEnabled: config.autoScrollEnabled,
     preferredNotifChannel: config.preferredNotifChannel,
+    // ue/vWe, nybcbd9t [37136,38694)/[17552,17759), UTF-16: the mounted row reads live app state.
+    promptSuggestionEnabled: livePromptSuggestionEnabled ?? promptSuggestionsInitiallyEnabled(config),
     theme: config.theme, editorMode: config.editorMode,
     timeFormat: config.timeFormat, prefersReducedMotion: config.prefersReducedMotion, showTurnDuration: config.showTurnDuration,
     askUserQuestionTimeout: config.askUserQuestionTimeout, dialogExpiry: config.dialogExpiry }, hidden: [...hidden], state };

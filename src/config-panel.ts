@@ -13,7 +13,7 @@ export const TIME_FORMATS = ['auto', '12-hour', '24-hour', '24-hour-utc'] as con
 export const PERMISSION_MODE_OPTIONS = ['default', 'plan', 'acceptEdits', 'auto', 'bypassPermissions', 'dontAsk'] as const;
 export type PermissionModeSetting = typeof PERMISSION_MODE_OPTIONS[number];
 export type ConfigUpdate =
-  | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration' | 'tips' | 'copyOnSelect' | 'copyFullResponse' | 'autoScroll'; value: boolean }
+  | { id: 'autoCompact' | 'verbose' | 'progressBar' | 'reduceMotion' | 'thinking' | 'turnDuration' | 'tips' | 'copyOnSelect' | 'copyFullResponse' | 'autoScroll' | 'promptSuggestionEnabled'; value: boolean }
   | { id: 'editor'; value: 'normal' | 'vim' }
   | { id: 'permissionMode'; value: PermissionModeSetting }
   | { id: 'timeFormat'; value: typeof TIME_FORMATS[number] }
@@ -28,7 +28,7 @@ type Row = { id: ConfigRowId; label: string } & (
 );
 export interface ConfigPanelState { query: string; cursor: number; focus: ConfigRowId; mode: 'search' | 'list' }
 export type ConfigPanelValues = Pick<SessionConfig, 'model' | 'thinking' | 'theme' | 'editorMode' | 'timeFormat'
-  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry' | 'spinnerTipsEnabled' | 'copyOnSelect' | 'copyFullResponse' | 'autoScrollEnabled' | 'preferredNotifChannel'>;
+  | 'verbose' | 'terminalProgressBarEnabled' | 'permissions' | 'autoCompactEnabled' | 'prefersReducedMotion' | 'showTurnDuration' | 'askUserQuestionTimeout' | 'dialogExpiry' | 'spinnerTipsEnabled' | 'copyOnSelect' | 'copyFullResponse' | 'autoScrollEnabled' | 'preferredNotifChannel' | 'promptSuggestionEnabled'>;
 export interface ConfigPanelInput { config: ConfigPanelValues; hidden: readonly ConfigRowId[]; state?: ConfigPanelState }
 export interface ConfigPanelHost {
   input: ConfigPanelInput;
@@ -62,6 +62,8 @@ function rows({ config, hidden }: ConfigPanelInput): Row[] {
     { id: 'autoCompact', label: 'Auto-compact', kind: 'boolean', value: config.autoCompactEnabled ?? true },
     // vWe, nybcbd9t [14860,15058), UTF-16.
     { id: 'tips', label: 'Show tips', kind: 'boolean', value: config.spinnerTipsEnabled ?? true },
+    // vWe, nybcbd9t [17552,17759), UTF-16; availability is supplied by configPanelInput.
+    { id: 'promptSuggestionEnabled', label: 'Prompt suggestions', kind: 'boolean', value: config.promptSuggestionEnabled ?? true },
     { id: 'reduceMotion', label: 'Reduce motion', kind: 'boolean', value: config.prefersReducedMotion ?? false },
     { id: 'thinking', label: 'Thinking mode', kind: 'boolean', value: config.thinking },
     // vWe, nybcbd9t [20115,20201), UTF-16; Ze, bk5ct2gw [558427,559209) defaults false.
@@ -230,7 +232,7 @@ export class ConfigPanel {
     const value = row.kind === 'boolean' ? !row.value : row.kind === 'enum'
       ? row.options[(row.options.indexOf(row.value) + direction + row.options.length) % row.options.length] : undefined;
     switch (row.id) {
-      case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration': case 'tips': case 'copyOnSelect': case 'copyFullResponse': case 'autoScroll':
+      case 'autoCompact': case 'verbose': case 'progressBar': case 'reduceMotion': case 'thinking': case 'turnDuration': case 'tips': case 'copyOnSelect': case 'copyFullResponse': case 'autoScroll': case 'promptSuggestionEnabled':
         if (typeof value === 'boolean') return { kind: 'change', update: { id: row.id, value } };
         return;
       case 'notifChannel': {
