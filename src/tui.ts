@@ -4352,15 +4352,19 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (dialog.backgroundDetail !== undefined) {
       const snapshot = dialog.request.backgroundTaskDetail?.();
       dialog.backgroundDetail.snapshot = snapshot;
-      if (snapshot === undefined || !taskDetailRunning(snapshot)) {
+      // fLt.Ra/CE, 24k7d6mw [683123,683641)/[674264,674472), UTF-16.
+      if (snapshot === undefined || !taskDetailRunning(snapshot) && !(snapshot.kind === 'agent' && snapshot.status === 'completed')) {
         dialog.finish({ selected: [], key: 'gone' }); return;
+      }
+      if (!taskDetailRunning(snapshot) && dialog.backgroundDetail.timer !== undefined) {
+        clearInterval(dialog.backgroundDetail.timer); dialog.backgroundDetail.timer = undefined;
       }
       const frame = taskDetailFrame(snapshot, Math.max(20, this.options.output.columns ?? 80));
       dialog.request.title = frame.title;
       dialog.request.message = frame.lines.join('\n');
       dialog.request.choices = undefined;
       dialog.request.readOnly = true;
-      dialog.request.keys = [{ key: 'x', label: 'stop' },
+      dialog.request.keys = [...(taskDetailRunning(snapshot) ? [{ key: 'x', label: 'stop' }] : []),
         ...(snapshot.kind === 'agent' ? (dialog.request.keys ?? []).filter(key => key.key === 'f') : [])];
       return;
     }
@@ -4405,7 +4409,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const visible = frame.lines.slice(dialog.scroll, dialog.scroll + height);
       while (visible.length < height) visible.push('');
       return [frame.title, ...visible, SEPARATOR.repeat(columns), '',
-        'Left go back / Esc Enter Space close / x stop / PgUp/PgDn'
+        'Left go back / Esc Enter Space close'
+          + (taskDetailRunning(dialog.backgroundDetail.snapshot) ? ' / x stop' : '') + ' / PgUp/PgDn'
           + (dialog.backgroundDetail.snapshot.kind === 'agent' && dialog.request.keys?.some(key => key.key === 'f') ? ' / f view agent' : '')]
         .map(line => pad(line, columns));
     }
@@ -4478,6 +4483,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const bodyWidth = geometry?.listWidth ?? columns;
     const offsets: number[] = [];
     for (const [index, choice] of choices.entries()) {
+      if (choice.heading !== undefined) body.push('', clean(choice.heading));
       offsets.push(body.length);
       const marker = active.multiple ? (dialog.selected.has(index) ? '[x]' : '[ ]') : '   ';
       body.push(...wrapEntry({ kind: 'assistant', text: `${dialog.index === index ? '>' : ' '} ${marker} ${clean(choice.label)}` }, bodyWidth));

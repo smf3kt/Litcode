@@ -97,13 +97,15 @@ try {
   send(' '); await until(ready, 'Space closes agent detail');
   send('launch details second\r'); await until(() => held.has('second') && ready(), 'second child read and held', 15000);
   send('/tasks\r'); await until(() => frame().includes('2 active agents'), 'two-agent list');
-  send('\x1b[B\r'); await until(() => frame().includes('AGENT_ORIGINAL_PROMPT_SECOND'), 'select second agent detail');
+  send('\r'); await until(() => frame().includes('AGENT_ORIGINAL_PROMPT_SECOND'), 'select newest running agent detail');
   send('\x1b[D'); await until(() => frame().includes('2 active agents'), 'Back to list');
   send('\r'); await until(() => frame().includes('AGENT_ORIGINAL_PROMPT_SECOND'), 'Back retains selected child');
   send('x'); await until(() => frame().includes('1 active agent'), 'stop second agent returns to list');
   send('\r'); await until(() => frame().includes('AGENT_ORIGINAL_PROMPT_FIRST'), 'remaining first detail');
-  held.get('first').finish(); await until(() => frame().includes('No tasks currently running'), 'completed child leaves detail');
-  send('\x1b'); await until(ready, 'close empty tasks');
+  held.get('first').finish(); await until(() => frame().includes('Completed ·') && frame().includes('AGENT_ORIGINAL_PROMPT_FIRST'), 'completed child retains source detail');
+  assert.doesNotMatch(frame(), /x stop/);
+  send('\x1b[D'); await until(() => frame().includes('Completed (1)'), 'Back returns to completed group');
+  send('\x1b'); await until(ready, 'close completed tasks');
   send('/exit\r'); assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0, frame());
   assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
   console.log(JSON.stringify({ cli: 'passed', childDetails: true, originalPrompt: true, liveCounters: true,

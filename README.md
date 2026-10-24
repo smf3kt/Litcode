@@ -434,6 +434,8 @@ WebSocket 模式接收文本消息，每条消息作为一个事件保留其中�
 
 `/tasks` 或 Background 页脚可查看运行中的 Shell、脚本 Monitor 和本地子代理。后台列表只有一个可查看的任务时直接打开详情；列表中 Enter 打开，Left 返回，Esc、Enter 或 Space 关闭，x 停止。Shell 和 Monitor 显示状态、耗时、命令和输出尾部。代理显示原始任务 prompt、模型、effort、耗时、token 与工具计数，以及最近工具活动。详情每秒刷新，Reduce motion 下也保留数据更新；PgUp/PgDn 查看超出视口的内容。查看详情保留当前草稿和模型回合。验证命令为 `node scripts/smoke-task-details-cli.mjs` 和 `node scripts/smoke-agent-details-cli.mjs`，来源与适配见 `research/ports/W320-task-details.md`、`research/ports/W321-agent-details.md`。
 
+`/tasks` 还会在 `Completed` 分组列出当前进程保留的已完成后台代理，活动项在前，同组按启动时间从新到旧排列。完成项不增加页脚活动计数，Enter 或 f 直接打开该代理的对话；运行中的详情在完成后保留，Left 返回列表，停止键随完成状态撤下。历史沿用有界保留和查看租约，跨重启重建另列后续工作。验证命令为 `node scripts/smoke-agent-transcript-cli.mjs --completed-history`，来源与适配见 `research/ports/W323-completed-task-history.md`。
+
 代理详情按 f 进入该代理的会话。普通输入直接交给所选代理，排队后立即显示，完成后仍可查看和续聊。主会话继续保留自己的输出。`/model` 和 `/fast` 显示归属提示并保留草稿；`/compact`、`/clear`、`/rewind` 先确认，再作用于主会话。Escape 停止运行中的代理，结束后再次 Escape 返回主会话；Vim 编辑模式先消费首次 Escape。Ctrl+O 查看代理 transcript，q 返回代理聊天。停止或失败的普通本地代理接受人类主动续聊；已关闭的隔离环境提示重新创建代理。同进程查看保留有界记录，退出查看恢复原有淘汰规则。验证命令为 `node scripts/smoke-agent-transcript-cli.mjs`，来源与适配见 `research/ports/W322-agent-transcript.md`。
 
 后台作业默认最多 16 个并发、保留 100 个已结束作业；通知有数量/字节限额和丢弃计数。调度与代理目录保持进程内状态。子代理共享工作区和 task store；worktree isolation 创建独立 runtime、父工作区子日志及可续跑 lease，stop/失败/淘汰/父关闭清理，dirty/unmerged checkout 保留并报告 cleanup_error。主会话 worktree 入口见上文，tmux 与跨进程 peers 仍有差距。MCP stdio 保持 2024-11-05 handshake（form 为显式扩展），HTTP 协商 2025-03-26/2025-06-18。开启 `mcpNotificationStream` 后，GET 流上的任意客户端请求按 POST 合同派发（能力门控、关联任务所有权、取消与有界回复），未配置的方法回 -32601；承载过请求的流不再自动重开，仅通知的流保持有限重开预算。回调有独立取消/期限、32 KiB 输入、1 MiB 结果/frame、每连接 16 个实际活跃槽，超时后占槽至结束，close 忽略晚到结果；JavaScript 回调依赖协作取消。MCP tasks、重连与 sampling 扩展仍为 Partial，OAuth 为 Excluded。

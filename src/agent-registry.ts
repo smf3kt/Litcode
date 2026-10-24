@@ -118,7 +118,7 @@ function createStructuredOutputTool(schema: unknown, state: StructuredOutputStat
 
 type MailboxMessage = { text: string; origin: MessageOrigin; displayId?: string };
 type Child = {
-  view: AgentDescriptor; config: SessionConfig; tools: ToolDefinition[]; controller: AbortController;
+  view: AgentDescriptor; config: SessionConfig; readonly resumeConfig: SessionConfig; tools: ToolDefinition[]; controller: AbortController;
   mailbox: MailboxMessage[]; mailboxBytes: number; accepted: number; session?: Session;
   transcript: AgentTranscriptRecord[]; inProgressToolUseIDs: Set<string>; viewLeases: Set<symbol>; activeInput?: string;
   agent?: Agent; hooks?: ReturnType<typeof createChildHookLifecycle>;
@@ -127,6 +127,7 @@ type Child = {
   structured?: StructuredOutputState;
   liveOwner: LivePermissionOwner; adoptionOnly: boolean;
   prompt: string; startedAt: number; endedAt?: number; progress: AgentProgressTracker; streamedChars: number;
+  backgrounded: boolean;
 };
 
 /** One instance belongs to one parent session; selectors never resolve outside it. */
@@ -181,6 +182,14 @@ export class AgentRegistry {
   }
 
   list(): AgentDescriptor[] { return [...this.children.values()].map(child => this.snapshot(child)); }
+
+  // CE/IC/dne, 24k7d6mw [674264,674472), sfn1dbxq [4222190,4222263)/[4233793,4234807), UTF-16.
+  backgroundTasks(): import('./tasks-panel.js').BackgroundTaskSnapshot['agents'] {
+    if (this.closed || this.options.signal?.aborted) return [];
+    return [...this.children.values()]
+      .filter(child => child.view.status === 'running' || child.backgrounded && child.view.status === 'completed')
+      .map(child => ({ id: child.view.id, name: child.view.name, status: child.view.status, startedAt: child.startedAt }));
+  }
 
   /** kG/dne, 24k7d6mw [633300,637661), sfn1dbxq [4233793,4234807), UTF-16: passive retained task fields. */
   detail(id: string): AgentTaskDetail | undefined {
@@ -492,9 +501,9 @@ export class AgentRegistry {
         view: { id: session.id, session_id: session.id, name: args.name ?? null, status: 'queued',
           mode: launch.mode, model: config.model, summary: '', error: null, reason: null, model_calls: 0, queued_messages: 0,
           ...(this.options.enableAdvanced ? { workspace: config.workspace, ...(args.subagent_type ? { subagent_type: args.subagent_type } : {}) } : {}) },
-        config: session.config, tools, controller, mailbox: [], mailboxBytes: 0, liveOwner, adoptionOnly: execution?.beforeTool !== undefined,
+        config: session.config, resumeConfig: structuredClone(config), tools, controller, mailbox: [], mailboxBytes: 0, liveOwner, adoptionOnly: execution?.beforeTool !== undefined,
         transcript: session.events.filter(transcriptEvent), inProgressToolUseIDs: new Set(), viewLeases: new Set(),
-        prompt: args.prompt, startedAt: Date.now(), progress: createAgentProgress(), streamedChars: 0,
+        prompt: args.prompt, startedAt: Date.now(), progress: createAgentProgress(), streamedChars: 0, backgrounded: args.background === true,
         accepted: 0, session, agent, hooks, journalEvents: session.events.length, journalBytes: metadataBytes + seedBytes + seedBoundaryBytes,
         ...(structuredState ? { structured: structuredState } : {}),
         ...(environment ? { environment } : {}), fork: seededFork,
@@ -650,8 +659,14 @@ export class AgentRegistry {
       signal.throwIfAborted();
       const resumed = !child.session;
       if (resumed) {
-        child.session = Session.open(child.config.workspace, { id: child.view.session_id, config: child.config,
+        // kn, qw2csqy5 [22571,24971)/[25405,27805), UTF-16; journal identity and live skill context have separate owners.
+        child.session = Session.open(child.config.workspace, { id: child.view.session_id, config: child.resumeConfig,
           ...(child.environment?.storageRoot ? { storageRoot: child.environment.storageRoot } : {}) });
+        for (const key of Object.keys(child.session.config)) {
+          if (!Object.hasOwn(child.config, key)) Reflect.deleteProperty(child.session.config, key);
+        }
+        Object.assign(child.session.config, structuredClone(child.config));
+        child.config = child.session.config;
         if (child.adoptionOnly) child.session.inheritPermissionAdoption(child.liveOwner);
         else child.session.inheritPermissions(child.liveOwner);
         child.hooks = createChildHookLifecycle(child.session, this.options);

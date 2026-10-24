@@ -44,7 +44,7 @@ import { FORK_COORDINATOR, FORK_DESCRIPTION, FORK_DISABLED, FORK_FIRST_TURN, FOR
 import { SKILLS_TITLE, applySkillOverrideDiff, defaultSkillModes, nextSkillMode, readLocalSkillOverrides,
   saveSkillOverrides, skillOverrideDiff, skillPanelRows, skillsPanelMessage, skillsSaveError,
   skillsSaveMessage, type SkillMode } from './skills-panel.js';
-import { backgroundTaskGoneMessage, backgroundTaskRequest, parseBackgroundTaskValue } from './tasks-panel.js';
+import { backgroundTaskGoneMessage, backgroundTaskItems, backgroundTaskRequest, backgroundTaskStoppable, parseBackgroundTaskValue } from './tasks-panel.js';
 import { initialTaskDetail } from './task-details.js';
 import { agentViewCommandGate } from './agent-transcript.js';
 import { hooksSchema } from './hooks.js';
@@ -1541,6 +1541,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const selectedTask = parseBackgroundTaskValue(selectedValue ?? '');
           if (selectedTask !== undefined) focus = { id: selectedTask.id,
             index: answer.backgroundTaskIndex ?? Math.max(0, list.choices?.findIndex(choice => choice.value === selectedValue) ?? 0) };
+          const item = backgroundTaskItems(read()).find(candidate => candidate.id === selectedTask?.id);
+          // fLt.Vl/Tm, 24k7d6mw [678168,678433)/[681624,681943), UTF-16.
+          if (selectedTask?.kind === 'agent' && item !== undefined
+            && (answer.key === 'f' || answer.key !== 'x' && item.status === 'completed')
+            && terminal.viewAgent && activeRuntime.agentTranscript && activeRuntime.submitAgentInput) {
+            live.release(); openAgentView(selectedTask.id); break;
+          }
+          if (answer.key === 'f' || answer.key === 'x' && (item === undefined || !backgroundTaskStoppable(item))) continue;
           if (answer.key !== 'x') {
             const selected = selectedTask;
             const snapshot = selected && activeRuntime.backgroundTaskDetail?.(session.id, selected.id);

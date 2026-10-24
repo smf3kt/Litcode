@@ -88,6 +88,37 @@ try {
   child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
   child.stdout.on('data', text => screen.write(text)); child.stderr.on('data', text => screen.write(text));
   await until(ready, 'startup', 15000);
+  if (process.argv.includes('--completed-history')) {
+    for (const name of ['first', 'second']) {
+      send(`launch view ${name}\r`);
+      await until(() => held.has(name) && ready(), `${name} child read and held`, 15000);
+      held.get(name).finish();
+      await until(() => ready() && !frame().includes('1 local agent'), `${name} child completed`, 15000);
+    }
+    const before = requests.length;
+    send('/tasks\r');
+    if (process.argv.includes('--baseline')) {
+      await until(() => frame().includes('No tasks currently running'), 'baseline omits retained completed children');
+      console.log(JSON.stringify({ baseline: 'completed agents are absent from the picker', requests: requests.length }));
+      send('\x1b'); await until(ready, 'close baseline list');
+    } else {
+      await until(() => frame().includes('Completed (2)'), 'completed group with both retained children');
+      assert.doesNotMatch(frame(), /2 active agents/);
+      assert.ok(frame().indexOf('view-second') < frame().indexOf('view-first'), 'newer child sorts first');
+      send('x'); await delay(150); assert.equal(requests.length, before);
+      assert.match(frame(), /Completed \(2\)/);
+      send('\r'); await until(() => frame().includes('Viewing agent') && frame().includes('CHILD_SECOND_COMPLETE'), 'Enter opens completed transcript');
+      assert.doesNotMatch(frame(), /MAIN_TRANSCRIPT_SENTINEL/);
+      send('CHILD_FOLLOWUP_QUEUED\r');
+      await until(() => frame().includes('CHILD_FOLLOWUP_COMPLETE'), 'completed child continues in the same transcript', 15000);
+      assert.equal(requests.filter(body => body.model === 'fixture-child' && body.messages.at(-1)?.content === 'CHILD_FOLLOWUP_QUEUED').length, 1);
+      send('\x1b'); await until(() => !frame().includes('Viewing agent') && frame().includes('MAIN_TRANSCRIPT_SENTINEL'), 'return to main');
+      send('/tasks\r'); await until(() => frame().includes('Completed (2)'), 'reopen completed history');
+      send('\x1b[B\r'); await until(() => frame().includes('Viewing agent') && frame().includes('CHILD_FIRST_COMPLETE'), 'select older completed transcript');
+      assert.doesNotMatch(frame(), /CHILD_SECOND_COMPLETE/);
+      send('\x1b'); await until(() => !frame().includes('Viewing agent'), 'release older child view');
+    }
+  } else {
   send('launch view first\r'); await until(() => held.has('first') && ready(), 'first child read and held', 15000);
   send('/tasks\r'); await until(() => frame().includes('AGENT_VIEW_FIRST') && frame().includes('Prompt'), 'agent details');
   send('f'); await until(() => frame().includes('Viewing agent') && !frame().includes('Prompt'), 'f opens selected agent transcript');
@@ -111,15 +142,18 @@ try {
     send('\x1b'); await until(() => !frame().includes('Viewing agent') && frame().includes('MAIN_TRANSCRIPT_SENTINEL'), 'settled Escape returns main');
     assert.doesNotMatch(frame(), /CHILD_FOLLOWUP_COMPLETE/);
     send('launch view second\r'); await until(() => held.has('second') && ready(), 'second child read and held', 15000);
-    send('/tasks\r'); await until(() => frame().includes('AGENT_VIEW_SECOND') && frame().includes('Prompt'), 'second child details');
+    send('/tasks\r'); await until(() => frame().includes('1 active agent') && frame().includes('Completed (1)'), 'running and completed child groups');
+    send('\r'); await until(() => frame().includes('AGENT_VIEW_SECOND') && frame().includes('Prompt'), 'second child details');
     send('f'); await until(() => frame().includes('Viewing agent') && frame().includes('AGENT_VIEW_SECOND'), 'second child view', 15000);
     send('\x1b'); await until(() => frame().includes('Viewing agent') && frame().includes('cancelled'), 'Escape stops selected child');
     send('\x1b'); await until(() => !frame().includes('Viewing agent'), 'second Escape releases view');
   }
+  }
   send('/exit\r'); assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0, frame());
   assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
-  console.log(JSON.stringify({ cli: 'passed', entryOnly: process.argv.includes('--entry-only'), childView: true,
-    modelRequests: requests.length, gateway: 'owned loopback SSE', locksReleased: true }));
+  console.log(JSON.stringify({ cli: 'passed', entryOnly: process.argv.includes('--entry-only'),
+    completedHistory: process.argv.includes('--completed-history'), baseline: process.argv.includes('--baseline'),
+    childView: !process.argv.includes('--baseline'), modelRequests: requests.length, gateway: 'owned loopback SSE', locksReleased: true }));
 } finally {
   fs.writeFileSync(path.join(temporary, 'screen.txt'), frame());
   if (child && child.exitCode === null && child.signalCode === null) {
