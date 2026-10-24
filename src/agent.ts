@@ -1092,13 +1092,13 @@ export class Agent {
   }
 
   /**
-   * `kmt`, chunk-d3s5r8h5.js [1289,3457), UTF-16: one tool-free call over the conversation plus the
+   * `kmt`, chunk-d3s5r8h5.js [1698,4364), UTF-16: one tool-free call over the conversation plus the
    * prior side exchanges. The reminder tells the model not to act; `skipTranscript` is why nothing
-   * is appended here. The recovered fork-context placeholder (`x` at 3457) has no host counterpart
+   * is appended here. The recovered fork-context placeholder (`x` at 4364) has no host counterpart
    * because every host message is already paired; the recovered refusal fallback stays out.
    */
   async askSideQuestion(question: string, exchanges: readonly SideQuestionExchange[],
-    signal: AbortSignal): Promise<SideQuestionOutcome> {
+    signal: AbortSignal, onRetry?: import('./provider.js').ModelRetryObserver): Promise<SideQuestionOutcome> {
     const history = exchanges.flatMap(exchange => [
       { role: 'user' as const, content: [{ type: 'text' as const, text: exchange.question }] },
       { role: 'assistant' as const, content: [{ type: 'text' as const, text: sideQuestionHistoryText(exchange.response) }] },
@@ -1109,7 +1109,7 @@ export class Agent {
     request.tools = [];
     request.tool_choice = { type: 'none' };
     try {
-      return classifySideQuestion([await this.provider.complete(request, signal)]);
+      return classifySideQuestion([await this.provider.complete(request, signal, undefined, undefined, onRetry)]);
     } catch (error) {
       if (signal.aborted) return { response: null, synthetic: false };
       throw error;

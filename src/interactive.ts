@@ -89,6 +89,7 @@ import { type AutoModeEditorHost } from './auto-mode-editor.js';
 import { osc52Payload } from './clipboard-osc52.js';
 import { SIDE_QUESTION_COPIED, SIDE_QUESTION_NO_RESPONSE, SIDE_QUESTION_PROMPT,
   SIDE_QUESTION_USAGE, sideQuestionPanelText, type SideQuestionExchange } from './side-question.js';
+import { SideQuestionProgress, sideQuestionWaitingText } from './side-question-progress.js';
 import { contextPanelText, contextUsageFromCounts } from './context-panel.js';
 import { STATUS_PANEL_TITLE, appVersion, latestSessionTitle, statusPanelRows, statusPanelText } from './status-panel.js';
 import { MCP_PANEL_TITLE, mcpPanelRows, mcpPanelText, mcpToolCounts, mcpServerRequest, mcpToolsRequest, mcpToolRequest } from './mcp-panel.js';
@@ -2118,7 +2119,24 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             question = typed?.text?.trim() ?? '';
             if (question === '') continue;
           }
-          const outcome = await withTurn(signal => agent().askSideQuestion(question, btwExchanges, signal));
+          // we/ot, qskwh3r4 [17437,24938), UTF-16: mount pending first; explicit dismissal aborts this request.
+          const settled = terminal?.prompt ? await withTurn(async signal => {
+            const side = new SideQuestionProgress(question, signal,
+              (requestSignal, onRetry) => agent().askSideQuestion(question, btwExchanges, requestSignal, onRetry));
+            try {
+              const answer = await readDialog({ title: 'Btw', readOnly: true, sideQuestion: side,
+                message: sideQuestionWaitingText(question, null, 0) }, signal);
+              if (answer?.key !== 'side-settled') return { kind: 'closed' } as const;
+              return await side.settled;
+            } finally { side.close(); await side.settled; }
+          }) : { kind: 'answer' as const, outcome: await withTurn(signal => agent().askSideQuestion(question, btwExchanges, signal)) };
+          if (settled.kind === 'closed') continue;
+          if (settled.kind === 'error') {
+            await withTurn(signal => readDialog({ title: 'Btw', readOnly: true,
+              message: sideQuestionPanelText(question, settled.message) }, signal));
+            continue;
+          }
+          const outcome = settled.outcome;
           if (outcome.response === null) { output.write(`${SIDE_QUESTION_NO_RESPONSE}\n`); continue; }
           const current: SideQuestionExchange = { question, response: outcome.response };
           // `N`'s synthetic replies are shown but never joined to the side history.

@@ -487,12 +487,14 @@ class OAuthProvider implements ModelProvider {
     return true;
   }
 
-  async complete(request: ModelRequest, signal: AbortSignal, onText?: (text: string) => void, onThinking?: () => void) {
+  // kmt.onRetry, d3s5r8h5 [1698,4364), UTF-16: preserve request-local observers across provider delegation.
+  async complete(...args: Parameters<ModelProvider['complete']>) {
+    const signal = args[1];
     await this.ensureFresh(signal);
-    try { return await this.inner.complete(request, signal, onText, onThinking); }
+    try { return await this.inner.complete(...args); }
     catch (error) {
       if (!isUnauthorized(error) || !(await this.refresh(signal))) throw error;
-      return this.inner.complete(request, signal, onText, onThinking);
+      return this.inner.complete(...args);
     }
   }
 
@@ -540,8 +542,7 @@ export function createProviderSlot(missing: () => string): ProviderSlot {
     adopted: () => current !== undefined,
     provider: {
       count: async (request, signal) => current === undefined ? 0 : current.count(request, signal),
-      complete: async (request, signal, onText, onThinking) => current === undefined
-        ? fail() : current.complete(request, signal, onText, onThinking),
+      complete: async (...args) => current === undefined ? fail() : current.complete(...args),
     },
   };
 }

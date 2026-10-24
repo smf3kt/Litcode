@@ -1287,6 +1287,8 @@ export interface TerminalPromptRequest {
   backgroundTasks?: () => import('./tasks-panel.js').BackgroundTaskSnapshot;
   /** kG/YG, 24k7d6mw [633300,637661)/[667173,670211), UTF-16: one dialog-owned live task snapshot. */
   backgroundTaskDetail?: () => import('./task-details.js').BackgroundTaskDetail | undefined;
+  /** we/$e, qskwh3r4 [17437,24938)/[26512,27477), UTF-16: request-owned pending/retry display. */
+  sideQuestion?: import('./side-question-progress.js').SideQuestionProgress;
   /**
    * When present the request runs as a sequence of groups followed by a review
    * page, and the answer carries one entry per group. Copied from the recovered

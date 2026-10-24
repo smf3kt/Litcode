@@ -222,6 +222,7 @@ import {
   type TerminalPromptQueue, type TerminalPromptRequest, type TerminalQueuedPrompt,
 } from './terminal.js';
 import { keyboardCohesion } from './diff-dialog-frame-host.js';
+import { sideQuestionWaitingText } from './side-question-progress.js';
 import { applyReturnGesture } from './tui-input-return.js';
 
 export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
@@ -293,6 +294,7 @@ interface ActiveDialog {
   resumePicker?: { owner: ResumePicker; hits: Map<number, number> };
   backgroundFocusLost?: boolean;
   backgroundDetail?: { snapshot: BackgroundTaskDetail | undefined; timer?: ReturnType<typeof setInterval> };
+  sideQuestion?: { timer: ReturnType<typeof setInterval>; unsubscribe(): void; frame: number };
   busy?: boolean;
   editor: EditorState;
   undo: InputUndo;
@@ -1923,10 +1925,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.sourcePicker?.cancel();
     // Formatter and settings callbacks retain their host ownership outside the cloned display data.
     // The resume picker's preview/rename callbacks are host closures too; only its rows are data.
-    const { adjust: axis, configPanel, resumePicker, backgroundTasks, backgroundTaskDetail, ...plain } = request;
+    const { adjust: axis, configPanel, resumePicker, backgroundTasks, backgroundTaskDetail, sideQuestion, ...plain } = request;
     const snapshot: TerminalPromptRequest = structuredClone(plain);
     if (backgroundTasks !== undefined) snapshot.backgroundTasks = backgroundTasks;
     if (backgroundTaskDetail !== undefined) snapshot.backgroundTaskDetail = backgroundTaskDetail;
+    if (sideQuestion !== undefined) snapshot.sideQuestion = sideQuestion;
     if (axis !== undefined) snapshot.adjust = axis;
     if (configPanel !== undefined) snapshot.configPanel = configPanel;
     if (resumePicker !== undefined) snapshot.resumePicker = { ...resumePicker, logs: structuredClone(resumePicker.logs) };
@@ -1943,6 +1946,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         settled = true; signal.removeEventListener('abort', cancelled);
         if (dialog.adjustClock !== undefined) clearInterval(dialog.adjustClock.timer);
         if (dialog.backgroundDetail?.timer !== undefined) clearInterval(dialog.backgroundDetail.timer);
+        if (dialog.sideQuestion !== undefined) { clearInterval(dialog.sideQuestion.timer); dialog.sideQuestion.unsubscribe(); }
         // Source removal is in-memory only; this host also unlinks the private
         // attachments it captured for the dialog.
         dialog.imageCapture?.abort();
@@ -1989,6 +1993,23 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
       if (snapshot.backgroundTaskDetail !== undefined) dialog.backgroundDetail = { snapshot: undefined };
       this.dialog = dialog;
+      // we, qskwh3r4 [17437,24938), UTF-16: the waiting panel alone owns its 80 ms frame clock.
+      if (sideQuestion !== undefined) {
+        const refresh = () => {
+          if (this.dialog !== dialog) return;
+          const state = sideQuestion.state;
+          if (state.kind !== 'pending') { dialog.finish({ selected: [], key: 'side-settled' }); return; }
+          dialog.request.message = sideQuestionWaitingText(sideQuestion.question, state.retry,
+            this.prefersReducedMotion ? 0 : dialog.sideQuestion?.frame ?? 0);
+          this.render();
+        };
+        const timer = setInterval(() => { if (dialog.sideQuestion) dialog.sideQuestion.frame += 1; refresh(); }, 80);
+        timer.unref?.();
+        dialog.sideQuestion = { timer, unsubscribe: sideQuestion.subscribe(refresh), frame: 0 };
+        const state = sideQuestion.state;
+        if (state.kind !== 'pending') { dialog.finish({ selected: [], key: 'side-settled' }); return; }
+        dialog.request.message = sideQuestionWaitingText(sideQuestion.question, state.retry, 0);
+      }
       // kG/YG, 24k7d6mw [633300,637661)/[667173,670211); GD, n7mc1kmr [812,1038), UTF-16.
       if (dialog.backgroundDetail !== undefined) {
         this.refreshBackgroundDialog();
@@ -3113,6 +3134,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
     }
     if (command === 'interrupt' || command === 'eof' || sequence === '\x1b') { dialog.finish(); return; }
+    // we.tt, qskwh3r4 [17437,24938), UTF-16: Enter and Space explicitly dismiss the pending side question.
+    if (dialog.request.sideQuestion !== undefined && (command === 'submit' || action.type === 'insert' && action.text === ' ')) {
+      dialog.finish(); return;
+    }
     // A read-only panel has no answer input: Enter picks the focused row when there is one,
     // and does nothing when the panel is only a record to read.
     if (dialog.request.readOnly === true && command === 'submit'
