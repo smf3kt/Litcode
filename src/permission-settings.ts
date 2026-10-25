@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { atomicWriteFile } from './atomic-write.js';
+import { publishSettingsWrite } from './setting-writes.js';
 import { createSettingsWriteQueue } from './plugin-chain-settings-schema.js';
 import os from 'node:os';
 import { execFile } from 'node:child_process';
@@ -187,7 +188,10 @@ export function persistPermissionUpdate(update: PermissionUpdate, paths: Permiss
       }
       const next = transform(raw);
       const changed = next !== null && JSON.stringify(next) !== JSON.stringify(raw);
-      if (next !== null) atomicWriteFile(file, JSON.stringify(next, null, 2) + '\n', { mode, label: 'permissionSettings' });
+      if (next !== null) {
+        atomicWriteFile(file, JSON.stringify(next, null, 2) + '\n', { mode, label: 'permissionSettings' });
+        publishSettingsWrite(file, next);
+      }
       const revokeLegacy = async (): Promise<PermissionWriteResult> => {
       if (legacy !== undefined) {
         let text: string, legacyMode: number;
@@ -218,9 +222,12 @@ export function persistPermissionUpdate(update: PermissionUpdate, paths: Permiss
           try { transformed = transform(structuredClone(original.data)); }
           catch (error) { return evaluatedFailure('transform', error); }
           if (transformed !== null) {
-            const revoked = retainLegacyRevocations(original.data, transformed);
+            const revoked = objectSchema.parse(retainLegacyRevocations(original.data, transformed));
             if (JSON.stringify(revoked) !== JSON.stringify(original.data)) {
-              try { atomicWriteFile(legacy, JSON.stringify(revoked, null, 2) + '\n', { mode: legacyMode, label: 'permissionSettings' }); }
+              try {
+                atomicWriteFile(legacy, JSON.stringify(revoked, null, 2) + '\n', { mode: legacyMode, label: 'permissionSettings' });
+                publishSettingsWrite(legacy, revoked);
+              }
               catch (error) { return { destination, file, outcome: 'error', error: `Failed to revoke legacy permission settings at ${legacy}: ${error instanceof Error ? error.message : String(error)}` }; }
               return { destination, file, outcome: 'written' };
             }

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { atomicWriteFile } from './atomic-write.js';
+import { publishSettingsWrite } from './setting-writes.js';
 import { CONFIG_LIMITS, defaultUserDir, readBoundedBytes } from './config.js';
 import { permissionSettingsPaths, queuePermissionSettingsWrite } from './permission-settings.js';
 import { pluginConfigSchema, pluginEnabled, pluginEnabledMapSchema, readPluginStore, type PluginConfig } from './plugins.js';
@@ -70,6 +71,7 @@ export async function setPluginEnabled(config: PluginToggleSettings, name: strin
     const text = JSON.stringify(current.value, null, 2) + '\n';
     if (Buffer.byteLength(text) > CONFIG_LIMITS.settingsBytes) throw new Error('Plugin settings exceed the byte limit');
     atomicWriteFile(target.file, text, { mode: current.mode, label: 'setPluginEnabled' });
+    publishSettingsWrite(target.file, current.value);
   });
   return { success: true, name, enabled, scope, message: `Successfully ${enabled ? 'enabled' : 'disabled'} plugin: ${name} (scope: ${scope})` };
 }

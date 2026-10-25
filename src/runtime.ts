@@ -561,6 +561,9 @@ export async function createRuntime(
     showTurnDuration: undefined, timeFormat: undefined, editorMode: undefined,
     terminalProgressBarEnabled: undefined, autoCompactEnabled: undefined,
     askUserQuestionTimeout: undefined, dialogExpiry: undefined,
+    // Accepted setting-source provenance describes where values came from; it never shapes a
+    // connection or a request, so a live save must not look like a different settings owner.
+    settingSources: undefined,
     spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, promptSuggestionEnabled: undefined, preferredNotifChannel: undefined, messageIdleNotifThresholdMs: undefined, terminalTitleFromRename: undefined };
   // The default permission mode (row 21908) applies to new sessions, not this connection.
   const permissionsWithoutDefault = (current: SessionConfig) => current.permissions === undefined
@@ -803,6 +806,9 @@ export async function createRuntime(
         // Rows 12035/26485/29983 write these live after the settings write; none shapes tools.
         autoCompactEnabled: undefined, askUserQuestionTimeout: undefined, dialogExpiry: undefined,
         spinnerTipsEnabled: undefined, spinnerTipsLayers: undefined, copyOnSelect: undefined, copyFullResponse: undefined, autoScrollEnabled: undefined, promptSuggestionEnabled: undefined, preferredNotifChannel: undefined, messageIdleNotifThresholdMs: undefined, terminalTitleFromRename: undefined,
+        // Setting-source provenance never shaped the source tool set; the host-only field must
+        // not make a live save look like a different owner.
+        settingSources: undefined,
         // The Default permission mode row (21908) only moves the default for new sessions.
         permissions: settings.permissions === undefined ? undefined
           : { ...settings.permissions, defaultMode: undefined },

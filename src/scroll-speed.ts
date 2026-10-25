@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { atomicWriteFile } from './atomic-write.js';
+import { publishSettingsWrite } from './setting-writes.js';
 import { CONFIG_LIMITS, defaultUserDir, readBoundedBytes } from './config.js';
 import { pluralize } from './diff-dialog-primitives.js';
 import type { TerminalEnvironment } from './plugin-chain-terminal-environment.js';
@@ -253,6 +254,7 @@ export function saveScrollSpeedSetting(value: number | undefined, userDir = defa
   const content = JSON.stringify(settings, null, 2) + '\n';
   if (Buffer.byteLength(content) > CONFIG_LIMITS.settingsBytes) throw new Error('Scroll speed settings exceed the byte limit');
   atomicWriteFile(file, content, { mode, label: 'saveScrollSpeedSetting' });
+  publishSettingsWrite(file, settings);
 }
 
 /**

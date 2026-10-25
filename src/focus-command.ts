@@ -23,6 +23,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { atomicWriteFile } from './atomic-write.js';
+import { publishSettingsWrite } from './setting-writes.js';
 import { CONFIG_LIMITS, defaultUserDir, readBoundedBytes } from './config.js';
 import type { SessionConfig } from './session.js';
 
@@ -101,4 +102,5 @@ export function saveViewModeSetting(mode: FocusMode, userDir = defaultUserDir())
   const content = JSON.stringify(settings, null, 2) + '\n';
   if (Buffer.byteLength(content) > CONFIG_LIMITS.settingsBytes) throw new Error('Focus settings exceed the byte limit');
   atomicWriteFile(file, content, { mode: fileMode, label: 'saveViewModeSetting' });
+  publishSettingsWrite(file, settings);
 }

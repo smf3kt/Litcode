@@ -14,7 +14,7 @@ import { autoPolicySchema, permissionPolicySchema, emptySessionPermissionUpdates
 import { persistPermissionUpdate, permissionSettingsPaths, type PermissionWriteResult, type PermissionIgnoreResult } from './permission-settings.js';
 import { AutoModeDenialStore, permissionRetryMessage } from './permission-denials.js';
 import { observeWorkingDirectory, type WorkingDirectories } from './path-identity.js';
-import { defaultUserDir } from './config.js';
+import { defaultUserDir, settingFileHasContent } from './config.js';
 import type { SkillInfo, ConditionalRule, InstructionSource } from './config.js';
 import { mcpServersSchema, type McpServerConfig } from './mcp.js';
 import { lspConfigSchema, type LspConfig } from './lsp.js';
@@ -31,7 +31,8 @@ import { statusLineSchema } from './tui-statusline-schema.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 import type { StoredToolUseResult } from './tool-use-result.js';
 import { scheduledFireSchema, loopNoopCompanion, type ScheduledFire } from './loop-noop-fold.js';
-import { settingSourcesSchema, type SettingSource } from './setting-sources.js';
+import { SETTING_SOURCE_ORDER, settingSourcesSchema, type SettingSource } from './setting-sources.js';
+import { subscribeSettingsWrites, type SettingsWrite } from './setting-writes.js';
 
 export type SessionConfig = {
   model: string;
@@ -403,6 +404,43 @@ export class Session {
   private fileHistoryValue = { trackSequence: 0, trackedFiles: new Set<string>() };
   private readonly fileHistoryListeners = new Set<() => void>();
   private readonly titleListeners = new Set<() => void>();
+  private liveSettingSources: SettingSource[] | undefined;
+  private releaseSettingsWrites: (() => void) | undefined;
+
+  get settingSources(): readonly SettingSource[] | undefined {
+    return this.liveSettingSources === undefined ? undefined : structuredClone(this.liveSettingSources);
+  }
+
+  snapshotConfig(): SessionConfig {
+    const config = structuredClone(this.config);
+    if (this.liveSettingSources !== undefined) config.settingSources = structuredClone(this.liveSettingSources);
+    return config;
+  }
+
+  // Pr/F8e/Er, wtch2p0g [3708,3745), 4bw62nzm [12857,13406), x0dc37w9 [106006,106115), UTF-16.
+  private observeSettingsWrite(write: SettingsWrite): void {
+    if (this.closed || this.liveSettingSources === undefined) return;
+    const paths = permissionSettingsPaths(this.config.workspace, this.config.configSources?.userDir ?? defaultUserDir());
+    const authored: Partial<Record<Exclude<SettingSource['source'], 'policySettings'>, readonly string[]>> = {
+      userSettings: paths.userSettings === undefined ? [] : [paths.userSettings],
+      projectSettings: paths.projectSettings === undefined ? [] : [paths.projectSettings],
+      localSettings: [paths.localSettings, paths.legacyLocalSettings].filter((file): file is string => file !== undefined),
+      flagSettings: this.config.configSources?.settingsFile === undefined ? [] : [path.resolve(this.config.workspace, this.config.configSources.settingsFile)],
+    };
+    const next = new Map(this.liveSettingSources.map(item => [item.source, item]));
+    for (const source of ['userSettings', 'projectSettings', 'localSettings', 'flagSettings'] as const) {
+      const files = authored[source] ?? [];
+      if (!files.some(file => path.resolve(file) === write.file)) continue;
+      const present = files.some(file => path.resolve(file) === write.file ? write.present : settingFileHasContent(file));
+      if (present) next.set(source, { source });
+      else next.delete(source);
+    }
+    this.liveSettingSources = SETTING_SOURCE_ORDER.flatMap(source => {
+      const item = next.get(source);
+      return item === undefined ? [] : [item];
+    });
+  }
+
   /** Destination buckets are session-owned; settings writes settle independently of memory. */
   permissionUpdates: SessionPermissionUpdates = emptySessionPermissionUpdates();
   readonly permissionWriteResults: PermissionWriteResult[] = [];
@@ -560,6 +598,8 @@ export class Session {
     this.fd = fd;
     this.lock = lock;
     this.lockToken = lockToken;
+    this.liveSettingSources = this.config.settingSources === undefined ? undefined : structuredClone(this.config.settingSources);
+    this.releaseSettingsWrites = subscribeSettingsWrites(write => this.observeSettingsWrite(write));
     this.startedAt = meta.startedAt ?? Math.min(Date.now(), fs.fstatSync(fd).birthtimeMs || Date.now());
     for (const event of events) if (event.kind === 'file_history') this.updateFileHistory(event);
   }
@@ -776,6 +816,7 @@ export class Session {
   close(): Promise<void> {
     if (this.closed) return this.drainPermissionWrites().then(() => {});
     this.closed = true;
+    this.releaseSettingsWrites?.(); this.releaseSettingsWrites = undefined;
     this.fileHistoryListeners.clear();
     this.titleListeners.clear();
     this.permissionListeners.clear();

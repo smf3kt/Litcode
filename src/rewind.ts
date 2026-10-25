@@ -73,7 +73,7 @@ export function applyRewind(session: Session, preview: RewindPreview, token: str
   const fresh = previewRewind(session, preview.turn, signal);
   if (token !== preview.token || fresh.token !== preview.token) throw new Error("Rewind preview is stale; preview again before applying");
   preview = fresh;
-  const next = Session.open(session.config.workspace, { config: structuredClone(session.config), startedAt: session.startedAt });
+  const next = Session.open(session.config.workspace, { config: session.snapshotConfig(), startedAt: session.startedAt });
   const identity = fs.lstatSync(next.file);
 
   try {

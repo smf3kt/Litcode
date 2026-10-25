@@ -61,7 +61,7 @@ export function relocateSession(source: Session, targetWorkspace: string, buildT
     throw new Error("Target session directory must be a real directory");
   }
 
-  const config: SessionConfig = { ...structuredClone(source.config), workspace: target };
+  const config: SessionConfig = { ...source.snapshotConfig(), workspace: target };
   if (options?.worktreeReturn === null) delete config.worktreeReturn;
   else if (options?.worktreeReturn !== undefined) config.worktreeReturn = options.worktreeReturn;
   const definitions = buildTools(structuredClone(config));

@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { atomicWriteFile } from './atomic-write.js';
+import { publishSettingsWrite } from './setting-writes.js';
 import type { PermissionFilePaths } from './permission-settings.js';
 
 /** `cgt` at 1033: the cycle order enter and space walk. */
@@ -331,6 +332,7 @@ export function saveSkillOverrides(file: string, diff: Readonly<Record<string, S
   if (Object.keys(current).length === 0) delete raw.skillOverrides;
   else raw.skillOverrides = current;
   atomicWriteFile(file, `${JSON.stringify(raw, null, 2)}\n`, { mode, label: 'skillSettings' });
+  publishSettingsWrite(file, raw);
 }
 
 /** `Ui`-style report arm at 28505: the save outcome, or `No changes`. */

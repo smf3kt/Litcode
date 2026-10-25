@@ -103,7 +103,7 @@ export function forkSession(source: Session, eventBoundary?: number): Session {
   if (eventBoundary !== undefined && (!Number.isSafeInteger(eventBoundary) || eventBoundary < 0 ||
     (eventBoundary !== 0 && source.events[eventBoundary]?.kind !== 'turn_end'))) throw new Error('Rewind requires a completed turn boundary');
   const history = eventBoundary === undefined ? source.events : source.events.slice(0, eventBoundary + 1);
-  const fork = Session.open(source.config.workspace, { config: structuredClone(source.config), startedAt: source.startedAt });
+  const fork = Session.open(source.config.workspace, { config: source.snapshotConfig(), startedAt: source.startedAt });
   try {
     if (eventBoundary === undefined) fork.carryForkPermissions(source);
     // Copy conversation epochs, not tool side-effect journals or locks.

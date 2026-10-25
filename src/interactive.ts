@@ -1261,6 +1261,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand, reconfigureRuntime = false) => {
     signal.throwIfAborted();
     const previousModel = session.config.model;
+    if (!reconfigureRuntime && session.settingSources !== undefined) config.settingSources = [...session.settingSources];
     const next = Session.open(config.workspace, { config, startedAt: session.startedAt });
     try {
       next.carryPermissions(session, config.permissions?.mode === session.config.permissions?.mode);
@@ -1315,7 +1316,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   const selectTheme = async (theme: ThemeSetting, signal: AbortSignal) => {
     signal.throwIfAborted();
-    const config = structuredClone(session.config);
+    const config = session.snapshotConfig();
     // The settings write is gated by the watcher-raised ConfigChange event, not
     // by a synchronous hook here (`QXr`, chunk-sfn1dbxq.js [2933599,2933905)).
     signal.throwIfAborted();
@@ -1660,7 +1661,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (terminal?.writeNotice) terminal.writeNotice(summary); else output.write(`${summary}\n`);
     // The session adopts the endpoint and model the credential was issued for; a gateway change
     // rebuilds the runtime so the next request dials the new one.
-    const config = structuredClone(session.config);
+    const config = session.snapshotConfig();
     config.gateway = { ...(config.gateway ?? DEFAULT_GATEWAY), baseURL: credential.baseURL, auth: credential.auth };
     const modelChanged = config.model === UNCONFIGURED_MODEL || config.model === '';
     if (modelChanged) config.model = credential.model;
@@ -1810,7 +1811,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   /** Co -> Ll/Me, dag4qhha [33770,34600), nybcbd9t [8318,9556), UTF-16; shares the command's hook/save/apply path. */
   const selectModel = async (model: string, effort: EffortLevel | undefined, sessionOnly: boolean, signal: AbortSignal, fromConfig = false) => {
     if (!model || model.length > 256 || /[\x00-\x1f\x7f-\x9f]/.test(model)) throw new Error('Use a model ID of 1 to 256 characters without controls');
-    const config = structuredClone(session.config);
+    const config = session.snapshotConfig();
     const { skipConfirm } = await preModelSwitch(model, signal);
     // `lt` (chunk-f5wjy38g.js 21771) runs for the typed and picker arms alike.
     if (!await confirmCacheMissModel(model, signal, skipConfirm)) return;
@@ -2031,7 +2032,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           catch (error) { output.write(`Couldn't save focus view: ${(error as Error).message}\n`); continue; }
           // r, 4jr9rxry [4693,5262), UTF-16: the write is followed by apply_flag_settings; a live
           // owner change needs the successor session, and verbose stays untouched.
-          const config = structuredClone(session.config);
+          const config = session.snapshotConfig();
           config.viewMode = mode;
           await withTurn(signal => applyConfig(config, false, signal));
           terminal?.setBriefTranscript?.(argument.enabled);
@@ -2156,7 +2157,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (answer.key === 'f' && !outcome.synthetic && browse === null && activeRuntime.launchSubtask
               && !subtaskCoordinator(process.env, { interactive: true, remote: false })) {
               try {
-                const launched = await withTurn(signal => activeRuntime.launchSubtask!(session.config, session.id,
+                const launched = await withTurn(signal => activeRuntime.launchSubtask!(session.snapshotConfig(), session.id,
                   current.question, signal, session.messages, [
                     { role: 'user', content: current.question }, { role: 'assistant', content: current.response },
                   ]));
@@ -2253,7 +2254,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           try { saveAutoCompactSetting(result.saved === 'auto' ? undefined : result.saved, userDir); }
           catch (error) { output.write(`Couldn't save setting: ${(error as Error).message}\n`); continue; }
           // $2t, agx4redd [1968,3167), UTF-16: apply_flag_settings refreshes the owner after persistence.
-          const config = structuredClone(session.config);
+          const config = session.snapshotConfig();
           config.compactAt = Math.min(limit, result.saved === 'auto' ? AUTO_COMPACT_FALLBACK : result.saved);
           await withTurn(signal => applyConfig(config, false, signal));
           output.write(`${result.message}\n`);
@@ -2685,7 +2686,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (!activeRuntime.reconfigure) throw new Error('Runtime configuration reload is unavailable');
           const reconnect = prompt === '/mcp-reconnect';
           if (reconnect && !Object.keys(session.config.mcpServers ?? {}).length) throw new Error('No configured MCP servers to reconnect');
-          const config = reconnect ? structuredClone(session.config) : reloadConfig(session.config, 'preview');
+          const config = reconnect ? session.snapshotConfig() : reloadConfig(session.config, 'preview');
           let nextRuntime = await activeRuntime.reconfigure(config);
           let next: Session | undefined;
           try {
@@ -2868,7 +2869,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               session.config.gateway.baseURL !== DEFAULT_GATEWAY.baseURL
               ? session.config.gateway.baseURL : undefined,
             mcpServers: activeRuntime.mcpServers?.(),
-            settingSources: session.config.settingSources,
+            settingSources: session.settingSources,
           });
           await withTurn(signal => readDialog({ title: STATUS_PANEL_TITLE,
             message: statusPanelText(rows), statusRows: rows, readOnly: true }, signal));
@@ -2967,7 +2968,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               input: configPanelInput(session.config, state, suggestionsEnabled),
               change: async update => {
                 signal.throwIfAborted();
-                const config = structuredClone(session.config);
+                const config = session.snapshotConfig();
                 try {
                   await saveConfigPanelSetting(update, config.workspace, config.configSources?.userDir);
                   switch (update.id) {
@@ -3172,7 +3173,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         }
         if(prompt==='/vim'||prompt==='/config'||/^\/config\s+editor(?:=|\s|$)/.test(prompt)){
           if(session.awaitingResponse)throw new Error('Finish or continue the current turn first');
-          const config=structuredClone(session.config);
+          const config=session.snapshotConfig();
           const row=editorModeRow(config,(_key:string,value:EditorMode)=>saveEditorMode(value,config.configSources?.userDir),()=>{});
           let picked:string|undefined;
           if(prompt==='/vim'||prompt==='/config'){
@@ -3301,7 +3302,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         if (prompt.startsWith('/model ') || prompt.startsWith('/theme ') || /^\/thinking(?:\s|$)/.test(prompt)
           || prompt === '/plan' || prompt === '/permissions' || prompt.startsWith('/permissions ')) {
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
-          const config = structuredClone(session.config);
+          const config = session.snapshotConfig();
           let modeCommand: PermissionModeCommand | undefined;
           const switchingModel = prompt.startsWith('/model ');
           const switchingTheme = prompt.startsWith('/theme ');
@@ -3363,7 +3364,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const match = /^\/worktree-exit(?: (--remove)( --discard-changes)?)?$/.exec(prompt);
             if (!match) throw new Error('Use /worktree-exit [--remove [--discard-changes]]');
             target = await withTurn(signal => resolveWorktreeExit(session.config, signal));
-            if (match[1]) removal = { config: structuredClone(session.config), discard: Boolean(match[2]) };
+            if (match[1]) removal = { config: session.snapshotConfig(), discard: Boolean(match[2]) };
             worktreeReturn = null;
           } else if (/^\/worktree(?:\s|$)/.test(prompt)) {
             const name = prompt.slice(9).trim();
@@ -3375,7 +3376,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (!directory) throw new Error('Use /cwd DIR');
             target = fs.realpathSync(path.resolve(session.config.workspace, directory));
           }
-          const nextConfig = { ...structuredClone(session.config), workspace: target };
+          const nextConfig = { ...session.snapshotConfig(), workspace: target };
           if (worktreeReturn === null) delete nextConfig.worktreeReturn;
           else if (worktreeReturn !== undefined) nextConfig.worktreeReturn = worktreeReturn;
           let nextRuntime = await activeRuntime.reconfigure(nextConfig);
@@ -3501,7 +3502,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           }
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn before starting a subtask');
           if (!activeRuntime.launchSubtask) throw new Error(SUBTASK_DISABLED);
-          const launched = await withTurn(signal => activeRuntime.launchSubtask!(session.config, session.id, task, signal,
+          const launched = await withTurn(signal => activeRuntime.launchSubtask!(session.snapshotConfig(), session.id, task, signal,
             session.messages));
           if (launched.kind === 'unavailable') {
             output.write((launched.reason === 'no-conversation' ? SUBTASK_FIRST_TURN : SUBTASK_DISABLED) + '\n');
@@ -3539,7 +3540,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           }
           if (session.awaitingResponse) throw new Error('Finish or continue the current turn before forking');
           if (!activeRuntime.launchSubtask) throw new Error(FORK_DISABLED);
-          const launched = await withTurn(signal => activeRuntime.launchSubtask!(session.config, session.id,
+          const launched = await withTurn(signal => activeRuntime.launchSubtask!(session.snapshotConfig(), session.id,
             argument, signal, session.messages));
           if (launched.kind === 'unavailable') {
             output.write((launched.reason === 'no-conversation' ? FORK_FIRST_TURN : FORK_DISABLED) + '\n');
@@ -3558,7 +3559,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             boundary = match[1] === '0' ? 0 : turns[Number(match[1]) - 1];
             if (boundary === undefined) throw new Error('Completed turn number does not exist');
           }
-          const next = prompt === '/clear' ? Session.open(session.config.workspace, { config: structuredClone(session.config) }) : forkSession(session, boundary);
+          const next = prompt === '/clear' ? Session.open(session.config.workspace, { config: session.snapshotConfig() }) : forkSession(session, boundary);
           if (prompt.startsWith('/rewind')) next.carryPermissions(session);
           const nextRuntime = await bindNext(activeRuntime, next);
           try { await agent().endSession(prompt === '/clear' ? 'clear' : 'fork'); }

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { z } from 'zod';
 import { atomicWriteFile } from './atomic-write.js';
+import { publishSettingsWrite } from './setting-writes.js';
 import { queuePermissionSettingsWrite } from './permission-settings.js';
 import { autoPolicySchema } from './permissions.js';
 
@@ -178,6 +179,7 @@ export async function persistAutoModeUpdate(file: string | undefined, update: Au
     } catch {
       throw new AutoModeRuleWriteError('write_failed', `Could not write ${file} — check file permissions and disk space (run with --debug for the underlying error).`);
     }
+    publishSettingsWrite(file, { ...raw, autoMode: next });
     return next;
   });
 }

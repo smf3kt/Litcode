@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { atomicWriteFile } from './atomic-write.js';
+import { publishSettingsWrite } from './setting-writes.js';
 import { CONFIG_LIMITS, defaultUserDir, readBoundedBytes } from './config.js';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { editorModeSchema, type EditorMode } from './tui-vim.js';
@@ -176,4 +177,5 @@ function updateSettingsDocument(file: string, label: string, update: (settings: 
   const content = JSON.stringify(settings, null, 2) + '\n';
   if (Buffer.byteLength(content) > CONFIG_LIMITS.settingsBytes) throw new Error('Theme settings exceed the byte limit');
   atomicWriteFile(file, content, { mode, label });
+  publishSettingsWrite(file, settings);
 }

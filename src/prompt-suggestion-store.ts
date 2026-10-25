@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { atomicWriteFile } from './atomic-write.js';
+import { publishSettingsWrite } from './setting-writes.js';
 import { CONFIG_LIMITS, defaultUserDir, readBoundedBytes } from './config.js';
 import { queuePermissionSettingsWrite } from './permission-settings.js';
 import { PromptSuggestionRun, promptSuggestionBackedOff } from './prompt-suggestions.js';
@@ -38,6 +39,7 @@ export class PromptSuggestionStore {
       const text = JSON.stringify(settings, null, 2) + '\n';
       if (Buffer.byteLength(text) > CONFIG_LIMITS.settingsBytes) throw new Error('Prompt suggestion settings exceed the byte limit');
       atomicWriteFile(this.file, text, { mode, label: 'prompt suggestion backoff' });
+      publishSettingsWrite(this.file, settings);
       return true;
     });
   }

@@ -39,7 +39,7 @@ import { mcpServersSchema, type McpServerConfig } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
 import { LinkVetError, vetLinkChain } from "./link-vetting.js";
 import { configSchema, managedPolicySchema } from "./session.js";
-import type { SettingSource, ManagedSettingsOrigin } from './setting-sources.js';
+import { normalizeSettingsDocument, type SettingSource, type ManagedSettingsOrigin } from './setting-sources.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -590,6 +590,14 @@ function mergeInto(target: Record<string, unknown>, source: Record<string, unkno
 // Settings
 // ---------------------------------------------------------------------------
 
+// HR/Qnn, 3cynezh1 [394656,394811)/[427468,427907), UTF-16; failed sibling layers contribute no settings.
+export function settingFileHasContent(file: string): boolean {
+  try {
+    const settings = readSettingsLayer(file, false);
+    return settings !== null && Object.keys(settings).length > 0;
+  } catch { return false; }
+}
+
 function readSettingsLayer(file: string, required: boolean): Record<string, unknown> | null {
   let exists: boolean;
   try {
@@ -618,19 +626,7 @@ function readSettingsLayer(file: string, required: boolean): Record<string, unkn
     throw new ConfigError(`invalid JSON in settings file (${(error as Error).message})`, file, { cause: error });
   }
   if (!isPlainObject(parsed)) throw new ConfigError("settings file must contain a JSON object", file);
-  // Uw/hs, 3cynezh1 [395555,396291), js2bhabe [1114,1499), UTF-16: invalid channels are absent before precedence merges.
-  if ('preferredNotifChannel' in parsed) {
-    const channel = configSchema.shape.preferredNotifChannel.parse(parsed.preferredNotifChannel);
-    if (channel === undefined) delete parsed.preferredNotifChannel;
-    else parsed.preferredNotifChannel = channel;
-  }
-  // TN.catch/hs, qtksmp3x [41417,41484), js2bhabe [1114,1499), UTF-16: discard invalid values per layer.
-  if ('promptSuggestionEnabled' in parsed) {
-    const enabled = configSchema.shape.promptSuggestionEnabled.parse(parsed.promptSuggestionEnabled);
-    if (enabled === undefined) delete parsed.promptSuggestionEnabled;
-    else parsed.promptSuggestionEnabled = enabled;
-  }
-  return parsed;
+  return normalizeSettingsDocument(parsed);
 }
 
 // ---------------------------------------------------------------------------

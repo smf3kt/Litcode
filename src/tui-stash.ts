@@ -27,6 +27,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { atomicWriteFile } from './atomic-write.js';
+import { publishSettingsWrite } from './setting-writes.js';
 import { CONFIG_LIMITS, defaultUserDir, readBoundedBytes } from './config.js';
 import { jsx as e, jsxs as r } from './tui-jsx.js';
 import { s, n } from './tui-base-components.js';
@@ -112,6 +113,7 @@ export function markStashUsed(userDir = defaultUserDir()): void {
   const content = JSON.stringify(settings, null, 2) + '\n';
   if (Buffer.byteLength(content) > CONFIG_LIMITS.settingsBytes) throw new Error('Stash settings exceed the byte limit');
   atomicWriteFile(file, content, { mode, label: 'markStashUsed' });
+  publishSettingsWrite(file, settings);
 }
 
 /** The latch `ce().hasUsedStash` reads. A missing or unreadable document is a record that has not seen a stash. */
