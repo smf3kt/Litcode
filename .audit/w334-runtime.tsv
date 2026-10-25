@@ -1,0 +1,10 @@
+ts	phase	decision	why	evidence	result
+2026-10-25	source	Acquire gft with keepParent and Ue's row assembly before edits	gft computes po/xo/Fo and Uo;Ue builds the H chip from relocatedTo/editsIn	ports/W334-fork-relocation.md	7module identities;exact UTF16 ranges
+2026-10-25	host	Compare the open branch against gft	Host forked in source.config.workspace with no briefing and no chip	src/background-session.ts 117	src/interactive.ts 3536	3 gaps found
+2026-10-25	design	Relocate with relocateSession instead of relaunching one journal	Source keeps one file and changes cwd;host journal identity is per workspace	research/ports/W334-fork-relocation.md	adapter recorded
+2026-10-25	implement	Port forkBriefing forkRelocation forkRowChip and the option plumbing	Both Fo templates clause for clause;git queries replace gt path parsing	src/fork-relocation.ts	src/fork-command.ts src/background-session.ts src/interactive.ts	63 insertions 7 deletions
+2026-10-25	defect	A briefing row left the copy awaiting a response	awaitingResponse is true after any message row without turn_end,so the resumed copy refused its task	src/session.ts 788	compiled log "Session has an unfinished turn"	fixed with its own turn_end
+2026-10-25	verify	Focused and compiled suites	96/96 focused 103/103 session lifecycle 9/9 compiled 14/14 W333 fixture	npm check build smoke-fork-relocation-cli	0 failures
+2026-10-25	verify	Baseline against pre-edit sources	The same driver fails at the origin-tree row	pre-edit build	change measured not restated
+2026-10-25	identity	Capture content identity after the final build	inputs876 validation338 build621	scripts/identity.mjs	1906a634
+2026-10-25	commit	Exact-path local commit,no coauthor,no push	Package files plus records	git status	done

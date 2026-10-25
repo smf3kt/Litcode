@@ -91,6 +91,17 @@ export function forkNameLine(name: string): string | undefined {
 }
 
 /**
+ * Source `Ue`'s `H` (chunk-zsg1bb14.js [20040,21857)): the row's one chip. A copy relocated out of
+ * a linked worktree says so; otherwise a copy that would edit this very checkout says that. The
+ * `own-worktree` case adds no chip, because the briefing already tells the copy to make one.
+ */
+export function forkRowChip(input: { relocatedTo?: string; editsIn?: 'this-tree' | 'own-worktree' }): string | undefined {
+  if (input.relocatedTo !== undefined) return 'runs in the origin tree';
+  if (input.editsIn === 'this-tree') return 'edits this checkout';
+  return undefined;
+}
+
+/**
  * Source `Ue` (chunk-zsg1bb14.js 19311, sha256
  * `b92e586d18ae25da4ecd7cb55903d4ac94ab1ead4a6433ad17636f8a27886d26`): the open-fleet `/fork`
  * body. A coordinator session, a

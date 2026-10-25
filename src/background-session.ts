@@ -21,13 +21,28 @@ export const NOTHING_TO_BACKGROUND = 'Nothing to background yet — send a messa
 
 /** `fBe`'s seed: the short intent shown for the task and the last assistant line. */
 export type BackgroundSeed = { intent: string; detail?: string };
-export type BackgroundSession = { sessionId: string; pid: number | undefined; log: string };
+export type BackgroundSession = { sessionId: string; pid: number | undefined; log: string;
+  /** `gft`'s `relocatedTo`: the copy runs in this directory instead of the parent's checkout. */
+  relocatedTo?: string };
+
+/** `Ait` (chunk-hwpb27as.js 44060): the briefing cannot open a `system-reminder` block. */
+export function escapeBriefing(text: string): string {
+  return text.replace(/<(?=\s*(?:\/\s*)?system-reminder\b)/gi, '&lt;');
+}
 
 export type BackgroundStartOptions = {
   session: Session;
   prompt: string;
   /** `fBe`'s fallback name; `/fork` passes `(forked)`, `/background` keeps the default. */
   seedFallback?: string;
+  /** `gft`'s `Fo`: the briefing the copy carries about the original checkout. `gft` writes it as
+   *  the `fork_briefing` record at the fork point, which the reader turns into one `isMeta` user
+   *  message (`chunk-sfn1dbxq.js` 4468231). */
+  briefing?: string;
+  /** `gft`'s `po`: the copy is relocated to this directory before the spawn. The host's journal
+   *  identity is per workspace, so the caller supplies the relocation body. */
+  relocatedTo?: string;
+  relocate?: (source: Session, target: string) => Session;
   /** CLI entry and runtime; defaults to this process's. */
   entry?: string;
   executable?: string;
@@ -123,8 +138,24 @@ export function startBackgroundSession(options: BackgroundStartOptions): Backgro
   const entry = options.entry ?? process.argv[1];
   if (!entry) throw new Error("Couldn't fork — the CLI entry point is unknown.");
   const task = options.prompt.trim() || seed.intent;
-  const fork = forkSession(options.session);
+  // `gft`'s `po` relocation happens inside the same snapshot copy the fork already takes; this
+  // host's journal is workspace-bound, so a relocated copy is opened in the origin tree with the
+  // same body `/worktree` uses. A copy that cannot be relocated fails the fork, which is the
+  // source's `snapshot_copy_failed` arm rather than a silent copy in the parent's checkout.
+  let fork = options.relocatedTo !== undefined && options.relocate !== undefined
+    ? options.relocate(options.session, options.relocatedTo)
+    : forkSession(options.session);
+  // `gft`'s `Uo`: the briefing is written after the fork point, so it must not leave the copy
+  // awaiting an answer nobody will give. The source's reader turns it into one `isMeta` user
+  // message (`chunk-sfn1dbxq.js` 4468231); here the same row is closed with its own turn boundary,
+  // the way a caveat row is (`runBashCommand`).
+  if (options.briefing !== undefined) {
+    fork.append({ kind: 'message', isMeta: true,
+      message: { role: 'user', content: [{ type: 'text', text: escapeBriefing(options.briefing) }] } });
+    fork.append({ kind: 'turn_end', reason: 'fork_briefing' });
+  }
   const workspace = fork.config.workspace;
+  const relocated = workspace !== options.session.config.workspace;
   try { fork.close(); } catch { /* The fork journal is already durable. */ }
   const directory = path.join(workspace, '.agent', 'background');
   fs.mkdirSync(directory, { recursive: true });
@@ -137,7 +168,7 @@ export function startBackgroundSession(options: BackgroundStartOptions): Backgro
         cwd: workspace, detached: true, stdio: ['ignore', fd, fd],
       });
     child.unref();
-    return { sessionId: fork.id, pid: child.pid, log };
+    return { sessionId: fork.id, pid: child.pid, log, ...(relocated ? { relocatedTo: workspace } : {}) };
   } catch (error) {
     try { fs.rmSync(fork.file, { force: true }); } catch { /* Best effort after a failed spawn. */ }
     const message = error instanceof Error ? error.message : String(error);
