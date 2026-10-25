@@ -1,6 +1,6 @@
 # LiTcode
 
-![LiTcode demo](20261025094906.gif)
+![LiTcode demo](20261025100810.gif)
 
 LiTcode 是一个可自行配置模型的终端 AI 编程助手，提供交互式编程与本地任务执行。
 
