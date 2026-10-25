@@ -31,6 +31,7 @@ import { statusLineSchema } from './tui-statusline-schema.js';
 import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 import type { StoredToolUseResult } from './tool-use-result.js';
 import { scheduledFireSchema, loopNoopCompanion, type ScheduledFire } from './loop-noop-fold.js';
+import { settingSourcesSchema, type SettingSource } from './setting-sources.js';
 
 export type SessionConfig = {
   model: string;
@@ -142,6 +143,7 @@ export type SessionConfig = {
   dynamicInstructions?: boolean;
   watchConfig?: boolean;
   worktreeReturn?: string;
+  settingSources?: SettingSource[];
   configSources?: { userDir?: string; settingsFile?: string; managedSettingsFile?: string; overrides?: {
     autoMemory?: boolean; watchConfig?: boolean; allowShell?: boolean;
     permissions?: Omit<PermissionPolicy, 'mode'> & { mode?: PermissionPolicy['mode'] };
@@ -306,6 +308,7 @@ export const configSchema = z.object({
   dynamicInstructions: z.boolean().optional(),
   watchConfig: z.boolean().optional(),
   worktreeReturn: z.string().min(1).optional(),
+  settingSources: settingSourcesSchema.optional(),
   configSources: z.object({ userDir: z.string().optional(), settingsFile: z.string().optional(), managedSettingsFile: z.string().optional(), overrides: z.object({
     autoMemory: z.boolean().optional(), watchConfig: z.boolean().optional(), allowShell: z.boolean().optional(), permissions: permissionPolicySchema.partial({ mode: true }).optional(),
     mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), samplingArrays: z.boolean().optional(), samplingAudio: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional(),

@@ -416,6 +416,7 @@ function newConfig(
     };
   }
   if (!demo && loaded) {
+    config.settingSources = loaded.settingSources;
     config.configSources = {
       ...(values['user-dir'] === undefined ? {} : { userDir: path.resolve(values['user-dir'] as string) }),
       ...(values.settings === undefined ? {} : { settingsFile: path.resolve(workspace, values.settings as string) }),

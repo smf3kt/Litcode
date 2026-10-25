@@ -39,6 +39,7 @@ import { mcpServersSchema, type McpServerConfig } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
 import { LinkVetError, vetLinkChain } from "./link-vetting.js";
 import { configSchema, managedPolicySchema } from "./session.js";
+import type { SettingSource, ManagedSettingsOrigin } from './setting-sources.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -132,6 +133,7 @@ export interface LoadedConfig {
   spinnerTipsLayers?: SpinnerTipsLayer[];
   pluginComponentDiagnostics?: ComponentDiagnostic[];
   settings: Record<string, unknown>;
+  settingSources: SettingSource[];
   permissionLayers: NonNullable<PermissionPolicy['layers']>;
   managedSettings?: Record<string, unknown>;
   /** Origin and diagnostics of the managed policy that was read, when any. */
@@ -221,14 +223,15 @@ function errnoOf(error: unknown): string | undefined {
  * A missing directory or file is absence; any other read or parse failure is
  * reported and that document contributes nothing.
  */
-export function loadManagedSettingsDirectory(directory: string): { settings?: Record<string, unknown>; displaySettings?: SpinnerTipsSettings; report: ManagedSettingsReport } {
+export function loadManagedSettingsDirectory(directory: string): { settings?: Record<string, unknown>; displaySettings?: SpinnerTipsSettings; origin?: ManagedSettingsOrigin; report: ManagedSettingsReport } {
   const documents: string[] = [];
   const ignoredKeys: string[] = [];
   const errors: { file: string; message: string }[] = [];
   const merged: Record<string, unknown> = {};
   const display: Record<string, unknown> = {};
+  const origins = new Set<'file' | 'drop-ins'>();
   let found = false;
-  const read = (file: string): void => {
+  const read = (file: string, origin: 'file' | 'drop-ins'): void => {
     let text: string;
     try {
       const bytes = readBoundedBytes(file, CONFIG_LIMITS.settingsBytes);
@@ -262,11 +265,13 @@ export function loadManagedSettingsDirectory(directory: string): { settings?: Re
     const tips = spinnerTipsSettingsSchema.safeParse(displayLayer);
     if (!tips.success) { errors.push({ file, message: `managed display settings rejected (${tips.error.message})` }); return; }
     mergeSettings(display, tips.data);
+    // qEo/S9e/kHt, x0dc37w9 [97351,97772), 3cynezh1 [414220,414752), UTF-16; count accepted content.
+    if (Object.keys(accepted).length || Object.values(tips.data).some(value => value !== undefined)) origins.add(origin);
     if (Object.keys(accepted).length === 0) return;
     found = true;
     mergeSettings(merged, accepted);
   };
-  read(path.join(directory, "managed-settings.json"));
+  read(path.join(directory, "managed-settings.json"), 'file');
   const dropIn = path.join(directory, "managed-settings.d");
   let entries: fs.Dirent[];
   try {
@@ -280,16 +285,17 @@ export function loadManagedSettingsDirectory(directory: string): { settings?: Re
     .filter(entry => (entry.isFile() || entry.isSymbolicLink()) && entry.name.endsWith(".json") && !entry.name.startsWith("."))
     .map(entry => entry.name)
     .sort();
-  for (const name of names) read(path.join(dropIn, name));
+  for (const name of names) read(path.join(dropIn, name), 'drop-ins');
   const report: ManagedSettingsReport = { source: "directory", directory, documents, ignoredKeys, errors };
+  const origin: ManagedSettingsOrigin | undefined = origins.size === 2 ? 'file + drop-ins' : origins.values().next().value;
   const displaySettings = spinnerTipsSettingsSchema.parse(display);
-  if (!found) return { report, displaySettings };
+  if (!found) return { report, displaySettings, ...(origin === undefined ? {} : { origin }) };
   const parsed = managedPolicySchema.safeParse(cloneSafe(merged));
   if (!parsed.success) {
     errors.push({ file: directory, message: `managed settings rejected (${parsed.error.message})` });
     return { report };
   }
-  return { settings: parsed.data, displaySettings, report };
+  return { settings: parsed.data, displaySettings, report, ...(origin === undefined ? {} : { origin }) };
 }
 
 
@@ -1170,6 +1176,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
 
   const permissionFiles = permissionSettingsPaths(workspaceRoot, userDir);
   const permissionLayers: LoadedConfig['permissionLayers'] = [];
+  const settingSources: SettingSource[] = [];
   const layers: { file: string; required: boolean; source: 'userSettings' | 'projectSettings' | 'localSettings' | 'flagSettings' }[] = [
     { file: permissionFiles.userSettings!, required: false, source: 'userSettings' },
     { file: permissionFiles.projectSettings!, required: false, source: 'projectSettings' },
@@ -1189,6 +1196,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   let managedDisplay: SpinnerTipsSettings | undefined;
   let managedSettings: Record<string, unknown> | undefined;
   let managedSettingsReport: ManagedSettingsReport | undefined;
+  let managedOrigin: ManagedSettingsOrigin | undefined;
   if (options.managedSettingsFile !== undefined) {
     const file = path.resolve(workspaceRoot, options.managedSettingsFile);
     const parsed = readSettingsLayer(file, true)!;
@@ -1197,6 +1205,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     managedDisplay = spinnerTipsSettingsSchema.parse(parsed);
     managedSettings = managedPolicySchema.parse(cloneSafe(Object.fromEntries(Object.entries(parsed).filter(([key])=>MANAGED_POLICY_KEYS.has(key)))));
     managedSettingsReport = { source: "explicit", documents: [file], ignoredKeys: [], errors: [] };
+    if (Object.keys(managedSettings).length || Object.values(managedDisplay).some(value => value !== undefined)) managedOrigin = 'file';
   } else {
     // The OS-managed directory is read when no explicit file replaces it, as
     // the recovered file tier does. An absent directory is absence.
@@ -1204,6 +1213,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     const loaded = loadManagedSettingsDirectory(directory);
     managedSettings = loaded.settings;
     managedDisplay = loaded.displaySettings;
+    managedOrigin = loaded.origin;
     if (loaded.report.documents.length > 0 || loaded.report.ignoredKeys.length > 0 || loaded.report.errors.length > 0) {
       managedSettingsReport = loaded.report;
     }
@@ -1229,6 +1239,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
         parsed = merged; }
     }
     if (parsed !== null) {
+      // mNo/Qnn, efek3snh [5532,6598), 3cynezh1 [427468,427907), UTF-16; legacy merge precedes presence.
+      if (Object.keys(parsed).length > 0) settingSources.push({ source: layer.source });
       pluginExplicitLayers.push(parsed);
       if (isPlainObject(parsed.permissions) || parsed.useAutoModeDuringPlan !== undefined || parsed.autoMode !== undefined) {
         const rules = isPlainObject(parsed.permissions) ? parsed.permissions : {};
@@ -1449,7 +1461,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
       throw new ConfigError(`installed plugin changed during config load (${(error as Error).message})`, path.join(harnessDir, "plugins"), { cause: error });
     }
   }
-  const result: LoadedConfig = { settings, permissionLayers, instructions, skills: [...skills.values()],
+  if (managedOrigin !== undefined) settingSources.push({ source: 'policySettings', origin: managedOrigin });
+  const result: LoadedConfig = { settings, settingSources, permissionLayers, instructions, skills: [...skills.values()],
     ...(spinnerTipsLayers.length ? { spinnerTipsLayers } : {}) };
   agentCatalog.agentTypes.push(...pluginCatalog.agents);
   if (pluginCatalog.diagnostics.length) result.pluginComponentDiagnostics = pluginCatalog.diagnostics;

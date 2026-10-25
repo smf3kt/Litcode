@@ -2868,6 +2868,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               session.config.gateway.baseURL !== DEFAULT_GATEWAY.baseURL
               ? session.config.gateway.baseURL : undefined,
             mcpServers: activeRuntime.mcpServers?.(),
+            settingSources: session.config.settingSources,
           });
           await withTurn(signal => readDialog({ title: STATUS_PANEL_TITLE,
             message: statusPanelText(rows), statusRows: rows, readOnly: true }, signal));

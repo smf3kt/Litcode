@@ -13,6 +13,7 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
   const loaded = loadProjectConfig(current.workspace, { ...current.configSources, paths: [], pluginHooks });
   const settings = parseSettings(loaded.settings);
   const next = structuredClone(current);
+  next.settingSources = loaded.settingSources;
   const overrides = current.configSources?.overrides ?? {};
   // se/uc, 9vcaezw1 [10679,11697)/[12346,12719), UTF-16: inherit re-reads the refreshed table.
   if (settings.modelSettings !== undefined) next.modelSettings = settings.modelSettings;
