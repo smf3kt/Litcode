@@ -41,6 +41,8 @@ export interface TranscriptEntry {
   timestamp?: number;
   /** A finished tool call; the host renders its rows from the recovered result bodies. */
   tool?: import('./tui-tool-result.js').ToolDisplayResult;
+  /** Ip [113052,114313), chunk-phg89898.js: keep full fields for width-dependent painting. */
+  fork?: import('./fork-row.js').ForkRowFields;
 }
 
 export interface TranscriptState {
@@ -90,7 +92,7 @@ export function wrapEntryRows(entry: TranscriptEntry, columns: number, renderer?
   // A timestamped entry is rendered by its host as well, because the stamp is a row the
   // entry's own wrapper cannot produce: it precedes the body without joining its indent.
   if ((entry.markdown !== undefined || entry.duration !== undefined || entry.timestamp !== undefined
-    || entry.tool !== undefined) && renderer) {
+    || entry.tool !== undefined || entry.fork !== undefined) && renderer) {
     return renderer(entry, width);
   }
   if (entry.speaker) {

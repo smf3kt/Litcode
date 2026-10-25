@@ -209,6 +209,9 @@ import { jde } from './tui-statusline-components.js';
 import { jsx } from './tui-jsx.js';
 import { s, n, QXe } from './tui-base-components.js';
 import { ShellProgressInteraction } from './tui-shell-progress.js';
+import { ForkRow } from './tui-fork-row.js';
+import { forkSessionLine } from './fork-command.js';
+import type { ForkRowFields } from './fork-row.js';
 import {
   createTranscriptState, layoutTranscript, renderedTranscriptRows, transcriptLines, wrapEntry,
   wrapEntryRows,
@@ -395,7 +398,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Source `hXe`/`wp` (chunk-phg89898.js 3761/3801): a drained result row is its two stream
     // blocks, not one bracketed string; the input row is the command alone behind its `! `.
     const bash = this.bashEntryRows(entry, columns);
-    const body = bash ?? (entry.tool ? toolResultRows(entry.tool, detailed, columns)
+    const body = entry.fork ? this.documentRenderer.renderElement(jsx(ForkRow, { fields: entry.fork }, undefined), columns,
+      { theme: this.theme.current, themeOverrides: this.theme.overrides }) : bash ?? (entry.tool ? toolResultRows(entry.tool, detailed, columns)
       : entry.duration ? this.documentRenderer.renderElement(jsx(ProgressCompletion, {message:entry.duration, formatTime:this.timeFormatter.format}, entry.duration.uuid), columns,
       {theme:this.theme.current, themeOverrides:this.theme.overrides}) : document ? this.documentRenderer.renderMarkdown(entry.markdown ?? entry.text, columns,
       { speaker: entry.speaker, streaming: entry.streaming, messageKey: entry.messageKey,
@@ -2208,6 +2212,15 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   writeNotice(text: string): void {
     if (!this.isTTY || !this.started || this.closed) { this.options.output.write(text.endsWith('\n') ? text : `${text}\n`); return; }
     if (text) this.append({ kind: 'system', text });
+  }
+
+  /** U [20040,21857), Ip [113052,114313), UTF-16: system display retains the unfitted fields. */
+  writeForkRow(fields: ForkRowFields): void {
+    const fork = { ...fields, chips: [...fields.chips] };
+    if (!this.isTTY || !this.started || this.closed) {
+      this.options.output.write(forkSessionLine(fork) + '\n'); return;
+    }
+    this.append({ kind: 'system', text: forkSessionLine(fork), fork });
   }
 
   dispatch(action: EditorAction, sequence?: string): void {

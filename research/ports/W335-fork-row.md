@@ -1,12 +1,12 @@
 # W335 the `/fork` row name and width fitting
 
-Status: task card, source verification and implementation. Work in place on `work/w43-choice-preview`; local commit only, no coauthor, no push.
+Status: verified and committed locally on `work/w43-choice-preview`. Fullscreen rendering and resize behavior are superseded by [W338](W338-fork-row-renderer.md). No coauthor, no push.
 
 Task card.
 - Outcome: an open-fleet `/fork` row names its copy, and a row that does not fit the terminal degrades in the recovered order instead of running off the line.
 - Source: `Ue`'s row assembly (chunk-zsg1bb14.js [20040,21857)) with `gft`'s `at` (chunk-24k7d6mw.js 38766), `TMr`/`UKn`/`Bcn`/`RMr` (chunk-t721xmjm.js [46946,47911)/[47101,47819)) and `Ip`'s gutter budget (chunk-phg89898.js [113052,114313)).
 - Domain: the row fields `{state, name, id, chips}`, the copy's name, and the fitting ladder.
-- Adapter: the source fits to `columns - Yy`, where `Yy` is the width of its own `  ⎿  ` gutter; this host frames a system row with `- `, so the caller passes the terminal width and the host's own frame stays outside the budget.
+- Historical adapter: W335 fitted to the plain terminal width before serialization. [W338](W338-fork-row-renderer.md) replaces that fullscreen path with native `  ⎿  ` rendering and the source's `columns - Yy` budget. Plain/inline fallback keeps the W335 path.
 - Validation: three regression groups, actual compiled CLI at two widths, check/build, exact-path local commit.
 
 Artifact 2.1.296 SHA-256 `c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937`. Coordinates zero-based half-open UTF-16 code units; recovered bytes remain inert.
@@ -26,7 +26,7 @@ Artifact 2.1.296 SHA-256 `c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0
 2. The row was never fitted. `Ip` calls `RMr(l, columns - Yy, id !== undefined)` before rendering; the host wrote the whole row and let the terminal wrap it, which loses the chip on a narrow window.
 3. The fitting order is not a plain truncation. `RMr` first collapses `session waiting for a prompt` to `session waiting`, then drops the id **only when the row is clickable**, then clips the name to `max(room, 20)` cells with `ct`'s trailing ellipsis. The 20-cell floor can overflow the terminal on purpose, so a fitted row is not guaranteed to fit.
 4. The glyph does not survive a name with no parent. `TMr` splits on `⑂` and rejoins; a name that is only `⑂ prompt` becomes one segment, so the row shows the prompt alone. This is the source's own behaviour, not a host simplification, and the W333/W334 row assertions were updated to it.
-5. Not ported: `Ip`'s bold name, dim state/id/chips styling, its hover underline and its `requestAttach` click, and `Pm`'s system-line tone/`subLines` decomposition. This host's system rows are plain text through `wrapEntryRows`, and it has no attach owner for a background session: the source's `requestAttach` switches or attaches the live REPL to a background session, and this host's `/tasks` + `/resume` already cover reaching a copy. `Sp()` in `Ip` is `awsCredentialExport`, unrelated to the row; `Nt()` (bg kind) and `pan()` (switch arm) have no host counterpart, which is why the id is never dropped.
+5. At W335, native styling, gutter and system display were not ported. [W338](W338-fork-row-renderer.md) supplies those parts and retains full fields for resize. Hover underline and `requestAttach` remain absent because the host has no live attach owner. The earlier `Sp()` attribution was incorrect. The local chunk-phg89898.js binding is `function Sp(){return Ae(TKn)}` at [111375,111404), an attach-context reader. The same-named awsCredentialExport binding elsewhere has no role here. The host retains the id because live attach remains unavailable. The broader `Pm` subLines behavior remains separate.
 
 ## Implementation
 

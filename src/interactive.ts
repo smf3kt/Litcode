@@ -3556,10 +3556,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               // waiting, and the row carries the one chip that describes where the copy edits.
               const chip = forkRowChip({ relocatedTo: started.relocatedTo, editsIn: relocation.editsIn });
               const name = forkRowName(copyName);
-              const fields = fitForkRow({ state: argument === '' ? SESSION_WAITING : SESSION_RUNNING,
+              const fields = { state: argument === '' ? SESSION_WAITING : SESSION_RUNNING,
                 ...(name === undefined ? {} : { name }), id: started.sessionId.slice(0, 8),
-                chips: chip === undefined ? [] : [chip] }, process.stdout.columns ?? 80);
-              output.write(forkSessionLine(fields) + '\n');
+                chips: chip === undefined ? [] : [chip] };
+              // U [20040,21857) returns system display; Ip [113052,114313) fits at the current width.
+              if (terminal?.writeForkRow) terminal.writeForkRow(fields);
+              else output.write(forkSessionLine(fitForkRow(fields, process.stdout.columns ?? 80)) + '\n');
               output.write(`Log: ${started.log}\nResume it with: ${backgroundResumeCommand(started, session.config.workspace)}\n`);
             } catch (error) {
               output.write(`Couldn't fork: ${error instanceof Error ? error.message : String(error)}\n`);

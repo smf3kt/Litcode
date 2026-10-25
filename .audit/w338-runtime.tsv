@@ -1,0 +1,14 @@
+date	phase	decision	evidence	result
+2026-10-25	source	Verify On/Up/Ip/U and field/width dependencies before edits	ports/W338-fork-row-renderer.md	Three manifest digests and ten Acorn-bound bodies/declarators acquired as inert data
+2026-10-25	baseline	Drive the compiled waiting fork after a long parent rename	job tmp w338-baseline.txt	Fails at recovered gutter assertion; plain prefitted text loses the original width input
+2026-10-25	implement	Keep full fields in system transcript and fit during native paint	src/tui-fork-row.ts and four existing host files	Optional terminal method, raw field payload and current-width renderer; no new resource owner
+2026-10-25	fixture	Read real clipboard and xterm flags before correcting assertions	job tmp w338-cli.txt	UTF8 stream decoding, Boolean bold flag and exact OSC52 payload replace fixture assumptions
+2026-10-25	verify	Run three behavior groups and affected fork/terminal owners	job tmp w338-affected-final.txt	182/182; check/build exit0
+2026-10-25	cli	Run actual compiled row, waiting/resume and relocation drivers	job tmp w338-cli.txt w338-gates-cli.txt w338-relocation-cli.txt	11/24/10 checks and1/3/1 owned loopback requests; expected text/styles/reflow/copy/locks verified
+2026-10-25	compare	Normalize mechanical JSX names/keys and explicit attach omission	job tmp w338-source.mjs and w338-source.txt	Eleven source comparisons match and exact Up/Ip character diffs read; Sp attach context corrects historical same-name misidentification
+2026-10-25	identity	Capture reviewed candidate source/tests/build	job tmp w338-identity-candidate.json	1956ab6e; inputs879 validation340 build623; protected user hashes unchanged
+2026-10-25	review-dispatch	Start one bounded read-only correctness/comment reader	first reader upstream HTTP429	No result; failed/stopped reader not counted; fresh reader dispatched
+2026-10-25	cleanup	Check owned fixture paths against live process records	main row/gates/relocation fixture paths	No matching live process or session lock remains
+2026-10-25	review	Independent source/correctness/comment review and actual compiled replays	job tmp w338-independent-focused.txt w338-independent-cli.txt w338-independent-cache.txt w338-independent-fallback.txt	3/3,11checks/1request,11supplemental width/cache checks and piped fallback exit0;1842candidate records equal;no confirmed scoped defect
+2026-10-25	comment	Delete two redundant driver cleanup comments after review	scripts/smoke-fork-row-cli.mjs	No suppression/refactor findings;mandatory source anchors retained;parsed executable syntax unchanged
+2026-10-25	identity-final	Compare final manifest to independently reviewed candidate	job tmp w338-identity-final.json	d73cd6b2;only driver comments differ;879input340validation623build;protected hashes unchanged

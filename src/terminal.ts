@@ -1439,6 +1439,8 @@ export interface TerminalSurface {
   endAssistantMessage?(): void;
   /** A dialog's own report lines, returned as the command's result and shown as a system entry. */
   writeNotice?(text: string): void;
+  /** U/Ip, zsg1bb14 [20040,21857), phg89898 [113052,114313), UTF-16: fit raw fields at paint time. */
+  writeForkRow?(fields: import('./fork-row.js').ForkRowFields): void;
   /**
    * Source `#s` (chunk-24k7d6mw.js 1495345): a stashed draft returns to an empty composer once the
    * prompt just dispatched is accepted, with the recovered `Draft restored` notification.
