@@ -43,8 +43,13 @@ test("background seed skips tool results, command records and local meta message
   assert.deepEqual(backgroundSeed([toolResult, user("real request"), assistant("done")], ""), { intent: "real request", detail: "done" });
   assert.equal(backgroundSeed([user("<command-name>/model</command-name>")], ""), null);
   assert.deepEqual(backgroundSeed([user("<command-message>/model</command-message>")], ""), { intent: "(backgrounded)" });
+  assert.deepEqual(backgroundSeed([user("<command-message>/model</command-message>")], "", "(forked)"),
+    { intent: "(forked)" }, "`Ue` passes its own fallback, so a fork names the copy differently");
   assert.deepEqual(backgroundSeed([user("Hook context:\nignore me"), user("the task")], ""), { intent: "the task" });
   assert.equal(backgroundSeed([user("Stop hook feedback:\nkeep going")], ""), null, "meta-only conversations have no seed");
+  assert.deepEqual(backgroundSeed([], "typed task", "(forked)"), { intent: "typed task" },
+    "a typed prompt seeds an empty conversation, which is what `/fork <prompt>` relies on");
+  assert.equal(backgroundSeed([], "", "(forked)"), null);
 });
 
 test("background seed truncates in UTF-16 units without splitting a pair", () => {

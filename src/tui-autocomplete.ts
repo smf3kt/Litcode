@@ -157,7 +157,7 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
  *  in `interactiveLoop`'s dispatch. bWe.description, sfn1dbxq [1650777,1650860), UTF-16,
  *  reads the live model when Wre/jtt builds each row. */
 export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | undefined,
-  options: { readonly fleetFork?: boolean; readonly currentModel?: () => string } = {}): readonly TuiCommand[] {
+  options: { readonly fleetFork?: boolean; readonly coordinator?: boolean; readonly currentModel?: () => string } = {}): readonly TuiCommand[] {
   const localNames = new Set(TUI_COMMANDS.map(command => command.name));
   const extra: TuiCommand[] = [];
   for (const skill of skills ?? []) {
@@ -168,14 +168,19 @@ export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | un
       requiresArguments: (skill.argumentNames?.length ?? 0) > 0 });
   }
   // Source `Ujt` (chunk-sfn1dbxq.js 1663949): the open fleet fork selects `njt` and adds `ojt`
-  // (`/subtask`); the closed branch selects `tjt` and lists no subtask row.
+  // (`/subtask`); the closed branch selects `tjt` and lists no subtask row. Every one of the three
+  // registrations carries `isEnabled:()=>!xa()` (1638340/1638551/1638723), so a coordinator session
+  // lists neither row whichever branch it is on.
   const commands = options.fleetFork === false
     ? TUI_COMMANDS.map(command => command.name === 'subtask' ? undefined
       : command.name === 'fork' ? { ...command, description: FORK_DESCRIPTION } : command)
       .filter((command): command is TuiCommand => command !== undefined)
     : TUI_COMMANDS;
+  const visible = options.coordinator === true
+    ? commands.filter(command => command.name !== 'fork' && command.name !== 'subtask')
+    : commands;
   const currentModel = options.currentModel;
-  return [...commands.map(command => command.name === 'model' && currentModel !== undefined
+  return [...visible.map(command => command.name === 'model' && currentModel !== undefined
     ? { ...command, get description() {
       return `Set the AI model (currently ${modelDisplayText(currentModel()) || 'unknown model'})`;
     } }

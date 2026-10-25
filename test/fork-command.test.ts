@@ -33,7 +33,7 @@ type Drive = {
   env?: NodeJS.ProcessEnv;
   config?: (config: SessionConfig) => void;
   conversation?: boolean;
-  startBackground?: (options: { session: Session; prompt: string }) =>
+  startBackground?: (options: { session: Session; prompt: string; seedFallback?: string }) =>
     { sessionId: string; pid: number | undefined; log: string };
 };
 async function drive(options: Drive) {
@@ -139,6 +139,17 @@ test('the open-fleet /fork runs the copy when a prompt is typed', async () => {
   assert.match(run.text, /^session running · abcdef01$/m);
 });
 
+test('a coordinator session lists neither the fork nor the subtask row', () => {
+  // Every registration carries `isEnabled:()=>!xa()` (chunk-sfn1dbxq.js 1638340/1638551/1638723).
+  for (const fleetFork of [true, false]) {
+    const names = tuiCommandsWithSkills(undefined, { fleetFork, coordinator: true }).map(command => command.name);
+    assert.ok(!names.includes('fork'), `open=${fleetFork} hides fork`);
+    assert.ok(!names.includes('subtask'), `open=${fleetFork} hides subtask`);
+    assert.ok(names.includes('branch'), 'the coordinator row the refusal points at stays listed');
+  }
+  assert.ok(tuiCommandsWithSkills(undefined, { fleetFork: true }).some(command => command.name === 'fork'));
+});
+
 test('the open-fleet /fork refuses an empty conversation before it spawns', async () => {
   const calls: string[] = [];
   const run = await drive({ lines: ['/fork'], conversation: false, startBackground: ({ prompt }) => {
@@ -146,6 +157,26 @@ test('the open-fleet /fork refuses an empty conversation before it spawns', asyn
   } });
   assert.deepEqual(calls, []);
   assert.equal(run.text, FORK_NOTHING + '\n');
+});
+
+test('the open-fleet /fork refuses a coordinator session before it seeds', async () => {
+  const calls: string[] = [];
+  const run = await drive({ lines: ['/fork write the tests'], env: { CLAUDE_CODE_COORDINATOR_MODE: 'on' },
+    startBackground: ({ prompt }) => {
+      calls.push(prompt); return { sessionId: 'x', pid: undefined, log: '/tmp/copy.log' };
+    } });
+  assert.deepEqual(calls, []);
+  assert.equal(run.text, FORK_COORDINATOR + '\n');
+});
+
+test('the open-fleet /fork seeds an empty conversation from its typed prompt', async () => {
+  const calls: { prompt: string; seedFallback: string | undefined }[] = [];
+  const run = await drive({ lines: ['/fork write the tests'], conversation: false, startBackground: (options) => {
+    calls.push({ prompt: options.prompt, seedFallback: options.seedFallback });
+    return { sessionId: 'abcdef01-2345-6789-abcd-ef0123456789', pid: undefined, log: '/tmp/copy.log' };
+  } });
+  assert.deepEqual(calls, [{ prompt: 'write the tests', seedFallback: '(forked)' }]);
+  assert.match(run.text, /^session running · abcdef01$/m);
 });
 
 test('the open-fleet /fork reports a failed copy without ending this session', async () => {

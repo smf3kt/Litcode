@@ -1,0 +1,9 @@
+ts	phase	decision	why	evidence	result
+2026-10-25	source	Acquire Ue and the registration isEnabled gates before edits	Ue refuses coordinator→persistence→launch-flag→no-seed in that order;njt/ojt/tjt all carry isEnabled:()=>!xa()	ports/W333-fork-gates.md	8module identities;exact UTF16 ranges
+2026-10-25	host	Compare the open branch against Ue	Host tested messages.length===0 and passed no fBe fallback,so coordinator and typed-prompt cases diverged	src/interactive.ts 3514	4 divergences found
+2026-10-25	baseline	Compiled pre-edit run of the new driver	Coordinator /fork printed "Nothing to fork yet" instead of the refusal	JOB_TMP/fork-gates-cli-scyCfj	1/14 checks;failure at the coordinator row
+2026-10-25	adapt	Port the coordinator gate, the fBe seed check and the (forked) fallback	xa/Fa/Tr/pr/HD inputs have no host surface;Ue order and rows are portable as-is	src/interactive.ts;src/background-session.ts	3 gates,1 fallback parameter
+2026-10-25	adapt	Hide both agent rows in a coordinator session	Every registration carries isEnabled:()=>!xa();the table had no such filter	src/tui-autocomplete.ts	coordinator option filters fork+subtask
+2026-10-25	verify	Focused regression set	fork/background/subtask/interactive/autocomplete/btw-fork	tsx --test	87/87
+2026-10-25	verify	Compiled driver	coordinator refusal,row omission,empty-bare refusal,typed-prompt seed,journal,cleanup	scripts/smoke-fork-gates-cli.mjs	14checks/1model request/locks released
+2026-10-25	boundary	Fa/Tr/pr/HD not ported	host always persists,has no safe/bare flags,and copies pinned config so a fork cannot run looser	ports/W333-fork-gates.md	recorded,no placeholder row

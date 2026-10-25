@@ -26,6 +26,8 @@ export type BackgroundSession = { sessionId: string; pid: number | undefined; lo
 export type BackgroundStartOptions = {
   session: Session;
   prompt: string;
+  /** `fBe`'s fallback name; `/fork` passes `(forked)`, `/background` keeps the default. */
+  seedFallback?: string;
   /** CLI entry and runtime; defaults to this process's. */
   entry?: string;
   executable?: string;
@@ -80,8 +82,11 @@ function metaText(text: string): boolean {
 
 /** `fBe`: walk backward for the latest real user text (unless an explicit
  *  prompt is given) and the latest assistant text. No real user text and no
- *  explicit prompt yields null. */
-export function backgroundSeed(messages: readonly Anthropic.MessageParam[], prompt: string): BackgroundSeed | null {
+ *  explicit prompt yields null. `fallback` is `fBe`'s third parameter, the name
+ *  the copy gets when only command rows were seen: `(backgrounded)` for
+ *  `/background`, `(forked)` for the open-fleet `/fork` (`Ue`). */
+export function backgroundSeed(messages: readonly Anthropic.MessageParam[], prompt: string,
+  fallback = '(backgrounded)'): BackgroundSeed | null {
   let intent = prompt;
   let seenUser = false;
   let detail: string | undefined;
@@ -103,14 +108,16 @@ export function backgroundSeed(messages: readonly Anthropic.MessageParam[], prom
     if (seenUser && intent && detail !== undefined) break;
   }
   if (!seenUser && !prompt) return null;
-  return { intent: truncate(intent || '(backgrounded)', 200), ...(detail === undefined ? {} : { detail }) };
+  return { intent: truncate(intent || fallback, 200), ...(detail === undefined ? {} : { detail }) };
 }
 
 /** Fork the conversation and start one detached headless child on the fork.
  *  The fork is written before the spawn, so the child has a complete journal even
  *  if the parent exits immediately. A spawn failure removes the unused fork. */
 export function startBackgroundSession(options: BackgroundStartOptions): BackgroundSession {
-  const seed = backgroundSeed(options.session.messages, options.prompt.trim());
+  const seed = options.seedFallback === undefined
+    ? backgroundSeed(options.session.messages, options.prompt.trim())
+    : backgroundSeed(options.session.messages, options.prompt.trim(), options.seedFallback);
   if (seed === null) throw new Error(NOTHING_TO_BACKGROUND);
   const executable = options.executable ?? process.execPath;
   const entry = options.entry ?? process.argv[1];

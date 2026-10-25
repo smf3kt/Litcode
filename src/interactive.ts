@@ -22,7 +22,7 @@ import {
   browsePermissions, type PermissionPanelApplyResult, type PermissionPanelInput, permissionPanelRules,
 } from './permissions-panel.js';
 import { forkSession, listSessions, readSessionPreview, renameStoredSession } from './sessions.js';
-import { startBackgroundSession } from './background-session.js';
+import { startBackgroundSession, backgroundSeed } from './background-session.js';
 import { parseAttachmentCommand } from './media.js';
 import { questionClarification, terminalAnswerAnnotation } from './interaction-tools.js';
 import { askUserQuestionTimeoutMs } from './tui-afk.js';
@@ -361,10 +361,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // `x0r.Y`/`vd` [10901,11476), chunk-jrz2zk22.js: history survives runtime replacement.
   const schedulerSessions = new Set([initial.id]);
   // Source `Ujt` (chunk-sfn1dbxq.js 1663949): the fleet-fork gate selects which `/fork`
-  // registration the command table carries and whether `/subtask` is offered at all.
+  // registration the command table carries and whether `/subtask` is offered at all. Every
+  // registration's `isEnabled:()=>!xa()` hides both rows in a coordinator session.
   const fleetFork = fleetForkOpen(process.env, initial.config);
+  const coordinator = () => subtaskCoordinator(process.env, { interactive: terminal !== undefined, remote: false });
   const commandTable = (config: SessionConfig) => tuiCommandsWithSkills(config.skills,
-    { fleetFork, currentModel: () => session.config.model });
+    { fleetFork, coordinator: coordinator(), currentModel: () => session.config.model });
   const planResume = new InteractivePlanResume(initial.id);
   // The user settings file's `env` block is applied before anything probes the environment, so a
   // persisted `/scroll-speed` survives a restart. It runs here rather than at startup because the
@@ -3519,11 +3521,20 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // arm is the same spawn `/subtask` runs (`Zjt`, chunk-940nvk4p.js 1241).
           const argument = prompt.slice('/fork'.length).trim();
           if (fleetFork) {
+            // `Ue`'s first statement refuses a coordinator session before it looks at anything
+            // else; `njt`'s own `isEnabled:()=>!xa()` hides the row for the same reason.
+            if (subtaskCoordinator(process.env, { interactive: terminal !== undefined, remote: false })) {
+              output.write(FORK_COORDINATOR + '\n'); continue;
+            }
             if (session.awaitingResponse) throw new Error('Finish or continue the current turn first');
-            // `Ue` refuses a session with nothing to seed before it opens the spawn.
-            if (session.messages.length === 0) { output.write(FORK_NOTHING + '\n'); continue; }
+            // `Ue` refuses only when `fBe(messages, prompt, "(forked)")` returns null, which needs
+            // both an unseen user turn and no typed prompt: `/fork <prompt>` seeds on an empty one.
+            if (backgroundSeed(session.messages, argument, '(forked)') === null) {
+              output.write(FORK_NOTHING + '\n'); continue;
+            }
             try {
-              const started = (options.startBackground ?? startBackgroundSession)({ session, prompt: argument });
+              const started = (options.startBackground ?? startBackgroundSession)({ session, prompt: argument,
+                seedFallback: '(forked)' });
               // `Ue`'s `fe`: a prompt starts the copy running, a bare `/fork` leaves it waiting.
               output.write(forkSessionLine({ state: argument === '' ? SESSION_WAITING : SESSION_RUNNING,
                 id: started.sessionId.slice(0, 8) }) + '\n');
