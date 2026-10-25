@@ -18,7 +18,7 @@ import { createRuntime } from '../src/runtime.js';
 import { saveScrollSpeedSetting } from '../src/scroll-speed.js';
 import { Session } from '../src/session.js';
 import { forkSession } from '../src/sessions.js';
-import { type SettingsWrite, subscribeSettingsWrites } from '../src/setting-writes.js';
+import { publishSettingsWrite, type SettingsWrite, subscribeSettingsWrites } from '../src/setting-writes.js';
 import { saveSkillOverrides } from '../src/skills-panel.js';
 import type { TerminalCallbacks, TerminalPromptRequest, TerminalSurface } from '../src/terminal.js';
 import { saveAutoCompactSetting, saveConfigPanelSetting, saveEffortSetting, saveThemeSetting } from '../src/theme-settings.js';
@@ -56,6 +56,10 @@ test('dedicated writers publish committed presence and preserve successful write
     f.write(f.user, { preferredNotifChannel: 'invalid', promptSuggestionEnabled: 'invalid' });
     await written(() => saveAutoCompactSetting(100000, f.userDir), true);
     await written(() => saveAutoCompactSetting(undefined, f.userDir), false);
+    // An own key holding `undefined` is not content: the serialized file omits it, so presence
+    // must be judged on the bytes the loader will read rather than the caller's object.
+    await written(() => publishSettingsWrite(f.user, { compactAt: undefined }), false);
+    await written(() => publishSettingsWrite(f.user, { compactAt: undefined, theme: 'dark' }), true);
     await written(() => saveThemeSetting('dark', f.userDir), true);
     await written(() => saveViewModeSetting('focus', f.userDir), true);
     await written(() => saveScrollSpeedSetting(3, f.userDir), true);
