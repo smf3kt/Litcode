@@ -126,7 +126,9 @@ try {
   await until(() => flat().includes('Nothingtoforkyet.Sendamessagefirst.'), 'nothing row');
   pass('a bare /fork with no conversation prints the source row');
   send('/fork FORK_TASK\r');
-  await until(() => /sessionrunning·[0-9a-f]{8}/.test(flat()), 'running row');
+  // `Ue` names the copy `TMr(parentName ⑂ prompt)`; this fixture session has no title, so the
+  // prompt is the name segment between the state and the id.
+  await until(() => /sessionrunning·FORK_TASK·[0-9a-f]{8}/.test(flat()), 'running row');
   pass('a typed prompt seeds an empty conversation and reports the running row');
   await until(() => requests.some(request => JSON.stringify(request.messages ?? '').includes('FORK_TASK')),
     'copy request');

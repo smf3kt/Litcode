@@ -1,0 +1,9 @@
+ts	phase	decision	why	evidence	result
+2026-10-25	source	Acquire Ue's row assembly, gft's name and Bcn/RMr/UKn before edits	Ue prints UKn({state,name,id,chips});the host printed no name and never fitted	ports/W335-fork-row.md	6module identities;exact UTF16 ranges
+2026-10-25	host	Compare the host row against Ue	Host wrote state,id,chips with no name and no width budget	src/interactive.ts 3552	2 gaps found
+2026-10-25	design	Pass the terminal width and keep the host's own frame outside the budget	Source fits to columns-Yy where Yy is its own gutter;this host frames with "- "	research/ports/W335-fork-row.md	adapter recorded
+2026-10-25	implement	Port Nr,at,TMr,Bcn and the RMr ladder;reuse UKn	Each body copied;the ladder keeps its 20-cell floor and its clickable-only id drop	src/fork-row.ts	src/interactive.ts 48 insertions 9 deletions
+2026-10-25	defect	The glyph does not survive a parentless name	TMr splits on the glyph and rejoins,so a single segment loses it	src/fork-row.ts 71	fixed the W333/W334 assertions not the port
+2026-10-25	verify	Focused and compiled suites	91/91 focused;9/9 relocation;14/14 gates;6/6 narrow at 60 columns	npm check build and three drivers	0 failures
+2026-10-25	verify	Baseline against pre-edit sources	The narrow driver fails at "the row clipped the long name"	pre-edit build	change measured not restated
+2026-10-25	commit	Exact-path local commit,no coauthor,no push	Package files plus records	git status	done

@@ -106,7 +106,9 @@ try {
   pass('the compiled CLI starts ready inside a linked worktree');
 
   send('/fork FORK_TASK\r');
-  await until(() => /sessionrunning·[0-9a-f]{8}·runsintheorigintree/.test(flat()), 'origin-tree row');
+  // `Ue` names the copy `TMr(parentName ⑂ prompt)`, so the row carries the prompt between the
+  // state and the id; this fixture session has no title, so the prompt is the name segment.
+  await until(() => /sessionrunning·FORK_TASK·[0-9a-f]{8}·runsintheorigintree/.test(flat()), 'origin-tree row');
   pass('the fork row names the origin tree');
   await until(() => requests.some(request => JSON.stringify(request.messages ?? '').includes('FORK_TASK')), 'copy request');
   pass('the copy runs the typed prompt against the provider');

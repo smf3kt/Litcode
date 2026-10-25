@@ -143,7 +143,10 @@ test('an open-fleet /fork from a worktree reports the origin chip and passes the
     assert.equal(calls.length, 1);
     assert.equal(calls[0]!.relocatedTo, root);
     assert.match(calls[0]!.briefing ?? '', /^This conversation was forked out of /);
-    assert.match(stdout.value(), /^session running · abcdef01 · runs in the origin tree$/m);
+    // `Ue` builds the row as `UKn({state, name, id, chips})`, so the copy's name sits between the
+    // state and the id. `TMr` splits the name on the fork glyph and rejoins it, so a copy with no
+    // parent name (this session has no title) shows the prompt alone.
+    assert.match(stdout.value(), /^session running · write the tests · abcdef01 · runs in the origin tree$/m);
   } finally {
     session.close();
     fs.rmSync(root, { recursive: true, force: true });

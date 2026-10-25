@@ -41,6 +41,7 @@ import { applyPluginHooks, defaultUserDir, loadProjectConfig } from './config.js
 import { permissionSettingsPaths } from './permission-settings.js';
 import { FORK_COORDINATOR, FORK_DESCRIPTION, FORK_DISABLED, FORK_FIRST_TURN, FORK_NOTHING, FORK_USAGE,
   SESSION_RUNNING, SESSION_WAITING, fleetForkOpen, forkRowChip, forkSessionLine } from './fork-command.js';
+import { fitForkRow, forkCopyName, forkRowName } from './fork-row.js';
 import { forkRelocation } from './fork-relocation.js';
 import { SKILLS_TITLE, applySkillOverrideDiff, defaultSkillModes, nextSkillMode, readLocalSkillOverrides,
   saveSkillOverrides, skillOverrideDiff, skillPanelRows, skillsPanelMessage, skillsSaveError,
@@ -3547,11 +3548,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 seedFallback: '(forked)', ...relocation,
                 relocate: (fork, target) => relocateSession(fork, target,
                   config => activeRuntime.buildTools(config, 'relocation')) });
-              // `Ue`'s `fe` and `H`: a prompt starts the copy running, a bare `/fork` leaves it
-              // waiting, and the row carries the one chip that describes where the copy edits.
+              // `Ue`'s `fe`, `de` and `H`: a prompt starts the copy running, a bare `/fork` leaves it
+              // waiting, the name is the parent's own name joined to the prompt by the fork glyph, and
+              // the row carries the one chip that describes where the copy edits. `RMr` then fits the
+              // whole row into the terminal; this host's system row has no gutter, so the budget is
+              // the full width.
               const chip = forkRowChip({ relocatedTo: started.relocatedTo, editsIn: relocation.editsIn });
-              output.write(forkSessionLine({ state: argument === '' ? SESSION_WAITING : SESSION_RUNNING,
-                id: started.sessionId.slice(0, 8), ...(chip === undefined ? {} : { chips: [chip] }) }) + '\n');
+              const name = forkRowName(forkCopyName(session.title, argument));
+              const fields = fitForkRow({ state: argument === '' ? SESSION_WAITING : SESSION_RUNNING,
+                ...(name === undefined ? {} : { name }), id: started.sessionId.slice(0, 8),
+                chips: chip === undefined ? [] : [chip] }, process.stdout.columns ?? 80);
+              output.write(forkSessionLine(fields) + '\n');
               output.write(`Log: ${started.log}\nResume it with: litcode --resume ${started.sessionId}\n`);
             } catch (error) {
               output.write(`Couldn't fork: ${error instanceof Error ? error.message : String(error)}\n`);

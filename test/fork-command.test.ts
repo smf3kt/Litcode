@@ -136,7 +136,7 @@ test('the open-fleet /fork runs the copy when a prompt is typed', async () => {
     calls.push(prompt); return { sessionId: 'abcdef01-2345-6789-abcd-ef0123456789', pid: undefined, log: '/tmp/copy.log' };
   } });
   assert.deepEqual(calls, ['write the tests']);
-  assert.match(run.text, /^session running · abcdef01$/m);
+  assert.match(run.text, /^session running · write the tests · abcdef01$/m);
 });
 
 test('a coordinator session lists neither the fork nor the subtask row', () => {
@@ -176,7 +176,9 @@ test('the open-fleet /fork seeds an empty conversation from its typed prompt', a
     return { sessionId: 'abcdef01-2345-6789-abcd-ef0123456789', pid: undefined, log: '/tmp/copy.log' };
   } });
   assert.deepEqual(calls, [{ prompt: 'write the tests', seedFallback: '(forked)' }]);
-  assert.match(run.text, /^session running · abcdef01$/m);
+  // `Ue` names the copy `TMr(parentName ⑂ prompt)`; this fixture session has no title, so the
+  // prompt alone is the name segment between the state and the id.
+  assert.match(run.text, /^session running · write the tests · abcdef01$/m);
 });
 
 test('the open-fleet /fork reports a failed copy without ending this session', async () => {
