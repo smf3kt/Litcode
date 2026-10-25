@@ -65,14 +65,15 @@ replacement (`Gs = Ct.some(JI) ? "" : k6r(Ct)`) and writes `${replacement}${part
 
 Three adaptations are recorded rather than ported verbatim:
 
-- The source reads a live React store that its MCP clients fill at connect and refresh on
-  `resources/list_changed`. The local render path is synchronous, so the listing is read once
-  in the background on the first `@` and the band repaints when it arrives. A later
-  `list_changed` does not refresh it.
+- W202 reads once on the first `@`. [W340](W340-mcp-resource-refresh.md) adds live
+  `resources/list_changed` updates through a connection-owned per-server catalog and a
+  terminal subscription. Lazy first population remains a host adaptation. Failed families
+  retain their prior rows, successful empty families remove rows, and retired generations
+  lose publication ownership.
 - At W202, only the static prefix list was ported. [W339](W339-mcp-template-completion.md)
   adds `ose`'s dynamic argument path through the existing catalog-mode client, including
-  source parser/ranking, prior arguments, debounce and partial/final acceptance. Live
-  catalog notification refresh remains separate.
+  source parser/ranking, prior arguments, debounce and partial/final acceptance. W340
+  supplies live catalog notification refresh through the same composer.
 - `ose` runs only when the token starts with `@` and the session is not a remote host
   (`!Ht()`). The local product is always the local host, so the gate is always open.
 

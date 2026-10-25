@@ -1,0 +1,18 @@
+phase	result	evidence
+source	verified	W340-mcp-resource-refresh.md lists seven module digests and exact UTF-16 bodies
+architecture	selected	connection-owned per-server resource snapshots; lazy first consumer; source coalescing
+baseline	exit1	w340-baseline.txt initial rows pass; resource notification refresh assertion fails
+patch-tool	fallback	apply_patch absent from PATH; dedicated Write/Edit retained from prior packages
+implement	connected	per-server generation/queue/snapshot; both transports,managed lifecycle,Runtime,CLI,three interactive rebinds,TUI
+source-branch	matched	xt/vt MethodNotFound maps -32601 to empty;other RPC/schema failures preserve each family
+verify	exit0	new3groups;affected275/275;shared Runtime/CLI56/56;check/build
+compiled	exit0	w340-cli-final.txt;9checks,0model calls,passive journal,locks/process released
+identity	frozen	7c9e941bb1ba3473cab9f134b129cf2b1747309b559ab730880a9bd4a09809d5;882input342validation624build
+review	2confirmed	7c9e941b all1848records matched;independent3/3 and compiled9/0model;stdio recovery P2 and first-notification scheduling gap accepted
+repair	exit0	explicit-read preparation reuses W05;initial discovery outside T2e with stale-load guard;new3/3,affected275/275,check/build,compiled9/0model
+comments	2deleted	private listCatalogFamily/mcpCatalogStarted narration removed;source anchors retained;0suppressions
+identity-repaired	frozen	7d344938aa5b75a655a37894d200f52e786c736397665115429748d322ae21d4;1848records
+review-repaired	exit0	fresh3/3,compiled9/0model and2compiled recovery/timing probes;both findings repaired,0residual scoped defects;1848records equal
+cleanup	verified	0owned PIDs,fixture processes or locks;ancestry-aware census corrects observer shell match
+identity-final	matched	7d344938aa5b75a655a37894d200f52e786c736397665115429748d322ae21d4;protected user hashes unchanged
+deliver	local	exact paths only;no coauthor/no push;question log and unrelated changes excluded

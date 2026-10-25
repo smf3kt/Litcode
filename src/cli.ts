@@ -867,6 +867,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
             resources: listing.resources, templates: listing.templates,
           })) } : {}),
         ...(currentRuntime.completeResourceTemplate ? { completeResourceTemplate: currentRuntime.completeResourceTemplate } : {}),
+        ...(currentRuntime.subscribeCatalog ? { subscribeMcpCatalog: currentRuntime.subscribeCatalog } : {}),
         version: cliVersion(),
         keybindings: currentSession.config.keybindings,
         prefersReducedMotion: currentSession.config.prefersReducedMotion,

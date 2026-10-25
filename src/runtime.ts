@@ -460,6 +460,7 @@ export type Runtime = {
   /** Catalog mode only: the connected servers' resources and templates, for the composer. */
   catalogListing?: NonNullable<McpConnection["catalogListing"]>;
   completeResourceTemplate?: McpConnection['completeResourceTemplate'];
+  subscribeCatalog?: McpConnection['subscribeCatalog'];
   reconnectMcp?: NonNullable<McpConnection["reconnect"]>;
   setMcpEnabled?: NonNullable<McpConnection['setEnabled']>;
   notificationStreams?: NonNullable<McpConnection["notificationStreams"]>;
@@ -1424,6 +1425,7 @@ export async function createRuntime(
       ...(mcp.servers ? { mcpServers: () => mcp.servers!() } : {}),
       ...(mcp.catalogListing ? { catalogListing: (signal: AbortSignal) => mcp.catalogListing!(signal) } : {}),
       ...(mcp.completeResourceTemplate ? { completeResourceTemplate: mcp.completeResourceTemplate } : {}),
+      ...(mcp.subscribeCatalog ? { subscribeCatalog: mcp.subscribeCatalog } : {}),
       ...(mcp.reconnect ? { reconnectMcp: async (server: string, requestSignal: AbortSignal) => {
         try { return await mcp.reconnect!(server, requestSignal); }
         finally {

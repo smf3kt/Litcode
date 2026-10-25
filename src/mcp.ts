@@ -9,6 +9,7 @@ import type { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 import { McpHttpClient, MCP_HTTP_LIMITS, validateMcpHttpUrl, validateMcpHeadersEnv } from "./mcp-http.js";
+import { McpResourceCatalog } from './mcp-resource-catalog.js';
 import type { ToolContext, ToolDefinition } from "./tools.js";
 import { mcpReconnectDelay, isTransientMcpFailure } from "./mcp-retry.js";
 import { MCP_PROGRESS_LIMITS, McpProgressRegistry, type McpProgressUpdate } from "./mcp-progress.js";
@@ -160,6 +161,7 @@ export type McpConnection = {
   servers?: () => Record<string, McpServerStatus>;
   /** Present only in catalog mode: each capable server's resources and templates. */
   catalogListing?: (signal: AbortSignal) => Promise<McpCatalogListing>;
+  subscribeCatalog?: McpCatalogSubscription;
   /** Zd/nh, 4vr415ka [116547,116997), sb190ksj [149573,150023), UTF-16. */
   completeResourceTemplate?: McpTemplateCompletion;
   reconnect?: (server: string, signal: AbortSignal) => Promise<McpServerStatus>;
@@ -226,6 +228,7 @@ export interface McpClient {
   resumeTask?(task: StandardMcpTask, signal: AbortSignal, toolName?: string): Promise<McpToolResult>;
   supportsCatalog(family: "resources" | "prompts" | "completions"): boolean;
   onToolsChanged(listener: () => void): () => void;
+  onResourcesChanged(listener: () => void): () => void;
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown>;
   close(): Promise<void>;
 }
@@ -487,6 +490,7 @@ class McpStdioClient implements McpClient {
     return toolName === undefined ? undefined : this.taskTools.get(toolName)?.outputSchema;
   }
   private readonly toolsChangedListeners = new Set<() => void>();
+  private readonly resourcesChangedListeners = new Set<() => void>();
   private readonly disconnectListeners = new Set<() => void>();
   onDisconnected(listener: () => void): () => void {
     this.disconnectListeners.add(listener);
@@ -847,6 +851,10 @@ class McpStdioClient implements McpClient {
       }
       if (!Object.hasOwn(message, "id") && method === "notifications/progress") this.progress.dispatch(message.params);
       if (!Object.hasOwn(message, "id") && method === "notifications/elicitation/complete") this.clientRequests.elicitationComplete(message.params);
+      // qd/Gm, 4vr415ka [88378,88445), sb190ksj [118418,118548), UTF-16.
+      if (!Object.hasOwn(message, "id") && method === "notifications/resources/list_changed" && this.supportsCatalog('resources')) {
+        for (const listener of this.resourcesChangedListeners) listener();
+      }
       if (!Object.hasOwn(message, "id") && method === "notifications/resources/updated") this.resourceSubscriptions?.updated(message.params);
       if (!Object.hasOwn(message, "id") && method === "notifications/message") this.logging?.message(message.params);
       if (Object.hasOwn(message, "id")) {
@@ -958,6 +966,11 @@ class McpStdioClient implements McpClient {
     return () => { this.toolsChangedListeners.delete(listener); };
   }
 
+  onResourcesChanged(listener: () => void): () => void {
+    this.resourcesChangedListeners.add(listener);
+    return () => { this.resourcesChangedListeners.delete(listener); };
+  }
+
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown> {
     return this.request(method, params, signal);
   }
@@ -1045,17 +1058,8 @@ export type McpCatalogListing = {
   resources: Record<string, McpCatalogResource[]>;
   templates: Record<string, McpCatalogTemplate[]>;
 };
+export type McpCatalogSubscription = (listener: (listing: McpCatalogListing) => void) => () => void;
 
-function stringField(item: Record<string, unknown>, key: string): string | undefined {
-  const value = item[key];
-  return typeof value === "string" ? value : undefined;
-}
-
-/**
- * One bounded, capability-gated listing per family. A server that does not advertise
- * resources, or that fails, contributes nothing rather than failing the whole listing: the
- * composer's list is a convenience and a broken server must not empty it.
- */
 async function listCatalogFamily(client: McpClient, server: string, method: McpCatalogMethod,
   list: "resources" | "resourceTemplates", signal: AbortSignal): Promise<Record<string, unknown>[]> {
   const all: Record<string, unknown>[] = [];
@@ -1064,7 +1068,9 @@ async function listCatalogFamily(client: McpClient, server: string, method: McpC
   for (let page = 0; page < MCP_MAX_LIST_PAGES; page++) {
     const response = await client.catalogRequest(method, cursor === undefined ? {} : { cursor }, signal);
     const items = isRecord(response) ? response[list] : undefined;
-    if (!isRecord(response) || !Array.isArray(items)) return all;
+    if (!isRecord(response) || !Array.isArray(items) || items.some(item => !isRecord(item))) {
+      throw new Error(`MCP server "${server}" returned an invalid ${method} result`);
+    }
     for (const item of items) {
       if (!isRecord(item)) continue;
       all.push(item);
@@ -1079,34 +1085,26 @@ async function listCatalogFamily(client: McpClient, server: string, method: McpC
   return all;
 }
 
-/** `T0r`-shaped: read every capable server's listings once, for the composer's `@` list. */
-export async function listMcpCatalog(clients: Map<string, McpClient>,
-  signal: AbortSignal): Promise<McpCatalogListing> {
-  const listing: McpCatalogListing = { resources: {}, templates: {} };
-  for (const [server, client] of clients) {
-    if (!client.supportsCatalog("resources")) continue;
-    try {
-      const resources = await listCatalogFamily(client, server, "resources/list", "resources", signal);
-      const templates = await listCatalogFamily(client, server, "resources/templates/list", "resourceTemplates", signal);
-      if (resources.length > 0) {
-        listing.resources[server] = resources.map(item => ({
-          server, uri: stringField(item, "uri") ?? "",
-          ...(stringField(item, "name") === undefined ? {} : { name: stringField(item, "name")! }),
-          ...(stringField(item, "description") === undefined ? {} : { description: stringField(item, "description")! }),
-          ...(stringField(item, "mimeType") === undefined ? {} : { mimeType: stringField(item, "mimeType")! }),
-        })).filter(entry => entry.uri !== "");
-      }
-      if (templates.length > 0) {
-        listing.templates[server] = templates.map(item => ({
-          server, uriTemplate: stringField(item, "uriTemplate") ?? "",
-          ...(stringField(item, "name") === undefined ? {} : { name: stringField(item, "name")! }),
-          ...(stringField(item, "description") === undefined ? {} : { description: stringField(item, "description")! }),
-          ...(stringField(item, "mimeType") === undefined ? {} : { mimeType: stringField(item, "mimeType")! }),
-        })).filter(entry => entry.uriTemplate !== "");
-      }
-    } catch { continue; }
-  }
-  return listing;
+const catalogMetadataSchema = z.object({ name: z.string().optional(), description: z.string().optional(), mimeType: z.string().optional() });
+const catalogResourceSchema = catalogMetadataSchema.extend({ uri: z.string() });
+const catalogTemplateSchema = catalogMetadataSchema.extend({ uriTemplate: z.string() });
+
+// xt/vt, 4vr415ka [115141,116375), UTF-16; MethodNotFound is a successful empty family.
+function catalogFetchFailure(error: unknown): [] | undefined {
+  return isRecord(error) && error.code === -32601 ? [] : undefined;
+}
+
+// RTe [1570315,1571741), 24k7d6mw; xt/vt [115141,116375), 4vr415ka, UTF-16.
+async function listClientCatalog(client: McpClient, server: string, signal: AbortSignal) {
+  const [resources, templates] = await Promise.all([
+    listCatalogFamily(client, server, 'resources/list', 'resources', signal)
+      .then(rows => rows.map(row => ({ ...catalogResourceSchema.parse(row), server })))
+      .catch(catalogFetchFailure),
+    listCatalogFamily(client, server, 'resources/templates/list', 'resourceTemplates', signal)
+      .then(rows => rows.map(row => ({ ...catalogTemplateSchema.parse(row), server })))
+      .catch(catalogFetchFailure),
+  ]);
+  return { resources, templates };
 }
 
 function makeCatalogTools(clients: Map<string, McpClient>, context: McpConnectContext): ToolDefinition[] {
@@ -1493,6 +1491,7 @@ class ManagedMcpClient implements McpClient {
   private current: McpClient | undefined;
   private inventory: McpToolInfo[] = [];
   private listeners = new Set<() => void>();
+  private resourcesListeners = new Set<() => void>();
   private unbind: (() => void)[] = [];
   private status: McpServerStatus = { state: "connected", generation: 1, attempts: 0 };
   private replacing: Promise<McpServerStatus> | undefined;
@@ -1525,7 +1524,8 @@ class ManagedMcpClient implements McpClient {
     this.unbind = [];
     const client = this.current;
     if (!client) return;
-    this.unbind = [client.onToolsChanged(() => { for (const listener of this.listeners) listener(); })];
+    this.unbind = [client.onToolsChanged(() => { for (const listener of this.listeners) listener(); }),
+      client.onResourcesChanged(() => { if (this.current === client) this.publishResources(); })];
     const subscriptions = client.resourceSubscriptions;
     if (subscriptions && this.acknowledgement) {
       const commit = this.acknowledgement;
@@ -1542,6 +1542,7 @@ class ManagedMcpClient implements McpClient {
       if (this.current !== client || this.status.state === "closed" || this.status.state === 'disabled') return;
       if (this.status.state === "disconnected") return;
       this.status.state = "disconnected";
+      this.publishResources();
       if (this.automatic && this.automaticReady && !this.replacing) this.scheduleRetry(0, ++this.retryEpoch);
     });
     if (unsubscribe) this.unbind.push(unsubscribe);
@@ -1637,6 +1638,18 @@ class ManagedMcpClient implements McpClient {
     return this.active().catalogRequest(method, params, signal);
   }
   onToolsChanged(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
+  onResourcesChanged(listener: () => void): () => void { this.resourcesListeners.add(listener); return () => { this.resourcesListeners.delete(listener); }; }
+  private publishResources(): void { for (const listener of this.resourcesListeners) listener(); }
+  // Jr, 24k7d6mw [1567980,1568012); applyQueuedUpdates, 05jp8hm2 [4214,7029), UTF-16.
+  resourceCatalogIdentity(): McpClient | undefined {
+    return this.status.state === 'connected' && this.current?.supportsCatalog('resources') ? this.current : undefined;
+  }
+  // no, sb190ksj [119034,120436), UTF-16; explicit catalog use retains W05 lazy stdio recovery.
+  async prepareResourceCatalog(signal: AbortSignal): Promise<void> {
+    if (this.status.state === 'disconnected' && this.current?.supportsCatalog('resources')) {
+      await this.redialBeforeUse(signal, 'reconnect before catalog requests');
+    }
+  }
   assertPinned(info: McpToolInfo): void {
     const current = this.inventory.find(tool => tool.name === info.name);
     if (!current || (info.readOnly && !current.readOnly) || info.taskSupport !== current.taskSupport || pinnedMetadata(info) !== pinnedMetadata(current)) {
@@ -1695,6 +1708,7 @@ class ManagedMcpClient implements McpClient {
       this.status = { state: 'disabled', generation: this.status.generation, attempts: this.status.attempts };
       for (const unsubscribe of this.unbind) unsubscribe(); this.unbind = [];
       const old = this.current; this.current = undefined; this.inventory = [];
+      this.publishResources();
       for (const listener of this.listeners) listener();
       await Promise.all([old?.close(), this.replacing?.catch(() => undefined)]);
       return this.view();
@@ -1732,6 +1746,7 @@ class ManagedMcpClient implements McpClient {
     } catch (error) { subscriptions?.release(); return Promise.reject(error); }
     const previous = this.status.state;
     this.status.state = "reconnecting";
+    this.publishResources();
     this.status.attempts++;
     this.replacing = Promise.resolve().then(async () => {
       let candidate: McpClient | undefined;
@@ -1759,6 +1774,7 @@ class ManagedMcpClient implements McpClient {
         this.status = { state: "connected", generation: this.status.generation + 1, attempts: this.status.attempts,
           ...(this.status.automaticAttempts === undefined ? {} : { automaticAttempts: this.status.automaticAttempts }) };
         this.bind();
+        this.publishResources();
         for (const listener of this.listeners) listener();
         await old?.close().catch(() => undefined);
         return this.view();
@@ -1767,6 +1783,7 @@ class ManagedMcpClient implements McpClient {
         if (this.status.state !== "closed" && this.status.state !== 'disabled' && this.current === old) {
           this.status.state = previous === "disconnected" || this.status.state === "disconnected" ? "disconnected" : "connected";
           this.status.lastError = "MCP reconnect failed; previous transport retained";
+          this.publishResources();
         }
         throw error;
       } finally {
@@ -1786,6 +1803,7 @@ class ManagedMcpClient implements McpClient {
     this.acknowledgement = undefined;
     this.desired?.clear();
     for (const unsubscribe of this.unbind) unsubscribe();
+    this.publishResources(); this.resourcesListeners.clear();
     this.listeners.clear();
     return this.closing = (async () => {
       await this.replacing?.catch(() => undefined);
@@ -1979,6 +1997,15 @@ export async function connectMcpServers(
       `HTTP GET notification stream: one owned stream after initialize; same URL/session/protocol/auth headers and redirect restrictions; ${settings.requestTimeoutMs}ms header/read idle deadline; ${settings.recovery ? "recovery enables at most 5 GET-only reopens per transport lifetime after EOF, idle timeout or transport failure, delayed by the latest server SSE retry value when present and otherwise by 1/2/4/8/8 seconds; a reopen sends the last observed SSE event id as last-event-id, which a bare id field clears, so the server keeps ownership of payload replay; 404/405 unavailable and 204 ended are terminal, as are authentication, redirect, malformed/oversized SSE and other HTTP status failures; no client-side payload replay, and a stream that carried a client request is never reopened" : "404/405 unavailable, 204/EOF ended; no retry, reconnect or event replay"}; failures do not disable POST`,
       `HTTP GET dispatch: logging/resource updates/tools list changes/cancellation notifications; every client request (roots/list, form elicitation/create, sampling/createMessage) is dispatched under the same callback, capability, ownership, cancellation and bounded POST-reply contract as POST SSE, so an unsupported method receives a bounded error reply;; a replayed request is served again, so replay dedupe remains the server responsibility RPC responses are ignored; a stream that carried a request is not auto-reopened; incremental bounds 1MiB/event, 64KiB/line, 8MiB/read chunk without whole-stream accumulation or total event limit; close aborts reader and awaits at most 1000ms`]
     : finalLimits;
+  const resourceCatalog = settings.catalog ? new McpResourceCatalog([...namedClients].map(([name, raw]) => {
+    const client = raw as ManagedMcpClient;
+    return { name, identity: () => client.resourceCatalogIdentity(),
+      load: (signal: AbortSignal) => {
+        const current = client.resourceCatalogIdentity();
+        return current ? listClientCatalog(current, name, signal) : Promise.resolve({});
+      },
+      subscribe: (listener: () => void) => client.onResourcesChanged(listener) };
+  }), context.signal) : undefined;
   const retiredCatalogs = new Set<string>();
   const publishTools = () => {
     const next: ToolDefinition[] = [];
@@ -2043,7 +2070,12 @@ export async function connectMcpServers(
       for (const client of namedClients.values()) (client as ManagedMcpClient).startAutomatic();
     } } : {}),
     servers: () => Object.fromEntries([...namedClients].map(([name, client]) => [name, (client as ManagedMcpClient).view()])),
-    ...(settings.catalog ? { catalogListing: (signal: AbortSignal) => listMcpCatalog(namedClients, signal),
+    ...(resourceCatalog ? { catalogListing: async (signal: AbortSignal) => {
+      await Promise.all([...namedClients.values()].map(raw =>
+        (raw as ManagedMcpClient).prepareResourceCatalog(signal).catch(() => {})));
+      return resourceCatalog.read(signal);
+    },
+      subscribeCatalog: (listener: (listing: McpCatalogListing) => void) => resourceCatalog.subscribe(listener),
       completeResourceTemplate: (request: McpTemplateCompletionRequest, signal: AbortSignal) =>
         completeMcpTemplate(namedClients, request, signal) } : {}),
     reconnect: async (server, signal) => {
@@ -2076,6 +2108,7 @@ export async function connectMcpServers(
       if (closed) return;
       closed = true;
       dynamicCatalog?.close();
+      await resourceCatalog?.close();
       await closeAll(clients);
     },
   };

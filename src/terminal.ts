@@ -1423,7 +1423,7 @@ export interface TerminalSurface {
   setTasks?(tasks: readonly import('./tasks.js').TaskRecord[]): void;
   bindInputHistory?(session: import('./session.js').Session): Promise<void>;
   bindMcpCatalog?(load?: (signal: AbortSignal) => Promise<Pick<import('./mcp.js').McpCatalogListing, 'resources' | 'templates'>>,
-    complete?: import('./mcp.js').McpTemplateCompletion): void;
+    complete?: import('./mcp.js').McpTemplateCompletion, subscribe?: import('./mcp.js').McpCatalogSubscription): void;
   flushInputHistory?(): Promise<void>;
   bindStatusLine?(session: import('./session.js').Session): void;
   bindDiffPanel?(session: import('./session.js').Session): void;

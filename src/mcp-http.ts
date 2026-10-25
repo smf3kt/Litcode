@@ -209,6 +209,7 @@ export class McpHttpClient implements McpClient {
     return toolName === undefined ? undefined : this.taskTools.get(toolName)?.outputSchema;
   }
   private readonly toolsChangedListeners = new Set<() => void>();
+  private readonly resourcesChangedListeners = new Set<() => void>();
   private readonly disconnectListeners = new Set<() => void>();
   private transportFailures = 0;
   private disconnected = false;
@@ -349,6 +350,10 @@ export class McpHttpClient implements McpClient {
     if (msg.method === "notifications/cancelled") this.clientRequests.cancelled(msg.params);
     if (msg.method === "notifications/progress") this.progress.dispatch(msg.params);
     if (msg.method === "notifications/elicitation/complete") this.clientRequests.elicitationComplete(msg.params);
+    // qd/Gm, 4vr415ka [88378,88445), sb190ksj [118418,118548), UTF-16.
+    if (msg.method === 'notifications/resources/list_changed' && this.supportsCatalog('resources')) {
+      for (const listener of this.resourcesChangedListeners) listener();
+    }
     if (msg.method === "notifications/resources/updated") this.resourceSubscriptions?.updated(msg.params);
     if (msg.method === "notifications/message") this.logging?.message(msg.params);
   }
@@ -673,6 +678,11 @@ export class McpHttpClient implements McpClient {
   onToolsChanged(listener: () => void): () => void {
     this.toolsChangedListeners.add(listener);
     return () => { this.toolsChangedListeners.delete(listener); };
+  }
+
+  onResourcesChanged(listener: () => void): () => void {
+    this.resourcesChangedListeners.add(listener);
+    return () => { this.resourcesChangedListeners.delete(listener); };
   }
 
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown> {

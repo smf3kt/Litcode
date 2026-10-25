@@ -236,13 +236,13 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
   commands?: readonly TuiCommand[];
   /** The agent types the `@` list offers, as `agent-` rows. */
   agentTypes?: readonly import('./tui-agent-suggestions.js').AgentSuggestionSource[];
-  /** The connected servers' resources and templates, loaded once on the first `@` draft.
-   *  Catalog mode only; without it the MCP families stay empty. */
+  /** The connected servers' resources and templates, first loaded on an `@` draft. */
   mcpCatalog?: (signal: AbortSignal) => Promise<{
     resources: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpResource[]>>;
     templates: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpTemplate[]>>;
   }>;
   completeResourceTemplate?: import('./mcp.js').McpTemplateCompletion;
+  subscribeMcpCatalog?: import('./mcp.js').McpCatalogSubscription;
   prompt?: string;
   continuationPrompt?: string;
   history?: readonly string[];
@@ -692,9 +692,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   /** The directory listings an explicit `@./path` asks for, cached for the source's TTL. */
   private readonly directoryListings = new Map<string, { at: number; entries: { name: string; isDirectory: boolean }[] }>();
   private readonly templateCompletion = new TemplateCompletion(() => { if (this.started && !this.closed) this.render(); });
-  /** The connected servers' `@` catalog, read once in the background on the first `@`. */
   private mcpCatalogStarted = false;
   private mcpCatalogAbort: AbortController | undefined;
+  private unsubscribeMcpCatalog: (() => void) | undefined;
   private mcpResources: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpResource[]>> = {};
   private mcpResourceTemplates: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpTemplate[]>> = {};
   /** `Zi`: the per-draft dismissal the alt+w toggle sets. */
@@ -2101,7 +2101,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.sourceSearch?.close();this.sourceSearch=undefined;this.queryUndo.clear();this.queryEditor=createEditorState();
     this.sourcePicker?.close();this.sourcePicker=undefined;this.pickerUndo.clear();this.pickerQuery=createEditorState();
     this.editorController?.abort();this.gestures.reset();this.vim.close();this.focus.close();this.inputHistory.close();
-    this.mcpCatalogAbort?.abort(); this.templateCompletion.reset();
+    this.mcpCatalogAbort?.abort(); this.unsubscribeMcpCatalog?.(); this.unsubscribeMcpCatalog = undefined;
+    this.templateCompletion.reset();
     this.editRelay.dispose();
     this.undo.clear();
     this.editor = {...this.editor,pastedContents:{},historyPastes:[],historyDraftPastes:{}};
@@ -2560,27 +2561,32 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   // RTe.kn/Bn, 24k7d6mw [1560490,1586785), UTF-16; a changed server replaces its resource surface.
-  bindMcpCatalog(load?: TuiOptions['mcpCatalog'], complete?: TuiOptions['completeResourceTemplate']): void {
+  bindMcpCatalog(load?: TuiOptions['mcpCatalog'], complete?: TuiOptions['completeResourceTemplate'],
+    subscribe?: TuiOptions['subscribeMcpCatalog']): void {
     this.mcpCatalogAbort?.abort(); this.mcpCatalogAbort = undefined; this.mcpCatalogStarted = false;
+    this.unsubscribeMcpCatalog?.(); this.unsubscribeMcpCatalog = undefined;
     this.templateCompletion.reset(); this.options.completeResourceTemplate = complete;
     this.mcpResources = {}; this.mcpResourceTemplates = {}; this.options.mcpCatalog = load;
+    this.options.subscribeMcpCatalog = subscribe;
+    if (this.started && !this.closed) this.render();
   }
-  /** `ose`'s companion: the source reads a live MCP store; the local render path is
-   *  synchronous, so the listing is read once in the background and the band repaints when
-   *  it lands. A failed listing leaves the MCP families empty rather than failing the list. */
+  // ose/RTe, 24k7d6mw [564216,565691)/[1570315,1571741), UTF-16; subscribe before the lazy read.
   private ensureMcpCatalog(): void {
     const load = this.options.mcpCatalog;
     if (this.mcpCatalogStarted || load === undefined) return;
     this.mcpCatalogStarted = true;
     const controller = new AbortController();
     this.mcpCatalogAbort = controller;
-    void load(controller.signal).then(listing => {
+    let published = false;
+    const accept = (listing: Awaited<ReturnType<NonNullable<TuiOptions['mcpCatalog']>>>) => {
       if (this.closed || controller.signal.aborted || this.mcpCatalogAbort !== controller) return;
       this.templateCompletion.reset();
       this.mcpResources = listing.resources;
       this.mcpResourceTemplates = listing.templates;
       if (this.started) this.render();
-    }).catch(() => {});
+    };
+    this.unsubscribeMcpCatalog = this.options.subscribeMcpCatalog?.(listing => { published = true; accept(listing); });
+    void load(controller.signal).then(listing => { if (!published) accept(listing); }).catch(() => {});
   }
 
   /** `kDt`: one directory's entries, held for the source's fifteen-second TTL. The source
