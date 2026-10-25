@@ -42,6 +42,9 @@ export type BackgroundStartOptions = {
   /** `gft`'s `po`: the copy is relocated to this directory before the spawn. The host's journal
    *  identity is per workspace, so the caller supplies the relocation body. */
   relocatedTo?: string;
+  /** `gft`'s `_t`: `{...h, name: at}` renames the copy before the spawn. `at` is the parent's name
+   *  and the prompt joined by the fork glyph, or the glyph and the prompt alone. */
+  name?: string;
   relocate?: (source: Session, target: string) => Session;
   /** CLI entry and runtime; defaults to this process's. */
   entry?: string;
@@ -154,6 +157,10 @@ export function startBackgroundSession(options: BackgroundStartOptions): Backgro
       message: { role: 'user', content: [{ type: 'text', text: escapeBriefing(options.briefing) }] } });
     fork.append({ kind: 'turn_end', reason: 'fork_briefing' });
   }
+  // `gft`'s `_t`: the copy is named before it starts, so a later `/sessions` or `/rename` reads the
+  // fork's own name instead of the parent's. The recovered name is redacted and bounded to 200
+  // characters by the title schema, which is the same bound `fBe`'s intent carries.
+  if (options.name !== undefined && options.name !== '') fork.append({ kind: 'title', title: options.name.slice(0, 200) });
   const workspace = fork.config.workspace;
   const relocated = workspace !== options.session.config.workspace;
   try { fork.close(); } catch { /* The fork journal is already durable. */ }

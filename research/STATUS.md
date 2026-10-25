@@ -1,3 +1,5 @@
+W336 the copy's own name (2026-10-25): `gft`'s `_t` rename is ported, so a fork's journal carries its own title from the start. Focused92/92,check/build,compiled10/10,14/14 and a 60-column6/6 pass; the pre-edit baseline fails at the copy-title check. See [W336](ports/W336-fork-copy-name.md). Local only,no coauthor/no push.
+
 W335 the /fork row's name and width fitting (2026-10-25): `Ue`'s `TMr`/`Bcn`/`RMr` now name the copy and fit the row, reusing the `UKn` port. Focused91/91,check/build,compiled9/9,14/14 and a 60-column6/6 pass; the pre-edit baseline fails at the name clip. See [W335](ports/W335-fork-row.md). Local only,no coauthor/no push.
 
 W334 fork briefing and worktree relocation (2026-10-25): the open-fleet /fork computes gft's po/xo/Fo, relocates the copy to the origin tree with relocateSession, writes the recovered briefing at the fork point and prints the row chip from relocatedTo/editsIn. New4cases,focused96/96,lifecycle103/103,check/build and compiled9checks/1model/locks pass;the pre-edit baseline fails at the origin-tree row. See [W334](ports/W334-fork-relocation.md). Local only,no coauthor/no push.

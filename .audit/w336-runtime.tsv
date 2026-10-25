@@ -1,0 +1,9 @@
+ts	phase	decision	why	evidence	result
+2026-10-25	source	Acquire gft's at/_t and Ue's de before edits	gft replaces the record with {...h,name:at} before the spawn;Ue renders the same name	ports/W336-fork-copy-name.md	2module identities;exact UTF16 ranges
+2026-10-25	host	Compare forkSession against _t	Host copies the parent title only,so a fork keeps the parent's name	src/sessions.ts 118	1 gap found
+2026-10-25	design	Reuse forkCopyName as the one derivation	W335 already ports gft's at verbatim;row and journal must not drift	src/fork-row.ts	forkCopyName
+2026-10-25	implement	Append the copy's title after the briefing and before the spawn	src/background-session.ts	src/interactive.ts	9 insertions 2 deletions
+2026-10-25	verify	Focused and compiled suites	92/92 focused;10/10 relocation;14/14 gates;6/6 narrow	npm check build and three drivers	0 failures
+2026-10-25	verify	Baseline against pre-edit sources	The new driver fails at the copy-title check	pre-edit build	change measured not restated
+2026-10-25	identity	Capture content identity after the final build	inputs877 validation339 build622	scripts/identity.mjs	398b71cc
+2026-10-25	commit	Exact-path local commit,no coauthor,no push	Package files plus records	git status	done

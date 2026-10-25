@@ -3544,17 +3544,18 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               // (`zY(..., co ?? ..., {bgIsolation:"default"})`). This host's journal identity is
               // per workspace, so the copy is relocated with the same body `/worktree` uses; the
               // child then resumes its own journal in the origin tree.
+              // `gft`'s `at` names the copy before the spawn; `Ue`'s `de` renders that name back
+              // through `TMr`, and `RMr` fits the whole row into the terminal.
+              const copyName = forkCopyName(session.title, argument);
               const started = (options.startBackground ?? startBackgroundSession)({ session, prompt: argument,
                 seedFallback: '(forked)', ...relocation,
+                ...(copyName === '' ? {} : { name: copyName }),
                 relocate: (fork, target) => relocateSession(fork, target,
                   config => activeRuntime.buildTools(config, 'relocation')) });
               // `Ue`'s `fe`, `de` and `H`: a prompt starts the copy running, a bare `/fork` leaves it
-              // waiting, the name is the parent's own name joined to the prompt by the fork glyph, and
-              // the row carries the one chip that describes where the copy edits. `RMr` then fits the
-              // whole row into the terminal; this host's system row has no gutter, so the budget is
-              // the full width.
+              // waiting, and the row carries the one chip that describes where the copy edits.
               const chip = forkRowChip({ relocatedTo: started.relocatedTo, editsIn: relocation.editsIn });
-              const name = forkRowName(forkCopyName(session.title, argument));
+              const name = forkRowName(copyName);
               const fields = fitForkRow({ state: argument === '' ? SESSION_WAITING : SESSION_RUNNING,
                 ...(name === undefined ? {} : { name }), id: started.sessionId.slice(0, 8),
                 chips: chip === undefined ? [] : [chip] }, process.stdout.columns ?? 80);

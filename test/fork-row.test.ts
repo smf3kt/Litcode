@@ -14,6 +14,7 @@ import { cellWidth } from '../src/terminal.js';
 import type { ModelProvider } from '../src/provider.js';
 import type { Runtime } from '../src/runtime.js';
 import { Session } from '../src/session.js';
+import { startBackgroundSession } from '../src/background-session.js';
 
 function reply(text: string): Anthropic.Message {
   return { id: 'fixture', model: 'test', role: 'assistant', type: 'message', content: [{ type: 'text', text }],
@@ -95,4 +96,36 @@ test('/fork prints the named row the recovered grammar parses back', async () =>
   assert.match(fields!.id!, /^[0-9a-f]{8}$/);
   assert.deepEqual(fields!.chips, []);
   assert.notEqual(fields!.state, SESSION_WAITING);
+});
+
+test('/fork names the copy in its own journal before the child starts', () => {
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-fork-name-')));
+  const config = { ...defaultConfig(root, []), model: 'test' };
+  const session = Session.open(root, { config });
+  session.append({ kind: 'message', message: { role: 'user', content: 'earlier task' } });
+  session.append({ kind: 'message', message: { role: 'assistant', content: 'earlier answer' } });
+  session.append({ kind: 'turn_end', reason: 'end_turn' });
+  session.append({ kind: 'title', title: 'fix-parser' });
+  const spawns: string[] = [];
+  const fakeSpawn = ((_command: string, _args: readonly string[]) => {
+    spawns.push(_args.join(' '));
+    return { pid: 4242, unref() {} } as unknown as import('node:child_process').ChildProcess;
+  }) as unknown as typeof import('node:child_process').spawn;
+  try {
+    // `gft`'s `_t` renames the copy before the spawn, so the fork journal carries the fork's own
+    // title and the parent keeps its own.
+    const started = startBackgroundSession({ session, prompt: 'split the lexer', seedFallback: '(forked)',
+      name: forkCopyName(session.title, 'split the lexer'), entry: '/tmp/litcode-entry.js',
+      executable: '/fake/node', execArgv: [], spawnProcess: fakeSpawn });
+    assert.equal(spawns.length, 1);
+    const fork = Session.open(root, { id: started.sessionId });
+    try {
+      // `forkSession` carries the parent's title forward, so the copy's own rename is a second
+      // `title` event and the last one wins, which is how `gft`'s `{...h, name: at}` reads back.
+      assert.equal(fork.title, 'fix-parser ⑂ split the lexer');
+      assert.deepEqual(fork.events.filter(event => event.kind === 'title').map(event => event.title),
+        ['fix-parser', 'fix-parser ⑂ split the lexer']);
+    } finally { fork.close(); }
+    assert.equal(session.title, 'fix-parser');
+  } finally { session.close(); }
 });

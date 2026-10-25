@@ -120,6 +120,11 @@ try {
 
   await until(() => journals(origin).length === 1, 'origin journal');
   pass('the copy wrote its journal in the origin tree');
+  // `gft`'s `_t` renames the copy before the spawn; this fixture session has no title, so the copy
+  // is named `⑂ FORK_TASK` and its own journal carries that title, not the parent's.
+  const copyJournal = path.join(origin, '.agent', journals(origin)[0]);
+  await until(() => fs.readFileSync(copyJournal, 'utf8').includes('\u2442 FORK_TASK'), 'copy title');
+  pass('the copy journal carries the fork name');
   pass('the worktree keeps only its own journal', journals(worktree).length === 1);
 
   send('/exit\r');
