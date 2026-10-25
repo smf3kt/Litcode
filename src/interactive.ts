@@ -22,7 +22,7 @@ import {
   browsePermissions, type PermissionPanelApplyResult, type PermissionPanelInput, permissionPanelRules,
 } from './permissions-panel.js';
 import { forkSession, listSessions, readSessionPreview, renameStoredSession } from './sessions.js';
-import { startBackgroundSession, backgroundSeed } from './background-session.js';
+import { startBackgroundSession, backgroundResumeCommand, backgroundSeed } from './background-session.js';
 import { parseAttachmentCommand } from './media.js';
 import { questionClarification, terminalAnswerAnnotation } from './interaction-tools.js';
 import { askUserQuestionTimeoutMs } from './tui-afk.js';
@@ -3548,7 +3548,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               // through `TMr`, and `RMr` fits the whole row into the terminal.
               const copyName = forkCopyName(session.title, argument);
               const started = (options.startBackground ?? startBackgroundSession)({ session, prompt: argument,
-                seedFallback: '(forked)', ...relocation,
+                mode: 'fork', seedFallback: '(forked)', ...relocation,
                 ...(copyName === '' ? {} : { name: copyName }),
                 relocate: (fork, target) => relocateSession(fork, target,
                   config => activeRuntime.buildTools(config, 'relocation')) });
@@ -3560,7 +3560,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 ...(name === undefined ? {} : { name }), id: started.sessionId.slice(0, 8),
                 chips: chip === undefined ? [] : [chip] }, process.stdout.columns ?? 80);
               output.write(forkSessionLine(fields) + '\n');
-              output.write(`Log: ${started.log}\nResume it with: litcode --resume ${started.sessionId}\n`);
+              output.write(`Log: ${started.log}\nResume it with: ${backgroundResumeCommand(started, session.config.workspace)}\n`);
             } catch (error) {
               output.write(`Couldn't fork: ${error instanceof Error ? error.message : String(error)}\n`);
             }
@@ -3606,7 +3606,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const task = prompt.slice('/background'.length).trim();
           const started = startBackgroundSession({ session, prompt: task });
           output.write(`Backgrounded session ${started.sessionId}${started.pid === undefined ? '' : ` (pid ${started.pid})`}.\n`);
-          output.write(`Log: ${started.log}\nResume it with: litcode --resume ${started.sessionId}\n`);
+          output.write(`Log: ${started.log}\nResume it with: ${backgroundResumeCommand(started, session.config.workspace)}\n`);
           continue;
         }
         if (/^\/compact(?:\s|$)/.test(prompt)) {

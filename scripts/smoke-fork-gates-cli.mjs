@@ -75,7 +75,8 @@ function pass(label, condition = true) {
 async function startSession(tag, extraEnv = {}) {
   const workspace = path.join(temporary, `${tag}-workspace`), user = path.join(temporary, `${tag}-user`);
   fs.mkdirSync(workspace); fs.mkdirSync(user);
-  fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ model: 'fixture-model', thinking: false }));
+  fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ model: 'fixture-model', thinking: false,
+    promptSuggestionEnabled: false }));
   const child = spawn('/usr/bin/expect', [path.join(root, '.audit/w205-footer.exp'), process.execPath,
     path.join(root, 'bin/litcode.mjs'), '--workspace', workspace, '--user-dir', user,
     '--interactive', '--no-inherit-gateway', '--permission-mode', 'bypass'],
@@ -87,6 +88,20 @@ async function startSession(tag, extraEnv = {}) {
   return { workspace };
 }
 const journals = workspace => fs.readdirSync(path.join(workspace, '.agent')).filter(name => name.endsWith('.jsonl'));
+const records = file => {
+  const text = fs.readFileSync(file, 'utf8');
+  return text.slice(0, text.lastIndexOf('\n')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+};
+const lastText = request => JSON.stringify(request.messages?.at(-1)?.content ?? '');
+async function resumeSession(workspace, id) {
+  const child = spawn('/usr/bin/expect', [path.join(root, '.audit/w205-footer.exp'), process.execPath,
+    path.join(root, 'bin/litcode.mjs'), '--workspace', workspace, '--resume', id, '--interactive', '--no-inherit-gateway'],
+  { cwd: temporary, env: { ...baseEnv, HOME: temporary }, stdio: ['pipe', 'pipe', 'pipe'] });
+  active = { child, chunks: [], closed: new Promise(resolve => child.once('close', resolve)) };
+  child.stdout.on('data', chunk => active.chunks.push(chunk));
+  child.stderr.on('data', chunk => active.chunks.push(chunk));
+  await until(ready, 'waiting copy resume ready');
+}
 async function endSession() {
   send('/exit\r');
   const code = await Promise.race([active.closed, delay(8000).then(() => 'timeout')]);
@@ -138,6 +153,42 @@ try {
   pass('/exit ends the open-fleet session');
   pass('the session released its locks',
     fs.readdirSync(path.join(open.workspace, '.agent')).filter(name => name.endsWith('.lock')).length === 0);
+
+  const waiting = await startSession('waiting');
+  send('ORIGINAL_TASK\r');
+  await until(() => screen().includes('PARENT_REPLY') && ready(), 'parent task finished');
+  const parentFile = path.join(waiting.workspace, '.agent', journals(waiting.workspace)[0]);
+  await until(() => records(parentFile).some(event => event.kind === 'turn_end'), 'parent turn committed');
+  const parentBytes = fs.readFileSync(parentFile, 'utf8');
+  const beforeFork = requests.length;
+  send('/fork\r');
+  await until(() => flat().includes('sessionwaitingforaprompt·') && journals(waiting.workspace).length === 2,
+    'waiting fork row');
+  const copyFile = path.join(waiting.workspace, '.agent', journals(waiting.workspace)
+    .find(name => name !== path.basename(parentFile)));
+  const copyEvents = records(copyFile);
+  const copyId = copyEvents[0].id;
+  const copyLock = copyFile + '.lock';
+  pass('a bare fork saves a completed copy', copyEvents.some(event => event.kind === 'branch')
+    && copyEvents.some(event => event.kind === 'turn_end'));
+  pass('the waiting copy releases its lock without starting a task', !fs.existsSync(copyLock));
+  pass('forking leaves the parent journal unchanged', fs.readFileSync(parentFile, 'utf8') === parentBytes);
+  await endSession();
+  await delay(500);
+  pass('the waiting copy sends no model request', requests.length === beforeFork);
+  pass('the waiting copy keeps the fork-point history', JSON.stringify(records(copyFile)) === JSON.stringify(copyEvents));
+
+  await resumeSession(waiting.workspace, copyId);
+  pass('the saved copy resumes in an interactive terminal');
+  send('NEW_COPY_TASK\r');
+  await until(() => requests.some(request => lastText(request).includes('NEW_COPY_TASK'))
+    && screen().includes('PARENT_REPLY') && ready(), 'resumed copy task');
+  pass('only the new task executes after resume', requests.length === beforeFork + 1);
+  const resumed = requests.find(request => lastText(request).includes('NEW_COPY_TASK'));
+  pass('the resumed request retains the original conversation', JSON.stringify(resumed.messages).includes('ORIGINAL_TASK'));
+  await endSession();
+  pass('resuming the copy leaves the parent journal unchanged', fs.readFileSync(parentFile, 'utf8') === parentBytes);
+  pass('the resumed copy releases its lock', !fs.existsSync(copyLock));
 
   fs.writeFileSync(path.join(temporary, 'result.json'), JSON.stringify({ checks, requests: requests.length }, null, 2));
   console.log(`\n${checks.length} checks, ${requests.length} model requests, fixture ${temporary}`);

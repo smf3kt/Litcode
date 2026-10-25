@@ -3,12 +3,9 @@
 // Source: the REPL background handler `_1s` (chunk-24k7d6mw.js offset 38204)
 // refuses a disabled persistence, requires a seed from `fBe` (offset 51242) and
 // opens the confirmation path; the spawn core `gft` (offset 38766) forks the
-// conversation into a child CLI that resumes the fork. This product has no
-// background-job registry for sessions and always persists, so the local
-// adaptation materializes the fork with `forkSession` and starts the child
-// headless (`--resume <fork> <prompt>`), which keeps the same observable
-// contract: a new session with a `fork` branch record runs one task, writes its
-// journal, and can be resumed later while the parent keeps running.
+// conversation into a child CLI that resumes the fork. Without a resident
+// background REPL worker, this host saves a bare `/fork` as an unlocked journal.
+// Prompted copies run headless; `/background` retains its seed-task fallback.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,6 +22,13 @@ export type BackgroundSession = { sessionId: string; pid: number | undefined; lo
   /** `gft`'s `relocatedTo`: the copy runs in this directory instead of the parent's checkout. */
   relocatedTo?: string };
 
+/** qBe [64775,65099), chunk-78w3rfp3.js: open the copy in this terminal using the host's resume CLI. */
+export function backgroundResumeCommand(copy: Pick<BackgroundSession, 'sessionId' | 'relocatedTo'>,
+  workspace: string): string {
+  const target = (copy.relocatedTo ?? workspace).replace(/'/g, "'\\''");
+  return `litcode --workspace '${target}' --resume ${copy.sessionId} --interactive`;
+}
+
 /** `Ait` (chunk-hwpb27as.js 44060): the briefing cannot open a `system-reminder` block. */
 export function escapeBriefing(text: string): string {
   return text.replace(/<(?=\s*(?:\/\s*)?system-reminder\b)/gi, '&lt;');
@@ -33,6 +37,8 @@ export function escapeBriefing(text: string): string {
 export type BackgroundStartOptions = {
   session: Session;
   prompt: string;
+  /** U [20040,21857) passes only the typed prompt; the background adapter resumes the seed task. */
+  mode?: 'fork' | 'background';
   /** `fBe`'s fallback name; `/fork` passes `(forked)`, `/background` keeps the default. */
   seedFallback?: string;
   /** `gft`'s `Fo`: the briefing the copy carries about the original checkout. `gft` writes it as
@@ -129,9 +135,7 @@ export function backgroundSeed(messages: readonly Anthropic.MessageParam[], prom
   return { intent: truncate(intent || fallback, 200), ...(detail === undefined ? {} : { detail }) };
 }
 
-/** Fork the conversation and start one detached headless child on the fork.
- *  The fork is written before the spawn, so the child has a complete journal even
- *  if the parent exits immediately. A spawn failure removes the unused fork. */
+/** gft [38766,45161), chunk-24k7d6mw.js: save the copy before launching its optional task. */
 export function startBackgroundSession(options: BackgroundStartOptions): BackgroundSession {
   const seed = options.seedFallback === undefined
     ? backgroundSeed(options.session.messages, options.prompt.trim())
@@ -140,7 +144,8 @@ export function startBackgroundSession(options: BackgroundStartOptions): Backgro
   const executable = options.executable ?? process.execPath;
   const entry = options.entry ?? process.argv[1];
   if (!entry) throw new Error("Couldn't fork — the CLI entry point is unknown.");
-  const task = options.prompt.trim() || seed.intent;
+  const prompt = options.prompt.trim();
+  const task = options.mode === 'fork' ? prompt : prompt || seed.intent;
   // `gft`'s `po` relocation happens inside the same snapshot copy the fork already takes; this
   // host's journal is workspace-bound, so a relocated copy is opened in the origin tree with the
   // same body `/worktree` uses. A copy that cannot be relocated fails the fork, which is the
@@ -170,8 +175,12 @@ export function startBackgroundSession(options: BackgroundStartOptions): Backgro
   let fd: number | undefined;
   try {
     fd = fs.openSync(log, 'a');
+    // gft [38766,45161) omits the prompt argv; Cn [49289,55904) marks that copy waiting.
+    // Without a resident REPL worker, this host keeps the closed journal ready for resume.
+    if (task === '') return { sessionId: fork.id, pid: undefined, log,
+      ...(relocated ? { relocatedTo: workspace } : {}) };
     const child = (options.spawnProcess ?? spawn)(executable,
-      [...(options.execArgv ?? process.execArgv), entry, '--resume', fork.id, task], {
+      [...(options.execArgv ?? process.execArgv), entry, '--resume', fork.id, '--', task], {
         cwd: workspace, detached: true, stdio: ['ignore', fd, fd],
       });
     child.unref();

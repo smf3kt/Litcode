@@ -127,7 +127,8 @@ test('the open-fleet /fork copies into a background session and keeps this one',
   assert.deepEqual(calls, ['']);
   assert.match(run.text, /^session waiting for a prompt · abcdef01$/m);
   assert.match(run.text, /^Log: \/tmp\/copy\.log$/m);
-  assert.match(run.text, /^Resume it with: litcode --resume abcdef01-2345-6789-abcd-ef0123456789$/m);
+  assert.ok(run.text.includes(`Resume it with: litcode --workspace '${run.session.config.workspace}' `
+    + '--resume abcdef01-2345-6789-abcd-ef0123456789 --interactive\n'));
 });
 
 test('the open-fleet /fork runs the copy when a prompt is typed', async () => {

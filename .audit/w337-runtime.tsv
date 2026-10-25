@@ -1,0 +1,11 @@
+date	phase	decision	evidence	result
+2026-10-25	source	Verify U/Ue, gft/fBe and zY/Cn/qBe before edits	ports/W337-fork-waiting.md	Three manifest digests and seven Acorn ranges verified
+2026-10-25	baseline	Drive a bare fork after a completed parent task	job tmp w337-baseline.txt	Fails at the waiting copy sends no model request; prior task replayed
+2026-10-25	design	Separate fork execution prompt from background seed fallback	U passes t||null; gft omits empty T; Cn derives blocked tempo	Use existing journal as waiting owner; resident worker remains a gap
+2026-10-25	implement	Persist and close the blank fork before returning; keep prompted spawns	src/background-session.ts and src/interactive.ts	Explicit mode, -- task boundary and workspace-aware interactive resume hint
+2026-10-25	fixture	Retain old hint intent while asserting complete new resume command	test/fork-command.test.ts	One expected old hint mismatch corrected; UUID and log assertions retained
+2026-10-25	verify	Three behavior groups, focused and affected checks	job tmp w337-focused.txt and w337-affected.txt	31/31 and 95/95; check/build exit0
+2026-10-25	cli	Run compiled fork wait/resume and relocation chains	job tmp w337-cli.txt and w337-relocation-cli.txt	24checks/3requests and 10checks/1request; loopback only; journals and locks verified
+2026-10-25	identity	Capture source/tests/build identity	job tmp w337-identity-candidate.json	6abc35c3; inputs877 validation339 build622
+2026-10-25	review	Independent read-only correctness, source and comment pass	job tmp w337-independent-tests.txt and w337-independent-cli.txt	31/31 and compiled24checks pass; no confirmed scoped correctness defects; stale spawn documentation corrected
+2026-10-25	identity-final	Rebuild after comment-only correction and compare all recorded file identities	job tmp w337-identity-final.json	fa5a9943; only src/background-session.ts and dist/background-session.js differ; executable syntax unchanged

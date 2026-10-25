@@ -8,7 +8,9 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { defaultConfig } from "../src/agent.js";
 import { Session } from "../src/session.js";
 import { listSessions } from "../src/sessions.js";
-import { backgroundSeed, startBackgroundSession, NOTHING_TO_BACKGROUND } from "../src/background-session.js";
+import { backgroundSeed, backgroundResumeCommand, startBackgroundSession, NOTHING_TO_BACKGROUND } from "../src/background-session.js";
+import { relocateSession } from "../src/workspace-session.js";
+import { execFileSync } from "node:child_process";
 
 const workspaces: string[] = [];
 function workspace(): string {
@@ -73,7 +75,7 @@ test("startBackgroundSession forks the journal before spawning a detached headle
       execArgv: [], spawnProcess: fakeSpawn });
     assert.equal(calls.length, 1);
     assert.equal(calls[0]!.command, "/fake/node");
-    assert.deepEqual(calls[0]!.args, ["/tmp/litcode-entry.js", "--resume", started.sessionId, "First real task"]);
+    assert.deepEqual(calls[0]!.args, ["/tmp/litcode-entry.js", "--resume", started.sessionId, "--", "First real task"]);
     assert.equal(calls[0]!.options?.cwd, root);
     assert.equal(calls[0]!.options?.detached, true);
     assert.equal((calls[0]!.options?.stdio as unknown[])[0], "ignore");
@@ -88,6 +90,60 @@ test("startBackgroundSession forks the journal before spawning a detached headle
       assert.deepEqual(fork.messages, session.messages);
     } finally { fork.close(); }
   } finally { session.close(); }
+});
+
+test("a promptless fork saves an unlocked copy without replaying the seed", () => {
+  const root = workspace(), target = workspace();
+  const session = completedSession(root);
+  const parentBytes = fs.readFileSync(session.file, 'utf8');
+  let spawns = 0;
+  const fakeSpawn = (() => { spawns++; throw new Error('A waiting copy must not spawn'); }) as typeof spawn;
+  try {
+    for (const relocated of [false, true]) {
+      const started = startBackgroundSession({ session, mode: 'fork', prompt: ' \n ',
+        seedFallback: '(forked)', name: 'waiting copy', briefing: 'Wait for a new task.',
+        ...(relocated ? { relocatedTo: target, relocate: (source: Session, to: string) =>
+          relocateSession(source, to, () => []) } : {}), spawnProcess: fakeSpawn });
+      assert.equal(spawns, 0);
+      assert.equal(started.pid, undefined);
+      assert.equal(fs.existsSync(started.log), true);
+      const copy = Session.open(relocated ? target : root, { id: started.sessionId });
+      try {
+        assert.equal(copy.awaitingResponse, false);
+        assert.equal(copy.title, 'waiting copy');
+        assert.deepEqual(copy.messages.slice(0, session.messages.length), session.messages);
+        assert.equal(copy.messages.length, session.messages.length + (relocated ? 2 : 1));
+      } finally { copy.close(); }
+      assert.equal(fs.readFileSync(session.file, 'utf8'), parentBytes);
+    }
+  } finally { session.close(); }
+});
+
+test("a prompted fork passes dash-leading task text as one positional argument", () => {
+  const root = workspace(), session = completedSession(root);
+  let args: readonly string[] = [];
+  const fakeSpawn = ((_command: string, argv: readonly string[]) => {
+    args = argv;
+    return { pid: 4242, unref() {} } as unknown as ChildProcess;
+  }) as typeof spawn;
+  try {
+    const started = startBackgroundSession({ session, mode: 'fork', prompt: ' --help is task text ',
+      entry: '/fixture/cli.js', execArgv: [], spawnProcess: fakeSpawn });
+    assert.equal(started.pid, 4242);
+    assert.deepEqual(args, ['/fixture/cli.js', '--resume', started.sessionId, '--', '--help is task text']);
+  } finally { session.close(); }
+});
+
+test("the resume hint opens the copy workspace as an interactive session", () => {
+  const id = 'abcdef01-2345-6789-abcd-ef0123456789';
+  for (const target of ["/fixture/origin's tree", '/fixture/origin; $(exit 9) `exit 8`']) {
+    const command = backgroundResumeCommand({ sessionId: id, relocatedTo: target }, '/fixture/parent');
+    const invocation = execFileSync('/bin/sh', ['-c', `litcode() { printf '%s\\n' "$@"; }; ${command}`],
+      { encoding: 'utf8', timeout: 5000 });
+    assert.deepEqual(invocation.trimEnd().split('\n'), ['--workspace', target, '--resume', id, '--interactive']);
+  }
+  assert.equal(backgroundResumeCommand({ sessionId: id }, '/fixture/current'),
+    `litcode --workspace '/fixture/current' --resume ${id} --interactive`);
 });
 
 test("a failed spawn removes the unused fork and reports the source failure text", () => {
