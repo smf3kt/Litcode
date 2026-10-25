@@ -1,0 +1,18 @@
+phase	result	evidence
+source	verified	sb190ksj Zo/ka/Aa/Ia/js/Oa/Gm/Vm exact UTF-16 bodies;GET retry source retained from W05
+baseline	exit1	w341-baseline.txt initial rows and resumed last-event-id pass;reopened catalog remains generation1
+architecture	selected	typed notification/reopen cause;source raw synthetic callback bypasses T2e;existing owners retained
+implement	connected	HTTP successful recovery callback;both transports/managed typed cause;catalog raw-load ownership;existing TUI subscription
+verify	exit0	new3groups,affected278/278,Runtime/CLI56/56,focused32/32,check/build
+compiled	exit0	8checks/4GET/0model;ordinary resources9/0model;tools3ownedloopbackcalls/2lists
+source-compare	verified	4module digests,11exactASTranges;2source-target pairs read;adapted protocol/retry differences recorded
+identity	frozen	24d207ecef6eccff06c753b2025c8b051f5b2f9afa57f6687b45969fd7fb4abb;883input343validation624build
+review	verified-new	independent3/3,compiled8/4GET/0model,2probes/10groups;all1850records equal;inherited server-retry-cap P2 confirmed
+repair	exit0	dt139v0s admission before delay source read;table-cap check precedes serverRetryMs;32/32,278/278,check/build,compiled8/0model
+identity-repaired	frozen	205877e2d1759fdd56c328fcea9213a109b4c47e552724424c4c0d5dd7a0e0b2;1850records
+review-repaired	exit0	fresh3/3,compiled8/4GET/0model,1probe/4scenarios;retry0/1 exactly6GET/5reopens,0residual confirmed findings
+identity-final	matched	205877e2d1759fdd56c328fcea9213a109b4c47e552724424c4c0d5dd7a0e0b2;1850records;protected hashes unchanged
+cleanup	verified	0owned processes/locks;five owned TCPports closed;0external/paidcalls
+source-repaired	verified	4module digests,13exactASTranges;retry admission before server delay;original candidate differs only mcp-http source/build and new test
+compatibility-repaired	exit0	Runtime/CLI56/56;compiled GETtask3opens/1resume/3ownedloopbackcalls with roots/form/noReplay/cleanup at205877e2
+get-consumers	exit0	32/32task/client-request regressions;compiled GETtask3opens/1resume/3ownedloopbackcalls with roots/form/noReplay/cleanup

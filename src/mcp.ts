@@ -9,7 +9,7 @@ import type { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 import { McpHttpClient, MCP_HTTP_LIMITS, validateMcpHttpUrl, validateMcpHeadersEnv } from "./mcp-http.js";
-import { McpResourceCatalog } from './mcp-resource-catalog.js';
+import { McpResourceCatalog, type ResourceCatalogChange } from './mcp-resource-catalog.js';
 import type { ToolContext, ToolDefinition } from "./tools.js";
 import { mcpReconnectDelay, isTransientMcpFailure } from "./mcp-retry.js";
 import { MCP_PROGRESS_LIMITS, McpProgressRegistry, type McpProgressUpdate } from "./mcp-progress.js";
@@ -228,7 +228,7 @@ export interface McpClient {
   resumeTask?(task: StandardMcpTask, signal: AbortSignal, toolName?: string): Promise<McpToolResult>;
   supportsCatalog(family: "resources" | "prompts" | "completions"): boolean;
   onToolsChanged(listener: () => void): () => void;
-  onResourcesChanged(listener: () => void): () => void;
+  onResourcesChanged(listener: (cause: ResourceCatalogChange) => void): () => void;
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown>;
   close(): Promise<void>;
 }
@@ -490,7 +490,7 @@ class McpStdioClient implements McpClient {
     return toolName === undefined ? undefined : this.taskTools.get(toolName)?.outputSchema;
   }
   private readonly toolsChangedListeners = new Set<() => void>();
-  private readonly resourcesChangedListeners = new Set<() => void>();
+  private readonly resourcesChangedListeners = new Set<(cause: ResourceCatalogChange) => void>();
   private readonly disconnectListeners = new Set<() => void>();
   onDisconnected(listener: () => void): () => void {
     this.disconnectListeners.add(listener);
@@ -853,7 +853,7 @@ class McpStdioClient implements McpClient {
       if (!Object.hasOwn(message, "id") && method === "notifications/elicitation/complete") this.clientRequests.elicitationComplete(message.params);
       // qd/Gm, 4vr415ka [88378,88445), sb190ksj [118418,118548), UTF-16.
       if (!Object.hasOwn(message, "id") && method === "notifications/resources/list_changed" && this.supportsCatalog('resources')) {
-        for (const listener of this.resourcesChangedListeners) listener();
+        for (const listener of this.resourcesChangedListeners) listener('notification');
       }
       if (!Object.hasOwn(message, "id") && method === "notifications/resources/updated") this.resourceSubscriptions?.updated(message.params);
       if (!Object.hasOwn(message, "id") && method === "notifications/message") this.logging?.message(message.params);
@@ -966,7 +966,7 @@ class McpStdioClient implements McpClient {
     return () => { this.toolsChangedListeners.delete(listener); };
   }
 
-  onResourcesChanged(listener: () => void): () => void {
+  onResourcesChanged(listener: (cause: ResourceCatalogChange) => void): () => void {
     this.resourcesChangedListeners.add(listener);
     return () => { this.resourcesChangedListeners.delete(listener); };
   }
@@ -1491,7 +1491,7 @@ class ManagedMcpClient implements McpClient {
   private current: McpClient | undefined;
   private inventory: McpToolInfo[] = [];
   private listeners = new Set<() => void>();
-  private resourcesListeners = new Set<() => void>();
+  private resourcesListeners = new Set<(cause: ResourceCatalogChange) => void>();
   private unbind: (() => void)[] = [];
   private status: McpServerStatus = { state: "connected", generation: 1, attempts: 0 };
   private replacing: Promise<McpServerStatus> | undefined;
@@ -1525,7 +1525,7 @@ class ManagedMcpClient implements McpClient {
     const client = this.current;
     if (!client) return;
     this.unbind = [client.onToolsChanged(() => { for (const listener of this.listeners) listener(); }),
-      client.onResourcesChanged(() => { if (this.current === client) this.publishResources(); })];
+      client.onResourcesChanged(cause => { if (this.current === client) this.publishResources(cause); })];
     const subscriptions = client.resourceSubscriptions;
     if (subscriptions && this.acknowledgement) {
       const commit = this.acknowledgement;
@@ -1638,8 +1638,8 @@ class ManagedMcpClient implements McpClient {
     return this.active().catalogRequest(method, params, signal);
   }
   onToolsChanged(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
-  onResourcesChanged(listener: () => void): () => void { this.resourcesListeners.add(listener); return () => { this.resourcesListeners.delete(listener); }; }
-  private publishResources(): void { for (const listener of this.resourcesListeners) listener(); }
+  onResourcesChanged(listener: (cause: ResourceCatalogChange) => void): () => void { this.resourcesListeners.add(listener); return () => { this.resourcesListeners.delete(listener); }; }
+  private publishResources(cause: ResourceCatalogChange = 'notification'): void { for (const listener of this.resourcesListeners) listener(cause); }
   // Jr, 24k7d6mw [1567980,1568012); applyQueuedUpdates, 05jp8hm2 [4214,7029), UTF-16.
   resourceCatalogIdentity(): McpClient | undefined {
     return this.status.state === 'connected' && this.current?.supportsCatalog('resources') ? this.current : undefined;
@@ -1994,7 +1994,7 @@ export async function connectMcpServers(
       .replace("no background HTTP GET stream", "owned HTTP GET SSE stream enabled")
       .replace("HTTP observes only active POST SSE responses, with no GET stream or continuous HTTP push", "HTTP observes POST SSE plus its owned GET SSE notification stream")
       .replace("active HTTP POST SSE responses only; no GET stream or continuous HTTP push", "HTTP POST SSE responses plus its owned GET SSE notification stream")),
-      `HTTP GET notification stream: one owned stream after initialize; same URL/session/protocol/auth headers and redirect restrictions; ${settings.requestTimeoutMs}ms header/read idle deadline; ${settings.recovery ? "recovery enables at most 5 GET-only reopens per transport lifetime after EOF, idle timeout or transport failure, delayed by the latest server SSE retry value when present and otherwise by 1/2/4/8/8 seconds; a reopen sends the last observed SSE event id as last-event-id, which a bare id field clears, so the server keeps ownership of payload replay; 404/405 unavailable and 204 ended are terminal, as are authentication, redirect, malformed/oversized SSE and other HTTP status failures; no client-side payload replay, and a stream that carried a client request is never reopened" : "404/405 unavailable, 204/EOF ended; no retry, reconnect or event replay"}; failures do not disable POST`,
+      `HTTP GET notification stream: one owned stream after initialize; same URL/session/protocol/auth headers and redirect restrictions; ${settings.requestTimeoutMs}ms header/read idle deadline; ${settings.recovery ? "recovery enables at most 5 GET-only reopens per transport lifetime after EOF, idle timeout or transport failure, delayed by the latest server SSE retry value when present and otherwise by 1/2/4/8/8 seconds; a reopen sends the last observed SSE event id as last-event-id, which a bare id field clears, so the server keeps ownership of payload replay; 404/405 unavailable and 204 ended are terminal, as are authentication, redirect, malformed/oversized SSE and other HTTP status failures; no client-side payload replay; successful recovery opens refetch registered tool/resource catalogs that advertise listChanged, and a stream that carried a client request is never reopened" : "404/405 unavailable, 204/EOF ended; no retry, reconnect or event replay"}; failures do not disable POST`,
       `HTTP GET dispatch: logging/resource updates/tools list changes/cancellation notifications; every client request (roots/list, form elicitation/create, sampling/createMessage) is dispatched under the same callback, capability, ownership, cancellation and bounded POST-reply contract as POST SSE, so an unsupported method receives a bounded error reply;; a replayed request is served again, so replay dedupe remains the server responsibility RPC responses are ignored; a stream that carried a request is not auto-reopened; incremental bounds 1MiB/event, 64KiB/line, 8MiB/read chunk without whole-stream accumulation or total event limit; close aborts reader and awaits at most 1000ms`]
     : finalLimits;
   const resourceCatalog = settings.catalog ? new McpResourceCatalog([...namedClients].map(([name, raw]) => {
@@ -2004,7 +2004,7 @@ export async function connectMcpServers(
         const current = client.resourceCatalogIdentity();
         return current ? listClientCatalog(current, name, signal) : Promise.resolve({});
       },
-      subscribe: (listener: () => void) => client.onResourcesChanged(listener) };
+      subscribe: (listener: (cause: ResourceCatalogChange) => void) => client.onResourcesChanged(listener) };
   }), context.signal) : undefined;
   const retiredCatalogs = new Set<string>();
   const publishTools = () => {

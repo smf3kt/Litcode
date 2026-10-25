@@ -8,7 +8,7 @@ import { PassThrough, Writable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
 import type { Terminal } from '@xterm/headless';
-import { McpResourceCatalog, type ResourceCatalogSource } from '../src/mcp-resource-catalog.js';
+import { McpResourceCatalog, type ResourceCatalogChange, type ResourceCatalogSource } from '../src/mcp-resource-catalog.js';
 import { connectMcpServers, type McpCatalogListing } from '../src/mcp.js';
 import { TuiTerminal } from '../src/tui.js';
 
@@ -26,7 +26,7 @@ test('resource snapshots coalesce bursts with source cooldowns and retire genera
   let now = 100000;
   t.mock.method(performance, 'now', () => now);
   let identity: object | undefined = {};
-  const listeners = new Set<() => void>();
+  const listeners = new Set<(cause: ResourceCatalogChange) => void>();
   const pending: { signal: AbortSignal; resolve(value: Awaited<ReturnType<ResourceCatalogSource['load']>>): void }[] = [];
   let peerLoads = 0;
   const lifetime = new AbortController();
@@ -38,7 +38,7 @@ test('resource snapshots coalesce bursts with source cooldowns and retire genera
     load: async () => { peerLoads++; return {}; }, subscribe: () => () => {} }], lifetime.signal);
   const snapshots: McpCatalogListing[] = [];
   catalog.subscribe(value => snapshots.push(value));
-  const changed = () => { for (const listener of listeners) listener(); };
+  const changed = () => { for (const listener of listeners) listener('notification'); };
   const flush = async () => { for (let n = 0; n < 12; n++) await Promise.resolve(); };
   const tick = async (ms: number) => { now += ms; t.mock.timers.tick(ms); await flush(); };
   try {

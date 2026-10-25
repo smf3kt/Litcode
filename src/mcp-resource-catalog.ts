@@ -1,11 +1,12 @@
 import type { McpCatalogListing, McpCatalogResource, McpCatalogTemplate } from './mcp.js';
 
 type CatalogFields = { resources?: McpCatalogResource[]; templates?: McpCatalogTemplate[] };
+export type ResourceCatalogChange = 'notification' | 'reopen';
 export interface ResourceCatalogSource {
   name: string;
   identity(): object | undefined;
   load(signal: AbortSignal): Promise<CatalogFields>;
-  subscribe(changed: () => void): () => void;
+  subscribe(changed: (cause: ResourceCatalogChange) => void): () => void;
 }
 
 /** T2e, chunk-zqyjdv9s.js [7849,8425), UTF-16. Host owns timer cancellation and fetch abort. */
@@ -56,6 +57,8 @@ type CatalogGeneration = {
   identity: object;
   controller: AbortController;
   refetch: ResourceRefetch;
+  load(): Promise<void>;
+  pending: Set<Promise<void>>;
   initial: Promise<void>;
 };
 type CatalogSlot = { source: ResourceCatalogSource; active?: CatalogGeneration };
@@ -75,11 +78,15 @@ export class McpResourceCatalog {
     for (const source of sources) {
       const slot: CatalogSlot = { source };
       this.slots.push(slot);
-      this.unsubscribe.push(source.subscribe(() => {
+      this.unsubscribe.push(source.subscribe(cause => {
         if (!this.started || this.closed) return;
         const previous = slot.active;
         const active = this.synchronize(slot);
-        if (active && active === previous) void active.refetch.request();
+        if (active && active === previous) {
+          // ka/Gm, sb190ksj [48170,48515)/[118418,118548), UTF-16; reopen calls the raw handler.
+          if (cause === 'reopen') void active.load();
+          else void active.refetch.request();
+        }
       }));
     }
     lifetime.addEventListener('abort', this.aborted, { once: true });
@@ -94,7 +101,7 @@ export class McpResourceCatalog {
   private publish(): void { for (const listener of this.listeners) listener(this.snapshot()); }
   private retire(active: CatalogGeneration): void {
     active.controller.abort();
-    const done = Promise.all([active.initial, active.refetch.close()]).then(() => {});
+    const done = Promise.all([active.refetch.close(), ...active.pending]).then(() => {});
     this.retiring.add(done);
     void done.finally(() => { this.retiring.delete(done); });
   }
@@ -110,7 +117,7 @@ export class McpResourceCatalog {
     const controller = new AbortController();
     const signal = AbortSignal.any([controller.signal, this.lifetime]);
     let revision = 0;
-    const load = async () => {
+    const fetch = async () => {
       if (this.closed || signal.aborted || slot.source.identity() !== identity) return;
       const current = ++revision;
       const fields = await slot.source.load(signal);
@@ -126,8 +133,14 @@ export class McpResourceCatalog {
       }
       this.publish();
     };
+    const pending = new Set<Promise<void>>();
+    const load = () => {
+      const done = fetch().catch(() => {}).finally(() => { pending.delete(done); });
+      pending.add(done);
+      return done;
+    };
     const refetch = new ResourceRefetch(load);
-    const active: CatalogGeneration = { identity, controller, refetch, initial: load().catch(() => {}) };
+    const active: CatalogGeneration = { identity, controller, refetch, load, pending, initial: load() };
     slot.active = active;
     return active;
   }

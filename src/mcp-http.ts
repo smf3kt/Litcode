@@ -13,6 +13,7 @@ import {
   type McpNotificationStreamStatus,
 } from "./mcp.js";
 import { boundToolContent } from './tool-output.js';
+import type { ResourceCatalogChange } from './mcp-resource-catalog.js';
 import { MCP_PROGRESS_LIMITS, McpProgressRegistry, type McpProgressUpdate } from "./mcp-progress.js";
 import { JSON_SCHEMA_LIMITS } from "./json-schema.js";
 import { McpClientRequestHandler } from "./mcp-client-requests.js";
@@ -209,7 +210,7 @@ export class McpHttpClient implements McpClient {
     return toolName === undefined ? undefined : this.taskTools.get(toolName)?.outputSchema;
   }
   private readonly toolsChangedListeners = new Set<() => void>();
-  private readonly resourcesChangedListeners = new Set<() => void>();
+  private readonly resourcesChangedListeners = new Set<(cause: ResourceCatalogChange) => void>();
   private readonly disconnectListeners = new Set<() => void>();
   private transportFailures = 0;
   private disconnected = false;
@@ -352,10 +353,20 @@ export class McpHttpClient implements McpClient {
     if (msg.method === "notifications/elicitation/complete") this.clientRequests.elicitationComplete(msg.params);
     // qd/Gm, 4vr415ka [88378,88445), sb190ksj [118418,118548), UTF-16.
     if (msg.method === 'notifications/resources/list_changed' && this.supportsCatalog('resources')) {
-      for (const listener of this.resourcesChangedListeners) listener();
+      for (const listener of this.resourcesChangedListeners) listener('notification');
     }
     if (msg.method === "notifications/resources/updated") this.resourceSubscriptions?.updated(msg.params);
     if (msg.method === "notifications/message") this.logging?.message(msg.params);
+  }
+
+  // ka/js/Ia, sb190ksj [48170,48515)/[48913,50690), UTF-16; successful reopen calls raw list handlers.
+  private refetchReopenedCatalogs(): void {
+    if (record(this.capabilities.tools) && this.capabilities.tools.listChanged) {
+      for (const listener of this.toolsChangedListeners) listener();
+    }
+    if (record(this.capabilities.resources) && this.capabilities.resources.listChanged) {
+      for (const listener of this.resourcesChangedListeners) listener('reopen');
+    }
   }
 
   private startNotificationStream(): void {
@@ -368,13 +379,13 @@ export class McpHttpClient implements McpClient {
 
   private scheduleNotificationReopen(): void {
     if (this.closed || !this.settings.recovery || !this.settings.notificationStream || this.streamRetryTimer) return;
-    // Finite local adaptation: five GET-only reopens per client lifetime, with
-    // 1/2/4/8/8s backoff. An active stream never resets this budget; no replay.
-    const delay = this.serverRetryMs ?? notificationReopenDelays[this.streamReopenAttempts];
-    if (delay === undefined) {
+    // _scheduleReconnection, dt139v0s [3151,3568), UTF-16; admit against the host's lifetime cap before choosing a server delay.
+    const fallback = notificationReopenDelays[this.streamReopenAttempts];
+    if (fallback === undefined) {
       this.streamStatus = { state: "failed", reason: "notification stream reopen exhausted after 5 attempts" };
       return;
     }
+    const delay = this.serverRetryMs ?? fallback;
     this.streamStatus = { state: "starting", reason: `GET recovery backoff ${delay}ms` };
     this.streamRetryTimer = setTimeout(() => {
       this.streamRetryTimer = undefined;
@@ -407,7 +418,9 @@ export class McpHttpClient implements McpClient {
       if (!response.ok || response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() !== "text/event-stream" || !response.body) {
         await response.body?.cancel(); throw new Error("MCP GET notification stream requires successful SSE response");
       }
+      if (this.closed || controller.signal.aborted) { await response.body.cancel(); return; }
       this.streamStatus = { state: "active" };
+      if (this.streamReopenAttempts > 0) this.refetchReopenedCatalogs();
       const parser = new SseParser(async (text) => {
         const msg = parseJson(text);
         if (!record(msg) || msg.jsonrpc !== "2.0") throw new Error("MCP GET malformed JSON-RPC message");
@@ -680,7 +693,7 @@ export class McpHttpClient implements McpClient {
     return () => { this.toolsChangedListeners.delete(listener); };
   }
 
-  onResourcesChanged(listener: () => void): () => void {
+  onResourcesChanged(listener: (cause: ResourceCatalogChange) => void): () => void {
     this.resourcesChangedListeners.add(listener);
     return () => { this.resourcesChangedListeners.delete(listener); };
   }
