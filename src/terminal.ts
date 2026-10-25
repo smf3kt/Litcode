@@ -1422,7 +1422,8 @@ export interface TerminalSurface {
   setProgress?(event: import('./tui-progress.js').AgentProgressEvent): void;
   setTasks?(tasks: readonly import('./tasks.js').TaskRecord[]): void;
   bindInputHistory?(session: import('./session.js').Session): Promise<void>;
-  bindMcpCatalog?(load?: (signal: AbortSignal) => Promise<Pick<import('./mcp.js').McpCatalogListing, 'resources' | 'templates'>>): void;
+  bindMcpCatalog?(load?: (signal: AbortSignal) => Promise<Pick<import('./mcp.js').McpCatalogListing, 'resources' | 'templates'>>,
+    complete?: import('./mcp.js').McpTemplateCompletion): void;
   flushInputHistory?(): Promise<void>;
   bindStatusLine?(session: import('./session.js').Session): void;
   bindDiffPanel?(session: import('./session.js').Session): void;

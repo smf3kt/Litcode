@@ -40,12 +40,9 @@ export function templatePrefix(uriTemplate: string): string {
   return brace === -1 ? uriTemplate : uriTemplate.slice(0, brace);
 }
 
-/**
- * `ese`: a template replacement always leaves the draft open. A spaced text is quoted, and a
- * partial never closes the quote.
- */
-export function shapeTemplateReplacement(text: string, complete: boolean): string {
-  if (text.includes(' ')) return complete ? `@"${text}"` : `@"${text}`;
+/** ese, chunk-24k7d6mw.js [565691,565770), UTF-16: partial values keep their quote open. */
+export function shapeTemplateReplacement(text: string, partial: boolean): string {
+  if (text.includes(' ')) return partial ? `@"${text}` : `@"${text}"`;
   return `@${text}`;
 }
 

@@ -1,0 +1,18 @@
+date	phase	decision	evidence	result
+2026-10-25	select	Choose remaining explicit MCP template value path after W338	ports/W202-mcp-resource-completion.md	Static heads implemented;dynamic ose/client path still omitted
+2026-10-25	source	Acquire verified parser,ranking,value/partial,RPC and input owners	ports/W339-mcp-template-completion.md	Five module digests,eighteen exact bodies/declarators;raw code inert
+2026-10-25	ground	One bounded read-only how pass maps host catalog/client seams	McpClient/ManagedMcpClient/Runtime	Existing capability/cancellation/transport owners reusable;no model tool needed
+2026-10-25	baseline	Drive actual compiled TUI with owned stdio templates	job tmp w339-baseline.txt	Fails expected argument row;static heads visible;no completion RPC
+2026-10-25	design	Centralize source async state in one typed pending/ready owner	TemplateCompletion	50ms debounce,exact input identity,abort/reset on ownership change
+2026-10-25	implement	Port parser/rows and existing transport catalog adapter	mcp,tui,Runtime,CLI,interactive,TerminalSurface	Source partial quoting corrected with callers/tests in one change
+2026-10-25	fixture	Resolve overlapping template quote probe using source rank	o0e resolved-argument priority	Distinct quoted URI scheme used;no product rank changes
+2026-10-25	verify	Run three necessary behavior groups and affected owners	job tmp w339-focused.txt w339-affected.txt	3/3 and246/246;check exit0
+2026-10-25	cli	Initial compiled sequential argument and quote flow	job tmp w339-cli.txt	9checks,0model requests,locks/transports released
+2026-10-25	compare	Read exact character diffs and verify executable comparisons	job tmp w339-source.mjs w339-source.txt	8diffs read;ese and both client generation bodies match after names
+2026-10-25	verify-final	Run runtime/CLI regressions and final compiled artifact	job tmp w339-runtime-cli-tests.txt w339-cli-final.txt w339-build-final.txt	75/75,build exit0 and9checks/0model calls;locks/process cleanup verified
+2026-10-25	identity	Freeze source/tests/build for independent review	job tmp w339-identity-candidate.json	c04b094d;880inputs341validation623build;protected user hashes unchanged
+2026-10-25	cleanup	Check final owned CLI fixture locks and live process paths	job tmp mcp-template-cli-vRWx8V	No session locks or matching processes remain
+2026-10-25	review	Independent source/correctness/comment review of frozen artifact	job tmp w339-independent-tests.txt w339-independent-cli.txt w339-independent-probes.txt	3/3,compiled9checks/0model calls,2targeted compiled probes;no confirmed scoped correctness defect;1844candidate records equal
+2026-10-25	review-cleanup	Verify owned resources and source comment anchors	job tmp w339-independent-cleanup.txt	0live processes,0locks,0probe dirs,0suppressions;one misplaced catalog comment
+2026-10-25	comment-final	Move catalog comment to its original field and rebuild	src/tui.ts plus final check/build	Source/compiled executable syntax equal;only tui source/build comment placement changes
+2026-10-25	identity-final	Compare candidate and delivery manifests	job tmp w339-identity-final.json	3520d4dc;880inputs341validation623build;protected user hashes unchanged

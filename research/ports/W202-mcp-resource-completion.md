@@ -69,9 +69,10 @@ Three adaptations are recorded rather than ported verbatim:
   `resources/list_changed`. The local render path is synchronous, so the listing is read once
   in the background on the first `@` and the band repaints when it arrives. A later
   `list_changed` does not refresh it.
-- `ose` first completes the next template argument through the connected client
-  (`o0e`/`bEt`/`n0e` plus `completeResourceTemplate`). That path needs a live server round
-  trip; only the static prefix list is ported, and the dynamic path is not.
+- At W202, only the static prefix list was ported. [W339](W339-mcp-template-completion.md)
+  adds `ose`'s dynamic argument path through the existing catalog-mode client, including
+  source parser/ranking, prior arguments, debounce and partial/final acceptance. Live
+  catalog notification refresh remains separate.
 - `ose` runs only when the token starts with `@` and the session is not a remote host
   (`!Ht()`). The local product is always the local host, so the gate is always open.
 

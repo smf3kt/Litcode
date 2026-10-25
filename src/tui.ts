@@ -89,7 +89,7 @@ import { acceptEmojiQuery, inlineEmojiCompletion } from './tui-emoji.js';
 import { FileIndex } from './tui-file-index.js';
 import { agentSuggestionRows } from './tui-agent-suggestions.js';
 import { combinedAtRows } from './tui-at-suggestions.js';
-import { templateArgumentRows } from './tui-mcp-suggestions.js';
+import { completeTemplateArguments, TemplateCompletion, templateArgumentRows } from './tui-mcp-suggestions.js';
 import {
   atQuery, applyFileSuggestion, commonPrefix, directorySuggestionRows, fileSuggestionRows,
   listWorkingDirectory, shapeAtDisplayText, FILE_SUGGESTION_LIMIT, type AtQuery,
@@ -242,6 +242,7 @@ export interface TuiOptions extends EditorPolicy, TerminalCallbacks {
     resources: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpResource[]>>;
     templates: Readonly<Record<string, readonly import('./tui-at-suggestions.js').McpTemplate[]>>;
   }>;
+  completeResourceTemplate?: import('./mcp.js').McpTemplateCompletion;
   prompt?: string;
   continuationPrompt?: string;
   history?: readonly string[];
@@ -690,6 +691,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private fileIndexStarted = false;
   /** The directory listings an explicit `@./path` asks for, cached for the source's TTL. */
   private readonly directoryListings = new Map<string, { at: number; entries: { name: string; isDirectory: boolean }[] }>();
+  private readonly templateCompletion = new TemplateCompletion(() => { if (this.started && !this.closed) this.render(); });
   /** The connected servers' `@` catalog, read once in the background on the first `@`. */
   private mcpCatalogStarted = false;
   private mcpCatalogAbort: AbortController | undefined;
@@ -1853,6 +1855,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       this.emit('composerChanged');
       if (this.promptSuggestion.status === 'generated') this.promptSuggestion = { status: 'empty' };
     }
+    // ys/yr, 24k7d6mw [572764,573328)/[573957,580545), UTF-16: changed input retires stale values.
+    if (next.text !== this.editor.text || next.cursor !== this.editor.cursor) this.templateCompletion.reset();
     this.editor = next;
     this.refreshExternalEditorHint();
     this.settleWorkflowKeyword();
@@ -2097,7 +2101,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.sourceSearch?.close();this.sourceSearch=undefined;this.queryUndo.clear();this.queryEditor=createEditorState();
     this.sourcePicker?.close();this.sourcePicker=undefined;this.pickerUndo.clear();this.pickerQuery=createEditorState();
     this.editorController?.abort();this.gestures.reset();this.vim.close();this.focus.close();this.inputHistory.close();
-    this.mcpCatalogAbort?.abort();
+    this.mcpCatalogAbort?.abort(); this.templateCompletion.reset();
     this.editRelay.dispose();
     this.undo.clear();
     this.editor = {...this.editor,pastedContents:{},historyPastes:[],historyDraftPastes:{}};
@@ -2494,6 +2498,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const emoji = this.emojiCompletionEnabled ? emojiRows(text, this.editor.cursor) : undefined;
     // Source order after the commands: an `@` draft asks the file index instead.
     const at = emoji === undefined ? atQuery(text, this.editor.cursor) : undefined;
+    if (at === undefined) this.templateCompletion.reset();
     const suggestions = emoji ?? (at === undefined
       ? commandSuggestions(text, this.editor.cursor, this.options.commands ?? TUI_COMMANDS)
       : this.atSuggestionRows(at));
@@ -2516,7 +2521,12 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   private atSuggestionRows(at: AtQuery): CommandSuggestion[] {
     const workspace = this.options.workspace ?? process.cwd();
     this.ensureMcpCatalog();
-    const templates = templateArgumentRows(at.partial, this.mcpResourceTemplates);
+    const complete = this.options.completeResourceTemplate;
+    // ose/ys, 24k7d6mw [564216,565691)/[572764,573328), UTF-16: explicit values precede the combined list.
+    const templates = complete
+      ? this.templateCompletion.rows(JSON.stringify([this.editor.text, this.editor.cursor, at.partial]),
+        signal => completeTemplateArguments(at.partial, this.mcpResourceTemplates, complete, signal))
+      : templateArgumentRows(at.partial, this.mcpResourceTemplates);
     if (templates !== null) {
       return templates.map(row => ({
         id: row.id, name: row.displayText, insertName: row.displayText,
@@ -2550,8 +2560,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   // RTe.kn/Bn, 24k7d6mw [1560490,1586785), UTF-16; a changed server replaces its resource surface.
-  bindMcpCatalog(load?: TuiOptions['mcpCatalog']): void {
+  bindMcpCatalog(load?: TuiOptions['mcpCatalog'], complete?: TuiOptions['completeResourceTemplate']): void {
     this.mcpCatalogAbort?.abort(); this.mcpCatalogAbort = undefined; this.mcpCatalogStarted = false;
+    this.templateCompletion.reset(); this.options.completeResourceTemplate = complete;
     this.mcpResources = {}; this.mcpResourceTemplates = {}; this.options.mcpCatalog = load;
   }
   /** `ose`'s companion: the source reads a live MCP store; the local render path is
@@ -2565,6 +2576,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     this.mcpCatalogAbort = controller;
     void load(controller.signal).then(listing => {
       if (this.closed || controller.signal.aborted || this.mcpCatalogAbort !== controller) return;
+      this.templateCompletion.reset();
       this.mcpResources = listing.resources;
       this.mcpResourceTemplates = listing.templates;
       if (this.started) this.render();
@@ -2615,6 +2627,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   private dismissAutocomplete(): void {
+    this.templateCompletion.reset();
     this.autocompleteDismissedText = this.editor.text;
     this.autocompleteForText = this.editor.text;
     this.autocompleteIndex = 0;
@@ -4722,6 +4735,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       || this.sourcePicker?.snapshot.searching || this.editorSuspended) this.scrollPointer = undefined;
     if (this.dialog || this.screen !== 'chat' || this.sourceSearch?.snapshot.searching
       || this.sourcePicker?.snapshot.searching || this.editorSuspended) {
+      // yr, 24k7d6mw [573957,580545), UTF-16: a different input owner retires queued completion.
+      this.templateCompletion.reset();
       this.clearShellPointer(); this.shellRows = 0;
       if (this.shellInteraction) this.shellInteraction.hovered = false;
     }

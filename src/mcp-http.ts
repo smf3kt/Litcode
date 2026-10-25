@@ -666,7 +666,7 @@ export class McpHttpClient implements McpClient {
     return parseMcpToolResult(result, this.name, this.declaredOutput(toolName), toolName);
   }
 
-  supportsCatalog(family: "resources" | "prompts"): boolean {
+  supportsCatalog(family: "resources" | "prompts" | "completions"): boolean {
     return record(this.capabilities[family]);
   }
 

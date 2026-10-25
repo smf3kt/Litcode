@@ -160,6 +160,8 @@ export type McpConnection = {
   servers?: () => Record<string, McpServerStatus>;
   /** Present only in catalog mode: each capable server's resources and templates. */
   catalogListing?: (signal: AbortSignal) => Promise<McpCatalogListing>;
+  /** Zd/nh, 4vr415ka [116547,116997), sb190ksj [149573,150023), UTF-16. */
+  completeResourceTemplate?: McpTemplateCompletion;
   reconnect?: (server: string, signal: AbortSignal) => Promise<McpServerStatus>;
   setEnabled?: (server: string, enabled: boolean, signal: AbortSignal) => Promise<McpServerStatus>;
   resumeTask?: (server: string, task: StandardMcpTask, signal: AbortSignal, toolName?: string) => Promise<McpToolResult>;
@@ -203,7 +205,14 @@ export type McpToolResult = {
   isError: boolean;
 };
 
-export type McpCatalogMethod = "resources/list" | "resources/templates/list" | "resources/read" | "prompts/list" | "prompts/get";
+export type McpTemplateCompletionRequest = {
+  server: string;
+  uriTemplate: string;
+  argument: { name: string; value: string };
+  resolvedArgs: Readonly<Record<string, string>>;
+};
+export type McpTemplateCompletion = (request: McpTemplateCompletionRequest, signal: AbortSignal) => Promise<string[]>;
+export type McpCatalogMethod = "resources/list" | "resources/templates/list" | "resources/read" | "prompts/list" | "prompts/get" | "completion/complete";
 
 export interface McpClient {
   readonly disabled?: boolean;
@@ -215,7 +224,7 @@ export interface McpClient {
   listTools(signal: AbortSignal): Promise<McpToolInfo[]>;
   callTool(toolName: string, args: unknown, signal: AbortSignal, pinned?: McpToolInfo): Promise<McpToolResult>;
   resumeTask?(task: StandardMcpTask, signal: AbortSignal, toolName?: string): Promise<McpToolResult>;
-  supportsCatalog(family: "resources" | "prompts"): boolean;
+  supportsCatalog(family: "resources" | "prompts" | "completions"): boolean;
   onToolsChanged(listener: () => void): () => void;
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown>;
   close(): Promise<void>;
@@ -940,7 +949,7 @@ class McpStdioClient implements McpClient {
     return parseMcpToolResult(result, this.name, this.declaredOutput(toolName), toolName);
   }
 
-  supportsCatalog(family: "resources" | "prompts"): boolean {
+  supportsCatalog(family: "resources" | "prompts" | "completions"): boolean {
     return isRecord(this.capabilities[family]);
   }
 
@@ -1014,6 +1023,22 @@ export type McpCatalogResource = {
 export type McpCatalogTemplate = {
   server: string; uriTemplate: string; name?: string; description?: string; mimeType?: string;
 };
+
+const templateCompletionSchema = z.object({ completion: z.object({ values: z.array(z.string()) }) });
+
+/** Zd/nh, 4vr415ka [116547,116997), sb190ksj [149573,150023), UTF-16: optional completion fails empty. */
+async function completeMcpTemplate(clients: Map<string, McpClient>, request: McpTemplateCompletionRequest,
+  signal: AbortSignal): Promise<string[]> {
+  const client = clients.get(request.server);
+  if (!client || !client.supportsCatalog('completions')) return [];
+  try {
+    const response = await client.catalogRequest('completion/complete', {
+      ref: { type: 'ref/resource', uri: request.uriTemplate }, argument: request.argument,
+      ...(Object.keys(request.resolvedArgs).length > 0 ? { context: { arguments: request.resolvedArgs } } : {}),
+    }, signal);
+    return templateCompletionSchema.parse(response).completion.values;
+  } catch { return []; }
+}
 
 /** Every capable server's resource and template listings, keyed by server name. */
 export type McpCatalogListing = {
@@ -1605,7 +1630,7 @@ class ManagedMcpClient implements McpClient {
     if (this.status.state !== 'connected' || !current?.resumeTask) return Promise.reject(new Error('MCP task recovery requires a connected HTTP server'));
     return current.resumeTask(task, signal, toolName);
   }
-  supportsCatalog(family: "resources" | "prompts") { return this.status.state !== 'disabled' && (this.current?.supportsCatalog(family) ?? false); }
+  supportsCatalog(family: "resources" | "prompts" | "completions") { return this.status.state !== 'disabled' && (this.current?.supportsCatalog(family) ?? false); }
   async catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown> {
     if (this.status.state === "closed") throw new Error("MCP connection closed");
     if (this.status.state === "disconnected") await this.redialBeforeUse(signal, "reconnect before catalog requests");
@@ -2018,7 +2043,9 @@ export async function connectMcpServers(
       for (const client of namedClients.values()) (client as ManagedMcpClient).startAutomatic();
     } } : {}),
     servers: () => Object.fromEntries([...namedClients].map(([name, client]) => [name, (client as ManagedMcpClient).view()])),
-    ...(settings.catalog ? { catalogListing: (signal: AbortSignal) => listMcpCatalog(namedClients, signal) } : {}),
+    ...(settings.catalog ? { catalogListing: (signal: AbortSignal) => listMcpCatalog(namedClients, signal),
+      completeResourceTemplate: (request: McpTemplateCompletionRequest, signal: AbortSignal) =>
+        completeMcpTemplate(namedClients, request, signal) } : {}),
     reconnect: async (server, signal) => {
       if (closed) throw new Error("MCP connections closed");
       const client = namedClients.get(server) as ManagedMcpClient | undefined;

@@ -129,7 +129,7 @@ test('a template row carries its replacement and stays partial', () => {
 
 test('a spaced template replacement is quoted and a partial leaves it open', () => {
   assert.equal(shapeTemplateReplacement('a:b', true), '@a:b');
-  assert.equal(shapeTemplateReplacement('a b', true), '@"a b"');
-  assert.equal(shapeTemplateReplacement('a b', false), '@"a b');
+  assert.equal(shapeTemplateReplacement('a b', true), '@"a b');
+  assert.equal(shapeTemplateReplacement('a b', false), '@"a b"');
 });
 

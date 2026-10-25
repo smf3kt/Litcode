@@ -643,7 +643,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     terminal?.setKeybindings(session.config.keybindings);
     // bWe/Wre/jtt, sfn1dbxq [1650777,1650860)/[1666990,1667469), UTF-16: bind the live getter.
     terminal?.setCommands?.(commandTable(session.config));
-    terminal?.bindMcpCatalog?.(activeRuntime.catalogListing);
+    terminal?.bindMcpCatalog?.(activeRuntime.catalogListing, activeRuntime.completeResourceTemplate);
     terminal?.setEditorMode?.(session.config.editorMode,session.config.vimInsertModeRemaps);
     terminal?.setPrefersReducedMotion?.(session.config.prefersReducedMotion);
     terminal?.setShowTurnDuration?.(session.config.showTurnDuration);
@@ -2498,7 +2498,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             try { await withTurn(signal => activeRuntime.reconnectMcp!(server, signal)); }
             finally {
               session.config.tools = pinToolSchemas(activeRuntime.buildTools(session.config, session.id)); activeAgent = undefined;
-              terminal?.bindMcpCatalog?.(activeRuntime.catalogListing);
+              terminal?.bindMcpCatalog?.(activeRuntime.catalogListing, activeRuntime.completeResourceTemplate);
             }
           };
           let focus = 0;
@@ -2526,7 +2526,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 try { await withTurn(signal => activeRuntime.setMcpEnabled!(server, status?.state === 'disabled', signal)); }
                 finally {
                   session.config.tools = pinToolSchemas(activeRuntime.buildTools(session.config, session.id)); activeAgent = undefined;
-                  terminal?.bindMcpCatalog?.(activeRuntime.catalogListing);
+                  terminal?.bindMcpCatalog?.(activeRuntime.catalogListing, activeRuntime.completeResourceTemplate);
                 }
                 break;
               }

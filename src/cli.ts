@@ -866,6 +866,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
           currentRuntime.catalogListing!(signal).then(listing => ({
             resources: listing.resources, templates: listing.templates,
           })) } : {}),
+        ...(currentRuntime.completeResourceTemplate ? { completeResourceTemplate: currentRuntime.completeResourceTemplate } : {}),
         version: cliVersion(),
         keybindings: currentSession.config.keybindings,
         prefersReducedMotion: currentSession.config.prefersReducedMotion,
