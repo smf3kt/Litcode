@@ -2,12 +2,13 @@ import type { McpCatalogListing, McpCatalogResource, McpCatalogTemplate } from '
 
 type CatalogFields = { resources?: McpCatalogResource[]; templates?: McpCatalogTemplate[] };
 export type ResourceCatalogChange = 'notification' | 'reopen';
-export interface ResourceCatalogSource {
+export interface McpCatalogSource<Fields> {
   name: string;
   identity(): object | undefined;
-  load(signal: AbortSignal): Promise<CatalogFields>;
+  load(signal: AbortSignal): Promise<Fields>;
   subscribe(changed: (cause: ResourceCatalogChange) => void): () => void;
 }
+export type ResourceCatalogSource = McpCatalogSource<CatalogFields>;
 
 /** T2e, chunk-zqyjdv9s.js [7849,8425), UTF-16. Host owns timer cancellation and fetch abort. */
 class ResourceRefetch {
@@ -61,29 +62,30 @@ type CatalogGeneration = {
   pending: Set<Promise<void>>;
   initial: Promise<void>;
 };
-type CatalogSlot = { source: ResourceCatalogSource; active?: CatalogGeneration };
+type CatalogSlot<Value> = { source: McpCatalogSource<Value | undefined>; active?: CatalogGeneration };
 
-/** RTe, 24k7d6mw [1570315,1571741); applyQueuedUpdates, 05jp8hm2 [4214,7029), UTF-16. */
-export class McpResourceCatalog {
-  private readonly slots: CatalogSlot[] = [];
+/** RTe, 24k7d6mw [1569414,1571741); applyQueuedUpdates, 05jp8hm2 [4214,7029), UTF-16. */
+export class McpLiveCatalog<Value> {
+  private readonly slots: CatalogSlot<Value>[] = [];
   private readonly unsubscribe: (() => void)[] = [];
-  private readonly listeners = new Set<(listing: McpCatalogListing) => void>();
+  private readonly listeners = new Set<(listing: Record<string, Value>) => void>();
   private readonly retiring = new Set<Promise<void>>();
-  private readonly listing: McpCatalogListing = { resources: {}, templates: {} };
+  private readonly listing = new Map<string, Value>();
   private started = false;
   private closed = false;
   private closing: Promise<void> | undefined;
   private readonly aborted = () => { void this.close(); };
-  constructor(sources: readonly ResourceCatalogSource[], private readonly lifetime: AbortSignal) {
+  constructor(sources: readonly McpCatalogSource<Value | undefined>[], private readonly lifetime: AbortSignal,
+    private readonly merge: (previous: Value | undefined, next: Value) => Value = (_previous, next) => next) {
     for (const source of sources) {
-      const slot: CatalogSlot = { source };
+      const slot: CatalogSlot<Value> = { source };
       this.slots.push(slot);
       this.unsubscribe.push(source.subscribe(cause => {
         if (!this.started || this.closed) return;
         const previous = slot.active;
         const active = this.synchronize(slot);
         if (active && active === previous) {
-          // ka/Gm, sb190ksj [48170,48515)/[118418,118548), UTF-16; reopen calls the raw handler.
+          // ka/Km/Gm, sb190ksj [48170,48515)/[118292,118548), UTF-16; reopen calls the raw handler.
           if (cause === 'reopen') void active.load();
           else void active.refetch.request();
         }
@@ -92,12 +94,12 @@ export class McpResourceCatalog {
     lifetime.addEventListener('abort', this.aborted, { once: true });
     if (lifetime.aborted) void this.close();
   }
-  subscribe(listener: (listing: McpCatalogListing) => void): () => void {
+  subscribe(listener: (listing: Record<string, Value>) => void): () => void {
     if (this.closed) return () => {};
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
   }
-  private snapshot(): McpCatalogListing { return structuredClone(this.listing); }
+  private snapshot(): Record<string, Value> { return structuredClone(Object.fromEntries(this.listing)); }
   private publish(): void { for (const listener of this.listeners) listener(this.snapshot()); }
   private retire(active: CatalogGeneration): void {
     active.controller.abort();
@@ -105,13 +107,13 @@ export class McpResourceCatalog {
     this.retiring.add(done);
     void done.finally(() => { this.retiring.delete(done); });
   }
-  private synchronize(slot: CatalogSlot): CatalogGeneration | undefined {
+  private synchronize(slot: CatalogSlot<Value>): CatalogGeneration | undefined {
     const identity = slot.source.identity();
     if (identity === slot.active?.identity) return slot.active;
     if (slot.active) this.retire(slot.active);
     slot.active = undefined;
     if (!identity) {
-      delete this.listing.resources[slot.source.name]; delete this.listing.templates[slot.source.name];
+      this.listing.delete(slot.source.name);
       this.publish(); return;
     }
     const controller = new AbortController();
@@ -122,15 +124,7 @@ export class McpResourceCatalog {
       const current = ++revision;
       const fields = await slot.source.load(signal);
       if (this.closed || signal.aborted || slot.source.identity() !== identity || current !== revision) return;
-      const name = slot.source.name;
-      if (fields.resources !== undefined) {
-        if (fields.resources.length) this.listing.resources[name] = fields.resources;
-        else delete this.listing.resources[name];
-      }
-      if (fields.templates !== undefined) {
-        if (fields.templates.length) this.listing.templates[name] = fields.templates;
-        else delete this.listing.templates[name];
-      }
+      if (fields !== undefined) this.listing.set(slot.source.name, this.merge(this.listing.get(slot.source.name), fields));
       this.publish();
     };
     const pending = new Set<Promise<void>>();
@@ -144,9 +138,9 @@ export class McpResourceCatalog {
     slot.active = active;
     return active;
   }
-  async read(signal: AbortSignal): Promise<McpCatalogListing> {
+  async read(signal: AbortSignal): Promise<Record<string, Value>> {
     signal.throwIfAborted();
-    if (this.closed) throw new Error('MCP resource catalog closed');
+    if (this.closed) throw new Error('MCP catalog closed');
     this.started = true;
     const pending = this.slots.map(slot => this.synchronize(slot)?.initial);
     await new Promise<void>((resolve, reject) => {
@@ -166,4 +160,24 @@ export class McpResourceCatalog {
     for (const slot of this.slots) if (slot.active) this.retire(slot.active);
     return this.closing = Promise.all(this.retiring).then(() => {});
   }
+}
+
+/** RTe, 24k7d6mw [1570315,1571741), UTF-16; resource families merge independently. */
+export class McpResourceCatalog {
+  private readonly catalog: McpLiveCatalog<CatalogFields>;
+  constructor(sources: readonly ResourceCatalogSource[], lifetime: AbortSignal) {
+    this.catalog = new McpLiveCatalog(sources, lifetime, (previous, next) => ({
+      resources: next.resources ?? previous?.resources, templates: next.templates ?? previous?.templates,
+    }));
+  }
+  private project(listing: Record<string, CatalogFields>): McpCatalogListing {
+    const resources = Object.fromEntries(Object.entries(listing).flatMap(([name, value]) => value.resources?.length ? [[name, value.resources]] : []));
+    const templates = Object.fromEntries(Object.entries(listing).flatMap(([name, value]) => value.templates?.length ? [[name, value.templates]] : []));
+    return { resources, templates };
+  }
+  subscribe(listener: (listing: McpCatalogListing) => void): () => void {
+    return this.catalog.subscribe(listing => listener(this.project(listing)));
+  }
+  async read(signal: AbortSignal): Promise<McpCatalogListing> { return this.project(await this.catalog.read(signal)); }
+  close(): Promise<void> { return this.catalog.close(); }
 }

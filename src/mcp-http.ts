@@ -211,6 +211,7 @@ export class McpHttpClient implements McpClient {
   }
   private readonly toolsChangedListeners = new Set<() => void>();
   private readonly resourcesChangedListeners = new Set<(cause: ResourceCatalogChange) => void>();
+  private readonly promptsChangedListeners = new Set<(cause: ResourceCatalogChange) => void>();
   private readonly disconnectListeners = new Set<() => void>();
   private transportFailures = 0;
   private disconnected = false;
@@ -355,6 +356,10 @@ export class McpHttpClient implements McpClient {
     if (msg.method === 'notifications/resources/list_changed' && this.supportsCatalog('resources')) {
       for (const listener of this.resourcesChangedListeners) listener('notification');
     }
+    // Km, sb190ksj [118292,118418), UTF-16.
+    if (msg.method === 'notifications/prompts/list_changed' && this.supportsCatalog('prompts')) {
+      for (const listener of this.promptsChangedListeners) listener('notification');
+    }
     if (msg.method === "notifications/resources/updated") this.resourceSubscriptions?.updated(msg.params);
     if (msg.method === "notifications/message") this.logging?.message(msg.params);
   }
@@ -366,6 +371,9 @@ export class McpHttpClient implements McpClient {
     }
     if (record(this.capabilities.resources) && this.capabilities.resources.listChanged) {
       for (const listener of this.resourcesChangedListeners) listener('reopen');
+    }
+    if (record(this.capabilities.prompts) && this.capabilities.prompts.listChanged) {
+      for (const listener of this.promptsChangedListeners) listener('reopen');
     }
   }
 
@@ -696,6 +704,11 @@ export class McpHttpClient implements McpClient {
   onResourcesChanged(listener: (cause: ResourceCatalogChange) => void): () => void {
     this.resourcesChangedListeners.add(listener);
     return () => { this.resourcesChangedListeners.delete(listener); };
+  }
+
+  onPromptsChanged(listener: (cause: ResourceCatalogChange) => void): () => void {
+    this.promptsChangedListeners.add(listener);
+    return () => { this.promptsChangedListeners.delete(listener); };
   }
 
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown> {

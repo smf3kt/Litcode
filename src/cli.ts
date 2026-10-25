@@ -20,6 +20,7 @@ import { createTuiTerminal } from './tui.js';
 import { beginSpinnerTipsStartup } from './spinner-tips.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
+import { runMcpPrompt } from './mcp-prompt-run.js';
 import { agentTypesSection, setHeldSkills } from './skill-catalog.js';
 import { listSessions } from './sessions.js';
 import { loadProjectConfig, defaultUserDir, instructionSources, type LoadedConfig } from './config.js';
@@ -948,6 +949,18 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     const rawPrompt = positionals.join(' ');
     const slash = parseSlashCommand(rawPrompt);
     const selectedSkill = slash ? findSkill(currentSession.config.skills, slash.name) : undefined;
+    // mi/We, sb190ksj [150584,152344), htgmc2p1 [40137,44501), UTF-16.
+    if (!values.continue && !demo && slash && !selectedSkill && currentRuntime.promptCommands) {
+      const commands = currentRuntime.promptCommands;
+      const command = (await commands.list(controller.signal)).find(candidate => candidate.commandName === slash.name);
+      if (command) {
+        const result = await drainWakeups(await runMcpPrompt(agent, commands, command, slash.args, controller.signal, {
+          ...(values.attach === undefined ? {} : { attachment: { path: values.attach, ...(values.pages === undefined ? {} : { pages: values.pages }) } }),
+          ...(schema === undefined ? {} : { schema }),
+        }));
+        await finish(result.reason, result.text, result.modelCalls); return;
+      }
+    }
     if (values.attach !== undefined && selectedSkill && skillRequiresExecution(selectedSkill, currentSession.config)) {
       throw new Error('Attachments with executable skills require a plain task prompt');
     }

@@ -32,6 +32,7 @@ export interface TuiCommand {
   readonly description: string;
   readonly aliases?: readonly string[];
   readonly kind: 'command' | 'skill';
+  readonly displayName?: string;
   /** Source `a`: the lane this command draws. Defaults to `action`, the table's default. */
   readonly lane?: Exclude<SuggestionLane, 'skill'>;
   /** Source `_Dt`: the `[tag]` lane. No local command sets one yet. */
@@ -157,7 +158,8 @@ export const TUI_COMMANDS: readonly TuiCommand[] = [
  *  in `interactiveLoop`'s dispatch. bWe.description, sfn1dbxq [1650777,1650860), UTF-16,
  *  reads the live model when Wre/jtt builds each row. */
 export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | undefined,
-  options: { readonly fleetFork?: boolean; readonly coordinator?: boolean; readonly currentModel?: () => string } = {}): readonly TuiCommand[] {
+  options: { readonly fleetFork?: boolean; readonly coordinator?: boolean; readonly currentModel?: () => string;
+    readonly mcpPrompts?: readonly import('./mcp-prompt.js').McpPromptCommand[] } = {}): readonly TuiCommand[] {
   const localNames = new Set(TUI_COMMANDS.map(command => command.name));
   const extra: TuiCommand[] = [];
   for (const skill of skills ?? []) {
@@ -166,6 +168,15 @@ export function tuiCommandsWithSkills(skills: readonly SkillCommandSource[] | un
       aliases: skill.aliases, kind: 'skill',
       sourceTag: skill.source === 'projectSettings' ? 'project' : undefined,
       requiresArguments: (skill.argumentNames?.length ?? 0) > 0 });
+  }
+  // mi/jtt, sb190ksj [150584,152344), sfn1dbxq [1666990,1667469), UTF-16.
+  const claimed = new Set([...localNames, ...extra.flatMap(command => [command.name, ...command.aliases ?? []])]);
+  for (const prompt of options.mcpPrompts ?? []) {
+    if (claimed.has(prompt.commandName)) continue;
+    claimed.add(prompt.commandName);
+    extra.push({ name: prompt.commandName, displayName: prompt.displayName,
+      description: (prompt.description ?? '') + (prompt.arguments?.length ? ` (arguments: ${prompt.arguments.map(argument => argument.name).join(', ')})` : ''),
+      kind: 'skill', requiresArguments: (prompt.arguments?.length ?? 0) > 0 });
   }
   // Source `Ujt` (chunk-sfn1dbxq.js 1663949): the open fleet fork selects `njt` and adds `ojt`
   // (`/subtask`); the closed branch selects `tjt` and lists no subtask row. Every one of the three
@@ -255,7 +266,7 @@ function toSuggestion(command: TuiCommand, matchedAlias?: string): CommandSugges
     id: `${command.kind}:${command.name}`,
     name: command.name,
     insertName: matchedAlias ?? command.name,
-    displayText: `/${command.name}${aliasSuffix}`,
+    displayText: `/${command.displayName ?? command.name}${aliasSuffix}`,
     description: command.description,
     kind: command.kind,
     lane: command.kind === 'skill' ? 'skill' : command.lane ?? 'action',

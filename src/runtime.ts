@@ -461,6 +461,7 @@ export type Runtime = {
   catalogListing?: NonNullable<McpConnection["catalogListing"]>;
   completeResourceTemplate?: McpConnection['completeResourceTemplate'];
   subscribeCatalog?: McpConnection['subscribeCatalog'];
+  promptCommands?: McpConnection['promptCommands'];
   reconnectMcp?: NonNullable<McpConnection["reconnect"]>;
   setMcpEnabled?: NonNullable<McpConnection['setEnabled']>;
   notificationStreams?: NonNullable<McpConnection["notificationStreams"]>;
@@ -1426,6 +1427,7 @@ export async function createRuntime(
       ...(mcp.catalogListing ? { catalogListing: (signal: AbortSignal) => mcp.catalogListing!(signal) } : {}),
       ...(mcp.completeResourceTemplate ? { completeResourceTemplate: mcp.completeResourceTemplate } : {}),
       ...(mcp.subscribeCatalog ? { subscribeCatalog: mcp.subscribeCatalog } : {}),
+      ...(mcp.promptCommands ? { promptCommands: mcp.promptCommands } : {}),
       ...(mcp.reconnect ? { reconnectMcp: async (server: string, requestSignal: AbortSignal) => {
         try { return await mcp.reconnect!(server, requestSignal); }
         finally {

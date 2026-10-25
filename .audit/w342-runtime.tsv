@@ -1,0 +1,19 @@
+phase	result	evidence
+source	acquired	ro/mi,Km,RTe,at/We/rt,ar/ks/Ho/Ak;exactUTF16ranges in W342 record
+architecture	selected	typed prompt commands;shared per-server live catalog owner;source whitespace positional parsing
+baseline	exit1	compiled e7e5cb6 shows No commands match for /mcp__docs_local__r
+implement	connected	MCPprompt catalog,transport/managed events,Runtime,slash menu,interactive/one-shot,raw/meta journal and error/abort outcome
+verify	exit0	new3groups;final50/50;RuntimeCLIhooks134/134;check/build
+compatibility	188of190	2skill-runtime failures reproduce identical errors on untouched e7e5cb6 snapshot;unchanged tests
+compiled	exit0	prompt11checks2ownedloopbackmodels;resource9checks0model;reopen8checks4GET0model
+identity	frozen	c09c91313af0a4bdd0bb9fb714bfff55fe5c06e9d6734ce2b75edcd0c7ef6c4e;886inputs344validation626build
+loop	cancelled	CronDelete a7e317bd;CronList empty;user requests finish W342 then stop
+review	confirmed-P2	independent1856records match,new3/3,compiled11/2loopback;13digests52ASTranges;1supplementalprobe confirms missing-argument catch ends unrelated pending turn
+repair	exit0	admit signal/busy/unfinished before hooks/fetch/writes;new regression fails beforefix;repaired50/50,check/build,compiled11/2loopback
+identity-repaired	frozen	7f18156558e7f60c135a77e3f3e494f45e786492b3f75168e9cb11215eaf1366;1856records;5files differ from initial candidate
+review-repaired	exit0	fresh3/3,compiled11/2loopback,1probe4scenarios;pendingjournal/RPC/continue,busy,abort pass;0remainingconfirmeddefects
+identity-final	matched	7f18156558e7f60c135a77e3f3e494f45e786492b3f75168e9cb11215eaf1366;all1856records equal
+cleanup-final	verified	0ownedprocesses/locks;ports57805/57821closed;0suppressions;noexternalpaidcalls
+closure	ready	local exact-path commit Run local MCP prompts as slash commands;no coauthor/no push;loop cancelled,stop afterW342
+cleanup-main	verified	compiled prompt/resource/reopen and repaired prompt fixtures have0locks;main validation processes exited
+protected	matched	.audit/w45-77-evidence.mjs9a3b57af;test/skills-command.test.ts995b1526;unrelated files excluded from staging

@@ -9,7 +9,8 @@ import type { Anthropic } from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 import { McpHttpClient, MCP_HTTP_LIMITS, validateMcpHttpUrl, validateMcpHeadersEnv } from "./mcp-http.js";
-import { McpResourceCatalog, type ResourceCatalogChange } from './mcp-resource-catalog.js';
+import { McpLiveCatalog, McpResourceCatalog, type ResourceCatalogChange } from './mcp-resource-catalog.js';
+import { mcpPromptCommands, mcpPromptArguments, mcpPromptContent, type McpPromptCommand, type McpPromptCommands } from './mcp-prompt.js';
 import type { ToolContext, ToolDefinition } from "./tools.js";
 import { mcpReconnectDelay, isTransientMcpFailure } from "./mcp-retry.js";
 import { MCP_PROGRESS_LIMITS, McpProgressRegistry, type McpProgressUpdate } from "./mcp-progress.js";
@@ -162,6 +163,7 @@ export type McpConnection = {
   /** Present only in catalog mode: each capable server's resources and templates. */
   catalogListing?: (signal: AbortSignal) => Promise<McpCatalogListing>;
   subscribeCatalog?: McpCatalogSubscription;
+  promptCommands?: McpPromptCommands;
   /** Zd/nh, 4vr415ka [116547,116997), sb190ksj [149573,150023), UTF-16. */
   completeResourceTemplate?: McpTemplateCompletion;
   reconnect?: (server: string, signal: AbortSignal) => Promise<McpServerStatus>;
@@ -229,6 +231,7 @@ export interface McpClient {
   supportsCatalog(family: "resources" | "prompts" | "completions"): boolean;
   onToolsChanged(listener: () => void): () => void;
   onResourcesChanged(listener: (cause: ResourceCatalogChange) => void): () => void;
+  onPromptsChanged?(listener: (cause: ResourceCatalogChange) => void): () => void;
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown>;
   close(): Promise<void>;
 }
@@ -491,6 +494,7 @@ class McpStdioClient implements McpClient {
   }
   private readonly toolsChangedListeners = new Set<() => void>();
   private readonly resourcesChangedListeners = new Set<(cause: ResourceCatalogChange) => void>();
+  private readonly promptsChangedListeners = new Set<(cause: ResourceCatalogChange) => void>();
   private readonly disconnectListeners = new Set<() => void>();
   onDisconnected(listener: () => void): () => void {
     this.disconnectListeners.add(listener);
@@ -851,7 +855,10 @@ class McpStdioClient implements McpClient {
       }
       if (!Object.hasOwn(message, "id") && method === "notifications/progress") this.progress.dispatch(message.params);
       if (!Object.hasOwn(message, "id") && method === "notifications/elicitation/complete") this.clientRequests.elicitationComplete(message.params);
-      // qd/Gm, 4vr415ka [88378,88445), sb190ksj [118418,118548), UTF-16.
+      // Km/Gm, sb190ksj [118292,118548), UTF-16.
+      if (!Object.hasOwn(message, 'id') && method === 'notifications/prompts/list_changed' && this.supportsCatalog('prompts')) {
+        for (const listener of this.promptsChangedListeners) listener('notification');
+      }
       if (!Object.hasOwn(message, "id") && method === "notifications/resources/list_changed" && this.supportsCatalog('resources')) {
         for (const listener of this.resourcesChangedListeners) listener('notification');
       }
@@ -971,6 +978,11 @@ class McpStdioClient implements McpClient {
     return () => { this.resourcesChangedListeners.delete(listener); };
   }
 
+  onPromptsChanged(listener: (cause: ResourceCatalogChange) => void): () => void {
+    this.promptsChangedListeners.add(listener);
+    return () => { this.promptsChangedListeners.delete(listener); };
+  }
+
   catalogRequest(method: McpCatalogMethod, params: unknown, signal: AbortSignal): Promise<unknown> {
     return this.request(method, params, signal);
   }
@@ -1019,8 +1031,9 @@ function makeMcpTool(
 
 export const MCP_CATALOG_LIMITS: readonly string[] = [
   "catalog: capability-aware resources/list, resources/templates/list, resources/read, prompts/list and prompts/get; results are inert JSON with output caps",
-  "catalog pagination: bounded pages with cursor-cycle rejection; no resource subscriptions, prompt execution, sampling, roots or logging",
-  "catalog discovery: explicit calls only; list_changed notifications do not refresh the connected tool schemas",
+  "catalog pagination: bounded pages with cursor-cycle rejection; resource subscriptions, sampling, roots and logging are gated separately",
+  "catalog discovery: live resources and MCP prompt commands refresh per server on list_changed and advertised GET recovery; published model tool schemas stay pinned",
+  "prompt commands: local interactive and one-shot slash invocation with positional arguments, expansion hooks and meta content; binary content persists to exclusive workspace files and images use the local codec adapter",
 ];
 
 function catalogLimits(limits: readonly string[]): readonly string[] {
@@ -1061,7 +1074,7 @@ export type McpCatalogListing = {
 export type McpCatalogSubscription = (listener: (listing: McpCatalogListing) => void) => () => void;
 
 async function listCatalogFamily(client: McpClient, server: string, method: McpCatalogMethod,
-  list: "resources" | "resourceTemplates", signal: AbortSignal): Promise<Record<string, unknown>[]> {
+  list: "resources" | "resourceTemplates" | "prompts", signal: AbortSignal): Promise<Record<string, unknown>[]> {
   const all: Record<string, unknown>[] = [];
   const seen = new Set<string>();
   let cursor: string | undefined;
@@ -1492,6 +1505,7 @@ class ManagedMcpClient implements McpClient {
   private inventory: McpToolInfo[] = [];
   private listeners = new Set<() => void>();
   private resourcesListeners = new Set<(cause: ResourceCatalogChange) => void>();
+  private promptsListeners = new Set<(cause: ResourceCatalogChange) => void>();
   private unbind: (() => void)[] = [];
   private status: McpServerStatus = { state: "connected", generation: 1, attempts: 0 };
   private replacing: Promise<McpServerStatus> | undefined;
@@ -1526,6 +1540,9 @@ class ManagedMcpClient implements McpClient {
     if (!client) return;
     this.unbind = [client.onToolsChanged(() => { for (const listener of this.listeners) listener(); }),
       client.onResourcesChanged(cause => { if (this.current === client) this.publishResources(cause); })];
+    // RTe/Km, 24k7d6mw [1569414,1570284), sb190ksj [118292,118418), UTF-16.
+    const prompts = client.onPromptsChanged?.(cause => { if (this.current === client) this.publishPrompts(cause); });
+    if (prompts) this.unbind.push(prompts);
     const subscriptions = client.resourceSubscriptions;
     if (subscriptions && this.acknowledgement) {
       const commit = this.acknowledgement;
@@ -1542,7 +1559,7 @@ class ManagedMcpClient implements McpClient {
       if (this.current !== client || this.status.state === "closed" || this.status.state === 'disabled') return;
       if (this.status.state === "disconnected") return;
       this.status.state = "disconnected";
-      this.publishResources();
+      this.publishCatalogs();
       if (this.automatic && this.automaticReady && !this.replacing) this.scheduleRetry(0, ++this.retryEpoch);
     });
     if (unsubscribe) this.unbind.push(unsubscribe);
@@ -1639,7 +1656,18 @@ class ManagedMcpClient implements McpClient {
   }
   onToolsChanged(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   onResourcesChanged(listener: (cause: ResourceCatalogChange) => void): () => void { this.resourcesListeners.add(listener); return () => { this.resourcesListeners.delete(listener); }; }
+  onPromptsChanged(listener: (cause: ResourceCatalogChange) => void): () => void { this.promptsListeners.add(listener); return () => { this.promptsListeners.delete(listener); }; }
+  private publishPrompts(cause: ResourceCatalogChange = 'notification'): void { for (const listener of this.promptsListeners) listener(cause); }
   private publishResources(cause: ResourceCatalogChange = 'notification'): void { for (const listener of this.resourcesListeners) listener(cause); }
+  private publishCatalogs(): void { this.publishResources(); this.publishPrompts(); }
+  promptCatalogIdentity(): McpClient | undefined {
+    return this.status.state === 'connected' && this.current?.supportsCatalog('prompts') ? this.current : undefined;
+  }
+  async preparePromptCatalog(signal: AbortSignal): Promise<void> {
+    if (this.status.state === 'disconnected' && this.current?.supportsCatalog('prompts')) {
+      await this.redialBeforeUse(signal, 'reconnect before prompt commands');
+    }
+  }
   // Jr, 24k7d6mw [1567980,1568012); applyQueuedUpdates, 05jp8hm2 [4214,7029), UTF-16.
   resourceCatalogIdentity(): McpClient | undefined {
     return this.status.state === 'connected' && this.current?.supportsCatalog('resources') ? this.current : undefined;
@@ -1708,7 +1736,7 @@ class ManagedMcpClient implements McpClient {
       this.status = { state: 'disabled', generation: this.status.generation, attempts: this.status.attempts };
       for (const unsubscribe of this.unbind) unsubscribe(); this.unbind = [];
       const old = this.current; this.current = undefined; this.inventory = [];
-      this.publishResources();
+      this.publishCatalogs();
       for (const listener of this.listeners) listener();
       await Promise.all([old?.close(), this.replacing?.catch(() => undefined)]);
       return this.view();
@@ -1746,7 +1774,7 @@ class ManagedMcpClient implements McpClient {
     } catch (error) { subscriptions?.release(); return Promise.reject(error); }
     const previous = this.status.state;
     this.status.state = "reconnecting";
-    this.publishResources();
+    this.publishCatalogs();
     this.status.attempts++;
     this.replacing = Promise.resolve().then(async () => {
       let candidate: McpClient | undefined;
@@ -1774,7 +1802,7 @@ class ManagedMcpClient implements McpClient {
         this.status = { state: "connected", generation: this.status.generation + 1, attempts: this.status.attempts,
           ...(this.status.automaticAttempts === undefined ? {} : { automaticAttempts: this.status.automaticAttempts }) };
         this.bind();
-        this.publishResources();
+        this.publishCatalogs();
         for (const listener of this.listeners) listener();
         await old?.close().catch(() => undefined);
         return this.view();
@@ -1783,7 +1811,7 @@ class ManagedMcpClient implements McpClient {
         if (this.status.state !== "closed" && this.status.state !== 'disabled' && this.current === old) {
           this.status.state = previous === "disconnected" || this.status.state === "disconnected" ? "disconnected" : "connected";
           this.status.lastError = "MCP reconnect failed; previous transport retained";
-          this.publishResources();
+          this.publishCatalogs();
         }
         throw error;
       } finally {
@@ -1803,7 +1831,7 @@ class ManagedMcpClient implements McpClient {
     this.acknowledgement = undefined;
     this.desired?.clear();
     for (const unsubscribe of this.unbind) unsubscribe();
-    this.publishResources(); this.resourcesListeners.clear();
+    this.publishCatalogs(); this.resourcesListeners.clear(); this.promptsListeners.clear();
     this.listeners.clear();
     return this.closing = (async () => {
       await this.replacing?.catch(() => undefined);
@@ -1994,7 +2022,7 @@ export async function connectMcpServers(
       .replace("no background HTTP GET stream", "owned HTTP GET SSE stream enabled")
       .replace("HTTP observes only active POST SSE responses, with no GET stream or continuous HTTP push", "HTTP observes POST SSE plus its owned GET SSE notification stream")
       .replace("active HTTP POST SSE responses only; no GET stream or continuous HTTP push", "HTTP POST SSE responses plus its owned GET SSE notification stream")),
-      `HTTP GET notification stream: one owned stream after initialize; same URL/session/protocol/auth headers and redirect restrictions; ${settings.requestTimeoutMs}ms header/read idle deadline; ${settings.recovery ? "recovery enables at most 5 GET-only reopens per transport lifetime after EOF, idle timeout or transport failure, delayed by the latest server SSE retry value when present and otherwise by 1/2/4/8/8 seconds; a reopen sends the last observed SSE event id as last-event-id, which a bare id field clears, so the server keeps ownership of payload replay; 404/405 unavailable and 204 ended are terminal, as are authentication, redirect, malformed/oversized SSE and other HTTP status failures; no client-side payload replay; successful recovery opens refetch registered tool/resource catalogs that advertise listChanged, and a stream that carried a client request is never reopened" : "404/405 unavailable, 204/EOF ended; no retry, reconnect or event replay"}; failures do not disable POST`,
+      `HTTP GET notification stream: one owned stream after initialize; same URL/session/protocol/auth headers and redirect restrictions; ${settings.requestTimeoutMs}ms header/read idle deadline; ${settings.recovery ? "recovery enables at most 5 GET-only reopens per transport lifetime after EOF, idle timeout or transport failure, delayed by the latest server SSE retry value when present and otherwise by 1/2/4/8/8 seconds; a reopen sends the last observed SSE event id as last-event-id, which a bare id field clears, so the server keeps ownership of payload replay; 404/405 unavailable and 204 ended are terminal, as are authentication, redirect, malformed/oversized SSE and other HTTP status failures; no client-side payload replay; successful recovery opens refetch registered tool/resource/prompt catalogs that advertise listChanged, and a stream that carried a client request is never reopened" : "404/405 unavailable, 204/EOF ended; no retry, reconnect or event replay"}; failures do not disable POST`,
       `HTTP GET dispatch: logging/resource updates/tools list changes/cancellation notifications; every client request (roots/list, form elicitation/create, sampling/createMessage) is dispatched under the same callback, capability, ownership, cancellation and bounded POST-reply contract as POST SSE, so an unsupported method receives a bounded error reply;; a replayed request is served again, so replay dedupe remains the server responsibility RPC responses are ignored; a stream that carried a request is not auto-reopened; incremental bounds 1MiB/event, 64KiB/line, 8MiB/read chunk without whole-stream accumulation or total event limit; close aborts reader and awaits at most 1000ms`]
     : finalLimits;
   const resourceCatalog = settings.catalog ? new McpResourceCatalog([...namedClients].map(([name, raw]) => {
@@ -2006,6 +2034,32 @@ export async function connectMcpServers(
       },
       subscribe: (listener: (cause: ResourceCatalogChange) => void) => client.onResourcesChanged(listener) };
   }), context.signal) : undefined;
+  // ro/mi/Km/RTe, sb190ksj [150027,152344)/[118292,118418), 24k7d6mw [1569414,1570284), UTF-16.
+  const promptCatalog = settings.catalog ? new McpLiveCatalog<McpPromptCommand[]>([...namedClients].map(([name, raw]) => {
+    const client = raw as ManagedMcpClient;
+    return { name, identity: () => client.promptCatalogIdentity(),
+      load: async (signal: AbortSignal) => {
+        const current = client.promptCatalogIdentity();
+        if (!current) return undefined;
+        try { return mcpPromptCommands(name, await listCatalogFamily(current, name, 'prompts/list', 'prompts', signal)); }
+        catch (error) { return catalogFetchFailure(error); }
+      },
+      subscribe: (listener: (cause: ResourceCatalogChange) => void) => client.onPromptsChanged(listener) };
+  }), context.signal) : undefined;
+  const promptCommands: McpPromptCommands | undefined = promptCatalog ? {
+    list: async signal => {
+      await Promise.all([...namedClients.values()].map(raw => (raw as ManagedMcpClient).preparePromptCatalog(signal).catch(() => {})));
+      return Object.values(await promptCatalog.read(signal)).flat();
+    },
+    subscribe: listener => promptCatalog.subscribe(listing => listener(Object.values(listing).flat())),
+    invoke: async (command, args, signal) => {
+      const arguments_ = mcpPromptArguments(command, args);
+      const client = namedClients.get(command.server);
+      if (!client?.supportsCatalog('prompts')) throw new Error('MCP prompt server is unavailable');
+      const result = await client.catalogRequest('prompts/get', { name: command.name, arguments: arguments_ }, signal);
+      return mcpPromptContent(result, command.server, context.workspace, signal);
+    },
+  } : undefined;
   const retiredCatalogs = new Set<string>();
   const publishTools = () => {
     const next: ToolDefinition[] = [];
@@ -2070,6 +2124,7 @@ export async function connectMcpServers(
       for (const client of namedClients.values()) (client as ManagedMcpClient).startAutomatic();
     } } : {}),
     servers: () => Object.fromEntries([...namedClients].map(([name, client]) => [name, (client as ManagedMcpClient).view()])),
+    ...(promptCommands ? { promptCommands } : {}),
     ...(resourceCatalog ? { catalogListing: async (signal: AbortSignal) => {
       await Promise.all([...namedClients.values()].map(raw =>
         (raw as ManagedMcpClient).prepareResourceCatalog(signal).catch(() => {})));
@@ -2108,7 +2163,7 @@ export async function connectMcpServers(
       if (closed) return;
       closed = true;
       dynamicCatalog?.close();
-      await resourceCatalog?.close();
+      await Promise.all([resourceCatalog?.close(), promptCatalog?.close()]);
       await closeAll(clients);
     },
   };

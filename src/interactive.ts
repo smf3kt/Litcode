@@ -120,6 +120,7 @@ import { ADD_DIR_USAGE, addedForSessionMessage, addDirectoryMessage, validateAdd
 import { chordForAction } from './tui-keys.js';
 import { BASH_CAVEAT, bashInputText, bashResultText } from './tui-bash-mode.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
+import { runMcpPrompt } from './mcp-prompt-run.js';
 import { reloadSkillsMessage } from './reload-skills.js';
 import { briefTranscriptEnabled, focusModeFor, focusReport, focusUnknownArgument, parseFocusArgument,
   saveViewModeSetting } from './focus-command.js';
@@ -367,8 +368,11 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // registration's `isEnabled:()=>!xa()` hides both rows in a coordinator session.
   const fleetFork = fleetForkOpen(process.env, initial.config);
   const coordinator = () => subtaskCoordinator(process.env, { interactive: terminal !== undefined, remote: false });
+  let mcpCommands: import('./mcp-prompt.js').McpPromptCommand[] = [];
+  let unbindPromptCommands: (() => void) | undefined;
+  let promptCatalogController: AbortController | undefined;
   const commandTable = (config: SessionConfig) => tuiCommandsWithSkills(config.skills,
-    { fleetFork, coordinator: coordinator(), currentModel: () => session.config.model });
+    { fleetFork, coordinator: coordinator(), currentModel: () => session.config.model, mcpPrompts: mcpCommands });
   const planResume = new InteractivePlanResume(initial.id);
   // The user settings file's `env` block is applied before anything probes the environment, so a
   // persisted `/scroll-speed` survives a restart. It runs here rather than at startup because the
@@ -634,6 +638,22 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     const override = effortOverride();
     terminal?.setEffortFeedback?.((override === null ? selected : override.level) ?? DEFAULT_EFFORT);
   };
+  // RTe, 24k7d6mw [1569414,1570284), UTF-16; bind to the accepted Runtime and retire old subscribers.
+  const bindPromptCommands = () => {
+    promptCatalogController?.abort(); unbindPromptCommands?.(); unbindPromptCommands = undefined;
+    mcpCommands = [];
+    const owner = activeRuntime.promptCommands;
+    const controller = promptCatalogController = new AbortController();
+    if (!owner) return;
+    const signal = AbortSignal.any([options.signal, controller.signal]);
+    let published = false;
+    const accept = (commands: import('./mcp-prompt.js').McpPromptCommand[]) => {
+      if (signal.aborted || activeRuntime.promptCommands !== owner) return;
+      mcpCommands = commands; terminal?.setCommands?.(commandTable(session.config));
+    };
+    unbindPromptCommands = owner.subscribe(commands => { published = true; accept(commands); });
+    void owner.list(signal).then(commands => { if (!published) accept(commands); }).catch(() => {});
+  };
   const bindConfigWatch = () => {
     configWatch?.close(); configWatch = undefined; configDirty = false;
     if (watchedWorkspace !== session.config.workspace) { dynamicWatchPaths.clear(); watchedWorkspace = session.config.workspace; }
@@ -641,6 +661,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       for (const file of event.paths) if (dynamicWatchPaths.size < 2048 && Buffer.byteLength(JSON.stringify([...dynamicWatchPaths, file])) <= 65536) dynamicWatchPaths.add(file);
     }
     terminal?.setKeybindings(session.config.keybindings);
+    bindPromptCommands();
     // bWe/Wre/jtt, sfn1dbxq [1650777,1650860)/[1666990,1667469), UTF-16: bind the live getter.
     terminal?.setCommands?.(commandTable(session.config));
     terminal?.bindMcpCatalog?.(activeRuntime.catalogListing, activeRuntime.completeResourceTemplate, activeRuntime.subscribeCatalog);
@@ -3652,6 +3673,19 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           activeRuntime.buildTools(session.config, session.id);
           const parsed = parseSlashCommand(prompt);
           const skill = parsed ? findSkill(session.config.skills, parsed.name) : undefined;
+          // mi/We, sb190ksj [150584,152344), htgmc2p1 [40137,44501), UTF-16.
+          if (parsed && !skill && activeRuntime.promptCommands) {
+            const commands = activeRuntime.promptCommands;
+            if (refuseWhenBlocked()) continue;
+            const result = await withModelTurn(async signal => {
+              const command = (await commands.list(signal)).find(candidate => candidate.commandName === parsed.name);
+              if (!command) throw new Error('Unknown command; use /help');
+              return runMcpPrompt(agent(), commands, command, parsed.args, signal);
+            });
+            if (result.modelCalls === 0 && result.text) output.write(result.text);
+            output.write('\n'); options.status.write(`finished: ${result.reason}; model calls: ${result.modelCalls}\n`);
+            continue;
+          }
           if (!parsed || !skill) throw new Error('Unknown command; use /help');
           // The expansion payload names the canonical command, the typed arguments, and the
           // skill's settings scope (`VYr`, chunk-sfn1dbxq.js [2947575,2947964); `prompt` is the
@@ -3720,6 +3754,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     cancelPrediction(); terminal?.clearPromptSuggestion?.();
     await Promise.all(suggestionWork);
     taskUnsubscribe?.(); taskUnsubscribe = undefined;
+    promptCatalogController?.abort(); unbindPromptCommands?.();
     configWatch?.close();
     options.signal.removeEventListener('abort', abort);
     unsubscribe?.(); unsubscribeTerminal?.(); rl?.off('line', onLine); rl?.off('close', onClose);

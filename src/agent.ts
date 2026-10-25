@@ -93,7 +93,7 @@ export type PromptExpansion = {
   expansion_type: 'slash_command' | 'mcp_prompt';
   command_name: string;
   command_args: string;
-  command_source?: SkillSource;
+  command_source?: SkillSource | 'mcp';
   prompt: string;
 };
 
@@ -1293,7 +1293,7 @@ export class Agent {
   async run(prompt?: string, signal = new AbortController().signal, attachment?: MediaAttachment,
     expansion?: PromptExpansion | { kind: 'raised'; payload: PromptExpansion },
     hookContext: readonly string[] = [], selection?: DiffSelection,
-    origin: MessageOrigin = { kind: 'human' }): Promise<RunResult> {
+    origin: MessageOrigin = { kind: 'human' }, promptContent?: readonly Anthropic.ContentBlockParam[]): Promise<RunResult> {
     if (this.busy) throw new Error('Agent is already running');
     this.busy = true;
     let modelCalls = 0;
@@ -1318,13 +1318,17 @@ export class Agent {
         // current session title; this build emits no `source` (the schema keeps it
         // optional while the field rolls out).
         const sessionTitle = this.currentSessionTitle();
-        const submitted = await this.hook('UserPromptSubmit', { prompt,
+        // Tt/We, htgmc2p1 [26319,37337)/[40137,44501), UTF-16; submit hooks see the typed MCP command.
+        const submitPrompt = expansion !== undefined
+          && ('kind' in expansion ? expansion.payload.expansion_type : expansion.expansion_type) === 'mcp_prompt'
+          ? 'kind' in expansion ? expansion.payload.prompt : expansion.prompt : prompt;
+        const submitted = await this.hook('UserPromptSubmit', { prompt: submitPrompt,
           ...(sessionTitle === undefined ? {} : { session_title: sessionTitle }) }, signal);
         if (submitted.blocked) {
           // The recovered consumer shows `UserPromptSubmit operation blocked by
           // hook:` plus the original prompt unless the hook suppressed it
           // (chunk-htgmc2p1.js offset 34121); the text is the turn's resultText.
-          const text = promptBlockMessage('UserPromptSubmit', submitted.reason ?? 'blocked', prompt,
+          const text = promptBlockMessage('UserPromptSubmit', submitted.reason ?? 'blocked', submitPrompt,
             submitted.suppressOriginalPrompt === true);
           return this.finish('hook_blocked', text, 0);
         }
@@ -1384,6 +1388,9 @@ export class Agent {
         this.session.append({ kind: 'message', message, classifier: { origin,
           ...(origin.kind === 'human' ? { humanText: expansion === undefined ? prompt :
             'kind' in expansion ? expansion.payload.prompt : expansion.prompt } : {}) } });
+        // We/xe, htgmc2p1 [40137,44501), sfn1dbxq [4380701,4382470), UTF-16.
+        if (promptContent !== undefined) this.session.append({ kind: 'message', isMeta: true,
+          message: { role: 'user', content: [...promptContent] } });
         if (selection?.text) this.session.append({ kind: 'message', isMeta: true,
           message: { role: 'user', content: selectedDiffMessage(selection) } });
       } else if (!this.session.awaitingResponse) throw new Error('Session has no unfinished turn');
