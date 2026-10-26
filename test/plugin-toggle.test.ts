@@ -129,6 +129,14 @@ test('actual plugin list space, detail action and reload update the live command
   const text = () => Array.from({ length: screen.rows }, (_, row) => screen.buffer.active.getLine(screen.buffer.active.viewportY + row)?.translateToString(true) ?? '').join('\n');
   const until = async (predicate: () => boolean) => { for (let i = 0; i < 1000; i++) { if (predicate()) return; await delay(5); } assert.fail(text()); };
   const key = (value: string) => input.emit('data', value);
+  const storedMcpTools = (): string[] => {
+    const directory = path.join(f.workspace, '.agent');
+    const active = fs.readdirSync(directory).filter(name => name.endsWith('.jsonl') && fs.existsSync(path.join(directory, `${name}.lock`)));
+    assert.equal(active.length, 1);
+    const journal = fs.readFileSync(path.join(directory, active[0]!), 'utf8');
+    const metadata = JSON.parse(journal.slice(0, journal.indexOf('\n')));
+    return metadata.config.tools.map((tool: { name: string }) => tool.name).filter((name: string) => name.startsWith('mcp__'));
+  };
   try {
     await until(() => text().includes('· ready')); await until(() => f.pids().length === 1);
     const firstPid = f.pids()[0]!;
@@ -164,6 +172,7 @@ test('actual plugin list space, detail action and reload update the live command
     await pluginHooksModulesSettled(); assert.equal(chainHooked('prompt.edit'), true); assert.equal(f.live(firstPid), true);
     failReplacement = false; key('/reload-plugins --force\r'); await until(() => text().includes('Reloaded: 1 plugin'));
     await until(() => !f.live(firstPid)); assert.equal(chainHooked('prompt.edit'), false);
+    assert.deepEqual(storedMcpTools(), []);
     key('/alpha-'); await delay(50); assert.equal(text().includes('/alpha-helper'), false); key('\x15');
     key('/beta-'); await until(() => text().includes('/beta-helper')); key('\x15');
     key('/plugin enable alpha\r'); await until(() => text().includes('Successfully enabled plugin: alpha'));
@@ -175,6 +184,7 @@ test('actual plugin list space, detail action and reload update the live command
     key('/reload-plugins --force\r'); await until(() => text().includes('Reloaded: 2 plugins'));
     await until(() => f.pids().length === 2); assert.equal(chainHooked('prompt.edit'), true);
     const secondPid = f.pids()[1]!; assert.equal(f.live(secondPid), true);
+    assert.deepEqual(storedMcpTools(), ['mcp__alpha_local__echo']);
     key('/alpha-'); await until(() => text().includes('/alpha-helper')); key('\x15');
     fs.writeFileSync(f.user, JSON.stringify({ plugins: { enabled: true }, keep: 7, watchConfig: true }));
     const beforeWatch = currentRuntime; key('/reload\r');

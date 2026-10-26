@@ -1283,12 +1283,18 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     schedulerSessions.add(session.id);
     await activeRuntime.settleScheduler?.(session.id, schedulerSessions, () => activeAgent?.isRunning() ?? false);
   };
+  // Yr/oL, x876fw6t [16694,19097), 9yh2xzb7 [1781,3332), UTF-16; the successor stores the candidate's refreshed catalog.
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand, reconfigureRuntime = false) => {
     signal.throwIfAborted();
     const previousModel = session.config.model;
     if (!reconfigureRuntime && session.settingSources !== undefined) config.settingSources = [...session.settingSources];
-    const next = Session.open(config.workspace, { config, startedAt: session.startedAt });
+    const candidate = reconfigureRuntime && activeRuntime.reconfigure ? await activeRuntime.reconfigure(config) : activeRuntime;
+    let next: Session | undefined;
+    let nextRuntime: Runtime;
     try {
+      signal.throwIfAborted();
+      if (candidate !== activeRuntime) config.tools = pinToolSchemas(candidate.tools);
+      next = Session.open(config.workspace, { config, startedAt: session.startedAt });
       next.carryPermissions(session, config.permissions?.mode === session.config.permissions?.mode);
       // Y/pEe, frj2b06g [2565,3111), UTF-16: the denial provider survives a settings refresh.
       for (const denial of [...session.autoModeDenials.denials].reverse()) next.autoModeDenials.record(denial);
@@ -1316,12 +1322,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         next.permissionUpdates = transitionPlanMode({ ...next.permissionOwner.state(), mode: session.permissionOwner.state().mode }, modeCommand.mode, planResume.runtime);
         next.append(modeCommand);
       }
-    } catch (error) { next.close(); throw error; }
-    let nextRuntime: Runtime;
-    try {
-      const candidate = reconfigureRuntime && activeRuntime.reconfigure ? await activeRuntime.reconfigure(config) : activeRuntime;
       nextRuntime = await bindNext(candidate, next);
-    } catch (error) { next.close(); throw error; }
+    } catch (error) {
+      next?.close();
+      if (candidate !== activeRuntime) await candidate.close();
+      throw error;
+    }
     try { await agent().endSession('config_changed'); } catch (error) { options.status.write(`SessionEnd hook error: ${String(error)}\n`); }
     await acceptNext(next, nextRuntime);
     if (reconfigureRuntime) await applyPluginHooks(discoverInstalledPluginComponents(session.config.workspace, session.config.plugins));

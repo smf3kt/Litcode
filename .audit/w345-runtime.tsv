@@ -1,0 +1,10 @@
+ts	phase	decision	why	evidence	result
+2026-10-26	start	finish plugin forced-reload failure after W344	current queue records the remaining full-suite plugin failure	research/CURRENT.md;task133	one W345 local package
+2026-10-26	reproduce	run actual compiled W299 round-trip	disable applies but re-enable binds stale successor schemas	JOB_TMP/w345-plugin-cli-baseline.txt	25checks before apply-enable failure
+2026-10-26	source	read verified refresh and catalog adoption bodies	new discovery belongs to the accepted replacement before metadata publication	W299/W300 records;Yr,oL,q4,RTe.kn/Bn	pin candidate tools before Session.open;strict checks retained
+2026-10-26	repair	prepare candidate before writing successor metadata	fresh tools must be pinned before strict startup binding	src/interactive.ts:1286;test/plugin-toggle.test.ts	original plugin3of3 plus exact metadata assertions
+2026-10-26	verify	run related tests,build and same compiled round-trip	retained negative schema checks and actual ownership paths pass	JOB_TMP/w345-affected.txt;JOB_TMP/w345-plugin-cli.txt	86of86;check/build;compiled42of42;0modelrequests
+2026-10-26	full	accept current full-suite result	three prior failure/cancellation cases now complete	JOB_TMP/w345-full.txt	3380of3380;0fail0cancel0skip
+2026-10-26	freeze	bind source/test/build candidate	fresh independent review receives stable inputs	JOB_TMP/w345-candidate-identity.json	1856recordsc6fea7e8
+2026-10-26	independent	review frozen candidate and drive compiled surface	fresh21of21 and compiled42of42 pass with no confirmed product defect	JOB_TMP/w345-independent-result.json	all1856records equal;0repoedits;extra probe expectation needs qualification
+2026-10-26	probe	correct original-fixture expectation and rerun same compiled probe	fixture starts with empty pinned tools;retained metadata must equal its initial catalog	JOB_TMP/w345-transaction-corrected.txt	1of1;4scenarios;0ownedprocesses/directories;independentfollowupaccepted
