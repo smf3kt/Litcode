@@ -8,6 +8,7 @@ import { TerminalScreen } from './terminal-screen.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const longAfk = process.argv.includes('--long-afk');
+const sourceResults = process.argv.includes('--source-results');
 const temporary = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
   ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : root, 'partial-questions-cli-')));
 const workspace = path.join(temporary, 'workspace'), userDir = path.join(temporary, 'user');
@@ -16,7 +17,7 @@ const settingsFile = path.join(userDir, 'settings.json');
 const pty = path.join(temporary, 'pty.exp');
 fs.writeFileSync(pty, `set stty_init "rows 30 columns 120"\nsource {${path.join(root, 'scripts/pty-cli.exp')}}\n`);
 const settings = value => fs.writeFileSync(settingsFile, JSON.stringify({ prefersReducedMotion: true,
-  promptSuggestionEnabled: false, ...(value === undefined ? {} : { features: { questionPartialAnswers: value } }) }));
+  promptSuggestionEnabled: false, features: { sourceQuestionResults: sourceResults, ...(value === undefined ? {} : { questionPartialAnswers: value }) } }));
 settings();
 const questions = { questions: [
   { question: 'Choose the retained layout', header: 'Layout', multiSelect: false,
@@ -139,13 +140,33 @@ async function ask(state, name, answer, expected, afk = false) {
   if (expected === 'error') assert.equal(result.is_error, true, JSON.stringify(result));
   else {
     assert.equal(result.is_error ?? false, false, JSON.stringify(result));
-    const value = JSON.parse(typeof result.content === 'string' ? result.content : result.content[0].text);
-    assert.deepEqual(value.answers, expected);
-    if (afk) {
-      assert.equal(value.afkTimeoutMs, longAfk ? 600000 : 1000);
-      assert.match(value.notice, longAfk ? /^No response after 600s/ : /^No response after 1s/);
+    const modelText = typeof result.content === 'string' ? result.content : result.content[0].text;
+    let value;
+    if (sourceResults) {
+      const selected = answer === 'partial' ? '"Choose the retained layout"="A" selected preview:\nPreview A'
+        : answer === 'notes' ? '"Choose the retained layout"=(no option selected) notes: retained note' : '';
+      const notice = `No response after ${longAfk ? 600 : 1}s — the user may be away from keyboard. Proceed using your best judgment based on the context so far; you can re-ask this question later if it's still relevant.`;
+      assert.equal(modelText, afk ? notice + (selected ? `\n\nBefore going idle the user had selected: ${selected}.` : '')
+        : answer === 'partial' ? `Your questions have been answered: ${selected}. You can now continue with these answers in mind.`
+        : answer === 'notes' ? `The user answered: ${selected}. Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.`
+        : 'The user did not answer the questions.');
+      value = held().rows.findLast(row => row.kind === 'tool_result').host;
+      assert.deepEqual(value, { kind: 'questions', questions: questions.questions,
+        answers: answer === 'partial' ? { 'Choose the retained layout': 'A' } : {},
+        annotations: answer === 'partial' ? { 'Choose the retained layout': { preview: 'Preview A' } }
+          : answer === 'notes' ? { 'Choose the retained layout': { notes: 'retained note' } } : {},
+        ...(afk ? { afkTimeoutMs: longAfk ? 600000 : 1000 } : {}) });
+      if (afk) assert.ok(state.frame().includes('Questions asked:'));
+      else if (answer === 'partial') assert.ok(state.frame().includes('User answered questions:'));
+    } else {
+      value = JSON.parse(modelText);
+      assert.deepEqual(value.answers, expected);
+      if (afk) {
+        assert.equal(value.afkTimeoutMs, longAfk ? 600000 : 1000);
+        assert.match(value.notice, longAfk ? /^No response after 600s/ : /^No response after 1s/);
+      }
+      else { assert.equal(value.afkTimeoutMs, undefined); assert.equal(value.notice, undefined); }
     }
-    else { assert.equal(value.afkTimeoutMs, undefined); assert.equal(value.notice, undefined); }
     if (answer === 'image') {
       assert.ok(Array.isArray(result.content));
       assert.deepEqual(result.content.slice(1), [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: image } }]);
@@ -194,7 +215,7 @@ try {
   assert.equal(cancelled?.is_error, true);
   await close(state);
   assert.equal(requests.length, 24);
-  console.log(JSON.stringify({ cliPartialQuestions: 'passed', partial: true, empty: true, notes: true, images: true, afk: true, longAfk,
+  console.log(JSON.stringify({ cliPartialQuestions: 'passed', partial: true, empty: true, notes: true, images: true, afk: true, longAfk, sourceResults,
     originalResumePinned: true, explicitLegacyReload: true, freshLegacy: true, cancelled: true, modelRequests: requests.length, externalCalls: 0 }));
 } finally {
   for (const state of children) {

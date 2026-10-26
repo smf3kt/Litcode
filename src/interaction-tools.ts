@@ -10,6 +10,7 @@ import { sourceFindingsRequestSchema, sourceFindingsResult, sourceFindingsText, 
 import { approvedPlanText, enteredPlanText, planApprovalSchema, type PlanReview, type PlanApproval } from './plan-mode.js';
 import { readPlanFile, savePlanFile } from './plan-file.js';
 import { ENTER_PLAN_DESCRIPTION, EXIT_PLAN_DESCRIPTION } from './plan-instructions.js';
+import { indexedQuestionResult, cardQuestionResult, questionResultText, type QuestionHostResult } from './question-result.js';
 
 export const INTERACTION_LIMITS = Object.freeze({
   questions: 4, options: 4, questionChars: 2000, headerChars: 80,
@@ -82,6 +83,7 @@ export interface InteractionToolOptions extends InteractionCallbacks {
   partialAnswers?: boolean;
   sourceFindings?: boolean;
   sourcePlanTools?: boolean;
+  sourceQuestionResults?: boolean;
   /**
    * The host's preview format. `"html"` applies the recovered fragment rules:
    * a preview must contain markup and must not be a full document or carry
@@ -750,6 +752,14 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
   type AskEntry = { json: string; blocks?: Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam> };
   const askEntry = async (input: unknown, context: ToolContext): Promise<AskEntry> => {
     checkSignal(context.signal);
+    // fX.call/result mapper, ktr9sak2 [16872,17748)/[17751,19621), UTF-16.
+    const sourceResult = (result: QuestionHostResult, blocks?: AskEntry['blocks']): AskEntry => {
+      const text = questionResultText(result);
+      output(text, context, 'ask_user_question');
+      checkSignal(context.signal);
+      context.hostResult?.(result);
+      return { json: text, ...(blocks === undefined ? {} : { blocks }) };
+    };
     const shape = (extendedQuestions ? extendedAskShape : askShape) as unknown as z.ZodType<AskUserQuestionRequest>;
     const request = parse(shape, input, 'ask_user_question');
     if (extendedQuestions) {
@@ -771,7 +781,8 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
         const admitted = admitCardAnswer(expected, await askCard(request, signal));
         checkSignal(signal);
         if (admitted.kind === 'refused') throw new Error(`ask_user_question: card answer refused (${admitted.rule})`);
-        return { json: output(admitted.input, context, 'ask_user_question') };
+        return options.sourceQuestionResults === true ? sourceResult(cardQuestionResult(admitted.input))
+          : { json: output(admitted.input, context, 'ask_user_question') };
       }, askDeadline);
     }
     if (typeof ask !== 'function') throw new Error('ask_user_question: host ask callback is missing');
@@ -784,6 +795,8 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
       }
       const result = validAnswer(answer, expected, options.partialAnswers === true);
       const { contentBlocks, ...rest } = result;
+      if (options.sourceQuestionResults === true) return sourceResult(indexedQuestionResult(expected, result),
+        contentBlocks === undefined ? undefined : admitContentBlocks(contentBlocks));
       const payload = result.afkTimeoutMs === undefined ? rest
         : { ...rest, notice: askAfkNotice(expected, result.answers, result.afkTimeoutMs) };
       return { json: output(payload, context, 'ask_user_question'), ...(contentBlocks === undefined ? {} : { blocks: admitContentBlocks(contentBlocks) }) };

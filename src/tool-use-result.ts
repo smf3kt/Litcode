@@ -14,6 +14,7 @@
 import { structuredPatch, type StructuredPatchHunk } from './diff-patch.js';
 import type { FindingsHostResult } from './source-findings.js';
 import type { PlanHostResult } from './plan-mode.js';
+import type { QuestionHostResult } from './question-result.js';
 
 /** What `write_file` captures at the effect boundary, in the recovered `uno` shape. */
 export interface WriteEffectResult {
@@ -34,7 +35,7 @@ export interface EditEffectResult {
   replaceAll: boolean;
 }
 
-export type ToolUseResult = WriteEffectResult | EditEffectResult | FindingsHostResult | PlanHostResult;
+export type ToolUseResult = WriteEffectResult | EditEffectResult | FindingsHostResult | PlanHostResult | QuestionHostResult;
 
 /**
  * The stored row: the source's storage projection. A write keeps its content only in the create
@@ -44,6 +45,7 @@ export type ToolUseResult = WriteEffectResult | EditEffectResult | FindingsHostR
 export type StoredToolUseResult =
   | FindingsHostResult
   | PlanHostResult
+  | QuestionHostResult
   | { type: 'create'; filePath: string; content: string; structuredPatch: StructuredPatchHunk[] }
   | { type: 'update'; filePath: string; structuredPatch: StructuredPatchHunk[] }
   | { filePath: string; oldString: string; newString: string; structuredPatch: StructuredPatchHunk[]; replaceAll: boolean };

@@ -209,6 +209,7 @@ import { jde } from './tui-statusline-components.js';
 import { jsx } from './tui-jsx.js';
 import { s, n, QXe } from './tui-base-components.js';
 import { ShellProgressInteraction } from './tui-shell-progress.js';
+import { QuestionResultRows } from './tui-question-result.js';
 import { ForkRow } from './tui-fork-row.js';
 import { forkSessionLine } from './fork-command.js';
 import type { ForkRowFields } from './fork-row.js';
@@ -405,7 +406,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Zh/eT, phg89898 [50945,52785), UTF-16; only the successful typed result owns findings rows.
     const findings = !entry.tool?.isError && entry.tool?.host && 'kind' in entry.tool.host && entry.tool.host.kind === 'findings'
       ? entry.tool.host.findings : undefined;
-    const body = findings ? this.documentRenderer.renderElement(jsx(FindingsRows, { findings, verbose: detailed }, undefined), columns,
+    // jh/Dh/Nh, phg89898 [46726,48473)/[48525,48700), UTF-16.
+    const questions = !entry.tool?.isError && entry.tool?.host && 'kind' in entry.tool.host && entry.tool.host.kind === 'questions'
+      ? entry.tool.host : undefined;
+    const body = questions ? this.documentRenderer.renderElement(jsx(QuestionResultRows, { result: questions }, undefined), columns,
+      { theme: this.theme.current, themeOverrides: this.theme.overrides }) : findings ? this.documentRenderer.renderElement(jsx(FindingsRows, { findings, verbose: detailed }, undefined), columns,
       { theme: this.theme.current, themeOverrides: this.theme.overrides }) : entry.fork ? this.documentRenderer.renderElement(jsx(ForkRow, { fields: entry.fork }, undefined), columns,
       { theme: this.theme.current, themeOverrides: this.theme.overrides }) : bash ?? (entry.tool ? toolResultRows(entry.tool, detailed, columns)
       : entry.duration ? this.documentRenderer.renderElement(jsx(ProgressCompletion, {message:entry.duration, formatTime:this.timeFormatter.format}, entry.duration.uuid), columns,

@@ -19,6 +19,7 @@ import { permissionPolicySchema, bindPermissionOwner } from './permissions.js';
 import { permissionCycleCommand } from './permission-cycle.js';
 import { planModeSchema, planPreview, planReviewChoices } from './plan-mode.js';
 import { readPlanFile, resolvePlanFile } from './plan-file.js';
+import { questionResultLines } from './question-result.js';
 import type { PermissionUpdate } from './permissions.js';
 import {
   browsePermissions, type PermissionPanelApplyResult, type PermissionPanelInput, permissionPanelRules,
@@ -1215,7 +1216,14 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       },
     },
     progress: event => terminal?.setProgress?.(event),
-    toolResult: result => terminal?.appendToolResult?.(result),
+    // jh/Dh/Nh, phg89898 [46726,48473)/[48525,48700), UTF-16.
+    toolResult: result => {
+      if (terminal?.appendToolResult) terminal.appendToolResult(result);
+      else if (!result.isError && result.host && 'kind' in result.host && result.host.kind === 'questions') {
+        const lines = questionResultLines(result.host);
+        if (lines.length) output.write(`${lines.join('\n')}\n`);
+      }
+    },
     textStart: () => terminal?.beginAssistantMessage?.(),
     text: text => { if (terminal?.writeAssistantText) terminal.writeAssistantText(text); else output.write(text); },
     textEnd: () => terminal?.endAssistantMessage?.(),
