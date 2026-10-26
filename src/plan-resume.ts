@@ -29,6 +29,8 @@ type PlanHistoryEntry = { type: string; message?: { content: unknown }; attachme
   permissionMode?: string; origin?: { kind: string }; isMeta?: boolean };
 function planHistory(events: readonly SessionEvent[]): PlanHistoryEntry[] {
   return events.flatMap<PlanHistoryEntry>(event => {
+    if (event.kind === 'model_plan_mode') return [{ type: 'attachment',
+      attachment: { type: event.operation === 'enter' ? 'plan_mode' : 'plan_mode_exit' } }];
     if (event.kind === 'permission_mode_command') {
       if (event.operation === 'select') return [{ type: 'user', message: { content: '' },
         permissionMode: sourceMode(event.mode), origin: { kind: 'human' } }];

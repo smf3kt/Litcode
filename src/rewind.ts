@@ -16,7 +16,7 @@ function boundaryFor(session: Session, turn: number): number {
   return boundary;
 }
 function historyDigest(session: Session): string {
-  const history = session.events.filter(event => ["metadata", "message", "compact", "turn_end", "checkpoint", "rewind", "permission_mode_command"].includes(event.kind));
+  const history = session.events.filter(event => ["metadata", "message", "compact", "turn_end", "checkpoint", "rewind", "permission_mode_command", "model_plan_mode"].includes(event.kind));
   return crypto.createHash("sha256").update(JSON.stringify(history)).digest("hex");
 }
 
@@ -79,8 +79,9 @@ export function applyRewind(session: Session, preview: RewindPreview, token: str
   try {
     next.carryPermissions(session);
     for (const event of session.events.slice(1, preview.boundary + 1)) {
-      if (event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command') next.append(event);
+      if (event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command' || event.kind === 'model_plan_mode') next.append(event);
     }
+    next.restoreModelPlanMode('prefix');
     // Re-index inherited associations because effect journals were omitted.
     for (const event of session.events) if (event.kind === "checkpoint" && event.boundary <= preview.boundary) {
       const turns = session.events.slice(0, event.boundary + 1).filter(item => item.kind === "turn_end").length;

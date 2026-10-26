@@ -18,6 +18,8 @@ import { atomicWriteFile } from "./atomic-write.js";
 import type { InteractionCallbacks } from "./interaction-tools.js";
 import { PathResolutionError, resolveChain, verifyIdentity, observeWorkingDirectory, type WorkingDirectories, type ResolvedPath } from "./path-identity.js";
 import { editEffectResult, writeEffectResult, type ToolUseResult } from "./tool-use-result.js";
+import type { PlanModeHost } from './plan-mode.js';
+import { resolvePlanFile } from './plan-file.js';
 
 export type ToolContext = {
   workspace: string;
@@ -26,6 +28,7 @@ export type ToolContext = {
   maxOutputBytes: number;
   conversation?: readonly Anthropic.MessageParam[];
   interaction?: InteractionCallbacks;
+  planMode?: PlanModeHost;
   fileHistory?: (file?: string) => void;
   workingDirectories?: (readOnly: boolean) => readonly string[];
   /** A file-effecting tool reports the structured host result of the effect it just performed. */
@@ -53,6 +56,7 @@ export type ToolDefinition = {
   mcpAnnotations?: { destructive: boolean; openWorld: boolean; toolName?: string; title?: string };
   toAutoClassifierInput?(input: unknown): unknown;
   requiresUserInteraction?: boolean;
+  planOperation?: 'enter' | 'exit';
   classifierOnly?: boolean;
   execute(input: unknown, context: ToolContext): Promise<string>;
   executeBlocks?(input: unknown, context: ToolContext): Promise<Anthropic.ToolResultBlockParam['content']>;
@@ -833,7 +837,9 @@ function readFileTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, offset = 1, limit = READ_DEFAULT_LIMIT } = readFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const resolved = confineResolved(root, userPath, true, context.workingDirectories?.(true));
+      // fl/c_, 2bcyxj9q [205509,205734)/[235473,238027), UTF-16: admit only the designated plan path.
+      const resolved = (context.planMode && resolvePlanFile(root, userPath, context.planMode.filePath, true))
+        || confineResolved(root, userPath, true, context.workingDirectories?.(true));
       const stat = await fsp.stat(resolved.path);
       if (!stat.isFile()) {
         throw new Error(`read_file: not a regular file: ${userPath}`);
@@ -1038,7 +1044,9 @@ function writeFileTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, content, overwrite = false } = writeFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const resolved = confineResolved(root, userPath, false, context.workingDirectories?.(false));
+      // fl/aNe, 2bcyxj9q [205509,205734)/[241113,242279), UTF-16.
+      const resolved = (context.planMode && resolvePlanFile(root, userPath, context.planMode.filePath))
+        || confineResolved(root, userPath, false, context.workingDirectories?.(false));
       const real = resolved.path;
       const existed = fs.existsSync(real);
       let previous = "";
@@ -1102,7 +1110,9 @@ function editFileTool(): ToolDefinition {
       if (context.signal.aborted) throw abortError();
       const { path: userPath, old_string, new_string, replace_all = false } = editFileSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      const resolved = confineResolved(root, userPath, true, context.workingDirectories?.(false));
+      // fl/c_, 2bcyxj9q [205509,205734)/[235473,238027), UTF-16: admit only the designated plan path.
+      const resolved = (context.planMode && resolvePlanFile(root, userPath, context.planMode.filePath, true))
+        || confineResolved(root, userPath, true, context.workingDirectories?.(false));
       const real = resolved.path;
       const stat = await fsp.stat(real);
       if (!stat.isFile()) {

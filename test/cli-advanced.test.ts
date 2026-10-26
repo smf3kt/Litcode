@@ -152,7 +152,7 @@ test('CLI custom types select literal models and fork paired history; resume pin
     }
   });
   try {
-    fx.settings({ permissions: { mode: 'bypass', allow: [], deny: [] } });
+    fx.settings({ features: { sourcePlanTools: false }, permissions: { mode: 'bypass', allow: [], deny: [] } });
     fx.put('.harness/agents/reviewer.md', '---\nname: reviewer\ndescription: Fixture reviewer\nmode: explore\ntools: read_file\nmodel: gateway/custom-worker\neffort: low\nmaxTurns: 3\n---\nPINNED_AGENT_BODY\n');
     const first = await fx.run('PARENT_HISTORY_MARKER', undefined, ['--effort', 'high']);
     for (const id of ['custom', 'fork']) {
@@ -239,7 +239,7 @@ test('CLI headless interactions return explicit paired callback errors and typed
   } } : calls === 2 ? { id: 'plan', name: 'submit_plan', input: { plan: 'Complete fixture plan.' } }
     : calls === 3 ? { id: 'findings', name: 'report_findings', input: { findings: [{ file: 'sample.ts', line: 1, summary: 'Fixture finding', severity: 'info' }] } } : undefined);
   try {
-    fx.settings({ features: { sourceFindings: false }, permissions: { mode: 'bypass', allow: [], deny: [] } });
+    fx.settings({ features: { sourceFindings: false, sourcePlanTools: false }, permissions: { mode: 'bypass', allow: [], deny: [] } });
     const result = await fx.run('Headless interaction fixture.', undefined, ['--output-format', 'json', '--max-model-calls', '4']);
     const final = JSON.parse(result.stdout);
     assert.equal(final.reason, 'end_turn'); assert.equal(final.model_calls, 4);

@@ -7,6 +7,8 @@ import { Session, type SessionConfig, type ToolResult } from './session.js';
 import { DEFAULT_GATEWAY, type ModelProvider, type ModelRequest } from './provider.js';
 import type { ToolDefinition, ToolContext } from './tools.js';
 import { randomUUID } from 'node:crypto';
+import { planModeReminder } from './plan-mode.js';
+import { existsSync } from 'node:fs';
 import { PROMPT_PREDICTION_INSTRUCTION, normalizePromptSuggestion, promptPredictionEligible,
   promptSuggestionRejection, type PromptPrediction } from './prompt-suggestions.js';
 import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, sessionEndHookBoundMs, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
@@ -202,7 +204,12 @@ export class Agent {
     const effort = override === null ? c.effort : override.level ?? undefined;
     const memoryEnabled = c.autoMemory === true && c.features?.memory !== false && this.tools.has("memory_list") && this.tools.has("memory_read");
     // u_s/FHn, chunk-14rnebpd.js [275761,275928), chunk-sfn1dbxq.js [118927,119601), UTF-16.
-    const system = `${c.system}${memoryEnabled ? `\n\n${AUTO_MEMORY_INSTRUCTIONS}` : ''}\n\n${hostContext(c)}`;
+    // Gqr, sfn1dbxq [4448109,4453025), UTF-16: only the main session receives planning reminders.
+    const plan = this.session.planMode;
+    const planning = plan?.mode() === 'plan' && !plan.isAgent
+      ? planModeReminder(plan.filePath, existsSync(plan.filePath)) : undefined;
+    const system = `${c.system}${memoryEnabled ? `\n\n${AUTO_MEMORY_INSTRUCTIONS}` : ''}\n\n${hostContext(c)}` +
+      (planning === undefined ? '' : `\n\n${planning}`);
     return { model: c.model, system, tools: structuredClone(c.tools), messages,
       max_tokens: c.maxTokens, thinking: { type: c.thinking ? 'adaptive' : 'disabled' }, cache_control: { type: 'ephemeral' },
       ...(effort === undefined ? {} : { output_config: { effort } }) };
@@ -811,6 +818,7 @@ export class Agent {
     assertPaired(conversation);
     const context: ToolContext = { workspace: c.workspace, signal, allowShell: c.allowShell, maxOutputBytes: c.maxOutputBytes,
       conversation: cloneClassifierMessages(conversation), interaction: this.events.interaction,
+      planMode: this.session.planMode,
       workingDirectories: readOnly => this.session.workingDirectories(readOnly),
       fileHistory: file => this.session.touchFile(file),
       // A file effect reports its structured result here; the storage projection is taken now, so

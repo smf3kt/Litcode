@@ -461,6 +461,8 @@ function newConfig(
       questionPartialAnswers: settings.features?.questionPartialAnswers ?? true,
       // Eo/kt/Ro, tar639dc [60313,62418), UTF-16.
       sourceFindings: settings.features?.sourceFindings ?? true,
+      // amn/Aq, ax9zepsq [7009,8595), x2c03s1m [6222,11236), UTF-16.
+      sourcePlanTools: settings.features?.sourcePlanTools ?? true,
       web: settings.features?.web ?? true,
       checkpoints: settings.features?.checkpoints ?? true,
       worktrees: settings.features?.worktrees ?? true,

@@ -7,6 +7,9 @@ import { nmo } from './question-clarification-source.js';
 import { admittedImageBlock } from './question-images.js';
 import { sourceFindingsRequestSchema, sourceFindingsResult, sourceFindingsText, SOURCE_FINDINGS_DESCRIPTION,
   type SourceFindingsRequest } from './source-findings.js';
+import { approvedPlanText, enteredPlanText, planApprovalSchema, type PlanReview, type PlanApproval } from './plan-mode.js';
+import { readPlanFile, savePlanFile } from './plan-file.js';
+import { ENTER_PLAN_DESCRIPTION, EXIT_PLAN_DESCRIPTION } from './plan-instructions.js';
 
 export const INTERACTION_LIMITS = Object.freeze({
   questions: 4, options: 4, questionChars: 2000, headerChars: 80,
@@ -67,6 +70,7 @@ export interface InteractionCallbacks {
   /** Card host: returns the shown input plus answers/annotations/response/followUp. */
   askCard?: (request: AskUserQuestionRequest, signal: AbortSignal) => Promise<unknown>;
   plan?: (request: SubmitPlanRequest, signal: AbortSignal) => Promise<SubmitPlanResult>;
+  reviewPlan?: (request: PlanReview, signal: AbortSignal) => Promise<PlanApproval>;
   report?: (request: ReportFindingsRequest, signal: AbortSignal) => void | Promise<void>;
   sourceReport?: (request: SourceFindingsRequest, signal: AbortSignal) => void | Promise<void>;
 }
@@ -77,6 +81,7 @@ export interface InteractionToolOptions extends InteractionCallbacks {
   maxPending?: number;
   partialAnswers?: boolean;
   sourceFindings?: boolean;
+  sourcePlanTools?: boolean;
   /**
    * The host's preview format. `"html"` applies the recovered fragment rules:
    * a preview must contain markup and must not be a full document or carry
@@ -732,7 +737,8 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
       !Number.isSafeInteger(maxPending) || maxPending < 1 || maxPending > INTERACTION_LIMITS.maxPendingLimit) {
     throw new Error('Invalid interaction timeout or queue limit');
   }
-  const callbacks = { ask: options.ask, askCard: options.askCard, plan: options.plan, report: options.report, sourceReport: options.sourceReport };
+  const callbacks = { ask: options.ask, askCard: options.askCard, plan: options.plan, reviewPlan: options.reviewPlan,
+    report: options.report, sourceReport: options.sourceReport };
   const previewFormat = options.previewFormat;
   const extendedQuestions = options.extendedQuestions === true;
   const cardAnswers = options.cardAnswers === true;
@@ -783,7 +789,68 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
       return { json: output(payload, context, 'ask_user_question'), ...(contentBlocks === undefined ? {} : { blocks: admitContentBlocks(contentBlocks) }) };
     }, askDeadline);
   };
+  // amn/Aq, ax9zepsq [7009,8595), x2c03s1m [6222,11236), UTF-16.
+  const planTools: ToolDefinition[] = options.sourcePlanTools === true ? [
+    {
+      readOnly: true, planOperation: 'enter',
+      schema: {
+        name: 'enter_plan_mode',
+        description: ENTER_PLAN_DESCRIPTION,
+        input_schema: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      async execute(input, context) {
+        checkSignal(context.signal); parse(z.object({}).strip(), input, 'enter_plan_mode');
+        const host = context.planMode;
+        if (!host) throw new Error('enter_plan_mode: session host is missing');
+        if (host.isAgent) throw new Error('Only the main session can enter plan mode.');
+        output(enteredPlanText, context, 'enter_plan_mode');
+        host.enter();
+        context.hostResult?.({ kind: 'plan', operation: 'enter', plan: null, isAgent: false, filePath: host.filePath });
+        return enteredPlanText;
+      },
+    },
+    {
+      readOnly: false, planOperation: 'exit', requiresUserInteraction: true,
+      schema: {
+        name: 'exit_plan_mode',
+        description: EXIT_PLAN_DESCRIPTION,
+        input_schema: { type: 'object', properties: {
+          allowedPrompts: { type: 'array', items: { type: 'object', required: ['tool', 'prompt'], properties: {
+            tool: { type: 'string', enum: ['Bash'] }, prompt: { type: 'string' },
+          } }, description: 'Deprecated: no longer used.' },
+        } },
+      },
+      async execute(input, context) {
+        checkSignal(context.signal);
+        parse(z.object({ allowedPrompts: z.array(z.object({ tool: z.literal('Bash'), prompt: z.string() })).optional() }).passthrough(), input, 'exit_plan_mode');
+        const host = context.planMode;
+        if (!host) throw new Error('exit_plan_mode: session host is missing');
+        if (host.isAgent) throw new Error('A fork cannot exit plan mode; that belongs to the session that forked it. Finish your part and report back.');
+        if (host.mode() !== 'plan') throw new Error('You are not in plan mode. To enter plan mode, call enter_plan_mode first. If the plan was already approved, continue with implementation.');
+        const review = callbacks.reviewPlan ?? contextCallbacks(context)?.reviewPlan;
+        if (!review) throw new Error('exit_plan_mode: host review callback is missing');
+        return dispatch(context.signal, async signal => {
+          const plan = readPlanFile(context.workspace, host.filePath);
+          const answer = parse(planApprovalSchema, await review({ plan, filePath: host.filePath,
+            automaticMode: host.automaticMode() }, signal), 'exit_plan_mode host answer');
+          checkSignal(signal);
+          if (host.mode() !== 'plan') throw new Error('Plan mode changed while the plan was under review');
+          if (answer.behavior === 'deny') throw new Error(answer.feedback || 'Plan approval declined. Keep planning.');
+          const approved = answer.plan ?? readPlanFile(context.workspace, host.filePath);
+          const text = approvedPlanText(approved, host.filePath, answer.plan !== undefined) +
+            (answer.feedback ? `\n\nUser feedback on this plan: ${answer.feedback}` : '');
+          output(text, context, 'exit_plan_mode');
+          if (answer.plan !== undefined) savePlanFile(context.workspace, host.filePath, answer.plan);
+          checkSignal(signal); host.exit(answer.mode);
+          context.hostResult?.({ kind: 'plan', operation: 'exit', plan: approved, isAgent: false,
+            filePath: host.filePath, ...(answer.plan === undefined ? {} : { planWasEdited: true }) });
+          return text;
+        }, options.timeoutMs === undefined ? null : timeoutMs);
+      },
+    },
+  ] : [];
   return [
+    ...planTools,
     {
       readOnly: true,
       requiresUserInteraction: true,

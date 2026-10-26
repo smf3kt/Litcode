@@ -51,7 +51,7 @@ function completedHistory(source: Session, extensions: readonly ToolDefinition[]
   assertPaired(source.messages);
   // v/RRn [16667,17235)/[4502962,4503404), UTF-16; retain the companion's marker across relocation.
   return history.filter((event) => event.kind === "message" || event.kind === "compact" || event.kind === "turn_end" || event.kind === "title" || event.kind === 'permission_mode_command'
-    || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary');
+    || event.kind === 'scheduled_task_fire' || event.kind === 'loop_boundary' || event.kind === 'model_plan_mode');
 }
 
 /**
@@ -101,6 +101,7 @@ export function relocateSession(source: Session, targetWorkspace: string, buildT
   };
   const next = Session.open(target, { config, startedAt: source.startedAt });
   try {
+    if (source.config.features?.sourcePlanTools === true) next.carryForkPermissions(source);
     for (const event of history) {
       if (event.kind === "message") {
         const copied = structuredClone(event);

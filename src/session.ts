@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID, createHash } from 'node:crypto';
-import { refreshAutoMode } from './plan-resume.js';
+import { refreshAutoMode, transitionPlanMode } from './plan-resume.js';
+import { modelPlanModeEventSchema, planHostResultSchema, type ModelPlanModeEvent, type PlanModeHost, type PlanExitMode } from './plan-mode.js';
+import { sessionPlanFile } from './plan-file.js';
 import { createPlanRuntime } from './plan-runtime-host.js';
 import { classifierMessageSchema, classifierMessage, markClassifierMessage } from './message-origin.js';
 import { z } from 'zod';
@@ -157,7 +159,7 @@ export type SessionConfig = {
     workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean; mcpPersistence?: boolean; mcpTasks?: boolean; mcpStandardTasks?: boolean;
     taskProjections?: boolean; taskSourceVisibility?: boolean; promptSuggestions?: boolean;
     schedulerJitter?: boolean; schedulerDurable?: boolean; schedulerSourceCalendar?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; skillSourceArguments?: boolean; pluginSkillNamespaces?: boolean;
-    agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; questionPartialAnswers?: boolean; sourceFindings?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; policyHelper?: boolean; crossSessionMessaging?: boolean; residentForks?: boolean };
+    agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; questionPartialAnswers?: boolean; sourceFindings?: boolean; sourcePlanTools?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; policyHelper?: boolean; crossSessionMessaging?: boolean; residentForks?: boolean };
   /** Explicit inbound policy for same-host peer messages; omitted follows the mode. */
   crossSessionInbound?: 'accept' | 'hold' | 'refuse';
 };
@@ -167,6 +169,7 @@ export type SessionEvent =
   | ScheduledFire
   | { kind: 'loop_boundary'; reason: 'foreign_user_input' | 'tool_abort' }
   | PermissionModeCommand
+  | ModelPlanModeEvent
   | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string; startedAt?: number }
   | { kind: 'file_history'; path?: string; tracked: boolean }
   | { kind: 'agent_history'; id: string; digest: string }
@@ -194,7 +197,7 @@ export type SessionEvent =
 
 const policyFeaturesSchema = z.object({ tasks: z.boolean().optional(), subagents: z.boolean().optional(), notebooks: z.boolean().optional(), background: z.boolean().optional(), scheduler: z.boolean().optional(),
   workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(), taskProjections: z.boolean().optional(), taskSourceVisibility: z.boolean().optional(), promptSuggestions: z.boolean().optional(), schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), schedulerSourceCalendar: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), skillSourceArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
-  agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), questionPartialAnswers: z.boolean().optional(), sourceFindings: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), policyHelper: z.boolean().optional(), residentForks: z.boolean().optional() }).strict();
+  agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), questionPartialAnswers: z.boolean().optional(), sourceFindings: z.boolean().optional(), sourcePlanTools: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), policyHelper: z.boolean().optional(), residentForks: z.boolean().optional() }).strict();
 export const managedPolicySchema = z.object({ useAutoModeDuringPlan: z.boolean().optional(), autoMode: autoPolicySchema.optional(), allowManagedPermissionRulesOnly: z.boolean().optional(), allowShell: z.boolean().optional(), permissions: permissionPolicySchema.optional(),
   features: policyFeaturesSchema.optional(), mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), samplingArrays: z.boolean().optional(), samplingAudio: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional() }).strict();
 
@@ -327,7 +330,7 @@ export const configSchema = z.object({
     workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(),
     taskProjections: z.boolean().optional(), taskSourceVisibility: z.boolean().optional(), promptSuggestions: z.boolean().optional(),
     schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), schedulerSourceCalendar: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), skillSourceArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
-    agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), questionPartialAnswers: z.boolean().optional(), sourceFindings: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), policyHelper: z.boolean().optional(), crossSessionMessaging: z.boolean().optional(), residentForks: z.boolean().optional() }).strict().optional(),
+    agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), questionPartialAnswers: z.boolean().optional(), sourceFindings: z.boolean().optional(), sourcePlanTools: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), policyHelper: z.boolean().optional(), crossSessionMessaging: z.boolean().optional(), residentForks: z.boolean().optional() }).strict().optional(),
 }).strict();
 const messageSchema = z.object({ role: z.enum(['user', 'assistant']), content: z.union([z.string(), z.array(z.object({ type: z.string() }).passthrough())]) }).strict();
 const responseSchema = z.object({ role: z.literal('assistant'), content: z.array(z.object({ type: z.string() }).passthrough()), stop_reason: z.string().nullable() }).passthrough();
@@ -338,12 +341,15 @@ const patchHunkSchema = z.object({ oldStart: z.number().int(), oldLines: z.numbe
   newStart: z.number().int(), newLines: z.number().int(), lines: z.array(z.string()) }).strict();
 const storedToolUseResultSchema = z.union([
   findingsHostResultSchema,
+  planHostResultSchema,
   z.object({ type: z.literal('create'), filePath: z.string().min(1), content: z.string(), structuredPatch: z.array(patchHunkSchema) }).strict(),
   z.object({ type: z.literal('update'), filePath: z.string().min(1), structuredPatch: z.array(patchHunkSchema) }).strict(),
   z.object({ filePath: z.string().min(1), oldString: z.string(), newString: z.string(), structuredPatch: z.array(patchHunkSchema), replaceAll: z.boolean() }).strict(),
 ]);
 const eventSchema = z.discriminatedUnion('kind', [
   scheduledFireSchema,
+  z.object({ kind: z.literal('model_plan_mode'), operation: z.enum(['enter', 'exit']),
+    mode: permissionPolicySchema.shape.mode, planId: z.string().uuid() }).strict(),
   z.object({ kind: z.literal('loop_boundary'), reason: z.enum(['foreign_user_input', 'tool_abort']) }).strict(),
   z.object({ kind: z.literal('metadata'), version: z.literal(1), id: z.string().uuid(), config: configSchema,
     fingerprint: z.string(), startedAt: z.number().finite().nonnegative().optional() }).strict(),
@@ -386,6 +392,10 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('turn_end'), reason: z.string(), duration: z.object({uuid:z.string().uuid(),
     durationMs:z.number().finite().nonnegative(), timestamp:z.string().datetime({offset:true})}).strict().optional() }).strict(),
 ]).superRefine((record, context) => {
+  if (record.kind === 'model_plan_mode') {
+    if (!modelPlanModeEventSchema.safeParse(record).success) context.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid model plan mode transition' });
+    return;
+  }
   if (record.kind === 'permission_mode_command') {
     if (!permissionModeCommandSchema.safeParse(record).success) context.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid local permission mode command' });
     return;
@@ -501,11 +511,46 @@ export class Session {
     if (mode === undefined || mode !== 'auto' && mode !== 'plan' && this.permissionUpdates.strippedDangerousRules === undefined) return;
     this.permissionUpdates = refreshAutoMode(this.permissionUpdates, mode, this.autoRuntime);
   }
+  // F/EE, 27et44g8 [12772,12808)/[14843,14970), UTF-16; stable session IDs adapt source slugs.
+  get planMode(): PlanModeHost | undefined {
+    if (this.config.features?.sourcePlanTools !== true) return undefined;
+    const owner = this;
+    return {
+      get filePath() { return sessionPlanFile(owner.config.configSources?.userDir ?? defaultUserDir(), owner.planId); },
+      isAgent: this.config.childMode !== undefined || this.inheritedPermissions !== undefined,
+      mode: () => this.permissionOwner.state().mode ?? 'default',
+      automaticMode: () => this.permissionOwner.state().isBypassPermissionsModeAvailable ? 'bypass'
+        : 'auto',
+      enter: () => this.changeModelPlanMode('plan'),
+      exit: mode => this.changeModelPlanMode(mode),
+    };
+  }
+
+  private get planId(): string {
+    const event = this.events.findLast(event => event.kind === 'model_plan_mode');
+    return event?.kind === 'model_plan_mode' ? event.planId : this.id;
+  }
+
+  // amn/Aq, ax9zepsq [7009,8595), x2c03s1m [6222,11236), UTF-16.
+  private changeModelPlanMode(mode: 'plan' | PlanExitMode): void {
+    if (this.inheritedPermissions || this.config.childMode) throw new Error('Only the main session can change plan mode');
+    if (this.config.managedPolicy?.permissions !== undefined) throw new Error('Permission mode is pinned by managed settings');
+    const state = this.permissionOwner.state();
+    if (mode !== 'plan' && state.mode !== 'plan') throw new Error('The session is not in plan mode');
+    const next = transitionPlanMode(state, mode, this.autoRuntime);
+    this.append(mode === 'plan'
+      ? { kind: 'model_plan_mode', operation: 'enter', mode, planId: this.planId }
+      : { kind: 'model_plan_mode', operation: 'exit', mode, planId: this.planId });
+    this.permissionUpdates = next;
+    for (const listener of this.permissionListeners) listener();
+  }
+
   readonly permissionOwner: LivePermissionOwner = {
     prepareAutoMode: () => this.prepareAutoMode(),
-    state: () => this.inheritedPermissions
+    state: () => ({ ...(this.inheritedPermissions
       ? childPermissionState(this.inheritedPermissions.owner.state(), this.inheritedPermissions.allowedTools)
-      : { ...this.permissionUpdates, mode: this.permissionUpdates.mode ?? this.config.permissions?.mode },
+      : { ...this.permissionUpdates, mode: this.permissionUpdates.mode ?? this.config.permissions?.mode }),
+      planFile: this.planMode?.filePath }),
     workingDirectories: readOnly => this.workingDirectories(readOnly),
     adoptUpdates: updates => this.adoptPermissionUpdates(updates),
   };
@@ -639,6 +684,22 @@ export class Session {
     this.releaseSettingsWrites = subscribeSettingsWrites(write => this.observeSettingsWrite(write));
     this.startedAt = meta.startedAt ?? Math.min(Date.now(), fs.fstatSync(fd).birthtimeMs || Date.now());
     for (const event of events) if (event.kind === 'file_history') this.updateFileHistory(event);
+    this.restoreModelPlanMode();
+  }
+
+  // H9n/LBs, fh503bhf [3071,4455)/[4967,5545); i0/rge, xv9wnb67 [7974,8517)/[7064,7388), UTF-16.
+  restoreModelPlanMode(history: 'current' | 'prefix' = 'current'): void {
+    if (this.config.features?.sourcePlanTools !== true || this.config.managedPolicy?.permissions !== undefined ||
+      history === 'current' && !this.events.some(event => event.kind === 'model_plan_mode')) return;
+    const retained = history === 'prefix' ? transitionPlanMode({ ...this.permissionUpdates,
+      mode: this.permissionUpdates.mode ?? this.config.permissions?.mode }, this.config.permissions?.mode ?? 'default', this.autoRuntime)
+      : this.permissionUpdates;
+    let state: SessionPermissionUpdates = { ...retained, mode: this.config.permissions?.mode, prePlanMode: undefined };
+    for (const event of this.events) {
+      if (event.kind === 'model_plan_mode' || event.kind === 'permission_mode_command')
+        state = transitionPlanMode(state, event.mode, this.autoRuntime);
+    }
+    this.permissionUpdates = state;
   }
 
   static open(workspace: string, options: { config?: SessionConfig; id?: string; recoverLock?: boolean; storageRoot?: string; startedAt?: number }): Session {

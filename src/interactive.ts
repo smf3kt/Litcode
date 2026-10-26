@@ -17,6 +17,8 @@ import path from 'node:path';
 import { InteractivePlanResume, permissionModeCommand, transitionPlanMode, type PermissionModeCommand } from './plan-resume.js';
 import { permissionPolicySchema, bindPermissionOwner } from './permissions.js';
 import { permissionCycleCommand } from './permission-cycle.js';
+import { planModeSchema, planPreview, planReviewChoices } from './plan-mode.js';
+import { readPlanFile, resolvePlanFile } from './plan-file.js';
 import type { PermissionUpdate } from './permissions.js';
 import {
   browsePermissions, type PermissionPanelApplyResult, type PermissionPanelInput, permissionPanelRules,
@@ -1145,6 +1147,53 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       plan: async (request, signal) => {
         return { approved: await confirm('Approve this plan', request.plan, signal) };
       },
+      // Got/jot/$ot, 24k7d6mw [1218850,1230824), UTF-16: keep-context approval owns the mode.
+      reviewPlan: async (request, signal) => {
+        let current = request.plan, edited = false;
+        for (;;) {
+          const review = { ...request, plan: current };
+          const choices = planReviewChoices(review);
+          if (terminal?.prompt) {
+            const answer = await readDialog({ title: current?.trim() ? 'Ready to code?' : 'Exit plan mode?',
+              titleWaitingFor: 'permission prompt', message: `${planPreview(current)}\n\nPlan file: ${request.filePath}`,
+              choices, allowText: Boolean(current?.trim()), maxTextChars: 32 * 1024,
+              planReview: { filePath: request.filePath, automaticMode: request.automaticMode },
+              cancelLabel: 'No, keep planning', defaultIndex: 0 }, signal);
+            if (!answer) return { behavior: 'deny' };
+            if (answer.key === 'plan-edit') {
+              resolvePlanFile(session.config.workspace, request.filePath, request.filePath, true);
+              const result = await terminal.openFile?.(request.filePath, signal, session.config.workspace, { planReview: true });
+              if (result?.error) options.status.write(`${result.error}\n`);
+              const next = readPlanFile(session.config.workspace, request.filePath);
+              if (next !== current) edited = true;
+              current = next;
+              continue;
+            }
+            const mode = planModeSchema.safeParse(answer.selected[0]);
+            if (mode.success) return { behavior: 'allow', mode: mode.data,
+              ...(edited ? { plan: current ?? '' } : {}), ...(answer.text?.trim() ? { feedback: answer.text.trim() } : {}) };
+            if (answer.selected[0] === 'deny') return { behavior: 'deny' };
+            if (answer.text?.trim()) return { behavior: 'deny', feedback: answer.text.trim() };
+            continue;
+          }
+          const list = choices.map((choice, index) => `${index + 1}. ${choice.label}`).join('\n');
+          const answer = (await readAnswer(`\n${planPreview(current)}\nPlan file: ${request.filePath}\n${list}\n` +
+            'Choose a number, enter feedback to keep planning, or type edit to open the file: ', signal)).trim();
+          if (answer === 'edit' && terminal?.openFile) {
+            resolvePlanFile(session.config.workspace, request.filePath, request.filePath, true);
+            const result = await terminal.openFile(request.filePath, signal, session.config.workspace, { planReview: true });
+            if (result.error) options.status.write(`${result.error}\n`);
+            const next = readPlanFile(session.config.workspace, request.filePath);
+            if (next !== current) edited = true;
+            current = next; continue;
+          }
+          const choice = /^\d+$/.test(answer) ? choices[Number(answer) - 1] : undefined;
+          const mode = planModeSchema.safeParse(choice?.value);
+          if (mode.success) return { behavior: 'allow', mode: mode.data, ...(edited ? { plan: current ?? '' } : {}) };
+          if (choice?.value === 'deny') return { behavior: 'deny' };
+          if (answer) return { behavior: 'deny', feedback: answer };
+        }
+      },
       report: request => {
         for (const finding of request.findings) output.write(`${finding.severity}: ${finding.file}:${finding.line} ${finding.summary}\n`);
       },
@@ -1348,7 +1397,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
         }
         if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
-        if (event.kind === 'title' || event.kind === 'session_color' || event.kind === 'instruction_watch' || event.kind === 'file_history' || event.kind === 'permission_mode_command') next.append(event);
+        if (event.kind === 'title' || event.kind === 'session_color' || event.kind === 'instruction_watch' || event.kind === 'file_history' || event.kind === 'permission_mode_command' || event.kind === 'model_plan_mode') next.append(event);
       }
       next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'configuration' });
       if (modeCommand) {
@@ -2536,6 +2585,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const prepared = await activeRuntime.reconfigure(next.config);
             next.carryPermissions(session);
             next.permissionUpdates = planResume.resume(next.id, next.permissionOwner.state(), next.config.permissions?.mode, next.events);
+            next.restoreModelPlanMode();
             nextRuntime = await bindNext(prepared, next);
           } catch (error) { next.close(); throw error; }
           try { await agent().endSession('session_switch'); }
@@ -2784,7 +2834,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 if (event.kind === 'turn_end') boundaries.set(index, next.events.length - 1);
               }
               if (event.kind === 'checkpoint' && boundaries.has(event.boundary)) next.append({ ...event, boundary: boundaries.get(event.boundary)! });
-              if (event.kind === 'title' || event.kind === 'session_color' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command') next.append(event);
+              if (event.kind === 'title' || event.kind === 'session_color' || event.kind === "instruction_watch" || event.kind === 'file_history' || event.kind === 'permission_mode_command' || event.kind === 'model_plan_mode') next.append(event);
             }
             next.append({ kind: 'branch', source: session.id, workspace: session.config.workspace, boundary: session.events.length - 1, reason: 'reload' });
             nextRuntime = await bindNext(nextRuntime, next);
@@ -3668,7 +3718,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (boundary === undefined) throw new Error('Completed turn number does not exist');
           }
           const next = prompt === '/clear' ? Session.open(session.config.workspace, { config: session.snapshotConfig() }) : forkSession(session, boundary);
-          if (prompt.startsWith('/rewind')) next.carryPermissions(session);
+          if (prompt.startsWith('/rewind')) { next.carryPermissions(session); next.restoreModelPlanMode('prefix'); }
           const nextRuntime = await bindNext(activeRuntime, next);
           try { await agent().endSession(prompt === '/clear' ? 'clear' : 'fork'); }
           catch (error) { options.status.write(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}\n`); }

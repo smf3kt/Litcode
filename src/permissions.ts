@@ -9,6 +9,7 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'node:fs';
 import { resolveChain, verifyIdentity } from './path-identity.js';
+import { resolvePlanFile } from './plan-file.js';
 
 export const autoPolicySchema = z.object({ deny: z.array(z.string()).optional(), allow: z.array(z.string()).optional(), soft_deny: z.array(z.string()).optional(), hard_deny: z.array(z.string()).optional(), environment: z.array(z.string()).optional(), classifyAllShell: z.boolean().optional() }).strict();
 export const permissionLayerSchema = z.object({
@@ -113,6 +114,7 @@ export type PermissionUpdate = z.infer<typeof permissionUpdateSchema>;
 export type SessionPermissionUpdates = {
   contentRuleOwner?: object;
   ruleWorkspace?: string;
+  planFile?: string;
   ruleRoots?: Partial<Record<PermissionSource, string>>;
   mode?: PermissionPolicy['mode'];
   autoDuringPlan?: boolean;
@@ -143,6 +145,7 @@ export type LivePermissionOwner = {
   adoptUpdates?(updates: readonly PermissionUpdate[]): PermissionUpdatesOutcome;
 };
 const permissionOwners = new WeakMap<PermissionPolicy, LivePermissionOwner>();
+const planFiles = new WeakMap<PermissionPolicy, string>();
 
 export function permissionOwner(policy: PermissionPolicy | undefined): LivePermissionOwner | undefined {
   return policy && permissionOwners.get(policy);
@@ -258,6 +261,8 @@ export function effectivePermissionPolicy(policy: PermissionPolicy | undefined,
     allow: [...session.allow], deny: [...session.deny], ask: [...session.ask],
     additionalDirectories: [...session.additionalWorkingDirectories.keys()] };
   bindContentRuleOwner(effective, session.contentRuleOwner ?? session);
+  const planFile = session.planFile ?? (policy === undefined ? undefined : planFiles.get(policy));
+  if (planFile !== undefined) planFiles.set(effective, planFile);
   return effective;
 }
 
@@ -474,7 +479,7 @@ export function permissionDecision(policy: PermissionPolicy | undefined, tool: T
     session = undefined;
   }
   let baseline: PermissionDecision;
-  try { baseline = decideOnce(policy, tool, input, session); }
+  try { baseline = decideOnce(policy, tool, input, session, owner?.planFile); }
   catch (error) { return { decision: 'deny', reason: `Permission path check failed: ${error instanceof Error ? error.message : String(error)}` }; }
   const result = !policy && !sessionUpdatesActive(session) ? baseline : applyShellReadings(policy, tool, input, baseline, session);
   // axr, sfn [3321472,3323500), UTF-16. Chrome origin-consent has no local tool surface.
@@ -483,10 +488,11 @@ export function permissionDecision(policy: PermissionPolicy | undefined, tool: T
 }
 
 function decideOnce(policy: PermissionPolicy | undefined, tool: ToolDefinition, input: unknown,
-  session?: SessionPermissionUpdates): PermissionDecision {
+  session?: SessionPermissionUpdates, planFile?: string): PermissionDecision {
   const active = sessionUpdatesActive(session);
   if (!policy && !active) return { decision: 'allow' };
   const mode = session?.mode ?? policy?.mode ?? 'default';
+  planFile ??= session?.planFile ?? (policy === undefined ? undefined : planFiles.get(policy));
   if (mode === 'default' && policy?.ask === undefined && policy?.inputRules === undefined && !active &&
       ![...(policy?.allow ?? []), ...(policy?.deny ?? [])].some(text => Un(text).ruleContent !== undefined)) {
     const reason = permissionError(policy, tool);
@@ -505,7 +511,12 @@ function decideOnce(policy: PermissionPolicy | undefined, tool: ToolDefinition, 
   if (applicable.some(rule => rule.decision === 'deny')) {
     return { decision: 'deny', reason: `Tool input denied by permission rule: ${name}` };
   }
-  if (mode === 'plan' && !tool.readOnly) {
+  // c_/aNe/fl, 2bcyxj9q [235473,238027)/[241113,242279)/[205509,205734), UTF-16.
+  const requestedPath = typeof input === 'object' && input !== null
+    ? Object.getOwnPropertyDescriptor(input, 'path')?.value : undefined;
+  const ownedPlan = planFile !== undefined && ['read_file', 'write_file', 'edit_file'].includes(name)
+    && typeof requestedPath === 'string' && resolvePlanFile(policy?.ruleWorkspace ?? process.cwd(), requestedPath, planFile) !== undefined;
+  if (mode === 'plan' && !tool.readOnly && !ownedPlan && tool.planOperation !== 'exit') {
     return { decision: 'deny', reason: `Plan mode permits read-only tools: ${name}` };
   }
   const explicitAllow = (policy?.allow ?? []).some(rule => bareRuleMatches(rule, name)) ||
@@ -519,7 +530,7 @@ function decideOnce(policy: PermissionPolicy | undefined, tool: ToolDefinition, 
       (session?.ask ?? []).some(rule => bareRuleMatches(rule, name)) || policy && contentRuleMatches(policy, 'ask', name, input)) {
     return { decision: 'ask', floor: 'rule', reason: `Tool requires approval by permission rule: ${name}` };
   }
-  if (explicitAllow || mode === 'bypass') return { decision: 'allow' };
+  if (ownedPlan || tool.planOperation !== undefined || explicitAllow || mode === 'bypass') return { decision: 'allow' };
   const shell = SHELL_TOOLS.has(name) || (name === 'monitor' && typeof input === 'object' && input !== null &&
     typeof Object.getOwnPropertyDescriptor(input, 'command')?.value === 'string');
   if ((mode === 'ask' || mode === 'dontAsk' || mode === 'auto') && (!tool.readOnly || shell)) {

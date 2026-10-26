@@ -832,8 +832,8 @@ export class TerminalInput extends EventEmitter<TerminalEvents> {
   }
 
   /** `/keybindings`: the same handoff as the draft editor, with no snapshot to read back. */
-  async openFile(file: string, signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult> {
-    if (!this.isTTY || !this.started || this.closed || this.editor.running || this.editorController) return {content:null};
+  async openFile(file: string, signal: AbortSignal, workspace?: string, options?: { planReview: true }): Promise<ExternalEditorResult> {
+    if (!this.isTTY || !this.started || this.closed || (this.editor.running && !options?.planReview) || this.editorController) return {content:null};
     this.sourceSearch?.cancel();
     const controller = new AbortController(); this.editorController = controller;
     const suspend = () => {
@@ -1291,6 +1291,7 @@ export interface TerminalPromptRequest {
   backgroundTaskDetail?: () => import('./task-details.js').BackgroundTaskDetail | undefined;
   /** we/$e, qskwh3r4 [17437,24938)/[26512,27477), UTF-16: request-owned pending/retry display. */
   sideQuestion?: import('./side-question-progress.js').SideQuestionProgress;
+  planReview?: { filePath: string; automaticMode: import('./plan-mode.js').PlanExitMode };
   /**
    * When present the request runs as a sequence of groups followed by a review
    * page, and the answer carries one entry per group. Copied from the recovered
@@ -1507,6 +1508,6 @@ export interface TerminalSurface {
   setEditorMode?(mode?: import('./tui-vim.js').EditorMode,remaps?:Record<string,unknown>): void;
   editDraft?(signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult>;
   /** `/keybindings`: hand the terminal to the user's editor for one existing file. */
-  openFile?(file: string, signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult>;
+  openFile?(file: string, signal: AbortSignal, workspace?: string, options?: { planReview: true }): Promise<ExternalEditorResult>;
   prompt?(request: TerminalPromptRequest, signal: AbortSignal): Promise<TerminalPromptAnswer | undefined>;
 }

@@ -403,7 +403,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // blocks, not one bracketed string; the input row is the command alone behind its `! `.
     const bash = this.bashEntryRows(entry, columns);
     // Zh/eT, phg89898 [50945,52785), UTF-16; only the successful typed result owns findings rows.
-    const findings = !entry.tool?.isError && entry.tool?.host && 'kind' in entry.tool.host
+    const findings = !entry.tool?.isError && entry.tool?.host && 'kind' in entry.tool.host && entry.tool.host.kind === 'findings'
       ? entry.tool.host.findings : undefined;
     const body = findings ? this.documentRenderer.renderElement(jsx(FindingsRows, { findings, verbose: detailed }, undefined), columns,
       { theme: this.theme.current, themeOverrides: this.theme.overrides }) : entry.fork ? this.documentRenderer.renderElement(jsx(ForkRow, { fields: entry.fork }, undefined), columns,
@@ -950,8 +950,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
   }
 
   /** Zie/hx, 7tnkhv2k [3072,3957)/[2859,2908), UTF-16: the same selection opens existing files. */
-  async openFile(file: string, signal: AbortSignal, workspace?: string): Promise<ExternalEditorResult> {
-    if (!this.isTTY || !this.started || this.closed || this.running || this.dialog || this.editorController) return {content:null};
+  async openFile(file: string, signal: AbortSignal, workspace?: string, options?: { planReview: true }): Promise<ExternalEditorResult> {
+    if (!this.isTTY || !this.started || this.closed || (this.running && !options?.planReview) || this.dialog || this.editorController) return {content:null};
     this.sourceSearch?.cancel();
     this.sourcePicker?.cancel();
     const controller=new AbortController();this.editorController=controller;
@@ -3124,6 +3124,19 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (dialog.copyPicker) { this.handleCopyPickerAction(dialog, action); return; }
     if (dialog.resumePicker) { this.handleResumePickerAction(dialog, action); return; }
     if (action.type === 'mouse') return;
+    // Got, 24k7d6mw [1221697,1230824), UTF-16: plan keys precede question input bindings.
+    if (dialog.request.planReview !== undefined) {
+      if (action.type === 'externalEditor' || action.type === 'key' && action.sequence === '\x07') {
+        dialog.finish({ selected: [], key: 'plan-edit' }); return;
+      }
+      if (action.type === 'key' && action.sequence === '\x1b[Z') {
+        const mode = dialog.request.planReview.automaticMode;
+        if (dialog.request.choices?.some(choice => choice.value === mode)) {
+          dialog.finish({ selected: [mode], ...(dialog.editor.text.trim() ? { text: dialog.editor.text.trim() } : {}) });
+        }
+        return;
+      }
+    }
     // Source presence records the interaction behind `Ip()`, so any key defers AFK.
     this.noteAfkInteraction();
     if (dialog.themeEditor) { this.handleThemeEditorAction(dialog, action); return; }
@@ -3142,6 +3155,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const binding = this.keys.push(sequence, ['Chat']);
       if (binding.kind === 'pending') return;
       if (binding.kind === 'match' && binding.match.action === 'chat:externalEditor') {
+        if (dialog.request.planReview !== undefined) { dialog.finish({ selected: [], key: 'plan-edit' }); return; }
         // gEe [25027,31575), UTF-16, enables this action only on its focused input row.
         if (dialog.notesEditing) void this.editQuestion(dialog, 'notes');
         else void this.editQuestion(dialog, 'other');
@@ -4631,7 +4645,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (choice.description) body.push(...wrapEntry({ kind: 'assistant', text: `    ${clean(choice.description)}` }, bodyWidth));
     }
     if (choices.length && active.allowText) {
-      offsets.push(body.length); body.push(`${dialog.index === choices.length ? '>' : ' '} Other`);
+      offsets.push(body.length); body.push(`${dialog.index === choices.length ? '>' : ' '} ${dialog.request.planReview ? 'No, keep planning' : 'Other'}`);
     }
     const notesKey = group?.key;
     if (notesKey !== undefined && this.notesAvailable(dialog, active)) {
@@ -4682,7 +4696,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // A read-only panel keeps its rows selectable but draws no input row of its own.
     // A request key is advertised beside the navigation hint so the panel names every action it
     // accepts; the recovered panels carry their own key row and this host draws one hint line.
-    const keyHint = (dialog.request.keys ?? []).map(entry => `${entry.key} ${entry.label}`).join(' / ');
+    const keyHint = dialog.request.planReview ? 'Ctrl+G edit plan / Shift+Tab approve with feedback'
+      : (dialog.request.keys ?? []).map(entry => `${entry.key} ${entry.label}`).join(' / ');
     const hint = readOnly ? (choices.length ? 'Enter next / Esc back / PgUp/PgDn' : 'Esc close / PgUp/PgDn')
       : dialog.notesEditing ? 'Notes · Enter save / Esc exit'
         : active.multiple ? 'Space toggle / Enter next / Esc cancel / PgUp/PgDn'

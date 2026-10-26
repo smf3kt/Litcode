@@ -74,7 +74,7 @@ const EXPECTED_TOOLS = [
   'web_fetch', 'read_media', 'workflow_run', 'workflow_get', 'checkpoint_create', 'checkpoint_list', 'checkpoint_diff', 'checkpoint_restore',
   'worktree_create', 'worktree_list', 'worktree_remove',
   'memory_list', 'memory_read', 'memory_write', 'memory_delete',
-  'ask_user_question', 'submit_plan', 'report_findings',
+  'ask_user_question', 'submit_plan', 'report_findings', 'enter_plan_mode', 'exit_plan_mode',
 ];
 
 const MAX_REQUEST_BYTES = 4 * 1024 * 1024;
@@ -342,7 +342,7 @@ test('CLI live loopback run wires tools, settings, hooks and instructions with p
   assert.equal(metadata.config.gateway.baseURL, gateway.url);
   assert.equal(metadata.config.gateway.auth, 'bearer');
   assert.deepEqual(metadata.config.features, { tasks: true, subagents: true, notebooks: true, background: true, scheduler: true, schedulerSourceCalendar: true, skillSourceArguments: true,
-    agentMessaging: true, agentIdle: true, agentTypes: true, interaction: true, questionPartialAnswers: true, sourceFindings: true, web: true, checkpoints: true, worktrees: true, memory: true, media: true, workflow: true,
+    agentMessaging: true, agentIdle: true, agentTypes: true, interaction: true, questionPartialAnswers: true, sourceFindings: true, sourcePlanTools: true, web: true, checkpoints: true, worktrees: true, memory: true, media: true, workflow: true,
     workflowPersistence: true, taskProjections: true, taskSourceVisibility: true, mcpSubscriptions: false, mcpCatalog: true, mcpDynamic: false, mcpDeferred: false, crossSessionMessaging: false, lsp: false });
   assert.deepEqual(metadata.config.hooks.SessionStart.length, 1);
   assert.deepEqual((metadata.config.tools as { name: string }[]).map(tool => tool.name).slice().sort(), EXPECTED_TOOLS.slice().sort());
