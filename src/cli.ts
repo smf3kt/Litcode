@@ -436,6 +436,8 @@ function newConfig(
     config.features = {
       tasks: (values.tasks as boolean | undefined) ?? settings.features?.tasks ?? true,
       taskProjections: settings.features?.taskProjections ?? true,
+      // Ur, tar639dc [151585,152665), UTF-16; original absent metadata retains legacy visibility.
+      taskSourceVisibility: settings.features?.taskSourceVisibility ?? true,
       ...(settings.features?.promptSuggestions === undefined ? {} : { promptSuggestions: settings.features.promptSuggestions }),
       subagents: (values.subagents as boolean | undefined) ?? settings.features?.subagents ?? true,
       notebooks: settings.features?.notebooks ?? true,

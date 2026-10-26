@@ -37,6 +37,8 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
     mcpDynamic: Boolean(settings.mcpServers && Object.keys(settings.mcpServers).length), mcpDeferred: false,
     lsp: Boolean(settings.lspServers && Object.keys(settings.lspServers).length), ...settings.features,
     skillSourceArguments: sourceSkillArgumentsDefault(settings.features),
+    // Ur, tar639dc [151585,152665), UTF-16; explicit reload pins the accepted visibility choice.
+    taskSourceVisibility: settings.features?.taskSourceVisibility ?? true,
     // MCt [1988,2662), atzjaveb, UTF-16; explicit reload creates a new pinned calendar choice.
     schedulerSourceCalendar: settings.features?.schedulerSourceCalendar ?? true,
     ...(overrides.tasks === undefined ? {} : { tasks: overrides.tasks }),

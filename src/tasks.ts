@@ -252,8 +252,14 @@ function writeStore(root: string, store: TaskStore): void {
 
 const taskObservers = new Map<string, Set<() => void>>();
 
-export function readTaskRecords(workspace: string): TaskRecord[] {
-  return structuredClone(readStore(canonicalWorkspace(workspace)).tasks);
+// n4n.#k, gjzyk1qc [3738,4542), UTF-16; Ur, tar639dc [151585,152665).
+function visibleTasks(tasks: TaskRecord[]): TaskRecord[] {
+  return tasks.filter(task => !task.metadata._internal);
+}
+
+export function readTaskRecords(workspace: string, sourceVisibility = false): TaskRecord[] {
+  const tasks = readStore(canonicalWorkspace(workspace)).tasks;
+  return structuredClone(sourceVisibility ? visibleTasks(tasks) : tasks);
 }
 
 /** Read one task for a hook payload; an absent id yields undefined. */
@@ -516,11 +522,11 @@ function reciprocalBlocks(tasks: TaskRecord[]): Map<string, string[]> {
 function projectTask(
   task: TaskRecord,
   byId: Map<string, TaskRecord>,
-  blocks?: string[],
+  blocks?: string[], completed?: ReadonlySet<string>,
 ): TaskRecord & { blocks?: string[]; ready?: boolean } {
   const metadata = { ...task.metadata };
   delete metadata[INTERNAL_METADATA_KEY];
-  const blockedBy = task.blockedBy.filter((dep) => byId.get(dep)?.status !== "completed");
+  const blockedBy = task.blockedBy.filter((dep) => completed === undefined ? byId.get(dep)?.status !== "completed" : !completed.has(dep));
   return {
     ...task,
     metadata,
@@ -618,7 +624,8 @@ function taskGetTool(root: string, reciprocal: boolean): ToolDefinition {
   };
 }
 
-function taskListTool(root: string, reciprocal: boolean): ToolDefinition {
+// Ur, chunk-tar639dc.js [151585,152665), UTF-16; SHA-256 c8f74100741e1b26457915d3a67a41b9a9ae9ef5bab44e7c334f18c8fbb6f2fc.
+function taskListTool(root: string, reciprocal: boolean, sourceVisibility: boolean): ToolDefinition {
   return {
     readOnly: true,
     schema: {
@@ -648,11 +655,11 @@ function taskListTool(root: string, reciprocal: boolean): ToolDefinition {
       const parsed = listSchema.parse(input == null ? {} : input);
       const store = readStore(root);
       const byId = new Map(store.tasks.map((task) => [task.id, task]));
-      const selected = parsed.status
-        ? store.tasks.filter((task) => task.status === parsed.status)
-        : store.tasks;
+      const visible = sourceVisibility ? visibleTasks(store.tasks) : store.tasks;
+      const completed = sourceVisibility ? new Set(visible.filter(task => task.status === 'completed').map(task => task.id)) : undefined;
+      const selected = parsed.status ? visible.filter((task) => task.status === parsed.status) : visible;
       const blocks = reciprocal ? reciprocalBlocks(store.tasks) : undefined;
-      const projected = selected.map((task) => projectTask(task, byId, blocks?.get(task.id)));
+      const projected = selected.map((task) => projectTask(task, byId, blocks?.get(task.id), completed));
       return capOutput(JSON.stringify(projected, null, 2), outputLimit(context));
     },
   };
@@ -822,10 +829,10 @@ function taskUpdateTool(root: string, reciprocal: boolean): ToolDefinition {
  */
 export function createTaskTools(
   workspace: string,
-  options?: { reciprocal?: boolean },
+  options?: { reciprocal?: boolean; sourceVisibility?: boolean },
 ): ToolDefinition[] {
   const root = canonicalWorkspace(workspace);
   const reciprocal = options?.reciprocal === true;
-  return [taskCreateTool(root), taskGetTool(root, reciprocal), taskListTool(root, reciprocal),
+  return [taskCreateTool(root), taskGetTool(root, reciprocal), taskListTool(root, reciprocal, options?.sourceVisibility === true),
     taskUpdateTool(root, reciprocal)];
 }

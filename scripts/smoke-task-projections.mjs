@@ -5,12 +5,18 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { setTimeout as delay } from 'node:timers/promises';
+import { TerminalScreen } from './terminal-screen.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "task-projections-cli-")));
+const workspace = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
+  ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), "task-projections-cli-")));
+const sourceVisibility = process.argv.includes('--source-visibility');
+const legacyVisibility = process.argv.includes('--legacy-visibility');
+const visibilityMode = sourceVisibility || legacyVisibility;
 const store = path.join(workspace, ".agent", "tasks.json");
-let a, b, beforeCycle, child, failure;
-let step = 0;
+let a, b, hidden, visible, beforeCycle, child, failure;
+let step = 0, phase = 1, requests = 0, heldUi, uiFrame;
 const raw = () => fs.readFileSync(store, "utf8");
 const plan = [
   { name: "task_create", input: () => ({ subject: "A", description: "Blocker" }),
@@ -56,12 +62,33 @@ const plan = [
   { name: "task_list", input: () => ({}), check: tasks => assert.deepEqual(tasks, []) },
 ];
 
+const visibilityPlan = [
+  { name: 'task_create', input: () => ({ subject: 'Internal', description: 'Hidden from lists', metadata: { _internal: true } }), check: task => { hidden = task.id; } },
+  { name: 'task_create', input: () => ({ subject: 'Visible', description: 'Visible dependent', metadata: { shown: true } }), check: task => { visible = task.id; } },
+  { name: 'task_update', input: () => ({ id: hidden, addBlocks: [visible], status: 'completed' }), check: task => assert.equal(task.status, 'completed') },
+  { name: 'task_get', input: () => ({ id: hidden }), check: task => { assert.equal(task.id, hidden); assert.deepEqual(task.metadata, {}); } },
+  { name: 'task_list', input: () => ({}), check: tasks => { assert.deepEqual(tasks.map(task => task.id), legacyVisibility ? [hidden, visible] : [visible]);
+    assert.deepEqual(tasks.find(task => task.id === visible).blockedBy, legacyVisibility ? [] : [hidden]); } },
+  { name: 'task_update', input: () => ({ id: hidden, removeBlocks: [visible] }), check: task => assert.equal(task.id, hidden) },
+  { name: 'task_get', input: () => ({ id: visible }), check: task => { assert.deepEqual(task.blockedBy, []); assert.equal(task.ready, true); } },
+];
+if (visibilityMode) plan.push(...visibilityPlan);
+const resumePlan = [
+  { name: 'task_list', input: () => ({}), check: tasks => assert.deepEqual(tasks.map(task => task.id), legacyVisibility ? [hidden, visible] : [visible]) },
+  { name: 'task_get', input: () => ({ id: hidden }), check: task => assert.equal(task.id, hidden) },
+  { name: 'task_update', input: () => ({ id: hidden, deleted: true }), check: result => assert.equal(result.deleted, true) },
+  { name: 'task_update', input: () => ({ id: visible, deleted: true }), check: result => assert.equal(result.deleted, true) },
+  { name: 'task_list', input: () => ({}), check: tasks => assert.deepEqual(tasks, []) },
+];
+const currentPlan = () => phase === 1 ? plan : resumePlan;
+
 const server = http.createServer((req, res) => {
   const chunks = []; let bytes = 0;
   req.on("data", chunk => { bytes += chunk.length; if (bytes > 4 * 1024 * 1024) req.destroy(); else chunks.push(chunk); });
   req.on("end", () => {
     try {
-      const body = JSON.parse(Buffer.concat(chunks));
+      const body = JSON.parse(Buffer.concat(chunks)); requests++;
+      if (phase === 3) { heldUi = res; return; }
       const update = body.tools.find(tool => tool.name === "task_update");
       assert.ok(update.input_schema.properties.addBlocks);
       assert.ok(update.input_schema.properties.removeBlocks);
@@ -69,11 +96,11 @@ const server = http.createServer((req, res) => {
       const last = body.messages.at(-1);
       const result = Array.isArray(last.content) && last.content.find(block => block.type === "tool_result");
       if (result) {
-        const prior = plan[step - 1];
+        const prior = currentPlan()[step - 1];
         if (prior.error) { assert.equal(result.is_error, true); assert.match(String(result.content), prior.error); prior.check(); }
         else { assert.ok(!result.is_error, String(result.content)); prior.check(JSON.parse(result.content)); }
       }
-      const operation = plan[step];
+      const operation = currentPlan()[step];
       const block = operation ? { type: "tool_use", id: `task-${step++}`, name: operation.name, input: operation.input() }
         : { type: "text", text: "Task projections smoke passed" };
       const events = [
@@ -98,10 +125,13 @@ const server = http.createServer((req, res) => {
 
 try {
   fs.mkdirSync(path.join(workspace, "user"));
+  if (legacyVisibility) fs.writeFileSync(path.join(workspace, 'user', 'settings.json'), JSON.stringify({ features: { taskSourceVisibility: false } }));
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
-  child = spawn(process.execPath, ["--import", "tsx", path.join(root, "src/cli.ts"), "--workspace", workspace,
-    "--user-dir", path.join(workspace, "user"), "--max-turns", "25", "--allow-tool", "task_*", "Exercise task projections"], {
-    cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LLM_API_KEY: "local-task-smoke-key",
+  const run = async args => {
+  const env = { ...process.env, HOME: workspace };
+  for (const name of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(name)) delete env[name];
+  child = spawn(process.execPath, [path.join(root, "bin/litcode.mjs"), "--workspace", workspace, ...args], {
+    cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...env, LLM_API_KEY: "local-task-smoke-key",
       LLM_MODEL: "smoke/tasks", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer",
       LLM_TOKEN_COUNTING: "estimate", LLM_EFFORT: "medium", LLM_THINKING: "false" },
   });
@@ -119,13 +149,63 @@ try {
   });
   assert.match(stdout, /Task projections smoke passed/);
   assert.match(stderr, /finished: end_turn/);
+  return stderr;
+  };
+  const stderr = await run(['--user-dir', path.join(workspace, 'user'), '--max-turns', '30', '--allow-tool', 'task_*', 'Exercise task projections']);
   assert.equal(step, plan.length);
-  assert.deepEqual(JSON.parse(raw()).tasks, []);
+  if (!visibilityMode) assert.deepEqual(JSON.parse(raw()).tasks, []);
   assert.equal(fs.existsSync(store + ".lock"), false);
   const owner = stderr.match(/session: ([a-f0-9-]+)/)[1];
   const header = JSON.parse(fs.readFileSync(path.join(workspace, ".agent", `${owner}.jsonl`), "utf8").split("\n")[0]);
   assert.equal(header.config.features.taskProjections, true);
-  console.log(JSON.stringify({ cliTaskProjections: "passed", operations: step, reciprocalEdges: true,
+  if (visibilityMode) {
+    assert.equal(header.config.features.taskSourceVisibility, !legacyVisibility);
+    fs.writeFileSync(path.join(workspace, 'user', 'settings.json'), JSON.stringify({ features: { taskSourceVisibility: legacyVisibility } }));
+    phase = 2; step = 0;
+    await run(['--resume', owner, 'Continue task projections']);
+    assert.equal(step, resumePlan.length);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(workspace, '.agent', `${owner}.jsonl`), 'utf8').split('\n')[0]), header);
+    assert.deepEqual(JSON.parse(raw()).tasks, []);
+    assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
+  }
+  if (sourceVisibility) {
+    const uuid = '00000000-0000-4000-8000-000000000001';
+    fs.writeFileSync(store, JSON.stringify({ version: 1, tasks: [
+      { id: uuid, subject: 'UI_VISIBLE_SENTINEL', description: '', metadata: {}, status: 'pending', blockedBy: [] },
+      { id: '00000000-0000-4000-8000-000000000002', subject: 'UI_INTERNAL_SENTINEL', description: '', metadata: { _internal: true }, status: 'pending', blockedBy: [] },
+    ] }));
+    fs.writeFileSync(path.join(workspace, 'user', 'settings.json'), JSON.stringify({ features: { taskSourceVisibility: true }, prefersReducedMotion: true }));
+    const pty = path.join(workspace, 'pty.exp');
+    fs.writeFileSync(pty, `set stty_init "rows 36 columns 120"\nsource {${path.join(root, 'scripts/pty-cli.exp')}}\n`);
+    const screen = new TerminalScreen(120, 36), frame = () => screen.lines().join('\n');
+    const env = { ...process.env, HOME: workspace, TERM: 'xterm-256color' };
+    for (const name of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(name)) delete env[name];
+    Object.assign(env, { LLM_API_KEY: 'owned-ui', LLM_MODEL: 'fixture-ui', LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: 'bearer', LLM_TOKEN_COUNTING: 'estimate' });
+    phase = 3;
+    child = spawn('/usr/bin/expect', [pty, process.execPath, path.join(root, 'bin/litcode.mjs'), '--workspace', workspace,
+      '--user-dir', path.join(workspace, 'user'), '--interactive', '--no-inherit-gateway'], { cwd: root, env, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    const exited = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
+    child.stdout.on('data', data => screen.write(String(data))); child.stderr.on('data', data => screen.write(String(data)));
+    const until = async (check, label) => { const deadline = Date.now() + 12000;
+      while (!check()) { assert.ok(Date.now() < deadline, `${label}\n${frame()}`); await delay(30); } };
+    try {
+      await until(() => frame().includes('· ready'), 'task UI startup');
+      child.stdin.write('TASK_UI_HOLD\r');
+      await until(() => heldUi && frame().includes('UI_VISIBLE_SENTINEL'), 'visible task rendered during model work');
+      assert.doesNotMatch(frame(), /UI_INTERNAL_SENTINEL/);
+      uiFrame = frame();
+      child.stdin.write('\x03');
+      await until(() => frame().includes('· ready'), 'UI cancellation');
+      child.stdin.write('/exit\r');
+      assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0);
+      child = undefined;
+    } finally {
+      fs.writeFileSync(path.join(workspace, 'task-ui-screen.txt'), uiFrame ?? frame());
+      screen.close();
+    }
+    assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
+  }
+  console.log(JSON.stringify({ cliTaskProjections: "passed", sourceVisibility, legacyVisibility, uiVisibility: Boolean(uiFrame), modelRequests: requests, externalCalls: 0, operations: plan.length + (visibilityMode ? resumePlan.length : 0), reciprocalEdges: true,
     readyAfterCompletion: true, cycleRollback: true, deletionConsistency: true, UUIDStoreVersion: 1,
     gateway: "owned loopback SSE" }));
 } finally {
