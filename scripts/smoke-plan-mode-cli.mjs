@@ -13,12 +13,20 @@ fs.mkdirSync(workspace); fs.mkdirSync(userDir);
 fs.writeFileSync(path.join(userDir, 'settings.json'), JSON.stringify({ prefersReducedMotion: true, promptSuggestionEnabled: false }));
 const plan = '# Owned plan\n\nWrite the fixture result and verify its bytes.\n';
 const editing = process.argv.includes('--editor'), cancelling = process.argv.includes('--cancel'), denying = process.argv.includes('--deny');
-const inline = process.argv.includes('--inline');
+const inline = process.argv.includes('--inline'), images = process.argv.includes('--images');
+const image = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PzWvWQAAAABJRU5ErkJggg==';
+const imageBlock = { type: 'image', source: { type: 'base64', media_type: 'image/png', data: image } };
+const preload = path.join(directory, 'clipboard.mjs');
+if (images) fs.writeFileSync(preload, `import cp from 'node:child_process';import {syncBuiltinESMExports} from 'node:module';
+const original=cp.spawn;cp.spawn=function(command,args,options){
+if(command==='/usr/bin/osascript'&&args?.[0]==='-e'&&args[1]==='the clipboard as \\u00abclass PNGf\\u00bb')
+return original(process.execPath,['-e',${JSON.stringify(`process.stdout.write(${JSON.stringify(`«data PNGf${Buffer.from(image, 'base64').toString('hex')}»\n`)})`)}],options);
+return original(command,args,options);};syncBuiltinESMExports();`);
 const editedPlan = plan + '\nReviewer edit retained.\n';
 const editor = path.join(directory, 'editor.cjs');
 fs.writeFileSync(editor, `require('node:fs').writeFileSync(process.argv.at(-1), ${JSON.stringify(editedPlan)});`);
 const requests = [];
-let phase = 'plan', step = 0, planFile, failure, rejectedReview = false;
+let phase = 'plan', step = 0, planFile, failure, rejectedReview = false, imageReviews = 0;
 const boundaryNames = ['legacy', 'managed', 'headless', 'child'];
 function send(response, block) {
   const tool = block.type === 'tool_use';
@@ -54,6 +62,8 @@ const server = http.createServer(async (request, response) => {
       send(response, { type: 'text', text: 'REWIND_RESTORED' }); return;
     }
     if (phase === 'resume') {
+      if (images) assert.deepEqual(body.messages.flatMap(message => Array.isArray(message.content) ? message.content : [])
+        .filter(block => block.type === 'image'), [imageBlock, imageBlock]);
       assert.equal(body.tools.some(tool => tool.name === 'enter_plan_mode'), true);
       assert.equal(systemText.includes('Plan mode is active'), false);
       send(response, { type: 'text', text: 'PLAN_RESUMED' }); return;
@@ -109,6 +119,16 @@ const server = http.createServer(async (request, response) => {
         assert.equal(result?.is_error, true); assert.equal(fs.existsSync(path.join(workspace, 'during-plan.txt')), false);
         call('exit_plan_mode'); break;
       case 4:
+        if (images && imageReviews < 2) {
+          assert.equal(result?.is_error, true);
+          assert.match(String(result.content), imageReviews === 0 ? editing ? /Retain image feedback/ : /\(See attached image\)/ : /Add image verification/);
+          const content = body.messages.at(-1)?.content; assert.ok(Array.isArray(content));
+          assert.deepEqual(content.filter(block => block.type === 'image'), [imageBlock]);
+          assert.equal(String(result.content).includes(image), false);
+          assert.match(systemText, /Plan mode is active/);
+          assert.equal(fs.existsSync(path.join(workspace, 'approved.txt')), false);
+          imageReviews++; step--; call('exit_plan_mode'); break;
+        }
         if ((cancelling || denying) && !rejectedReview) {
           assert.equal(result?.is_error, true);
           if (denying) assert.match(String(result.content), /Add verification/);
@@ -118,9 +138,11 @@ const server = http.createServer(async (request, response) => {
         }
         assert.equal(result?.is_error ?? false, false, JSON.stringify(result));
         assert.match(String(result.content), /User has approved your plan/); assert.ok(String(result.content).includes(editing ? editedPlan : plan));
-        if (editing) assert.match(String(result.content), /Approved Plan \(edited by user\)/);
+        if (editing && !images) assert.match(String(result.content), /Approved Plan \(edited by user\)/);
+        if (editing && images) assert.ok(String(result.content).includes('## Approved Plan:\n' + editedPlan));
         call('write_file', { path: 'approved.txt', content: 'approved plan\n' }); break;
       case 5:
+        if (images) assert.deepEqual(body.messages.at(-1).content.filter(block => block.type === 'image'), []);
         assert.equal(result?.is_error ?? false, false, JSON.stringify(result));
         assert.equal(fs.readFileSync(path.join(workspace, 'approved.txt'), 'utf8'), 'approved plan\n');
         send(response, { type: 'text', text: 'PLAN_MODE_DONE' }); break;
@@ -141,7 +163,7 @@ fs.writeFileSync(pty, `set stty_init "rows 38 columns 120"\nsource {${path.join(
 let child, exit, closed = true, errors = '', processText = '';
 function launch(args) {
   closed = false; errors = ''; processText = ''; screen.write('\x1bc');
-  child = spawn('/usr/bin/expect', [pty, process.execPath, path.join(root, 'bin/litcode.mjs'), '--workspace', workspace,
+  child = spawn('/usr/bin/expect', [pty, process.execPath, ...(images ? ['--import', preload] : []), path.join(root, 'bin/litcode.mjs'), '--workspace', workspace,
     '--no-inherit-gateway', ...args], { cwd: root, env, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
   child.stdout.setEncoding('utf8'); child.stdout.on('data', text => { screen.write(text); processText += text; });
   child.stderr.on('data', text => { errors += text; });
@@ -162,11 +184,35 @@ try {
   await until(() => inline ? frame().includes('>') : frame().includes('ready'), 'startup'); child.stdin.write('PLAN_BEGIN\r');
   await until(() => inline ? frame().includes('Choose a number') : frame().includes('Ready to code?'), 'file-backed plan approval');
   assert.ok(frame().includes('Owned plan'));
+  const attachments = path.join(workspace, '.harness', 'attachments');
+  const captured = () => fs.existsSync(attachments) && fs.readdirSync(attachments).length === 1;
+  if (images) {
+    for (let review = 0; review < 2; review++) {
+      child.stdin.write('\x1b[B\x1b[B\x16');
+      await until(captured, 'plan image captured');
+      await until(() => frame().includes('[Image #'), 'plan image label');
+      if (review === 0) {
+        child.stdin.write('\x7f'); await until(() => fs.readdirSync(attachments).length === 0, 'plan image removed');
+        child.stdin.write('\x16'); await until(captured, 'plan image restored');
+        if (editing) {
+          child.stdin.write('Retain image feedback'); child.stdin.write('\x07');
+          await until(() => fs.readFileSync(planFile, 'utf8') === editedPlan && frame().includes('Reviewer edit retained.'), 'plan editor with image feedback');
+          child.stdin.write('\x1b[B\x1b[B');
+          await until(() => frame().includes('[Image #') && frame().includes('Retain image feedback'), 'image and text retained through editor');
+        }
+      } else child.stdin.write('Add image verification');
+      child.stdin.write('\r');
+      await until(() => imageReviews === review + 1 && frame().includes('Ready to code?'), 'plan image feedback retry');
+      await until(() => fs.readdirSync(attachments).length === 0, 'plan image feedback cleanup');
+    }
+    child.stdin.write('\x1b[B\x1b[B\x16'); await until(captured, 'image before approval');
+    child.stdin.write('\x1b[A\x1b[A');
+  }
   if (cancelling || denying) {
     child.stdin.write(denying ? 'Add verification\r' : '\x1b');
     await until(() => rejectedReview && (inline ? frame().includes('Choose a number') : frame().includes('Ready to code?')), 'plan review retry');
   }
-  if (editing) {
+  if (editing && !images) {
     child.stdin.write(inline ? 'edit\r' : '\x07');
     await until(() => fs.readFileSync(planFile, 'utf8') === editedPlan && frame().includes('Reviewer edit retained.'), 'external plan editor');
   }
@@ -175,7 +221,14 @@ try {
   const journals = fs.readdirSync(path.join(workspace, '.agent')).filter(name => name.endsWith('.jsonl'));
   const records = journals.flatMap(name => fs.readFileSync(path.join(workspace, '.agent', name), 'utf8').trim().split('\n').map(JSON.parse));
   assert.ok(records.some(record => record.kind === 'tool_result' && record.host?.kind === 'plan' && record.host.operation === 'exit'));
-  if (editing) assert.ok(records.some(record => record.host?.kind === 'plan' && record.host.planWasEdited === true && record.host.plan === editedPlan));
+  if (images) {
+    assert.deepEqual(records.filter(record => record.kind === 'tool_result' && record.feedbackBlocks?.length)
+      .map(record => record.feedbackBlocks), [[imageBlock], [imageBlock]]);
+    assert.deepEqual(fs.readdirSync(attachments), []);
+  }
+  if (editing && !images) assert.ok(records.some(record => record.host?.kind === 'plan' && record.host.planWasEdited === true && record.host.plan === editedPlan));
+  if (editing && images) assert.ok(records.some(record => record.host?.kind === 'plan' && record.host.operation === 'exit'
+    && record.host.planWasEdited === undefined && record.host.plan === editedPlan));
   child.stdin.write('/exit\r'); assert.equal(await Promise.race([exit, delay(5000).then(() => -1)]), 0, errors);
   assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
   const active = records.find(record => record.kind === 'metadata'); assert.ok(active);
@@ -249,7 +302,7 @@ try {
   console.log(JSON.stringify({ planMode: 'passed', requests: requests.length, planFile: true, ordinaryWriteBlocked: true,
     approvedEffect: true, typedHost: true, editor: editing, denied: denying, cancelled: cancelling, inline,
     originalResume: true, reload: true, legacy: true, managed: true, headlessMissingCallback: true, childAuthority: true,
-    blankPlan: true, preEntryRewind: true, coldRewind: true, externalCalls: 0 }));
+    blankPlan: true, preEntryRewind: true, coldRewind: true, imageReviews, images, externalCalls: 0 }));
 } finally {
   if (!closed) { try { process.kill(-child.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } await exit; }
   screen.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); fs.rmSync(directory, { recursive: true, force: true });

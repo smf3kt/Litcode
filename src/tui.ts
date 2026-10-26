@@ -1039,30 +1039,34 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
   }
 
+  private dialogImageKey(dialog: ActiveDialog): string | undefined {
+    return dialog.request.planReview === undefined ? this.notesStep(dialog)?.key : 'plan-feedback';
+  }
+
   /**
    * Recovered `gEe`/`vae(Ac(tt()))`: an explicit paste chord captures one PNG
-   * through the platform clipboard and stores it against the focused question.
+   * through the platform clipboard and stores it against the focused input.
    * The capture is cancellable and a stale result can never reach a later
    * dialog or question.
    */
-  private async attachQuestionImage(dialog: ActiveDialog, question: TerminalPromptGroup | undefined): Promise<void> {
-    if (this.closed || this.dialog !== dialog || !question || this.editorController || dialog.imageCapture) return;
+  private async attachQuestionImage(dialog: ActiveDialog, key: string | undefined): Promise<void> {
+    if (this.closed || this.dialog !== dialog || key === undefined || this.editorController || dialog.imageCapture) return;
     const workspace = this.options.workspace;
     if (workspace === undefined) { dialog.error = 'Image paste needs a workspace'; this.render(); return; }
     const controller = new AbortController();
     dialog.imageCapture = controller;
     try {
       const captured = await captureClipboardImage(workspace, controller.signal, this.options.clipboard);
-      if (this.closed || this.dialog !== dialog || controller.signal.aborted || this.notesStep(dialog) !== question) {
+      if (this.closed || this.dialog !== dialog || controller.signal.aborted || this.dialogImageKey(dialog) !== key) {
         fs.rmSync(path.resolve(workspace, captured.path), { force: true });
         return;
       }
       const content = await readQuestionImage(path.resolve(workspace, captured.path));
-      if (this.closed || this.dialog !== dialog || controller.signal.aborted || this.notesStep(dialog) !== question) {
+      if (this.closed || this.dialog !== dialog || controller.signal.aborted || this.dialogImageKey(dialog) !== key) {
         fs.rmSync(path.resolve(workspace, captured.path), { force: true });
         return;
       }
-      dialog.images.add(question.key, { ...content, path: path.resolve(workspace, captured.path) });
+      dialog.images.add(key, { ...content, path: path.resolve(workspace, captured.path) });
       dialog.error = undefined;
     } catch (error) {
       if (this.dialog === dialog && !this.closed && !controller.signal.aborted) { dialog.error = String(error); }
@@ -1941,7 +1945,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (this.closed || signal.aborted) return Promise.resolve(undefined);
     if (this.dialog) return Promise.reject(new Error('Another interaction owns terminal input'));
     if (!this.isTTY || !this.started) return Promise.reject(new Error('Dialog needs an active terminal'));
-    if (Buffer.byteLength(JSON.stringify(request)) > 256 * 1024 || (request.choices?.length ?? 0) > 100) {
+    const displayRequest = request.planReview?.images === undefined ? request : { ...request,
+      planReview: { ...request.planReview, images: request.planReview.images.map(({ content: _content, ...image }) => image) } };
+    if (Buffer.byteLength(JSON.stringify(displayRequest)) > 256 * 1024 || (request.choices?.length ?? 0) > 100) {
       return Promise.reject(new Error('Dialog exceeds its display budget'));
     }
     this.sourceSearch?.cancel();
@@ -1968,6 +1974,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const finish = (answer?: TerminalPromptAnswer) => {
         if (settled) return;
         settled = true; signal.removeEventListener('abort', cancelled);
+        if (snapshot.planReview !== undefined && answer !== undefined) {
+          const images = dialog.images.list('plan-feedback');
+          answer = { ...answer, ...(images.length ? { images } : {}),
+            ...(dialog.editor.text.trim() ? { text: dialog.editor.text.trim() } : {}) };
+        }
         if (dialog.adjustClock !== undefined) clearInterval(dialog.adjustClock.timer);
         if (dialog.backgroundDetail?.timer !== undefined) clearInterval(dialog.backgroundDetail.timer);
         if (dialog.sideQuestion !== undefined) { clearInterval(dialog.sideQuestion.timer); dialog.sideQuestion.unsubscribe(); }
@@ -2016,6 +2027,10 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         dialog.resumePicker = { owner: new ResumePicker(snapshot.resumePicker), hits: new Map() };
       }
       if (snapshot.backgroundTaskDetail !== undefined) dialog.backgroundDetail = { snapshot: undefined };
+      for (const image of snapshot.planReview?.images ?? []) {
+        const { path: _path, ...content } = image;
+        dialog.images.add('plan-feedback', content);
+      }
       this.dialog = dialog;
       // we, qskwh3r4 [17437,24938), UTF-16: the waiting panel alone owns its 80 ms frame clock.
       if (sideQuestion !== undefined) {
@@ -3169,10 +3184,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       if (binding.kind === 'match' && binding.match.action === 'chat:imagePaste') {
         // gEe registers the paste action only on the focused Other input; plain
         // option rows, notes and the review page never attach an image.
-        const pasteStep = this.notesStep(dialog);
-        const pasteChoices = pasteStep?.choices ?? [];
+        const pasteChoices = this.dialogStep(dialog)?.choices ?? [];
         const pasteTextEntry = pasteChoices.length === 0 || dialog.index === pasteChoices.length;
-        if (pasteTextEntry) void this.attachQuestionImage(dialog, pasteStep);
+        if (pasteTextEntry) void this.attachQuestionImage(dialog, this.dialogImageKey(dialog));
         return;
       }
     }
@@ -3286,7 +3300,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (command === 'submit') {
       if (textEntry) {
         const text = dialog.editor.text.trim();
-        if (text) this.advanceDialog(dialog, { selected: step?.multiple
+        if (text || dialog.request.planReview !== undefined && dialog.images.list('plan-feedback').length) this.advanceDialog(dialog, { selected: step?.multiple
           ? [...dialog.selected].sort((a, b) => a - b).map(index => choices[index]!.value) : [], text });
         else { dialog.error = 'Enter an answer'; this.render(); }
       } else {
@@ -3309,7 +3323,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (choices.length === 0 || dialog.index === choices.length) {
       // gEe: Backspace on an empty Other input removes the question's last image
       // before it touches the editor, and the removal is live-gated.
-      const imageKey = dialog.request.groups?.[dialog.step]?.key;
+      const imageKey = this.dialogImageKey(dialog);
       if (command === 'backspace' && dialog.editor.text === '' && imageKey !== undefined) {
         const last = dialog.images.last(imageKey);
         if (last !== undefined && dialog.images.remove(imageKey, last.id)) {
@@ -4651,6 +4665,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     if (choices.length && active.allowText) {
       offsets.push(body.length); body.push(`${dialog.index === choices.length ? '>' : ' '} ${dialog.request.planReview ? 'No, keep planning' : 'Other'}`);
+    }
+    // yo, yygmb66g [23738,24437), UTF-16.
+    if (dialog.request.planReview !== undefined) {
+      const images = dialog.images.list('plan-feedback');
+      if (images.length) body.push('', images.map(image => `[Image #${image.id}]`).join(' '));
     }
     const notesKey = group?.key;
     if (notesKey !== undefined && this.notesAvailable(dialog, active)) {

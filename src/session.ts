@@ -34,6 +34,7 @@ import { editorModeSchema, vimRemapsSchema } from './tui-vim.js';
 import type { StoredToolUseResult } from './tool-use-result.js';
 import { findingsHostResultSchema } from './source-findings.js';
 import { questionHostResultSchema } from './question-result.js';
+import { toolFeedbackBlocksSchema, type ToolFeedbackBlock } from './tool-feedback.js';
 import { scheduledFireSchema, loopNoopCompanion, type ScheduledFire } from './loop-noop-fold.js';
 import { SETTING_SOURCE_ORDER, settingSourcesSchema, type SettingSource } from './setting-sources.js';
 import { subscribeSettingsWrites, type SettingsWrite } from './setting-writes.js';
@@ -179,7 +180,7 @@ export type SessionEvent =
   | { kind: 'mcp_subscription'; server: string; configDigest: string; method: 'resources/subscribe' | 'resources/unsubscribe'; uri: string }
   | { kind: 'mcp_task'; server: string; configDigest: string; taskId: string; tool: string; createdAt: string; ttl: number | null; resolved: boolean; result?: string; isError?: boolean }
   | { kind: 'tool_start'; id: string; name: string }
-  | { kind: 'tool_result'; result: ToolResult; host?: StoredToolUseResult }
+  | { kind: 'tool_result'; result: ToolResult; host?: StoredToolUseResult; feedbackBlocks?: ToolFeedbackBlock[] }
   | { kind: 'tool_output'; result: ToolResult }
   | { kind: 'hook_once'; event: string; key: string }
   | { kind: 'checkpoint'; name: string; digest: string; boundary: number }
@@ -367,7 +368,7 @@ const eventSchema = z.discriminatedUnion('kind', [
     method: z.enum(['resources/subscribe', 'resources/unsubscribe']), uri: z.string().min(1).refine(value => Buffer.byteLength(value) <= 4096 && !/[\x00-\x20\x7f]/.test(value)) }).strict(),
   z.object({ kind: z.literal('mcp_task'), server: z.string().min(1).max(256), configDigest: z.string().regex(/^[a-f0-9]{64}$/), taskId: z.string().min(1).max(128).regex(/^[\x21-\x7e]+$/), tool: z.string().min(1).max(256), createdAt: z.string().datetime({ offset: true }), ttl: z.number().finite().int().nonnegative().nullable(), resolved: z.boolean(), isError: z.boolean().optional(), result: z.string().refine(value => Buffer.byteLength(value) <= 24000).optional() }).strict(),
   z.object({ kind: z.literal('tool_start'), id: z.string(), name: z.string() }).strict(),
-  z.object({ kind: z.literal('tool_result'), result: resultSchema, host: storedToolUseResultSchema.optional() }).strict(),
+  z.object({ kind: z.literal('tool_result'), result: resultSchema, host: storedToolUseResultSchema.optional(), feedbackBlocks: toolFeedbackBlocksSchema.optional() }).strict(),
   z.object({ kind: z.literal('tool_output'), result: resultSchema }).strict(),
   z.object({ kind: z.literal('title'), title: z.string().min(1).max(200).refine(value => !/[\x00-\x1f\x7f-\x9f]/.test(value)) }).strict(),
   z.object({ kind: z.literal('session_color'), color: z.enum(['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan']).nullable() }).strict(),
@@ -807,6 +808,10 @@ export class Session {
     if (event.kind === 'message' && event.classifier === undefined) {
       const inherited = classifierMessage(event.message);
       if (inherited) event = { ...event, classifier: inherited };
+    }
+    // KWo, sfn1dbxq [2275902,2308030), UTF-16; durable native-block adapter.
+    if (event.kind === 'tool_result' && event.feedbackBlocks !== undefined) {
+      event = { ...event, feedbackBlocks: toolFeedbackBlocksSchema.parse(event.feedbackBlocks) };
     }
     eventSchema.parse(event);
     Session.writeAll(this.fd, Buffer.from(JSON.stringify(event) + '\n'));

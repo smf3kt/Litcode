@@ -4,7 +4,8 @@ import type { Anthropic } from '@anthropic-ai/sdk';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import { previewSanitized, previewUnstableInput } from './preview-sanitize.js';
 import { nmo } from './question-clarification-source.js';
-import { admittedImageBlock } from './question-images.js';
+import { admitContentBlocks, ToolFeedbackError, TOOL_FEEDBACK_LIMITS } from './tool-feedback.js';
+export { admitContentBlocks } from './tool-feedback.js';
 import { sourceFindingsRequestSchema, sourceFindingsResult, sourceFindingsText, SOURCE_FINDINGS_DESCRIPTION,
   type SourceFindingsRequest } from './source-findings.js';
 import { approvedPlanText, enteredPlanText, planApprovalSchema, type PlanReview, type PlanApproval } from './plan-mode.js';
@@ -17,7 +18,7 @@ export const INTERACTION_LIMITS = Object.freeze({
   labelChars: 100, descriptionChars: 2000, previewChars: 8000, otherChars: 4000,
   annotationNotesChars: 8192,
   /** Recovered `Jet` input size: every question's images as one native block each. */
-  contentBlocks: 16, contentBlockTextChars: 4096,
+  contentBlocks: TOOL_FEEDBACK_LIMITS.blocks, contentBlockTextChars: TOOL_FEEDBACK_LIMITS.textChars,
   planChars: 128 * 1024, findings: 100, fileChars: 4096, summaryChars: 4000,
   payloadBytes: 256 * 1024, outputBytes: 100_000,
   timeoutMs: 300_000, maxTimeoutMs: 600_000, maxPending: 16, maxPendingLimit: 64,
@@ -491,34 +492,6 @@ function output(value: unknown, context: ToolContext, tool: string): string {
   return json;
 }
 
-/**
- * Recovered `P3`/`Qet`: the converted blocks are siblings of the answer input,
- * and a conversion failure already arrives as a degraded `text` block. This
- * boundary re-checks each block so a host cannot attach an invalid or oversized
- * image, and strips the array from the JSON answer text so base64 is not repeated.
- */
-export function admitContentBlocks(value: unknown): Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam> | undefined {
-  if (value === undefined) return undefined;
-  if (!Array.isArray(value) || value.length > INTERACTION_LIMITS.contentBlocks) {
-    throw new Error(`ask_user_question: contentBlocks must be an array of at most ${INTERACTION_LIMITS.contentBlocks} blocks`);
-  }
-  const blocks: Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam> = [];
-  for (const entry of value) {
-    if (plainObject(entry) && own(entry, 'type') === 'text') {
-      const text = own(entry, 'text');
-      if (typeof text !== 'string' || text.length === 0 || text.length > INTERACTION_LIMITS.contentBlockTextChars) {
-        throw new Error('ask_user_question: content block text is invalid');
-      }
-      blocks.push({ type: 'text', text });
-      continue;
-    }
-    const image = admittedImageBlock(entry);
-    if (image === undefined) throw new Error('ask_user_question: content block is not a valid image or text block');
-    blocks.push(image);
-  }
-  return blocks;
-}
-
 function aborted(): Error { const error = new Error('Interaction aborted'); error.name = 'AbortError'; return error; }
 function checkSignal(signal: AbortSignal): void { if (signal.aborted) throw aborted(); }
 
@@ -848,7 +821,14 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
             automaticMode: host.automaticMode() }, signal), 'exit_plan_mode host answer');
           checkSignal(signal);
           if (host.mode() !== 'plan') throw new Error('Plan mode changed while the plan was under review');
-          if (answer.behavior === 'deny') throw new Error(answer.feedback || 'Plan approval declined. Keep planning.');
+          if (answer.behavior === 'deny') {
+            // $ot/ro/g1t, 24k7d6mw [1220957,1221697), 9c5se12s [56388,59378)/[5863,10103), UTF-16.
+            const blocks = admitContentBlocks(answer.contentBlocks, 'exit_plan_mode');
+            const message = answer.feedback || (blocks?.length ? '(See attached image)' : 'Plan approval declined. Keep planning.');
+            if (!blocks?.length) throw new Error(message);
+            output(message, context, 'exit_plan_mode');
+            throw new ToolFeedbackError(message, blocks);
+          }
           const approved = answer.plan ?? readPlanFile(context.workspace, host.filePath);
           const text = approvedPlanText(approved, host.filePath, answer.plan !== undefined) +
             (answer.feedback ? `\n\nUser feedback on this plan: ${answer.feedback}` : '');

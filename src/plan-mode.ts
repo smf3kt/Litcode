@@ -6,7 +6,7 @@ export const planModeSchema = z.enum(['default', 'acceptEdits', 'auto', 'bypass'
 export type PlanExitMode = z.infer<typeof planModeSchema>;
 export const planApprovalSchema = z.discriminatedUnion('behavior', [
   z.object({ behavior: z.literal('allow'), mode: planModeSchema, plan: z.string().optional(), feedback: z.string().optional() }).strict(),
-  z.object({ behavior: z.literal('deny'), feedback: z.string().optional() }).strict(),
+  z.object({ behavior: z.literal('deny'), feedback: z.string().optional(), contentBlocks: z.array(z.unknown()).optional() }).strict(),
 ]);
 export type PlanApproval = z.infer<typeof planApprovalSchema>;
 export interface PlanReview {

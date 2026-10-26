@@ -18,6 +18,7 @@ import path from 'node:path';
 import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
 import type { InteractionCallbacks } from './interaction-tools.js';
 import { boundToolContent } from './tool-output.js';
+import { ToolFeedbackError, type ToolFeedbackBlock } from './tool-feedback.js';
 import { projectToolUseResult, type StoredToolUseResult } from './tool-use-result.js';
 import { mediaInputSchema, readMedia, type MediaAttachment } from './media.js';
 import { AUTO_MEMORY_INSTRUCTIONS, loadAutoMemoryContext } from './auto-memory.js';
@@ -250,12 +251,14 @@ export class Agent {
       tail.unshift(event);
     }
     const completed = new Map<string, ToolResult>();
+    const feedback = new Map<string, ToolFeedbackBlock[]>();
     const started = new Set<string>();
     for (const event of tail) {
       if (event.kind === 'tool_start') started.add(event.id);
       if (event.kind === 'tool_result') {
         if (completed.has(event.result.tool_use_id)) throw new Error('Duplicate journal tool result');
         completed.set(event.result.tool_use_id, event.result);
+        if (event.feedbackBlocks?.length) feedback.set(event.result.tool_use_id, event.feedbackBlocks);
       }
       if (event.kind === 'tool_output') {
         if (!completed.has(event.result.tool_use_id)) throw new Error('Transformed output has no durable tool result');
@@ -272,7 +275,9 @@ export class Agent {
       this.session.append({ kind: 'tool_result', result });
       return result;
     });
-    this.session.append({ kind: 'message', message: { role: 'user', content: results } });
+    // KWo, sfn1dbxq [2275902,2308030), UTF-16.
+    this.session.append({ kind: 'message', message: { role: 'user', content:
+      [...results, ...calls.flatMap(call => feedback.get(call.id) ?? [])] } });
     assertPaired(this.session.messages);
   }
 
@@ -825,6 +830,7 @@ export class Agent {
       // the journal holds the row the transcript keeps rather than the live capture.
       hostResult: value => { hostResult = projectToolUseResult(value); } };
     const results: ToolResult[] = [];
+    const feedback = new Map<string, ToolFeedbackBlock[]>();
     const extra: string[] = [];
     // One slot for the batch: calls execute in order, and a slot is cleared before each call, so a
     // row can only belong to the call that produced it.
@@ -836,6 +842,7 @@ export class Agent {
     // Keep hook feedback after the entire paired batch, including on cancellation.
     for (const call of calls) {
       let result: ToolResult;
+      let feedbackBlocks: ToolFeedbackBlock[] | undefined;
       let executed = false;
       hostResult = undefined;
       let input = call.input;
@@ -929,14 +936,18 @@ export class Agent {
             result = this.result(call.id, tool.executeBlocks
               ? await tool.executeBlocks(input, context) : await tool.execute(input, context));
           } finally { durationMs = Date.now() - startedAt; }
-        } catch (error) { result = this.result(call.id, error instanceof Error ? error.message : String(error), true); }
+        } catch (error) {
+          result = this.result(call.id, error instanceof Error ? error.message : String(error), true);
+          if (!signal.aborted && error instanceof ToolFeedbackError && error.blocks.length) feedbackBlocks = error.blocks;
+        }
       }
       // Persist the effect before running a post hook, which may itself be interrupted. A file
       // effect's structured row is written with the call it belongs to, so replay keeps the same
       // chronological order the source's per-result message has.
       outcomes[call.id] ??= result.is_error ? 'error' : 'ok';
-      this.session.append(hostResult === undefined
-        ? { kind: 'tool_result', result } : { kind: 'tool_result', result, host: hostResult });
+      this.session.append({ kind: 'tool_result', result, ...(hostResult === undefined ? {} : { host: hostResult }),
+        ...(feedbackBlocks === undefined ? {} : { feedbackBlocks }) });
+      if (feedbackBlocks !== undefined) feedback.set(call.id, feedbackBlocks);
       results.push(result);
       if (executed && !result.is_error && this.tools.get(call.name)?.endsTurn === true) this.endedByTool = true;
       if (executed && !signal.aborted) {
@@ -1023,7 +1034,8 @@ export class Agent {
         ...(hostResult === undefined ? {} : { host: hostResult }) });
     }
     this.session.append({ kind: 'message', classifier: { origin: { kind: 'generated', source: 'tool-results' }, outcomes }, message: { role: 'user', content: [
-      ...results, ...extra.map(text => ({ type: 'text' as const, text: `Hook context:\n${text}` })),
+      ...results, ...calls.flatMap(call => feedback.get(call.id) ?? []),
+      ...extra.map(text => ({ type: 'text' as const, text: `Hook context:\n${text}` })),
     ] } });
     // `Hen` is a separate meta user message after the denied tool result, so it
     // is not shown yet reaches the next request. The source appends one per

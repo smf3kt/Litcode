@@ -29,7 +29,7 @@ import { startBackgroundSession, backgroundResumeCommand, backgroundSeed } from 
 import { parseAttachmentCommand } from './media.js';
 import { questionClarification, terminalAnswerAnnotation } from './interaction-tools.js';
 import { askUserQuestionTimeoutMs } from './tui-afk.js';
-import { questionImageBlocks } from './question-images.js';
+import { questionImageBlocks, type QuestionImage } from './question-images.js';
 import { checkpointConversation, previewRewind, applyRewind, type RewindPreview } from './rewind.js';
 import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
@@ -1150,7 +1150,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       },
       // Got/jot/$ot, 24k7d6mw [1218850,1230824), UTF-16: keep-context approval owns the mode.
       reviewPlan: async (request, signal) => {
-        let current = request.plan, edited = false;
+        let current = request.plan, edited = false, feedback = '';
+        let images: readonly QuestionImage[] = [];
         for (;;) {
           const review = { ...request, plan: current };
           const choices = planReviewChoices(review);
@@ -1158,10 +1159,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             const answer = await readDialog({ title: current?.trim() ? 'Ready to code?' : 'Exit plan mode?',
               titleWaitingFor: 'permission prompt', message: `${planPreview(current)}\n\nPlan file: ${request.filePath}`,
               choices, allowText: Boolean(current?.trim()), maxTextChars: 32 * 1024,
-              planReview: { filePath: request.filePath, automaticMode: request.automaticMode },
+              initialText: feedback,
+              planReview: { filePath: request.filePath, automaticMode: request.automaticMode, images },
               cancelLabel: 'No, keep planning', defaultIndex: 0 }, signal);
             if (!answer) return { behavior: 'deny' };
             if (answer.key === 'plan-edit') {
+              feedback = answer.text ?? ''; images = answer.images ?? [];
               resolvePlanFile(session.config.workspace, request.filePath, request.filePath, true);
               const result = await terminal.openFile?.(request.filePath, signal, session.config.workspace, { planReview: true });
               if (result?.error) options.status.write(`${result.error}\n`);
@@ -1174,7 +1177,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             if (mode.success) return { behavior: 'allow', mode: mode.data,
               ...(edited ? { plan: current ?? '' } : {}), ...(answer.text?.trim() ? { feedback: answer.text.trim() } : {}) };
             if (answer.selected[0] === 'deny') return { behavior: 'deny' };
-            if (answer.text?.trim()) return { behavior: 'deny', feedback: answer.text.trim() };
+            if (answer.text?.trim() || answer.images?.length) {
+              // Got/$ot, 24k7d6mw [1220957,1230824), UTF-16.
+              const blocks = await questionImageBlocks(answer.images ?? [], { workspace: session.config.workspace, signal });
+              return { behavior: 'deny', feedback: answer.text?.trim() || '(See attached image)',
+                ...(blocks === undefined ? {} : { contentBlocks: blocks }) };
+            }
             continue;
           }
           const list = choices.map((choice, index) => `${index + 1}. ${choice.label}`).join('\n');

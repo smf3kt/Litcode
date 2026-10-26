@@ -1291,7 +1291,8 @@ export interface TerminalPromptRequest {
   backgroundTaskDetail?: () => import('./task-details.js').BackgroundTaskDetail | undefined;
   /** we/$e, qskwh3r4 [17437,24938)/[26512,27477), UTF-16: request-owned pending/retry display. */
   sideQuestion?: import('./side-question-progress.js').SideQuestionProgress;
-  planReview?: { filePath: string; automaticMode: import('./plan-mode.js').PlanExitMode };
+  planReview?: { filePath: string; automaticMode: import('./plan-mode.js').PlanExitMode;
+    images?: readonly import('./question-images.js').QuestionImage[] };
   /**
    * When present the request runs as a sequence of groups followed by a review
    * page, and the answer carries one entry per group. Copied from the recovered
@@ -1366,6 +1367,7 @@ export interface TerminalPromptKey {
 }
 export interface TerminalPromptAnswer {
   selected: string[];
+  images?: readonly import('./question-images.js').QuestionImage[];
   /** fLt.Gs [677501,677704), chunk-24k7d6mw.js, UTF-16: index in the live accepted list. */
   backgroundTaskIndex?: number;
   clarify?: true;
