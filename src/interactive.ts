@@ -1065,6 +1065,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     // Stop/SubagentStop carry the live background jobs and session cron tasks
     // (`Sle`, chunk-sfn1dbxq.js [2946002,2946104)).
     stopState: () => activeRuntime.stopState?.(session.id) ?? { background_tasks: [], session_crons: [] },
+    memoryConsolidation: () => activeRuntime.tryMemoryConsolidation?.(session.config, session.id) ?? Promise.resolve(),
     interaction: {
       ask: async (request, signal) => {
         // One grouped request runs every question and then a review page, which
@@ -1921,6 +1922,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       if (!session.awaitingResponse) {
         for (const event of activeRuntime.drainEvents?.(session.id) ?? []) {
           if (event.kind === "instruction_paths") { addInstructionPaths(event.paths); continue; }
+          if (event.kind === 'memory_status') { options.status.write(`${event.text}\n`); continue; }
           if (event.kind === 'hook_terminal') {
             session.append({ kind: 'hook_terminal', id: event.id, event: event.event, sequences: event.sequences });
             for (const sequence of event.sequences) terminal?.writeTerminalSequence(sequence);

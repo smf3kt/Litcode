@@ -141,6 +141,7 @@ export type SessionConfig = {
   heldMcpServers?: { name: string; fingerprint: string; reason: 'unapproved' | 'declaration-changed' }[];
   mcpClient?: { roots?: boolean; sampling?: boolean; samplingImages?: boolean; samplingArrays?: boolean; samplingAudio?: boolean; elicitation?: boolean };
   autoMemory?: boolean;
+  autoMemoryConsolidation?: boolean;
   dynamicInstructions?: boolean;
   watchConfig?: boolean;
   worktreeReturn?: string;
@@ -306,6 +307,7 @@ export const configSchema = z.object({
     reason: z.enum(['unapproved', 'declaration-changed']) }).strict()).optional(),
   mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), samplingArrays: z.boolean().optional(), samplingAudio: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional(),
   autoMemory: z.boolean().optional(),
+  autoMemoryConsolidation: z.boolean().optional(),
   dynamicInstructions: z.boolean().optional(),
   watchConfig: z.boolean().optional(),
   worktreeReturn: z.string().min(1).optional(),

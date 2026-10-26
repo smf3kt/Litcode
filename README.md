@@ -115,6 +115,8 @@ litcode --workspace /path/to/project --resume UUID --continue
 }
 ```
 
+`autoMemory` 启用当前对话内的记忆维护。另加 `"autoMemoryConsolidation": true` 可启用后台整理，默认关闭，运行环境需提供 `node:sqlite` 的 `DatabaseSync`（Node.js 22.13+）。距上次成功整理至少 24 小时、且有至少 5 个其他已关闭主会话更新后，主回合收尾会启动一次整理。它沿用当前权限和用量预算，完成后显示状态；失败或中断保留原整理时间。运行中的整理可从 `/tasks` 查看或停止。已有会话保持原设置，显式 `/reload` 后才采用新配置。
+
 技能放在用户目录的 `skills/<name>/SKILL.md` 或项目 `.harness/skills/<name>/SKILL.md`，用 `/name` 调用。项目指令使用 `HARNESS.md`、`AGENTS.md` 和 `.harness/rules/`。MCP 服务通过设置中的 `mcpServers` 配置，连接状态在 `/mcp` 查看。
 
 ## 开发

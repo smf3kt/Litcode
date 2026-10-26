@@ -425,6 +425,7 @@ function newConfig(
       ...(values['managed-settings'] === undefined ? {} : { managedSettingsFile: path.resolve(workspace, values['managed-settings'] as string) }),
     };
     if (settings.autoMemory !== undefined || values['auto-memory'] === true) config.autoMemory = values['auto-memory'] === true || settings.autoMemory;
+    if (settings.autoMemoryConsolidation !== undefined) config.autoMemoryConsolidation = settings.autoMemoryConsolidation;
     config.dynamicInstructions = settings.dynamicInstructions ?? true;
     if (settings.watchConfig !== undefined || values['watch-config'] === true) config.watchConfig = values['watch-config'] === true || settings.watchConfig;
     config.system = buildSystem(DEFAULT_SYSTEM, [...loaded.instructions,
@@ -759,6 +760,11 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     } };
   };
   const finish = async (reason: string, text: string, modelCalls: number): Promise<void> => {
+    if (runtime && session) {
+      await runtime.settleMemoryConsolidation?.(session.id);
+      if (controller.signal.aborted) reason = 'aborted';
+      for (const status of runtime.drainMemoryStatus?.(session.id) ?? []) headless!.status(status);
+    }
     try { await activeAgent?.endSession(controller.signal.aborted ? 'interrupt' : 'other'); }
     catch (error) { headless!.status(`SessionEnd hook error: ${error instanceof Error ? error.message : String(error)}`); }
     const snapshot = budget.snapshot();
@@ -928,6 +934,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       interruptTurn: () => controller.abort(new Error('Hook interrupt')),
       hookOptions: currentRuntime.hookOptions?.(currentSession.config, currentSession.id),
       stopState: () => currentRuntime.stopState?.(currentSession.id) ?? { background_tasks: [], session_crons: [] },
+      memoryConsolidation: () => currentRuntime.tryMemoryConsolidation?.(currentSession.config, currentSession.id) ?? Promise.resolve(),
     });
     // Source module digest and zero-based UTF-16 ranges: research/ports/W316-headless-wakeup.md.
     // KL [562879,563257), chunk-rx2nah4x.js closes the input lane and parks dynamic wakeups only.

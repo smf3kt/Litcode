@@ -40,6 +40,7 @@ import { createLspTools, lspConfigSchema, type LspConfig } from './lsp.js';
 import { createWebTools } from './web.js';
 import { createWebSearchTools, webSearchConfigSchema, type WebSearchConfig } from './web-search.js';
 import { createMemoryTools } from './memory.js';
+import { MemoryConsolidation } from './memory-consolidation.js';
 import { createMediaTools } from './media.js';
 import { createPluginTools, discoverInstalledPluginComponents, installedPluginCatalogIdentity, pluginConfigSchema, type PluginConfig } from './plugins.js';
 import { NamedWorkflowCatalog } from './workflow-named.js';
@@ -156,6 +157,7 @@ export type ParsedRuntimeSettings = {
   mcpServers?: Record<string, McpServerConfig>;
   mcpClient?: SessionConfig['mcpClient'];
   autoMemory?: boolean;
+  autoMemoryConsolidation?: boolean;
   dynamicInstructions?: boolean;
   watchConfig?: boolean;
   lspServers?: LspConfig;
@@ -292,6 +294,7 @@ export function parseSettings(settings: Record<string, unknown>): ParsedRuntimeS
   if ('mcpServers' in settings) out.mcpServers = mcpServersSchema.parse(settings.mcpServers);
   if ('mcpClient' in settings) out.mcpClient = configSchema.shape.mcpClient.parse(settings.mcpClient);
   if ('autoMemory' in settings) out.autoMemory = settingBoolean(settings, 'autoMemory');
+  if ('autoMemoryConsolidation' in settings) out.autoMemoryConsolidation = settingBoolean(settings, 'autoMemoryConsolidation');
   if ('dynamicInstructions' in settings) out.dynamicInstructions = settingBoolean(settings, 'dynamicInstructions');
   if ('watchConfig' in settings) out.watchConfig = settingBoolean(settings, 'watchConfig');
   if ('lspServers' in settings) out.lspServers = lspConfigSchema.parse(settings.lspServers);
@@ -445,6 +448,7 @@ export function validateRuntimeConfig(config: SessionConfig): void {
 
 export type RuntimeEvent = { kind: 'scheduled'; id: string; prompt: string; dynamic?: true } |
   { kind: 'instruction_paths'; paths: string[]; prompt?: never } |
+  { kind: 'memory_status'; text: string; prompt?: never } |
   { kind: 'hook_terminal'; id: string; event: string; sequences: string[]; prompt?: never } |
   { kind: 'notification'; prompt: string; hookTerminal?: { id: string; event: string; sequences: string[] } } |
   { kind: 'teammate_idle'; prompt: string; agentId: string; name: string | null };
@@ -515,6 +519,9 @@ export type Runtime = {
   /** Stop one job, child agent or cron by id; undefined when the id is no longer live. */
   stopTask?(owner: string, id: string): Promise<import('./tasks-panel.js').BackgroundTaskKind | undefined>;
   releaseSession?(owner: string): Promise<void>;
+  tryMemoryConsolidation?(config: SessionConfig, owner: string): Promise<void>;
+  settleMemoryConsolidation?(owner: string): Promise<void>;
+  drainMemoryStatus?(owner: string): string[];
   runSkill?(config: SessionConfig, owner: string, skill: SkillInfo, args: string, signal: AbortSignal,
     requestPermission?: (tool: ToolDefinition, input: unknown, decision: PermissionDecision) => Promise<PermissionDecision>,
     conversation?: readonly Anthropic.MessageParam[]): Promise<string>;
@@ -652,7 +659,7 @@ export async function createRuntime(
     ...(clientRequests ? { clientRequests } : {}) });
 
   type Resources = { background?: BackgroundRegistry; scheduler?: LocalScheduler; agents?: AgentRegistry; workflows?: WorkflowRegistry; hooks?: AsyncHookRegistry;
-    lsp?: ReturnType<typeof createLspTools>; worktrees?: WorktreeManager;
+    lsp?: ReturnType<typeof createLspTools>; worktrees?: WorktreeManager; memory?: MemoryConsolidation;
     queued: RuntimeEvent[]; instructionPaths: Set<string>; terminalQueued: Extract<RuntimeEvent, { kind: 'hook_terminal' }>[]; terminalDropped: number;
     dropped: number; reportedDropped: number; reportedAgentDrops: number; loopDelivery?: LoopDeliveryState };
   // Headless source digests and zero-based UTF-16 ranges: research/ports/W316-headless-wakeup.md.
@@ -733,7 +740,8 @@ export async function createRuntime(
   const backgroundWorkCountForOwner = (owner: string): number => {
     if (closed || signal.aborted) return 0;
     const resources = resourcesFor(owner, scopeFor(owner));
-    return (resources.background?.active().length ?? 0) + runningChildren(resources).length;
+    return (resources.background?.active().length ?? 0) + runningChildren(resources).length +
+      (resources.memory?.tasks().filter(task => task.status === 'running').length ?? 0);
   };
   // fLt/CE/EWe, 24k7d6mw [674264,677240)/[699801,701039), UTF-16: retained local rows.
   const backgroundTasksForOwner = (owner: string): import('./tasks-panel.js').BackgroundTaskSnapshot => {
@@ -742,7 +750,7 @@ export async function createRuntime(
     if (resources === undefined) return { jobs: [], agents: [], crons: [] };
     return {
       jobs: resources.background?.active() ?? [],
-      agents: resources.agents?.backgroundTasks() ?? [],
+      agents: [...resources.agents?.backgroundTasks() ?? [], ...resources.memory?.tasks() ?? []],
       crons: (resources.scheduler?.list() ?? []).map(job => ({ id: job.id, cron: job.cron,
         recurring: job.recurring === true, prompt: job.prompt })),
     };
@@ -761,6 +769,7 @@ export async function createRuntime(
       await resources.agents!.stop(id);
       return 'agent';
     }
+    if (await resources.memory?.stop(id)) return 'agent';
     if (resources.scheduler?.delete(id) === true) return 'cron';
     return undefined;
   };
@@ -772,7 +781,9 @@ export async function createRuntime(
     const children = runningChildren(resources);
     // Child stop aborts the agent and awaits its worker; the chord does not wait for teardown.
     for (const child of children) { try { void resources.agents!.stop(child.id).catch(() => {}); } catch { /* the child already ended */ } }
-    return jobs.length + children.length;
+    const memory = resources.memory?.tasks().filter(task => task.status === 'running') ?? [];
+    for (const task of memory) void resources.memory!.stop(task.id).catch(() => {});
+    return jobs.length + children.length + memory.length;
   };
   // Factories close over registries but access them only on execution. Bind methods
   // to their real instance lazily so constructing schemas installs no resources.
@@ -1313,7 +1324,7 @@ export async function createRuntime(
     try { await resources.workflows?.close(); }
     finally {
       await schedulerClosing;
-      try { await resources.agents?.close(); }
+      try { await Promise.all([resources.agents?.close(), resources.memory?.close()]); }
       finally { await Promise.allSettled([resources.hooks?.close(), resources.background?.close(), resources.lsp?.close(), resources.worktrees?.close()]); }
     }
   };
@@ -1517,6 +1528,32 @@ export async function createRuntime(
         return { kind: 'forked', name: descriptor.name ?? name, agentId: descriptor.id };
       },
       taskRecords(current) {if (closed) return []; return current.features?.tasks ? readTaskRecords(current.workspace) : [];},
+      // Ga/PFo, 5b2hxy2e [66757,66799), UTF-16: one main owner admits its detached memory runner.
+      async tryMemoryConsolidation(current, owner) {
+        if (current.autoMemoryConsolidation !== true || current.autoMemory !== true || current.childMode) return;
+        const tools = buildTools(current, owner);
+        const scope = scopeFor(owner);
+        const target = resourcesFor(owner, scope);
+        target.memory ??= new MemoryConsolidation({ config: current, tools, provider, owner,
+          signal: AbortSignal.any([signal, lifetimeController.signal]),
+          hookOptions: () => runtime.hookOptions?.(current, owner) ?? {},
+          onChange: () => { if (!closed && ownerScopes.get(owner) === scope) notify(owner); },
+          onStatus: text => {
+            if (closed || ownerScopes.get(owner) !== scope) return;
+            if (target.queued.length >= 50) { target.queued.shift(); target.dropped++; }
+            target.queued.push({ kind: 'memory_status', text: boundToolContent(text, current.maxOutputBytes) as string });
+            notify(owner);
+          } });
+        await target.memory.tryStart();
+      },
+      async settleMemoryConsolidation(owner) { await owners.get(owner)?.memory?.settle(); },
+      drainMemoryStatus(owner) {
+        const target = owners.get(owner);
+        if (!target) return [];
+        const status = target.queued.flatMap(event => event.kind === 'memory_status' ? [event.text] : []);
+        target.queued = target.queued.filter(event => event.kind !== 'memory_status');
+        return status;
+      },
       stopState(owner) { return stopStateForOwner(owner); },
       pendingLoopWakeup(owner) {
         const resources = owners.get(owner);
@@ -1544,7 +1581,7 @@ export async function createRuntime(
       backgroundTaskDetail(owner, id) {
         if (closed || signal.aborted) return undefined;
         const resources = owners.get(owner);
-        const agent = resources?.agents?.detail(id);
+        const agent = resources?.agents?.detail(id) ?? resources?.memory?.detail(id);
         if (agent !== undefined) return agent;
         if (resources?.background === undefined) return undefined;
         try {
@@ -1553,9 +1590,12 @@ export async function createRuntime(
         } catch { return undefined; }
       },
       // Vp/im/am/N4, 24k7d6mw [210906,211342)/[398352,399172)/[1497670,1498885), UTF-16.
-      agentTranscript(owner, id) { return closed || signal.aborted ? undefined : owners.get(owner)?.agents?.transcript(id); },
-      retainAgentView(owner, id) { return closed || signal.aborted ? undefined : owners.get(owner)?.agents?.retainView(id); },
+      agentTranscript(owner, id) { return closed || signal.aborted ? undefined :
+        owners.get(owner)?.agents?.transcript(id) ?? owners.get(owner)?.memory?.transcript(id); },
+      retainAgentView(owner, id) { return closed || signal.aborted ? undefined :
+        owners.get(owner)?.agents?.retainView(id) ?? owners.get(owner)?.memory?.retainView(id); },
       async submitAgentInput(owner, id, text) {
+        if (owners.get(owner)?.memory?.detail(id)) throw new Error('Memory consolidation accepts no follow-up input');
         const registry = closed || signal.aborted ? undefined : owners.get(owner)?.agents;
         if (registry === undefined) throw new Error('Agent view owner is no longer available');
         await registry.sendMessage(id, text, signal, { human: true });

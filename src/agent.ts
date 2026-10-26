@@ -121,6 +121,8 @@ export type AgentEvents = { text?: (text: string) => void; status?: (status: str
   hookOptions?: HookRunOptions; interaction?: InteractionCallbacks;
   /** Live background jobs and session cron tasks for Stop/SubagentStop (`Sle`). */
   stopState?: () => StopRuntimeState;
+  /** Ga/PFo, 5b2hxy2e [66757,66799), UTF-16; admit local memory consolidation on the main stop path. */
+  memoryConsolidation?: () => Promise<void>;
   /** Schema mode (`requiresStructuredOutput`): the tool whose successful call the
    *  turn requires; an unsatisfied tool batch gets the source's enforcement nudge
    *  (chunk-5b2hxy2e.js offset 68182). */
@@ -1224,6 +1226,8 @@ export class Agent {
       }
       return this.finish(reason, text, modelCalls);
     }
+    // Ga/PFo, 5b2hxy2e [66757,66799), UTF-16: the main stop path admits the detached runner.
+    if (!this.session.config.childMode) await this.events.memoryConsolidation?.();
     // Reuse completed Stop decisions; an interrupted command has unknown effects.
     const tail = [];
     for (let i = this.session.events.length - 1; i >= 0; i--) {

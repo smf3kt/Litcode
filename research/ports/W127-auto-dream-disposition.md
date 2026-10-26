@@ -1,5 +1,7 @@
 # W127 — Unattended memory consolidation: substitution disposition
 
+2026-10-26 update: [W348](W348-memory-consolidation.md) supersedes this historical absent-store/registry disposition with an explicit local main-stop runner. Its manifest-verified trigger is Ga/PFo[66757,66799) in chunk-5b2hxy2e.js,not session startup. The source sample has w=null/M=undefined,so item-record settlement branches are disabled rather than prerequisites to invent. The original in-conversation maintenance instructions remain unchanged. W348's current verification and any open review finding are recorded there.
+
 C-9's first clause was the original unattended consolidation pass ("auto
 dream"). This package reads the trigger, state and settlement code and records
 why it is not ported as-is, plus the product behaviour that carries the same

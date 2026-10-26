@@ -33,13 +33,13 @@ Completion means every local gap has an implementation and actual predicate resu
 | Checkpoint and rewind | Crash recovery exists. Hardware power-loss equivalence remains unverified. | checkpoints.ts; W04 | Actual process termination at transaction boundaries, original bytes and external-edit retention. |
 | Agent messaging and polling | Child messaging exists. Same-host UDS may need unified ListAgents; external-only description is stale. | agent-registry.ts; local-peer.ts | Child continuation, idle once, poll cancel/expiry and same-host discovery. |
 | Workflow engine | Local script/named/nested/persistence paths exist. Unknown effects stay blocked from automatic replay; remote mirror is external. | workflow.ts; W125-W159/W181 | Named and nested runs, restart reuse and no repeated completed effect. |
-| Memory and plugins | Background memory consolidation is missing. Plugin refresh is fixed. | auto-memory.ts; W16/W345 | Eligibility, single writer, owned child, conflict handling, stamp and cleanup. |
+| Memory and plugins | W348 closes local background consolidation with independent repair verification. Plugin refresh is fixed. Remote/team/marketplace surfaces and model selection quality remain separate. | auto-memory.ts; memory-consolidation.ts; W16/W345/W348 | Eligibility,single writer,owned child,conflict handling,stamp and cleanup pass3groups,compiled14ownedrequests and full3386/3386 at78f71b45. Fresh independent3groups/compiled14/2recoverers1admission and kernelrelease/descriptor probes verify both publication/recoveryP2repairs;all1876records match,0ownedresources. |
 | Questions, plans and findings | Multi-question review has earlier implementation records; matrix gap needs current verification. Richer approval differs. | interaction.ts; W42/W182/W187 | Two questions, Other/editor, review edit, exact annotations and cancel. |
 | Web tools | Fetch/configured search/redaction exist. Actual external search service remains external. | web-search.ts; W19 | Owned backend citation, credential redaction and cancellation. |
 
 ## Ready sequence
 
-W347 first closes the complete skill source-argument chain while retaining pinned legacy sessions. Next source preflight targets background memory consolidation using the already recorded chunk-kxgzv2t8.js Q/fe/xFo bodies. Resident fork workers follow only after their owner and protocol closure is acquired. Date-search parity and remaining local acceptance chains stay queued. The first census is read-only evidence, not an implementation verdict.
+W347 closes the complete skill source-argument chain while retaining pinned legacy sessions. W348 closes the local memory runner with fresh independent crash-repair verification and the package's local commit. Resident fork workers follow only after their owner and protocol closure is acquired. Date-search parity and remaining local acceptance chains stay queued. The first census is read-only evidence, not an implementation verdict.
 
 ## Baseline
 

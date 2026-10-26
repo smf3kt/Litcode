@@ -41,6 +41,8 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
     ...(overrides.subagents === undefined ? {} : { subagents: overrides.subagents }) };
   applyManagedPolicy(next, loaded.managedSettings);
   next.autoMemory = overrides.autoMemory ?? settings.autoMemory ?? false;
+  if (settings.autoMemoryConsolidation !== undefined) next.autoMemoryConsolidation = settings.autoMemoryConsolidation;
+  else delete next.autoMemoryConsolidation;
   next.watchConfig = overrides.watchConfig ?? settings.watchConfig ?? false;
   // hs/ef, js2bhabe [1114,1499), 14rnebpd [317949,318021), UTF-16: re-read the merged value.
   if (settings.autoCompactEnabled !== undefined) next.autoCompactEnabled = settings.autoCompactEnabled;
