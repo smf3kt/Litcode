@@ -20,7 +20,7 @@ const add = relative => {
   files.push({ path: relative, bytes: bytes.length, sha256: hash(bytes), mode: stat.mode & 0o777, data: bytes });
 };
 for (const name of ['src', 'bin', 'scripts', 'test', 'package.json', 'package-lock.json', 'tsconfig.json',
-  'tsconfig.build.json', 'README.md', 'NOTICE.md', 'THIRD_PARTY_NOTICES.txt', 'research/ports/dependency-notices.json']) add(name);
+  'tsconfig.build.json', 'README.md', 'LICENSE', 'NOTICE.md', 'THIRD_PARTY_NOTICES.txt', 'research/ports/dependency-notices.json']) add(name);
 files.sort((a, b) => a.path.localeCompare(b.path));
 fs.mkdirSync(out, { mode: 0o700 });
 try {
@@ -33,7 +33,7 @@ try {
   const manifest = { schema: 'LiTcodeSourceBundle.v1', sha256: hash(Buffer.from(JSON.stringify(records))), files: records,
     build: ['npm ci --ignore-scripts', 'npm run check', 'npm run build'],
     excluded: ['node_modules', 'dist', 'extracted samples', 'research inventories', 'session data', 'credentials'],
-    projectLicense: 'UNLICENSED; private distribution pending owner licensing decision' };
+    projectLicense: JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).license };
   fs.writeFileSync(path.join(out, 'source-manifest.json'), JSON.stringify(manifest, null, 2) + '\n', { flag: 'wx' });
   console.log(JSON.stringify({ sourceBundle: out, files: records.length, sha256: manifest.sha256 }));
 } catch (error) {

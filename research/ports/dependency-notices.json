@@ -1,7 +1,7 @@
 {
   "schema": "DependencyNotices.v1",
-  "lockSha256": "37561b8f955f9eda2cdb6bd7f93096474b56ff116bc61b405ff8263148ffb586",
-  "noticesSha256": "46f276dca3414377a658af8af63da39e296adb6b13985e4f1b4f29fed807c4b7",
+  "lockSha256": "30774b93df9e8961820646ec4c665261c637a496538d0bbcb534807c9214476c",
+  "noticesSha256": "0f394befde36fbc0b922d1a73f0f5d69e0e793007c364fc3cdbfe645ae71972b",
   "packages": [
     {
       "path": "node_modules/@anthropic-ai/sdk",
@@ -402,6 +402,21 @@
           "path": "LICENSE",
           "sha256": "2a8a5d6197bb97a018b8a190dd3ed853d750ca87c8e80c17aad41d6c6ff448e1",
           "bytes": 1133
+        }
+      ]
+    },
+    {
+      "path": "node_modules/fuse.js",
+      "name": "fuse.js",
+      "version": "7.1.0",
+      "license": "Apache-2.0",
+      "development": false,
+      "state": "text-retained",
+      "texts": [
+        {
+          "path": "LICENSE",
+          "sha256": "cc807e3caa26cdee316bab2ff6fdb508a2f619b74959fe59e513ef6e61635ebe",
+          "bytes": 11343
         }
       ]
     },

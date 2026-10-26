@@ -1,0 +1,14 @@
+ts	phase	decision	why	evidence	result
+2026-10-26	start	finish notices and offline distribution after W345	these are the remaining known local closure items	task134;research/CURRENT.md	one W346 package
+2026-10-26	reproduce	run existing notices check	generated inventory misses fuse.js7.1.0 only	JOB_TMP/w346-notices-baseline.txt	exit1;63recordsvs64locked
+2026-10-26	preflight	read generator,smoke driver,license and package metadata	use existing exact local license-text path;preserve existing MIT choice	LICENSE;NOTICE.md;package.json;scripts/dependency-notices.mjs	no product-source or dependency changes
+2026-10-26	generate	regenerate through existing notices owner	retain exact fuse.js license and all previous records	JOB_TMP/w346-notices-generate.txt;JOB_TMP/w346-notices-check.txt	64records;39installed;five declared-text gaps;checkexit0
+2026-10-26	package	preserve first offline cache failure	consumer fixture has no lock and re-resolves ignore range to uncached7.0.14	JOB_TMP/w346-package.txt	exit1;locked7.0.5tarball exists
+2026-10-26	repair	seed only owned consumer lock from repository graph	test installed package against the same dependencies as build/notices	scripts/smoke-package.mjs	npmci retains offline and checks exact production versions
+2026-10-26	verify	run actual offline package and installed CLI	same636file artifact is installed and driven	JOB_TMP/w346-package-locked.txt	exit0;28exactprodversions;helpdemo launchers startup;0externalmodelrequests
+2026-10-26	projection	include existing LICENSE and derive projectLicense	second delivery consumer retained old UNLICENSED literal	scripts/source-bundle.mjs;JOB_TMP/w346-source-bundle/source-manifest.json	1235copiedrecordsmatch;MIT;aggregate3937ce69
+2026-10-26	freeze	bind final inputs,test andbuild	no product/test/dist edit after full3380of3380baseline	JOB_TMP/w346-final-identity.json	1856records6ac386d0;only2distributionscriptsdiffer
+2026-10-26	cleanup	filter by ancestry and run birthtime	old temporary directories predate this package and stay intact	mainprocessanddirectoryobservations	0ownedprocesses;0newowneddirectories
+2026-10-26	review	dispatch one bounded read-only reader	independent final acceptance before local commit	JOB_TMP/w346-independent-result.json	0confirmeddefects;notices/packageexit0;tarball29bc53a3;all1856recordsequal
+2026-10-26	independentcleanup	verify owned process and fixture release	observer ancestry excluded and older directories preserved	JOB_TMP/w346-independent-result.json	52observedprocessesand5fixturedirsreleased;privatecacheremoved
+2026-10-26	close	cancel completed local closure cron	known local closure is complete;no next package	CronDelete08b073ae	succeeded;localcommitonly;nocoauthor;nopush

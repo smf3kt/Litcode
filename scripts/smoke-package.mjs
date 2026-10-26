@@ -23,8 +23,27 @@ try {
   assert.ok(packed.files.some(file => file.path === "THIRD_PARTY_NOTICES.txt"));
   assert.equal(packed.files.some(file => /^(?:extracted[^/]*|research|test|scripts|\.agent|\.harness|src)\//.test(file.path)), false);
   const archive = path.join(artifacts, packed.filename);
-  fs.writeFileSync(path.join(install, "package.json"), JSON.stringify({ private: true }));
-  run("npm", ["install", "--offline", "--ignore-scripts", "--omit=dev", archive], install);
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  const locked = JSON.parse(fs.readFileSync(path.join(root, "package-lock.json"), "utf8"));
+  const dependency = { [manifest.name]: `file:${archive}` };
+  fs.writeFileSync(path.join(install, "package.json"), JSON.stringify({ private: true, dependencies: dependency }));
+  fs.writeFileSync(path.join(install, "package-lock.json"), JSON.stringify({
+    lockfileVersion: locked.lockfileVersion, requires: true,
+    packages: {
+      ...locked.packages,
+      "": { dependencies: dependency },
+      [`node_modules/${manifest.name}`]: {
+        version: manifest.version, resolved: dependency[manifest.name], integrity: packed.integrity,
+        license: manifest.license, dependencies: manifest.dependencies, bin: manifest.bin, engines: manifest.engines,
+      },
+    },
+  }));
+  run("npm", ["ci", "--offline", "--ignore-scripts", "--omit=dev"], install);
+  for (const [relative, record] of Object.entries(locked.packages)) {
+    if (!relative || record.dev || record.optional) continue;
+    const installed = JSON.parse(fs.readFileSync(path.join(install, relative, "package.json"), "utf8"));
+    assert.equal(installed.version, record.version, `installed dependency differs from lock: ${relative}`);
+  }
   const executable = path.join(install, "node_modules/.bin/litcode");
   const help = run(executable, ["--help"], install);
   assert.match(help, /--interactive/); assert.match(help, /LLM_API_KEY/);

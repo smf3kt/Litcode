@@ -1,8 +1,8 @@
 # LiTcode distribution notice
 
-LiTcode is a privately maintained coding-agent harness. This checkout does not
-grant a project-wide redistribution license. Package metadata remains private
-and UNLICENSED until the project owner selects publication and licensing terms.
+LiTcode is a privately maintained coding-agent harness. The project license is
+MIT, as recorded in LICENSE and package.json. Package metadata remains private;
+creating a local package does not publish it.
 
 Runtime and development dependencies retain their own licenses. Exact locally
 installed dependency license texts are collected in THIRD_PARTY_NOTICES.txt;
