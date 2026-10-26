@@ -4253,8 +4253,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     if (elapsedMs >= state.settings.timeoutMs) {
       state.fired = true;
       const groups = state.target.request.groups ?? [];
-      // Source `P3` receives the answers map as-is: only taken answers submit.
-      const answers = groups.filter(group => state.target.answers.has(group.key))
+      // P3, 24k7d6mw [1178668,1179279), UTF-16: annotations are independent of taken answers.
+      const answers = groups.filter(group => state.target.answers.has(group.key) || state.target.request.partialAnswers)
         .map(group => this.questionAnswer(state.target, group));
       // `Zbe` hands its callback the timeout it fired on, and `P3` stores that
       // as `afkTimeoutMs`, so the marker is the configured idle threshold.

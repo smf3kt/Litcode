@@ -1297,6 +1297,7 @@ export interface TerminalPromptRequest {
    * question flow, whose last tab is a "Review your answers" page.
    */
   groups?: readonly TerminalPromptGroup[];
+  partialAnswers?: boolean;
   /** Review-page wording; defaults match the recovered page. */
   reviewTitle?: string;
   submitLabel?: string;

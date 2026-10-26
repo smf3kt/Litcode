@@ -72,6 +72,7 @@ export interface InteractionToolOptions extends InteractionCallbacks {
   timeoutMs?: number;
   /** Includes the active host callback, even if it ignores cancellation. */
   maxPending?: number;
+  partialAnswers?: boolean;
   /**
    * The host's preview format. `"html"` applies the recovered fragment rules:
    * a preview must contain markup and must not be a full document or carry
@@ -167,16 +168,19 @@ const annotationShape = z.object({
   preview: z.string().optional(),
   notes: z.string().max(INTERACTION_LIMITS.annotationNotesChars).optional(),
 }).strict();
-const answerShape = z.object({ answers: z.array(z.object({
+const questionAnswerShape = z.object({
   questionIndex: z.number().int().min(0).max(INTERACTION_LIMITS.questions - 1),
   selected: z.array(text(INTERACTION_LIMITS.labelChars)).max(INTERACTION_LIMITS.options),
   other: text(INTERACTION_LIMITS.otherChars).optional(),
   annotations: annotationShape.optional(),
-}).strict()).min(1).max(INTERACTION_LIMITS.questions), contentBlocks: z.array(z.unknown()).max(INTERACTION_LIMITS.contentBlocks).optional(),
+}).strict();
+const answerShape = z.object({ answers: z.array(questionAnswerShape).min(1).max(INTERACTION_LIMITS.questions), contentBlocks: z.array(z.unknown()).max(INTERACTION_LIMITS.contentBlocks).optional(),
 // Recovered answer schema: "Set when the dialog auto-resolved after this many
 // milliseconds of idle (user away from keyboard). Absent on every
 // human-resolved path." The model input field of the same name is a host field.
 afkTimeoutMs: z.number().int().positive().optional() }).strict();
+// Se/fX, ktr9sak2 [11698,12225)/[12897,19623), UTF-16.
+const partialAnswerShape = answerShape.extend({ answers: z.array(questionAnswerShape).max(INTERACTION_LIMITS.questions) });
 const clarificationShape = z.object({ behavior: z.literal('deny'),
   feedback: text(INTERACTION_LIMITS.outputBytes), contentBlocks: z.array(z.unknown()).max(INTERACTION_LIMITS.contentBlocks).optional() }).strict();
 const planShape = z.object({ plan: text(INTERACTION_LIMITS.planChars) }).strict();
@@ -516,7 +520,7 @@ function createQueue(timeoutMs: number, maxPending: number) {
     active = waiting.shift()!;
     active.start();
   };
-  return <T>(signal: AbortSignal, action: (signal: AbortSignal) => Promise<T> | T): Promise<T> => {
+  return <T>(signal: AbortSignal, action: (signal: AbortSignal) => Promise<T> | T, deadlineMs: number | null = timeoutMs): Promise<T> => {
     checkSignal(signal);
     if (waiting.length + (active ? 1 : 0) >= maxPending) throw new Error('Interaction queue is full');
     return new Promise<T>((resolve, reject) => {
@@ -533,10 +537,10 @@ function createQueue(timeoutMs: number, maxPending: number) {
         else resolve(result.value);
       };
       const onAbort = () => finish({ error: aborted() });
-      const timer = setTimeout(() => {
+      const timer = deadlineMs === null ? undefined : setTimeout(() => {
         const error = new Error('Interaction timed out'); error.name = 'TimeoutError';
         finish({ error });
-      }, timeoutMs);
+      }, deadlineMs);
       const job: Job = {
         start() {
           // Retain the slot until the host settles so ignored aborts cannot stack forms.
@@ -632,15 +636,16 @@ export function questionClarification(request: AskUserQuestionRequest, answers: 
 ${nmo(questions, questions, values, states, false)}` };
 }
 
-function validAnswer(input: unknown, request: AskUserQuestionRequest): AskUserQuestionAnswer {
-  const result = parse(answerShape, input, 'ask_user_question host answer');
-  if (result.answers.length !== request.questions.length || new Set(result.answers.map(answer => answer.questionIndex)).size !== result.answers.length) {
+// Se/fX, ktr9sak2 [11698,12225)/[12897,19623), UTF-16.
+function validAnswer(input: unknown, request: AskUserQuestionRequest, partial: boolean): AskUserQuestionAnswer {
+  const result = parse(partial ? partialAnswerShape : answerShape, input, 'ask_user_question host answer');
+  if ((!partial && result.answers.length !== request.questions.length) || new Set(result.answers.map(answer => answer.questionIndex)).size !== result.answers.length) {
     throw new Error('ask_user_question: host must answer every question exactly once');
   }
   for (const answer of result.answers) {
     const question = request.questions[answer.questionIndex];
     const selections = answer.selected.length + (answer.other === undefined ? 0 : 1);
-    if (!question || selections === 0 || (!question.multiSelect && selections !== 1) ||
+    if (!question || (!partial && selections === 0) || (!question.multiSelect && (partial ? selections > 1 : selections !== 1)) ||
         new Set(answer.selected).size !== answer.selected.length ||
         answer.selected.some(label => !question.options.some(option => option.label === label))) {
       throw new Error('ask_user_question: host answer does not match the question choices');
@@ -728,6 +733,8 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
   const extendedQuestions = options.extendedQuestions === true;
   const cardAnswers = options.cardAnswers === true;
   const dispatch = createQueue(timeoutMs, maxPending);
+  // Zbe/XZe, 24k7d6mw [1163297,1163934)/[1165013,1165119), UTF-16: AFK owns idle expiry.
+  const askDeadline = options.partialAnswers === true && options.timeoutMs === undefined ? null : timeoutMs;
   // Recovered `P3`/`Qet` return the answer input and the converted image blocks
   // as siblings; `execute` keeps the JSON text, `executeBlocks` adds the blocks.
   type AskEntry = { json: string; blocks?: Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam> };
@@ -755,7 +762,7 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
         checkSignal(signal);
         if (admitted.kind === 'refused') throw new Error(`ask_user_question: card answer refused (${admitted.rule})`);
         return { json: output(admitted.input, context, 'ask_user_question') };
-      });
+      }, askDeadline);
     }
     if (typeof ask !== 'function') throw new Error('ask_user_question: host ask callback is missing');
     return dispatch(context.signal, async signal => {
@@ -765,12 +772,12 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
         const { contentBlocks, ...rest } = parse(clarificationShape, answer, 'ask_user_question host clarification');
         return { json: output(rest, context, 'ask_user_question'), ...(contentBlocks === undefined ? {} : { blocks: admitContentBlocks(contentBlocks) }) };
       }
-      const result = validAnswer(answer, expected);
+      const result = validAnswer(answer, expected, options.partialAnswers === true);
       const { contentBlocks, ...rest } = result;
       const payload = result.afkTimeoutMs === undefined ? rest
         : { ...rest, notice: askAfkNotice(expected, result.answers, result.afkTimeoutMs) };
       return { json: output(payload, context, 'ask_user_question'), ...(contentBlocks === undefined ? {} : { blocks: admitContentBlocks(contentBlocks) }) };
-    });
+    }, askDeadline);
   };
   return [
     {

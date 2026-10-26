@@ -1086,20 +1086,23 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // timeout prop; `never` and an absent setting both disable AFK, while
           // `CLAUDE_AFK_TIMEOUT_MS` still overrides inside the TUI.
           const afkTimeoutMs = askUserQuestionTimeoutMs(session.config.askUserQuestionTimeout);
+          const partialAnswers = session.config.features?.questionPartialAnswers === true;
           const answer = await readDialog({ title: 'Questions', message: '', titleWaitingFor: 'input needed', allowClarification: true,
-            afkTimeoutMs, groups: request.questions.map(question => ({
+            partialAnswers, afkTimeoutMs, groups: request.questions.map(question => ({
             key: question.question,
             title: question.header ?? 'Question', message: question.question,
             choices: question.options.map(option => ({ ...option, value: option.label })),
             multiple: question.multiSelect, allowText: true, maxTextChars: 4000 })) }, signal);
           if (!answer) throw new Error('Interaction cancelled');
-          const answers = request.questions.map((question, questionIndex) => {
+          // P3/fX, 24k7d6mw [1178668,1179279), ktr9sak2 [12897,19623), UTF-16.
+          const answers = request.questions.flatMap((question, questionIndex) => {
             const entry = answer.groups?.find(item => item.key === question.question);
             const selected = entry?.selected ?? [];
             const annotation = terminalAnswerAnnotation(question, selected, entry?.notes);
-            return { questionIndex, selected,
+            if (partialAnswers && !selected.length && entry?.text === undefined && annotation === undefined) return [];
+            return [{ questionIndex, selected,
               ...(entry?.text === undefined ? {} : { other: entry.text }),
-              ...(annotation === undefined ? {} : { annotations: annotation }) };
+              ...(annotation === undefined ? {} : { annotations: annotation }) }];
           });
           // Recovered `P3`/`Qet`: the images attached across every question
           // convert once, before either result leaves the host.
@@ -1129,6 +1132,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             return `${index + 1}. ${option.label}: ${option.description}${preview === undefined ? '' : `\nPreview:\n${preview}`}`;
           }).join('\n');
           const answer = (await readAnswer(`\n${question.question}\n${choices}\n${question.multiSelect ? 'Numbers separated by commas' : 'One number'}, or Other text: `, signal)).trim();
+          // fX, ktr9sak2 [12897,19623), UTF-16.
+          if (session.config.features?.questionPartialAnswers === true && answer === '') continue;
           const indices = /^\d+(?:\s*,\s*\d+)*$/.test(answer) ? answer.split(',').map(value => Number(value.trim()) - 1) : [];
           if (indices.length && indices.every(index => index >= 0 && index < question.options.length) &&
             (question.multiSelect || indices.length === 1)) {
