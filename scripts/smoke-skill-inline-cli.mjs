@@ -15,7 +15,8 @@ const named = process.argv.includes("--named");
 const aliases = process.argv.includes("--aliases");
 const fenced = process.argv.includes("--fenced");
 const launcher = compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")];
-const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "skill-inline-cli-")));
+const workspace = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
+  ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : os.tmpdir(), "skill-inline-cli-")));
 const requests = [];
 let child, server;
 try {
@@ -68,7 +69,7 @@ try {
   const shell = ["--allow-shell", "--permission-mode", "bypass"];
   const messageText = () => requests.at(-1).messages.map(message => typeof message.content === "string" ? message.content : message.content.map(block => block.text ?? (typeof block.content === "string" ? block.content : "")).join("\n")).join("\n");
   settings(true);
-  let result = await run(quoted ? "/inline \"alpha beta\"" : "/inline alpha", shell);
+  let result = await run(quoted ? "/inline \"alpha beta\"" : "/inline alpha");
   assert.equal(result.code, 0, result.errors);
   assert.ok(messageText().includes(`value=${quoted ? "alpha beta" : "alpha"} missing=$ARGUMENTS[12]`));
   if (extended) assert.ok(messageText().includes("escaped=$ARGUMENTS"));
@@ -83,7 +84,7 @@ try {
   result = await run("/inline alpha", shell);
   assert.equal(result.code, 0, result.errors);
   assert.ok(messageText().includes("!`printf"));
-  settings(true);
+  settings(true, { allowShell: false });
   const before = requests.length;
   result = await run("/inline alpha");
   assert.equal(result.code, 2, result.errors);

@@ -253,6 +253,7 @@ test('block-output skill tools enforce parent path deny and skill grants before 
   for (const policy of ['parent-deny', 'skill-deny', 'allow'] as const) {
     let calls = 0; let reads = 0; let plainCalls = 0;
     await fixture(async options => {
+      options.config.allowShell = false;
       const file = path.join(options.config.workspace, 'private.png');
       fs.writeFileSync(file, 'fixture-media');
       const tool: ToolDefinition = {
@@ -333,6 +334,7 @@ test('inline shell remains literal unless invocation metadata opts into expansio
     assert.equal(await executeSkill(skill({ body }), '', options), body);
     assert.equal(fs.existsSync(marker), false);
     options.config.features = { tasks: true, subagents: true, skillInlineCommands: true };
+    options.config.allowShell = false;
     assert.equal(skillRequiresExecution(skill({ body }), options.config), true);
     await assert.rejects(executeSkill(skill({ body }), "", options), /shell access is disabled/);
     options.config.allowShell = true;

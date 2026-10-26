@@ -1,0 +1,12 @@
+ts	phase	decision	why	evidence	result
+2026-10-26	start	resume local closure under one-minute loop	latest user asks to finish remaining changes after W342	Cron08b073ae and HEADdac1bdc	one active W343 package;no push
+2026-10-26	baseline	preserve three pre-existing dirty paths	diff shows unrelated W332 audit,W45 narrative and skills-command snapshot fix	git diff at dac1bdc	unchanged and outside package
+2026-10-26	reproduce	confirm two stale Shell fixtures and compiled driver	explicit disabled expectations inherit newly true default	JOB_TMP/w343-skill-baseline.txt;JOB_TMP/w343-inline-baseline.txt	32of34;compiled exits1
+2026-10-26	source	read manifest-verified fl,Kt,Bash and inline permission path	default capability changed in W324 while explicit false remains a host constraint	research/ports/W324-default-shell.md;research/ports/W06-skill-inline-fenced.md;src/skill-runtime.ts:74	fixture setup repair;no product change
+2026-10-26	repair	author false in negative setups and omit positive enable flags	preserve original assertions and validate the default contract	test/skill-runtime.test.ts;scripts/smoke-skill-inline-cli.mjs	42of42;check and build pass
+2026-10-26	verify	run compiled inline and default Shell chains	actual CLI effects and pinned negative controls verify both sides	JOB_TMP/w343-inline-final.txt;JOB_TMP/w343-default-shell-cli.txt	9and12ownedloopbackrequests;locks released
+2026-10-26	full	record remaining baseline failures	full closure exposes separate unchanged plugin and editor fixtures	JOB_TMP/w343-full.txt;JOB_TMP/w343-plugin-observation.txt;JOB_TMP/w343-statusline-observation.txt	3377pass1fail2cancelledof3380;separate work queued
+2026-10-26	cleanup	reclaim three verified test-owned nvim launchers	SIGTERM leaves them alive;exact parent and private prompt paths still match	observed44220parent44137,44228parent44180,56938parent56928	SIGKILL delivered;all test/editor PIDs exited
+2026-10-26	delivery	track inherited stale dependency notices separately	W343 changes no package,lock,generator or notice content	JOB_TMP/w343-notices.txt	check exits1;follow-up tracked
+2026-10-26	review	accept fresh independent Opus verification	all assertions preserved and actual compiled negative/positive paths execute	JOB_TMP/w343-independent-summary.json	34of34;compiled9;1856records0c727dbf;0confirmeddefects
+2026-10-26	close	keep broader baseline issues as next separate packages	W343 fixture repair is complete while full validation remains failing	research/CURRENT.md;tasks132,133,134	local exact-path commit;cron08b073ae continues
