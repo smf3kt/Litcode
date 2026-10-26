@@ -1,7 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
-import { Agent } from './agent.js';
-import { Session, fingerprint, type SessionConfig } from './session.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { Agent, assertPaired } from './agent.js';
+import { Session, fingerprint, readSessionJournal, type SessionConfig } from './session.js';
+import { AgentHistoryStore, type AgentHistoryHeader } from './agent-history.js';
 import type { ModelProvider } from './provider.js';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import { permissionDecision, permissionOwner, seedPermissionUpdates, effectivePermissionPolicy, type LivePermissionOwner } from './permissions.js';
@@ -127,7 +130,7 @@ type Child = {
   structured?: StructuredOutputState;
   liveOwner: LivePermissionOwner; adoptionOnly: boolean;
   prompt: string; startedAt: number; endedAt?: number; progress: AgentProgressTracker; streamedChars: number;
-  backgrounded: boolean;
+  backgrounded: boolean; history?: AgentHistoryHeader; coldJournal?: { bytes: number; sha256: string }; historyInvalid?: boolean;
 };
 
 /** One instance belongs to one parent session; selectors never resolve outside it. */
@@ -147,6 +150,8 @@ export class AgentRegistry {
   private reservedNames = new Set<string>();
   private closed = false;
   private closing?: Promise<void>;
+  private history?: AgentHistoryStore;
+  private historyParent?: string;
   private readonly onAbort = () => { void this.close(); };
 
   constructor(private readonly options: AgentRegistryOptions) {
@@ -161,6 +166,109 @@ export class AgentRegistry {
 
   private source(): SessionConfig {
     return typeof this.options.source === 'function' ? this.options.source() : this.options.source;
+  }
+
+  private livePermissionOwner(): LivePermissionOwner {
+    const owner = () => permissionOwner(this.source().permissions);
+    return {
+      prepareAutoMode: () => owner()?.prepareAutoMode?.(),
+      get adoptUpdates() { return owner()?.adoptUpdates; },
+      state: () => {
+        const source = this.source();
+        const state = owner()?.state() ?? seedPermissionUpdates(source.permissions, source.workspace, source.configSources?.userDir);
+        return { ...state, mode: state.mode ?? source.permissions?.mode };
+      },
+      workingDirectories: readOnly => owner()?.workingDirectories(readOnly) ?? [],
+    };
+  }
+
+  // fQo/VOe/kn, sfn1dbxq [4234807,4235398), 24k7d6mw [339498,340137), qw2csqy5 [9345,31492), UTF-16.
+  bindHistory(parent: Session): string[] {
+    this.assertOpen();
+    if (this.historyParent !== undefined) {
+      if (this.historyParent !== parent.id) throw new Error('Child history is already bound to another parent');
+      return [];
+    }
+    if (parent.config.workspace !== this.source().workspace) throw new Error('Child history parent workspace mismatch');
+    const store = new AgentHistoryStore(parent, this.limits.maxJournalBytes, this.limits.maxHistory);
+    const { records, warnings } = store.read();
+    this.history = store; this.historyParent = parent.id;
+    const existingNames = new Set([...this.children.values()].flatMap(child => child.view.name ? [child.view.name] : []));
+    for (const record of records) {
+      if (record.state.kind !== 'settled' || this.children.has(record.id) || this.children.size >= this.limits.maxHistory) continue;
+      try {
+        const events = readSessionJournal(parent.config.workspace, record.id, {
+          maxBytes: this.limits.maxJournalBytes, maxEvents: this.limits.maxJournalEvents,
+        }, record.state.journal);
+        const meta = events[0], state = record.state;
+        if (meta?.kind !== 'metadata' || meta.fingerprint !== record.fingerprint || meta.config.childMode === undefined
+          || fingerprint({ ...state.config, skills: meta.config.skills, heldSkills: meta.config.heldSkills,
+            dynamicSkillDirs: meta.config.dynamicSkillDirs, system: meta.config.system }) !== meta.fingerprint) {
+          throw new Error('Child history configuration mismatch');
+        }
+        if (fs.existsSync(path.join(path.dirname(parent.file), `${record.id}.jsonl.lock`))) {
+          throw new Error('Child journal is active');
+        }
+        if (events.findLast(event => event.kind === 'turn_end' || event.kind === 'message' || event.kind === 'compact')?.kind !== 'turn_end') {
+          throw new Error('Child journal has an unfinished turn');
+        }
+        const messages = events.flatMap(event => event.kind === 'message' ? [event.message] : []);
+        assertPaired(messages);
+        const tools = this.restoredTools(meta.config);
+        const controller = new AbortController();
+        if (state.status !== 'completed') controller.abort();
+        const progress = createAgentProgress();
+        for (const event of events) if (event.kind === 'message' && event.response) observeAgentResponse(progress, event.response);
+        const name = record.name !== null && !existingNames.has(record.name) ? record.name : null;
+        if (name !== null) existingNames.add(name);
+        const { state: _state, ...history } = record;
+        this.children.set(record.id, {
+          view: { id: record.id, session_id: record.id, name, status: state.status, mode: meta.config.childMode,
+            model: meta.config.model, summary: state.summary, error: state.error, reason: state.reason,
+            model_calls: state.modelCalls, queued_messages: 0,
+            ...(this.options.enableAdvanced ? { workspace: meta.config.workspace,
+              ...(record.subagentType ? { subagent_type: record.subagentType } : {}) } : {}) },
+          config: structuredClone(state.config), resumeConfig: structuredClone(meta.config), tools, controller,
+          mailbox: [], mailboxBytes: 0, accepted: events.filter(event => event.kind === 'message' && event.message.role === 'user' && !event.isMeta
+            && (event.classifier?.origin.kind === 'human' || event.classifier?.origin.kind === 'peer')).length,
+          transcript: events.filter(transcriptEvent), inProgressToolUseIDs: new Set(), viewLeases: new Set(),
+          liveOwner: this.livePermissionOwner(), adoptionOnly: false,
+          prompt: record.prompt, startedAt: record.startedAt, endedAt: state.endedAt, progress, streamedChars: 0,
+          backgrounded: record.backgrounded, fork: record.fork, history, coldJournal: state.journal,
+          journalEvents: events.length, journalBytes: events.reduce((sum, event) => sum + Buffer.byteLength(JSON.stringify(event)) + 1, 0),
+        });
+      } catch (error) { warnings.push(`${record.id}: ${error instanceof Error ? error.message : String(error)}`); }
+    }
+    return warnings;
+  }
+
+  private restoredTools(config: SessionConfig): ToolDefinition[] {
+    const permitted = selectChildTools(this.options.tools, config.childMode ?? 'explore');
+    return config.tools.map(schema => {
+      const matches = permitted.filter(tool => JSON.stringify({ ...tool.schema, eager_input_streaming: true }) === JSON.stringify(schema));
+      if (matches.length !== 1) throw new Error(`Child tool has no unique trusted factory match: ${schema.name}`);
+      return matches[0]!;
+    });
+  }
+
+  // ad/Tle/kn, 40cepjpq [120014,120794), sfn1dbxq [4544058,4544310), qw2csqy5 [9345,31492), UTF-16.
+  private saveHistory(child: Child, active = false): void {
+    if (!this.history || !child.history || child.historyInvalid) return;
+    if (active) { this.history.write({ ...child.history, state: { kind: 'active' } }); return; }
+    const status = child.view.status;
+    if (status === 'queued' || status === 'running') throw new Error('Child history requires a terminal state');
+    const journalFile = path.join(this.source().workspace, '.agent', `${child.view.id}.jsonl`);
+    const fd = fs.openSync(journalFile, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    let journal: Buffer;
+    try {
+      if (fs.fstatSync(fd).size > this.limits.maxJournalBytes) throw new Error('Child journal limit reached');
+      journal = fs.readFileSync(fd);
+    } finally { fs.closeSync(fd); }
+    const boundary = journal.lastIndexOf(10) + 1;
+    this.history.write({ ...child.history, state: { kind: 'settled', status, summary: child.view.summary,
+      error: child.view.error, reason: child.view.reason, modelCalls: child.view.model_calls,
+      endedAt: child.endedAt ?? Date.now(), config: child.config,
+      journal: { bytes: boundary, sha256: createHash('sha256').update(journal.subarray(0, boundary)).digest('hex') } } });
   }
 
   private assertOpen(signal?: AbortSignal): void {
@@ -375,18 +483,7 @@ export class AgentRegistry {
     const launch = resolveChildLaunch(parent, args, this.options);
     const seededFork = launch.fork || execution?.conversation !== undefined;
     const messages = forkMessages(execution?.conversation ?? conversation, seededFork);
-    const sourceOwner = () => permissionOwner(this.source().permissions);
-    const liveOwner: LivePermissionOwner = execution?.permissionOwner ?? {
-      prepareAutoMode: () => permissionOwner(this.source().permissions)?.prepareAutoMode?.(),
-      get adoptUpdates() { return sourceOwner()?.adoptUpdates; },
-      state: () => {
-        const source = this.source();
-        const state = permissionOwner(source.permissions)?.state() ?? seedPermissionUpdates(source.permissions,
-          source.workspace, source.configSources?.userDir);
-        return { ...state, mode: state.mode ?? source.permissions?.mode };
-      },
-      workingDirectories: readOnly => permissionOwner(this.source().permissions)?.workingDirectories(readOnly) ?? [],
-    };
+    const liveOwner = execution?.permissionOwner ?? this.livePermissionOwner();
     const parentPolicy = () => effectivePermissionPolicy(this.source().permissions);
     const scopedPolicy = () => effectivePermissionPolicy(execution?.config.permissions,
       execution?.permissionOwner?.state());
@@ -512,6 +609,12 @@ export class AgentRegistry {
         ...(structuredState ? { structured: structuredState } : {}),
         ...(environment ? { environment } : {}), fork: seededFork,
       };
+      // ad, 40cepjpq [120014,120794), UTF-16.
+      if (this.history && !execution && !environment && !structuredState && !disallowedTools && !bashCommandClamp && stallMs === undefined) {
+        child.history = this.history.header(session, { name: child.view.name, prompt: args.prompt, backgrounded: child.backgrounded,
+          fork: seededFork, startedAt: child.startedAt, ...(args.subagent_type ? { subagentType: args.subagent_type } : {}) });
+        this.saveHistory(child, true);
+      }
       this.enqueue(child, initialPrompt);
       this.children.set(session.id, child);
       this.start(child, true); started = true; this.changed();
@@ -559,7 +662,16 @@ export class AgentRegistry {
         if (child.environmentClosing) throw new Error('The isolated agent environment has closed; start a new agent');
       }
       if (!child.worker) this.capacity();
+      if (child.historyInvalid) throw new Error('Child journal continuity requires reconciliation');
+      if (child.history) this.restoredTools(child.resumeConfig);
+      const transcriptLength = child.transcript.length;
       this.enqueue(child, message, options.human);
+      try { this.saveHistory(child, true); }
+      catch (error) {
+        child.mailbox.pop(); child.mailboxBytes -= Buffer.byteLength(message); child.accepted--;
+        child.transcript.length = transcriptLength;
+        throw error;
+      }
       if (restarting) { child.controller = new AbortController(); child.view.error = null; }
       if (!child.worker) { child.view.status = 'queued'; this.start(child); }
       this.changed();
@@ -582,7 +694,7 @@ export class AgentRegistry {
     child.controller.abort();
     child.mailbox = []; child.mailboxBytes = 0;
     if (child.worker) await child.worker;
-    else { child.view.status = 'cancelled'; child.endedAt = Date.now(); this.notify(child); this.deliverIdle(child); }
+    else { child.view.status = 'cancelled'; child.endedAt = Date.now(); this.saveHistory(child); this.notify(child); this.deliverIdle(child); }
     await this.releaseEnvironment(child);
     return this.snapshot(child);
   }
@@ -666,6 +778,14 @@ export class AgentRegistry {
         // kn, qw2csqy5 [22571,24971)/[25405,27805), UTF-16; journal identity and live skill context have separate owners.
         child.session = Session.open(child.config.workspace, { id: child.view.session_id, config: child.resumeConfig,
           ...(child.environment?.storageRoot ? { storageRoot: child.environment.storageRoot } : {}) });
+        if (child.coldJournal) {
+          try {
+            readSessionJournal(child.config.workspace, child.view.session_id, {
+              maxBytes: this.limits.maxJournalBytes, maxEvents: this.limits.maxJournalEvents,
+            }, child.coldJournal);
+          } catch (error) { child.historyInvalid = true; throw error; }
+          delete child.coldJournal;
+        }
         for (const key of Object.keys(child.session.config)) {
           if (!Object.hasOwn(child.config, key)) Reflect.deleteProperty(child.session.config, key);
         }
@@ -751,6 +871,11 @@ export class AgentRegistry {
         }
       }
       child.endedAt = Date.now();
+      try { this.saveHistory(child); }
+      catch (error) {
+        child.view.status = 'failed';
+        child.view.error = field(`Child history commit failed: ${error instanceof Error ? error.message : String(error)}`, this.limits.maxOutputBytes);
+      }
       this.notify(child);
     }
   }

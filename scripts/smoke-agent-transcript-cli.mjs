@@ -18,6 +18,7 @@ fs.writeFileSync(path.join(workspace, 'fixture.txt'), 'OWNED_TRANSCRIPT_FILE');
 const pty = path.join(temporary, 'pty.exp');
 fs.writeFileSync(pty, `set stty_init "rows 40 columns 120"\nsource {${path.join(root, 'scripts/pty-cli.exp')}}\n`);
 const requests = [], held = new Map();
+const coldHistory = process.argv.includes('--cold-history');
 const screen = new TerminalScreen(120, 40);
 let child, exited, server;
 const frame = () => screen.lines().map(line => line.trimEnd()).join('\n');
@@ -50,6 +51,10 @@ try {
       if (body.model === 'fixture-child') {
         const name = body.messages.some(message => message.content === 'AGENT_VIEW_SECOND') ? 'second' : 'first';
         if (typeof latest === 'string' && latest === 'CHILD_FOLLOWUP_QUEUED')
+          respond(res, body, coldHistory
+            ? { type: 'tool_use', id: `cold-write-${index}`, name: 'write_file', input: { path: 'cold-effect.txt', content: 'OWNED_COLD_EFFECT' } }
+            : { type: 'text', text: 'CHILD_FOLLOWUP_COMPLETE' }, index);
+        else if (Array.isArray(latest) && latest.some(block => block.type === 'tool_result' && block.tool_use_id.startsWith('cold-write-')))
           respond(res, body, { type: 'text', text: 'CHILD_FOLLOWUP_COMPLETE' }, index);
         else if (typeof latest === 'string') respond(res, body,
           { type: 'tool_use', id: `read-${name}`, name: 'read_file', input: { path: 'fixture.txt' } }, index);
@@ -71,7 +76,7 @@ try {
         const second = latest.includes('second');
         respond(res, body, { type: 'tool_use', id: `launch-${index}`, name: 'agent', input: {
           prompt: second ? 'AGENT_VIEW_SECOND' : 'AGENT_VIEW_FIRST', name: second ? 'view-second' : 'view-first',
-          model: 'fixture-child', background: true, mode: 'explore',
+          model: 'fixture-child', background: true, mode: coldHistory ? 'general' : 'explore',
         } }, index);
       } else respond(res, body, { type: 'text', text: 'MAIN_TRANSCRIPT_SENTINEL' }, index);
     });
@@ -81,19 +86,70 @@ try {
   for (const name of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(name) || ['TMUX', 'STY'].includes(name)) delete env[name];
   Object.assign(env, { LLM_API_KEY: 'owned-fixture', LLM_MODEL: 'fixture-parent', LLM_AUTH: 'bearer',
     LLM_TOKEN_COUNTING: 'estimate', LLM_BASE_URL: `http://127.0.0.1:${server.address().port}` });
-  child = spawn('/usr/bin/expect', [pty, process.execPath, path.join(root, 'bin/litcode.mjs'), '--workspace', workspace,
-    '--user-dir', userDir, '--interactive', '--no-inherit-gateway', '--permission-mode', 'bypass'],
-  { cwd: root, env, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
-  exited = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
-  child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
-  child.stdout.on('data', text => screen.write(text)); child.stderr.on('data', text => screen.write(text));
+  env.HOME = temporary;
+  const start = args => {
+    child = spawn('/usr/bin/expect', [pty, process.execPath, path.join(root, 'bin/litcode.mjs'), '--workspace', workspace,
+      '--interactive', ...args], { cwd: root, env, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    exited = new Promise((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
+    child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');
+    child.stdout.on('data', text => screen.write(text)); child.stderr.on('data', text => screen.write(text));
+  };
+  start(['--user-dir', userDir, '--no-inherit-gateway', '--permission-mode', 'bypass']);
   await until(ready, 'startup', 15000);
-  if (process.argv.includes('--completed-history')) {
+  if (coldHistory) {
+    send('launch view first\r');
+    await until(() => held.has('first') && ready(), 'child read before parent exit', 15000);
+    held.get('first').finish();
+    await until(() => ready() && !frame().includes('1 local agent'), 'child completed before parent exit', 15000);
+    const dir = path.join(workspace, '.agent');
+    const journals = fs.readdirSync(dir).filter(name => name.endsWith('.jsonl')).map(name => {
+      const file = path.join(dir, name), bytes = fs.readFileSync(file, 'utf8');
+      return { file, metadata: JSON.parse(bytes.split('\n')[0]), bytes };
+    });
+    const parent = journals.find(row => row.metadata.config.childMode === undefined);
+    const worker = journals.find(row => row.metadata.config.childMode === 'general');
+    assert.ok(parent && worker, 'owned parent and child metadata');
+    send('/exit\r');
+    assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0, frame());
+    assert.equal(fs.readdirSync(dir).some(name => name.endsWith('.lock')), false);
+    const parentBytes = fs.readFileSync(parent.file, 'utf8'), childBytes = fs.readFileSync(worker.file, 'utf8');
+    const before = requests.length;
+    screen.write('\x1bc');
+    start(['--resume', parent.metadata.id]);
+    await until(ready, 'original parent restart', 15000);
+    assert.equal(requests.length, before, 'cold startup sends no model request');
+    send('/tasks\r');
+    await until(() => frame().includes('Completed (1)'), 'cold completed child appears');
+    send('\r');
+    await until(() => frame().includes('Viewing agent') && frame().includes('CHILD_FIRST_COMPLETE'), 'cold child transcript opens');
+    assert.equal(requests.length, before, 'viewing is passive');
+    assert.equal(fs.readFileSync(parent.file, 'utf8'), parentBytes);
+    assert.equal(fs.readFileSync(worker.file, 'utf8'), childBytes);
+    send('CHILD_FOLLOWUP_QUEUED\r');
+    await until(() => frame().includes('CHILD_FOLLOWUP_COMPLETE'), 'cold child follows up', 15000);
+    assert.equal(fs.readFileSync(path.join(workspace, 'cold-effect.txt'), 'utf8'), 'OWNED_COLD_EFFECT');
+    const events = fs.readFileSync(worker.file, 'utf8').trimEnd().split('\n').map(line => JSON.parse(line));
+    assert.equal(events.filter(event => event.kind === 'tool_start' && event.name === 'write_file').length, 1);
+    assert.deepEqual(events[0], worker.metadata);
+    assert.deepEqual(JSON.parse(fs.readFileSync(parent.file, 'utf8').split('\n')[0]), parent.metadata);
+    assert.equal(requests.filter(body => body.model === 'fixture-child' && body.messages.at(-1)?.content === 'CHILD_FOLLOWUP_QUEUED').length, 1);
+    assert.equal(requests.some(body => body.model === 'fixture-parent' && body.messages.at(-1)?.content === 'CHILD_FOLLOWUP_QUEUED'), false);
+    send('\x1b'); await until(() => !frame().includes('Viewing agent') && frame().includes('MAIN_TRANSCRIPT_SENTINEL'), 'return to original main');
+  } else if (process.argv.includes('--completed-history')) {
     for (const name of ['first', 'second']) {
       send(`launch view ${name}\r`);
       await until(() => held.has(name) && ready(), `${name} child read and held`, 15000);
       held.get(name).finish();
       await until(() => ready() && !frame().includes('1 local agent'), `${name} child completed`, 15000);
+      await until(() => {
+        if (!requests.some(body => typeof body.messages.at(-1)?.content === 'string'
+          && body.messages.at(-1).content.startsWith('Child agent events') && body.messages.at(-1).content.includes(`view-${name}`))) return false;
+        return ready() && fs.readdirSync(path.join(workspace, '.agent')).filter(file => file.endsWith('.jsonl')).some(file => {
+          const bytes = fs.readFileSync(path.join(workspace, '.agent', file), 'utf8');
+          const rows = bytes.slice(0, bytes.lastIndexOf('\n')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+          return rows[0]?.config.childMode === undefined && rows.at(-1)?.kind === 'turn_end';
+        });
+      }, `${name} completion notification committed`, 15000);
     }
     const before = requests.length;
     send('/tasks\r');
@@ -152,14 +208,21 @@ try {
   send('/exit\r'); assert.equal(await Promise.race([exited, delay(6000).then(() => 'timeout')]), 0, frame());
   assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
   console.log(JSON.stringify({ cli: 'passed', entryOnly: process.argv.includes('--entry-only'),
-    completedHistory: process.argv.includes('--completed-history'), baseline: process.argv.includes('--baseline'),
+    completedHistory: process.argv.includes('--completed-history'), coldHistory, baseline: process.argv.includes('--baseline'),
     childView: !process.argv.includes('--baseline'), modelRequests: requests.length, gateway: 'owned loopback SSE', locksReleased: true }));
 } finally {
   fs.writeFileSync(path.join(temporary, 'screen.txt'), frame());
   if (child && child.exitCode === null && child.signalCode === null) {
     child.stdin.write('\x03\x03'); await Promise.race([exited, delay(1000)]);
     if (child.exitCode === null && child.signalCode === null) { try { process.kill(-child.pid, 'SIGTERM'); } catch { child.kill('SIGTERM'); } }
+    await Promise.race([exited, delay(3000)]);
+    if (child.exitCode === null && child.signalCode === null) {
+      try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill('SIGKILL'); }
+      await exited;
+    }
   }
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
-  screen.close(); console.log(JSON.stringify({ fixture: temporary }));
+  screen.close();
+  if (coldHistory) fs.rmSync(temporary, { recursive: true, force: true });
+  console.log(JSON.stringify({ fixture: temporary, removed: coldHistory }));
 }

@@ -100,6 +100,8 @@ litcode --workspace /path/to/project --resume UUID --continue
 | `/compact` | 手动压缩已完成的上下文 |
 | `/resume`、`/clear`、`/exit` | 恢复会话、新建会话和退出 |
 
+普通子代理完成后，原父会话通过 `--resume` 恢复时可在 `/tasks` 打开其历史，并继续向同一子代理输入。查看历史保持被动；继续执行沿用原模型、工具目录和当前权限。已停止子代理须由人工输入继续。旧版未保存归属记录的子代理、仍未完成的工作和已关闭的隔离工作区保持各自的恢复边界。
+
 ## 本地配置与扩展
 
 用户设置位于 `~/.harness/settings.json`，项目设置位于 `.harness/settings.json`。项目本地覆盖使用 `.harness/settings.local.json`，Git 工作区内以所属仓库根目录为准。`--user-dir DIR` 指定用户目录，`--settings FILE` 额外载入设置文件。

@@ -1702,7 +1702,19 @@ export async function createRuntime(
     const bindCatalogSession = runtime.bindSession!;
     runtime.bindSession = async session => {
       const bound = await bindCatalogSession(session);
-      if (bound === runtime) { publishMcpCatalog(session, true); catalogSession = session; }
+      if (bound === runtime) {
+        publishMcpCatalog(session, true); catalogSession = session;
+        // VOe/fQo/kn, 24k7d6mw [339498,340137), sfn1dbxq [4234807,4235398), qw2csqy5 [9345,31492), UTF-16.
+        const tools = buildTools(session.config, session.id), accessor = agentAccessors.get(tools);
+        if (accessor) {
+          const warnings = accessor().bindHistory(session);
+          if (warnings.length) {
+            const target = resourcesFor(session.id, scopeFor(session.id));
+            target.queued.push({ kind: 'notification', prompt: 'Local child history could not be restored (data):\n' +
+              boundToolContent(JSON.stringify(warnings), session.config.maxOutputBytes) });
+          }
+        }
+      }
       return bound;
     };
     return runtime;

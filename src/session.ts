@@ -168,6 +168,7 @@ export type SessionEvent =
   | PermissionModeCommand
   | { kind: 'metadata'; version: 1; id: string; config: SessionConfig; fingerprint: string; startedAt?: number }
   | { kind: 'file_history'; path?: string; tracked: boolean }
+  | { kind: 'agent_history'; id: string; digest: string }
   | { kind: 'message'; message: Anthropic.MessageParam; response?: Anthropic.Message; isMeta?: boolean; classifier?: import('./message-origin.js').ClassifierMessage }
   | { kind: 'mcp_catalog'; configDigest: string; disabledServers: string[]; unavailableServers?: string[]; tools: SessionConfig['tools'] }
   | { kind: 'mcp_subscription'; server: string; configDigest: string; method: 'resources/subscribe' | 'resources/unsubscribe'; uri: string }
@@ -347,6 +348,7 @@ const eventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('permission_mode_command'), operation: z.enum(['enter', 'exit', 'select']),
     mode: permissionPolicySchema.shape.mode, command: z.enum(['plan', 'permissions']) }).strict(),
   z.object({ kind: z.literal('file_history'), path: z.string().min(1).optional(), tracked: z.boolean() }).strict(),
+  z.object({ kind: z.literal('agent_history'), id: z.string().uuid(), digest: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   z.object({ kind: z.literal('message'), message: messageSchema, response: responseSchema.optional(), isMeta: z.boolean().optional(), classifier: classifierMessageSchema.optional() }).strict(),
   z.object({ kind: z.literal('mcp_catalog'), configDigest: z.string().regex(/^[a-f0-9]{64}$/),
     disabledServers: z.array(z.string().min(1).max(256)).max(1024),
@@ -396,6 +398,35 @@ const eventSchema = z.discriminatedUnion('kind', [
 /** The stored identity digest. `fingerprintOf` also covers prepared documents with derived fields. */
 export const fingerprintOf = (value: unknown): string => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 export const fingerprint = (config: SessionConfig): string => fingerprintOf(config);
+
+// Ole [4694145,4697475), Hle [4709382,4709960), qNn [4709960,4711673), sfn1dbxq, UTF-16.
+export function readSessionJournal(workspace: string, id: string, limits: { maxBytes: number; maxEvents: number },
+  expected?: { bytes: number; sha256: string }): SessionEvent[] {
+  z.string().uuid().parse(id);
+  const root = fs.realpathSync(workspace), dir = path.join(root, '.agent');
+  if (fs.lstatSync(dir).isSymbolicLink() || !fs.statSync(dir).isDirectory()) throw new Error('Invalid session directory');
+  const file = path.join(dir, `${id}.jsonl`);
+  const fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  try {
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile() || stat.size > limits.maxBytes) throw new Error('Invalid or oversized child journal');
+    const bytes = fs.readFileSync(fd), boundary = bytes.lastIndexOf(10) + 1;
+    if (expected && (boundary !== expected.bytes || createHash('sha256').update(bytes.subarray(0, boundary)).digest('hex') !== expected.sha256)) {
+      throw new Error('Child journal continuity mismatch');
+    }
+    const lines = bytes.subarray(0, boundary).toString('utf8').split('\n').filter(Boolean);
+    if (lines.length > limits.maxEvents) throw new Error('Child journal event limit reached');
+    const events = lines.map(line => {
+      const event: unknown = JSON.parse(line);
+      eventSchema.parse(event);
+      return event as SessionEvent;
+    });
+    const meta = events[0];
+    if (meta?.kind !== 'metadata' || meta.id !== id || meta.config.workspace !== root || meta.fingerprint !== fingerprint(meta.config)
+      || events.slice(1).some(event => event.kind === 'metadata')) throw new Error('Child journal identity mismatch');
+    return events;
+  } finally { fs.closeSync(fd); }
+}
 
 export class Session {
   readonly id: string;
@@ -579,6 +610,8 @@ export class Session {
   private lock: string;
   private lockToken: string;
   private closed = false;
+
+  get isOpen(): boolean { return !this.closed; }
 
   private constructor(file: string, fd: number, lock: string, lockToken: string, events: SessionEvent[]) {
     const meta = events[0];
