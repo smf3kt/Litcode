@@ -202,7 +202,7 @@ import { HistorySearch, type SearchSnapshot } from './tui-history-search.js';
 import { ScopedPicker, type PickerScope, type ScopePickerSnapshot } from './tui-scope-picker.js';
 import { captureClipboardImage } from './clipboard.js';
 import { QuestionImages, readQuestionImage } from './question-images.js';
-import { QUESTION_NOTES_ONLY } from './interaction-tools.js';
+import { cardAnswerJoin, QUESTION_NOTES_ONLY } from './interaction-tools.js';
 /** Source HI() gate for the picker: see research/ports/W44-scope-picker-copies.json entryEvidence. */
 const SOURCE_PICKER_OWNS_HISTORY_SEARCH = true;
 import { jde } from './tui-statusline-components.js';
@@ -316,6 +316,8 @@ interface ActiveDialog {
   step: number;
   /** One entry per completed group, keyed by the group's key. */
   answers: Map<string, TerminalPromptGroupAnswer>;
+  /** jco, 24k7d6mw [1161793,1162598), UTF-16: input state survives without a committed answer. */
+  questionStates: Map<string, { selected: string[]; text: string }>;
   /**
    * Recovered `a3` notes: per-question free text drawn under the choices and
    * attached to the answer annotation. Kept apart from the Other answer text.
@@ -1019,7 +1021,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         dialog.notesEditor=next;this.storeNotes(dialog);
       } else {
         dialog.undo.record(oldText,state.cursor,{immediate:true});
-        dialog.editor=next;this.storeMultiDialogAnswer(dialog);
+        dialog.editor=next;this.storeQuestionInput(dialog);
       }
       dialog.error=undefined;this.render();
     } catch (error) {
@@ -1986,7 +1988,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       const initialText = snapshot.initialText ?? '';
       const dialog: ActiveDialog = { request: snapshot, editor: { ...createEditorState(), text: initialText, cursor: initialText.length }, undo: new InputUndo(),
         index: Math.max(0, Math.min(first.defaultIndex ?? 0, Math.max(0, choices - 1))),
-        selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(),
+        selected: new Set(), scroll: 0, followFocus: false, step: 0, answers: new Map(), questionStates: new Map(),
         notes: new Map(), notesEditor: createEditorState(), notesUndo: new InputUndo(),
         notesEditing: false, optionTouched: false, images: new QuestionImages(),
         adjustIndex: Math.max(0, snapshot.adjust?.values.indexOf(snapshot.adjust.initial) ?? 0), finish };
@@ -3272,10 +3274,9 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       }
       return;
     }
-    if (this.handleReviewAction(dialog, action, command ?? '')) return;
     if (!textEntry && action.type === 'insert' && action.text === ' ' && step?.multiple) {
       if (dialog.selected.has(dialog.index)) dialog.selected.delete(dialog.index); else dialog.selected.add(dialog.index);
-      this.storeMultiDialogAnswer(dialog);
+      this.storeQuestionInput(dialog);
       dialog.error = undefined; this.render(); return;
     }
     if (step?.allowText && choices.length && (action.type === 'insert' || action.type === 'paste')) {
@@ -3306,7 +3307,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
           if (editorAction.type !== 'undo' && next.state.text !== dialog.editor.text)
             dialog.undo.record(dialog.editor.text, dialog.editor.cursor);
           dialog.editor = next.state; dialog.error = undefined;
-          this.storeMultiDialogAnswer(dialog);
+          this.storeQuestionInput(dialog);
         } else dialog.error = 'Answer exceeds 32768 bytes';
       }
       this.render();
@@ -4042,6 +4043,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     }
     const group = groups[dialog.step];
     if (group) {
+      dialog.questionStates.set(group.key, { selected: [...answer.selected], text: dialog.editor.text });
       const notes = dialog.notes.get(group.key)?.trim();
       const images = dialog.images.list(group.key);
       dialog.answers.set(group.key, { key: group.key, selected: answer.selected,
@@ -4052,7 +4054,7 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // submit tab, and its answer handler submits the whole request as soon as the answer is
     // taken (`!Gs && Va` at [1173330)), so the review page is never reached.
     if (groups.length === 1 && group !== undefined && !group.multiple) {
-      dialog.finish({ selected: [], groups: [dialog.answers.get(group.key)!] });
+      dialog.finish({ selected: [], groups: [this.questionAnswer(dialog, group)] });
       return;
     }
     dialog.step += 1;
@@ -4064,11 +4066,17 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const groups = dialog.request.groups ?? [];
     const group = groups[dialog.step];
     const source: TerminalPromptRequest | TerminalPromptGroup = group ?? dialog.request;
-    const choices = source.choices?.length ?? 0;
+    const choices = source.choices ?? [];
+    // jco/f3/a3, 24k7d6mw [1161793,1162598)/[1153793,1159815)/[1145502,1153542), UTF-16.
+    const state = group === undefined ? undefined : dialog.questionStates.get(group.key);
+    const text = state?.text ?? '';
     dialog.undo.clear();
-    dialog.editor = createEditorState();
-    dialog.index = Math.max(0, Math.min(source.defaultIndex ?? 0, Math.max(0, choices - 1)));
-    dialog.selected = new Set();
+    dialog.editor = { ...createEditorState(), text, cursor: text.length };
+    dialog.selected = new Set((state?.selected ?? [])
+      .map(value => choices.findIndex(choice => choice.value === value)).filter(index => index >= 0));
+    const selectedIndex = !source.multiple && state !== undefined
+      ? [...dialog.selected][0] ?? (text && source.allowText ? choices.length : undefined) : undefined;
+    dialog.index = selectedIndex ?? Math.max(0, Math.min(source.defaultIndex ?? 0, Math.max(0, choices.length - 1)));
     dialog.notesEditing = false; dialog.notesEditor = createEditorState(); dialog.notesUndo.clear();
     dialog.optionTouched = false;
     dialog.scroll = 0; dialog.followFocus = true; dialog.error = undefined;
@@ -4087,16 +4095,31 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     return group.choices.length + (group.allowText ? 1 : 0);
   }
 
-  /** f3 onChange updates multi-select answers before advancing, [1158935,1159164), UTF-16. */
-  private storeMultiDialogAnswer(dialog: ActiveDialog): void {
+  /** jco/f3 onChange, 24k7d6mw [1161793,1162598)/[1158935,1159164), UTF-16. */
+  private storeQuestionInput(dialog: ActiveDialog): void {
     const group = (dialog.request.groups ?? [])[dialog.step];
-    if (!group?.multiple) return;
+    if (!group) return;
     const choices = group.choices ?? [];
+    const previous = dialog.questionStates.get(group.key);
+    const selected = group.multiple
+      ? [...dialog.selected].sort((a, b) => a - b).map(index => choices[index]!.value)
+      : previous?.selected ?? [];
+    dialog.questionStates.set(group.key, { selected, text: dialog.editor.text });
+    if (!group.multiple) return;
     const text = dialog.editor.text.trim();
     const images = dialog.images.list(group.key);
-    dialog.answers.set(group.key, { key: group.key,
-      selected: [...dialog.selected].sort((a, b) => a - b).map(index => choices[index]!.value),
+    dialog.answers.set(group.key, { key: group.key, selected,
       ...(text ? { text } : {}), ...(images.length ? { images } : {}) });
+  }
+
+  /** P3, 24k7d6mw [1178668,1179279), UTF-16: answer notes and images use live question state. */
+  private questionAnswer(dialog: ActiveDialog, group: TerminalPromptGroup): TerminalPromptGroupAnswer {
+    const answer = dialog.answers.get(group.key);
+    const notes = dialog.notes.get(group.key)?.trim();
+    const images = dialog.images.list(group.key);
+    return { key: group.key, selected: answer?.selected ?? [],
+      ...(answer?.text === undefined ? {} : { text: answer.text }),
+      ...(notes ? { notes } : {}), ...(images.length ? { images } : {}) };
   }
 
   private clarifyDialog(dialog: ActiveDialog): void {
@@ -4231,8 +4254,8 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
       state.fired = true;
       const groups = state.target.request.groups ?? [];
       // Source `P3` receives the answers map as-is: only taken answers submit.
-      const answers = groups.map(group => state.target.answers.get(group.key))
-        .filter((answer): answer is TerminalPromptGroupAnswer => answer !== undefined);
+      const answers = groups.filter(group => state.target.answers.has(group.key))
+        .map(group => this.questionAnswer(state.target, group));
       // `Zbe` hands its callback the timeout it fired on, and `P3` stores that
       // as `afkTimeoutMs`, so the marker is the configured idle threshold.
       state.target.finish({ selected: [], groups: answers, afkTimeoutMs: state.settings.timeoutMs });
@@ -4267,38 +4290,36 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     const groups = dialog.request.groups ?? [];
     if (!groups.length) return false;
     const reviewing = dialog.step >= groups.length;
-    if (command === 'left' || command === 'right') {
-      const delta = command === 'left' ? -1 : 1;
+    const group = groups[dialog.step];
+    // hwe Vr, 24k7d6mw [1174532,1174552), UTF-16: Other retains its cursor keys.
+    const editing = group?.allowText && dialog.index === (group.choices?.length ?? 0);
+    if (editing) return false;
+    const binding = action.type === 'key' ? this.keys.push(action.sequence, ['Tabs']) : undefined;
+    if (binding?.kind === 'pending') return true;
+    const navigation = binding?.kind === 'match'
+      ? binding.match.action === 'tabs:previous' ? 'left' : binding.match.action === 'tabs:next' ? 'right' : command
+      : command;
+    if (navigation === 'left' || navigation === 'right') {
+      const delta = navigation === 'left' ? -1 : 1;
       const from = reviewing ? groups.length : dialog.step;
       const next = Math.max(0, Math.min(groups.length - 1, from + delta));
       // Right on the last question goes to the review page, as the last tab does.
-      if (reviewing && command === 'right') return true;
+      if (reviewing && navigation === 'right') return true;
       // Source `bl` (chunk-24k7d6mw.js [1174081)): the hide-submit single question sets the
       // next-tab bound to 0, so Right never opens a review page for it.
-      if (!reviewing && command === 'right' && groups.length === 1 && !groups[0]!.multiple) return true;
-      if (!reviewing && command === 'right' && dialog.step === groups.length - 1) {
+      if (!reviewing && navigation === 'right' && groups.length === 1 && !groups[0]!.multiple) return true;
+      if (!reviewing && navigation === 'right' && dialog.step === groups.length - 1) {
         dialog.step = groups.length; this.resetDialogStep(dialog); return true;
       }
       if (next === dialog.step && !reviewing) return true;
       dialog.step = next;
-      const group = groups[next]!;
-      const previous = dialog.answers.get(group.key);
       this.resetDialogStep(dialog);
-      // Reopen the group with the answer it already has.
-      if (previous) {
-        const choices = group.choices ?? [];
-        dialog.selected = new Set(previous.selected
-          .map(value => choices.findIndex(choice => choice.value === value)).filter(index => index >= 0));
-        if (previous.text) dialog.editor = { ...dialog.editor, text: previous.text };
-      }
-      this.render();
       return true;
     }
     if (!reviewing) return false;
     if (action.type === 'insert' || action.type === 'paste') return true;
     if (command === 'submit') {
-      dialog.finish({ selected: [], groups: groups.map(group => dialog.answers.get(group.key)
-        ?? { key: group.key, selected: [] }) });
+      dialog.finish({ selected: [], groups: groups.map(group => this.questionAnswer(dialog, group)) });
       return true;
     }
     return true;
@@ -4552,11 +4573,14 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
         content.push(...wrapEntry({ kind: 'error', text: 'You have not answered all questions' }, columns));
         content.push('');
       }
+      // b3/hwe, 24k7d6mw [1159815,1161789)/[1168121,1177646), UTF-16.
       for (const item of groups) {
         const answer = dialog.answers.get(item.key);
-        content.push(...wrapEntry({ kind: 'assistant', text: oneLine(item.title ?? item.message) }, columns));
-        const value = answer?.text ?? (answer?.selected.length ? answer.selected.join(', ') : '');
-        content.push(...wrapEntry({ kind: 'system', text: `  ${value || '(no answer)'}` }, columns));
+        if (!answer || (!answer.selected.length && !answer.text)) continue;
+        content.push(...wrapEntry({ kind: 'assistant', text: clean(item.message) }, columns));
+        const parts = [...answer.selected, ...(answer.text === undefined ? [] : [answer.text])];
+        const value = item.multiple ? cardAnswerJoin(parts) : parts[0] ?? '';
+        content.push(...wrapEntry({ kind: 'system', text: `  ${oneLine(value)}` }, columns));
       }
       content.push('');
       content.push(...wrapEntry({ kind: 'assistant', text: 'Ready to submit your answers?' }, columns));

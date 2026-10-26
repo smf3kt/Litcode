@@ -322,8 +322,8 @@ function cardFieldUnchanged(answerValue: unknown, shownValue: unknown): boolean 
   if (!cardAnswerWithinBounds(answerValue)) return false;
   return isDeepStrictEqual(jsonRoundtrip(answerValue), jsonRoundtrip(shownValue));
 }
-/** Recovered `qht`: comma-join, JSON-quoting parts that hold ", " or a quote. */
-function cardAnswerJoin(parts: string[]): string {
+/** qht, ktr9sak2 [1397,1484), UTF-16; _ delegates to JSON.stringify. */
+export function cardAnswerJoin(parts: string[]): string {
   return parts.map(part => part.includes(', ') || part.includes('"') ? JSON.stringify(part) : part).join(', ');
 }
 /** Recovered `de`: an answer may omit `kind: "choice"` where the shown question carries it. */

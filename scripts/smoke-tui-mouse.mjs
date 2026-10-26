@@ -12,8 +12,9 @@ const cliIndex = process.argv.indexOf('--cli');
 const cli = cliIndex < 0 ? path.join(root, 'bin/litcode.mjs') : process.argv[cliIndex + 1];
 assert.ok(cli, '--cli requires an executable path');
 const line = process.argv.includes('--line');
+const questionReview = process.argv.includes('--question-review');
 const questionEditorCancel = process.argv.includes('--question-editor-cancel');
-const questionEditor = process.argv.includes('--question-editor') || questionEditorCancel;
+const questionEditor = process.argv.includes('--question-editor') || questionEditorCancel || questionReview;
 const previews = process.argv.includes('--preview') || questionEditor;
 const clarification = process.argv.includes('--clarification');
 const narrow = process.argv.includes('--narrow');
@@ -158,6 +159,14 @@ const dialogCalls = [
   { type: 'tool_use', id: 'write', name: 'write_file', input: { path: 'approved.txt', content: 'approved B\n' } },
   { type: 'tool_use', id: 'cancel-write', name: 'write_file', input: { path: 'cancelled.txt', content: 'must stay absent\n' } },
 ];
+const reviewFindings = { findings: [{ file: 'fixture.ts', line: 3, summary: 'Owned review observation', severity: 'info' }] };
+if (questionReview) dialogCalls.push(
+  { type: 'tool_use', id: 'findings', name: 'report_findings', input: reviewFindings },
+  { type: 'tool_use', id: 'clean', name: 'report_findings', input: { findings: [] } },
+  { type: 'tool_use', id: 'cancel-question', name: 'ask_user_question', input: {
+    questions: questions.questions.slice(1).map(question => ({ ...question, question: `Cancel ${question.question}` })),
+  } },
+);
 const server = http.createServer(async (req, res) => {
   try {
     let text = ''; for await (const chunk of req) text += chunk;
@@ -1370,6 +1379,96 @@ try {
     child.stdin.write('/exit\r'); child.stdin.end();
     assert.equal(await exited, 0, errors);
     assert.equal(requests.length, 1);
+  } else if (questionReview) {
+    const calls = () => fs.existsSync(editorCalls) ? JSON.parse(fs.readFileSync(editorCalls, 'utf8')) : [];
+    const edit = async (text, index) => {
+      child.stdin.write(text + '\u0007');
+      await until(() => calls().length === index && frame().includes(text + ' edited'));
+    };
+    child.stdin.write('first task\r');
+    await until(() => frame().includes('Choose output'));
+    child.stdin.write('\x1b[Bn');
+    await until(() => frame().includes('Notes ·'));
+    await edit('review notes', 1);
+    child.stdin.write('\r');
+    await until(() => frame().includes('Single Other'));
+    child.stdin.write('\x1b[B\x1b[B');
+    await edit('single answer', 2);
+    child.stdin.write('\r');
+    await until(() => frame().includes('Multi Other'));
+    child.stdin.write(' \x1b[B\x1b[B');
+    await edit('multi, "quoted"', 3);
+    child.stdin.write('\r');
+    await until(() => frame().includes('Review your answers'));
+    assert.ok(frame().includes('Choose output'), 'review must show the full question rather than its shared header');
+    assert.ok(frame().includes('Y, "multi, \\"quoted\\" edited"'), 'review must retain selected choices and quote the Other value');
+    child.stdin.write('\x1b[D');
+    await until(() => frame().includes('Multi Other') && !frame().includes('Review your answers'));
+    assert.ok(frame().includes('[x] Y'));
+    child.stdin.write('\x1b[B\x1b[B');
+    await until(() => frame().includes('multi, "quoted" edited'));
+    child.stdin.write('\x1b[A\x1b[Z');
+    await until(() => frame().includes('Single Other'));
+    assert.ok(frame().includes('single answer edited'));
+    child.stdin.write('\x1b[D\x1b[C');
+    await until(() => frame().includes('Single Other') && frame().includes('single answer edited'));
+    child.stdin.write('\x1b[A\x1b[Z');
+    await until(() => frame().includes('Choose output'));
+    assert.ok(frame().includes('review notes edited'));
+    child.stdin.write('\x1b[A\r');
+    await until(() => frame().includes('Single Other'));
+    assert.ok(frame().includes('single answer edited'), 'automatic advance must restore the later Other input');
+    child.stdin.write('\r');
+    await until(() => frame().includes('Multi Other'));
+    assert.ok(frame().includes('[x] Y'), 'automatic advance must restore the later multi-selection');
+    child.stdin.write('\t');
+    await until(() => frame().includes('Review your answers'));
+    child.stdin.write('\x1b[Z');
+    await until(() => frame().includes('Multi Other') && !frame().includes('Review your answers'));
+    child.stdin.write('\x1b[B\x1b[B');
+    await until(() => frame().includes('multi, "quoted" edited'));
+    child.stdin.write('\r');
+    await until(() => frame().includes('Review your answers'));
+    child.stdin.write('\r');
+    await until(() => frame().includes('Approve this plan') && frame().includes('Selected: Yes'));
+    const results = () => requests.at(-1).messages.flatMap(message => Array.isArray(message.content) ? message.content : [])
+      .filter(block => block.type === 'tool_result');
+    const content = id => {
+      const block = results().find(result => result.tool_use_id === id);
+      assert.ok(block, id);
+      return typeof block.content === 'string' ? block.content : block.content.map(item => item.text ?? '').join('');
+    };
+    assert.deepEqual(JSON.parse(content('question')), { answers: [
+      { questionIndex: 0, selected: ['A'], annotations: { preview: questions.questions[0].options[0].preview, notes: 'review notes edited' } },
+      { questionIndex: 1, selected: [], other: 'single answer edited' },
+      { questionIndex: 2, selected: ['Y'], other: 'multi, "quoted" edited' },
+    ] });
+    child.stdin.write('\r');
+    await until(() => frame().includes('Allow once') && frame().includes('approved.txt'));
+    child.stdin.write('\r');
+    await until(() => frame().includes('cancelled.txt'));
+    child.stdin.write('\u0003');
+    await until(() => frame().includes('Cancel Single Other'));
+    child.stdin.write('\x1b[B\x1b[Bcancelled answer\r');
+    await until(() => frame().includes('Cancel Multi Other'));
+    child.stdin.write(' \r');
+    await until(() => frame().includes('Review your answers'));
+    child.stdin.write('\x1b');
+    await until(() => frame().includes('dialogs accepted') && frame().includes('ready  finished:'));
+    assert.equal(requests.length, 8);
+    assert.deepEqual(JSON.parse(content('plan')), { approved: true });
+    assert.deepEqual(JSON.parse(content('findings')), reviewFindings);
+    assert.deepEqual(JSON.parse(content('clean')), { findings: [] });
+    assert.equal(results().find(result => result.tool_use_id === 'cancel-question')?.is_error, true);
+    assert.equal(fs.readFileSync(path.join(workspace, 'approved.txt'), 'utf8'), 'approved B\n');
+    assert.equal(fs.existsSync(path.join(workspace, 'cancelled.txt')), false);
+    child.stdin.write('/exit\r'); child.stdin.end();
+    assert.equal(await exited, 0, errors);
+    for (const call of calls()) {
+      assert.equal(call.mode, 0o600);
+      assert.equal(fs.existsSync(call.file), false);
+      assert.throws(() => process.kill(call.pid, 0), { code: 'ESRCH' });
+    }
   } else if (questionEditorCancel) {
     child.stdin.write('first task\r');await until(()=>frame().includes('Choose output'));
     child.stdin.write('n');await until(()=>frame().includes('Notes ·'));child.stdin.write('pending\u0007');
@@ -1390,7 +1489,7 @@ try {
     child.stdin.write('\x1b[B\x1b[B');await edit('single',2,'\u0018\u0005');child.stdin.write('\r');
     await until(()=>frame().includes('Multi Other'));child.stdin.write(' \x1b[B\x1b[B');await edit('multi',3);
     child.stdin.write('\r');await until(()=>frame().includes('Review your answers'));child.stdin.write('\r');
-    await until(()=>topLine()==='Approve this plan');
+    await until(()=>frame().includes('Approve this plan') && frame().includes('Selected: Yes'));
     const result=requests[1].messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).find(block=>block.type==='tool_result'&&block.tool_use_id==='question');
     const value=JSON.parse(typeof result.content==='string'?result.content:result.content.map(item=>item.text??'').join(''));
     assert.deepEqual(value,{answers:[{questionIndex:0,selected:['B'],annotations:{preview:questions.questions[0].options[1].preview,notes:'notes edited'}},
@@ -1402,7 +1501,7 @@ try {
     for(const call of calls()){assert.equal(call.mode,0o600);assert.match(call.terminal,/(?:^|[\s;])icanon(?:[\s;]|$)/);assert.equal(fs.existsSync(call.file),false);assert.throws(()=>process.kill(call.pid,0),{code:'ESRCH'});}
   } else if (clarification) {
     child.stdin.write('first task\r');
-    await until(() => topLine() === 'Fixture choice');
+    await until(() => frame().includes('Fixture choice') && frame().includes('Choose output'));
     child.stdin.write('\x1b[B\r');
     await until(() => frame().includes('Choose follow-up'));
     child.stdin.write('n');
@@ -1417,7 +1516,7 @@ try {
     child.stdin.write('\x1b[B');
     await until(() => frame().includes('> Chat about this'));
     child.stdin.write('\r');
-    await until(() => topLine() === 'Approve this plan');
+    await until(() => frame().includes('Approve this plan') && frame().includes('Selected: Yes'));
     const result = requests[1].messages.flatMap(message => Array.isArray(message.content) ? message.content : [])
       .find(block => block.type === 'tool_result' && block.tool_use_id === 'question');
     assert.ok(result); assert.ok(!result.is_error);
@@ -1434,7 +1533,7 @@ try {
     assert.equal(fs.existsSync(path.join(workspace, 'cancelled.txt')), false);
   } else if (dialogs) {
     child.stdin.write('first task\r');
-    await until(() => topLine() === 'Fixture choice');
+    await until(() => frame().includes('Fixture choice') && frame().includes('Choose output'));
     if (previews) {
         await until(() => frame().includes('Preview A') && frame().includes('└'));
       assert.equal(frame().includes('# Preview A'), false);
@@ -1445,10 +1544,10 @@ try {
     } else child.stdin.write('\x1b[B\r');
     // The source submits a single non-multi-select question immediately.
 
-    await until(() => topLine() === 'Approve this plan');
-    child.stdin.write('\x1b[B\r');
-    await until(() => topLine() === 'Allow once');
-    child.stdin.write('\x1b[B\r');
+    await until(() => frame().includes('Approve this plan') && frame().includes('Selected: Yes'));
+    child.stdin.write('\r');
+    await until(() => frame().includes('Allow once') && frame().includes('approved.txt'));
+    child.stdin.write('\r');
     await until(() => requests.length === 4 && frame().includes('cancelled.txt'));
     child.stdin.write('\u0003');
     await until(() => (line ? output : frame()).includes('dialogs accepted'));
@@ -1596,7 +1695,10 @@ try {
     logicalLineCommands: true, historyRestored: true, rawUnicode: true, readlineWords: true, placeholderStep: true,
     multilinePaste: true, durableSubmissionMatched: true } : actions ? { tuiActions: 'passed', modelPicker: true, thinking: true,
     tasks: true, stash: true, pickerCancelled: true, draftPreserved: true } : clarification ? {
-    tuiClarification: 'passed', question: true, permissionCancelled: true, fileEffectsAbsent: true } : dialogs ? {
+    tuiClarification: 'passed', question: true, permissionCancelled: true, fileEffectsAbsent: true } : questionReview ? {
+    tuiQuestionReview: 'passed', fullQuestions: true, combinedQuotedAnswers: true, laterInputRetained: true,
+    sourceTabs: true, notesAndOtherEditor: true, exactAnswers: true, booleanPlan: true, findings: true,
+    reviewCancelled: true, fileEffectsVerified: true } : dialogs ? {
     tuiDialogs: 'passed', question: true, plan: true,
     permissionApproved: true, permissionCancelled: true, fileEffectsVerified: true } : {
     tuiMouse: 'passed', transcriptKeys: true, splitSgrWheel: true, x10Wheel: true,

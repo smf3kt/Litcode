@@ -1740,6 +1740,103 @@ test('a grouped question can be reopened from the review page and cancelled', as
   } finally { tui.close(); }
 });
 
+test('question review shows full answered questions and source-quoted choices with Other', async () => {
+  const input = new PassThrough();
+  Object.assign(input, { isTTY: true, setRawMode() {} });
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).join('\n');
+  try {
+    const pending = tui.prompt({ message: '', groups: [
+      { key: 'output', title: 'Same header', message: 'Which complete output should be used?', choices: [{ label: 'A', value: 'A' }] },
+      { key: 'tags', title: 'Same header', message: 'Which tags belong to this change?', multiple: true, allowText: true,
+        choices: [{ label: 'Y', value: 'Y' }, { label: 'Z', value: 'Z' }] },
+    ] }, new AbortController().signal);
+    key('\x1b[C'); key(' \x1b[B\x1b[Bmulti, "quoted"\r');
+    assert.match(frame(), /You have not answered all questions/);
+    assert.equal(frame().includes('Which complete output should be used?'), false);
+    assert.match(frame(), /Which tags belong to this change\?/);
+    assert.ok(frame().includes('Y, "multi, \\"quoted\\""'), frame());
+    key('\x1b[D'); key('\x1b[D'); key('\r'); key('\x1b[C'); key('\r');
+    assert.deepEqual(await pending, { selected: [], groups: [
+      { key: 'output', selected: ['A'] }, { key: 'tags', selected: ['Y'], text: 'multi, "quoted"' },
+    ] });
+  } finally { tui.close(); }
+});
+
+test('review edits restore later selections, Other input and a single-choice focus on every advance', async () => {
+  const input = new PassThrough();
+  Object.assign(input, { isTTY: true, setRawMode() {} });
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).join('\n');
+  try {
+    const pending = tui.prompt({ message: '', groups: [
+      { key: 'first', title: 'First', message: 'First question?', allowText: true,
+        choices: [{ label: 'A', value: 'A', preview: 'Preview A' }, { label: 'B', value: 'B', preview: 'Preview B' }] },
+      { key: 'later', title: 'Later', message: 'Later question?', multiple: true, allowText: true,
+        choices: [{ label: 'X', value: 'X' }, { label: 'Y', value: 'Y' }] },
+    ] }, new AbortController().signal);
+    key('\x1b[B\r'); key(' \x1b[B\x1b[Bretained raw\r');
+    key('\x1b[D');
+    assert.ok(frame().includes('[x] X'), frame());
+    key('\x1b[B\x1b[B');
+    assert.ok(frame().includes('retained raw'), frame());
+    key('\x1b[A\x1b[D');
+    assert.ok(frame().includes('Selected: B'), frame());
+    key('\x1b[A\r');
+    assert.ok(frame().includes('[x] X'), frame());
+    key('\x1b[B\x1b[B');
+    assert.ok(frame().includes('retained raw'), frame());
+    key('\r'); key('\x1b[D\x1b[D');
+    key('n'); key('latest notes'); key('\x1b'); await delay(80);
+    key('\x1b[C\x1b[C'); key('\r');
+    assert.deepEqual(await pending, { selected: [], groups: [
+      { key: 'first', selected: ['A'], notes: 'latest notes' }, { key: 'later', selected: ['X'], text: 'retained raw' },
+    ] });
+  } finally { tui.close(); }
+});
+
+test('uncommitted Other input keeps cursor ownership and survives source Tab navigation without leaking after cancel', async () => {
+  const input = new PassThrough();
+  Object.assign(input, { isTTY: true, setRawMode() {} });
+  const output = new Writable({ write(_chunk, _encoding, done) { done(); } });
+  Object.assign(output, { isTTY: true, columns: 100, rows: 24 }); watchScreen(output);
+  const tui = new TuiTerminal({ input, output }).start();
+  const key = (text: string) => input.emit('data', text);
+  const frame = () => screenLines(output).join('\n');
+  const request = { message: '', groups: [
+    { key: 'first', title: 'First', message: 'First?', allowText: true, choices: [{ label: 'A', value: 'A' }] },
+    { key: 'second', title: 'Second', message: 'Second?', choices: [{ label: 'B', value: 'B' }] },
+  ] };
+  try {
+    const pending = tui.prompt(request, new AbortController().signal);
+    key('\x1b[Bab\x1b[DX');
+    assert.match(frame(), /> aXb/);
+    assert.match(frame(), /Question 1 of 2/);
+    key('\x1b[A\t');
+    assert.match(frame(), /Question 2 of 2/);
+    key('\x1b[Z');
+    assert.match(frame(), /Question 1 of 2/);
+    assert.match(frame(), /> aXb/);
+    key('\x1b[CZ');
+    assert.match(frame(), /> aXbZ/);
+    key('\r'); key('\r');
+    assert.ok(frame().includes('aXbZ'), frame());
+    key('\x1b');
+    assert.equal(await pending, undefined);
+    const next = tui.prompt(request, new AbortController().signal);
+    key('\x1b[B');
+    assert.equal(frame().includes('aXbZ'), false);
+    key('\x1b');
+    assert.equal(await next, undefined);
+  } finally { tui.close(); }
+});
+
 test('the focused choice shows its preview in a box beside the options', async () => {
   const input = new PassThrough() as PassThrough & { isTTY: boolean; setRawMode: (raw: boolean) => void };
   input.isTTY = true; input.setRawMode = () => {};
