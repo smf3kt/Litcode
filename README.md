@@ -117,6 +117,8 @@ litcode --workspace /path/to/project --resume UUID --continue
 
 `autoMemory` 启用当前对话内的记忆维护。另加 `"autoMemoryConsolidation": true` 可启用后台整理，默认关闭，运行环境需提供 `node:sqlite` 的 `DatabaseSync`（Node.js 22.13+）。距上次成功整理至少 24 小时、且有至少 5 个其他已关闭主会话更新后，主回合收尾会启动一次整理。它沿用当前权限和用量预算，完成后显示状态；失败或中断保留原整理时间。运行中的整理可从 `/tasks` 查看或停止。已有会话保持原设置，显式 `/reload` 后才采用新配置。
 
+常驻副本由 `"features": {"residentForks": true, "crossSessionMessaging": true}` 启用，默认关闭。新会话或显式 `/reload` 后，`/fork` 会保留等待任务的副本，`/fork 任务` 执行一次后继续等待。父会话退出后副本仍运行；其他同用户目录会话可用 `/peers` 查到副本，再由 `send_peer_message` 投递任务。副本沿用消息审批和工具权限；需要人工回答的请求保持取消结果。日志位于输出的 `Log` 路径，可通过副本 PID 发送 `SIGTERM` 结束并释放会话锁。已有会话缺少开关时仍保存可显式恢复的副本。交互终端 attach 和 daemon 服务尚未接入。
+
 技能放在用户目录的 `skills/<name>/SKILL.md` 或项目 `.harness/skills/<name>/SKILL.md`，用 `/name` 调用。项目指令使用 `HARNESS.md`、`AGENTS.md` 和 `.harness/rules/`。MCP 服务通过设置中的 `mcpServers` 配置，连接状态在 `/mcp` 查看。
 
 ## 开发

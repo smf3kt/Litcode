@@ -346,6 +346,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   terminal?: TerminalSurface;
   /** SessionStart `initialUserMessage`, queued ahead of the first typed input. */
   initialUserMessage?: string;
+  /** Cn, 78w3rfp3 [49289,55904), UTF-16: resident task argv is independent of SessionStart. */
+  residentWorker?: { initialTask?: string; ready?: () => void };
+  sessionStart?: 'resume' | 'startup';
   /** SessionStart `watchPaths` from the startup hooks run before this loop. */
   initialWatchPaths?: string[];
   /** Test seam for `/fork`'s background copy; defaults to the real spawn. */
@@ -390,7 +393,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       ? createTerminalInput({ input: options.input, output: options.output, keybindings: initial.config.keybindings,sourceInputGestures:true,
         editorMode:initial.config.editorMode,vimInsertModeRemaps:initial.config.vimInsertModeRemaps })
       : undefined);
-  const rl = terminal ? undefined : createInterface({ input: options.input, terminal: false });
+  const rl = terminal || options.residentWorker ? undefined : createInterface({ input: options.input, terminal: false });
   /**
    * Source `d8e`/`te` (chunk-nkvcn1t9.js 824, chunk-8a6bg1at.js 14328) read the first user row's
    * text. A message row is a prompt unless it is meta or its content is a tool result; a compact
@@ -544,6 +547,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // The SessionStart message is host-generated, so it is source `isMeta`: the composer may not
   // pull it back as if a person had typed it.
   if (options.initialUserMessage !== undefined) queue.push({ prompt: options.initialUserMessage, source: 'user', meta: true });
+  // gft, 24k7d6mw [38766,45161), UTF-16: only explicit argv supplies the first task.
+  if (options.residentWorker?.initialTask) queue.push({ prompt: options.residentWorker.initialTask, source: 'user' });
   // Source `Kp` (chunk-sfn1dbxq.js 218238): the composer may pull back only a person's own queued
   // prompt — not a meta entry and not an event. A shell entry is pullable, and `zMe` only requires
   // an empty draft for one (`n || e.mode !== "bash"`), so the snapshot carries its mode and the
@@ -920,12 +925,16 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     else if (event.kind === 'listening') options.status.write(`Peer inbox: ${event.address}\n`);
     else if (event.kind === 'error') options.status.write(`Peer transport: ${event.message}\n`);
   };
+  // kBs/b, ma8kg8hy [3097,9113), UTF-16: resident readiness follows authenticated inbox publication.
   const startPeer = async (config: SessionConfig) => {
     if (config.features?.crossSessionMessaging !== true) return;
     try {
       peer = await createLocalPeerTransport({
         userDir: config.configSources?.userDir ?? defaultUserDir(),
-        workspace: config.workspace, kind: 'interactive', name: session.id, entrypoint: 'interactive',
+        workspace: config.workspace, kind: options.residentWorker ? 'bg' : 'interactive',
+        name: options.residentWorker ? session.title || session.id : session.id,
+        entrypoint: options.residentWorker ? 'resident-worker' : 'interactive',
+        ...(options.residentWorker ? { requireAuth: true, keepAlive: true } : {}),
         policy: peerExplicit, mode: peerMode,
         // `Ade`: a held message for a mode cause expires after the settings
         // window (default 5m, `never` disables it); the getter keeps a reload live.
@@ -936,7 +945,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       peer.setMode(peerMode);
       await peer.setSession(session.id);
     } catch (error) {
-      peer = undefined;
+      const failed = peer; peer = undefined;
+      await failed?.close();
+      if (options.residentWorker) throw error;
       options.status.write(`Peer inbox unavailable: ${error instanceof Error ? error.message : String(error)}\n`);
     }
   };
@@ -973,7 +984,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     });
     if (!form) formController?.abort();
     if (approval) return Promise.reject(new Error('Another interaction already owns terminal input'));
-    if (inputClosed || signal.aborted) return Promise.reject(new Error('Interaction input closed'));
+    if (inputClosed || options.residentWorker || signal.aborted) return Promise.reject(new Error('Interaction input closed'));
     output.write(prompt);
     return new Promise((resolve, reject) => {
       const finish = (value: string | undefined) => {
@@ -1887,6 +1898,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       else options.status.write(`${options.startupNotice}\n`);
     }
     await startPeer(session.config);
+    // Qat, 24k7d6mw [1352278,1359484), UTF-16: await SessionStart after mounting the worker context.
+    if (options.sessionStart !== undefined || options.residentWorker) {
+      const started = await agent().startSession(options.sessionStart ?? 'resume', options.signal);
+      if (started.initialUserMessage !== undefined) queue.unshift({ prompt: started.initialUserMessage, source: 'user', meta: true });
+      if (started.watchPaths?.length) addInstructionPaths(started.watchPaths);
+    }
+    options.residentWorker?.ready?.();
     // Source `me(!0).then(ne)`: the durable scheduler reads its store before the loop drains,
     // so a restart's missed one-shot catch-up is queued for the first turn.
     await activeRuntime.settleScheduler?.(session.id, schedulerSessions, () => activeAgent?.isRunning() ?? false).catch(() => {});
@@ -3577,10 +3595,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               // through `TMr`, and `RMr` fits the whole row into the terminal.
               const copyName = forkCopyName(session.title, argument);
               const started = (options.startBackground ?? startBackgroundSession)({ session, prompt: argument,
-                mode: 'fork', seedFallback: '(forked)', ...relocation,
+                mode: 'fork', seedFallback: '(forked)', ...relocation, signal: options.signal,
                 ...(copyName === '' ? {} : { name: copyName }),
                 relocate: (fork, target) => relocateSession(fork, target,
-                  config => activeRuntime.buildTools(config, 'relocation')) });
+                  config => activeRuntime.buildTools(config, 'relocation'), { liveToolExtensions: peerTools() }) });
+              // ze, 78w3rfp3 [41585,44660), UTF-16: report success only after the worker acknowledges.
+              await started.ready;
               // `Ue`'s `fe`, `de` and `H`: a prompt starts the copy running, a bare `/fork` leaves it
               // waiting, and the row carries the one chip that describes where the copy edits.
               const chip = forkRowChip({ relocatedTo: started.relocatedTo, editsIn: relocation.editsIn });
@@ -3591,7 +3611,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               // U [20040,21857) returns system display; Ip [113052,114313) fits at the current width.
               if (terminal?.writeForkRow) terminal.writeForkRow(fields);
               else output.write(forkSessionLine(fitForkRow(fields, process.stdout.columns ?? 80)) + '\n');
-              output.write(`Log: ${started.log}\nResume it with: ${backgroundResumeCommand(started, session.config.workspace)}\n`);
+              output.write(`Log: ${started.log}\n`);
+              if (started.ready && started.pid !== undefined) {
+                output.write(`Resident pid ${started.pid}. Find this copy with /peers and send work with send_peer_message.\nStop it with: kill -TERM ${started.pid}\n`);
+              } else output.write(`Resume it with: ${backgroundResumeCommand(started, session.config.workspace)}\n`);
             } catch (error) {
               output.write(`Couldn't fork: ${error instanceof Error ? error.message : String(error)}\n`);
             }

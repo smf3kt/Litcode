@@ -41,6 +41,7 @@ import { createWebTools } from './web.js';
 import { createWebSearchTools, webSearchConfigSchema, type WebSearchConfig } from './web-search.js';
 import { createMemoryTools } from './memory.js';
 import { MemoryConsolidation } from './memory-consolidation.js';
+import { isLocalPeerToolSchema } from './local-peer.js';
 import { createMediaTools } from './media.js';
 import { createPluginTools, discoverInstalledPluginComponents, installedPluginCatalogIdentity, pluginConfigSchema, type PluginConfig } from './plugins.js';
 import { NamedWorkflowCatalog } from './workflow-named.js';
@@ -168,7 +169,7 @@ export type ParsedRuntimeSettings = {
     workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean; mcpPersistence?: boolean; mcpTasks?: boolean; mcpStandardTasks?: boolean;
     taskProjections?: boolean; promptSuggestions?: boolean;
     schedulerJitter?: boolean; schedulerDurable?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; skillSourceArguments?: boolean; pluginSkillNamespaces?: boolean;
-    agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; crossSessionMessaging?: boolean };
+    agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; crossSessionMessaging?: boolean; residentForks?: boolean };
 };
 
 // Unknown hook event names are dropped (not merged), so a settings typo cannot
@@ -184,7 +185,7 @@ const featuresSchema = z
     workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(),
     taskProjections: z.boolean().optional(), promptSuggestions: z.boolean().optional(),
     schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), skillSourceArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
-    agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), crossSessionMessaging: z.boolean().optional() })
+    agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), crossSessionMessaging: z.boolean().optional(), residentForks: z.boolean().optional() })
   .strict();
 
 function expect(condition: unknown, message: string): asserts condition {
@@ -1357,6 +1358,8 @@ export async function createRuntime(
       const helpers = new Set(['mcp_resources_list', 'mcp_resource_read', 'mcp_prompts_list', 'mcp_prompt_get',
         'mcp_resource_subscribe', 'mcp_resource_unsubscribe', 'mcp_resource_notifications', 'mcp_logging_set_level', 'mcp_logging_notifications']);
       const stable = (schemas: SessionConfig['tools']) => schemas.flatMap(tool => {
+        // Host identity adapter around RTe.kn's MCP publication, 24k7d6mw [1562359,1572850), UTF-16.
+        if (session.config.features?.crossSessionMessaging === true && isLocalPeerToolSchema(tool)) return [];
         if (prefixes.some(prefix => tool.name.startsWith(prefix))) return [];
         if (!changed.size || !helpers.has(tool.name)) return [tool];
         const copy = structuredClone(tool), properties = copy.input_schema.properties;

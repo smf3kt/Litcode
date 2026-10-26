@@ -6,14 +6,23 @@ import { Session, configSchema, fingerprint, type SessionConfig, type SessionEve
 import type { ToolDefinition } from "./tools.js";
 
 export type RelocatedToolBuilder = (config: SessionConfig) => ToolDefinition[];
-export type RelocateSessionOptions = { worktreeReturn?: string | null };
+export type RelocateSessionOptions = { worktreeReturn?: string | null; liveToolExtensions?: readonly ToolDefinition[] };
 
-function completedHistory(source: Session): SessionEvent[] {
+// gft, 24k7d6mw [38766,45161), UTF-16: fork the accepted live context, validating mounted tool extensions separately.
+function completedHistory(source: Session, extensions: readonly ToolDefinition[] = []): SessionEvent[] {
   const history = structuredClone(source.events);
   const metadata = history[0];
-  if (metadata?.kind !== "metadata" || metadata.id !== source.id ||
-    fingerprint(metadata.config) !== metadata.fingerprint || fingerprint(source.config) !== metadata.fingerprint) {
-    throw new Error("Source session identity or pinned configuration changed");
+  if (metadata?.kind !== 'metadata') throw new Error('Source session identity or pinned configuration changed');
+  const expected = structuredClone(metadata.config);
+  for (const tool of extensions) {
+    const schema = { ...structuredClone(tool.schema), eager_input_streaming: true };
+    const original = expected.tools.find(item => item.name === schema.name);
+    if (original === undefined) expected.tools.push(schema);
+    else if (JSON.stringify(original) !== JSON.stringify(schema)) throw new Error('Mounted tool schema changed');
+  }
+  if (metadata.id !== source.id || fingerprint(metadata.config) !== metadata.fingerprint
+    || fingerprint(source.config) !== fingerprint(expected)) {
+    throw new Error('Source session identity or pinned configuration changed');
   }
   const pendingTools = new Set<string>();
   const pendingHooks = new Set<string>();
@@ -52,7 +61,7 @@ function completedHistory(source: Session): SessionEvent[] {
  */
 export function relocateSession(source: Session, targetWorkspace: string, buildTools: RelocatedToolBuilder,
   options?: RelocateSessionOptions): Session {
-  const history = completedHistory(source);
+  const history = completedHistory(source, options?.liveToolExtensions);
   const target = fs.realpathSync(path.resolve(targetWorkspace));
   if (!fs.statSync(target).isDirectory()) throw new Error("Target workspace must be a directory");
   if (target === source.config.workspace) throw new Error("Target workspace is already the source workspace");

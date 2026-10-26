@@ -3,10 +3,9 @@
 // Source: the REPL background handler `_1s` (chunk-24k7d6mw.js offset 38204)
 // refuses a disabled persistence, requires a seed from `fBe` (offset 51242) and
 // opens the confirmation path; the spawn core `gft` (offset 38766) forks the
-// conversation into a child CLI that resumes the fork. Without a resident
-// background REPL worker, this host saves a bare `/fork` as an unlocked journal.
-// Prompted copies run headless; `/background` retains its seed-task fallback.
-import { spawn } from 'node:child_process';
+// conversation into a child CLI that resumes the fork.
+import { spawn, type ChildProcess } from 'node:child_process';
+import { z } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
 import type Anthropic from '@anthropic-ai/sdk';
@@ -18,7 +17,7 @@ export const NOTHING_TO_BACKGROUND = 'Nothing to background yet — send a messa
 
 /** `fBe`'s seed: the short intent shown for the task and the last assistant line. */
 export type BackgroundSeed = { intent: string; detail?: string };
-export type BackgroundSession = { sessionId: string; pid: number | undefined; log: string;
+export type BackgroundSession = { sessionId: string; pid: number | undefined; log: string; ready?: Promise<void>;
   /** `gft`'s `relocatedTo`: the copy runs in this directory instead of the parent's checkout. */
   relocatedTo?: string };
 
@@ -59,7 +58,42 @@ export type BackgroundStartOptions = {
   execArgv?: readonly string[];
   /** Test seam; defaults to `node:child_process.spawn`. */
   spawnProcess?: typeof spawn;
+  signal?: AbortSignal;
 };
+
+const residentReadySchema = z.object({ type: z.literal('resident_ready'), sessionId: z.string().uuid() }).strict();
+
+// ze, 78w3rfp3 [41585,44660), UTF-16: acknowledge the owned worker before reporting dispatch success.
+function residentReady(child: ChildProcess, sessionId: string, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
+      child.off('message', message); child.off('error', failed); child.off('exit', exited);
+      if (child.connected) child.disconnect();
+    };
+    const failed = (error: Error) => {
+      if (settled) return;
+      settled = true; cleanup();
+      if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) { reject(error); return; }
+      const force = setTimeout(() => { child.kill('SIGKILL'); }, 5000);
+      child.once('exit', () => { clearTimeout(force); reject(error); });
+      child.kill('SIGTERM');
+    };
+    const abort = () => failed(new Error('Fork startup interrupted'));
+    const exited = () => failed(new Error('Fork worker exited before its inbox was ready'));
+    const message = (value: unknown) => {
+      const parsed = residentReadySchema.safeParse(value);
+      if (!parsed.success || parsed.data.sessionId !== sessionId || settled) return;
+      settled = true; cleanup(); resolve();
+    };
+    const timer = setTimeout(() => failed(new Error('Fork worker inbox startup timed out')), 10000);
+    child.on('message', message); child.once('error', failed); child.once('exit', exited);
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
+  });
+}
 
 /** `ne` (chunk-ax7r0qj7.js offset 1128): cut at UTF-16 units without splitting a pair. */
 function truncate(text: string, max: number): string {
@@ -146,6 +180,12 @@ export function startBackgroundSession(options: BackgroundStartOptions): Backgro
   if (!entry) throw new Error("Couldn't fork — the CLI entry point is unknown.");
   const prompt = options.prompt.trim();
   const task = options.mode === 'fork' ? prompt : prompt || seed.intent;
+  // Cn, 78w3rfp3 [49289,55904), UTF-16: an idle intent is separate from the initial task.
+  const resident = options.mode === 'fork' && options.session.config.features?.residentForks === true;
+  if (resident && options.session.config.features?.crossSessionMessaging !== true) {
+    throw new Error('Resident forks require crossSessionMessaging in the pinned session settings');
+  }
+  options.signal?.throwIfAborted();
   // `gft`'s `po` relocation happens inside the same snapshot copy the fork already takes; this
   // host's journal is workspace-bound, so a relocated copy is opened in the origin tree with the
   // same body `/worktree` uses. A copy that cannot be relocated fails the fork, which is the
@@ -175,16 +215,18 @@ export function startBackgroundSession(options: BackgroundStartOptions): Backgro
   let fd: number | undefined;
   try {
     fd = fs.openSync(log, 'a');
-    // gft [38766,45161) omits the prompt argv; Cn [49289,55904) marks that copy waiting.
-    // Without a resident REPL worker, this host keeps the closed journal ready for resume.
-    if (task === '') return { sessionId: fork.id, pid: undefined, log,
+    // gft [38766,45161), UTF-16 omits empty prompt argv; Ye, gvps5cb5 [12827,13238) resumes a REPL.
+    if (task === '' && !resident) return { sessionId: fork.id, pid: undefined, log,
       ...(relocated ? { relocatedTo: workspace } : {}) };
     const child = (options.spawnProcess ?? spawn)(executable,
-      [...(options.execArgv ?? process.execArgv), entry, '--resume', fork.id, '--', task], {
-        cwd: workspace, detached: true, stdio: ['ignore', fd, fd],
+      [...(options.execArgv ?? process.execArgv), entry, '--resume', fork.id,
+        ...(resident ? ['--resident-worker'] : []), ...(task === '' ? [] : ['--', task])], {
+        cwd: workspace, detached: true, stdio: resident ? ['ignore', fd, fd, 'ipc'] : ['ignore', fd, fd],
       });
+    const ready = resident ? residentReady(child, fork.id, options.signal) : undefined;
     child.unref();
-    return { sessionId: fork.id, pid: child.pid, log, ...(relocated ? { relocatedTo: workspace } : {}) };
+    return { sessionId: fork.id, pid: child.pid, log, ...(ready === undefined ? {} : { ready }),
+      ...(relocated ? { relocatedTo: workspace } : {}) };
   } catch (error) {
     try { fs.rmSync(fork.file, { force: true }); } catch { /* Best effort after a failed spawn. */ }
     const message = error instanceof Error ? error.message : String(error);

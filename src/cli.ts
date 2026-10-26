@@ -18,7 +18,6 @@ import { briefTranscriptEnabled, startupVerbose } from './focus-command.js';
 import { configuredEffort } from './effort-command.js';
 import { createTuiTerminal } from './tui.js';
 import { beginSpinnerTipsStartup } from './spinner-tips.js';
-import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { sourceSkillArgumentsDefault } from './skill-arguments.js';
 import { runMcpPrompt } from './mcp-prompt-run.js';
@@ -474,6 +473,7 @@ function newConfig(
       // Same-host peer transport is opt-in: an inbox is a listening socket,
       // so it is never opened without the user's own setting.
       crossSessionMessaging: settings.features?.crossSessionMessaging ?? false,
+      ...(settings.features?.residentForks === undefined ? {} : { residentForks: settings.features.residentForks }),
       lsp: settings.features?.lsp ?? Boolean(settings.lspServers && Object.keys(settings.lspServers).length),
     };
     if (loaded.agentTypes !== undefined) config.agentTypes = structuredClone(loaded.agentTypes);
@@ -546,7 +546,7 @@ function cliVersion(): string {
 
 async function main(): Promise<void> {  const { values, positionals } = parseArgs({ allowPositionals: true, options: {
     help: { type: 'boolean' }, demo: { type: 'boolean' }, workspace: { type: 'string' },
-    interactive: { type: 'boolean' }, tui: { type: 'boolean' }, 'no-tui': { type: 'boolean' }, 'list-sessions': { type: 'boolean' },
+    interactive: { type: 'boolean' }, 'resident-worker': { type: 'boolean' }, tui: { type: 'boolean' }, 'no-tui': { type: 'boolean' }, 'list-sessions': { type: 'boolean' },
     attach: { type: 'string' }, pages: { type: 'string' },
     model: { type: 'string' }, effort: { type: 'string' }, 'base-url': { type: 'string' }, auth: { type: 'string' },
     'token-counting': { type: 'string' }, thinking: { type: 'boolean' }, 'no-thinking': { type: 'boolean' },
@@ -573,6 +573,12 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
   } });
   if (values.help) { process.stdout.write(help); return; }
   if (values.version || values.v) { process.stdout.write(`${cliVersion()}\n`); return; }
+  // Ye, gvps5cb5 [12827,13238), UTF-16: the worker resumes the original snapshot into a resident REPL.
+  const residentWorker = values['resident-worker'] === true;
+  if (residentWorker && (!values.resume || values.interactive || values.continue || values.demo
+    || values['list-sessions'] || values.tui || values.attach || values['output-format'] || values['json-schema'])) {
+    throw new Error('--resident-worker requires an original --resume session and an optional task');
+  }
   // A bare invocation at a terminal is the interactive session, the way a person expects a CLI to
   // behave; anywhere else there is no way to read a task, so the help is the answer. Options that
   // belong to another complete action (demo, resume, session listing, an MCP answer) are left to
@@ -726,7 +732,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
   const stored = demo ? undefined : readStoredCredential(userDir);
   const gateway = resolveGatewayChoice(values, settings, inherited, demo, stored);
   const credential = gatewayCredential(gateway.baseURL, inherited, stored);
-  const interactiveStart = values.interactive === true;
+  const interactiveStart = values.interactive === true || residentWorker;
   if (!demo && !values.resume && credential.key === undefined && !interactiveStart) {
     throw new Error(missingCredentialError(credential, gateway.baseURL));
   }
@@ -785,6 +791,10 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       session = Session.open(workspace, { config });
     } else if (values.resume) {
       session = Session.open(workspace, { id: values.resume, recoverLock: values['recover-lock'] });
+      if (residentWorker && (session.config.features?.residentForks !== true
+        || session.config.features?.crossSessionMessaging !== true)) {
+        throw new Error('Resident worker requires pinned residentForks and crossSessionMessaging settings');
+      }
       if (!session.config.gateway) throw new Error('Legacy session has no gateway settings; start a new session');
       // It, 9shw4xrd [106333,106421), UTF-16: a pre-verbose journal still resolves from its viewMode.
       session.config.verbose = startupVerbose(session.config.viewMode, session.config.verbose);
@@ -867,8 +877,8 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     process.stderr.write(`session: ${currentSession.id}\nworkspace: ${workspace}\n`);
     // The terminal owns the screen from here, so an unconfigured start says so inside the loop.
     const startupNotice = slot.adopted() ? undefined : pendingMessage;
-    if (values.interactive) {
-      const tui = useTui ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
+    if (interactiveStart) {
+      const tui = useTui && !residentWorker ? createTuiTerminal({ input: process.stdin, output: process.stdout,sourceInputGestures:true,
         commands: tuiCommandsWithSkills(currentSession.config.skills, { currentModel: () => currentSession.config.model }),
         agentTypes: currentSession.config.agentTypes,
         ...(currentRuntime.catalogListing ? { mcpCatalog: (signal: AbortSignal) =>
@@ -896,20 +906,16 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
         syntaxHighlightingDisabled: currentSession.config.syntaxHighlightingDisabled,
         theme: currentSession.config.theme, userDir: currentSession.config.configSources?.userDir,
         workspace: currentSession.config.workspace, plugins: currentSession.config.plugins }) : undefined;
-      const started = await new Agent(currentSession, provider, currentRuntime.buildTools(currentSession.config, currentSession.id), {
-        stopState: () => currentRuntime.stopState?.(currentSession.id) ?? { background_tasks: [], session_crons: [] },
-        status: text => { if (tui) tui.setStatus(text); else process.stderr.write(`${text}\n`); },
-        ...(tui ? { terminalSequence: (sequence: string) => tui.writeTerminalSequence(sequence) }
-          : process.stdin.isTTY && process.stdout.isTTY ? { terminalSequence: (sequence: string) => {
-            const validated = formatHookTerminalSequence(sequence);
-            if (validated) process.stdout.write(validated);
-          } } : {}),
-        hookOptions: currentRuntime.hookOptions?.(currentSession.config, currentSession.id),
-      }).startSession(values.resume ? 'resume' : 'startup', controller.signal);
+      // Qat, 24k7d6mw [1352278,1359484), UTF-16: SessionStart uses the mounted tool context.
       await interactiveLoop(currentSession, provider, currentRuntime, { input: process.stdin, output: process.stdout,
         status: tui ? tui.statusStream : process.stderr, signal: controller.signal,
-        ...(started.initialUserMessage === undefined ? {} : { initialUserMessage: started.initialUserMessage }),
-        ...(started.watchPaths === undefined ? {} : { initialWatchPaths: started.watchPaths }),
+        sessionStart: values.resume ? 'resume' : 'startup',
+        ...(residentWorker ? { residentWorker: {
+          ...(positionals.length === 0 ? {} : { initialTask: positionals.join(' ') }),
+          ready: () => {
+            if (process.connected) process.send?.({ type: 'resident_ready', sessionId: currentSession.id });
+          },
+        } } : {}),
         ...(startupNotice === undefined ? {} : { startupNotice }),
         // The slot alone is not enough: a credential with no model would send the sentinel, so
         // the turn waits for `/model` as well as for a sign-in.

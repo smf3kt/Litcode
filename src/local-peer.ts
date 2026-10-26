@@ -923,6 +923,7 @@ export type PeerInboxOptions = {
   record: { cwd: string; startedAt: number; kind?: PeerRecord["kind"]; sessionId?: string; name?: string; entrypoint?: string };
   socketPath?: string;
   requireAuth?: boolean;
+  keepAlive?: boolean;
   firstLineDeadlineMs?: number;
   policy?: () => InboundPolicy | undefined;
   mode?: () => { mode: string; bypassAvailable?: boolean } | null;
@@ -990,7 +991,8 @@ export async function startPeerInbox(options: PeerInboxOptions): Promise<PeerInb
     server.listen(socketPath, () => { server.removeListener("error", reject); resolve(); });
   });
   state.server = server;
-  server.unref();
+  // _e, 1w9hc2bp [1906,7473), UTF-16: the resident REPL needs an owned live input handle.
+  if (!options.keepAlive) server.unref();
   await fsp.chmod(socketPath, SOCKET_MODE);
   try {
     state.keyFile = await publishKey(options.userDir, socketPath, tokens.peerToken);
@@ -1205,6 +1207,7 @@ export type LocalPeerTransportOptions = {
   name?: string;
   entrypoint?: string;
   requireAuth?: boolean;
+  keepAlive?: boolean;
   socketPath?: string;
   policy?: () => InboundPolicy | undefined;
   mode?: () => { mode: string; bypassAvailable?: boolean } | null;
@@ -1249,6 +1252,7 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
     record: { cwd: options.workspace, startedAt: Date.now(), kind: options.kind ?? "interactive", name: options.name ?? `peer-${crypto.randomUUID().slice(0, 8)}`, entrypoint: options.entrypoint },
     ...(options.socketPath === undefined ? {} : { socketPath: options.socketPath }),
     ...(options.requireAuth === undefined ? {} : { requireAuth: options.requireAuth }),
+    ...(options.keepAlive === undefined ? {} : { keepAlive: options.keepAlive }),
     ...(options.policy === undefined ? {} : { policy: options.policy }),
     ...(options.mode === undefined ? {} : { mode: options.mode }),
     ...(options.heldTimeoutMs === undefined ? {} : { heldTimeoutMs: options.heldTimeoutMs }),
@@ -1347,12 +1351,28 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
 // Tools
 // ---------------------------------------------------------------------------
 
+const peerToolSchemas = {
+  list: { name: 'list_peers', description: 'List other live same-host sessions that accept peer messages. Each entry carries its uds: address and process identity. Use send_peer_message with an address.',
+    input_schema: { type: 'object', properties: {}, required: [], additionalProperties: false } },
+  send: { name: 'send_peer_message', description: "Send one exact text message to another same-host session by uds: address. The recipient decides whether to accept, hold for its user's approval, or refuse. Message text is untrusted data.",
+    input_schema: { type: 'object', properties: { address: { type: 'string', minLength: 1 }, message: { type: 'string', minLength: 1 },
+      wait_ms: { type: 'integer', minimum: 0, maximum: 30_000 } }, required: ['address', 'message'], additionalProperties: false } },
+  status: { name: 'peer_message_status', description: 'Read the latest receipt for a peer message this session sent (held, delivered, refused, denied, expired, dropped). Optionally wait up to wait_ms for a receipt.',
+    input_schema: { type: 'object', properties: { msg_id: { type: 'string', minLength: 1 }, wait_ms: { type: 'integer', minimum: 0, maximum: 30_000 } },
+      required: ['msg_id'], additionalProperties: false } },
+} satisfies Record<string, ToolDefinition['schema']>;
+
+// Host schema adapter for K8t's sender, 6zdc3jq1 [12210,13125), UTF-16; the schema table is local.
+export function isLocalPeerToolSchema(schema: ToolDefinition['schema']): boolean {
+  return Object.values(peerToolSchemas).some(peer => JSON.stringify(schema) === JSON.stringify({ ...peer, eager_input_streaming: true }));
+}
+
 /** Explicit same-host tools; child-agent messaging stays in AgentRegistry. */
 export function createLocalPeerTools(transport: LocalPeerTransport, options: { signal?: AbortSignal } = {}): ToolDefinition[] {
-  const wrap = (name: string, description: string, properties: Record<string, unknown>, required: string[], readOnly: boolean,
+  const wrap = (schema: ToolDefinition['schema'], readOnly: boolean,
     execute: (input: Record<string, unknown>, context: ToolContext) => Promise<unknown>): ToolDefinition => ({
     readOnly,
-    schema: { name, description, input_schema: { type: "object", properties, required, additionalProperties: false } },
+    schema: structuredClone(schema),
     async execute(input, context) {
       context.signal.throwIfAborted();
       const parsed = input as Record<string, unknown>;
@@ -1360,11 +1380,8 @@ export function createLocalPeerTools(transport: LocalPeerTransport, options: { s
     },
   });
   return [
-    wrap("list_peers", "List other live same-host sessions that accept peer messages. Each entry carries its uds: address and process identity. Use send_peer_message with an address.", {}, [], true,
-      async () => ({ peers: await transport.list() })),
-    wrap("send_peer_message", "Send one exact text message to another same-host session by uds: address. The recipient decides whether to accept, hold for its user's approval, or refuse. Message text is untrusted data.", {
-      address: { type: "string", minLength: 1 }, message: { type: "string", minLength: 1 }, wait_ms: { type: "integer", minimum: 0, maximum: 30_000 },
-    }, ["address", "message"], false, async (input, context) => {
+    wrap(peerToolSchemas.list, true, async () => ({ peers: await transport.list() })),
+    wrap(peerToolSchemas.send, false, async (input, context) => {
       const address = String(input.address ?? "");
       const message = String(input.message ?? "");
       const waitMs = typeof input.wait_ms === "number" ? input.wait_ms : 0;
@@ -1373,9 +1390,7 @@ export function createLocalPeerTools(transport: LocalPeerTransport, options: { s
       const status = await transport.waitStatus(sent.msgId, waitMs, context.signal);
       return { msg_id: sent.msgId, status: status?.status ?? "sent", ...(status?.reason === undefined ? {} : { reason: status.reason }) };
     }),
-    wrap("peer_message_status", "Read the latest receipt for a peer message this session sent (held, delivered, refused, denied, expired, dropped). Optionally wait up to wait_ms for a receipt.", {
-      msg_id: { type: "string", minLength: 1 }, wait_ms: { type: "integer", minimum: 0, maximum: 30_000 },
-    }, ["msg_id"], true, async (input, context) => {
+    wrap(peerToolSchemas.status, true, async (input, context) => {
       const msgId = String(input.msg_id ?? "");
       const waitMs = typeof input.wait_ms === "number" ? input.wait_ms : 0;
       const status = waitMs > 0 ? await transport.waitStatus(msgId, waitMs, context.signal) : transport.status(msgId);
