@@ -20,6 +20,7 @@ import { createTuiTerminal } from './tui.js';
 import { beginSpinnerTipsStartup } from './spinner-tips.js';
 import { formatHookTerminalSequence } from './hook-terminal.js';
 import { skillRequiresExecution } from './skill-runtime.js';
+import { sourceSkillArgumentsDefault } from './skill-arguments.js';
 import { runMcpPrompt } from './mcp-prompt-run.js';
 import { agentTypesSection, setHeldSkills } from './skill-catalog.js';
 import { listSessions } from './sessions.js';
@@ -446,6 +447,7 @@ function newConfig(
       ...(settings.features?.skillQuotedArguments === undefined ? {} : { skillQuotedArguments: settings.features.skillQuotedArguments }),
       ...(settings.features?.skillArgumentFallback === undefined ? {} : { skillArgumentFallback: settings.features.skillArgumentFallback }),
       ...(settings.features?.skillExtendedArguments === undefined ? {} : { skillExtendedArguments: settings.features.skillExtendedArguments }),
+      skillSourceArguments: sourceSkillArgumentsDefault(settings.features),
       ...(settings.features?.pluginSkillNamespaces === undefined ? {} : { pluginSkillNamespaces: settings.features.pluginSkillNamespaces }),
       agentMessaging: settings.features?.agentMessaging ?? true,
       agentIdle: settings.features?.agentIdle ?? true,

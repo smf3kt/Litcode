@@ -475,19 +475,20 @@ export class AgentRegistry {
       });
       const metadataBytes = Buffer.byteLength(JSON.stringify({ kind: 'metadata', version: 1,
         id: '00000000-0000-4000-8000-000000000000', config, fingerprint: fingerprint(config) })) + 1;
-      // Declared agent skills ride as meta user messages before the first turn
-      // (source `isSkillPreload`, chunk-40cepjpq.js offset 3259458).
-      const preloads = launch.type ? preloadAgentSkills(launch.type, parent.skills, launch.type.name) : [];
+      // vC, 40cepjpq [131541,131676), UTF-16: declared skills preload into initial context.
+      const preloads = launch.type ? preloadAgentSkills(launch.type, parent.skills, launch.type.name, undefined, parent.features?.skillSourceArguments === true) : [];
       const seedBytes = messages.reduce((sum, message) => sum + Buffer.byteLength(JSON.stringify({ kind: 'message', message })) + 1, 0)
         + preloads.reduce((sum, message) => sum + Buffer.byteLength(JSON.stringify({ kind: 'message', message, isMeta: true })) + 1, 0);
-      const seedBoundaryBytes = seededFork && messages.length ? Buffer.byteLength(JSON.stringify({ kind: 'turn_end', reason: 'fork_seed' })) + 1 : 0;
-      if (metadataBytes + seedBytes + seedBoundaryBytes + 128 > this.limits.maxJournalBytes || messages.length + (seedBoundaryBytes ? 2 : 1) >= this.limits.maxJournalEvents) throw new Error('Child journal limit reached');
+      const seedBoundary = seededFork && messages.length ? 'fork_seed' : preloads.length ? 'skill_preload' : undefined;
+      const seedBoundaryBytes = seedBoundary ? Buffer.byteLength(JSON.stringify({ kind: 'turn_end', reason: seedBoundary })) + 1 : 0;
+      if (metadataBytes + seedBytes + seedBoundaryBytes + 128 > this.limits.maxJournalBytes || messages.length + preloads.length + (seedBoundaryBytes ? 2 : 1) >= this.limits.maxJournalEvents) throw new Error('Child journal limit reached');
       session = Session.open(config.workspace, { config, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}) });
       if (execution?.beforeTool) session.inheritPermissionAdoption(liveOwner);
       else session.inheritPermissions(liveOwner);
       for (const message of messages) session.append({ kind: 'message', message });
       for (const message of preloads) session.append({ kind: 'message', message, isMeta: true });
-      if (seededFork && messages.length) session.append({ kind: 'turn_end', reason: 'fork_seed' });
+      // vC, 40cepjpq [132082,132105), UTF-16: preloads are initial query context.
+      if (seedBoundary) session.append({ kind: 'turn_end', reason: seedBoundary });
       hooks = createChildHookLifecycle(session, this.options);
       const childId = session.id;
       const agent = new Agent(session, this.options.provider, tools, { hookOptions: hooks.hookOptions,

@@ -153,14 +153,16 @@ function skillCommands(body: string): SkillCommand[] {
   return found.sort((left, right) => left.at - right.at);
 }
 
+// getPromptForCommand, sfn1dbxq [963598,964251), UTF-16; authored directives remain the host's scan boundary.
 async function expandedBody(skill: SkillInfo, args: string, options: SkillExecutionOptions): Promise<string> {
   const body = skill.body;
-  const expansion = { quotedArguments: options.config.features?.skillQuotedArguments === true,
+  const sourceArguments = options.config.features?.skillSourceArguments === true;
+  const expansion = { sourceArguments, appendUnusedArguments: false, quotedArguments: options.config.features?.skillQuotedArguments === true,
     extendedArguments: options.config.features?.skillExtendedArguments === true, argumentNames: skill.argumentNames };
   const expand = (text: string) => expandSkill(text, args, expansion);
   const expanded = expand(body);
   const withArguments = expandSkill(body, args, { ...expansion,
-    appendUnusedArguments: options.config.features?.skillArgumentFallback === true });
+    appendUnusedArguments: sourceArguments || options.config.features?.skillArgumentFallback === true });
   // Identify authored directives before substitution; argument/output text never
   // introduces a second command-expansion pass.
   const commands = skillCommands(body);
@@ -223,7 +225,7 @@ export function skillRequiresExecution(skill: SkillInfo, config?: SessionConfig)
     (config?.features?.skillInlineCommands === true && skillCommands(skill.body).length > 0);
 }
 
-/** Returns inline instruction text, a completed fork summary, or a background descriptor. */
+/** getPromptForCommand, sfn1dbxq [963598,964251), UTF-16; budget and execution share pinned expansion. */
 export async function executeSkill(skill: SkillInfo, args: string, options: SkillExecutionOptions): Promise<string> {
   options.signal.throwIfAborted();
   skill = structuredClone(skill);
@@ -238,10 +240,11 @@ export async function executeSkill(skill: SkillInfo, args: string, options: Skil
     { enableAdvanced: options.config.features?.agentTypes !== false, agentTypes: options.config.agentTypes });
   if (route?.isolation && !options.registry) throw new Error('Isolated skill agent requires a session-owned agent registry');
   const conversation = skillConversation(skill, options);
-  checkConversationBudget(conversation, expandSkill(skill.body, args, { quotedArguments: options.config.features?.skillQuotedArguments === true,
+  checkConversationBudget(conversation, expandSkill(skill.body, args, { sourceArguments: options.config.features?.skillSourceArguments === true,
+    quotedArguments: options.config.features?.skillQuotedArguments === true,
     extendedArguments: options.config.features?.skillExtendedArguments === true,
     argumentNames: skill.argumentNames,
-    appendUnusedArguments: options.config.features?.skillArgumentFallback === true }), options.config);
+    appendUnusedArguments: options.config.features?.skillSourceArguments === true || options.config.features?.skillArgumentFallback === true }), options.config);
   const fork = skill.context === 'fork' || skill.model !== undefined || skill.effort !== undefined || skill.background === true || skill.hooks !== undefined || skill.allowedTools !== undefined || skill.disallowedTools !== undefined;
   if (skill.background && !options.registry) throw new Error('Background skill requires a session-owned agent registry');
   const hooks = overlayHooks(options.config.hooks, skill.hooks);

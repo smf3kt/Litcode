@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { tsImport } from 'tsx/esm/api';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const compiled = process.argv.includes("--compiled");
@@ -14,6 +15,7 @@ const extended = process.argv.includes("--extended");
 const named = process.argv.includes("--named");
 const aliases = process.argv.includes("--aliases");
 const fenced = process.argv.includes("--fenced");
+const sourceArguments = process.argv.includes("--source-arguments");
 const launcher = compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")];
 const workspace = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
   ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : os.tmpdir(), "skill-inline-cli-")));
@@ -31,7 +33,7 @@ try {
   writeSkill("literal", "args=$ARGUMENTS output=!`printf %s '$ARGUMENTS'`");
   writeSkill("fallback", "output=!`printf fixture`");
   if (fenced) writeSkill("fenced", "before\n```!\nprintf FENCED\n```\nafter");
-  const settings = (enabled, extra = {}) => fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { skillInlineCommands: enabled, ...(quoted ? { skillQuotedArguments: true } : {}), ...(fallback ? { skillArgumentFallback: true } : {}), ...(extended ? { skillExtendedArguments: true } : {}) }, ...extra }));
+  const settings = (enabled, extra = {}) => fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { skillInlineCommands: enabled, skillExtendedArguments: false, ...(quoted ? { skillQuotedArguments: true } : {}), ...(fallback ? { skillArgumentFallback: true } : {}), ...(extended ? { skillExtendedArguments: true } : {}) }, ...extra }));
   const run = async (prompt, flags = []) => {
     child = spawn(process.execPath, [...launcher, "--workspace", workspace, ...(flags.includes("--resume") ? [] : ["--user-dir", path.join(workspace, "user")]), ...flags, ...(flags.includes("--interactive") ? [] : [prompt])], {
       cwd: root, stdio: [flags.includes("--interactive") ? "pipe" : "ignore", "pipe", "pipe"], env: { ...process.env, LLM_API_KEY: "owned-inline-fixture", LLM_MODEL: "smoke/inline",
@@ -51,8 +53,14 @@ try {
     req.on("data", chunk => { bytes += chunk.length; if (bytes > 4 * 1024 * 1024) req.destroy(); else chunks.push(chunk); });
     req.on("end", () => {
       const body = JSON.parse(Buffer.concat(chunks)); requests.push(body);
-      const useTool = body.messages.at(-1).content === "load inline skill";
-      const block = useTool ? { type: "tool_use", id: "inline-tool", name: "skill", input: { name: "inline", args: "alpha" } } : { type: "text", text: "inline complete" };
+      const sourceTool = body.messages.at(-1).content === 'load source skill';
+      const preloadTool = body.messages.at(-1).content === 'launch source preload';
+      const useTool = preloadTool || sourceTool || body.messages.at(-1).content === "load inline skill";
+      const block = preloadTool ? { type: 'tool_use', id: 'preload-tool', name: 'agent',
+        input: { prompt: 'source preload child', subagent_type: 'preload:source-helper' } }
+        : useTool ? { type: "tool_use", id: "inline-tool", name: "skill", input: sourceTool
+          ? { name: 'source-args', args: 'A=1 alpha beta; touch source-model-marker' }
+          : { name: "inline", args: "alpha" } } : { type: "text", text: "inline complete" };
       const events = [
         { type: "message_start", message: { id: "inline-model", type: "message", role: "assistant", model: body.model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 1, output_tokens: 0 } } },
         { type: "content_block_start", index: 0, content_block: useTool ? { ...block, input: {} } : { type: "text", text: "" } },
@@ -128,10 +136,66 @@ try {
   assert.equal(result.code, 0, result.errors);
   assert.ok(messageText().includes("!`printf"));
   assert.equal(requests.length, (fallback ? 9 : 8) + (fenced ? 1 : 0));
+  if (sourceArguments) {
+    writeSkill('source-args', '$target|$0|$1|$2|RAW=$ARGUMENTS');
+    const sourceFile = path.join(workspace, '.harness/skills/source-args/SKILL.md');
+    fs.writeFileSync(sourceFile, fs.readFileSync(sourceFile, 'utf8').replace('description: Owned inline fixture', 'description: Owned inline fixture\narguments: target'));
+    fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ features: { skillInlineCommands: true } }));
+    const firstSource = await run('/source-args A=1 alpha "beta gamma"; touch source-argument-marker');
+    assert.equal(firstSource.code, 0, firstSource.errors);
+    assert.ok(messageText().includes('alpha|alpha|beta gamma|$2|RAW=A=1 alpha "beta gamma"; touch source-argument-marker'));
+    assert.equal(fs.existsSync(path.join(workspace, 'source-argument-marker')), false);
+    const sourceId = /session: ([a-f0-9-]{36})/.exec(firstSource.errors)[1];
+    const sourceJournal = path.join(workspace, '.agent', `${sourceId}.jsonl`);
+    const sourceMetadata = fs.readFileSync(sourceJournal, 'utf8').split('\n')[0];
+    assert.equal(JSON.parse(sourceMetadata).config.features.skillSourceArguments, true);
+    settings(false);
+    const resumed = await run('/source-args alpha beta # ignored', ['--resume', sourceId]);
+    assert.equal(resumed.code, 0, resumed.errors);
+    assert.ok(messageText().includes('alpha|alpha|beta|$2|RAW=alpha beta # ignored'));
+    assert.equal(fs.readFileSync(sourceJournal, 'utf8').split('\n')[0], sourceMetadata);
+    fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ features: { skillSourceArguments: true, skillInlineCommands: true } }));
+    const literalSource = await run('/source-args alpha $(touch source-substitution-marker) trailing');
+    assert.equal(literalSource.code, 0, literalSource.errors);
+    assert.ok(messageText().includes('alpha|alpha|$1|$2|RAW=alpha $(touch source-substitution-marker) trailing'));
+    assert.equal(fs.existsSync(path.join(workspace, 'source-substitution-marker')), false);
+    const modelSource = await run('load source skill');
+    assert.equal(modelSource.code, 0, modelSource.errors);
+    assert.ok(messageText().includes('alpha|alpha|beta|$2|RAW=A=1 alpha beta; touch source-model-marker'));
+    assert.equal(fs.existsSync(path.join(workspace, 'source-model-marker')), false);
+    const inlineSource = await run('/inline A=1 alpha beta; touch source-inline-marker', shell);
+    assert.equal(inlineSource.code, 0, inlineSource.errors);
+    assert.ok(messageText().includes('value=alpha missing=$ARGUMENTS[12]'));
+    assert.equal(fs.existsSync(path.join(workspace, 'source-inline-marker')), false);
+    assert.equal(requests.length, (fallback ? 9 : 8) + (fenced ? 1 : 0) + 6);
+    const { createPluginTools } = await tsImport('../src/plugins.ts', import.meta.url);
+    const pluginSource = path.join(workspace, 'preload-source');
+    fs.mkdirSync(path.join(pluginSource, 'skills/source-preload'), { recursive: true });
+    fs.mkdirSync(path.join(pluginSource, 'agents'));
+    fs.writeFileSync(path.join(pluginSource, 'plugin.json'), JSON.stringify({ name: 'preload', version: '1', skills: 'skills', agents: 'agents' }));
+    fs.writeFileSync(path.join(pluginSource, 'skills/source-preload/SKILL.md'), '---\nname: source-preload\narguments: target\n---\nNAMED=$target|PRELOAD=$1|$ARGUMENTS|\\$1');
+    fs.writeFileSync(path.join(pluginSource, 'agents/source-helper.md'),
+      '---\nname: source-helper\ndescription: Owned source preload\nskills: [source-preload]\ntools: [read_file]\n---\nPRELOAD_HELPER');
+    const installer = createPluginTools({ enabled: true }).find(tool => tool.schema.name === 'plugin_install');
+    await installer.execute({ directory: pluginSource }, { workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000 });
+    for (const sourceMode of [true, false]) {
+      for (const messaging of [true, false]) {
+        fs.writeFileSync(path.join(workspace, '.harness/settings.json'), JSON.stringify({ plugins: { enabled: true },
+          features: { skillSourceArguments: sourceMode, agentMessaging: messaging, agentTypes: true } }));
+        const offset = requests.length;
+        const preloadSource = await run('launch source preload');
+        assert.equal(preloadSource.code, 0, preloadSource.errors);
+        const loaded = requests.slice(offset).find(request => request.system.includes('PRELOAD_HELPER'));
+        assert.ok(loaded, JSON.stringify(requests.slice(offset).map(request => ({ system: request.system, messages: request.messages }))));
+        assert.ok(JSON.stringify(loaded.messages).includes(sourceMode ? 'NAMED=|PRELOAD=$1||$1' : 'NAMED=$target|PRELOAD=||\\\\'));
+        assert.equal(requests.length, offset + 3);
+      }
+    }
+  }
   assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
   console.log(JSON.stringify({ cli: "passed", inlineWithoutMetadata: true, modelSkillCall: true, pinnedResume: true,
     disabledLiteral: true, shellGate: true, wholeGroupPreflight: true, injectedDirectivesLiteral: true, managedOverride: true, interactive: true,
-    locksReleased: true, ...(aliases ? { interactiveAlias: true, visibleAliases: true } : {}), ...(named ? { namedInlineArguments: true } : {}), ...(extended ? { extendedInlineArguments: true } : {}), ...(fallback ? { argumentFallbackOutsideShell: true } : {}), ...(fenced ? { fencedBlock: true } : {}), ...(quoted ? { quotedInlineArguments: true } : {}), ...(compiled ? { compiledCLI: true } : {}), modelRequests: requests.length, gateway: "owned loopback SSE" }));
+    locksReleased: true, ...(sourceArguments ? { sourceArguments: true, sourceDefault: true, sourcePinnedResume: true, sourceSubstitutionInert: true } : {}), ...(aliases ? { interactiveAlias: true, visibleAliases: true } : {}), ...(named ? { namedInlineArguments: true } : {}), ...(extended ? { extendedInlineArguments: true } : {}), ...(fallback ? { argumentFallbackOutsideShell: true } : {}), ...(fenced ? { fencedBlock: true } : {}), ...(quoted ? { quotedInlineArguments: true } : {}), ...(compiled ? { compiledCLI: true } : {}), modelRequests: requests.length, gateway: "owned loopback SSE" }));
 } finally {
   child?.kill("SIGKILL");
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

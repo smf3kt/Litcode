@@ -80,9 +80,10 @@ export function resolveChildLaunch(parent: SessionConfig, raw: ChildLaunchOption
  * meta user messages (chunk-40cepjpq.js, `isSkillPreload`). Each message is the
  * skill's prompt with the command-message/skill-format header the recovered
  * formatter emits; at most 32 names are considered.
+ * vC [131541,131676), 40cepjpq; getPromptForCommand [963598,964251), sfn1dbxq, UTF-16.
  */
 export function preloadAgentSkills(type: AgentTypeInfo | undefined, skills: readonly SkillInfo[] | undefined, agentName: string,
-  report?: (message: string) => void): Anthropic.MessageParam[] {
+  report?: (message: string) => void, sourceArguments = false): Anthropic.MessageParam[] {
   const names = (type?.skills ?? []).slice(0, 32);
   if (names.length === 0) return [];
   const found = new Map<string, SkillInfo>();
@@ -99,7 +100,7 @@ export function preloadAgentSkills(type: AgentTypeInfo | undefined, skills: read
   const messages: Anthropic.MessageParam[] = [];
   for (const [name, skill] of found) {
     messages.push({ role: 'user', content: `<command-message>${name}</command-message>\n<command-name>${name}</command-name>\n` +
-      `<skill-format>true</skill-format>\n` + expandSkill(skill.body, '', {}) });
+      `<skill-format>true</skill-format>\n` + expandSkill(sourceArguments ? skill : skill.body, '', { sourceArguments }) });
   }
   return messages;
 }
@@ -251,7 +252,7 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
       let child = childConfig(config, selected, launch);
       // Source preloads the declared skills as meta user messages before the
       // first child turn; the prompt itself is unaffected.
-      const preloads = launch.type ? preloadAgentSkills(launch.type, config.skills, launch.type.name) : [];
+      const preloads = launch.type ? preloadAgentSkills(launch.type, config.skills, launch.type.name, undefined, config.features?.skillSourceArguments === true) : [];
       let environment: ChildEnvironmentLease | undefined;
       let session: Session | undefined;
       let agent: Agent | undefined;
@@ -286,7 +287,9 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
         });
         for (const message of messages) session.append({ kind: 'message', message });
         for (const message of preloads) session.append({ kind: 'message', message, isMeta: true });
-        if (launch.fork && messages.length) session.append({ kind: 'turn_end', reason: 'fork_seed' });
+        // vC, 40cepjpq [132082,132105), UTF-16: preloads are initial query context.
+        if (launch.fork && messages.length || preloads.length) session.append({ kind: 'turn_end',
+          reason: launch.fork && messages.length ? 'fork_seed' : 'skill_preload' });
         hooks = createChildHookLifecycle(session, options);
         agent = new Agent(session, provider, selected, { hookOptions: hooks.hookOptions,
           ...(options.instructionFiles ? { instructionFiles: paths => options.instructionFiles!(session!.config.workspace, paths) } : {}),

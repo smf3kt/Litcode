@@ -165,7 +165,7 @@ export type ParsedRuntimeSettings = {
   features?: { tasks?: boolean; subagents?: boolean; notebooks?: boolean; background?: boolean; scheduler?: boolean;
     workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean; mcpPersistence?: boolean; mcpTasks?: boolean; mcpStandardTasks?: boolean;
     taskProjections?: boolean; promptSuggestions?: boolean;
-    schedulerJitter?: boolean; schedulerDurable?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; pluginSkillNamespaces?: boolean;
+    schedulerJitter?: boolean; schedulerDurable?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; skillSourceArguments?: boolean; pluginSkillNamespaces?: boolean;
     agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; crossSessionMessaging?: boolean };
 };
 
@@ -181,7 +181,7 @@ const featuresSchema = z
   .object({ tasks: z.boolean().optional(), subagents: z.boolean().optional(), notebooks: z.boolean().optional(), background: z.boolean().optional(), scheduler: z.boolean().optional(),
     workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(),
     taskProjections: z.boolean().optional(), promptSuggestions: z.boolean().optional(),
-    schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
+    schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), skillSourceArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
     agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), crossSessionMessaging: z.boolean().optional() })
   .strict();
 
@@ -339,11 +339,12 @@ export function findSkill(skills: readonly SkillInfo[] | undefined, name: string
 /**
  * Expand a skill on explicit user request. `user-invocable: false` is refused,
  * but `disable-model-invocation` is permitted because the user asked directly.
+ * getPromptForCommand, sfn1dbxq [963598,964251), UTF-16; expansion follows the pinned version.
  */
 export function expandUserSkill(skill: SkillInfo, args: string, config?: SessionConfig): string {
   if (!skill.userInvocable) throw new Error(`Skill "${skill.name}" is not user-invocable`);
   if (skill.mode === 'off') throw new Error(`Skill "${skill.name}" is turned off`);
-  return expandSkill(skill, args, { quotedArguments: config?.features?.skillQuotedArguments === true, appendUnusedArguments: config?.features?.skillArgumentFallback === true, extendedArguments: config?.features?.skillExtendedArguments === true });
+  return expandSkill(skill, args, { sourceArguments: config?.features?.skillSourceArguments === true, quotedArguments: config?.features?.skillQuotedArguments === true, appendUnusedArguments: config?.features?.skillSourceArguments === true || config?.features?.skillArgumentFallback === true, extendedArguments: config?.features?.skillExtendedArguments === true });
 }
 
 /**
@@ -361,6 +362,7 @@ export function parseSlashCommand(prompt: string): { name: string; args: string 
 /**
  * The model-facing `skill` tool. It reads the snapshot bodies captured in the
  * session config (never re-reads disk) and refuses a non-model-invocable skill.
+ * getPromptForCommand, sfn1dbxq [963598,964251), UTF-16; user/model expansion shares one owner.
  */
 export function createSkillTool(config: SessionConfig, invoke?: (skill: SkillInfo, args: string, context: import('./tools.js').ToolContext) => Promise<string>): ToolDefinition {
   const skills = config.skills ?? [];
@@ -369,9 +371,10 @@ export function createSkillTool(config: SessionConfig, invoke?: (skill: SkillInf
     readOnly: true,
     schema: {
       name: SKILL_TOOL_NAME,
-      description:
-        'Load an available skill by name and return its instructions, with $ARGUMENTS and ' +
-        '$1..$9 substituted. Skills marked disable-model-invocation are not callable here.',
+      description: config.features?.skillSourceArguments === true
+        ? 'Load an available skill by name and return its instructions, with raw $ARGUMENTS, zero-based $0 and $ARGUMENTS[0], and declared named arguments substituted. Skills marked disable-model-invocation are not callable here.'
+        : 'Load an available skill by name and return its instructions, with $ARGUMENTS and ' +
+          '$1..$9 substituted. Skills marked disable-model-invocation are not callable here.',
       input_schema: {
         type: 'object',
         properties: {
@@ -391,7 +394,7 @@ export function createSkillTool(config: SessionConfig, invoke?: (skill: SkillInf
       if (skill.disableModelInvocation || skill.mode === 'user-invocable-only' || skill.mode === 'off') {
         throw new Error(`Skill "${name}" is not model-invocable; ask the user to run it`);
       }
-      const text = invoke && skillRequiresExecution(skill, config) ? await invoke(skill, args, context) : expandSkill(skill, args, { quotedArguments: config.features?.skillQuotedArguments === true, appendUnusedArguments: config.features?.skillArgumentFallback === true, extendedArguments: config.features?.skillExtendedArguments === true });
+      const text = invoke && skillRequiresExecution(skill, config) ? await invoke(skill, args, context) : expandSkill(skill, args, { sourceArguments: config.features?.skillSourceArguments === true, quotedArguments: config.features?.skillQuotedArguments === true, appendUnusedArguments: config.features?.skillSourceArguments === true || config.features?.skillArgumentFallback === true, extendedArguments: config.features?.skillExtendedArguments === true });
       const bytes = Buffer.from(text);
       if (bytes.length <= context.maxOutputBytes) return text;
       let end = context.maxOutputBytes;

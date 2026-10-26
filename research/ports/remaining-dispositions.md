@@ -16,7 +16,9 @@ Recovered evidence. `var Pn=[1000,2000,4000],Ta=1e4,wa=5000,Ea=3600000,Pa=5,va=2
 
 Decision: not applicable. The parked re-run is driven by a `subscriptions/listen` stream that re-reports which lists changed while it was parked; this runtime implements the classic GET notification stream and POST-carried streams, not `subscriptions/listen`. The guarantee it protects is already met here: a replacement refreshes the private catalog before it is adopted, and a pending change makes the server dirty so the next search or call refreshes it (see `ports/W05-list-changed-refetch.md`, whose package added the immediate refetch on the notification itself).
 
-## 3. Recovered shell-AST argument splitting - not ported
+## 3. Recovered shell-AST argument splitting - superseded by W347
+
+On 2026-10-26 W347 acquires the complete pure-JavaScript parser and extraction closure, then copies i5r and uHe with exact source identities. Fresh source-mode sessions use that implementation; original metadata and authored legacy settings retain the old tested branch. The following 2026-10-12 decision is historical and no longer describes the source-mode path. See [W347](W347-skill-arguments.md).
 
 Recovered evidence. `function SE(e){if(!e||e.length>D0)return[];let t=vS().parse(e);if(!t)return[];let r=nde(t,null);if(!r)return[];return DKe(r)}` [4697,4822) with the node types it refuses to cross [4822,4882) and its bounds `D0=1e4,P=65536,U=16` [1052,1071): the arguments string is parsed by the sample's own bash parser, the command node is located, and its argv is extracted.
 

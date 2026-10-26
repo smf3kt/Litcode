@@ -35,6 +35,7 @@ import { managedSettingsDir } from "./plugin-chain-settings-source.js";
 import { permissionLayerSchema, type PermissionPolicy } from './permissions.js';
 import { permissionSettingsPaths } from './permission-settings.js';
 import { skillOverrideMode } from './skills-panel.js';
+import { sourceSkillExpansion } from './skill-arguments.js';
 import { mcpServersSchema, type McpServerConfig } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
 import { LinkVetError, vetLinkChain } from "./link-vetting.js";
@@ -1616,11 +1617,14 @@ export function argumentNamesFrom(value: unknown): string[] {
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-/** Replace raw, zero-based indexed and one-based legacy forms in a single pass. */
-export function expandSkill(skill: string | { body: string; argumentNames?: readonly string[] }, args: string, options: { quotedArguments?: boolean; appendUnusedArguments?: boolean; extendedArguments?: boolean; argumentNames?: readonly string[] } = {}): string {
+/** uHe, sfn1dbxq [435534,436487), UTF-16; pinned legacy sessions retain the prior single pass. */
+export function expandSkill(skill: string | { body: string; argumentNames?: readonly string[] }, args: string, options: { quotedArguments?: boolean; appendUnusedArguments?: boolean; extendedArguments?: boolean; sourceArguments?: boolean; argumentNames?: readonly string[] } = {}): string {
   const body = typeof skill === "string" ? skill : typeof skill?.body === "string" ? skill.body : "";
-  if (body === "") return "";
   const rawArgs = typeof args === "string" ? args : "";
+  // uHe, sfn1dbxq [435534,436487), UTF-16; legacy snapshots keep the original branch below.
+  if (options.sourceArguments) return sourceSkillExpansion(body, rawArgs,
+    argumentNamesFrom(options.argumentNames ?? (typeof skill === "string" ? [] : skill.argumentNames ?? [])), options.appendUnusedArguments ?? true);
+  if (body === "") return "";
   const trimmed = rawArgs.trim();
   const fallback = trimmed === "" ? [] : trimmed.split(/\s+/);
   const positional = options.quotedArguments ? quotedSkillArguments(rawArgs) ?? fallback : fallback;

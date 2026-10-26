@@ -26,14 +26,17 @@ const bodyTemplate = named ? "target=$target; longer=$target_long; boundary=$tar
 const expanded = named ? `target=alpha; longer=${quoted ? "beta gamma" : "\"beta"}; boundary=$targetSuffix; escaped=$target; raw=${args}` : extended ? `zero=alpha; one=${quoted ? "beta gamma" : "\"beta"}; missing=$12; escaped=$ARGUMENTS[0]/$1; raw=${args}` : fallback ? `UNUSED_ARGS_BODY missing=$ARGUMENTS[12]\n\n\nARGUMENTS: ${args}` : `first=alpha; second=${quoted ? "beta gamma" : "\"beta"}; missing=$ARGUMENTS[12]; literal=${quoted ? "$ARGUMENTS[3]" : "$1"}; legacy=alpha; raw=${args}`;
 const hasExpanded = messages => messages.some(message => typeof message.content === "string" ? message.content.includes(expanded)
   : message.content.some(block => (block.text ?? (typeof block.content === "string" ? block.content : "")).includes(expanded)));
-const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "skill-agent-cli-")));
+const fixtureEnvironment = { ...process.env };
+delete fixtureEnvironment.LLM_EFFORT;
+delete fixtureEnvironment.CLAUDE_EFFORT;
+const workspace = fs.realpathSync(fs.mkdtempSync(path.join(process.env.CLAUDE_JOB_DIR
+  ? path.join(process.env.CLAUDE_JOB_DIR, 'tmp') : os.tmpdir(), "skill-agent-cli-")));
 const requests = []; let child, server;
 try {
   fs.mkdirSync(path.join(workspace, "user"));
-  if (quoted || fallback || extended) {
-    fs.mkdirSync(path.join(workspace, ".harness"));
-    fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { ...(quoted ? { skillQuotedArguments: true } : {}), ...(fallback ? { skillArgumentFallback: true } : {}), ...(extended ? { skillExtendedArguments: true } : {}) } }));
-  }
+  fs.mkdirSync(path.join(workspace, ".harness"));
+  fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { skillExtendedArguments: false,
+    ...(quoted ? { skillQuotedArguments: true } : {}), ...(fallback ? { skillArgumentFallback: true } : {}), ...(extended ? { skillExtendedArguments: true } : {}) } }));
   fs.mkdirSync(path.join(workspace, ".harness/skills/review"), { recursive: true });
   fs.mkdirSync(path.join(workspace, ".harness/agents"));
   fs.writeFileSync(path.join(workspace, ".harness/skills/review/SKILL.md"), `---\nname: ${reviewName}\n${aliases ? "aliases: [quick-review]\n" : ""}description: Fixture review\n${argumentHeader}context: fork\nagent: reviewer\nallowed-tools: [read_file, write_file]\n---\nRead fixture.txt and summarize.\n${bodyTemplate}\n`);
@@ -58,7 +61,7 @@ try {
       await install.execute({ directory: source }, { workspace, signal: new AbortController().signal, allowShell: false, maxOutputBytes: 24000 });
     }
     fs.mkdirSync(path.join(workspace, ".harness"), { recursive: true });
-    fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ plugins: { enabled: true }, features: { pluginSkillNamespaces: true, ...(quoted ? { skillQuotedArguments: true } : {}) } }));
+    fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ plugins: { enabled: true }, features: { pluginSkillNamespaces: true, skillExtendedArguments: false, ...(quoted ? { skillQuotedArguments: true } : {}) } }));
   }
   server = http.createServer((req, res) => {
     const chunks = []; req.on("data", chunk => chunks.push(chunk)); req.on("end", () => {
@@ -81,8 +84,8 @@ try {
   });
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   child = spawn(process.execPath, [...launcher, "--workspace", workspace, "--user-dir", path.join(workspace, "user"), `/${reviewInvoke} ${args}`],
-    { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent",
-      LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_EFFORT: "medium", LLM_THINKING: "false" } });
+    { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...fixtureEnvironment, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent",
+      LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" } });
   let stdout = "", stderr = ""; child.stdout.on("data", chunk => { stdout += chunk; }); child.stderr.on("data", chunk => { stderr += chunk; });
   const timer = setTimeout(() => child?.kill("SIGKILL"), 15000);
   const code = await new Promise((resolve, reject) => { child.on("error", reject); child.on("close", resolve); });
@@ -106,8 +109,8 @@ try {
       fs.writeFileSync(agentFile, fs.readFileSync(agentFile, "utf8").replace("name: reviewer", "name: reviewer\naliases: [quick-reviewer]"));
     }
     child = spawn(process.execPath, [...launcher, "--workspace", workspace, "--user-dir", path.join(workspace, "user"), `/${aliases && !background ? reviewName : reviewInvoke} ${args}`],
-      { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent",
-        LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_EFFORT: "medium", LLM_THINKING: "false" } });
+      { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...fixtureEnvironment, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent",
+        LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" } });
     let output = "", errors = ""; child.stdout.on("data", chunk => { output += chunk; }); child.stderr.on("data", chunk => { errors += chunk; });
     const deadline = setTimeout(() => child?.kill("SIGKILL"), 15000);
     const status = await new Promise((resolve, reject) => { child.on("error", reject); child.on("close", resolve); });
@@ -121,8 +124,8 @@ try {
   for (const prompt of [`/${indexedName} ${args}`, "load indexed skill"]) {
     const start = requests.length;
     child = spawn(process.execPath, [...launcher, "--workspace", workspace, "--user-dir", path.join(workspace, "user"), prompt],
-      { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent",
-        LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_EFFORT: "medium", LLM_THINKING: "false" } });
+      { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...fixtureEnvironment, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent",
+        LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" } });
     let output = "", errors = ""; child.stdout.on("data", chunk => { output += chunk; }); child.stderr.on("data", chunk => { errors += chunk; });
     const deadline = setTimeout(() => child?.kill("SIGKILL"), 15000);
     const status = await new Promise((resolve, reject) => { child.on("error", reject); child.on("close", resolve); });
@@ -133,7 +136,7 @@ try {
   assert.equal(requests.length, 9);
   if (agentAlias) {
     child = spawn(process.execPath, [...launcher, "--workspace", workspace, "--user-dir", path.join(workspace, "user"), "launch aliased agent"],
-      { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" } });
+      { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...fixtureEnvironment, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" } });
     let errors = ""; child.stdout.resume(); child.stderr.on("data", chunk => { errors += chunk; });
     const deadline = setTimeout(() => child?.kill("SIGKILL"), 15000);
     const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
@@ -145,7 +148,7 @@ try {
   if (plugins) {
     for (const [prompt, marker] of [["/fixture:indexed plugin-arg", "PLUGIN_fixture plugin-arg"], ["/other:indexed plugin-arg", "PLUGIN_other plugin-arg"]]) {
       child = spawn(process.execPath, [...launcher, "--workspace", workspace, "--user-dir", path.join(workspace, "user"), prompt],
-        { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" } });
+        { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...fixtureEnvironment, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" } });
       let errors = ""; child.stdout.resume(); child.stderr.on("data", chunk => { errors += chunk; });
       const deadline = setTimeout(() => child?.kill("SIGKILL"), 15000);
       const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
@@ -155,7 +158,7 @@ try {
     assert.equal(requests.length, agentAlias ? 14 : 11);
     fs.rmSync(path.join(workspace, ".harness/skills/indexed"), { recursive: true });
     child = spawn(process.execPath, [...launcher, "--workspace", workspace, "--user-dir", path.join(workspace, "user"), "/indexed ambiguous"],
-      { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" } });
+      { cwd: root, stdio: ["ignore", "pipe", "pipe"], env: { ...fixtureEnvironment, LLM_API_KEY: "owned-fixture", LLM_MODEL: "smoke/parent", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`, LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" } });
     let errors = ""; child.stdout.resume(); child.stderr.on("data", chunk => { errors += chunk; });
     const deadline = setTimeout(() => child?.kill("SIGKILL"), 15000);
     const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });

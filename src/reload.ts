@@ -7,6 +7,7 @@ import { agentTypesSection, setHeldSkills } from "./skill-catalog.js";
 import { startupVerbose } from "./focus-command.js";
 import { modelEffort } from './effort-command.js';
 import { DEFAULT_ALLOW_SHELL, DEFAULT_PERMISSION_MODE } from './permissions.js';
+import { sourceSkillArgumentsDefault } from './skill-arguments.js';
 
 /** Reload local policy/catalogs while retaining the live provider and call limits. */
 export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'preview' = 'apply'): SessionConfig {
@@ -35,6 +36,7 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
     workflowPersistence: true, mcpSubscriptions: false,
     mcpDynamic: Boolean(settings.mcpServers && Object.keys(settings.mcpServers).length), mcpDeferred: false,
     lsp: Boolean(settings.lspServers && Object.keys(settings.lspServers).length), ...settings.features,
+    skillSourceArguments: sourceSkillArgumentsDefault(settings.features),
     ...(overrides.tasks === undefined ? {} : { tasks: overrides.tasks }),
     ...(overrides.subagents === undefined ? {} : { subagents: overrides.subagents }) };
   applyManagedPolicy(next, loaded.managedSettings);
