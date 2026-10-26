@@ -1,0 +1,10 @@
+ts	phase	decision	why	evidence	result
+2026-10-26	start	finish mounted editor fixtures after W343	current queue records editor then plugin then notices	research/CURRENT.md:1;task132	one local W344 package
+2026-10-26	source	read cached resolver and mounted-selection contract	fixtures must choose VISUAL before TUI startup	research/ports/W287-external-editor-hint.md:69;src/tui.ts:963	fixture-only repair;product unchanged
+2026-10-26	baseline	reuse actual W343 full and single-run failures	both cases time out after20000ms and launch inherited nvim	JOB_TMP/w343-full.txt;JOB_TMP/w343-statusline-observation.txt	baseline identity0c727dbf;owned editors reaped
+2026-10-26	repair	set VISUAL before terminal mount and restore via test cleanup	TUI caches one editor selection at startup	 test/statusline.test.ts;test/terminal-focus.test.ts	all original assertions and timeouts retained
+2026-10-26	verify	run affected tests and actual compiled editor driver	original handoff cases now complete and driver checks real TTY/process cleanup	JOB_TMP/w344-affected.txt;JOB_TMP/w344-compiled-editor.txt	141of141;check/build/compiled exit0
+2026-10-26	freeze	bind unchanged product/build and two changed tests	independent review gets a stable candidate	JOB_TMP/w344-candidate-identity.json	1856recordsb355a00d
+2026-10-26	verify	confirm compiled26checks and only2testfileidentitydelta	actual editor success/failure and descendant/mode/lock cleanup pass	JOB_TMP/w344-compiled-editor-result.json	26checks1ownedloopback;product/build unchanged
+2026-10-26	review	accept fresh Opus verification	94assertions,timers and options retained;owned editor completes	JOB_TMP/w344-independent-result.json	6of6;compiled26;1856recordsb355a00d;0confirmeddefects
+2026-10-26	close	deliver fixture-only package locally	plugin MCP schema failure and notices remain separate queued work	research/CURRENT.md;tasks133,134	exact-path commit;no coauthor/no push;cron08b073ae continues

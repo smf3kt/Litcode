@@ -86,7 +86,10 @@ test('status-line schema, journal usage, reload removal and command cancellation
   }finally{owner.close();await owner.flush();f.session.close();fs.rmSync(root,{recursive:true,force:true});}
 });
 
-test('source multiline ANSI status footer keeps raw draft and cursor through narrow layout, modal and editor handoff',async()=>{
+test('source multiline ANSI status footer keeps raw draft and cursor through narrow layout, modal and editor handoff',async t=>{
+  const previous={VISUAL:process.env.VISUAL,EDITOR:process.env.EDITOR};
+  t.after(()=>{for(const[name,value]of Object.entries(previous))if(value===undefined)delete process.env[name];else process.env[name]=value;});
+  process.env.VISUAL='/usr/bin/true';process.env.EDITOR='unused';
   const previousColor=Reflect.get(ge,'level');Reflect.set(ge,'level',3);
   const root=scratch(),f=fixture(root,`${process.execPath} status.cjs`,1);
   const input=new PassThrough() as PassThrough&{isTTY:boolean;isRaw:boolean;setRawMode:(value:boolean)=>void};input.isTTY=true;input.isRaw=false;input.setRawMode=value=>{input.isRaw=value;};
@@ -108,8 +111,7 @@ test('source multiline ANSI status footer keeps raw draft and cursor through nar
     const answer=tui.prompt({message:'Modal',allowText:true},new AbortController().signal);const count=f.calls().length;
     await delay(1400);assert.equal(f.calls().length,count);input.emit('data','answer\r');assert.deepEqual(await answer,{selected:[],text:'answer'});
     await until(()=>f.calls().length>count);assert.equal(tui.state.text,'é👩‍💻 draft');
-    const previous={VISUAL:process.env.VISUAL,EDITOR:process.env.EDITOR};try{process.env.VISUAL='/usr/bin/true';process.env.EDITOR='unused';await tui.editDraft(new AbortController().signal);}
-    finally{for(const[name,value]of Object.entries(previous))if(value===undefined)delete process.env[name];else process.env[name]=value;}
+    await tui.editDraft(new AbortController().signal);
     assert.equal(tui.state.text,'é👩‍💻 draft');tui.close();await tui.flushStatusLine();const end=bytes,last=f.calls().length;await delay(1400);
     assert.equal(bytes,end);assert.equal(f.calls().length,last);assert.equal(input.isRaw,false);
   }finally{tui.close();await tui.flushStatusLine();screen.dispose();f.session.close();fs.rmSync(root,{recursive:true,force:true});Reflect.set(ge,'level',previousColor);}

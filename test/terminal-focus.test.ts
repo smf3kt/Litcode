@@ -59,7 +59,10 @@ test('source focus state and split reports remain outside editor, bindings and p
   }
 });
 
-test('both terminal owners retain raw Vim draft, visual ranges, undo and handoff through focus changes', async () => {
+test('both terminal owners retain raw Vim draft, visual ranges, undo and handoff through focus changes', async t => {
+  const previous = { VISUAL: process.env.VISUAL, EDITOR: process.env.EDITOR };
+  t.after(() => { for (const [name, value] of Object.entries(previous)) if (value === undefined) delete process.env[name]; else process.env[name] = value; });
+  process.env.VISUAL = '/usr/bin/true'; process.env.EDITOR = 'unused';
   for (const mode of ['line', 'tui'] as const) {
     const owned = fixture(mode), { terminal, key, inverse, submitted } = owned;
     try {
@@ -75,9 +78,7 @@ test('both terminal owners retain raw Vim draft, visual ranges, undo and handoff
       await key('\r'); assert.deepEqual(submitted, [before.text]);
       await key('draftj\x1b[O\x1b[Ij'); assert.equal(terminal.state.text, 'draft');
       await key('i'); await key('\x1b[O');
-      const previous = { VISUAL: process.env.VISUAL, EDITOR: process.env.EDITOR };
-      try { process.env.VISUAL = '/usr/bin/true'; process.env.EDITOR = 'unused'; await terminal.editDraft(new AbortController().signal); }
-      finally { for (const [name, value] of Object.entries(previous)) if (value === undefined) delete process.env[name]; else process.env[name] = value; }
+      await terminal.editDraft(new AbortController().signal);
       assert.equal(Reflect.get(terminal, 'focus').state, 'blurred'); assert.equal(terminal.state.text, 'draft');
       await key('\x1b[200~é👩‍💻\x1b[201~'); assert.equal(Reflect.get(terminal, 'focus').state, 'focused');
       assert.equal(terminal.state.text, 'drafé👩‍💻t');
