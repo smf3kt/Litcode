@@ -1,4 +1,3 @@
-// Local cron jobs and one dynamic wakeup slot. The parser retains this host's DST contract.
 // Durable watching adapts x0r [5233,11476) from chunk-jrz2zk22.js, SHA-256
 // da64f780f2b184a92cd87a21d03c8a02ca80ec4124edf791eccd988a67c980a3.
 // File mutations adapt Pot/s_e/bds [6985,7656) from chunk-atzjaveb.js, SHA-256
@@ -6,6 +5,8 @@
 // Coordinates are zero-based UTF-16. See research/ports/W310-cron-watch.md.
 
 import { randomUUID } from 'node:crypto';
+
+import { sourceNextOccurrence, type CronCalendar } from './scheduler-calendar.js';
 
 import { schedulerProcessBirth, TaskCreators } from './scheduler-creators.js';
 import {
@@ -255,23 +256,25 @@ export function jitterFraction(id: string): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-/** `wqe`: the first occurrence strictly after `from`, as epoch ms. */
-function occurrenceAfter(cron: string, from: number): number | null {
+/** wqe [7779,7878), chunk-atzjaveb.js, UTF-16. */
+function occurrenceAfter(cron: string, from: number, calendar: CronCalendar): number | null {
   const parsed = parseCron(cron);
   if (!parsed) return null;
-  const next = nextOccurrence(parsed, new Date(from));
+  const next = calendar(parsed, new Date(from));
   return next ? next.getTime() : null;
 }
 
 /**
- * Source `L9t`: the next fire of a recurring task. The nominal occurrence moves later by up to
+ * L9t [8117,8395), chunk-atzjaveb.js, UTF-16: the next fire of a recurring task moves later by up to
  * `recurringFrac` of the interval, capped at `recurringCapMs`; a `*\/N` schedule whose interval
  * sits just above five minutes instead fires `cacheLeadMs` early so the cache is warm.
  */
-export function nextRecurringFire(cron: string, from: number, id: string, timing = SCHEDULER_TIMING): number | null {
-  const nominal = occurrenceAfter(cron, from);
+export function nextRecurringFire(
+  cron: string, from: number, id: string, timing = SCHEDULER_TIMING, calendar: CronCalendar = nextOccurrence,
+): number | null {
+  const nominal = occurrenceAfter(cron, from, calendar);
   if (nominal === null) return null;
-  const following = occurrenceAfter(cron, nominal);
+  const following = occurrenceAfter(cron, nominal, calendar);
   if (following === null) return nominal;
   const interval = following - nominal;
   if (CACHE_LEAD_CRON.test(cron) && timing.cacheLeadMs > 0 && timing.cacheLeadMs < interval
@@ -284,11 +287,13 @@ export function nextRecurringFire(cron: string, from: number, id: string, timing
 }
 
 /**
- * Source `E0n`: the fire of a one-shot task. A task landing on :00 or :30 fires up to
+ * E0n [8395,8604), chunk-atzjaveb.js, UTF-16: a one-shot landing on :00 or :30 fires up to
  * `oneShotMaxMs` early, never before it was created.
  */
-export function nextOneShotFire(cron: string, createdAt: number, id: string, timing = SCHEDULER_TIMING): number | null {
-  const nominal = occurrenceAfter(cron, createdAt);
+export function nextOneShotFire(
+  cron: string, createdAt: number, id: string, timing = SCHEDULER_TIMING, calendar: CronCalendar = nextOccurrence,
+): number | null {
+  const nominal = occurrenceAfter(cron, createdAt, calendar);
   if (nominal === null) return null;
   if (new Date(nominal).getMinutes() % timing.oneShotMinuteMod !== 0) return nominal;
   const early = timing.oneShotFloorMs + jitterFraction(id) * (timing.oneShotMaxMs - timing.oneShotFloorMs);
@@ -443,6 +448,8 @@ export interface LocalSchedulerOptions {
   tickIntervalMs?: number;
   /** Opt in to recovered cron jitter and dynamic minute/cache-lead timing. */
   jitter?: boolean;
+  /** MCt [1988,2662), chunk-atzjaveb.js, UTF-16; absent keeps the legacy calendar. */
+  sourceCalendar?: boolean;
   /** Durable tasks use the workspace store and source creator eligibility (`ke`/`ne`). */
   store?: SchedulerStoreOptions;
 }
@@ -486,6 +493,7 @@ export class LocalScheduler {
   private readonly maxJobs: number;
   private readonly recurringMaxAgeMs: number;
   private readonly jitter: boolean;
+  private readonly calendar: CronCalendar;
   private readonly timer: SchedulerTimer | null;
   private readonly jobs = new Map<string, ScheduledJob>();
   private readonly store: SchedulerStoreOptions | undefined;
@@ -525,6 +533,8 @@ export class LocalScheduler {
     this.maxJobs = options.maxJobs ?? MAX_JOBS;
     this.recurringMaxAgeMs = options.recurringMaxAgeMs ?? RECURRING_MAX_AGE_MS;
     this.jitter = options.jitter === true;
+    // x0r.ne/b [7616,9890), jrz2zk22, UTF-16; pin one calendar for every consumer.
+    this.calendar = options.sourceCalendar === true ? sourceNextOccurrence : nextOccurrence;
     this.store = options.store;
     this.storeSessionId = options.store?.sessionId ?? randomUUID();
     this.creators = options.store && new TaskCreators({ ...options.store, sessionId: this.storeSessionId });
@@ -546,7 +556,8 @@ export class LocalScheduler {
   /**
    * Register a cron job. Input is validated strictly (types and size budgets).
    * Throws {@link SchedulerError} code 1 (malformed input, invalid cron or
-   * invalid clock), 2 (no occurrence within a year) or 3 (capacity / closed).
+   * invalid clock), 2 (unresolved date) or 3 (capacity / closed).
+   * validateInput [7081,7652), chunk-0vpbck7s.js, UTF-16 retains the next-year error text.
    */
   create(input: CronJobInput): ScheduledJob {
     if (this.closed) throw new SchedulerError('scheduler is closed', 3);
@@ -578,7 +589,7 @@ export class LocalScheduler {
       throw new SchedulerError(`Too many scheduled jobs (max ${this.maxJobs}). Cancel one first.`, 3);
     }
     const createdAt = this.clock();
-    const next = nextOccurrence(parsed, new Date(createdAt));
+    const next = this.calendar(parsed, new Date(createdAt));
     if (!next) {
       throw new SchedulerError(`Cron expression '${cron}' does not match any calendar date in the next year.`, 2);
     }
@@ -722,7 +733,7 @@ export class LocalScheduler {
     for (const id of this.deliveredFileTasks) if (!ids.has(id)) this.deliveredFileTasks.delete(id);
     for (const id of this.fileDeadlines) if (!ids.has(id)) this.fileDeadlines.delete(id);
     if (startup) {
-      const missed = missedTasks(stored, this.clock())
+      const missed = missedTasks(stored, this.clock(), this.calendar)
         .filter(task => this.filter('cron') && task.recurring !== true && !this.deliveredFileTasks.has(task.id)
           && this.creators!.eligible(task, this.hasStoreLock()));
       if (missed.length) {
@@ -743,7 +754,7 @@ export class LocalScheduler {
       if (!parsed) continue;
       const previous = this.jobs.get(task.id);
       const from = task.recurring ? (task.lastFiredAt ?? task.createdAt) : task.createdAt;
-      const nominal = nextOccurrence(parsed, new Date(from));
+      const nominal = this.calendar(parsed, new Date(from));
       // ne.b [7731,9544), chunk-jrz2zk22.js, UTF-16 caches unresolved deadlines as Infinity.
       const job: ScheduledJob = { ...task, recurring: task.recurring === true, durable: true,
         nextAt: nominal?.getTime() ?? Infinity, humanSchedule: describeCron(task.cron) };
@@ -842,7 +853,7 @@ export class LocalScheduler {
       scheduledFor: timing.targetMs,
       createdAt: timing.createdAt,
       chainStartedAt: startedAt,
-      nextAt: this.jitter ? nextOneShotFire(cron, timing.createdAt, id) ?? Infinity : timing.targetMs,
+      nextAt: this.jitter ? nextOneShotFire(cron, timing.createdAt, id, SCHEDULER_TIMING, this.calendar) ?? Infinity : timing.targetMs,
       ...(reason !== undefined ? { reason } : {}),
       ...(viaKeepalive ? { keepalive: true } : {}),
     };
@@ -921,7 +932,7 @@ export class LocalScheduler {
         if (!this.fileDeadlines.has(job.id)) {
           const parsed = parseCron(job.cron);
           const from = job.recurring ? (job.lastFiredAt ?? job.createdAt) : job.createdAt;
-          const next = parsed && nextOccurrence(parsed, new Date(from));
+          const next = parsed && this.calendar(parsed, new Date(from));
           job.nextAt = next ? this.fireTime(job, parsed!, next.getTime(), from) : Infinity;
           this.fileDeadlines.add(job.id);
         }
@@ -950,7 +961,7 @@ export class LocalScheduler {
         continue;
       }
       const parsed = parseCron(job.cron);
-      const next = parsed ? nextOccurrence(parsed, new Date(firedAt)) : null;
+      const next = parsed ? this.calendar(parsed, new Date(firedAt)) : null;
       // b [7731,9544), chunk-jrz2zk22.js, UTF-16 retains unresolved recurring rows and stamps the fire.
       job.nextAt = next ? this.fireTime(job, parsed!, next.getTime(), firedAt) : Infinity;
       this.emit(job.prompt, job.id, emitted, { kind: 'cron', dueAt, firedAt, recurring: true });
@@ -1037,8 +1048,8 @@ export class LocalScheduler {
     // The recovered arm (chunk-atzjaveb.js `L9t`/`E0n`): recurring jobs spread later by a
     // fraction of their interval, one-shot jobs landing on :00/:30 fire early.
     const recovered = job.recurring
-      ? nextRecurringFire(job.cron, after, job.id)
-      : nextOneShotFire(job.cron, job.createdAt, job.id);
+      ? nextRecurringFire(job.cron, after, job.id, SCHEDULER_TIMING, this.calendar)
+      : nextOneShotFire(job.cron, job.createdAt, job.id, SCHEDULER_TIMING, this.calendar);
     return recovered ?? nominal;
   }
 

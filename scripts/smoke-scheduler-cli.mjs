@@ -49,6 +49,7 @@ const wait = predicate => new Promise((resolve, reject) => {
 try {
   fs.mkdirSync(workspace); fs.mkdirSync(path.join(workspace, "user")); fs.mkdirSync(path.join(workspace, ".harness"));
   fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { schedulerJitter: true,
+    ...(unresolvedRecurring ? { schedulerSourceCalendar: false } : {}),
     ...(durable ? { schedulerDurable: true } : {}) }, permissions: { mode: "bypass", allow: [], deny: [] } }));
   const storeFile = path.join(workspace, ".harness/scheduled_tasks.json");
   if (durable) fs.writeFileSync(storeFile, JSON.stringify({ tasks: headlessWakeup ? [{ id: "headless-cron", cron: "* * * * *",

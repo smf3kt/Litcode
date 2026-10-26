@@ -26,7 +26,7 @@ Completion means every local gap has an implementation and actual predicate resu
 | Task CRUD and dependencies | UUID and JSON differences are explicit adaptations. No fresh local missing operation was confirmed by census. | tasks.ts; W68 | Create DAG, complete blocker, ready projection, remove relation and restart. |
 | Child agents and context fork | Existing local registry needs an enumerated closure contract rather than a generic full-registry gap. | agent-types.ts; agent-registry.ts; W183 | Custom type, scoped tools, fork, worktree, mailbox continuation and cleanup. |
 | Same-host peers | Local UDS implementation exists; complete current acceptance needs two real processes. Cloud and account transports remain separate. | local-peer.ts; W186 | Discover, send, acknowledgement, held admission and owner exit. |
-| Cron and dynamic wakeup | Source MCt searches beyond one real year; host year/DST contract differs. Sidecar, teammate and unstable-write unlink remain separate owners. | scheduler.ts; W309-W319 | Source date comparison, persistence, fire/restart/cancel and DST. |
+| Cron and dynamic wakeup | W350 copies MCt with a pinned source calendar for fresh sessions and explicit reload;original absent/false keeps legacy year/DST. Sidecar,teammate and unstable-write unlink remain separate owners. | scheduler-calendar.ts;scheduler.ts;W309-W319/W350 | Three new groups,103affected,check/build,compiled29ownedrequests/5processes plus legacy3/watch3/timing9 and full3392/3392 pass;13complete character pairs and1882record21d82d59 match fresh independent25/25plus50/50legacy,check andactualcompiled29requests with0scopeddefects/ownedresources. |
 | MCP transports and catalogs | Classic transports and live catalogs exist. Parked subscriptions/listen requires its own recovered protocol chain. Codec is separate. | mcp.ts; W340-W342 | List change and reopen refresh across tools, prompts and resources. |
 | MCP resource subscriptions | Desired-set recovery exists. Per-update replay has no source/protocol identity and must not be invented. | mcp-subscriptions.ts; remaining-dispositions.md | Reconnect desired set, retire old generation and unsubscribe. |
 | Worktree and cwd | Local archive/recovery exists; tmux semantics need source preflight. | worktree-session.ts; worktrees.ts | Enter, keep exit, failed remove, history restore, restart and locks. |
@@ -39,7 +39,7 @@ Completion means every local gap has an implementation and actual predicate resu
 
 ## Ready sequence
 
-W347 closes the complete skill source-argument chain while retaining pinned legacy sessions. W348 closes the local memory runner with fresh independent crash-repair verification and the package's local commit. Resident fork workers follow only after their owner and protocol closure is acquired. Date-search parity and remaining local acceptance chains stay queued. The first census is read-only evidence, not an implementation verdict.
+W347 closes source skill arguments,W348 local memory consolidation andW349 resident fork messaging with their recorded independent verification and local commits. W350 date-search implementation and actual CLI pass at21d82d59 with fresh independent verification;its exact-path local commit completes this package. Remaining local acceptance chains follow one at a time. The inventory alone promotes no family.
 
 ## Baseline
 

@@ -16,6 +16,7 @@ import { HARNESS_DIR } from './config.js';
 import { processGone, processStart } from './local-peer.js';
 import { writeFileWithAtomicOptions } from './plugin-chain-atomic.js';
 import { describeCron, nextOccurrence, parseCron } from './scheduler.js';
+import type { CronCalendar } from './scheduler-calendar.js';
 import { ww } from './tui-theme-watcher-source.js';
 
 export const STORE_LOCK_RETRY_MS = 5_000;
@@ -283,12 +284,12 @@ export function agedOut(task: StoredTask, now: number, maxAgeMs: number): boolea
   return task.recurring === true && task.permanent !== true && now - task.createdAt >= maxAgeMs;
 }
 
-/** Source `wds`: stored tasks whose first occurrence from `createdAt` is already past. */
-export function missedTasks(tasks: readonly StoredTask[], now: number): StoredTask[] {
+/** wds [8604,8697), chunk-atzjaveb.js, UTF-16. */
+export function missedTasks(tasks: readonly StoredTask[], now: number, calendar: CronCalendar = nextOccurrence): StoredTask[] {
   return tasks.filter((task) => {
     const parsed = parseCron(task.cron);
     if (parsed === null) return false;
-    const first = nextOccurrence(parsed, new Date(task.createdAt));
+    const first = calendar(parsed, new Date(task.createdAt));
     return first !== null && first.getTime() < now;
   });
 }

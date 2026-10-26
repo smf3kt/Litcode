@@ -370,7 +370,7 @@ test("turn cancellation after adoption retains the job and close kills its group
     const started = await runHooks({ PostToolUse: [{ command: long, timeout: 30 }] }, "PostToolUse", { cwd: root }, new AbortController().signal, {
       startAsyncCommand: request => registry.adopt(request, request.handle!, `async_hook_${request.handle!.pid}`),
     });
-    for (let i = 0; i < 100 && !fs.existsSync(pidFile); i++) await delay(5);
+    for (let i = 0; i < 100 && (!fs.existsSync(pidFile) || fs.statSync(pidFile).size === 0); i++) await delay(5);
     const pid = Number(fs.readFileSync(pidFile, "utf8"));
     assert.ok(Number.isSafeInteger(pid) && pid > 1);
     await registry.close();

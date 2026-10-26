@@ -168,7 +168,7 @@ export type ParsedRuntimeSettings = {
   features?: { tasks?: boolean; subagents?: boolean; notebooks?: boolean; background?: boolean; scheduler?: boolean;
     workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean; mcpPersistence?: boolean; mcpTasks?: boolean; mcpStandardTasks?: boolean;
     taskProjections?: boolean; promptSuggestions?: boolean;
-    schedulerJitter?: boolean; schedulerDurable?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; skillSourceArguments?: boolean; pluginSkillNamespaces?: boolean;
+    schedulerJitter?: boolean; schedulerDurable?: boolean; schedulerSourceCalendar?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; skillSourceArguments?: boolean; pluginSkillNamespaces?: boolean;
     agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; crossSessionMessaging?: boolean; residentForks?: boolean };
 };
 
@@ -184,7 +184,7 @@ const featuresSchema = z
   .object({ tasks: z.boolean().optional(), subagents: z.boolean().optional(), notebooks: z.boolean().optional(), background: z.boolean().optional(), scheduler: z.boolean().optional(),
     workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(),
     taskProjections: z.boolean().optional(), promptSuggestions: z.boolean().optional(),
-    schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), skillSourceArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
+    schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), schedulerSourceCalendar: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), skillSourceArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
     agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), crossSessionMessaging: z.boolean().optional(), residentForks: z.boolean().optional() })
   .strict();
 
@@ -900,6 +900,8 @@ export async function createRuntime(
         // `x0r.ke/me` [5987,7616), chunk-jrz2zk22.js: creator eligibility precedes delivery.
         const durable = current.features?.schedulerDurable === true;
         const scheduler = new LocalScheduler({ ...options.scheduler, jitter: current.features?.schedulerJitter === true,
+          // MCt [1988,2662), atzjaveb, UTF-16; absent original metadata retains its calendar.
+          sourceCalendar: current.features?.schedulerSourceCalendar === true,
           // Ie [18880,18897), chunk-appb2dtz.js: read the latest loading owner at each tick.
           isLoading: () => schedulerLoading.get(owner)?.() ?? false,
           // KL [562879,563257), chunk-rx2nah4x.js closes ordinary cron delivery and file leasing at EOF.

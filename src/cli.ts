@@ -441,6 +441,8 @@ function newConfig(
       notebooks: settings.features?.notebooks ?? true,
       background: settings.features?.background ?? true,
       scheduler: settings.features?.scheduler ?? true,
+      // MCt [1988,2662), atzjaveb, UTF-16: pin the recovered calendar only in fresh config.
+      schedulerSourceCalendar: settings.features?.schedulerSourceCalendar ?? true,
       ...(settings.features?.schedulerJitter === undefined ? {} : { schedulerJitter: settings.features.schedulerJitter }),
       ...(settings.features?.schedulerDurable === undefined ? {} : { schedulerDurable: settings.features.schedulerDurable }),
       ...(settings.features?.skillInlineCommands === undefined ? {} : { skillInlineCommands: settings.features.skillInlineCommands }),
