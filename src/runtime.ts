@@ -827,6 +827,8 @@ export async function createRuntime(
         // Setting-source provenance never shaped the source tool set; the host-only field must
         // not make a live save look like a different owner.
         settingSources: undefined,
+        // Z7e/I/E, 0ydceggj [3155,3691)/[4491,4991), UTF-16; live inbox policy.
+        crossSessionInbound: undefined,
         // The Default permission mode row (21908) only moves the default for new sessions.
         permissions: settings.permissions === undefined ? undefined
           : { ...settings.permissions, defaultMode: undefined },

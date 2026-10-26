@@ -198,7 +198,7 @@ export function processStart(pid: number, options: { skipCache?: boolean } = {})
   return promise;
 }
 
-/** `Nm` (chunk-3sda67c1.js [2601,2715)): a pid that cannot exist is gone. */
+/** `Nm` (chunk-3sda67c1.js [2601,2700)): a pid that cannot exist is gone. */
 export function processGone(pid: number): boolean {
   if (!Number.isInteger(pid) || pid <= 1 || pid > 0x7fffffff) return false;
   try { process.kill(pid, 0); return false; } catch (error) { return (error as NodeJS.ErrnoException).code === "ESRCH"; }
@@ -579,7 +579,7 @@ export async function readKey(userDir: string, sock: string, options: { requireL
     const key = await read(candidate.file);
     if (key === undefined) continue;
     let rank = 0;
-    if (processGone(candidate.pid)) {
+    if (!processGone(candidate.pid)) {
       const token = recordStart(key);
       const current = token === undefined ? undefined : await processStart(candidate.pid, { skipCache: true });
       rank = token === undefined || current === undefined ? 1 : current === token ? 2 : 0;
@@ -1288,7 +1288,7 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
       const msgId = crypto.randomUUID();
       const ownMode: PeerMode = options.mode?.()?.mode === "bypass" ? "bypass" : "prompting";
       // `K8t` (chunk-6zdc3jq1.js) sends no `session_id`; the field names the
-      // recipient's own session in `Ie` (chunk-bt8cr7rw.js [4978,5232)) and a
+      // recipient's own session in `Ie` (chunk-bt8cr7rw.js [4958,5180)) and a
       // foreign id is dropped as a mismatch.
       const frame: PeerFrame = { type: "user", message: { role: "user", content: text }, from: inbox.address,
         msg_id: msgId, from_mode: ownMode, priority: "next" };

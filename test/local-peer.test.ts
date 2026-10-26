@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import net from "node:net";
 import { after, test } from "node:test";
+import { spawn } from "node:child_process";
 import { createLocalPeerTransport, createLocalPeerTools, createLocalPeerTools as peerTools, HeldQueue, heldApprovalTimeoutMs,
   inboundVerdict, isAuthFrame, listRecords, makeTokens, peerIdentity, probeSocket, publishKey, publishRecord, readKey,
   socketKeyName, verifyAuthFrame, type AcceptedMessage, type HeldCause, type HeldMessage, type LocalPeerTransport,
@@ -137,6 +138,36 @@ test("key publication is per-socket, 0600 and resolved by the sender", async () 
   assert.deepEqual(await readKey(userDir, "/tmp/peer-key.sock"), { kind: "token", token: tokens.peerToken });
   assert.deepEqual(await readKey(userDir, "/tmp/other.sock"), { kind: "no-key" });
   assert.deepEqual(await readKey(userDir, "/tmp/peer-key.sock", { requireLiveOwner: true }), { kind: "token", token: tokens.peerToken });
+});
+
+test("key candidates prefer matching live process identities over stale owners in either order", async () => {
+  const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+  const exited = new Promise<void>(resolve => child.once("close", () => resolve()));
+  await new Promise<void>((resolve, reject) => { child.once("spawn", resolve); child.once("error", reject); });
+  const pid = child.pid; assert.ok(pid);
+  try {
+    for (const stalePid of [2, 2147483646, 999999999]) {
+      const userDir = root(), sock = path.join(userDir, "ranking.sock");
+      const liveToken = makeTokens().peerToken, staleToken = makeTokens().peerToken;
+      await publishKey(userDir, sock, liveToken);
+      fs.writeFileSync(path.join(userDir, "sessions", socketKeyName(stalePid, sock)), JSON.stringify({ peerToken: staleToken }), { mode: 0o600 });
+      const required = await readKey(userDir, sock, { requireLiveOwner: true });
+      assert.equal(required.kind === "token" && required.token === liveToken, true);
+      const optional = await readKey(userDir, sock);
+      assert.equal(optional.kind === "token" && optional.token === liveToken, true);
+    }
+    const userDir = root(), sock = path.join(userDir, "birth.sock");
+    const liveToken = makeTokens().peerToken, staleToken = makeTokens().peerToken;
+    await publishKey(userDir, sock, liveToken);
+    const stalePath = path.join(userDir, "sessions", socketKeyName(pid, sock));
+    fs.writeFileSync(stalePath, JSON.stringify({ peerToken: staleToken, procStart: "recycled-process-start" }), { mode: 0o600 });
+    const required = await readKey(userDir, sock, { requireLiveOwner: true });
+    assert.equal(required.kind === "token" && required.token === liveToken, true);
+    const gone = root(), goneSock = path.join(gone, "gone.sock");
+    fs.mkdirSync(path.join(gone, "sessions"));
+    for (const deadPid of [2147483645, 2147483646]) fs.writeFileSync(path.join(gone, "sessions", socketKeyName(deadPid, goneSock)), JSON.stringify({ peerToken: staleToken }), { mode: 0o600 });
+    assert.deepEqual(await readKey(gone, goneSock, { requireLiveOwner: true }), { kind: "dead-owner" });
+  } finally { child.kill("SIGTERM"); await exited; }
 });
 
 test("records publish, enumerate and sweep only dead same-domain owners", async () => {

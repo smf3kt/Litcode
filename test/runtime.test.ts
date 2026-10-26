@@ -628,6 +628,27 @@ test("a turn's touched-path skill catalog does not invalidate the live owner too
   } finally { await runtime.close(); }
 });
 
+test('live peer inbound policy keeps the owner tool set while pinned configuration changes still fail', async () => {
+  const ws = fs.realpathSync(tmpDir());
+  const config = defaultConfig(ws, createTools()); config.model = 'test';
+  config.features = { tasks: false, subagents: false, crossSessionMessaging: true };
+  const runtime = await createRuntime(config, unusedProvider, new AbortController().signal);
+  try {
+    const owner = 'peer-policy', first = runtime.buildTools(config, owner);
+    const list = first.find(tool => tool.schema.name === 'list_files'); assert.ok(list);
+    assert.equal(runtime.backgroundWorkCount?.(owner), 0);
+    for (const policy of ['accept', 'hold', 'refuse', undefined] as const) {
+      config.crossSessionInbound = policy;
+      const next = runtime.buildTools(config, owner);
+      assert.deepEqual(next.map(tool => tool.schema.name), first.map(tool => tool.schema.name));
+      assert.equal(next.find(tool => tool.schema.name === 'list_files'), list);
+    }
+    config.maxOutputBytes += 1;
+    assert.throws(() => runtime.buildTools(config, owner), /Runtime owner configuration changed/);
+    config.maxOutputBytes -= 1;
+  } finally { await runtime.close(); }
+});
+
 test('a legacy configuration yields base tools only, matching a resumed old session', async () => {
   const ws = tmpDir();
   const config = defaultConfig(ws, createTools());
