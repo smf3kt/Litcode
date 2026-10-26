@@ -1148,6 +1148,22 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       report: request => {
         for (const finding of request.findings) output.write(`${finding.severity}: ${finding.file}:${finding.line} ${finding.summary}\n`);
       },
+      // Zh/eT/Mn/yn, phg89898 [50945,53386), UTF-16.
+      sourceReport: request => {
+        if (terminal?.appendToolResult) return;
+        const groups = new Map<string, typeof request.findings>();
+        for (const finding of request.findings) {
+          const group = groups.get(finding.file) ?? [];
+          group.push(finding); groups.set(finding.file, group);
+        }
+        for (const [file, findings] of groups) {
+          output.write(`${file}\n`);
+          for (const finding of findings) output.write(`  ${finding.outcome === 'fixed' ? '✓' : '●'}` +
+            `${finding.line === undefined ? '' : ` ${finding.line}`}${finding.category ? ` [${finding.category}]` : ''} ${finding.summary}` +
+            `${finding.outcome === 'skipped' ? ' [skipped]' : finding.outcome === 'no_change_needed' ? ' [no change needed]' : ''}\n` +
+            `${session.config.verbose ? `    ${finding.failure_scenario}\n` : ''}`);
+        }
+      },
     },
     progress: event => terminal?.setProgress?.(event),
     toolResult: result => terminal?.appendToolResult?.(result),

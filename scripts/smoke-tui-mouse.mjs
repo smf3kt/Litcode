@@ -159,6 +159,7 @@ const dialogCalls = [
   { type: 'tool_use', id: 'write', name: 'write_file', input: { path: 'approved.txt', content: 'approved B\n' } },
   { type: 'tool_use', id: 'cancel-write', name: 'write_file', input: { path: 'cancelled.txt', content: 'must stay absent\n' } },
 ];
+if (questionReview) fs.writeFileSync(path.join(user, 'settings.json'), JSON.stringify({ features: { sourceFindings: false } }));
 const reviewFindings = { findings: [{ file: 'fixture.ts', line: 3, summary: 'Owned review observation', severity: 'info' }] };
 if (questionReview) dialogCalls.push(
   { type: 'tool_use', id: 'findings', name: 'report_findings', input: reviewFindings },

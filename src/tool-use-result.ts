@@ -12,6 +12,7 @@
 // `Fle` call sites use, so a normalization or lint rewrite on the effect path shows in the patch
 // rather than being inferred from the requested edit.
 import { structuredPatch, type StructuredPatchHunk } from './diff-patch.js';
+import type { FindingsHostResult } from './source-findings.js';
 
 /** What `write_file` captures at the effect boundary, in the recovered `uno` shape. */
 export interface WriteEffectResult {
@@ -32,7 +33,7 @@ export interface EditEffectResult {
   replaceAll: boolean;
 }
 
-export type ToolUseResult = WriteEffectResult | EditEffectResult;
+export type ToolUseResult = WriteEffectResult | EditEffectResult | FindingsHostResult;
 
 /**
  * The stored row: the source's storage projection. A write keeps its content only in the create
@@ -40,6 +41,7 @@ export type ToolUseResult = WriteEffectResult | EditEffectResult;
  * view reads. The original file is dropped in both cases.
  */
 export type StoredToolUseResult =
+  | FindingsHostResult
   | { type: 'create'; filePath: string; content: string; structuredPatch: StructuredPatchHunk[] }
   | { type: 'update'; filePath: string; structuredPatch: StructuredPatchHunk[] }
   | { filePath: string; oldString: string; newString: string; structuredPatch: StructuredPatchHunk[]; replaceAll: boolean };
@@ -75,6 +77,8 @@ export function editEffectResult(filePath: string, previous: string, applied: st
 
 /** Source `TRn`: the row that is written to the transcript. */
 export function projectToolUseResult(value: ToolUseResult): StoredToolUseResult {
+  // Eo has no stripForStorage; TRn, sfn1dbxq [4500463,4501738), UTF-16.
+  if ('kind' in value) return value;
   if (!('type' in value)) {
     return { filePath: value.filePath, oldString: value.oldString, newString: value.newString,
       structuredPatch: value.structuredPatch, replaceAll: value.replaceAll };

@@ -5,6 +5,8 @@ import type { ToolContext, ToolDefinition } from './tools.js';
 import { previewSanitized, previewUnstableInput } from './preview-sanitize.js';
 import { nmo } from './question-clarification-source.js';
 import { admittedImageBlock } from './question-images.js';
+import { sourceFindingsRequestSchema, sourceFindingsResult, sourceFindingsText, SOURCE_FINDINGS_DESCRIPTION,
+  type SourceFindingsRequest } from './source-findings.js';
 
 export const INTERACTION_LIMITS = Object.freeze({
   questions: 4, options: 4, questionChars: 2000, headerChars: 80,
@@ -66,6 +68,7 @@ export interface InteractionCallbacks {
   askCard?: (request: AskUserQuestionRequest, signal: AbortSignal) => Promise<unknown>;
   plan?: (request: SubmitPlanRequest, signal: AbortSignal) => Promise<SubmitPlanResult>;
   report?: (request: ReportFindingsRequest, signal: AbortSignal) => void | Promise<void>;
+  sourceReport?: (request: SourceFindingsRequest, signal: AbortSignal) => void | Promise<void>;
 }
 export interface InteractionToolOptions extends InteractionCallbacks {
   /** Covers both queue waiting and host response time. */
@@ -73,6 +76,7 @@ export interface InteractionToolOptions extends InteractionCallbacks {
   /** Includes the active host callback, even if it ignores cancellation. */
   maxPending?: number;
   partialAnswers?: boolean;
+  sourceFindings?: boolean;
   /**
    * The host's preview format. `"html"` applies the recovered fragment rules:
    * a preview must contain markup and must not be a full document or carry
@@ -728,7 +732,7 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
       !Number.isSafeInteger(maxPending) || maxPending < 1 || maxPending > INTERACTION_LIMITS.maxPendingLimit) {
     throw new Error('Invalid interaction timeout or queue limit');
   }
-  const callbacks = { ask: options.ask, askCard: options.askCard, plan: options.plan, report: options.report };
+  const callbacks = { ask: options.ask, askCard: options.askCard, plan: options.plan, report: options.report, sourceReport: options.sourceReport };
   const previewFormat = options.previewFormat;
   const extendedQuestions = options.extendedQuestions === true;
   const cardAnswers = options.cardAnswers === true;
@@ -829,7 +833,42 @@ export function createInteractionTools(options: InteractionToolOptions = {}): To
         });
       },
     },
-    {
+    // Eo/kt/Ro, tar639dc [60313,62418), UTF-16.
+    options.sourceFindings === true ? {
+      readOnly: true,
+      schema: {
+        name: 'report_findings', description: SOURCE_FINDINGS_DESCRIPTION,
+        input_schema: { type: 'object', additionalProperties: false, required: ['findings'], properties: {
+          level: { type: 'string', enum: ['low', 'medium', 'high', 'xhigh', 'max'] },
+          findings: { type: 'array', maxItems: 32, items: { type: 'object', additionalProperties: false,
+            required: ['file', 'summary', 'failure_scenario'], properties: {
+              file: { type: 'string', description: 'Repo-relative path of the file the finding is in' },
+              line: { type: 'integer', description: '1-indexed line the finding anchors to' },
+              summary: { type: 'string', description: 'One-sentence statement of the defect' },
+              short_summary: { type: 'string', maxLength: 60 },
+              failure_scenario: { type: 'string', description: 'Concrete inputs/state that cause wrong output or a crash' },
+              category: { type: 'string', maxLength: 40 },
+              verdict: { type: 'string', enum: ['CONFIRMED', 'PLAUSIBLE'] },
+              outcome: { type: 'string', enum: ['fixed', 'skipped', 'no_change_needed'] },
+            } } },
+        } },
+      },
+      async execute(input, context) {
+        checkSignal(context.signal);
+        const request = parse(sourceFindingsRequestSchema, input, 'report_findings');
+        const result = sourceFindingsResult(request);
+        const text = sourceFindingsText(result.count);
+        output(text, context, 'report_findings');
+        const report = callbacks.sourceReport ?? contextCallbacks(context)?.sourceReport;
+        if (report) await dispatch(context.signal, async signal => {
+          await report(request, signal);
+          checkSignal(signal);
+        });
+        checkSignal(context.signal);
+        context.hostResult?.(result);
+        return text;
+      },
+    } : {
       readOnly: true,
       schema: {
         name: 'report_findings',

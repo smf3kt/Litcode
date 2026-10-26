@@ -39,6 +39,8 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
     skillSourceArguments: sourceSkillArgumentsDefault(settings.features),
     // fX, ktr9sak2 [12897,19623), UTF-16.
     questionPartialAnswers: settings.features?.questionPartialAnswers ?? true,
+    // Eo/kt/Ro, tar639dc [60313,62418), UTF-16.
+    sourceFindings: settings.features?.sourceFindings ?? true,
     // Ur, tar639dc [151585,152665), UTF-16; explicit reload pins the accepted visibility choice.
     taskSourceVisibility: settings.features?.taskSourceVisibility ?? true,
     // MCt [1988,2662), atzjaveb, UTF-16; explicit reload creates a new pinned calendar choice.

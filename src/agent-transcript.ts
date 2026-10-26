@@ -52,7 +52,8 @@ export function agentTranscriptEntries(snapshot: AgentTranscript): TranscriptEnt
       const content = typeof event.result.content === 'string' ? event.result.content
         : (event.result.content ?? []).flatMap(block => block.type === 'text' ? [block.text] : []).join('\n');
       entries.push({ kind: 'tool', text: '', tool: { id: event.result.tool_use_id, name: call.name,
-        input: call.input, content, isError: event.result.is_error === true } });
+        input: call.input, content, isError: event.result.is_error === true,
+        ...(event.host === undefined ? {} : { host: event.host }) } });
     } else if (event.kind === 'compact') entries.push({ kind: 'system', text: event.summary });
   }
   return entries;

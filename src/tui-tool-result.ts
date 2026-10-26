@@ -1,5 +1,6 @@
 import { wrapMessageText } from './tui-wrap.js';
 import type { RenderedRow } from './tui-transcript.js';
+import type { StoredToolUseResult } from './tool-use-result.js';
 
 /**
  * Tool result rows for the live transcript.
@@ -22,6 +23,7 @@ export type ToolDisplayResult = {
   input: unknown;
   content: string;
   isError: boolean;
+  host?: StoredToolUseResult;
 };
 
 // `$e` [1610,2287): two spaces, U+23BF, space and NBSP, five cells.

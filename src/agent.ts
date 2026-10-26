@@ -1009,8 +1009,10 @@ export class Agent {
         }
       }
       // After the post hook and any replacement, so the rows show what the model received.
+      // xe/Eo, sfn1dbxq [4380701,4382470), tar639dc [61633,62418), UTF-16.
       this.events.toolResult?.({ id: call.id, name: call.name, input,
-        content: String(result.content), isError: result.is_error === true });
+        content: String(result.content), isError: result.is_error === true,
+        ...(hostResult === undefined ? {} : { host: hostResult }) });
     }
     this.session.append({ kind: 'message', classifier: { origin: { kind: 'generated', source: 'tool-results' }, outcomes }, message: { role: 'user', content: [
       ...results, ...extra.map(text => ({ type: 'text' as const, text: `Hook context:\n${text}` })),

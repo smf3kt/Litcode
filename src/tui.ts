@@ -219,6 +219,7 @@ import {
 } from './tui-transcript.js';
 import { TranscriptScroll } from './tui-scroll.js';
 import { toolResultRows, type ToolDisplayResult } from './tui-tool-result.js';
+import { FindingsRows } from './tui-findings.js';
 import {
   cellWidth, createEditorState, questionPreviewText, reduceEditor, reduceEditorWithUndo, TerminalKeyDecoder,
   type EditorAction, type EditorCommand, type EditorPolicy, type EditorState, type Keybindings, type TerminalCallbacks,
@@ -401,7 +402,11 @@ export class TuiTerminal extends EventEmitter<TuiEvents> {
     // Source `hXe`/`wp` (chunk-phg89898.js 3761/3801): a drained result row is its two stream
     // blocks, not one bracketed string; the input row is the command alone behind its `! `.
     const bash = this.bashEntryRows(entry, columns);
-    const body = entry.fork ? this.documentRenderer.renderElement(jsx(ForkRow, { fields: entry.fork }, undefined), columns,
+    // Zh/eT, phg89898 [50945,52785), UTF-16; only the successful typed result owns findings rows.
+    const findings = !entry.tool?.isError && entry.tool?.host && 'kind' in entry.tool.host
+      ? entry.tool.host.findings : undefined;
+    const body = findings ? this.documentRenderer.renderElement(jsx(FindingsRows, { findings, verbose: detailed }, undefined), columns,
+      { theme: this.theme.current, themeOverrides: this.theme.overrides }) : entry.fork ? this.documentRenderer.renderElement(jsx(ForkRow, { fields: entry.fork }, undefined), columns,
       { theme: this.theme.current, themeOverrides: this.theme.overrides }) : bash ?? (entry.tool ? toolResultRows(entry.tool, detailed, columns)
       : entry.duration ? this.documentRenderer.renderElement(jsx(ProgressCompletion, {message:entry.duration, formatTime:this.timeFormatter.format}, entry.duration.uuid), columns,
       {theme:this.theme.current, themeOverrides:this.theme.overrides}) : document ? this.documentRenderer.renderMarkdown(entry.markdown ?? entry.text, columns,

@@ -459,6 +459,8 @@ function newConfig(
       interaction: settings.features?.interaction ?? true,
       // fX, ktr9sak2 [12897,19623), UTF-16.
       questionPartialAnswers: settings.features?.questionPartialAnswers ?? true,
+      // Eo/kt/Ro, tar639dc [60313,62418), UTF-16.
+      sourceFindings: settings.features?.sourceFindings ?? true,
       web: settings.features?.web ?? true,
       checkpoints: settings.features?.checkpoints ?? true,
       worktrees: settings.features?.worktrees ?? true,
