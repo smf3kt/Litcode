@@ -82,11 +82,11 @@
     "newGroups": 1,
     "affected": {
       "suites": 8,
-      "tests": 152,
-      "pass": 152,
+      "tests": 153,
+      "pass": 153,
       "fail": 0,
       "breakdown": {
-        "test/shell-permissions.test.ts": 6,
+        "test/shell-permissions.test.ts": 7,
         "test/permissions.test.ts": 22,
         "test/agent-tool-restrictions.test.ts": 10,
         "test/default-bypass.test.ts": 3,
