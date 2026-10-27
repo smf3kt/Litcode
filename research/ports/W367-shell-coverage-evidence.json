@@ -147,5 +147,16 @@
     "Declaration-prefix rule and the Lcn strictness ordering",
     "Be/Ue/We parse-error verdicts beyond a plain ERROR node, and the backtick scan verdicts",
     "Remote managed policy stays external"
+  ],
+  "finalProof": {
+    "file": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w367-final-proof.json",
+    "sha256": "1d30159059ce2a9a188e9791b566769a7a5bbbd8bfe783ec18538d243dafcfef",
+    "head": "eb51ab55a11609d08a71f967c9c34909ed3862ee",
+    "protectedAllMatch": true,
+    "distTracked": false
+  },
+  "commits": [
+    "628bb31 Port recovered statement coverage into shell readings",
+    "eb51ab5 Read compound lines from the parser tree, not their separators"
   ]
 }
