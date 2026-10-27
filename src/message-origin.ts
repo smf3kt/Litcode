@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import type Anthropic from '@anthropic-ai/sdk';
-import { peerHopChainSchema } from './local-peer-guard.js';
+import { peerEnvelopeMetadataSchema } from './local-peer-envelope.js';
 
 export const messageOriginSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('human') }).strict(),
   z.object({ kind: z.literal('generated'), source: z.string() }).strict(),
   z.object({ kind: z.literal('child'), source: z.string() }).strict(),
-  z.object({ kind: z.literal('peer'), source: z.string(), hopChain: peerHopChainSchema.optional() }).strict(),
+  // D$e/Tbe, 64ag51qf [5233,5575), UTF-16.
+  peerEnvelopeMetadataSchema.extend({ kind: z.literal('peer'), source: z.string() }).strict(),
   z.object({ kind: z.literal('summary') }).strict(),
   z.object({ kind: z.literal('unknown') }).strict(),
 ]);

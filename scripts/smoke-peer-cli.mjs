@@ -12,7 +12,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // mode-mismatched message and approves it through /peer-held, and B's next
 // request carries the text as peer meta input. No cloud call leaves loopback.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const compiled = process.argv.includes("--compiled"), guard = process.argv.includes("--guard");
+const compiled = process.argv.includes("--compiled"), guard = process.argv.includes("--guard"), envelope = process.argv.includes("--envelope");
 const acceptance = process.argv.includes("--acceptance") || guard;
 const scratch = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : fs.realpathSync(os.tmpdir());
 const temporary = fs.realpathSync(fs.mkdtempSync(path.join(scratch, "peer-cli-smoke-")));
@@ -22,6 +22,15 @@ const workspaceB = path.join(temporary, "workspace-b");
 const requests = { a: [], b: [] };
 let server, childA, childB, busyResponse;
 const guardResults = {}, helpers = [];
+function inputText(content) {
+  if (typeof content !== 'string') return '';
+  return envelope ? /^<cross-session-message[^>]*>\n([\s\S]*)\n<\/cross-session-message>$/.exec(content)?.[1] ?? content : content;
+}
+function journal(workspace) {
+  return fs.readdirSync(path.join(workspace, '.agent')).filter(name => name.endsWith('.jsonl'))
+    .flatMap(name => { const text = fs.readFileSync(path.join(workspace, '.agent', name), 'utf8');
+      return text.slice(0, text.lastIndexOf('\n')).split('\n').filter(Boolean).map(JSON.parse); });
+}
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const runtimeRoot = path.join(scratch, `lp-${process.pid}`);
@@ -108,7 +117,7 @@ try {
   for (const workspace of [workspaceA, workspaceB]) {
     fs.mkdirSync(path.join(workspace, ".harness"), { recursive: true });
     fs.writeFileSync(path.join(workspace, ".harness", "settings.json"),
-      JSON.stringify({ features: { crossSessionMessaging: true } }) + "\n", { mode: 0o600 });
+      JSON.stringify({ features: { crossSessionMessaging: true, ...(envelope ? {} : { peerSourceEnvelope: false }) } }) + "\n", { mode: 0o600 });
   }
   server = http.createServer((req, res) => {
     const label = String(req.headers.authorization ?? "").includes("owned-peer-b") ? "b" : "a";
@@ -124,8 +133,7 @@ try {
         sse(res, body, Array.from({ length: 34 }, (_, index) => ({ type: 'tool_use', id: `guard-burst-${index}`,
           name: 'send_peer_message', input: { address, message: `GUARD_BURST_${index}`, wait_ms: 0 } }))); return;
       }
-      const relay = guard && typeof body.messages.at(-1)?.content === 'string'
-        ? /^GUARD_RELAY (\S+)(?: (\d+))?$/.exec(body.messages.at(-1).content) : undefined;
+      const relay = guard ? /^GUARD_RELAY (\S+)(?: (\d+))?$/.exec(inputText(body.messages.at(-1)?.content)) : undefined;
       if (relay) {
         sse(res, body, [{ type: 'tool_use', id: `guard-relay-${label}-${requests[label].length}`, name: 'send_peer_message',
           input: { address: relay[1], message: `GUARD_RELAY ${label === 'a' ? guardResults.inboxA : guardResults.inboxB} ${Number(relay[2] ?? 0) + 1}`, wait_ms: 0 } }]); return;
@@ -170,9 +178,9 @@ try {
   childA.child.stdin.write(`PEER_SEND ${inboxB} EXACT_PEER_TEXT\n`);
   await until(() => requests.a.length >= 2, "A send tool result");
   await until(() => childB.combined.includes("held for approval"), "B holds the message");
-  assert.match(childB.combined, /held for approval: EXACT_PEER_TEXT/);
+  assert.match(childB.combined, envelope ? /held for approval: <cross-session-message/ : /held for approval: EXACT_PEER_TEXT/);
   childB.child.stdin.write("/peer-held\n");
-  await until(() => /1\. uds:\S+ \(mode-mismatch\): EXACT_PEER_TEXT/.test(childB.combined), "held listing");
+  await until(() => (envelope ? /1\. uds:\S+ \(mode-mismatch\): <cross-session-message/ : /1\. uds:\S+ \(mode-mismatch\): EXACT_PEER_TEXT/).test(childB.combined), "held listing");
   childB.child.stdin.write("/peer-held approve 1\n");
   await until(() => childB.combined.includes("Peer held message approve: delivered"), "approval result");
   // The tool call answered "sent" with wait_ms 0; the delivery receipt is read
@@ -186,6 +194,14 @@ try {
   const peerMessage = requests.b[0].messages.find(message => message.role === "user"
     && typeof message.content === "string" && message.content.includes("EXACT_PEER_TEXT"));
   assert.ok(peerMessage, "B received the exact text as input");
+  if (envelope) {
+    const inboxA = /"inbox": "(uds:[^"]+)"/.exec(childA.combined)[1];
+    const senderId = journal(workspaceA).find(row => row.kind === 'metadata').id;
+    assert.equal(peerMessage.content, `<cross-session-message from="${inboxA}" from-session="${senderId}" from-name="${senderId}" from-mode="prompting">\nEXACT_PEER_TEXT\n</cross-session-message>`);
+    const retained = journal(workspaceB).find(row => row.kind === 'message' && row.message.content === peerMessage.content);
+    assert.deepEqual(retained.classifier.origin, { kind: 'peer', source: 'uds', name: senderId,
+      fromSession: senderId, fromMode: 'prompting', body: 'EXACT_PEER_TEXT' });
+  }
 
   if (acceptance) {
     const turns = state => (state.combined.match(/finished: end_turn/g) ?? []).length;
@@ -211,7 +227,8 @@ try {
     const beforeB = requests.b.length;
     for (const decision of ['deny', 'expire']) {
       const text = `HELD_${decision.toUpperCase()}`, id = await send(text); assert.ok(id);
-      await until(() => childB.combined.includes(`held for approval: ${text}`), 'next held message');
+      if (envelope) childB.child.stdin.write('/peer-held\n');
+      await until(() => childB.combined.includes(envelope ? `${text}\n</cross-session-message>` : `held for approval: ${text}`), 'next held message');
       childB.child.stdin.write(`/peer-held ${decision} 1\n`);
       await until(() => childB.combined.includes(`Peer held message ${decision}: dropped`), 'held decision');
       await status(id, decision === 'deny' ? 'denied' : 'expired');
@@ -223,25 +240,29 @@ try {
     childB.child.stdin.write('/peer-inbound hold\n');
     await until(() => childB.combined.includes('Peer inbound policy: hold'), 'hold policy');
     const originId = await send('/exit'); assert.ok(originId);
-    await until(() => childB.combined.includes('held for approval: /exit'), 'literal slash input held');
+    if (envelope) childB.child.stdin.write('/peer-held\n');
+    await until(() => childB.combined.includes(envelope ? '/exit\n</cross-session-message>' : 'held for approval: /exit'), 'literal slash input held');
     childB.child.stdin.write('/peer-held approve 1\n');
     await until(() => requests.b.length === beforeB + 1 && childB.child.exitCode === null, 'peer slash input stays data');
     await status(originId, 'delivered');
     const lastB = requests.b.at(-1);
-    assert.ok(lastB.messages.some(message => message.role === 'user' && message.content === '/exit'));
-    const directory = path.join(workspaceB, '.agent');
-    const records = fs.readdirSync(directory).filter(name => name.endsWith('.jsonl'))
-      .flatMap(name => fs.readFileSync(path.join(directory, name), 'utf8').trim().split('\n').map(JSON.parse));
-    const peerEvent = records.find(row => row.kind === 'message' && row.message.role === 'user' && row.message.content === '/exit');
-    assert.ok(peerEvent); assert.deepEqual(peerEvent.classifier?.origin, { kind: 'peer', source: 'uds' });
+    assert.ok(lastB.messages.some(message => message.role === 'user' && inputText(message.content) === '/exit'));
+    const records = journal(workspaceB);
+    const peerEvent = records.find(row => row.kind === 'message' && row.message.role === 'user' && inputText(row.message.content) === '/exit');
+    assert.ok(peerEvent);
+    if (envelope) {
+      const senderId = journal(workspaceA).find(row => row.kind === 'metadata').id;
+      assert.deepEqual(peerEvent.classifier?.origin, { kind: 'peer', source: 'uds', name: senderId,
+        fromSession: senderId, fromMode: 'prompting', body: '/exit' });
+    } else assert.deepEqual(peerEvent.classifier?.origin, { kind: 'peer', source: 'uds' });
     if (guard) {
       childB.child.stdin.write('/peer-inbound accept\n');
       await until(() => childB.combined.includes('Peer inbound policy: accept'), 'guard accept policy');
       await send('GUARD_DUPLICATE');
-      await until(() => requests.b.some(request => request.messages.at(-1)?.content === 'GUARD_DUPLICATE'), 'first duplicate body admitted');
+      await until(() => requests.b.some(request => inputText(request.messages.at(-1)?.content) === 'GUARD_DUPLICATE'), 'first duplicate body admitted');
       const duplicateId = await send('GUARD_DUPLICATE');
       await status(duplicateId, 'dropped');
-      assert.equal(requests.b.filter(request => request.messages.at(-1)?.content === 'GUARD_DUPLICATE').length, 1);
+      assert.equal(requests.b.filter(request => inputText(request.messages.at(-1)?.content) === 'GUARD_DUPLICATE').length, 1);
       const inboxA = /"inbox": "(uds:[^"]+)"/.exec(childA.combined)[1];
       guardResults.inboxA = inboxA; guardResults.inboxB = inboxB;
       const relayDrops = () => (childA.combined.match(/\S+ dropped\n/g) ?? []).length + (childB.combined.match(/\S+ dropped\n/g) ?? []).length;
@@ -250,23 +271,24 @@ try {
       const beforeRelayTurns = turns(childA) + turns(childB);
       childA.child.stdin.write(`/peer-inbound accept\nGUARD_RELAY ${inboxB} 0\n`);
       await until(() => {
-        const journalRows = fs.readdirSync(path.join(workspaceB, '.agent')).filter(name => name.endsWith('.jsonl'))
-          .flatMap(name => fs.readFileSync(path.join(workspaceB, '.agent', name), 'utf8').trim().split('\n').map(JSON.parse));
+        const journalRows = journal(workspaceB);
         return journalRows.some(row => row.classifier?.origin?.hopChain?.length >= 18);
       }, 'relay chain persisted');
       await until(() => relayDrops() > beforeRelayDrops, 'relay guard reached');
-      const relayRequests = [...requests.a, ...requests.b].filter(request => typeof request.messages.at(-1)?.content === 'string'
-        && request.messages.at(-1).content.startsWith('GUARD_RELAY '));
+      const relayRequests = [...requests.a, ...requests.b].filter(request => inputText(request.messages.at(-1)?.content).startsWith('GUARD_RELAY '));
       assert.ok(relayRequests.length >= 19 && relayRequests.length <= 22);
       guardResults.relayRequests = relayRequests.length;
       await until(() => turns(childA) + turns(childB) === beforeRelayTurns + relayRequests.length, 'relay turns settled');
       await command(childA, 'GUARD_HUMAN_RESET');
       await command(childA, `PEER_SEND ${inboxB} GUARD_AFTER_RESET`);
-      await until(() => requests.b.some(request => request.messages.at(-1)?.content === 'GUARD_AFTER_RESET'), 'human input resets relay chain');
-      const currentRows = fs.readdirSync(path.join(workspaceB, '.agent')).filter(name => name.endsWith('.jsonl'))
-        .flatMap(name => fs.readFileSync(path.join(workspaceB, '.agent', name), 'utf8').trim().split('\n').map(JSON.parse));
-      const resetRow = currentRows.find(row => row.kind === 'message' && row.message.content === 'GUARD_AFTER_RESET');
-      assert.deepEqual(resetRow.classifier.origin, { kind: 'peer', source: 'uds' });
+      await until(() => requests.b.some(request => inputText(request.messages.at(-1)?.content) === 'GUARD_AFTER_RESET'), 'human input resets relay chain');
+      const currentRows = journal(workspaceB);
+      const resetRow = currentRows.find(row => row.kind === 'message' && inputText(row.message.content) === 'GUARD_AFTER_RESET');
+      if (envelope) {
+        const senderId = journal(workspaceA).find(row => row.kind === 'metadata').id;
+        assert.deepEqual(resetRow.classifier.origin, { kind: 'peer', source: 'uds', name: senderId,
+          fromSession: senderId, fromMode: 'prompting', body: 'GUARD_AFTER_RESET' });
+      } else assert.deepEqual(resetRow.classifier.origin, { kind: 'peer', source: 'uds' });
       const { createLocalPeerTransport, sendPeerFrame } = await import(pathToFileURL(path.join(root, 'dist/local-peer.js')).href);
       const helper = await createLocalPeerTransport({ userDir, workspace: workspaceA,
         socketPath: path.join(runtimeDir(), 'litcode-socks', `guard-${process.pid}.sock`), policy: () => 'accept', onEvent: () => {} });
@@ -301,7 +323,8 @@ try {
       await until(() => childB.combined.endsWith('Peer inbound policy: hold\n') || childB.combined.lastIndexOf('Peer inbound policy: hold') > childB.combined.lastIndexOf('Peer inbound policy: accept'), 'guard hold policy restored');
     }
     const pendingId = await send('EXPIRE_ON_EXIT'); assert.ok(pendingId);
-    await until(() => childB.combined.includes('held for approval: EXPIRE_ON_EXIT'), 'held at exit');
+    if (envelope) childB.child.stdin.write('/peer-held\n');
+    await until(() => childB.combined.includes(envelope ? 'EXPIRE_ON_EXIT\n</cross-session-message>' : 'held for approval: EXPIRE_ON_EXIT'), 'held at exit');
     childB.child.stdin.write('/exit\n'); assert.equal(await childB.exit, 0);
     await status(pendingId, 'expired');
     await command(childA, 'PEER_LIST');
@@ -322,7 +345,7 @@ try {
   console.log(JSON.stringify({ cli: "passed", processes: 2, inboxB, aRequests: requests.a.length, bRequests: requests.b.length,
     held: "mode-mismatch", receipt: "delivered", ownedCleanup: true,
     ...(compiled ? { compiledCLI: true } : {}), acceptance, heldDecisions: acceptance ? ['approve', 'deny', 'expire', 'refuse', 'exit-expiry'] : ['approve'],
-    peerOrigin: acceptance, ...(guard ? { guard: { pacedSends: guardResults.pacedSends, retainedQueue: guardResults.retainedQueue,
+    peerOrigin: acceptance, sourceEnvelope: envelope, ...(guard ? { guard: { pacedSends: guardResults.pacedSends, retainedQueue: guardResults.retainedQueue,
       relayRequests: guardResults.relayRequests, duplicateRequests: 1, humanReset: true } } : {}), gateway: "owned loopback SSE", externalCalls: 0 }));
 } catch (error) {
   console.error("A:", childA?.combined?.slice(-4000));

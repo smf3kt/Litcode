@@ -465,6 +465,8 @@ function newConfig(
       sourcePlanTools: settings.features?.sourcePlanTools ?? true,
       // fX, ktr9sak2 [16872,19623), UTF-16.
       sourceQuestionResults: settings.features?.sourceQuestionResults ?? true,
+      // K8t/Qe, 6zdc3jq1 [12210,13125), bt8cr7rw [5180,6744), UTF-16.
+      peerSourceEnvelope: settings.features?.peerSourceEnvelope ?? true,
       web: settings.features?.web ?? true,
       checkpoints: settings.features?.checkpoints ?? true,
       worktrees: settings.features?.worktrees ?? true,

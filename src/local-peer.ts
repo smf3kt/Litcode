@@ -19,6 +19,8 @@ import { createRequire } from "node:module";
 import { atomicWriteFile } from "./atomic-write.js";
 import type { ToolContext, ToolDefinition } from "./tools.js";
 import { classifierMessage } from "./message-origin.js";
+import { encodePeerAddress, encodePeerEnvelope, peerEnvelopeMetadata, peerPluginName, preparePeerInput,
+  type PeerEnvelopeMetadata } from "./local-peer-envelope.js";
 import { appendPeerHop, createPeerDropReporter, createPeerIngressGuard, createPeerPacer, peerHopChainSchema,
   peerHopToken, peerDropReasonSchema, PEER_LIMITS, type PeerDropReason } from "./local-peer-guard.js";
 
@@ -112,6 +114,7 @@ export type AcceptedMessage = {
   verifiedPeerPid?: number;
   verifiedPeerStart?: string;
   hopChain?: string[];
+  metadata?: PeerEnvelopeMetadata;
   selfSent: boolean;
 };
 
@@ -121,7 +124,7 @@ export type HeldMessage = {
   text: string;
   cause: HeldCause;
   receivedAt: number;
-  origin: { from?: string; verifiedPeerPid?: number; verifiedPeerStart?: string; selfSent: boolean; msgId?: string; fromMode?: PeerMode; hopChain?: string[] };
+  origin: Omit<AcceptedMessage, "text">;
 };
 
 export type SendStatus = { status: PeerReceiptStatus; reason?: string; at: number };
@@ -963,6 +966,7 @@ export type PeerInboxOptions = {
   heldTimeoutMs?: () => number;
   /** `Rwt` (chunk-sfn1dbxq.js [472253,472852)): consume or rewrite before admission. */
   receive?: (frame: { from?: string; text: string; msgId?: string }) => { consume?: true; content?: string } | Promise<{ consume?: true; content?: string }>;
+  sourceEnvelope?: () => boolean;
   onAccepted: (message: AcceptedMessage) => void;
   onHeld?: (message: HeldMessage) => void;
   onDropped?: (message: HeldMessage, reason: "refused" | "expired" | "dropped") => void;
@@ -1075,6 +1079,7 @@ export async function startPeerInbox(options: PeerInboxOptions): Promise<PeerInb
       recipient: state.mode?.() ?? null, fromMode: message.origin.fromMode }),
     deliver: message => state.deliver!({ text: message.text, from: message.origin.from, msgId: message.origin.msgId,
       fromMode: message.origin.fromMode, hopChain: message.origin.hopChain,
+      ...(message.origin.metadata === undefined ? {} : { metadata: message.origin.metadata }),
       verifiedPeerPid: message.origin.verifiedPeerPid, verifiedPeerStart: message.origin.verifiedPeerStart, selfSent: message.origin.selfSent }, true),
     receipt: (message, status, detail) => sendReceipt(state, options, message, status, detail, logger),
     onHeld: message => options.onHeld?.(message),
@@ -1190,21 +1195,28 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
     if (typeof content !== "string" || content.length === 0) { logger("[peer-inbox] ignoring a user frame with missing or non-string content", { level: "warn" }); return; }
     const from = typeof frame.from === "string" ? frame.from : undefined;
     const msgId = typeof frame.msg_id === "string" ? frame.msg_id : undefined;
-    const fromMode = frame.from_mode === "bypass" || frame.from_mode === "prompting" ? frame.from_mode : undefined;
-    const hopChain = peerHopChainSchema.safeParse(frame.hop_chain).data;
-    const selfSent = from !== undefined && from === peerAddress(state.socketPath!);
+    // Qe/D$e/Tbe, bt8cr7rw [5180,6744), 64ag51qf [5233,5575), UTF-16.
+    const sourceEnvelope = options.sourceEnvelope?.() === true;
+    const prepared = sourceEnvelope ? preparePeerInput(content) : content;
+    const selfSent = from !== undefined && (from === peerAddress(state.socketPath!)
+      || sourceEnvelope && from === encodePeerAddress(peerAddress(state.socketPath!)));
     const verifiedPeerStart = context.peer === undefined ? undefined : await processStart(context.peer.pid);
-    const rewritten = await options.receive?.({ from, text: content, msgId });
+    const rewritten = await options.receive?.({ from, text: prepared, msgId });
     if (rewritten?.consume) return;
-    const text = typeof rewritten?.content === "string" ? rewritten.content : content;
+    const text = typeof rewritten?.content === "string" ? rewritten.content : prepared;
+    const metadata = sourceEnvelope ? peerEnvelopeMetadata(content, text) : undefined;
+    const plugin = sourceEnvelope ? peerPluginName(frame.from_plugin) : undefined;
+    const fromMode = metadata?.fromMode ?? (frame.from_mode === "bypass" || frame.from_mode === "prompting" ? frame.from_mode : undefined);
+    const hopChain = metadata?.hopChain ?? peerHopChainSchema.safeParse(frame.hop_chain).data;
+    const origin: HeldMessage["origin"] = { from, verifiedPeerPid: context.peer?.pid, verifiedPeerStart, selfSent, msgId, fromMode, hopChain,
+      ...(metadata === undefined ? {} : { metadata: { ...metadata, ...(plugin === undefined ? {} : { plugin }) } }) };
     const verdict = inboundVerdict({ explicit: options.policy?.(), selfSent,
       recipient: state.mode?.() ?? null, fromMode });
     if (verdict.policy === "accept") {
-      state.deliver?.({ text, from, msgId, fromMode, hopChain, verifiedPeerPid: context.peer?.pid, verifiedPeerStart, selfSent }, false);
+      state.deliver?.({ text, ...origin }, false);
       return;
     }
-    const message2: HeldMessage = { msgId, from, text, cause: verdict.holdCause ?? "explicit", receivedAt: Date.now(),
-      origin: { from, verifiedPeerPid: context.peer?.pid, verifiedPeerStart, selfSent, msgId, fromMode, hopChain } };
+    const message2: HeldMessage = { msgId, from, text, cause: verdict.holdCause ?? "explicit", receivedAt: Date.now(), origin };
     if (verdict.policy === "refuse") {
       void sendReceipt(state, options, message2, "refused", undefined, logger);
       options.onDropped?.(message2, "refused");
@@ -1284,6 +1296,8 @@ export type LocalPeerTransportOptions = {
   mode?: () => { mode: string; bypassAvailable?: boolean } | null;
   heldTimeoutMs?: () => number;
   receive?: PeerInboxOptions["receive"];
+  sourceEnvelope?: () => boolean;
+  sessionId?: () => string;
   queuedPeerCount?: () => number;
   hopChain?: () => readonly string[] | undefined;
   onEvent: (event: PeerTransportEvent) => void;
@@ -1360,6 +1374,7 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
     ...(options.mode === undefined ? {} : { mode: options.mode }),
     ...(options.heldTimeoutMs === undefined ? {} : { heldTimeoutMs: options.heldTimeoutMs }),
     ...(options.receive === undefined ? {} : { receive: options.receive }),
+    ...(options.sourceEnvelope === undefined ? {} : { sourceEnvelope: options.sourceEnvelope }),
     ...(options.queuedPeerCount === undefined ? {} : { queuedPeerCount: options.queuedPeerCount }),
     onAccepted: message => emit({ kind: "message", message }),
     onHeld: message => emit({ kind: "held", message, count: inbox.held.size() }),
@@ -1412,7 +1427,12 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
       // recipient's own session in `Ie` (chunk-bt8cr7rw.js [4958,5180)) and a
       // foreign id is dropped as a mismatch.
       const hopChain = appendPeerHop(options.hopChain?.(), peerHopToken(inbox.address));
-      const frame: PeerFrame = { type: "user", message: { role: "user", content: text }, from: inbox.address,
+      // K8t/ldt, 6zdc3jq1 [12210,13125), 64ag51qf [4139,4230), UTF-16.
+      const sourceEnvelope = options.sourceEnvelope?.() === true;
+      const from = sourceEnvelope ? encodePeerAddress(inbox.address) : inbox.address;
+      const content = sourceEnvelope ? encodePeerEnvelope({ from, body: text, fromName: options.name,
+        fromSession: options.sessionId?.() ?? sessionId, hopChain, fromMode: ownMode }) : text;
+      const frame: PeerFrame = { type: "user", message: { role: "user", content }, from,
         msgV: 1, msg_id: msgId, from_mode: ownMode, priority: "next", ...(hopChain === undefined ? {} : { hop_chain: hopChain }) };
       boundedLine(frame);
       const reservation = pacer.reserve(target);

@@ -34,7 +34,8 @@ import { checkpointConversation, previewRewind, applyRewind, type RewindPreview 
 import { recoverCheckpoint } from './checkpoints.js';
 import { reloadConfig } from './reload.js';
 import { promptBlockMessage } from './hooks.js';
-import { createLocalPeerTransport, createLocalPeerTools, heldApprovalTimeoutMs, latestPeerHopChain, type LocalPeerTransport, type PeerTransportEvent } from './local-peer.js';
+import { createLocalPeerTransport, createLocalPeerTools, heldApprovalTimeoutMs, latestPeerHopChain, type AcceptedMessage, type LocalPeerTransport, type PeerTransportEvent } from './local-peer.js';
+import type { PeerEnvelopeMetadata } from './local-peer-envelope.js';
 import { validateElicitationResult, type McpClientRequests, type McpElicitationResult } from './mcp-client-requests.js';
 import { captureClipboardImage } from './clipboard.js';
 import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree, restoreWorktreeArchive } from './worktree-session.js';
@@ -533,7 +534,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // enter the transcript, so the panel's history is this list.
   const btwExchanges: SideQuestionExchange[] = [];
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
-    peer?: { from: string | null; hopChain?: string[] };
+    peer?: PeerEnvelopeMetadata;
     wakeupId?: string;
     scheduledId?: string;
     /** Source `isMeta`: an entry this host queued itself, not one a person may pull back and edit. */
@@ -908,9 +909,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     return mode === undefined ? null : { mode };
   };
   const peerExplicit = () => session.config.crossSessionInbound;
-  const queuePeerMessage = (message: { text: string; from?: string; hopChain?: string[] }) => {
+  const queuePeerMessage = (message: AcceptedMessage) => {
     // Qe/Fr, bt8cr7rw [5180,6744), sfn1dbxq [224858,225819), UTF-16.
-    queue.push({ prompt: message.text, source: 'event', peer: { from: message.from ?? null,
+    queue.push({ prompt: message.text, source: 'event', peer: { ...message.metadata,
       ...(message.hopChain === undefined ? {} : { hopChain: message.hopChain }) } });
   };
   const releasePeerHeld = (cause: string) => {
@@ -934,6 +935,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         entrypoint: options.residentWorker ? 'resident-worker' : 'interactive',
         ...(options.residentWorker ? { requireAuth: true, keepAlive: true } : {}),
         policy: peerExplicit, mode: peerMode,
+        sourceEnvelope: () => session.config.features?.peerSourceEnvelope === true,
+        sessionId: () => session.id,
         queuedPeerCount: () => queue.filter(item => item.peer !== undefined).length,
         hopChain: () => latestPeerHopChain(session.messages),
         // `Ade`: a held message for a mode cause expires after the settings
@@ -2113,7 +2116,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
               }
               return agent().run(prompt, signal, undefined, undefined, [], undefined,
                 item.peer === undefined ? { kind: 'generated', source: fire?.cronKind === 'loop' ? `loop-wakeup:${fire.uuid}` : 'interactive-event' }
-                  : { kind: 'peer', source: 'uds', ...(item.peer.hopChain === undefined ? {} : { hopChain: item.peer.hopChain }) });
+                  : { kind: 'peer', source: 'uds', ...item.peer });
             }, item.wakeupId);
             if (result.modelCalls === 0 && result.text) output.write(result.text);
             output.write('\n');

@@ -221,6 +221,8 @@ Hard requirements for work in this repository. Each rule exists because the same
 
 2026-10-15 W45 memoize包复查：S-1至S-7已对照，完整4648单位来源闭包、两段精确坐标与全部调用方已核验；三项缓存回归、实际CLI共享WeakMap和退出清理通过。Q-068至Q-071记录闭包近似、默认输出覆盖、类型/坐标错误及两项验证假阳性，修复已由独立复核重验；S-5增加可区分反例和产品范围/导出绑定，S-6增加显式输出及隔离重生成，S-7补来源事故。S-2既有契约保持，S-3渲染边界未变，S-4资源归属已验。相关161/162保留既有`/var`失败，最终身份`3f27d43a…`；见[工作包](ports/W45-chain-runner.md#memoize-dependency-completion-2026-10-15)。
 
+W362 (2026-10-27). S-1/S-7 complete8module101declarationclosureandactualcompiledbare-textredprecedeproductedits.32exactcopies/47completepairsretainsourceUnicode/codec/metadataalgorithms.S-2legacyabsent/false/raw/tool/UUIDcontractsremain;S-3bodydropsafterpreprocessor/receivechanges;S-4instanceownersandboundedcachesretaincleanup;S-5sourceCLIwaitsforcomplete/peer-heldlistingratherthantruncated200characterpreview;S-6alltypedmetadata/config/held/queue/coldreadersmoveinonepackage.3groups/63affected/136shared/checkbuild/source136legacy30resident10model18RPC/full3427passall1917record26b4327dunchanged.Finalprovenance-onlyc7b43c60/47pairs6e7a2c9dretainsall1914otherrecordsandexecutableAST;freshindependent26blockregen/all1917/direct6groupsboundaryexit0/resources0passes. Initialtailpipeexitunknownandignored-distverifiercorrectionremainrecorded. ExistingrulescoverUnicodecopy/previewwait/untracked-auditcoverage/generated-planincidents;no newruleorproductworkaround.
+
 ## S-1 先验证，再断言（verify before asserting）
 
 **规则**：任何来源范围、坐标、行为或期望值，必须先由直接探针（AST 解析、`node --import tsx` 直调、实际 CLI 运行）确认，然后才写进代码、测试或台账。禁止凭记忆、凭推断或凭「看起来应该」下结论。检查失败时先读取确切失败行、输入和完整相关帧，提出能区分假设的探针；不得连续凭猜测修改等待、正则或期望值。

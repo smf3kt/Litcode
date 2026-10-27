@@ -274,6 +274,28 @@
       "units": 1045,
       "bodySha256": "727052ce833aa49c89ee36627b801a96c5d2b81f8838536b79a749cb4cd1fbc1",
       "note": "Kkr artifact lead table"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        27150,
+        27200
+      ],
+      "units": 50,
+      "bodySha256": "a6446e25d9ee3b9b0991b8395efe890bfb3ce15db8dcbaaa143b6a82f209f77d",
+      "note": "L5e closing-tag neutralization"
+    },
+    {
+      "module": "chunk-ts42ykgs.js",
+      "sha256": "d8b5f9ef6550b5e71556d694a6f054baf30aaaedd82983b1c169c3b3523eed33",
+      "range": [
+        30598,
+        33610
+      ],
+      "units": 3012,
+      "bodySha256": "5b84a1519cf2af92b7afa7dab546c571a2c3a4ff1c4a16c5005059427bd5f3ff",
+      "note": "Htn Unicode neutralizer dependency closure"
     }
   ],
   "missing": []

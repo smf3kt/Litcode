@@ -2,7 +2,7 @@
   "imports": [
     "import { normalizeNfkc as $Z, normalizeNfkd as D0s } from './subagent-output-scrub-host.js';"
   ],
-  "exports": ["$0t", "EO", "J$e", "N5e", "Pdt", "RB", "X$e", "XQ", "f2n", "m2n", "wxe", "xdt", "RRs", "Kkr"],
+  "exports": ["$0t", "EO", "J$e", "N5e", "Pdt", "RB", "X$e", "XQ", "f2n", "m2n", "wxe", "xdt", "RRs", "Kkr", "L5e", "Htn"],
   "blocks": [
     { "file": "chunk-ts42ykgs.js", "range": [723, 24080], "note": "confusable latin letter map I used by RB" },
     { "file": "chunk-ts42ykgs.js", "range": [24502, 26432], "note": "invisible/combining/quote/punctuation classes and the tag delimiter table b" },
@@ -27,6 +27,8 @@
     { "file": "chunk-ts42ykgs.js", "range": [34257, 34370], "note": "$u bracket-fill lookahead" },
     { "file": "chunk-ts42ykgs.js", "range": [34370, 34565], "note": "lead filler mu and the lead token symbols" },
     { "file": "chunk-ts42ykgs.js", "range": [34565, 35638], "note": "RRs bracketed lead pattern builder" },
-    { "file": "chunk-phm7wwmz.js", "range": [31823, 32868], "note": "Kkr artifact lead table" }
+    { "file": "chunk-phm7wwmz.js", "range": [31823, 32868], "note": "Kkr artifact lead table" },
+    { "file": "chunk-ts42ykgs.js", "range": [27150, 27200], "note": "L5e closing-tag neutralization" },
+    { "file": "chunk-ts42ykgs.js", "range": [30598, 33610], "note": "Htn Unicode neutralizer dependency closure" }
   ]
 }
