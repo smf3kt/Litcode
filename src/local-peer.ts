@@ -22,6 +22,9 @@ import { classifierMessage } from "./message-origin.js";
 import { encodePeerAddress, encodePeerEnvelope, peerEnvelopeMetadata, peerPluginName, preparePeerInput,
   type PeerEnvelopeMetadata } from "./local-peer-envelope.js";
 import { createLocalPeerFileTool, peerFileToolSchema, injectPeerFilePrefix, materializeLocalPeerFiles, type PeerFile, type PeerFileHost, type PeerFileToolOptions } from './local-peer-files.js';
+import { LocalPeerIdle, type PeerIdleHost, type PeerIdleSubscription } from './local-peer-idle.js';
+import { createPeerIdleIdentity } from './peer-idle-identity-source.js';
+import { runPeerIdentityCommand } from './peer-idle-identity.js';
 import { appendPeerHop, createPeerDropReporter, createPeerIngressGuard, createPeerPacer, peerHopChainSchema,
   peerHopToken, peerDropReasonSchema, PEER_LIMITS, type PeerDropReason } from "./local-peer-guard.js";
 
@@ -266,7 +269,7 @@ export function addressPath(address: string): string | undefined {
 }
 
 // p9n/Qbo/D, bt8cr7rw [7021,7180), 64ag51qf [7981,8653), UTF-16.
-function receiptTarget(address: string, ownSocket: string, verifiedPeerPid: number | undefined): string | undefined {
+export function receiptTarget(address: string, ownSocket: string, verifiedPeerPid: number | undefined): string | undefined {
   if (!/^uds:[A-Za-z0-9%:_/.\\\\-]{1,200}$/.test(address)) return undefined;
   let target = address.slice(4);
   try { target = decodeURIComponent(target); } catch {}
@@ -969,6 +972,7 @@ export type PeerInboxOptions = {
   receive?: (frame: { from?: string; text: string; msgId?: string }) => { consume?: true; content?: string } | Promise<{ consume?: true; content?: string }>;
   sourceEnvelope?: () => boolean;
   fileHost?: () => PeerFileHost | undefined;
+  idleHost?: PeerIdleHost;
   onAccepted: (message: AcceptedMessage) => void;
   onHeld?: (message: HeldMessage) => void;
   onDropped?: (message: HeldMessage, reason: "refused" | "expired" | "dropped") => void;
@@ -982,6 +986,7 @@ export type PeerInboxOptions = {
 export type PeerInbox = {
   readonly address: string;
   readonly tokens: AuthTokens;
+  readonly idle?: LocalPeerIdle;
   held: HeldQueue;
   /** Current peer count and held list. */
   resolveHeld(msgId: string | undefined, decision: "approve" | "deny" | "expire"): Promise<HeldResolution>;
@@ -1008,6 +1013,8 @@ type InboxState = {
   recordFile?: string;
   deliver?: (message: AcceptedMessage, held: boolean) => boolean;
   drops?: ReturnType<typeof createPeerDropReporter>;
+  idle?: LocalPeerIdle;
+  idleIdentity?: ReturnType<typeof createPeerIdleIdentity>;
 };
 
 /** mn/nn/Je, bt8cr7rw [28327,34716)/[12376,14664)/[11877,12278), UTF-16. */
@@ -1033,6 +1040,12 @@ export async function startPeerInbox(options: PeerInboxOptions): Promise<PeerInb
     server.listen(socketPath, () => { server.removeListener("error", reject); resolve(); });
   });
   state.server = server;
+  if (options.idleHost !== undefined) {
+    state.idleIdentity = createPeerIdleIdentity({ readStartToken: processStart, run: runPeerIdentityCommand });
+    state.idle = new LocalPeerIdle({ host: options.idleHost, userDir: options.userDir,
+      address: peerAddress(socketPath), heldCount: () => state.held?.size() ?? 0,
+      policy: () => options.policy?.(), mode: () => state.mode?.() ?? null, logger });
+  }
   // _e, 1w9hc2bp [1906,7473), UTF-16: the resident REPL needs an owned live input handle.
   if (!options.keepAlive) server.unref();
   await fsp.chmod(socketPath, SOCKET_MODE);
@@ -1048,7 +1061,7 @@ export async function startPeerInbox(options: PeerInboxOptions): Promise<PeerInb
   }
   try {
     state.recordFile = await publishRecord(options.userDir, { ...options.record, sock: socketPath, status: "idle",
-      peerFeatures: ["peer_status_receipts", "peer_held_queue"] });
+      peerFeatures: ["peer_status_receipts", "peer_held_queue", ...(options.idleHost?.enabled() ? ['notify_idle'] : [])] });
   } catch (error) {
     await stopInbox(state, options, { settleHeld: false });
     throw new Error(`Bound ${socketPath} but could not publish its session record (${String(error)}); the inbox was closed.`);
@@ -1091,7 +1104,7 @@ export async function startPeerInbox(options: PeerInboxOptions): Promise<PeerInb
   state.held = held;
   options.onNotice?.({ kind: "listening", message: "listening", address: peerAddress(socketPath) });
   const inbox: PeerInbox = {
-    address: peerAddress(socketPath), tokens, held,
+    address: peerAddress(socketPath), tokens, held, idle: state.idle,
     async resolveHeld(msgId, decision) {
       const message = held.list().find(item => item.origin.msgId === msgId);
       if (!message) return "gone";
@@ -1147,7 +1160,11 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
     const typed = frame as { type?: unknown; session_id?: unknown };
     if (typed.type !== "user" && typed.type !== "control") return;
     if (typeof typed.session_id === "string" && state.sessionId !== undefined && typed.session_id !== state.sessionId) return;
-    state.chain = state.chain.then(() => dispatch(frame as PeerFrame, { peer, peerStart, authed, first }))
+    const run = () => dispatch(frame as PeerFrame, { peer, peerStart, authed, first });
+    // Je, bt8cr7rw [11877,12278), UTF-16.
+    if (typed.type === 'control' && (!('action' in frame) || frame.action !== 'notify_when_idle'))
+      void run().catch(error => logger(`[peer-inbox] control failed: ${String(error)}`, { level: 'warn' }));
+    else state.chain = state.chain.then(run)
       .catch(error => logger(`[peer-inbox] failed to process a frame: ${String(error)}`, { level: "warn" }));
   };
   socket.on("data", chunk => {
@@ -1176,9 +1193,41 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
   });
   socket.on("error", error => logger(`[peer-inbox] connection error: ${error.message}`, { level: "warn" }));
 
+  // ce/ye/o1r, bt8cr7rw [35864,35997)/[3844,4195), 0ydceggj [5483,5584), UTF-16.
+  async function idlePrincipal(context: { peer?: PeerInfo; authed?: 'peer' | 'child' }): Promise<boolean> {
+    const mode = state.mode?.();
+    return await state.idleIdentity?.({ verifiedPeerPid: context.peer?.pid, childTokenPresented: context.authed === 'child',
+      needsVerdict: options.policy?.() === undefined && (mode?.mode === 'bypass' || mode?.mode === 'plan' && mode.bypassAvailable === true),
+      platform: process.platform === 'darwin' ? 'macos' : process.platform }) ?? false;
+  }
+
   // be, bt8cr7rw [7180,11877), UTF-16: receipt wire status becomes the local outcome.
   async function dispatch(frame: PeerFrame, context: { peer?: PeerInfo; peerStart?: string; authed?: "peer" | "child"; first: boolean }): Promise<void> {
     if (frame.type === "control") {
+      const idle = state.idle;
+      // be/Ce/ce, bt8cr7rw [7180,11877)/[35826,35997), UTF-16.
+      if (idle !== undefined && options.idleHost?.enabled()) {
+        if (frame.action === 'notify_when_idle') {
+          const parsed = idle.source.subscriptionSchema.safeParse(frame);
+          if (!parsed.success || state.socketPath === undefined || state.closed) return;
+          const target = receiptTarget(parsed.data.from, state.socketPath, context.peer?.pid);
+          if (target === undefined || canonicalSocket(target) === canonicalSocket(state.socketPath)) return;
+          const start = context.peer === undefined ? undefined : await processStart(context.peer.pid);
+          const selfSent = await idlePrincipal(context);
+          const result = idle.source.recordSubscriber(parsed.data.from, target, parsed.data.msg_id, context.peer?.pid,
+            start, context.authed === 'peer', peerModeValue(parsed.data.from_mode), selfSent);
+          if (result === 'full') idle.source.unavailable(target, parsed.data.msg_id, context.peer?.pid, context.authed === 'peer', start);
+          return;
+        }
+        if (frame.action === 'peer_idle_notice') {
+          const parsed = idle.source.noticeSchema.safeParse(frame);
+          if (!parsed.success || !idle.source.has(parsed.data.orig_msg_id)) return;
+          const selfSent = await idlePrincipal(context);
+          idle.source.receive(parsed.data.orig_msg_id, parsed.data.state, parsed.data.finished_at, parsed.data.detail,
+            peerModeValue(parsed.data.from_mode), selfSent);
+          return;
+        }
+      }
       const status = frame.status;
       if (frame.action === "peer_message_status" && (status === "held" || status === "denied" || status === "expired"
         || status === "delivered" || status === "refused" || status === "dropped")) {
@@ -1270,15 +1319,24 @@ async function stopInbox(state: InboxState, options: PeerInboxOptions, flags: { 
     for (const client of state.clients) client.destroy();
     state.clients.clear();
     if (state.server) await new Promise<void>(resolve => state.server!.close(() => resolve()));
+    if (flags.settleHeld) state.idle?.source.snapshotHeld();
     const heldSettlement = flags.settleHeld ? state.held?.expireAll() : undefined;
     await Promise.race([state.chain, new Promise(resolve => setTimeout(resolve, PROCESS_SETTLE_MS).unref?.())]);
-    await heldSettlement;
+    // j/Ze, bt8cr7rw [15004,15363)/[12282,12289), UTF-16.
+    const idleSettlement = flags.settleHeld && state.idle !== undefined
+      ? Promise.race([state.idle.source.flush('exited'), new Promise(resolve => setTimeout(resolve, PROCESS_SETTLE_MS).unref?.())]) : undefined;
+    await heldSettlement; await idleSettlement;
     await state.drops?.flushPendingReceipts(); state.drops?.dispose();
+    state.idle?.dispose();
     if (state.socketPath !== undefined) await fsp.unlink(state.socketPath).catch(() => {});
     if (state.keyFile !== undefined) await removeKey(options.userDir, state.keyFile);
     if (state.recordFile !== undefined) await removeRecordFiles([state.recordFile]);
   })();
   return state.closing;
+}
+
+function peerModeValue(value: unknown): PeerMode | undefined {
+  return value === 'bypass' || value === 'prompting' ? value : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -1308,6 +1366,7 @@ export type LocalPeerTransportOptions = {
   receive?: PeerInboxOptions["receive"];
   sourceEnvelope?: () => boolean;
   fileHost?: () => PeerFileHost | undefined;
+  idleHost?: PeerIdleHost;
   sessionId?: () => string;
   queuedPeerCount?: () => number;
   hopChain?: () => readonly string[] | undefined;
@@ -1317,6 +1376,9 @@ export type LocalPeerTransportOptions = {
 
 export type LocalPeerTransport = {
   readonly address: string;
+  idleEnabled(): boolean;
+  subscribeIdle(address: string, signal: AbortSignal): Promise<PeerIdleSubscription>;
+  setIdleStatus(status: 'idle' | 'busy' | 'waiting' | 'shell'): void;
   list(): Promise<PeerView[]>;
   send(address: string, text: string, options?: { signal?: AbortSignal; expectPeerPid?: number; expectPeerProcStart?: string; fileAttachments?: PeerFile[] }): Promise<{ msgId: string }>;
   held(): HeldMessage[];
@@ -1387,6 +1449,7 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
     ...(options.receive === undefined ? {} : { receive: options.receive }),
     ...(options.sourceEnvelope === undefined ? {} : { sourceEnvelope: options.sourceEnvelope }),
     ...(options.fileHost === undefined ? {} : { fileHost: options.fileHost }),
+    ...(options.idleHost === undefined ? {} : { idleHost: options.idleHost }),
     ...(options.queuedPeerCount === undefined ? {} : { queuedPeerCount: options.queuedPeerCount }),
     onAccepted: message => emit({ kind: "message", message }),
     onHeld: message => emit({ kind: "held", message, count: inbox.held.size() }),
@@ -1421,6 +1484,9 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
   });
   const transport: LocalPeerTransport = {
     address: inbox.address,
+    idleEnabled: () => options.idleHost?.enabled() === true,
+    subscribeIdle: (address, signal) => inbox.idle?.subscribe(address, signal) ?? Promise.resolve({ success: false, reason: 'disabled' }),
+    setIdleStatus(status) { inbox.idle?.source.status(status === 'idle' || status === 'shell', status === 'busy'); },
     async list() {
       const records = await discoverPeers(options.userDir, { selfSocket: inbox.address.slice(4), sweep: true });
       return records.map(peerView);
@@ -1504,7 +1570,7 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
       sessionId = next;
       await publishRecord(options.userDir, { cwd: options.workspace, startedAt: Date.now(), kind: options.kind ?? "interactive",
         name: options.name, entrypoint: options.entrypoint, sock: inbox.address.slice(4), status: "idle", ...(next === undefined ? {} : { sessionId: next }),
-        peerFeatures: ["peer_status_receipts", "peer_held_queue"] });
+        peerFeatures: ["peer_status_receipts", "peer_held_queue", ...(options.idleHost?.enabled() ? ['notify_idle'] : [])] });
       inbox.setSessionId(next);
     },
     setMode(getter) { inbox.setMode(getter); },
@@ -1532,9 +1598,15 @@ const peerToolSchemas = {
       required: ['msg_id'], additionalProperties: false } },
 } satisfies Record<string, ToolDefinition['schema']>;
 
+const peerIdleToolSchema: ToolDefinition['schema'] = {
+  name: 'subscribe_peer_idle',
+  description: 'Subscribe once to another same-host session by uds: address. A status notice arrives when it is idle or exits. Subscription alone creates no turn in the target. The subscription lasts up to 12 hours.',
+  input_schema: { type: 'object', properties: { address: { type: 'string', minLength: 1 } }, required: ['address'], additionalProperties: false },
+};
+
 // Host schema adapter for K8t's sender, 6zdc3jq1 [12210,13125), UTF-16; the schema table is local.
-export function isLocalPeerToolSchema(schema: ToolDefinition['schema'], includeFiles = false): boolean {
-  const schemas = [...Object.values(peerToolSchemas), ...(includeFiles ? [peerFileToolSchema] : [])];
+export function isLocalPeerToolSchema(schema: ToolDefinition['schema'], includeFiles = false, includeIdle = false): boolean {
+  const schemas = [...Object.values(peerToolSchemas), ...(includeFiles ? [peerFileToolSchema] : []), ...(includeIdle ? [peerIdleToolSchema] : [])];
   return schemas.some(peer => JSON.stringify(schema) === JSON.stringify({ ...peer, eager_input_streaming: true }));
 }
 
@@ -1567,6 +1639,7 @@ export function createLocalPeerTools(transport: LocalPeerTransport, options: { s
       const status = waitMs > 0 ? await transport.waitStatus(msgId, waitMs, context.signal) : transport.status(msgId);
       return status === undefined ? { msg_id: msgId, status: "unknown" } : { msg_id: msgId, status: status.status, ...(status.reason === undefined ? {} : { reason: status.reason }) };
     }),
+    ...(transport.idleEnabled() ? [wrap(peerIdleToolSchema, false, async (input, context) => transport.subscribeIdle(String(input.address ?? ''), context.signal))] : []),
     ...(options.files?.enabled() ? [createLocalPeerFileTool(transport, options.files)] : []),
   ];
 }

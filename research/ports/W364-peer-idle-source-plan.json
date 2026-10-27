@@ -1,0 +1,1224 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "peer-idle-source-blocks.json",
+  "outputs": [
+    {
+      "path": "peer-idle-detail-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact source declarations. See research/ports/W364-peer-idle.md.\n",
+        {
+          "module": "chunk-ax7r0qj7.js",
+          "moduleSha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+          "symbol": "Lt",
+          "range": [
+            3561,
+            3652
+          ],
+          "bodySha256": "f2d166a2dc29276ed4cfdc6420711b6f00ff1b565d208f3693098bcfc55c7714"
+        },
+        "",
+        {
+          "module": "chunk-3qabb19b.js",
+          "moduleSha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
+          "symbol": "F",
+          "range": [
+            673,
+            732
+          ],
+          "bodySha256": "8dfba6c6fce4cbf7879b76db23ff835a055481d92e7df90b4d119514b1d6a950"
+        },
+        "",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "vf",
+          "range": [
+            2538,
+            2544
+          ],
+          "bodySha256": "8eb1b7b2de958bc09a7388b368f624ac36d58371386faf51ac4ac8e5773c4e35",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "Ud",
+          "range": [
+            2593,
+            2719
+          ],
+          "bodySha256": "e15b1d1d34c5105d501de35323432e34bee8e1695741caa775b438f198b6de90"
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "b",
+          "range": [
+            2719,
+            2756
+          ],
+          "bodySha256": "01a9ab09ee497693a017d16f38f9284d6a842774cb3df9caa7a5d0441e805906"
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "S",
+          "range": [
+            2756,
+            3191
+          ],
+          "bodySha256": "460d77dc753113ce3fa0e8859b0f08df8d7bab707066414b8202c6082a7b90ac"
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "G",
+          "range": [
+            4696,
+            4760
+          ],
+          "bodySha256": "b3b548a98bae32ba8749e3aab84ed7129c4560497917b3f1b19f84d4c81d003d",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "W",
+          "range": [
+            4761,
+            4830
+          ],
+          "bodySha256": "9045f2b75a30c002bfac49ac9c260b6b5ac1d3297e5bdb5b8a9b04c1bb46259d",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "K",
+          "range": [
+            4831,
+            4896
+          ],
+          "bodySha256": "0a3104c617cd99e59a19135ad06a1b994caf19cf550124b4078a125a4ef2311a",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "H",
+          "range": [
+            4897,
+            4958
+          ],
+          "bodySha256": "cb55d917fa1cf0144432a0a913f82f3ef9b417bc6fdcb10e92bdc2e4dcb52502",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "z",
+          "range": [
+            4959,
+            5211
+          ],
+          "bodySha256": "c8069bdd47ce2a0a28f32a3fc1c9f09466234692951a34a0d27260d3b02d81ac"
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "Oxn",
+          "range": [
+            5681,
+            9996
+          ],
+          "bodySha256": "67cdc70358f6612b2872287a97960ec75681b9a4962feef6b23d1baa4e045ca1"
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "_",
+          "range": [
+            9996,
+            10586
+          ],
+          "bodySha256": "0f029094e164f50e128970c3272036172dc1c77ccc0d1be4d39c99223d83439f"
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "V",
+          "range": [
+            10586,
+            10789
+          ],
+          "bodySha256": "3a8e210d818641e204c0447c0bec83c19a9b18a486f85ead9b1bd518be78037f"
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "C",
+          "range": [
+            10789,
+            11128
+          ],
+          "bodySha256": "4d1076fd416a6629391b787fa246a244fbeb933c212a9110f67c8d76375c33b7"
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "I",
+          "range": [
+            11128,
+            11340
+          ],
+          "bodySha256": "abb57c3baa819d333008eeb5cf8251417e6763154e052859fc646d7bb0290403"
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "E",
+          "range": [
+            11499,
+            11555
+          ],
+          "bodySha256": "bf87ad7925d39513098d0310ce7007cad48939222adb2d3405c20f39d80501fb",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "J",
+          "range": [
+            11556,
+            12216
+          ],
+          "bodySha256": "285b38ba93ca102a169e5b1f5637d943a78860c7f1dc9ef52820de8247f135c7",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "X",
+          "range": [
+            12217,
+            12654
+          ],
+          "bodySha256": "46bd721ba2725715d2b0741e30143d0191f638b5f0825fb86d3e02c371b1c11a",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "Q",
+          "range": [
+            12655,
+            13036
+          ],
+          "bodySha256": "182bb2496a5d19b84ea9d496c6506fb4c0f9c5fb306344f9ff85e0249b0a99ab",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "Z",
+          "range": [
+            13037,
+            13183
+          ],
+          "bodySha256": "d6efea0929ddd2e7310d43aa65ee4745b6caaadfa1c01063d2444d14cc0115d9",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "ee",
+          "range": [
+            13184,
+            13288
+          ],
+          "bodySha256": "20c4fc80f92e77e3f0cf07ee32caa6fda30b9b9442246bc5ebeda7214790fbdf",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "te",
+          "range": [
+            13289,
+            13360
+          ],
+          "bodySha256": "c53c4b59d23c92ee003f406132087e1fe1390fb1552c5593a6127193d5c42161",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "ne",
+          "range": [
+            13361,
+            13482
+          ],
+          "bodySha256": "8c13741250e6e5a9dce48c881f7b30241d80b34594d04163599bfc64070e9265",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "ie",
+          "range": [
+            13483,
+            13541
+          ],
+          "bodySha256": "3ac9ab127f0e62a5cbad4ebcf77e035af03f3a02512f861b6f5467b9539435f8",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "se",
+          "range": [
+            13542,
+            13572
+          ],
+          "bodySha256": "b3a8ad007d7cf340018ff8c49ff3289d86687a937eb6949122a673892ffcecb7",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "re",
+          "range": [
+            13573,
+            13702
+          ],
+          "bodySha256": "b96d3558a202b2a6c30c7abfcdd56d06f01f7cc1f5f5f92804c892cc7eecc8bf",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "oe",
+          "range": [
+            13703,
+            13835
+          ],
+          "bodySha256": "f253835ee0eef3668e826ff0d86951ee69c3727232f07228de10533916e1646a",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "P",
+          "range": [
+            13836,
+            13989
+          ],
+          "bodySha256": "83d980203e75dcaf4d4d5c76c3dfaf041ce8f632415fe8c7ed77e4f57e6510f6",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "v",
+          "range": [
+            13990,
+            14143
+          ],
+          "bodySha256": "02626264ee5d8ac58cd4faea0964892c0b5f7a7f0cf8a494f0c50385706511ca",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "ae",
+          "range": [
+            14144,
+            14312
+          ],
+          "bodySha256": "e14a970e9be425fdbd230d0f0266b61cd11c19ff25b441d1e96a57e3b8c15098",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "le",
+          "range": [
+            14313,
+            14334
+          ],
+          "bodySha256": "4f4b0885adb9c4145f0c5c083c29a07ac67516cfc40a846e83c602583c4d26ca",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "O",
+          "range": [
+            14335,
+            14416
+          ],
+          "bodySha256": "214af70a818b7b5b522ac5e8b3c578e12a4c1d22553bdb554bc93d9a9dfe7ea6",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "ce",
+          "range": [
+            14417,
+            14471
+          ],
+          "bodySha256": "d582afa5af86e602ef7812c20d21632e5f4dae5717d295c35db82cfb45d58b94",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "de",
+          "range": [
+            14472,
+            14540
+          ],
+          "bodySha256": "3cca79982085a7335beb8d0c12b1a31633fe94ed15cab08a0654bd56d06953d0",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "ue",
+          "range": [
+            14541,
+            14570
+          ],
+          "bodySha256": "577c210850e0a05cef4232bccacd404fbcfd92b58d65a5706f5a58a2f217da0f",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "pe",
+          "range": [
+            14571,
+            14621
+          ],
+          "bodySha256": "ee72cf19bec527e8a70e04e43fa00529b8d9410f16369aba6a4cc5ba7653e332",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "ge",
+          "range": [
+            14622,
+            14677
+          ],
+          "bodySha256": "ef5103a2b39bafd8e1a232a6da434b29bfc8e612d7716891c8e386d826bc4984",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "he",
+          "range": [
+            14678,
+            14746
+          ],
+          "bodySha256": "1a43d98f4a8c7c8a34e2948686f2fd2f1047f6c1f5c55e7a32c691df45076da8",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "fe",
+          "range": [
+            14747,
+            14819
+          ],
+          "bodySha256": "bd6ee1bc385c8e4716d2639a308f15d31a2ae12e57a1d0c40c93a12812e0f991",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "be",
+          "range": [
+            14820,
+            14918
+          ],
+          "bodySha256": "49376f4da8edefa4479b1d8d7ba3f346f978a5dd0dc1147798d02890336faab0",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "ke",
+          "range": [
+            14919,
+            15043
+          ],
+          "bodySha256": "0d72a0fe5f976e482172eb2a74dd43a45e16fba05bb7dbe742497c53222104d1",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-c7jc8962.js",
+          "moduleSha256": "150f38d41ac119caca8dd7aaa9021076c813509f0fd08947ca179552ea0d316f",
+          "symbol": "Re",
+          "range": [
+            15044,
+            15238
+          ],
+          "bodySha256": "bfc191641f866756775d0bde44b226f2574143fc242d24673539cac197a41b93",
+          "declarator": true
+        },
+        "\nexport { Oxn as sourcePeerStatusDetail };\n"
+      ]
+    },
+    {
+      "path": "peer-idle-state-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact state bodies. Each factory owns one transport. See research/ports/W364-peer-idle.md.\nimport { z as schema } from 'zod';\nimport { ne } from './plugin-chain-source.js';\nimport { ct } from './plugin-chain-text-clamp-source.js';\nimport { sourcePeerStatusDetail as Oxn } from './peer-idle-detail-source.js';\nimport type { PeerIdleSourceHost, PeerIdleSource } from './peer-idle-host.js';\n",
+        {
+          "module": "chunk-z2p6x0sn.js",
+          "moduleSha256": "a34d588e5cbaf77568197fce80a063ca7fdaff1d9cc3f7a4f5bf8a68875952b3",
+          "symbol": "s",
+          "range": [
+            701,
+            768
+          ],
+          "bodySha256": "95269232f0e220b068efdcc7e62eb0cb010acd6397135a2dbb97f338c35bb07b",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-z2p6x0sn.js",
+          "moduleSha256": "a34d588e5cbaf77568197fce80a063ca7fdaff1d9cc3f7a4f5bf8a68875952b3",
+          "symbol": "Pst",
+          "range": [
+            769,
+            823
+          ],
+          "bodySha256": "4eaa026afc2d22a4efef607e1ad0737386bada9d736eaa7df198a0137ab2c543"
+        },
+        "",
+        {
+          "module": "chunk-akfkn8xh.js",
+          "moduleSha256": "dcae213f12d26a84eface39176fff4ed4a0cb63f83e6a3f32336dd6ca0ad36d0",
+          "symbol": "c",
+          "range": [
+            1022,
+            1040
+          ],
+          "bodySha256": "0084d0a81cf4ba41ce8dedf3357eb51abb81874d93f8092c4cf98c60072d76a8",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-akfkn8xh.js",
+          "moduleSha256": "dcae213f12d26a84eface39176fff4ed4a0cb63f83e6a3f32336dd6ca0ad36d0",
+          "symbol": "A0t",
+          "range": [
+            1041,
+            1116
+          ],
+          "bodySha256": "cdb84f17b01edc79a8787d5686609d2a6a146ca0197f50021b7b1104c3e18c64"
+        },
+        "",
+        {
+          "module": "chunk-3qabb19b.js",
+          "moduleSha256": "ceb8c8490f39408310286cc14cacb1998192c8c34a80724882f988431f1bf5f2",
+          "symbol": "F",
+          "range": [
+            673,
+            732
+          ],
+          "bodySha256": "8dfba6c6fce4cbf7879b76db23ff835a055481d92e7df90b4d119514b1d6a950"
+        },
+        "export function createSourcePeerIdle(host: PeerIdleSourceHost): PeerIdleSource {\nconst K = host.conversation, Xe = host.conversation, XA = host.canonicalTarget, cOe = host.policy, r1r = host.admission,\n  Nlr = host.queueLength, Eht = host.heldCount, xi = host.enabled, R9 = host.refusalClass, b_e = host.errorKind,\n  t = host.log, c = host.reportError, kg = host.safeText, u6 = host.safeError, bA = host.enqueue;\nconst g = () => {}, m = () => {}, f = () => {};\nconst p = build => { let value; return () => value ??= build(); }, u = shape => schema.object(shape),\n  C = value => schema.literal(value), o = () => schema.string(), oe = () => schema.unknown();\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "T,ght,X,L,z,j,D,zUr,VUr",
+          "range": [
+            1447,
+            1759
+          ],
+          "bodySha256": "7df09896b5ca08abcf79e4edf5b82ac183ec62942fa9e3b9ec337cd924dd9587"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "U",
+          "range": [
+            1759,
+            2983
+          ],
+          "bodySha256": "af93c35140a2ff27ee40c7f58220fa0b560664a112a21fa61e0ba98474b15013"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "d,G,Y,Q",
+          "range": [
+            2983,
+            3007
+          ],
+          "bodySha256": "4f14829a07f8a572ade4956fad26bdca727124e7c6d4915644d59f36223d4b4d"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "qUr",
+          "range": [
+            3007,
+            4355
+          ],
+          "bodySha256": "324c3f545dc46504cfc804da8ed65dd23cd418bd3f30eb6cabe23fc23320948b"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "f8n",
+          "range": [
+            4355,
+            4724
+          ],
+          "bodySha256": "5d68b699a0fa50ed0ff6701cca2048434d1bedefd1719710eec7b7e08c308399"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "P",
+          "range": [
+            4724,
+            4809
+          ],
+          "bodySha256": "e3658946af72ab3261788d66d326e0b76bb29f47f0a7c860761beb836b1699bd"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "Z",
+          "range": [
+            4809,
+            5064
+          ],
+          "bodySha256": "be4b2a1907efd032a9501a4b8979af21fcac7020b8dbb0af7080968239267d70"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "m8n",
+          "range": [
+            5064,
+            5620
+          ],
+          "bodySha256": "bd552d429059b768cc8ca783bc5af44c5f954f437a07c896dde3ed4ca93bf49b"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "J",
+          "range": [
+            5620,
+            7309
+          ],
+          "bodySha256": "c5f4fc1e4f907b4caf0cdbd130f2d1089c38ad05aa170c24e295296a8e78ca66"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "N",
+          "range": [
+            7309,
+            7380
+          ],
+          "bodySha256": "2d0f25a29644a769009bb72f12f8e0900d231030eb3bc2654003f9607d65b525"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "M",
+          "range": [
+            7380,
+            7579
+          ],
+          "bodySha256": "66bfecdc4e932c7995cab2d4c9b1078147965eb2cb6e933ab1f091a87b37b1aa"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "R",
+          "range": [
+            7579,
+            7730
+          ],
+          "bodySha256": "19c18f2aba75b3b00f27808ad2e2896523654429fa06076323cd9a4f2bc3be75"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "ee",
+          "range": [
+            7730,
+            8004
+          ],
+          "bodySha256": "4ba5db7b68e3fb151c8442d961f8195adba79f5b863ce850a72e86703a40b731"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "Xfn",
+          "range": [
+            8004,
+            8053
+          ],
+          "bodySha256": "a49f3024229dae7e522308c8ce8696b1953ce8139157b8788ecd58ceaf7937f4"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "O",
+          "range": [
+            8053,
+            8311
+          ],
+          "bodySha256": "cb447514fd09a89dc030c9366ba9bff78be16fa35fd293ca16bf0411a434dbce"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "KUr",
+          "range": [
+            8311,
+            9011
+          ],
+          "bodySha256": "9de65ee28d582a3000a1284d313d60bcb793131234700dd6217140d3e17e7377"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "ie",
+          "range": [
+            9011,
+            9321
+          ],
+          "bodySha256": "fc3c0b83621573d0ea4e13638076bdcd79113ecacdb340a99555f80c24e7be37"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "te",
+          "range": [
+            9321,
+            9498
+          ],
+          "bodySha256": "91fe2b028306adf6e4f2fe3cec7a4e63eba82617aa84b45a7bca23cd7945deca"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "YUt",
+          "range": [
+            9498,
+            9579
+          ],
+          "bodySha256": "32877dcdc5a628d0f25885190f34687cd7ab4616524ca1a9dca53e5c32d38ffb"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "Jfn",
+          "range": [
+            9579,
+            9725
+          ],
+          "bodySha256": "0feb422d32507f409998447d909a445188c36a728344b0371145bf1c13498568"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "YUr",
+          "range": [
+            9725,
+            10631
+          ],
+          "bodySha256": "23763edac52a1ab08f9ad2e155f63902f87e2b5a5f61853c185c31900fb07917"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "re",
+          "range": [
+            10631,
+            10818
+          ],
+          "bodySha256": "591242822ed5307ac7cf27146e1247190e65b54a25e7b8d827b3c601ee8db5e9"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "E",
+          "range": [
+            10818,
+            11268
+          ],
+          "bodySha256": "76ca44b953970632435aaad1a4aa03deae8dcf9a6bf03b936691b2c82d6c3bdd"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "g8n",
+          "range": [
+            11268,
+            11691
+          ],
+          "bodySha256": "52d6406ab3b33f3ccc9d668c1a5088ad9a75e9d8623b921ad9d5f7668cf36124"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "h8n",
+          "range": [
+            11691,
+            11727
+          ],
+          "bodySha256": "aafb8fce3cdab1a0748a4d6b15a9b9af2711a2a7ae9707481218d632d85b953a"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "y8n",
+          "range": [
+            11727,
+            11782
+          ],
+          "bodySha256": "954ae5113a440c1ea7a760e264ab901050048736f915d94dc8a13356ef143c8d"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "_8n",
+          "range": [
+            11782,
+            12014
+          ],
+          "bodySha256": "5d26f9e96c562af736535d799a1869a77beb8472b76d004e480e1775a6730105"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "q",
+          "range": [
+            12014,
+            12214
+          ],
+          "bodySha256": "3d1928cd30ba2cb4c1e4de1de2c0611941228085118dda632d9976d6baa5dd26"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "S8n",
+          "range": [
+            12214,
+            12255
+          ],
+          "bodySha256": "742bbcacece898ee0269dcceb7c2fcd01807d181c1712da2d64421e4c513e67a"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "XUr",
+          "range": [
+            12255,
+            12602
+          ],
+          "bodySha256": "1f6b88f3688af96f0098f17c519240405f6ad64463a2b6c75df5040cbc5b7b73"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "H",
+          "range": [
+            12602,
+            12761
+          ],
+          "bodySha256": "5296eb4d413053d92f0a6385e0ebe8b4f4a812df943bfac5ab0d01067af9fbf8"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "A",
+          "range": [
+            12761,
+            12894
+          ],
+          "bodySha256": "3c808f42374f06273cc57a2bb144c7e610cccdcb3091c29fbe36014ee8a7e467"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "JUr",
+          "range": [
+            12894,
+            13411
+          ],
+          "bodySha256": "77037b952f541e1ea1f2d611d06ab6d6d43f6ebaee51bd5cf7edd5d68d14736a"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "se",
+          "range": [
+            13411,
+            14809
+          ],
+          "bodySha256": "a50edd7c6e3f43342e84db08f37e460d48d26970afb7c90d64a4eb5625cdff09"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "QUr",
+          "range": [
+            14809,
+            14849
+          ],
+          "bodySha256": "8c39bca70de61e5116e43333a2d1a718faa7afeb11977dca797db46d5d45a39d"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "FBs",
+          "range": [
+            14849,
+            14919
+          ],
+          "bodySha256": "1efcb5ef533edd9384e6793b5c03d2df521aeeb465f64786baa7013f45db89f5"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "B",
+          "range": [
+            14919,
+            15229
+          ],
+          "bodySha256": "4d3c756ccfe580cedbc84ed57a3ababbc5ae3316ba3bb7307ea4dcebb20b7fd5"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "Qfn",
+          "range": [
+            15229,
+            15918
+          ],
+          "bodySha256": "44b0028d709df00e6db114187c8047a991d4275d532461ea223f6c6d185680d7"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "de",
+          "range": [
+            15918,
+            15990
+          ],
+          "bodySha256": "8a2242aa8346147ec72d49af8efc0a0af1e15d862b959340d9ddf4c101a9031a"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "W",
+          "range": [
+            15990,
+            16027
+          ],
+          "bodySha256": "2efdd1e06a215fb78ddcfe93fc0624f48fb9d4ca8c09ab1c1334a93bbf8b9920"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "ZUr",
+          "range": [
+            16027,
+            16192
+          ],
+          "bodySha256": "a8a3a83b424942b62332cf8407d5a783ca9ff58d7890ba770d1d648e27e7d6d8"
+        },
+        "\n",
+        {
+          "module": "chunk-01dkdjqy.js",
+          "moduleSha256": "768551cbab0b02f080f616b233478d2957f4ca0fea1a11bab33af7f96880147e",
+          "symbol": "V",
+          "range": [
+            16192,
+            16444
+          ],
+          "bodySha256": "4d399f05ba16ca020e89655daf69b457ece54c48c8d035427a23e2264f471bbc"
+        },
+        "\nreturn { subscriptionSchema: zUr(), noticeSchema: VUr(), recordSubscriber: qUr, status: f8n, flush: m8n,\n  label: Xfn, track: KUr, has: YUt, forget: Jfn, receive: YUr, onNotice: g8n, lastText: h8n, sender: y8n,\n  onSubscribed: _8n, registeredInboxes: S8n, subscriptionText: XUr, display: JUr, snapshotHeld: QUr,\n  hostSubscription: FBs, unavailable: Qfn, enqueue: ZUr, modelText: se, reset: () => d.reset() };\n}\n"
+      ]
+    },
+    {
+      "path": "peer-idle-identity-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact identity bodies. See research/ports/W364-peer-idle.md.\nimport type { PeerIdleIdentity, PeerIdleIdentityHost } from './peer-idle-identity.js';\nexport function createPeerIdleIdentity(host: PeerIdleIdentityHost): PeerIdleIdentity {\nconst dt = host.run, Ul = host.readStartToken;\n",
+        {
+          "module": "chunk-3sda67c1.js",
+          "moduleSha256": "285259b1c6dcf821a48f703d5fb866a9f69e9b52f19a235a9ae68f7dd7384cef",
+          "symbol": "Bjn",
+          "range": [
+            3812,
+            4384
+          ],
+          "bodySha256": "25611b3c85c200ac97a77f3e56120946cda7cc37943092275b5a63abc36ebaf6"
+        },
+        "",
+        {
+          "module": "chunk-bt8cr7rw.js",
+          "moduleSha256": "5fa6b57b2b362f4047324577cee8ca6263304332d36ea8389f2cf911f2213667",
+          "symbol": "Me",
+          "range": [
+            2573,
+            2579
+          ],
+          "bodySha256": "df5094f2a1bc1a8c22f5a1c95c550b1221259b791ebf3b713a4e66976e3577a6",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-bt8cr7rw.js",
+          "moduleSha256": "5fa6b57b2b362f4047324577cee8ca6263304332d36ea8389f2cf911f2213667",
+          "symbol": "Pe",
+          "range": [
+            2580,
+            2585
+          ],
+          "bodySha256": "8908e3b8446ebf81cddee6dcbd048ded0206bc70c983550bdef7b4d770917ef9",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-bt8cr7rw.js",
+          "moduleSha256": "5fa6b57b2b362f4047324577cee8ca6263304332d36ea8389f2cf911f2213667",
+          "symbol": "he",
+          "range": [
+            2586,
+            2862
+          ],
+          "bodySha256": "a5eee3b9b778081336fe4e3cb0684f01e45ba2d0bc1b89ded4057971e67f8f59"
+        },
+        "\n",
+        {
+          "module": "chunk-bt8cr7rw.js",
+          "moduleSha256": "5fa6b57b2b362f4047324577cee8ca6263304332d36ea8389f2cf911f2213667",
+          "symbol": "Ne",
+          "range": [
+            2887,
+            3256
+          ],
+          "bodySha256": "ed2b71ee33cdae688e819b2a61e691592321699d664dfa60c927198ed39d00f0",
+          "declarator": true
+        },
+        "const cache = new he(), Fe = { of: () => cache }, B = () => ({ host: undefined });\n",
+        {
+          "module": "chunk-bt8cr7rw.js",
+          "moduleSha256": "5fa6b57b2b362f4047324577cee8ca6263304332d36ea8389f2cf911f2213667",
+          "symbol": "Le",
+          "range": [
+            3257,
+            3343
+          ],
+          "bodySha256": "1e5a2fd0b747dd5c0b95d8ae2b6509367f6890d63099f4eee97e3dadf39ca16c"
+        },
+        "\n",
+        {
+          "module": "chunk-bt8cr7rw.js",
+          "moduleSha256": "5fa6b57b2b362f4047324577cee8ca6263304332d36ea8389f2cf911f2213667",
+          "symbol": "Ke",
+          "range": [
+            3343,
+            3844
+          ],
+          "bodySha256": "e197fd064c9c0599a7534537d356cc1b428ae4096d769c0acdaef86042a79fed"
+        },
+        "\n",
+        {
+          "module": "chunk-bt8cr7rw.js",
+          "moduleSha256": "5fa6b57b2b362f4047324577cee8ca6263304332d36ea8389f2cf911f2213667",
+          "symbol": "ye",
+          "range": [
+            3844,
+            4195
+          ],
+          "bodySha256": "44e5cebe91d1036a9379ae627e0f692d847f686765f66b769aae690ff6cde750"
+        },
+        "\nreturn ye;\n}\n"
+      ]
+    },
+    {
+      "path": "peer-idle-log-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact log sanitizers. See research/ports/W364-peer-idle.md.\nimport { createHash } from 'node:crypto';\nconst r = createHash;\nconst kn = text => text;\n",
+        {
+          "module": "chunk-ax7r0qj7.js",
+          "moduleSha256": "8e782f9b216f270b08ab23c9d3724965dccfdaa6053e78d89103b7fc1926c67e",
+          "symbol": "Hs",
+          "range": [
+            1013,
+            1128
+          ],
+          "bodySha256": "22089dbfdb0fe682f6d75d63d14a989c6056b9f98d2678bdae01352120ca9a74"
+        },
+        "",
+        {
+          "module": "chunk-zf8k2z6n.js",
+          "moduleSha256": "d3477e51bfc1e8466543153a59429d8dd473c35ab45b6b137ae0df67ad70c5fa",
+          "symbol": "at",
+          "range": [
+            675,
+            890
+          ],
+          "bodySha256": "3c7a61171818d4b7501cb11b311233accff55ba92898b1112e203ca7953a0b4e"
+        },
+        "",
+        {
+          "module": "chunk-rzybc39t.js",
+          "moduleSha256": "c969b89d5ca027057cee8462cc0a6fbb23c797bf5ade12ce48c8b3925d73293e",
+          "symbol": "ln",
+          "range": [
+            709,
+            753
+          ],
+          "bodySha256": "191a56f7d3b0def8865a1d4833f863eb1e76514a47db67232479ff7869fc9587"
+        },
+        "",
+        {
+          "module": "chunk-6zdc3jq1.js",
+          "moduleSha256": "8009c180a36973dc5853feebabd9653728bb5a902f3f27aa36cd883187ca3e9a",
+          "symbol": "Te",
+          "range": [
+            9253,
+            9273
+          ],
+          "bodySha256": "f48ad2d6524b3f89ba7838e408aeb8caf3593f66dd9b33445731eabd53d694cc",
+          "declarator": true
+        },
+        "\n",
+        {
+          "module": "chunk-6zdc3jq1.js",
+          "moduleSha256": "8009c180a36973dc5853feebabd9653728bb5a902f3f27aa36cd883187ca3e9a",
+          "symbol": "se",
+          "range": [
+            9274,
+            9332
+          ],
+          "bodySha256": "1401bf95e89abe4f4d17109f0a367456390336313d05d44656138b9b52db08b4"
+        },
+        "\n",
+        {
+          "module": "chunk-6zdc3jq1.js",
+          "moduleSha256": "8009c180a36973dc5853feebabd9653728bb5a902f3f27aa36cd883187ca3e9a",
+          "symbol": "kg",
+          "range": [
+            9332,
+            9411
+          ],
+          "bodySha256": "68651a09c7e91d56bb5e59c645da1592f6be7ab7ab4c0b068182f0507016055e"
+        },
+        "\n",
+        {
+          "module": "chunk-6zdc3jq1.js",
+          "moduleSha256": "8009c180a36973dc5853feebabd9653728bb5a902f3f27aa36cd883187ca3e9a",
+          "symbol": "u6",
+          "range": [
+            9411,
+            9520
+          ],
+          "bodySha256": "d6b2c1ba9c4d219b13e9abe4577cd76e0da031d76fc073d5963687b964923ebf"
+        },
+        "\nexport { kg, u6 };\n"
+      ]
+    }
+  ]
+}

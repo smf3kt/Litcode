@@ -1,0 +1,191 @@
+{
+  "schema": "W364LocalPeerIdleEvidence.v1",
+  "status": "VERIFIED_SCOPED",
+  "date": "2026-10-27",
+  "baseCommit": "3e8560952648b6e704dddb9f8601446e121e7a21",
+  "portRecord": "research/ports/W364-peer-idle.md",
+  "feature": {
+    "name": "peerIdleNotifications",
+    "freshCliDefault": true,
+    "explicitReloadDefault": true,
+    "authoredAndManagedFalseRetained": true,
+    "originalAbsentOrFalseCatalogRetained": true,
+    "requiresInboxFeature": "crossSessionMessaging",
+    "tool": "subscribe_peer_idle",
+    "address": "explicit uds address",
+    "lifetimeMs": 43200000,
+    "subscriberCap": 32,
+    "priorCapPerTarget": 3,
+    "idleDebounceMs": 750,
+    "heldRetryMs": 30000,
+    "unavailableRetryMs": 750,
+    "noticeCoalescingMs": 500,
+    "noticeBatchCap": 50,
+    "announcementsPerMinute": 10,
+    "familyStatus": "Partial"
+  },
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "f88b7e653616d957c1e9bc77dc4b128488cc1a1d6353e10b1c463edc3c8e262e",
+    "inputs": { "records": 927, "sha256": "ad882ba3e406c05818c1b5a55c4f2f48bbcf789b52df3daa28d52f60c86958cd" },
+    "validation": { "records": 359, "sha256": "8b4cccd2b201f8a5d3f82d36da419e35890f46928f8461c9b268870d24534404" },
+    "build": { "records": 654, "sha256": "e2ab6f81307da2831bb371c4aeec43934ae07c2550cc40b7f87c8f460ac71996" },
+    "totalRecords": 1940,
+    "fullSuiteIdentity": "dbaeacd32625c5759f3a3df0e07eb0587a7750b3cb3190ab7fa0897586e83649",
+    "unchangedAfterFullSuite": true,
+    "deliveryDelta": {
+      "proof": "w364-comment-delta.json",
+      "proofSha256": "8b9fe35350d5a00450a487f5e358c42f80e5264cf91d2cd968c7a905fce2aff6",
+      "unchangedRecords": 1938,
+      "changedPaths": ["src/local-peer.ts", "dist/local-peer.js"],
+      "commentOnly": true,
+      "exactReversalVerified": true,
+      "executableSyntaxUnchanged": true
+    }
+  },
+  "source": {
+    "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "coordinates": "zero-based half-open UTF16 code units",
+    "captures": [
+      { "file": "w364-source.json", "sha256": "76da751c716f2e53b7f6f26558a1a46f7515b9eb7b25babe500fad722459abbb", "moduleRows": 12, "bodyRows": 118 },
+      { "file": "w364-source-supplement.json", "sha256": "cd29450eacb491113034c3b9a67ae564cd1418ed2d5a9fc1c031042ebe965b27", "moduleRows": 10, "bodyRows": 42 },
+      { "file": "w364-registry-source.json", "sha256": "1251f5a524644b5ad42875c23311eebdc176b3faaac870dfb20ec898f1822faa", "bodyRows": 2 }
+    ],
+    "captureBodyRowsIncludeDuplicates": true,
+    "manifestModuleDigestsMatch": true,
+    "characterComparison": {
+      "file": "w364-delivery-source-host-character-diff.json",
+      "sha256": "9885496f724cf042f0824bc6aa6e8e91185cadeb399d3a17027e5fa311edfaab",
+      "completePairs": 121,
+      "exactPairs": 105,
+      "sourceAndHostRangesVerified": true,
+      "bidirectionalOpcodeReconstructionVerified": true,
+      "semanticEquivalenceOfAdaptedPairs": "not established by text comparison"
+    },
+    "generator": "scripts/copy-source-plan.mjs",
+    "generatorPlan": "research/ports/W364-peer-idle-source-plan.json",
+    "generatorPlanSha256": "c2be11fabe25befddfe33ebf0b2bf7c8be0f24d01656231e3bed23634ff34f43",
+    "generatedLedger": "src/peer-idle-source-blocks.json",
+    "generatedFiles": 4,
+    "exactDeclarations": 105,
+    "isolatedRegeneration": "byte-identical",
+    "virtualCompilerUnresolvedNames": 0
+  },
+  "validation": {
+    "baseline": {
+      "command": "node scripts/smoke-peer-cli.mjs --compiled --idle",
+      "exit": 1,
+      "result": "missing subscribe_peer_idle after original text, held approval and receipt controls",
+      "logSha256": "326b5c3576dd28679bd9772e879aa7614213ea3504e867afa1dcaf23376dc39c"
+    },
+    "commands": [
+      { "command": "npm run check", "exit": 0, "log": "w364-final-check.txt", "sha256": "dd59d119cbe42cd5f0daffc3ae5e0ba58a8e85a3ad0b3533aa548921def1f886" },
+      { "command": "npm run build", "exit": 0, "log": "w364-final-build.txt", "sha256": "73c2de792f5ecd1c9d5783772391135a2b6e172af9052efba62659cd4dd1c933" },
+      { "command": "tsx --test --test-concurrency=1 --test-timeout=20000 test/local-peer-idle.test.ts", "exit": 0, "tests": 3 },
+      { "kind": "affected tests", "exit": 0, "tests": 42, "log": "w364-02-affected.txt", "sha256": "a91196ccd24a111d1d1be70b9aa16ff403df4d8ca99957a2fb6f48a0821a08b3" },
+      { "command": "node scripts/smoke-peer-cli.mjs --compiled --files", "exit": 0, "ownedModelRequests": 9, "logSha256": "8e9050bbbc98db23750f343a0f1a263833557453148c31a8ae7e35585248e351" },
+      { "command": "node scripts/smoke-resident-fork-cli.mjs", "exit": 0, "ownedModelRequests": 10, "ownedMcpRpc": 18, "logSha256": "c9aa00550a6bab88d2f7aca01ddf4b2226697e742c8a1392610c945ebae40076" },
+      { "command": "npm test", "exit": 0, "tests": 3433, "suites": 118, "failed": 0, "cancelled": 0, "skipped": 0, "todo": 0, "logSha256": "774ab27fd41fbea4c71ce5b48fa4408f25799ab2550d22d34ce72355e27ec226" }
+    ],
+    "compiledIdleChain": {
+      "command": "node scripts/smoke-peer-cli.mjs --compiled --idle",
+      "exit": 0,
+      "log": "w364-04-cli-idle.txt",
+      "logSha256": "d75b64054cdfba687fe064efe9e1cf4ee7d24df09e6d75d1db2c778aa2662d27",
+      "processes": 2,
+      "ownedModelRequests": 21,
+      "pureSubscription": true,
+      "oneShot": true,
+      "heldDisplayOnly": true,
+      "requesterRefuse": true,
+      "laterPolicyRevocation": true,
+      "heldAtExitNotice": "exited",
+      "generatedOrigin": "peer-idle",
+      "coldReopen": true,
+      "ownedCleanup": true,
+      "gateway": "owned loopback SSE",
+      "externalCalls": 0
+    }
+  },
+  "mainVerification": {
+    "status": "VERIFIED_MAIN_SCOPED",
+    "proof": "w364-main-verification.json",
+    "proofSha256": "5a1572037809ad3a4b98fc52011b83454dc4add9dc2374951066c6f07ec702ca",
+    "evidenceHashesChecked": 19,
+    "recordedPidsExited": 14,
+    "recordedPathsAbsent": 8,
+    "originalDirtyHashesUnchanged": 3
+  },
+  "independent": {
+    "status": "VERIFIED_SCOPED",
+    "proof": "w364-independent-verdict-3.json",
+    "proofSha256": "a7a910564a140428b4cd8d9bd25591eae2a67cc57deae2177eee8c0f1fc715b5",
+    "identity": "f88b7e653616d957c1e9bc77dc4b128488cc1a1d6353e10b1c463edc3c8e262e",
+    "observed": ["three regression groups", "actual compiled idle CLI with 21 owned requests", "all 1940 identity records", "121 source comparisons", "162 captured body rows", "four generated files and 105-block ledger", "per-inbox isolation", "owned process, socket, key and lock cleanup"],
+    "referencedImmutableHashesCheckedByMain": 34,
+    "calls": { "requested": 24, "actual": 101, "authority": "completion notification" },
+    "earlierRevisionsRetained": ["over-broad resource census", "shared empty socket directory misattributed to the run"],
+    "commentDeltaIndependentlyDerived": false
+  },
+  "findingDispositions": [
+    {
+      "id": "W364-I1",
+      "status": "FINDING_REFUTED",
+      "originalClaim": "Omitting selfSentAncestry widens descendant notice admission because dwo returns an empty array.",
+      "sourceOwner": "nn only calls dwo after a defined fdt token. The shipped fdt returns undefined, so nn forwards undefined ancestry through Je and be into ce and ye. The source takes the same Ke fallback as the host.",
+      "sourceCapture": "w364-ancestry-owner-source.json",
+      "sourceCaptureSha256": "e61f72d80f14c7428681086c3b9ec1682ff8d740ab7fd1b035f3caeca5ed8ae6",
+      "mainProof": "w364-ancestry-owner-result.json",
+      "mainProofSha256": "ed971de0f6331b20775c8b47b1fa34a1bb2832c652124be4782e9f7ac2525966",
+      "mainCases": 6,
+      "independentProof": "w364-ancestry-independent-mvqdaxiz.json",
+      "independentProofSha256": "99770cb24012effd21d6cc632b7ffea8789e38e36629cbc11aa9397235806a3e",
+      "independentCases": 54,
+      "independentCalls": { "requested": 8, "actual": 12, "authority": "completion notification" },
+      "observed": "Every copied connection callback forwards undefined ancestry. All 54 source selector results equal field omission.",
+      "probeLimit": "Copied declarations shadow the counter wrappers, so the reported fdtCalls and dwoCalls counts are not execution evidence. Complete source control flow and captured callback arguments establish the disposition.",
+      "productChanges": 0,
+      "originalReportRetained": true
+    }
+  ],
+  "deliveryCheck": {
+    "status": "VERIFIED_SCOPED",
+    "proof": "w364-final-verification.json",
+    "proofSha256": "eb4c8526ed6c848287836b78164a5674f44fb4d0401ff8688d5c5d931006eb7f",
+    "mainEvidenceHashesChecked": 19,
+    "independentReferencedHashesChecked": 34,
+    "extraEvidenceHashesChecked": 8,
+    "completeSourceComparisons": 121,
+    "exactCopies": 105,
+    "commentReversalAndExecutableSyntaxEqual": true,
+    "recordedPidsExited": 16,
+    "recordedPathsAbsent": 8,
+    "ownedFixtureDirectoriesRemaining": 0,
+    "matchingProcessesRemaining": 0,
+    "originalDirtyHashesUnchanged": 3
+  },
+  "commentAudit": {
+    "leafCalls": 11,
+    "requestedCallLimit": 4,
+    "removedClauses": 1,
+    "sourceAnchorRetained": true,
+    "completeCommentCensus": "not established by the reader report"
+  },
+  "remaining": [
+    "same-host global lifecycle",
+    "StorageV5",
+    "daemon and remote owners",
+    "combined named delivery and idle subscription routing",
+    "source view pre-mount replay",
+    "real Magpie acceptance",
+    "nonmacOS native identity",
+    "process termination at every inflight boundary"
+  ],
+  "limits": [
+    "Raw logs, full identities and character comparisons live in the job scratch directory and may be removed with the job.",
+    "The twelve-hour lifetime uses the native test clock rather than twelve elapsed hours.",
+    "Recorded PID and path observations complement the drivers' owned cleanup assertions.",
+    "The final delivery differs from the full-suite candidate only in one source comment and its compiled comment.",
+    "External and paid upstream calls are zero. Account, hosted subscription and OAuth features stay excluded. No push or new schedules."
+  ]
+}

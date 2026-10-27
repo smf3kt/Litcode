@@ -12,7 +12,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // mode-mismatched message and approves it through /peer-held, and B's next
 // request carries the text as peer meta input. No cloud call leaves loopback.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const compiled = process.argv.includes("--compiled"), guard = process.argv.includes("--guard"), files = process.argv.includes("--files"), envelope = process.argv.includes("--envelope") || files;
+const compiled = process.argv.includes("--compiled"), guard = process.argv.includes("--guard"), files = process.argv.includes("--files"), idle = process.argv.includes("--idle"), envelope = process.argv.includes("--envelope") || files || idle;
 const acceptance = process.argv.includes("--acceptance") || guard;
 const scratch = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : fs.realpathSync(os.tmpdir());
 const temporary = fs.realpathSync(fs.mkdtempSync(path.join(scratch, "peer-cli-smoke-")));
@@ -125,6 +125,12 @@ try {
     req.on("end", () => {
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       requests[label].push(body);
+      if (idle && label === 'b' && body.messages.at(-1)?.content === 'IDLE_BUSY') { busyResponse = { res, body }; return; }
+      const idleSubscribe = idle && label === 'a' && typeof body.messages.at(-1)?.content === 'string'
+        ? /^PEER_IDLE (\S+)(?: (\S+))?$/.exec(body.messages.at(-1).content) : undefined;
+      if (idleSubscribe) {
+        sse(res, body, [{ type: 'tool_use', id: idleSubscribe[2] ?? 'peer-idle-subscribe', name: 'subscribe_peer_idle', input: { address: idleSubscribe[1] } }]); return;
+      }
       if (guard && label === 'b' && body.messages.at(-1)?.content === 'GUARD_BUSY') {
         busyResponse = { res, body }; return;
       }
@@ -212,6 +218,77 @@ try {
       fromSession: senderId, fromMode: 'prompting', body: 'EXACT_PEER_TEXT' });
   }
 
+  if (idle) {
+    await until(() => childB.combined.includes('event finished: end_turn') && (childA.combined.match(/finished: end_turn/g) ?? []).length === 2, 'text controls settled before idle subscription');
+    childA.child.stdin.write('/peer-inbound accept\n');
+    await until(() => childA.combined.includes('Peer inbound policy: accept'), 'idle requester policy');
+    childB.child.stdin.write('IDLE_BUSY\n'); await until(() => busyResponse !== undefined, 'idle recipient has active turn');
+    childA.child.stdin.write(`PEER_IDLE ${inboxB}\n`);
+    await until(() => toolResult(requests.a, 'peer-idle-subscribe') !== undefined, 'idle subscription tool result');
+    const subscribed = toolResult(requests.a, 'peer-idle-subscribe');
+    assert.notEqual(subscribed.is_error, true, 'compiled CLI must expose and execute same-host idle subscription');
+    assert.equal(JSON.parse(subscribed.content).success, true);
+    assert.equal(requests.b.length, 2, 'pure subscription does not create a recipient model turn');
+    const beforeNotices = requests.a.filter(request => String(request.messages.at(-1)?.content).includes('[Cross-session idle notice]')).length;
+    const pending = busyResponse; busyResponse = undefined; sse(pending.res, pending.body, [{ type: 'text', text: 'Result: IDLE_FINISHED' }]);
+    await until(() => requests.a.some(request => String(request.messages.at(-1)?.content).includes('[Cross-session idle notice]')), 'one idle notice reaches requester model');
+    const notice = requests.a.find(request => String(request.messages.at(-1)?.content).includes('[Cross-session idle notice]'));
+    assert.match(notice.messages.at(-1).content, /idle now/);
+    await until(() => (childA.combined.match(/event finished: end_turn/g) ?? []).length === 1, 'idle notification turn committed');
+    assert.equal(requests.a.filter(request => String(request.messages.at(-1)?.content).includes('[Cross-session idle notice]')).length, beforeNotices + 1);
+    const row = journal(workspaceA).find(row => row.kind === 'message' && String(row.message.content).includes('[Cross-session idle notice]'));
+    assert.equal(row.classifier.origin.kind, 'generated'); assert.equal(row.classifier.origin.source, 'peer-idle');
+    guardResults.idleNotice = row.message.content;
+    const requesterTurns = () => (childA.combined.match(/(?:^|\n)finished: end_turn/g) ?? []).length;
+    const idleTurns = () => requests.a.filter(request => String(request.messages.at(-1)?.content).includes('[Cross-session idle notice]')).length;
+    const subscribe = async suffix => {
+      const before = requesterTurns();
+      childA.child.stdin.write(`PEER_IDLE ${inboxB} idle-${suffix}\n`);
+      await until(() => toolResult(requests.a, `idle-${suffix}`) !== undefined && requesterTurns() === before + 1, `${suffix} subscription turn settled`);
+      return JSON.parse(toolResult(requests.a, `idle-${suffix}`).content);
+    };
+    const policy = async value => {
+      const before = (childA.combined.match(/Peer inbound policy:/g) ?? []).length;
+      childA.child.stdin.write(`/peer-inbound ${value}\n`);
+      await until(() => (childA.combined.match(/Peer inbound policy:/g) ?? []).length === before + 1, `requester ${value} policy`);
+    };
+    await policy('hold');
+    const heldRequests = idleTurns(), heldDisplay = (childA.combined.match(/ is idle/g) ?? []).length;
+    assert.equal((await subscribe('held')).success, true);
+    await until(() => (childA.combined.match(/ is idle/g) ?? []).length === heldDisplay + 1, 'held idle notice displayed');
+    assert.equal(idleTurns(), heldRequests, 'hold displays a notice without a model turn');
+    await policy('refuse');
+    assert.deepEqual(await subscribe('refused'), { success: false, reason: 'requester-refuses-inbound' });
+    assert.equal(idleTurns(), heldRequests);
+    await policy('accept');
+    childB.child.stdin.write('IDLE_BUSY\n'); await until(() => busyResponse !== undefined, 'second busy recipient');
+    assert.equal((await subscribe('revoked')).success, true);
+    await policy('refuse');
+    const refusedEvents = (childA.combined.match(/event finished: end_turn/g) ?? []).length;
+    const revokedResponse = busyResponse; busyResponse = undefined;
+    sse(revokedResponse.res, revokedResponse.body, [{ type: 'text', text: 'Result: REVOKED_IDLE' }]);
+    await until(() => (childB.combined.match(/(?:^|\n)finished: end_turn/g) ?? []).length === 2, 'revoked target turn settled');
+    await sleep(1500);
+    assert.equal((childA.combined.match(/event finished: end_turn/g) ?? []).length, refusedEvents);
+    assert.equal(idleTurns(), heldRequests, 'policy revocation suppresses the correlated notice');
+    await policy('accept');
+    childB.child.stdin.write('/peer-inbound hold\n');
+    await until(() => childB.combined.includes('Peer inbound policy: hold'), 'target explicitly holds input at exit');
+    const beforeHeldSend = requesterTurns();
+    const heldBeforeExit = (childB.combined.match(/held for approval: <cross-session-message/g) ?? []).length;
+    childA.child.stdin.write(`PEER_SEND ${inboxB} IDLE_EXIT_HELD\n`);
+    await until(() => (childB.combined.match(/held for approval: <cross-session-message/g) ?? []).length > heldBeforeExit, 'target holds exit input');
+    childB.child.stdin.write('/peer-held\n');
+    await until(() => childB.combined.includes('IDLE_EXIT_HELD\n</cross-session-message>'), 'target has held input at exit');
+    await until(() => requesterTurns() === beforeHeldSend + 1, 'held send turn settled');
+    assert.equal((await subscribe('exit')).success, true);
+    const exitEvents = (childA.combined.match(/event finished: end_turn/g) ?? []).length;
+    childB.child.stdin.write('/exit\n'); assert.equal(await childB.exit, 0);
+    await until(() => (childA.combined.match(/event finished: end_turn/g) ?? []).length === exitEvents + 1, 'exit flush notification settled');
+    assert.equal(idleTurns(), heldRequests + 1);
+    assert.match(requests.a.at(-1).messages.at(-1).content, /has exited.*before going idle/);
+    guardResults.idleBoundaries = { heldDisplayOnly: true, refused: true, revoked: true, exitFlush: true };
+  }
   if (files) {
     await until(() => childB.combined.includes('event finished: end_turn') && (childA.combined.match(/finished: end_turn/g) ?? []).length === 2, 'text controls settled before file transfer');
     const bytes = 'snapshot before sender edits\nsecond line\n';
@@ -372,7 +449,7 @@ try {
     assert.equal(fs.existsSync(inboxB.slice(4)), false);
   }
   childA.child.stdin.write("/exit\n");
-  if (!acceptance) childB.child.stdin.write("/exit\n");
+  if (!acceptance && !idle) childB.child.stdin.write("/exit\n");
   const codes = await Promise.all([childA.exit, childB.exit]);
   assert.deepEqual(codes, [0, 0]);
   for (const state of [childA, childB]) assert.throws(() => process.kill(state.child.pid, 0), error => error.code === 'ESRCH');
@@ -386,6 +463,11 @@ try {
       assert.equal(fs.readFileSync(path.join(workspaceB, reference[1]), 'utf8'), 'snapshot before sender edits\nsecond line\n');
     } finally { await cold.close(); }
   }
+  if (idle) {
+    const { Session } = await import(pathToFileURL(path.join(root, 'dist/session.js')).href);
+    const id = journal(workspaceA).find(row => row.kind === 'metadata').id, cold = Session.open(workspaceA, { id });
+    try { assert.ok(cold.messages.some(message => message.content === guardResults.idleNotice)); } finally { await cold.close(); }
+  }
   for (const workspace of [workspaceA, workspaceB]) assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
   for (const label of ['a', 'b']) assert.deepEqual(fs.readdirSync(path.join(runtimeDir(), 'litcode-socks')), []);
   const sessions = path.join(userDir, "sessions");
@@ -393,7 +475,7 @@ try {
   console.log(JSON.stringify({ cli: "passed", processes: 2, inboxB, aRequests: requests.a.length, bRequests: requests.b.length,
     held: "mode-mismatch", receipt: "delivered", ownedCleanup: true,
     ...(compiled ? { compiledCLI: true } : {}), acceptance, heldDecisions: acceptance ? ['approve', 'deny', 'expire', 'refuse', 'exit-expiry'] : ['approve'],
-    peerOrigin: acceptance || files, sourceEnvelope: envelope, ...(files ? { localFiles: { sent: 1, failed: 1, snapshotPreserved: true, modelRead: true, originalBodyRemoved: true } } : {}), ...(guard ? { guard: { pacedSends: guardResults.pacedSends, retainedQueue: guardResults.retainedQueue,
+    peerOrigin: acceptance || files, sourceEnvelope: envelope, ...(idle ? { peerIdle: { oneShot: true, pureSubscription: true, generatedOrigin: true, coldReopen: true, ...guardResults.idleBoundaries } } : {}), ...(files ? { localFiles: { sent: 1, failed: 1, snapshotPreserved: true, modelRead: true, originalBodyRemoved: true } } : {}), ...(guard ? { guard: { pacedSends: guardResults.pacedSends, retainedQueue: guardResults.retainedQueue,
       relayRequests: guardResults.relayRequests, duplicateRequests: 1, humanReset: true } } : {}), gateway: "owned loopback SSE", externalCalls: 0 }));
 } catch (error) {
   console.error("A:", childA?.combined?.slice(-4000));

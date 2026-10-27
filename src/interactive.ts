@@ -420,6 +420,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   terminal?.setSessionColor?.(session.sessionColor);
   const output = terminal?.outputStream ?? options.output;
   let turnController: AbortController | undefined;
+  let modelTurn = false;
   let suggestionRun = new PromptSuggestionRun();
   let suggestionStore = new PromptSuggestionStore(session.config.configSources?.userDir);
   let suggestionsEnabled = promptSuggestionsInitiallyEnabled(session.config);
@@ -458,6 +459,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const withTurn = async <T>(action: (signal: AbortSignal) => Promise<T>, wakeupId?: string): Promise<T> => {
     cancelPrediction(); terminal?.clearPromptSuggestion?.();
     turnController = new AbortController(); terminal?.setRunning(true);
+    syncPeerIdle();
     const signal = AbortSignal.any([options.signal, turnController.signal]);
     let unregister: (() => void) | undefined;
     try {
@@ -467,6 +469,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       return await action(signal);
     } finally {
       unregister?.(); turnController.abort(); turnController = undefined; terminal?.setRunning(false);
+      syncPeerIdle();
       // Ie idle effect [19175,19294), chunk-appb2dtz.js considers fallback before checkNow.
       if (wakeupId !== undefined) activeRuntime.finishLoopWakeup?.(session.id, wakeupId);
       activeRuntime.checkScheduler?.(session.id);
@@ -474,7 +477,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   };
   // Ga, chunk-5b2hxy2e.js [65908,77691), UTF-16: adapt the main-query completion trigger.
   const withModelTurn = async (action: (signal: AbortSignal) => Promise<RunResult>): Promise<RunResult> => {
-    const result = await withTurn(action);
+    modelTurn = true;
+    let result: RunResult;
+    try { result = await withTurn(action); }
+    finally { modelTurn = false; }
     predictAfterTurn(result);
     return result;
   };
@@ -535,6 +541,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   const btwExchanges: SideQuestionExchange[] = [];
   const queue: { prompt: string; source: 'user' | 'event'; idle?: { id: string; name: string | null };
     peer?: PeerEnvelopeMetadata;
+    peerIdleConversation?: string;
     wakeupId?: string;
     scheduledId?: string;
     /** Source `isMeta`: an entry this host queued itself, not one a person may pull back and edit. */
@@ -909,6 +916,9 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     return mode === undefined ? null : { mode };
   };
   const peerExplicit = () => session.config.crossSessionInbound;
+  // tve/eve, 24k7d6mw [1292353,1292547)/[1293403,1295081), UTF-16.
+  const syncPeerIdle = () => peer?.setIdleStatus(approval || session.awaitingResponse ? 'waiting'
+    : turnController ? modelTurn ? 'busy' : 'shell' : 'idle');
   const queuePeerMessage = (message: AcceptedMessage) => {
     // Qe/Fr, bt8cr7rw [5180,6744), sfn1dbxq [224858,225819), UTF-16.
     queue.push({ prompt: message.text, source: 'event', peer: { ...message.metadata,
@@ -938,6 +948,17 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         sourceEnvelope: () => session.config.features?.peerSourceEnvelope === true,
         // Qe/jL, bt8cr7rw [5180,6744), prwvydmp [792,873), UTF-16.
         fileHost: () => session.config.features?.peerFileTransfers === true ? { workspace: session.config.workspace, sessionId: session.id } : undefined,
+        idleHost: {
+          enabled: () => session.config.features?.peerIdleNotifications === true,
+          conversation: () => session.id,
+          queueLength: () => queue.length,
+          lastText: () => session.lastResponse?.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n') ?? '',
+          onNotice: (_notice, text) => { if (terminal?.writeNotice) terminal.writeNotice(text); else options.status.write(`${text}\n`); },
+          onSubscribed: text => { if (terminal?.writeNotice) terminal.writeNotice(text); else options.status.write(`${text}\n`); },
+          enqueue: (text, conversationId) => {
+            queue.push({ prompt: text, source: 'event', peerIdleConversation: conversationId }); awaken();
+          },
+        },
         sessionId: () => session.id,
         queuedPeerCount: () => queue.filter(item => item.peer !== undefined).length,
         hopChain: () => latestPeerHopChain(session.messages),
@@ -949,6 +970,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       });
       peer.setMode(peerMode);
       await peer.setSession(session.id);
+      syncPeerIdle();
     } catch (error) {
       const failed = peer; peer = undefined;
       await failed?.close();
@@ -979,8 +1001,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     // Keep the same owner gate for both the line UI and the modal surface.
     const owner = () => controller.abort();
     const combined = AbortSignal.any([signal, controller.signal]);
-    const release = () => { if (approval === owner) approval = undefined; };
-    approval = owner; combined.addEventListener('abort', release, { once: true });
+    const release = () => { if (approval === owner) { approval = undefined; syncPeerIdle(); } };
+    approval = owner; syncPeerIdle(); combined.addEventListener('abort', release, { once: true });
     try {
       return await terminal!.prompt!({ ...request, titleOrigin: request.titleOrigin ?? 'local-command' }, combined);
     } finally { combined.removeEventListener('abort', release); release(); }
@@ -996,12 +1018,12 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     output.write(prompt);
     return new Promise((resolve, reject) => {
       const finish = (value: string | undefined) => {
-        if (approval === finish) approval = undefined;
+        if (approval === finish) { approval = undefined; syncPeerIdle(); }
         signal.removeEventListener('abort', cancelled);
         if (value === undefined) reject(new Error('Interaction cancelled')); else resolve(value);
       };
       const cancelled = () => finish(undefined);
-      approval = finish; signal.addEventListener('abort', cancelled, { once: true });
+      approval = finish; syncPeerIdle(); signal.addEventListener('abort', cancelled, { once: true });
       if (signal.aborted) cancelled();
     });
   };
@@ -1386,6 +1408,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     activeRuntime.buildTools(session.config, session.id);
     schedulerSessions.add(session.id);
     await activeRuntime.settleScheduler?.(session.id, schedulerSessions, () => activeAgent?.isRunning() ?? false);
+    await peer?.setSession(session.id);
+    syncPeerIdle();
   };
   // Yr/oL, x876fw6t [16694,19097), 9yh2xzb7 [1781,3332), UTF-16; the successor stores the candidate's refreshed catalog.
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand, reconfigureRuntime = false) => {
@@ -2097,6 +2121,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         continue;
       }
       if (item.source === 'event') {
+        if (item.peerIdleConversation !== undefined && item.peerIdleConversation !== session.id) continue;
         if (session.awaitingResponse) { options.status.write('Event deferred until the interrupted turn is continued.\n'); queue.push(item); }
         else if (blockedReason() !== undefined) {
           // A queued event, including a SessionStart message, waits for the credential instead of
@@ -2108,6 +2133,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           // Ie [17435,19295), chunk-appb2dtz.js preserves scheduled identity until dispatch.
           if (item.wakeupId !== undefined && activeRuntime.beginLoopWakeup?.(session.id, item.wakeupId) === false) continue;
           try {
+            modelTurn = true;
             const result = await withTurn(async signal => {
               // Ie/v [16667,19295), appb2dtz, UTF-16; the claimed fire's cleanup also owns marker failures.
               const fire = item.scheduledId === undefined ? undefined
@@ -2121,7 +2147,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
                 if (hook.blocked || hook.stopRequested) { options.status.write('TeammateIdle hook suppressed this idle notification turn.\n'); return { reason: 'hook_blocked', text: "", modelCalls: 0 }; }
               }
               return agent().run(prompt, signal, undefined, undefined, [], undefined,
-                item.peer === undefined ? { kind: 'generated', source: fire?.cronKind === 'loop' ? `loop-wakeup:${fire.uuid}` : 'interactive-event' }
+                item.peer === undefined ? { kind: 'generated', source: item.peerIdleConversation !== undefined ? 'peer-idle' : fire?.cronKind === 'loop' ? `loop-wakeup:${fire.uuid}` : 'interactive-event' }
                   : { kind: 'peer', source: 'uds', ...item.peer });
             }, item.wakeupId);
             if (result.modelCalls === 0 && result.text) output.write(result.text);
@@ -2131,6 +2157,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
             // messages: a mode change during the turn may now accept them.
             if (item.peer === undefined) releasePeerHeld('turn-complete');
           } catch (error) { options.status.write(`error: ${error instanceof Error ? error.message : String(error)}\n`); }
+          finally { modelTurn = false; }
         }
         continue;
       }

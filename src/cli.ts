@@ -467,6 +467,8 @@ function newConfig(
       sourceQuestionResults: settings.features?.sourceQuestionResults ?? true,
       // K8t/Qe, 6zdc3jq1 [12210,13125), bt8cr7rw [5180,6744), UTF-16.
       peerSourceEnvelope: settings.features?.peerSourceEnvelope ?? true,
+      // qUr/f8n, 01dkdjqy [3007,4724), UTF-16.
+      peerIdleNotifications: settings.features?.peerIdleNotifications ?? true,
       ...(settings.features?.peerFileTransfers === undefined ? {} : { peerFileTransfers: settings.features.peerFileTransfers }),
       web: settings.features?.web ?? true,
       checkpoints: settings.features?.checkpoints ?? true,
