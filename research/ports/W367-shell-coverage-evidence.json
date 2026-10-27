@@ -11,18 +11,18 @@
   },
   "identity": {
     "schema": "HarnessContentIdentity.v1",
-    "sha256": "ac7a11d56302c2c5df21144494d79c18f4e79e33e3c7f068913671a6a795aae9",
+    "sha256": "88edf008747f883442d5fbec1ceabffe48961a3b6dbd5923aad3662b79690b3b",
     "inputs": {
       "records": 938,
-      "sha256": "7d2ee8acc0e1b99cd770da78e0f2e2323cb762f83765a20bb55c560ff8d5bccc"
+      "sha256": "f7f05dc0460989d2f40a56178362d0fe97304257c36d557eceadcf0a3d7d480e"
     },
     "validation": {
       "records": 360,
-      "sha256": "0f9576de71f1a6c28f6166fe1e59164692ce14d62c5051b84729d9179e1b362d"
+      "sha256": "3165c9946f9ae17407b5dcdb0fb8fe34ac2e6f334cba7bab2dada08f532391bd"
     },
     "build": {
       "records": 662,
-      "sha256": "8ee2f82e631619f4abea24dd7cb61baca0dce7dbcecd250c667191e5f7197718"
+      "sha256": "d9fa5c80e450956456c283dbd82309ff6262dc96559a36e5f0ee530f1aa5d073"
     }
   },
   "source": {
@@ -82,8 +82,8 @@
     "newGroups": 1,
     "affected": {
       "suites": 8,
-      "tests": 153,
-      "pass": 153,
+      "tests": 154,
+      "pass": 154,
       "fail": 0,
       "breakdown": {
         "test/shell-permissions.test.ts": 7,
@@ -149,11 +149,12 @@
     "Remote managed policy stays external"
   ],
   "finalProof": {
-    "file": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w367-final-proof.json",
-    "sha256": "1d30159059ce2a9a188e9791b566769a7a5bbbd8bfe783ec18538d243dafcfef",
-    "head": "eb51ab55a11609d08a71f967c9c34909ed3862ee",
+    "file": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w367-final-proof-2.json",
+    "sha256": "7c0d44ead20657ec77e6db8c3d7a63655f7c234622218c48258380ba265c3b6c",
+    "head": "e4d46213dac60ad4efe8e68155d55d0be1e5d5a6",
     "protectedAllMatch": true,
-    "distTracked": false
+    "distTracked": false,
+    "note": "pre-commit snapshot of the leaf/container split; the follow-up commit records it"
   },
   "commits": [
     "628bb31 Port recovered statement coverage into shell readings",

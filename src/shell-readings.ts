@@ -23,17 +23,20 @@ export const SHELL_READING_LIMIT = 16;
 const SHELL_ANALYSER_LIMIT = 1e4;
 
 // The node types the recovered extractor walks (`Mt`, chunk-zjewzgfh.js offset
-// 21417, which also lists `ERROR`), split by role. A compound node opens its own execution context, so the
-// commands inside it run even though the text walk sees the group as one segment.
-// A command node is read only inside a compound context: a top-level command's
-// own text is already a segment, and the command under a top-level
-// `redirected_statement` is not a command the shell runs without its redirect.
+// 21417, which also lists `ERROR`). `Mt` mixes leaf commands with the
+// containers that hold them; the walk needs the two apart. A leaf is one
+// command, and a container is a statement whose children run on their own.
+const LEAF_COMMANDS = new Set(['command', 'variable_assignment', 'variable_assignments', 'negated_command',
+  'declaration_command', 'unset_command', 'test_command']);
+const CONTAINER_NODES = new Set(['list', 'pipeline', 'redirected_statement', 'subshell', 'compound_statement',
+  'if_statement', 'while_statement', 'for_statement', 'case_statement', 'function_definition']);
+
+// A keyword or group opens an execution context, so the text walk's separators
+// are not command boundaries inside it.
 const COMPOUND_NODES = new Set(['subshell', 'compound_statement', 'if_statement', 'while_statement', 'for_statement',
   'case_statement', 'function_definition']);
-const COMMAND_NODES = new Set(['command', 'variable_assignment', 'variable_assignments', 'negated_command',
-  'declaration_command', 'unset_command', 'test_command']);
 
-/** True when the line holds a compound node, so the text walk's separators are not command boundaries. */
+/** True when the line holds a compound node, so its `;` does not separate commands. */
 function hasCompoundNode(tree: unknown): boolean {
   const node = tree as { type?: string; children?: readonly (unknown)[] } | null | undefined;
   if (!node || typeof node.type !== 'string') return false;
@@ -53,20 +56,28 @@ function treeReadings(command: string): { readings: string[]; tree?: unknown; re
   const readings: string[] = [];
   let refused: string | undefined;
   const visit = (node: { type?: string; text?: string; children?: readonly (unknown)[] } | null | undefined,
-    parentRedirectText: string | undefined): void => {
+    redirectText: string | undefined): void => {
     if (refused !== undefined || !node || typeof node.type !== 'string') return;
     // The recovered analyzer answers `too-complex` for an ERROR node, so a line
     // the parser could not read yields no reading set at all.
     if (node.type === 'ERROR') { refused = 'Parse error'; return; }
-    // `E` collects every command node, and `Wt` records a redirected statement
-    // under the statement's own text: the command inside it never runs without
-    // its redirections, so that text is not a separate reading.
-    if (COMMAND_NODES.has(node.type) && typeof node.text === 'string') {
-      readings.push(parentRedirectText ?? node.text);
+    // `E` records each command's own text and `Wt` keeps its redirections in a
+    // separate field, so a command runs with its redirect but is not spelled
+    // with one. When a redirect wraps exactly one command, that command is the
+    // statement and its reading is the statement text; when it wraps a pipeline
+    // or a group, `Wt` attaches the redirects to the last command inside, so the
+    // inner commands keep their own text and the statement text already covers
+    // the redirect.
+    if (LEAF_COMMANDS.has(node.type) && typeof node.text === 'string') {
+      readings.push(redirectText ?? node.text);
       return;
     }
-    const redirectText = node.type === 'redirected_statement' && typeof node.text === 'string' ? node.text : undefined;
-    for (const child of node.children ?? []) visit(child as never, redirectText);
+    const children = (node.children ?? []) as readonly ({ type?: string } | null)[];
+    const wrapped = node.type === 'redirected_statement' && typeof node.text === 'string' &&
+      children.filter(child => LEAF_COMMANDS.has(child?.type ?? '')).length === 1 &&
+      !children.some(child => CONTAINER_NODES.has(child?.type ?? ''))
+      ? node.text : undefined;
+    for (const child of node.children ?? []) visit(child as never, wrapped);
   };
   visit(tree as never, undefined);
   return { readings, tree, ...(refused === undefined ? {} : { refused }) };

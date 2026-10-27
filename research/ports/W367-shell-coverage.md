@@ -27,7 +27,9 @@ Classification: exact copy for the coverage block, with one host wrapper and one
 
 `treeReadings(command)` returns the inner command texts the copied parser reports and a refusal reason when the line cannot be modelled: over-length, parse abort, a parse `ERROR` node, or a coverage failure. `shellReadings` adds those texts as readings, and reports `exhaustive: false` whenever the tree was refused. `applyShellReadings` is unchanged: a `deny` reached from any reading still wins, and an incomplete set still turns a would-be `allow` into an `ask` unless the mode is `bypass`.
 
-Only commands inside a compound context (`subshell`, `compound_statement`, `if_statement`, `while_statement`, `for_statement`, `case_statement`, `function_definition`) are added. A top-level `command` node's own text is already a segment of the text walk, and the command under a top-level `redirected_statement` is not a command the shell runs without its redirect. Adding either would make an exact `allow` rule on `printf shell-content > content/shell.txt` ask, which is a regression the first draft of this package produced and the affected-suite run caught.
+Only leaf commands (`command`, `variable_assignment`, `variable_assignments`, `negated_command`, `declaration_command`, `unset_command`, `test_command`) become readings; the containers around them (`list`, `pipeline`, `redirected_statement`, the keyword and group statements) are walked, not added. A redirect is handled as the recovered `Wt` handles it: when a `redirected_statement` wraps exactly one command, that command's reading is the whole statement text, because the command runs with its redirect; when it wraps a pipeline or a group, the redirect attaches to the last command inside, so each inner command keeps its own text and the statement text already covers the redirect. Getting this wrong the other way made an exact `allow` rule on `printf shell-content > content/shell.txt` ask, which the affected-suite run caught.
+
+Separately, a line whose tree holds a compound node is not split on the text walk's separators: `;` inside `if …; then …; fi` separates a keyword from its body, and splitting it invented `then echo hi` and `fi` as commands. Those lines are read from the tree instead.
 
 The change can only tighten. Every line whose inner command was previously invisible now reports that command, so a `deny` reaches it and a matching `allow` covers it. No line gains a permission.
 
@@ -35,11 +37,11 @@ Not ported, with reasons: `Dt`'s command model (argv splitting, env-prefix value
 
 ## Validation
 
-`test/shell-permissions.test.ts` gains one group: a `deny` on `echo hi` denies all four wrapper forms; `echo ok` and `( echo ok )` keep their allow; and `echo hi )`, which the parser reads as an `ERROR`, reports `exhaustive: false` so an `echo *` allow rule asks. The group fails without the tree walk, because the text walk sees one segment for each wrapper form.
+`test/shell-permissions.test.ts` gains two groups. The first: a `deny` on `echo hi` denies all four wrapper forms; `echo ok` and `( echo ok )` keep their allow; and `echo hi )`, which the parser reads as an `ERROR`, reports `exhaustive: false` so an `echo *` allow rule asks. The group fails without the tree walk, because the text walk sees one segment for each wrapper form. The second pins the reading shape itself: a compound line reports only its real commands, a plain `;` list still splits, an exact allow on a redirected single command keeps working, and a redirect around a pipeline attaches to the last command only.
 
 `scripts/smoke-shell-readings-cli.mjs` gains two cases against the real CLI, in both source and compiled modes, on an owned loopback SSE gateway. Under a `deny` on `echo denied`, `( echo denied ) > marker.txt` is refused with "alternate reading" and writes no marker, while `( echo fine ) > marker.txt` runs and writes it. Both modes pass; two model requests per case, asserted.
 
-Check and build pass. Full suite 3439/3439 across 118 suites, 0 fail/cancel/skip/todo. Identity ac7a11d56302c2c5df21144494d79c18f4e79e33e3c7f068913671a6a795aae9 (938 input / 360 validation / 662 build records).
+Check and build pass. Full suite 3439/3439 across 118 suites, 0 fail/cancel/skip/todo. Identity 88edf008747f883442d5fbec1ceabffe48961a3b6dbd5923aad3662b79690b3b (938 input / 360 validation / 662 build records).
 
 An independent reader was asked to verify the copied bytes against the ledger output range, the node-set citation, the compound-only rule against the affected-suite regression, and that `exhaustive` can only move from true to false. Its verdict and limits are recorded in the evidence record once it returns; until then this package is main-verified only.
 

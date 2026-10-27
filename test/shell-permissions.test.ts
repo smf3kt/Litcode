@@ -118,6 +118,10 @@ test('a compound line is read from its tree, not from its separators', () => {
     ['printf shell-content > content/shell.txt']);
   assert.equal(decide([{ tool: 'run_command', command: 'printf shell-content > content/shell.txt', decision: 'allow' }],
     'printf shell-content > content/shell.txt').decision, 'allow');
+  // A redirect around a pipeline belongs to the last command in it, so the
+  // earlier commands keep their own text and none of them is spelled with it.
+  assert.deepEqual(shellReadings('echo a | grep b > out.txt').readings,
+    ['echo a | grep b > out.txt', 'echo a', 'grep b > out.txt', 'grep b']);
 });
 
 test('unchanged behaviour: no command rule, a denial, or bypass mode', () => {
