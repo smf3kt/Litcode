@@ -4,7 +4,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Two independent CLI processes share a private user directory and one owned
 // loopback gateway. A discovers B through the record files, the fixture model
@@ -12,14 +12,16 @@ import { fileURLToPath } from "node:url";
 // mode-mismatched message and approves it through /peer-held, and B's next
 // request carries the text as peer meta input. No cloud call leaves loopback.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const compiled = process.argv.includes("--compiled"), acceptance = process.argv.includes("--acceptance");
+const compiled = process.argv.includes("--compiled"), guard = process.argv.includes("--guard");
+const acceptance = process.argv.includes("--acceptance") || guard;
 const scratch = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : fs.realpathSync(os.tmpdir());
 const temporary = fs.realpathSync(fs.mkdtempSync(path.join(scratch, "peer-cli-smoke-")));
 const userDir = path.join(temporary, "user");
 const workspaceA = path.join(temporary, "workspace-a");
 const workspaceB = path.join(temporary, "workspace-b");
 const requests = { a: [], b: [] };
-let server, childA, childB;
+let server, childA, childB, busyResponse;
+const guardResults = {}, helpers = [];
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const runtimeRoot = path.join(scratch, `lp-${process.pid}`);
@@ -114,6 +116,20 @@ try {
     req.on("end", () => {
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       requests[label].push(body);
+      if (guard && label === 'b' && body.messages.at(-1)?.content === 'GUARD_BUSY') {
+        busyResponse = { res, body }; return;
+      }
+      if (guard && label === 'a' && typeof body.messages.at(-1)?.content === 'string' && body.messages.at(-1).content.startsWith('PEER_BURST ')) {
+        const address = body.messages.at(-1).content.slice('PEER_BURST '.length);
+        sse(res, body, Array.from({ length: 34 }, (_, index) => ({ type: 'tool_use', id: `guard-burst-${index}`,
+          name: 'send_peer_message', input: { address, message: `GUARD_BURST_${index}`, wait_ms: 0 } }))); return;
+      }
+      const relay = guard && typeof body.messages.at(-1)?.content === 'string'
+        ? /^GUARD_RELAY (\S+)(?: (\d+))?$/.exec(body.messages.at(-1).content) : undefined;
+      if (relay) {
+        sse(res, body, [{ type: 'tool_use', id: `guard-relay-${label}-${requests[label].length}`, name: 'send_peer_message',
+          input: { address: relay[1], message: `GUARD_RELAY ${label === 'a' ? guardResults.inboxA : guardResults.inboxB} ${Number(relay[2] ?? 0) + 1}`, wait_ms: 0 } }]); return;
+      }
       if (label === "a") {
         const pending = body.messages.at(-1);
         const text = typeof pending?.content === "string" ? pending.content : "";
@@ -218,6 +234,72 @@ try {
       .flatMap(name => fs.readFileSync(path.join(directory, name), 'utf8').trim().split('\n').map(JSON.parse));
     const peerEvent = records.find(row => row.kind === 'message' && row.message.role === 'user' && row.message.content === '/exit');
     assert.ok(peerEvent); assert.deepEqual(peerEvent.classifier?.origin, { kind: 'peer', source: 'uds' });
+    if (guard) {
+      childB.child.stdin.write('/peer-inbound accept\n');
+      await until(() => childB.combined.includes('Peer inbound policy: accept'), 'guard accept policy');
+      await send('GUARD_DUPLICATE');
+      await until(() => requests.b.some(request => request.messages.at(-1)?.content === 'GUARD_DUPLICATE'), 'first duplicate body admitted');
+      const duplicateId = await send('GUARD_DUPLICATE');
+      await status(duplicateId, 'dropped');
+      assert.equal(requests.b.filter(request => request.messages.at(-1)?.content === 'GUARD_DUPLICATE').length, 1);
+      const inboxA = /"inbox": "(uds:[^"]+)"/.exec(childA.combined)[1];
+      guardResults.inboxA = inboxA; guardResults.inboxB = inboxB;
+      const relayDrops = () => (childA.combined.match(/\S+ dropped\n/g) ?? []).length + (childB.combined.match(/\S+ dropped\n/g) ?? []).length;
+      const beforeRelayDrops = relayDrops();
+      await until(() => (childB.combined.match(/event finished: end_turn/g) ?? []).length === 3, 'duplicate recipient turn settled');
+      const beforeRelayTurns = turns(childA) + turns(childB);
+      childA.child.stdin.write(`/peer-inbound accept\nGUARD_RELAY ${inboxB} 0\n`);
+      await until(() => {
+        const journalRows = fs.readdirSync(path.join(workspaceB, '.agent')).filter(name => name.endsWith('.jsonl'))
+          .flatMap(name => fs.readFileSync(path.join(workspaceB, '.agent', name), 'utf8').trim().split('\n').map(JSON.parse));
+        return journalRows.some(row => row.classifier?.origin?.hopChain?.length >= 18);
+      }, 'relay chain persisted');
+      await until(() => relayDrops() > beforeRelayDrops, 'relay guard reached');
+      const relayRequests = [...requests.a, ...requests.b].filter(request => typeof request.messages.at(-1)?.content === 'string'
+        && request.messages.at(-1).content.startsWith('GUARD_RELAY '));
+      assert.ok(relayRequests.length >= 19 && relayRequests.length <= 22);
+      guardResults.relayRequests = relayRequests.length;
+      await until(() => turns(childA) + turns(childB) === beforeRelayTurns + relayRequests.length, 'relay turns settled');
+      await command(childA, 'GUARD_HUMAN_RESET');
+      await command(childA, `PEER_SEND ${inboxB} GUARD_AFTER_RESET`);
+      await until(() => requests.b.some(request => request.messages.at(-1)?.content === 'GUARD_AFTER_RESET'), 'human input resets relay chain');
+      const currentRows = fs.readdirSync(path.join(workspaceB, '.agent')).filter(name => name.endsWith('.jsonl'))
+        .flatMap(name => fs.readFileSync(path.join(workspaceB, '.agent', name), 'utf8').trim().split('\n').map(JSON.parse));
+      const resetRow = currentRows.find(row => row.kind === 'message' && row.message.content === 'GUARD_AFTER_RESET');
+      assert.deepEqual(resetRow.classifier.origin, { kind: 'peer', source: 'uds' });
+      const { createLocalPeerTransport, sendPeerFrame } = await import(pathToFileURL(path.join(root, 'dist/local-peer.js')).href);
+      const helper = await createLocalPeerTransport({ userDir, workspace: workspaceA,
+        socketPath: path.join(runtimeDir(), 'litcode-socks', `guard-${process.pid}.sock`), policy: () => 'accept', onEvent: () => {} });
+      helpers.push(helper);
+      const queued = (text, from = helper.address) => sendPeerFrame(inboxB, { type: 'user', from, msg_id: text,
+        message: { role: 'user', content: text }, from_mode: 'prompting' }, { userDir });
+      childB.child.stdin.write('GUARD_BUSY\n');
+      await until(() => busyResponse !== undefined, 'recipient busy request');
+      const burstStarted = Date.now();
+      await command(childA, `PEER_BURST ${helper.address}`);
+      const burstElapsedMs = Date.now() - burstStarted;
+      const burstResults = Array.from({ length: 34 }, (_, index) => toolResult(requests.a, `guard-burst-${index}`));
+      assert.ok(burstResults.every(Boolean));
+      assert.ok(burstResults.some(block => block.is_error === true && /Too many messages/.test(block.content)));
+      const admitted = burstResults.filter(block => block.is_error !== true).length;
+      assert.ok(admitted > 0 && admitted <= 30 + Math.floor(burstElapsedMs / 2000));
+      guardResults.pacedSends = burstResults.length - admitted;
+      for (let index = 0; index < 50; index++) await queued(`GUARD_QUEUE_${index}`, `uds:${path.join(runtimeDir(), 'litcode-socks', `sender-${index}.sock`)}`);
+      await queued('GUARD_QUEUE_SENTINEL');
+      await until(() => helper.status('GUARD_QUEUE_SENTINEL')?.status === 'dropped', 'full peer queue receipt');
+      const pendingBusy = busyResponse; busyResponse = undefined;
+      const priorEvents = (childB.combined.match(/event finished: end_turn/g) ?? []).length;
+      sse(pendingBusy.res, pendingBusy.body, [{ type: 'text', text: 'busy released' }]);
+      await until(() => (childB.combined.match(/event finished: end_turn/g) ?? []).length === priorEvents + 50, 'all retained peer messages drained');
+      const deliveredQueue = requests.b.map(request => request.messages.at(-1)?.content)
+        .filter(content => typeof content === 'string' && /^GUARD_(?:BURST_|QUEUE_)/.test(content));
+      assert.equal(deliveredQueue.length, 50);
+      assert.ok(deliveredQueue.includes('GUARD_QUEUE_0')); assert.equal(deliveredQueue.includes('GUARD_QUEUE_SENTINEL'), false);
+      guardResults.retainedQueue = 50;
+      await helper.close(); helpers.splice(helpers.indexOf(helper), 1);
+      childB.child.stdin.write('/peer-inbound hold\n');
+      await until(() => childB.combined.endsWith('Peer inbound policy: hold\n') || childB.combined.lastIndexOf('Peer inbound policy: hold') > childB.combined.lastIndexOf('Peer inbound policy: accept'), 'guard hold policy restored');
+    }
     const pendingId = await send('EXPIRE_ON_EXIT'); assert.ok(pendingId);
     await until(() => childB.combined.includes('held for approval: EXPIRE_ON_EXIT'), 'held at exit');
     childB.child.stdin.write('/exit\n'); assert.equal(await childB.exit, 0);
@@ -240,12 +322,14 @@ try {
   console.log(JSON.stringify({ cli: "passed", processes: 2, inboxB, aRequests: requests.a.length, bRequests: requests.b.length,
     held: "mode-mismatch", receipt: "delivered", ownedCleanup: true,
     ...(compiled ? { compiledCLI: true } : {}), acceptance, heldDecisions: acceptance ? ['approve', 'deny', 'expire', 'refuse', 'exit-expiry'] : ['approve'],
-    peerOrigin: acceptance, gateway: "owned loopback SSE", externalCalls: 0 }));
+    peerOrigin: acceptance, ...(guard ? { guard: { pacedSends: guardResults.pacedSends, retainedQueue: guardResults.retainedQueue,
+      relayRequests: guardResults.relayRequests, duplicateRequests: 1, humanReset: true } } : {}), gateway: "owned loopback SSE", externalCalls: 0 }));
 } catch (error) {
   console.error("A:", childA?.combined?.slice(-4000));
   console.error("B:", childB?.combined?.slice(-4000));
   throw error;
 } finally {
+  for (const helper of helpers) await helper.close();
   for (const state of [childA, childB]) if (state && state.child.exitCode === null && state.child.signalCode === null) state.child.kill("SIGKILL");
   await Promise.all([childA, childB].filter(Boolean).map(state => state.exit));
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

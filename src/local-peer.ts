@@ -18,6 +18,9 @@ import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { atomicWriteFile } from "./atomic-write.js";
 import type { ToolContext, ToolDefinition } from "./tools.js";
+import { classifierMessage } from "./message-origin.js";
+import { appendPeerHop, createPeerDropReporter, createPeerIngressGuard, createPeerPacer, peerHopChainSchema,
+  peerHopToken, peerDropReasonSchema, PEER_LIMITS, type PeerDropReason } from "./local-peer-guard.js";
 
 // chunk-m7864yc0.js: `J` [4023,4027), `C` [4039,4041), key name `xjn`
 // [4042,4075), `Ijn` [4802,4804), `oV` [4852,4892), `STs` [5232,5505),
@@ -108,6 +111,7 @@ export type AcceptedMessage = {
   fromMode?: PeerMode;
   verifiedPeerPid?: number;
   verifiedPeerStart?: string;
+  hopChain?: string[];
   selfSent: boolean;
 };
 
@@ -117,7 +121,7 @@ export type HeldMessage = {
   text: string;
   cause: HeldCause;
   receivedAt: number;
-  origin: { from?: string; verifiedPeerPid?: number; verifiedPeerStart?: string; selfSent: boolean; msgId?: string; fromMode?: PeerMode };
+  origin: { from?: string; verifiedPeerPid?: number; verifiedPeerStart?: string; selfSent: boolean; msgId?: string; fromMode?: PeerMode; hopChain?: string[] };
 };
 
 export type SendStatus = { status: PeerReceiptStatus; reason?: string; at: number };
@@ -838,12 +842,19 @@ export class HeldQueue {
 // ---------------------------------------------------------------------------
 
 export class PeerSendRefusal extends Error {
-  readonly refusal: "non-local" | "symlink" | "endpoint-unverifiable" | "wrong-endpoint" | "no-live-inbox" | "message-too-large";
+  readonly refusal: "non-local" | "symlink" | "endpoint-unverifiable" | "wrong-endpoint" | "no-live-inbox" | "message-too-large" | "sender-paced";
   constructor(refusal: PeerSendRefusal["refusal"], message: string) {
     super(message);
     this.name = "PeerSendRefusal";
     this.refusal = refusal;
   }
+}
+
+// FK, 6zdc3jq1 [11360,11485), UTF-16.
+function refundablePeerSend(error: unknown): boolean {
+  if (error instanceof PeerSendRefusal) return true;
+  const code = error !== null && typeof error === "object" && "code" in error ? error.code : undefined;
+  return code === "ENOENT" || code === "ECONNREFUSED" || code === "EBUSY" || code === "EAGAIN" || code === "EACCES";
 }
 
 export type PeerFrame = Record<string, unknown> & { type: "user" | "control" };
@@ -955,7 +966,9 @@ export type PeerInboxOptions = {
   onAccepted: (message: AcceptedMessage) => void;
   onHeld?: (message: HeldMessage) => void;
   onDropped?: (message: HeldMessage, reason: "refused" | "expired" | "dropped") => void;
-  onReceipt?: (status: PeerReceiptStatus, origMsgId?: string, reason?: string) => void;
+  onReceipt?: (status: PeerReceiptStatus, origMsgId?: string, reason?: string,
+    detail?: { dropReason?: PeerDropReason; droppedMsgIds: string[] }) => void;
+  queuedPeerCount?: () => number;
   onNotice?: (notice: { kind: "listening" | "error" | "held-released"; message: string; address?: string }) => void;
   logger?: (message: string, detail?: { level?: "warn" | "error" }) => void;
 };
@@ -987,6 +1000,8 @@ type InboxState = {
   held?: HeldQueue;
   mode?: () => { mode: string; bypassAvailable?: boolean } | null;
   recordFile?: string;
+  deliver?: (message: AcceptedMessage, held: boolean) => boolean;
+  drops?: ReturnType<typeof createPeerDropReporter>;
 };
 
 /** mn/nn/Je, bt8cr7rw [28327,34716)/[12376,14664)/[11877,12278), UTF-16. */
@@ -1032,11 +1047,35 @@ export async function startPeerInbox(options: PeerInboxOptions): Promise<PeerInb
     await stopInbox(state, options, { settleHeld: false });
     throw new Error(`Bound ${socketPath} but could not publish its session record (${String(error)}); the inbox was closed.`);
   }
+  const guard = createPeerIngressGuard(), ownTokens = new Set([peerHopToken(peerAddress(socketPath))]);
+  const drops = createPeerDropReporter(value => logger(`[peer-guard] Dropped peer message: ${value.reason}${value.suppressed ? ` (+${value.suppressed} suppressed)` : ""}`, { level: "warn" }));
+  state.drops = drops;
+  // Fr/Oo/D, sfn1dbxq [224858,226671), 0ydceggj [5727,6012), UTF-16.
+  state.deliver = (message, fromHeld) => {
+    const from = message.from ?? "unknown", identified = from !== "unknown" || message.verifiedPeerPid !== undefined;
+    let admission = identified ? guard.admit({ senderKey: from !== "unknown" ? `from:${from}` : `pid:${message.verifiedPeerPid}`,
+      body: message.text, hopChain: message.hopChain, ownTokens }) : guard.checkHopChain(message.hopChain, ownTokens);
+    if (admission?.admitted !== false && (options.queuedPeerCount?.() ?? 0) >= PEER_LIMITS.maxQueuedPeerMessages)
+      admission = { admitted: false, reason: "queue-full" };
+    if (admission?.admitted === false) {
+      const reason = admission.reason;
+      drops.report({ from, reason });
+      const heldMessage: HeldMessage = { text: message.text, from: message.from, msgId: message.msgId,
+        receivedAt: Date.now(), cause: "explicit", origin: message };
+      const receipt = (ids: string[]) => sendReceipt(state, options, heldMessage, "dropped", { dropReason: reason, droppedMsgIds: ids }, logger);
+      if (fromHeld) void receipt([]);
+      else drops.noteDropForReceipt(`${from}\0${message.verifiedPeerPid ?? ""}\0${reason}`, message.msgId, receipt);
+      if (!fromHeld) options.onDropped?.(heldMessage, "dropped");
+      return false;
+    }
+    options.onAccepted(message); return true;
+  };
   const held = new HeldQueue({
     verdict: message => inboundVerdict({ explicit: options.policy?.(), selfSent: message.origin.selfSent,
       recipient: state.mode?.() ?? null, fromMode: message.origin.fromMode }),
-    deliver: message => { options.onAccepted({ text: message.text, from: message.origin.from, msgId: message.origin.msgId,
-      verifiedPeerPid: message.origin.verifiedPeerPid, verifiedPeerStart: message.origin.verifiedPeerStart, selfSent: message.origin.selfSent }); return true; },
+    deliver: message => state.deliver!({ text: message.text, from: message.origin.from, msgId: message.origin.msgId,
+      fromMode: message.origin.fromMode, hopChain: message.origin.hopChain,
+      verifiedPeerPid: message.origin.verifiedPeerPid, verifiedPeerStart: message.origin.verifiedPeerStart, selfSent: message.origin.selfSent }, true),
     receipt: (message, status, detail) => sendReceipt(state, options, message, status, detail, logger),
     onHeld: message => options.onHeld?.(message),
     onDropped: (message, reason) => options.onDropped?.(message, reason),
@@ -1138,7 +1177,11 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
         || status === "delivered" || status === "refused" || status === "dropped")) {
         options.onReceipt?.(status === "expired" && frame.status_detail === "refused" ? "refused" : status,
           typeof frame.orig_msg_id === "string" ? frame.orig_msg_id : undefined,
-          typeof frame.reason === "string" ? frame.reason : undefined);
+          typeof frame.reason === "string" ? frame.reason : undefined,
+          { dropReason: peerDropReasonSchema.safeParse(frame.drop_reason).data,
+            droppedMsgIds: Array.isArray(frame.dropped_msg_ids) ? frame.dropped_msg_ids.filter((id): id is string =>
+              typeof id === "string" && (/^[a-z0-9_]{1,32}$/.test(id)
+                || /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(id))).slice(0, 16) : [] });
       }
       return;
     }
@@ -1148,6 +1191,7 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
     const from = typeof frame.from === "string" ? frame.from : undefined;
     const msgId = typeof frame.msg_id === "string" ? frame.msg_id : undefined;
     const fromMode = frame.from_mode === "bypass" || frame.from_mode === "prompting" ? frame.from_mode : undefined;
+    const hopChain = peerHopChainSchema.safeParse(frame.hop_chain).data;
     const selfSent = from !== undefined && from === peerAddress(state.socketPath!);
     const verifiedPeerStart = context.peer === undefined ? undefined : await processStart(context.peer.pid);
     const rewritten = await options.receive?.({ from, text: content, msgId });
@@ -1156,11 +1200,11 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
     const verdict = inboundVerdict({ explicit: options.policy?.(), selfSent,
       recipient: state.mode?.() ?? null, fromMode });
     if (verdict.policy === "accept") {
-      options.onAccepted({ text, from, msgId, fromMode, verifiedPeerPid: context.peer?.pid, verifiedPeerStart, selfSent });
+      state.deliver?.({ text, from, msgId, fromMode, hopChain, verifiedPeerPid: context.peer?.pid, verifiedPeerStart, selfSent }, false);
       return;
     }
     const message2: HeldMessage = { msgId, from, text, cause: verdict.holdCause ?? "explicit", receivedAt: Date.now(),
-      origin: { from, verifiedPeerPid: context.peer?.pid, verifiedPeerStart, selfSent, msgId, fromMode } };
+      origin: { from, verifiedPeerPid: context.peer?.pid, verifiedPeerStart, selfSent, msgId, fromMode, hopChain } };
     if (verdict.policy === "refuse") {
       void sendReceipt(state, options, message2, "refused", undefined, logger);
       options.onDropped?.(message2, "refused");
@@ -1177,7 +1221,7 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
 
 // mn/p9n/pn, bt8cr7rw [28327,35597)/[7021,7180), STt, 6zdc3jq1 [14157,14459), UTF-16.
 async function sendReceipt(state: InboxState, options: PeerInboxOptions, message: HeldMessage, status: PeerReceiptStatus,
-  detail: { reason?: string; droppedMsgIds?: string[] } | undefined,
+  detail: { reason?: string; droppedMsgIds?: string[]; dropReason?: PeerDropReason } | undefined,
   logger: (message: string, detail?: { level?: "warn" | "error" }) => void): Promise<void> {
   if (message.origin.from === undefined || state.socketPath === undefined) return;
   const target = receiptTarget(message.origin.from, state.socketPath, message.origin.verifiedPeerPid);
@@ -1186,7 +1230,8 @@ async function sendReceipt(state: InboxState, options: PeerInboxOptions, message
     ...(status === "refused" ? { status: "expired", status_detail: "refused" } : { status }),
     from: peerAddress(state.socketPath), msgV: 1, msg_id: crypto.randomUUID(),
     reason: detail?.reason ?? RECEIPT_TEXT[status], ...(message.msgId === undefined ? {} : { orig_msg_id: message.msgId }),
-    ...(detail?.droppedMsgIds === undefined ? {} : { dropped_msg_ids: detail.droppedMsgIds }) };
+    ...(detail?.droppedMsgIds === undefined ? {} : { dropped_msg_ids: detail.droppedMsgIds }),
+    ...(detail?.dropReason === undefined ? {} : { drop_reason: detail.dropReason }) };
   try {
     await sendPeerFrame(peerAddress(target), frame, { userDir: options.userDir,
       expectPeerPid: message.origin.verifiedPeerPid, expectPeerProcStart: message.origin.verifiedPeerStart });
@@ -1206,6 +1251,7 @@ async function stopInbox(state: InboxState, options: PeerInboxOptions, flags: { 
     const heldSettlement = flags.settleHeld ? state.held?.expireAll() : undefined;
     await Promise.race([state.chain, new Promise(resolve => setTimeout(resolve, PROCESS_SETTLE_MS).unref?.())]);
     await heldSettlement;
+    await state.drops?.flushPendingReceipts(); state.drops?.dispose();
     if (state.socketPath !== undefined) await fsp.unlink(state.socketPath).catch(() => {});
     if (state.keyFile !== undefined) await removeKey(options.userDir, state.keyFile);
     if (state.recordFile !== undefined) await removeRecordFiles([state.recordFile]);
@@ -1238,6 +1284,8 @@ export type LocalPeerTransportOptions = {
   mode?: () => { mode: string; bypassAvailable?: boolean } | null;
   heldTimeoutMs?: () => number;
   receive?: PeerInboxOptions["receive"];
+  queuedPeerCount?: () => number;
+  hopChain?: () => readonly string[] | undefined;
   onEvent: (event: PeerTransportEvent) => void;
   logger?: PeerInboxOptions["logger"];
 };
@@ -1256,11 +1304,41 @@ export type LocalPeerTransport = {
   close(): Promise<void>;
 };
 
+// v5e, 64ag51qf [5575,5765), UTF-16.
+export function latestPeerHopChain(messages: readonly Parameters<typeof classifierMessage>[0][]): readonly string[] | undefined {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index]!;
+    if (message.role !== "user") continue;
+    const classifier = classifierMessage(message), origin = classifier?.origin;
+    if (origin?.kind === "summary" || origin?.kind === "generated" && origin.source === "tool-results") continue;
+    return origin?.kind === "peer" ? origin.hopChain ?? [] : undefined;
+  }
+  return undefined;
+}
+
 const STATUS_TTL_MS = 10 * 60_000;
 const STATUS_LIMIT = 256;
 
 export async function createLocalPeerTransport(options: LocalPeerTransportOptions): Promise<LocalPeerTransport> {
   const statuses = new Map<string, SendStatus>();
+  const pacer = createPeerPacer();
+  const outstanding: { msgId: string; target: string }[] = [], awaitingTerminal: typeof outstanding = [];
+  // Xe/gao/hao, 6zdc3jq1 [13136,14098), UTF-16.
+  const takeReceipt = (msgId: string, status: PeerReceiptStatus): { target: string; wasHeld: boolean } | undefined => {
+    const index = outstanding.findIndex(sent => sent.msgId === msgId);
+    if (index !== -1) {
+      const sent = outstanding.splice(index, 1)[0];
+      if (!sent) return;
+      if (status === "held") { if (awaitingTerminal.length >= 200) awaitingTerminal.shift(); awaitingTerminal.push(sent); }
+      return { target: sent.target, wasHeld: false };
+    }
+    const heldIndex = awaitingTerminal.findIndex(sent => sent.msgId === msgId);
+    if (heldIndex !== -1 && status !== "held") {
+      const sent = awaitingTerminal.splice(heldIndex, 1)[0];
+      if (sent) return { target: sent.target, wasHeld: true };
+    }
+    return undefined;
+  };
   const waiters = new Map<string, Set<(status: SendStatus) => void>>();
   let sessionId: string | undefined;
   const emit = (event: PeerTransportEvent): void => { try { options.onEvent(event); } catch { /* observers own their errors */ } };
@@ -1282,10 +1360,28 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
     ...(options.mode === undefined ? {} : { mode: options.mode }),
     ...(options.heldTimeoutMs === undefined ? {} : { heldTimeoutMs: options.heldTimeoutMs }),
     ...(options.receive === undefined ? {} : { receive: options.receive }),
+    ...(options.queuedPeerCount === undefined ? {} : { queuedPeerCount: options.queuedPeerCount }),
     onAccepted: message => emit({ kind: "message", message }),
     onHeld: message => emit({ kind: "held", message, count: inbox.held.size() }),
     onDropped: (message, reason) => emit({ kind: "dropped", message, reason }),
-    onReceipt: (status, origMsgId, reason) => {
+    onReceipt: (status, origMsgId, reason, detail) => {
+      const sent = origMsgId === undefined ? undefined : takeReceipt(origMsgId, status);
+      if (sent) {
+        if (status === "held") pacer.credit(sent.target);
+        else if (sent.wasHeld && (status === "delivered" || status === "dropped" && detail?.dropReason === "queue-full")) pacer.debit(sent.target);
+      }
+      if (status === "dropped") {
+        const ids = new Set(detail?.droppedMsgIds ?? []);
+        for (const pending of [outstanding, awaitingTerminal]) {
+          for (let index = 0; index < pending.length;) {
+            const entry = pending[index]!;
+            if (!ids.delete(entry.msgId)) { index++; continue; }
+            pending.splice(index, 1);
+            if (pending === awaitingTerminal && detail?.dropReason === "queue-full") pacer.debit(entry.target);
+            remember(entry.msgId, { status, ...(reason === undefined ? {} : { reason }), at: Date.now() });
+          }
+        }
+      }
       if (origMsgId !== undefined) remember(origMsgId, { status, ...(reason === undefined ? {} : { reason }), at: Date.now() });
       emit({ kind: "receipt", status, origMsgId, reason });
     },
@@ -1315,10 +1411,26 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
       // `K8t` (chunk-6zdc3jq1.js) sends no `session_id`; the field names the
       // recipient's own session in `Ie` (chunk-bt8cr7rw.js [4958,5180)) and a
       // foreign id is dropped as a mismatch.
+      const hopChain = appendPeerHop(options.hopChain?.(), peerHopToken(inbox.address));
       const frame: PeerFrame = { type: "user", message: { role: "user", content: text }, from: inbox.address,
-        msg_id: msgId, from_mode: ownMode, priority: "next" };
-      await sendPeerFrame(address, frame, { userDir: options.userDir, expectPeerPid, expectPeerProcStart,
-        ...(sendOptions.signal === undefined ? {} : { signal: sendOptions.signal }) });
+        msgV: 1, msg_id: msgId, from_mode: ownMode, priority: "next", ...(hopChain === undefined ? {} : { hop_chain: hopChain }) };
+      boundedLine(frame);
+      const reservation = pacer.reserve(target);
+      if (!reservation.ok) throw new PeerSendRefusal("sender-paced",
+        `Too many messages to this session just now: ${reservation.sentInBurst} were sent recently. Batch the remaining text or wait before sending more.`);
+      if (outstanding.length >= 200) outstanding.shift();
+      outstanding.push({ msgId, target });
+      try {
+        await sendPeerFrame(address, frame, { userDir: options.userDir, expectPeerPid, expectPeerProcStart,
+          ...(sendOptions.signal === undefined ? {} : { signal: sendOptions.signal }) });
+      } catch (error) {
+        if (refundablePeerSend(error)) {
+          reservation.refund();
+          const index = outstanding.findIndex(sent => sent.msgId === msgId);
+          if (index !== -1) outstanding.splice(index, 1);
+        }
+        throw error;
+      }
       return { msgId };
     },
     held() { return inbox.held.list(); },
