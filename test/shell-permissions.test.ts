@@ -119,9 +119,18 @@ test('a compound line is read from its tree, not from its separators', () => {
   assert.equal(decide([{ tool: 'run_command', command: 'printf shell-content > content/shell.txt', decision: 'allow' }],
     'printf shell-content > content/shell.txt').decision, 'allow');
   // A redirect around a pipeline belongs to the last command in it, so the
-  // earlier commands keep their own text and none of them is spelled with it.
+  // earlier commands keep their own text and the last one reads both ways.
   assert.deepEqual(shellReadings('echo a | grep b > out.txt').readings,
-    ['echo a | grep b > out.txt', 'echo a', 'grep b > out.txt', 'grep b']);
+    ['echo a | grep b > out.txt', 'echo a', 'grep b', 'grep b > out.txt']);
+  // A redirect inside a group must not hide the command from a rule.
+  assert.deepEqual(shellReadings('( echo denied > f )').readings,
+    ['( echo denied > f )', 'echo denied > f', 'echo denied']);
+  // A quoted inner command is de-quoted before a rule sees it.
+  assert.ok(shellReadings("( echo 'denied' )").readings.includes('echo denied'));
+  // A tree refusal keeps the text readings instead of discarding them.
+  const overlong = 'echo denied;' + 'x'.repeat(10050);
+  assert.ok(shellReadings(overlong).readings.includes('echo denied'));
+  assert.equal(shellReadings(overlong).exhaustive, false);
 });
 
 test('unchanged behaviour: no command rule, a denial, or bypass mode', () => {

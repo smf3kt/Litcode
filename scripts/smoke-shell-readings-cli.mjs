@@ -94,10 +94,12 @@ try {
   assert.equal(grouped.result.is_error, true);
   assert.match(grouped.result.content, /alternate reading/);
   assert.equal(fs.existsSync(grouped.marker), false, "a group must not carry a denied command past the rule");
+  assert.equal(grouped.calls, 2);
 
   const groupControl = await run("group-control", "( echo fine ) > marker.txt", "marker.txt", denyRule);
   assert.equal(groupControl.result.is_error, undefined);
   assert.equal(fs.existsSync(groupControl.marker), true, "a group around an allowed command still runs");
+  assert.equal(groupControl.calls, 2);
 
   console.log(JSON.stringify({ cli: "passed", quotedCommandDenied: true, controlCommandRan: true,
     denial: "alternate reading", analyserRefusalAsks: true, groupedCommandDenied: true, groupControlRan: true,

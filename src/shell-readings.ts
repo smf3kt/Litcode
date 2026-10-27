@@ -56,30 +56,37 @@ function treeReadings(command: string): { readings: string[]; tree?: unknown; re
   const readings: string[] = [];
   let refused: string | undefined;
   const visit = (node: { type?: string; text?: string; children?: readonly (unknown)[] } | null | undefined,
-    redirectText: string | undefined): void => {
+    redirectText: string | undefined, insideGroup: boolean): void => {
     if (refused !== undefined || !node || typeof node.type !== 'string') return;
     // The recovered analyzer answers `too-complex` for an ERROR node, so a line
     // the parser could not read yields no reading set at all.
     if (node.type === 'ERROR') { refused = 'Parse error'; return; }
     // `E` records each command's own text and `Wt` keeps its redirections in a
-    // separate field, so a command runs with its redirect but is not spelled
-    // with one. When a redirect wraps exactly one command, that command is the
-    // statement and its reading is the statement text; when it wraps a pipeline
-    // or a group, `Wt` attaches the redirects to the last command inside, so the
-    // inner commands keep their own text and the statement text already covers
-    // the redirect.
+    // separate field. At the top level the statement text is what the user
+    // typed, so it is the one reading; inside a group the text walk cannot see
+    // the command at all, so its own text is a reading too, or a redirect would
+    // hide it from every rule.
     if (LEAF_COMMANDS.has(node.type) && typeof node.text === 'string') {
-      readings.push(redirectText ?? node.text);
+      if (redirectText !== undefined && redirectText !== node.text) {
+        readings.push(redirectText);
+        if (insideGroup) readings.push(node.text);
+      } else {
+        readings.push(node.text);
+      }
       return;
     }
+    // A redirect around exactly one command belongs to that command. A redirect
+    // around a pipeline or a group belongs to the body, whose own commands stay
+    // readings of their own: passing the statement text down would hide them.
     const children = (node.children ?? []) as readonly ({ type?: string } | null)[];
     const wrapped = node.type === 'redirected_statement' && typeof node.text === 'string' &&
       children.filter(child => LEAF_COMMANDS.has(child?.type ?? '')).length === 1 &&
       !children.some(child => CONTAINER_NODES.has(child?.type ?? ''))
       ? node.text : undefined;
-    for (const child of node.children ?? []) visit(child as never, wrapped);
+    const group = insideGroup || COMPOUND_NODES.has(node.type);
+    for (const child of node.children ?? []) visit(child as never, wrapped, group);
   };
-  visit(tree as never, undefined);
+  visit(tree as never, undefined, false);
   return { readings, tree, ...(refused === undefined ? {} : { refused }) };
 }
 
@@ -167,19 +174,21 @@ export function shellReadings(command: string): ShellReadings {
   // The text walk cannot see a group or a keyword body: `( echo hi )` is one
   // segment, so a rule on `echo hi` never met it. The recovered parser does
   // report those inner commands, and an unreadable line is refused outright.
+  // The tree is read first so its commands join the same queue as the text
+  // forms and get de-quoted, unescaped and split in turn; a refusal only marks
+  // the set incomplete, it never discards the text readings already found.
   const tree = treeReadings(command);
-  if (tree.refused !== undefined) return { readings: [...readings], exhaustive: false };
+  for (const reading of tree.readings) add(reading);
   // On a line with a compound node, `;` also separates a keyword from its body,
-  // so splitting it would invent fragments (`then echo hi`, `fi`) that are not
-  // commands. The tree supplies the commands for those lines instead.
-  const splitSegments = !hasCompoundNode(tree.tree);
+  // so no form of that line is split: the tree already reports every command in
+  // it, and splitting a de-quoted copy would invent `then echo hi` and `fi`.
+  const split = tree.refused !== undefined || !hasCompoundNode(tree.tree);
   while (queue.length) {
     const current = queue.shift()!;
-    const parts = splitSegments || current !== command ? segments(current) : [];
+    const parts = split ? segments(current) : [];
     for (const candidate of [stripQuotes(current), ...substitutions(current), ...parts]) add(candidate);
   }
-  for (const reading of tree.readings) add(reading);
-  const exhaustive = !truncated && !OPAQUE.test(command) && shellComplexityReason(command) === undefined;
+  const exhaustive = tree.refused === undefined && !truncated && !OPAQUE.test(command) && shellComplexityReason(command) === undefined;
   return { readings: [...readings], exhaustive };
 }
 

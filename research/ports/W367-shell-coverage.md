@@ -1,6 +1,6 @@
 # W367 permissions: a group or keyword body is checked as the command it runs
 
-Status: implementation and main verification. One active package. Base commit 4388337. Independent review pending.
+Status: implementation, main verification and independent review with repairs. One active package. Base commit 4388337.
 
 ## Task card
 
@@ -41,9 +41,9 @@ Not ported, with reasons: `Dt`'s command model (argv splitting, env-prefix value
 
 `scripts/smoke-shell-readings-cli.mjs` gains two cases against the real CLI, in both source and compiled modes, on an owned loopback SSE gateway. Under a `deny` on `echo denied`, `( echo denied ) > marker.txt` is refused with "alternate reading" and writes no marker, while `( echo fine ) > marker.txt` runs and writes it. Both modes pass; two model requests per case, asserted.
 
-Check and build pass. Full suite 3439/3439 across 118 suites, 0 fail/cancel/skip/todo. Identity 88edf008747f883442d5fbec1ceabffe48961a3b6dbd5923aad3662b79690b3b (938 input / 360 validation / 662 build records).
+Check and build pass. Full suite 3439/3439 across 118 suites, 0 fail/cancel/skip/todo. Identity e767d6fb156a18c8a5f03191494d42ae4231e36f321d9bfb4747f250f481130d (938 input / 360 validation / 662 build records). Affected suites 93/93 across seven files.
 
-An independent reader was asked to verify the copied bytes against the ledger output range, the node-set citation, the compound-only rule against the affected-suite regression, and that `exhaustive` can only move from true to false. Its verdict and limits are recorded in the evidence record once it returns; until then this package is main-verified only.
+An independent reader verified the copied block byte-for-byte, the `Mt` citation, the refusal path and the first regression group, and returned four product defects and two record gaps. All six are repaired here and pinned by the second group and the driver assertions: a quoted inner command is now de-quoted before a rule sees it, a redirect inside a group no longer hides the command, a tree refusal no longer discards the text readings, no form of a compound line is split on separators, the walk comment and its `E`/`Wt` citation are corrected, and both driver cases now assert two model requests. The reader did not run tests, build or the driver; main bound those to the repaired identity. Its remaining limits are the unported analyser command model, declaration-prefix rule, `Lcn` ordering and backtick verdicts, and that `bypass` still allows a line whose reading set is incomplete.
 
 The first draft of this package also added the command under a top-level `redirected_statement`, which turned an exact allow rule on `printf shell-content > content/shell.txt` into an ask. The affected-suite run caught it, and the compound-only rule above is the repair.
 

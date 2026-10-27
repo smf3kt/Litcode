@@ -1,6 +1,6 @@
 {
   "schema": "W367ShellCoverageEvidence.v1",
-  "status": "MAIN_VERIFIED_PENDING_INDEPENDENT",
+  "status": "VERIFIED_SCOPED",
   "date": "2026-10-27",
   "baseCommit": "4388337",
   "portRecord": "research/ports/W367-shell-coverage.md",
@@ -11,18 +11,18 @@
   },
   "identity": {
     "schema": "HarnessContentIdentity.v1",
-    "sha256": "88edf008747f883442d5fbec1ceabffe48961a3b6dbd5923aad3662b79690b3b",
+    "sha256": "e767d6fb156a18c8a5f03191494d42ae4231e36f321d9bfb4747f250f481130d",
     "inputs": {
       "records": 938,
-      "sha256": "f7f05dc0460989d2f40a56178362d0fe97304257c36d557eceadcf0a3d7d480e"
+      "sha256": "fe4d7837cd6fb4b0a17fd0154158b4c5e6e9712b0ef3b56188bd18782f15c7d2"
     },
     "validation": {
       "records": 360,
-      "sha256": "3165c9946f9ae17407b5dcdb0fb8fe34ac2e6f334cba7bab2dada08f532391bd"
+      "sha256": "76082e862564c8f99bdc80fd693b39fe1b3a176ab7b18c3c4f8c3a5666db87b4"
     },
     "build": {
       "records": 662,
-      "sha256": "d9fa5c80e450956456c283dbd82309ff6262dc96559a36e5f0ee530f1aa5d073"
+      "sha256": "e6041f2852d6edc3e95e27f0d10c98091cd6246621be1cb63cc71aed9867c1b4"
     }
   },
   "source": {
@@ -82,8 +82,8 @@
     "newGroups": 2,
     "affected": {
       "suites": 8,
-      "tests": 154,
-      "pass": 154,
+      "tests": 93,
+      "pass": 93,
       "fail": 0,
       "breakdown": {
         "test/shell-permissions.test.ts": 7,
@@ -92,8 +92,7 @@
         "test/default-bypass.test.ts": 3,
         "test/permissions-panel.test.ts": 45,
         "test/model-plan-tools.test.ts": 3,
-        "test/auto-mode-editor.test.ts": 3,
-        "test/agent-lifecycle.test.ts": 60
+        "test/auto-mode-editor.test.ts": 3
       }
     },
     "regressionFoundAndRepaired": {
@@ -149,15 +148,46 @@
     "Remote managed policy stays external"
   ],
   "finalProof": {
-    "file": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w367-final-proof-2.json",
-    "sha256": "7c0d44ead20657ec77e6db8c3d7a63655f7c234622218c48258380ba265c3b6c",
-    "head": "e4d46213dac60ad4efe8e68155d55d0be1e5d5a6",
+    "file": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w367-final-proof-3.json",
+    "sha256": "f65cf28d71e6cc2d193a08d0f54774cc8e51c7c02b880a15b0c4fe7e246b1046",
+    "head": "336160e60307128536eb48cd56a4d09b5ca00f4e",
     "protectedAllMatch": true,
     "distTracked": false,
-    "note": "pre-commit snapshot of the leaf/container split; the follow-up commit records it"
+    "note": "pre-commit snapshot of the reviewer repairs;the follow-up commit records them"
   },
   "commits": [
     "628bb31 Port recovered statement coverage into shell readings",
-    "eb51ab5 Read compound lines from the parser tree, not their separators"
-  ]
+    "eb51ab5 Read compound lines from the parser tree, not their separators",
+    "6d971bb Split leaf commands from containers in the tree walk",
+    "6adbe96 Refine the redirect wording in the W367 records",
+    "12b85c0 Correct the W367 new group count",
+    "336160e Record W367 in the closure narrative"
+  ],
+  "independent": {
+    "status": "VERIFIED_SCOPED_WITH_FINDINGS",
+    "agent": "a5e45ac2e9eb930ed",
+    "toolUses": 33,
+    "durationMs": 2380124,
+    "productFindings": 4,
+    "recordGaps": 2,
+    "verified": [
+      "copied block byte-identical to [9498,10028),body sha256 ee47f73f,and ledger/plan digests agree",
+      "Mt starts at 21417 and lists the 18 node types including ERROR",
+      "the refusal path always returns exhaustive false",
+      "the first new group fails without the tree walk"
+    ],
+    "repaired": [
+      "W367-I1 exact deny rules bypassed for quoted inner commands:tree readings now join the same queue and are de-quoted,unescaped and split",
+      "W367-I2 redirect resolution hid inner commands of a group:redirects pass down only for a single wrapped leaf,inside a compound both the statement text and the command text are readings",
+      "W367-I3 a tree refusal returned before the text walk:the walk now always runs and the refusal only clears exhaustive",
+      "W367-I4 the compound segment skip applied only to the exact input:no form of a compound line is split",
+      "W367-I5 the walk comment misstated the rule and cited E/Wt without a module,digest or range;both corrected",
+      "W367-I6 the two driver cases did not assert two model requests;both now do"
+    ],
+    "limitations": [
+      "the reviewer did not run tests,build or the driver;main bound those to e767d6fb after the repairs",
+      "the analyser command model,declaration-prefix rule,Lcn ordering and backtick verdicts remain unported",
+      "bypass still allows a line whose reading set is incomplete,unchanged by this package"
+    ]
+  }
 }
