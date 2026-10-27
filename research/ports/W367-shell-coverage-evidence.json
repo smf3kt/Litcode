@@ -11,18 +11,18 @@
   },
   "identity": {
     "schema": "HarnessContentIdentity.v1",
-    "sha256": "e767d6fb156a18c8a5f03191494d42ae4231e36f321d9bfb4747f250f481130d",
+    "sha256": "249d8d9d76a3e0983dff8118e4f3fbbd66beb684779a009822171c77154e4635",
     "inputs": {
       "records": 938,
-      "sha256": "fe4d7837cd6fb4b0a17fd0154158b4c5e6e9712b0ef3b56188bd18782f15c7d2"
+      "sha256": "02375eadcbfc90b1dff0928ae6e226e9373c04f98cca2cacb110ea7f46dfe574"
     },
     "validation": {
       "records": 360,
-      "sha256": "76082e862564c8f99bdc80fd693b39fe1b3a176ab7b18c3c4f8c3a5666db87b4"
+      "sha256": "556afd1e33cbf9f6925bbb98394bc66c827e0af856a51c076bf6d601d5abc116"
     },
     "build": {
       "records": 662,
-      "sha256": "e6041f2852d6edc3e95e27f0d10c98091cd6246621be1cb63cc71aed9867c1b4"
+      "sha256": "ca019eddae533d95b2f4978225db3b80609d6da5819f2531abc002046e32ecb3"
     }
   },
   "source": {
@@ -59,6 +59,19 @@
         ],
         "mode": "copy",
         "verifiedEqual": true
+      },
+      {
+        "symbol": "GTr.perCommandDeny",
+        "range": [
+          3251642,
+          3252147
+        ],
+        "units": 505,
+        "module": "chunk-sfn1dbxq.js",
+        "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+        "bodySha256": "873c3f9b0f90dfa4115a3c420a35215b02b0c8c3f23d66fef352fc326399ee0c",
+        "mode": "read-and-adapt",
+        "host": "src/shell-readings.ts treeReadings"
       }
     ],
     "nodeSetSourceSymbol": "Mt",
@@ -97,8 +110,8 @@
     },
     "regressionFoundAndRepaired": {
       "input": "printf shell-content > content/shell.txt",
-      "symptom": "an exact allow rule on the whole line turned into ask because the redirect-stripped prefix was added as a second reading",
-      "fix": "only commands inside a compound context are added; a top-level command and the command under a top-level redirected_statement contribute nothing"
+      "symptom": "a deny rule on the bare command did not reach the command under the redirect, because only the statement text was a reading",
+      "fix": "the recovered GTr reads the statement and each parsed command apart: readings are checked against every rule, denyOnly against deny rules alone, so the exact allow keeps working and the bare deny still denies"
     },
     "checkExit": 0,
     "buildExit": 0,
@@ -128,13 +141,19 @@
     "gateway": "owned loopback SSE",
     "externalCalls": 0,
     "realMagpie": "not_run",
-    "paidUpstream": "not_run"
+    "paidUpstream": "not_run",
+    "secondReview": {
+      "status": "FINDING_REPAIRED",
+      "sourceOwner": "GTr chunk-sfn1dbxq.js [3251642,3252147) body sha256 873c3f9b0f90dfa4115a3c420a35215b02b0c8c3f23d66fef352fc326399ee0c",
+      "note": "the finding was real on the repaired code; its sibling findings were already fixed and were not re-applied"
+    }
   },
   "adapters": [
     "The recovered analyser answers too-complex or a command list; the host answers extra readings plus a completeness verdict",
     "Only the statement-coverage check is copied; Dt's command model (argv, env prefixes, redirects, heredocs) stays with W01's conservative superset",
-    "A parse ERROR node is treated as a refusal, matching E6's too-complex verdict for an unreadable line",
-    "Only commands inside a compound context are added, so a top-level redirect remains one reading"
+    "A parse ERROR node is treated as a refusal, matching E6 too-complex verdict for an unreadable line",
+    "ShellReadings splits readings from denyOnly to match GTr: a command under a redirect is deny-only, so an exact allow on the whole line still stands while a deny on the bare command still reaches it",
+    "checkBashCommandClamp checks both lists, because source fTr builds its clamp set from the raw forms plus every parsed command text"
   ],
   "protectedFiles": {
     ".audit/w332-runtime.tsv": "3231dfe89f4b63c65869b4df1efa2967475ee3c222a8fc24a81c3ee281456228",

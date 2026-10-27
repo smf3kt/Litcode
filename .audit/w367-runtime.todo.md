@@ -6,10 +6,11 @@
 - [x] Copy the coverage block verbatim into one generated module with a verified ledger.
 - [x] Wire tree-derived readings into shellReadings without changing applyShellReadings or bypass.
 - [x] Repair the redirect-prefix regression the affected-suite run exposed (compound-only rule).
+- [x] Repair the second finding: the recovered `GTr` split makes a command under a redirect deny-only, so an exact allow on the line stands while a deny on the bare command denies.
 - [x] Add one regression group and two compiled-driver cases; run source and compiled modes.
 - [x] Run check, build and the full suite; freeze identity.
-- [ ] Complete one bounded independent correctness review and record its verdict.
-- [ ] Update CURRENT, FEATURES, partial-closure and the evidence record with the verdict and its limits.
+- [x] Complete one bounded independent correctness review and record its verdict.
+- [x] Update CURRENT, FEATURES, partial-closure and the evidence record with the verdict and its limits.
 - [ ] Commit exact package paths locally without coauthor or push.
 
 Local only. Account, OAuth, hosted subscription and paid upstream remain excluded. No recurring job is armed.

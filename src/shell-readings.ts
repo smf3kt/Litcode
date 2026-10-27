@@ -45,34 +45,33 @@ function hasCompoundNode(tree: unknown): boolean {
 }
 
 /** One command the line can actually run, as the recovered tree reports it. */
-function treeReadings(command: string): { readings: string[]; tree?: unknown; refused?: string } {
-  if (command.length > SHELL_ANALYSER_LIMIT) return { readings: [], refused: 'Parser aborted (over-length)' };
+function treeReadings(command: string): { readings: string[]; denyOnly: string[]; tree?: unknown; refused?: string } {
+  if (command.length > SHELL_ANALYSER_LIMIT) return { readings: [], denyOnly: [], refused: 'Parser aborted (over-length)' };
   let tree;
   // The recovered parser's own 50 ms deadline applies when no budget is given.
-  try { tree = vS().parse(command, undefined); } catch { return { readings: [], refused: 'Parser aborted' }; }
-  if (tree === null) return { readings: [], refused: 'Parser aborted' };
+  try { tree = vS().parse(command, undefined); } catch { return { readings: [], denyOnly: [], refused: 'Parser aborted' }; }
+  if (tree === null) return { readings: [], denyOnly: [], refused: 'Parser aborted' };
   const coverage = statementCoverage(Buffer.from(command, 'utf8'), tree);
-  if (coverage) return { readings: [], refused: coverage.reason };
+  if (coverage) return { readings: [], denyOnly: [], refused: coverage.reason };
   const readings: string[] = [];
+  const denyOnly: string[] = [];
   let refused: string | undefined;
   const visit = (node: { type?: string; text?: string; children?: readonly (unknown)[] } | null | undefined,
-    redirectText: string | undefined, insideGroup: boolean): void => {
+    redirectText: string | undefined): void => {
     if (refused !== undefined || !node || typeof node.type !== 'string') return;
     // The recovered analyzer answers `too-complex` for an ERROR node, so a line
     // the parser could not read yields no reading set at all.
     if (node.type === 'ERROR') { refused = 'Parse error'; return; }
     // `E` records each command's own text and `Wt` keeps its redirections in a
-    // separate field. At the top level the statement text is what the user
-    // typed, so it is the one reading; inside a group the text walk cannot see
-    // the command at all, so its own text is a reading too, or a redirect would
-    // hide it from every rule.
+    // separate field. The recovered `GTr` (chunk-sfn1dbxq.js [3251642,3252147))
+    // reads the two apart: it matches each parsed command against deny rules
+    // only, and keeps the whole line's own decision when an exact rule named the
+    // whole line. A command under a redirect is therefore deny-only here.
     if (LEAF_COMMANDS.has(node.type) && typeof node.text === 'string') {
       if (redirectText !== undefined && redirectText !== node.text) {
         readings.push(redirectText);
-        if (insideGroup) readings.push(node.text);
-      } else {
-        readings.push(node.text);
-      }
+        denyOnly.push(node.text);
+      } else readings.push(node.text);
       return;
     }
     // A redirect around exactly one command belongs to that command. A redirect
@@ -83,11 +82,10 @@ function treeReadings(command: string): { readings: string[]; tree?: unknown; re
       children.filter(child => LEAF_COMMANDS.has(child?.type ?? '')).length === 1 &&
       !children.some(child => CONTAINER_NODES.has(child?.type ?? ''))
       ? node.text : undefined;
-    const group = insideGroup || COMPOUND_NODES.has(node.type);
-    for (const child of node.children ?? []) visit(child as never, wrapped, group);
+    for (const child of node.children ?? []) visit(child as never, wrapped);
   };
-  visit(tree as never, undefined, false);
-  return { readings, tree, ...(refused === undefined ? {} : { refused }) };
+  visit(tree as never, undefined);
+  return { readings, denyOnly, tree, ...(refused === undefined ? {} : { refused }) };
 }
 
 /**
@@ -111,6 +109,12 @@ export function shellComplexityReason(command: string): string | undefined {
 export type ShellReadings = {
   /** Candidate texts the shell could actually run, always including the input. */
   readings: string[];
+  /**
+   * Texts checked against deny rules only. A command under a redirect is one of
+   * these: the recovered `GTr` reads it apart from the statement, so a denial
+   * still reaches it while an exact allow on the whole line is left standing.
+   */
+  denyOnly: string[];
   /** True only when every reading the shell could produce is in `readings`. */
   exhaustive: boolean;
 };
@@ -163,10 +167,11 @@ function segments(text: string): string[] {
  */
 export function shellReadings(command: string): ShellReadings {
   const readings = new Set<string>([command]);
+  const denyOnly = new Set<string>();
   const queue = [command];
   let truncated = false;
   const add = (candidate: string): void => {
-    if (candidate === '' || readings.has(candidate)) return;
+    if (candidate === '' || readings.has(candidate) || denyOnly.has(candidate)) return;
     if (readings.size >= SHELL_READING_LIMIT) { truncated = true; return; }
     readings.add(candidate);
     queue.push(candidate);
@@ -179,6 +184,7 @@ export function shellReadings(command: string): ShellReadings {
   // the set incomplete, it never discards the text readings already found.
   const tree = treeReadings(command);
   for (const reading of tree.readings) add(reading);
+  for (const reading of tree.denyOnly) if (reading !== '') denyOnly.add(reading);
   // On a line with a compound node, `;` also separates a keyword from its body,
   // so no form of that line is split: the tree already reports every command in
   // it, and splitting a de-quoted copy would invent `then echo hi` and `fi`.
@@ -189,7 +195,7 @@ export function shellReadings(command: string): ShellReadings {
     for (const candidate of [stripQuotes(current), ...substitutions(current), ...parts]) add(candidate);
   }
   const exhaustive = tree.refused === undefined && !truncated && !OPAQUE.test(command) && shellComplexityReason(command) === undefined;
-  return { readings: [...readings], exhaustive };
+  return { readings: [...readings], denyOnly: [...denyOnly].filter(reading => !readings.has(reading)), exhaustive };
 }
 
 /** True when the command contains a construct that expands before it runs. */

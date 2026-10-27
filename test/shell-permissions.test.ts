@@ -18,7 +18,7 @@ const decide = (rules: NonNullable<PermissionPolicy['inputRules']>, command: str
   permissionDecision(policy(rules, mode), shellTool, { command });
 
 test('readings include the de-quoted, per-segment and substitution forms and report incompleteness', () => {
-  assert.deepEqual(shellReadings('echo hi'), { readings: ['echo hi'], exhaustive: true });
+  assert.deepEqual(shellReadings('echo hi'), { readings: ['echo hi'], denyOnly: [], exhaustive: true });
   assert.deepEqual(shellReadings("echo 'denied'").readings, ["echo 'denied'", 'echo denied']);
   assert.ok(shellReadings('true; rm -rf /').readings.includes('rm -rf /'));
   assert.ok(shellReadings('echo $(cat key)').readings.includes('cat key'));
@@ -114,17 +114,21 @@ test('a compound line is read from its tree, not from its separators', () => {
   assert.ok(shellReadings('echo a; echo b').readings.includes('echo b'));
   // A redirect belongs to the statement it wraps: the command inside it is not
   // a second command, so an exact allow rule on the whole line keeps working.
-  assert.deepEqual(shellReadings('printf shell-content > content/shell.txt').readings,
-    ['printf shell-content > content/shell.txt']);
+  // Its bare command is still checked against deny rules, because the recovered
+  // `GTr` reads the statement and the command under the redirect apart.
+  assert.deepEqual(shellReadings('printf shell-content > content/shell.txt'),
+    { readings: ['printf shell-content > content/shell.txt'], denyOnly: ['printf shell-content'], exhaustive: true });
   assert.equal(decide([{ tool: 'run_command', command: 'printf shell-content > content/shell.txt', decision: 'allow' }],
     'printf shell-content > content/shell.txt').decision, 'allow');
+  assert.equal(decide([{ tool: 'run_command', command: 'printf shell-content', decision: 'deny' }],
+    'printf shell-content > content/shell.txt').decision, 'deny');
   // A redirect around a pipeline belongs to the last command in it, so the
   // earlier commands keep their own text and the last one reads both ways.
   assert.deepEqual(shellReadings('echo a | grep b > out.txt').readings,
     ['echo a | grep b > out.txt', 'echo a', 'grep b', 'grep b > out.txt']);
   // A redirect inside a group must not hide the command from a rule.
-  assert.deepEqual(shellReadings('( echo denied > f )').readings,
-    ['( echo denied > f )', 'echo denied > f', 'echo denied']);
+  assert.deepEqual(shellReadings('( echo denied > f )'),
+    { readings: ['( echo denied > f )', 'echo denied > f'], denyOnly: ['echo denied'], exhaustive: true });
   // A quoted inner command is de-quoted before a rule sees it.
   assert.ok(shellReadings("( echo 'denied' )").readings.includes('echo denied'));
   // A tree refusal keeps the text readings instead of discarding them.

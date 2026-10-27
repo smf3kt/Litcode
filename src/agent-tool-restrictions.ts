@@ -188,15 +188,18 @@ export function validateDisallowedTools(entries: readonly string[], pool: readon
 /**
  * Source `fTr`: every reading of the command has to match a rule in every clamp
  * group, and a reading set that is not exhaustive cannot be admitted at all.
+ * `fTr` builds its check set from the parsed command texts as well as the raw
+ * forms, so the deny-only readings count here too.
  */
 export function checkBashCommandClamp(command: string, groups: readonly (readonly string[])[]): {
   kind: 'unverifiable' | 'unmatched'; span: string; group: readonly string[];
 } | null {
   if (groups.length === 0) return null;
-  const { readings, exhaustive } = shellReadings(command);
+  const { readings, denyOnly, exhaustive } = shellReadings(command);
   if (!exhaustive) return { kind: 'unverifiable', span: command.trim(), group: groups[0] ?? [] };
+  const checked = [...readings, ...denyOnly];
   for (const group of groups) {
-    for (const reading of readings) {
+    for (const reading of checked) {
       if (!clampAdmits(reading, group)) return { kind: 'unmatched', span: reading, group };
     }
   }

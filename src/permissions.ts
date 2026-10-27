@@ -441,9 +441,18 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
         ...(session?.deny ?? []), ...(session?.ask ?? [])].some(text => {
           const rule = Un(text); return rule.ruleContent !== undefined && ruleToolMatches(rule.toolName, tool.schema.name);
         })) return baseline;
-  const { readings, exhaustive } = shellReadings(command);
+  const { readings, denyOnly, exhaustive } = shellReadings(command);
   let askDecision: PermissionDecision | undefined;
   let sawAsk = false;
+  // A deny-only reading is the command under a redirect, which the recovered
+  // `GTr` checks against deny rules alone: an exact allow on the whole line
+  // keeps standing, but a denial still reaches the command inside it.
+  for (const reading of denyOnly) {
+    const decision = decideOnce(policy, tool, withCommand(input, reading), session);
+    if (decision.decision === 'deny') {
+      return { decision: 'deny', reason: `Permission to run this command was denied for an alternate reading: ${tool.schema.name}` };
+    }
+  }
   for (const reading of readings) {
     if (reading === command) continue;
     const decision = decideOnce(policy, tool, withCommand(input, reading), session);
