@@ -45,12 +45,12 @@ try {
   Object.assign(env, { LLM_API_KEY: "owned-shell", LLM_MODEL: "fixture/shell", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`,
     LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" });
 
-  const run = async (label, command, marker) => {
+  const run = async (label, command, marker, rules = [{ tool: "run_command", command: "echo denied*", decision: "deny" }]) => {
     commanded = command; calls = 0;
     const workspace = path.join(temporary, label), user = path.join(temporary, `${label}-user`);
     fs.mkdirSync(workspace); fs.mkdirSync(user); fs.mkdirSync(path.join(workspace, ".harness"));
     fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ allowShell: true,
-      permissions: { mode: "default", allow: [], deny: [], inputRules: [{ tool: "run_command", command: "echo denied*", decision: "deny" }] } }));
+      permissions: { mode: "default", allow: [], deny: [], inputRules: rules } }));
     child = spawn(process.execPath, [...(compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")]),
       "--workspace", workspace, "--user-dir", user, "--max-turns", "4", "--output-format", "json", "Run the fixture command"],
       { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
@@ -78,8 +78,19 @@ try {
   assert.match(fs.readFileSync(control.marker, "utf8"), /fine/);
   assert.equal(control.calls, 2);
 
+  const allowRule = [{ tool: "run_command", command: "echo *", decision: "allow" }];
+  const opaque = await run("opaque", "echo <1-3> > marker.txt", "marker.txt", allowRule);
+  assert.match(opaque.result.content, /cannot all be checked/);
+  assert.equal(fs.existsSync(opaque.marker), false, "an unmodelled line must not run under an allow rule");
+  assert.equal(opaque.calls, 2);
+
+  const plain = await run("plain", "echo fine > marker.txt", "marker.txt", allowRule);
+  assert.equal(plain.result.is_error, undefined);
+  assert.equal(fs.existsSync(plain.marker), true, "a fully enumerated line keeps its allow");
+  assert.equal(plain.calls, 2);
+
   console.log(JSON.stringify({ cli: "passed", quotedCommandDenied: true, controlCommandRan: true,
-    denial: "alternate reading", modelCallsPerCase: 2, ...(compiled ? { compiledCLI: true } : {}), gateway: "owned loopback SSE" }));
+    denial: "alternate reading", analyserRefusalAsks: true, modelCallsPerCase: 2, ...(compiled ? { compiledCLI: true } : {}), gateway: "owned loopback SSE" }));
 } finally {
   child?.kill("SIGKILL");
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

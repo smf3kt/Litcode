@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { permissionDecision, type PermissionPolicy } from '../src/permissions.js';
-import { SHELL_READING_LIMIT, shellReadings } from '../src/shell-readings.js';
+import { SHELL_READING_LIMIT, shellComplexityReason, shellReadings } from '../src/shell-readings.js';
 import type { ToolDefinition } from '../src/tools.js';
 
 const shellTool: ToolDefinition = {
@@ -55,6 +55,33 @@ test('an incomplete reading set is never allowed on the strength of one reading'
     { tool: 'run_command', command: 'rm *', decision: 'ask' },
   ];
   assert.equal(decide(mixed, 'echo ok; rm -rf /tmp').decision, 'ask');
+});
+
+test('the recovered analyser refusals make a reading set incomplete', () => {
+  // Each line is one the recovered `E6` refuses to model; the reading set over
+  // it cannot be complete, so an allow rule must not carry it.
+  const refused: [string, string][] = [
+    ['echo \u0007x', 'Contains control characters'],
+    ['echo  x', 'Contains Unicode whitespace'],
+    ['echo a\\ b', 'Contains backslash-escaped whitespace'],
+    ['echo ~[a]', 'Contains zsh ~[ dynamic directory syntax'],
+    ['echo =ls', 'Contains zsh =cmd equals expansion'],
+    ['echo <1-3>', 'Contains zsh <N-M> numeric-range glob'],
+    ["echo {a,b'c}", 'Contains brace with quote character (expansion obfuscation)'],
+    ['echo \uD800', 'Contains lone surrogate'],
+  ];
+  for (const [command, reason] of refused) {
+    assert.equal(shellComplexityReason(command), reason, command);
+    assert.equal(shellReadings(command).exhaustive, false, command);
+  }
+  // An ordinary line, and an astral character that is not a lone surrogate,
+  // stay fully enumerated.
+  assert.equal(shellComplexityReason('echo hi'), undefined);
+  assert.equal(shellReadings('echo hi').exhaustive, true);
+  assert.equal(shellComplexityReason('echo \u{1F600}'), undefined);
+  const allow: NonNullable<PermissionPolicy['inputRules']> = [{ tool: 'run_command', command: 'echo *', decision: 'allow' }];
+  assert.equal(decide(allow, 'echo <1-3>').decision, 'ask');
+  assert.equal(decide(allow, 'echo a\\ b').decision, 'ask');
 });
 
 test('unchanged behaviour: no command rule, a denial, or bypass mode', () => {

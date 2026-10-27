@@ -10,9 +10,29 @@
 // parser, so the invariant - every reading must be permitted, and an incomplete
 // set may not be allowed on the strength of one reading - is what gets ported.
 
+import { At, Fe, Rt, fLn, gLn, lyr, mLn, uyr, yit } from './shell-complexity-source.js';
+
 // Bounded like the recovered reading set: small sets are enumerated fully, and
 // anything larger is a bounded sample that must be reported as incomplete.
 export const SHELL_READING_LIMIT = 16;
+
+/**
+ * The recovered analyzer's own reasons for refusing to model a line, in its
+ * order (`E6`, chunk-zjewzgfh.js [7897,8796), UTF-16). A line it refuses is one
+ * whose executed text cannot be enumerated, so a reading set over it is never
+ * complete.
+ */
+export function shellComplexityReason(command: string): string | undefined {
+  if (lyr.test(command)) return 'Contains lone surrogate';
+  if (yit.test(command)) return 'Contains control characters';
+  if (fLn.test(command)) return 'Contains Unicode whitespace';
+  if (Rt.test(command)) return 'Contains backslash-escaped whitespace';
+  if (mLn.test(command)) return 'Contains zsh ~[ dynamic directory syntax';
+  if (gLn.test(command)) return 'Contains zsh =cmd equals expansion';
+  if (uyr.test(command)) return 'Contains zsh <N-M> numeric-range glob';
+  if (At.test(Fe(command))) return 'Contains brace with quote character (expansion obfuscation)';
+  return undefined;
+}
 
 export type ShellReadings = {
   /** Candidate texts the shell could actually run, always including the input. */
@@ -79,7 +99,7 @@ export function shellReadings(command: string): ShellReadings {
       queue.push(candidate);
     }
   }
-  const exhaustive = !truncated && !OPAQUE.test(command);
+  const exhaustive = !truncated && !OPAQUE.test(command) && shellComplexityReason(command) === undefined;
   return { readings: [...readings], exhaustive };
 }
 

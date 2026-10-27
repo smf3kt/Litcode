@@ -1,0 +1,38 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "declarations",
+      "range": [
+        4728,
+        5314
+      ],
+      "bodySha256": "c26de7a81df26ba0f5220a854edd0cca07af2ac5986886d2cc25633513ea432e",
+      "output": "shell-complexity-source.ts",
+      "outputRange": [
+        231,
+        817
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "Fe",
+      "range": [
+        6336,
+        7150
+      ],
+      "bodySha256": "f0ffb512dd2cf2e8c5bd02b9572c6acfa171018d496a0251446eeb8b31cbb48e",
+      "output": "shell-complexity-source.ts",
+      "outputRange": [
+        935,
+        1749
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}
