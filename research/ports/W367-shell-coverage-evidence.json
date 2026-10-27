@@ -79,7 +79,7 @@
     "parserModule": "src/bash-parser-source.ts"
   },
   "validation": {
-    "newGroups": 1,
+    "newGroups": 2,
     "affected": {
       "suites": 8,
       "tests": 154,
