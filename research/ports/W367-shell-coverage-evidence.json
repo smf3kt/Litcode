@@ -180,7 +180,8 @@
     "6d971bb Split leaf commands from containers in the tree walk",
     "6adbe96 Refine the redirect wording in the W367 records",
     "12b85c0 Correct the W367 new group count",
-    "336160e Record W367 in the closure narrative"
+    "336160e Record W367 in the closure narrative",
+    "2fb7d86 Read a redirected command against deny rules only"
   ],
   "independent": {
     "status": "VERIFIED_SCOPED_WITH_FINDINGS",
