@@ -33,8 +33,16 @@ const COMPOUND_NODES = new Set(['subshell', 'compound_statement', 'if_statement'
 const COMMAND_NODES = new Set(['command', 'variable_assignment', 'variable_assignments', 'negated_command',
   'declaration_command', 'unset_command', 'test_command']);
 
+/** True when the line holds a compound node, so the text walk's separators are not command boundaries. */
+function hasCompoundNode(tree: unknown): boolean {
+  const node = tree as { type?: string; children?: readonly (unknown)[] } | null | undefined;
+  if (!node || typeof node.type !== 'string') return false;
+  if (COMPOUND_NODES.has(node.type)) return true;
+  return (node.children ?? []).some(hasCompoundNode);
+}
+
 /** One command the line can actually run, as the recovered tree reports it. */
-function treeReadings(command: string): { readings: string[]; refused?: string } {
+function treeReadings(command: string): { readings: string[]; tree?: unknown; refused?: string } {
   if (command.length > SHELL_ANALYSER_LIMIT) return { readings: [], refused: 'Parser aborted (over-length)' };
   let tree;
   // The recovered parser's own 50 ms deadline applies when no budget is given.
@@ -45,17 +53,23 @@ function treeReadings(command: string): { readings: string[]; refused?: string }
   const readings: string[] = [];
   let refused: string | undefined;
   const visit = (node: { type?: string; text?: string; children?: readonly (unknown)[] } | null | undefined,
-    inCompound: boolean): void => {
+    parentRedirectText: string | undefined): void => {
     if (refused !== undefined || !node || typeof node.type !== 'string') return;
     // The recovered analyzer answers `too-complex` for an ERROR node, so a line
     // the parser could not read yields no reading set at all.
     if (node.type === 'ERROR') { refused = 'Parse error'; return; }
-    const compound = inCompound || COMPOUND_NODES.has(node.type);
-    if (compound && COMMAND_NODES.has(node.type) && typeof node.text === 'string') readings.push(node.text);
-    for (const child of node.children ?? []) visit(child as never, compound);
+    // `E` collects every command node, and `Wt` records a redirected statement
+    // under the statement's own text: the command inside it never runs without
+    // its redirections, so that text is not a separate reading.
+    if (COMMAND_NODES.has(node.type) && typeof node.text === 'string') {
+      readings.push(parentRedirectText ?? node.text);
+      return;
+    }
+    const redirectText = node.type === 'redirected_statement' && typeof node.text === 'string' ? node.text : undefined;
+    for (const child of node.children ?? []) visit(child as never, redirectText);
   };
-  visit(tree as never, false);
-  return { readings, ...(refused === undefined ? {} : { refused }) };
+  visit(tree as never, undefined);
+  return { readings, tree, ...(refused === undefined ? {} : { refused }) };
 }
 
 /**
@@ -139,15 +153,20 @@ export function shellReadings(command: string): ShellReadings {
     readings.add(candidate);
     queue.push(candidate);
   };
-  while (queue.length) {
-    const current = queue.shift()!;
-    for (const candidate of [stripQuotes(current), ...substitutions(current), ...segments(current)]) add(candidate);
-  }
   // The text walk cannot see a group or a keyword body: `( echo hi )` is one
   // segment, so a rule on `echo hi` never met it. The recovered parser does
   // report those inner commands, and an unreadable line is refused outright.
   const tree = treeReadings(command);
   if (tree.refused !== undefined) return { readings: [...readings], exhaustive: false };
+  // On a line with a compound node, `;` also separates a keyword from its body,
+  // so splitting it would invent fragments (`then echo hi`, `fi`) that are not
+  // commands. The tree supplies the commands for those lines instead.
+  const splitSegments = !hasCompoundNode(tree.tree);
+  while (queue.length) {
+    const current = queue.shift()!;
+    const parts = splitSegments || current !== command ? segments(current) : [];
+    for (const candidate of [stripQuotes(current), ...substitutions(current), ...parts]) add(candidate);
+  }
   for (const reading of tree.readings) add(reading);
   const exhaustive = !truncated && !OPAQUE.test(command) && shellComplexityReason(command) === undefined;
   return { readings: [...readings], exhaustive };

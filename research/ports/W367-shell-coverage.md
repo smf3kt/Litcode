@@ -39,7 +39,7 @@ Not ported, with reasons: `Dt`'s command model (argv splitting, env-prefix value
 
 `scripts/smoke-shell-readings-cli.mjs` gains two cases against the real CLI, in both source and compiled modes, on an owned loopback SSE gateway. Under a `deny` on `echo denied`, `( echo denied ) > marker.txt` is refused with "alternate reading" and writes no marker, while `( echo fine ) > marker.txt` runs and writes it. Both modes pass; two model requests per case, asserted.
 
-Check and build pass. Full suite 3438/3438 across 118 suites, 0 fail/cancel/skip/todo. Identity 5b8169769a61e323f285d1ed3783d853ecf4ac8aee26b363013298f4f223985c (938 input / 360 validation / 662 build records).
+Check and build pass. Full suite 3439/3439 across 118 suites, 0 fail/cancel/skip/todo. Identity ac7a11d56302c2c5df21144494d79c18f4e79e33e3c7f068913671a6a795aae9 (938 input / 360 validation / 662 build records).
 
 An independent reader was asked to verify the copied bytes against the ledger output range, the node-set citation, the compound-only rule against the affected-suite regression, and that `exhaustive` can only move from true to false. Its verdict and limits are recorded in the evidence record once it returns; until then this package is main-verified only.
 

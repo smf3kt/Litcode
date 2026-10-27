@@ -103,6 +103,23 @@ test('a group, a keyword body and a loop body are checked as the commands they r
   assert.equal(shellReadings('echo hi )').exhaustive, false);
 });
 
+test('a compound line is read from its tree, not from its separators', () => {
+  // `;` inside `if …; then …; fi` separates a keyword from its body, so the text
+  // split would invent `then echo hi` and `fi` as commands. Neither is one.
+  assert.deepEqual(shellReadings('if true; then echo hi; fi').readings,
+    ['if true; then echo hi; fi', 'true', 'echo hi']);
+  assert.deepEqual(shellReadings('while true; do echo hi; done').readings,
+    ['while true; do echo hi; done', 'true', 'echo hi']);
+  // A plain list has no keyword, so its separators are still command boundaries.
+  assert.ok(shellReadings('echo a; echo b').readings.includes('echo b'));
+  // A redirect belongs to the statement it wraps: the command inside it is not
+  // a second command, so an exact allow rule on the whole line keeps working.
+  assert.deepEqual(shellReadings('printf shell-content > content/shell.txt').readings,
+    ['printf shell-content > content/shell.txt']);
+  assert.equal(decide([{ tool: 'run_command', command: 'printf shell-content > content/shell.txt', decision: 'allow' }],
+    'printf shell-content > content/shell.txt').decision, 'allow');
+});
+
 test('unchanged behaviour: no command rule, a denial, or bypass mode', () => {
   const toolOnly: NonNullable<PermissionPolicy['inputRules']> = [{ tool: 'run_command', decision: 'allow' }];
   assert.equal(decide(toolOnly, 'echo $SECRET').decision, 'allow');
