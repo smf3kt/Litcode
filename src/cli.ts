@@ -454,6 +454,8 @@ function newConfig(
       skillSourceArguments: sourceSkillArgumentsDefault(settings.features),
       ...(settings.features?.pluginSkillNamespaces === undefined ? {} : { pluginSkillNamespaces: settings.features.pluginSkillNamespaces }),
       agentMessaging: settings.features?.agentMessaging ?? true,
+      // ListAgentsTool/Ljs, w520ws9s [5912,7382), w9kaj2q7 [3705,5550), UTF-16.
+      unifiedAgentMessaging: settings.features?.unifiedAgentMessaging ?? true,
       agentIdle: settings.features?.agentIdle ?? true,
       agentTypes: settings.features?.agentTypes ?? true,
       interaction: settings.features?.interaction ?? true,

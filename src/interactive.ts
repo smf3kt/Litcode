@@ -970,6 +970,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
       });
       peer.setMode(peerMode);
       await peer.setSession(session.id);
+      activeRuntime.bindPeerMessaging?.(session.id, peer);
       syncPeerIdle();
     } catch (error) {
       const failed = peer; peer = undefined;
@@ -1409,6 +1410,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     schedulerSessions.add(session.id);
     await activeRuntime.settleScheduler?.(session.id, schedulerSessions, () => activeAgent?.isRunning() ?? false);
     await peer?.setSession(session.id);
+    if (peer) activeRuntime.bindPeerMessaging?.(session.id, peer);
     syncPeerIdle();
   };
   // Yr/oL, x876fw6t [16694,19097), 9yh2xzb7 [1781,3332), UTF-16; the successor stores the candidate's refreshed catalog.

@@ -12,7 +12,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // mode-mismatched message and approves it through /peer-held, and B's next
 // request carries the text as peer meta input. No cloud call leaves loopback.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const compiled = process.argv.includes("--compiled"), guard = process.argv.includes("--guard"), files = process.argv.includes("--files"), idle = process.argv.includes("--idle"), envelope = process.argv.includes("--envelope") || files || idle;
+const compiled = process.argv.includes("--compiled"), guard = process.argv.includes("--guard"), files = process.argv.includes("--files"), idle = process.argv.includes("--idle"), unified = process.argv.includes('--unified'), envelope = process.argv.includes("--envelope") || files || idle || unified;
 const acceptance = process.argv.includes("--acceptance") || guard;
 const scratch = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : fs.realpathSync(os.tmpdir());
 const temporary = fs.realpathSync(fs.mkdtempSync(path.join(scratch, "peer-cli-smoke-")));
@@ -131,6 +131,15 @@ try {
       if (idleSubscribe) {
         sse(res, body, [{ type: 'tool_use', id: idleSubscribe[2] ?? 'peer-idle-subscribe', name: 'subscribe_peer_idle', input: { address: idleSubscribe[1] } }]); return;
       }
+      if (unified && label === 'a' && typeof body.messages.at(-1)?.content === 'string') {
+        const call = /^UNIFIED_CALL (\S+) ([\s\S]+)$/.exec(body.messages.at(-1).content);
+        if (call) {
+          const [, id, text] = call;
+          if (text === 'UNIFIED_LIST') { sse(res, body, [{ type: 'tool_use', id, name: 'list_agents', input: {} }]); return; }
+          if (text.startsWith('UNIFIED_SEND ')) { sse(res, body, [{ type: 'tool_use', id, name: 'send_message', input: JSON.parse(text.slice(13)) }]); return; }
+          if (text.startsWith('UNIFIED_SPAWN ')) { sse(res, body, [{ type: 'tool_use', id, name: 'agent', input: { name: text.slice(14), prompt: 'OWNED_CHILD_SEED', mode: 'general' } }]); return; }
+        }
+      }
       if (guard && label === 'b' && body.messages.at(-1)?.content === 'GUARD_BUSY') {
         busyResponse = { res, body }; return;
       }
@@ -218,6 +227,66 @@ try {
       fromSession: senderId, fromMode: 'prompting', body: 'EXACT_PEER_TEXT' });
   }
 
+  if (unified) {
+    await until(() => childB.combined.includes('event finished: end_turn') && (childA.combined.match(/finished: end_turn/g) ?? []).length === 2, 'text controls settled before unified roster');
+    let unifiedSequence = 0;
+    const command = async text => {
+      const id = `unified-${++unifiedSequence}`, turns = (childA.combined.match(/(?:^|\n)finished: end_turn/g) ?? []).length;
+      childA.child.stdin.write(`UNIFIED_CALL ${id} ${text}\n`);
+      await until(() => toolResult(requests.a, id) !== undefined && (childA.combined.match(/(?:^|\n)finished: end_turn/g) ?? []).length === turns + 1, 'unified tool turn committed');
+      const result = toolResult(requests.a, id); assert.notEqual(result.is_error, true); return JSON.parse(result.content);
+    };
+    const data = await command('UNIFIED_LIST');
+    assert.ok(data.sections?.some(section => section.kind === 'sessions' && section.rows.length === 1), 'list_agents must include the live same-host session');
+    const peerRow = data.sections.find(section => section.kind === 'sessions').rows[0];
+    assert.match(peerRow.ref, /^[0-9a-f]{6,12}$/);
+    childB.child.stdin.write('/peer-inbound accept\n'); childA.child.stdin.write('/peer-inbound accept\n');
+    await until(() => childA.combined.includes('Peer inbound policy: accept') && childB.combined.includes('Peer inbound policy: accept'), 'unified inbound policies');
+    const named = await command('UNIFIED_SEND ' + JSON.stringify({ id: peerRow.name, message: '/literal unified peer data' }));
+    assert.equal(named.success, true);
+    await until(() => requests.b.some(request => inputText(request.messages.at(-1)?.content) === '/literal unified peer data'), 'named peer receives exact slash data');
+    await until(() => (childB.combined.match(/event finished: end_turn/g) ?? []).length === 2, 'named peer event committed');
+    const combined = await command('UNIFIED_SEND ' + JSON.stringify({ id: `${peerRow.name} [${peerRow.ref}]`, message: 'UNIFIED_COMBINED', notify_when_idle: true }));
+    assert.equal(combined.success, true); assert.equal(combined.subscription.success, true);
+    await until(() => (childB.combined.match(/event finished: end_turn/g) ?? []).length === 3
+      && (childA.combined.match(/event finished: end_turn/g) ?? []).length === 1, 'combined delivery and idle notification committed');
+    assert.equal(requests.b.filter(request => inputText(request.messages.at(-1)?.content) === 'UNIFIED_COMBINED').length, 1);
+    const missing = await command('UNIFIED_SEND ' + JSON.stringify({ id: `${peerRow.name} [000000000000]`, message: 'NEVER_SEND_BAD_REF' }));
+    assert.equal(missing.kind, 'not-found'); assert.equal(requests.b.length, 3);
+    const child = await command('UNIFIED_SPAWN ' + peerRow.name); assert.equal(child.name, peerRow.name);
+    const both = await command('UNIFIED_LIST');
+    assert.equal(both.sections.find(section => section.kind === 'subagents').rows[0].id, child.id);
+    assert.equal(both.sections.find(section => section.kind === 'sessions').rows[0].name, peerRow.name);
+    const beforeBlocked = requests.b.length;
+    const changed = await command('UNIFIED_SEND ' + JSON.stringify({ id: peerRow.name, message: 'NEVER_SEND_REBOUND' }));
+    assert.equal(changed.reason, 'recipient-rebound'); assert.equal(requests.b.length, beforeBlocked);
+    const byId = await command('UNIFIED_SEND ' + JSON.stringify({ id: child.id, message: 'OWNED_CHILD_FOLLOWUP' })); assert.equal(byId.id, child.id);
+    assert.equal(requests.a.filter(request => request.messages.at(-1)?.content === 'OWNED_CHILD_FOLLOWUP').length, 1);
+    await until(() => (childA.combined.match(/event finished: end_turn/g) ?? []).length === 3, 'both child completion notifications committed');
+    const pureBefore = requests.b.length;
+    const subscribed = await command('UNIFIED_SEND ' + JSON.stringify({ id: inboxB, notify_when_idle: true })); assert.equal(subscribed.success, true);
+    await until(() => requests.a.some(request => String(request.messages.at(-1)?.content).includes('[Cross-session idle notice]'))
+      && (childA.combined.match(/event finished: end_turn/g) ?? []).length === 4, 'unified pure idle notice committed');
+    assert.equal(requests.b.length, pureBefore);
+    const notice = journal(workspaceA).findLast(row => row.kind === 'message' && String(row.message.content).includes('[Cross-session idle notice]'));
+    assert.equal(notice.classifier.origin.source, 'peer-idle');
+    guardResults.unifiedNotice = notice.message.content;
+    guardResults.unifiedSession = /^session: (\S+)/m.exec(childA.combined)[1];
+    guardResults.unifiedPin = journal(workspaceA).find(row => row.kind === 'agent_message_pin' && row.pin.name === peerRow.name);
+    assert.ok(guardResults.unifiedPin);
+    const reloadBefore = (childA.combined.match(/Local configuration reloaded/g) ?? []).length;
+    childA.child.stdin.write('/reload\n');
+    await until(() => (childA.combined.match(/Local configuration reloaded/g) ?? []).length === reloadBefore + 1, 'unified reload bound');
+    const reloaded = await command('UNIFIED_LIST'); assert.equal(reloaded.sections.find(section => section.kind === 'sessions').rows.length, 1);
+    assert.equal(reloaded.children.length, 0);
+    const sessionsBefore = (childA.combined.match(/(?:^|\n)session: /g) ?? []).length;
+    childA.child.stdin.write('/clear\n');
+    await until(() => (childA.combined.match(/(?:^|\n)session: /g) ?? []).length === sessionsBefore + 1, 'unified clear bound');
+    const cleared = await command('UNIFIED_LIST'); assert.equal(cleared.sections.find(section => section.kind === 'sessions').rows.length, 1);
+    assert.equal(cleared.children.length, 0);
+    guardResults.unified = { combinedRoster: true, namedPeer: true, explicitRef: true, badRefBlocked: true, combinedSubscription: true,
+      childContinuation: true, reboundBlocked: true, pureSubscription: true, generatedOrigin: true, reloadBinding: true, clearBinding: true };
+  }
   if (idle) {
     await until(() => childB.combined.includes('event finished: end_turn') && (childA.combined.match(/finished: end_turn/g) ?? []).length === 2, 'text controls settled before idle subscription');
     childA.child.stdin.write('/peer-inbound accept\n');
@@ -463,6 +532,14 @@ try {
       assert.equal(fs.readFileSync(path.join(workspaceB, reference[1]), 'utf8'), 'snapshot before sender edits\nsecond line\n');
     } finally { await cold.close(); }
   }
+  if (unified) {
+    const { Session } = await import(pathToFileURL(path.join(root, 'dist/session.js')).href);
+    const cold = Session.open(workspaceA, { id: guardResults.unifiedSession });
+    try {
+      assert.ok(cold.events.some(row => row.kind === 'agent_message_pin' && row.pin.name === guardResults.unifiedPin.pin.name));
+      assert.ok(cold.messages.some(message => message.content === guardResults.unifiedNotice));
+    } finally { await cold.close(); }
+  }
   if (idle) {
     const { Session } = await import(pathToFileURL(path.join(root, 'dist/session.js')).href);
     const id = journal(workspaceA).find(row => row.kind === 'metadata').id, cold = Session.open(workspaceA, { id });
@@ -475,7 +552,7 @@ try {
   console.log(JSON.stringify({ cli: "passed", processes: 2, inboxB, aRequests: requests.a.length, bRequests: requests.b.length,
     held: "mode-mismatch", receipt: "delivered", ownedCleanup: true,
     ...(compiled ? { compiledCLI: true } : {}), acceptance, heldDecisions: acceptance ? ['approve', 'deny', 'expire', 'refuse', 'exit-expiry'] : ['approve'],
-    peerOrigin: acceptance || files, sourceEnvelope: envelope, ...(idle ? { peerIdle: { oneShot: true, pureSubscription: true, generatedOrigin: true, coldReopen: true, ...guardResults.idleBoundaries } } : {}), ...(files ? { localFiles: { sent: 1, failed: 1, snapshotPreserved: true, modelRead: true, originalBodyRemoved: true } } : {}), ...(guard ? { guard: { pacedSends: guardResults.pacedSends, retainedQueue: guardResults.retainedQueue,
+    peerOrigin: acceptance || files, sourceEnvelope: envelope, ...(unified ? { unifiedMessaging: { ...guardResults.unified, coldPins: true } } : {}), ...(idle ? { peerIdle: { oneShot: true, pureSubscription: true, generatedOrigin: true, coldReopen: true, ...guardResults.idleBoundaries } } : {}), ...(files ? { localFiles: { sent: 1, failed: 1, snapshotPreserved: true, modelRead: true, originalBodyRemoved: true } } : {}), ...(guard ? { guard: { pacedSends: guardResults.pacedSends, retainedQueue: guardResults.retainedQueue,
       relayRequests: guardResults.relayRequests, duplicateRequests: 1, humanReset: true } } : {}), gateway: "owned loopback SSE", externalCalls: 0 }));
 } catch (error) {
   console.error("A:", childA?.combined?.slice(-4000));

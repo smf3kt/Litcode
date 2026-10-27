@@ -1380,6 +1380,7 @@ export type LocalPeerTransport = {
   subscribeIdle(address: string, signal: AbortSignal): Promise<PeerIdleSubscription>;
   setIdleStatus(status: 'idle' | 'busy' | 'waiting' | 'shell'): void;
   list(): Promise<PeerView[]>;
+  records(): Promise<PeerRecord[]>;
   send(address: string, text: string, options?: { signal?: AbortSignal; expectPeerPid?: number; expectPeerProcStart?: string; fileAttachments?: PeerFile[] }): Promise<{ msgId: string }>;
   held(): HeldMessage[];
   resolveHeld(msgId: string | undefined, decision: "approve" | "deny" | "expire"): Promise<HeldResolution>;
@@ -1488,9 +1489,9 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
     subscribeIdle: (address, signal) => inbox.idle?.subscribe(address, signal) ?? Promise.resolve({ success: false, reason: 'disabled' }),
     setIdleStatus(status) { inbox.idle?.source.status(status === 'idle' || status === 'shell', status === 'busy'); },
     async list() {
-      const records = await discoverPeers(options.userDir, { selfSocket: inbox.address.slice(4), sweep: true });
-      return records.map(peerView);
+      return (await transport.records()).map(peerView);
     },
+    records: () => discoverPeers(options.userDir, { selfSocket: inbox.address.slice(4), sweep: true }),
     async send(address, text, sendOptions = {}) {
       if (typeof text !== "string" || text.length === 0) throw new Error("Peer message text must be a non-empty string");
       if (text.length > MAX_MESSAGE) throw new PeerSendRefusal("message-too-large", `Peer message exceeds the ${MAX_MESSAGE} character line cap.`);

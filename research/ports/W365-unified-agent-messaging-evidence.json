@@ -1,0 +1,439 @@
+{
+  "schema": "W365UnifiedLocalMessagingEvidence.v1",
+  "status": "VERIFIED_SCOPED",
+  "date": "2026-10-27",
+  "baseCommit": "448cc39306b7f7d8d62070bed23ba93ad5c87c2b",
+  "portRecord": "research/ports/W365-unified-agent-messaging.md",
+  "feature": {
+    "name": "unifiedAgentMessaging",
+    "freshCliDefault": true,
+    "explicitReloadDefault": true,
+    "originalAbsentOrFalseCatalogRetained": true,
+    "authoredAndManagedFalseRetained": true,
+    "inboxGate": "crossSessionMessaging",
+    "familyStatus": "Partial"
+  },
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "c00a1e3da9dca2f60bf07d299a99e068e55da456591c67e276398af0b817ce7f",
+    "inputs": {
+      "records": 934,
+      "sha256": "17f9b7dcb6a27031570f1d96d305db786a497177b09e19b6592a17832b0c70fb"
+    },
+    "validation": {
+      "records": 360,
+      "sha256": "ca09ad047e537fc36c6aa16bf442890220863cf61b6d44a784c20933af7b63dc"
+    },
+    "build": {
+      "records": 660,
+      "sha256": "94942b8cdddb067ca615041f5f553541de159b0683683b4abd5b5e9ec74ad25d"
+    },
+    "totalRecords": 1954,
+    "fullSuiteIdentity": "9cb02caa2b9fabf03a0307c45941cef69e48867aa523e55211f2c5840f4c5427",
+    "deliveryDelta": {
+      "before": "9cb02caa2b9fabf03a0307c45941cef69e48867aa523e55211f2c5840f4c5427",
+      "after": "c00a1e3da9dca2f60bf07d299a99e068e55da456591c67e276398af0b817ce7f",
+      "records": 1954,
+      "unchanged": 1952,
+      "delta": [
+        {
+          "group": "inputs",
+          "path": "src/agent-messaging.ts",
+          "before": "64108dd1a7de37df13c211e8fc6fb391aeed4ede469e95bd855b7c2c46828f66",
+          "after": "7988dc7ceb9a340fe70ab1e68997d9379c8a7851f1ccd029ebd5409e6b2c3977"
+        },
+        {
+          "group": "build",
+          "path": "dist/agent-messaging.js",
+          "before": "a024fd974f252fd2613eae125361b8b17b95d0a2b779600fca64dd82ea4a8621",
+          "after": "94960a95a377bd528b460faa2fb3e42a3beeeb789a65c26ee3a79b883bb793e3"
+        }
+      ],
+      "exactReversalVerified": true,
+      "executableSyntaxUnchanged": true
+    }
+  },
+  "source": {
+    "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "plan": {
+      "path": "research/ports/W365-agent-messaging-source-plan.json",
+      "sha256": "294bc0cc448c949b1a8311021f476d791e12d886256ed8e16e3150418f5df345"
+    },
+    "coordinates": "zero-based half-open UTF16 code units",
+    "capturedBodyRows": 130,
+    "exactDeclarations": 112,
+    "completePairs": 121,
+    "characterComparison": {
+      "file": "w365-delivery-source-host-character-diff.json",
+      "bytes": 353236,
+      "sha256": "f9793e5da858719bda06b86354ed1b7fdc2e499cd6f128569919da3db3f00ab9"
+    },
+    "sourceAndHostRangesVerified": true,
+    "bidirectionalReconstructionVerified": true,
+    "semanticEquivalenceOfAdaptedPairs": "not established by text comparison"
+  },
+  "validation": {
+    "newGroups": 3,
+    "affected": {
+      "tests": 122,
+      "pass": 122,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "checkExit": 0,
+    "buildExit": 0,
+    "compiledUnified": {
+      "cli": "passed",
+      "processes": 2,
+      "inboxB": "uds:/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/lp-22183/litcode-socks/22184-b18f6239.sock",
+      "aRequests": 32,
+      "bRequests": 3,
+      "held": "mode-mismatch",
+      "receipt": "delivered",
+      "ownedCleanup": true,
+      "compiledCLI": true,
+      "acceptance": false,
+      "heldDecisions": [
+        "approve"
+      ],
+      "peerOrigin": false,
+      "sourceEnvelope": true,
+      "unifiedMessaging": {
+        "combinedRoster": true,
+        "namedPeer": true,
+        "explicitRef": true,
+        "badRefBlocked": true,
+        "combinedSubscription": true,
+        "childContinuation": true,
+        "reboundBlocked": true,
+        "pureSubscription": true,
+        "generatedOrigin": true,
+        "reloadBinding": true,
+        "clearBinding": true,
+        "coldPins": true
+      },
+      "gateway": "owned loopback SSE",
+      "externalCalls": 0
+    },
+    "compiledLegacy": {
+      "cli": "passed",
+      "processes": 2,
+      "inboxB": "uds:/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/lp-21631/litcode-socks/21632-bc8f3835.sock",
+      "aRequests": 4,
+      "bRequests": 1,
+      "held": "mode-mismatch",
+      "receipt": "delivered",
+      "ownedCleanup": true,
+      "compiledCLI": true,
+      "acceptance": false,
+      "heldDecisions": [
+        "approve"
+      ],
+      "peerOrigin": false,
+      "sourceEnvelope": false,
+      "gateway": "owned loopback SSE",
+      "externalCalls": 0
+    },
+    "connectedResident": {
+      "cli": "passed",
+      "bareNoReplay": true,
+      "parentExit": true,
+      "effectOnce": true,
+      "promptedOnce": true,
+      "relocation": true,
+      "cancellation": true,
+      "ownedCleanup": true,
+      "connectedMcp": true,
+      "mcpRpc": 18,
+      "requests": 10,
+      "externalCalls": 0
+    },
+    "full": {
+      "tests": 3436,
+      "suites": 118,
+      "pass": 3436,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "unchangedAfterFull": true,
+    "externalCalls": 0,
+    "realMagpie": "not_run",
+    "paidUpstream": "not_run"
+  },
+  "adapters": [
+    "Existing UUID child IDs and id selector",
+    "Typed JSON alongside source-formatted listing",
+    "Owner-local Session and LocalPeerTransport bindings",
+    "Explicit validated local pin journal rather than source app-state/structured tool-result reconstruction",
+    "Successors begin fresh pin owners",
+    "Source stable-address rollout disabled",
+    "Remote,team,account andsubscriptionbackend excluded",
+    "Host timers,registry andUDS effect owners retained"
+  ],
+  "protectedFiles": {
+    ".audit/w332-runtime.tsv": "3231dfe89f4b63c65869b4df1efa2967475ee3c222a8fc24a81c3ee281456228",
+    ".audit/w45-77-evidence.mjs": "9a3b57af640773f1283975e6ca49523407d8fb8469639817da5ab807b7b4d3aa",
+    "test/skills-command.test.ts": "995b1526bc74ab0d9f278bd61442c4254e3194e6528d12d18de75b5184404735"
+  },
+  "cleanup": {
+    "processStates": [
+      {
+        "pid": 20601,
+        "exited": true
+      },
+      {
+        "pid": 20602,
+        "exited": true
+      },
+      {
+        "pid": 20610,
+        "exited": true
+      },
+      {
+        "pid": 21018,
+        "exited": true
+      },
+      {
+        "pid": 21019,
+        "exited": true
+      },
+      {
+        "pid": 21028,
+        "exited": true
+      },
+      {
+        "pid": 21397,
+        "exited": true
+      },
+      {
+        "pid": 21398,
+        "exited": true
+      },
+      {
+        "pid": 21406,
+        "exited": true
+      },
+      {
+        "pid": 21500,
+        "exited": true
+      },
+      {
+        "pid": 21501,
+        "exited": true
+      },
+      {
+        "pid": 21631,
+        "exited": true
+      },
+      {
+        "pid": 21632,
+        "exited": true
+      },
+      {
+        "pid": 21807,
+        "exited": true
+      },
+      {
+        "pid": 21808,
+        "exited": true
+      },
+      {
+        "pid": 22183,
+        "exited": true
+      },
+      {
+        "pid": 22184,
+        "exited": true
+      }
+    ],
+    "ownedDirectories": [],
+    "limitation": "Recorded owned process/path census only. Drivers assert their own locks,sockets,records andkey removal before fixture deletion."
+  },
+  "commentReview": {
+    "agent": "a596b66914d3dd664",
+    "actualToolUses": 4,
+    "requestedToolCalls": 4,
+    "removedSuffixes": 1,
+    "restoredComments": 0,
+    "generatedSourceAnchors": 112,
+    "sourceSuppressionBoundaries": 4,
+    "handwrittenAnyOrNoCheck": 0
+  },
+  "independent": {
+    "status": "VERIFIED_SCOPED",
+    "agent": "aa2cd5a3c0daf25a7",
+    "proof": {
+      "file": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w365-independent-verdict.json",
+      "sha256": "ea766d29bc9408a81e26104c131dc26960bc9511b7f85518aee8617e57325421",
+      "identity": "c00a1e3da9dca2f60bf07d299a99e068e55da456591c67e276398af0b817ce7f",
+      "toolCalls": {
+        "budgetTarget": 24,
+        "used": 26
+      },
+      "findings": 0,
+      "testsExit": 0,
+      "compiledUnified": "passed",
+      "ownedProcesses": 0
+    },
+    "limitations": [
+      "Aggregate identity digest was not independently regenerated from its declared manifest encoding; all1954 file records,three group digests andon-disk bytes match.",
+      "Peer transport rebind race between snapshot andsend was not exercised;source candidate stays candidate absent a repro.",
+      "Real Magpie traffic,daemon/global lifecycle,StorageV5 andremote/team owners remain outside the scoped contract."
+    ]
+  },
+  "evidence": [
+    {
+      "file": "w365-before-identity.json",
+      "bytes": 340725,
+      "sha256": "1a84c4b46c85e50c72247b7e96a8628ea0ab8a1e3664a2e5e1b669e2293d4dd6"
+    },
+    {
+      "file": "w365-baseline-cli.txt",
+      "bytes": 2765,
+      "sha256": "c5b49225bc6610b504b8a48946057e324b4b317c106d2898db8af27efcd343d0"
+    },
+    {
+      "file": "w365-main-source-3.json",
+      "bytes": 103505,
+      "sha256": "fcf215ab40ea7cd5461538ee6c0c35d60fc1542d7a3fb1a13238c042e75c989e"
+    },
+    {
+      "file": "w365-source-supplement.json",
+      "bytes": 3300,
+      "sha256": "e97d7c87199b37ff0cadf6e0b2491d809656e4d6f70e7a4f0a22de805b95f50d"
+    },
+    {
+      "file": "w365-source-host-character-diff.json",
+      "bytes": 353629,
+      "sha256": "ed5452efa0db579fec5206c2b72e2eaa01c1f17d8916382dc34d418ccc3b8f57"
+    },
+    {
+      "file": "w365-source-diff.txt",
+      "bytes": 287,
+      "sha256": "8a5f8b027dc316ebc524a727047a861c734d2f2a79aa4dffc31a451d45882093"
+    },
+    {
+      "file": "w365-name-resolver-source.json",
+      "bytes": 110233,
+      "sha256": "7d9b8793c154c8408751033e616b9a2016a991ff4e78e40d65083e6b7958b63a"
+    },
+    {
+      "file": "w365-candidate-identity.json",
+      "bytes": 343144,
+      "sha256": "e01558f82e3156a9a503ec00eb2fa714edfe995d1d53dd3794da056453b6ec7c"
+    },
+    {
+      "file": "w365-04-tests-red.txt",
+      "bytes": 1306,
+      "sha256": "a70747f6255bbc006c88324d17dcdb70bcf7e822c455cd637d487aa543a3362f"
+    },
+    {
+      "file": "w365-06-unicode-red.txt",
+      "bytes": 1781,
+      "sha256": "d5e18395d43ed7189022c43dfc3ec6a1a285eac3121d6e63078afd774ec258e9"
+    },
+    {
+      "file": "w365-07-tests.txt",
+      "bytes": 653,
+      "sha256": "500429342b80863a1fdd70039517d19f7e8854a99ab30362f08db3339f870f4b"
+    },
+    {
+      "file": "w365-08-tests.txt",
+      "bytes": 653,
+      "sha256": "40c0225746b0025c6858d6bd6a099f8def114a078b40a823585efa91001812d8"
+    },
+    {
+      "file": "w365-02-affected.txt",
+      "bytes": 13922,
+      "sha256": "224afb94445fd90717c31fb74fb634783361dc1b51012cc0129bec0169631f45"
+    },
+    {
+      "file": "w365-07-check.txt",
+      "bytes": 39,
+      "sha256": "dd59d119cbe42cd5f0daffc3ae5e0ba58a8e85a3ad0b3533aa548921def1f886"
+    },
+    {
+      "file": "w365-03-build.txt",
+      "bytes": 279,
+      "sha256": "73c2de792f5ecd1c9d5783772391135a2b6e172af9052efba62659cd4dd1c933"
+    },
+    {
+      "file": "w365-06-unified-cli.txt",
+      "bytes": 660,
+      "sha256": "83bf5a0bbde949f48c5f1c55768fc8244587f289d2316a558acde8399f669e0d"
+    },
+    {
+      "file": "w365-01-legacy-peer.txt",
+      "bytes": 381,
+      "sha256": "0d2908de1e8b4bd6e5efbb061c8a87b8337924ae7aef1d30d94a2fe5809c51f5"
+    },
+    {
+      "file": "w365-01-resident.txt",
+      "bytes": 215,
+      "sha256": "c9aa00550a6bab88d2f7aca01ddf4b2226697e742c8a1392610c945ebae40076"
+    },
+    {
+      "file": "w365-01-full.txt",
+      "bytes": 380048,
+      "sha256": "161c244892d553843c02459d5d15ee004c3def3962a76e140df74761cfde0cd2"
+    },
+    {
+      "file": "w365-failed-fixture-cleanup.json",
+      "bytes": 460,
+      "sha256": "544976fd1b1890d4d6e512d4b08ddfa105ef471476136830fa29fc868cebc7d5"
+    },
+    {
+      "file": "w365-main-verification.json",
+      "bytes": 7490,
+      "sha256": "41812c33ba869c1aa862c24c63f6033b8d10b58c58b45bbf94c8156d756022dc"
+    },
+    {
+      "file": "w365-delivery-identity.json",
+      "bytes": 343144,
+      "sha256": "b9be7e78d43867f557ddaf9bc5ca22e3a30a0b35704acdb18c426708f5089d3b"
+    },
+    {
+      "file": "w365-comment-delta.json",
+      "bytes": 777,
+      "sha256": "3dd174343cb7a428491bb1800597716d197b219380c63f9be49d24c2ac44846e"
+    },
+    {
+      "file": "w365-final-check.txt",
+      "bytes": 39,
+      "sha256": "dd59d119cbe42cd5f0daffc3ae5e0ba58a8e85a3ad0b3533aa548921def1f886"
+    },
+    {
+      "file": "w365-final-build.txt",
+      "bytes": 279,
+      "sha256": "73c2de792f5ecd1c9d5783772391135a2b6e172af9052efba62659cd4dd1c933"
+    },
+    {
+      "file": "w365-delivery-source-host-character-diff.json",
+      "bytes": 353236,
+      "sha256": "f9793e5da858719bda06b86354ed1b7fdc2e499cd6f128569919da3db3f00ab9"
+    },
+    {
+      "file": "w365-comment-review.json",
+      "bytes": 842,
+      "sha256": "89fc5c5b2568caf84fe901231fef07886c7c8d9806bcc5b55068eb344b1e80d7"
+    }
+  ],
+  "remaining": [
+    "Full daemon/global lifecycle andStorageV5",
+    "Remote/team discovery",
+    "Full source result/UI parity"
+  ],
+  "delivery": {
+    "localOnly": true,
+    "noCoauthor": true,
+    "push": false,
+    "schedules": 0,
+    "finalVerification": {
+      "status": "VERIFIED_FINAL_SCOPED",
+      "file": "/Users/mant1ssa/.claude/jobs/c9c17d97/tmp/w365-final-verification.json",
+      "sha256": "80e1040b962f4b2901e38bb043fa91099ef34cf99e37999d53965f24d84897fc"
+    }
+  }
+}

@@ -37,6 +37,8 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
     mcpDynamic: Boolean(settings.mcpServers && Object.keys(settings.mcpServers).length), mcpDeferred: false,
     lsp: Boolean(settings.lspServers && Object.keys(settings.lspServers).length), ...settings.features,
     skillSourceArguments: sourceSkillArgumentsDefault(settings.features),
+    // ListAgentsTool/Ljs, w520ws9s [5912,7382), w9kaj2q7 [3705,5550), UTF-16.
+    unifiedAgentMessaging: settings.features?.unifiedAgentMessaging ?? true,
     // fX, ktr9sak2 [12897,19623), UTF-16.
     questionPartialAnswers: settings.features?.questionPartialAnswers ?? true,
     // Eo/kt/Ro, tar639dc [60313,62418), UTF-16.

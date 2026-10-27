@@ -41,7 +41,8 @@ import { createWebTools } from './web.js';
 import { createWebSearchTools, webSearchConfigSchema, type WebSearchConfig } from './web-search.js';
 import { createMemoryTools } from './memory.js';
 import { MemoryConsolidation } from './memory-consolidation.js';
-import { isLocalPeerToolSchema } from './local-peer.js';
+import { isLocalPeerToolSchema, type LocalPeerTransport } from './local-peer.js';
+import { createUnifiedAgentTools } from './agent-messaging.js';
 import { createMediaTools } from './media.js';
 import { createPluginTools, discoverInstalledPluginComponents, installedPluginCatalogIdentity, pluginConfigSchema, type PluginConfig } from './plugins.js';
 import { NamedWorkflowCatalog } from './workflow-named.js';
@@ -169,7 +170,7 @@ export type ParsedRuntimeSettings = {
     workflowPersistence?: boolean; mcpSubscriptions?: boolean; mcpLogging?: boolean; mcpNotificationStream?: boolean; mcpRecovery?: boolean; mcpPersistence?: boolean; mcpTasks?: boolean; mcpStandardTasks?: boolean;
     taskProjections?: boolean; taskSourceVisibility?: boolean; promptSuggestions?: boolean;
     schedulerJitter?: boolean; schedulerDurable?: boolean; schedulerSourceCalendar?: boolean; skillInlineCommands?: boolean; skillQuotedArguments?: boolean; skillArgumentFallback?: boolean; skillExtendedArguments?: boolean; skillSourceArguments?: boolean; pluginSkillNamespaces?: boolean;
-    agentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; questionPartialAnswers?: boolean; sourceFindings?: boolean; sourcePlanTools?: boolean; sourceQuestionResults?: boolean; peerSourceEnvelope?: boolean; peerFileTransfers?: boolean; peerIdleNotifications?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; crossSessionMessaging?: boolean; residentForks?: boolean };
+    agentMessaging?: boolean; unifiedAgentMessaging?: boolean; agentIdle?: boolean; agentTypes?: boolean; interaction?: boolean; questionPartialAnswers?: boolean; sourceFindings?: boolean; sourcePlanTools?: boolean; sourceQuestionResults?: boolean; peerSourceEnvelope?: boolean; peerFileTransfers?: boolean; peerIdleNotifications?: boolean; web?: boolean; lsp?: boolean; checkpoints?: boolean; worktrees?: boolean; memory?: boolean; media?: boolean; workflow?: boolean; mcpCatalog?: boolean; mcpDynamic?: boolean; mcpDeferred?: boolean; crossSessionMessaging?: boolean; residentForks?: boolean };
 };
 
 // Unknown hook event names are dropped (not merged), so a settings typo cannot
@@ -185,7 +186,7 @@ const featuresSchema = z
     workflowPersistence: z.boolean().optional(), mcpSubscriptions: z.boolean().optional(), mcpLogging: z.boolean().optional(), mcpNotificationStream: z.boolean().optional(), mcpRecovery: z.boolean().optional(), mcpPersistence: z.boolean().optional(), mcpTasks: z.boolean().optional(), mcpStandardTasks: z.boolean().optional(),
     taskProjections: z.boolean().optional(), taskSourceVisibility: z.boolean().optional(), promptSuggestions: z.boolean().optional(),
     schedulerJitter: z.boolean().optional(), schedulerDurable: z.boolean().optional(), schedulerSourceCalendar: z.boolean().optional(), skillInlineCommands: z.boolean().optional(), skillQuotedArguments: z.boolean().optional(), skillArgumentFallback: z.boolean().optional(), skillExtendedArguments: z.boolean().optional(), skillSourceArguments: z.boolean().optional(), pluginSkillNamespaces: z.boolean().optional(),
-    agentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), questionPartialAnswers: z.boolean().optional(), sourceFindings: z.boolean().optional(), sourcePlanTools: z.boolean().optional(), sourceQuestionResults: z.boolean().optional(), peerSourceEnvelope: z.boolean().optional(), peerFileTransfers: z.boolean().optional(), peerIdleNotifications: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), crossSessionMessaging: z.boolean().optional(), residentForks: z.boolean().optional() })
+    agentMessaging: z.boolean().optional(), unifiedAgentMessaging: z.boolean().optional(), agentIdle: z.boolean().optional(), agentTypes: z.boolean().optional(), interaction: z.boolean().optional(), questionPartialAnswers: z.boolean().optional(), sourceFindings: z.boolean().optional(), sourcePlanTools: z.boolean().optional(), sourceQuestionResults: z.boolean().optional(), peerSourceEnvelope: z.boolean().optional(), peerFileTransfers: z.boolean().optional(), peerIdleNotifications: z.boolean().optional(), web: z.boolean().optional(), lsp: z.boolean().optional(), checkpoints: z.boolean().optional(), worktrees: z.boolean().optional(), memory: z.boolean().optional(), media: z.boolean().optional(), workflow: z.boolean().optional(), mcpCatalog: z.boolean().optional(), mcpDynamic: z.boolean().optional(), mcpDeferred: z.boolean().optional(), crossSessionMessaging: z.boolean().optional(), residentForks: z.boolean().optional() })
   .strict();
 
 function expect(condition: unknown, message: string): asserts condition {
@@ -479,6 +480,7 @@ export type Runtime = {
   readonly tools: ToolDefinition[];
   /** Rebuild the tool set for a configuration (defaults to the initial one). */
   buildTools(config?: SessionConfig, owner?: string): ToolDefinition[];
+  bindPeerMessaging?(owner: string, transport: LocalPeerTransport): void;
   /** Drain session-owned events only between completed turns. */
   drainEvents?(owner: string): RuntimeEvent[];
   /**
@@ -677,6 +679,8 @@ export async function createRuntime(
   const refreshMcpTools = new Map<string, () => void>();
   let catalogSession: Session | undefined;
   const agentAccessors = new WeakMap<ToolDefinition[], () => AgentRegistry>();
+  const peerBindings = new Map<string, LocalPeerTransport>();
+  const messagingSessions = new Map<string, Session>();
   // `/subtask` reaches the owner's registry and bound tool set whether or not the messaging
   // tool set is built; `Zjt` spawns with the parent's tools and no narrowing.
   const subtaskSeams = new Map<string, { registry: () => AgentRegistry; tools: ToolDefinition[] }>();
@@ -1238,8 +1242,12 @@ export async function createRuntime(
     if (abilities.subagents) {
       // Child conversations receive workspace tools, never parent job IDs or queues.
       if (current.features?.agentMessaging) {
-        tools.push(...createAgentRegistryTools(lazyResource(agents), { idle: current.features?.agentIdle === true,
-          enableAdvanced: current.features?.agentTypes === true }));
+        // ListAgentsTool/Ljs, w520ws9s [5912,7382), w9kaj2q7 [3705,5550), UTF-16.
+        tools.push(...(current.features?.unifiedAgentMessaging === true
+          ? createUnifiedAgentTools(lazyResource(agents), { owner, peer: () => peerBindings.get(owner), session: () => messagingSessions.get(owner),
+            idle: current.features?.agentIdle === true, enableAdvanced: current.features?.agentTypes === true, assertCurrent: () => checkScope(owner, scope) })
+          : createAgentRegistryTools(lazyResource(agents), { idle: current.features?.agentIdle === true,
+            enableAdvanced: current.features?.agentTypes === true })));
         if (current.features?.workflow) tools.push(...createWorkflowTools(lazyResource(workflows), { persistent: current.features.workflowPersistence === true }));
       } else tools.push(createSubagentTool(() => current, provider, childTools, {
         hookOptions: () => callbackHooks(),
@@ -1324,6 +1332,7 @@ export async function createRuntime(
     schedulerLoading.delete(owner);
     headlessSchedulers.delete(owner);
     subtaskSeams.delete(owner);
+    peerBindings.delete(owner); messagingSessions.delete(owner);
     namedCatalogs.get(owner)?.catalog.close();
     namedCatalogs.delete(owner);
     if (!resources) return;
@@ -1394,6 +1403,7 @@ export async function createRuntime(
   try {
     const runtime: Runtime = {
       tools: buildTools(config), buildTools, releaseSession,
+      bindPeerMessaging(owner, transport) { scopeFor(owner); peerBindings.set(owner, transport); },
       bindSession(session) {
         const bind = async (): Promise<Runtime> => {
           if (closed || signal.aborted) throw new Error('Runtime is closed');
@@ -1711,6 +1721,7 @@ export async function createRuntime(
     runtime.bindSession = async session => {
       const bound = await bindCatalogSession(session);
       if (bound === runtime) {
+        messagingSessions.set(session.id, session);
         publishMcpCatalog(session, true); catalogSession = session;
         // VOe/fQo/kn, 24k7d6mw [339498,340137), sfn1dbxq [4234807,4235398), qw2csqy5 [9345,31492), UTF-16.
         const tools = buildTools(session.config, session.id), accessor = agentAccessors.get(tools);

@@ -121,6 +121,8 @@ litcode --workspace /path/to/project --resume UUID --continue
 
 常驻副本由 `"features": {"residentForks": true, "crossSessionMessaging": true}` 启用，默认关闭。新会话或显式 `/reload` 后，`/fork` 会保留等待任务的副本，`/fork 任务` 执行一次后继续等待。父会话退出后副本仍运行；其他同用户目录会话可用 `/peers` 查到副本，再由 `send_peer_message` 投递任务。副本沿用消息审批和工具权限；需要人工回答的请求保持取消结果。日志位于输出的 `Log` 路径，可通过副本 PID 发送 `SIGTERM` 结束并释放会话锁。已有会话缺少开关时仍保存可显式恢复的副本。交互终端 attach 和 daemon 服务尚未接入。
 
+启用 `"features": {"crossSessionMessaging": true}` 后，交互会话可发现同一用户目录下的其他本机会话。新建会话的 `list_agents` 同时列出子代理和同机会话，`send_message` 的 `id` 可填子代理 ID、列表名称、`名称 [ref]` 或 `uds:` 地址。同名子代理优先；选择同名 peer 时使用其 `uds:` 地址。`notify_when_idle: true` 请求一次闲置通知，省略 `message` 可单独订阅。设置 `"unifiedAgentMessaging": false` 保留原有子代理入口；已有会话按保存的版本恢复，显式 `/reload` 才采用当前设置。
+
 新建会话的 Cron 日期搜索可跨多年找到闰日；日期和星期字段展开为完整取值时按无限制字段处理。`"features": {"schedulerSourceCalendar": false}` 保留旧的一年搜索和单调夏令时规则。已有会话按保存的版本恢复，显式 `/reload` 才采用当前设置。新算法沿用本地日历计算，夏令时回拨时可能跳过重复时段或得到早于当前时刻的匹配；这也会影响定时抖动和动态唤醒。循环任务的七天到期规则保持原行为。
 
 技能放在用户目录的 `skills/<name>/SKILL.md` 或项目 `.harness/skills/<name>/SKILL.md`，用 `/name` 调用。项目指令使用 `HARNESS.md`、`AGENTS.md` 和 `.harness/rules/`。MCP 服务通过设置中的 `mcpServers` 配置，连接状态在 `/mcp` 查看。
