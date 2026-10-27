@@ -936,6 +936,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
         ...(options.residentWorker ? { requireAuth: true, keepAlive: true } : {}),
         policy: peerExplicit, mode: peerMode,
         sourceEnvelope: () => session.config.features?.peerSourceEnvelope === true,
+        // Qe/jL, bt8cr7rw [5180,6744), prwvydmp [792,873), UTF-16.
+        fileHost: () => session.config.features?.peerFileTransfers === true ? { workspace: session.config.workspace, sessionId: session.id } : undefined,
         sessionId: () => session.id,
         queuedPeerCount: () => queue.filter(item => item.peer !== undefined).length,
         hopChain: () => latestPeerHopChain(session.messages),
@@ -959,7 +961,10 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (current) try { await current.close(); } catch (error) { options.status.write(`Peer cleanup error: ${String(error)}\n`); }
   };
   /** Tools are pinned per turn; the peer tool set joins the runtime's own. */
-  const peerTools = () => peer === undefined ? [] : createLocalPeerTools(peer);
+  const peerTools = () => peer === undefined ? [] : createLocalPeerTools(peer, { files: {
+    userDir: session.config.configSources?.userDir ?? defaultUserDir(), enabled: () => session.config.features?.peerFileTransfers === true,
+    permissions: () => session.config.permissions,
+  } });
   const resolveHeld = async (msgId: string | undefined, decision: 'approve' | 'deny' | 'expire') => {
     if (peer === undefined) throw new Error('Peer transport is unavailable');
     const result = await peer.resolveHeld(msgId, decision);
@@ -1070,7 +1075,8 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
     if (activeAgent !== undefined && agentGeneration !== generation) activeAgent = undefined;
     if (activeAgent === undefined) agentGeneration = generation;
     const base = activeRuntime.buildTools(session.config, session.id);
-    const tools = peer === undefined ? base : [...base, ...createLocalPeerTools(peer)];
+    // RTe.kn, 24k7d6mw [1562359,1572850), UTF-16; use the complete mounted extension.
+    const tools = [...base, ...peerTools()];
     // The inbox starts after the session pinned its schemas, so the first turn
     // that can reach the peer tools repins them; `Agent` rejects a mismatch.
     const schemas = pinToolSchemas(tools);

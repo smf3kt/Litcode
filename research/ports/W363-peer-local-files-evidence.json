@@ -1,0 +1,128 @@
+{
+  "schema": "W363LocalPeerFilesEvidence.v1",
+  "status": "VERIFIED_SCOPED",
+  "date": "2026-10-27",
+  "baseCommit": "cfe711d1c486f32aec94c917a72c915771b8407f",
+  "portRecord": "research/ports/W363-peer-local-files.md",
+  "feature": {
+    "name": "peerFileTransfers",
+    "enabledByDefault": false,
+    "requiresInboxFeature": "crossSessionMessaging",
+    "tool": "send_peer_files",
+    "limits": { "filesPerMessage": 16, "bytesPerFile": 31457280, "stagingConcurrency": 4 },
+    "receiverDirectory": "workspace/.harness/peer-uploads/<session-id>",
+    "familyStatus": "Partial",
+    "remaining": ["notify-idle", "global lifecycle", "StorageV5", "daemon and remote owners"]
+  },
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "250a3e946595b7b52dadcbc8d588b4cc20bd86ca6a9626098dd5c877fe9440f9",
+    "inputs": { "records": 918, "sha256": "29e81467bcba547692fe717f1bc60f3c88d6ff206f20e785f29ea13884f1773a" },
+    "validation": { "records": 358, "sha256": "635266cd7d93ab5f3c86d88b25f3b8f6c8538d05b1f00aae2a9c03a0971a7f49" },
+    "build": { "records": 647, "sha256": "68af5b581bb4125a21608e55159ecd231030dfd727d47bf263f9795c9e85ecda" },
+    "totalRecords": 1923,
+    "unchangedAfterFullSuiteAndIndependentReview": true,
+    "repairDelta": {
+      "previousSha256": "61e079c92aa89ecadf1680b559c4bfb22089e6c3ac4351fc163b854591b7c6c4",
+      "unchangedRecords": 1917,
+      "changedInputs": ["scripts/copy-module-regions.mjs", "src/local-peer-files.ts", "src/peer-file-path-source.ts"],
+      "changedValidation": ["test/local-peer-files.test.ts"],
+      "changedBuild": ["dist/local-peer-files.js", "dist/peer-file-path-source.js"]
+    }
+  },
+  "source": {
+    "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "coordinates": "zero-based half-open UTF16 code units",
+    "captures": [
+      { "file": "w363-source.json", "sha256": "903ee5f7542fd9d0908be0e075f2bd9883fcc0e71cf0b3ebd0a3a779f1a17fd0", "moduleRows": 16, "bodies": 52 },
+      { "file": "w363-path-source.json", "sha256": "87825a238b61418bf663451c275f0fc9338618f2c25b92488673873e1ea095ca", "moduleRows": 3, "bodies": 40 },
+      { "file": "w363-repair-path-identity-source.json", "sha256": "8c39c50c798bd37015826e656b5e090012f42b35ef851ce0a4bb8f53c7e9e634", "moduleRows": 1, "bodies": 2 }
+    ],
+    "characterComparison": {
+      "file": "w363-repair-source-host-character-diff.json",
+      "sha256": "afb94d868163e3967aab39ff40531a61d5c8342e87f153bc695919ec9c8772c0",
+      "completePairs": 62,
+      "exactPairs": 40,
+      "semanticEquivalenceOfAdaptedPairs": "not established by text comparison"
+    },
+    "generatorPlan": "research/ports/W363-peer-file-path-source-plan.json",
+    "generatedLedger": "src/peer-file-path-source-blocks.json",
+    "generatedBlocks": 36,
+    "generatedUtf16Units": 4492,
+    "independentRegeneration": "byte-identical product and ledger; original W45 default also verified"
+  },
+  "validation": {
+    "baseline": { "command": "node scripts/smoke-peer-cli.mjs --compiled --files", "exit": 1, "result": "missing file tool after existing text approval and receipt control" },
+    "commands": [
+      { "command": "npm run check", "exit": 0 },
+      { "command": "npm run build", "exit": 0 },
+      { "command": "tsx --test --test-concurrency=1 --test-timeout=20000 test/local-peer-files.test.ts", "exit": 0, "tests": 3 },
+      { "command": "tsx --test --test-concurrency=4 --test-timeout=20000 test/local-peer.test.ts test/local-peer-transport.test.ts test/local-peer-files.test.ts test/local-peer-envelope.test.ts test/path-identity.test.ts test/permissions.test.ts", "exit": 0, "tests": 55 },
+      { "command": "node scripts/smoke-peer-cli.mjs --compiled --envelope --guard", "exit": 0, "ownedModelRequests": 136 },
+      { "command": "node scripts/smoke-peer-cli.mjs --compiled --acceptance", "exit": 0, "ownedModelRequests": 30 },
+      { "command": "node scripts/smoke-resident-fork-cli.mjs", "exit": 0, "ownedModelRequests": 10, "ownedMcpRpc": 18 },
+      { "command": "npm test", "exit": 0, "tests": 3430, "suites": 118, "failed": 0, "cancelled": 0, "skipped": 0, "todo": 0 }
+    ],
+    "compiledFileChain": {
+      "independentCommand": "node scripts/smoke-peer-cli.mjs --compiled --files",
+      "exit": 0,
+      "ownedModelRequests": 9,
+      "processes": 2,
+      "staged": 1,
+      "failedInput": 1,
+      "snapshotPreserved": true,
+      "recipientModelRead": true,
+      "heldApproved": true,
+      "originalBodyRemoved": true,
+      "coldReopen": true
+    }
+  },
+  "findings": [
+    {
+      "id": "W363-I1",
+      "originalVerdict": "NOT_VERIFIED",
+      "status": "fixed",
+      "before": "compiled real UDS probe receives denied-content after ancestor link replacement",
+      "after": "no file staged or delivered; receivedBytes is null",
+      "repair": "retain permission-checked ResolvedPath, compare opened descriptor identity, recheck ancestor chain before bounded read",
+      "regressionBoundaries": ["before stat", "before open", "after open", "stable ancestor alias", "final symlink nofollow"],
+      "adaptation": "existing host confined Read identity contract"
+    },
+    {
+      "id": "W363-I2",
+      "originalVerdict": "NOT_VERIFIED",
+      "status": "fixed",
+      "repair": "optional plan.provenance names actual W363 plan; existing W45 default retained",
+      "sourceBlocksUnchanged": true
+    }
+  ],
+  "independent": {
+    "verdict": "VERIFIED_SCOPED",
+    "proof": "w363-repair-independent-delivery-proof.json",
+    "proofSha256": "26b4ae42f1c7ab74bb4c609975a417e8d254b547e9e19f7c67914a1bdb30f827",
+    "previousProof": "w363-independent-review.json",
+    "previousProofSha256": "17d88182f759336e4b5ad53e863c56ec6313973f67fa6f718022ea2b9b66fbc4",
+    "observed": ["three regression groups", "frozen compiled file CLI", "all 1923 identity records", "source comparisons", "generated copy", "three protected hashes", "sampled process and port cleanup"],
+    "incidentsRetained": ["long Unix socket fixture path", "initial listener-census predicate error", "withdrawn declarator-versus-var comment finding"],
+    "calls": { "target": 22, "leaf": 60, "topLevel": 36, "authority": "completion notification" }
+  },
+  "deliveryCheck": {
+    "proof": "w363-delivery-verification.json",
+    "proofSha256": "d6f42259b3d63866cd059e1fba1a89896b4b154de4e60cec6a4a4ac127b87341",
+    "mainEvidenceHashesChecked": 20,
+    "independentReferencedHashesChecked": 13,
+    "recordedPidsExited": 10,
+    "recordedPathsAbsent": 7,
+    "observedLoopbackPortReleased": true,
+    "inspectedFailedFixtureDirectoriesCleaned": 2,
+    "originalDirtyHashesUnchanged": 3
+  },
+  "limits": [
+    "Raw logs, full identities and comparisons live in the job scratch directory and may be removed with the job.",
+    "Textual source correspondence does not establish global behavioral equivalence.",
+    "Process observations cover recorded PIDs, alongside driver-owned cleanup assertions.",
+    "The complete interactive CLI Read approval race was not observed.",
+    "Real Magpie and external model acceptance remain not_run.",
+    "External calls are zero. No accounts, subscriptions, OAuth, push or new schedules."
+  ]
+}

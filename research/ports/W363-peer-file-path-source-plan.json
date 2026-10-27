@@ -1,0 +1,303 @@
+{
+  "provenance": "research/ports/W363-peer-file-path-source-plan.json",
+  "imports": [
+    "import { readFileSync as hn, statSync as Rt } from 'node:fs';",
+    "import { homedir as it } from 'node:os';",
+    "import * as et from 'node:path';"
+  ],
+  "exports": [
+    "Bn",
+    "yCo",
+    "Jy"
+  ],
+  "blocks": [
+    {
+      "file": "chunk-886tf6ja.js",
+      "range": [
+        4814,
+        4913
+      ],
+      "note": "E"
+    },
+    {
+      "file": "chunk-886tf6ja.js",
+      "range": [
+        7507,
+        7544
+      ],
+      "note": "W"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        5355,
+        5381
+      ],
+      "note": "Ge"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        7436,
+        7484
+      ],
+      "note": "Bn"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        8084,
+        8134
+      ],
+      "note": "uC"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        8134,
+        8430
+      ],
+      "note": "aw"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        8430,
+        8516
+      ],
+      "note": "oIr"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        8635,
+        8745
+      ],
+      "note": "C"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        8931,
+        8993
+      ],
+      "note": "O"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        8993,
+        9108
+      ],
+      "note": "YR"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        10249,
+        10296
+      ],
+      "note": "J"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        10296,
+        10618
+      ],
+      "note": "Ft"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        10618,
+        10792
+      ],
+      "note": "Dt/xn"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        10792,
+        11361
+      ],
+      "note": "nt"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        11361,
+        11389
+      ],
+      "note": "fa"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        11730,
+        11779
+      ],
+      "note": "Jy"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        11779,
+        11815
+      ],
+      "note": "qa"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        11815,
+        11855
+      ],
+      "note": "Bt/Gt/I/k"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        11855,
+        12015
+      ],
+      "note": "QPe"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        12015,
+        12176
+      ],
+      "note": "Lt"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        12414,
+        12612
+      ],
+      "note": "GS"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        12612,
+        12768
+      ],
+      "note": "qO"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        12768,
+        12953
+      ],
+      "note": "Mt"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        12953,
+        12981
+      ],
+      "note": "qP"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        13491,
+        13839
+      ],
+      "note": "BH"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        13839,
+        13955
+      ],
+      "note": "bn"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        13992,
+        14064
+      ],
+      "note": "gin"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        14409,
+        14536
+      ],
+      "note": "cl"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        14536,
+        14572
+      ],
+      "note": "ks"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        17006,
+        17178
+      ],
+      "note": "vn"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        17178,
+        17469
+      ],
+      "note": "gj"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        17469,
+        17520
+      ],
+      "note": "N"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        22769,
+        22836
+      ],
+      "note": "zN"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        22836,
+        22861
+      ],
+      "note": "zt"
+    },
+    {
+      "file": "chunk-ae84tp6z.js",
+      "range": [
+        22861,
+        22916
+      ],
+      "note": "Xt"
+    },
+    {
+      "file": "chunk-bf3z2ftn.js",
+      "range": [
+        6300,
+        6350
+      ],
+      "note": "yCo"
+    }
+  ]
+}

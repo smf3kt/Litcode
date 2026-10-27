@@ -13,6 +13,7 @@ const planFile = JSON.parse(fs.readFileSync(planPath, 'utf8'));
 const plan = Array.isArray(planFile) ? planFile : planFile.blocks;
 const planImports = Array.isArray(planFile) ? undefined : planFile.imports;
 const planExports = Array.isArray(planFile) ? undefined : planFile.exports;
+const planProvenance = (Array.isArray(planFile) ? undefined : planFile.provenance) ?? 'research/ports/W45-chain-runner-copies.json';
 
 const modules = new Map();
 const digests = new Map();
@@ -132,7 +133,7 @@ if (missingBlocks.length || missingExports.length) {
   })}`);
 }
 
-const head = ['// @ts-nocheck', '// Exact source bodies, copied verbatim; provenance: research/ports/W45-chain-runner-copies.json.', '// Modules:'];
+const head = ['// @ts-nocheck', `// Exact source bodies, copied verbatim; provenance: ${planProvenance}.`, '// Modules:'];
 for (const [f, d] of digests) head.push(`//   ${f} sha256 ${d}`);
 head.push('// Each block carries its zero-based UTF-16 [start,end) range, unit count and body SHA-256.',
   ...(planImports ?? [

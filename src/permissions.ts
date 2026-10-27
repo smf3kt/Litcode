@@ -479,8 +479,20 @@ export function permissionDecision(policy: PermissionPolicy | undefined, tool: T
     session = undefined;
   }
   let baseline: PermissionDecision;
-  try { baseline = decideOnce(policy, tool, input, session, owner?.planFile); }
-  catch (error) { return { decision: 'deny', reason: `Permission path check failed: ${error instanceof Error ? error.message : String(error)}` }; }
+  try {
+    baseline = decideOnce(policy, tool, input, session, owner?.planFile);
+    // SendFileTool/IA, 8t44px9f [22793,31590), 2bcyxj9q [231514,231561), UTF-16.
+    if (tool.readPaths && baseline.decision !== 'deny') {
+      const readTool: ToolDefinition = { schema: { name: 'read_file', input_schema: { type: 'object' } }, readOnly: true, execute: async () => '' };
+      let reading: PermissionDecision | undefined;
+      for (const file of tool.readPaths(input)) {
+        const decision = decideOnce(policy, readTool, { path: file }, session, owner?.planFile);
+        if (decision.decision === 'deny') { reading = decision; break; }
+        if (decision.decision === 'ask' && (reading === undefined || decision.floor === 'rule')) reading = decision;
+      }
+      if (reading?.decision === 'deny' || reading?.decision === 'ask' && (baseline.decision === 'allow' || reading.floor === 'rule')) baseline = reading;
+    }
+  } catch (error) { return { decision: 'deny', reason: `Permission path check failed: ${error instanceof Error ? error.message : String(error)}` }; }
   const result = !policy && !sessionUpdatesActive(session) ? baseline : applyShellReadings(policy, tool, input, baseline, session);
   // axr, sfn [3321472,3323500), UTF-16. Chrome origin-consent has no local tool surface.
   return (session?.mode ?? policy?.mode) === 'dontAsk' && result.decision === 'ask'

@@ -21,6 +21,7 @@ import type { ToolContext, ToolDefinition } from "./tools.js";
 import { classifierMessage } from "./message-origin.js";
 import { encodePeerAddress, encodePeerEnvelope, peerEnvelopeMetadata, peerPluginName, preparePeerInput,
   type PeerEnvelopeMetadata } from "./local-peer-envelope.js";
+import { createLocalPeerFileTool, peerFileToolSchema, injectPeerFilePrefix, materializeLocalPeerFiles, type PeerFile, type PeerFileHost, type PeerFileToolOptions } from './local-peer-files.js';
 import { appendPeerHop, createPeerDropReporter, createPeerIngressGuard, createPeerPacer, peerHopChainSchema,
   peerHopToken, peerDropReasonSchema, PEER_LIMITS, type PeerDropReason } from "./local-peer-guard.js";
 
@@ -854,7 +855,7 @@ export class PeerSendRefusal extends Error {
 }
 
 // FK, 6zdc3jq1 [11360,11485), UTF-16.
-function refundablePeerSend(error: unknown): boolean {
+export function refundablePeerSend(error: unknown): boolean {
   if (error instanceof PeerSendRefusal) return true;
   const code = error !== null && typeof error === "object" && "code" in error ? error.code : undefined;
   return code === "ENOENT" || code === "ECONNREFUSED" || code === "EBUSY" || code === "EAGAIN" || code === "EACCES";
@@ -967,6 +968,7 @@ export type PeerInboxOptions = {
   /** `Rwt` (chunk-sfn1dbxq.js [472253,472852)): consume or rewrite before admission. */
   receive?: (frame: { from?: string; text: string; msgId?: string }) => { consume?: true; content?: string } | Promise<{ consume?: true; content?: string }>;
   sourceEnvelope?: () => boolean;
+  fileHost?: () => PeerFileHost | undefined;
   onAccepted: (message: AcceptedMessage) => void;
   onHeld?: (message: HeldMessage) => void;
   onDropped?: (message: HeldMessage, reason: "refused" | "expired" | "dropped") => void;
@@ -1203,7 +1205,15 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
     const verifiedPeerStart = context.peer === undefined ? undefined : await processStart(context.peer.pid);
     const rewritten = await options.receive?.({ from, text: prepared, msgId });
     if (rewritten?.consume) return;
-    const text = typeof rewritten?.content === "string" ? rewritten.content : prepared;
+    let text = typeof rewritten?.content === "string" ? rewritten.content : prepared;
+    // Qe/bht, bt8cr7rw [5180,6744), 0ydceggj [7805,7881), UTF-16.
+    const fileHost = options.fileHost?.();
+    if (fileHost !== undefined && frame.file_attachments !== undefined && options.policy?.() !== 'refuse') {
+      try {
+        const files = await materializeLocalPeerFiles(frame.file_attachments, options.userDir, fileHost);
+        if (files.received > 0) text = injectPeerFilePrefix(text, files.prefix);
+      } catch (error) { logger(`[peer-inbox] file materialization failed: ${String(error)}`, { level: 'warn' }); }
+    }
     const metadata = sourceEnvelope ? peerEnvelopeMetadata(content, text) : undefined;
     const plugin = sourceEnvelope ? peerPluginName(frame.from_plugin) : undefined;
     const fromMode = metadata?.fromMode ?? (frame.from_mode === "bypass" || frame.from_mode === "prompting" ? frame.from_mode : undefined);
@@ -1297,6 +1307,7 @@ export type LocalPeerTransportOptions = {
   heldTimeoutMs?: () => number;
   receive?: PeerInboxOptions["receive"];
   sourceEnvelope?: () => boolean;
+  fileHost?: () => PeerFileHost | undefined;
   sessionId?: () => string;
   queuedPeerCount?: () => number;
   hopChain?: () => readonly string[] | undefined;
@@ -1307,7 +1318,7 @@ export type LocalPeerTransportOptions = {
 export type LocalPeerTransport = {
   readonly address: string;
   list(): Promise<PeerView[]>;
-  send(address: string, text: string, options?: { signal?: AbortSignal; expectPeerPid?: number; expectPeerProcStart?: string }): Promise<{ msgId: string }>;
+  send(address: string, text: string, options?: { signal?: AbortSignal; expectPeerPid?: number; expectPeerProcStart?: string; fileAttachments?: PeerFile[] }): Promise<{ msgId: string }>;
   held(): HeldMessage[];
   resolveHeld(msgId: string | undefined, decision: "approve" | "deny" | "expire"): Promise<HeldResolution>;
   releaseHeld(cause: string): number;
@@ -1375,6 +1386,7 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
     ...(options.heldTimeoutMs === undefined ? {} : { heldTimeoutMs: options.heldTimeoutMs }),
     ...(options.receive === undefined ? {} : { receive: options.receive }),
     ...(options.sourceEnvelope === undefined ? {} : { sourceEnvelope: options.sourceEnvelope }),
+    ...(options.fileHost === undefined ? {} : { fileHost: options.fileHost }),
     ...(options.queuedPeerCount === undefined ? {} : { queuedPeerCount: options.queuedPeerCount }),
     onAccepted: message => emit({ kind: "message", message }),
     onHeld: message => emit({ kind: "held", message, count: inbox.held.size() }),
@@ -1433,7 +1445,8 @@ export async function createLocalPeerTransport(options: LocalPeerTransportOption
       const content = sourceEnvelope ? encodePeerEnvelope({ from, body: text, fromName: options.name,
         fromSession: options.sessionId?.() ?? sessionId, hopChain, fromMode: ownMode }) : text;
       const frame: PeerFrame = { type: "user", message: { role: "user", content }, from,
-        msgV: 1, msg_id: msgId, from_mode: ownMode, priority: "next", ...(hopChain === undefined ? {} : { hop_chain: hopChain }) };
+        msgV: 1, msg_id: msgId, from_mode: ownMode, priority: "next", ...(hopChain === undefined ? {} : { hop_chain: hopChain }),
+        ...((sendOptions.fileAttachments?.length ?? 0) > 0 ? { file_attachments: sendOptions.fileAttachments } : {}) };
       boundedLine(frame);
       const reservation = pacer.reserve(target);
       if (!reservation.ok) throw new PeerSendRefusal("sender-paced",
@@ -1520,12 +1533,13 @@ const peerToolSchemas = {
 } satisfies Record<string, ToolDefinition['schema']>;
 
 // Host schema adapter for K8t's sender, 6zdc3jq1 [12210,13125), UTF-16; the schema table is local.
-export function isLocalPeerToolSchema(schema: ToolDefinition['schema']): boolean {
-  return Object.values(peerToolSchemas).some(peer => JSON.stringify(schema) === JSON.stringify({ ...peer, eager_input_streaming: true }));
+export function isLocalPeerToolSchema(schema: ToolDefinition['schema'], includeFiles = false): boolean {
+  const schemas = [...Object.values(peerToolSchemas), ...(includeFiles ? [peerFileToolSchema] : [])];
+  return schemas.some(peer => JSON.stringify(schema) === JSON.stringify({ ...peer, eager_input_streaming: true }));
 }
 
 /** Explicit same-host tools; child-agent messaging stays in AgentRegistry. */
-export function createLocalPeerTools(transport: LocalPeerTransport, options: { signal?: AbortSignal } = {}): ToolDefinition[] {
+export function createLocalPeerTools(transport: LocalPeerTransport, options: { signal?: AbortSignal; files?: PeerFileToolOptions } = {}): ToolDefinition[] {
   const wrap = (schema: ToolDefinition['schema'], readOnly: boolean,
     execute: (input: Record<string, unknown>, context: ToolContext) => Promise<unknown>): ToolDefinition => ({
     readOnly,
@@ -1553,5 +1567,6 @@ export function createLocalPeerTools(transport: LocalPeerTransport, options: { s
       const status = waitMs > 0 ? await transport.waitStatus(msgId, waitMs, context.signal) : transport.status(msgId);
       return status === undefined ? { msg_id: msgId, status: "unknown" } : { msg_id: msgId, status: status.status, ...(status.reason === undefined ? {} : { reason: status.reason }) };
     }),
+    ...(options.files?.enabled() ? [createLocalPeerFileTool(transport, options.files)] : []),
   ];
 }

@@ -53,6 +53,8 @@ export type ShellProgress = {
 export type ToolDefinition = {
   schema: Anthropic.Tool;
   readOnly: boolean;
+  // SendFileTool/IA, 8t44px9f [22793,31590), 2bcyxj9q [231514,231561), UTF-16.
+  readPaths?(input: unknown): readonly string[];
   mcpAnnotations?: { destructive: boolean; openWorld: boolean; toolName?: string; title?: string };
   toAutoClassifierInput?(input: unknown): unknown;
   requiresUserInteraction?: boolean;

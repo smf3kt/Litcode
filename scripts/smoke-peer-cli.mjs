@@ -12,7 +12,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 // mode-mismatched message and approves it through /peer-held, and B's next
 // request carries the text as peer meta input. No cloud call leaves loopback.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const compiled = process.argv.includes("--compiled"), guard = process.argv.includes("--guard"), envelope = process.argv.includes("--envelope");
+const compiled = process.argv.includes("--compiled"), guard = process.argv.includes("--guard"), files = process.argv.includes("--files"), envelope = process.argv.includes("--envelope") || files;
 const acceptance = process.argv.includes("--acceptance") || guard;
 const scratch = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : fs.realpathSync(os.tmpdir());
 const temporary = fs.realpathSync(fs.mkdtempSync(path.join(scratch, "peer-cli-smoke-")));
@@ -117,7 +117,7 @@ try {
   for (const workspace of [workspaceA, workspaceB]) {
     fs.mkdirSync(path.join(workspace, ".harness"), { recursive: true });
     fs.writeFileSync(path.join(workspace, ".harness", "settings.json"),
-      JSON.stringify({ features: { crossSessionMessaging: true, ...(envelope ? {} : { peerSourceEnvelope: false }) } }) + "\n", { mode: 0o600 });
+      JSON.stringify({ features: { crossSessionMessaging: true, ...(files ? { peerFileTransfers: true } : {}), ...(envelope ? {} : { peerSourceEnvelope: false }) } }) + "\n", { mode: 0o600 });
   }
   server = http.createServer((req, res) => {
     const label = String(req.headers.authorization ?? "").includes("owned-peer-b") ? "b" : "a";
@@ -138,10 +138,19 @@ try {
         sse(res, body, [{ type: 'tool_use', id: `guard-relay-${label}-${requests[label].length}`, name: 'send_peer_message',
           input: { address: relay[1], message: `GUARD_RELAY ${label === 'a' ? guardResults.inboxA : guardResults.inboxB} ${Number(relay[2] ?? 0) + 1}`, wait_ms: 0 } }]); return;
       }
+      if (files && label === 'b' && typeof body.messages.at(-1)?.content === 'string' && body.messages.at(-1).content.includes('PEER_FILE_CONTENT')) {
+        const reference = /@"([^"]+)"/.exec(body.messages.at(-1).content);
+        if (reference) { sse(res, body, [{ type: 'tool_use', id: 'peer-file-read', name: 'read_file', input: { path: reference[1] } }]); return; }
+      }
       if (label === "a") {
         const pending = body.messages.at(-1);
         const text = typeof pending?.content === "string" ? pending.content : "";
         const match = /^PEER_SEND (\S+) ([\s\S]+)$/.exec(text);
+        const fileSend = files ? /^PEER_FILES (\S+)$/.exec(text) : undefined;
+        if (fileSend) {
+          sse(res, body, [{ type: 'tool_use', id: 'peer-file-send', name: 'send_peer_files',
+            input: { address: fileSend[1], files: ['payload.txt', 'missing.txt'], message: 'PEER_FILE_CONTENT' } }]); return;
+        }
         if (text === "PEER_LIST") {
           sse(res, body, [{ type: "tool_use", id: "peer-list-1", name: "list_peers", input: {} }]); return;
         }
@@ -203,6 +212,35 @@ try {
       fromSession: senderId, fromMode: 'prompting', body: 'EXACT_PEER_TEXT' });
   }
 
+  if (files) {
+    await until(() => childB.combined.includes('event finished: end_turn') && (childA.combined.match(/finished: end_turn/g) ?? []).length === 2, 'text controls settled before file transfer');
+    const bytes = 'snapshot before sender edits\nsecond line\n';
+    fs.writeFileSync(path.join(workspaceA, 'payload.txt'), bytes);
+    childA.child.stdin.write(`PEER_FILES ${inboxB}\n`);
+    await until(() => toolResult(requests.a, 'peer-file-send') !== undefined, 'file sender tool result');
+    const sent = toolResult(requests.a, 'peer-file-send');
+    assert.notEqual(sent.is_error, true, 'compiled CLI must expose and execute the local file tool');
+    const data = JSON.parse(sent.content);
+    assert.equal(data.success, true); assert.equal(data.files.length, 2);
+    assert.equal(data.files[0].size, Buffer.byteLength(bytes)); assert.equal(typeof data.files[1].error, 'string');
+    const spool = path.join(userDir, 'file-transfers');
+    await until(() => fs.readdirSync(spool).length === 0, 'owned staged copy consumed');
+    fs.writeFileSync(path.join(workspaceA, 'payload.txt'), 'changed after snapshot');
+    childB.child.stdin.write('/peer-held\n');
+    await until(() => childB.combined.includes('PEER_FILE_CONTENT\n</cross-session-message>'), 'file held with materialized reference');
+    childB.child.stdin.write('/peer-held approve 1\n');
+    await until(() => toolResult(requests.b, 'peer-file-read') !== undefined, 'recipient reads the transferred file');
+    const read = toolResult(requests.b, 'peer-file-read');
+    assert.notEqual(read.is_error, true); assert.match(read.content, /snapshot before sender edits/);
+    assert.equal(read.content.includes('changed after snapshot'), false);
+    const row = journal(workspaceB).find(row => row.kind === 'message' && typeof row.message.content === 'string' && row.message.content.includes('PEER_FILE_CONTENT'));
+    assert.ok(row); const reference = /@"([^"]+)"/.exec(row.message.content); assert.ok(reference);
+    assert.equal(fs.readFileSync(path.join(workspaceB, reference[1]), 'utf8'), bytes);
+    assert.equal(Object.hasOwn(row.classifier.origin, 'body'), false);
+    assert.equal(row.classifier.origin.kind, 'peer');
+    assert.equal(row.classifier.origin.fromSession, journal(workspaceA).find(row => row.kind === 'metadata').id);
+    await until(() => (childB.combined.match(/event finished: end_turn/g) ?? []).length === 2, 'file recipient turn committed');
+  }
   if (acceptance) {
     const turns = state => (state.combined.match(/finished: end_turn/g) ?? []).length;
     await until(() => turns(childA) === 2 && childB.combined.includes('event finished: end_turn'), 'initial peer turns settled');
@@ -338,6 +376,16 @@ try {
   const codes = await Promise.all([childA.exit, childB.exit]);
   assert.deepEqual(codes, [0, 0]);
   for (const state of [childA, childB]) assert.throws(() => process.kill(state.child.pid, 0), error => error.code === 'ESRCH');
+  if (files) {
+    const { Session } = await import(pathToFileURL(path.join(root, 'dist/session.js')).href);
+    const id = journal(workspaceB).find(row => row.kind === 'metadata').id;
+    const cold = Session.open(workspaceB, { id });
+    try {
+      const content = cold.messages.find(message => typeof message.content === 'string' && message.content.includes('PEER_FILE_CONTENT'))?.content;
+      assert.equal(typeof content, 'string'); const reference = /@"([^"]+)"/.exec(content); assert.ok(reference);
+      assert.equal(fs.readFileSync(path.join(workspaceB, reference[1]), 'utf8'), 'snapshot before sender edits\nsecond line\n');
+    } finally { await cold.close(); }
+  }
   for (const workspace of [workspaceA, workspaceB]) assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
   for (const label of ['a', 'b']) assert.deepEqual(fs.readdirSync(path.join(runtimeDir(), 'litcode-socks')), []);
   const sessions = path.join(userDir, "sessions");
@@ -345,7 +393,7 @@ try {
   console.log(JSON.stringify({ cli: "passed", processes: 2, inboxB, aRequests: requests.a.length, bRequests: requests.b.length,
     held: "mode-mismatch", receipt: "delivered", ownedCleanup: true,
     ...(compiled ? { compiledCLI: true } : {}), acceptance, heldDecisions: acceptance ? ['approve', 'deny', 'expire', 'refuse', 'exit-expiry'] : ['approve'],
-    peerOrigin: acceptance, sourceEnvelope: envelope, ...(guard ? { guard: { pacedSends: guardResults.pacedSends, retainedQueue: guardResults.retainedQueue,
+    peerOrigin: acceptance || files, sourceEnvelope: envelope, ...(files ? { localFiles: { sent: 1, failed: 1, snapshotPreserved: true, modelRead: true, originalBodyRemoved: true } } : {}), ...(guard ? { guard: { pacedSends: guardResults.pacedSends, retainedQueue: guardResults.retainedQueue,
       relayRequests: guardResults.relayRequests, duplicateRequests: 1, humanReset: true } } : {}), gateway: "owned loopback SSE", externalCalls: 0 }));
 } catch (error) {
   console.error("A:", childA?.combined?.slice(-4000));
