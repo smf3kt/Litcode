@@ -89,8 +89,19 @@ try {
   assert.equal(fs.existsSync(plain.marker), true, "a fully enumerated line keeps its allow");
   assert.equal(plain.calls, 2);
 
+  const denyRule = [{ tool: "run_command", command: "echo denied", decision: "deny" }];
+  const grouped = await run("grouped", "( echo denied ) > marker.txt", "marker.txt", denyRule);
+  assert.equal(grouped.result.is_error, true);
+  assert.match(grouped.result.content, /alternate reading/);
+  assert.equal(fs.existsSync(grouped.marker), false, "a group must not carry a denied command past the rule");
+
+  const groupControl = await run("group-control", "( echo fine ) > marker.txt", "marker.txt", denyRule);
+  assert.equal(groupControl.result.is_error, undefined);
+  assert.equal(fs.existsSync(groupControl.marker), true, "a group around an allowed command still runs");
+
   console.log(JSON.stringify({ cli: "passed", quotedCommandDenied: true, controlCommandRan: true,
-    denial: "alternate reading", analyserRefusalAsks: true, modelCallsPerCase: 2, ...(compiled ? { compiledCLI: true } : {}), gateway: "owned loopback SSE" }));
+    denial: "alternate reading", analyserRefusalAsks: true, groupedCommandDenied: true, groupControlRan: true,
+    modelCallsPerCase: 2, ...(compiled ? { compiledCLI: true } : {}), gateway: "owned loopback SSE" }));
 } finally {
   child?.kill("SIGKILL");
   if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }

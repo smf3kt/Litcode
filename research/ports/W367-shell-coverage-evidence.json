@@ -1,0 +1,151 @@
+{
+  "schema": "W367ShellCoverageEvidence.v1",
+  "status": "MAIN_VERIFIED_PENDING_INDEPENDENT",
+  "date": "2026-10-27",
+  "baseCommit": "4388337",
+  "portRecord": "research/ports/W367-shell-coverage.md",
+  "feature": {
+    "name": "permissionReadingStrictness",
+    "familyStatus": "Partial",
+    "promoted": false
+  },
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "5b8169769a61e323f285d1ed3783d853ecf4ac8aee26b363013298f4f223985c",
+    "inputs": {
+      "records": 938,
+      "sha256": "91ae1e8d318ef4a43931ba4a1d002bf494d860a77f5b9e921522fdbe76c81d2d"
+    },
+    "validation": {
+      "records": 360,
+      "sha256": "a08564dbbaae03d5c8d5551a9b3c2586ec95f964c6ea44bd5ce0e7aae225c831"
+    },
+    "build": {
+      "records": 662,
+      "sha256": "14f68ed76fe0bfeed1c46cc2deb786d4f98ca51fa90bda77a35d451901162961"
+    }
+  },
+  "source": {
+    "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+    "module": "chunk-zjewzgfh.js",
+    "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+    "moduleUnits": 93529,
+    "coordinates": "zero-based half-open UTF16 code units",
+    "plan": {
+      "path": "research/ports/W367-shell-coverage-source-plan.json",
+      "sha256": "9759e08501715447f64a1edcd85eb2ff0be12a096a1d931f60d75a79cda5b957"
+    },
+    "ledger": {
+      "path": "src/shell-coverage-source-blocks.json",
+      "sha256": "d9bc801a0e3208559b38e05df666cd2486e2ac94e45f3d11c5125233787e0f46"
+    },
+    "output": {
+      "path": "src/shell-coverage-source.ts",
+      "sha256": "ddec96715e833d5486b0d7295500b99c7c4a49d2f8eb4d7b6e4d80d9d5428c80"
+    },
+    "blocks": [
+      {
+        "symbol": "E6.statementCoverage",
+        "range": [
+          9498,
+          10028
+        ],
+        "units": 530,
+        "bodySha256": "ee47f73f32d95eb6fdf52d8da4ae42a548b6d90fa736baf4f19b27d03075d86c",
+        "output": "src/shell-coverage-source.ts",
+        "outputRange": [
+          434,
+          964
+        ],
+        "mode": "copy",
+        "verifiedEqual": true
+      }
+    ],
+    "nodeSetSourceSymbol": "Mt",
+    "nodeSetSourceOffset": 21417,
+    "commandExtractorSymbols": [
+      "Dt",
+      "E"
+    ],
+    "commandExtractorOffsets": [
+      21059,
+      22589
+    ],
+    "parseWrapper": {
+      "symbol": "w6",
+      "offset": 21009,
+      "lengthCap": 10000
+    },
+    "parserModule": "src/bash-parser-source.ts"
+  },
+  "validation": {
+    "newGroups": 1,
+    "affected": {
+      "suites": 8,
+      "tests": 152,
+      "pass": 152,
+      "fail": 0,
+      "breakdown": {
+        "test/shell-permissions.test.ts": 6,
+        "test/permissions.test.ts": 22,
+        "test/agent-tool-restrictions.test.ts": 10,
+        "test/default-bypass.test.ts": 3,
+        "test/permissions-panel.test.ts": 45,
+        "test/model-plan-tools.test.ts": 3,
+        "test/auto-mode-editor.test.ts": 3,
+        "test/agent-lifecycle.test.ts": 60
+      }
+    },
+    "regressionFoundAndRepaired": {
+      "input": "printf shell-content > content/shell.txt",
+      "symptom": "an exact allow rule on the whole line turned into ask because the redirect-stripped prefix was added as a second reading",
+      "fix": "only commands inside a compound context are added; a top-level command and the command under a top-level redirected_statement contribute nothing"
+    },
+    "checkExit": 0,
+    "buildExit": 0,
+    "compiledSource": {
+      "cli": "passed",
+      "groupedCommandDenied": true,
+      "groupControlRan": true,
+      "analyserRefusalAsks": true,
+      "modelCallsPerCase": 2
+    },
+    "compiledCompiled": {
+      "cli": "passed",
+      "groupedCommandDenied": true,
+      "groupControlRan": true,
+      "analyserRefusalAsks": true,
+      "modelCallsPerCase": 2
+    },
+    "full": {
+      "tests": 3438,
+      "suites": 118,
+      "pass": 3438,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "gateway": "owned loopback SSE",
+    "externalCalls": 0,
+    "realMagpie": "not_run",
+    "paidUpstream": "not_run"
+  },
+  "adapters": [
+    "The recovered analyser answers too-complex or a command list; the host answers extra readings plus a completeness verdict",
+    "Only the statement-coverage check is copied; Dt's command model (argv, env prefixes, redirects, heredocs) stays with W01's conservative superset",
+    "A parse ERROR node is treated as a refusal, matching E6's too-complex verdict for an unreadable line",
+    "Only commands inside a compound context are added, so a top-level redirect remains one reading"
+  ],
+  "protectedFiles": {
+    ".audit/w332-runtime.tsv": "3231dfe89f4b63c65869b4df1efa2967475ee3c222a8fc24a81c3ee281456228",
+    ".audit/w45-77-evidence.mjs": "9a3b57af640773f1283975e6ca49523407d8fb8469639817da5ab807b7b4d3aa",
+    "test/skills-command.test.ts": "995b1526bc74ab0d9f278bd61442c4254e3194e6528d12d18de75b5184404735"
+  },
+  "remaining": [
+    "Dt command model: argv splitting, env-prefix values, redirect analysis, heredoc handling",
+    "Declaration-prefix rule and the Lcn strictness ordering",
+    "Be/Ue/We parse-error verdicts beyond a plain ERROR node, and the backtick scan verdicts",
+    "Remote managed policy stays external"
+  ]
+}

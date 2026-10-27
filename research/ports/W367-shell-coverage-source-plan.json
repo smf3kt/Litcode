@@ -1,0 +1,27 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "shell-coverage-source-blocks.json",
+  "outputs": [
+    {
+      "path": "shell-coverage-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered declarations. Regenerate or verify with scripts/copy-source-plan.mjs.\n",
+        "// The recovered E6 statement-coverage check, wrapped so it returns null when it\n// finds nothing. `n` is the UTF-8 byte view of the command, `t` its parse tree.\n",
+        "function statementCoverage(n,t){",
+        {
+          "module": "chunk-zjewzgfh.js",
+          "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+          "symbol": "E6.statementCoverage",
+          "range": [
+            9498,
+            10028
+          ],
+          "bodySha256": "ee47f73f32d95eb6fdf52d8da4ae42a548b6d90fa736baf4f19b27d03075d86c"
+        },
+        "return null;}\n",
+        "export { statementCoverage };\n"
+      ]
+    }
+  ]
+}

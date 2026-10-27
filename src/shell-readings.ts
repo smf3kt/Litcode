@@ -11,10 +11,52 @@
 // set may not be allowed on the strength of one reading - is what gets ported.
 
 import { At, Fe, Rt, fLn, gLn, lyr, mLn, uyr, yit } from './shell-complexity-source.js';
+import { statementCoverage } from './shell-coverage-source.js';
+import { vS } from './bash-parser-source.js';
 
 // Bounded like the recovered reading set: small sets are enumerated fully, and
 // anything larger is a bounded sample that must be reported as incomplete.
 export const SHELL_READING_LIMIT = 16;
+
+// The recovered length bound on a line the parser will accept (`$e=1e4`,
+// chunk-zjewzgfh.js offset 822).
+const SHELL_ANALYSER_LIMIT = 1e4;
+
+// The node types the recovered extractor walks (`Mt`, chunk-zjewzgfh.js offset
+// 21417, which also lists `ERROR`), split by role. A compound node opens its own execution context, so the
+// commands inside it run even though the text walk sees the group as one segment.
+// A command node is read only inside a compound context: a top-level command's
+// own text is already a segment, and the command under a top-level
+// `redirected_statement` is not a command the shell runs without its redirect.
+const COMPOUND_NODES = new Set(['subshell', 'compound_statement', 'if_statement', 'while_statement', 'for_statement',
+  'case_statement', 'function_definition']);
+const COMMAND_NODES = new Set(['command', 'variable_assignment', 'variable_assignments', 'negated_command',
+  'declaration_command', 'unset_command', 'test_command']);
+
+/** One command the line can actually run, as the recovered tree reports it. */
+function treeReadings(command: string): { readings: string[]; refused?: string } {
+  if (command.length > SHELL_ANALYSER_LIMIT) return { readings: [], refused: 'Parser aborted (over-length)' };
+  let tree;
+  // The recovered parser's own 50 ms deadline applies when no budget is given.
+  try { tree = vS().parse(command, undefined); } catch { return { readings: [], refused: 'Parser aborted' }; }
+  if (tree === null) return { readings: [], refused: 'Parser aborted' };
+  const coverage = statementCoverage(Buffer.from(command, 'utf8'), tree);
+  if (coverage) return { readings: [], refused: coverage.reason };
+  const readings: string[] = [];
+  let refused: string | undefined;
+  const visit = (node: { type?: string; text?: string; children?: readonly (unknown)[] } | null | undefined,
+    inCompound: boolean): void => {
+    if (refused !== undefined || !node || typeof node.type !== 'string') return;
+    // The recovered analyzer answers `too-complex` for an ERROR node, so a line
+    // the parser could not read yields no reading set at all.
+    if (node.type === 'ERROR') { refused = 'Parse error'; return; }
+    const compound = inCompound || COMPOUND_NODES.has(node.type);
+    if (compound && COMMAND_NODES.has(node.type) && typeof node.text === 'string') readings.push(node.text);
+    for (const child of node.children ?? []) visit(child as never, compound);
+  };
+  visit(tree as never, false);
+  return { readings, ...(refused === undefined ? {} : { refused }) };
+}
 
 /**
  * The recovered analyzer's own reasons for refusing to model a line, in its
@@ -80,25 +122,33 @@ function segments(text: string): string[] {
 /**
  * Conservative readings of one command line.
  *
- * The set always contains the input itself, plus the de-quoted, unescaped,
- * substitution-body and per-segment forms of it and of those forms one level
- * further. `exhaustive` is true only when the line contains no construct that
- * expands to text this runtime cannot compute and the set did not hit its bound.
+ * The set contains the input itself, the de-quoted, unescaped, substitution-body
+ * and per-segment forms of it, and every command the recovered parser reports
+ * inside the line, so a group, an `if` body or a loop body is checked as the
+ * command it runs. `exhaustive` is true only when the line contains no construct
+ * that expands to text this runtime cannot compute, the recovered analyzer does
+ * not refuse it, and neither the text walk nor the tree walk hit their bounds.
  */
 export function shellReadings(command: string): ShellReadings {
   const readings = new Set<string>([command]);
   const queue = [command];
   let truncated = false;
+  const add = (candidate: string): void => {
+    if (candidate === '' || readings.has(candidate)) return;
+    if (readings.size >= SHELL_READING_LIMIT) { truncated = true; return; }
+    readings.add(candidate);
+    queue.push(candidate);
+  };
   while (queue.length) {
     const current = queue.shift()!;
-    const candidates = [stripQuotes(current), ...substitutions(current), ...segments(current)];
-    for (const candidate of candidates) {
-      if (candidate === '' || readings.has(candidate)) continue;
-      if (readings.size >= SHELL_READING_LIMIT) { truncated = true; continue; }
-      readings.add(candidate);
-      queue.push(candidate);
-    }
+    for (const candidate of [stripQuotes(current), ...substitutions(current), ...segments(current)]) add(candidate);
   }
+  // The text walk cannot see a group or a keyword body: `( echo hi )` is one
+  // segment, so a rule on `echo hi` never met it. The recovered parser does
+  // report those inner commands, and an unreadable line is refused outright.
+  const tree = treeReadings(command);
+  if (tree.refused !== undefined) return { readings: [...readings], exhaustive: false };
+  for (const reading of tree.readings) add(reading);
   const exhaustive = !truncated && !OPAQUE.test(command) && shellComplexityReason(command) === undefined;
   return { readings: [...readings], exhaustive };
 }

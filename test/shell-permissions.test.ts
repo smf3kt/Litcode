@@ -84,6 +84,25 @@ test('the recovered analyser refusals make a reading set incomplete', () => {
   assert.equal(decide(allow, 'echo a\\ b').decision, 'ask');
 });
 
+test('a group, a keyword body and a loop body are checked as the commands they run', () => {
+  const rules: NonNullable<PermissionPolicy['inputRules']> = [{ tool: 'run_command', command: 'echo hi', decision: 'deny' }];
+  // The text walk sees one segment for each of these, so before the tree walk
+  // the rule never met the inner command and the call was allowed.
+  assert.equal(permissionDecision(policy(rules), shellTool, { command: '( echo hi )' }).decision, 'deny');
+  assert.equal(permissionDecision(policy(rules), shellTool, { command: '{ echo hi; }' }).decision, 'deny');
+  assert.equal(permissionDecision(policy(rules), shellTool, { command: 'if true; then echo hi; fi' }).decision, 'deny');
+  assert.equal(permissionDecision(policy(rules), shellTool, { command: 'for f in *; do echo hi; done' }).decision, 'deny');
+  // An ordinary line and a line whose inner command is not the denied one keep
+  // their own answers.
+  assert.equal(permissionDecision(policy(rules), shellTool, { command: 'echo ok' }).decision, 'allow');
+  assert.equal(permissionDecision(policy(rules), shellTool, { command: '( echo ok )' }).decision, 'allow');
+  // A line the parser cannot read yields no reading set at all, so an allow
+  // rule cannot carry it.
+  const allow: NonNullable<PermissionPolicy['inputRules']> = [{ tool: 'run_command', command: 'echo *', decision: 'allow' }];
+  assert.equal(decide(allow, 'echo hi )').decision, 'ask');
+  assert.equal(shellReadings('echo hi )').exhaustive, false);
+});
+
 test('unchanged behaviour: no command rule, a denial, or bypass mode', () => {
   const toolOnly: NonNullable<PermissionPolicy['inputRules']> = [{ tool: 'run_command', decision: 'allow' }];
   assert.equal(decide(toolOnly, 'echo $SECRET').decision, 'allow');
