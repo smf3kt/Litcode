@@ -7,14 +7,18 @@ import { test } from "node:test";
 import {
   CONFIG_LIMITS,
   ConfigError,
+  INSTRUCTION_INTRO,
   activateConditionalSkills,
   argumentNamesFrom,
   expandSkill,
+  loadChildInstructions,
   loadProjectConfig,
   loadSkillsFromDirectories,
   matchesConditionalRule,
   parseFrontmatter,
   readBoundedBytes,
+  rebaseChildInstructions,
+  renderInstructionBlocks,
 } from "../src/config.js";
 import { createPluginTools } from "../src/plugins.js";
 
@@ -1338,5 +1342,116 @@ test("dynamic directory loading skips malformed entries and names already in the
     assert.equal(loaded[0]?.body, "Local body\n");
     // A directory that vanished between discovery and loading is a no-op.
     assert.deepEqual(loadSkillsFromDirectories([path.join(root, "absent")], new Set()), []);
+  });
+});
+
+test("the managed instruction tier leads the loaded instructions under its own root", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj"), userDir = path.join(root, "user"), managed = path.join(root, "managed");
+    writeFile(path.join(workspace, ".harness/settings.json"), JSON.stringify({ allowShell: true }));
+    writeFile(path.join(workspace, "HARNESS.md"), "PROJECT_TEXT");
+    writeFile(path.join(managed, "managed-settings.json"), JSON.stringify({ allowShell: false, claudeMd: "MANAGED_SETTINGS_TEXT" }));
+    writeFile(path.join(managed, "HARNESS.md"), "MANAGED_FILE_TEXT");
+    writeFile(path.join(managed, "AGENTS.md"), "MANAGED_AGENTS_TEXT");
+    writeFile(path.join(managed, ".harness/rules/policy.md"), "MANAGED_RULE_TEXT");
+
+    const loaded = loadProjectConfig(workspace, { userDir, managedSettingsDir: managed });
+    // The recovered `qZn` reads the managed directory's own file first
+    // (`j3("Managed")`, chunk-sfn1dbxq.js 668054), then the settings document's
+    // `claudeMd` (669647), then the managed rules (`zae` over `E$e()`), all
+    // before the ancestor walk (`Sar`, [3671831,3672142)).
+    assert.deepEqual(loaded.instructions.map(file => file.content),
+      ["MANAGED_FILE_TEXT", "MANAGED_AGENTS_TEXT", "MANAGED_SETTINGS_TEXT", "MANAGED_RULE_TEXT", "PROJECT_TEXT"]);
+    assert.equal(loaded.instructions[2]!.path, "<managed-settings>");
+    assert.equal(loaded.instructions[0]!.path, path.join(managed, "HARNESS.md"));
+    // The policy keys still merge exactly as before; the text key is not policy.
+    assert.equal(loaded.settings.allowShell, false);
+    assert.deepEqual(loaded.managedSettings, { allowShell: false });
+    assert.deepEqual(loaded.managedSettingsReport?.ignoredKeys, []);
+
+    // A workspace inside the managed directory's own tree does not read the
+    // managed files twice: `qZn` shares one processed set with the ancestor walk.
+    const nested = path.join(managed, "tree", "proj");
+    writeFile(path.join(nested, "HARNESS.md"), "NESTED_PROJECT_TEXT");
+    const deduped = loadProjectConfig(nested, { userDir, managedSettingsDir: managed });
+    assert.deepEqual(deduped.instructions.map(file => file.content),
+      ["MANAGED_FILE_TEXT", "MANAGED_AGENTS_TEXT", "MANAGED_SETTINGS_TEXT", "MANAGED_RULE_TEXT", "NESTED_PROJECT_TEXT"]);
+  });
+});
+
+test("an explicit managed policy file supplies both the policy and its instruction text", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj"), userDir = path.join(root, "user"), managed = path.join(root, "managed");
+    writeFile(path.join(workspace, "HARNESS.md"), "PROJECT_TEXT");
+    const policy = path.join(managed, "managed-settings.json");
+    writeFile(policy, JSON.stringify({ allowShell: false, claudeMd: "EXPLICIT_TEXT" }));
+    writeFile(path.join(managed, "HARNESS.md"), "EXPLICIT_NEIGHBOUR_TEXT");
+
+    const loaded = loadProjectConfig(workspace, { userDir, managedSettingsFile: policy });
+    // `m_()` keeps the policy file inside the managed directory, so an explicit
+    // file's own directory is the tier root and its neighbouring file is read first.
+    assert.deepEqual(loaded.instructions.map(file => file.content), ["EXPLICIT_NEIGHBOUR_TEXT", "EXPLICIT_TEXT", "PROJECT_TEXT"]);
+    assert.equal(loaded.settings.allowShell, false);
+
+    // A non-string claudeMd is refused by the strict explicit-file path.
+    writeFile(policy, JSON.stringify({ claudeMd: 5 }));
+    assert.throws(() => loadProjectConfig(workspace, { userDir, managedSettingsFile: policy }), /claudeMd must be a string/);
+    // A directory document with a non-string claudeMd is reported and skipped.
+    fs.unlinkSync(policy);
+    writeFile(path.join(managed, "managed-settings.json"), JSON.stringify({ allowShell: true, claudeMd: 5 }));
+    const directory = loadProjectConfig(workspace, { userDir, managedSettingsDir: managed });
+    assert.equal(directory.managedSettings, undefined);
+    assert.match(directory.managedSettingsReport?.errors[0]?.message ?? "", /claudeMd must be a string/);
+    assert.deepEqual(directory.instructions.map(file => file.content), ["EXPLICIT_NEIGHBOUR_TEXT", "PROJECT_TEXT"]);
+
+    // A child rooted elsewhere reads the same document's text from the same
+    // managed directory, so its prompt carries the managed tier too.
+    writeFile(path.join(managed, "managed-settings.json"), JSON.stringify({ claudeMd: "DIRECTORY_TEXT" }));
+    const childRoot = path.join(root, "checkout");
+    writeFile(path.join(childRoot, "HARNESS.md"), "CHECKOUT_TEXT");
+    writeFile(path.join(childRoot, ".harness/rules/src-only.md"), "---\npaths: ['src/**']\n---\nCHECKOUT_RULE_TEXT");
+    const child = loadChildInstructions(childRoot, { managedSettingsDir: managed });
+    assert.deepEqual(child?.files.slice(0, 3).map(file => file.content),
+      ["EXPLICIT_NEIGHBOUR_TEXT", "DIRECTORY_TEXT", "CHECKOUT_TEXT"]);
+    assert.equal(child?.files[1]?.path, "<managed-settings>");
+    // The checkout's own conditional rules replace the parent's, and are
+    // injected on touch rather than carried in the child's prompt.
+    assert.deepEqual(child?.rules.map(rule => rule.patterns), [["src/**"]]);
+    assert.equal(child?.files.some(file => file.path.endsWith("src-only.md")), false);
+
+    // A managed root equal to the checkout root lists the same rules twice; the
+    // child still collects each conditional rule once.
+    const sameRoot = loadChildInstructions(childRoot, { managedSettingsDir: childRoot });
+    assert.deepEqual(sameRoot?.files.map(file => file.content), ["CHECKOUT_TEXT"]);
+    assert.equal(sameRoot?.rules.length, 1);
+
+    // A child enforces the same import-depth limit as the parent loader.
+    const chain = path.join(root, "chain");
+    writeFile(path.join(chain, "HARNESS.md"), "@./1.md");
+    for (let depth = 1; depth < 6; depth += 1) writeFile(path.join(chain, `${depth}.md`), `@./${depth + 1}.md`);
+    writeFile(path.join(chain, "6.md"), "DEEP");
+    assert.throws(() => loadChildInstructions(chain, { managedSettingsDir: managed }), /instruction import exceeds depth/);
+    // A missing import is refused, as in the parent loader; a missing candidate
+    // instruction file is simply absent.
+    writeFile(path.join(chain, "HARNESS.md"), "@./absent.md");
+    assert.throws(() => loadChildInstructions(chain, { managedSettingsDir: managed }), /instruction import file not found/);
+
+    // A rebased prompt replaces only the parent's instruction blocks. A heading
+    // inside an instruction file does not end the section, and a memory block
+    // the parent carried after its files stays in place.
+    const parentRoot = path.join(root, "parent");
+    const parentFile = { path: path.join(parentRoot, "HARNESS.md"), content: "PARENT_TEXT\n\n# Details\nPARENT_TAIL" };
+    const memoryFile = { path: path.join(parentRoot, ".harness", "memory", "note.md"), content: "MEMORY_TEXT" };
+    const parentPrompt = "BASE" + INSTRUCTION_INTRO
+      + renderInstructionBlocks([parentFile, memoryFile]) + "\n\n# Available skills\n- demo: row";
+    const clean = path.join(root, "clean-checkout");
+    writeFile(path.join(clean, "HARNESS.md"), "CLEAN_CHECKOUT_TEXT");
+    const rebased = rebaseChildInstructions(
+      { system: parentPrompt, workspace: parentRoot, instructionSources: [{ path: parentFile.path }] },
+      clean, { managedSettingsDir: path.join(root, "no-managed") }, "", ["\n\n# Available skills"]);
+    assert.equal(rebased.system, "BASE" + INSTRUCTION_INTRO
+      + `Instructions from ${fs.realpathSync(path.join(clean, "HARNESS.md"))}:\nCLEAN_CHECKOUT_TEXT`
+      + "\n\n" + `Instructions from ${memoryFile.path}:\nMEMORY_TEXT` + "\n\n# Available skills\n- demo: row");
+    assert.deepEqual(rebased.conditionalRules, []);
   });
 });

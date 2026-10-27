@@ -4,13 +4,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Agent, assertPaired } from './agent.js';
 import { Session, fingerprint, readSessionJournal, type SessionConfig } from './session.js';
+import { instructionSources, rebaseChildInstructions } from './config.js';
 import { AgentHistoryStore, type AgentHistoryHeader } from './agent-history.js';
 import type { ModelProvider } from './provider.js';
 import type { ToolContext, ToolDefinition } from './tools.js';
 import { permissionDecision, permissionOwner, seedPermissionUpdates, effectivePermissionPolicy, type LivePermissionOwner } from './permissions.js';
 import { CLAMPED_SHELL_TOOLS, normalizeBashCommandClamp, normalizeDisallowedTools, toolNameDenied,
   validateDisallowedTools } from './agent-tool-restrictions.js';
-import { capChildOutput, childConfig, selectChildTools, createChildHookLifecycle, advancedChildFields, advancedChildProperties,
+import { capChildOutput, childConfig, childPromptSuffix, instructionEndMarkers, selectChildTools, createChildHookLifecycle, advancedChildFields, advancedChildProperties,
   resolveChildLaunch, forkMessages, preloadAgentSkills, validateChildEnvironment, type ChildHookOptions, type AdvancedChildOptions,
   type ChildEnvironmentLease, type ChildLaunchOptions } from './subagents.js';
 import { scrubSubagentOutput } from './subagent-output-scrub.js';
@@ -545,7 +546,18 @@ export class AgentRegistry {
         if (!this.options.childEnvironmentFactory) throw new Error('Child worktree environment is unavailable');
         environment = await this.options.childEnvironmentFactory({ config, tools: selected, isolation: launch.isolation, signal: controller.signal });
         validateChildEnvironment(config, selected, environment);
-        config = { ...config, workspace: environment.config.workspace }; selected = environment.tools;
+        // The recovered child reads its instructions from the path it runs in
+        // (`Sar` -> `Znr` -> `gCt`, chunk-sfn1dbxq.js [3671831,3672142)), so an
+        // isolated checkout carries its own files, not the parent's text.
+        const rebased = rebaseChildInstructions(config, environment.config.workspace,
+          config.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: config.configSources.managedSettingsFile },
+          childPromptSuffix(launch) + (structuredState === undefined ? '' : STRUCTURED_OUTPUT_SYSTEM_NOTE), instructionEndMarkers(config));
+        config = { ...config, workspace: environment.config.workspace, system: rebased.system };
+        if (rebased.instructions !== undefined) {
+          config.instructionSources = instructionSources(rebased.instructions);
+          config.conditionalRules = rebased.conditionalRules ?? [];
+        }
+        selected = environment.tools;
       }
       this.assertOpen(controller.signal);
       const tools = selected.map(tool => {

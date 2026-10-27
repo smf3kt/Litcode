@@ -1,0 +1,106 @@
+{
+  "package": "W368",
+  "title": "Settings and instructions: managed tier and isolated child checkout",
+  "status": "implementation and main verification; two bounded independent reviews: the first NOT_VERIFIED with four defects, all repaired; the second CONFIRMED_REPAIRED with three further fixes and two recorded limitations",
+  "sample": {
+    "version": "2.1.296",
+    "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
+  },
+  "coordinateUnit": "zero-based half-open UTF-16 code units",
+  "sources": [
+    { "module": "chunk-sfn1dbxq.js", "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "owners": [
+        { "name": "qZn", "range": [668054, 674681], "body16": "3fc99147b0a1a3da" },
+        { "name": "mCt", "range": [674681, 674896], "body16": "0b65f503b66f6417" },
+        { "name": "Znr", "range": [674896, 675599], "body16": "652984fffa26b39d" },
+        { "name": "gCt", "range": [675599, 675783], "body16": "ff3043516d8825b5" },
+        { "name": "zae", "range": [662489, 663889], "body16": "41f95aa43e32dce4" },
+        { "name": "Sar", "range": [3671831, 3672142], "body16": "06b8a4df52652e77" },
+        { "name": "Zyn", "range": [3669904, 3671831], "body16": "950cde8caf866bbe" },
+        { "name": "leo", "range": [682161, 683000], "body16": "41b79e8c607ce0c5" },
+        { "name": "xC", "range": [680835, 682161], "body16": "0d0f2a61ac358e25" },
+        { "name": "I_", "range": [666922, 667130], "body16": "afd313f4e93b860e" }
+      ] },
+    { "module": "chunk-bk5ct2gw.js",
+      "owners": [
+        { "name": "j3", "range": [606265, 606486], "body16": "4141a10e3afd4447" },
+        { "name": "E$e", "range": [606486, 606535], "body16": "8512ea395d4c0173" },
+        { "name": "v$e", "range": [606535, 606574], "body16": "7444a14dfa048cdc" }
+      ] },
+    { "module": "chunk-x0dc37w9.js",
+      "owners": [
+        { "name": "M2n", "range": [71537, 71580], "body16": "d1d5af9a76730689" },
+        { "name": "EEo sentinel", "offset": 53208, "value": "<policyHelper>" }
+      ] }
+  ],
+  "hostOrder": [
+    "<managedRoot>/HARNESS.md",
+    "<managedRoot>/AGENTS.md",
+    "<managed-settings> (policy document claudeMd)",
+    "<managedRoot>/.harness/rules"
+  ],
+  "sourceOrder": [
+    "<managed dir>/CLAUDE.md (j3(\"Managed\"))",
+    "<policyHelper> (M2n)",
+    "<managed-settings> (fe(\"policySettings\")?.claudeMd)",
+    "<managed dir>/.claude/rules (zae over E$e())"
+  ],
+  "changedFiles": {
+    "src/config.ts": "5a63890469e7e152374d5861e5ab9729ff950a489700084c9e4c27c5e5a04d80",
+    "src/subagents.ts": "a881d735e8c180df63499b513b0c20513af5eff4598d55ad8010cbdd87125ec3",
+    "src/agent-registry.ts": "e4b892b2afc9371db981b66213ff6c0869e99eff40851f92a213f35673231da6",
+    "src/runtime.ts": "6b9e70369adc6d5fdd79490f0201b700089152ea37ee16055e0ce9d52490e356",
+    "src/context-details.ts": "2e4f863067413fd8aa09fa388612485d6ae707354be106939eebfe0079b8719a",
+    "test/config.test.ts": "57d17e462ed913564fc598632cc6b47ee1665b457e9896ded3b8f4a6d2dd6d29",
+    "test/agent-registry.test.ts": "bb9f0d3e731e5380007ba86ddde38058ded8999b2fb507d19ac4da14f78bcdcd",
+    "scripts/smoke-managed-instructions-cli.mjs": "44b3fed999df97e84abebff40415988c286c4c863e8b894985968b5c9b626bb3"
+  },
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "ee819909f540299d6d87024cb5077f645edbfa1ed32b00c65339dfa7fa9396ef",
+    "inputs": "1d5a055630b3fc591bfc97b6e479b76a20a40b6eaeb54544c970aa022ffec8b0",
+    "validation": "4ca268a28d6002fb50f0809ab20e9c626ae49f04dfa6883438048e10cbbc63da",
+    "build": "da25277bf10265db3b55839c2f9f2cab5ea0502db4553209cb208a192127d7fe",
+    "files": { "inputs": 939, "validation": 360, "build": 662 }
+  },
+  "validation": {
+    "check": "pass",
+    "build": "pass",
+    "focusedSuites": { "config": "76/76", "agentRegistry": "49/49", "combinedRun": "125/125" },
+    "fullSuite": "3442/3442 across 118 suites, 0 fail/cancel/skip/todo",
+    "drivers": [
+      { "name": "smoke-managed-instructions-cli.mjs", "source": "pass, 4 owned loopback requests",
+        "compiled": "pass, 4 owned loopback requests" },
+      { "name": "smoke-memory-reload.mjs", "source": "pass, 10 owned loopback requests" }
+    ]
+  },
+  "defectsRepaired": [
+    "replaceInstructionSection dropped everything after the instruction section when no heading followed, which removed the child's own suffix; the suffix is now held back and restored, and childPromptSuffix owns that text.",
+    "The first draft ordered the settings-document claudeMd before the managed directory's own file; qZn reads the managed file first. Product and assertions corrected.",
+    "Review D1: the section ended at the first heading inside an instruction file, so parent text leaked into the child and instructionSources no longer matched the prompt. The section is now found by its block headers; a block not named by the parent's instructionSources (a memory block) is kept, and the blank line before it survives.",
+    "Review D2: the managed tier was read after the ancestor walk and prepended afterwards, so a managed directory inside the workspace's ancestor chain was read twice. The tier now runs before the walk through the same appendInstruction path, sharing the processed set, and its rules go through conditionalRulePatterns like project rules.",
+    "Review D3: loadChildInstructions recursed without the import-depth limit. It now enforces CONFIG_LIMITS.importDepth, and the config suite pins a six-file chain.",
+    "Review D4: the conditional-rule channel was not rebased, so an isolated child kept the parent's rule paths. loadChildInstructions returns { files, rules }, and both call sites replace config.conditionalRules with the checkout's own.",
+    "Second review: a patterned child rule entered both the prompt and the conditional rules, so a touched path injected the same text twice; pushRule now keeps patterned rules out of the prompt, as the parent's no-selected-paths load does.",
+    "Second review: a managed root equal to the checkout root listed the same rule directory twice and collected the rule twice; a per-call rule set deduplicates it.",
+    "Second review: a relative managedSettingsFile/managedSettingsDir resolved against the process cwd in the child loader; it now resolves against the child root, the same base managedInstructionRoot uses."
+  ],
+  "knownLimitations": [
+    "A block header embedded in an instruction file body is indistinguishable from a rendered block boundary; the section rewrite can cut there when it names a path outside instructionSources. The rendered prompt carries the same ambiguity.",
+    "contextDetails suppresses instruction rows for a child prompt that carries memory blocks, because it requires headers and instructionSources to match one-for-one; this is the existing conservative behaviour for an untracked appended block."
+  ],
+  "notPorted": [
+    "policy-helper document and its <policyHelper> entry (no host counterpart)",
+    "omitClaudeMd / managedInstructionsOnly",
+    "remote managed policy",
+    "external-include approval flow"
+  ],
+  "boundaries": {
+    "localOnly": true,
+    "accountOrOAuth": false,
+    "paidUpstream": false,
+    "push": false,
+    "coauthor": false,
+    "schedule": false
+  }
+}

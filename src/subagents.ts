@@ -1,12 +1,12 @@
 import { cloneClassifierMessages } from './message-origin.js';
 import { toolNameDenied } from './agent-tool-restrictions.js';
-import { refreshPluginComponents } from './skill-catalog.js';
+import { refreshPluginComponents, agentTypesSection, skillsSection } from './skill-catalog.js';
 import { z } from 'zod';
 import { Agent, assertPaired, type StopRuntimeState } from './agent.js';
 import type Anthropic from '@anthropic-ai/sdk';
 import type { AgentTypeInfo } from './agent-types.js';
 import { Session, type SessionConfig } from './session.js';
-import { expandSkill, type SkillInfo } from './config.js';
+import { expandSkill, instructionSources, rebaseChildInstructions, type SkillInfo } from './config.js';
 import type { ModelProvider } from './provider.js';
 import { permissionOwner, seedPermissionUpdates } from './permissions.js';
 import type { ToolDefinition } from './tools.js';
@@ -196,6 +196,20 @@ export function selectChildTools(tools: readonly ToolDefinition[], mode: 'explor
       (allowedTools === undefined || allowedTools.includes(tool.schema.name)));
 }
 
+const CHILD_PROMPT_SUFFIX = '\nYou are a child agent assigned a focused task. Return findings, changed paths, verification and remaining issues. Do not launch recursive agents.';
+
+/** The exact text `childConfig` appends after the parent prompt. A caller that
+ *  rewrites the instruction section holds this back, then restores it. */
+export function childPromptSuffix(options: { type?: AgentTypeInfo }): string {
+  return CHILD_PROMPT_SUFFIX + (options.type?.body ? '\n\nAgent instructions:\n' + options.type.body : '');
+}
+
+/** The catalog sections a built prompt places after its instruction blocks.
+ *  `replaceInstructionSection` stops at the first of them. */
+export function instructionEndMarkers(config: { skills?: readonly SkillInfo[]; agentTypes?: readonly AgentTypeInfo[] }): string[] {
+  return [skillsSection(config.skills ?? []), agentTypesSection(config.agentTypes ?? [])].filter(marker => marker !== '');
+}
+
 export function childConfig(config: SessionConfig, tools: ToolDefinition[], options: {
   mode: 'explore' | 'general'; max_turns: number; model?: string; effort?: ChildLaunchOptions['effort']; type?: AgentTypeInfo; fork?: boolean; isolation?: 'worktree';
 }): SessionConfig {
@@ -204,9 +218,8 @@ export function childConfig(config: SessionConfig, tools: ToolDefinition[], opti
     ...(options.effort ? { effort: options.effort } : {}),
     allowShell: options.mode === 'general' && config.allowShell,
     tools: tools.map(tool => ({ ...tool.schema, eager_input_streaming: true })),
-    system: config.system + '\nYou are a child agent assigned a focused task. Return findings, changed paths, verification and remaining issues. Do not launch recursive agents.',
+    system: config.system + childPromptSuffix(options),
   };
-  if (options.type?.body) child.system += '\n\nAgent instructions:\n' + options.type.body;
   if (child.features) {
     child.features = { ...child.features, subagents: false,
       ...(child.features.background !== undefined ? { background: false } : {}),
@@ -265,7 +278,18 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
           if (!options.childEnvironmentFactory) throw new Error('Child worktree environment is unavailable');
           environment = await options.childEnvironmentFactory({ config: child, tools: selected, isolation: launch.isolation, signal: context.signal });
           validateChildEnvironment(child, selected, environment);
-          child = { ...child, workspace: environment.config.workspace }; selected = environment.tools;
+          // The recovered child reads its instructions from the path it runs in
+          // (`Sar` -> `Znr` -> `gCt`, chunk-sfn1dbxq.js [3671831,3672142)), so an
+          // isolated checkout carries its own files, not the parent's text.
+          const rebased = rebaseChildInstructions(child, environment.config.workspace,
+            child.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: child.configSources.managedSettingsFile },
+            childPromptSuffix(launch), instructionEndMarkers(child));
+          child = { ...child, workspace: environment.config.workspace, system: rebased.system };
+          if (rebased.instructions !== undefined) {
+            child.instructionSources = instructionSources(rebased.instructions);
+            child.conditionalRules = rebased.conditionalRules ?? [];
+          }
+          selected = environment.tools;
         }
         context.signal.throwIfAborted();
         session = Session.open(child.workspace, { config: child, ...(environment?.storageRoot ? { storageRoot: environment.storageRoot } : {}) });
