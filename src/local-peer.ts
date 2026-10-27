@@ -50,6 +50,8 @@ const PEER_FEATURE = /^[a-z0-9_]{1,32}$/;
 // [2525,2968) close expiry.
 const HELD_LIMIT = 100;
 const HELD_SETTLE_MS = 750;
+// en/Ze, bt8cr7rw [12282,12376), UTF-16.
+const PROCESS_SETTLE_MS = 3000;
 const RECEIPT_TEXT: Record<PeerReceiptStatus, string> = {
   held: "Your message is held for the recipient user's approval before it reaches their session.",
   denied: "The recipient user declined your message; it was not delivered.",
@@ -253,6 +255,24 @@ export function peerAddress(sock: string): string { return `uds:${path.resolve(s
 export function addressPath(address: string): string | undefined {
   if (!address.startsWith("uds:")) return undefined;
   return canonicalSocket(address.slice(4));
+}
+
+// p9n/Qbo/D, bt8cr7rw [7021,7180), 64ag51qf [7981,8653), UTF-16.
+function receiptTarget(address: string, ownSocket: string, verifiedPeerPid: number | undefined): string | undefined {
+  if (!/^uds:[A-Za-z0-9%:_/.\\\\-]{1,200}$/.test(address)) return undefined;
+  let target = address.slice(4);
+  try { target = decodeURIComponent(target); } catch {}
+  if (!target || /(^|[\\/])\.\.([\\/]|$)/.test(target)) return undefined;
+  if (path.dirname(path.resolve(target)) === path.dirname(path.resolve(ownSocket))) return target.endsWith(".sock") ? target : undefined;
+  if (verifiedPeerPid === undefined || !/^(\d+(-[0-9a-f]{8})?|[0-9a-f]{1,16})\.sock$/.test(path.basename(path.resolve(target)))) return undefined;
+  const directory = path.dirname(path.resolve(target));
+  const namespaces = [/^\/tmp\/litcode-socks(?:-(0|[1-9]\d*))?$/, /^\/private\/tmp\/litcode-socks(?:-(0|[1-9]\d*))?$/,
+    /^\/run\/user\/(0|[1-9]\d*)\/litcode-socks$/, /^\/data\/data\/com\.termux\/files\/usr\/tmp\/litcode-socks(?:-(0|[1-9]\d*))?$/];
+  for (const pattern of namespaces) {
+    const match = pattern.exec(directory);
+    if (match) return match[1] === undefined || match[1] === String(process.getuid?.()) ? target : undefined;
+  }
+  return undefined;
 }
 
 function defaultSocketPath(userDir: string, label: string): string {
@@ -649,6 +669,7 @@ export function heldApprovalTimeoutMs(setting: string | undefined,
 }
 
 /**
+ * ZUt, 0ydceggj [2525,2968), UTF-16: receipt callbacks retain their send Promise.
  * `R`/`A`/`wht` (chunk-0ydceggj.js): bounded FIFO with receipts. `JUt`
  * (chunk-rx2nah4x.js) additionally arms an approval timeout for the two mode
  * causes; on expiry the still-held message is dropped with an `expired`
@@ -663,7 +684,7 @@ export class HeldQueue {
   constructor(private readonly callbacks: {
     verdict: (message: HeldMessage) => { policy: InboundPolicy; holdCause?: HeldCause; refuseCause?: "opt-out" };
     deliver: (message: HeldMessage) => boolean;
-    receipt?: (message: HeldMessage, status: PeerReceiptStatus, detail?: { reason?: string; droppedMsgIds?: string[] }) => void;
+    receipt?: (message: HeldMessage, status: PeerReceiptStatus, detail?: { reason?: string; droppedMsgIds?: string[] }) => void | Promise<void>;
     onHeld?: (message: HeldMessage, count: number, cause: HeldCause) => void;
     onDropped?: (message: HeldMessage, reason: "refused" | "expired" | "dropped") => void;
     onReleased?: (messages: HeldMessage[], cause: string) => void;
@@ -797,15 +818,15 @@ export class HeldQueue {
     return "delivered";
   }
 
-  /** `ZUt`: close expires every still-held message and waits briefly. */
+  /** ZUt, 0ydceggj [2525,2968), UTF-16: expire and await receipts within 750ms. */
   async expireAll(): Promise<void> {
     if (this.entries.length === 0) return;
     const messages = this.entries.splice(0, this.entries.length);
     this.announced.clear();
     for (const message of messages) this.clearExpiry(message);
-    const pending: Promise<void>[] = [];
+    const pending: (void | Promise<void>)[] = [];
     for (const message of messages) {
-      this.callbacks.receipt?.(message, "expired");
+      pending.push(this.callbacks.receipt?.(message, "expired"));
       this.callbacks.onDropped?.(message, "expired");
     }
     await Promise.race([Promise.allSettled(pending), new Promise(resolve => setTimeout(resolve, HELD_SETTLE_MS).unref?.())]);
@@ -968,7 +989,7 @@ type InboxState = {
   recordFile?: string;
 };
 
-/** `mn`/`nn`/`Je` (chunk-bt8cr7rw.js): bind, publish the key, then advertise. */
+/** mn/nn/Je, bt8cr7rw [28327,34716)/[12376,14664)/[11877,12278), UTF-16. */
 export async function startPeerInbox(options: PeerInboxOptions): Promise<PeerInbox> {
   const state: InboxState = { authRequired: options.requireAuth ?? false, clients: new Set(), chain: Promise.resolve(), closed: false, mode: options.mode };
   const logger = options.logger ?? (() => {});
@@ -1016,7 +1037,7 @@ export async function startPeerInbox(options: PeerInboxOptions): Promise<PeerInb
       recipient: state.mode?.() ?? null, fromMode: message.origin.fromMode }),
     deliver: message => { options.onAccepted({ text: message.text, from: message.origin.from, msgId: message.origin.msgId,
       verifiedPeerPid: message.origin.verifiedPeerPid, verifiedPeerStart: message.origin.verifiedPeerStart, selfSent: message.origin.selfSent }); return true; },
-    receipt: (message, status, detail) => { void sendReceipt(state, options, message, status, detail, logger); },
+    receipt: (message, status, detail) => sendReceipt(state, options, message, status, detail, logger),
     onHeld: message => options.onHeld?.(message),
     onDropped: (message, reason) => options.onDropped?.(message, reason),
     onReleased: (messages, cause) => options.onNotice?.({ kind: "held-released", message: `released ${messages.length} held peer message(s) (${cause})` }),
@@ -1109,13 +1130,15 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
   });
   socket.on("error", error => logger(`[peer-inbox] connection error: ${error.message}`, { level: "warn" }));
 
+  // be, bt8cr7rw [7180,11877), UTF-16: receipt wire status becomes the local outcome.
   async function dispatch(frame: PeerFrame, context: { peer?: PeerInfo; peerStart?: string; authed?: "peer" | "child"; first: boolean }): Promise<void> {
     if (frame.type === "control") {
-      const control = frame as { action?: unknown; status?: unknown; orig_msg_id?: unknown; reason?: unknown };
-      if (control.action === "peer_message_status" && typeof control.status === "string") {
-        options.onReceipt?.(control.status as PeerReceiptStatus,
-          typeof control.orig_msg_id === "string" ? control.orig_msg_id : undefined,
-          typeof control.reason === "string" ? control.reason : undefined);
+      const status = frame.status;
+      if (frame.action === "peer_message_status" && (status === "held" || status === "denied" || status === "expired"
+        || status === "delivered" || status === "refused" || status === "dropped")) {
+        options.onReceipt?.(status === "expired" && frame.status_detail === "refused" ? "refused" : status,
+          typeof frame.orig_msg_id === "string" ? frame.orig_msg_id : undefined,
+          typeof frame.reason === "string" ? frame.reason : undefined);
       }
       return;
     }
@@ -1152,26 +1175,27 @@ function acceptConnection(socket: net.Socket, state: InboxState, options: PeerIn
   }
 }
 
+// mn/p9n/pn, bt8cr7rw [28327,35597)/[7021,7180), STt, 6zdc3jq1 [14157,14459), UTF-16.
 async function sendReceipt(state: InboxState, options: PeerInboxOptions, message: HeldMessage, status: PeerReceiptStatus,
   detail: { reason?: string; droppedMsgIds?: string[] } | undefined,
   logger: (message: string, detail?: { level?: "warn" | "error" }) => void): Promise<void> {
-  const address = message.origin.from;
-  if (address === undefined || !address.startsWith("uds:") || state.socketPath === undefined) return;
-  if (address === peerAddress(state.socketPath)) return;
-  // The receipt names the sender's original message so the sender can match
-  // it; `orig_msg_id` is the id that sender minted.
-  const frame: PeerFrame = { type: "control", action: "peer_message_status", status, from: peerAddress(state.socketPath),
+  if (message.origin.from === undefined || state.socketPath === undefined) return;
+  const target = receiptTarget(message.origin.from, state.socketPath, message.origin.verifiedPeerPid);
+  if (target === undefined) return;
+  const frame: PeerFrame = { type: "control", action: "peer_message_status",
+    ...(status === "refused" ? { status: "expired", status_detail: "refused" } : { status }),
+    from: peerAddress(state.socketPath), msgV: 1, msg_id: crypto.randomUUID(),
     reason: detail?.reason ?? RECEIPT_TEXT[status], ...(message.msgId === undefined ? {} : { orig_msg_id: message.msgId }),
     ...(detail?.droppedMsgIds === undefined ? {} : { dropped_msg_ids: detail.droppedMsgIds }) };
   try {
-    await sendPeerFrame(address, frame, { userDir: options.userDir,
+    await sendPeerFrame(peerAddress(target), frame, { userDir: options.userDir,
       expectPeerPid: message.origin.verifiedPeerPid, expectPeerProcStart: message.origin.verifiedPeerStart });
   } catch (error) {
     logger(`[peer-inbox] receipt send failed: ${(error as Error).message}`, { level: "warn" });
   }
 }
 
-/** `j`/`Y` (chunk-bt8cr7rw.js [15004,15599)): owned teardown only. */
+/** j/en, bt8cr7rw [15004,15599)/[12290,12376), UTF-16: settle before unlink. */
 async function stopInbox(state: InboxState, options: PeerInboxOptions, flags: { settleHeld: boolean }): Promise<void> {
   if (state.closing) return state.closing;
   state.closed = true;
@@ -1179,8 +1203,9 @@ async function stopInbox(state: InboxState, options: PeerInboxOptions, flags: { 
     for (const client of state.clients) client.destroy();
     state.clients.clear();
     if (state.server) await new Promise<void>(resolve => state.server!.close(() => resolve()));
-    if (flags.settleHeld) await state.held?.expireAll();
-    await Promise.race([state.chain, new Promise(resolve => setTimeout(resolve, HELD_SETTLE_MS).unref?.())]);
+    const heldSettlement = flags.settleHeld ? state.held?.expireAll() : undefined;
+    await Promise.race([state.chain, new Promise(resolve => setTimeout(resolve, PROCESS_SETTLE_MS).unref?.())]);
+    await heldSettlement;
     if (state.socketPath !== undefined) await fsp.unlink(state.socketPath).catch(() => {});
     if (state.keyFile !== undefined) await removeKey(options.userDir, state.keyFile);
     if (state.recordFile !== undefined) await removeRecordFiles([state.recordFile]);

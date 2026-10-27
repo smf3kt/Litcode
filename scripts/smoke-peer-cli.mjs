@@ -23,7 +23,7 @@ let server, childA, childB;
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const runtimeRoot = path.join(scratch, `lp-${process.pid}`);
-const runtimeDir = label => path.join(runtimeRoot, label);
+const runtimeDir = () => runtimeRoot;
 async function until(check, what, timeoutMs = 20_000) {
   const started = Date.now();
   while (!check()) {
@@ -43,7 +43,7 @@ function start(label, workspace, mode) {
       LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false", LLM_PROMPT_CACHE: "false",
       LLM_EAGER_TOOL_INPUT: "false", LLM_EFFORT: "medium",
       XDG_CONFIG_HOME: path.join(temporary, `xdg-${label}`), TMPDIR: path.join(temporary, `tmp-${label}`),
-      XDG_RUNTIME_DIR: runtimeDir(label),
+      XDG_RUNTIME_DIR: runtimeDir(),
       GIT_CONFIG_GLOBAL: path.join(temporary, `gitconfig-${label}`), GIT_CONFIG_SYSTEM: "/dev/null", GIT_CONFIG_NOSYSTEM: "1" },
   });
   const state = { child, stdout: "", stderr: "", combined: "", exit: new Promise(resolve => child.once("close", resolve)) };
@@ -101,7 +101,7 @@ try {
   for (const label of ["a", "b"]) {
     fs.mkdirSync(path.join(temporary, `xdg-${label}`), { recursive: true });
     fs.mkdirSync(path.join(temporary, `tmp-${label}`), { recursive: true });
-    fs.mkdirSync(runtimeDir(label), { recursive: true, mode: 0o700 });
+    fs.mkdirSync(runtimeDir(), { recursive: true, mode: 0o700 });
   }
   for (const workspace of [workspaceA, workspaceB]) {
     fs.mkdirSync(path.join(workspace, ".harness"), { recursive: true });
@@ -234,7 +234,7 @@ try {
   assert.deepEqual(codes, [0, 0]);
   for (const state of [childA, childB]) assert.throws(() => process.kill(state.child.pid, 0), error => error.code === 'ESRCH');
   for (const workspace of [workspaceA, workspaceB]) assert.equal(fs.readdirSync(path.join(workspace, '.agent')).some(name => name.endsWith('.lock')), false);
-  for (const label of ['a', 'b']) assert.deepEqual(fs.readdirSync(path.join(runtimeDir(label), 'litcode-socks')), []);
+  for (const label of ['a', 'b']) assert.deepEqual(fs.readdirSync(path.join(runtimeDir(), 'litcode-socks')), []);
   const sessions = path.join(userDir, "sessions");
   assert.deepEqual(fs.existsSync(sessions) ? fs.readdirSync(sessions).filter(name => /\.(?:json|key)$/.test(name)) : [], []);
   console.log(JSON.stringify({ cli: "passed", processes: 2, inboxB, aRequests: requests.a.length, bRequests: requests.b.length,

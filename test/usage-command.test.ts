@@ -66,7 +66,8 @@ async function drive(command: string, answers: readonly (readonly string[])[]) {
   }
 }
 
-test('/usage opens the Stats tab and cycles the range', async () => {
+test('/usage opens the Stats tab and cycles the range', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: AT + 86400000 });
   const run = await drive('/usage', [['t']]);
   try {
     assert.equal(run.prompts.length, 2);
@@ -88,7 +89,8 @@ test('/usage opens the Stats tab and cycles the range', async () => {
   }
 });
 
-test('/stats and /cost reach the same panel', async () => {
+test('/stats and /cost reach the same panel', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: AT + 86400000 });
   for (const command of ['/stats', '/cost']) {
     const run = await drive(command, []);
     try {

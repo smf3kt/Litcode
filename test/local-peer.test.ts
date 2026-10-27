@@ -7,7 +7,7 @@ import { after, test } from "node:test";
 import { spawn } from "node:child_process";
 import { createLocalPeerTransport, createLocalPeerTools, createLocalPeerTools as peerTools, HeldQueue, heldApprovalTimeoutMs,
   inboundVerdict, isAuthFrame, listRecords, makeTokens, peerIdentity, probeSocket, publishKey, publishRecord, readKey,
-  socketKeyName, verifyAuthFrame, type AcceptedMessage, type HeldCause, type HeldMessage, type LocalPeerTransport,
+  socketKeyName, verifyAuthFrame, sendPeerFrame, type AcceptedMessage, type HeldCause, type HeldMessage, type LocalPeerTransport,
   type PeerTransportEvent } from "../src/local-peer.js";
 import type { ToolContext } from "../src/tools.js";
 
@@ -77,6 +77,110 @@ test("held queue keeps a bounded FIFO, re-evaluates on release and expires on cl
   await queue.expireAll();
   assert.deepEqual(queue.list(), []);
   assert.ok(receipts.includes("four:expired"));
+});
+
+test("held shutdown waits for asynchronous expiry receipts within the source settlement window", async t => {
+  const calls: string[] = [];
+  let complete: (() => void) | undefined;
+  const queue = new HeldQueue({
+    verdict: () => ({ policy: "hold" }), deliver: () => true,
+    receipt: (_message, status) => {
+      if (status !== "expired") return;
+      calls.push(status);
+      return new Promise<void>(resolve => { complete = resolve; });
+    },
+  });
+  queue.hold({ text: "pending", cause: "explicit", receivedAt: 1, origin: { selfSent: false } });
+  let settled = false;
+  const pending = queue.expireAll().then(() => { settled = true; });
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.deepEqual(calls, ["expired"]);
+  assert.equal(settled, false);
+  assert.equal(queue.size(), 0);
+  assert.ok(complete); complete(); await pending;
+  assert.equal(settled, true);
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  try {
+    const bounded = new HeldQueue({ verdict: () => ({ policy: "hold" }), deliver: () => true,
+      receipt: (_message, status) => status === "expired" ? new Promise<void>(() => {}) : undefined });
+    bounded.hold({ text: "budget", cause: "explicit", receivedAt: 1, origin: { selfSent: false } });
+    let budgetSettled = false;
+    const budget = bounded.expireAll().then(() => { budgetSettled = true; });
+    await new Promise<void>(resolve => setImmediate(resolve));
+    t.mock.timers.tick(749);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(budgetSettled, false);
+    t.mock.timers.tick(1); await budget;
+    assert.equal(budgetSettled, true);
+  } finally { t.mock.timers.reset(); }
+});
+
+test("receipt control frames normalize source refusal details and ignore unknown statuses", async () => {
+  const userDir = root(), workspace = root(), events: PeerTransportEvent[] = [];
+  const receiver = await createLocalPeerTransport({ userDir, workspace, onEvent: event => events.push(event) });
+  try {
+    await sendPeerFrame(receiver.address, { type: "control", action: "peer_message_status", status: "expired",
+      status_detail: "refused", orig_msg_id: "source-refusal", msgV: 1, msg_id: "control-1" }, { userDir });
+    await until(() => receiver.status("source-refusal") !== undefined);
+    assert.equal(receiver.status("source-refusal")?.status, "refused");
+    await sendPeerFrame(receiver.address, { type: "control", action: "peer_message_status", status: "invented",
+      orig_msg_id: "unknown-status" }, { userDir });
+    await sendPeerFrame(receiver.address, { type: "control", action: "peer_message_status", status: "delivered",
+      orig_msg_id: "source-delivery" }, { userDir });
+    await until(() => receiver.status("source-delivery") !== undefined);
+    assert.equal(receiver.status("source-delivery")?.status, "delivered");
+    assert.equal(receiver.status("unknown-status"), undefined);
+  } finally { await receiver.close(); }
+});
+
+test("receipt replies use source wire fields and only shaped local socket namespaces", async () => {
+  const userDir = root(), directory = root(), elsewhere = root(), received: { status?: unknown; status_detail?: unknown; orig_msg_id?: unknown; msgV?: unknown; msg_id?: unknown }[] = [];
+  const clients = new Set<net.Socket>();
+  const bind = async (sock: string) => {
+    const server = net.createServer(socket => {
+      clients.add(socket); socket.on("close", () => clients.delete(socket)); socket.on("error", () => {});
+      let buffer = "";
+      socket.on("data", chunk => {
+        buffer += String(chunk);
+        let newline: number;
+        while ((newline = buffer.indexOf("\n")) !== -1) {
+          const line = buffer.slice(0, newline); buffer = buffer.slice(newline + 1);
+          const frame = JSON.parse(line);
+          if (frame.type === "control") received.push(frame);
+        }
+      });
+      socket.on("end", () => socket.end());
+    });
+    await new Promise<void>(resolve => server.listen(sock, resolve));
+    return server;
+  };
+  const replyPath = path.join(directory, "reply.sock"), reply = await bind(replyPath);
+  const foreignPath = path.join(elsewhere, "reply.sock"), foreign = await bind(foreignPath);
+  const receiver = await createLocalPeerTransport({ userDir, workspace: directory, socketPath: path.join(directory, "inbox.sock"),
+    policy: () => "refuse", mode: () => ({ mode: "default" }), onEvent: () => {} });
+  try {
+    await sendPeerFrame(receiver.address, { type: "user", message: { role: "user", content: "refuse" },
+      from: `uds:${replyPath}`, msg_id: "original-refusal" }, { userDir });
+    await until(() => received.length === 1);
+    assert.equal(received[0]?.status, "expired");
+    assert.equal(received[0]?.status_detail, "refused");
+    assert.equal(received[0]?.orig_msg_id, "original-refusal");
+    assert.equal(received[0]?.msgV, 1);
+    assert.equal(typeof received[0]?.msg_id, "string");
+    await sendPeerFrame(receiver.address, { type: "user", message: { role: "user", content: "foreign" },
+      from: `uds:${foreignPath}`, msg_id: "foreign-namespace" }, { userDir });
+    assert.equal(received.length, 1);
+    const traversal = path.join(directory, "nested") + "/../reply.sock";
+    await sendPeerFrame(receiver.address, { type: "user", message: { role: "user", content: "traversal" },
+      from: `uds:${traversal}`, msg_id: "dotdot-namespace" }, { userDir });
+    await sendPeerFrame(receiver.address, { type: "user", message: { role: "user", content: "encoded" },
+      from: `uds:${encodeURIComponent(replyPath)}`, msg_id: "encoded-reply" }, { userDir });
+    await until(() => received.some(frame => frame.orig_msg_id === "encoded-reply"));
+    assert.deepEqual(received.map(frame => frame.orig_msg_id), ["original-refusal", "encoded-reply"]);
+  } finally {
+    await receiver.close(); for (const socket of clients) socket.destroy();
+    await Promise.all([reply, foreign].map(server => new Promise<void>(resolve => server.close(() => resolve()))));
+  }
 });
 
 test("the held approval window resolves the setting and the environment override", () => {
