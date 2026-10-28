@@ -28,7 +28,10 @@ async function wait(predicate, label, cli) {
   const deadline = Date.now() + 15000;
   while (!predicate()) {
     if (fixtureError) throw fixtureError;
-    if (cli?.ended || Date.now() >= deadline) throw new Error(`${label}: ${cli?.stderr ?? 'fixture timeout'}`);
+    if (cli?.ended || Date.now() >= deadline) {
+      const reason = cli?.ended ? `exit ${cli.process.exitCode ?? cli.process.signalCode}` : 'timeout';
+      throw new Error(`${label}: ${reason}\nstdout: ${cli?.stdout ?? ''}\nstderr: ${cli?.stderr ?? ''}`);
+    }
     await sleep(20);
   }
 }
@@ -72,6 +75,8 @@ async function ready(cli, expectedId) {
   await wait(() => cli.stderr.includes('Personal harness.'), 'interactive startup', cli);
   const id = /session: ([a-f0-9-]{36})/.exec(cli.stderr)?.[1]; assert.ok(id, cli.stderr);
   if (expectedId) assert.equal(id, expectedId);
+  await wait(() => cli.stderr.slice(cli.stderr.indexOf('Personal harness.')).includes(`session: ${id}`),
+    'interactive session announcement', cli);
   assert.equal(requests.length, cli.startRequests, 'Startup issued a model request');
   cli.id = id;
   assert.equal(generation, cli.startGeneration + 1, 'Startup must own a new transport');
@@ -235,11 +240,46 @@ try {
   failRestore = false; cli = launch(directory, id); await ready(cli, id); restored(cli, [uriA]); intent(directory, id, expected);
 
   // Fork copies completed conversation, while the new owner starts with empty URI intent.
-  await command(cli, '/fork', 'session:');
-  const forkId = [...cli.stderr.matchAll(/session: ([a-f0-9-]{36})/g)].at(-1)[1]; assert.notEqual(forkId, id);
+  const forkStdout = cli.stdout.length;
+  const forkGeneration = generation, forkRequests = requests.length;
+  const parentHistory = records(directory, id).filter(event =>
+    ['message', 'compact', 'turn_end', 'scheduled_task_fire', 'loop_boundary'].includes(event.kind));
+  assert.ok(parentHistory.some(event => event.kind === 'message'));
+  assert.ok(parentHistory.some(event => event.kind === 'turn_end'));
+  cli.process.stdin.write('/fork\n');
+  await wait(() => /^Log: .+\.log$/m.test(cli.stdout.slice(forkStdout)), 'fork output', cli);
+  const log = /^Log: (.+\.log)$/m.exec(cli.stdout.slice(forkStdout))?.[1]; assert.ok(log);
+  const forkId = path.basename(log, '.log');
+  assert.match(forkId, /^[a-f0-9-]{36}$/); assert.notEqual(forkId, id);
+  assert.equal(path.dirname(log), path.join(directory, '.agent', 'background'));
+  const forkRecords = records(directory, forkId);
+  const branch = forkRecords.findIndex(event => event.kind === 'branch');
+  assert.ok(branch > 0); assert.equal(forkRecords[branch].source, id); assert.equal(forkRecords[branch].reason, 'fork');
+  assert.deepEqual(forkRecords.slice(0, branch).filter(event =>
+    ['message', 'compact', 'turn_end', 'scheduled_task_fire', 'loop_boundary'].includes(event.kind)), parentHistory);
+  assert.equal(generation, forkGeneration); assert.equal(requests.length, forkRequests);
+  intent(directory, forkId, []); restored(cli, [uriA]);
+  const statusOffset = cli.stdout.length;
+  cli.process.stdin.write('/status\n');
+  await wait(() => /^\s*"session": "[a-f0-9-]{36}",$/m.test(cli.stdout.slice(statusOffset)), 'parent session status', cli);
+  assert.equal(/^\s*"session": "([a-f0-9-]{36})",$/m.exec(cli.stdout.slice(statusOffset))?.[1], id);
+  assert.equal(generation, forkGeneration); assert.equal(requests.length, forkRequests);
+  const resumeOffset = cli.stderr.length, forkResumeRequests = requests.length;
+  await command(cli, `/resume ${forkId}`, 'Session resumed.');
+  assert.equal(requests.length, forkResumeRequests, 'Resuming a fork must not replay a model task');
+  assert.ok(cli.stderr.slice(resumeOffset).includes(`session: ${forkId}`));
+  assert.equal(generation, forkGeneration + 1);
   cli.transport = `owned-${generation}`; await wait(() => streams.has(cli.transport), 'fork transport GET', cli);
   restored(cli, []); intent(directory, forkId, []);
-  assert.equal((await task(cli, 'poll')).subscriptions, 0); await task(cli, 'query');
+  assert.equal((await task(cli, 'poll')).subscriptions, 0);
+  assert.equal(requests.length, forkResumeRequests + 2, 'Only the explicit fork poll may call the model');
+  const forkQueryOffset = requests.length;
+  await task(cli, 'query');
+  const forkMessages = requests[forkQueryOffset].messages;
+  assert.deepEqual(forkMessages.filter(message => message.role === 'user' &&
+    typeof message.content === 'string').map(message => message.content),
+    ['subscribe A', 'subscribe B', 'unsubscribe B', 'poll', 'poll', 'unsubscribe A', 'poll', 'subscribe A', 'poll', 'query'],
+    'Resumed fork request lost or reordered the parent conversation');
   await command(cli, `/resume ${id}`, 'Session resumed.'); cli.transport = `owned-${generation}`;
   await wait(() => streams.has(cli.transport), 'original owner GET', cli); restored(cli, [uriA]); intent(directory, id, expected);
   await task(cli, 'unsubscribe A'); expected.push(['resources/unsubscribe', uriA]); intent(directory, id, expected);

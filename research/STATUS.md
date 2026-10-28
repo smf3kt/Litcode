@@ -1,3 +1,5 @@
+W383 MCP persistence acceptance (2026-10-29). The compiled background-fork, original-session restore and SIGKILL recovery chain passes with the updated driver. See [W383](ports/W383-mcp-persistence-driver.md). MCP resource subscriptions remains Partial.
+
 W382 Hooks concurrent adoption (2026-10-28). Main verification and final independent scoped review pass after three repair findings; exceptional retirement cleanup and notification boundaries remain open. See [W382](ports/W382-concurrent-adoption.md). Hooks remains Partial.
 
 W381 Hooks module ownership (2026-10-28). Main verification and independent scoped repair review pass after four review repairs. See [W381](ports/W381-module-ownership.md). Hooks remains Partial.
