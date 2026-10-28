@@ -667,6 +667,12 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
     parseLegacySetting: () => undefined,
   });
   const userDir = path.resolve((values['user-dir'] as string | undefined) ?? defaultUserDir());
+  // `HXo` asks once before any external include is read (chunk-sfn1dbxq.js
+  // 676557). The host's approval is a user setting, so the notice names the
+  // switch instead of a dialog.
+  for (const include of loaded?.externalIncludes ?? []) {
+    process.stderr.write(`instructions: not reading ${include.path}${include.parent === undefined ? "" : ` (imported by ${include.parent})`}: it is outside the workspace. Set approveExternalIncludes to true in ${path.join(userDir, "settings.json")} to read external includes.\n`);
+  }
   // Signing in and out are complete actions of their own: they write or remove the local
   // credential store and start nothing.
   if (values.logout === true) {

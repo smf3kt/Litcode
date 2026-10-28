@@ -1,0 +1,122 @@
+{
+  "package": "W371",
+  "title": "Settings and instructions: external instruction includes",
+  "status": "implementation and main verification; one bounded independent review pending",
+  "sample": {
+    "version": "2.1.296",
+    "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
+  },
+  "coordinateUnit": "zero-based half-open UTF-16 code units",
+  "sources": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "bytes": 4762583,
+      "owners": [
+        { "name": "t1", "range": [661767, 662489], "body16": "dcc7a3e5b7dd3741" },
+        { "name": "zae", "range": [662489, 664541], "body16": "474deff27981d295" },
+        { "name": "Q6t", "range": [676285, 676512], "body16": "941bf97cd081c4b5" },
+        { "name": "m9r", "range": [676512, 676551], "body16": "e961a5986bc80b41" },
+        { "name": "HXo", "range": [676557, 676708], "body16": "e79d39785e895444" },
+        { "name": "IL", "range": [656718, 656751], "body16": "104b417586d4b466" },
+        { "name": "lCt", "range": [666879, 666922], "body16": "a2be8af63c7a5c70" },
+        { "name": "qZn", "range": [668060, 672726], "body16": "530f0207daa5256c" }
+      ]
+    },
+    {
+      "module": "chunk-1dhzexv1.js",
+      "sha256": "bd0b184583b7ed75cbcd56c65bb3c5175dfeb7f94d6a35754b988df573ebfff9",
+      "bytes": 73091,
+      "owners": [
+        { "name": "ir", "range": [27153, 27416], "body16": "749862b5bc647cb2" }
+      ]
+    },
+    {
+      "module": "chunk-bcnhka5p.js",
+      "sha256": "45da18e565d1f5e3547e2cc3fe2c79935b4ff95ef96ee6a79b431e17bf7f2540",
+      "bytes": 4224,
+      "owners": [
+        { "name": "Qcn", "range": [1498, 1742], "body16": "578fdf7ab3486d6f" },
+        { "name": "e3n dialog", "range": [1742, 4206], "body16": "1fe346440e20abdd" }
+      ]
+    },
+    {
+      "module": "chunk-bk5ct2gw.js",
+      "sha256": "efbc2d987608904a4a3ad7221f39f6e6afe34c13076d2ce3e4be2d49f43e6dd1",
+      "bytes": 744610,
+      "owners": [
+        { "name": "bue defaults (both flags false)", "offset": 558344 }
+      ]
+    },
+    {
+      "module": "chunk-msy0wfrd.js",
+      "sha256": "f489401ba9fbd8586a1009a984b6701a0286372a2a84a6a78f46ecac546e9bf8",
+      "bytes": 19219,
+      "owners": [
+        { "name": "startup approval provider calling HXo", "offset": 11 }
+      ]
+    }
+  ],
+  "sourceBehaviour": [
+    "t1 drops an import at depth > 0 that is not inside the working directory unless external includes are allowed, and its recursion stops at the dropped file.",
+    "V = includeExternal && (type !== 'User' || lCt()); lCt() is qE() !== 'local-agent', so local-agent mode gates user-level files too.",
+    "ir() passes hasClaudeMdExternalIncludesApproved into t1 and zae; the project tier computes includeExternal || approved.",
+    "IL(p) is containment in the working directory (Wd), judged on the resolved path.",
+    "Q6t lists skipped entries whose type is not User, that have a parent or linkedFrom, and are not IL; m9r is non-empty.",
+    "HXo asks once: false when approved or the warning was shown, otherwise it loads and asks when the list is non-empty.",
+    "Qcn persists the answer and the warning flag; the dialog lists the includes, focuses cancel, and a yes covers later additions.",
+    "Both flags default to false."
+  ],
+  "hostAdaptations": [
+    "approveExternalIncludes is a user-layer-only boolean, the same shape as approveAllProjectMcpServers: refused from the project and local layers, must be boolean, removed from effective settings.",
+    "loadProjectConfig gates imports at depth > 0 whose resolved path leaves the workspace; appendInstruction and pinRuleImports share the gate, and the dropped file stops the walk.",
+    "The skipped set is reported as LoadedConfig.externalIncludes {path, parent}, deduplicated by path, and the CLI prints one stderr line naming the switch.",
+    "hasClaudeMdExternalIncludesWarningShown is not ported: it only suppresses the dialog, and the host's durable answer is the switch.",
+    "loadPathInstructions already refuses every workspace escape with a named error and is unchanged (stricter than the gate).",
+    "zae's external rules-directory discovery has no host counterpart: listRules only descends into the given directory.",
+    "IL compares against the process working directory; the host compares against the resolved workspace root."
+  ],
+  "changedFiles": {
+    "src/config.ts": "298dd6e1a3e409d01ba644ad1347ab4e51677b20044e17c8f7a87ee93b99d29b",
+    "src/cli.ts": "f056c8c983c3f6305e5b4ee2eff76f6f15a61f2a8bf0a78145169019e0812377",
+    "test/config.test.ts": "99f2360c9329636a3a4104041f06a569c7b6e784ffdc863f2fa0f890c6393c44",
+    "scripts/smoke-external-includes-cli.mjs": "0faf8973df9baa4346b11794221d1a6e205ba9fd885ddd0d8686c81f6778280c"
+  },
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "5ff825821222a16b08e67cb1a1cfa5de8438e7f2fe45753277aa4159946090ad",
+    "inputs": "214c0f913ac25c72fe4489819f7ab0c80600b4731100c12fcc0559760169d20d",
+    "validation": "8d4d5ad306923f1ac3b3f0153249e74ecb90c728e7506a6973a6de0a9e59ea97",
+    "build": "48acece5d38c8314759785b6c47cb33253e0ba2469f6d722078d48c3fe370f70",
+    "files": { "inputs": 940, "validation": 360, "build": 662 }
+  },
+  "validation": {
+    "check": "pass",
+    "build": "pass",
+    "focusedSuites": { "config": "80/80" },
+    "fullSuite": "3453/3453 across 118 suites, 0 fail/cancel/skip/todo",
+    "drivers": [
+      {
+        "name": "smoke-external-includes-cli.mjs",
+        "source": "pass, 2 cases x 1 owned loopback request",
+        "compiled": "pass, 2 cases x 1 owned loopback request"
+      }
+    ],
+    "redBaseline": "the compiled CLI from the W370 repair commit read the external import and printed no notice; the new driver fails at the 'not read' assertion"
+  },
+  "knownLimitations": [
+    "There is no startup dialog: the host's user-level switch stands where the recovered product asks once, so a user who never sets it never reads external includes.",
+    "The warning-shown flag has no host consumer and is not persisted.",
+    "The gate compares against the workspace root, not the process working directory; the host loader owns the workspace boundary."
+  ],
+  "notPorted": [
+    "zae's parent-directory rules discovery (no host counterpart)",
+    "the startup approval dialog component (e3n) and its provider (chunk-msy0wfrd.js 11)",
+    "hasClaudeMdExternalIncludesWarningShown"
+  ],
+  "boundaries": [
+    "No account, subscription, OAuth or network feature; the gate reads local files only.",
+    "No recovered application entrypoint was executed; extracted bytes were read as inert data.",
+    "Model traffic only through the owned loopback SSE driver."
+  ]
+}

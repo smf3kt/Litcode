@@ -261,6 +261,18 @@ export interface LoadedConfig {
    * explicitly named settings file) may set it.
    */
   approveAllProjectMcpServers?: boolean;
+  /**
+   * The user's own switch to read instruction imports that leave the workspace.
+   * Only the user layer (or an explicitly named settings file) may set it; a
+   * checkout must not be able to widen its own instruction boundary.
+   */
+  approveExternalIncludes?: boolean;
+  /**
+   * Imports that were not read because they leave the workspace and the user
+   * has not approved them (`Q6t`, chunk-sfn1dbxq.js 676285). The walk stops at
+   * the dropped file, so its own imports are absent too.
+   */
+  externalIncludes?: { path: string; parent?: string }[];
 }
 
 export interface LoadProjectOptions {
@@ -1362,6 +1374,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   // user layer for the same reason the answers do: a project must not be able
   // to grant itself admission by editing its own settings.
   let approveAllProjectMcpServers = false;
+  // Same reason, same layer: a checkout cannot approve its own external imports.
+  let approveExternalIncludes = false;
   for (const [index, layer] of layers.entries()) {
     let parsed = readSettingsLayer(layer.file, layer.required);
     // Qnn/vse, chunk-3cynezh1 [427468,428015), UTF-16. Canonical local overlays legacy cwd settings.
@@ -1396,12 +1410,22 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
         }
         approveAllProjectMcpServers = parsed.approveAllProjectMcpServers;
       }
+      if (parsed.approveExternalIncludes !== undefined) {
+        if (typeof parsed.approveExternalIncludes !== "boolean") {
+          throw new ConfigError("approveExternalIncludes must be true or false", layer.file);
+        }
+        if (index === 1 || index === 2) {
+          throw new ConfigError("approveExternalIncludes is a user setting; a checkout cannot approve its own external includes", layer.file);
+        }
+        approveExternalIncludes = parsed.approveExternalIncludes;
+      }
       if (index > 0 && index < 3 && parsed.mcpServers !== undefined) {
         Object.assign(projectMcpServers, mcpServersSchema.parse(parsed.mcpServers));
       }
     }
   }
   delete settings.approveAllProjectMcpServers;
+  delete settings.approveExternalIncludes;
   // Ce global preference, nybcbd9t [23905,24064), UTF-16; the host stores it in the user document.
   if (copyOnSelect === undefined) delete settings.copyOnSelect;
   else settings.copyOnSelect = copyOnSelect;
@@ -1449,12 +1473,37 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   });
   const instructions: InstructionFile[] = [];
   const conditionalRules: ConditionalRule[] = [];
+  const externalIncludes: NonNullable<LoadedConfig['externalIncludes']> = [];
+  const externalIncludeSeen = new Set<string>();
+  // `IL` (chunk-sfn1dbxq.js 656718) is containment in the working directory; a
+  // link is judged by the file it resolves to.
+  const insideWorkspace = (file: string): boolean => {
+    const target = tryRealpath(file) ?? path.resolve(file);
+    return [workspaceReal, workspaceRoot].some(root => {
+      const relative = path.relative(root, target);
+      return relative === "" || (!path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(".." + path.sep));
+    });
+  };
+  // `t1` drops an import at depth > 0 that is not inside the working directory
+  // unless external includes are approved (chunk-sfn1dbxq.js 661767). The walk
+  // stops with the dropped file, so its own imports never load either.
+  function gatedExternalImport(file: string, depth: number, parent: string | undefined): boolean {
+    if (depth === 0 || approveExternalIncludes || insideWorkspace(file)) return false;
+    // The same file can be reached as a pinned rule import and as a body import;
+    // the recovered list is over unique loaded entries, so report it once.
+    if (!externalIncludeSeen.has(file)) {
+      externalIncludeSeen.add(file);
+      externalIncludes.push({ path: file, ...(parent === undefined ? {} : { parent }) });
+    }
+    return true;
+  }
   const conditionalSeen = new Set<string>();
   const instructionSeen = new Set<string>();
   function pinRuleImports(rootFile: string, body: string): InstructionFile[] {
     const pinned: InstructionFile[] = [];
     const seen = new Set<string>([tryRealpath(rootFile)!]);
     function visit(file: string, depth: number, parent?: string): void {
+      if (gatedExternalImport(file, depth, parent)) return;
       vetInstructionPath(file);
       const real = tryRealpath(file);
       if (real === undefined || !isRegularFile(file)) throw new ConfigError("instruction import file not found", file);
@@ -1469,6 +1518,7 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     return pinned;
   }
   function appendInstruction(file: string, depth: number, rule = false, parent?: string): void {
+    if (gatedExternalImport(file, depth, parent)) return;
     vetInstructionPath(file);
     const real = tryRealpath(file);
     if (real === undefined || !isRegularFile(file)) throw new ConfigError("instruction import file not found", file);
@@ -1643,6 +1693,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   if (agentCatalog.reports.length) result.agentTypeReports = agentCatalog.reports;
   if (Object.keys(projectMcpServers).length) result.projectMcpServers = projectMcpServers;
   if (approveAllProjectMcpServers) result.approveAllProjectMcpServers = true;
+  if (approveExternalIncludes) result.approveExternalIncludes = true;
+  if (externalIncludes.length) result.externalIncludes = externalIncludes;
   return result;
 }
 

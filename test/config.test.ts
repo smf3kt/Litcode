@@ -775,7 +775,7 @@ test("scalar skill tool grants and quoted booleans remain compatible", () => {
 test("instruction imports follow relative and absolute Markdown paths outside code and comments", () => {
   withSandbox(root => {
     const workspace = path.join(root, "proj");
-    const absolute = path.join(root, "absolute.md");
+    const absolute = path.join(workspace, "absolute.md");
     const main = path.join(workspace, "HARNESS.md");
     writeFile(absolute, "Absolute");
     writeFile(path.join(workspace, "relative.md"), "Relative @nested.md");
@@ -789,16 +789,75 @@ test("instruction imports follow relative and absolute Markdown paths outside co
   });
 });
 
-test("home imports resolve against the home directory without reading host config", () => {
+test("home imports resolve against the home directory and wait for approval", () => {
   withSandbox(root => {
     const workspace = path.join(root, "proj");
+    const userDir = path.join(root, "user");
     const imported = path.join(root, "home-note.md");
     writeFile(imported, "Home note fixture");
     const homeRelative = path.relative(os.homedir(), imported).split(path.sep).join("/");
     writeFile(path.join(workspace, "HARNESS.md"), `@~/${homeRelative}`);
-    const cfg = loadProjectConfig(workspace, { userDir: path.join(root, "user") });
-    assert.deepEqual(names(cfg.instructions), ["HARNESS.md", "home-note.md"]);
-    assert.equal(cfg.instructions[1]!.content, "Home note fixture");
+    // `IL` judges the resolved file, not the `~` spelling: a home import is an
+    // external include in local-agent mode (`lCt`).
+    const cfg = loadProjectConfig(workspace, { userDir });
+    assert.deepEqual(names(cfg.instructions), ["HARNESS.md"]);
+    assert.equal(cfg.externalIncludes?.length, 1);
+    assert.equal(path.basename(cfg.externalIncludes![0]!.path), "home-note.md");
+    assert.equal(path.basename(cfg.externalIncludes![0]!.parent!), "HARNESS.md");
+    writeFile(path.join(userDir, "settings.json"), JSON.stringify({ approveExternalIncludes: true }));
+    const approved = loadProjectConfig(workspace, { userDir });
+    assert.deepEqual(names(approved.instructions), ["HARNESS.md", "home-note.md"]);
+    assert.equal(approved.instructions[1]!.content, "Home note fixture");
+  });
+});
+
+test("an instruction import that leaves the workspace waits for the user's approval", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj");
+    const userDir = path.join(root, "user");
+    writeFile(path.join(root, "outside.md"), "OUTSIDE_TEXT @outside-nested.md");
+    writeFile(path.join(root, "outside-nested.md"), "NESTED_TEXT");
+    writeFile(path.join(workspace, "HARNESS.md"), "PROJECT_TEXT @../outside.md");
+    writeFile(path.join(workspace, "inside.md"), "INSIDE_TEXT");
+    writeFile(path.join(workspace, "AGENTS.md"), "@inside.md");
+
+    const skipped = loadProjectConfig(workspace, { userDir });
+    assert.deepEqual(names(skipped.instructions), ["HARNESS.md", "AGENTS.md", "inside.md"]);
+    assert.equal(skipped.instructions.some(file => file.content.includes("OUTSIDE_TEXT")), false);
+    // The walk stops at the dropped file, so its own import never loads either.
+    assert.equal(skipped.instructions.some(file => file.content.includes("NESTED_TEXT")), false);
+    assert.equal(skipped.externalIncludes?.length, 1);
+    assert.equal(path.basename(skipped.externalIncludes![0]!.path), "outside.md");
+    assert.equal(path.basename(skipped.externalIncludes![0]!.parent!), "HARNESS.md");
+
+    writeFile(path.join(userDir, "settings.json"), JSON.stringify({ approveExternalIncludes: true }));
+    const approved = loadProjectConfig(workspace, { userDir });
+    assert.deepEqual(names(approved.instructions), ["HARNESS.md", "outside.md", "outside-nested.md", "AGENTS.md", "inside.md"]);
+    assert.equal(approved.externalIncludes, undefined);
+    assert.equal("approveExternalIncludes" in approved.settings, false, "the switch is not part of the effective settings");
+
+    writeFile(path.join(workspace, ".harness", "settings.json"), JSON.stringify({ approveExternalIncludes: true }));
+    assert.throws(() => loadProjectConfig(workspace, { userDir }),
+      /approveExternalIncludes is a user setting; a checkout cannot approve its own external includes/);
+    writeFile(path.join(workspace, ".harness", "settings.json"), JSON.stringify({ approveExternalIncludes: "yes" }));
+    assert.throws(() => loadProjectConfig(workspace, { userDir }), /approveExternalIncludes must be true or false/);
+  });
+});
+
+test("a conditional rule's pinned imports obey the same external gate", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj");
+    const userDir = path.join(root, "user");
+    writeFile(path.join(root, "outside-rule.md"), "OUTSIDE_RULE_TEXT");
+    writeFile(path.join(workspace, ".harness", "rules", "rule.md"), "---\npaths: \"src/**\"\n---\nRULE_TEXT @../../../outside-rule.md");
+    const cfg = loadProjectConfig(workspace, { userDir, paths: ["src/a.ts"] });
+    const rule = cfg.conditionalRules?.find(item => path.basename(item.path) === "rule.md");
+    assert.equal(rule?.imports, undefined);
+    assert.equal(cfg.externalIncludes?.length, 1);
+    writeFile(path.join(userDir, "settings.json"), JSON.stringify({ approveExternalIncludes: true }));
+    const approved = loadProjectConfig(workspace, { userDir, paths: ["src/a.ts"] });
+    const pinned = approved.conditionalRules?.find(item => path.basename(item.path) === "rule.md");
+    assert.deepEqual(pinned?.imports?.map(item => path.basename(item.path)), ["outside-rule.md"]);
   });
 });
 
@@ -893,7 +952,7 @@ test("conditional imports are pinned in DFS order, deduplicate cycles and inheri
     const workspace = path.join(root, "proj");
     const rules = path.join(workspace, ".harness", "rules");
     const rootRule = path.join(rules, "source.md");
-    const imports = path.join(root, "imported");
+    const imports = path.join(workspace, "imported");
     const first = path.join(imports, "first.md");
     const second = path.join(imports, "second.md");
     writeFile(first, `First @second.md @${rootRule}`);
