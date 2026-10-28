@@ -137,6 +137,38 @@ test('a compound line is read from its tree, not from its separators', () => {
   assert.equal(shellReadings(overlong).exhaustive, false);
 });
 
+test('the strictest reading decides, and a primary ask returns before any ranking', () => {
+  // `DTr` ranks the primary together with the alternates, and an ask outranks
+  // an allow (`Lcn` 4/5 over 1), so a complete reading set still asks when an
+  // alternate reading asks. The old shape only reached this when the set was
+  // incomplete or the alternate ask matched a rule.
+  const allowExact: NonNullable<PermissionPolicy['inputRules']> = [{ tool: 'run_command', command: 'echo "hi"', decision: 'allow' }];
+  assert.equal(shellReadings('echo "hi"').exhaustive, true);
+  const alternateAsk = decide(allowExact, 'echo "hi"', 'ask');
+  assert.equal(alternateAsk.decision, 'ask');
+  assert.match(alternateAsk.reason ?? '', /Alternate command reading requires approval: echo hi/);
+  // A primary ask that is not soft wins before the ranking, even against a
+  // rule ask from an alternate reading, which ranks 5.
+  const askExact: NonNullable<PermissionPolicy['inputRules']> = [{ tool: 'run_command', command: 'echo hi', decision: 'ask' }];
+  const primaryAsk = decide(askExact, 'echo "hi"', 'ask');
+  assert.equal(primaryAsk.decision, 'ask');
+  assert.equal(primaryAsk.reason, 'Ask mode requires approval: run_command');
+  assert.equal(primaryAsk.floor, undefined);
+  // A denial anywhere still wins over that primary ask.
+  const denyAlternate: NonNullable<PermissionPolicy['inputRules']> = [{ tool: 'run_command', command: 'rm -rf /tmp', decision: 'deny' }];
+  assert.equal(decide(denyAlternate, 'rm -rf "/tmp"', 'ask').decision, 'deny');
+  // The auto-mode hold is the one soft ask the host produces, so it does not
+  // return before the ranking: a soft ask from the alternates is downgraded to
+  // a passthrough (the host's allow), while a rule ask from them wins.
+  const autoAllow = permissionDecision({ mode: 'auto', allow: ['run_command(echo "hi")'], deny: [], ask: [] },
+    shellTool, { command: 'echo "hi"' });
+  assert.equal(autoAllow.decision, 'allow');
+  const autoRuleAsk = permissionDecision({ mode: 'auto', allow: [], deny: [], ask: ['run_command(echo hi)'] },
+    shellTool, { command: 'echo "hi"' });
+  assert.equal(autoRuleAsk.decision, 'ask');
+  assert.equal(autoRuleAsk.floor, 'rule');
+});
+
 test('unchanged behaviour: no command rule, a denial, or bypass mode', () => {
   const toolOnly: NonNullable<PermissionPolicy['inputRules']> = [{ tool: 'run_command', decision: 'allow' }];
   assert.equal(decide(toolOnly, 'echo $SECRET').decision, 'allow');

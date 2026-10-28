@@ -1,0 +1,106 @@
+{
+  "package": "W372",
+  "title": "Permissions: the reading decision order",
+  "status": "implementation and main verification; one bounded independent review pending",
+  "sample": {
+    "version": "2.1.296",
+    "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
+  },
+  "coordinateUnit": "zero-based half-open UTF-16 code units",
+  "sources": [
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "bytes": 4762583,
+      "owners": [
+        { "name": "jwe", "range": [3234078, 3234326], "body16": "63a4609d828d83bf" },
+        { "name": "Lcn", "range": [3234326, 3234534], "body16": "bb4863a870d1a305" },
+        { "name": "DTr", "range": [3234534, 3234967], "body16": "4cd43add5ae5c4a4" },
+        { "name": "sfn", "range": [3252890, 3253132], "body16": "fd055389fe0fc6f6" },
+        { "name": "$cn", "range": [3253132, 3253708], "body16": "724ee7599692796f" },
+        { "name": "ior", "range": [3253708, 3254351], "body16": "c6d9d9367c71cf0b" },
+        { "name": "$pn", "range": [3360777, 3364305], "body16": "4182360934672780" },
+        { "name": "ize", "range": [609639, 609790], "body16": "ef323ba2c52fa0c7" },
+        { "name": "m0", "range": [3354764, 3354848], "body16": "6324bb3421c6c791" },
+        { "name": "utt", "range": [3354561, 3354764], "body16": "9df48f931bd97a80" },
+        { "name": "Dl", "range": [3365554, 3365753], "body16": "dd4494b95f393787" },
+        { "name": "Rl", "range": [3314893, 3316265], "body16": "73c3bc38bf93a02c" }
+      ]
+    },
+    {
+      "module": "chunk-a60ee1ne.js",
+      "sha256": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1",
+      "bytes": 8837,
+      "owners": [
+        { "name": "trn", "range": [987, 2081], "body16": "bcea04ab0ec45687" },
+        { "name": "X3", "range": [2082, 2146], "body16": "e4bc2210e56e5e98" },
+        { "name": "nrn", "range": [2146, 2216], "body16": "2254d9d5c1973da8" },
+        { "name": "d", "range": [2216, 2303], "body16": "98e0d1b4d1f81a48" }
+      ]
+    }
+  ],
+  "sourceBehaviour": [
+    "Lcn ranks one reading: deny 6; a soft ask 3, else a matched-rule or bypass-immune safety-check ask 5, else ask 4; passthrough 2; allow 1, or 0 when the reason is entirely a rule (ize).",
+    "jwe treats an ask as soft when it has no matched ask rule and its reason is absent, type 'other', or all-soft subcommand results.",
+    "m0 is utt(decisionReason) or matchedAskRule.ruleBehavior === 'ask'; utt finds a rule ask anywhere in the reason tree.",
+    "Dl walks the reason tree for a safetyCheck the predicate accepts; X3 accepts a circuit breaker named in trn with bypassImmune true (dangerousRemoval, isolatePeerMachines, restrictedMode, outsideReadsBlocked).",
+    "DTr: a deny anywhere wins; a primary ask that is not soft returns before any ranking; otherwise the highest Lcn wins; a non-exhaustive set whose winner is not an ask becomes the synthetic 'Variables set in front of a declaration...' ask.",
+    "ior projects the combined result through sfn, then downgrades a soft ask from the alternates to a passthrough carrying its message and reason unless the primary is already a passthrough.",
+    "$pn reroutes an auto-mode allow to an ask with decisionReason {type: 'other', reason: srn}; jwe treats that reason as soft.",
+    "sfn turns an other-reason ask with a known bashMissKind into the read-block ask when blockReadsOutsideWorkingDirectories is on.",
+    "$cn upgrades an ask with a prefix ask rule to matchedAskRule."
+  ],
+  "hostAdaptations": [
+    "applyShellReadings collects alternates with the deny scan first, returns a non-soft primary ask, ranks the primary with the alternates, downgrades an alternate soft ask to the primary allow, and keeps the synthetic non-exhaustive ask with the host's existing wording.",
+    "readingRank maps the host's decision space: deny 6; floor 'rule' ask 5 (the matchedAskRule equivalent); auto-mode ask with no floor 3 (the $pn soft hold); any other ask 4; allow 1. ize's rank 0 and passthrough rank 2 have no host producer.",
+    "The soft-ask downgrade returns the primary allow because the host's allow has no message channel; the passthrough message is not carried.",
+    "The alternate-ask winner keeps its own floor and is reported with the reading that raised it.",
+    "The bypass guard on the synthetic ask is the host's standing stand-in for the source mode short-circuit and is unchanged.",
+    "Not ported: sfn's read-block projection, $cn's matched-ask upgrade (decideOnce already returns floor 'rule' per reading), and the X3 bypass-immune checks (no host safety-check reasons)."
+  ],
+  "changedFiles": {
+    "src/permissions.ts": "0b6c3336d68712bb3057fa668b0442c45c0da9924cd5237b3d63716601fc1ac4",
+    "test/shell-permissions.test.ts": "3282a60ae88e659af3947743d9998f553feb1430e37385c382f34bd281630652",
+    "scripts/smoke-shell-order-cli.mjs": "c68aab12dbd4576a1c5ccc058911c87456917d919841b2c518ab62f77de9cda9"
+  },
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "b8546796248cc0c6970cce6e95e256fdd287d57ce82f2b062860fda71fc93ac3",
+    "inputs": "f0733d5c91730a3b22211bb5c35fb99c8427275d80275409a7ef08d9a4d765b2",
+    "validation": "98c62e3fece9943d2e7a88e5384fb3f9a78a1b59dd2364bfad96e4f18aac02b7",
+    "build": "bd1e66533c7956930d5029f53ff96176cfccc70f6becab41cb5519da793a165f",
+    "files": { "inputs": 941, "validation": 360, "build": 662 }
+  },
+  "validation": {
+    "check": "pass",
+    "build": "pass",
+    "focusedSuites": { "permissions": "88/88" },
+    "fullSuite": "3457/3457 across 118 suites, 0 fail/cancel/skip/todo",
+    "loadSensitive": "one full run under concurrent work failed the unrelated migration async-hook timing test at 4361 ms; it passes in isolation (323 ms) and in the clean rerun",
+    "drivers": [
+      {
+        "name": "smoke-shell-order-cli.mjs",
+        "source": "pass, 3 cases x 2 owned loopback requests",
+        "baseline": "pass on a build of HEAD, asserting the pre-change answers for all 3 cases"
+      }
+    ],
+    "redBaseline": "the new group fails against HEAD's src/permissions.ts; the driver fails the new assertions on a build of HEAD"
+  },
+  "knownLimitations": [
+    "The soft-ask downgrade returns an allow without the passthrough message; the host's allow has no message channel.",
+    "The host's soft-ask classification is tied to mode 'auto' because that is the only place it produces the recovered other-reason ask.",
+    "sfn's read-block projection is not ported: the host has no read-block ask.",
+    "The X3 bypass-immune safety checks have no host producer."
+  ],
+  "notPorted": [
+    "sfn's read-block ask projection (VW)",
+    "$cn's matched-ask upgrade as a separate step",
+    "the X3/trn bypass-immune safety-check ranks",
+    "the analyser command model and the declaration-prefix rule"
+  ],
+  "boundaries": [
+    "No account, subscription, OAuth or network feature.",
+    "No recovered application entrypoint was executed; extracted bytes were read as inert data.",
+    "Model traffic only through the owned loopback SSE driver."
+  ]
+}
