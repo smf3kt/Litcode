@@ -45,8 +45,8 @@ interface EffectSlot {
   dispose?: (() => void) | undefined;
 }
 
-/** Mount `component` against a fresh hook host and return the first render's value. */
-function hookHost<T>(component: (hooks: HookHost) => T): T {
+/** Mount `component` against a fresh hook host and return its value with the unmount owner. */
+function hookHost<T>(component: (hooks: HookHost) => T): { value: T; unmount: () => void } {
   const store = moduleStore();
   let memoised: { value: unknown } | undefined;
   let select: (() => unknown) | undefined;
@@ -93,13 +93,23 @@ function hookHost<T>(component: (hooks: HookHost) => T): T {
     }
     slots = next;
   };
-  store.subscribe(() => {
-    // The store changed: re-read the selector, and re-render only when the selected value moved.
+  // `Re`/`Rt`, chunk-5b7mmg84.js [758,1288), chunk-kexg5hxg.js [5027,5085), UTF-16.
+  const unsubscribe = store.subscribe(() => {
     if (select === undefined || Object.is(select(), selection)) return;
     render();
   });
   render();
-  return value as T;
+  let mounted = true;
+  return {
+    value: value as T,
+    unmount: () => {
+      if (!mounted) return;
+      mounted = false;
+      unsubscribe();
+      for (const slot of [...slots].reverse()) slot.dispose?.();
+      slots = [];
+    },
+  };
 }
 
 /* ------------------------------------------------------------- the copied hook (copy) */
@@ -127,13 +137,14 @@ function cue(h: ChainRelayHost, hooks: HookHost): ComposerEditRelay {
  *  first raise waits for those loads to settle before dispatching. A declared module therefore answers
  *  the person's first keystroke rather than whichever one lands after its import finished. */
 export function composerEditRelay(host: ChainRelayHost): ComposerEditRelay {
-  return hookHost((hooks) => cue({
+  const mounted = hookHost((hooks) => cue({
     ...host,
     raise: host.raise ?? (async (edit, signal) => {
       await pluginHooksModulesSettled();
       return await XOr(edit, signal);
     }),
   }, hooks));
+  return { ...mounted.value, dispose: mounted.unmount };
 }
 
 /** Whether any loaded module hooks this chain name and matches the arguments, through the copied `Jl`. */

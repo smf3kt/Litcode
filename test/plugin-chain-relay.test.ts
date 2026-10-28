@@ -145,6 +145,32 @@ test('edit relay: a hook installed later hooks the relay, and removing it unhook
   }
 });
 
+test('edit relay: disposing detaches module updates without affecting a live relay', () => {
+  const disposed = composer();
+  const live = composer();
+  let remove: (() => void) | undefined;
+  try {
+    disposed.relay.dispose();
+    disposed.relay.dispose();
+    clearChainRecords();
+    remove = installChainModule(moduleWith({
+      name: 'lifecycle', tier: 'user', run: async event => event,
+    }));
+    assert.equal(disposed.relay.isRecording(), false);
+    assert.equal(live.relay.isRecording(), true);
+    assert.equal(chainRecords().filter(record => record.kind === 'log'
+      && record.message === 'prompt.edit: hooked; the composer relays its edits to the chain').length, 1);
+    remove();
+    remove = undefined;
+    assert.equal(disposed.relay.isRecording(), false);
+    assert.equal(live.relay.isRecording(), false);
+  } finally {
+    remove?.();
+    live.relay.dispose();
+    disposed.relay.dispose();
+  }
+});
+
 test('edit relay: edits recorded in one batch raise once', async () => {
   const seen: number[] = [];
   const counter: ChainHandler = {

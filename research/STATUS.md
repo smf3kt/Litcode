@@ -1,3 +1,5 @@
+W377 Hooks edit-relay lifecycle (2026-10-28). See [W377](ports/W377-relay-lifecycle.md) for the disposed-listener regression, source mapping and verification. Independent review returned VERIFIED_SCOPED; Hooks remains Partial.
+
 W376 Hooks scoped acceptance (2026-10-28). See [W376](ports/W376-hooks.md) for source mappings, compiled PTY checks, the full-suite rerun and remaining boundaries. The family remains Partial.
 
 W365 unified local agent messaging (2026-10-27) passes main3groups/122affected/check/build,compiled35ownedrequests,legacy5,resident10model18MCPRPC andfull3436/3436/118suites at1954record9cb02caa. Finalcomment-onlyc00a1e3d retains1952otherrecords andexecutable syntax. Source121pairs112exact andowner/cold/ref/idle/clear/reload checks pass;freshindependentreviewVERIFIED_SCOPED atea766d29with0findings,26leafcalls(24target),all1954records/0ownedresources;aggregate digest wasnotregenerated andpeer rebind raceunexercised. FamiliesstayPartial. See [W365](ports/W365-unified-agent-messaging.md). W364 committed448cc39. Localonly,no coauthor/push.
