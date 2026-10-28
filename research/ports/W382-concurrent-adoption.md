@@ -1,6 +1,6 @@
 # W382 concurrent plugin adoption
 
-Status: implementation and focused verification in progress. Base `e251425`. Hooks remains Partial.
+Status: implemented and independently reviewed. Base `e251425`; delivered in local commit `fbfeb74`. Hooks remains Partial.
 
 ## Predicate
 
