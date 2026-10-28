@@ -7,19 +7,19 @@ Source owners (extracted-v2, zero-based half-open UTF-16; full ranges and digest
 - `Lcn` [3234326,3234534): deny 6, soft ask 3, rule ask or bypass-immune safety check 5, other ask 4, passthrough 2, allow 1 (rule-only allow 0).
 - `DTr` [3234534,3234967): deny anywhere, then a non-soft primary ask, then the highest rank, then the synthetic non-exhaustive ask.
 - `ior` [3253708,3254351): projects through `sfn`; a soft ask from the alternates becomes a passthrough.
-- `$pn` [3360777,3364305): the auto-mode hold is `{type: "other", reason: srn}`, so it is soft.
+- `$pn` [3360777,3364305): the auto-mode reroute `{type: "other", reason: srn}` is gated by `hor` and runs after `ior`; the entry tail [3364091,3364185) converts every surviving passthrough to an ask before returning.
 - `X3`/`trn` chunk-a60ee1ne.js [2082,2146)/[987,2081): bypass-immune safety checks (no host producer).
 
 Plan:
 - [x] Read every owner above and measure exact bodies and digests; the preflight ranges for `jwe`/`Lcn`/`DTr`/`ize`/`m0`/`Dl` were truncated and are re-measured.
-- [x] `readingRank` + `softAsk` in src/permissions.ts; `applyShellReadings` collects alternates with the deny scan first, returns a non-soft primary ask, ranks, downgrades an alternate soft ask to the primary allow, and keeps the synthetic non-exhaustive ask and the bypass guard.
-- [x] One new group in test/shell-permissions.test.ts: alternate ask on a complete set, primary ask over a rule ask, deny over the primary ask, auto soft-ask downgrade, auto rule ask.
-- [x] scripts/smoke-shell-order-cli.mjs: three compiled cases (alternate ask, primary ask, auto downgrade) with `--baseline` asserting the HEAD answers.
-- [x] Red baselines: the group fails against HEAD's src/permissions.ts; the driver passes `--baseline` on a build of HEAD and fails the new assertions there.
-- [x] An existing agent-lifecycle assertion caught the first version treating the auto hold as non-soft; repaired with `softAsk` and the downgrade.
-- [x] check/build, focused permission suites 88/88, full 3457/3457 clean, identity b8546796.
+- [x] `readingRank` in src/permissions.ts; `applyShellReadings` collects alternates with the deny scan first, ranks the primary with the alternates, lets the highest rank win, and keeps the synthetic non-exhaustive ask and the bypass guard. The review repair removed the soft-ask rank and the downgrade.
+- [x] One new group in test/shell-permissions.test.ts: alternate ask on a complete set, mode ask outranked by a rule ask, deny over the rule ask, auto-mode alternate ask refuses, auto rule ask.
+- [x] scripts/smoke-shell-order-cli.mjs: two compiled cases (alternate ask, auto-mode alternate ask) with `--baseline` asserting the 4a1b14b answers.
+- [x] Red baselines: the group fails against 4a1b14b's src/permissions.ts (the auto allow); the driver passes `--baseline` on a build of 4a1b14b and fails the new assertions there.
+- [x] An existing agent-lifecycle assertion caught the first version treating the auto hold as non-soft; the review then found the downgrade could end in an allow, and the repair removed it.
+- [x] check/build, focused permission suites 68/68, full suite, identity re-frozen.
 - [x] Records: W372 record, evidence JSON, CURRENT, FEATURES row, partial-closure row, this card.
-- [ ] One bounded independent review; record its verdict and repair any confirmed finding.
-- [ ] Commit exact paths locally (no amend, no push, no coauthor).
+- [x] One bounded independent review: one High, one Medium, two Low; all four repaired.
+- [x] Commit exact paths locally: 4a1b14b (no amend, no push, no coauthor); repair commit after the review.
 
 Local only. No account, OAuth, hosted subscription, paid upstream, push, coauthor or schedule.

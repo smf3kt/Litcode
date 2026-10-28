@@ -1,7 +1,7 @@
 {
   "package": "W372",
   "title": "Permissions: the reading decision order",
-  "status": "implementation and main verification; one bounded independent review pending",
+  "status": "implementation, review-repaired and verified",
   "sample": {
     "version": "2.1.296",
     "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
@@ -46,52 +46,63 @@
     "Dl walks the reason tree for a safetyCheck the predicate accepts; X3 accepts a circuit breaker named in trn with bypassImmune true (dangerousRemoval, isolatePeerMachines, restrictedMode, outsideReadsBlocked).",
     "DTr: a deny anywhere wins; a primary ask that is not soft returns before any ranking; otherwise the highest Lcn wins; a non-exhaustive set whose winner is not an ask becomes the synthetic 'Variables set in front of a declaration...' ask.",
     "ior projects the combined result through sfn, then downgrades a soft ask from the alternates to a passthrough carrying its message and reason unless the primary is already a passthrough.",
-    "$pn reroutes an auto-mode allow to an ask with decisionReason {type: 'other', reason: srn}; jwe treats that reason as soft.",
+    "$pn reroutes an auto-mode allow to an ask with decisionReason {type: 'other', reason: srn}; jwe treats that reason as soft. The reroute is gated by hor and runs after the permission check.",
+    "The entry $pn ends by converting every surviving passthrough to an ask: let $e=V.behavior==='passthrough'?{...V,behavior:'ask',message:Rl(e.name,V.decisionReason)}:V, then return $e ([3364091,3364185), body16 5beadd59c5d65458; tail through return $e at [3364091,3364304)).",
     "sfn turns an other-reason ask with a known bashMissKind into the read-block ask when blockReadsOutsideWorkingDirectories is on.",
     "$cn upgrades an ask with a prefix ask rule to matchedAskRule."
   ],
   "hostAdaptations": [
-    "applyShellReadings collects alternates with the deny scan first, returns a non-soft primary ask, ranks the primary with the alternates, downgrades an alternate soft ask to the primary allow, and keeps the synthetic non-exhaustive ask with the host's existing wording.",
-    "readingRank maps the host's decision space: deny 6; floor 'rule' ask 5 (the matchedAskRule equivalent); auto-mode ask with no floor 3 (the $pn soft hold); any other ask 4; allow 1. ize's rank 0 and passthrough rank 2 have no host producer.",
-    "The soft-ask downgrade returns the primary allow because the host's allow has no message channel; the passthrough message is not carried.",
+    "applyShellReadings collects alternates with the deny scan first, ranks the primary with the alternates, lets the highest rank win, and keeps the synthetic non-exhaustive ask with the host's existing wording.",
+    "readingRank maps the host's decision space: deny 6; floor 'rule' ask 5 (the matchedAskRule equivalent); any other ask 4; allow 1. The source's soft ask 3, passthrough 2 and rule-only allow 0 have no host producer: an allow carries no reason tree, no reading result is a passthrough, and every host ask carries a mode or rule reason.",
+    "The host applies its mode hold inside decideOnce, so a mode ask reaches the ranking with no floor and ranks 4. The recovered order applies the hold after the reading combination; for every host-producible case, ranking the hold as a plain ask gives the same decision, because a rule ask from an alternate still outranks it and it still outranks an allow.",
+    "ior's soft-ask downgrade is not ported: the host produces no soft ask, and the entry $pn turns every passthrough back into an ask, so the downgrade could not end in an allow.",
     "The alternate-ask winner keeps its own floor and is reported with the reading that raised it.",
     "The bypass guard on the synthetic ask is the host's standing stand-in for the source mode short-circuit and is unchanged.",
     "Not ported: sfn's read-block projection, $cn's matched-ask upgrade (decideOnce already returns floor 'rule' per reading), and the X3 bypass-immune checks (no host safety-check reasons)."
   ],
   "changedFiles": {
-    "src/permissions.ts": "0b6c3336d68712bb3057fa668b0442c45c0da9924cd5237b3d63716601fc1ac4",
-    "test/shell-permissions.test.ts": "3282a60ae88e659af3947743d9998f553feb1430e37385c382f34bd281630652",
-    "scripts/smoke-shell-order-cli.mjs": "c68aab12dbd4576a1c5ccc058911c87456917d919841b2c518ab62f77de9cda9"
+    "src/permissions.ts": "a0949bb123d682ded76a986212d5cdafbfd952c2c368592100038e81dbfe1dee",
+    "test/shell-permissions.test.ts": "48df6219969cca821fe6a5aad3c3d8290b6d92aa84f2d2b951380068cfc684e6",
+    "scripts/smoke-shell-order-cli.mjs": "9e994ba4c292ee4a4f59f6fde81421b598108d13d4d87533ff854a8975e6589c"
   },
   "identity": {
     "schema": "HarnessContentIdentity.v1",
-    "sha256": "b8546796248cc0c6970cce6e95e256fdd287d57ce82f2b062860fda71fc93ac3",
-    "inputs": "f0733d5c91730a3b22211bb5c35fb99c8427275d80275409a7ef08d9a4d765b2",
-    "validation": "98c62e3fece9943d2e7a88e5384fb3f9a78a1b59dd2364bfad96e4f18aac02b7",
-    "build": "bd1e66533c7956930d5029f53ff96176cfccc70f6becab41cb5519da793a165f",
+    "sha256": "dc976fb5117db23aaab4ad578856cadeef8122dac6c55ac9bd3ec250b62b1bb0",
+    "inputs": "2fb1a90bfcef50369400c7636cae8f4c374e2e48753893deff02929a88ad1a13",
+    "validation": "47eed433de3c1bd9d98af4b098fd56ac3443c5ed50ce2f0cd4f787827f7b07c0",
+    "build": "d274a8878a0e9c5d0006182eaf88c400c1eca8b9fb3fc6d9011c7c689a513454",
     "files": { "inputs": 941, "validation": 360, "build": 662 }
   },
   "validation": {
     "check": "pass",
     "build": "pass",
-    "focusedSuites": { "permissions": "88/88" },
+    "focusedSuites": { "permissions": "68/68 (shell-permissions 8, agent-lifecycle 60)" },
     "fullSuite": "3457/3457 across 118 suites, 0 fail/cancel/skip/todo",
     "loadSensitive": "one full run under concurrent work failed the unrelated migration async-hook timing test at 4361 ms; it passes in isolation (323 ms) and in the clean rerun",
     "drivers": [
       {
         "name": "smoke-shell-order-cli.mjs",
-        "source": "pass, 3 cases x 2 owned loopback requests",
-        "baseline": "pass on a build of HEAD, asserting the pre-change answers for all 3 cases"
+        "source": "pass, 2 cases (alternate ask, auto-mode alternate ask) against the owned loopback server; identity dc976fb5",
+        "baseline": "pass on a build of 4a1b14b (identity 7a5d4ab1d6dd799a4a3af4a9866a18e8c2cef15577f0e02061cab316b2b02286), asserting that the alternate ask keeps its reason and the auto-mode line is downgraded and runs"
       }
     ],
-    "redBaseline": "the new group fails against HEAD's src/permissions.ts; the driver fails the new assertions on a build of HEAD"
+    "redBaseline": "the new group fails against 4a1b14b's src/permissions.ts (the auto-mode allow); the driver fails the new assertions on a build of 4a1b14b"
   },
   "knownLimitations": [
-    "The soft-ask downgrade returns an allow without the passthrough message; the host's allow has no message channel.",
-    "The host's soft-ask classification is tied to mode 'auto' because that is the only place it produces the recovered other-reason ask.",
+    "The host applies its mode hold inside decideOnce, before the reading combination, so the hold ranks as a plain ask instead of being applied after the combination as the recovered order does. For every host-producible case the decision is the same.",
+    "The host has no producer for a soft ask, a passthrough or a rule-only allow, so those Lcn ranks have no host input and ior's soft-ask downgrade is not ported.",
     "sfn's read-block projection is not ported: the host has no read-block ask.",
     "The X3 bypass-immune safety checks have no host producer."
   ],
+  "review": {
+    "commit": "4a1b14b",
+    "findings": [
+      "High: the ior downgrade was ported as 'return the primary allow', so in auto mode an alternate soft ask let the command run. The entry $pn converts every passthrough back to an ask, so the recovered result is never an allow. Repaired by removing the soft-ask rank and the downgrade; the alternate ask now always wins as an ask.",
+      "Medium: the record and the source comment claimed passthrough 'maps to allow' and that the auto hold is the $pn reroute. The reroute is gated by hor and runs after ior, so it cannot be a DTr input. Repaired by stating the host adaptation: the mode hold ranks as a plain ask and no soft ask exists to downgrade.",
+      "Low: the autoRuleAsk assertion also passes on the previous build. Kept as a guard; the distinguishing compiled baseline is the auto case, which the previous build allows.",
+      "Low: --baseline was not pinned to a build. The baseline branch now asserts the 4a1b14b build's answers, and the baseline identity is recorded."
+    ]
+  },
   "notPorted": [
     "sfn's read-block ask projection (VW)",
     "$cn's matched-ask upgrade as a separate step",

@@ -423,25 +423,23 @@ function withCommand(input: unknown, command: string): unknown {
 
 /**
  * The recovered `Lcn` strictness rank (chunk-sfn1dbxq.js [3234326,3234534)):
- * deny 6, an ask that matched a rule 5, a soft ask 3, any other ask 4, allow 1.
- * An allow whose reason is entirely a rule ranks 0 in the source (`ize`) and
- * passthrough ranks 2; the host has neither, because an allow carries no reason
- * tree and no reading result is a passthrough. `m0` marks a matched ask rule,
- * which is the host's `floor: 'rule'` ask.
+ * deny 6, an ask that matched a rule 5, any other ask 4, allow 1. The source
+ * also ranks a soft ask 3, a passthrough 2 and a rule-only allow 0; the host
+ * has no producer for those, because an allow carries no reason tree, no
+ * reading result is a passthrough, and every host ask carries a mode or rule
+ * reason. `m0` marks a matched ask rule, which is the host's `floor: 'rule'`
+ * ask.
  *
- * `jwe` treats an ask as soft when it has no matched ask rule and its reason is
- * absent or `type: "other"`. The host's one such ask is the auto-mode hold:
- * `$pn` reroutes it to `{type: "other", reason: srn}` (chunk-sfn1dbxq.js
- * [3360777,3364305)), so an auto ask with no floor is soft.
+ * The host applies its mode hold inside `decideOnce`, so a mode ask reaches
+ * this ranking with no floor and is ranked as a plain ask. The recovered order
+ * applies the hold after the reading combination; for every case the host can
+ * produce, ranking the hold as a plain ask gives the same decision, because a
+ * rule ask from an alternate still outranks it and it still outranks an allow.
  */
-function softAsk(decision: PermissionDecision, mode: string | undefined): boolean {
-  return decision.decision === 'ask' && decision.floor === undefined && mode === 'auto';
-}
-
-function readingRank(decision: PermissionDecision, mode: string | undefined): number {
+function readingRank(decision: PermissionDecision): number {
   switch (decision.decision) {
     case 'allow': return 1;
-    case 'ask': return decision.floor === 'rule' ? 5 : softAsk(decision, mode) ? 3 : 4;
+    case 'ask': return decision.floor === 'rule' ? 5 : 4;
     case 'deny': return 6;
   }
 }
@@ -477,12 +475,13 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
     }
   }
   // The recovered `DTr` (chunk-sfn1dbxq.js [3234534,3234967)) lets the
-  // strictest reading decide: a denial anywhere wins, then a primary ask that
-  // is not soft returns before any ranking, then the highest `Lcn` rank among
-  // the primary and the alternates. A non-exhaustive set whose winner is not an
-  // ask becomes an ask of its own. The call site (`ior`, [3253708,3254351))
-  // then downgrades a soft ask from the alternates to a passthrough, which is
-  // the host's allow.
+  // strictest reading decide: a denial anywhere wins, then the highest `Lcn`
+  // rank among the primary and the alternates. A non-exhaustive set whose
+  // winner is not an ask becomes an ask of its own. The call site `ior`
+  // ([3253708,3254351)) downgrades a soft ask from the alternates to a
+  // passthrough, but the entry `$pn` ([3360777,3364305)) turns every
+  // passthrough back into an ask, so that path still asks; the host produces
+  // no soft ask to downgrade in the first place.
   const mode = session?.mode ?? policy?.mode;
   const alternates: { decision: PermissionDecision; reading: string }[] = [];
   for (const reading of readings) {
@@ -493,17 +492,15 @@ function applyShellReadings(policy: PermissionPolicy | undefined, tool: ToolDefi
     }
     alternates.push({ decision, reading });
   }
-  if (baseline.decision === 'ask' && !softAsk(baseline, mode)) return baseline;
   let winner = baseline;
   let winnerReading: string | undefined;
   for (const alternate of alternates) {
-    if (readingRank(alternate.decision, mode) > readingRank(winner, mode)) {
+    if (readingRank(alternate.decision) > readingRank(winner)) {
       winner = alternate.decision;
       winnerReading = alternate.reading;
     }
   }
   if (winnerReading !== undefined) {
-    if (softAsk(winner, mode)) return baseline;
     return { ...winner, reason: `Alternate command reading requires approval: ${winnerReading}` };
   }
   if (baseline.decision === 'allow' && mode !== 'bypass' && !exhaustive) {
