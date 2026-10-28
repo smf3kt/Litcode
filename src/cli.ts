@@ -23,7 +23,7 @@ import { beginSpinnerTipsStartup } from './spinner-tips.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { sourceSkillArgumentsDefault } from './skill-arguments.js';
 import { runMcpPrompt } from './mcp-prompt-run.js';
-import { agentTypesSection, skillsSection, setHeldSkills } from './skill-catalog.js';
+import { agentTypesSection, setHeldSkills } from './skill-catalog.js';
 import { listSessions } from './sessions.js';
 import { loadProjectConfig, defaultUserDir, instructionSources, refreshPolicyHelperInstructions, type LoadedConfig } from './config.js';
 import { refuseBypassUnderRoot } from './bypass-guard.js';

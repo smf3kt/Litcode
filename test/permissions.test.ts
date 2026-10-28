@@ -297,3 +297,33 @@ test('a managed policy replaces the policySettings layer and the rules it seeded
   bindPermissionOwner(config.permissions, { state: () => state, workingDirectories: () => [] });
   assert.equal(permissionDecision(config.permissions, tool('write_file', false), {}).decision, 'allow');
 });
+
+test('a managed refresh keeps the policySettings slot before the CLI layer', () => {
+  const workspace = '/tmp/managed-slot-fixture';
+  const config = defaultConfig(workspace, []);
+  config.permissions = { mode: 'default', allow: [], deny: [], ask: [], additionalDirectories: [], layers: [
+    { source: 'userSettings', root: workspace, allow: [], deny: [], ask: [], additionalDirectories: [] },
+    { source: 'policySettings', root: workspace, allow: [], deny: ['write_file'], ask: [], additionalDirectories: [] },
+    { source: 'cliArg', root: workspace, allow: ['read_file'], deny: [], ask: [], additionalDirectories: [] },
+  ] };
+  applyManagedPolicy(config, { permissions: { mode: 'default', allow: [], deny: ['run_command'], ask: [], additionalDirectories: [] } });
+  // The CLI records the last layer for reload, so the refresh must not move the
+  // managed layer behind it.
+  assert.deepEqual(config.permissions?.layers?.map(layer => layer.source), ['userSettings', 'policySettings', 'cliArg']);
+  assert.deepEqual(config.permissions?.layers?.at(-1)?.allow, ['read_file']);
+});
+
+test('a managed document that drops permissions removes the policySettings layer', () => {
+  const workspace = '/tmp/managed-drop-fixture';
+  const config = defaultConfig(workspace, []);
+  config.permissions = { mode: 'default', allow: [], deny: [], ask: [], additionalDirectories: [], layers: [
+    { source: 'policySettings', root: workspace, allow: [], deny: ['write_file'], ask: [], additionalDirectories: [] },
+    { source: 'cliArg', root: workspace, allow: [], deny: [], ask: [], additionalDirectories: [] },
+  ] };
+  applyManagedPolicy(config, { allowShell: false });
+  assert.deepEqual(config.permissions?.layers?.map(layer => layer.source), ['cliArg']);
+  // An auto-mode-only document still owns the layer, without rules.
+  applyManagedPolicy(config, { autoMode: { allow: ['sleep'] } });
+  assert.deepEqual(config.permissions?.layers?.map(layer => layer.source), ['policySettings', 'cliArg']);
+  assert.deepEqual(config.permissions?.layers?.[0]?.autoMode, { allow: ['sleep'] });
+});

@@ -64,6 +64,11 @@ test("reload refreshes local catalogs and policy without mutating pinned provide
     assert.equal(next.editorMode,'vim');assert.deepEqual(next.vimInsertModeRemaps,{jj:'<Esc>',invalid:42});
     assert.equal(next.keybindings?.["\u0013"], "submit");
     assert.match(next.system, /Reloaded instruction/); assert.equal(next.skills?.[0]?.name, "new");
+    // The helper tier is journaled on the session, so a reload rebuilds it from
+    // the journal instead of dropping it with the previous instruction set.
+    const withHelper = reloadConfig({ ...current, policyHelperText: "HELPER_RELOAD_TEXT" });
+    assert.match(withHelper.system, /HELPER_RELOAD_TEXT/);
+    assert.equal(withHelper.policyHelperText, "HELPER_RELOAD_TEXT");
     assert.equal(JSON.stringify(current), before);
     const policy = path.join(root, "managed.json");
     fs.writeFileSync(path.join(root, ".harness/settings.json"), "{}");

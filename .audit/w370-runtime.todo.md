@@ -6,7 +6,8 @@
 - [x] Repair the defect the driver surfaced: `applyManagedPolicy` rebuilds the `policySettings` layer and the settle re-seeds the live permission owner.
 - [x] Add two policy-helper groups, one config group, one extended agent-registry group and one permissions group; extend `scripts/smoke-policy-helper-cli.mjs` to five cases including an interval rewrite over a slow shell call.
 - [x] Run check, build, focused 159/159, the source and compiled driver, and the full suite 3449/3449; freeze identity e7e429ec (939/360/662).
-- [ ] One bounded independent review; record its verdict.
+- [x] One bounded independent review; record its verdict: five findings plus a minor. Two layer defects confirmed and repaired (slot before cliArg; layer removed when the document drops permissions), the fallback schema repaired, one pre-existing in-place rewrite edge case recorded, the CLI settle wiring left to the compiled driver, and the unused import removed.
+- [x] Repair round: check/build, focused 162/162, full 3451/3451, driver source and compiled, identity 9fc6595e (939/360/662).
 - [x] Update CURRENT, FEATURES, partial-closure, the W369 review disposition and the package record (W370-policy-helper-instructions.md plus evidence JSON).
 - [ ] Commit exact paths locally after the review verdict.
 

@@ -30,7 +30,7 @@ Artifact SHA-256 c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb41993
 
 ## Host adaptations
 
-- `managedHelperSchema` (session.ts) is the strict managed-policy schema plus `claudeMd: z.string().optional()`. The CLI validates the helper document with it and the settings `policyHelper.defaultPolicy` uses it.
+- `managedHelperSchema` (session.ts) is the strict managed-policy schema plus `claudeMd: z.string().optional()`. The CLI validates the helper document with it. The settings `policyHelper.defaultPolicy` keeps the plain managed schema: the settle only takes text from a document the helper served, and the recovered static default output carries no text, so a fallback `claudeMd` would never apply.
 - `loadProjectConfig` and `loadChildInstructions` take `policyHelperText` and insert it under `POLICY_HELPER_SENTINEL` (`<policyHelper>`) after the managed directory's own files and before the settings document's `claudeMd`, the `qZn` order.
 - The host builds a session prompt once, so `refreshPolicyHelperInstructions` (config.ts) re-reads the instruction set with the new text and rewrites the section in place, keeping memory blocks and journaling `policyHelperText`. The CLI settle calls it on every refresh with the governing text; `reloadConfig` and every child build forward the journaled text.
 - The text is taken from the helper tier only (`serving === "helper"`), matching `lr()?.claudeMd`; the static default output carries no text.
@@ -66,3 +66,17 @@ node --import tsx --test test/policy-helper.test.ts test/config.test.ts test/age
 node scripts/smoke-policy-helper-cli.mjs
 node scripts/smoke-policy-helper-cli.mjs --compiled
 ```
+
+## Review disposition (2026-10-28)
+
+One bounded independent review read the committed change and returned five findings plus a minor. Disposition:
+
+1. **Confirmed, repaired.** `applyManagedPolicy` appended the rebuilt `policySettings` layer at the end, so after startup it sat behind the `cliArg` layer and the CLI's reload capture (`layers.at(-1)`) recorded the managed layer. `/reload` would then lose the `--allow-tool`/`--deny-tool` layer. The layer is now replaced in the slot it already occupies, or inserted before `cliArg` when the document first declares one; `test/permissions.test.ts` asserts the source order and that the last layer stays the CLI's.
+2. **Confirmed, repaired.** The layer was rebuilt only when the new document carried `permissions`, so a helper document that dropped the block left the previous layer in force. The rebuild now also removes the layer when the document declares no layer field (`permissions`, `autoMode`, `useAutoModeDuringPlan`), and an auto-mode-only document still owns a rule-free layer. Both cases are asserted.
+3. **Confirmed, repaired.** `policyHelper.defaultPolicy` accepted `claudeMd` through `managedHelperSchema` while the settle ignores a fallback's text. The fallback now uses `managedPolicySchema`, so the key is refused rather than silently unused.
+4. **Confirmed as a pre-existing edge case, recorded.** `replaceInstructionSection` finds the previous block span by `Instructions from <path>:` headers, so a previous file whose own text contains such a header line can move the cut inside the old section and re-append its tail. The function predates this package and serves every instruction refresh (W368 onward); the recovered product rebuilds its user context instead of cutting a span, so the in-place rewrite is the host adaptation that carries the edge case. Fixing it needs a block-identity signal the prompt text does not carry.
+5. **Coverage, partially addressed.** `test/reload.test.ts` now asserts the journaled helper tier survives a reload. The CLI settle wiring itself stays covered by the compiled driver rather than a unit test, which is the project's convention for CLI wiring.
+
+Minor: the unused `skillsSection` import is removed, and `SessionConfig['managedPolicy']` is now the schema's own inferred type so a field the schema accepts is a field the type carries.
+
+After the repairs: check and build pass, focused suites 162/162, full suite 3451/3451 across 118 suites, driver passes in source and compiled modes, identity 9fc6595ea3d22cc2aa666e84e6c1a8b0cccc12972a280d19eff72bfe326731c6 (939/360/662).

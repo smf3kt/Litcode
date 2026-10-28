@@ -70,8 +70,9 @@ export type SessionConfig = {
   /** Per-spawn `agent({stallMs})`: abort a model request that makes no progress
    *  for this many milliseconds (source `AGr`/`_0t`). */
   stallMs?: number;
-  managedPolicy?: { allowShell?: boolean; permissions?: PermissionPolicy;
-    features?: Partial<NonNullable<SessionConfig['features']>>; mcpClient?: SessionConfig['mcpClient'] };
+  /** The same document `managedPolicySchema` parses, so a field the schema
+   *  accepts is also a field the type carries (`autoMode`, `useAutoModeDuringPlan`). */
+  managedPolicy?: z.infer<typeof managedPolicySchema>;
   policyHelper?: { path: string; intervalMs?: number; defaultPolicy?: SessionConfig['managedPolicy'] };
   skills?: SkillInfo[];
   /** Bumped when the installed plugin catalog changes under a live session. */
@@ -218,19 +219,41 @@ export function applyManagedPolicy(config: SessionConfig, policy: SessionConfig[
   const parsed = managedPolicySchema.parse(policy);
   config.managedPolicy = structuredClone(parsed);
   if (parsed.allowShell !== undefined) config.allowShell = parsed.allowShell;
-  if (parsed.permissions !== undefined) {
-    // The managed document also owns the `policySettings` permission layer
-    // (`loadProjectConfig`, the same document read once), so a refreshed policy
-    // replaces that layer instead of leaving the previous one in force.
-    const rules = parsed.permissions;
-    const layers = (config.permissions?.layers ?? []).filter(layer => layer.source !== 'policySettings');
-    layers.push(permissionLayerSchema.parse({ source: 'policySettings', root: config.workspace,
-      ...(parsed.autoMode === undefined ? {} : { autoMode: parsed.autoMode }),
-      ...(parsed.useAutoModeDuringPlan === undefined ? {} : { useAutoModeDuringPlan: parsed.useAutoModeDuringPlan }),
-      ...(parsed.autoMode?.classifyAllShell === undefined ? {} : { classifyAllShell: parsed.autoMode.classifyAllShell }),
-      allow: rules.allow ?? [], deny: rules.deny ?? [], ask: rules.ask ?? [],
-      additionalDirectories: rules.additionalDirectories ?? [] }));
-    config.permissions = { ...structuredClone(rules), layers };
+  // The managed document also owns the `policySettings` permission layer
+  // (`loadProjectConfig` reads the same document), so a refreshed policy
+  // replaces that layer in the slot it already occupies. A document that stops
+  // declaring a layer field removes the layer instead of leaving the previous
+  // one in force.
+  const layerFields = parsed.permissions !== undefined || parsed.autoMode !== undefined || parsed.useAutoModeDuringPlan !== undefined;
+  const permissionPolicy = config.permissions;
+  const existingLayers = permissionPolicy?.layers;
+  if (existingLayers !== undefined) {
+    const at = existingLayers.findIndex(layer => layer.source === 'policySettings');
+    if (layerFields || at !== -1) {
+      const rest = existingLayers.filter(layer => layer.source !== 'policySettings');
+      if (layerFields) {
+        const rules = parsed.permissions;
+        const layer = permissionLayerSchema.parse({ source: 'policySettings', root: config.workspace,
+          ...(parsed.autoMode === undefined ? {} : { autoMode: parsed.autoMode }),
+          ...(parsed.useAutoModeDuringPlan === undefined ? {} : { useAutoModeDuringPlan: parsed.useAutoModeDuringPlan }),
+          ...(parsed.autoMode?.classifyAllShell === undefined ? {} : { classifyAllShell: parsed.autoMode.classifyAllShell }),
+          allow: rules?.allow ?? [], deny: rules?.deny ?? [], ask: rules?.ask ?? [],
+          additionalDirectories: rules?.additionalDirectories ?? [] });
+        // The loaded layer sits before the `cliArg` layer, and the CLI records
+        // the last layer as the one reload must re-add; keeping the slot keeps
+        // that capture the CLI's own.
+        const before = at === -1
+          ? rest.findIndex(item => item.source === 'cliArg')
+          : existingLayers.slice(0, at).filter(item => item.source !== 'policySettings').length;
+        rest.splice(before === -1 ? rest.length : before, 0, layer);
+      }
+      if (parsed.permissions !== undefined) {
+        const { layers: _declared, ...rules } = parsed.permissions;
+        config.permissions = { ...structuredClone(rules), layers: rest };
+      } else {
+        config.permissions = { ...permissionPolicy!, layers: rest };
+      }
+    }
   }
   if (parsed.allowManagedPermissionRulesOnly !== undefined && config.permissions) config.permissions.managedOnly = parsed.allowManagedPermissionRulesOnly;
   if (parsed.features) config.features = { tasks: true, subagents: true, ...config.features, ...parsed.features };
@@ -266,9 +289,12 @@ export const configSchema = z.object({
   // is read once and is fatal when unusable: a helper is expected to change under
   // the session, so a failed read degrades to its static default or to the last
   // successful output, while a structurally invalid document is still refused.
+  // The fallback is applied as a managed policy, so it carries no instruction
+  // tier: the recovered static default output has no `claudeMd` (chunk-x0dc37w9.js
+  // 56953), and the settle only takes text from a document the helper served.
   policyHelper: z.object({ path: z.string().min(1),
     intervalMs: z.number().int().positive().max(86_400_000).optional(),
-    defaultPolicy: managedHelperSchema.optional() }).strict().optional(),
+    defaultPolicy: managedPolicySchema.optional() }).strict().optional(),
   skills: z.array(z.object({ name: z.string().min(1), description: z.string(), path: z.string(), body: z.string(), source: z.enum(['userSettings', 'projectSettings', 'plugin']).optional(), format: z.enum(['skill', 'command']).optional(), plugin: z.string().optional(), disallowedTools: z.array(z.string()).optional(), userInvocable: z.boolean(), disableModelInvocation: z.boolean(), mode: z.enum(['on', 'name-only', 'user-invocable-only', 'off']).optional(),
     paths: z.array(z.string()).optional(),
     allowedTools: z.array(z.string()).optional(), argumentNames: z.array(z.string().refine(name => name.trim() !== '' && !/^\d+$/.test(name), 'argument names must be non-empty and not all digits')).optional(), model: z.string().optional(), effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(), context: z.literal('fork').optional(), agent: z.string().trim().min(1).max(128).optional(), background: z.boolean().optional(),
