@@ -121,6 +121,33 @@ test("hook display fields persist across resume and suppression preserves model 
     } finally { reopened.close(); }
   } finally { session.close(); }
 });
+test("hook display stays inside the byte budget and keeps the raw PostCompact record", async () => {
+  const root = workspace();
+  fs.writeFileSync(path.join(root, "compact-output"), "RAW\u001b[2J " + "界".repeat(40));
+  const hooks = {
+    Notification: [{ command: emit({ systemMessage: "S".repeat(20) + "\u001b[31m", additionalContext: "C".repeat(60) }) }],
+    PostCompact: [{ command: "cat compact-output" }],
+  };
+  const session = Session.open(root, { config: config(root, [], { hooks, maxOutputBytes: 96 }) });
+  const status: string[] = [];
+  try {
+    const agent = new Agent(session, new ScriptedProvider([]), [], { status: text => status.push(text) });
+    await agent.emitHook("Notification", {});
+    assert.equal(status.length, 2);
+    assert.ok(status.every(line => line.startsWith("hook Notification: ")));
+    assert.ok(status[1]!.includes("[truncated]"));
+    assert.equal(status.join("").includes("\u001b"), false);
+    assert.equal(status.join("").includes("�"), false);
+    assert.ok(status.reduce((bytes, line) => bytes + Buffer.byteLength(line) + 1, 0) <= 96);
+    status.length = 0;
+    await agent.emitHook("PostCompact", {});
+    assert.equal(status.length, 1);
+    assert.ok(status[0]!.startsWith("hook PostCompact: PostCompact [cat compact-output] completed successfully: RAW"), status[0]);
+    assert.ok(status[0]!.includes("[truncated]"));
+    assert.equal(status[0]!.includes("\u001b"), false);
+    assert.ok(Buffer.byteLength(status[0]!) + 1 <= 96);
+  } finally { session.close(); }
+});
 test("instruction and file events carry the recovered payload fields", async () => {
   const root = workspace();
   const captured = path.join(root, "captured");

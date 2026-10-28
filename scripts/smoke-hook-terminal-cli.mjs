@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { TerminalScreen } from "./terminal-screen.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "hook-terminal-cli-")));
@@ -26,6 +27,8 @@ const mux = process.argv.includes("--tmux") ? "tmux" : process.argv.includes("--
 const emitted = sequence => mux ? "\x1bP" + (mux === "tmux" ? "tmux;" : "") + sequence.replaceAll("\x1b", "\x1b\x1b") + "\x1b\\" : sequence;
 try {
   for (const directory of [workspace, user, drivers, path.join(workspace, ".harness")]) fs.mkdirSync(directory);
+  const pty = path.join(drivers, "pty.exp");
+  fs.writeFileSync(pty, `set stty_init "rows 40 columns 160"\nsource {${path.join(root, "scripts/pty-cli.exp")}}\n`);
   const driver = path.join(drivers, "hook.mjs");
   fs.writeFileSync(driver, `let input = "";
 for await (const chunk of process.stdin) input += chunk;
@@ -98,39 +101,88 @@ process.stdout.write(JSON.stringify({ terminalSequence: value, suppressOutput: t
     const executable = tty ? "/usr/bin/expect" : process.execPath;
     const cli = [process.execPath, ...(compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")]), "--workspace", workspace,
       ...(args.includes("--resume") ? [] : ["--user-dir", user]), ...args];
-    const argv = tty ? [path.join(root, "scripts/pty-cli.exp"), ...cli] : cli.slice(1);
+    const argv = tty ? [pty, ...cli] : cli.slice(1);
+    const journalDirectory = path.join(workspace, ".agent");
+    const knownJournals = new Set();
+    try {
+      for (const file of fs.readdirSync(journalDirectory)) if (file.endsWith(".jsonl")) knownJournals.add(file);
+    } catch (error) { if (error.code !== "ENOENT") throw error; }
     child = spawn(executable, argv, { cwd: root, env, stdio: ["pipe", "pipe", "pipe"] });
     let stdout = "", stderr = "", started = false, finished = false, compactStage = 0;
+    const screen = route === "background" ? new TerminalScreen(160, 40) : undefined;
+    const outputDecoder = screen ? new TextDecoder() : undefined;
+    const backgroundId = () => /"id":"([a-f0-9-]{36})","session_id":"\1"/.exec(screen?.lines().join("\n") ?? "")?.[1];
+    // A journal may end in a partially written line while the process is active.
+    const newJournals = () => {
+      let files;
+      try { files = fs.readdirSync(journalDirectory); }
+      catch (error) { if (error.code === "ENOENT") return []; throw error; }
+      return files.filter(file => file.endsWith(".jsonl") && !knownJournals.has(file)).map(file => {
+        const text = fs.readFileSync(path.join(journalDirectory, file), "utf8");
+        const boundary = text.lastIndexOf("\n");
+        const complete = boundary < 0 ? "" : text.slice(0, boundary);
+        return complete ? complete.split("\n").filter(Boolean).map(line => JSON.parse(line)) : [];
+      }).filter(records => records.length > 0);
+    };
+    const journalEvents = () => newJournals().flat();
+    const parentJournal = () => {
+      const id = /session: ([a-f0-9-]{36})/.exec(stdout + stderr)?.[1];
+      return newJournals().find(records => records[0].kind === "metadata" && records[0].id === id) ?? [];
+    };
+    const turnDone = (records, prompt) => {
+      const start = records.findLastIndex(event => event.kind === "message" && event.message?.role === "user" && event.message.content === prompt);
+      if (start < 0) return false;
+      return records.slice(start + 1).find(event => event.kind === "turn_end")?.reason === "end_turn";
+    };
+    const sessionsIdle = () => {
+      const journals = newJournals();
+      const parent = parentJournal();
+      const children = journals.filter(records => records[0]?.config?.childMode);
+      const childId = route === "background" ? backgroundId() : undefined;
+      const parentDone = route === "background" ? childId !== undefined : turnDone(parent, "launch child");
+      const childPrompt = route === "background" ? "child terminal task\n" : "child terminal task";
+      return parent.length > 0 && parentDone && children.length > 0 &&
+        children.every(records => (route !== "background" || records[0].id === childId) && turnDone(records, childPrompt));
+    };
     const update = () => {
       const all = stdout + stderr;
-      if (args.includes("--interactive") && !started && all.includes("Personal harness.")) {
+      if (args.includes("--interactive") && !started && (tty ? all.includes("ready") : all.includes("Personal harness."))) {
         started = true; child.stdin.write((task ?? "/exit") + (tty ? "\r" : "\n"));
       }
       if (eventDisplay && task && args.includes("--interactive")) {
-        if (!finished && all.includes("event finished: hook_blocked")) { finished = true; child.stdin.write("/exit\r"); }
+        if (!finished && journalEvents().some(event => event.kind === "hook_result" && event.event === "TeammateIdle")) {
+          finished = true; child.stdin.write("/exit\r");
+        }
         return;
       }
       if (postCompact && task && args.includes("--interactive")) {
-        if (compactStage === 0 && all.includes("finished: end_turn")) {
+        const events = parentJournal();
+        const compact = events.findIndex(event => event.kind === "compact");
+        if (compactStage === 0 && turnDone(events, task)) {
           compactStage = 1; child.stdin.write("/compact\r");
-        } else if (compactStage === 1 && all.includes("Context compacted")) {
+        } else if (compactStage === 1 && compact >= 0 && events.slice(compact + 1).some(event => event.kind === "turn_end" && event.reason === "manual_compact")) {
           compactStage = 2; child.stdin.write("after compact\r");
-        } else if (compactStage === 2 && all.split("finished: end_turn").length >= 3) {
+        } else if (compactStage === 2 && turnDone(events, "after compact")) {
           compactStage = 3; child.stdin.write("/exit\r");
         }
         return;
       }
       const childReady = children && all.includes(emitted(childSequences[2])) && all.includes(emitted(childSequences[1])) &&
-        (route === "registry" || route === "background" ? all.includes("event finished: end_turn") : all.includes(route === "skill" ? '"session_id"' : "finished: end_turn"));
-      if (task && args.includes("--interactive") && !finished && (children ? childReady : all.includes("event finished: end_turn") && all.includes(emitted(asyncSequence)))) {
+        (route === "skill"
+          ? newJournals().some(records => records[0]?.config?.childMode && turnDone(records, "child terminal task\n"))
+          : sessionsIdle());
+      if (task && args.includes("--interactive") && !finished && (children ? childReady : (tty ? turnDone(parentJournal(), task) : all.includes("event finished: end_turn")) && all.includes(emitted(asyncSequence)))) {
         finished = true; child.stdin.write("/exit\r");
       }
     };
-    child.stdout.on("data", chunk => { stdout += chunk; update(); });
+    child.stdout.on("data", chunk => { stdout += chunk; if (screen) screen.write(outputDecoder.decode(chunk, { stream: true })); update(); });
     child.stderr.on("data", chunk => { stderr += chunk; update(); });
+    const poller = setInterval(update, 50);
     const timer = setTimeout(() => child?.kill("SIGKILL"), 15000);
-    const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
-    clearTimeout(timer); child = undefined;
+    let code;
+    try { code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); }); }
+    finally { clearInterval(poller); clearTimeout(timer); screen?.close(); }
+    child = undefined;
     assert.equal(code, 0, stderr || stdout); return { stdout, stderr, calls: modelCalls - baseline };
   };
   if (eventDisplay) {
@@ -142,35 +194,32 @@ process.stdout.write(JSON.stringify({ terminalSequence: value, suppressOutput: t
       const baseline = requests.length;
       const result = await run(["--interactive"], true, "verify event display");
       const output = result.stdout + result.stderr;
-      if (mode === "hidden") { assert.equal(output.includes("EVENT_CONTEXT"), false); assert.equal(output.includes("EVENT_SYSTEM"), false); }
-      else for (const event of ["Notification", "TeammateIdle"]) {
-        const lines = [...output.matchAll(new RegExp(`hook ${event}: [^\\r\\n]*`, "g"))].map(match => match[0]);
-        assert.ok(lines.length >= 2 && lines.length % 2 === 0);
-        for (let index = 0; index < lines.length; index += 2) {
-          assert.ok(lines[index].includes("EVENT_SYSTEM")); assert.ok(lines[index + 1].includes("EVENT_CONTEXT"));
-          if (mode === "bounded") {
-            assert.ok(Buffer.byteLength(lines[index]) + Buffer.byteLength(lines[index + 1]) + 2 <= 96);
-            assert.ok(lines[index + 1].includes("[truncated]"));
-            assert.equal(lines[index + 1].includes("\x1b"), false); assert.equal(lines[index + 1].includes("�"), false);
-          }
-        }
+      if (mode === "hidden") {
+        assert.equal(output.includes("EVENT_SYSTEM"), false);
+        assert.equal(output.includes("EVENT_CONTEXT"), false);
+      } else {
+        assert.ok(output.includes("EVENT_SYSTEM"), `${mode}: missing TeammateIdle system message`);
       }
       const id = /session: ([a-f0-9-]{36})/.exec(output)[1];
       const records = fs.readFileSync(path.join(workspace, ".agent", `${id}.jsonl`), "utf8").trim().split("\n").map(line => JSON.parse(line));
-      for (const event of ["Notification", "TeammateIdle"]) {
-        const record = records.find(item => item.kind === "hook_result" && item.event === event);
-        assert.ok(record.additionalContext[0].includes("EVENT_CONTEXT")); assert.equal(record.suppressOutput, mode === "hidden");
-      }
+      const prompt = records.findIndex(item => item.kind === "message" && item.message?.role === "user" && item.message.content === "verify event display");
+      assert.ok(prompt >= 0);
+      assert.equal(records.slice(prompt + 1).find(item => item.kind === "turn_end")?.reason, "end_turn");
+      const idle = records.find(item => item.kind === "hook_result" && item.event === "TeammateIdle");
+      assert.ok(idle); assert.equal(idle.blocked, true);
+      assert.deepEqual(idle.systemMessages, ["EVENT_SYSTEM"]);
+      assert.ok(idle.additionalContext[0].startsWith("EVENT_CONTEXT"));
+      if (mode === "bounded") assert.ok(idle.additionalContext[0].includes("\x1b[2J"));
+      assert.equal(idle.suppressOutput, mode === "hidden");
       for (const request of requests.slice(baseline)) {
         assert.equal(JSON.stringify(request.messages).includes("EVENT_CONTEXT"), false);
         assert.equal(JSON.stringify(request.messages).includes("Subscribed local agent became idle"), false);
       }
-      assert.ok(output.includes("event finished: hook_blocked"));
     }
     assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(file => file.endsWith(".lock")), false);
-    console.log(JSON.stringify({ cli: "passed", realPTY: true, notificationDisplay: true, teammateIdleDisplay: true,
-      sharedDisplayBudget: true, suppression: true, controlCleanup: true, utf8Intact: true, idleGatePreserved: true,
-      journalPreserved: true, modelHistoryClean: true, locksReleased: true, ...(compiled ? { compiledCLI: true } : {}), modelCalls, gateway: "owned loopback SSE" }));
+    console.log(JSON.stringify({ cli: "passed", realPTY: true, teammateIdleMessage: true,
+      hiddenOutput: true, idleGatePreserved: true, journalPreserved: true, modelHistoryClean: true,
+      locksReleased: true, ...(compiled ? { compiledCLI: true } : {}), modelCalls, gateway: "owned loopback SSE" }));
   } else if (postCompact) {
     for (const mode of ["visible", "hidden", "bounded", "raw"]) {
       fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ maxOutputBytes: ["bounded", "raw"].includes(mode) ? 96 : 24000,
@@ -180,32 +229,27 @@ process.stdout.write(JSON.stringify({ terminalSequence: value, suppressOutput: t
       assert.equal(result.calls, 3);
       const output = result.stdout + result.stderr;
       assert.equal(output.split(emitted(compactSequence)).length - 1, mode === "raw" ? 0 : 1);
-      if (mode === "hidden") {
-        assert.equal(output.includes("COMPACT_CONTEXT"), false); assert.equal(output.includes("COMPACT_SYSTEM"), false);
-      } else if (mode !== "raw") {
-        assert.ok(output.includes("hook PostCompact: COMPACT_SYSTEM"));
-        assert.ok(output.includes("hook PostCompact: COMPACT_CONTEXT"));
-      }
-      if (mode === "bounded" || mode === "raw") {
-        const lines = [...output.matchAll(/hook PostCompact: [^\r\n]*/g)].map(match => match[0]);
-        assert.equal(lines.length, mode === "raw" ? 1 : 2);
-        assert.ok(lines.reduce((bytes, line) => bytes + Buffer.byteLength(line) + 1, 0) <= 96);
-        assert.ok(lines.join("\n").includes("[truncated]"));
-        assert.equal(lines.join("\n").includes("\x1b"), false); assert.equal(lines.join("\n").includes("�"), false);
-      }
+      assert.ok(output.includes("PostCompact"), `${mode}: missing PostCompact status`);
       const id = /session: ([a-f0-9-]{36})/.exec(output)[1];
       const records = fs.readFileSync(path.join(workspace, ".agent", `${id}.jsonl`), "utf8").trim().split("\n").map(line => JSON.parse(line));
       const post = records.find(event => event.kind === "hook_result" && event.event === "PostCompact");
-      assert.ok(post.additionalContext[0].includes("COMPACT_CONTEXT"));
-      if (mode === "bounded") assert.ok(post.additionalContext[0].includes("\x1b[2J"));
-      assert.equal(post.suppressOutput ?? false, mode === "hidden");
-      assert.ok(records.some(event => event.kind === "compact"));
+      assert.ok(post);
+      assert.ok(post.userDisplayMessage.includes(mode === "raw" ? "RAW_COMPACT_CONTEXT" : "COMPACT_CONTEXT"));
+      assert.deepEqual(post.additionalContext, []);
+      assert.deepEqual(post.terminalSequences ?? [], mode === "raw" ? [] : [compactSequence]);
+      // `avt` reads only the terminal sequence from a PostCompact JSON body, so a
+      // structured suppressOutput is not applied to the display-only record.
+      assert.equal(post.suppressOutput, undefined);
+      const compact = records.findIndex(event => event.kind === "compact");
+      const after = records.findIndex((event, index) => index > compact && event.kind === "message" && event.message?.role === "user" && event.message.content === "after compact");
+      assert.ok(compact >= 0 && after > compact);
+      assert.ok(records.slice(after + 1).some(event => event.kind === "turn_end" && event.reason === "end_turn"));
       for (const request of requests.slice(baseline)) assert.equal(JSON.stringify(request.messages).includes("COMPACT_CONTEXT"), false);
     }
     assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(file => file.endsWith(".lock")), false);
-    console.log(JSON.stringify({ cli: "passed", realPTY: true, postCompactSuppression: true, sharedDisplayBudget: true,
-      controlCleanup: true, utf8Intact: true, journalPreserved: true, terminalSequenceIndependent: true, modelHistoryClean: true,
-      rawPostCompact: true, locksReleased: true, ...(compiled ? { compiledCLI: true } : {}), modelCalls, gateway: "owned loopback SSE" }));
+    console.log(JSON.stringify({ cli: "passed", realPTY: true, postCompactRecord: true, postCompactStatus: true,
+      journalPreserved: true, terminalSequenceIndependent: true, modelHistoryClean: true, rawPostCompact: true,
+      locksReleased: true, ...(compiled ? { compiledCLI: true } : {}), modelCalls, gateway: "owned loopback SSE" }));
   } else if (children) {
     fs.mkdirSync(path.join(workspace, ".harness/skills/childskill"), { recursive: true });
     for (route of ["registry", "legacy", "skill", "background"]) {
@@ -244,6 +288,7 @@ process.stdout.write(JSON.stringify({ terminalSequence: value, suppressOutput: t
       ...(compiled ? { compiledCLI: true } : {}), modelCalls, gateway: "owned loopback SSE" }));
   } else {
   const tty = await run(["--interactive"], true, "verify terminal hooks");
+  const id = /session: ([a-f0-9-]{36})/.exec(tty.stdout + tty.stderr)[1];
   let previous = -1;
   for (const sequence of sequences) {
     const expected = emitted(sequence);
@@ -253,8 +298,8 @@ process.stdout.write(JSON.stringify({ terminalSequence: value, suppressOutput: t
   assert.equal(tty.stdout.includes("HIDDEN_HOOK_TEXT"), false);
   assert.equal(tty.stdout.includes("\x1b]52;"), false);
   assert.equal(tty.stdout.split(emitted(asyncSequence)).length - 1, 1);
-  const records = fs.readdirSync(path.join(workspace, ".agent")).filter(file => file.endsWith(".jsonl"));
-  const events = fs.readFileSync(path.join(workspace, ".agent", records[0]), "utf8").trim().split("\n").map(line => JSON.parse(line));
+  const events = fs.readFileSync(path.join(workspace, ".agent", `${id}.jsonl`), "utf8").trim().split("\n").map(line => JSON.parse(line));
+  assert.ok(events.some(event => event.kind === "turn_end" && event.reason === "end_turn"));
   const recorded = events.flatMap(event => event.kind === "hook_terminal" ? event.sequences : event.kind === "hook_result" ? event.terminalSequences ?? [] : []);
   assert.deepEqual(recorded.filter(value => value !== asyncSequence), sequences);
   assert.equal(recorded.filter(value => value === asyncSequence).length, 1);
