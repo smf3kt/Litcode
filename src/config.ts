@@ -158,6 +158,11 @@ export function instructionSources(files: InstructionFile[]): InstructionSource[
   }));
 }
 
+/** One line naming a skipped external include and the user switch that admits it. */
+export function externalIncludeNotice(include: { path: string; parent?: string }, userDir: string): string {
+  return `instructions: not reading ${include.path}${include.parent === undefined ? "" : ` (imported by ${include.parent})`}: it is outside the workspace. Set approveExternalIncludes to true in ${path.join(userDir, "settings.json")} to read external includes.`;
+}
+
 export interface ConditionalRule extends InstructionFile {
   /** Workspace-relative glob patterns; the source is pinned at config load time. */
   patterns: string[];
@@ -498,6 +503,28 @@ function tryRealpath(target: string): string | undefined {
     return fs.realpathSync(target);
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * `Wd` containment with the source's case folding: whether `target` is `root`
+ * or sits inside it. A case-insensitive filesystem can hand back the caller's
+ * spelling from `realpathSync`, so a folded prefix match is confirmed by the
+ * file identity before it counts; a genuinely different file on a
+ * case-sensitive volume stays outside.
+ */
+function insideRoot(target: string, root: string): boolean {
+  const relative = path.relative(root, target);
+  if (relative === "" || (!path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(".." + path.sep))) return true;
+  const folded = target.toLowerCase();
+  const foldedRoot = root.toLowerCase();
+  if (folded !== foldedRoot && !folded.startsWith(foldedRoot + path.sep)) return false;
+  try {
+    const a = fs.statSync(target);
+    const b = fs.statSync(path.join(root, target.slice(root.length)));
+    return a.dev === b.dev && a.ino === b.ino;
+  } catch {
+    return false;
   }
 }
 
@@ -1475,30 +1502,27 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   const conditionalRules: ConditionalRule[] = [];
   const externalIncludes: NonNullable<LoadedConfig['externalIncludes']> = [];
   const externalIncludeSeen = new Set<string>();
-  // `IL` (chunk-sfn1dbxq.js 656718) is containment in the working directory; a
-  // link is judged by the file it resolves to.
-  const insideWorkspace = (file: string): boolean => {
-    const target = tryRealpath(file) ?? path.resolve(file);
-    return [workspaceReal, workspaceRoot].some(root => {
-      const relative = path.relative(root, target);
-      return relative === "" || (!path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(".." + path.sep));
-    });
-  };
+  const instructionSeen = new Set<string>();
   // `t1` drops an import at depth > 0 that is not inside the working directory
   // unless external includes are approved (chunk-sfn1dbxq.js 661767). The walk
   // stops with the dropped file, so its own imports never load either.
-  function gatedExternalImport(file: string, depth: number, parent: string | undefined): boolean {
-    if (depth === 0 || approveExternalIncludes || insideWorkspace(file)) return false;
-    // The same file can be reached as a pinned rule import and as a body import;
-    // the recovered list is over unique loaded entries, so report it once.
-    if (!externalIncludeSeen.has(file)) {
-      externalIncludeSeen.add(file);
+  const gatedExternalImport = (file: string, depth: number, parent: string | undefined): boolean => {
+    if (depth === 0 || approveExternalIncludes) return false;
+    const real = tryRealpath(file);
+    const target = real ?? path.resolve(file);
+    if ([workspaceReal, workspaceRoot].some(root => insideRoot(target, root))) return false;
+    // A file the loader already read at depth 0 is in the instruction set; an
+    // import of it adds nothing and is not a skipped include.
+    if (real !== undefined && instructionSeen.has(real)) return false;
+    // The same file can be reached as a pinned rule import and as a body import,
+    // or through two spellings; the recovered list is over unique entries.
+    if (!externalIncludeSeen.has(target)) {
+      externalIncludeSeen.add(target);
       externalIncludes.push({ path: file, ...(parent === undefined ? {} : { parent }) });
     }
     return true;
-  }
+  };
   const conditionalSeen = new Set<string>();
-  const instructionSeen = new Set<string>();
   function pinRuleImports(rootFile: string, body: string): InstructionFile[] {
     const pinned: InstructionFile[] = [];
     const seen = new Set<string>([tryRealpath(rootFile)!]);
@@ -1694,7 +1718,14 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   if (Object.keys(projectMcpServers).length) result.projectMcpServers = projectMcpServers;
   if (approveAllProjectMcpServers) result.approveAllProjectMcpServers = true;
   if (approveExternalIncludes) result.approveExternalIncludes = true;
-  if (externalIncludes.length) result.externalIncludes = externalIncludes;
+  // A file read at depth 0 later in the walk (an ancestor or managed file) is in
+  // the instruction set even when an import of it was dropped earlier, so it is
+  // not reported as skipped.
+  const skippedExternals = externalIncludes.filter(include => {
+    const real = tryRealpath(include.path);
+    return real === undefined || !instructionSeen.has(real);
+  });
+  if (skippedExternals.length) result.externalIncludes = skippedExternals;
   return result;
 }
 
@@ -1765,7 +1796,7 @@ export function activateConditionalSkills(held: Map<string, SkillInfo>, workspac
  * spawn replaces its instruction text with the managed policy text and marks
  * the child managed-only (`gd`, chunk-40cepjpq.js [147565,147921)).
  */
-export function loadChildInstructions(workspace: string, options: { managedSettingsFile?: string; managedSettingsDir?: string; policyHelperText?: string } = {}, tier: "all" | "managed" = "all"):
+export function loadChildInstructions(workspace: string, options: { managedSettingsFile?: string; managedSettingsDir?: string; policyHelperText?: string; approveExternalIncludes?: boolean } = {}, tier: "all" | "managed" = "all"):
   { files: InstructionFile[]; rules: ConditionalRule[] } | undefined {
   let root: string;
   try {
@@ -1779,6 +1810,13 @@ export function loadChildInstructions(workspace: string, options: { managedSetti
   const rules: ConditionalRule[] = [];
   const seen = new Set<string>();
   const push = (file: string, depth = 0, parent?: string, required = false): void => {
+    // The same `t1` depth gate as the session loader: an import that leaves the
+    // child's own checkout is not read unless the user approved external
+    // includes, and the walk stops with the dropped file.
+    if (depth > 0 && options.approveExternalIncludes !== true) {
+      const target = tryRealpath(file) ?? path.resolve(file);
+      if (!insideRoot(target, root)) return;
+    }
     vetInstructionPath(file);
     const real = tryRealpath(file);
     if (real === undefined || !isRegularFile(file)) {
@@ -1856,12 +1894,12 @@ export function loadChildInstructions(workspace: string, options: { managedSetti
  * stops after that tier. An unreadable root keeps the parent's text, the same
  * fail-open the recovered `gd` takes when its managed loader is unavailable.
  */
-export function rebaseChildInstructions(config: { system: string; workspace: string; instructionSources?: readonly InstructionSource[] },
+export function rebaseChildInstructions(config: { system: string; workspace: string; instructionSources?: readonly InstructionSource[]; approveExternalIncludes?: boolean },
   root: string, options: { managedSettingsFile?: string; managedSettingsDir?: string; policyHelperText?: string } = {},
   appended = "", endMarkers: readonly string[] = [], managedOnly = false):
   { system: string; instructions?: InstructionFile[]; conditionalRules?: ConditionalRule[] } {
   if (!managedOnly && path.resolve(root) === path.resolve(config.workspace)) return { system: config.system };
-  const loaded = loadChildInstructions(root, options, managedOnly ? "managed" : "all");
+  const loaded = loadChildInstructions(root, { ...options, approveExternalIncludes: config.approveExternalIncludes }, managedOnly ? "managed" : "all");
   if (loaded === undefined) return { system: config.system };
   if (appended !== "" && !config.system.endsWith(appended)) return { system: config.system };
   const head = appended === "" ? config.system : config.system.slice(0, -appended.length);

@@ -25,7 +25,7 @@ import { sourceSkillArgumentsDefault } from './skill-arguments.js';
 import { runMcpPrompt } from './mcp-prompt-run.js';
 import { agentTypesSection, setHeldSkills } from './skill-catalog.js';
 import { listSessions } from './sessions.js';
-import { loadProjectConfig, defaultUserDir, instructionSources, refreshPolicyHelperInstructions, type LoadedConfig } from './config.js';
+import { loadProjectConfig, defaultUserDir, externalIncludeNotice, instructionSources, refreshPolicyHelperInstructions, type LoadedConfig } from './config.js';
 import { refuseBypassUnderRoot } from './bypass-guard.js';
 import { heldMcpServerNotice, mcpServerFingerprint, readMcpApprovals, recordMcpApprovals, resolveMcpServers, workspaceApprovalKey } from './mcp-approval.js';
 import { loadKeybindings } from './keybindings.js';
@@ -498,6 +498,8 @@ function newConfig(
       lsp: settings.features?.lsp ?? Boolean(settings.lspServers && Object.keys(settings.lspServers).length),
     };
     if (loaded.agentTypes !== undefined) config.agentTypes = structuredClone(loaded.agentTypes);
+    if (loaded.approveExternalIncludes) config.approveExternalIncludes = true;
+    if (loaded.externalIncludes?.length) config.externalIncludes = structuredClone(loaded.externalIncludes);
     applyManagedPolicy(config, loaded.managedSettings);
     if (config.features.subagents && config.features.agentTypes) config.system += agentTypesSection(config.agentTypes ?? []);
     if (settings.plugins) config.plugins = structuredClone(settings.plugins);
@@ -670,9 +672,7 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
   // `HXo` asks once before any external include is read (chunk-sfn1dbxq.js
   // 676557). The host's approval is a user setting, so the notice names the
   // switch instead of a dialog.
-  for (const include of loaded?.externalIncludes ?? []) {
-    process.stderr.write(`instructions: not reading ${include.path}${include.parent === undefined ? "" : ` (imported by ${include.parent})`}: it is outside the workspace. Set approveExternalIncludes to true in ${path.join(userDir, "settings.json")} to read external includes.\n`);
-  }
+  for (const include of loaded?.externalIncludes ?? []) process.stderr.write(`${externalIncludeNotice(include, userDir)}\n`);
   // Signing in and out are complete actions of their own: they write or remove the local
   // credential store and start nothing.
   if (values.logout === true) {

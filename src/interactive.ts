@@ -41,7 +41,7 @@ import { captureClipboardImage } from './clipboard.js';
 import { listWorktreeArchives, recoverWorktreeArchives, resolveWorktreeEntry, resolveWorktreeExit, removeExitedWorktree, restoreWorktreeArchive } from './worktree-session.js';
 import { permissionDecision } from './permissions.js';
 import { watchProjectConfig, type ConfigWatcher } from './config-watch.js';
-import { applyPluginHooks, defaultUserDir, loadProjectConfig } from './config.js';
+import { applyPluginHooks, defaultUserDir, externalIncludeNotice, loadProjectConfig } from './config.js';
 import { permissionSettingsPaths } from './permission-settings.js';
 import { FORK_COORDINATOR, FORK_DESCRIPTION, FORK_DISABLED, FORK_FIRST_TURN, FORK_NOTHING, FORK_USAGE,
   SESSION_RUNNING, SESSION_WAITING, fleetForkOpen, forkRowChip, forkSessionLine } from './fork-command.js';
@@ -1416,6 +1416,13 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
   // Yr/oL, x876fw6t [16694,19097), 9yh2xzb7 [1781,3332), UTF-16; the successor stores the candidate's refreshed catalog.
   const applyConfig = async (config: SessionConfig, switchingModel: boolean, signal: AbortSignal, modeCommand?: PermissionModeCommand, reconfigureRuntime = false) => {
     signal.throwIfAborted();
+    // A reload can add or remove skipped external includes; report the change
+    // here rather than only at startup.
+    const skippedIncludes = config.externalIncludes ?? [];
+    if (JSON.stringify(skippedIncludes) !== JSON.stringify(session.config.externalIncludes ?? [])) {
+      const includeUserDir = config.configSources?.userDir ?? defaultUserDir();
+      for (const include of skippedIncludes) options.status.write(`${externalIncludeNotice(include, includeUserDir)}\n`);
+    }
     const previousModel = session.config.model;
     if (!reconfigureRuntime && session.settingSources !== undefined) config.settingSources = [...session.settingSources];
     const candidate = reconfigureRuntime && activeRuntime.reconfigure ? await activeRuntime.reconfigure(config) : activeRuntime;
@@ -2454,7 +2461,7 @@ export async function interactiveLoop(initial: Session, provider: ModelProvider,
           const userDir = session.config.configSources?.userDir ?? defaultUserDir();
           let rows: MemoryPanelRow[];
           try {
-            const loaded = loadProjectConfig(session.config.workspace, { userDir, pluginHooks: 'preview' });
+            const loaded = loadProjectConfig(session.config.workspace, { ...session.config.configSources, userDir, pluginHooks: 'preview' });
             rows = memoryPanelRows({
               instructions: [...loaded.instructions,
                 ...(loaded.conditionalRules ?? []).flatMap(rule => [rule, ...(rule.imports ?? [])])],

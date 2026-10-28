@@ -861,6 +861,47 @@ test("a conditional rule's pinned imports obey the same external gate", () => {
   });
 });
 
+test("an absolute import outside the workspace is gated like a relative one", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj");
+    const userDir = path.join(root, "user");
+    const outside = path.join(root, "absolute-outside.md");
+    writeFile(outside, "ABSOLUTE_OUTSIDE_TEXT");
+    writeFile(path.join(workspace, "HARNESS.md"), `@${outside}`);
+    const cfg = loadProjectConfig(workspace, { userDir });
+    assert.equal(cfg.instructions.some(file => file.content.includes("ABSOLUTE_OUTSIDE_TEXT")), false);
+    assert.deepEqual(cfg.externalIncludes?.map(include => include.path), [outside]);
+  });
+});
+
+test("a file the walk reads at depth zero is not reported as a skipped external include", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj");
+    const userDir = path.join(root, "user");
+    // The sandbox root is an ancestor of the workspace, so its HARNESS.md is a
+    // depth-zero instruction file even though the project file imports it first.
+    writeFile(path.join(root, "HARNESS.md"), "ANCESTOR_TEXT");
+    writeFile(path.join(workspace, "HARNESS.md"), `@${path.join(root, "HARNESS.md")}`);
+    const cfg = loadProjectConfig(workspace, { userDir });
+    assert.ok(cfg.instructions.some(file => file.content === "ANCESTOR_TEXT"));
+    assert.equal(cfg.externalIncludes, undefined);
+  });
+});
+
+test("a child checkout's external imports obey the same gate", () => {
+  withSandbox(root => {
+    const child = path.join(root, "child");
+    writeFile(path.join(root, "outside.md"), "CHILD_OUTSIDE_TEXT");
+    writeFile(path.join(child, "HARNESS.md"), "CHILD_TEXT @../outside.md");
+    const skipped = loadChildInstructions(child, {});
+    assert.deepEqual(names(skipped!.files), ["HARNESS.md"]);
+    assert.equal(skipped!.files[0]!.content, "CHILD_TEXT @../outside.md");
+    const approved = loadChildInstructions(child, { approveExternalIncludes: true });
+    assert.deepEqual(names(approved!.files), ["HARNESS.md", "outside.md"]);
+    assert.equal(approved!.files[1]!.content, "CHILD_OUTSIDE_TEXT");
+  });
+});
+
 test("Markdown comment delimiters inside code and fences inside comments retain outside imports", () => {
   withSandbox(root => {
     const workspace = path.join(root, "proj");

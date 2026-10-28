@@ -219,7 +219,8 @@ export function childConfig(config: SessionConfig, tools: ToolDefinition[], opti
   // carries the managed policy tier only. An unreadable root keeps the parent's
   // text, the recovered branch that leaves `userContext` untouched.
   const rebased = options.type?.omitClaudeMd === true
-    ? rebaseChildInstructions({ system: config.system + suffix, workspace: config.workspace, instructionSources: config.instructionSources },
+    ? rebaseChildInstructions({ system: config.system + suffix, workspace: config.workspace, instructionSources: config.instructionSources,
+        approveExternalIncludes: config.approveExternalIncludes },
       config.workspace, { ...(config.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: config.configSources.managedSettingsFile }),
         ...(config.policyHelperText === undefined ? {} : { policyHelperText: config.policyHelperText }) },
       suffix, instructionEndMarkers(config), true)

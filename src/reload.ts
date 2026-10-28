@@ -16,6 +16,12 @@ export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'pre
   const settings = parseSettings(loaded.settings);
   const next = structuredClone(current);
   next.settingSources = loaded.settingSources;
+  // The external-include switch and the last skipped set follow the reload: a
+  // new user setting admits the imports, and a removed one drops them again.
+  if (loaded.approveExternalIncludes) next.approveExternalIncludes = true;
+  else delete next.approveExternalIncludes;
+  if (loaded.externalIncludes?.length) next.externalIncludes = loaded.externalIncludes;
+  else delete next.externalIncludes;
   const overrides = current.configSources?.overrides ?? {};
   // se/uc, 9vcaezw1 [10679,11697)/[12346,12719), UTF-16: inherit re-reads the refreshed table.
   if (settings.modelSettings !== undefined) next.modelSettings = settings.modelSettings;

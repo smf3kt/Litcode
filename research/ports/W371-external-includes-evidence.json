@@ -1,7 +1,7 @@
 {
   "package": "W371",
   "title": "Settings and instructions: external instruction includes",
-  "status": "implementation and main verification; one bounded independent review pending",
+  "status": "integrated; independent review returned four confirmed findings, repaired in the follow-up commit",
   "sample": {
     "version": "2.1.296",
     "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
@@ -70,31 +70,50 @@
   "hostAdaptations": [
     "approveExternalIncludes is a user-layer-only boolean, the same shape as approveAllProjectMcpServers: refused from the project and local layers, must be boolean, removed from effective settings.",
     "loadProjectConfig gates imports at depth > 0 whose resolved path leaves the workspace; appendInstruction and pinRuleImports share the gate, and the dropped file stops the walk.",
-    "The skipped set is reported as LoadedConfig.externalIncludes {path, parent}, deduplicated by path, and the CLI prints one stderr line naming the switch.",
+    "loadChildInstructions applies the same containment test unless its caller passes approveExternalIncludes; rebaseChildInstructions forwards the parent config's switch.",
+    "The skipped set is reported as LoadedConfig.externalIncludes {path, parent}, deduplicated by path, filtered against the files the walk read, and the CLI prints one stderr line naming the switch.",
+    "SessionConfig carries the switch and the skipped set, so a reload replaces both and applyConfig prints the notice when the set changes.",
     "hasClaudeMdExternalIncludesWarningShown is not ported: it only suppresses the dialog, and the host's durable answer is the switch.",
     "loadPathInstructions already refuses every workspace escape with a named error and is unchanged (stricter than the gate).",
     "zae's external rules-directory discovery has no host counterpart: listRules only descends into the given directory.",
     "IL compares against the process working directory; the host compares against the resolved workspace root."
   ],
+  "review": {
+    "findings": [
+      { "severity": "high", "summary": "the child-instruction loader had no external gate", "disposition": "confirmed and repaired; loadChildInstructions.push applies the containment test, rebaseChildInstructions forwards approveExternalIncludes" },
+      { "severity": "medium", "summary": "a reload discarded the skipped-include notice", "disposition": "confirmed and repaired; SessionConfig.externalIncludes + applyConfig notice on change, /memory reload now spreads configSources" },
+      { "severity": "low", "summary": "the report could name a file the walk read at depth 0", "disposition": "confirmed and repaired; the report is filtered against the files actually read" },
+      { "severity": "low", "summary": "containment compared raw strings", "disposition": "confirmed and repaired; case folding plus device/inode comparison when both spellings resolve" }
+    ],
+    "regressionsAdded": [
+      "an absolute import outside the workspace is gated like a relative one",
+      "a file the walk reads at depth zero is not reported as a skipped external include",
+      "a child checkout's external imports obey the same gate"
+    ]
+  },
   "changedFiles": {
-    "src/config.ts": "298dd6e1a3e409d01ba644ad1347ab4e51677b20044e17c8f7a87ee93b99d29b",
-    "src/cli.ts": "f056c8c983c3f6305e5b4ee2eff76f6f15a61f2a8bf0a78145169019e0812377",
-    "test/config.test.ts": "99f2360c9329636a3a4104041f06a569c7b6e784ffdc863f2fa0f890c6393c44",
+    "src/config.ts": "d464f3e7e8e3a5893c74e559ad2bc5e5aba3d2418da3acb3c3e253e070cb2203",
+    "src/cli.ts": "cd53a28a5659cabd075212cbff0591abb59e6657a752a9beeae3ec8f40788107",
+    "src/reload.ts": "33d358625460c1129c4c31ad6519075af21b2d9d3b488e3b6bd7081b2f63f9ac",
+    "src/interactive.ts": "145ea2866a65cb22f73e1826de786cf72113bdaf223a0153ab4d6b97f0d732f4",
+    "src/subagents.ts": "c101b53a4db61e86a90ae1bfa6b1280a99c1e48cbe257cf94353a4cf160e3a9d",
+    "src/session.ts": "558508ff579935655b0f2c92813ebdc5ab255c69be7cd2e62ad2815606ed0077",
+    "test/config.test.ts": "cd355f55ee91fbb8ce568f511a94b743d4fb78e2ff07078b38bd7833e8a57d71",
     "scripts/smoke-external-includes-cli.mjs": "0faf8973df9baa4346b11794221d1a6e205ba9fd885ddd0d8686c81f6778280c"
   },
   "identity": {
     "schema": "HarnessContentIdentity.v1",
-    "sha256": "5ff825821222a16b08e67cb1a1cfa5de8438e7f2fe45753277aa4159946090ad",
-    "inputs": "214c0f913ac25c72fe4489819f7ab0c80600b4731100c12fcc0559760169d20d",
-    "validation": "8d4d5ad306923f1ac3b3f0153249e74ecb90c728e7506a6973a6de0a9e59ea97",
-    "build": "48acece5d38c8314759785b6c47cb33253e0ba2469f6d722078d48c3fe370f70",
+    "sha256": "60910703c10f5a053e13beb8eac5dc477a6a65a34204c028d63dd6029daf1371",
+    "inputs": "03eb276da7c38661f4f5c3983d4c575488635b56f940e9a2bb2b4ab0feab7a6d",
+    "validation": "c9bf6a52cac9889585a5f2f20655ce094fba1bc43dae2cc9ce53dcd1c93b6547",
+    "build": "ed41e90412e238f2fb871e03398366f6ac9dec0c03b020de77375d08e76d1590",
     "files": { "inputs": 940, "validation": 360, "build": 662 }
   },
   "validation": {
     "check": "pass",
     "build": "pass",
-    "focusedSuites": { "config": "80/80" },
-    "fullSuite": "3453/3453 across 118 suites, 0 fail/cancel/skip/todo",
+    "focusedSuites": { "config": "83/83" },
+    "fullSuite": "3456/3456 across 118 suites, 0 fail/cancel/skip/todo",
     "drivers": [
       {
         "name": "smoke-external-includes-cli.mjs",

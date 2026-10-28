@@ -74,6 +74,12 @@ export type SessionConfig = {
    *  accepts is also a field the type carries (`autoMode`, `useAutoModeDuringPlan`). */
   managedPolicy?: z.infer<typeof managedPolicySchema>;
   policyHelper?: { path: string; intervalMs?: number; defaultPolicy?: SessionConfig['managedPolicy'] };
+  /** The user's own switch for instruction imports that leave the workspace;
+   *  read from the user layer and carried so child builds apply the same gate. */
+  approveExternalIncludes?: boolean;
+  /** Imports the last load skipped because they leave the workspace and were
+   *  not approved; a reload replaces the list. */
+  externalIncludes?: { path: string; parent?: string }[];
   skills?: SkillInfo[];
   /** Bumped when the installed plugin catalog changes under a live session. */
   pluginGeneration?: number;
@@ -295,6 +301,8 @@ export const configSchema = z.object({
   policyHelper: z.object({ path: z.string().min(1),
     intervalMs: z.number().int().positive().max(86_400_000).optional(),
     defaultPolicy: managedPolicySchema.optional() }).strict().optional(),
+  approveExternalIncludes: z.boolean().optional(),
+  externalIncludes: z.array(z.object({ path: z.string(), parent: z.string().optional() })).optional(),
   skills: z.array(z.object({ name: z.string().min(1), description: z.string(), path: z.string(), body: z.string(), source: z.enum(['userSettings', 'projectSettings', 'plugin']).optional(), format: z.enum(['skill', 'command']).optional(), plugin: z.string().optional(), disallowedTools: z.array(z.string()).optional(), userInvocable: z.boolean(), disableModelInvocation: z.boolean(), mode: z.enum(['on', 'name-only', 'user-invocable-only', 'off']).optional(),
     paths: z.array(z.string()).optional(),
     allowedTools: z.array(z.string()).optional(), argumentNames: z.array(z.string().refine(name => name.trim() !== '' && !/^\d+$/.test(name), 'argument names must be non-empty and not all digits')).optional(), model: z.string().optional(), effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(), context: z.literal('fork').optional(), agent: z.string().trim().min(1).max(128).optional(), background: z.boolean().optional(),

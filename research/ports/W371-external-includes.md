@@ -35,7 +35,9 @@ Module digests: chunk-sfn1dbxq.js 4c74137eb23221981404d0ca87b765912f83344851d5c1
 
 - The host has no startup dialog. Its idiom for a user-level approval is a user-layer settings boolean, the same shape as `approveAllProjectMcpServers`: `approveExternalIncludes` is accepted only from the user layer or an explicitly named settings file, is refused from `settings.json`/`settings.local.json`, must be a boolean, and is removed from the effective settings map.
 - `loadProjectConfig` gates imports at depth > 0 whose resolved path leaves the workspace (realpath judged, both the resolved and the given workspace spelling accepted). `appendInstruction` and `pinRuleImports` share the gate, so a rule's pinned imports obey it too. The dropped file stops the walk, matching `t1`.
-- The skipped set is reported as `externalIncludes: {path, parent}[]` on `LoadedConfig`, deduplicated by path because the same file can be reached as a pinned rule import and as a body import. The CLI prints one stderr line per skipped include naming the switch.
+- `loadChildInstructions` applies the same containment test to every depth > 0 import unless its caller passes `approveExternalIncludes`, so a child checkout cannot be used as the way around the gate. `rebaseChildInstructions` forwards the parent config's switch.
+- The skipped set is reported as `externalIncludes: {path, parent}[]` on `LoadedConfig`, deduplicated by path because the same file can be reached as a pinned rule import and as a body import. A file the walk reads at depth 0 anyway is not reported. The CLI prints one stderr line per skipped include naming the switch.
+- The switch and the skipped set are carried on `SessionConfig`, so a reload replaces both and the interactive config application prints the notice when the set changes, not only at startup.
 - `hasClaudeMdExternalIncludesWarningShown` is not ported: it exists only to keep the dialog from reappearing, and the host has no dialog. The switch is the durable answer.
 - `loadPathInstructions` already refuses every escape from the workspace with a named error; it is stricter than the gate and unchanged.
 - `zae`'s external rules-directory discovery (`Ve`, parent-directory walk) has no host counterpart: `listRules` only descends into the given directory.
@@ -45,15 +47,26 @@ Module digests: chunk-sfn1dbxq.js 4c74137eb23221981404d0ca87b765912f83344851d5c1
 
 A project or managed instruction file may import another Markdown file. An import inside the workspace is read as before. An import outside it is not read, and neither are its own imports, until the user sets `approveExternalIncludes: true` in the user settings; the loader reports each skipped file with its importer. A checkout cannot grant itself the switch. The gate applies to the managed tier, the ancestor walk and the project rules alike, and to conditional rules' pinned imports.
 
+## Review disposition
+
+One bounded independent review of the committed package (`6df08a4`) returned four findings.
+
+1. **HIGH — the child-instruction loader had no gate.** `loadChildInstructions` read any import a child checkout named, so a subagent definition could reach a file the parent's own walk refuses. Confirmed: repaired by adding the containment test to `push`, with `approveExternalIncludes` threaded from `rebaseChildInstructions`.
+2. **MEDIUM — a reload discarded the notice.** `reloadConfig` replaced the instruction set without carrying the skipped list, so the user lost the only statement of why a file was missing until the next process start. Confirmed: repaired by adding `SessionConfig.approveExternalIncludes`/`externalIncludes`, set from the reload and printed by `applyConfig` when the set changes. The `/memory` reload also now spreads `configSources`, which it had been dropping.
+3. **LOW — the report could name a file that was read anyway.** A file that is both an external import of a project file and an ancestor instruction read at depth 0 appeared in the skipped list. Confirmed: repaired by filtering the report against the set of files the walk actually read.
+4. **LOW — the containment test compared raw strings.** A case-insensitive filesystem could resolve two spellings of one path differently. Confirmed: repaired by folding case and comparing device/inode when both spellings resolve.
+
+Follow-up commit adds one regression group per confirmed finding (absolute external path, depth-0 exemption, child loader both sides) and re-freezes the package.
+
 ## Validation
 
-`test/config.test.ts`: the home-import group now asserts the skip and the approval path; a new group covers the external import (unapproved skip with the nested import absent and the report shape, approved read, project-layer refusal, non-boolean refusal, switch absent from effective settings); a third group covers a conditional rule's pinned imports on both sides of the gate. The absolute-path import group now uses an absolute path inside the workspace.
+`test/config.test.ts`: the home-import group now asserts the skip and the approval path; a new group covers the external import (unapproved skip with the nested import absent and the report shape, approved read, project-layer refusal, non-boolean refusal, switch absent from effective settings); a third group covers a conditional rule's pinned imports on both sides of the gate; the review round adds an absolute external path, a depth-0 file that is imported and read anyway, and the child loader on both sides of the switch. The absolute-path import group now uses an absolute path inside the workspace.
 
 `scripts/smoke-external-includes-cli.mjs` runs the same workspace twice against an owned loopback SSE server: unapproved, the request carries the project text and not the external text and stderr names the file and the switch; approved through the user settings, the request carries both. Source and compiled pass.
 
 Red baseline: the compiled CLI from the W370 repair commit read the external import (`OUTSIDE_INCLUDE_TEXT` present) and printed no notice; the new driver fails on it at the "not read" assertion.
 
-Check and build pass. `test/config.test.ts` 80/80. Full suite 3453/3453 across 118 suites, 0 fail/cancel/skip/todo. Identity 5ff825821222a16b08e67cb1a1cfa5de8438e7f2fe45753277aa4159946090ad (940 input / 360 validation / 662 build records).
+Check and build pass. `test/config.test.ts` 83/83. Full suite 3456/3456 across 118 suites, 0 fail/cancel/skip/todo. Identity 60910703c10f5a053e13beb8eac5dc477a6a65a34204c028d63dd6029daf1371 (940 input / 360 validation / 662 build records).
 
 ## Reproduction
 

@@ -22,7 +22,9 @@ Plan:
 - [x] Tests: unapproved skip + report, approved read, project layer refused, non-boolean refused, in-workspace import unaffected, rule-import gate; the home-import group and the absolute-path fixture moved to the new rule.
 - [x] Compiled driver: unapproved vs approved request system prompts through owned loopback SSE; red baseline captured on the pre-change build.
 - [x] check/build/focused 80/full 3453 at identity 5ff82582; CURRENT/FEATURES/partial-closure/record.
-- [ ] One bounded independent review; record its verdict.
-- [ ] Commit exact paths locally after the review verdict.
+- [x] One bounded independent review: four findings, all confirmed (HIGH child-loader gate, MEDIUM reload notice, LOW depth-0 report, LOW case folding).
+- [x] Repair round: child-loader gate, SessionConfig-carried notice with applyConfig printing on change, report filtered against read files, folded/inode containment; three regression tests.
+- [x] Re-validate: check/build, config 83/83, full 3456/3456, source and compiled driver, identity 60910703.
+- [ ] Commit the repair locally (exact paths, no amend).
 
 Local only. No account, OAuth, hosted subscription, paid upstream, push, coauthor or schedule.
