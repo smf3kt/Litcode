@@ -213,13 +213,27 @@ export function instructionEndMarkers(config: { skills?: readonly SkillInfo[]; a
 export function childConfig(config: SessionConfig, tools: ToolDefinition[], options: {
   mode: 'explore' | 'general'; max_turns: number; model?: string; effort?: ChildLaunchOptions['effort']; type?: AgentTypeInfo; fork?: boolean; isolation?: 'worktree';
 }): SessionConfig {
+  const suffix = childPromptSuffix(options);
+  // `omitClaudeMd` (`gd`, chunk-40cepjpq.js [147565,147921)): a child spawned
+  // from such a definition takes its context from the delegation prompt and
+  // carries the managed policy tier only. An unreadable root keeps the parent's
+  // text, the recovered branch that leaves `userContext` untouched.
+  const rebased = options.type?.omitClaudeMd === true
+    ? rebaseChildInstructions({ system: config.system + suffix, workspace: config.workspace, instructionSources: config.instructionSources },
+      config.workspace, config.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: config.configSources.managedSettingsFile },
+      suffix, instructionEndMarkers(config), true)
+    : undefined;
   const child: SessionConfig = { ...structuredClone(config), maxTurns: options.max_turns, childMode: options.mode,
     ...(options.model ? { model: options.model } : {}),
     ...(options.effort ? { effort: options.effort } : {}),
     allowShell: options.mode === 'general' && config.allowShell,
     tools: tools.map(tool => ({ ...tool.schema, eager_input_streaming: true })),
-    system: config.system + childPromptSuffix(options),
+    system: rebased?.instructions === undefined ? config.system + suffix : rebased.system,
   };
+  if (rebased?.instructions !== undefined) {
+    child.instructionSources = instructionSources(rebased.instructions);
+    child.conditionalRules = rebased.conditionalRules ?? [];
+  }
   if (child.features) {
     child.features = { ...child.features, subagents: false,
       ...(child.features.background !== undefined ? { background: false } : {}),
@@ -283,7 +297,7 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
           // isolated checkout carries its own files, not the parent's text.
           const rebased = rebaseChildInstructions(child, environment.config.workspace,
             child.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: child.configSources.managedSettingsFile },
-            childPromptSuffix(launch), instructionEndMarkers(child));
+            childPromptSuffix(launch), instructionEndMarkers(child), launch.type?.omitClaudeMd === true);
           child = { ...child, workspace: environment.config.workspace, system: rebased.system };
           if (rebased.instructions !== undefined) {
             child.instructionSources = instructionSources(rebased.instructions);

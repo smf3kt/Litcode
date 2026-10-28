@@ -1379,6 +1379,48 @@ test("the managed instruction tier leads the loaded instructions under its own r
   });
 });
 
+test("a managed-only child carries the managed tier and nothing from the workspace", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj"), managed = path.join(root, "managed");
+    writeFile(path.join(workspace, "HARNESS.md"), "PROJECT_TEXT");
+    writeFile(path.join(workspace, ".harness/rules/project.md"), "PROJECT_RULE_TEXT");
+    writeFile(path.join(workspace, ".harness/rules/src-only.md"), "---\npaths: ['src/**']\n---\nPROJECT_CONDITIONAL");
+    writeFile(path.join(managed, "HARNESS.md"), "MANAGED_FILE_TEXT");
+    writeFile(path.join(managed, "managed-settings.json"), JSON.stringify({ claudeMd: "MANAGED_SETTINGS_TEXT" }));
+    writeFile(path.join(managed, ".harness/rules/managed.md"), "MANAGED_RULE_TEXT");
+    writeFile(path.join(managed, ".harness/rules/managed-only.md"), "---\npaths: ['lib/**']\n---\nMANAGED_CONDITIONAL");
+
+    const managedOnly = loadChildInstructions(workspace, { managedSettingsDir: managed }, "managed");
+    assert.deepEqual(managedOnly?.files.map(file => file.content), ["MANAGED_FILE_TEXT", "MANAGED_SETTINGS_TEXT", "MANAGED_RULE_TEXT"]);
+    assert.deepEqual(managedOnly?.rules.map(rule => rule.patterns), [["lib/**"]]);
+
+    // Same root: the parent's instruction blocks become the managed tier, a
+    // memory block after them survives, and the child suffix is restored.
+    const memoryFile = { path: path.join(workspace, ".harness", "memory", "note.md"), content: "MEMORY_TEXT" };
+    const projectFile = { path: fs.realpathSync(path.join(workspace, "HARNESS.md")), content: "PROJECT_TEXT" };
+    const parentPrompt = "BASE" + INSTRUCTION_INTRO + renderInstructionBlocks([projectFile, memoryFile]) + "\n\n# Available skills\n- demo: row";
+    const rebased = rebaseChildInstructions(
+      { system: parentPrompt + "CHILD_SUFFIX", workspace, instructionSources: [{ path: projectFile.path }] },
+      workspace, { managedSettingsDir: managed }, "CHILD_SUFFIX", ["\n\n# Available skills"], true);
+    assert.ok(rebased.system.startsWith("BASE" + INSTRUCTION_INTRO
+      + `Instructions from ${fs.realpathSync(path.join(managed, "HARNESS.md"))}:\nMANAGED_FILE_TEXT`));
+    assert.ok(rebased.system.includes("MANAGED_SETTINGS_TEXT"));
+    assert.ok(rebased.system.includes("MEMORY_TEXT"));
+    assert.equal(rebased.system.includes("PROJECT_TEXT"), false);
+    assert.ok(rebased.system.endsWith("CHILD_SUFFIX"));
+    assert.deepEqual(rebased.instructions?.map(file => file.path),
+      [fs.realpathSync(path.join(managed, "HARNESS.md")), "<managed-settings>", fs.realpathSync(path.join(managed, ".harness/rules/managed.md"))]);
+    assert.deepEqual(rebased.conditionalRules?.map(rule => rule.patterns), [["lib/**"]]);
+
+    // An unreadable root keeps the parent prompt, the recovered fail-open.
+    const missing = rebaseChildInstructions(
+      { system: parentPrompt + "CHILD_SUFFIX", workspace, instructionSources: [{ path: projectFile.path }] },
+      path.join(root, "absent"), { managedSettingsDir: managed }, "CHILD_SUFFIX", [], true);
+    assert.equal(missing.system, parentPrompt + "CHILD_SUFFIX");
+    assert.equal(missing.instructions, undefined);
+  });
+});
+
 test("an explicit managed policy file supplies both the policy and its instruction text", () => {
   withSandbox(root => {
     const workspace = path.join(root, "proj"), userDir = path.join(root, "user"), managed = path.join(root, "managed");

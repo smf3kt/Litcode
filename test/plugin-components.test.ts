@@ -19,11 +19,11 @@ function fixture(t: TestContext) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, typeof value === "string" ? value : JSON.stringify(value));
   };
-  const agent = (description: string) => `---\nname: reviewer\ndescription: ${description}\n---\n${description} body`;
+  const agent = (description: string, extra = "") => `---\nname: reviewer\ndescription: ${description}\n${extra}---\n${description} body`;
   put(source, "plugin.json", { name: "sample", version: "1", skills: "skills", agents: "agents",
     hooks: "hooks/config.json", mcpServers: "mcp/config.json" });
   put(source, "skills/example/SKILL.md", "---\nname: example\ndescription: Fixture skill\n---\nPlugin skill");
-  put(source, "agents/reviewer.md", agent("plugin"));
+  put(source, "agents/reviewer.md", agent("plugin", "omitClaudeMd: true\n"));
   put(source, "hooks/config.json", { hooks: { SessionStart: [{ command: "plugin-hook" }] } });
   put(source, "mcp/config.json", { mcpServers: { local: { command: "node", args: ["plugin.mjs"] },
     remote: { type: "http", url: "https://fixture.invalid/mcp", headersEnv: { Authorization: "FIXTURE_TOKEN" } } } });
@@ -63,6 +63,7 @@ test("actual install loads inert components with explicit activation and precede
   loaded = loadProjectConfig(f.workspace, { userDir: f.userDir });
   assert.equal(loaded.agentTypes![0]!.description, "project");
   assert.ok(loaded.agentTypes!.some(agent => agent.name === 'sample:reviewer' && agent.description === 'plugin'));
+  assert.equal(loaded.agentTypes!.find(agent => agent.name === 'sample:reviewer')?.omitClaudeMd, true);
   f.put(f.workspace, ".harness/settings.local.json", { plugins: { enabled: false } });
   loaded = loadProjectConfig(f.workspace, { userDir: f.userDir });
   assert.deepEqual(loaded.skills, []);

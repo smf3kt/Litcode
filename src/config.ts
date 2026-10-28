@@ -1693,8 +1693,13 @@ export function activateConditionalSkills(held: Map<string, SkillInfo>, workspac
  * `rules` are the checkout's own conditional rules, so a caller replaces the
  * parent's list instead of letting a touched path inject the parent's
  * working-tree rule bodies into the child.
+ *
+ * `tier` selects the whole ladder or only the managed tier. A child spawned
+ * from a definition with `omitClaudeMd` reads with `"managed"`: the recovered
+ * spawn replaces its instruction text with the managed policy text and marks
+ * the child managed-only (`gd`, chunk-40cepjpq.js [147565,147921)).
  */
-export function loadChildInstructions(workspace: string, options: { managedSettingsFile?: string; managedSettingsDir?: string } = {}):
+export function loadChildInstructions(workspace: string, options: { managedSettingsFile?: string; managedSettingsDir?: string } = {}, tier: "all" | "managed" = "all"):
   { files: InstructionFile[]; rules: ConditionalRule[] } | undefined {
   let root: string;
   try {
@@ -1752,10 +1757,12 @@ export function loadChildInstructions(workspace: string, options: { managedSetti
     files.push({ path: MANAGED_INSTRUCTION_SENTINEL, content: managedText });
   }
   for (const rule of listRules(path.join(managedRoot, HARNESS_DIR, "rules"))) pushRule(rule);
-  for (const dir of ancestorDirs(root)) {
-    for (const name of INSTRUCTION_FILES) push(path.join(dir, name));
+  if (tier === "all") {
+    for (const dir of ancestorDirs(root)) {
+      for (const name of INSTRUCTION_FILES) push(path.join(dir, name));
+    }
+    for (const rule of listRules(path.join(root, HARNESS_DIR, "rules"))) pushRule(rule);
   }
-  for (const rule of listRules(path.join(root, HARNESS_DIR, "rules"))) pushRule(rule);
   return { files, rules };
 }
 
@@ -1773,13 +1780,18 @@ export function loadChildInstructions(workspace: string, options: { managedSetti
  * blocks. The paths the parent's `instructionSources` name decide which blocks
  * are parent instruction text; a block outside that set is a memory block and
  * is kept.
+ *
+ * `managedOnly` is the `omitClaudeMd` spawn: the child carries the managed
+ * policy tier only, so the same-root shortcut does not apply and the loader
+ * stops after that tier. An unreadable root keeps the parent's text, the same
+ * fail-open the recovered `gd` takes when its managed loader is unavailable.
  */
 export function rebaseChildInstructions(config: { system: string; workspace: string; instructionSources?: readonly InstructionSource[] },
   root: string, options: { managedSettingsFile?: string; managedSettingsDir?: string } = {},
-  appended = "", endMarkers: readonly string[] = []):
+  appended = "", endMarkers: readonly string[] = [], managedOnly = false):
   { system: string; instructions?: InstructionFile[]; conditionalRules?: ConditionalRule[] } {
-  if (path.resolve(root) === path.resolve(config.workspace)) return { system: config.system };
-  const loaded = loadChildInstructions(root, options);
+  if (!managedOnly && path.resolve(root) === path.resolve(config.workspace)) return { system: config.system };
+  const loaded = loadChildInstructions(root, options, managedOnly ? "managed" : "all");
   if (loaded === undefined) return { system: config.system };
   if (appended !== "" && !config.system.endsWith(appended)) return { system: config.system };
   const head = appended === "" ? config.system : config.system.slice(0, -appended.length);

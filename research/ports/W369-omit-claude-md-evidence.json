@@ -1,0 +1,101 @@
+{
+  "package": "W369",
+  "title": "Settings and instructions: the managed-only child (omitClaudeMd)",
+  "status": "implementation and main verification; one bounded independent review pending",
+  "sample": {
+    "version": "2.1.296",
+    "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
+  },
+  "coordinateUnit": "zero-based half-open UTF-16 code units",
+  "sources": [
+    { "module": "chunk-40cepjpq.js", "sha256": "473c9dfb84c9defcb7ca5bd5e6f598cd951274dc2c1334a67c8b9d25b451a8b2",
+      "owners": [
+        { "name": "gd", "range": [147565, 147921], "body16": "418041b6211925f6" },
+        { "name": "spawn gate", "range": [123469, 123561] },
+        { "name": "child option propagation", "range": [133848, 133872] }
+      ] },
+    { "module": "chunk-5b2hxy2e.js", "sha256": "46d7f73a2b28fd9493ecf37d85abc89acd020f6de7e2bdb83efe621811f12656",
+      "owners": [
+        { "name": "prompt filter", "range": [29841, 29911], "body16": "2f37931fb82ab1eb" }
+      ] },
+    { "module": "chunk-sfn1dbxq.js", "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "owners": [
+        { "name": "announcement filter", "range": [3671615, 3671685], "body16": "8f30de36447bacb3" },
+        { "name": "definition schema", "range": [429193, 429451], "body16": "6eff32d5214a8ac4" },
+        { "name": "built-in Explore literal", "range": [201834, 202021], "body16": "932de2669bc06e3d" },
+        { "name": "plugin loader field read", "offset": 2049628 },
+        { "name": "plugin loader field emit", "offset": 2051536 },
+        { "name": "definition loader emit", "offset": 2098768 }
+      ] }
+  ],
+  "carriers": [
+    { "module": "chunk-0n88wbb5.js", "offset": 39906, "role": "definition serializer" },
+    { "module": "chunk-kwdhpnes.js", "offset": 14407, "role": "in-process teammate spawn copy (no host counterpart)" },
+    { "module": "chunk-nyce03br.js", "offset": 214952, "role": "field allowlist" },
+    { "module": "chunk-zm79vshj.js", "offset": 4966, "role": "plugin metadata allowlist" }
+  ],
+  "sourceBehaviour": {
+    "gd": "Split claudeMd off the user context; built-in and policySettings sources return the text dropped; otherwise load the managed text. undefined keeps the full context, empty drops the text, non-empty replaces it and sets managedInstructionsOnly.",
+    "gate": "e.omitClaudeMd && !N?.userContext",
+    "consumers": "When the flag is set, instruction blocks are filtered to type === \"Managed\" in both the prompt builder and the announcement set."
+  },
+  "hostAdaptations": [
+    "The host agent catalog has no built-in or policySettings definitions; its explore/general are modes, so every loaded definition takes the non-built-in branch.",
+    "The host has no injected userContext spawn argument, so the gate reduces to the definition flag.",
+    "The host managed loader is local; an unreadable root is the undefined fail-open, and an empty tier is the empty-string branch.",
+    "The host replaces the instruction section and narrows instructionSources/conditionalRules to the managed tier; memory blocks are not instruction files and are kept."
+  ],
+  "changedFiles": {
+    "src/agent-types.ts": "dc3ab89cca92caedcbe283684b23002a5f8b3dcd5d1e99784f4b6c945a1bdd45",
+    "src/config.ts": "d48a4980fd65ef7f7e9242785cbf9d810a5b3b9698116440951b3d1fdc67f854",
+    "src/subagents.ts": "71e3f458318e943cbaf7a7293f29af47b5b77a2cdba1ba0d7a79eeedcf6ffcba",
+    "src/agent-registry.ts": "fe4e0c97a4c5853cdf55643369cba6fd9ca390c678e76e0bf2f3c958462ccf83",
+    "src/plugin-components.ts": "a395679e1889debce8a2cacf393fa2128181f33d4a2f5f2a5eab21f378981156",
+    "test/agent-types.test.ts": "294909bc70017439b1b4a96c2deef54eac4bd4e10e9f1a8d20ae883ae0e85d69",
+    "test/config.test.ts": "86a9974c2b090fb36f0eee8569b64e24ef53a5b6a231b508d4df0bee6b495f94",
+    "test/agent-registry.test.ts": "6fb3e9b6b0f8c85e14d8d4ce046bd6bdd726e9f01ebc751059cc5fbdfee34164",
+    "test/plugin-components.test.ts": "3423e581b7e6df502d8f13c8ac006c0d6c656eac91137fac955be74fbb9c6d6c",
+    "scripts/smoke-managed-instructions-cli.mjs": "9a0b4228f7d4891689078680afcbc99ddd7b3bcd43969a6bb824e1f892280c2f"
+  },
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "c1c683904683ad67ffa9c9e37a201fdaaf72b75f715bd07a2f3ab1fb3dd4ac3e",
+    "inputs": "9e2ba608ea125f24439bb966066273b9c30c6bb243e83ab504d169956056787c",
+    "validation": "70c3fdcdb16dbefb331d937c12c0c2a0051a8555f767a5fdecfef18e2f715c09",
+    "build": "6b4a39bc4cc83bebe8a1574e640cd04d944b1f0c760ad051582fe08541a05af7",
+    "files": { "inputs": 939, "validation": 360, "build": 662 }
+  },
+  "validation": {
+    "check": "pass",
+    "build": "pass",
+    "focusedSuites": { "agentTypes": "15/15", "config": "77/77", "agentRegistry": "50/50", "pluginComponents": "4/4", "combinedRun": "146/146" },
+    "fullSuite": "3445/3445 across 118 suites, 0 fail/cancel/skip/todo",
+    "drivers": [
+      { "name": "smoke-managed-instructions-cli.mjs", "source": "pass, 6 owned loopback requests (4 parent, 2 children)",
+        "compiled": "pass, 6 owned loopback requests (4 parent, 2 children)" }
+    ],
+    "redBaseline": "compiled CLI before the change: the strict schema rejected the definition, the spawn returned \"Unknown agent type: no-md\", and no child request was made"
+  },
+  "defectsRepaired": [],
+  "knownLimitations": [
+    "The built-in/policySettings source branch is not ported: the host catalog has no such definitions, so no loaded type can reach it.",
+    "The injected-userContext suppression is not ported: the host spawn has no userContext argument.",
+    "When the parent prompt has no instruction section at all, the managed tier is inserted before the catalogs or at the end of the parent prompt, because there is no section to replace.",
+    "The separate announcement filter is not ported; the host announcement set is derived from instructionSources, which the rewrite already narrows."
+  ],
+  "notPorted": [
+    "built-in and policySettings agent sources",
+    "injected userContext spawn argument",
+    "policy-helper document",
+    "remote managed policy",
+    "full recursive instruction coverage"
+  ],
+  "boundaries": {
+    "localOnly": true,
+    "accountOrOAuth": false,
+    "paidUpstream": false,
+    "push": false,
+    "coauthor": false,
+    "schedule": false
+  }
+}

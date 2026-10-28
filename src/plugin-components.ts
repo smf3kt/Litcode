@@ -265,6 +265,9 @@ export function loadPluginComponents(components: readonly InstalledPluginCompone
         if (turns.success) agent.maxTurns = turns.data;
         else if (data.maxTurns !== undefined) report('agents', file, 'invalid maxTurns ignored');
         if (data.background === true || data.background === 'true') agent.background = true;
+        // Z5t carries the definition flag through the plugin loader
+        // (chunk-sfn1dbxq.js 2049628 and 2051536): only true/"true" sets it.
+        if (data.omitClaudeMd === true || data.omitClaudeMd === 'true') agent.omitClaudeMd = true;
         // Source Z5t field gates: memory must be one of three roots, and an
         // integer window within the compact range (chunk-sfn1dbxq.js offset 2048211).
         if (data.memory !== undefined) {

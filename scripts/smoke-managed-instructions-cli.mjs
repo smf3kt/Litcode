@@ -33,6 +33,8 @@ try {
   fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ features: { agentTypes: true } }));
   fs.writeFileSync(path.join(workspace, ".harness/agents/iso.md"),
     "---\nname: iso\ndescription: isolated fixture\nmode: explore\ntools: [read_file]\nmaxTurns: 2\nisolation: worktree\n---\nISO_AGENT_BODY\n");
+  fs.writeFileSync(path.join(workspace, ".harness/agents/no-md.md"),
+    "---\nname: no-md\ndescription: managed-only fixture\nmode: explore\ntools: [read_file]\nmaxTurns: 2\nomitClaudeMd: true\n---\nNO_MD_AGENT_BODY\n");
   git(["init", "-q", "-b", "main"]);
   git(["add", "-A"]);
   commit("fixture");
@@ -49,6 +51,7 @@ try {
     const index = parentRequests().length - 1;
     if (index === 0) return [{ type: "tool_use", id: "read-nested", name: "read_file", input: { path: "src/fixture.txt" } }];
     if (index === 1) return [{ type: "tool_use", id: "launch-iso", name: "agent", input: { prompt: "ISO_CHILD_TASK", subagent_type: "iso" } }];
+    if (index === 2) return [{ type: "tool_use", id: "launch-no-md", name: "agent", input: { prompt: "NO_MD_CHILD_TASK", subagent_type: "no-md" } }];
     return [{ type: "text", text: "parent done" }];
   };
   server = http.createServer((request, response) => {
@@ -88,8 +91,8 @@ try {
 
   const parent = parentRequests(), children = requests.filter(isChild);
   assert.equal(code, 0, stderr);
-  assert.equal(parent.length, 3, `parent requests: ${parent.length}`);
-  assert.equal(children.length, 1, `child requests: ${children.length}`);
+  assert.equal(parent.length, 4, `parent requests: ${parent.length}`);
+  assert.equal(children.length, 2, `child requests: ${children.length}`);
 
   const first = String(parent[0].system);
   const order = ["MANAGED_FILE_TEXT", "MANAGED_SETTINGS_TEXT", "MANAGED_RULE_TEXT", "PARENT_WORKING_TREE_VARIANT"]
@@ -101,16 +104,28 @@ try {
   const nested = JSON.stringify(parent[1].messages);
   assert.ok(nested.includes("NESTED_INSTRUCTION_TEXT"), "the touched directory's instructions reach the next request");
 
-  const childSystem = String(children[0].system);
+  const isoChild = children.find(body => String(body.system).includes("ISO_AGENT_BODY"));
+  assert.ok(isoChild, "the isolated child ran");
+  const childSystem = String(isoChild.system);
   assert.ok(childSystem.includes("CHECKOUT_COMMITTED_VARIANT"), "the isolated child reads the checkout's own instructions");
   assert.equal(childSystem.includes("PARENT_WORKING_TREE_VARIANT"), false, "the isolated child does not carry the parent's instruction text");
   assert.ok(childSystem.includes("MANAGED_FILE_TEXT"), "the managed tier reaches the isolated child");
   assert.ok(childSystem.includes("ISO_AGENT_BODY"), "the child's own suffix survives the instruction rewrite");
   assert.ok(/You are a child agent assigned a focused task/.test(childSystem), "the child prompt keeps its suffix");
 
-  assert.ok(String(parent[2].system).includes("PARENT_WORKING_TREE_VARIANT"), "the parent prompt keeps its own instructions");
+  const managedChild = children.find(body => String(body.system).includes("NO_MD_AGENT_BODY"));
+  assert.ok(managedChild, "the omitClaudeMd child ran");
+  const managedSystem = String(managedChild.system);
+  assert.ok(managedSystem.includes("MANAGED_FILE_TEXT"), "the omitClaudeMd child keeps the managed file text");
+  assert.ok(managedSystem.includes("MANAGED_SETTINGS_TEXT"), "the omitClaudeMd child keeps the managed settings text");
+  assert.ok(managedSystem.includes("MANAGED_RULE_TEXT"), "the omitClaudeMd child keeps the managed rule text");
+  assert.equal(managedSystem.includes("PARENT_WORKING_TREE_VARIANT"), false, "the omitClaudeMd child drops the project text");
+  assert.equal(managedSystem.includes("CHECKOUT_COMMITTED_VARIANT"), false, "the omitClaudeMd child drops the checkout text");
+  assert.ok(/You are a child agent assigned a focused task/.test(managedSystem), "the managed-only child keeps its suffix");
+
+  assert.ok(String(parent[3].system).includes("PARENT_WORKING_TREE_VARIANT"), "the parent prompt keeps its own instructions");
   console.log(JSON.stringify({ cli: "passed", managedTierFirst: true, nestedInstructionOnTouch: true, isolatedChildReadsCheckout: true,
-    childSuffixPreserved: true, parentPromptUnchanged: true, ...(compiled ? { compiledCLI: true } : {}),
+    childSuffixPreserved: true, managedOnlyChild: true, parentPromptUnchanged: true, ...(compiled ? { compiledCLI: true } : {}),
     modelCalls: requests.length, gateway: "owned loopback SSE" }));
 } finally {
   child?.kill("SIGKILL");

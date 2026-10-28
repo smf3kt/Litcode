@@ -52,6 +52,19 @@ test("full YAML fields load into typed metadata and original CRLF body stays pin
   assert.deepEqual(agentTypesSchema.parse(loaded.agentTypes), loaded.agentTypes);
 });
 
+test("omitClaudeMd is a boolean definition field and survives catalog validation", t => {
+  const root = fixture(t);
+  write(root, "agents/quiet.md", markdown("quiet", "body", "omitClaudeMd: true\n"));
+  write(root, "agents/loud.md", markdown("loud", "body", "omitClaudeMd: false\n"));
+  const loaded = loadAgentTypes({ projectDir: path.join(root, "agents") });
+  assert.equal(loaded.agentTypes.find(agent => agent.name === "quiet")?.omitClaudeMd, true);
+  assert.equal(loaded.agentTypes.find(agent => agent.name === "loud")?.omitClaudeMd, false);
+  assert.deepEqual(agentTypesSchema.parse(loaded.agentTypes), loaded.agentTypes);
+  write(root, "agents/bad.md", markdown("bad", "body", "omitClaudeMd: 1\n"));
+  const rejected = loadAgentTypes({ projectDir: path.join(root, "agents") });
+  assert.equal(rejected.reports.find(report => report.path.endsWith("bad.md"))?.status, "invalid");
+});
+
 test("default general mode and comma-separated tool metadata retain empty allowlists", t => {
   const root = fixture(t);
   write(root, "agents/a.md", markdown("default_agent"));

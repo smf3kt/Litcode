@@ -16,6 +16,9 @@ export interface AgentTypeInfo {
   disallowedTools?: string[];
   skills?: string[];
   background?: boolean;
+  /** Recovered `omitClaudeMd` (chunk-sfn1dbxq.js [429193,429451)): a child
+   *  spawned from this definition carries managed policy instructions only. */
+  omitClaudeMd?: boolean;
   name: string;
   description: string;
   aliases?: string[];
@@ -46,6 +49,7 @@ const definitionSchema = z.object({
   model: nonempty.optional(),
   effort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
   maxTurns: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
+  omitClaudeMd: z.boolean().optional(),
   isolation: z.literal("worktree").optional(),
 }).strict();
 

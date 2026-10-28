@@ -551,7 +551,8 @@ export class AgentRegistry {
         // isolated checkout carries its own files, not the parent's text.
         const rebased = rebaseChildInstructions(config, environment.config.workspace,
           config.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: config.configSources.managedSettingsFile },
-          childPromptSuffix(launch) + (structuredState === undefined ? '' : STRUCTURED_OUTPUT_SYSTEM_NOTE), instructionEndMarkers(config));
+          childPromptSuffix(launch) + (structuredState === undefined ? '' : STRUCTURED_OUTPUT_SYSTEM_NOTE), instructionEndMarkers(config),
+          launch.type?.omitClaudeMd === true);
         config = { ...config, workspace: environment.config.workspace, system: rebased.system };
         if (rebased.instructions !== undefined) {
           config.instructionSources = instructionSources(rebased.instructions);

@@ -9,6 +9,7 @@ import { assertPaired, defaultConfig } from '../src/agent.js';
 import { AgentRegistry, createAgentRegistryTools, type AgentRegistryOptions } from '../src/agent-registry.js';
 import type { ModelProvider, ModelRequest } from '../src/provider.js';
 import { Session } from '../src/session.js';
+import { INSTRUCTION_INTRO } from '../src/config.js';
 import { listSessions } from '../src/sessions.js';
 import { capChildOutput, createSubagentTool, selectChildTools } from '../src/subagents.js';
 import { createTools, type ToolDefinition } from '../src/tools.js';
@@ -1062,6 +1063,31 @@ test('lease cleanup failures preserve completed results and report the retained 
     assert.equal(result.summary, 'done'); assert.equal(result.status, 'completed');
     assert.match(result.cleanup_error!, /dirty worktree preserved/); assert.ok(result.cleanup_error!.includes(f.workspace));
   } finally { await f.cleanup(); }
+});
+
+test('an omitClaudeMd child carries the managed policy tier only', async () => {
+  const f = fixture();
+  const managed = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-omit-managed-')));
+  fs.writeFileSync(path.join(managed, 'HARNESS.md'), 'MANAGED_ONLY_TEXT');
+  fs.writeFileSync(path.join(managed, 'managed-settings.json'), JSON.stringify({ claudeMd: 'MANAGED_SETTINGS_ONLY_TEXT' }));
+  fs.writeFileSync(path.join(f.workspace, 'HARNESS.md'), 'PARENT_PROJECT_TEXT');
+  const systems: string[] = [];
+  const type = { name: 'no-md', description: 'omit fixture', mode: 'explore' as const, body: 'NO_MD_BODY',
+    path: path.join(f.workspace, '.harness/agents/no-md.md'), omitClaudeMd: true };
+  const registry = f.make({ enableAdvanced: true, agentTypes: [type], provider: { count: async () => 0,
+    complete: async request => { systems.push(String(request.system)); return response('done'); } } });
+  try {
+    const parent = { ...f.config, configSources: { managedSettingsFile: path.join(managed, 'managed-settings.json') },
+      system: `${f.config.system}${INSTRUCTION_INTRO}Instructions from ${path.join(f.workspace, 'HARNESS.md')}:\nPARENT_PROJECT_TEXT` };
+    const child = await registry.launch({ prompt: 'read', subagent_type: 'no-md' }, undefined, { config: parent, tools: f.tools });
+    assert.equal(child.status, 'completed');
+    const system = systems.at(-1)!;
+    assert.match(system, /MANAGED_ONLY_TEXT/);
+    assert.match(system, /MANAGED_SETTINGS_ONLY_TEXT/);
+    assert.equal(system.includes('PARENT_PROJECT_TEXT'), false);
+    assert.match(system, /NO_MD_BODY/);
+    assert.match(system, /You are a child agent assigned a focused task/);
+  } finally { await registry.close(); fs.rmSync(managed, { recursive: true, force: true }); await f.cleanup(); }
 });
 
 test('an isolated child re-reads its instructions from its own checkout', async () => {
