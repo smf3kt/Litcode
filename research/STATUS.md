@@ -1,3 +1,5 @@
+W378 Hooks plugin settlement (2026-10-28). Main verification and independent scoped review pass. See [W378](ports/W378-plugin-settlement.md). Hooks remains Partial.
+
 W377 Hooks edit-relay lifecycle (2026-10-28). See [W377](ports/W377-relay-lifecycle.md) for the disposed-listener regression, source mapping and verification. Independent review returned VERIFIED_SCOPED; Hooks remains Partial.
 
 W376 Hooks scoped acceptance (2026-10-28). See [W376](ports/W376-hooks.md) for source mappings, compiled PTY checks, the full-suite rerun and remaining boundaries. The family remains Partial.

@@ -131,7 +131,9 @@ export function adoptPluginHooksModules(declarations: readonly PluginHooksModule
     }));
   }
   const started = Promise.all(starts).then(() => undefined);
-  pending = Promise.all([pending, started]).then(() => undefined);
+  // `gas`/`iOn`, chunk-2kdsvp3x.js [39441,39563)/[38557,38835), UTF-16.
+  const settled = Promise.allSettled(starts).then(() => undefined);
+  pending = Promise.all([pending, settled]).then(() => undefined);
   return started;
 }
 

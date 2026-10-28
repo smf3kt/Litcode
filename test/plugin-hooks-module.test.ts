@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {test, type TestContext} from 'node:test';
 import {loadProjectConfig} from '../src/config.js';
 import {createPluginTools, discoverInstalledPluginComponents} from '../src/plugins.js';
@@ -9,7 +10,7 @@ import {chainRecords, clearChainRecords} from '../src/plugin-chain-host.js';
 import {
   adoptedPluginHooksModules, adoptPluginHooksModules, pluginHooksModulesSettled,
 } from '../src/plugin-chain-registry.js';
-import {chainHooked} from '../src/plugin-chain-relay.js';
+import {chainHooked, composerEditRelay} from '../src/plugin-chain-relay.js';
 import type {ToolContext} from '../src/tools.js';
 
 // A plugin's chain hooks module is declared by its hooks file, not by its manifest: `modules` is one
@@ -166,6 +167,63 @@ test('hooks modules: a config read still loads a plugin another process installe
   f.readConfig();
   await until(() => !chainHooked('prompt.edit'), 'the unloaded module');
   assert.deepEqual(adoptedPluginHooksModules(), []);
+});
+
+test('hooks modules: a failed load does not poison later edit settlement', async t => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'chain-failure-')));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const first = path.join(dir, 'valid.mjs');
+  fs.writeFileSync(first, `export default {name:'survivor',tier:'user',patterns:[{pattern:'prompt.edit'}],handlers:{'prompt.edit':(event,next)=>next({...event,inputText:'there'})}};`);
+  const valid = {name: 'survivor', modulePath: first};
+  const missing = {name: 'missing', modulePath: path.join(dir, 'absent.mjs')};
+  const reports: string[] = [];
+  let draft = {text: 'hello world', cursor: 11};
+  await adoptPluginHooksModules([valid]);
+  await pluginHooksModulesSettled();
+  const relay = composerEditRelay({read: () => ({...draft}), commit: box => { draft = box; }, report: message => reports.push(message)});
+  try {
+    await assert.rejects(adoptPluginHooksModules([valid, missing]), {code: 'ERR_MODULE_NOT_FOUND'});
+    await adoptPluginHooksModules([valid]);
+    await pluginHooksModulesSettled();
+    assert.equal(chainHooked('prompt.edit'), true);
+    assert.equal(relay.isRecording(), true);
+    const before = draft;
+    draft = {text: 'hello!', cursor: 6};
+    relay.record({before, after: draft, key: {key: '!', name: '!'}});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(draft, {text: 'hellothere', cursor: 10});
+    assert.deepEqual(reports, []);
+  } finally {
+    relay.dispose();
+    await adoptPluginHooksModules([]);
+  }
+});
+
+test('hooks modules: settlement waits for a slower load after another rejects', async t => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'chain-settling-')));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const gatePath = path.join(dir, 'gate.mjs');
+  const slowPath = path.join(dir, 'slow.mjs');
+  fs.writeFileSync(gatePath, `let release; export const ready = new Promise(resolve => { release = resolve; }); export function open() { release(); }`);
+  fs.writeFileSync(slowPath, `import {ready} from './gate.mjs'; await ready; export default ${hooksModule('slow').replace('export default ', '').trim()}`);
+  const gate = await import(pathToFileURL(gatePath).href);
+  const slow = {name: 'slow', modulePath: slowPath};
+  const missing = {name: 'missing', modulePath: path.join(dir, 'absent.mjs')};
+  try {
+    await assert.rejects(adoptPluginHooksModules([missing, slow]), {code: 'ERR_MODULE_NOT_FOUND'});
+    let completed = false;
+    const settling = pluginHooksModulesSettled().then(() => { completed = true; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(completed, false);
+    gate.open();
+    await settling;
+    assert.deepEqual(adoptedPluginHooksModules(), ['slow']);
+    assert.equal(chainHooked('prompt.edit'), true);
+  } finally {
+    gate.open();
+    await pluginHooksModulesSettled();
+    await adoptPluginHooksModules([]);
+  }
 });
 
 test('hooks modules: a settle already waiting also covers the next adoption', async t => {
