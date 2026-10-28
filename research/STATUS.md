@@ -1,3 +1,5 @@
+W382 Hooks concurrent adoption (2026-10-28). Main verification and final independent scoped review pass after three repair findings; exceptional retirement cleanup and notification boundaries remain open. See [W382](ports/W382-concurrent-adoption.md). Hooks remains Partial.
+
 W381 Hooks module ownership (2026-10-28). Main verification and independent scoped repair review pass after four review repairs. See [W381](ports/W381-module-ownership.md). Hooks remains Partial.
 
 W380 Hooks startup failure handling (2026-10-28). Main verification and independent scoped repair review pass. See [W380](ports/W380-plugin-startup.md). Hooks remains Partial.

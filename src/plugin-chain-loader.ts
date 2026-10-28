@@ -19,7 +19,7 @@ export type ChainRunRecord = ChainModuleRecord & { terminate?: () => void; retir
 /** A loaded chain module and the one call that ends it. */
 export interface LoadedChainModule {
   record: ChainRunRecord;
-  unload: () => void;
+  unload: (notify?: () => void) => void;
 }
 
 /** A fresh run: the environment counter and the argument table the copied `tGe` reads and writes. */
@@ -45,13 +45,13 @@ export async function loadChainModule(
   const record = (await tGe(run, descriptor)) as ChainRunRecord;
   const loaded: LoadedChainModule = {
     record,
-    unload: () => {
+    unload: (notifyRemoval = notify) => {
       const at = it().loadedModules.indexOf(record);
       if (at < 0) return;
       it().loadedModules.splice(at, 1);
       AK.forgetPresses(descriptor.pluginName);
       record.retire?.();
-      notify();
+      notifyRemoval();
     },
   };
   // `Pe`/`Re`, chunk-sfn1dbxq.js [2386573,2387113)/[2386063,2386511), UTF-16.

@@ -260,11 +260,13 @@ test('hooks modules: notification errors retain a removable published owner', as
   const declaration = {name: 'owned', modulePath, path: dir};
   const records = () => it().loadedModules.filter(record => record.name === 'owned');
   let reentered = false;
+  let reentry: Promise<void> | undefined;
   let failure: string | undefined = 'load notification failed';
   const stopLoadFailure = onChainModulesChanged(() => {
     if (failure === 'load notification failed' && !reentered) {
       reentered = true;
-      void adoptPluginHooksModules([declaration]);
+      reentry = adoptPluginHooksModules([declaration]);
+      void reentry.catch(() => {});
     }
     if (failure !== undefined) throw new Error(failure);
   });
@@ -272,11 +274,13 @@ test('hooks modules: notification errors retain a removable published owner', as
   try {
     await assert.rejects(adoptPluginHooksModules([declaration]), {message: 'load notification failed'});
     await pluginHooksModulesSettled();
+    assert.ok(reentry);
+    await assert.rejects(reentry, {message: 'load notification failed'});
     assert.deepEqual(adoptedPluginHooksModules(), ['owned']);
     assert.equal(records().length, 1);
     assert.equal(chainHooked('prompt.edit'), true);
     assert.equal(relay.isRecording(), false);
-    assert.throws(() => adoptPluginHooksModules([declaration]), {message: 'load notification failed'});
+    await assert.rejects(adoptPluginHooksModules([declaration]), {message: 'load notification failed'});
     assert.equal(records().length, 1);
     assert.equal(relay.isRecording(), false);
     failure = undefined;
@@ -285,7 +289,7 @@ test('hooks modules: notification errors retain a removable published owner', as
     assert.equal(relay.isRecording(), true);
     const record = records()[0]!;
     failure = 'remove notification failed';
-    assert.throws(() => adoptPluginHooksModules([]), {message: 'remove notification failed'});
+    await assert.rejects(adoptPluginHooksModules([]), {message: 'remove notification failed'});
     assert.deepEqual(adoptedPluginHooksModules(), []);
     assert.equal(records().length, 0);
     assert.equal(chainHooked('prompt.edit'), false);
@@ -351,7 +355,7 @@ test('hooks modules: settlement retains earlier loads when a retry notification 
   try {
     await assert.rejects(adoptPluginHooksModules([ready]), {message: 'retry notification failed'});
     await pluginHooksModulesSettled();
-    assert.throws(() => adoptPluginHooksModules([slow, missing, ready]), {message: 'retry notification failed'});
+    await assert.rejects(adoptPluginHooksModules([slow, missing, ready]), {message: 'retry notification failed'});
     let completed = false;
     const settling = pluginHooksModulesSettled().then(() => { completed = true; });
     await new Promise(resolve => setTimeout(resolve, 30));

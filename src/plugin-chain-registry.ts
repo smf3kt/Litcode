@@ -18,6 +18,7 @@ import { chainModuleRecord } from './plugin-chain-module-record.js';
 import { inProcessEnvironmentHost } from './plugin-chain-module-host.js';
 import { createChainRun, loadChainModuleFileInto, type LoadedChainModule } from './plugin-chain-loader.js';
 import { D5t } from './plugin-chain-loader-source.js';
+import { NDe } from './plugin-chain-store-entry-source.js';
 import type { ChainHandler } from './plugin-chain-types.js';
 
 // The record factory: a module installed through the host becomes the record shape the copied
@@ -120,7 +121,10 @@ function notifyInventoryChange(): void {
 }
 
 const adopted = new Map<string, AdoptedModule>();
+// `uen`/`NDe`, chunk-sfn1dbxq.js [2425242,2425917), chunk-tvdq3hrk.js [15601,15722), UTF-16.
+const queue: (task: () => Promise<void>) => Promise<void> = NDe();
 let pending: Promise<void> = Promise.resolve();
+let pendingLoads: Promise<void> = Promise.resolve();
 
 /** The plugins whose modules are loaded right now. */
 export function adoptedPluginHooksModules(): readonly string[] {
@@ -130,23 +134,46 @@ export function adoptedPluginHooksModules(): readonly string[] {
 /**
  * Brings the chain's loaded plugin modules in line with what the store discovered: a plugin that
  * declares a module now is registered and loaded, one whose declaration changed is reloaded, and one
- * that disappeared is unloaded. Loading runs the plugin's own file, so it is deferred — this call
- * registers the declaration and hands back a promise for the loads it started, which a caller that
- * needs the chain ready (a run, a test) can await.
+ * that disappeared is unloaded. Each request follows earlier reconciliation, and its returned promise
+ * reports that request's load or notification error.
  */
 export function adoptPluginHooksModules(declarations: readonly PluginHooksModuleDeclaration[]): Promise<void> {
-  const seen = new Set(declarations.map((declaration) => declaration.name));
-  const leaving: string[] = [];
-  for (const [name, held] of [...adopted]) {
-    if (seen.has(name)) continue;
-    leaving.push(held.loaded.record.label ?? name);
-    // `CVo` removes the known owner before `iF` unloads it (chunk-sfn1dbxq.js [2394754,2395107), UTF-16).
-    adopted.delete(name);
-    held.loaded.unload();
+  const snapshot = declarations.map(declaration => ({ ...declaration }));
+  let resolve!: () => void;
+  let reject!: (error: unknown) => void;
+  const result = new Promise<void>((accept, fail) => { resolve = accept; reject = fail; });
+  const operation = queue(async () => {
+    let resultSettled: Promise<void>;
+    try {
+      resultSettled = reconcilePluginHooksModules(snapshot).then(resolve, reject);
+    } catch (error) {
+      reject(error);
+      resultSettled = Promise.resolve();
+    }
+    await resultSettled;
+    await pendingLoads;
+  });
+  pending = operation.then(() => undefined, () => undefined);
+  return result;
+}
+
+function reconcilePluginHooksModules(declarations: readonly PluginHooksModuleDeclaration[]): Promise<void> {
+  const seen = new Set<string>();
+  for (const declaration of declarations) {
+    if (seen.has(declaration.name)) throw new Error(`Duplicate hooks module declaration: ${declaration.name}`);
+    seen.add(declaration.name);
   }
-  // The source's removal reconciler `CVo` (chunk-sfn1dbxq.js [2394700,2395092)) drops the plugin from
-  // its state and unloads it with this sentence, which is the line a person sees.
-  if (leaving.length > 0) t(`hooks modules unloaded: ${leaving.join(', ')} (plugin disabled or uninstalled)`);
+  const leaving = [...adopted].filter(([name]) => !seen.has(name));
+  if (leaving.length > 0) {
+    // `CVo`/`iF`, chunk-sfn1dbxq.js [2394754,2395107)/[2390383,2390919), UTF-16.
+    let changed = false;
+    for (const [name, held] of leaving) {
+      adopted.delete(name);
+      held.loaded.unload(() => { changed = true; });
+    }
+    if (changed) notifyInventoryChange();
+    t(`hooks modules unloaded: ${leaving.map(([name, held]) => held.loaded.record.label ?? name).join(', ')} (plugin disabled or uninstalled)`);
+  }
   const starts: Promise<void>[] = [];
   try {
     for (const declaration of declarations) {
@@ -184,13 +211,12 @@ export function adoptPluginHooksModules(declarations: readonly PluginHooksModule
     // `gas`/`iOn` and `a_e` finally, chunk-2kdsvp3x.js [39441,39563)/[38557,38835),
     // chunk-sfn1dbxq.js [2389608,2389680), UTF-16.
     const settled = Promise.allSettled(starts).then(() => undefined);
-    pending = Promise.all([pending, settled]).then(() => undefined);
+    pendingLoads = Promise.all([pendingLoads, settled]).then(() => undefined);
   }
 }
 
-/** Settles the loads this module has started, so a caller can dispatch with every declaration live. A
- *  load started while this wait is already in flight replaces `pending`, so the wait repeats until it
- *  stops moving; one call therefore covers every adoption recorded before it returns. */
+/** Wait for queued reconciliations and every load they started. A request submitted during a wait
+ *  replaces `pending`, so the wait repeats until the queue's tail stops moving. */
 export async function pluginHooksModulesSettled(): Promise<void> {
   let waited: Promise<void> | undefined;
   while (waited !== pending) {
