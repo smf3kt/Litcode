@@ -11,7 +11,8 @@ import { sourceSkillArgumentsDefault } from './skill-arguments.js';
 
 /** Reload local policy/catalogs while retaining the live provider and call limits. */
 export function reloadConfig(current: SessionConfig, pluginHooks: 'apply' | 'preview' = 'apply'): SessionConfig {
-  const loaded = loadProjectConfig(current.workspace, { ...current.configSources, paths: [], pluginHooks });
+  const loaded = loadProjectConfig(current.workspace, { ...current.configSources, paths: [], pluginHooks,
+    ...(current.policyHelperText === undefined ? {} : { policyHelperText: current.policyHelperText }) });
   const settings = parseSettings(loaded.settings);
   const next = structuredClone(current);
   next.settingSources = loaded.settingSources;

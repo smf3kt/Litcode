@@ -72,6 +72,29 @@ export function readPolicyHelper(path: string): PolicyHelperRead {
 }
 
 /**
+ * The helper document's `claudeMd` text. The recovered loader reads it with
+ * `M2n()` (chunk-x0dc37w9.js 71537) and pushes the block only when the value is
+ * truthy (`qZn`, chunk-sfn1dbxq.js 669530), so an empty string is absence.
+ */
+export function policyHelperInstructionText(policy: unknown): string | undefined {
+  if (typeof policy !== 'object' || policy === null || Array.isArray(policy)) return undefined;
+  const text = (policy as { claudeMd?: unknown }).claudeMd;
+  return typeof text === 'string' && text !== '' ? text : undefined;
+}
+
+/**
+ * The helper document's policy fields without `claudeMd`. The recovered state
+ * keeps the instruction text and the settings payload apart (`state.output`
+ * carries `claudeMd` next to `managedSettings`), and the host's managed-policy
+ * application is strict, so the instruction key is removed before it is applied.
+ */
+export function policyHelperPolicy(policy: unknown): Record<string, unknown> | undefined {
+  if (typeof policy !== 'object' || policy === null || Array.isArray(policy)) return undefined;
+  const { claudeMd: _text, ...rest } = policy as Record<string, unknown>;
+  return rest;
+}
+
+/**
  * The helper state machine.
  *
  * `refresh` is the only mutation: it reads once, applies the tier rules and

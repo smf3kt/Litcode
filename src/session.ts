@@ -12,7 +12,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import type { GatewayConfig } from './provider.js';
 import { parseTheme, type ThemeSetting } from './tui-theme-state.js';
 import { HOOK_EVENTS, hooksSchema, type HooksConfig } from './hooks.js';
-import { autoPolicySchema, permissionPolicySchema, emptySessionPermissionUpdates, seedPermissionUpdates, bindPermissionOwner, reloadPermissionState, childPermissionState, type LivePermissionOwner, applyPermissionUpdates, type PermissionUpdate, type PermissionPolicy, type SessionPermissionUpdates } from './permissions.js';
+import { autoPolicySchema, permissionPolicySchema, permissionLayerSchema, emptySessionPermissionUpdates, seedPermissionUpdates, bindPermissionOwner, reloadPermissionState, childPermissionState, type LivePermissionOwner, applyPermissionUpdates, type PermissionUpdate, type PermissionPolicy, type SessionPermissionUpdates } from './permissions.js';
 import { persistPermissionUpdate, permissionSettingsPaths, type PermissionWriteResult, type PermissionIgnoreResult } from './permission-settings.js';
 import { AutoModeDenialStore, permissionRetryMessage } from './permission-denials.js';
 import { observeWorkingDirectory, type WorkingDirectories } from './path-identity.js';
@@ -90,6 +90,9 @@ export type SessionConfig = {
   dynamicSkillDirs?: string[];
   /** Instruction files loaded for the eager InstructionsLoaded raise. */
   instructionSources?: InstructionSource[];
+  /** The policy helper's `claudeMd` tier, journaled so a reload and a child
+   *  prompt rebuild the same instruction section (chunk-x0dc37w9.js 71537). */
+  policyHelperText?: string;
   conditionalRules?: ConditionalRule[];
   keybindings?: Keybindings;
   prefersReducedMotion?: boolean;
@@ -205,14 +208,30 @@ const policyFeaturesSchema = z.object({ tasks: z.boolean().optional(), subagents
 export const managedPolicySchema = z.object({ useAutoModeDuringPlan: z.boolean().optional(), autoMode: autoPolicySchema.optional(), allowManagedPermissionRulesOnly: z.boolean().optional(), allowShell: z.boolean().optional(), permissions: permissionPolicySchema.optional(),
   features: policyFeaturesSchema.optional(), mcpClient: z.object({ roots: z.boolean().optional(), sampling: z.boolean().optional(), samplingImages: z.boolean().optional(), samplingArrays: z.boolean().optional(), samplingAudio: z.boolean().optional(), elicitation: z.boolean().optional() }).strict().optional() }).strict();
 
+/** A policy-helper document may also carry the instruction text the recovered
+ *  helper exposes as `claudeMd` (chunk-x0dc37w9.js 71537, `M2n`). */
+export const managedHelperSchema = managedPolicySchema.extend({ claudeMd: z.string().optional() });
+
 /** Pin only authored fields; permission arrays replace rather than concatenate. */
 export function applyManagedPolicy(config: SessionConfig, policy: SessionConfig['managedPolicy']): void {
   if (policy === undefined) { delete config.managedPolicy; return; }
   const parsed = managedPolicySchema.parse(policy);
   config.managedPolicy = structuredClone(parsed);
   if (parsed.allowShell !== undefined) config.allowShell = parsed.allowShell;
-  if (parsed.permissions !== undefined) config.permissions = { ...structuredClone(parsed.permissions),
-    ...(config.permissions?.layers === undefined ? {} : { layers: config.permissions.layers }) };
+  if (parsed.permissions !== undefined) {
+    // The managed document also owns the `policySettings` permission layer
+    // (`loadProjectConfig`, the same document read once), so a refreshed policy
+    // replaces that layer instead of leaving the previous one in force.
+    const rules = parsed.permissions;
+    const layers = (config.permissions?.layers ?? []).filter(layer => layer.source !== 'policySettings');
+    layers.push(permissionLayerSchema.parse({ source: 'policySettings', root: config.workspace,
+      ...(parsed.autoMode === undefined ? {} : { autoMode: parsed.autoMode }),
+      ...(parsed.useAutoModeDuringPlan === undefined ? {} : { useAutoModeDuringPlan: parsed.useAutoModeDuringPlan }),
+      ...(parsed.autoMode?.classifyAllShell === undefined ? {} : { classifyAllShell: parsed.autoMode.classifyAllShell }),
+      allow: rules.allow ?? [], deny: rules.deny ?? [], ask: rules.ask ?? [],
+      additionalDirectories: rules.additionalDirectories ?? [] }));
+    config.permissions = { ...structuredClone(rules), layers };
+  }
   if (parsed.allowManagedPermissionRulesOnly !== undefined && config.permissions) config.permissions.managedOnly = parsed.allowManagedPermissionRulesOnly;
   if (parsed.features) config.features = { tasks: true, subagents: true, ...config.features, ...parsed.features };
   if (parsed.mcpClient) config.mcpClient = { ...config.mcpClient, ...parsed.mcpClient };
@@ -249,7 +268,7 @@ export const configSchema = z.object({
   // successful output, while a structurally invalid document is still refused.
   policyHelper: z.object({ path: z.string().min(1),
     intervalMs: z.number().int().positive().max(86_400_000).optional(),
-    defaultPolicy: managedPolicySchema.optional() }).strict().optional(),
+    defaultPolicy: managedHelperSchema.optional() }).strict().optional(),
   skills: z.array(z.object({ name: z.string().min(1), description: z.string(), path: z.string(), body: z.string(), source: z.enum(['userSettings', 'projectSettings', 'plugin']).optional(), format: z.enum(['skill', 'command']).optional(), plugin: z.string().optional(), disallowedTools: z.array(z.string()).optional(), userInvocable: z.boolean(), disableModelInvocation: z.boolean(), mode: z.enum(['on', 'name-only', 'user-invocable-only', 'off']).optional(),
     paths: z.array(z.string()).optional(),
     allowedTools: z.array(z.string()).optional(), argumentNames: z.array(z.string().refine(name => name.trim() !== '' && !/^\d+$/.test(name), 'argument names must be non-empty and not all digits')).optional(), model: z.string().optional(), effort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).optional(), context: z.literal('fork').optional(), agent: z.string().trim().min(1).max(128).optional(), background: z.boolean().optional(),
@@ -311,6 +330,7 @@ export const configSchema = z.object({
   }).strict()).optional(),
   instructionSources: z.array(z.object({ path: z.string(), parent: z.string().optional(),
     globs: z.array(z.string()).optional() }).strict()).optional(),
+  policyHelperText: z.string().optional(),
   mcpServers: mcpServersSchema.optional(),
   heldMcpServers: z.array(z.object({ name: z.string().min(1).max(256), fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
     reason: z.enum(['unapproved', 'declaration-changed']) }).strict()).optional(),

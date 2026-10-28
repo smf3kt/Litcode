@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { applyPermissionUpdates, emptySessionPermissionUpdates, permissionDecision, permissionError, permissionPolicySchema,
-  permissionUpdateListSchema, PERMISSION_UPDATES_UNAPPLIED, type PermissionPolicy, type SessionPermissionUpdates } from '../src/permissions.js';
+import { applyPermissionUpdates, bindPermissionOwner, emptySessionPermissionUpdates, permissionDecision, permissionError, permissionPolicySchema,
+  permissionUpdateListSchema, PERMISSION_UPDATES_UNAPPLIED, reloadPermissionState, seedPermissionUpdates, type PermissionPolicy,
+  type SessionPermissionUpdates } from '../src/permissions.js';
+import { applyManagedPolicy } from '../src/session.js';
+import { defaultConfig } from '../src/agent.js';
 import type { ToolDefinition } from '../src/tools.js';
 
 function tool(name: string, readOnly = true): ToolDefinition {
@@ -274,4 +277,23 @@ test('permission updates: mode, content, replace and remove reach consumers', ()
   const asked = applyPermissionUpdates(allowed, [{ type: 'addRules', behavior: 'ask', destination: 'session',
     rules: [{ toolName: 'Bash', ruleContent: 'printf secret' }] }]).state;
   assert.equal(permissionDecision(undefined, tool('run_command', false), { command: 'printf secret' }, asked).decision, 'deny');
+});
+
+test('a managed policy replaces the policySettings layer and the rules it seeded', () => {
+  const workspace = '/tmp/managed-layer-fixture', userDirectory = '/tmp/managed-layer-user';
+  const managed: PermissionPolicy = { mode: 'default', allow: [], deny: [], ask: [], additionalDirectories: [],
+    layers: [{ source: 'policySettings', root: workspace, allow: [], deny: ['write_file'], ask: [], additionalDirectories: [] }] };
+  const config = defaultConfig(workspace, []);
+  config.permissions = structuredClone(managed);
+  // The live owner was seeded from the managed deny before the refresh.
+  const seeded = seedPermissionUpdates(managed, workspace, userDirectory);
+  assert.deepEqual(seeded.deny, ['write_file']);
+  applyManagedPolicy(config, { permissions: { mode: 'bypass', allow: [], deny: [], ask: [], additionalDirectories: [] } });
+  assert.equal(config.permissions?.mode, 'bypass');
+  assert.deepEqual(config.permissions?.layers?.filter(layer => layer.source === 'policySettings').map(layer => layer.deny), [[]]);
+  // A re-seed takes the managed layer from the new policy, so the deny is gone.
+  const state = reloadPermissionState(seeded, config.permissions, workspace, userDirectory);
+  assert.deepEqual(state.deny, []);
+  bindPermissionOwner(config.permissions, { state: () => state, workingDirectories: () => [] });
+  assert.equal(permissionDecision(config.permissions, tool('write_file', false), {}).decision, 'allow');
 });

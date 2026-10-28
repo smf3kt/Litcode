@@ -1078,13 +1078,22 @@ test('an omitClaudeMd child carries the managed policy tier only', async () => {
     complete: async request => { systems.push(String(request.system)); return response('done'); } } });
   try {
     const parent = { ...f.config, configSources: { managedSettingsFile: path.join(managed, 'managed-settings.json') },
-      system: `${f.config.system}${INSTRUCTION_INTRO}Instructions from ${path.join(f.workspace, 'HARNESS.md')}:\nPARENT_PROJECT_TEXT` };
+      policyHelperText: 'HELPER_TIER_TEXT',
+      instructionSources: [{ path: path.join(f.workspace, 'HARNESS.md') }],
+      system: `${f.config.system}${INSTRUCTION_INTRO}Instructions from ${path.join(f.workspace, 'HARNESS.md')}:\nPARENT_PROJECT_TEXT`
+        + `\n\nInstructions from ${path.join(f.workspace, '.harness/memory/note.md')}:\nPARENT_MEMORY_TEXT` };
     const child = await registry.launch({ prompt: 'read', subagent_type: 'no-md' }, undefined, { config: parent, tools: f.tools });
     assert.equal(child.status, 'completed');
     const system = systems.at(-1)!;
     assert.match(system, /MANAGED_ONLY_TEXT/);
     assert.match(system, /MANAGED_SETTINGS_ONLY_TEXT/);
+    // The helper tier sits between the managed file and the settings document.
+    assert.ok(system.indexOf('MANAGED_ONLY_TEXT') < system.indexOf('HELPER_TIER_TEXT'));
+    assert.ok(system.indexOf('HELPER_TIER_TEXT') < system.indexOf('MANAGED_SETTINGS_ONLY_TEXT'));
+    // The source list marks the project block as instruction text and the
+    // memory block as something else, so only the former is replaced.
     assert.equal(system.includes('PARENT_PROJECT_TEXT'), false);
+    assert.match(system, /PARENT_MEMORY_TEXT/);
     assert.match(system, /NO_MD_BODY/);
     assert.match(system, /You are a child agent assigned a focused task/);
   } finally { await registry.close(); fs.rmSync(managed, { recursive: true, force: true }); await f.cleanup(); }

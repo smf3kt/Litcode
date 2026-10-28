@@ -220,7 +220,8 @@ export function childConfig(config: SessionConfig, tools: ToolDefinition[], opti
   // text, the recovered branch that leaves `userContext` untouched.
   const rebased = options.type?.omitClaudeMd === true
     ? rebaseChildInstructions({ system: config.system + suffix, workspace: config.workspace, instructionSources: config.instructionSources },
-      config.workspace, config.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: config.configSources.managedSettingsFile },
+      config.workspace, { ...(config.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: config.configSources.managedSettingsFile }),
+        ...(config.policyHelperText === undefined ? {} : { policyHelperText: config.policyHelperText }) },
       suffix, instructionEndMarkers(config), true)
     : undefined;
   const child: SessionConfig = { ...structuredClone(config), maxTurns: options.max_turns, childMode: options.mode,
@@ -296,7 +297,8 @@ export function createSubagentTool(source: SessionConfig | (() => SessionConfig)
           // (`Sar` -> `Znr` -> `gCt`, chunk-sfn1dbxq.js [3671831,3672142)), so an
           // isolated checkout carries its own files, not the parent's text.
           const rebased = rebaseChildInstructions(child, environment.config.workspace,
-            child.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: child.configSources.managedSettingsFile },
+            { ...(child.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: child.configSources.managedSettingsFile }),
+              ...(child.policyHelperText === undefined ? {} : { policyHelperText: child.policyHelperText }) },
             childPromptSuffix(launch), instructionEndMarkers(child), launch.type?.omitClaudeMd === true);
           child = { ...child, workspace: environment.config.workspace, system: rebased.system };
           if (rebased.instructions !== undefined) {

@@ -1,0 +1,115 @@
+{
+  "package": "W370",
+  "title": "Settings and instructions: the policy helper's claudeMd tier",
+  "status": "implementation and main verification; one bounded independent review pending",
+  "sample": {
+    "version": "2.1.296",
+    "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937"
+  },
+  "coordinateUnit": "zero-based half-open UTF-16 code units",
+  "sources": [
+    {
+      "module": "chunk-x0dc37w9.js",
+      "sha256": "0b4db31ad035eb234d6943552606135e83405b719e32a114283cadad4e957d92",
+      "bytes": 113411,
+      "owners": [
+        { "name": "lr", "range": [71464, 71537], "body16": "4820141a85a85ec6" },
+        { "name": "M2n", "range": [71537, 71580], "body16": "d1d5af9a76730689" },
+        { "name": "static default output (no claudeMd)", "offset": 56953 }
+      ]
+    },
+    {
+      "module": "chunk-1dhzexv1.js",
+      "sha256": "bd0b184583b7ed75cbcd56c65bb3c5175dfeb7f94d6a35754b988df573ebfff9",
+      "bytes": 73091,
+      "owners": [
+        { "name": "zt", "range": [26980, 27435], "body16": "78d769c9fedf27c2" },
+        { "name": "Jt", "range": [27435, 27614], "body16": "756afa6fd4d3cfb4" }
+      ]
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "sha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "bytes": 4762583,
+      "owners": [
+        { "name": "qZn tier insertion", "offset": 669530 },
+        { "name": "EEo sentinel literal", "offset": 53208 },
+        { "name": "Cx", "range": [684086, 684342], "body16": "b0e111faa86eb73a" }
+      ]
+    }
+  ],
+  "sourceBehaviour": [
+    "lr() returns the helper state output unless it was armed from remote; M2n() returns that output's claudeMd or null.",
+    "qZn pushes the helper block as {path:EEo,type:\"Managed\",content:bn} only when the text is truthy, between the managed directory's own file and the settings document's claudeMd.",
+    "zt() fingerprints policySettings.claudeMd, M2n(), claudeMdExcludes, autoMemoryEnabled, env and ir(); Jt re-evaluates it and on a change calls gk(e) and Cx(e,\"policy_refresh\"), clearing the cached userContext so the next prompt is rebuilt.",
+    "The static default fallback output is {managedSettings:...} only, so the default tier supplies no instruction text."
+  ],
+  "hostAdaptations": [
+    "managedHelperSchema is the strict managed-policy schema plus claudeMd; the CLI and policyHelper.defaultPolicy validate with it.",
+    "loadProjectConfig and loadChildInstructions insert policyHelperText under <policyHelper> after the managed directory's files and before the settings document's claudeMd.",
+    "refreshPolicyHelperInstructions rewrites the once-built prompt section in place, keeps memory blocks, and journals policyHelperText; the CLI settle calls it after every helper refresh.",
+    "Only the helper tier supplies text (serving === 'helper'); the static default payload's claudeMd is not used.",
+    "policyHelperPolicy removes claudeMd before applyManagedPolicy.",
+    "applyManagedPolicy now rebuilds the policySettings permission layer from the applied policy, and the settle re-seeds the live permission owner with reloadPermissionState; this repaired a defect that left the startup managed policy in force (the W08 driver's served case was red at the W369 commit)."
+  ],
+  "changedFiles": {
+    "src/session.ts": "45ad303598e599707d05b17ea2229973159f6465ecff3f79a95dddcfdef20c9c",
+    "src/config.ts": "01bf1f07dbe62d20838995df711b9dc0e58f2629706c5fac2a8411d058169956",
+    "src/policy-helper.ts": "22509a5ba6eabc82accda2f918dbbb173d75e7350dcb9ea7238b24dbdfa062ea",
+    "src/reload.ts": "49a2d3d0eea7d434ea7cffaa26d504de30c86ff3aa00f3a70d2794784b7bad32",
+    "src/cli.ts": "79ddfa9725af047862809d47c4bb21cf756281455ace93736bee602ed2e53470",
+    "src/subagents.ts": "0b8500d079932feec04d167dd46159772ded2d1472c9515bbe1145f8c79daca8",
+    "src/agent-registry.ts": "108d1c192c60ae2b1ebab5cb7ce5c46fbd8f70ef34a7e5c90d1871cfe21c98a1",
+    "test/policy-helper.test.ts": "4e909823c2e2450ffda90db8dd214db4c9f5d299373dd53d10a5487c94ae3578",
+    "test/config.test.ts": "a1c0f7873613f76438bce0b561cf8d0799d582e5dd55f3f80e6ed5bd0ee8e438",
+    "test/agent-registry.test.ts": "0bcf539f9b7ceb9d4d47cff728f19b21f0ba8a733a5acbb053efcc9b1945db06",
+    "test/permissions.test.ts": "07dbf6d8f96dfe62014b7cbaa5ebc0100f58e22839935c9e010bb18daef10bd0",
+    "scripts/smoke-policy-helper-cli.mjs": "2b8163d032fb706ee3c8430a95da0f8c82ba323240a3c554c58eea8708420af6"
+  },
+  "identity": {
+    "schema": "HarnessContentIdentity.v1",
+    "sha256": "e7e429ec67805a18dd2442545d2ecbecbbdd9140ed344afdc0bf5788ea458b4f",
+    "inputs": "d8df823dadaf4013d6dea265b90321f27137615f0426e85c67dc6464be6177d6",
+    "validation": "135fdad41c5d402ecda53ae7096b23c66a99ef57e0464354dcb6d3b5f948a026",
+    "build": "fd0f2a7ad6bf847708d73da3f6e6d5b223a3789b7ca5fa2d1e6c7be15548a60e",
+    "files": { "inputs": 939, "validation": 360, "build": 662 }
+  },
+  "validation": {
+    "check": "pass",
+    "build": "pass",
+    "focusedSuites": {
+      "policyHelper": "6/6",
+      "config": "79/79",
+      "agentRegistry": "50/50",
+      "permissions": "23/23",
+      "combinedRun": "159/159"
+    },
+    "fullSuite": "3449/3449 across 118 suites, 0 fail/cancel/skip/todo",
+    "drivers": [
+      {
+        "name": "smoke-policy-helper-cli.mjs",
+        "source": "pass, 5 cases x 2 owned loopback requests",
+        "compiled": "pass, 5 cases x 2 owned loopback requests"
+      }
+    ],
+    "redBaseline": "compiled CLI before the change: {claudeMd:...} was refused with 'policy does not match the managed policy schema' and the request lacked the text; the served case was also denied because the stale policySettings layer stayed in force"
+  },
+  "defectsRepaired": [
+    "applyManagedPolicy replaced the managed base fields but kept the previous policySettings permission layer, and the live permission owner kept the rules seeded at open, so a helper document's policy never replaced the startup managed policy. The layer is now rebuilt from the applied policy and the settle re-seeds the owner with reloadPermissionState."
+  ],
+  "knownLimitations": [
+    "A config without instructionSources cannot distinguish a memory block from instruction text; the live CLI, reload and every child build set the list.",
+    "The static default payload's own claudeMd is not used for instructions, matching the recovered default output.",
+    "The helper text is refreshed only through the CLI settle, reload and child builds; a host embedding that mutates config.system directly bypasses it."
+  ],
+  "notPorted": [
+    "dxs / appendSystemPrompt (no host surface)",
+    "the remote-armed helper state (armedFromRemote; remote managed policy is External)",
+    "plist and hklm helper mechanisms and remote refusal enforcement (W08)"
+  ],
+  "boundaries": [
+    "No account, subscription, OAuth or network feature; the helper reads a local file only.",
+    "No recovered application entrypoint was executed; extracted bytes were read as inert data.",
+    "Model traffic only through the owned loopback SSE driver."
+  ]
+}

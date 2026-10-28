@@ -39,7 +39,7 @@ import { sourceSkillExpansion } from './skill-arguments.js';
 import { mcpServersSchema, type McpServerConfig } from "./mcp.js";
 import { loadAgentTypes, type AgentTypeInfo, type AgentTypeLoadReport } from "./agent-types.js";
 import { LinkVetError, vetLinkChain } from "./link-vetting.js";
-import { configSchema, managedPolicySchema } from "./session.js";
+import { configSchema, managedPolicySchema, type SessionConfig } from "./session.js";
 import { normalizeSettingsDocument, type SettingSource, type ManagedSettingsOrigin } from './setting-sources.js';
 
 // ---------------------------------------------------------------------------
@@ -64,6 +64,14 @@ export interface InstructionFile {
  * came from a settings document rather than from a file on disk.
  */
 export const MANAGED_INSTRUCTION_SENTINEL = "<managed-settings>";
+
+/**
+ * The path a policy helper's own `claudeMd` text is filed under. The recovered
+ * loader pushes it as a `Managed` entry whose `path` is `EEo`, `"<policyHelper>"`
+ * (chunk-x0dc37w9.js offset 53208), between the managed directory's own file and
+ * the settings document's `claudeMd` (`qZn`, chunk-sfn1dbxq.js 669530-669647).
+ */
+export const POLICY_HELPER_SENTINEL = "<policyHelper>";
 
 /**
  * The heading `buildSystem` puts before the collected instruction blocks.
@@ -271,6 +279,9 @@ export interface LoadProjectOptions {
   /** Workspace-relative or absolute paths used to select conditional rules.
    * Omission preserves the original unconditional loading behavior. */
   paths?: string[];
+  /** The policy helper's current `claudeMd`, filed under `<policyHelper>` after
+   *  the managed directory's own file (chunk-sfn1dbxq.js 669530). */
+  policyHelperText?: string;
   pluginHooks?: 'apply' | 'preview';
 }
 
@@ -1503,6 +1514,9 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
     const file = path.join(managedRoot, name);
     if (isRegularFile(file)) appendInstruction(file, 0);
   }
+  if (options.policyHelperText !== undefined && options.policyHelperText !== "") {
+    instructions.push({ path: POLICY_HELPER_SENTINEL, content: options.policyHelperText });
+  }
   if (managedInstructionText !== undefined && managedInstructionText !== "") {
     instructions.push({ path: MANAGED_INSTRUCTION_SENTINEL, content: managedInstructionText });
   }
@@ -1699,7 +1713,7 @@ export function activateConditionalSkills(held: Map<string, SkillInfo>, workspac
  * spawn replaces its instruction text with the managed policy text and marks
  * the child managed-only (`gd`, chunk-40cepjpq.js [147565,147921)).
  */
-export function loadChildInstructions(workspace: string, options: { managedSettingsFile?: string; managedSettingsDir?: string } = {}, tier: "all" | "managed" = "all"):
+export function loadChildInstructions(workspace: string, options: { managedSettingsFile?: string; managedSettingsDir?: string; policyHelperText?: string } = {}, tier: "all" | "managed" = "all"):
   { files: InstructionFile[]; rules: ConditionalRule[] } | undefined {
   let root: string;
   try {
@@ -1750,6 +1764,9 @@ export function loadChildInstructions(workspace: string, options: { managedSetti
   // policy file, else the merged platform directory.
   const managedRoot = managedInstructionRoot(options, root);
   for (const name of INSTRUCTION_FILES) push(path.join(managedRoot, name));
+  if (options.policyHelperText !== undefined && options.policyHelperText !== "") {
+    files.push({ path: POLICY_HELPER_SENTINEL, content: options.policyHelperText });
+  }
   const managedText = options.managedSettingsFile !== undefined
     ? readSettingsLayer(path.resolve(root, options.managedSettingsFile), false)?.claudeMd
     : loadManagedSettingsDirectory(path.resolve(root, options.managedSettingsDir ?? managedSettingsDir())).instructionText;
@@ -1779,7 +1796,8 @@ export function loadChildInstructions(workspace: string, options: { managedSetti
  * `endMarkers` are the catalog headings that follow the parent's instruction
  * blocks. The paths the parent's `instructionSources` name decide which blocks
  * are parent instruction text; a block outside that set is a memory block and
- * is kept.
+ * is kept. A config without that list cannot tell the two apart, so every block
+ * is replaced; the live CLI, reload and every child build carry the list.
  *
  * `managedOnly` is the `omitClaudeMd` spawn: the child carries the managed
  * policy tier only, so the same-root shortcut does not apply and the loader
@@ -1787,7 +1805,7 @@ export function loadChildInstructions(workspace: string, options: { managedSetti
  * fail-open the recovered `gd` takes when its managed loader is unavailable.
  */
 export function rebaseChildInstructions(config: { system: string; workspace: string; instructionSources?: readonly InstructionSource[] },
-  root: string, options: { managedSettingsFile?: string; managedSettingsDir?: string } = {},
+  root: string, options: { managedSettingsFile?: string; managedSettingsDir?: string; policyHelperText?: string } = {},
   appended = "", endMarkers: readonly string[] = [], managedOnly = false):
   { system: string; instructions?: InstructionFile[]; conditionalRules?: ConditionalRule[] } {
   if (!managedOnly && path.resolve(root) === path.resolve(config.workspace)) return { system: config.system };
@@ -1803,9 +1821,35 @@ export function rebaseChildInstructions(config: { system: string; workspace: str
   };
 }
 
+/**
+ * Apply the policy helper's current `claudeMd` to a live session prompt. The
+ * recovered client fingerprints the helper tier in `zt()` and registers `Jt`,
+ * which clears the cached user context with `Cx(e,"policy_refresh")` when the
+ * fingerprint changes (chunk-1dhzexv1.js 27068 and 27435), so the next request
+ * is rebuilt with the new text; this host builds the prompt once, so the
+ * instruction section is rewritten in place and the tier is journaled for
+ * reloads and child prompts.
+ *
+ * Returns whether the prompt changed. A read failure propagates to the caller,
+ * which reports it and leaves the section alone, so a transient config read
+ * cannot drop instructions.
+ */
+export function refreshPolicyHelperInstructions(
+  config: Pick<SessionConfig, 'workspace' | 'configSources' | 'system' | 'instructionSources' | 'conditionalRules' | 'policyHelperText'>,
+  text: string | undefined, endMarkers: readonly string[] = []): boolean {
+  const next = text === undefined || text === "" ? undefined : text;
+  if (config.policyHelperText === next) return false;
+  const loaded = loadProjectConfig(config.workspace, { ...config.configSources, paths: [], pluginHooks: 'preview', policyHelperText: next });
+  const previousPaths = config.instructionSources?.map(source => source.path);
+  config.system = replaceInstructionSection(config.system, loaded.instructions, { previousPaths, endMarkers });
+  config.instructionSources = instructionSources(loaded.instructions);
+  config.conditionalRules = loaded.conditionalRules ?? [];
+  if (next === undefined) delete config.policyHelperText; else config.policyHelperText = next;
+  return true;
+}
+
 /** Discover instructions along the accessed path without scanning sibling trees. */
-export function loadPathInstructions(workspace: string, target: string, candidates?: (paths: string[]) => void): InstructionFile[] {
-  const root = fs.realpathSync(workspace);
+export function loadPathInstructions(workspace: string, target: string, candidates?: (paths: string[]) => void): InstructionFile[] {  const root = fs.realpathSync(workspace);
   const resolved = path.resolve(root, target);
   const relative = path.relative(root, resolved);
   if (path.isAbsolute(relative) || relative === ".." || relative.startsWith(".." + path.sep)) return [];

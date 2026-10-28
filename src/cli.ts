@@ -9,8 +9,10 @@ import { DEFAULT_GATEWAY, GatewayProvider, type GatewayConfig, type ModelProvide
 import { LOGIN_KINDS, UNCONFIGURED_MODEL, createProviderSlot, providerFromCredential,
   readStoredCredential, removeStoredCredential, runLogin, type LoginPrompts, type StoredCredential } from './login.js';
 import { resolveInheritedGateway, sameGateway, type InheritedField, type InheritedGateway } from './gateway-inherit.js';
-import { Session, applyManagedPolicy, managedPolicySchema, type SessionConfig } from './session.js';
-import { PolicyHelper } from './policy-helper.js';
+import { Session, applyManagedPolicy, managedHelperSchema, type SessionConfig } from './session.js';
+import { bindPermissionOwner, reloadPermissionState } from './permissions.js';
+import { PolicyHelper, policyHelperInstructionText, policyHelperPolicy } from './policy-helper.js';
+import { instructionEndMarkers } from './subagents.js';
 import { interactiveLoop } from './interactive.js';
 import { drainHeadlessWakeups } from './headless-wakeup.js';
 import { tuiCommandsWithSkills } from './tui-autocomplete.js';
@@ -21,9 +23,9 @@ import { beginSpinnerTipsStartup } from './spinner-tips.js';
 import { skillRequiresExecution } from './skill-runtime.js';
 import { sourceSkillArgumentsDefault } from './skill-arguments.js';
 import { runMcpPrompt } from './mcp-prompt-run.js';
-import { agentTypesSection, setHeldSkills } from './skill-catalog.js';
+import { agentTypesSection, skillsSection, setHeldSkills } from './skill-catalog.js';
 import { listSessions } from './sessions.js';
-import { loadProjectConfig, defaultUserDir, instructionSources, type LoadedConfig } from './config.js';
+import { loadProjectConfig, defaultUserDir, instructionSources, refreshPolicyHelperInstructions, type LoadedConfig } from './config.js';
 import { refuseBypassUnderRoot } from './bypass-guard.js';
 import { heldMcpServerNotice, mcpServerFingerprint, readMcpApprovals, recordMcpApprovals, resolveMcpServers, workspaceApprovalKey } from './mcp-approval.js';
 import { loadKeybindings } from './keybindings.js';
@@ -876,11 +878,29 @@ async function main(): Promise<void> {  const { values, positionals } = parseArg
       if (interval !== undefined && (!Number.isInteger(interval) || interval <= 0)) throw new Error('--policy-helper-interval must be a positive number of milliseconds');
       const machine = new PolicyHelper({ path: path.resolve(workspace, helperPath),
         ...(fallback === undefined ? {} : { defaultPolicy: fallback }),
-        validate: policy => managedPolicySchema.safeParse(policy).success ? undefined : 'policy does not match the managed policy schema' });
+        validate: policy => managedHelperSchema.safeParse(policy).success ? undefined : 'policy does not match the managed policy schema' });
       const settle = (): void => {
         const output = machine.refresh();
         for (const warning of output.warnings) process.stderr.write(`policy helper: ${warning}\n`);
-        if (output.policy !== undefined) applyManagedPolicy(currentSession.config, output.policy as SessionConfig['managedPolicy']);
+        // `M2n` reads the governing output's `claudeMd` (chunk-x0dc37w9.js 71537),
+        // and the refresh watcher `Jt` clears the cached user context when the
+        // helper tier changes (`Cx(e,"policy_refresh")`, chunk-1dhzexv1.js 27435),
+        // so the next prompt carries the new text. The static default output is
+        // built without `claudeMd`, so only the helper tier supplies it.
+        const text = output.serving === 'helper' ? policyHelperInstructionText(output.policy) : undefined;
+        try { refreshPolicyHelperInstructions(currentSession.config, text, instructionEndMarkers(currentSession.config)); }
+        catch (error) { process.stderr.write(`policy helper: instruction refresh error: ${error instanceof Error ? error.message : String(error)}\n`); }
+        const policy = policyHelperPolicy(output.policy);
+        if (policy !== undefined) {
+          applyManagedPolicy(currentSession.config, policy as SessionConfig['managedPolicy']);
+          // The permission owner is seeded once at open, so a managed refresh
+          // replaces the managed layer in the live state: session approvals and
+          // a user-chosen mode stay, the previous policy's rules do not.
+          currentSession.permissionUpdates = reloadPermissionState(currentSession.permissionUpdates,
+            currentSession.config.permissions, workspace,
+            currentSession.config.configSources?.userDir ?? defaultUserDir());
+          bindPermissionOwner(currentSession.config.permissions, currentSession.permissionOwner);
+        }
       };
       settle();
       if (interval !== undefined) {

@@ -11,6 +11,7 @@ import {
   activateConditionalSkills,
   argumentNamesFrom,
   expandSkill,
+  instructionSources,
   loadChildInstructions,
   loadProjectConfig,
   loadSkillsFromDirectories,
@@ -18,6 +19,7 @@ import {
   parseFrontmatter,
   readBoundedBytes,
   rebaseChildInstructions,
+  refreshPolicyHelperInstructions,
   renderInstructionBlocks,
 } from "../src/config.js";
 import { createPluginTools } from "../src/plugins.js";
@@ -1376,6 +1378,53 @@ test("the managed instruction tier leads the loaded instructions under its own r
     const deduped = loadProjectConfig(nested, { userDir, managedSettingsDir: managed });
     assert.deepEqual(deduped.instructions.map(file => file.content),
       ["MANAGED_FILE_TEXT", "MANAGED_AGENTS_TEXT", "MANAGED_SETTINGS_TEXT", "MANAGED_RULE_TEXT", "NESTED_PROJECT_TEXT"]);
+  });
+});
+
+test("the policy helper's claudeMd is its own tier between the managed file and the settings document", () => {
+  withSandbox(root => {
+    const workspace = path.join(root, "proj"), userDir = path.join(root, "user"), managed = path.join(root, "managed");
+    writeFile(path.join(workspace, ".harness/settings.json"), JSON.stringify({ allowShell: true }));
+    writeFile(path.join(workspace, "HARNESS.md"), "PROJECT_TEXT");
+    writeFile(path.join(managed, "HARNESS.md"), "MANAGED_FILE_TEXT");
+    writeFile(path.join(managed, "managed-settings.json"), JSON.stringify({ claudeMd: "MANAGED_SETTINGS_TEXT" }));
+    writeFile(path.join(managed, ".harness/rules/policy.md"), "MANAGED_RULE_TEXT");
+
+    // `qZn` pushes the helper's text after the managed directory's own file and
+    // before the settings document's `claudeMd` (chunk-sfn1dbxq.js 669530,
+    // `M2n` at chunk-x0dc37w9.js 71537).
+    const loaded = loadProjectConfig(workspace, { userDir, managedSettingsDir: managed, policyHelperText: "FIRST_HELPER_TEXT" });
+    assert.deepEqual(loaded.instructions.map(file => file.content),
+      ["MANAGED_FILE_TEXT", "FIRST_HELPER_TEXT", "MANAGED_SETTINGS_TEXT", "MANAGED_RULE_TEXT", "PROJECT_TEXT"]);
+    assert.equal(loaded.instructions[1]!.path, "<policyHelper>");
+    // An empty text is absence, matching `qZn`'s truthiness check.
+    assert.equal(loadProjectConfig(workspace, { userDir, managedSettingsDir: managed, policyHelperText: "" })
+      .instructions.some(file => file.path === "<policyHelper>"), false);
+
+    // A live refresh rewrites the section in place, journals the tier, and keeps
+    // a memory block that follows the instruction files.
+    const memory = `Instructions from ${path.join(workspace, ".harness/memory/note.md")}:\nMEMORY_TEXT`;
+    const config: Parameters<typeof refreshPolicyHelperInstructions>[0] = {
+      workspace,
+      configSources: { managedSettingsFile: path.join(managed, "managed-settings.json") },
+      system: "BASE" + INSTRUCTION_INTRO + renderInstructionBlocks(loaded.instructions) + "\n\n" + memory,
+      instructionSources: instructionSources(loaded.instructions),
+    };
+    assert.equal(refreshPolicyHelperInstructions(config, "SECOND_HELPER_TEXT"), true);
+    assert.equal(config.system.includes("FIRST_HELPER_TEXT"), false);
+    assert.ok(config.system.indexOf("SECOND_HELPER_TEXT") > config.system.indexOf("MANAGED_FILE_TEXT"));
+    assert.ok(config.system.indexOf("SECOND_HELPER_TEXT") < config.system.indexOf("MANAGED_SETTINGS_TEXT"));
+    assert.ok(config.system.includes("MEMORY_TEXT"));
+    assert.equal(config.policyHelperText, "SECOND_HELPER_TEXT");
+    assert.ok(config.instructionSources?.some(source => source.path === "<policyHelper>"));
+    // The same text is not a change, so the prompt is not rewritten.
+    assert.equal(refreshPolicyHelperInstructions(config, "SECOND_HELPER_TEXT"), false);
+    // Dropping the helper tier removes only that block.
+    assert.equal(refreshPolicyHelperInstructions(config, undefined), true);
+    assert.equal(config.system.includes("SECOND_HELPER_TEXT"), false);
+    assert.equal(config.system.includes("MANAGED_SETTINGS_TEXT"), true);
+    assert.ok(config.system.includes("MEMORY_TEXT"));
+    assert.equal("policyHelperText" in config, false);
   });
 });
 

@@ -65,3 +65,14 @@ node --import tsx --test test/agent-types.test.ts test/config.test.ts test/agent
 node scripts/smoke-managed-instructions-cli.mjs
 node scripts/smoke-managed-instructions-cli.mjs --compiled
 ```
+
+## Review disposition (2026-10-28)
+
+A bounded independent review returned three findings and one unverified candidate, none a confirmed high-severity defect in the reviewed files.
+
+1. The registry group rendered a project block without `instructionSources`, so it exercised the "every block is instruction text" fallback and would not catch a lost forwarding. Repaired in W370's test work: the parent fixture now carries the source list and a memory block, so the memory assertion fails if the forwarding is removed.
+2. A managed-only child from a config without `instructionSources` replaces memory blocks too, because `replaceInstructionSection` cannot tell them from instruction text. Recorded as a limitation rather than repaired: the live CLI, reload and every child build set the field, and the alternative fallback (re-reading the parent tier) misclassified a rendered block whose file is absent, which would keep project text in a managed-only child — the unsafe direction. The docstring now states the fallback.
+3. The recovered built-in Explore branch is not representable: the host's `explore` is a mode, not an `AgentTypeInfo`, so it never takes the `omitClaudeMd` rewrite. Already recorded as a non-port; unchanged.
+4. Candidate: runtime nested-instruction loading could reintroduce project text into a managed-only child. Refuted: `instructionFiles` (`agent.ts:731`, `subagents.ts:335`, `agent-registry.ts:612`) is an event observer that reports touched paths; it does not mutate the prompt.
+
+The review ran against a working tree that was already receiving W370 edits, so its line numbers are not part of this record. No product change was made for W369; the W370 package carries the test repair.

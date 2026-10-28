@@ -550,7 +550,8 @@ export class AgentRegistry {
         // (`Sar` -> `Znr` -> `gCt`, chunk-sfn1dbxq.js [3671831,3672142)), so an
         // isolated checkout carries its own files, not the parent's text.
         const rebased = rebaseChildInstructions(config, environment.config.workspace,
-          config.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: config.configSources.managedSettingsFile },
+          { ...(config.configSources?.managedSettingsFile === undefined ? {} : { managedSettingsFile: config.configSources.managedSettingsFile }),
+            ...(config.policyHelperText === undefined ? {} : { policyHelperText: config.policyHelperText }) },
           childPromptSuffix(launch) + (structuredState === undefined ? '' : STRUCTURED_OUTPUT_SYSTEM_NOTE), instructionEndMarkers(config),
           launch.type?.omitClaudeMd === true);
         config = { ...config, workspace: environment.config.workspace, system: rebased.system };

@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { PolicyHelper, readPolicyHelper } from '../src/policy-helper.js';
+import { PolicyHelper, policyHelperInstructionText, policyHelperPolicy, readPolicyHelper } from '../src/policy-helper.js';
+import { managedHelperSchema } from '../src/session.js';
 
 function workspace(t: { after(fn: () => void): void }): string {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'harness-policy-')));
@@ -85,4 +86,26 @@ test('classification keeps unreadable documents and unusable ones apart', async 
   const good = path.join(root, 'ok.json');
   fs.writeFileSync(good, '{"allowShell":true}');
   assert.deepEqual(readPolicyHelper(good), { ok: true, policy: { allowShell: true } });
+});
+
+test("the instruction tier is the helper document's non-empty claudeMd", () => {
+  assert.equal(policyHelperInstructionText({ claudeMd: 'HELPER_TEXT' }), 'HELPER_TEXT');
+  // `qZn` pushes the block only when the value is truthy, so an empty string,
+  // a non-string and a non-object are all absence (chunk-sfn1dbxq.js 669530).
+  assert.equal(policyHelperInstructionText({ claudeMd: '' }), undefined);
+  assert.equal(policyHelperInstructionText({ claudeMd: 5 }), undefined);
+  assert.equal(policyHelperInstructionText({ allowShell: false }), undefined);
+  assert.equal(policyHelperInstructionText(null), undefined);
+  assert.equal(policyHelperInstructionText([{ claudeMd: 'HELPER_TEXT' }]), undefined);
+  // The instruction key is not policy: the managed-policy path never sees it.
+  assert.deepEqual(policyHelperPolicy({ claudeMd: 'HELPER_TEXT', allowShell: false }), { allowShell: false });
+  assert.deepEqual(policyHelperPolicy({ claudeMd: 'HELPER_TEXT' }), {});
+  assert.equal(policyHelperPolicy('not a document'), undefined);
+});
+
+test('the helper schema accepts claudeMd and still refuses unknown keys', () => {
+  assert.deepEqual(managedHelperSchema.parse({ claudeMd: 'HELPER_TEXT', allowShell: false }),
+    { claudeMd: 'HELPER_TEXT', allowShell: false });
+  assert.equal(managedHelperSchema.safeParse({ claudeMd: 5 }).success, false);
+  assert.equal(managedHelperSchema.safeParse({ claudeMd: 'HELPER_TEXT', unknownKey: true }).success, false);
 });
