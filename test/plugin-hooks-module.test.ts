@@ -6,7 +6,7 @@ import {pathToFileURL} from 'node:url';
 import {test, type TestContext} from 'node:test';
 import {loadProjectConfig} from '../src/config.js';
 import {createPluginTools, discoverInstalledPluginComponents} from '../src/plugins.js';
-import {chainRecords, clearChainRecords} from '../src/plugin-chain-host.js';
+import {chainRecords, clearChainRecords, onChainRecord} from '../src/plugin-chain-host.js';
 import {
   adoptedPluginHooksModules, adoptPluginHooksModules, pluginHooksModulesSettled,
 } from '../src/plugin-chain-registry.js';
@@ -169,6 +169,40 @@ test('hooks modules: a config read still loads a plugin another process installe
   assert.deepEqual(adoptedPluginHooksModules(), []);
 });
 
+test('hooks modules: config startup retains each failed module and loads a healthy sibling', async t => {
+  const f = fixture(t, {}, {'hooks/hooks.json': JSON.stringify(HOOKS)});
+  await f.install();
+  const good = path.join(f.workspace, 'good');
+  const bad = path.join(f.workspace, 'bad');
+  const later = path.join(f.workspace, 'later');
+  fs.mkdirSync(good);
+  fs.mkdirSync(bad);
+  fs.mkdirSync(later);
+  const putPlugin = (dir: string, name: string, body: string) => {
+    fs.writeFileSync(path.join(dir, 'plugin.json'), JSON.stringify({name, version: '1', hooks: 'hooks.json'}));
+    fs.writeFileSync(path.join(dir, 'hooks.json'), JSON.stringify({hooks: {}, modules: ['./register.mjs']}));
+    fs.writeFileSync(path.join(dir, 'register.mjs'), body);
+  };
+  putPlugin(good, 'healthy', hooksModule('healthy'));
+  putPlugin(bad, 'broken', `throw new Error('broken: first failed'); export default {};`);
+  putPlugin(later, 'later', `await new Promise(resolve => setTimeout(resolve, 20)); throw new Error('second failed'); export default {};`);
+  await f.run('plugin_install', {directory: good});
+  await assert.rejects(f.run('plugin_install', {directory: bad}), /broken: first failed/);
+  await pluginHooksModulesSettled();
+  await assert.rejects(f.run('plugin_install', {directory: later}));
+  await pluginHooksModulesSettled();
+  await adoptPluginHooksModules([]);
+  clearChainRecords();
+  f.readConfig();
+  await until(() => chainRecords().some(record => record.kind === 'log' && record.message.includes('second failed')), 'both module failures');
+  await pluginHooksModulesSettled();
+  assert.deepEqual(adoptedPluginHooksModules(), ['healthy']);
+  const errors = chainRecords().flatMap(record => record.kind === 'log' && record.level === 'error' ? [record.message] : []);
+  assert.ok(errors.some(message => message.includes('broken: first failed')), JSON.stringify(errors));
+  assert.ok(errors.some(message => message.includes('later') && message.includes('second failed')), JSON.stringify(errors));
+  assert.equal(chainHooked('prompt.edit'), true);
+});
+
 test('hooks modules: a failed load does not poison later edit settlement', async t => {
   const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'chain-failure-')));
   t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
@@ -195,6 +229,25 @@ test('hooks modules: a failed load does not poison later edit settlement', async
     assert.deepEqual(reports, []);
   } finally {
     relay.dispose();
+    await adoptPluginHooksModules([]);
+  }
+});
+
+test('hooks modules: a throwing log listener leaves the original load error with its caller', async t => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'chain-log-failure-')));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const modulePath = path.join(dir, 'broken.mjs');
+  fs.writeFileSync(modulePath, `throw new Error('module failed'); export default {};`);
+  clearChainRecords();
+  const unsubscribe = onChainRecord(record => {
+    if (record.kind === 'log' && record.message.includes('module failed')) throw new Error('listener failed');
+  });
+  try {
+    await assert.rejects(adoptPluginHooksModules([{name: 'broken', modulePath, path: dir}]), {message: 'module failed'});
+    await pluginHooksModulesSettled();
+    assert.ok(chainRecords().some(record => record.kind === 'log' && record.message.includes('module failed')));
+  } finally {
+    unsubscribe();
     await adoptPluginHooksModules([]);
   }
 });

@@ -1611,7 +1611,8 @@ export function loadProjectConfig(workspace: string, options: LoadProjectOptions
   let installedComponents: ReturnType<typeof discoverInstalledPluginComponents>;
   try {
     installedComponents = discoverInstalledPluginComponents(workspaceReal, plugins);
-    if (options.pluginHooks !== 'preview') void applyPluginHooks(installedComponents);
+    // `a_e`, chunk-sfn1dbxq.js [2385002,2389680), UTF-16: a failed module does not end startup.
+    if (options.pluginHooks !== 'preview') void applyPluginHooks(installedComponents).catch(() => {});
     // Plugin hooks run first; each explicit layer keeps its actual precedence.
     const pluginHooks: Record<string, unknown[]> = {};
     const pluginServers = Object.fromEntries(installedComponents.flatMap(item => Object.entries(item.mcpServers ?? {})));

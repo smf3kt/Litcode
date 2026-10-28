@@ -1,3 +1,5 @@
+W380 Hooks startup failure handling (2026-10-28). Main verification and independent scoped repair review pass. See [W380](ports/W380-plugin-startup.md). Hooks remains Partial.
+
 W379 Hooks file-module notifications (2026-10-28). Main verification and independent scoped review pass. See [W379](ports/W379-module-notification.md). Hooks remains Partial.
 
 W378 Hooks plugin settlement (2026-10-28). Main verification and independent scoped review pass. See [W378](ports/W378-plugin-settlement.md). Hooks remains Partial.

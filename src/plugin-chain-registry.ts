@@ -9,7 +9,7 @@
 // and ./plugin-chain-cores-source.js builds its chains from `zd[name]` at module scope.
 import './plugin-chain-sites-registration.js';
 import './plugin-chain-scroll-focus-sites.js';
-import { He, qi } from './plugin-chain-source.js';
+import { He, l, qi } from './plugin-chain-source.js';
 import { Mm, cze } from './plugin-chain-entry.js';
 import { FOCUS_ENTRY, SCROLL_ENTRY } from './plugin-chain-scroll-focus.js';
 import { Fre, ise, Joe, kre, lse, ose, Rre, vre, xre, YH, cse, _re } from './plugin-chain-cores-source.js';
@@ -17,6 +17,7 @@ import { registerChainCore, registerChainSite, setChainErrorClass, setChainEnvir
 import { chainModuleRecord } from './plugin-chain-module-record.js';
 import { inProcessEnvironmentHost } from './plugin-chain-module-host.js';
 import { createChainRun, loadChainModuleFileInto, type LoadedChainModule } from './plugin-chain-loader.js';
+import { D5t } from './plugin-chain-loader-source.js';
 import type { ChainHandler } from './plugin-chain-types.js';
 
 // The record factory: a module installed through the host becomes the record shape the copied
@@ -128,6 +129,16 @@ export function adoptPluginHooksModules(declarations: readonly PluginHooksModule
       ...(declaration.tier === undefined ? {} : { tier: declaration.tier }),
     }).then((loaded) => {
       adopted.set(declaration.name, { modulePath: declaration.modulePath, loaded });
+    }, (error: unknown) => {
+      // `a_e`/`JWe` report failures; `vVe` rethrows the original error on direct reload
+      // (chunk-sfn1dbxq.js [2385002,2389680)/[1688430,1688508)/[2391116,2393895), UTF-16).
+      try {
+        const label = D5t({ pluginName: declaration.name, pluginStorageId: declaration.path ?? declaration.modulePath.slice(0, declaration.modulePath.lastIndexOf('/')) });
+        const cause = error instanceof Error && typeof error.cause === 'string' ? ` (${error.cause})` : '';
+        t(`hooks module ${label} failed to load: ${l(error)}${cause}`, { level: 'error' });
+      } finally {
+        throw error;
+      }
     }));
   }
   const started = Promise.all(starts).then(() => undefined);
