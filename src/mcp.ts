@@ -1220,7 +1220,7 @@ function makeSubscriptionTools(clients: Map<string, McpClient>, context: McpConn
       schema: {
         name,
         description: poll
-          ? "Poll and consume queued MCP resource URI updates for this connection. Reports dropped updates. HTTP delivery covers active POST SSE responses only. No automatic resource read."
+          ? "Poll and consume queued MCP resource URI updates for this connection. Reports dropped updates. HTTP delivery covers POST-carried SSE responses and, when enabled, the GET notification stream. No automatic resource read."
           : `Explicitly ${operation === "resource_subscribe" ? "subscribe to" : "unsubscribe from"} an exact MCP resource URI on this connection. State changes after successful RPC acknowledgement.`,
         input_schema: {
           type: "object", properties: {
