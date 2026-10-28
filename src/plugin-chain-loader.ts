@@ -7,7 +7,7 @@
 // module inventory, and unloading takes it back off and tears the environment down.
 import fs from 'node:fs';
 import path from 'node:path';
-import { it, AK } from './plugin-chain-host.js';
+import { it, AK, modulesChanged } from './plugin-chain-host.js';
 import { loadChainModuleFile, type LoadedChainModuleFile } from './plugin-chain-module-host.js';
 import { tGe } from './plugin-chain-loader-source.js';
 import type { ChainEnvironmentDescriptor, ChainModule, ChainModuleRecord, ChainRun } from './plugin-chain-types.js';
@@ -39,13 +39,16 @@ export function createChainRun(): ChainRun {
 export async function loadChainModule(run: ChainRun, descriptor: ChainEnvironmentDescriptor): Promise<LoadedChainModule> {
   const record = (await tGe(run, descriptor)) as ChainRunRecord;
   it().loadedModules.push(record);
+  modulesChanged();
   return {
     record,
     unload: () => {
       const at = it().loadedModules.indexOf(record);
-      if (at >= 0) it().loadedModules.splice(at, 1);
+      if (at < 0) return;
+      it().loadedModules.splice(at, 1);
       AK.forgetPresses(descriptor.pluginName);
       record.retire?.();
+      modulesChanged();
     },
   };
 }

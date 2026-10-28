@@ -235,6 +235,43 @@ test('module loader: a loaded module hooks the composer relay', async () => {
   assert.equal(chainHooked('prompt.edit'), false, 'unloading the module unhooks the relay again');
 });
 
+test('module loader: mounted relays follow file module load and unload', async t => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'chain-live-file-')));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const modulePath = path.join(dir, 'hooks.mjs');
+  fs.writeFileSync(modulePath, `export default {name:'live-file', patterns:[{pattern:'prompt.edit'}], handlers:{'prompt.edit': (input,next) => next({...input,inputText:'there'})}};`);
+  const store = it().renderVersions!;
+  const version = () => store.getState().get('ui.render') ?? 0;
+  const initialVersion = version();
+  let draft = {text: 'hello world', cursor: 11};
+  const reports: string[] = [];
+  const relay = composerEditRelay({read: () => ({...draft}), commit: box => { draft = box; }, report: message => reports.push(message)});
+  const disposed = composerEditRelay({read: () => ({...draft}), commit: () => {}, report: message => reports.push(message)});
+  disposed.dispose();
+  let loaded: Awaited<ReturnType<typeof loadChainModuleFileInto>> | undefined;
+  try {
+    assert.equal(relay.isRecording(), false);
+    loaded = await loadChainModuleFileInto(createChainRun(), {pluginName: 'live-file', modulePath});
+    assert.equal(relay.isRecording(), true);
+    assert.equal(disposed.isRecording(), false);
+    assert.equal(version(), initialVersion + 1);
+    const before = draft;
+    draft = {text: 'hello!', cursor: 6};
+    relay.record({before, after: draft, key: {key: '!', name: '!'}});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(draft, {text: 'hellothere', cursor: 10});
+    assert.deepEqual(reports, []);
+    loaded.unload();
+    assert.equal(relay.isRecording(), false);
+    assert.equal(version(), initialVersion + 2);
+    loaded.unload();
+    assert.equal(version(), initialVersion + 2);
+  } finally {
+    relay.dispose();
+    loaded?.unload();
+  }
+});
+
 test('module loader: the file reader names a module without a name after its file', async () => {
   const modulePath = moduleFile(`export default {handlers: {'ui.render': (input) => input}};\n`);
   const {module, hookEvents} = await loadChainModuleFile(modulePath);

@@ -191,7 +191,14 @@ export function onChainModulesChanged(listener: () => void): () => void {
   moduleListeners.add(listener);
   return () => moduleListeners.delete(listener);
 }
-function modulesChanged(): void {
+// `Xye`/`rIn`/`r5t`/`wc`, chunk-sfn1dbxq.js [2370710,2370787) and
+// chunk-n3ykh62m.js [273315,273333)/[272197,272250)/[271971,272059), UTF-16.
+export function modulesChanged(): void {
+  it().renderVersions?.setState((state) => {
+    const next = new Map(state);
+    next.set('ui.render', (state.get('ui.render') ?? 0) + 1);
+    return next;
+  });
   for (const listener of moduleListeners) listener();
 }
 
