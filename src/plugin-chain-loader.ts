@@ -36,11 +36,14 @@ export function createChainRun(): ChainRun {
  *  record is *retired*, which drops the module's commands and agents, marks it retiring and tears the
  *  environment down once no dispatch is in flight (`terminate` is what the source calls when the
  *  runtime itself is replaced, which is not this event). */
-export async function loadChainModule(run: ChainRun, descriptor: ChainEnvironmentDescriptor): Promise<LoadedChainModule> {
+export async function loadChainModule(
+  run: ChainRun,
+  descriptor: ChainEnvironmentDescriptor,
+  onPublished?: (loaded: LoadedChainModule) => void,
+  notify: () => void = modulesChanged,
+): Promise<LoadedChainModule> {
   const record = (await tGe(run, descriptor)) as ChainRunRecord;
-  it().loadedModules.push(record);
-  modulesChanged();
-  return {
+  const loaded: LoadedChainModule = {
     record,
     unload: () => {
       const at = it().loadedModules.indexOf(record);
@@ -48,9 +51,14 @@ export async function loadChainModule(run: ChainRun, descriptor: ChainEnvironmen
       it().loadedModules.splice(at, 1);
       AK.forgetPresses(descriptor.pluginName);
       record.retire?.();
-      modulesChanged();
+      notify();
     },
   };
+  // `Pe`/`Re`, chunk-sfn1dbxq.js [2386573,2387113)/[2386063,2386511), UTF-16.
+  it().loadedModules.push(record);
+  onPublished?.(loaded);
+  notify();
+  return loaded;
 }
 
 /** What the product asks a load for: the plugin's identity, where its module file is, and its tier. */
@@ -73,7 +81,12 @@ export interface ChainModuleRequest {
  *  The scan `iWt` checks the registration against is the module's own handler table: a plugin that
  *  registers a pattern it has no handler for is refused at load, exactly as the source refuses one
  *  whose hooks module the scan did not see. */
-export async function loadChainModuleFileInto(run: ChainRun, request: ChainModuleRequest): Promise<LoadedChainModule> {
+export async function loadChainModuleFileInto(
+  run: ChainRun,
+  request: ChainModuleRequest,
+  onPublished?: (loaded: LoadedChainModule) => void,
+  notify?: () => void,
+): Promise<LoadedChainModule> {
   if (request.storageId !== undefined) {
     const root = path.resolve(request.storageId);
     const resolved = path.resolve(request.modulePath);
@@ -85,7 +98,7 @@ export async function loadChainModuleFileInto(run: ChainRun, request: ChainModul
     }
   }
   const loaded: LoadedChainModuleFile = await loadChainModuleFile(request.modulePath);
-  return await loadChainModule(run, descriptorFor(request, loaded));
+  return await loadChainModule(run, descriptorFor(request, loaded), onPublished, notify);
 }
 
 /** The descriptor the copied loader takes, built from the product's plugin identity. */

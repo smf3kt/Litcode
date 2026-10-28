@@ -1,3 +1,5 @@
+W381 Hooks module ownership (2026-10-28). Main verification and independent scoped repair review pass after four review repairs. See [W381](ports/W381-module-ownership.md). Hooks remains Partial.
+
 W380 Hooks startup failure handling (2026-10-28). Main verification and independent scoped repair review pass. See [W380](ports/W380-plugin-startup.md). Hooks remains Partial.
 
 W379 Hooks file-module notifications (2026-10-28). Main verification and independent scoped review pass. See [W379](ports/W379-module-notification.md). Hooks remains Partial.

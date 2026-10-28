@@ -6,7 +6,7 @@ import {pathToFileURL} from 'node:url';
 import {test, type TestContext} from 'node:test';
 import {loadProjectConfig} from '../src/config.js';
 import {createPluginTools, discoverInstalledPluginComponents} from '../src/plugins.js';
-import {chainRecords, clearChainRecords, onChainRecord} from '../src/plugin-chain-host.js';
+import {chainRecords, clearChainRecords, it, onChainModulesChanged, onChainRecord} from '../src/plugin-chain-host.js';
 import {
   adoptedPluginHooksModules, adoptPluginHooksModules, pluginHooksModulesSettled,
 } from '../src/plugin-chain-registry.js';
@@ -248,6 +248,123 @@ test('hooks modules: a throwing log listener leaves the original load error with
     assert.ok(chainRecords().some(record => record.kind === 'log' && record.message.includes('module failed')));
   } finally {
     unsubscribe();
+    await adoptPluginHooksModules([]);
+  }
+});
+
+test('hooks modules: notification errors retain a removable published owner', async t => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'chain-notification-owner-')));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const modulePath = path.join(dir, 'register.mjs');
+  fs.writeFileSync(modulePath, hooksModule('owned'));
+  const declaration = {name: 'owned', modulePath, path: dir};
+  const records = () => it().loadedModules.filter(record => record.name === 'owned');
+  let reentered = false;
+  let failure: string | undefined = 'load notification failed';
+  const stopLoadFailure = onChainModulesChanged(() => {
+    if (failure === 'load notification failed' && !reentered) {
+      reentered = true;
+      void adoptPluginHooksModules([declaration]);
+    }
+    if (failure !== undefined) throw new Error(failure);
+  });
+  const relay = composerEditRelay({read: () => ({text: '', cursor: 0}), commit: () => {}, report: () => {}});
+  try {
+    await assert.rejects(adoptPluginHooksModules([declaration]), {message: 'load notification failed'});
+    await pluginHooksModulesSettled();
+    assert.deepEqual(adoptedPluginHooksModules(), ['owned']);
+    assert.equal(records().length, 1);
+    assert.equal(chainHooked('prompt.edit'), true);
+    assert.equal(relay.isRecording(), false);
+    assert.throws(() => adoptPluginHooksModules([declaration]), {message: 'load notification failed'});
+    assert.equal(records().length, 1);
+    assert.equal(relay.isRecording(), false);
+    failure = undefined;
+    await adoptPluginHooksModules([declaration]);
+    assert.equal(records().length, 1);
+    assert.equal(relay.isRecording(), true);
+    const record = records()[0]!;
+    failure = 'remove notification failed';
+    assert.throws(() => adoptPluginHooksModules([]), {message: 'remove notification failed'});
+    assert.deepEqual(adoptedPluginHooksModules(), []);
+    assert.equal(records().length, 0);
+    assert.equal(chainHooked('prompt.edit'), false);
+    assert.equal(relay.isRecording(), true);
+    assert.deepEqual(record.status(), {kind: 'unloaded', retired: true});
+    failure = undefined;
+    await adoptPluginHooksModules([]);
+    assert.equal(records().length, 0);
+    assert.equal(relay.isRecording(), false);
+  } finally {
+    stopLoadFailure();
+    relay.dispose();
+    await adoptPluginHooksModules([]);
+  }
+});
+
+test('hooks modules: nested removal notifies an earlier mounted editor before settling', async t => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'chain-nested-notification-')));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const firstPath = path.join(dir, 'first.mjs');
+  const secondPath = path.join(dir, 'second.mjs');
+  fs.writeFileSync(firstPath, hooksModule('first'));
+  fs.writeFileSync(secondPath, hooksModule('second'));
+  const first = {name: 'first', modulePath: firstPath, path: dir};
+  const second = {name: 'second', modulePath: secondPath, path: dir};
+  await adoptPluginHooksModules([first]);
+  const relay = composerEditRelay({read: () => ({text: '', cursor: 0}), commit: () => {}, report: () => {}});
+  let removed = false;
+  const unsubscribe = onChainModulesChanged(() => {
+    if (removed) return;
+    removed = true;
+    void adoptPluginHooksModules([]);
+  });
+  try {
+    assert.equal(relay.isRecording(), true);
+    await adoptPluginHooksModules([first, second]);
+    await pluginHooksModulesSettled();
+    assert.equal(removed, true);
+    assert.deepEqual(adoptedPluginHooksModules(), []);
+    assert.equal(chainHooked('prompt.edit'), false);
+    assert.equal(relay.isRecording(), false);
+  } finally {
+    unsubscribe();
+    relay.dispose();
+    await adoptPluginHooksModules([]);
+  }
+});
+
+test('hooks modules: settlement retains earlier loads when a retry notification throws', async t => {
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'chain-retry-settlement-')));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const readyPath = path.join(dir, 'ready.mjs');
+  const gatePath = path.join(dir, 'gate.mjs');
+  const slowPath = path.join(dir, 'slow.mjs');
+  fs.writeFileSync(readyPath, hooksModule('ready'));
+  fs.writeFileSync(gatePath, `let release; export const ready = new Promise(resolve => { release = resolve; }); export function open() { release(); }`);
+  fs.writeFileSync(slowPath, `import {ready} from './gate.mjs'; await ready; export default ${hooksModule('slow').replace('export default ', '').trim()}`);
+  const gate = await import(pathToFileURL(gatePath).href);
+  const ready = {name: 'ready', modulePath: readyPath, path: dir};
+  const slow = {name: 'slow', modulePath: slowPath, path: dir};
+  const missing = {name: 'missing', modulePath: path.join(dir, 'missing.mjs')};
+  const stopFailure = onChainModulesChanged(() => { throw new Error('retry notification failed'); });
+  try {
+    await assert.rejects(adoptPluginHooksModules([ready]), {message: 'retry notification failed'});
+    await pluginHooksModulesSettled();
+    assert.throws(() => adoptPluginHooksModules([slow, missing, ready]), {message: 'retry notification failed'});
+    let completed = false;
+    const settling = pluginHooksModulesSettled().then(() => { completed = true; });
+    await new Promise(resolve => setTimeout(resolve, 30));
+    assert.equal(completed, false);
+    stopFailure();
+    gate.open();
+    await settling;
+    assert.deepEqual([...adoptedPluginHooksModules()].sort(), ['ready', 'slow']);
+    assert.ok(chainRecords().some(record => record.kind === 'log' && record.message.includes('missing')));
+  } finally {
+    stopFailure();
+    gate.open();
+    await pluginHooksModulesSettled();
     await adoptPluginHooksModules([]);
   }
 });

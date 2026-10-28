@@ -13,7 +13,7 @@ import { He, l, qi } from './plugin-chain-source.js';
 import { Mm, cze } from './plugin-chain-entry.js';
 import { FOCUS_ENTRY, SCROLL_ENTRY } from './plugin-chain-scroll-focus.js';
 import { Fre, ise, Joe, kre, lse, ose, Rre, vre, xre, YH, cse, _re } from './plugin-chain-cores-source.js';
-import { registerChainCore, registerChainSite, setChainErrorClass, setChainEnvironmentHostFactory, setChainRecordFactory, t } from './plugin-chain-host.js';
+import { modulesChanged, registerChainCore, registerChainSite, setChainErrorClass, setChainEnvironmentHostFactory, setChainRecordFactory, t } from './plugin-chain-host.js';
 import { chainModuleRecord } from './plugin-chain-module-record.js';
 import { inProcessEnvironmentHost } from './plugin-chain-module-host.js';
 import { createChainRun, loadChainModuleFileInto, type LoadedChainModule } from './plugin-chain-loader.js';
@@ -87,7 +87,39 @@ export interface PluginHooksModuleDeclaration {
  *  environments in it; this product has one chain running at a time, so this is it. */
 const chainRun = createChainRun();
 
-const adopted = new Map<string, { modulePath: string; loaded: LoadedChainModule }>();
+interface AdoptedModule {
+  modulePath: string;
+  loaded: LoadedChainModule;
+}
+
+// `Pe` commits its set marker after `Xye` (chunk-sfn1dbxq.js [2386573,2387113), UTF-16).
+let inventoryNotification: 'pending' | 'notifying' | 'complete' = 'complete';
+let inventoryChangedDuringNotification = false;
+
+function flushInventoryNotification(): void {
+  while (inventoryNotification === 'pending') {
+    inventoryNotification = 'notifying';
+    inventoryChangedDuringNotification = false;
+    try {
+      modulesChanged();
+      inventoryNotification = inventoryChangedDuringNotification ? 'pending' : 'complete';
+    } catch (error) {
+      inventoryNotification = 'pending';
+      throw error;
+    }
+  }
+}
+
+function notifyInventoryChange(): void {
+  if (inventoryNotification === 'notifying') {
+    inventoryChangedDuringNotification = true;
+    return;
+  }
+  inventoryNotification = 'pending';
+  flushInventoryNotification();
+}
+
+const adopted = new Map<string, AdoptedModule>();
 let pending: Promise<void> = Promise.resolve();
 
 /** The plugins whose modules are loaded right now. */
@@ -108,44 +140,52 @@ export function adoptPluginHooksModules(declarations: readonly PluginHooksModule
   for (const [name, held] of [...adopted]) {
     if (seen.has(name)) continue;
     leaving.push(held.loaded.record.label ?? name);
-    held.loaded.unload();
+    // `CVo` removes the known owner before `iF` unloads it (chunk-sfn1dbxq.js [2394754,2395107), UTF-16).
     adopted.delete(name);
+    held.loaded.unload();
   }
   // The source's removal reconciler `CVo` (chunk-sfn1dbxq.js [2394700,2395092)) drops the plugin from
   // its state and unloads it with this sentence, which is the line a person sees.
   if (leaving.length > 0) t(`hooks modules unloaded: ${leaving.join(', ')} (plugin disabled or uninstalled)`);
   const starts: Promise<void>[] = [];
-  for (const declaration of declarations) {
-    const held = adopted.get(declaration.name);
-    if (held !== undefined && held.modulePath === declaration.modulePath) continue;
-    if (held !== undefined) {
-      held.loaded.unload();
-      adopted.delete(declaration.name);
-    }
-    starts.push(loadChainModuleFileInto(chainRun, {
-      pluginName: declaration.name,
-      modulePath: declaration.modulePath,
-      ...(declaration.path === undefined ? {} : { storageId: declaration.path }),
-      ...(declaration.tier === undefined ? {} : { tier: declaration.tier }),
-    }).then((loaded) => {
-      adopted.set(declaration.name, { modulePath: declaration.modulePath, loaded });
-    }, (error: unknown) => {
-      // `a_e`/`JWe` report failures; `vVe` rethrows the original error on direct reload
-      // (chunk-sfn1dbxq.js [2385002,2389680)/[1688430,1688508)/[2391116,2393895), UTF-16).
-      try {
-        const label = D5t({ pluginName: declaration.name, pluginStorageId: declaration.path ?? declaration.modulePath.slice(0, declaration.modulePath.lastIndexOf('/')) });
-        const cause = error instanceof Error && typeof error.cause === 'string' ? ` (${error.cause})` : '';
-        t(`hooks module ${label} failed to load: ${l(error)}${cause}`, { level: 'error' });
-      } finally {
-        throw error;
+  try {
+    for (const declaration of declarations) {
+      const held = adopted.get(declaration.name);
+      if (held !== undefined && held.modulePath === declaration.modulePath) {
+        flushInventoryNotification();
+        continue;
       }
-    }));
+      if (held !== undefined) {
+        adopted.delete(declaration.name);
+        held.loaded.unload();
+      }
+      starts.push(loadChainModuleFileInto(chainRun, {
+        pluginName: declaration.name,
+        modulePath: declaration.modulePath,
+        ...(declaration.path === undefined ? {} : { storageId: declaration.path }),
+        ...(declaration.tier === undefined ? {} : { tier: declaration.tier }),
+      }, (loaded) => {
+        adopted.set(declaration.name, { modulePath: declaration.modulePath, loaded });
+      }, notifyInventoryChange).then(() => undefined, (error: unknown) => {
+        // `a_e`/`JWe` report failures; `vVe` rethrows the original error on direct reload
+        // (chunk-sfn1dbxq.js [2385002,2389680)/[1688430,1688508)/[2391116,2393895), UTF-16).
+        try {
+          const label = D5t({ pluginName: declaration.name, pluginStorageId: declaration.path ?? declaration.modulePath.slice(0, declaration.modulePath.lastIndexOf('/')) });
+          const cause = error instanceof Error && typeof error.cause === 'string' ? ` (${error.cause})` : '';
+          t(`hooks module ${label} failed to load: ${l(error)}${cause}`, { level: 'error' });
+        } finally {
+          throw error;
+        }
+      }));
+    }
+    flushInventoryNotification();
+    return Promise.all(starts).then(() => undefined);
+  } finally {
+    // `gas`/`iOn` and `a_e` finally, chunk-2kdsvp3x.js [39441,39563)/[38557,38835),
+    // chunk-sfn1dbxq.js [2389608,2389680), UTF-16.
+    const settled = Promise.allSettled(starts).then(() => undefined);
+    pending = Promise.all([pending, settled]).then(() => undefined);
   }
-  const started = Promise.all(starts).then(() => undefined);
-  // `gas`/`iOn`, chunk-2kdsvp3x.js [39441,39563)/[38557,38835), UTF-16.
-  const settled = Promise.allSettled(starts).then(() => undefined);
-  pending = Promise.all([pending, settled]).then(() => undefined);
-  return started;
 }
 
 /** Settles the loads this module has started, so a caller can dispatch with every declaration live. A
