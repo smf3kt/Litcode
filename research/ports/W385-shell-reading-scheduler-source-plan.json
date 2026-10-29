@@ -1,0 +1,86 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "shell-reading-scheduler-blocks.json",
+  "outputs": [
+    {
+      "path": "shell-reading-scheduler-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered statements. See research/ports/W385-declaration-prefix-preflight.md.\nimport { pyr } from \"./shell-analyser-source.js\";\nimport { DTr, jwe } from \"./shell-reading-merge-source.js\";\n",
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "rfn",
+          "range": [
+            3252331,
+            3252731
+          ],
+          "bodySha256": "6b95a8942458ff1b1188c44c4aa197642c29578c7f88f6ffdd960bf58965139d",
+          "declarator": true
+        },
+        {
+          "module": "chunk-a60ee1ne.js",
+          "moduleSha256": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1",
+          "symbol": "VW",
+          "range": [
+            4691,
+            5003
+          ],
+          "bodySha256": "3d607c8b197353a1d5c1eb7d919aa664c78998d42ff3e111fe77a0c9e958b80f"
+        },
+        "export function createReadingScheduler(O3e, de, isReadBlockExempt, OAn) {\nconst Cy = isReadBlockExempt;\nconst Tv = () => true;\n",
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "sfn",
+          "range": [
+            3252890,
+            3253132
+          ],
+          "bodySha256": "fd055389fe0fc6f6e0f3eb949bd38eb864ddb53322fc5237784e6564c40a7587"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "ior.signature",
+          "range": [
+            3253708,
+            3253736
+          ],
+          "bodySha256": "5f9e05a6352633ecee80f762df1e8e8794b172db09d0902e04135446b6419655"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "ior.initial",
+          "range": [
+            3253736,
+            3253829
+          ],
+          "bodySha256": "61d8ee048fdbe47db9e266ea362e57ba8a23de0fa140f92a2ebf2deba96ec5f4"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "ior.readings",
+          "range": [
+            3253829,
+            3254209
+          ],
+          "bodySha256": "7dae00eb2875c9d5e33d1e25315261968a3c7256c921066970416e7a4fc3731b"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "ior.return",
+          "range": [
+            3254342,
+            3254351
+          ],
+          "bodySha256": "ac8483f34f268857ab414bb21da87d28292535288f115dabcb1d7318c57340ca"
+        },
+        "return ior;\n}\n"
+      ]
+    }
+  ]
+}
