@@ -109,7 +109,7 @@
           "bodySha256": "dd4494b95f3937871f93053b5afb1e9b7ff44e6c5770f9fed1cfc4820601cab1"
         },
         "const ki = { name: \"Bash\" };\nconst Rl = (_name, reason) => reason.reason;\n",
-        "export { DTr, jwe };\n"
+        "export { DTr, jwe, m0 };\n"
       ]
     }
   ]

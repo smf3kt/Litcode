@@ -122,7 +122,7 @@
           ],
           "bodySha256": "0225c17047b751f2a8de8c11eda3a1c86fe72973bd2e4d83fc7364c8ca3ecd17"
         },
-        "export { fTr };\n"
+        "export { fTr, w6, Yx };\n"
       ]
     }
   ]

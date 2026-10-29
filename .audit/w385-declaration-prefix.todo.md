@@ -15,5 +15,8 @@
 - [x] Independently recheck the matcher regression repairs after source review verified its 49 ranges; main added and tested two final identity/count assertions.
 - [x] Independently review the 11-range child clamp source and regressions, then wire the child gate after its dependencies are accepted.
 - [x] Independently review the integrated child gate, workflow bridge and HOME boundary; the reviewer inspected the driver but did not rerun it.
+- [x] Reproduce the wrapped-command content-rule gap through the compiled CLI and compare the copied matcher and early `jcn` fixture under stated assumptions.
+- [x] Independently review the ten-range `$cn` source unit and imported `m0`; main added and tested the identified boundary assertions. The supplied rule-store adapters remain a separate open integration boundary.
+- [x] Independently review the four-range `O3e` wrapper, shared `w6`/`Yx` exports and focused branch tests; main checked source-module hashes and added the identified multi-group assertion.
 - [ ] Close the remaining source-policy early returns and map them to the host before connecting the analyser to permission decisions.
 - [ ] Continue as one source-backed implementation package or record a bounded disposition.

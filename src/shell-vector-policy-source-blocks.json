@@ -1,0 +1,72 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-a60ee1ne.js",
+      "moduleSha256": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1",
+      "symbol": "k9e",
+      "range": [
+        2961,
+        3027
+      ],
+      "bodySha256": "73120637375673bf02fb33d6dc2eee0fb2182e685cf85d26d83bac296a806d8c",
+      "declarator": true,
+      "output": "shell-vector-policy-source.ts",
+      "outputRange": [
+        348,
+        414
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-a60ee1ne.js",
+      "moduleSha256": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1",
+      "symbol": "PHt",
+      "range": [
+        5499,
+        5557
+      ],
+      "bodySha256": "df7ad12bc7cb0f11083fc15e70704b37c438685803524dcad0df1dde1cd3c57f",
+      "declarator": true,
+      "output": "shell-vector-policy-source.ts",
+      "outputRange": [
+        538,
+        596
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "ofn",
+      "range": [
+        3252147,
+        3252327
+      ],
+      "bodySha256": "a0e985439ce2989e12e411968ad0359ab9b37636115eb5a85a304365247e8440",
+      "output": "shell-vector-policy-source.ts",
+      "outputRange": [
+        722,
+        902
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-sfn1dbxq.js",
+      "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+      "symbol": "O3e",
+      "range": [
+        3254351,
+        3255656
+      ],
+      "bodySha256": "5e40fb332b89fb73b852edee56618b4533615bc35aa61f7d296be1fc666075d5",
+      "output": "shell-vector-policy-source.ts",
+      "outputRange": [
+        1125,
+        2430
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}

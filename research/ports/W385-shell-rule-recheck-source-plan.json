@@ -1,0 +1,120 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "shell-rule-recheck-source-blocks.json",
+  "outputs": [
+    {
+      "path": "shell-rule-recheck-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\nimport { vS } from \"./bash-parser-source.js\";\nimport { m0 } from \"./shell-reading-merge-source.js\";\n",
+        {
+          "module": "chunk-m00pavz3.js",
+          "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+          "symbol": "m",
+          "range": [
+            967,
+            1007
+          ],
+          "bodySha256": "be22ac1da36bddc48d37bece138ab4894d56a9d4139439f8c16af0ab5d893ef5",
+          "declarator": true
+        },
+        {
+          "module": "chunk-m00pavz3.js",
+          "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+          "symbol": "E",
+          "range": [
+            1008,
+            1051
+          ],
+          "bodySha256": "d0d85c14f84c4d3f58f03c4cbdaef5e80cb0830bdf919979c50cee3a9520d4ba",
+          "declarator": true
+        },
+        {
+          "module": "chunk-m00pavz3.js",
+          "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+          "symbol": "D0",
+          "range": [
+            1052,
+            1058
+          ],
+          "bodySha256": "7ddf33f32b7490744472a8acab3b5aee746014474fab84c2edb92232d6446c88",
+          "declarator": true
+        },
+        {
+          "module": "chunk-m00pavz3.js",
+          "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+          "symbol": "P",
+          "range": [
+            1059,
+            1066
+          ],
+          "bodySha256": "9f07f801d49c2558b46c97ea51acf0655e44f4033a476f6a15e681bdc7098f77",
+          "declarator": true
+        },
+        {
+          "module": "chunk-m00pavz3.js",
+          "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+          "symbol": "U",
+          "range": [
+            1067,
+            1071
+          ],
+          "bodySha256": "6b77267eaa3536fa0b7f1d24e7d1c4433314d1499eb2b962acce902a38ecbfd7",
+          "declarator": true
+        },
+        {
+          "module": "chunk-m00pavz3.js",
+          "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+          "symbol": "Kg",
+          "range": [
+            1072,
+            1477
+          ],
+          "bodySha256": "b3f4c2b6c83031fad9667b1437766a5e21667b48b454a15054a5edf134c2945e"
+        },
+        {
+          "module": "chunk-m00pavz3.js",
+          "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+          "symbol": "ost",
+          "range": [
+            1831,
+            1914
+          ],
+          "bodySha256": "b2c882951c1f719b9c5d2c3ee7a284c61222edd9b71f0c9efd9fb069f0dddc9b"
+        },
+        {
+          "module": "chunk-m00pavz3.js",
+          "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+          "symbol": "Emr",
+          "range": [
+            1914,
+            2193
+          ],
+          "bodySha256": "605b99daf328a2ab4e63ad608f92858473d848a975eff582479e65cdf38a4416"
+        },
+        {
+          "module": "chunk-m00pavz3.js",
+          "moduleSha256": "e4dcdda42fdf15ff719179977326a414b62ad13d5992832859839c9203c16a62",
+          "symbol": "vmr",
+          "range": [
+            2193,
+            2427
+          ],
+          "bodySha256": "4ad013a326ae6457c8f124eb99a77b9af5beb42a098be2431df5a909cca9def3"
+        },
+        "export function createShellRuleRecheck(Gre, dA) {\nconst ki = { name: \"Bash\" };\n",
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "$cn",
+          "range": [
+            3253132,
+            3253708
+          ],
+          "bodySha256": "724ee7599692796f6c6d2c7aa85f60073db9bb760955e046a46c5ff1be9f1743"
+        },
+        "return $cn;\n}\n"
+      ]
+    }
+  ]
+}
