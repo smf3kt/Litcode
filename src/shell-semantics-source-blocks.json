@@ -1,0 +1,758 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "records": [
+    {
+      "module": "chunk-0yczyn9c.js",
+      "moduleSha256": "9dc8063ec0affdd72ca6fddf4f306a1cdeed8672a773870076125c478fadaaea",
+      "symbol": "_s",
+      "range": [
+        1459,
+        1514
+      ],
+      "bodySha256": "37505cf4e8b17199f107902dd06318361c4bb32a31187b9323b80d7790c08e09",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        250,
+        305
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-0yczyn9c.js",
+      "moduleSha256": "9dc8063ec0affdd72ca6fddf4f306a1cdeed8672a773870076125c478fadaaea",
+      "symbol": "b",
+      "range": [
+        1637,
+        1796
+      ],
+      "bodySha256": "0760bcbe817b5e63e551c14324e81508a8840fc9b48d03bc7cce921e4c1ae40e",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        422,
+        581
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-0yczyn9c.js",
+      "moduleSha256": "9dc8063ec0affdd72ca6fddf4f306a1cdeed8672a773870076125c478fadaaea",
+      "symbol": "Ujn",
+      "range": [
+        1796,
+        1834
+      ],
+      "bodySha256": "b6c3c827bef94793053497d70f8acd7c15ad29ce5cdcd7ed2764b4d565aacea1",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        700,
+        738
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-y59c9wzk.js",
+      "moduleSha256": "6b51509a24e12a727cdf7e99b8a6e7e04921ea9b411eeeb0275d19db960a5ae2",
+      "symbol": "hyr",
+      "range": [
+        976,
+        1094
+      ],
+      "bodySha256": "24b74293cc36ef7497fc49a9ece35f98e517b49e0cf6089ff64caa7544a962bc",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        860,
+        978
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "R",
+      "range": [
+        3555,
+        3576
+      ],
+      "bodySha256": "9d57d6a47bf11ac1265c8cc5bbe1e5f79f18562595bf6bec955df501dcb752da",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        1100,
+        1121
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "_",
+      "range": [
+        3577,
+        3596
+      ],
+      "bodySha256": "8c4b345c24dd46a5d8e75f98ff30ee5251824d09824f1b3131558b9fff27a66a",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        1243,
+        1262
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "Vs",
+      "range": [
+        3597,
+        3648
+      ],
+      "bodySha256": "c9adc562c28f08a8b8ec863befedd70f2ce03d3ba6860ec5b086ea167e40acc0",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        1381,
+        1432
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "LKe",
+      "range": [
+        3648,
+        3725
+      ],
+      "bodySha256": "7ded52e9316fac206c4efeca6223df56947296d4888dc2de50ccc465bdb0cbd2",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        1551,
+        1628
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "yt",
+      "range": [
+        4002,
+        4015
+      ],
+      "bodySha256": "bd20b78f4c3a81d0fea185ea6a6ff12662684130466c9e679542be1d846d1222",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        1750,
+        1763
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "_t",
+      "range": [
+        4016,
+        4029
+      ],
+      "bodySha256": "c47ca0d7be4fa8dcd18aa7d3aca549784ac3ac5b12084e6ef328e775648a71dd",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        1886,
+        1899
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "bt",
+      "range": [
+        4030,
+        4059
+      ],
+      "bodySha256": "098815ad50460866049ee260c8d01b92a11cf5434b33637d0c1d503fe1b6efda",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        2022,
+        2051
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "St",
+      "range": [
+        5966,
+        5986
+      ],
+      "bodySha256": "b69d72cdf596501754572a211a563ff3c1f819317f0d0f92531204fd62699d7e",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        2174,
+        2194
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "V",
+      "range": [
+        5987,
+        6019
+      ],
+      "bodySha256": "98d1072e39c3a54c26c00b237ed0cd565b9d701e4bbaf553123040bfb549c88e",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        2312,
+        2344
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "hLn",
+      "range": [
+        6019,
+        6336
+      ],
+      "bodySha256": "73c62eafc885800bcf733c0ea03ecc872ff50100ff038c64946f0f75125e4e1d",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        2463,
+        2780
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "ke",
+      "range": [
+        18053,
+        18078
+      ],
+      "bodySha256": "e1533ec107a74f768f3a33a6d576ea9218a019838206d5563e0c2a8b16a1df85",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        2904,
+        2929
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "bTe",
+      "range": [
+        75842,
+        76112
+      ],
+      "bodySha256": "cb456858c246a4bbc25eff052789d66752c8f0b44d9ecc66b1e0a43e6f1da627",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        3055,
+        3325
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "nn",
+      "range": [
+        76113,
+        76230
+      ],
+      "bodySha256": "93c0c731e9c0a503eb23564fb2dffb9fb01cf0c8f6ffb7ae613d44e32c17df06",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        3450,
+        3567
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "RXt",
+      "range": [
+        76231,
+        76272
+      ],
+      "bodySha256": "4305b5d2d6cf029a26bf68dade7d00bec83c6a1404d1a2bdf4c376c048645ed8",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        3689,
+        3730
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "rn",
+      "range": [
+        76276,
+        76721
+      ],
+      "bodySha256": "ff53498318fed54a3753762540ce698c6ea7f33b4974e7eabb843a95c91b3993",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        3854,
+        4299
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "sn",
+      "range": [
+        76722,
+        76748
+      ],
+      "bodySha256": "825fb1ce75dbbbc7dbbe5d3aade6a4f738af71dd0324e22211fbe9937d9c94f6",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        4424,
+        4450
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "lt",
+      "range": [
+        76749,
+        76801
+      ],
+      "bodySha256": "f5cbc336d4ea4b9e2f0059b7fdb1f01980fea3e35dc3deb067dcb14565a0cd7d",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        4575,
+        4627
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "an",
+      "range": [
+        76802,
+        76817
+      ],
+      "bodySha256": "0d17b071c756775c3debcfb62a3402f43eef2212f81772bdd43367cdaede39ea",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        4752,
+        4767
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "VRt",
+      "range": [
+        76818,
+        76875
+      ],
+      "bodySha256": "1cb8ce784148b0cf6f04c28c8252b37e5ace5a233d24b07ff8f18e028f964e8b",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        4889,
+        4946
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "xXt",
+      "range": [
+        76875,
+        76909
+      ],
+      "bodySha256": "5072c36f1614dcf3cc5ba291a25aa585a4fb1f367f9a6604b3380fa2dc20dad9",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        5067,
+        5101
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "PXt",
+      "range": [
+        76909,
+        76943
+      ],
+      "bodySha256": "e9eb0f223e1644e0d39d6791631ed5aee6f09605df4730192c9045a34c83dba1",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        5222,
+        5256
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "BJ",
+      "range": [
+        76947,
+        77100
+      ],
+      "bodySha256": "fe743cbd535c20e2a2190e127f16f27b52aad70e6fdd9d20b378b924c01ea206",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        5380,
+        5533
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "wTe",
+      "range": [
+        77101,
+        77142
+      ],
+      "bodySha256": "aea5ffe29455dfba23b1e8f2e964c9ef4002e5e02658c701cf558cd4860e7b0e",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        5659,
+        5700
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "on",
+      "range": [
+        77143,
+        77176
+      ],
+      "bodySha256": "d27b878b0d11b449973e2e322d9fe41697228c575bbb2f3f642d3665fc8c32f0",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        5825,
+        5858
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "qRt",
+      "range": [
+        77177,
+        77929
+      ],
+      "bodySha256": "136a751ad83f8570c8453236e016c545ac4133ca9f798e750280fd0912802851",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        5980,
+        6732
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "U9",
+      "range": [
+        78247,
+        78358
+      ],
+      "bodySha256": "1a1809c7b8dbff5ee75e1342e92b1135201ad0b5cd79df5a516258f93f0fb2ac",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        6856,
+        6967
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "fyr",
+      "range": [
+        78484,
+        78668
+      ],
+      "bodySha256": "67e62f8528e08b2e8653c8b92851e6f8d6a800e7b6b09f22c00c387b3b86af33",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        7093,
+        7277
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "NKe",
+      "range": [
+        78669,
+        78719
+      ],
+      "bodySha256": "18800df82ae51506a4f209212329fd8943b480dba0cfd4e59f83dc194096614a",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        7403,
+        7453
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "_it",
+      "range": [
+        78720,
+        78776
+      ],
+      "bodySha256": "9a3f3102436bc73b2e23977cf83c2f9050e1c02123181ce40822e1c6a6b4cb51",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        7579,
+        7635
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "myr",
+      "range": [
+        78777,
+        78806
+      ],
+      "bodySha256": "12551ad8e0d1a450238b9e056dfc9a5a7c8d3f6fe923b1406be525e38b7c63e2",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        7761,
+        7790
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "Me",
+      "range": [
+        78807,
+        78896
+      ],
+      "bodySha256": "cb614ea4cbcb0b55ed74073f9857bc0ba35a05fba05b6f025da5a37b05cb15a3",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        7915,
+        8004
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "Sit",
+      "range": [
+        78897,
+        79142
+      ],
+      "bodySha256": "9719b9f34833111b745afd5524d28c4d26a489ee6572d93356555a10c19e8641",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        8130,
+        8375
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "OXt",
+      "range": [
+        79143,
+        79316
+      ],
+      "bodySha256": "83a3c36715b3bde0d29b144f20c88bb8cc11796791b698313971aa4dc7fd6eb3",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        8501,
+        8674
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "HXt",
+      "range": [
+        79317,
+        79383
+      ],
+      "bodySha256": "02109e8a4f248c6000cd39cde9690a3a52130bc509bb169e8e1a03a361455a2b",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        8800,
+        8866
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "kNe",
+      "range": [
+        80686,
+        80735
+      ],
+      "bodySha256": "a338ae33ff6e53468e7ed8d32b648f8ce899491a4c3f3e2c155f7a18c565ade0",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        8992,
+        9041
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "bLn",
+      "range": [
+        80736,
+        80765
+      ],
+      "bodySha256": "a68c60ee1cf1321b573db644e98796dc01c010001676aee08b01b58ca1851b54",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        9167,
+        9196
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "MXt",
+      "range": [
+        80766,
+        80806
+      ],
+      "bodySha256": "b22503d6668256a5b8fb57df1d5b5941bfad2c36969b720f0c8088335d611299",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        9322,
+        9362
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "cn",
+      "range": [
+        80807,
+        80837
+      ],
+      "bodySha256": "e5a989815544e18cac8ba4c03353ab38e5c41f9bc7ed3820cde64bb1ce4034a8",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        9487,
+        9517
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "_e",
+      "range": [
+        80877,
+        80901
+      ],
+      "bodySha256": "46199fc1129e50d409b0d37409504d2f404cada69f26ab5fd2642f5d422f0e11",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        9642,
+        9666
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "q",
+      "range": [
+        80902,
+        80912
+      ],
+      "bodySha256": "fcdb0b57aa6c6e120e94f66d4ccff27b5700a54ae87d70bed7adf2ee6227e049",
+      "declarator": true,
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        9790,
+        9800
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    },
+    {
+      "module": "chunk-zjewzgfh.js",
+      "moduleSha256": "83180bcc6260cb73ac46b7d44d98a5a621a1dc03153582b929e8d717649149b3",
+      "symbol": "gyr",
+      "range": [
+        80913,
+        93284
+      ],
+      "bodySha256": "066bb6fe4c63e10bb2dfe918f9097cf0bf3555526fdfdee9d3dd21eaa394d62b",
+      "output": "shell-semantics-source.ts",
+      "outputRange": [
+        9922,
+        22293
+      ],
+      "coordinates": "zero-based half-open UTF16 code units"
+    }
+  ]
+}

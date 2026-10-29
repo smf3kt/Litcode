@@ -195,7 +195,7 @@ test('tool-restriction options are validated before the bridge and passed throug
       return 'ok';
     });
   assert.equal(ok.error, undefined);
-  assert.deepEqual(seen, [{ disallowed: ['Bash', 'Write'], clamp: [['Bash(git:*)']], stall: 250 }]);
+  assert.deepEqual(seen, [{ disallowed: ['Bash', 'Write'], clamp: ['Bash(git:*)'], stall: 250 }]);
 });
 
 test('schema mode passes the schema and returns the validated object', async () => {
@@ -305,6 +305,16 @@ test('the journal reuses the unchanged prefix and reruns changed calls', async (
       `const a = await agent('alpha')\nconst b = await agent('beta', { model: 'other', label: 'renamed' })\nreturn [a, b]`, bridge);
     assert.deepEqual(calls, []);
     assert.deepEqual(json(relabelled.result), ['alpha-out', 'beta-out']);
+
+    const clamp = `return await agent('shell', { bashCommandClamp: ['Bash(echo:*)'] })`;
+    calls.length = 0;
+    assert.equal((await journalRun(clamp, bridge)).result, 'shell-out');
+    assert.deepEqual(calls, ['shell']);
+    calls.length = 0;
+    assert.equal((await journalRun(clamp, bridge)).result, 'shell-out');
+    assert.deepEqual(calls, []);
+    assert.equal((await journalRun(`return await agent('shell', { bashCommandClamp: ['Bash(printf:*)'] })`, bridge)).result, 'shell-out');
+    assert.deepEqual(calls, ['shell']);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

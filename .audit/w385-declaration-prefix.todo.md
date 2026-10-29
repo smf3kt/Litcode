@@ -11,5 +11,9 @@
 - [x] Independently trace vector-level policy ordering and revise the state adapter. The source keeps module-lifetime counters and uses call-time `os.homedir()`; the host shell can observe a different value when HOME is absent.
 - [x] Copy and independently verify 146 analyser ranges plus ten merge ranges as unconnected modules; align the parser export and generator. Check/build, 8/8 existing permission tests, three analyser/merge regressions and the compiled six-case CLI pass. Add the reviewer's exact vector and message assertions.
 - [x] Independently review the copied source vector scheduler and its call-scoped owned adapters; a second scoped review checked the first repair set. Main added and tested three further assertions; `O3e` integration remains open.
+- [x] Independently review the 45-range unconnected semantics unit and its no-feature-reader adapter; record the source registration boundary and repair the glob test.
+- [x] Independently recheck the matcher regression repairs after source review verified its 49 ranges; main added and tested two final identity/count assertions.
+- [x] Independently review the 11-range child clamp source and regressions, then wire the child gate after its dependencies are accepted.
+- [x] Independently review the integrated child gate, workflow bridge and HOME boundary; the reviewer inspected the driver but did not rerun it.
 - [ ] Close the remaining source-policy early returns and map them to the host before connecting the analyser to permission decisions.
 - [ ] Continue as one source-backed implementation package or record a bounded disposition.

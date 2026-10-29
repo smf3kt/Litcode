@@ -26,6 +26,7 @@ export type ToolContext = {
   signal: AbortSignal;
   allowShell: boolean;
   maxOutputBytes: number;
+  shellHome?: { value: string | undefined };
   conversation?: readonly Anthropic.MessageParam[];
   interaction?: InteractionCallbacks;
   planMode?: PlanModeHost;
@@ -664,6 +665,7 @@ function runShell(
   maxBytes: number,
   signal: AbortSignal,
   onProgress?: (progress: ShellProgress) => void,
+  shellHome?: { value: string | undefined },
 ): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     if (signal.aborted) {
@@ -674,7 +676,7 @@ function runShell(
     try {
       child = spawn("/bin/sh", ["-c", command], {
         cwd,
-        env: process.env,
+        env: shellHome === undefined ? process.env : { ...process.env, HOME: shellHome.value },
         detached: true, // own process group so the whole tree can be killed
         stdio: ["ignore", "pipe", "pipe"], // stdin ignored
       });
@@ -1189,7 +1191,7 @@ function runCommandTool(): ToolDefinition {
       }
       const { command, timeout_ms = COMMAND_DEFAULT_TIMEOUT_MS } = runCommandSchema.parse(input);
       const root = workspaceReal(context.workspace);
-      try { return await runShell(command, root, timeout_ms, maxBytesFor(context), context.signal, context.onProgress); }
+      try { return await runShell(command, root, timeout_ms, maxBytesFor(context), context.signal, context.onProgress, context.shellHome); }
       finally { context.fileHistory?.(); }
     },
   };

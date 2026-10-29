@@ -1,4 +1,4 @@
-W385 Permissions source port (2026-10-29). The unconnected analyser, decision-merge and vector-scheduler modules pass source checks and focused regressions; per-vector policy and authorization integration remain open. See [W385](ports/W385-declaration-prefix-preflight.md).
+W385 Permissions source port (2026-10-29). The independently reviewed child clamp is connected and passes the compiled workflow-to-child chain at `a4372d9c`; independent integration review returned `VERIFIED_SCOPED` without rerunning the CLI. The analyser serves the child clamp; the decision merge, vector scheduler and semantics remain separate while full per-vector policy integration is open. See [W385](ports/W385-declaration-prefix-preflight.md).
 
 W384 Hooks retirement observation (2026-10-29). An injected second-retirement failure reproduces a stale mounted relay; normal removal is the control, and production reachability remains unestablished. See [W384](ports/W384-hooks-retirement-observation.md).
 

@@ -41,7 +41,7 @@ export type WorkflowScriptParse = ParsedWorkflowScript | { error: string };
 
 export type WorkflowScriptAgentOptions = {
   label?: string; phase?: string; model?: string; effort?: string; isolation?: 'worktree';
-  agentType?: string; schema?: unknown; disallowedTools?: string[]; bashCommandClamp?: string[][];
+  agentType?: string; schema?: unknown; disallowedTools?: string[]; bashCommandClamp?: string[];
   stallMs?: number;
 };
 // A bridge returns the child summary; `null` mirrors a skipped child, and
@@ -1042,7 +1042,8 @@ export async function runWorkflowScript(
     }
     if (opts.bashCommandClamp !== undefined) {
       const normalized = normalizeBashCommandClamp(opts.bashCommandClamp);
-      if (normalized !== undefined) result.bashCommandClamp = normalized;
+      // Source keeps the validated rule list flat until the child permission layer (hedqf2m1 [46284,47451), [62642,62783)).
+      if (normalized !== undefined) result.bashCommandClamp = normalized[0];
     }
     if (opts.stallMs !== undefined && opts.stallMs !== null) {
       const stallMs = Number(opts.stallMs);

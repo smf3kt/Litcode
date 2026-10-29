@@ -11,6 +11,7 @@ const compiled = process.argv.includes("--compiled");
 const named = process.argv.includes("--named");
 const launcher = compiled ? [path.join(root, "bin/personal-harness.mjs")] : ["--import", "tsx", path.join(root, "src/cli.ts")];
 if (process.argv.includes("--crash")) { await crashAcceptance(); process.exit(0); }
+if (process.argv.includes("--clamp")) { await clampAcceptance(); process.exit(0); }
 const workspace = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "workflow-cli-smoke-")));
 const input = { tasks: [{ id: "a", prompt: "workflow child A" },
   { id: "b", prompt: "workflow child B", depends_on: ["a"] }], max_parallel: 1, timeout_ms: 10_000 };
@@ -123,6 +124,86 @@ try {
   }
   server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
   fs.rmSync(workspace, { recursive: true, force: true });
+}
+
+async function clampAcceptance() {
+  const scratch = process.env.CLAUDE_JOB_DIR ? path.join(process.env.CLAUDE_JOB_DIR, "tmp") : os.tmpdir();
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(scratch, "clamp-cli-")));
+  const script = "export const meta={name:'clamp',description:'Owned child clamp fixture'};return await agent('CLAMP_CHILD',{agentType:'general',bashCommandClamp:['Bash(echo:*)','Bash(printf:*)']})";
+  let active, server, commanded = "", childResult, parentReceipt, childCalls = 0;
+  try {
+    server = http.createServer((req, res) => {
+      const chunks = []; req.on("data", chunk => chunks.push(chunk)); req.on("end", () => {
+        const body = JSON.parse(Buffer.concat(chunks)), last = body.messages.at(-1);
+        const isChild = JSON.stringify(body.system).includes("You are a child agent assigned a focused task");
+        const result = Array.isArray(last.content) ? last.content.find(block => block.type === "tool_result") : undefined;
+        let block;
+        if (isChild) {
+          childCalls++;
+          if (result) { childResult = result; block = { type: "text", text: "child done" }; }
+          else block = { type: "tool_use", id: "clamped-call", name: "run_command", input: { command: commanded } };
+        } else if (result) {
+          parentReceipt = result; block = { type: "text", text: "parent done" };
+        } else block = { type: "tool_use", id: "workflow-call", name: "workflow_run", input: { script } };
+        const events = [
+          { type: "message_start", message: { id: "fixture", type: "message", role: "assistant", model: body.model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 1, output_tokens: 0 } } },
+          { type: "content_block_start", index: 0, content_block: block.type === "text" ? { type: "text", text: "" } : { ...block, input: {} } },
+          { type: "content_block_delta", index: 0, delta: block.type === "text" ? { type: "text_delta", text: block.text } : { type: "input_json_delta", partial_json: JSON.stringify(block.input) } },
+          { type: "content_block_stop", index: 0 },
+          { type: "message_delta", delta: { stop_reason: block.type === "text" ? "end_turn" : "tool_use", stop_sequence: null }, usage: { output_tokens: 1 } },
+          { type: "message_stop" },
+        ];
+        res.writeHead(200, { "content-type": "text/event-stream" });
+        res.end(events.map(event => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join(""));
+      });
+    });
+    await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+    const env = { ...process.env };
+    for (const key of Object.keys(env)) if (/^(LLM_|ANTHROPIC_)/.test(key)) delete env[key];
+    Object.assign(env, { LLM_API_KEY: "owned-clamp", LLM_MODEL: "fixture/clamp", LLM_BASE_URL: `http://127.0.0.1:${server.address().port}`,
+      LLM_AUTH: "bearer", LLM_TOKEN_COUNTING: "estimate", LLM_THINKING: "false" });
+    for (const event of ["allowed", "denied", "unverifiable", "PermissionRequest", "PreToolUse"]) {
+      const workspace = path.join(temporary, event), user = path.join(temporary, `${event}-user`);
+      fs.mkdirSync(workspace); fs.mkdirSync(user); fs.mkdirSync(path.join(workspace, ".harness"));
+      const replacement = { command: "touch forbidden.txt" };
+      const output = event === "PermissionRequest"
+        ? { hookEventName: event, decision: { behavior: "allow", updatedInput: replacement } }
+        : { hookEventName: event, permissionDecision: "allow", updatedInput: replacement };
+      const hooks = event === "PermissionRequest" || event === "PreToolUse"
+        ? { [event]: [{ matcher: "run_command", command: `printf '%s' '${JSON.stringify({ hookSpecificOutput: output })}'` }] } : {};
+      fs.writeFileSync(path.join(workspace, ".harness/settings.json"), JSON.stringify({ allowShell: true, hooks,
+        permissions: { mode: "bypass", allow: [], deny: [], inputRules: event === "PermissionRequest"
+          ? [{ tool: "run_command", command: "echo *", decision: "ask" }] : [] } }));
+      commanded = event === "allowed" ? "command echo clamped-ok; printf second"
+        : event === "denied" ? "echo allowed; touch forbidden.txt"
+        : event === "unverifiable" ? "echo $(touch forbidden.txt)" : "echo allowed";
+      childCalls = 0; childResult = undefined; parentReceipt = undefined;
+      active = spawn(process.execPath, [...launcher, "--workspace", workspace, "--user-dir", user,
+        "--output-format", "json", "--max-turns", "4", "run owned clamp workflow"],
+      { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
+      let stdout = "", stderr = "";
+      active.stdout.on("data", chunk => { stdout += chunk; }); active.stderr.on("data", chunk => { stderr += chunk; });
+      const timer = setTimeout(() => active?.kill("SIGKILL"), 20000);
+      const code = await new Promise((resolve, reject) => { active.once("error", reject); active.once("close", resolve); });
+      clearTimeout(timer); active = undefined;
+      assert.equal(code, 0, stderr); assert.match(stdout, /parent done/);
+      assert.ok(parentReceipt && !parentReceipt.is_error, JSON.stringify(parentReceipt));
+      assert.ok(childResult, `missing child result for ${event}: ${JSON.stringify(parentReceipt?.content)}`); assert.equal(childCalls, 2);
+      const content = String(childResult.content);
+      if (event === "allowed") { assert.equal(childResult.is_error, undefined, content); assert.match(content, /clamped-ok/); assert.match(content, /second/); }
+      else { assert.equal(childResult.is_error, true); assert.match(content, /clamped to a fixed set/); }
+      if (event === "denied" || event === "PermissionRequest" || event === "PreToolUse") assert.match(content, /"touch forbidden\.txt"/);
+      if (event === "unverifiable") assert.match(content, /the command has structure/);
+      assert.equal(fs.existsSync(path.join(workspace, "forbidden.txt")), false);
+      assert.equal(fs.readdirSync(path.join(workspace, ".agent")).some(name => name.endsWith(".lock")), false);
+    }
+    console.log(JSON.stringify({ compiledCLI: compiled, childClamp: "passed", wrappedAndCompound: true, deny: true,
+      parserAbort: true, permissionRewrite: true, preToolRewrite: true, gateway: "owned loopback SSE" }));
+  } finally {
+    if (active) { const exited = new Promise(resolve => active.once("close", resolve)); active.kill("SIGKILL"); await exited; }
+    if (server) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
 }
 
 async function crashAcceptance() {

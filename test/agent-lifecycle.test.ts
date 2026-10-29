@@ -463,6 +463,27 @@ test("PermissionRequest allowing updatedInput executes the replacement and expos
   } finally { session.close(); }
 });
 
+test('a clamped shell retains HOME across the final authorization and tool execution', async () => {
+  const root = workspace();
+  const tools = createTools();
+  const cfg = config(root, tools, { allowShell: true, bashCommandClamp: [['Bash(printf:*)']] });
+  const provider = new ScriptedProvider([response([call('one', 'run_command', { command: 'printf "%s" "$HOME"' })], 'tool_use'), done()]);
+  const session = Session.open(root, { config: cfg });
+  const previous = process.env.HOME;
+  process.env.HOME = '/fixture/home-before';
+  try {
+    await new Agent(session, provider, tools, { status: text => {
+      if (text === 'tool: run_command') process.env.HOME = '/fixture/home-after';
+    } }).run('check shell home');
+    assert.equal(resultBatches(session)[0]?.[0]?.is_error, undefined);
+    assert.match(String(resultBatches(session)[0]?.[0]?.content), /\/fixture\/home-before/);
+    assert.doesNotMatch(String(resultBatches(session)[0]?.[0]?.content), /\/fixture\/home-after/);
+  } finally {
+    if (previous === undefined) delete process.env.HOME; else process.env.HOME = previous;
+    session.close();
+  }
+});
+
 test("PermissionRequest deny with interrupt aborts the turn before the tool runs", async () => {
   const root = workspace();
   const effect = spy("write_file");

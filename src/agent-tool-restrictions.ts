@@ -1,11 +1,8 @@
 // Per-spawn tool restrictions from `agent({disallowedTools, bashCommandClamp})`.
 //
-// Source: chunk-hedqf2m1.js option validation [77200,80100), tool-pool checks
-// [88500,101000), chunk-sfn1dbxq.js `fTr` [5444505,5444900) and `xX`
-// [5439798,5443900), chunk-z6p21rxk.js `Un`/`hpe` [95,205), and
-// chunk-3cynezh1.js `jxe`/`Bxe` [264332,266180). The permission-rule grammar,
-// the every-reading invariant and the fail-closed clamp are ported; MCP server
-// wildcards and the source's legacy tool aliases are not part of this runtime.
+// Source: hedqf2m1 option validation [46284,47451), sfn1dbxq `fTr`
+// [3207522,3208297), `xX` [3205608,3207029), UTF-16. The live clamp uses
+// the copied bodies; the legacy reader remains for the absent-HOME guard.
 
 import { shellReadings } from './shell-readings.js';
 
@@ -186,10 +183,8 @@ export function validateDisallowedTools(entries: readonly string[], pool: readon
 }
 
 /**
- * Source `fTr`: every reading of the command has to match a rule in every clamp
- * group, and a reading set that is not exhaustive cannot be admitted at all.
- * `fTr` builds its check set from the parsed command texts as well as the raw
- * forms, so the deny-only readings count here too.
+ * The legacy reading-based clamp remains a conservative guard when HOME is
+ * absent, because source E6 uses os.homedir() while /bin/sh sees an unset HOME.
  */
 export function checkBashCommandClamp(command: string, groups: readonly (readonly string[])[]): {
   kind: 'unverifiable' | 'unmatched'; span: string; group: readonly string[];

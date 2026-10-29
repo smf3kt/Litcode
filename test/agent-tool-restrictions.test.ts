@@ -6,6 +6,9 @@ import { test } from 'node:test';
 import type Anthropic from '@anthropic-ai/sdk';
 import { defaultConfig } from '../src/agent.js';
 import { AgentRegistry } from '../src/agent-registry.js';
+import { vS } from '../src/bash-parser-source.js';
+import { createSkillTool } from '../src/runtime.js';
+import { selectChildTools } from '../src/subagents.js';
 import {
   checkBashCommandClamp, normalizeBashCommandClamp, normalizeDisallowedTools, parseToolRule,
   toolNameDenied, validateDisallowedTools,
@@ -25,7 +28,7 @@ function fixture(run: ModelProvider['complete'] = async () => response()) {
   const config = defaultConfig(workspace, tools); config.model = 'test'; config.allowShell = true;
   const provider: ModelProvider = { count: async () => 0, complete: run };
   const registry = new AgentRegistry({ source: () => config, tools, provider });
-  return { registry, async cleanup() {
+  return { registry, config, workspace, async cleanup() {
     await registry.close(); fs.rmSync(workspace, { recursive: true, force: true });
   } };
 }
@@ -133,44 +136,144 @@ test('a clamp with no shell tool in the resolved pool refuses the spawn', async 
 });
 
 test('the child permission gate denies a clamped command and reports the allowed forms', async () => {
-  let calls = 0;
+  for (const command of ['rm -rf /tmp/never-created', 'echo allowed; printf forbidden > forbidden.txt']) {
+    let calls = 0;
+    const f = fixture(async request => {
+      calls += 1;
+      if (calls === 1) return response('', [{ type: 'tool_use', id: 'cmd-1', name: 'run_command',
+        input: { command } } as Anthropic.ContentBlock]);
+      const result = request.messages.at(-1);
+      const block = Array.isArray(result?.content)
+        ? result.content.find(entry => entry.type === 'tool_result') : undefined;
+      assert.equal(block?.type, 'tool_result');
+      assert.match(String(block && 'content' in block ? block.content : ''), /clamped to a fixed set of command forms/);
+      assert.match(String(block && 'content' in block ? block.content : ''), /Bash\(echo:\*\)/);
+      if (command.startsWith('echo')) assert.match(String(block && 'content' in block ? block.content : ''), /"printf forbidden"/);
+      return response('done');
+    });
+    try {
+      const child = await f.registry.launch({ prompt: 'work', mode: 'general', bash_command_clamp: ['Bash(echo:*)'] });
+      assert.equal(child.status, 'completed', child.error ?? undefined);
+      assert.equal(calls, 2);
+      assert.equal(fs.existsSync(path.join(f.workspace, 'forbidden.txt')), false);
+      assert.equal(fs.existsSync('/tmp/never-created'), false);
+    } finally { await f.cleanup(); }
+  }
+});
+
+test('the child gate rechecks PermissionRequest and PreToolUse command rewrites', async () => {
+  for (const event of ['PermissionRequest', 'PreToolUse'] as const) {
+    const replacement = { command: 'printf forbidden > forbidden.txt' };
+    const output = event === 'PermissionRequest'
+      ? { hookEventName: event, decision: { behavior: 'allow', updatedInput: replacement } }
+      : { hookEventName: event, permissionDecision: 'allow', updatedInput: replacement };
+    const hook = `printf '%s' '${JSON.stringify({ hookSpecificOutput: output })}'`;
+    let calls = 0;
+    const f = fixture(async request => {
+      if (++calls === 1) return response('', [{ type: 'tool_use', id: 'cmd-1', name: 'run_command',
+        input: { command: 'echo allowed' } } as Anthropic.ContentBlock]);
+      const result = request.messages.at(-1);
+      const block = Array.isArray(result?.content)
+        ? result.content.find(entry => entry.type === 'tool_result') : undefined;
+      assert.match(String(block && 'content' in block ? block.content : ''), /clamped to a fixed set/);
+      return response('done');
+    });
+    f.config.permissions = { mode: event === 'PermissionRequest' ? 'ask' : 'bypass', allow: [], deny: [] };
+    f.config.hooks = { [event]: [{ command: hook }] };
+    try {
+      const child = await f.registry.launch({ prompt: 'work', mode: 'general', bash_command_clamp: ['Bash(echo:*)'] });
+      assert.equal(child.status, 'completed', child.error ?? undefined);
+      assert.equal(calls, 2);
+      assert.equal(fs.existsSync(path.join(f.workspace, 'forbidden.txt')), false);
+    } finally { await f.cleanup(); }
+  }
+});
+
+test('the child gate denies a source parser failure after the initial parse', async () => {
+  const parser = vS();
+  const parse = parser.parse;
+  let parses = 0, calls = 0;
   const f = fixture(async request => {
-    calls += 1;
-    if (calls === 1) return response('', [{ type: 'tool_use', id: 'cmd-1', name: 'run_command',
-      input: { command: 'rm -rf /tmp/never-created' } } as Anthropic.ContentBlock]);
+    if (++calls === 1) return response('', [{ type: 'tool_use', id: 'cmd-1', name: 'run_command',
+      input: { command: 'echo allowed' } } as Anthropic.ContentBlock]);
     const result = request.messages.at(-1);
     const block = Array.isArray(result?.content)
       ? result.content.find(entry => entry.type === 'tool_result') : undefined;
-    assert.equal(block?.type, 'tool_result');
-    assert.match(String(block && 'content' in block ? block.content : ''), /clamped to a fixed set of command forms/);
-    assert.match(String(block && 'content' in block ? block.content : ''), /Bash\(echo:\*\)/);
+    assert.match(String(block && 'content' in block ? block.content : ''), /permission check crashed.*denying/);
     return response('done');
   });
+  parser.parse = (command: string, deadline?: number) => { if (++parses === 2) throw new Error('fixture parse failure'); return parse(command, deadline); };
   try {
     const child = await f.registry.launch({ prompt: 'work', mode: 'general', bash_command_clamp: ['Bash(echo:*)'] });
     assert.equal(child.status, 'completed', child.error ?? undefined);
     assert.equal(calls, 2);
-    assert.equal(fs.existsSync('/tmp/never-created'), false);
+    assert.equal(parses, 2);
+  } finally { parser.parse = parse; await f.cleanup(); }
+});
+
+test('the child skill tool returns instructions without running inline commands', async () => {
+  const f = fixture();
+  let invoked = 0;
+  f.config.skills = [{ name: 'clamp-fixture', path: '/fixture/SKILL.md', description: 'fixture',
+    body: '!`touch forbidden.txt`', shell: '/bin/sh', userInvocable: true, disableModelInvocation: false }];
+  const parentTool = createSkillTool(f.config, async () => { invoked++; return 'executed'; });
+  const [childTool] = selectChildTools([parentTool], 'general');
+  assert.ok(childTool);
+  try {
+    const result = await childTool.execute({ name: 'clamp-fixture' },
+      { workspace: f.workspace, signal: new AbortController().signal, allowShell: true, maxOutputBytes: 24000 });
+    assert.match(result, /touch forbidden\.txt/);
+    assert.equal(invoked, 0);
+    assert.equal(fs.existsSync(path.join(f.workspace, 'forbidden.txt')), false);
   } finally { await f.cleanup(); }
 });
 
-test('the child permission gate admits a command every clamp reading matches', async () => {
+test('the child gate preserves the legacy restriction when HOME is absent', async () => {
+  const previous = process.env.HOME;
   let calls = 0;
   const f = fixture(async request => {
-    calls += 1;
-    if (calls === 1) return response('', [{ type: 'tool_use', id: 'cmd-1', name: 'run_command',
-      input: { command: 'echo clamped-ok' } } as Anthropic.ContentBlock]);
+    if (++calls === 1) return response('', [{ type: 'tool_use', id: 'cmd-1', name: 'run_command',
+      input: { command: '$HOME/bin/echo marker' } } as Anthropic.ContentBlock]);
     const result = request.messages.at(-1);
     const block = Array.isArray(result?.content)
       ? result.content.find(entry => entry.type === 'tool_result') : undefined;
-    const content = String(block && 'content' in block ? block.content : '');
-    assert.match(content, /clamped-ok/);
-    assert.doesNotMatch(content, /has been denied/);
+    assert.match(String(block && 'content' in block ? block.content : ''), /the command has structure/);
     return response('done');
   });
+  delete process.env.HOME;
+  const home = os.homedir();
   try {
-    const child = await f.registry.launch({ prompt: 'work', mode: 'general', bash_command_clamp: ['Bash(echo:*)'] });
+    const child = await f.registry.launch({ prompt: 'work', mode: 'general',
+      bash_command_clamp: ['Bash($HOME/bin/echo marker)', `Bash(${home}/bin/echo marker)`] });
     assert.equal(child.status, 'completed', child.error ?? undefined);
     assert.equal(calls, 2);
-  } finally { await f.cleanup(); }
+  } finally {
+    if (previous !== undefined) process.env.HOME = previous;
+    await f.cleanup();
+  }
+});
+
+test('the child gate admits source-matched wrapped and compound commands', async () => {
+  for (const command of ['echo clamped-ok', 'command echo clamped-ok', 'echo clamped-ok; printf second']) {
+    let calls = 0;
+    const f = fixture(async request => {
+      calls += 1;
+      if (calls === 1) return response('', [{ type: 'tool_use', id: 'cmd-1', name: 'run_command',
+        input: { command } } as Anthropic.ContentBlock]);
+      const result = request.messages.at(-1);
+      const block = Array.isArray(result?.content)
+        ? result.content.find(entry => entry.type === 'tool_result') : undefined;
+      const content = String(block && 'content' in block ? block.content : '');
+      assert.match(content, /clamped-ok/);
+      if (command.includes('printf')) assert.match(content, /second/);
+      assert.doesNotMatch(content, /has been denied/);
+      return response('done');
+    });
+    try {
+      const child = await f.registry.launch({ prompt: 'work', mode: 'general',
+        bash_command_clamp: ['Bash(echo:*)', 'Bash(printf:*)'] });
+      assert.equal(child.status, 'completed', child.error ?? undefined);
+      assert.equal(calls, 2);
+    } finally { await f.cleanup(); }
+  }
 });

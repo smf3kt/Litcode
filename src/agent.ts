@@ -14,6 +14,7 @@ import { PROMPT_PREDICTION_INSTRUCTION, normalizePromptSuggestion, promptPredict
 import { HookLifecycle, normalizeSessionTitle, promptBlockMessage, runHooks, sessionEndHookBoundMs, type HookEvent, type HookPayload, type HookResult, type HookRunOptions } from './hooks.js';
 import { DEFAULT_ALLOW_SHELL, parsePermissionRule, permissionDecision, effectivePermissionPolicy, permissionUpdateListSchema } from './permissions.js';
 import { bashCommandClampDenial, checkBashCommandClamp, CLAMPED_SHELL_TOOLS } from './agent-tool-restrictions.js';
+import { fTr } from './shell-command-clamp-source.js';
 import path from 'node:path';
 import { matchesConditionalRule, loadPathInstructions, type SkillSource } from './config.js';
 import type { InteractionCallbacks } from './interaction-tools.js';
@@ -562,20 +563,37 @@ export class Agent {
     throw new Error('agent stalled');
   }
 
-  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal, callId = '', heldFloor = false, deferAuto = false): Promise<{ input: unknown; denied?: string; retry?: boolean; outcome?: 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error' }> {
+  // O3e/fTr/sor, sfn1dbxq [3254351,3255656), [3207522,3208297), [3208689,3208983), UTF-16.
+  private async checkCommandClamp(tool: ToolDefinition, input: unknown, signal: AbortSignal, expectedHome: string | undefined): Promise<string | undefined> {
     const clamp = this.session.config.bashCommandClamp;
-    if (clamp !== undefined && CLAMPED_SHELL_TOOLS.has(tool.schema.name)) {
+    if (clamp === undefined || clamp.length === 0 || !CLAMPED_SHELL_TOOLS.has(tool.schema.name)) return;
+    try {
+      signal.throwIfAborted();
+      if (process.env.HOME !== expectedHome) throw new Error('The shell HOME changed before restriction analysis.');
       const command = typeof input === 'object' && input !== null
         ? Object.getOwnPropertyDescriptor(input, 'command')?.value : undefined;
-      const failure = typeof command === 'string'
-        ? checkBashCommandClamp(command, clamp)
-        : { kind: 'unverifiable' as const, span: '', group: clamp[0] ?? [] };
+      const failure = typeof command !== 'string'
+        ? { kind: 'unverifiable' as const, span: '', group: clamp[0] ?? [] }
+        : expectedHome === undefined ? checkBashCommandClamp(command, clamp) ?? await fTr({ command }, clamp)
+          : await fTr({ command }, clamp);
+      signal.throwIfAborted();
+      if (process.env.HOME !== expectedHome) throw new Error('The shell HOME changed during restriction analysis.');
       if (failure !== null) {
-        const denied = bashCommandClampDenial(tool.schema.name, typeof command === 'string' ? command : '', failure);
-        // The source's shell permission check returns a deny; the product's
-        return { input, denied };
+        if ((failure.kind !== 'unverifiable' && failure.kind !== 'unmatched') || typeof failure.span !== 'string' || !Array.isArray(failure.group)) {
+          throw new Error('Invalid shell restriction result');
+        }
+        return bashCommandClampDenial(tool.schema.name, typeof command === 'string' ? command : '',
+          { kind: failure.kind, span: failure.span, group: failure.group });
       }
+    } catch (error) {
+      if (signal.aborted) throw error;
+      return `The ${tool.schema.name} permission check crashed and this agent carries a per-spawn bashCommandClamp; denying rather than running an unverified command.`;
     }
+  }
+
+  private async authorize(tool: ToolDefinition, input: unknown, signal: AbortSignal, callId = '', heldFloor = false, deferAuto = false): Promise<{ input: unknown; denied?: string; retry?: boolean; outcome?: 'automode-blocked' | 'automode-unavailable' | 'automode-parsing-error' }> {
+    const clampDenial = await this.checkCommandClamp(tool, input, signal, process.env.HOME);
+    if (clampDenial !== undefined) return { input, denied: clampDenial };
     this.session.prepareAutoMode();
     const decision = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state());
     // I9r caller, sfn [2288685,2289127), UTF-16. Denied events belong only to auto classification.
@@ -689,6 +707,8 @@ export class Agent {
     }
     if (requested.updatedInput !== undefined) {
       input = requested.updatedInput;
+      const clampDenial = await this.checkCommandClamp(tool, input, signal, process.env.HOME);
+      if (clampDenial !== undefined) return { input, denied: clampDenial };
       const updated = permissionDecision(this.session.config.permissions, tool, input, this.session.permissionOwner.state());
       if (updated.decision === 'deny') {
         return { input, denied: updated.reason ?? 'Permission denied' };
@@ -926,6 +946,14 @@ export class Agent {
             extra.push(...lifecycle.additionalContext);
             if (lifecycle.blocked) throw new Error(lifecycle.reason ?? `Blocked by ${gate} hook`);
           }
+          let executionContext = context;
+          const clamp = this.session.config.bashCommandClamp;
+          if (clamp !== undefined && clamp.length > 0 && CLAMPED_SHELL_TOOLS.has(tool.schema.name)) {
+            const home = process.env.HOME;
+            const denied = await this.checkCommandClamp(tool, input, signal, home);
+            if (denied !== undefined) throw new Error(denied);
+            executionContext = { ...context, shellHome: { value: home } };
+          }
           signal.throwIfAborted();
           this.session.append({ kind: 'tool_start', id: call.id, name: call.name });
           executed = true;
@@ -934,7 +962,7 @@ export class Agent {
           const startedAt = Date.now();
           try {
             result = this.result(call.id, tool.executeBlocks
-              ? await tool.executeBlocks(input, context) : await tool.execute(input, context));
+              ? await tool.executeBlocks(input, executionContext) : await tool.execute(input, executionContext));
           } finally { durationMs = Date.now() - startedAt; }
         } catch (error) {
           result = this.result(call.id, error instanceof Error ? error.message : String(error), true);
