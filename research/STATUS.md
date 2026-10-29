@@ -1,4 +1,4 @@
-W385 Permissions preflight (2026-10-29). Owned source-body fixtures and the compiled CLI distinguish prefix sampling and later variable readings; product adapter and final policy closure remain open. See [W385](ports/W385-declaration-prefix-preflight.md).
+W385 Permissions source port (2026-10-29). The unconnected analyser and decision-merge modules pass source checks and focused regressions; per-vector policy and authorization integration remain open. See [W385](ports/W385-declaration-prefix-preflight.md).
 
 W384 Hooks retirement observation (2026-10-29). An injected second-retirement failure reproduces a stale mounted relay; normal removal is the control, and production reachability remains unestablished. See [W384](ports/W384-hooks-retirement-observation.md).
 

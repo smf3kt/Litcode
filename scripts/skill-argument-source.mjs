@@ -50,7 +50,7 @@ assert.equal(parserNodes.at(-1).end, 61820);
 assert.equal(parserNodes.filter(node => node.type === 'FunctionDeclaration').length, 88);
 const header = '// @ts-nocheck\n// Exact recovered declarations. Regenerate or verify with scripts/skill-argument-source.mjs.\n';
 const parserText = header + parserNodes.map(node => block(parser, node.start, node.end,
-  node.id?.name ?? node.declarations.map(value => value.id.name).join(','))).join('\n') + '\nexport { vS };\n';
+  node.id?.name ?? node.declarations.map(value => value.id.name).join(','))).join('\n') + '\nexport { vS, yyr };\n';
 const d0 = command.ast.body.flatMap(node => node.declarations ?? []).find(node => node.id?.name === 'D0');
 assert.equal(d0?.start, 1052);
 assert.equal(d0?.end, 1058);

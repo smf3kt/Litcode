@@ -1,0 +1,116 @@
+{
+  "schema": "SourceCopyPlan.v1",
+  "artifactSha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "ledger": "shell-reading-merge-blocks.json",
+  "outputs": [
+    {
+      "path": "shell-reading-merge-source.ts",
+      "chunks": [
+        "// @ts-nocheck\n// Exact recovered declarations. See research/ports/W385-declaration-prefix-preflight.md.\n",
+        {
+          "module": "chunk-a60ee1ne.js",
+          "moduleSha256": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1",
+          "symbol": "trn",
+          "range": [
+            987,
+            2081
+          ],
+          "bodySha256": "bcea04ab0ec456871ed26a8df522be053dfa6f4e6d5ed496cfa34a2f30ba4c0f",
+          "declarator": true
+        },
+        {
+          "module": "chunk-a60ee1ne.js",
+          "moduleSha256": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1",
+          "symbol": "X3",
+          "range": [
+            2082,
+            2146
+          ],
+          "bodySha256": "e4bc2210e56e5e98f252379ddec398122d4228adb29354ff0ef01d0adcbc6c41"
+        },
+        {
+          "module": "chunk-a60ee1ne.js",
+          "moduleSha256": "fe5d3ed9cb5d16b40ded156d060aeed714dc3a382405609422688756f0707ee1",
+          "symbol": "d",
+          "range": [
+            2216,
+            2303
+          ],
+          "bodySha256": "98e0d1b4d1f81a482043bad16d6c61820441e40018bf1ecd7d85dd912a94cecb"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "ize",
+          "range": [
+            609639,
+            609790
+          ],
+          "bodySha256": "ef323ba2c52fa0c791c34596bf3b7d0c7ce961cd6309bc3f2b561e49f4767f93"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "jwe",
+          "range": [
+            3234078,
+            3234326
+          ],
+          "bodySha256": "63a4609d828d83bf1b42cdef634371e3ade51a139db7a4b0b1b11cd40619f2e6"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Lcn",
+          "range": [
+            3234326,
+            3234534
+          ],
+          "bodySha256": "bb4863a870d1a305713a718402494ccd6ffeb416fc6fffe8516ebf6e524fa45b"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "DTr",
+          "range": [
+            3234534,
+            3234967
+          ],
+          "bodySha256": "4cd43add5ae5c4a4fa3fce37f72b422df59e20dc9729f497ed8af5abeb780133"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "utt",
+          "range": [
+            3354561,
+            3354764
+          ],
+          "bodySha256": "9df48f931bd97a80ebabcb0c61588d71b1d4360c469091883853b9777c7ef160"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "m0",
+          "range": [
+            3354764,
+            3354848
+          ],
+          "bodySha256": "6324bb3421c6c7918306a6ddf1120988b8af6009ff98e5088f64975aff637e80"
+        },
+        {
+          "module": "chunk-sfn1dbxq.js",
+          "moduleSha256": "4c74137eb23221981404d0ca87b765912f83344851d5c132b21857e5685b03da",
+          "symbol": "Dl",
+          "range": [
+            3365554,
+            3365753
+          ],
+          "bodySha256": "dd4494b95f3937871f93053b5afb1e9b7ff44e6c5770f9fed1cfc4820601cab1"
+        },
+        "const ki = { name: \"Bash\" };\nconst Rl = (_name, reason) => reason.reason;\n",
+        "export { DTr };\n"
+      ]
+    }
+  ]
+}
